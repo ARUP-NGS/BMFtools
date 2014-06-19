@@ -16,16 +16,22 @@ def main():
     StdFilenames,ElseFilenames=AdapterLoc(Hits,adapter=adapter)
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the adapter and the barcode.")
-    tags, trimfq = TrimAdapter(Hits,adapter)
+    tags, trimfq = TrimAdapter(StdFilenames,adapter)
     return
 
-def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default"):
+def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default"):
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
+    if(trim_err=="default"):
+        temp = '.'.join(fq.split('.')[0:-1]) + '.err.fastq'
+        trim_err = temp.split('/')[-1]
     if(trimfq == "default"):
-        trimfq = '.'.join(fq.split('.')[0:-1]) + '.trim.fastq'
+        temp = '.'.join(fq.split('.')[0:-1]) + '.trim.fastq'
+        trimfq = temp.split('/')[-1]
     if(tags_file == "default"):
-        tags_file = '.'.join(fq.split('.')[0:-1]) + '.tags.fastq'
+        temp = '.'.join(fq.split('.')[0:-1]) + '.tags.fastq'
+        tags_file = temp.split('/')[-1]
+    errOpen = open(trim_err,"w",0)
     tagsOpen = open(tags_file,"w",0)
     trimOpen = open(trimfq,"w",0)
     InFastq = SeqIO.parse(fq,"fastq")
@@ -35,29 +41,36 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default"):
     for record in InFastq:
         pre_tag = SeqRecord(
                 Seq(str(record.seq)[0:TotalTrim],"fastq"), \
-                id=record.id, name=record.name)
+                id=record.id)
         pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:TotalTrim]
+        if adapter not in pre_tag.seq:
+            print("I'm sorry, but your adapter sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
+            SeqIO.write(record,errOpen,"fastq")
+            continue
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), \
-                id=record.id, name=record.name)
+                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id, description=str(record.seq)[0:TotalTrim]) 
         post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
     trimOpen.close()
+    errOpen.close()
     return(tags_file,trimfq)
 
 def AdapterLoc(fq,adapter,bar_len=12):
     InFastq=SeqIO.parse(fq,"fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix=Tpref.split('/')[-1]
-    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format(bar_len), Prefix+ '.else.fastq', Prefix + '.else.supp'
+    StdFilename, ElseFilename, ElseLoc,NfFilename = Prefix+'.{}.fastq'.format(bar_len), Prefix+ '.else.fastq', Prefix + '.else.supp', Prefix + '.nf.fastq'
     StdFastq=open(StdFilename,'w',0) #Adapter at expected Location
     ElseFastq=open(ElseFilename,'w',0) #Adapter sequence found elsewhere, even if it's simply part of the read itself
+    NfFastq=open(NfFilename,'w',0)
     ElseLocations=open(ElseLoc,'w',0)
     for read in InFastq:
         seq = str(read.seq)
-        if(seq.find(adapter)==bar_len):
+        if(seq.find(adapter)==-1):
+            SeqIO.write(read,NfFastq,"fastq")
+        elif(seq.find(adapter)==bar_len):
             SeqIO.write(read,StdFastq,"fastq")
         else:
             SeqIO.write(read,ElseFastq,"fastq")
@@ -79,11 +92,13 @@ def FastqRegex(fq,string,matchFile="default",missFile="default"):
     call(CommandStr2,shell=True)
     return(CommandStr,CommandStr2,matchFile,missFile)
 
+'''
 def SumStrList(list):
     a = ""
     for i in list:
         a+=i
     return a
+'''
 
 if(__name__=="__main__"):
     main()
