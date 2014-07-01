@@ -1,0 +1,179 @@
+
+<!-- Analysis name: Lung Melanoma RNA IonTorrent xLoc -->
+<!-- Analysis ID: lung.iontorrent.rna.xloc -->
+<!-- Analysis description: Pipeline for RNAseq translocation with custom references -->
+<Pipeline>
+
+
+<fusionReference class="buffer.ReferenceFile" filename="/yggdrasil/workspace/LungMel/lungmelanoma_v4_ref_bwa/lungmelanoma_v4_fusions.fasta" />
+<termReference class="buffer.ReferenceFile" filename="/yggdrasil/workspace/LungMel/lungmelanoma_v4_ref_bwa/lungmelanoma_v4_driver_teminal_ratios.fasta" />
+
+
+<reads class="buffer.FastQFile" filename="${INPUTFILE}" />
+
+<WranglerLogger class="operator.StatusLogger" />
+
+<TrimReads class="operator.cutadapt.CutAdaptv2" cut.opts="-O 5 -m 40" adapter.seq="ATCACCGACTGCCCATAGAG">
+  <input>
+    <reads />
+  </input>
+  <output>
+      <readsTrim class="buffer.FastQFile" filename="adaptercut-${SAMPLE}" />
+  </output>
+</TrimReads>
+
+
+<TermIndex class="operator.bwa.BWAalnD">
+  <input>
+    <termReference />
+    <readsTrim />
+  </input>
+  <output>
+      <termSAI class="buffer.SAIFile" filename="${SAMPLE}.term.sai" />
+  </output>
+</TermIndex>
+
+
+<!-- Alignment with given number of threads to each reference.-->
+<BwaTerm class="operator.bwa.BWASamse" sample="${SAMPLE}" >
+  <input>
+    <termReference />
+    <termSAI />
+    <readsTrim />
+  </input>
+  <output>
+    <rawTermBam class="buffer.BAMFile" filename="${SAMPLE}.rawterm.bam" /> 
+  </output>
+</BwaTerm>
+
+<SortTerm class="operator.samtools.Sort" >
+  <input>
+    <rawTermBam />
+  </input>
+  <output>
+    <sortTermBam class="buffer.BAMFile" filename="${SAMPLE}.sort.term.bam" />
+  </output>
+</SortTerm>
+
+<!-- Indexing -->
+<IndexTerm class="operator.samtools.Index">
+  <input>
+    <sortTermBam />
+  </input>
+  <output>
+  </output>
+</IndexTerm>
+
+<!-- Parse BAM file into mapped and unmapped read files.-->
+
+<SplitTerm class="operator.samtools.MapParse">
+  <input>
+    <sortTermBam />
+  </input>
+  <output>
+    <mappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.bam" />
+    <unmappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.unmapped.bam" />
+  </output>
+</SplitTerm>
+
+<!-- Sorting and Indexing Parsed BAM files -->
+<SortTermMap class="operator.samtools.Sort">
+  <input>
+      <mappedTermBam />
+  </input>
+  <output>
+      <MTSBam class="buffer.BAMFile" filename="${SAMPLE}.MTS.bam" />
+  </output>
+</SortTermMap>
+
+<SortTermUnmapped class="operator.samtools.Sort">
+  <input>
+      <unmappedTermBam />
+  </input>
+  <output>
+      <UTSBam class="buffer.BAMFile" filename="${SAMPLE}.UTS.bam" />
+  </output>
+</SortTermUnmapped>
+
+<IndexTermMap class="operator.samtools.Index">
+  <input>
+    <MTSBam />
+  </input>
+  <output>
+  </output>
+</IndexTermMap>
+
+<IndexTermUnmapped class="operator.samtools.Index">
+  <input>
+    <UTSBam />
+  </input>
+  <output>
+  </output>
+</IndexTermUnmapped>
+
+<Bam2Fastq class="operator.samtools.Bam2Fq">
+  <input>
+      <unmappedTermBam />
+  </input>
+  <output>
+    <unmappedTermFastq class="buffer.FastQFile" filename="${SAMPLE}.unmapped.fastq" />
+  </output>
+</Bam2Fastq>
+
+<FusionIndex class="operator.bwa.BWAalnD">
+  <input>
+    <fusionReference />
+    <unmappedTermFastq />
+  </input>
+  <output>
+      <fusionSAI class="buffer.SAIFile" filename="${SAMPLE}.fusion.sai" />
+  </output>
+</FusionIndex>
+
+<BWAFusion class="operator.bwa.BWASamse">
+  <input>
+    <fusionReference />
+    <fusionSAI />
+    <unmappedTermFastq />
+  </input>
+  <output>
+    <rawFusionBam class="buffer.BAMFile" filename="${SAMPLE}.fusion.bam" />
+  </output>
+</BWAFusion>
+
+
+<IndexFusion class="operator.samtools.Index">
+  <input>
+    <rawFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexFusion>
+
+<SplitFusion class="operator.samtools.MapParse">
+  <input>
+    <rawFusionBam />
+  </input>
+  <output>
+    <mappedFusionBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.fusion.bam" />
+    <unmappedFusionBam class="buffer.BAMFile" filename="${SAMPLE}.unmapped.fusion.bam" />
+  </output>
+</SplitFusion>
+
+<IndexFusionMapped class="operator.samtools.Index">
+  <input>
+    <mappedFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexFusionMapped>
+
+<IndexFusionUnmapped class="operator.samtools.Index">
+  <input>
+    <unmappedFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexFusionUnmapped>
+
+</Pipeline>

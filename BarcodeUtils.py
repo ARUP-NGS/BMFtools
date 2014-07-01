@@ -49,7 +49,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
             continue
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id, description=str(record.seq)[0:TotalTrim]) 
+                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "\t" + str(record.seq)[0:TotalTrim],description="") 
         post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
@@ -61,17 +61,18 @@ def AdapterLoc(fq,adapter,bar_len=12):
     InFastq=SeqIO.parse(fq,"fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix=Tpref.split('/')[-1]
-    StdFilename, ElseFilename, ElseLoc,NfFilename = Prefix+'.{}.fastq'.format(bar_len), Prefix+ '.else.fastq', Prefix + '.else.supp', Prefix + '.nf.fastq'
+    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format(bar_len), Prefix+ '.else.fastq', Prefix + '.else.supp'
     StdFastq=open(StdFilename,'w',0) #Adapter at expected Location
     ElseFastq=open(ElseFilename,'w',0) #Adapter sequence found elsewhere, even if it's simply part of the read itself
-    NfFastq=open(NfFilename,'w',0)
     ElseLocations=open(ElseLoc,'w',0)
     for read in InFastq:
         seq = str(read.seq)
         if(seq.find(adapter)==-1):
-            SeqIO.write(read,NfFastq,"fastq")
+            raise NameError("Sanity check failure. Adapter Sequence Not Found. HTML 404")
         elif(seq.find(adapter)==bar_len):
             SeqIO.write(read,StdFastq,"fastq")
+        elif(seq[bar_len:bar_len+len(adapter)] == adapter):
+            SeqIO.write(read,StdFastq,"fastq") #Sometimes there is a match for the adapter before the adapter occurs. Check the reads which don't find the adapter at the expected location directly
         else:
             SeqIO.write(read,ElseFastq,"fastq")
             ElseLocations.write(repr(seq.find(adapter)) + "\t" + read.name + "\n")
@@ -83,9 +84,9 @@ def AdapterLoc(fq,adapter,bar_len=12):
 def FastqRegex(fq,string,matchFile="default",missFile="default"):
     from subprocess import call
     if(matchFile=="default"):
-        matchFile = '.'.join(fq.split('.')[0:-1])+'.match.fastq'
+        matchFile = ('.'.join(fq.split('.')[0:-1])+'.match.fastq').split('/')[-1]
     if(missFile=="default"):
-        missFile = '.'.join(fq.split('.')[0:-1])+'.miss.fastq'
+        missFile = ('.'.join(fq.split('.')[0:-1])+'.miss.fastq').split('/')[-1]
     CommandStr = "cat {} | paste - - - - | grep '{}' | tr '\t' '\n' > {}".format(fq,string,matchFile)
     call(CommandStr,shell=True)
     CommandStr2 = "cat {} | paste - - - - | grep -v '{}' | tr '\t' '\n' > {}".format(fq,string,missFile)

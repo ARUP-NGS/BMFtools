@@ -61,9 +61,11 @@ def catGff(p1,p2,outfile):
 def ExpandGffP1(p1,len):
     NewP1 = []
     for rec in p1:
-        gff_hold=p1
-        gff_hold[4] -= len
-        gff_hold[5] += len
+        gff_hold=rec
+        print("gff_hold 4 is {}".format(gff_hold[4]))
+        print("rec is {}".format(rec))
+        gff_hold[4] = str(int(gff_hold[4])-len)
+        gff_hold[5] = str(int(gff_hold[5])-len)
         NewP1.append(gff_hold)
     return NewP1
 

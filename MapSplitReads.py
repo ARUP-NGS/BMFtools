@@ -316,7 +316,7 @@ def sam_sort(insam,outsam):
 def Sam2Bam(insam,outbam):
     from subprocess import call
     output = open(outbam,'w',0)
-    command_str='samtools view -Sb {}'.format(insam,shell=True)
+    command_str='samtools view -Sbh {}'.format(insam,shell=True)
     print(command_str)
     call(command_str,stdout=output,shell=True)
     return(command_str,outbam)
