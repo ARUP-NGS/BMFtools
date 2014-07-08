@@ -13,7 +13,7 @@
 <!--KnownDBSNP class="buffer.VCFFile" filename="/yggdrasil/workspace/LungMel/dbsnp_132.b37.vcf" />
 <HapMap class="buffer.VCFFile" filename="/yggdrasil/workspace/LungMel/hapmap_3.3.b37.sites.vcf" />
 <Omni class="buffer.VCFFile" filename="/yggdrasil/workspace/LungMel/1000G_omni2.5.b37.sites.vcf" /-->
-<reads class="buffer.FastQFile" filename="WorkDir/basename.fastq" />
+<reads class="buffer.FastQFile" filename="ReadDir/basename.fastq" />
 
 <WranglerLogger class="operator.StatusLogger" />
 
@@ -22,7 +22,7 @@
     <reads />
   </input>
   <output>
-      <readsTrim class="buffer.FastQFile" filename="adaptercut-${SAMPLE}.fastq" />
+      <readsTrim class="buffer.FastQFile" filename="adaptercut-basename.fastq" />
   </output>
 </TrimReads>
 
@@ -80,13 +80,33 @@
   </output>
 </SplitTerm>
 
+<FracFilter class="operator.bamutils.FracAlignFilter" fraction="0.5">
+  <input>
+    <mappedTermBam /> 
+  </input>
+  <output>
+    <passMappedTermBam class="buffer.BAMFile" filename="WorkDir/basename.mapped.pass.bam" />
+    <failMappedTermBam class="buffer.BAMFile" filename="WorkDir/basename.mapped.fail.bam" />
+  </output>
+</FracFilter>
+
+<MatchFilter class="operator.bamutils.MatchFilter" fraction="0.667">
+  <input>
+    <passMappedTermBam /> 
+  </input>
+  <output>
+    <passMatchTermBam class="buffer.BAMFile" filename="WorkDir/basename.match.pass.bam" />
+    <failMatchTermBam class="buffer.BAMFile" filename="WorkDir/basename.match.fail.bam" />
+  </output>
+</MatchFilter>
+
 <!-- Sorting and Indexing Parsed BAM files -->
 <SortTermMap class="operator.samtools.Sort">
   <input>
-      <mappedTermBam />
+      <passMatchTermBam />
   </input>
   <output>
-      <MTSBam class="buffer.BAMFile" filename="WorkDir/basename.MST.bam" />
+      <MTSBam class="buffer.BAMFile" filename="WorkDir/basename.MSTP.bam" />
   </output>
 </SortTermMap>
 
@@ -182,9 +202,29 @@
   </output>
 </SplitFusion>
 
+<FracFilterFusion class="operator.bamutils.FracAlignFilter" fraction="0.7">
+  <input>
+    <mappedFusionBam /> 
+  </input>
+  <output>
+    <passMappedFusBam class="buffer.BAMFile" filename="WorkDir/basename.FusMP.bam" />
+    <failMappedFusBam class="buffer.BAMFile" filename="WorkDir/basename.FusMF.bam" />
+  </output>
+</FracFilterFusion>
+
+<MatchFilterFusion class="operator.bamutils.MatchFilter" fraction="0.667">
+  <input>
+    <passMappedFusBam /> 
+  </input>
+  <output>
+    <passMatchFusBam class="buffer.BAMFile" filename="WorkDir/basename.FusMatchPass.bam" />
+    <failMatchFusBam class="buffer.BAMFile" filename="WorkDir/basename.FusMatchFailbam" />
+  </output>
+</MatchFilter>
+
 <FilterBamByBed1 class="operator.bamutils.RegionFilter">
   <input>
-    <mappedFusionBam />
+    <passMatchFusBam />
     <fusionBreakpointBed1 />
   </input>
   <output>
