@@ -7,7 +7,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--fq', help="Provide your fastq file", nargs = 1, metavar = ('reads'),required=True)
     parser.add_argument('-b','--adapter', help="Adapter for samples. If not set, defaults to CAGT.",metavar=('Adapter'),default="CAGT")
-    parser.add_argument('-l','--bar_len', help="Length of anticipated barcode.", default=12)
+    parser.add_argument('-l','--bar_len', help="Length of anticipated barcode. Defaults to 12.", default=12, type=int)
+    parser.add_argument('-p','--pair', help="Unpaired (0), Paired End 1 (1), Paired End 2 (2). Defaults to 0.", default=0, type=int)
     args=parser.parse_args()
     adapter=args.adapter
     fq = args.fq[0]
@@ -17,7 +18,22 @@ def main():
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the adapter and the barcode.")
     tags, trimfq = TrimAdapter(StdFilenames,adapter)
+    if(args.pair == 2):
+        revCompTrim = reverseComplement(trimfq)
+    print("revCompTrim location: " + revCompTrim)
     return
+
+def reverseComplement(fq,dest="default"):
+    if(dest=="default"):
+        temp = '.'.join(fq.split('.')[0:-1])+"_rc.fastq"
+        dest = temp.split('/')[-1]
+    InFastq = SeqIO.parse(fq,"fastq")
+    OutFastq = open(dest,"w",0)
+    for record in InFastq:
+        rc_record = record.reverse_complement(id=record.id+"_rc")
+        SeqIO.write(rc_record,OutFastq,"fastq")
+    OutFastq.close()
+    return dest
 
 def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default"):
     from Bio.SeqRecord import SeqRecord
