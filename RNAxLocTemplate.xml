@@ -5,10 +5,10 @@
 <Pipeline>
 
 
-<fusionReference class="buffer.ReferenceFile" filename="/mnt/research1/reference/lungmelanoma_v4_fusions.fasta" />
-<termReference class="buffer.ReferenceFile" filename="/mnt/research1/reference/lungmelanoma_v4_driver_terminal_ratios.fasta" />
-<fusionBreakpointBed1 class="buffer.BEDFile" filename="/mnt/research1/reference/lungMelanomaBreakpoints.start.bed" />
-<fusionBreakpointBed2 class="buffer.BEDFile" filename="/mnt/research1/reference/lungMelanomaBreakpoints.end.bed" />
+<fusionReference class="buffer.ReferenceFile" filename="/yggdrasil/workspace/LungMel/lungmelanoma_v4_ref_bwa/lungmelanoma_v4_fusions.fasta" />
+<termReference class="buffer.ReferenceFile" filename="/yggdrasil/workspace/LungMel/lungmelanoma_v4_ref_bwa/lungmelanoma_v4_driver_terminal_ratios.fasta" />
+<fusionBreakpointBed1 class="buffer.BEDFile" filename="/yggdrasil/workspace/LungMel/lungmelanoma_v4_ref_bwa/lungMelanomaBreakpoints.start.bed" />
+<fusionBreakpointBed2 class="buffer.BEDFile" filename="/yggdrasil/workspace/LungMel/lungmelanoma_v4_ref_bwa/lungMelanomaBreakpoints.end.bed" />
 <reads class="buffer.FastQFile" filename="${INPUTFILE}" />
 
 <WranglerLogger class="operator.StatusLogger" />
@@ -29,20 +29,20 @@
     <readsTrim />
   </input>
   <output>
-      <termSAI class="buffer.SAIFile" filename="${SAMPLE}.sai" />
+      <termSAI class="buffer.SAIFile" filename="${WORKSPACE}/${SAMPLE}.sai" />
   </output>
 </TermIndex>
 
 
 <!-- Alignment with given number of threads to each reference.-->
-<BwaTerm class="operator.bwa.BWASamse" sample="${SAMPLE}" >
+<BwaTerm class="operator.bwa.BWASamse" sample="${WORKSPACE}/${SAMPLE}" >
   <input>
     <termReference />
     <termSAI />
     <readsTrim />
   </input>
   <output>
-    <rawTermBam class="buffer.BAMFile" filename="${SAMPLE}.rawterm.bam" /> 
+    <rawTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.rawterm.bam" /> 
   </output>
 </BwaTerm>
 
@@ -51,7 +51,7 @@
     <rawTermBam />
   </input>
   <output>
-      <sortTermBam class="buffer.BAMFile" filename="${SAMPLE}.sort.term.bam" />
+      <sortTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.sort.term.bam" />
   </output>
 </SortTerm>
 
@@ -71,30 +71,78 @@
     <sortTermBam />
   </input>
   <output>
-    <mappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.bam" />
-    <unmappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.unmapped.bam" />
+    <mappedTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.mapped.bam" />
+    <unmappedTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.unmapped.bam" />
   </output>
 </SplitTerm>
 
-<AmpliconFilterTerm class="operator.bamutils.AmpliconCoverageFilter" bedpath="/mnt/research1/reference/Designed.bed" fraction="0.5">
+<IndexMappedTerm class="operator.samtools.Index">
+  <input>
+    <mappedTermBam/>
+  </input>
+  <output>
+  </output>
+</IndexMappedTerm>
+
+<IndexUnmappedTerm class="operator.samtools.Index">
+  <input>
+    <unmappedTermBam/>
+  </input>
+  <output>
+  </output>
+</IndexUnmappedTerm>
+
+<AmpliconFilterTerm class="operator.bamutils.AmpliconCoverageFilter" bedpath="/yggdrasil/workspace/LungMel/Designed.bed" fraction="0.5">
   <input>
     <mappedTermBam /> 
   </input>
   <output>
-    <passMappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.pass.bam" />
-    <failMappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.fail.bam" />
+    <passMappedTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.mapped.pass.bam" />
+    <failMappedTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.mapped.fail.bam" />
   </output>
 </AmpliconFilterTerm>
+
+<IndexAmpliconPass class="operator.samtools.Index">
+  <input>
+    <passMappedTermBam/>
+  </input>
+  <output>
+  </output>
+</IndexAmpliconPass>
+
+<IndexAmpliconFail class="operator.samtools.Index">
+  <input>
+    <failMappedTermBam/>
+  </input>
+  <output>
+  </output>
+</IndexAmpliconFail>
 
 <MatchFilter class="operator.bamutils.MatchFilter" fraction="0.667">
   <input>
     <passMappedTermBam /> 
   </input>
   <output>
-    <passMatchTermBam class="buffer.BAMFile" filename="${SAMPLE}.match.pass.bam" />
-    <failMatchTermBam class="buffer.BAMFile" filename="${SAMPLE}.match.fail.bam" />
+    <passMatchTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.match.pass.bam" />
+    <failMatchTermBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.match.fail.bam" />
   </output>
 </MatchFilter>
+
+<IndexMatchTermPass class="operator.samtools.Index">
+  <input>
+    <passMatchTermBam />
+  </input>
+  <output>
+  </output>
+</IndexMatchTermPass>
+
+<IndexMatchTermFail class="operator.samtools.Index">
+  <input>
+    <failMatchTermBam />
+  </input>
+  <output>
+  </output>
+</IndexMatchTermFail>
 
 <!-- Sorting and Indexing Parsed BAM files -->
 <SortTermMap class="operator.samtools.Sort">
@@ -102,7 +150,7 @@
       <passMatchTermBam />
   </input>
   <output>
-      <MTSBam class="buffer.BAMFile" filename="${SAMPLE}.MapSortTermPass.bam" />
+      <MTSBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.MapSortTermPass.bam" />
   </output>
 </SortTermMap>
 
@@ -111,7 +159,7 @@
       <unmappedTermBam />
   </input>
   <output>
-      <UTSBam class="buffer.BAMFile" filename="${SAMPLE}.UnmapSortTerm.bam" />
+      <UTSBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.UnmapSortTerm.bam" />
   </output>
 </SortTermUnmapped>
 
@@ -136,7 +184,7 @@
       <unmappedTermBam />
   </input>
   <output>
-      <unmappedTermFastq class="buffer.FastQFile" filename="${SAMPLE}.unmapped.fastq" />
+      <unmappedTermFastq class="buffer.FastQFile" filename="${WORKSPACE}/${SAMPLE}.unmapped.fastq" />
   </output>
 </Bam2Fastq>
 
@@ -146,7 +194,7 @@
     <unmappedTermFastq />
   </input>
   <output>
-      <unmappedTermFastqTrim class="buffer.FastQFile" filename="${SAMPLE}.unmappedTerm.filter90.fastq" />
+      <unmappedTermFastqTrim class="buffer.FastQFile" filename="${WORKSPACE}/${SAMPLE}.unmappedTerm.filter90.fastq" />
   </output>
 </TrimUnmapped>
 
@@ -156,7 +204,7 @@
     <unmappedTermFastqTrim />
   </input>
   <output>
-    <fusionSAI class="buffer.SAIFile" filename="${SAMPLE}.fusion.sai" />
+    <fusionSAI class="buffer.SAIFile" filename="${WORKSPACE}/${SAMPLE}.fusion.sai" />
   </output>
 </FusionIndex>
 
@@ -167,7 +215,7 @@
     <unmappedTermFastqTrim />
   </input>
   <output>
-    <rawFusionBam class="buffer.BAMFile" filename="${SAMPLE}.fusion.bam" />
+    <rawFusionBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.fusion.bam" />
   </output>
 </BWAFusion>
 
@@ -176,7 +224,7 @@
     <rawFusionBam />
   </input>
   <output>
-      <sortFusionBam class="buffer.BAMFile" filename="${SAMPLE}.fusion.sort.bam" />
+      <sortFusionBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.fusion.sort.bam" />
   </output>
 </SortFusion>
 
@@ -193,30 +241,78 @@
     <sortFusionBam />
   </input>
   <output>
-    <mappedFusionBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.fusion.bam" />
-    <unmappedFusionBam class="buffer.BAMFile" filename="${SAMPLE}.unmapped.fusion.bam" />
+    <mappedFusionBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.mapped.fusion.bam" />
+    <unmappedFusionBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.unmapped.fusion.bam" />
   </output>
 </SplitFusion>
 
-<AmpliconFilter class="operator.bamutils.AmpliconCoverageFilter" bedpath="/mnt/research1/reference/ampliconDesignLungMel.bed" fraction="0.7">
+<IndexMappedFusion class="operator.samtools.Index">
+  <input>
+    <mappedFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexMappedFusion>
+
+<IndexUnmappedFusion class="operator.samtools.Index">
+  <input>
+    <unmappedFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexUnmappedFusion>
+
+<AmpliconFilter class="operator.bamutils.AmpliconCoverageFilter" bedpath="/yggdrasil/workspace/LungMel/Designed.bed" fraction="0.7">
   <input>
     <mappedFusionBam /> 
   </input>
   <output>
-    <passMappedFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMapPass.bam" />
-    <failMappedFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMapFail.bam" />
+    <passMappedFusBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.FusMapPass.bam" />
+    <failMappedFusBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.FusMapFail.bam" />
   </output>
 </AmpliconFilter>
+
+<IndexPassMappedFusion class="operator.samtools.Index">
+  <input>
+    <passMappedFusBam />
+  </input>
+  <output>
+  </output>
+</IndexPassMappedFusion>
+
+<IndexFailMappedFusion class="operator.samtools.Index">
+  <input>
+    <failMappedFusBam />
+  </input>
+  <output>
+  </output>
+</IndexFailMappedFusion>
 
 <MatchFilterFusion class="operator.bamutils.MatchFilter" fraction="0.667">
   <input>
     <passMappedFusBam /> 
   </input>
   <output>
-    <passMatchFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMatchPass.bam" />
-    <failMatchFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMatchFail.bam" />
+    <passMatchFusBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.FusMatchPass.bam" />
+    <failMatchFusBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.FusMatchFail.bam" />
   </output>
 </MatchFilterFusion>
+
+<IndexPassMatchFusion class="operator.samtools.Index">
+  <input>
+    <passMatchFusBam />
+  </input>
+  <output>
+  </output>
+</IndexPassMatchFusion>
+
+<IndexFailMatchFusion class="operator.samtools.Index">
+  <input>
+    <failMatchFusBam />
+  </input>
+  <output>
+  </output>
+</IndexFailMatchFusion>
 
 <FilterBamByBed1 class="operator.bamutils.RegionFilter">
   <input>
@@ -224,7 +320,7 @@
     <fusionBreakpointBed1 />
   </input>
   <output>
-      <filterFusionBam1 class="buffer.BAMFile" filename="${SAMPLE}.bedfilter1.fusion.bam" />
+      <filterFusionBam1 class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.bedfilter1.fusion.bam" />
   </output>
 </FilterBamByBed1>
 
@@ -234,7 +330,7 @@
     <fusionBreakpointBed2 />
   </input>
   <output>
-      <filterFusionBam class="buffer.BAMFile" filename="${SAMPLE}.bedfilter.fusion.bam" />
+      <filterFusionBam class="buffer.BAMFile" filename="${WORKSPACE}/${SAMPLE}.bedfilter.fusion.bam" />
   </output>
 </FilterBamByBed2>
 
@@ -274,7 +370,7 @@
     <termReference />
   </input>
   <output>
-      <outputJSON class="buffer.JSONBuffer" filename="${SAMPLE}.RNA_Report.json.gz" />
+      <outputJSON class="buffer.JSONBuffer" filename="${WORKSPACE}/${SAMPLE}.RNA_Report.json.gz" />
   </output>
 </RatioCalc>
 

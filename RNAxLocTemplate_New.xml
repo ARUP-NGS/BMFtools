@@ -1,0 +1,281 @@
+
+<!-- Analysis name: Lung Melanoma RNA IonTorrent xLoc -->
+<!-- Analysis ID: lung.iontorrent.rna.xloc -->
+<!-- Analysis description: Pipeline for RNAseq translocation with custom references -->
+<Pipeline>
+
+
+<fusionReference class="buffer.ReferenceFile" filename="/mnt/research1/reference/lungmelanoma_v4_fusions.fasta" />
+<termReference class="buffer.ReferenceFile" filename="/mnt/research1/reference/lungmelanoma_v4_driver_terminal_ratios.fasta" />
+<fusionBreakpointBed1 class="buffer.BEDFile" filename="/mnt/research1/reference/lungMelanomaBreakpoints.start.bed" />
+<fusionBreakpointBed2 class="buffer.BEDFile" filename="/mnt/research1/reference/lungMelanomaBreakpoints.end.bed" />
+<reads class="buffer.FastQFile" filename="${INPUTFILE}" />
+
+<WranglerLogger class="operator.StatusLogger" />
+
+<TrimReads class="operator.cutadapt.CutAdaptv2" cut.opts="-O 5 -m 40" adapter.seq="ATCACCGACTGCCCATAGAG">
+  <input>
+    <reads />
+  </input>
+  <output>
+      <readsTrim class="buffer.FastQFile" filename="adaptercut-${SAMPLE}.fastq" />
+  </output>
+</TrimReads>
+
+
+<TermIndex class="operator.bwa.BWAalnD">
+  <input>
+    <termReference />
+    <readsTrim />
+  </input>
+  <output>
+      <termSAI class="buffer.SAIFile" filename="${SAMPLE}.sai" />
+  </output>
+</TermIndex>
+
+
+<!-- Alignment with given number of threads to each reference.-->
+<BwaTerm class="operator.bwa.BWASamse" sample="${SAMPLE}" >
+  <input>
+    <termReference />
+    <termSAI />
+    <readsTrim />
+  </input>
+  <output>
+    <rawTermBam class="buffer.BAMFile" filename="${SAMPLE}.rawterm.bam" /> 
+  </output>
+</BwaTerm>
+
+<SortTerm class="operator.samtools.Sort" >
+  <input>
+    <rawTermBam />
+  </input>
+  <output>
+      <sortTermBam class="buffer.BAMFile" filename="${SAMPLE}.sort.term.bam" />
+  </output>
+</SortTerm>
+
+<!-- Indexing -->
+<IndexTerm class="operator.samtools.Index">
+  <input>
+    <sortTermBam />
+  </input>
+  <output>
+  </output>
+</IndexTerm>
+
+<!-- Parse BAM file into mapped and unmapped read files.-->
+
+<SplitTerm class="operator.samtools.MapParse">
+  <input>
+    <sortTermBam />
+  </input>
+  <output>
+    <mappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.bam" />
+    <unmappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.unmapped.bam" />
+  </output>
+</SplitTerm>
+
+<AmpliconFilterTerm class="operator.bamutils.AmpliconCoverageFilter" bedpath="/mnt/research1/reference/Designed.bed" fraction="0.5">
+  <input>
+    <mappedTermBam /> 
+  </input>
+  <output>
+    <passMappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.pass.bam" />
+    <failMappedTermBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.fail.bam" />
+  </output>
+</AmpliconFilterTerm>
+
+<MatchFilter class="operator.bamutils.MatchFilter" fraction="0.667">
+  <input>
+    <passMappedTermBam /> 
+  </input>
+  <output>
+    <passMatchTermBam class="buffer.BAMFile" filename="${SAMPLE}.match.pass.bam" />
+    <failMatchTermBam class="buffer.BAMFile" filename="${SAMPLE}.match.fail.bam" />
+  </output>
+</MatchFilter>
+
+<!-- Sorting and Indexing Parsed BAM files -->
+<SortTermMap class="operator.samtools.Sort">
+  <input>
+      <passMatchTermBam />
+  </input>
+  <output>
+      <MTSBam class="buffer.BAMFile" filename="${SAMPLE}.MapSortTermPass.bam" />
+  </output>
+</SortTermMap>
+
+<SortTermUnmapped class="operator.samtools.Sort">
+  <input>
+      <unmappedTermBam />
+  </input>
+  <output>
+      <UTSBam class="buffer.BAMFile" filename="${SAMPLE}.UnmapSortTerm.bam" />
+  </output>
+</SortTermUnmapped>
+
+<IndexTermMap class="operator.samtools.Index">
+  <input>
+    <MTSBam />
+  </input>
+  <output>
+  </output>
+</IndexTermMap>
+
+<IndexTermUnmapped class="operator.samtools.Index">
+  <input>
+    <UTSBam />
+  </input>
+  <output>
+  </output>
+</IndexTermUnmapped>
+
+<Bam2Fastq class="operator.samtools.Bam2Fq">
+  <input>
+      <unmappedTermBam />
+  </input>
+  <output>
+      <unmappedTermFastq class="buffer.FastQFile" filename="${SAMPLE}.unmapped.fastq" />
+  </output>
+</Bam2Fastq>
+
+<!-- Filter out reads with length < 90bp. -->
+<TrimUnmapped class="operator.cutadapt.CutAdaptv2" cut.opts="-O 5 -m 90" adapter.seq="ATCACCGACTGCCCATAGAG">
+  <input>
+    <unmappedTermFastq />
+  </input>
+  <output>
+      <unmappedTermFastqTrim class="buffer.FastQFile" filename="${SAMPLE}.unmappedTerm.filter90.fastq" />
+  </output>
+</TrimUnmapped>
+
+<FusionIndex class="operator.bwa.BWAalnD">
+  <input>
+    <fusionReference />
+    <unmappedTermFastqTrim />
+  </input>
+  <output>
+    <fusionSAI class="buffer.SAIFile" filename="${SAMPLE}.fusion.sai" />
+  </output>
+</FusionIndex>
+
+<BWAFusion class="operator.bwa.BWASamse">
+  <input>
+    <fusionReference />
+    <fusionSAI />
+    <unmappedTermFastqTrim />
+  </input>
+  <output>
+    <rawFusionBam class="buffer.BAMFile" filename="${SAMPLE}.fusion.bam" />
+  </output>
+</BWAFusion>
+
+<SortFusion class="operator.samtools.Sort">
+  <input>
+    <rawFusionBam />
+  </input>
+  <output>
+      <sortFusionBam class="buffer.BAMFile" filename="${SAMPLE}.fusion.sort.bam" />
+  </output>
+</SortFusion>
+
+<IndexFusion class="operator.samtools.Index">
+  <input>
+    <sortFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexFusion>
+
+<SplitFusion class="operator.samtools.MapParse">
+  <input>
+    <sortFusionBam />
+  </input>
+  <output>
+    <mappedFusionBam class="buffer.BAMFile" filename="${SAMPLE}.mapped.fusion.bam" />
+    <unmappedFusionBam class="buffer.BAMFile" filename="${SAMPLE}.unmapped.fusion.bam" />
+  </output>
+</SplitFusion>
+
+<AmpliconFilter class="operator.bamutils.AmpliconCoverageFilter" bedpath="/mnt/research1/reference/ampliconDesignLungMel.bed" fraction="0.7">
+  <input>
+    <mappedFusionBam /> 
+  </input>
+  <output>
+    <passMappedFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMapPass.bam" />
+    <failMappedFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMapFail.bam" />
+  </output>
+</AmpliconFilter>
+
+<MatchFilterFusion class="operator.bamutils.MatchFilter" fraction="0.667">
+  <input>
+    <passMappedFusBam /> 
+  </input>
+  <output>
+    <passMatchFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMatchPass.bam" />
+    <failMatchFusBam class="buffer.BAMFile" filename="${SAMPLE}.FusMatchFail.bam" />
+  </output>
+</MatchFilterFusion>
+
+<FilterBamByBed1 class="operator.bamutils.RegionFilter">
+  <input>
+    <passMatchFusBam />
+    <fusionBreakpointBed1 />
+  </input>
+  <output>
+      <filterFusionBam1 class="buffer.BAMFile" filename="${SAMPLE}.bedfilter1.fusion.bam" />
+  </output>
+</FilterBamByBed1>
+
+<FilterBamByBed2 class="operator.bamutils.RegionFilter">
+  <input>
+    <filterFusionBam1 />
+    <fusionBreakpointBed2 />
+  </input>
+  <output>
+      <filterFusionBam class="buffer.BAMFile" filename="${SAMPLE}.bedfilter.fusion.bam" />
+  </output>
+</FilterBamByBed2>
+
+<IndexFusionMapped class="operator.samtools.Index">
+  <input>
+    <filterFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexFusionMapped>
+
+<IndexFusionUnmapped class="operator.samtools.Index">
+  <input>
+    <unmappedFusionBam />
+  </input>
+  <output>
+  </output>
+</IndexFusionUnmapped>
+
+<!-- Final step, outputting results to JSON-->
+<RatioCalc class="operator.oncology.OncologyUtils">
+  <input>
+    <reads />
+    <readsTrim />
+    <unmappedTermFastq />
+    <unmappedTermFastqTrim />
+    <mappedTermBam />
+    <unmappedTermBam />
+    <mappedFusionBam />
+    <unmappedFusionBam />
+    <filterFusionBam />
+    <passMappedTermBam />
+    <passMatchTermBam />
+    <passMappedFusBam />
+    <passMatchFusBam />
+    <fusionReference />
+    <termReference />
+  </input>
+  <output>
+      <outputJSON class="buffer.JSONBuffer" filename="${SAMPLE}.RNA_Report.json.gz" />
+  </output>
+</RatioCalc>
+
+</Pipeline>
