@@ -18,10 +18,20 @@ def main():
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the adapter and the barcode.")
     tags, trimfq = TrimAdapter(StdFilenames,adapter)
+    BarcodeIndex = GenerateBarcodeIndex(tags)
     if(args.pair == 2):
         revCompTrim = reverseComplement(trimfq)
-    print("revCompTrim location: " + revCompTrim)
+        print("revCompTrim location: " + revCompTrim)
+
+        #Now, "tags" is the file location for the tags. I will use it to make a table of the counts for each family.
     return
+
+def GenerateBarcodeIndex(tags_file,index_file="default"):
+    from subprocess import call
+    if(index_file=="default"):
+        index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
+    call("cat {} | paste - - - - | awk 'BEGIN {FS=\"\t\";OFS=\"\t\"};{print $2}' | sort | uniq -c | awk 'BEGIN {OFS=\"\t\"};{print $1,$2}' > {}".format(tags_file,index_file))
+    return index_file
 
 def reverseComplement(fq,dest="default"):
     if(dest=="default"):
@@ -35,7 +45,7 @@ def reverseComplement(fq,dest="default"):
     OutFastq.close()
     return dest
 
-def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default"):
+def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1):
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
     if(trim_err=="default"):
@@ -52,7 +62,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
     trimOpen = open(trimfq,"w",0)
     InFastq = SeqIO.parse(fq,"fastq")
     AdaptLen=len(adapter)
-    TotalTrim=AdaptLen+bar_len
+    TotalTrim=AdaptLen+bar_len+start_trim
     print("Adapter Length is {}".format(AdaptLen))
     for record in InFastq:
         pre_tag = SeqRecord(
@@ -65,7 +75,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
             continue
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "\t" + str(record.seq)[0:TotalTrim],description="") 
+                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "\t###" + str(record.seq)[0:bar_len],description="") 
         post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
