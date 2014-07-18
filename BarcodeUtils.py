@@ -26,11 +26,14 @@ def main():
         #Now, "tags" is the file location for the tags. I will use it to make a table of the counts for each family.
     return
 
+def GetFamilySize(trimfq,BarcodeIndex):
+
+
 def GenerateBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    call("cat {} | paste - - - - | awk 'BEGIN {FS=\"\t\";OFS=\"\t\"};{print $2}' | sort | uniq -c | awk 'BEGIN {OFS=\"\t\"};{print $1,$2}' > {}".format(tags_file,index_file))
+    call("cat {} | paste - - - - | awk 'BEGIN {FS=\"\t\";OFS=\"\t\"};{print $2}' | sort | uniq -c | awk 'BEGIN {OFS=\"\t\"};{print $1,$2}' > {}".format(tags_file,index_file),shell=True)
     return index_file
 
 def reverseComplement(fq,dest="default"):
@@ -66,9 +69,9 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
     print("Adapter Length is {}".format(AdaptLen))
     for record in InFastq:
         pre_tag = SeqRecord(
-                Seq(str(record.seq)[0:TotalTrim],"fastq"), \
+                Seq(str(record.seq)[0:bar_len],"fastq"), \
                 id=record.id)
-        pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:TotalTrim]
+        pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:bar_len]
         if adapter not in pre_tag.seq:
             print("I'm sorry, but your adapter sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
             SeqIO.write(record,errOpen,"fastq")
