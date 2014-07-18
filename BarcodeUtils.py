@@ -33,30 +33,27 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
     outfqBuffer = open(outfq,"w",0)
+    index = open(BarcodeIndex,"r")
     if(singlefq=="default"):
         singlefq = '.'.join(trimfq.split('.')[0:-1])+".lonely.hearts.club.band.fastq"
     singlefqBuffer = open(singlefq,"w",0)
-    index = open(BarcodeIndex,"r")
     TotalReads, ReadsWithFamilies = 0,0
+    dictEntries = [line.split() for line in index]
+    BarDict = {}
+    for entry in dictEntries:
+        BarDict[entry[1]]=entry[0]
     for read in infq:
+        index.seek(0)
+        print("running read # " + str(TotalReads))
         TotalReads+=1
         readTag = read.id.split("###")[-1]
         newRead = read
-        for line in index:
-            splitLine = line.strip().split("\t")
-            if(splitLine[-1] == readTag):
-                if(splitLine[0] > 1):
-                    ReadsWithFamilies+=1
-                    newRead.id = read.id+"###"+splitLine[0]
-                    SeqIO.write(newRead,outfqBuffer,"fastq")
-                elif(splitLine[0] == 1):
-                    newRead.id = read.id+"###"+splitLine[0]
-                    SeqIO.write(newRead,singlefqBuffer,"fastq")
-                break
-            raise NameError("Barcode not found. Something went wrong!")
-    outfqBuffer.close()
-    index.close()
-    singlefqBuffer.close()
+        famSize = BarDict[readTag]
+        newRead.id = read.id+"###"+str(famSize)
+        if(famSize == 1):
+            SeqIO.write(newRead,singlefqBuffer,"fastq")
+        else:
+            SeqIO.write(newRead,outfqBuffers,"fastq")
     return outfq,TotalReads, ReadsWithFamilies
 
 def GenerateBarcodeIndex(tags_file,index_file="default"):
@@ -110,7 +107,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
         '''
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "\t###" + str(record.seq)[0:bar_len],description="") 
+                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + " ###" + str(record.seq)[0:bar_len],description="") 
         post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
