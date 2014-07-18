@@ -31,10 +31,10 @@ def main():
 def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
-        outfq = '.'.join(trimfq.split('.'[0:-1])+".fam.fastq")
+        outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
     outfqBuffer = open(outfq,"w",0)
     if(singlefq=="default"):
-        singlefq = '.'.join(trimfq.split('.'[0:-1])+".lonely.hearts.club.band.fastq")
+        singlefq = '.'.join(trimfq.split('.')[0:-1])+".lonely.hearts.club.band.fastq"
     singlefqBuffer = open(singlefq,"w",0)
     index = open(BarcodeIndex,"r")
     TotalReads, ReadsWithFamilies = 0,0
@@ -63,7 +63,7 @@ def GenerateBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    call("cat {} | paste - - - - | awk 'BEGIN {FS=\"\t\";OFS=\"\t\"};{print $2}' | sort | uniq -c | awk 'BEGIN {OFS=\"\t\"};{print $1,$2}' > {}".format(tags_file,index_file),shell=True)
+    call("cat {} | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
     return index_file
 
 def reverseComplement(fq,dest="default"):
