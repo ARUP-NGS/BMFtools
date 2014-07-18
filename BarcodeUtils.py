@@ -32,7 +32,7 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
-    outfqBuffer = open(outfq,"w",0)
+    outfqBuffers = open(outfq,"w",0)
     index = open(BarcodeIndex,"r")
     if(singlefq=="default"):
         singlefq = '.'.join(trimfq.split('.')[0:-1])+".lonely.hearts.club.band.fastq"
@@ -48,6 +48,7 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
         TotalReads+=1
         readTag = read.id.split("###")[-1]
         newRead = read
+        #print("readTag is _" + readTag + "_")
         famSize = BarDict[readTag]
         newRead.id = read.id+"###"+str(famSize)
         if(famSize == 1):
@@ -60,7 +61,7 @@ def GenerateBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    call("cat {} | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
+    call("cat {} | sed 's:###: ###:g' | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
     return index_file
 
 def reverseComplement(fq,dest="default"):
@@ -107,7 +108,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
         '''
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + " ###" + str(record.seq)[0:bar_len],description="") 
+                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "###" + str(record.seq)[0:bar_len],description="") 
         post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
