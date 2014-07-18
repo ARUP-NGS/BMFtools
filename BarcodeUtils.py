@@ -102,10 +102,12 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
                 Seq(str(record.seq)[0:bar_len],"fastq"), \
                 id=record.id)
         pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:bar_len]
+        '''
         if adapter not in pre_tag.seq:
             print("I'm sorry, but your adapter sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
             SeqIO.write(record,errOpen,"fastq")
             continue
+        '''
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
                 Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "\t###" + str(record.seq)[0:bar_len],description="") 
