@@ -19,15 +19,45 @@ def main():
     print("Now removing the adapter and the barcode.")
     tags, trimfq = TrimAdapter(StdFilenames,adapter)
     BarcodeIndex = GenerateBarcodeIndex(tags)
+    FamilyFastq,TotalReads,ReadsWithFamilies = GetFamilySize(trimfq,BarcodeIndex)
+    '''
     if(args.pair == 2):
         revCompTrim = reverseComplement(trimfq)
         print("revCompTrim location: " + revCompTrim)
-
-        #Now, "tags" is the file location for the tags. I will use it to make a table of the counts for each family.
+    '''
+    #Now "tags" is the file location for the tags. I will use it to make a table of the counts for each family.
     return
 
-def GetFamilySize(trimfq,BarcodeIndex):
-
+def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
+    infq = SeqIO.parse(trimfq, "fastq")
+    if(outfq=="default"):
+        outfq = '.'.join(trimfq.split('.'[0:-1])+".fam.fastq")
+    outfqBuffer = open(outfq,"w",0)
+    if(singlefq=="default"):
+        singlefq = '.'.join(trimfq.split('.'[0:-1])+".lonely.hearts.club.band.fastq")
+    singlefqBuffer = open(singlefq,"w",0)
+    index = open(BarcodeIndex,"r")
+    TotalReads, ReadsWithFamilies = 0,0
+    for read in infq:
+        TotalReads+=1
+        readTag = read.id.split("###")[-1]
+        newRead = read
+        for line in index:
+            splitLine = line.strip().split("\t")
+            if(splitLine[-1] == readTag):
+                if(splitLine[0] > 1):
+                    ReadsWithFamilies+=1
+                    newRead.id = read.id+"###"+splitLine[0]
+                    SeqIO.write(newRead,outfqBuffer,"fastq")
+                elif(splitLine[0] == 1):
+                    newRead.id = read.id+"###"+splitLine[0]
+                    SeqIO.write(newRead,singlefqBuffer,"fastq")
+                break
+            raise NameError("Barcode not found. Something went wrong!")
+    outfqBuffer.close()
+    index.close()
+    singlefqBuffer.close()
+    return outfq,TotalReads, ReadsWithFamilies
 
 def GenerateBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
