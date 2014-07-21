@@ -7,19 +7,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--fq', help="Provide your fastq file", nargs = 1, metavar = ('reads'),required=True)
     parser.add_argument('-b','--adapter', help="Adapter for samples. If not set, defaults to CAGT.",metavar=('Adapter'),default="CAGT")
-    parser.add_argument('-l','--bar_len', help="Length of anticipated barcode. Defaults to 12.", default=12, type=int)
+    parser.add_argument('-l','--bar-len', help="Length of anticipated barcode. Defaults to 12.", default=12, type=int)
     parser.add_argument('-p','--pair', help="Unpaired (0), Paired End 1 (1), Paired End 2 (2). Defaults to 0.", default=0, type=int)
+    parser.add_argument('-k','--keepFailed', help = "To keep reads which fail filters, but leave them marked. Default: True", default=True)
     args=parser.parse_args()
     adapter=args.adapter
-    fq = args.fq[0]
-    Regex1,Regex2,Hits,Misses=FastqRegex(fq,adapter)
-    print("Regex operation complete. Now locating adapter sequence.")
-    StdFilenames,ElseFilenames=AdapterLoc(Hits,adapter=adapter)
+    if(args.keepFailed==False):
+        print("For some reason, I am using an old protocol which fails to take advantage of paired-end libraries.")
+        Regex1,Regex2,Hits,Misses=FastqRegex(args.fq[0],adapter)
+        print("Regex operation complete. Now locating adapter sequence.")
+    else:
+        print("Regex operation avoided for compatibility.")
+        Hits = args.fq[0]
+    StdFilenames,ElseFilenames=AdapterLoc(Hits,adapter=adapter,keepFailed=args.keepFailed)
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the adapter and the barcode.")
     tags, trimfq = TrimAdapter(StdFilenames,adapter)
     BarcodeIndex = GenerateBarcodeIndex(tags)
-    FamilyFastq,TotalReads,ReadsWithFamilies = GetFamilySize(trimfq,BarcodeIndex)
+    FamilyFastq,TotalReads,ReadsWithFamilies = GetFamilySize(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
     '''
     if(args.pair == 2):
         revCompTrim = reverseComplement(trimfq)
@@ -28,7 +33,7 @@ def main():
     #Now "tags" is the file location for the tags. I will use it to make a table of the counts for each family.
     return
 
-def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
+def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFailed=True):
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
@@ -44,15 +49,21 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
         BarDict[entry[1]]=entry[0]
     for read in infq:
         index.seek(0)
-        print("running read # " + str(TotalReads))
         TotalReads+=1
-        readTag = read.id.split("###")[-1]
+        print("description is {}".format(read.description))
+        print("-1 index of description is {}".format(read.description.split("###")[-1].strip()))
+        print("-2 index of description is {}".format(read.description.split("###")[-2].strip()))
+        readTag = read.description.split("###")[-1].strip()
         newRead = read
         #print("readTag is _" + readTag + "_")
         famSize = BarDict[readTag]
-        newRead.id = read.id+"###"+str(famSize)
-        if(famSize == 1):
+        newRead.id = read.id+" ###"+famSize
+        #print("famSize = _{}_".format(str(famSize)))
+        #print("The value of this comparison to 1 is {}".format(str(famSize=="1")))
+        if(famSize == "1"):
             SeqIO.write(newRead,singlefqBuffer,"fastq")
+            if(keepFailed==True):
+                SeqIO.write(newRead,outfqBuffers,"fastq")
         else:
             SeqIO.write(newRead,outfqBuffers,"fastq")
     return outfq,TotalReads, ReadsWithFamilies
@@ -76,7 +87,7 @@ def reverseComplement(fq,dest="default"):
     OutFastq.close()
     return dest
 
-def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1):
+def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1,keepFailed=True):
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
     if(trim_err=="default"):
@@ -108,7 +119,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
         '''
         SeqIO.write(pre_tag,tagsOpen,"fastq")
         post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id + "###" + str(record.seq)[0:bar_len],description="") 
+                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id,description=record.description+" ###" + str(record.seq[0:bar_len])) 
         post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
@@ -116,7 +127,7 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
     errOpen.close()
     return(tags_file,trimfq)
 
-def AdapterLoc(fq,adapter,bar_len=12):
+def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):
     InFastq=SeqIO.parse(fq,"fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix=Tpref.split('/')[-1]
@@ -127,14 +138,22 @@ def AdapterLoc(fq,adapter,bar_len=12):
     for read in InFastq:
         seq = str(read.seq)
         if(seq.find(adapter)==-1):
-            raise NameError("Sanity check failure. Adapter Sequence Not Found. HTML 404")
-        elif(seq.find(adapter)==bar_len):
-            SeqIO.write(read,StdFastq,"fastq")
+            if(keepFailed==False):
+                raise NameError("Sanity check failure. Adapter Sequence Not Found. HTML 404")
+            else:
+                read.description+=" ###AdapterFail"
+                SeqIO.write(read,StdFastq,"fastq")
         elif(seq[bar_len:bar_len+len(adapter)] == adapter):
-            SeqIO.write(read,StdFastq,"fastq") #Sometimes there is a match for the adapter before the adapter occurs. Check the reads which don't find the adapter at the expected location directly
+            read.description+=" ###AdapterPass"
+            SeqIO.write(read,StdFastq,"fastq") #Checks the expected adapter location. Avoiding find command, as sometimes the adapter sequence occurs before and at the expected location
         else:
-            SeqIO.write(read,ElseFastq,"fastq")
-            ElseLocations.write(repr(seq.find(adapter)) + "\t" + read.name + "\n")
+            if(keepFailed==False):
+                SeqIO.write(read,ElseFastq,"fastq")
+                ElseLocations.write(repr(seq.find(adapter)) + "\t" + read.name + "\n")
+            else:
+                read.description+=" ###AdapterFail"
+                SeqIO.write(read,StdFastq,"fastq")
+                ElseLocations.write(repr(seq.find(adapter)) + "\t" + read.name + "\n")
     StdFastq.close()
     ElseFastq.close()
     ElseLocations.close()
