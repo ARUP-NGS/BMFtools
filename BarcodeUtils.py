@@ -131,7 +131,7 @@ def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):
     InFastq=SeqIO.parse(fq,"fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix=Tpref.split('/')[-1]
-    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format(bar_len), Prefix+ '.else.fastq', Prefix + '.else.supp'
+    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format("adapter"+bar_len), Prefix+ '.else.fastq', Prefix + '.else.supp'
     StdFastq=open(StdFilename,'w',0) #Adapter at expected Location
     ElseFastq=open(ElseFilename,'w',0) #Adapter sequence found elsewhere, even if it's simply part of the read itself
     ElseLocations=open(ElseLoc,'w',0)
