@@ -47,11 +47,13 @@ def main():
     return
 
 def removeSecondary(inBAM,outBAM="default"):
+    print("Attempting to remove secondary")
     from subprocess import call
     if(outBAM=="default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1])+'.2ndrm.bam'
-    command = "samtools view -h -F {} -o {}".format(inBAM,outBAM)
+    command = "samtools view -hb -F 0x0100 {} -o {}".format(inBAM,outBAM)
     call(command,shell=True)
+    print(command + "is shell call")
     return outBAM
 
 if(__name__=="__main__"):
