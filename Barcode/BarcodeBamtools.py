@@ -21,13 +21,15 @@ def main():
         raise NameError("I DON'T KNOW WHAT WE'RE YELLING ABOUT. REQUIRED: TWO FASTQ FILES")
     read1 = SeqIO.parse(args.fq[0], "fastq")
     read2 = SeqIO.parse(args.fq[1], "fastq")
-    inBAM = removeSecondary(args.bam_file)
-    postFilterBAM = Samfile(inBAM,"rb")
+    #inBAM = removeSecondary(args.bam_file) #Artefactual code
+    postFilterBAM = Samfile(args.bam_file,"rb")
     output=args.output
     if(output=="default"):
         output='.'.join(args.bam_file.split('.')[0:-1])+'.tagged.bam'
     outBAM = Samfile(output,"wb",template=postFilterBAM)
     for entry in postFilterBAM:
+        if(entry.is_secondary):
+            continue
         if(entry.is_read1):
             #print("Read is read 1. Now getting variables from read 1's files for the tags.")
             tempRead = read1.next()
