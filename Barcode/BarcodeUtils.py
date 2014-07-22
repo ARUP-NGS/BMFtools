@@ -44,9 +44,9 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFai
     for read in infq:
         index.seek(0)
         TotalReads+=1
-        print("description is {}".format(read.description))
-        print("-1 index of description is {}".format(read.description.split("###")[-1].strip()))
-        print("-2 index of description is {}".format(read.description.split("###")[-2].strip()))
+        #print("description is {}".format(read.description)) #FOR DEBUGGING PURPOSES, UNCOMMENT
+        #print("-1 index of description is {}".format(read.description.split("###")[-1].strip()))
+        #print("-2 index of description is {}".format(read.description.split("###")[-2].strip()))
         readTag = read.description.split("###")[-1].strip()
         newRead = read
         #print("readTag is _" + readTag + "_")
@@ -135,10 +135,10 @@ def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):
             if(keepFailed==False):
                 raise NameError("Sanity check failure. Adapter Sequence Not Found. HTML 404")
             else:
-                read.description=" ###AdapterFail"
+                read.description+=" ###AdapterFail"
                 SeqIO.write(read,StdFastq,"fastq")
         elif(seq[bar_len:bar_len+len(adapter)] == adapter):
-            read.description=" ###AdapterPass"
+            read.description+=" ###AdapterPass"
             SeqIO.write(read,StdFastq,"fastq") #Checks the expected adapter location. Avoiding find command, as sometimes the adapter sequence occurs before and at the expected location
         else:
             if(keepFailed==False):
