@@ -21,12 +21,13 @@ def main():
         raise NameError("I DON'T KNOW WHAT WE'RE YELLING ABOUT. REQUIRED: TWO FASTQ FILES")
     read1 = SeqIO.parse(args.fq[0], "fastq")
     read2 = SeqIO.parse(args.fq[1], "fastq")
-    inBAM = Samfile(args.bam_file,"rb")
+    inBAM = removeSecondary(args.bam_file)
+    postFilterBAM = Samfile(inBAM,"rb")
     output=args.output
     if(output=="default"):
         output='.'.join(args.bam_file.split('.')[0:-1])+'.tagged.bam'
-    outBAM = Samfile(output,"wb",template=inBAM)
-    for entry in inBAM:
+    outBAM = Samfile(output,"wb",template=postFilterBAM)
+    for entry in postFilterBAM:
         if(entry.is_read1):
             #print("Read is read 1. Now getting variables from read 1's files for the tags.")
             tempRead = read1.next()
@@ -42,9 +43,16 @@ def main():
             entry.tags = entry.tags + [("AL",0)]
         outBAM.write(entry)
     outBAM.close()
-    inBAM.close()
+    postFilterBAM.close()
     return
 
+def removeSecondary(inBAM,outBAM="default"):
+    from subprocess import call
+    if(outBAM=="default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1])+'.2ndrm.bam'
+    command = "samtools view -h -F {} -o {}".format(inBAM,outBAM)
+    call(command,shell=True)
+    return outBAM
 
 if(__name__=="__main__"):
     main()
