@@ -88,10 +88,28 @@ def main():
         #Section 3:Completes SAM tagging
         Sam2Bam(outsam, outbam)
         taggedBAM = pairedBarcodeBamtools(FamilyFastq1,FamilyFastq2,outbam)
+        read1BAM, read2BAM = splitBAMByReads(taggedBAM)
         return
     else:
-        raise NameError("Okay, smart guy - what's up with providing me more than 2 fastq files?")
+        raise NameError("0k4y, sm4rt guy - what's ^ with providing me >2 fastq files?")
     return
+
+def splitBAMByReads(BAM,read1BAM="default",read2BAM="default"):
+    presplitBAM = Samfile(BAM,"rb")
+    if(read1BAM=="default"):
+        read1BAM = '.'.join(BAM.split('.')[0:-1])+'.R1.bam'
+    if(read2BAM=="default"):
+        read2BAM = '.'.join(BAM.split('.')[0:-1])+'.R2.bam'
+    out1 = Samfile(read1BAM,"wb",template=presplitBAM)
+    out2 = Samfile(read2BAM,"wb",template=presplitBAM)
+    for entry in presplitBAM:
+        if(entry.is_read1):
+            out1.write(entry)
+        if(entry.is_read2):
+            out2.write(entry)
+    out1.close()
+    out2.close()
+    return 
 
 def pairedBarcodeBamtools(fq1,fq2,bam,outputBAM="default"):
     if(outputBAM=="default"):
