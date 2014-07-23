@@ -165,13 +165,12 @@ def FastqRegex(fq,string,matchFile="default",missFile="default"):
     call(CommandStr2,shell=True)
     return(CommandStr,CommandStr2,matchFile,missFile)
 
-'''
-def SumStrList(list):
-    a = ""
-    for i in list:
-        a+=i
-    return a
-'''
+def hamming(str1, str2):
+    import operator,imap
+    assert len(str1) == len(str2)
+    #ne = str.__ne__  ## this is surprisingly slow
+    #ne = operator.ne
+    return sum(imap(operator.ne, str1, str2))
 
 if(__name__=="__main__"):
     main()
