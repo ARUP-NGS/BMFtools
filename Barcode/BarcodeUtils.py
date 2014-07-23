@@ -66,7 +66,7 @@ def GenerateBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    call("cat {} | sed 's:###: ###:g' | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
+    call("cat {} | sed 's:###: ###:g' | grep -v \"AdapterFail\" | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
     return index_file
 
 def reverseComplement(fq,dest="default"):
@@ -166,7 +166,8 @@ def FastqRegex(fq,string,matchFile="default",missFile="default"):
     return(CommandStr,CommandStr2,matchFile,missFile)
 
 def hamming(str1, str2):
-    import operator,imap
+    import operator
+    from iterator import imap
     assert len(str1) == len(str2)
     #ne = str.__ne__  ## this is surprisingly slow
     #ne = operator.ne
