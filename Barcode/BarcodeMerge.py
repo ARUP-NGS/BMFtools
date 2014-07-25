@@ -2,16 +2,18 @@
 
 from Bio import SeqIO
 import argparse
+from pysam import Samfile
 
 #Contains utilities for the completion of a variety of 
-#
+#tasks related to barcoded protocols for ultra-low
+#frequency variant detection, particularly for circulating tumor DNA
 #
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--fq', help="Provide your fastq file(s)", nargs = "+", metavar = ('reads'),required=True)
     parser.add_argument('-r','--ref',help="Prefix for the reference index. Required.",required=True)
-    parser.add_argument('-b','--adapter', help="Adapter for samples. If not set, defaults to CAGT.",metavar=('Adapter'),default="CAGT")
+    parser.add_argument('--adapter', help="Adapter for samples. If not set, defaults to CAGT.",metavar=('Adapter'),default="CAGT")
     parser.add_argument('-l','--bar-len', help="Length of anticipated barcode. Defaults to 12.", default=12, type=int)
     parser.add_argument('-p','--paired-end',help="Whether the experiment is paired-end or not. Default: True",default=True)
     parser.add_argument('-k','--keepFailed', help = "To keep reads which fail filters, but leave them marked. Default: True", default=True)
@@ -72,7 +74,7 @@ def main():
         print("Now removing the adapter and the barcode.")
         tags2, trimfq2 = TrimAdapter(StdFilenames2,adapter)
         BarcodeIndex2 = GenerateBarcodeIndex(tags2)
-        FamilyFastq2,TotalReads2,ReadsWithFamilies2 = GetFamilySize(trimfq1,BarcodeIndex1,keepFailed=args.keepFailed)
+        FamilyFastq2,TotalReads2,ReadsWithFamilies2 = GetFamilySize(trimfq2,BarcodeIndex2,keepFailed=args.keepFailed)
         print("Total number of reads in read file 2 is {}, whereas the number of reads with families is {} ".format(TotalReads2,ReadsWithFamilies2))
         
         #Section 2: Completes Alignment
@@ -89,10 +91,37 @@ def main():
         Sam2Bam(outsam, outbam)
         taggedBAM = pairedBarcodeBamtools(FamilyFastq1,FamilyFastq2,outbam)
         read1BAM, read2BAM = splitBAMByReads(taggedBAM)
+        concatBS = mergeBarcodes(read1BAM,read2BAM)
+        print("BAM with merged barcodes is {}".format(concatBS))
         return
     else:
         raise NameError("0k4y, sm4rt guy - what's ^ with providing me >2 fastq files?")
     return
+
+def mergeBarcodes(reads1,reads2,outfile="default",doubleIndex="default"):
+    reader1=Samfile(reads1,"rb")
+    reader2=Samfile(reads2,"rb")
+    if(outfile=="default"):
+        outfile = '.'.join(reads1.split[0:-2])+'merged.bam'
+    if(doubleIndex=="default"):
+        doubleIndex = '.'.join(reads1.split[0:-2])+'merge.idx'
+    outSAM = Samfile(outfile,"wb",template=reader1)
+    mergedIndex = open(doubleIndex,"w",0)
+    for entry1 in reader1:
+        entry2=reader2.next()
+        BSloc1 = [i for i,j in enumerate(entry1.tags) if j[0]=="BS"][0]
+        BSloc2 = [i for i,j in enumerate(entry2.tags) if j[0]=="BS"][0]
+        Barcode1, Barcode2 = entry1.tags[BSloc1][1], entry1.tags[BSloc2][1]
+        concatBarcode=Barcode1+Barcode2
+        entry1.tags[BSloc1][1],entry2.tags[BSloc2][1]=concatBarcode,concatBarcode
+        outSAM.write(entry1)
+        outSAM.write(entry2)
+        mergedIndex.write(concatBarcode+"\n")
+    reader1.close()
+    reader2.close()
+    outSAM.close()
+    mergedIndex.close()
+    return outfile
 
 def splitBAMByReads(BAM,read1BAM="default",read2BAM="default"):
     presplitBAM = Samfile(BAM,"rb")
@@ -144,6 +173,7 @@ def pairedBarcodeBamtools(fq1,fq2,bam,outputBAM="default"):
     return outputBAM
 
 def removeSecondary(inBAM,outBAM="default"):
+    #TODO: switch from using shell call to pysam API
     print("Attempting to remove secondary")
     from subprocess import call
     if(outBAM=="default"):
