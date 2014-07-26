@@ -226,6 +226,7 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFai
             if(keepFailed==True):
                 SeqIO.write(newRead,outfqBuffers,"fastq")
         else:
+            ReadsWithFamilies+=1
             SeqIO.write(newRead,outfqBuffers,"fastq")
     return outfq,TotalReads, ReadsWithFamilies
 
