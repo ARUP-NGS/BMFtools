@@ -39,6 +39,7 @@ def main():
         print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
         print("Now removing the adapter and the barcode.")
         tags, trimfq = TrimAdapter(StdFilenames,adapter)
+        print("Now generating the barcode index.")
         BarcodeIndex = GenerateBarcodeIndex(tags)
         FamilyFastq,TotalReads,ReadsWithFamilies = GetFamilySize(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
         raise NameError("Okay, so I am being pretty lazy and didn't finish the program for single-end just yet. This fatal error is not your fault, but mine. Mea culpa.")
@@ -59,7 +60,9 @@ def main():
         print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
         print("Now removing the adapter and the barcode.")
         tags1, trimfq1 = TrimAdapter(StdFilenames1,adapter)
+        print("Now generating the barcode index.")
         BarcodeIndex1 = GenerateBarcodeIndex(tags1)
+        print("Now generating the family counts.")
         FamilyFastq1,TotalReads1,ReadsWithFamilies1 = GetFamilySize(trimfq1,BarcodeIndex1,keepFailed=args.keepFailed)
         print("Total number of reads in read file 1 is {}, whereas the number of reads with families is {} ".format(TotalReads1,ReadsWithFamilies1))
         if(args.keepFailed==False):
@@ -68,29 +71,37 @@ def main():
             print("Regex operation complete. Now locating adapter sequence.")
         else:
             print("Regex operation avoided for compatibility.")
-            Hits1 = args.fq[1]
+            Hits2 = args.fq[1]
         StdFilenames2,ElseFilenames2=AdapterLoc(Hits2,adapter=adapter,keepFailed=args.keepFailed)
         print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
         print("Now removing the adapter and the barcode.")
         tags2, trimfq2 = TrimAdapter(StdFilenames2,adapter)
+        print("Now generating the barcode index.")
         BarcodeIndex2 = GenerateBarcodeIndex(tags2)
+        print("Now generating the family counts.")
         FamilyFastq2,TotalReads2,ReadsWithFamilies2 = GetFamilySize(trimfq2,BarcodeIndex2,keepFailed=args.keepFailed)
         print("Total number of reads in read file 2 is {}, whereas the number of reads with families is {} ".format(TotalReads2,ReadsWithFamilies2))
         
         #Section 2: Completes Alignment
-        outsam=args.sam
-        if(args.sam=="default"):
+        print("Now commencing paired-end alignment with extra options {}.".format(args.opts))
+        outsam=args.sam_file
+        if(args.sam_file=="default"):
             outsam = '.'.join(trimfq.split('.')[0:-1])+'.'+args.aligner+'.sam'
         outbam = '.'.join(outsam.split('.')[0:-1])+'.bam'
+        print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
         if(args.aligner=="bwa"):
             bwa_command = align_bwa(FamilyFastq1,FamilyFastq2,args.ref,args.opts,outsam)
             print("Aligner command was {}".format(bwa_command))
         else:
             raise NameError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
         #Section 3:Completes SAM tagging
+        print("Converting SAM to BAM")
         Sam2Bam(outsam, outbam)
+        print("Now tagging reads with barcodes, family counts, and a pass/fail for the \"adapter sequence\" (not really that, but it's a working appellation).")
         taggedBAM = pairedBarcodeBamtools(FamilyFastq1,FamilyFastq2,outbam)
+        print("Now splitting the BAM into read 1 and read 2 files.")
         read1BAM, read2BAM = splitBAMByReads(taggedBAM)
+        print("Now merging the barcodes from both BAM files and writing to a BAM file with a BS (Barcode Sequence) tag of the barcodes from the read and its mate.")
         concatBS = mergeBarcodes(read1BAM,read2BAM)
         print("BAM with merged barcodes is {}".format(concatBS))
         return
