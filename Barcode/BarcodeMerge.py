@@ -42,7 +42,25 @@ def main():
         print("Now generating the barcode index.")
         BarcodeIndex = GenerateBarcodeIndex(tags)
         FamilyFastq,TotalReads,ReadsWithFamilies = GetFamilySize(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
-        raise NameError("Okay, so I am being pretty lazy and didn't finish the program for single-end just yet. This fatal error is not your fault, but mine. Mea culpa.")
+        outsam=args.sam_file
+        if(args.sam_file=="default"):
+            outsam = '.'.join(trimfq.split('.')[0:-1])+'.'+args.aligner+'.sam'
+        outbam = '.'.join(outsam.split('.')[0:-1])+'.bam'
+        print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
+        if(args.aligner=="bwa"):
+            bwa_command = align_bwa_se(FamilyFastq,args.ref,args.opts,outsam)
+            print("Aligner command was {}".format(bwa_command))
+        else:
+            raise NameError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
+        print("Converting SAM to BAM")
+        Sam2Bam(outsam, outbam)
+        print("Now tagging reads with barcodes, family counts, and a pass/fail for the \"adapter sequence\" (not really that, but it's a working appellation).")
+        taggedBAM = singleBarcodeBamtools(FamilyFastq,outbam)
+        print("Now generating Hamming Distance matrix for all barcodes.")
+        HammingMatrix = generateHammingMatrix(taggedBAM)
+        print("Hamming Matrix stored in file {}".format(HammingMatrix))
+        print("This is far as the program goes at this point. Thank you for playing!")
+        return
     #If paired-end
     elif(len(args.fq)==2):
         
@@ -104,10 +122,37 @@ def main():
         print("Now merging the barcodes from both BAM files and writing to a BAM file with a BS (Barcode Sequence) tag of the barcodes from the read and its mate.")
         concatBS = mergeBarcodes(read1BAM,read2BAM)
         print("BAM with merged barcodes is {}".format(concatBS))
+        print("Now generating Hamming Distance matrix for all barcodes.")
+        HammingMatrix = generateHammingMatrix(concatBS)
+        print("Hamming Matrix stored in file {}".format(HammingMatrix))
+        print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:
         raise NameError("0k4y, sm4rt guy - what's ^ with providing me >2 fastq files?")
     return
+
+def generateHammingMatrix(input, outputTSV="default"):
+    if(outputTSV=="default"):
+        outputTSV = '.'.join(input.split[0:-1])+'.HammingMatrix.tsv'
+    print("Output file for tab-separated values is {}.".format(outputTSV))
+    import csv
+    tsvWriter = open(outputTSV,'r',0)
+    MatrixWriter = csv.writer(tsvWriter,delimiter="\t")
+    inputBAM = Samfile(input,"rb")
+    Headers = [entry.qname for entry in inputBAM]
+    Headers.insert(0, "Names of the reads") 
+    MatrixWriter.writerow(Headers)
+    del Headers
+    for entry in inputBAM:
+        iteratorBAM = Samfile(input,"rb") #Opening multiple times to enable the looping
+        BSentry = entry.tags[[i for i,j in enumerate(entry.tags) if j[0]=="BS"][0]][1]
+        HammingDistanceRow = [hamming(BSentry, entry2.tags[[i for i,j in enumerate(entry2.tags) if j[0]=="BS"][0]][1]) for entry2 in iteratorBAM] 
+        HammingDistanceRow.insert(0,entry.qname)
+        MatrixWriter.writerow(HammingDistanceRow)    #^^A messy list comprehension within a list comprehension. It just returns the values of the hamming distances between the read "entry 1" and all of the reads in the BAM file
+    inputBAM.close()
+    iteratorBAM.close()
+    tsvWriter.close()
+    return outputTSV
 
 def mergeBarcodes(reads1,reads2,outfile="default",doubleIndex="default"):
     reader1=Samfile(reads1,"rb")
@@ -151,6 +196,31 @@ def splitBAMByReads(BAM,read1BAM="default",read2BAM="default"):
     out2.close()
     return 
 
+def singleBarcodeBamtools(fastq,bam,outputBAM="default"):
+    if(outputBAM=="default"):
+        outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
+    print("Tagged BAM file is: {}.".format(outputBAM))
+    reads = SeqIO.parse(fastq, "fastq")
+    #inBAM = removeSecondary(args.bam_file) #Artefactual code
+    postFilterBAM = Samfile(bam,"rb")
+    outBAM = Samfile(outputBAM,"wb",template=postFilterBAM)
+    for entry in postFilterBAM:
+        if(entry.is_secondary):
+            continue
+        else:
+            tempRead = reads.next()
+        descArray=tempRead.description.split("###")
+        entry.tags = entry.tags + [("BS",descArray[-2].strip())]
+        entry.tags = entry.tags + [("FM",descArray[-1].strip())]
+        if(descArray[-3].strip() == "AdapterPass"):
+            entry.tags = entry.tags + [("AL",1)]
+        else:
+            entry.tags = entry.tags + [("AL",0)]
+        outBAM.write(entry)
+    outBAM.close()
+    postFilterBAM.close()
+    return outputBAM
+
 def pairedBarcodeBamtools(fq1,fq2,bam,outputBAM="default"):
     if(outputBAM=="default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
@@ -158,10 +228,7 @@ def pairedBarcodeBamtools(fq1,fq2,bam,outputBAM="default"):
     read2 = SeqIO.parse(fq2, "fastq")
     #inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = Samfile(bam,"rb")
-    output=outputBAM
-    if(output=="default"):
-        output='.'.join(bam.split('.')[0:-1])+'.tagged.bam'
-    outBAM = Samfile(output,"wb",template=postFilterBAM)
+    outBAM = Samfile(outputBAM,"wb",template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary):
             continue
@@ -398,6 +465,21 @@ def align_bwa(R1,R2,ref,opts,outsam):
     for i, opt_it in enumerate(opts.split()):
         opt_concat+=opt_it+" "
     command_str = 'bwa mem {} {} {} {}'.format(opt_concat,ref,R1,R2)
+    #command_list = command_str.split(' ')
+    print(command_str)
+    subprocess.call(command_str, stdout=output,shell=True)
+    output.close()
+    return command_str;
+
+def align_bwa_se(reads,ref,opts,outsam):
+    import subprocess
+    opt_concat = ""
+    if(opts== ""):
+        opts='-t 4 -T 0 -v 1'
+    output = open(outsam,'w',0)
+    for i, opt_it in enumerate(opts.split()):
+        opt_concat+=opt_it+" "
+    command_str = 'bwa mem {} {} {}'.format(opt_concat,ref,reads)
     #command_list = command_str.split(' ')
     print(command_str)
     subprocess.call(command_str, stdout=output,shell=True)
