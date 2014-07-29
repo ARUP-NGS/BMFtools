@@ -1,0 +1,83 @@
+def align_bowtie2(R1,R2,ref,opts,outsam):
+    import subprocess
+    opt_concat=""
+    output=open(outsam,'w',0) #Zero buffer size means it gets sent immediately straight to the file
+    if(opts==""):
+        opts='--threads 4 '
+    if('--reorder' not in opts):
+        opts+='--reorder '
+    if('--mm' not in opts):
+        opts+=' --mm '
+    for i, opt_it in enumerate(opts.split()):
+        opt_concat+=opt_it+" "
+    command_str = 'bowtie2 {} --local --very-sensitive-local -x {} -1 {} -2 {}'.format(opt_concat,ref,R1,R2)
+    print(command_str)
+    #command_list=command_str.split(' ')
+    subprocess.call(command_str, stdout=output,shell=True)
+    output.close()
+    return(command_str)
+
+def align_bwa(R1,R2,ref,opts,outsam):
+    import subprocess
+    opt_concat = ""
+    if(opts== ""):
+        opts='-t 4 -v 1'
+    output = open(outsam,'w',0)
+    for i, opt_it in enumerate(opts.split()):
+        opt_concat+=opt_it+" "
+    command_str = 'bwa mem {} {} {} {}'.format(opt_concat,ref,R1,R2)
+    #command_list = command_str.split(' ')
+    print(command_str)
+    subprocess.call(command_str, stdout=output,shell=True)
+    output.close()
+    return command_str;
+
+def align_bwa_se(reads,ref,opts,outsam):
+    import subprocess
+    opt_concat = ""
+    if(opts== ""):
+        opts='-t 4 -T 0 -v 1'
+    output = open(outsam,'w',0)
+    for i, opt_it in enumerate(opts.split()):
+        opt_concat+=opt_it+" "
+    command_str = 'bwa mem {} {} {}'.format(opt_concat,ref,reads)
+    #command_list = command_str.split(' ')
+    print(command_str)
+    subprocess.call(command_str, stdout=output,shell=True)
+    output.close()
+    return command_str;
+
+def align_snap(R1,R2,ref,opts,outbam):
+    import subprocess
+    opt_concat = ""
+    for i, opt_it in enumerate(opts.split()):
+        opt_concat+=opt_it+" "
+    command_str = "snap paired {} {} {} -o {} {}".format(ref,R1,R2,outbam,opt_concat)
+    print(command_str)
+    subprocess.call(command_str)
+    return(command_str)
+
+def sam_sort(insam,outsam):
+    #Skip header and funnel all reads into a temp file
+    import random
+    output=open(outsam,'w+')
+    tmpname='temp{}.txt'.format(random.randint(0,200))
+    tmp=open(tmpname,'w',0)
+    import subprocess
+    command_str=str('grep -v "@SQ\|@PG\|VN:\|@HD" {}'.format(insam))
+    print(command_str)
+    subprocess.call(command_str,stdout=tmp,shell=True)
+    tmp.close()
+    #Save the header to the outsam
+    command_header = 'grep "@SQ\|@PG\|@HD" {}'.format(insam)
+    subprocess.call(command_header, stdout=output, shell=True)
+    #sort the reads by query name
+    tmp=open(tmpname,'r')
+    command_str1=str('sort -k1,1 -t " " {}'.format(tmpname))
+    print(command_str1)
+    subprocess.call(command_str1,stdout=output,shell=True)
+    output.close()
+    tmp.close()
+    subprocess.call('rm {}'.format(tmpname),shell=True)
+    both_cmds=command_str+"\n"+command_str1
+    return(both_cmds)
