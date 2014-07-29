@@ -136,21 +136,11 @@ def main():
         print("Now generating double barcode index.")
         doubleIndex = GenerateBarcodeIndexBAM(concatBS)
         familyMarked,uniqueBigFamilies = getFamilySizeBAM(concatBS, doubleIndex)
-        #print("Now generating Hamming Distance matrix for all barcodes.")
-        #HammingMatrix = generateHammingMatrix(concatBS)
-        #print("Hamming Matrix stored in file {}".format(HammingMatrix))
-        #print("This is far as the program goes at this point. Thank you for playing!")
+        print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:
-        raise NameError("0k4y, sm4rt guy - what's ^ with providing me >2 fastq files?")
+        raise NameError("0k4y, sm4r7 guy - what's ^ with providing me >2 fastq files??/??")
     return
-
-def pairedFilterFamilyBam(inputBAM,failedBAM):
-    
-    return
-
-
-
 
 if(__name__=="__main__"):
     main()

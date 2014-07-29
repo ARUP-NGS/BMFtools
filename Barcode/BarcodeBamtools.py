@@ -17,7 +17,7 @@ def GenerateBarcodeIndexBAM(doubleTaggedBAM,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(doubleTaggedBAM.split('.')[0:-2]) + ".DoubleIdx"
-    call("samtools view {} | awk '{print $(NF-2)}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM,index_file),shell=True)
+    call("samtools view {} | grep -v 'AL:i:0' | awk '{print $(NF-2)}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM,index_file),shell=True)
     return index_file
 
 
@@ -110,6 +110,99 @@ def pairedBarcodeTagging(fq1,fq2,bam,outputBAM="default"):
     postFilterBAM.close()
     return outputBAM
 
+#Filters out both reads in a pair based on at least one criterion. Both reads must pass to be written.
+#Required: SAM file be sorted by name, supplementary and secondary alignments removed, unmapped reads retained.
+def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="default"):
+    if(criteria=="default"):
+        raise NameError("Filter Failed: Criterion Not Set. Currently supported: adapter pass/fail (\"adapter\"), mapped")
+    if(passBAM=="default"):
+        passBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}.pass.bam".format(criteria)
+    if(failBAM=="default"):
+        failBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}.fail.bam".format(criteria)
+    inBAM=Samfile(inputBAM,"rb")
+    passFilter = Samfile(passBAM,"wb",template=inBAM)
+    failFilter = Samfile(failBAM,"wb",template=inBAM)
+    
+    if("family" in criteria):
+        while True:
+            try:
+                read1=inBAM.next()
+                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
+                FMloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="FM"][0]
+                FMValue1 = int(read1.tags[FMloc1][1])
+                if(FMValue1 < 3):
+                    failFilter.write(read1)
+                    failFilter.write(read2)
+                else:
+                    passFilter.write(read1)
+                    passFilter.write(read2)
+            except IndexError:
+                break
+        passFilter.close()
+        failFilter.close()
+        inBAM.close()
+        return
+
+    if("adapter" in criteria):
+        while True:
+            try:
+                read1=inBAM.next()
+                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
+                ALloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="AL"][0]
+                ALValue1 = int(read2.tags[ALloc1][1])
+                ALloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="AL"][0]
+                ALValue2 = int(read2.tags[ALloc2][1])
+                if(ALValue1==0 or ALValue2==0):
+                    failFilter.write(read1)
+                    failFilter.write(read2)
+                else:
+                    passFilter.write(read1)
+                    passFilter.write(read2)
+            except IndexError:
+                break
+        passFilter.close()
+        failFilter.close()
+        inBAM.close()
+        return
+    
+    if("ismapped" in criteria):
+        while True:
+            try:
+                read1=inBAM.next()
+                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
+                if(read1.is_unmapped or read2.is_unmapped):
+                    failFilter.write(read1)
+                    failFilter.write(read2)
+                else:
+                    passFilter.write(read1)
+                    passFilter.write(read2)
+            except IndexError:
+                break
+        passFilter.close()
+        failFilter.close()
+        inBAM.close()
+        return
+    
+    if("qc" in criteria):
+        while True:
+            try:
+                read1=inBAM.next()
+                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
+                if(read1.is_qcfail or read2.is_qcfail):
+                    failFilter.write(read1)
+                    failFilter.write(read2)
+                else:
+                    passFilter.write(read1)
+                    passFilter.write(read2)
+            except IndexError:
+                break
+        passFilter.close()
+        failFilter.close()
+        inBAM.close()
+        return
+    
+    return
+
 def removeSecondary(inBAM,outBAM="default"):
     if(outBAM=="default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1])+'.2ndrm.bam'
@@ -172,7 +265,3 @@ def splitBAMByReads(BAM,read1BAM="default",read2BAM="default"):
     out1.close()
     out2.close()
     return read1BAM, read2BAM
-
-def pairedFilterFamilyBam(inputBAM,failedBAM):
-    
-    return
