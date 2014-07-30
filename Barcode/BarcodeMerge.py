@@ -135,7 +135,11 @@ def main():
         print("BAM with merged barcodes is {}".format(concatBS))
         print("Now generating double barcode index.")
         doubleIndex = GenerateBarcodeIndexBAM(concatBS)
+        print("Now determining family size for the doubled barcodes.")
         familyMarked,uniqueBigFamilies = getFamilySizeBAM(concatBS, doubleIndex)
+        print("Now bringing those within 2 base pair differences into the main group, marking the BD as their Hamming distance.")
+        joinedFamilies = fuzzyJoining(familyMarked,uniqueBigFamilies)
+        print("joinedFammilies is {}".format(joinedFamilies))
         print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:

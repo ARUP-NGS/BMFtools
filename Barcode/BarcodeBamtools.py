@@ -1,9 +1,8 @@
 #!/mounts/anaconda/bin/python
 
-import pysam
 from pysam import Samfile
 from Bio import SeqIO
-import argparse
+from BarcodeUtils import hamming
 
 def Bam2Sam(inbam,outsam):
     from subprocess import call
@@ -13,13 +12,33 @@ def Bam2Sam(inbam,outsam):
     call(command_str,stdout=output,shell=True)
     return(command_str,outsam)
 
+def fuzzyJoining(input,trueFamilyList,output="default"):
+    if(output=="default"):
+        output = '.'.join(input.split('.')[0:-1]) + ".fuzzy.bam"
+    inputBAM=Samfile(input,"rb")
+    outputBAM=Samfile(output,"rb",template=inputBAM)
+    tagsFile = open(trueFamilyList,"r")
+    superFamilyTags = [line.split().strip() for line in tagsFile]
+    for entry in inputBAM:
+        BSloc = [i for i,j in enumerate(entry.tags) if j[0]=="BS"][0]
+        if entry.tags[BSloc][1] in superFamilyTags:
+            outputBAM.write(entry)
+        else:
+            hamDistances = [hamming(entry.tags[BSloc][1],familyTag) for familyTag in superFamilyTags]
+            minDist = min(hamDistances)
+            if(minDist<3):
+                barcodePos = hamDistances.index(minDist)
+                entry.tags[BSloc]=[("BS",superFamilyTags[barcodePos])]
+                entry.tags = entry.tags + [("BD",minDist)]
+            outputBAM.write(entry)
+    return output
+
 def GenerateBarcodeIndexBAM(doubleTaggedBAM,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(doubleTaggedBAM.split('.')[0:-2]) + ".DoubleIdx"
     call("samtools view {} | grep -v 'AL:i:0' | awk '{print $(NF-2)}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM,index_file),shell=True)
     return index_file
-
 
 def getFamilySizeBAM(inputBAM,indexFile,output="default",trueFamilyList="default"):
     if(output=="default"):
@@ -43,26 +62,25 @@ def getFamilySizeBAM(inputBAM,indexFile,output="default",trueFamilyList="default
             record.tags[FMloc] = [("FM",famSize)]
         except IndexError:
             record.tags = record.tags + [("FM",famSize)]
-        outfile.write(record)
-        if(int(famSize) > 2):
+        if(int(famSize) >= 4):
             writeList.write('{}\n'.format(record.tags[BSloc][1]))
+            record.tags = record.tags + [("BD",0)]
+        outfile.write(record)
     writeList.close()
     outfile.close()
     from subprocess import call
     call("cat {} | sort | uniq > omgz.tmp;mv omgz.tmp {}".format(trueFamilyList, trueFamilyList),shell=True) #TODO: make random name for the temp file!
     return output,trueFamilyList
 
-def mergeBarcodes(reads1,reads2,outfile="default",doubleBarcodeList="default"):
+def mergeBarcodes(reads1,reads2,outfile="default"):
     reader1=Samfile(reads1,"rb")
     reader2=Samfile(reads2,"rb")
     if(outfile=="default"):
         outfile = '.'.join(reads1.split('.')[0:-2])+'merged.bam'
-    if(doubleBarcodeList=="default"):
-        doubleBarcodeList = '.'.join(reads1.split('.')[0:-2])+'merge.lst'
     outSAM = Samfile(outfile,"wb",template=reader1)
-    doubleMergedList = open(doubleBarcodeList,"w",0)
     for entry1 in reader1:
         entry2=reader2.next()
+        assert entry1.qname==entry2.qname
         BSloc1 = [i for i,j in enumerate(entry1.tags) if j[0]=="BS"][0]
         BSloc2 = [i for i,j in enumerate(entry2.tags) if j[0]=="BS"][0]
         Barcode1, Barcode2 = entry1.tags[BSloc1][1], entry2.tags[BSloc2][1]
@@ -72,11 +90,9 @@ def mergeBarcodes(reads1,reads2,outfile="default",doubleBarcodeList="default"):
         entry2.tags[BSloc2]=["BS",concatBarcode]
         outSAM.write(entry1)
         outSAM.write(entry2)
-        doubleMergedList.write(concatBarcode+"\n")
     reader1.close()
     reader2.close()
     outSAM.close()
-    doubleMergedList.close()
     return outfile
 
 def pairedBarcodeTagging(fq1,fq2,bam,outputBAM="default"):
