@@ -14,7 +14,7 @@ def Bam2Sam(inbam,outsam):
 
 def fuzzyJoining(input,trueFamilyList,output="default"):
     if(output=="default"):
-        output = '.'.join(input.split('.')[0:-1]) + ".fuzzy.bam"
+        output = '.'.join(input.split('.')[0:-1]) + ".joined.bam"
     inputBAM=Samfile(input,"rb")
     outputBAM=Samfile(output,"wb",template=inputBAM)
     tagsFile = open(trueFamilyList,"r")
@@ -24,13 +24,11 @@ def fuzzyJoining(input,trueFamilyList,output="default"):
         if entry.tags[BSloc][1] in superFamilyTags:
             outputBAM.write(entry)
         else:
-            print()
-            hamDistances = [hamming(entry.tags[BSloc][1],familyTag) for familyTag in superFamilyTags]
+            hamDistances = [hamming(entry.tags[BSloc][1],familyTag[0]) for familyTag in superFamilyTags]
             minDist = min(hamDistances)
             if(minDist<3):
                 barcodePos = hamDistances.index(minDist)
-                entry.tags[BSloc]=[("BS",superFamilyTags[barcodePos])]
-                entry.tags = entry.tags + [("BD",minDist)]
+                entry.tags=entry.tags[0:BSloc]+[("BS",superFamilyTags[barcodePos][0])] + entry.tags[BSloc+1:] + [("BD",minDist)]
             outputBAM.write(entry)
     return output
 
@@ -80,7 +78,7 @@ def mergeBarcodes(reads1,reads2,outfile="default"):
     reader1=Samfile(reads1,"rb")
     reader2=Samfile(reads2,"rb")
     if(outfile=="default"):
-        outfile = '.'.join(reads1.split('.')[0:-2])+'merged.bam'
+        outfile = '.'.join(reads1.split('.')[0:-2])+'.merged.bam'
     outSAM = Samfile(outfile,"wb",template=reader1)
     for entry1 in reader1:
         entry2=reader2.next()
@@ -137,9 +135,9 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if(criteria=="default"):
         raise NameError("Filter Failed: Criterion Not Set. Currently supported: adapter pass/fail (\"adapter\"), mapped")
     if(passBAM=="default"):
-        passBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}.pass.bam".format(criteria)
+        passBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}P.bam".format(criteria)
     if(failBAM=="default"):
-        failBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}.fail.bam".format(criteria)
+        failBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}F.bam".format(criteria)
     inBAM=Samfile(inputBAM,"rb")
     passFilter = Samfile(passBAM,"wb",template=inBAM)
     failFilter = Samfile(failBAM,"wb",template=inBAM)
@@ -160,7 +158,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-            except IndexError:
+            except StopIteration:
                 break
         passFilter.close()
         failFilter.close()
@@ -181,7 +179,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-            except IndexError:
+            except StopIteration:
                 break
         passFilter.close()
         failFilter.close()
@@ -202,7 +200,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-            except IndexError:
+            except StopIteration:
                 break
         passFilter.close()
         failFilter.close()
@@ -222,7 +220,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 except IndexError:
                     failFilter.write(read1)
                     failFilter.write(read2)
-            except IndexError:
+            except StopIteration:
                 break
         passFilter.close()
         failFilter.close()
@@ -242,7 +240,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-            except IndexError:
+            except StopIteration:
                 break
         passFilter.close()
         failFilter.close()
@@ -261,7 +259,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-            except IndexError:
+            except StopIteration:
                 break
         passFilter.close()
         failFilter.close()

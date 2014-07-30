@@ -51,8 +51,17 @@ def generateLevenshteinMatrix(input, outputTSV="default"):
 
 def hamming(str1, str2):
     import operator
+    import Levenshtein
     from itertools import imap
-    assert len(str1) == len(str2)
+    '''
+    If you want to be flexible and allow different lengths, uncomment this block
+    try:
+        assert len(str1) == len(str2)
+    except AssertionError:
+        print("String 1 is {} with length {}, while String 2 is {} with length {}".format(str1,len(str1),str2,len(str2)))
+        print("Calculating Levenshtein distance instead.")
+        return Levenshtein.distance(str1,str2)
+     '''   
     #ne = str.__ne__  ## this is surprisingly slow
     #ne = operator.ne
     return sum(imap(operator.ne, str1, str2))
