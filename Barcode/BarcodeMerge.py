@@ -139,7 +139,16 @@ def main():
         familyMarked,uniqueBigFamilies = getFamilySizeBAM(concatBS, doubleIndex)
         print("Now bringing those within 2 base pair differences into the main group, marking the BD as their Hamming distance.")
         joinedFamilies = fuzzyJoining(familyMarked,uniqueBigFamilies)
-        print("joinedFammilies is {}".format(joinedFamilies))
+        print("joinedFamilies is {}".format(joinedFamilies))
+        print("Now executing filter step: in an extended family")
+        extendedFamilies, blackSheep = pairedFilterBam(joinedFamilies,criteria="fuzzy")
+        print("Extended families are in {}, while Black Sheep are in {}".format(extendedFamilies,blackSheep))
+        print("Now filtering out reads where a member in the pair is unmapped")
+        mappedExtended,lostFamilies = pairedFilterBam(extendedFamilies, criteria="ismapped")
+        print("Mapped BAM is {}, while the families which failed the filter are in {}".format(mappedExtended,lostFamilies))
+        print("Now filtering for reads with NM > 0")
+        dissentingExtendedFamilies,boringFamilies = pairedFilterBam(mappedExtended,criteria="editdistance")
+        print("Dissenting extended families are in {}, while the mindless meat puppets are in {}".format(dissentingExtendedFamilies,boringFamilies))
         print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:
