@@ -12,25 +12,12 @@ def Bam2Sam(inbam,outsam):
     call(command_str,stdout=output,shell=True)
     return(command_str,outsam)
 
-def fuzzyJoining(input,trueFamilyList,output="default"):
-    if(output=="default"):
-        output = '.'.join(input.split('.')[0:-1]) + ".joined.bam"
-    inputBAM=Samfile(input,"rb")
-    outputBAM=Samfile(output,"wb",template=inputBAM)
-    tagsFile = open(trueFamilyList,"r")
-    superFamilyTags = [line.strip().split() for line in tagsFile]
-    for entry in inputBAM:
-        BSloc = [i for i,j in enumerate(entry.tags) if j[0]=="BS"][0]
-        if entry.tags[BSloc][1] in superFamilyTags:
-            outputBAM.write(entry)
-        else:
-            hamDistances = [hamming(entry.tags[BSloc][1],familyTag[0]) for familyTag in superFamilyTags]
-            minDist = min(hamDistances)
-            if(minDist<3):
-                barcodePos = hamDistances.index(minDist)
-                entry.tags=entry.tags[0:BSloc]+[("BS",superFamilyTags[barcodePos][0])] + entry.tags[BSloc+1:] + [("BD",minDist)]
-            outputBAM.write(entry)
-    return output
+#I'm not a huge fan of this. We could only rescue a small fraction. Maybe it becomes valuable if we have deeper coverage, but for now, we can't really get much out of this.
+'''
+def fuzzyJoining(inputBAM,referenceFasta,output="default",):
+    import subprocess
+    return
+'''
 
 def GenerateBarcodeIndexBAM(doubleTaggedBAM,index_file="default"):
     from subprocess import call
@@ -39,6 +26,13 @@ def GenerateBarcodeIndexBAM(doubleTaggedBAM,index_file="default"):
     call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM,index_file),shell=True)
     return index_file
 
+def GenerateBarcodeIndexReference(doubleIdx,output="default"):
+    if(output=="default"):
+        output=doubleIdx.split('.')[0] + '.ref.fasta'
+    from subprocess import call
+    call("paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(doubleIdx,output),shell=True)
+    return output
+        
 def getFamilySizeBAM(inputBAM,indexFile,output="default",trueFamilyList="default"):
     if(output=="default"):
         output = inputBAM.split('.')[0] + ".doubleFam.bam"
@@ -61,12 +55,19 @@ def getFamilySizeBAM(inputBAM,indexFile,output="default",trueFamilyList="default
             famSize = 0
         try:
             FMloc = [i for i,j in enumerate(record.tags) if j[0]=="FM"][0]
-            record.tags[FMloc] = [("FM",famSize)]
+            record.tags = record.tags[0:FMloc]+[("FM",famSize)]+record.tags[FMloc+1:]
         except IndexError:
             record.tags = record.tags + [("FM",famSize)]
-        if(int(famSize) >= 4):
+        if(int(famSize) >= 2):
             writeList.write('{}\n'.format(record.tags[BSloc][1]))
-            record.tags = record.tags + [("BD",0)]
+            try:
+                BDloc = [i for i,j in enumerate(record.tags) if j[0]=="BD"][0]
+                if(BDloc==len(record.tags)-1):
+                    record.tags = record.tags[0:BDloc] + [("BD",0)] 
+                else:
+                    record.tags = record.tags[0:BDloc]+[("BD",0)]+record.tags[BDloc+1:]
+            except IndexError:
+                record.tags = record.tags + [("BD",0)]
         outfile.write(record)
     writeList.close()
     outfile.close()
@@ -133,7 +134,7 @@ def pairedBarcodeTagging(fq1,fq2,bam,outputBAM="default"):
 #Required: SAM file be sorted by name, supplementary and secondary alignments removed, unmapped reads retained.
 def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="default"):
     if(criteria=="default"):
-        raise NameError("Filter Failed: Criterion Not Set. Currently supported: adapter pass/fail (\"adapter\"), mapped")
+        raise NameError("Filter Failed: Criterion Not Set. Currently supported: adapter pass/fail (\"adapter\"),\"ismapped\",\"editdistance\",\"family\",\"fuzzy\",\"qc\"")
     if(passBAM=="default"):
         passBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}P.bam".format(criteria)
     if(failBAM=="default"):
@@ -146,13 +147,19 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
         while True:
             try:
                 read1=inBAM.next()
-                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname==read2.qname
+                read2=inBAM.next()
+                assert read1.qname==read2.qname #Sanity check here to make sure that the reads are each other's mates
                 ALloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="AL"][0]
-                ALValue1 = int(read2.tags[ALloc1][1])
+                try:
+                    ALValue1 = int(read1.tags[ALloc1][1])
+                except IndexError:
+                    ALValue1 = 0
                 ALloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="AL"][0]
-                ALValue2 = int(read2.tags[ALloc2][1])
-                if(ALValue1==0 or ALValue2==0):
+                try:
+                    ALValue2 = int(read2.tags[ALloc2][1])
+                except IndexError:
+                    ALValue2 = 0
+                if(ALValue1==0 or ALValue2==0 or ALValue1=="0" or ALValue2=="0"):
                     failFilter.write(read1)
                     failFilter.write(read2)
                 else:
@@ -169,8 +176,8 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
         while True:
             try:
                 read1=inBAM.next()
-                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname==read2.qname
+                read2=inBAM.next() 
+                assert read1.qname==read2.qname #Sanity check here to make sure that the reads are each other's mates
                 NMloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="NM"][0]
                 NMloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="NM"][0]
                 if(read1.tags[NMloc1][1] == 0 or read2.tags[NMloc2] == 0):    
@@ -190,11 +197,13 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
         while True:
             try:
                 read1=inBAM.next()
-                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname==read2.qname
+                read2=inBAM.next()
+                assert read1.qname==read2.qname #Sanity check here to make sure that the reads are each other's mates
                 FMloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="FM"][0]
+                FMloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="FM"][0]
                 FMValue1 = int(read1.tags[FMloc1][1])
-                if(FMValue1 < 3):
+                FMValue2 = int(read2.tags[FMloc2][1])
+                if(FMValue1 < 2 or FMValue2 < 2):
                     failFilter.write(read1)
                     failFilter.write(read2)
                 else:

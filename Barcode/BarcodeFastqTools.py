@@ -1,5 +1,4 @@
 from Bio import SeqIO
-import argparse
 from pysam import Samfile
 from BarcodeBamtools import *
 from BarcodeUtils import *
@@ -107,6 +106,29 @@ def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFai
             SeqIO.write(newRead,outfqBuffers,"fastq")
     return outfq,TotalReads, ReadsWithFamilies
 
+def mergeSequencesFastq(fq1,fq2,output="default"):
+    if(output=="default"):
+        output = fq1.split('.')[0] + '.merged.fastq'
+    from Bio.SeqRecord import SeqRecord
+    from Bio.Seq import Seq
+    reads1=SeqIO.parse(fq1,"fastq")
+    reads2=SeqIO.parse(fq2,"fastq")
+    outFastq = open(output,"w",0)
+    while True:
+        try:
+            read1 = reads1.next()
+            read2 = reads2.next()
+            outread = read1
+            outread=SeqRecord(
+                Seq(str(read1.seq)+str(read2.seq),"fastq"), id=read1.id) 
+            outread.letter_annotations['phred_quality']=read1.letter_annotations['phred_quality'] + read2.letter_annotations['phred_quality'] 
+            SeqIO.write(outread, outFastq, "fastq")
+        except StopIteration:
+            break
+    reads1.close()
+    reads2.close()
+    outFastq.close()
+    return output
 
 def reverseComplement(fq,dest="default"):
     if(dest=="default"):
@@ -132,7 +154,6 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
     if(tags_file == "default"):
         temp = '.'.join(fq.split('.')[0:-1]) + '.tags.fastq'
         tags_file = temp.split('/')[-1]
-    errOpen = open(trim_err,"w",0)
     tagsOpen = open(tags_file,"w",0)
     trimOpen = open(trimfq,"w",0)
     InFastq = SeqIO.parse(fq,"fastq")
@@ -157,5 +178,4 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
         SeqIO.write(post_tag,trimOpen,"fastq")
     tagsOpen.close()
     trimOpen.close()
-    errOpen.close()
     return(tags_file,trimfq)

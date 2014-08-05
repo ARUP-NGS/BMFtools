@@ -126,6 +126,7 @@ def main():
             outbam=args.BAM
             FamilyFastq1=args.fq[0]
             FamilyFastq2=args.fq[1]
+        #TODO: Remove reads in the region of interest
         print("Now tagging reads with barcodes, family counts, and a pass/fail for the \"adapter sequence\" (not really that, but it's a working appellation).")
         taggedBAM = pairedBarcodeTagging(FamilyFastq1,FamilyFastq2,outbam)
         print("Now splitting the BAM into read 1 and read 2 files.")
@@ -135,19 +136,30 @@ def main():
         print("BAM with merged barcodes is {}".format(concatBS))
         print("Now generating double barcode index.")
         doubleIndex = GenerateBarcodeIndexBAM(concatBS)
+        mappedPairs,lostFamilies = pairedFilterBam(concatBS, criteria="ismapped")
+        mappedFamilies,lostFamilies = pairedFilterBam(mappedPairs,criteria="family")
         print("Now determining family size for the doubled barcodes.")
-        familyMarked,uniqueBigFamilies = getFamilySizeBAM(concatBS, doubleIndex)
+        familyMarked,uniqueBigFamilies = getFamilySizeBAM(mappedFamilies, doubleIndex)
+        familyMarkedAdapterPass,familyMarkedAdapterFail = pairedFilterBam(familyMarked,criteria="adapter")
+        #UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
+        '''
         print("Now bringing those within 2 base pair differences into the main group, marking the BD as their Hamming distance.")
-        joinedFamilies = fuzzyJoining(familyMarked,uniqueBigFamilies)
+        newRef = GenerateBarcodeIndexReference(uniqueBigFamilies)
+        indexBowtie(newRef)
+        mergedFastq = mergeSequencesFastq(tags1, tags2,)
+        joiningSAM = CustomRefBowtiePaired(mergedFastq,newRef)
+        return
+        joinedFamilies = fuzzyJoining(familyMarked,joiningSAM)
         print("joinedFamilies is {}".format(joinedFamilies))
+        '''
         print("Now executing filter step: in an extended family")
-        extendedFamilies, blackSheep = pairedFilterBam(joinedFamilies,criteria="fuzzy")
-        print("Extended families are in {}, while Black Sheep are in {}".format(extendedFamilies,blackSheep))
+        familyFiltered, blackSheep = pairedFilterBam(familyMarkedAdapterPass,criteria="family")
+        print("Families >= 2 members are in {}, while Black Sheep are in {}".format(familyFiltered,blackSheep))
         print("Now filtering out reads where a member in the pair is unmapped")
-        mappedExtended,lostFamilies = pairedFilterBam(extendedFamilies, criteria="ismapped")
-        print("Mapped BAM is {}, while the families which failed the filter are in {}".format(mappedExtended,lostFamilies))
+        familyMapped, lostFamilies = pairedFilterBam(familyFiltered,criteria="ismapped")
+        print("Mapped BAM is {}, while the families which failed the filter are in {}".format(familyMapped,lostFamilies))
         print("Now filtering for reads with NM > 0")
-        dissentingExtendedFamilies,boringFamilies = pairedFilterBam(mappedExtended,criteria="editdistance")
+        dissentingExtendedFamilies,boringFamilies = pairedFilterBam(familyMapped,criteria="editdistance")
         print("Dissenting extended families are in {}, while the mindless meat puppets are in {}".format(dissentingExtendedFamilies,boringFamilies))
         print("This is far as the program goes at this point. Thank you for playing!")
         return

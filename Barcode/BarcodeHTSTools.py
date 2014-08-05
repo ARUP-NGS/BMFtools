@@ -57,6 +57,19 @@ def align_snap(R1,R2,ref,opts,outbam):
     subprocess.call(command_str)
     return(command_str)
 
+def CustomRefBowtiePaired(mergedFq,ref,output="default"):
+    from subprocess import call
+    if(output=="default"):
+        output=mergedFq.split('.')[0]+'.mergingFamilies.sam'
+    command_list = ["bowtie","--threads","4","-S","-n","3","-l","24","--norc",ref,mergedFq,output]
+    call(command_list)
+    return output
+
+def indexBowtie(fasta):
+    from subprocess import call
+    call('bowtie-build {0} {0}'.format(fasta),shell=True)
+    return 
+
 def sam_sort(insam,outsam):
     #Skip header and funnel all reads into a temp file
     import random
