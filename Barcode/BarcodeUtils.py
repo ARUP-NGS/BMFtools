@@ -51,10 +51,10 @@ def generateLevenshteinMatrix(input, outputTSV="default"):
 
 def hamming(str1, str2):
     import operator
-    import Levenshtein
     from itertools import imap
     '''
     If you want to be flexible and allow different lengths, uncomment this block
+    import Levenshtein
     try:
         assert len(str1) == len(str2)
     except AssertionError:
