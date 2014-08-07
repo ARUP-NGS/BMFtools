@@ -33,7 +33,9 @@ frna_ref="/mounts/genome/Rnor/Rattus_norvegicus.frnadb.fasta"
     #frna contains piRNA, miRNA, snoRNA, scRNA,snRNA,scaRNA,ribosomal, and other
     #No noncode entry for Rattus norvegicus
 ens_ref="/mounts/genome/Rnor/Rattus_norvegicus.Rnor_5.0.75.ncrna.rename.fa"
-#$noncode_ref="/yggdrasil/workspace/miRNA/miRNA_Analysis/miRNA_data/uniqncrna.2.0.human.fa"
+
+enst_table="/yggdrasil/workspace/miRNA/miRNA_Analysis/miRNA_data/Ens2Gene.list"
+enst_script="/yggdrasil/workspace/UnexpectedProtocols//ENST2Gene.py"
 
 #Begin alignments
 $bt2 $mir_ref -U ../$fq --un $1.unmapped.mir.fastq -p $threads -S $1.mapped.mir.sam &> $1.mir.log
@@ -87,3 +89,18 @@ echo 'total reads completed unaligned: ' $und >> $1.report
 tot=$(wc -l < ../$1)
 totd=$(expr $tot / 4)
 echo 'of total ' $(wc -l ../$1) >> $1.report
+
+basename=$fq
+
+cat ${basename}.mapped.frna.counts | awk 'BEGIN {OFS="\t"};{print $0,"frnaDB"}' > ${basename}.tmp.frna
+mv ${basename}.tmp.frna ${basename}.mapped.frna.counts
+cat ${basename}.mapped.ens.counts | awk 'BEGIN {OFS="\t"};{print $0,"Ensembl"}' > ${basename}.tmp.ens
+mv ${basename}.tmp.ens ${basename}.mapped.ens.counts
+cat ${basename}.mapped.rs.counts | awk 'BEGIN {OFS="\t"};{print $0,"RefSeq"}' > ${basename}.tmp.rs
+mv ${basename}.tmp.rs ${basename}.mapped.rs.counts
+cat ${basename}.mapped.mir.counts | awk 'BEGIN {OFS="\t"};{print $0,"miRBase"}' > ${basename}.tmp.mir
+mv ${basename}.tmp.mir ${basename}.mapped.mir.counts
+
+cat *counts | sort -k1,1n > ${basename}.merged.counts
+
+python $enst_script -c ${basename}.merged.counts -t $enst_table
