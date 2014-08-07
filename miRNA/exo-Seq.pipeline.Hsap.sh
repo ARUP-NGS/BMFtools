@@ -42,7 +42,7 @@ $bt2 $mir_ref -U ../$fq --un $1.unmapped.mir.fastq -p $threads -S $1.mapped.mir.
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.mir.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.mir.names
-cat $1.mapped.mir.names | sort | uniq -c | sort -k1,1n - > $1.mapped.mir.counts
+cat $1.mapped.mir.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.mir.counts
 echo 'total reads mapped to miRBase' $(wc -l $1.mapped.mir.names) > $1.report
 echo 'number of genes/reference sequences detection for miRBase: ' $(wc -l $1.mapped.mir.counts) >> $1.report
 echo 'top ten genes/references sequences in miRBase: ' >> $1.report
@@ -53,7 +53,7 @@ $bt2 $ensnc_ref -U $fq.unmapped.mir.fastq --un $1.unmapped.mir.ENSnc.fastq -p $t
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.ENSnc.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.ENSnc.names
-cat $1.mapped.ENSnc.names | sort | uniq -c | sort -k1,1n - > $1.mapped.ENSnc.counts
+cat $1.mapped.ENSnc.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.ENSnc.counts
 echo 'total reads mapped to ENSncdb' $(wc -l $1.mapped.ENSnc.names) >> $1.report
 echo 'number of genes/reference sequences detection for ENSncdb: ' $(wc -l $1.mapped.ENSnc.counts) >> $1.report
 echo 'top ten genes/references sequences in ENSncdb: ' >> $1.report
@@ -64,7 +64,7 @@ $bt2 $ens_ref -U $fq.unmapped.mir.ENSnc.fastq --un $1.unmapped.mir.ENSnc.ens.fas
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.ens.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.ens.names
-cat $1.mapped.ens.names | sort | uniq -c | sort -k1,1n - > $1.mapped.ens.counts
+cat $1.mapped.ens.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.ens.counts
 echo 'total reads mapped to ensembl' $(wc -l $1.mapped.ens.names) >> $1.report
 echo 'number of genes/reference sequences detection for ensemble: ' $(wc -l $1.mapped.ens.counts) >> $1.report
 echo 'top ten genes/references sequences in ensembl: ' >> $1.report
@@ -77,7 +77,7 @@ $bt2 $refseq_ref -U $fq.unmapped.mir.ENSnc.ens.fastq --un $1.unmapped.mir.ENSnc.
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.rs.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.rs.names
-cat $1.mapped.rs.names | sort | uniq -c | sort -k1,1n - > $1.mapped.rs.counts
+cat $1.mapped.rs.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.rs.counts
 echo 'total reads mapped to RefSeq' $(wc -l $1.mapped.rs.names) >> $1.report
 echo 'number of genes/reference sequences detection for RefSeq: ' $(wc -l $1.mapped.rs.counts) >> $1.report
 echo 'top ten genes/references sequences in RefSeq: ' >> $1.report

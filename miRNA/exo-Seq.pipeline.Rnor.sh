@@ -40,7 +40,7 @@ $bt2 $mir_ref -U ../$fq --un $1.unmapped.mir.fastq -p $threads -S $1.mapped.mir.
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.mir.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.mir.names
-cat $1.mapped.mir.names | sort | uniq -c | sort -k1,1n - > $1.mapped.mir.counts
+cat $1.mapped.mir.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.mir.counts
 echo 'total reads mapped to miRBase' $(wc -l $1.mapped.mir.names) > $1.report
 echo 'number of genes/reference sequences detection for miRBase: ' $(wc -l $1.mapped.mir.counts) >> $1.report
 echo 'top ten genes/references sequences in miRBase: ' >> $1.report
@@ -51,7 +51,7 @@ $bt2 $frna_ref -U $fq.unmapped.mir.fastq --un $1.unmapped.mir.frna.fastq -p $thr
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.frna.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.frna.names
-cat $1.mapped.frna.names | sort | uniq -c | sort -k1,1n - > $1.mapped.frna.counts
+cat $1.mapped.frna.names | sort | uniq -c | sort -k1,1n -| awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.frna.counts
 echo 'total reads mapped to fRNAdb' $(wc -l $1.mapped.frna.names) >> $1.report
 echo 'number of genes/reference sequences detection for fRNAdb: ' $(wc -l $1.mapped.frna.counts) >> $1.report
 echo 'top ten genes/references sequences in fRNAdb: ' >> $1.report
@@ -62,7 +62,7 @@ $bt2 $ens_ref -U $fq.unmapped.mir.frna.fastq --un $1.unmapped.mir.frna.ens.fastq
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.ens.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.ens.names
-cat $1.mapped.ens.names | sort | uniq -c | sort -k1,1n - > $1.mapped.ens.counts
+cat $1.mapped.ens.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.ens.counts
 echo 'total reads mapped to ensembl' $(wc -l $1.mapped.ens.names) >> $1.report
 echo 'number of genes/reference sequences detection for ensemble: ' $(wc -l $1.mapped.ens.counts) >> $1.report
 echo 'top ten genes/references sequences in ensembl: ' >> $1.report
@@ -75,7 +75,7 @@ $bt2 $refseq_ref -U $fq.unmapped.mir.frna.ens.fastq --un $1.unmapped.mir.frna.en
 
 #Count hits
 grep -v '@SQ\|@HD\|@PG' $1.mapped.rs.sam | grep 'AS:i' | awk '{print $3}' > $1.mapped.rs.names
-cat $1.mapped.rs.names | sort | uniq -c | sort -k1,1n - > $1.mapped.rs.counts
+cat $1.mapped.rs.names | sort | uniq -c | sort -k1,1n - | awk 'BEGIN {OFS="\t"};{print $1,$2}' > $1.mapped.rs.counts
 echo 'total reads mapped to RefSeq' $(wc -l $1.mapped.rs.names) >> $1.report
 echo 'number of genes/reference sequences detection for RefSeq: ' $(wc -l $1.mapped.rs.counts) >> $1.report
 echo 'top ten genes/references sequences in RefSeq: ' >> $1.report
