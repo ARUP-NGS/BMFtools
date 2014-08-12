@@ -1,6 +1,5 @@
 from Bio import SeqIO
-from pysam import Samfile
-from BarcodeBamtools import *
+import pysam
 from BarcodeUtils import *
 
 def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):

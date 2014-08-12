@@ -1,6 +1,6 @@
 from Bio import SeqIO
 import argparse
-from pysam import Samfile
+import pysam
 
 def generateHammingMatrix(input, outputTSV="default"):
     if(outputTSV=="default"):
@@ -9,14 +9,14 @@ def generateHammingMatrix(input, outputTSV="default"):
     import csv
     tsvWriter = open(outputTSV,'w',0)
     MatrixWriter = csv.writer(tsvWriter,delimiter="\t")
-    inputBAM = Samfile(input,"rb")
+    inputBAM = pysam.Samfile(input,"rb")
     Headers = [entry.qname for entry in inputBAM]
     Headers.insert(0, "Names of the reads") 
     MatrixWriter.writerow(Headers)
     del Headers
-    inputBAM = Samfile(input,"rb")#For iterating through again
+    inputBAM = pysam.Samfile(input,"rb")#For iterating through again
     for entry in inputBAM:
-        iteratorBAM = Samfile(input,"rb") #Opening multiple times to enable the looping
+        iteratorBAM = pysam.Samfile(input,"rb") #Opening multiple times to enable the looping
         BSentry = entry.tags[[i for i,j in enumerate(entry.tags) if j[0]=="BS"][0]][1]
         HammingDistanceRow = [hamming(BSentry, entry2.tags[[i for i,j in enumerate(entry2.tags) if j[0]=="BS"][0]][1]) for entry2 in iteratorBAM] 
         HammingDistanceRow.insert(0,entry.qname)
@@ -33,14 +33,14 @@ def generateLevenshteinMatrix(input, outputTSV="default"):
     import csv
     tsvWriter = open(outputTSV,'w',0)
     MatrixWriter = csv.writer(tsvWriter,delimiter="\t")
-    inputBAM = Samfile(input,"rb")
+    inputBAM = pysam.Samfile(input,"rb")
     Headers = [entry.qname for entry in inputBAM]
     Headers.insert(0, "Names of the reads") 
     MatrixWriter.writerow(Headers)
     del Headers
-    inputBAM = Samfile(input,"rb")#For iterating through again
+    inputBAM = pysam.Samfile(input,"rb")#For iterating through again
     for entry in inputBAM:
-        iteratorBAM = Samfile(input,"rb") #Opening multiple times to enable the looping
+        iteratorBAM = pysam.Samfile(input,"rb") #Opening multiple times to enable the looping
         BSentry = entry.tags[[i for i,j in enumerate(entry.tags) if j[0]=="BS"][0]][1]
         HammingDistanceRow = [Levenshtein.distance(BSentry, entry2.tags[[i for i,j in enumerate(entry2.tags) if j[0]=="BS"][0]][1]) for entry2 in iteratorBAM] 
         HammingDistanceRow.insert(0,entry.qname)

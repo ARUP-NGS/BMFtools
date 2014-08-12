@@ -1,97 +1,96 @@
 #!/mounts/anaconda/bin/python
 
-from pysam import Samfile
+import pysam
 from Bio import SeqIO
-from BarcodeUtils import hamming
 
-def Bam2Sam(inbam,outsam):
+def Bam2Sam(inbam, outsam):
     from subprocess import call
-    output = open(outsam,'w',0)
-    command_str='samtools view -h {}'.format(inbam)
+    output = open(outsam, 'w', 0)
+    command_str = 'samtools view -h {}'.format(inbam)
     print(command_str)
-    call(command_str,stdout=output,shell=True)
-    return(command_str,outsam)
+    call(command_str, stdout=output, shell=True)
+    return(command_str, outsam)
 
-#I'm not a huge fan of this. We could only rescue a small fraction. Maybe it becomes valuable if we have deeper coverage, but for now, we can't really get much out of this.
+# I'm not a huge fan of this. We could only rescue a small fraction. Maybe it becomes valuable if we have deeper coverage, but for now, we can't really get much out of this.
 '''
 def fuzzyJoining(inputBAM,referenceFasta,output="default",):
     import subprocess
     return
 '''
 
-def GenerateBarcodeIndexBAM(doubleTaggedBAM,index_file="default"):
+def GenerateBarcodeIndexBAM(doubleTaggedBAM, index_file="default"):
     from subprocess import call
-    if(index_file=="default"):
+    if(index_file == "default"):
         index_file = '.'.join(doubleTaggedBAM.split('.')[0:-2]) + ".DoubleIdx"
-    call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM,index_file),shell=True)
+    call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
     return index_file
 
-def GenerateBarcodeIndexReference(doubleIdx,output="default"):
-    if(output=="default"):
-        output=doubleIdx.split('.')[0] + '.ref.fasta'
+def GenerateBarcodeIndexReference(doubleIdx, output="default"):
+    if(output == "default"):
+        output = doubleIdx.split('.')[0] + '.ref.fasta'
     from subprocess import call
-    call("paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(doubleIdx,output),shell=True)
+    call("paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(doubleIdx, output), shell=True)
     return output
         
-def getFamilySizeBAM(inputBAM,indexFile,output="default",trueFamilyList="default"):
-    if(output=="default"):
+def getFamilySizeBAM(inputBAM, indexFile, output="default", trueFamilyList="default"):
+    if(output == "default"):
         output = inputBAM.split('.')[0] + ".doubleFam.bam"
-    if(trueFamilyList=="default"):
+    if(trueFamilyList == "default"):
         trueFamilyList = inputBAM.split('.')[0] + ".doubleFam.lst"
-    index = open(indexFile,"r")
+    index = open(indexFile, "r")
     dictEntries = [line.split() for line in index]
     BarDict = {}
     for entry in dictEntries:
-        BarDict[entry[1]]=entry[0]
+        BarDict[entry[1]] = entry[0]
     index.close()
-    Reads=Samfile(inputBAM,"rb")
-    outfile = Samfile(output,"wb",template=Reads)
-    writeList = open(trueFamilyList,"w",0)
+    Reads = pysam.Samfile(inputBAM, "rb")
+    outfile = pysam.Samfile(output, "wb", template=Reads)
+    writeList = open(trueFamilyList, "w", 0)
     for record in Reads:
-        BSloc = [i for i,j in enumerate(record.tags) if j[0]=="BS"][0]
+        BSloc = [i for i, j in enumerate(record.tags) if j[0] == "BS"][0]
         try:
             famSize = BarDict[record.tags[BSloc][1]]
         except KeyError:
             famSize = 0
         try:
-            FMloc = [i for i,j in enumerate(record.tags) if j[0]=="FM"][0]
-            record.tags = record.tags[0:FMloc]+[("FM",famSize)]+record.tags[FMloc+1:]
+            FMloc = [i for i, j in enumerate(record.tags) if j[0] == "FM"][0]
+            record.tags = record.tags[0:FMloc] + [("FM", famSize)] + record.tags[FMloc + 1:]
         except IndexError:
-            record.tags = record.tags + [("FM",famSize)]
+            record.tags = record.tags + [("FM", famSize)]
         if(int(famSize) >= 2):
             writeList.write('{}\n'.format(record.tags[BSloc][1]))
             try:
-                BDloc = [i for i,j in enumerate(record.tags) if j[0]=="BD"][0]
-                if(BDloc==len(record.tags)-1):
-                    record.tags = record.tags[0:BDloc] + [("BD",0)] 
+                BDloc = [i for i, j in enumerate(record.tags) if j[0] == "BD"][0]
+                if(BDloc == len(record.tags) - 1):
+                    record.tags = record.tags[0:BDloc] + [("BD", 0)] 
                 else:
-                    record.tags = record.tags[0:BDloc]+[("BD",0)]+record.tags[BDloc+1:]
+                    record.tags = record.tags[0:BDloc] + [("BD", 0)] + record.tags[BDloc + 1:]
             except IndexError:
-                record.tags = record.tags + [("BD",0)]
+                record.tags = record.tags + [("BD", 0)]
         outfile.write(record)
     writeList.close()
     outfile.close()
     from subprocess import call
-    call("cat {} | sort | uniq > omgz.tmp;mv omgz.tmp {}".format(trueFamilyList, trueFamilyList),shell=True) #TODO: make random name for the temp file!
-    return output,trueFamilyList
+    call("cat {} | sort | uniq > omgz.tmp;mv omgz.tmp {}".format(trueFamilyList, trueFamilyList), shell=True)  # TODO: make random name for the temp file!
+    return output, trueFamilyList
 
-def mergeBarcodes(reads1,reads2,outfile="default"):
-    reader1=Samfile(reads1,"rb")
-    reader2=Samfile(reads2,"rb")
-    if(outfile=="default"):
-        outfile = '.'.join(reads1.split('.')[0:-2])+'.merged.bam'
-    outSAM = Samfile(outfile,"wb",template=reader1)
+def mergeBarcodes(reads1, reads2, outfile="default"):
+    reader1 = pysam.Samfile(reads1, "rb")
+    reader2 = pysam.Samfile(reads2, "rb")
+    if(outfile == "default"):
+        outfile = '.'.join(reads1.split('.')[0:-2]) + '.merged.bam'
+    outSAM = pysam.Samfile(outfile, "wb", template=reader1)
     for entry1 in reader1:
-        entry2=reader2.next()
-        assert entry1.qname==entry2.qname
-        BSloc1 = [i for i,j in enumerate(entry1.tags) if j[0]=="BS"][0]
-        BSloc2 = [i for i,j in enumerate(entry2.tags) if j[0]=="BS"][0]
+        entry2 = reader2.next()
+        assert entry1.qname == entry2.qname
+        BSloc1 = [i for i, j in enumerate(entry1.tags) if j[0] == "BS"][0]
+        BSloc2 = [i for i, j in enumerate(entry2.tags) if j[0] == "BS"][0]
         Barcode1, Barcode2 = entry1.tags[BSloc1][1], entry2.tags[BSloc2][1]
-        #print("Barcode 1, Barcode 2 are {}, {}, respectively.".format(Barcode1,Barcode2))
-        concatBarcode=Barcode1+Barcode2
-        #print("New barcode will be {}".format(concatBarcode))
-        entry1.tags = entry1.tags[0:BSloc1] + [("BS",concatBarcode)] + entry1.tags[BSloc1+1:]
-        entry2.tags = entry2.tags[0:BSloc2] + [("BS",concatBarcode)] + entry2.tags[BSloc2+1:]
+        # print("Barcode 1, Barcode 2 are {}, {}, respectively.".format(Barcode1,Barcode2))
+        concatBarcode = Barcode1 + Barcode2
+        # print("New barcode will be {}".format(concatBarcode))
+        entry1.tags = entry1.tags[0:BSloc1] + [("BS", concatBarcode)] + entry1.tags[BSloc1 + 1:]
+        entry2.tags = entry2.tags[0:BSloc2] + [("BS", concatBarcode)] + entry2.tags[BSloc2 + 1:]
         outSAM.write(entry1)
         outSAM.write(entry2)
     reader1.close()
@@ -99,67 +98,67 @@ def mergeBarcodes(reads1,reads2,outfile="default"):
     outSAM.close()
     return outfile
 
-def pairedBarcodeTagging(fq1,fq2,bam,outputBAM="default"):
-    if(outputBAM=="default"):
+def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default"):
+    if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     read1 = SeqIO.parse(fq1, "fastq")
     read2 = SeqIO.parse(fq2, "fastq")
-    #inBAM = removeSecondary(args.bam_file) #Artefactual code
-    postFilterBAM = Samfile(bam,"rb")
-    outBAM = Samfile(outputBAM,"wb",template=postFilterBAM)
+    # inBAM = removeSecondary(args.bam_file) #Artefactual code
+    postFilterBAM = pysam.Samfile(bam, "rb")
+    outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
             continue
         if(entry.is_read1):
-            #print("Read is read 1, with name {}. Now getting variables from read 1's files for the tags.".format(entry.qname))
+            # print("Read is read 1, with name {}. Now getting variables from read 1's files for the tags.".format(entry.qname))
             tempRead = read1.next()
-            #print("Read description (for debugging purposes) is {}".format(tempRead.description))
+            # print("Read description (for debugging purposes) is {}".format(tempRead.description))
         elif(entry.is_read2):
-            #print("Read is read 2, with name {}. Now getting variables from read 2's files for the tags.".format(entry.qname))
+            # print("Read is read 2, with name {}. Now getting variables from read 2's files for the tags.".format(entry.qname))
             tempRead = read2.next()
-            #print("Read description (for debugging purposes) is {}".format(tempRead.description))
-        descArray=tempRead.description.split("###")
-        entry.tags = entry.tags + [("BS",descArray[-2].strip())]
-        entry.tags = entry.tags + [("FM",descArray[-1].strip())]
+            # print("Read description (for debugging purposes) is {}".format(tempRead.description))
+        descArray = tempRead.description.split("###")
+        entry.tags = entry.tags + [("BS", descArray[-2].strip())]
+        entry.tags = entry.tags + [("FM", descArray[-1].strip())]
         if(descArray[-3].strip() == "AdapterPass"):
-            entry.tags = entry.tags + [("AL",1)]
+            entry.tags = entry.tags + [("AL", 1)]
         else:
-            entry.tags = entry.tags + [("AL",0)]
+            entry.tags = entry.tags + [("AL", 0)]
         outBAM.write(entry)
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
 
-#Filters out both reads in a pair based on at least one criterion. Both reads must pass to be written.
-#Required: SAM file be sorted by name, supplementary and secondary alignments removed, unmapped reads retained.
+# Filters out both reads in a pair based on at least one criterion. Both reads must pass to be written.
+# Required: SAM file be sorted by name, supplementary and secondary alignments removed, unmapped reads retained.
 def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="default"):
-    if(criteria=="default"):
+    if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set. Currently supported: adapter pass/fail (\"adapter\"),\"ismapped\",\"editdistance\",\"family\",\"fuzzy\",\"qc\"")
-    if(passBAM=="default"):
+    if(passBAM == "default"):
         passBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}P.bam".format(criteria)
-    if(failBAM=="default"):
+    if(failBAM == "default"):
         failBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}F.bam".format(criteria)
-    inBAM=Samfile(inputBAM,"rb")
-    passFilter = Samfile(passBAM,"wb",template=inBAM)
-    failFilter = Samfile(failBAM,"wb",template=inBAM)
+    inBAM = pysam.Samfile(inputBAM, "rb")
+    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
+    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
 
     if("adapter" in criteria.lower()):
         while True:
             try:
-                read1=inBAM.next()
-                read2=inBAM.next()
-                assert read1.qname==read2.qname #Sanity check here to make sure that the reads are each other's mates
-                ALloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="AL"][0]
+                read1 = inBAM.next()
+                read2 = inBAM.next()
+                assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
+                ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "AL"][0]
                 try:
                     ALValue1 = int(read1.tags[ALloc1][1])
                 except IndexError:
                     ALValue1 = 0
-                ALloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="AL"][0]
+                ALloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "AL"][0]
                 try:
                     ALValue2 = int(read2.tags[ALloc2][1])
                 except IndexError:
                     ALValue2 = 0
-                if(ALValue1==0 or ALValue2==0 or ALValue1=="0" or ALValue2=="0"):
+                if(ALValue1 == 0 or ALValue2 == 0 or ALValue1 == "0" or ALValue2 == "0"):
                     failFilter.write(read1)
                     failFilter.write(read2)
                 else:
@@ -175,11 +174,11 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if("editdistance" in criteria.lower()):
         while True:
             try:
-                read1=inBAM.next()
-                read2=inBAM.next() 
-                assert read1.qname==read2.qname #Sanity check here to make sure that the reads are each other's mates
-                NMloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="NM"][0]
-                NMloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="NM"][0]
+                read1 = inBAM.next()
+                read2 = inBAM.next() 
+                assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
+                NMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "NM"][0]
+                NMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "NM"][0]
                 if(read1.tags[NMloc1][1] == 0 or read2.tags[NMloc2] == 0):    
                     failFilter.write(read1)
                     failFilter.write(read2)
@@ -196,11 +195,11 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if("family" in criteria.lower()):
         while True:
             try:
-                read1=inBAM.next()
-                read2=inBAM.next()
-                assert read1.qname==read2.qname #Sanity check here to make sure that the reads are each other's mates
-                FMloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="FM"][0]
-                FMloc2 = [i for i,j in enumerate(read2.tags) if j[0]=="FM"][0]
+                read1 = inBAM.next()
+                read2 = inBAM.next()
+                assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
+                FMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "FM"][0]
+                FMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "FM"][0]
                 FMValue1 = int(read1.tags[FMloc1][1])
                 FMValue2 = int(read2.tags[FMloc2][1])
                 if(FMValue1 < 2 or FMValue2 < 2):
@@ -219,11 +218,11 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if("fuzzy" in criteria.lower()):
         while True:
             try:
-                read1=inBAM.next()
-                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname==read2.qname
+                read1 = inBAM.next()
+                read2 = inBAM.next()
+                assert read1.qname == read2.qname
                 try:
-                    BDloc1 = [i for i,j in enumerate(read1.tags) if j[0]=="BD"][0]
+                    BDloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BD"][0]  # Just see if it's been set. IE, if a BD tag is found, then it is either a member of the larger families or has been merged into one.
                     passFilter.write(read1)
                     passFilter.write(read2)
                 except IndexError:
@@ -240,9 +239,9 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if("ismapped" in criteria.lower()):
         while True:
             try:
-                read1=inBAM.next()
-                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname==read2.qname
+                read1 = inBAM.next()
+                read2 = inBAM.next()  # TODO: add sanity check here to make sure that the reads are each other's mates
+                assert read1.qname == read2.qname
                 if(read1.is_unmapped or read2.is_unmapped):
                     failFilter.write(read1)
                     failFilter.write(read2)
@@ -259,9 +258,9 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if("qc" in criteria.lower()):
         while True:
             try:
-                read1=inBAM.next()
-                read2=inBAM.next() #TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname==read2.qname
+                read1 = inBAM.next()
+                read2 = inBAM.next()  # TODO: add sanity check here to make sure that the reads are each other's mates
+                assert read1.qname == read2.qname
                 if(read1.is_qcfail or read2.is_qcfail):
                     failFilter.write(read1)
                     failFilter.write(read2)
@@ -278,11 +277,11 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     raise NameError("No valid sorting option selected!")    
     return
 
-def removeSecondary(inBAM,outBAM="default"):
-    if(outBAM=="default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1])+'.2ndrm.bam'
-    input=Samfile(inBAM,"rb")
-    output=Samfile(outBAM,"wb",template=input)
+def removeSecondary(inBAM, outBAM="default"):
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.2ndrm.bam'
+    input = pysam.Samfile(inBAM, "rb")
+    output = pysam.Samfile(outBAM, "wb", template=input)
     print("Attempting to remove secondary")
     for entry in input:
         if(entry.is_secondary or entry.flag > 2048):
@@ -291,47 +290,47 @@ def removeSecondary(inBAM,outBAM="default"):
             output.write(entry)
     return outBAM
 
-def Sam2Bam(insam,outbam):
+def Sam2Bam(insam, outbam):
     from subprocess import call
-    output = open(outbam,'w',0)
-    command_str='samtools view -Sbh {}'.format(insam,shell=True)
+    output = open(outbam, 'w', 0)
+    command_str = 'samtools view -Sbh {}'.format(insam, shell=True)
     print(command_str)
-    call(command_str,stdout=output,shell=True)
-    return(command_str,outbam)
+    call(command_str, stdout=output, shell=True)
+    return(command_str, outbam)
 
-def singleBarcodeTagging(fastq,bam,outputBAM="default"):
-    if(outputBAM=="default"):
+def singleBarcodeTagging(fastq, bam, outputBAM="default"):
+    if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     print("Tagged BAM file is: {}.".format(outputBAM))
     reads = SeqIO.parse(fastq, "fastq")
-    #inBAM = removeSecondary(args.bam_file) #Artefactual code
-    postFilterBAM = Samfile(bam,"rb")
-    outBAM = Samfile(outputBAM,"wb",template=postFilterBAM)
+    # inBAM = removeSecondary(args.bam_file) #Artefactual code
+    postFilterBAM = pysam.Samfile(bam, "rb")
+    outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag>2048):
+        if(entry.is_secondary or entry.flag > 2048):
             continue
         else:
             tempRead = reads.next()
-        descArray=tempRead.description.split("###")
-        entry.tags = entry.tags + [("BS",descArray[-2].strip())]
-        entry.tags = entry.tags + [("FM",descArray[-1].strip())]
+        descArray = tempRead.description.split("###")
+        entry.tags = entry.tags + [("BS", descArray[-2].strip())]
+        entry.tags = entry.tags + [("FM", descArray[-1].strip())]
         if(descArray[-3].strip() == "AdapterPass"):
-            entry.tags = entry.tags + [("AL",1)]
+            entry.tags = entry.tags + [("AL", 1)]
         else:
-            entry.tags = entry.tags + [("AL",0)]
+            entry.tags = entry.tags + [("AL", 0)]
         outBAM.write(entry)
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
 
-def splitBAMByReads(BAM,read1BAM="default",read2BAM="default"):
-    presplitBAM = Samfile(BAM,"rb")
-    if(read1BAM=="default"):
-        read1BAM = '.'.join(BAM.split('.')[0:-1])+'.R1.bam'
-    if(read2BAM=="default"):
-        read2BAM = '.'.join(BAM.split('.')[0:-1])+'.R2.bam'
-    out1 = Samfile(read1BAM,"wb",template=presplitBAM)
-    out2 = Samfile(read2BAM,"wb",template=presplitBAM)
+def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
+    presplitBAM = pysam.Samfile(BAM, "rb")
+    if(read1BAM == "default"):
+        read1BAM = '.'.join(BAM.split('.')[0:-1]) + '.R1.bam'
+    if(read2BAM == "default"):
+        read2BAM = '.'.join(BAM.split('.')[0:-1]) + '.R2.bam'
+    out1 = pysam.Samfile(read1BAM, "wb", template=presplitBAM)
+    out2 = pysam.Samfile(read2BAM, "wb", template=presplitBAM)
     for entry in presplitBAM:
         if(entry.is_read1):
             out1.write(entry)
