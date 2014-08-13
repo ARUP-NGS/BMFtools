@@ -25,6 +25,7 @@ def main():
     parser.add_argument('-o','--opts', help="Please place additional arguments for the aligner after this tag in quotation marks. E.g.: --opts '-L 0' ", nargs='?', default='')
     parser.add_argument('-b','--BAM', help="BAM file, if alignment has already run and fastq family files created.",default="default")
     parser.add_argument('-s','--sam-file',help="Name for intermediate SAM file.",default="default")
+    parser.add_argument('--bed',help="full path to bed file used for variant-calling steps.",default="/yggdrasil/workspace/Barcode_Noah/WorkDir/xgen-pan-cancer-sorted.trim.bed")
     args=parser.parse_args()
     adapter=args.adapter
     
@@ -107,7 +108,7 @@ def main():
             print("Now generating the family counts.")
             FamilyFastq2,TotalReads2,ReadsWithFamilies2 = BarcodeFastqTools.GetFamilySize(trimfq2,BarcodeIndex2,keepFailed=args.keepFailed)
             print("Total number of reads in read file 2 is {}, whereas the number of reads with families is {} ".format(TotalReads2,ReadsWithFamilies2))
-            
+            zypper install R-patched R-patched-devel
             #Section 2: Completes Alignment
             print("Now commencing paired-end alignment with extra options: {}.".format(args.opts))
             outsam=args.sam_file
@@ -162,6 +163,11 @@ def main():
         print("Now filtering for reads with NM > 0")
         dissentingExtendedFamilies,boringFamilies = BarcodeBamtools.pairedFilterBam(familyMapped,criteria="editdistance")
         print("Dissenting extended families are in {}, while the mindless meat puppets are in {}".format(dissentingExtendedFamilies,boringFamilies))
+        print("Now creating a VCF using mpileup for variant calling.")
+        MpileupVCF = BarcodeVCFTools.MPileup(dissentingExtendedFamilies, args.bed, args.ref)
+        print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MpileupVCF))
+        CleanPileupVCF = BarcodeVCFTools.CleanupPileup(MpileupVCF)
+        print("Filtered Pileup is now located at {}".format(CleanPileupVCF))
         print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:
