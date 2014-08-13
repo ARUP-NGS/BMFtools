@@ -142,7 +142,7 @@ def main():
         mappedFamilies,lostFamilies = BarcodeBamtools.pairedFilterBam(mappedPairs,criteria="family")
         print("Now determining family size for the doubled barcodes.")
         familyMarked,uniqueBigFamilies = BarcodeBamtools.getFamilySizeBAM(mappedFamilies, doubleIndex)
-        familyMarkedAdapterPass,familyMarkedAdapterFail = BarcodeBamtools.pairedFilterBam(familyMarked,criteria="adapter")
+        familyMarkedAllPass,familyMarkedAllFail = BarcodeBamtools.pairedFilterBam(familyMarked,criteria="adapter,barcode,complexity,family,ismapped,qc")
         #UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
         '''
         print("Now bringing those within 2 base pair differences into the main group, marking the BD as their Hamming distance.")
@@ -154,20 +154,16 @@ def main():
         joinedFamilies = fuzzyJoining(familyMarked,joiningSAM)
         print("joinedFamilies is {}".format(joinedFamilies))
         '''
-        print("Now executing filter step: in an extended family")
-        familyFiltered, blackSheep = BarcodeBamtools.pairedFilterBam(familyMarkedAdapterPass,criteria="family")
-        print("Families >= 2 members are in {}, while Black Sheep are in {}".format(familyFiltered,blackSheep))
-        print("Now filtering out reads where a member in the pair is unmapped")
-        familyMapped, lostFamilies = BarcodeBamtools.pairedFilterBam(familyFiltered,criteria="ismapped")
-        print("Mapped BAM is {}, while the families which failed the filter are in {}".format(familyMapped,lostFamilies))
         print("Now filtering for reads with NM > 0")
-        dissentingExtendedFamilies,boringFamilies = BarcodeBamtools.pairedFilterBam(familyMapped,criteria="editdistance")
-        print("Dissenting extended families are in {}, while the mindless meat puppets are in {}".format(dissentingExtendedFamilies,boringFamilies))
+        dissentingFamilies, lostFamilies = BarcodeBamtools.pairedFilterBam(familyMarkedAllPass,criteria="editdistance")
+        print("Dissenting extended families are in {}, while the mindless meat puppets are in {}".format(dissentingFamilies,lostFamilies))
         print("Now creating a VCF using mpileup for variant calling.")
-        MpileupVCF = BarcodeVCFTools.MPileup(dissentingExtendedFamilies, args.bed, args.ref)
+        MpileupVCF = BarcodeVCFTools.MPileup(dissentingFamilies, args.bed, args.ref)
         print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MpileupVCF))
         CleanPileupVCF = BarcodeVCFTools.CleanupPileup(MpileupVCF)
         print("Filtered Pileup is now located at {}".format(CleanPileupVCF))
+        ParsedCleanVCF = BarcodeVCFTools.ParseVCF(CleanPileupVCF)
+        print("VCF has now been parsed in. Reading through each position to find locations with at least 3 consensus sequence groups.")
         print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:

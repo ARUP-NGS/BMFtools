@@ -11,7 +11,64 @@ def Bam2Sam(inbam, outsam):
     call(command_str, stdout=output, shell=True)
     return(command_str, outsam)
 
+def criterionTest(read1,read2,filter="default"):
+    list = "adapter barcode complexity editdistance family ismapped qc".split(' ')
+    
+    if(filter=="default"):
+        print("List of valid filters: {}".format(', '.join(list)))
+        raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
+    
+    if(filter=="adapter"):
+        ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "AL"][0]
+        try:
+            ALValue1 = int(read1.tags[ALloc1][1])
+        except IndexError:
+            ALValue1 = 0
+        ALloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "AL"][0]
+        try:
+            ALValue2 = int(read2.tags[ALloc2][1])
+        except IndexError:
+            ALValue2 = 0
+        if(ALValue1 == 0 or ALValue2 == 0 or ALValue1 == "0" or ALValue2 == "0"):
+            return False
+    
+    if(filter=="barcode"):
+        BDloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BD"][0] 
+        BDloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "BD"][0]
+        if(read1.tags[BDloc1][1]!=read2.tags[BDloc2][1]):
+            return False
+        
+    if(filter=="complexity"):
+        if("AAAAAAAAAAA" in str(read1.tags)+str(read2.tags) or "TTTTTTTTTTT" in str(read1.tags)+str(read2.tags) or "GGGGGGGGGGG" in str(read1.tags) + str(read2.tags) or "CCCCCCCCCCC" in str(read1.tags)+str(read2.tags)):
+            return False
+        
+    if(filter=="editdistance"):
+        NMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "NM"][0]
+        NMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "NM"][0]
+        if(read1.tags[NMloc1][1] == 0 or read2.tags[NMloc2] == 0):
+            return False
+        
+    if(filter=="family"):
+        FMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "FM"][0]
+        FMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "FM"][0]
+        FMValue1 = int(read1.tags[FMloc1][1])
+        FMValue2 = int(read2.tags[FMloc2][1])
+        if(FMValue1 < 6 or FMValue2 < 6):
+            return False
+    
+    if(filter=="ismapped"):
+        if(read1.is_unmapped or read2.is_unmapped):
+            return False
+     
+    if(filter=="qc"):
+        if(read1.is_qcfail or read2.is_qcfail):
+            return False
+    
+    return True
+        
+    #TODO: Finish expanding the criterion test to make filtering faster.
 # I'm not a huge fan of this. We could only rescue a small fraction. Maybe it becomes valuable if we have deeper coverage, but for now, we can't really get much out of this.
+
 '''
 def fuzzyJoining(inputBAM,referenceFasta,output="default",):
     import subprocess
@@ -24,6 +81,8 @@ def GenerateBarcodeIndexBAM(doubleTaggedBAM, index_file="default"):
         index_file = '.'.join(doubleTaggedBAM.split('.')[0:-2]) + ".DoubleIdx"
     call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
     return index_file
+
+#TODO: Discard reads with inadequate complexity (>10 consecutive identical nucleotides.
 
 def GenerateBarcodeIndexReference(doubleIdx, output="default"):
     if(output == "default"):
@@ -116,7 +175,11 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default"):
         elif(entry.is_read2):
             # print("Read is read 2, with name {}. Now getting variables from read 2's files for the tags.".format(entry.qname))
             tempRead = read2.next()
-            # print("Read description (for debugging purposes) is {}".format(tempRead.description))
+            # print("Read description (for debugging purposeMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "NM"][0]
+                NMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "NM"][0]
+                if(read1.tags[NMloc1][1] == 0 or read2.tags[NMloc2] == 0):    
+                    failFilter.write(read1)
+                    failFilter.write(read2)s) is {}".format(tempRead.description))
         descArray = tempRead.description.split("###")
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
@@ -129,7 +192,7 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default"):
     postFilterBAM.close()
     return outputBAM
 
-# Filters out both reads in a pair based on at least one criterion. Both reads must pass to be written.
+# Filters out both reads in a pair based on a list of comma-separated criteria. Both reads must pass to be written.
 # Required: SAM file be sorted by name, supplementary and secondary alignments removed, unmapped reads retained.
 def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="default"):
     if(criteria == "default"):
@@ -141,140 +204,26 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
-
-    if("adapter" in criteria.lower()):
-        while True:
-            try:
-                read1 = inBAM.next()
-                read2 = inBAM.next()
-                assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
-                ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "AL"][0]
-                try:
-                    ALValue1 = int(read1.tags[ALloc1][1])
-                except IndexError:
-                    ALValue1 = 0
-                ALloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "AL"][0]
-                try:
-                    ALValue2 = int(read2.tags[ALloc2][1])
-                except IndexError:
-                    ALValue2 = 0
-                if(ALValue1 == 0 or ALValue2 == 0 or ALValue1 == "0" or ALValue2 == "0"):
-                    failFilter.write(read1)
-                    failFilter.write(read2)
-                else:
-                    passFilter.write(read1)
-                    passFilter.write(read2)
-            except StopIteration:
-                break
-        passFilter.close()
-        failFilter.close()
-        inBAM.close()
-        return passBAM, failBAM
     
-    if("editdistance" in criteria.lower()):
-        while True:
-            try:
-                read1 = inBAM.next()
-                read2 = inBAM.next() 
-                assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
-                NMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "NM"][0]
-                NMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "NM"][0]
-                if(read1.tags[NMloc1][1] == 0 or read2.tags[NMloc2] == 0):    
+    while True:
+        try:
+            read1 = inBAM.next()
+            read2 = inBAM.next()
+            assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
+            for criterion in criteria.lower.replace(' ','').split(','):
+                if(criterionTest(read1,read2,filter=criterion)==False):
                     failFilter.write(read1)
                     failFilter.write(read2)
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-            except StopIteration:
-                break
+        except StopIteration:
+            break
         passFilter.close()
         failFilter.close()
         inBAM.close()
         return passBAM, failBAM
-    
-    if("family" in criteria.lower()):
-        while True:
-            try:
-                read1 = inBAM.next()
-                read2 = inBAM.next()
-                assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
-                FMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "FM"][0]
-                FMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "FM"][0]
-                FMValue1 = int(read1.tags[FMloc1][1])
-                FMValue2 = int(read2.tags[FMloc2][1])
-                if(FMValue1 < 2 or FMValue2 < 2):
-                    failFilter.write(read1)
-                    failFilter.write(read2)
-                else:
-                    passFilter.write(read1)
-                    passFilter.write(read2)
-            except StopIteration:
-                break
-        passFilter.close()
-        failFilter.close()
-        inBAM.close()
-        return passBAM, failBAM
-    
-    if("fuzzy" in criteria.lower()):
-        while True:
-            try:
-                read1 = inBAM.next()
-                read2 = inBAM.next()
-                assert read1.qname == read2.qname
-                try:
-                    BDloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BD"][0]  # Just see if it's been set. IE, if a BD tag is found, then it is either a member of the larger families or has been merged into one.
-                    passFilter.write(read1)
-                    passFilter.write(read2)
-                except IndexError:
-                    failFilter.write(read1)
-                    failFilter.write(read2)
-            except StopIteration:
-                break
-        passFilter.close()
-        failFilter.close()
-        inBAM.close()
-        return passBAM, failBAM
-
-    
-    if("ismapped" in criteria.lower()):
-        while True:
-            try:
-                read1 = inBAM.next()
-                read2 = inBAM.next()  # TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname == read2.qname
-                if(read1.is_unmapped or read2.is_unmapped):
-                    failFilter.write(read1)
-                    failFilter.write(read2)
-                else:
-                    passFilter.write(read1)
-                    passFilter.write(read2)
-            except StopIteration:
-                break
-        passFilter.close()
-        failFilter.close()
-        inBAM.close()
-        return passBAM, failBAM
- 
-    if("qc" in criteria.lower()):
-        while True:
-            try:
-                read1 = inBAM.next()
-                read2 = inBAM.next()  # TODO: add sanity check here to make sure that the reads are each other's mates
-                assert read1.qname == read2.qname
-                if(read1.is_qcfail or read2.is_qcfail):
-                    failFilter.write(read1)
-                    failFilter.write(read2)
-                else:
-                    passFilter.write(read1)
-                    passFilter.write(read2)
-            except StopIteration:
-                break
-        passFilter.close()
-        failFilter.close()
-        inBAM.close()
-        return passBAM, failBAM
-   
-    raise NameError("No valid sorting option selected!")    
+    raise RuntimeWarning("This should never happen. Something went horribly wrong!")
     return
 
 def removeSecondary(inBAM, outBAM="default"):
