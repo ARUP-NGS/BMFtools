@@ -11,12 +11,16 @@ def Bam2Sam(inbam, outsam):
     call(command_str, stdout=output, shell=True)
     return(command_str, outsam)
 
-def criterionTest(read1,read2,filter="default"):
+def criteriaTest(read1,read2,filter="default"):
     list = "adapter barcode complexity editdistance family ismapped qc".split(' ')
     
     if(filter=="default"):
         print("List of valid filters: {}".format(', '.join(list)))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
+    
+    print("criteriaTest is now attempting to filter based on: {}.".format(filter))
+    if(filter not in list):
+        raise ValueError("Your filter is not a supported criterion. The list is: {}".format(list))
     
     if(filter=="adapter"):
         ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "AL"][0]
@@ -58,6 +62,7 @@ def criterionTest(read1,read2,filter="default"):
     
     if(filter=="ismapped"):
         if(read1.is_unmapped or read2.is_unmapped):
+            print("Read name pair {} has failed the mapping test.".format(read1.qname))
             return False
      
     if(filter=="qc"):
@@ -175,11 +180,6 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default"):
         elif(entry.is_read2):
             # print("Read is read 2, with name {}. Now getting variables from read 2's files for the tags.".format(entry.qname))
             tempRead = read2.next()
-            # print("Read description (for debugging purposeMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "NM"][0]
-                NMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "NM"][0]
-                if(read1.tags[NMloc1][1] == 0 or read2.tags[NMloc2] == 0):    
-                    failFilter.write(read1)
-                    failFilter.write(read2)s) is {}".format(tempRead.description))
         descArray = tempRead.description.split("###")
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
@@ -204,27 +204,29 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
-    
-    while True:
-        try:
-            read1 = inBAM.next()
-            read2 = inBAM.next()
+    criteriaList = criteria.lower().split(',')
+    for i, entry in enumerate(criteriaList):
+        print("Criteria #{} is \"{}\"".format(i,entry))
+    for read in inBAM:
+        if(read.is_read1):
+            read1 = read
+            continue
+        if(read.is_read2):
+            read2 = read
             assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
-            for criterion in criteria.lower.replace(' ','').split(','):
-                if(criterionTest(read1,read2,filter=criterion)==False):
+            for criterion in criteriaList:
+                print("Now filtering based on criterion {}".format(criterion))
+                result = criteriaTest(read1,read2,filter=criterion)
+                if(result==False):
                     failFilter.write(read1)
                     failFilter.write(read2)
                 else:
                     passFilter.write(read1)
                     passFilter.write(read2)
-        except StopIteration:
-            break
-        passFilter.close()
-        failFilter.close()
-        inBAM.close()
-        return passBAM, failBAM
-    raise RuntimeWarning("This should never happen. Something went horribly wrong!")
-    return
+    passFilter.close()
+    failFilter.close()
+    inBAM.close()
+    return passBAM, failBAM
 
 def removeSecondary(inBAM, outBAM="default"):
     if(outBAM == "default"):

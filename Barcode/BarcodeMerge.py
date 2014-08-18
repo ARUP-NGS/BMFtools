@@ -66,8 +66,6 @@ def main():
         print("Now tagging reads with barcodes, family counts, and a pass/fail for the \"adapter sequence\" (not really that, but it's a working appellation).")
         taggedBAM = BarcodeBamtools.singleBarcodeTagging(FamilyFastq,outbam)
         print("Now generating Hamming Distance matrix for all barcodes.")
-        HammingMatrix = BarcodeUtils.generateHammingMatrix(taggedBAM)
-        print("Hamming Matrix stored in file {}".format(HammingMatrix))
         print("This is far as the program goes at this point. Thank you for playing!")
         return
     #If paired-end
@@ -108,7 +106,6 @@ def main():
             print("Now generating the family counts.")
             FamilyFastq2,TotalReads2,ReadsWithFamilies2 = BarcodeFastqTools.GetFamilySize(trimfq2,BarcodeIndex2,keepFailed=args.keepFailed)
             print("Total number of reads in read file 2 is {}, whereas the number of reads with families is {} ".format(TotalReads2,ReadsWithFamilies2))
-            zypper install R-patched R-patched-devel
             #Section 2: Completes Alignment
             print("Now commencing paired-end alignment with extra options: {}.".format(args.opts))
             outsam=args.sam_file
@@ -138,8 +135,7 @@ def main():
         print("BAM with merged barcodes is {}".format(concatBS))
         print("Now generating double barcode index.")
         doubleIndex = BarcodeBamtools.GenerateBarcodeIndexBAM(concatBS)
-        mappedPairs,lostFamilies = BarcodeBamtools.pairedFilterBam(concatBS, criteria="ismapped")
-        mappedFamilies,lostFamilies = BarcodeBamtools.pairedFilterBam(mappedPairs,criteria="family")
+        mappedFamilies,lostAndAlone = BarcodeBamtools.pairedFilterBam(concatBS,criteria="ismapped,family")
         print("Now determining family size for the doubled barcodes.")
         familyMarked,uniqueBigFamilies = BarcodeBamtools.getFamilySizeBAM(mappedFamilies, doubleIndex)
         familyMarkedAllPass,familyMarkedAllFail = BarcodeBamtools.pairedFilterBam(familyMarked,criteria="adapter,barcode,complexity,family,ismapped,qc")

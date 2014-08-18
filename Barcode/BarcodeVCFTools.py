@@ -7,9 +7,16 @@ class VCFFile:
         self.header = VCFHeader
         self.Records = VCFEntries
        
-    def bedFilter(self,BedPath):
+    def Filter(self,filterOpt="default",bed="default"):
+        NewVCFEntries = []
+        for entry in self.VCFEntries:
+                if(criteriaTest(entry, filterOpt)==True):
+                    NewVCFEntries.append(entry)
+        if(bed!="default"):
+            filterOpt = filterOpt + "&" +  bed
+        NewVCFFile = VCFFile(NewVCFEntries,self.header,self.sampleName + "FilteredBy{}".format(filterOpt))
         #TODO: make a new VCFFile object based on location.
-        return
+        return NewVCFFile
     
     def len(self):
         try:
@@ -17,10 +24,16 @@ class VCFFile:
         except AttributeError:
             raise AttributeError("This VCFFile object has not been initialized.")
         
-    def write(self,FileHandle):
+    def write(self,Filename):
+        FileHandle = open(Filename,"w")
         for headerLine in self.header:
             FileHandle.write(headerLine)
-        #TODO: Finish this write function!
+        for VCFEntry in self.Records:
+            recordStr = '\t'.join([VCFEntry.CHROM,VCFEntry.POS,VCFEntry.ID,VCFEntry.REF,VCFEntry.ALT,VCFEntry.QUAL, \
+                                 VCFEntry.FILTER,VCFEntry.INFO,VCFEntry.FORMAT,VCFEntry.GENOTYPE,'\t'.join(VCFEntry.Samples)])
+            FileHandle.write(recordStr)
+        FileHandle.close()
+        return
 
 class VCFRecord:
     """A simple VCFRecord object, taken from an item from the list which ParseVCF returns as "VCFEntries" """
@@ -53,8 +66,10 @@ class VCFRecord:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
                 
-    def view(self):
-        return #TODO: finish this view/display function!
+    def str(self):
+        recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
+                                 self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE,'\t'.join(self.Samples)])
+        return recordStr
         
 #I also want to be able to grab all of the records for a given record, as well as grab the file from which the records came.
 
@@ -66,6 +81,32 @@ def CleanupPileup(inputPileup,outputPileup="default"):
     subprocess.call(commandStr,shell=True)
     subprocess.call("bcftools index {}".format(outputPileup))
     return outputPileup
+
+def criteriaTest(entry,filterOpt="default",bed="default"):
+    list="bed"
+    if(filterOpt=="default"):
+        print("List of valid filters: {}".format(', '.join(list)))
+        raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
+    if(filterOpt=="bed"):
+        if(bed=="default"):
+            raise ValueError("Bed file must be provided in order to filter thereby!")
+        bedHandle = open(bed,"r")
+        bedEntries = [line.strip().split('\t') for line in bedHandle]
+        for line in bedEntries:
+            if(line[0]!=entry.CHROM):
+                continue
+            else:
+                if(int(entry.POS)-1 >= int(line[1]) and int(entry.POS)-1 <= int(line[2])):
+                    bedHandle.close()
+                    return True
+                else:
+                    continue
+        bedHandle.close()
+        return False
+    raise RuntimeWarning("This should never happen. It seems that no valid filters were set and then something went horribly wrong!")
+    return False
+
+
 
 def MPileup(inputBAM,bedfile,ref, outputBCF="default"):
     import subprocess
@@ -80,7 +121,8 @@ def MPileup(inputBAM,bedfile,ref, outputBCF="default"):
 
 def ParseVCF(inputVCFName):
     infile = open(inputVCFName,"r")
-    VCFEntries = [entry.strip().split('\t') for entry in infile.readlines() if entry[0]!="#"]
+    VCFLines = [entry.strip().split('\t') for entry in infile.readlines() if entry[0]!="#"]
     VCFHeader = [entry.strip() for entry in infile.readlines() if entry[0]=="#"]
+    VCFEntries = [VCFRecord(entry,inputVCFName) for entry in VCFLines]
     ParsedVCF = VCFFile(VCFEntries,VCFHeader,inputVCFName)
     return ParsedVCF
