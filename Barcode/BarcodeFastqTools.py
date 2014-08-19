@@ -32,7 +32,15 @@ def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):
     StdFastq.close()
     ElseFastq.close()
     ElseLocations.close()
-    return(StdFilename,ElseFilename)
+    return(StdFilename,ElseFilename
+
+def fastq_sort(in_fastq,out_fastq):
+    import subprocess
+    outfile=open(out_fastq,'w')
+    command_str='cat {} | paste - - - - | sort -k1,1 -t " " | tr "\t" "\n"'.format(in_fastq)
+    subprocess.call(command_str,stdout=outfile,shell=True)
+    outfile.close()
+    return(command_str))
 
 def FastqRegex(fq,string,matchFile="default",missFile="default"):
     from subprocess import call
@@ -46,14 +54,6 @@ def FastqRegex(fq,string,matchFile="default",missFile="default"):
     call(CommandStr2,shell=True)
     return(CommandStr,CommandStr2,matchFile,missFile)
 
-def fastq_sort(in_fastq,out_fastq):
-    import subprocess
-    outfile=open(out_fastq,'w')
-    command_str='cat {} | paste - - - - | sort -k1,1 -t " " | tr "\t" "\n"'.format(in_fastq)
-    subprocess.call(command_str,stdout=outfile,shell=True)
-    outfile.close()
-    return(command_str)
-
 def fastx_trim(infq, outfq, n):
     import subprocess
     command_str = ['fastx_trimmer','-l',str(n),'-i',infq,'-o',outfq]
@@ -61,7 +61,7 @@ def fastx_trim(infq, outfq, n):
     subprocess.call(command_str)
     return(command_str)
 
-def GenerateBarcodeIndex(tags_file,index_file="default"):
+def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
@@ -69,7 +69,7 @@ def GenerateBarcodeIndex(tags_file,index_file="default"):
     return index_file
 
 
-def GetFamilySize(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFailed=True):
+def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFailed=True):
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"

@@ -8,6 +8,8 @@ import BarcodeVCFTools
 import BarcodeUtils
 import BarcodeHTSTools
 import BarcodeFastqTools
+import re
+import subprocess
 #Contains utilities for the completion of a variety of 
 #tasks related to barcoded protocols for ultra-low
 #frequency variant detection, particularly for circulating tumor DNA
@@ -46,7 +48,7 @@ def main():
             print("Now removing the adapter and the barcode.")
             tags, trimfq = BarcodeFastqTools.TrimAdapter(StdFilenames,adapter)
             print("Now generating the barcode index.")
-            BarcodeIndex = BarcodeFastqTools.GenerateBarcodeIndex(tags)
+            BarcodeIndex = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags)
             FamilyFastq,TotalReads,ReadsWithFamilies = BarcodeFastqTools.GetFamilySize(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
             outsam=args.sam_file
             if(args.sam_file=="default"):
@@ -74,38 +76,23 @@ def main():
             #Section 1: Completes BarcodeUtils processing of FASTQ files with barcodes
             if(args.paired_end=="False" or args.paired_end==False):
                 raise NameError("You provided two fastq files, but you did not select paired-end as an option. What's up with that?")
-            if(args.keepFailed==False):
-                print("For some reason, I am using an old protocol which fails to take advantage of paired-end libraries.")
-                Regex11,Regex21,Hits1,Misses1=BarcodeFastqTools.FastqRegex(args.fq[0],adapter)
-                print("Regex operation complete. Now locating adapter sequence.")
-            else:
-                print("Regex operation avoided for compatibility.")
-                Hits1 = args.fq[0]
+            print("Regex operation avoided for compatibility.")
+            Hits1 = args.fq[0]
             StdFilenames1,ElseFilenames1=BarcodeFastqTools.AdapterLoc(Hits1,adapter=adapter,keepFailed=args.keepFailed)
             print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
             print("Now removing the adapter and the barcode.")
             tags1, trimfq1 = BarcodeFastqTools.TrimAdapter(StdFilenames1,adapter)
             print("Now generating the barcode index.")
-            BarcodeIndex1 = BarcodeFastqTools.GenerateBarcodeIndex(tags1)
-            print("Now generating the family counts.")
-            FamilyFastq1,TotalReads1,ReadsWithFamilies1 = BarcodeFastqTools.GetFamilySize(trimfq1,BarcodeIndex1,keepFailed=args.keepFailed)
-            print("Total number of reads in read file 1 is {}, whereas the number of reads with families is {} ".format(TotalReads1,ReadsWithFamilies1))
-            if(args.keepFailed==False):
-                print("For some reason, I am using an old protocol which fails to take advantage of paired-end libraries.")
-                Regex12,Regex22,Hits2,Misses2=BarcodeFastqTools.FastqRegex(args.fq[1],adapter)
-                print("Regex operation complete. Now locating adapter sequence.")
-            else:
-                print("Regex operation avoided for compatibility.")
-                Hits2 = args.fq[1]
+            
+            #For end 2
+            print("Regex operation avoided for compatibility.")
+            Hits2 = args.fq[1]
             StdFilenames2,ElseFilenames2=BarcodeFastqTools.AdapterLoc(Hits2,adapter=adapter,keepFailed=args.keepFailed)
             print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
             print("Now removing the adapter and the barcode.")
             tags2, trimfq2 = BarcodeFastqTools.TrimAdapter(StdFilenames2,adapter)
-            print("Now generating the barcode index.")
-            BarcodeIndex2 = BarcodeFastqTools.GenerateBarcodeIndex(tags2)
-            print("Now generating the family counts.")
-            FamilyFastq2,TotalReads2,ReadsWithFamilies2 = BarcodeFastqTools.GetFamilySize(trimfq2,BarcodeIndex2,keepFailed=args.keepFailed)
-            print("Total number of reads in read file 2 is {}, whereas the number of reads with families is {} ".format(TotalReads2,ReadsWithFamilies2))
+            
+            #TODO: remove family size steps in this part! Just pass the barcode into the bam file and use it to create the barcode family sizes!
             #Section 2: Completes Alignment
             print("Now commencing paired-end alignment with extra options: {}.".format(args.opts))
             outsam=args.sam_file
@@ -114,10 +101,10 @@ def main():
             outbam = '.'.join(outsam.split('.')[0:-1])+'.bam'
             print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
             if(args.aligner=="bwa"):
-                bwa_command = BarcodeHTSTools.align_bwa(FamilyFastq1,FamilyFastq2,args.ref,args.opts,outsam)
+                bwa_command = BarcodeHTSTools.align_bwa(trimfq1,trimfq2,args.ref,args.opts,outsam)
                 print("Aligner command was {}".format(bwa_command))
             else:
-                raise NameError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
+                raise ValueError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
             #Section 3:Completes SAM tagging
             print("Converting SAM to BAM")
             BarcodeBamtools.Sam2Bam(outsam, outbam)
@@ -134,11 +121,14 @@ def main():
         concatBS = BarcodeBamtools.mergeBarcodes(read1BAM,read2BAM)
         print("BAM with merged barcodes is {}".format(concatBS))
         print("Now generating double barcode index.")
-        doubleIndex = BarcodeBamtools.GenerateBarcodeIndexBAM(concatBS)
-        mappedFamilies,lostAndAlone = BarcodeBamtools.pairedFilterBam(concatBS,criteria="ismapped,family")
-        print("Now determining family size for the doubled barcodes.")
-        familyMarked,uniqueBigFamilies = BarcodeBamtools.getFamilySizeBAM(mappedFamilies, doubleIndex)
-        familyMarkedAllPass,familyMarkedAllFail = BarcodeBamtools.pairedFilterBam(familyMarked,criteria="adapter,barcode,complexity,family,ismapped,qc")
+        mappedPassingBarcodes,failures = BarcodeBamtools.pairedFilterBam(concatBS,criteria="complexity,adapter,barcode") #Barcodes must be the same on pairs, no homopolymers of >=10, adapter must be found in the correct location
+        doubleIndex = BarcodeBamtools.GenerateBarcodeIndexBAM(mappedPassingBarcodes)
+        p = subprocess.Popen(["wc","-l",doubleIndex],stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        print("Number of families found: {}".format(re.findall(r'\d+',out)[0]))
+        histochart = BarcodeBamtools.GenerateFamilyHistochart(doubleIndex)
+        print("Histochart of family sizes available at: {}".format(histochart))
+        
         #UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
         '''
         print("Now bringing those within 2 base pair differences into the main group, marking the BD as their Hamming distance.")
@@ -150,16 +140,35 @@ def main():
         joinedFamilies = fuzzyJoining(familyMarked,joiningSAM)
         print("joinedFamilies is {}".format(joinedFamilies))
         '''
+        
+        print("Now determining family size for the doubled barcodes.")
+        families,BarcodeFamilyList = BarcodeBamtools.getFamilySizeBAM(mappedPassingBarcodes, doubleIndex)
+        familyPass,familyFail = BarcodeBamtools.pairedFilterBam(families,criteria="family")
+        sortedByBarcode = BarcodeBamtools.BarcodeSort(familyPass)
+        #Consolidating families into single reads
+        consolidatedFamilies = BarcodeBamtools.Consolidate(sortedByBarcode)
+        consulate1,consulate2 = BarcodeBamtools.splitBAMByReads(consolidatedFamilies)
+        consulateFastq1 = BarcodeBamtools.SamtoolsBam2fq(consulate1, '.'.join(consulate1.split('.')[0:-1]) + ".cons.fastq")
+        consulateFastq2 = BarcodeBamtools.SamtoolsBam2fq(consulate2, '.'.join(consulate2.split('.')[0:-1]) + ".cons.fastq")
+        consSam = '.'.join(consulate1.split('.')[0:-1]) + "cons.bwa.sam"
+        consBam = '.'.join(consulate1.split('.')[0:-1]) + "cons.bwa.bam"
+        bwa_command = BarcodeHTSTools.align_bwa(consulateFastq1,consulateFastq2,args.ref,args.opts,consSam)
+        commandStr, consBam = BarcodeBamtools.Sam2Bam(consSam,consBam) 
+
+        ####Variant Calling Step using MPileup
         print("Now filtering for reads with NM > 0")
-        dissentingFamilies, lostFamilies = BarcodeBamtools.pairedFilterBam(familyMarkedAllPass,criteria="editdistance")
-        print("Dissenting extended families are in {}, while the mindless meat puppets are in {}".format(dissentingFamilies,lostFamilies))
+        dissentingCons,boringCons = BarcodeBamtools.pairedFilterBam(consBam,'editdistance')
+        print("Dissenting consolidated families are in {}, while the mindless meat puppets are in {}".format(dissentingCons,boringCons))
+        print("Now sorting reads by coordinate to prepare for MPileup.")
+        CorrCons = BarcodeBamtools.CorrSort(dissentingCons)
+        
         print("Now creating a VCF using mpileup for variant calling.")
-        MpileupVCF = BarcodeVCFTools.MPileup(dissentingFamilies, args.bed, args.ref)
-        print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MpileupVCF))
-        CleanPileupVCF = BarcodeVCFTools.CleanupPileup(MpileupVCF)
-        print("Filtered Pileup is now located at {}".format(CleanPileupVCF))
-        ParsedCleanVCF = BarcodeVCFTools.ParseVCF(CleanPileupVCF)
-        print("VCF has now been parsed in. Reading through each position to find locations with at least 3 consensus sequence groups.")
+        MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, args.bed, args.ref)
+        print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
+        ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
+        ParsedVCF.cleanRecords() #Removes entries in the VCF where there is no variant
+        CleanParsedVCF = BarcodeVCFTools.CleanupPileup(MPileupVCF)
+        
         print("This is far as the program goes at this point. Thank you for playing!")
         return
     else:

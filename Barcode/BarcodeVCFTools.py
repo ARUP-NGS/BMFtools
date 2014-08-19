@@ -6,6 +6,11 @@ class VCFFile:
         self.sampleName = inputVCFName
         self.header = VCFHeader
         self.Records = VCFEntries
+        
+    def cleanRecords(self):
+        NewRecordList = [entry for entry in self.Records if entry.ALT != "X"]
+        self.Records = NewRecordList
+        return
        
     def Filter(self,filterOpt="default",bed="default"):
         NewVCFEntries = []
@@ -38,15 +43,11 @@ class VCFFile:
 class VCFRecord:
     """A simple VCFRecord object, taken from an item from the list which ParseVCF returns as "VCFEntries" """
     def __init__(self,VCFEntry,VCFFilename):
-        self.CHROM, = VCFEntry[0]
+        self.CHROM = VCFEntry[0]
         self.POS = VCFEntry[1] 
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
-        alt = VCFEntry[4].split(',')
-        try:
-            self.ALT = alt.remove("X")
-        except ValueError:
-            self.ALT = alt 
+        self.ALT = VCFEntry[4] 
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]
@@ -60,7 +61,7 @@ class VCFRecord:
         self.GenotypeDict = dict(zip(self.FORMAT.split(':'),self.GENOTYPE.split(':')))
         self.GenotypeKeys = self.FORMAT.split(':')
         self.GenotypeValues = self.GENOTYPE.split(':')
-        self.Samples = []
+        self.Samples = [""]
         if(len(VCFEntry) > 10):
             for field in VCFEntry[10:]:
                 self.Samples.append(field)
@@ -77,9 +78,9 @@ def CleanupPileup(inputPileup,outputPileup="default"):
     import subprocess
     if(outputPileup=="default"):
         outputPileup='.'.join(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
-    commandStr = "awk '$5!=\"X\" {} > {}".format(inputPileup,outputPileup)
+    commandStr = "awk '$5!=\"X\"' {} > {}".format(inputPileup,outputPileup)
     subprocess.call(commandStr,shell=True)
-    subprocess.call("bcftools index {}".format(outputPileup))
+    subprocess.call("bcftools index {}".format(outputPileup),shell=True)
     return outputPileup
 
 def criteriaTest(entry,filterOpt="default",bed="default"):
@@ -115,7 +116,8 @@ def MPileup(inputBAM,bedfile,ref, outputBCF="default"):
             outputBCF = inputBAM.split('.')[0] + ".fullMP.vcf";
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf";
-    commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 -l {} {} | bcftools view > {}".format(ref,bedfile,inputBAM,outputBCF)
+    commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 -l {} {} | bcftools view - > {}".format(ref,bedfile,inputBAM,outputBCF)
+    print("{} is command string".format(commandStr))
     subprocess.call(commandStr, shell=True)
     return outputBCF
 
