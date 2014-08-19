@@ -67,9 +67,23 @@ def main():
             FamilyFastq=args.fq[0]
         print("Now tagging reads with barcodes, family counts, and a pass/fail for the \"adapter sequence\" (not really that, but it's a working appellation).")
         taggedBAM = BarcodeBamtools.singleBarcodeTagging(FamilyFastq,outbam)
-        print("Now generating Hamming Distance matrix for all barcodes.")
+        print("Now filtering based on complexity of barcodes, the adapter presence, and a reasonably-sized family.")
+        mappedPassingBarcodes,failures = BarcodeBamtools.singleFilterBam(taggedBAM,criteria="complexity,adapter,family") #Barcodes must be the same on pairs, no homopolymers of >=10, adapter must be found in the correct location
+        print("Consolidating families.")
+        ConsBamSingle = BarcodeBamtools.SingleConsolidate(mappedPassingBarcodes)
+        print("Removing reads which aren't different from the reference.")
+        dissentingCons,boringCons = BarcodeBamtools.singleFilterBam(ConsBamSingle,'editdistance')
+        print("Now sorting reads by coordinate to prepare for MPileup.")
+        CorrCons = BarcodeBamtools.CorrSort(dissentingCons)
+        print("Now creating a VCF using mpileup for variant calling.")
+        MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, args.bed, args.ref)
+        print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
+        ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
+        ParsedVCF.cleanRecords() #Removes entries in the VCF where there is no variant
+        CleanParsedVCF = BarcodeVCFTools.CleanupPileup(MPileupVCF)
         print("This is far as the program goes at this point. Thank you for playing!")
         return
+    
     #If paired-end
     elif(len(args.fq)==2):
         if(args.BAM=="default"):
@@ -92,7 +106,6 @@ def main():
             print("Now removing the adapter and the barcode.")
             tags2, trimfq2 = BarcodeFastqTools.TrimAdapter(StdFilenames2,adapter)
             
-            #TODO: remove family size steps in this part! Just pass the barcode into the bam file and use it to create the barcode family sizes!
             #Section 2: Completes Alignment
             print("Now commencing paired-end alignment with extra options: {}.".format(args.opts))
             outsam=args.sam_file

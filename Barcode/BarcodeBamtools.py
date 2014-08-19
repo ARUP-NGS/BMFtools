@@ -419,6 +419,33 @@ def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
     out2.close()
     return read1BAM, read2BAM
 
+def SingleConsolidate(inbam, outbam="default"):
+    if(outbam == "default"):
+        outbam = '.'.join(inbam.split('.')[0:-1]) + "consolidated.bam"
+    inputHandle = pysam.Samfile(inbam, 'rb')
+    outputHandle = pysam.Samfile(outbam, 'wb', template=inputHandle)
+    workingBarcode = ""
+    workingSet = []
+    for record in inputHandle:
+        BSloc = [i for i, j in enumerate(record.tags) if j[0] == "BS"][0]
+        barcodeRecord = record.tags[BSloc][1]
+        if(workingBarcode == ""):
+            workingBarcode = barcodeRecord
+            workingSet = []
+            workingSet.append(record)
+        elif(workingBarcode == barcodeRecord):
+            workingSet.append(barcodeRecord)
+        else:
+            mergedRecord, success = compareSamRecords(workingSet)
+            if(success==True):
+                outputHandle.write(mergedRecord)
+            WorkingSet = []
+            WorkingSet.append(record)
+            workingBarcode = barcodeRecord
+    inputHandle.close()
+    outputHandle.close()
+    return outbam 
+
 def singleCriteriaTest(read, filter="default"):
     list = "adapter barcode complexity editdistance family ismapped qc".split(' ')
     
