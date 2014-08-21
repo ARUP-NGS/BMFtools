@@ -32,7 +32,7 @@ def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):
     StdFastq.close()
     ElseFastq.close()
     ElseLocations.close()
-    return(StdFilename,ElseFilename
+    return StdFilename,ElseFilename
 
 def fastq_sort(in_fastq,out_fastq):
     import subprocess
@@ -40,7 +40,7 @@ def fastq_sort(in_fastq,out_fastq):
     command_str='cat {} | paste - - - - | sort -k1,1 -t " " | tr "\t" "\n"'.format(in_fastq)
     subprocess.call(command_str,stdout=outfile,shell=True)
     outfile.close()
-    return(command_str))
+    return(command_str)
 
 def FastqRegex(fq,string,matchFile="default",missFile="default"):
     from subprocess import call

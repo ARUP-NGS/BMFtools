@@ -59,7 +59,7 @@ def Consolidate(inbam, outbam="default"):
                 workingSet1.append(barcodeRecord1)
             else:
                 mergedRecord1, success = compareSamRecords(workingSet1)
-                if(success==True):
+                if(success == True):
                     outputHandle.write(mergedRecord1)
                 WorkingSet1 = []
                 WorkingSet1.append(record)
@@ -74,8 +74,8 @@ def Consolidate(inbam, outbam="default"):
             elif(workingBarcode2 == barcodeRecord2):
                 workingSet2.append(barcodeRecord2)
             else:
-                mergedRecord2,success = compareSamRecords(workingSet2)
-                if(success==True):
+                mergedRecord2, success = compareSamRecords(workingSet2)
+                if(success == True):
                     outputHandle.write(mergedRecord2)
                 WorkingSet2 = []
                 WorkingSet2.append(record)
@@ -118,9 +118,9 @@ def criteriaTest(read1, read2, filter="default"):
             return False
     
     if(filter == "barcode"):
-        BDloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BD"][0] 
-        BDloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "BD"][0]
-        if(read1.tags[BDloc1][1] != read2.tags[BDloc2][1]):
+        BSloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BS"][0] 
+        BSloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "BS"][0]
+        if(read1.tags[BSloc1][1] != read2.tags[BSloc2][1]):
             return False
         
     if(filter == "complexity"):
@@ -143,7 +143,6 @@ def criteriaTest(read1, read2, filter="default"):
     
     if(filter == "ismapped"):
         if(read1.is_unmapped or read2.is_unmapped):
-            print("Read name pair {} has failed the mapping test.".format(read1.qname))
             return False
      
     if(filter == "qc"):
@@ -306,7 +305,6 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
             read2 = read
             assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
             for criterion in criteriaList:
-                print("Now filtering based on criterion {}".format(criterion))
                 result = criteriaTest(read1, read2, filter=criterion)
                 if(result == False):
                     failed = True
@@ -345,7 +343,7 @@ def Sam2Bam(insam, outbam):
     call(command_str, stdout=output, shell=True)
     return(command_str, outbam)
 
-#Taken from Scrutils, by Jacob Durtschi
+# Taken from Scrutils, by Jacob Durtschi
 def SamtoolsBam2fq(bamPath, outFastqPath):
     import subprocess
     # Build commands that will be piped
@@ -364,12 +362,12 @@ def SamtoolsBam2fq(bamPath, outFastqPath):
     # Call piped commands
     process1 = subprocess.Popen(samtoolsBam2fqCommand, stdout=subprocess.PIPE, shell=False)
     process2 = subprocess.Popen(gzipCommand, stdin=process1.stdout, stdout=outFastq, shell=False)
-    #process1.stdout.close()
-    #process1.wait()
+    # process1.stdout.close()
+    # process1.wait()
     process2.wait()
     outFastq.flush()
     outFastq.close()
-    #if processErr:
+    # if processErr:
     #    print('Error: in bwa mem function', end='\n', file=sys.stderr)
     #    print('From bwa and samtools:', end='\n', file=sys.stderr)
     #    print(processErr, end='\n', file=sys.stderr)
@@ -389,7 +387,10 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default"):
         if(entry.is_secondary or entry.flag > 2048):
             continue
         else:
-            tempRead = reads.next()
+            try:
+                tempRead = reads.next()
+            except StopIteration:
+                break
         descArray = tempRead.description.split("###")
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
@@ -437,7 +438,7 @@ def SingleConsolidate(inbam, outbam="default"):
             workingSet.append(barcodeRecord)
         else:
             mergedRecord, success = compareSamRecords(workingSet)
-            if(success==True):
+            if(success == True):
                 outputHandle.write(mergedRecord)
             WorkingSet = []
             WorkingSet.append(record)
@@ -447,13 +448,12 @@ def SingleConsolidate(inbam, outbam="default"):
     return outbam 
 
 def singleCriteriaTest(read, filter="default"):
-    list = "adapter barcode complexity editdistance family ismapped qc".split(' ')
+    list = "adapter complexity editdistance family ismapped qc".split(' ')
     
     if(filter == "default"):
         print("List of valid filters: {}".format(', '.join(list)))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
     
-    print("criteriaTest is now attempting to filter based on: {}.".format(filter))
     if(filter not in list):
         raise ValueError("Your filter is not a supported criterion. The list is: {}".format(list))
     
@@ -463,7 +463,7 @@ def singleCriteriaTest(read, filter="default"):
             ALValue1 = int(read.tags[ALloc1][1])
         except IndexError:
             ALValue1 = 0
-        if(ALValue1 == 0 or ALValue1 == "0"):
+        if(ALValue1 == 0):
             return False
     
     if(filter == "complexity"):
@@ -510,7 +510,6 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     for read in inBAM:
         failed = False
         for criterion in criteriaList:
-            print("Now filtering based on criterion {}".format(criterion))
             result = singleCriteriaTest(read, filter=criterion)
             if(result == False):
                 failFilter.write(read)
@@ -518,9 +517,9 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
                 break
             else:
                 continue
-            if(failed == True):
-                break
-            passFilter.write(read)
+        if(failed == True):
+            continue
+        passFilter.write(read)
     passFilter.close()
     failFilter.close()
     inBAM.close()

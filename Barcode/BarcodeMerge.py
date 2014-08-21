@@ -49,7 +49,7 @@ def main():
             tags, trimfq = BarcodeFastqTools.TrimAdapter(StdFilenames,adapter)
             print("Now generating the barcode index.")
             BarcodeIndex = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags)
-            FamilyFastq,TotalReads,ReadsWithFamilies = BarcodeFastqTools.GetFamilySize(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
+            FamilyFastq,TotalReads,ReadsWithFamilies = BarcodeFastqTools.GetFamilySizeSingle(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
             outsam=args.sam_file
             if(args.sam_file=="default"):
                 outsam = '.'.join(trimfq.split('.')[0:-1])+'.'+args.aligner+'.sam'
@@ -72,14 +72,16 @@ def main():
         print("Consolidating families.")
         ConsBamSingle = BarcodeBamtools.SingleConsolidate(mappedPassingBarcodes)
         print("Removing reads which aren't different from the reference.")
-        dissentingCons,boringCons = BarcodeBamtools.singleFilterBam(ConsBamSingle,'editdistance')
+        dissentingCons,boringCons = BarcodeBamtools.singleFilterBam(ConsBamSingle,criteria='editdistance')
         print("Now sorting reads by coordinate to prepare for MPileup.")
         CorrCons = BarcodeBamtools.CorrSort(dissentingCons)
         print("Now creating a VCF using mpileup for variant calling.")
         MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, args.bed, args.ref)
         print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
         ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
+        print("Now removing those entries and parsing in the VCF Data")
         ParsedVCF.cleanRecords() #Removes entries in the VCF where there is no variant
+        print("Now removing entries from the VCF and writing to a new file.")
         CleanParsedVCF = BarcodeVCFTools.CleanupPileup(MPileupVCF)
         print("This is far as the program goes at this point. Thank you for playing!")
         return
@@ -123,11 +125,11 @@ def main():
             BarcodeBamtools.Sam2Bam(outsam, outbam)
         else:
             outbam=args.BAM
-            FamilyFastq1=args.fq[0]
-            FamilyFastq2=args.fq[1]
+            trimfq1=args.fq[0]
+            trimfq2=args.fq[1]
         #TODO: Remove reads in the region of interest
         print("Now tagging reads with barcodes, family counts, and a pass/fail for the \"adapter sequence\" (not really that, but it's a working appellation).")
-        taggedBAM = BarcodeBamtools.pairedBarcodeTagging(FamilyFastq1,FamilyFastq2,outbam)
+        taggedBAM = BarcodeBamtools.pairedBarcodeTagging(trimfq1,trimfq2,outbam)
         print("Now splitting the BAM into read 1 and read 2 files.")
         read1BAM, read2BAM = BarcodeBamtools.splitBAMByReads(taggedBAM)
         print("Now merging the barcodes from both BAM files and writing to a BAM file with a BS (Barcode Sequence) tag of the barcodes from the read and its mate.")
@@ -170,7 +172,7 @@ def main():
 
         ####Variant Calling Step using MPileup
         print("Now filtering for reads with NM > 0")
-        dissentingCons,boringCons = BarcodeBamtools.pairedFilterBam(consBam,'editdistance')
+        dissentingCons,boringCons = BarcodeBamtools.pairedFilterBam(consBam,criteria='editdistance')
         print("Dissenting consolidated families are in {}, while the mindless meat puppets are in {}".format(dissentingCons,boringCons))
         print("Now sorting reads by coordinate to prepare for MPileup.")
         CorrCons = BarcodeBamtools.CorrSort(dissentingCons)
@@ -186,7 +188,6 @@ def main():
         return
     else:
         raise NameError("0k4y, sm4r7 guy - what's ^ with providing me >2 fastq files??/??")
-    return
 
 if(__name__=="__main__"):
     main()

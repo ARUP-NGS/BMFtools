@@ -80,7 +80,6 @@ def CleanupPileup(inputPileup,outputPileup="default"):
         outputPileup='.'.join(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
     commandStr = "awk '$5!=\"X\"' {} > {}".format(inputPileup,outputPileup)
     subprocess.call(commandStr,shell=True)
-    subprocess.call("bcftools index {}".format(outputPileup),shell=True)
     return outputPileup
 
 def criteriaTest(entry,filterOpt="default",bed="default"):
