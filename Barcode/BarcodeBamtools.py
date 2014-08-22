@@ -24,7 +24,7 @@ def BarcodeSort(inbam, outbam="default"):
     return outbam
 
 def compareSamRecords(RecordList):
-    seqs = [record.seq for record in RecordList]
+    seqs = [record for record in RecordList]
     max = 0
     for seq in seqs:
         numEq = sum(seq == seqItem for seqItem in seqs)
@@ -179,7 +179,7 @@ def GenerateFamilyHistochart(BamBarcodeIndex, output="default"):
     handle = open(output, "w")
     handle.write("#OfFamilies\tFamilySize")
     handle.close()
-    commandStr = "cat {} | awk 'BEGIN {print $1}' | sort | uniq -c | awk 'BEGIN {OFS=\"\t\"};{print $1,$2}' >> {}".format(BamBarcodeIndex, output)
+    commandStr = "cat {} | awk 'BEGIN {{print $1}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(BamBarcodeIndex, output)
     call(commandStr, shell=True)
     print("Histochart for family sizes now available at {}".format(output))
     return output
