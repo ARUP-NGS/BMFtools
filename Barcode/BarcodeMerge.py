@@ -71,6 +71,10 @@ def main():
         mappedPassingBarcodes,failures = BarcodeBamtools.singleFilterBam(taggedBAM,criteria="complexity,adapter,family") #Barcodes must be the same on pairs, no homopolymers of >=10, adapter must be found in the correct location
         print("Consolidating families.")
         ConsBamSingle = BarcodeBamtools.SingleConsolidate(mappedPassingBarcodes)
+        print("Converting BAM to fastq.")
+        consulateFastq = BarcodeBamtools.SamtoolsBam2fq(ConsBamSingle, '.'.join(ConsBamSingle.split('.')[0:-1]) + ".cons.fastq")
+        print("Realigning.")
+        bwa_commandCons = BarcodeHTSTools.align_bwa_se(consulateFastq,args.ref,args.opts,'.'.join( consulateFastq.split('.')[0:-1] ) )
         print("Removing reads which aren't different from the reference.")
         dissentingCons,boringCons = BarcodeBamtools.singleFilterBam(ConsBamSingle,criteria='editdistance')
         print("Now sorting reads by coordinate to prepare for MPileup.")
@@ -160,6 +164,7 @@ def main():
         families,BarcodeFamilyList = BarcodeBamtools.getFamilySizeBAM(mappedPassingBarcodes, doubleIndex)
         familyPass,familyFail = BarcodeBamtools.pairedFilterBam(families,criteria="family")
         sortedByBarcode = BarcodeBamtools.BarcodeSort(familyPass)
+        
         #Consolidating families into single reads
         consolidatedFamilies = BarcodeBamtools.Consolidate(sortedByBarcode)
         consulate1,consulate2 = BarcodeBamtools.splitBAMByReads(consolidatedFamilies)

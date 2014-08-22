@@ -24,7 +24,7 @@ def BarcodeSort(inbam, outbam="default"):
     return outbam
 
 def compareSamRecords(RecordList):
-    seqs = [record for record in RecordList]
+    seqs = [record.seq for record in RecordList]
     max = 0
     for seq in seqs:
         numEq = sum(seq == seqItem for seqItem in seqs)
