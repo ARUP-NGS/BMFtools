@@ -30,7 +30,7 @@ def align_bwa(R1,R2,ref,opts,outsam):
     print(command_str)
     subprocess.call(command_str, stdout=output,shell=True)
     output.close()
-    return command_str;
+    return outsam,command_str;
 
 def align_bwa_se(reads,ref,opts,outsam):
     import subprocess
@@ -45,7 +45,7 @@ def align_bwa_se(reads,ref,opts,outsam):
     print(command_str)
     subprocess.call(command_str, stdout=output,shell=True)
     output.close()
-    return command_str;
+    return outsam,command_str;
 
 def align_snap(R1,R2,ref,opts,outbam):
     import subprocess
@@ -94,3 +94,6 @@ def sam_sort(insam,outsam):
     subprocess.call('rm {}'.format(tmpname),shell=True)
     both_cmds=command_str+"\n"+command_str1
     return(both_cmds)
+
+class IllegalArgumentError(ValueError):
+    pass

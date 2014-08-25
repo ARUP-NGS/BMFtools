@@ -35,7 +35,7 @@ def main():
     if(len(args.fq)==1):
         if(args.BAM=="default"):
             if(args.paired_end==True or args.paired_end=="True"):
-                raise NameError("You provided only one fastq, but you indicated that it was paired-end. Try again!")
+                raise BarcodeHTSTools.IllegalArgumentError("You provided only one fastq, but you indicated that it was paired-end. Try again!")
             if(args.keepFailed==False):
                 print("For some reason, I am using an old protocol which fails to take advantage of paired-end libraries.")
                 Regex1,Regex2,Hits,Misses=BarcodeFastqTools.FastqRegex(args.fq[0],adapter)
@@ -176,11 +176,11 @@ def main():
         commandStr, consBam = BarcodeBamtools.Sam2Bam(consSam,consBam) 
 
         ####Variant Calling Step using MPileup
-        print("Now filtering for reads with NM > 0")
-        dissentingCons,boringCons = BarcodeBamtools.pairedFilterBam(consBam,criteria='editdistance')
-        print("Dissenting consolidated families are in {}, while the mindless meat puppets are in {}".format(dissentingCons,boringCons))
+        #print("Now filtering for reads with NM > 0")
+        #dissentingCons,boringCons = BarcodeBamtools.pairedFilterBam(consBam,criteria='editdistance')
+        #print("Dissenting consolidated families are in {}, while the mindless meat puppets are in {}".format(dissentingCons,boringCons))
         print("Now sorting reads by coordinate to prepare for MPileup.")
-        CorrCons = BarcodeBamtools.CorrSort(dissentingCons)
+        CorrCons = BarcodeBamtools.CorrSort(consBam)
         
         print("Now creating a VCF using mpileup for variant calling.")
         MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, args.bed, args.ref)

@@ -18,7 +18,7 @@ def BarcodeSort(inbam, outbam="default"):
     outsam = '.'.join(outbam.split('.')[0:-1]) + "barcodeSorted.sam"
     from subprocess import call
     call("samtools view -H {} > {}".format(inbam, outbam), shell=True)
-    call("samtools view {} | awk '{print $(NF-2),$0' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
+    call("samtools view {} | awk '{{print $(NF-2),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
     call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
     call("rm {}".format(outsam), shell=True)
     return outbam
@@ -26,6 +26,7 @@ def BarcodeSort(inbam, outbam="default"):
 def compareSamRecords(RecordList):
     seqs = [record.seq for record in RecordList]
     max = 0
+    Success = False
     for seq in seqs:
         numEq = sum(seq == seqItem for seqItem in seqs)
         if(numEq > max):
@@ -56,7 +57,7 @@ def Consolidate(inbam, outbam="default"):
                 workingSet1 = []
                 workingSet1.append(record)
             elif(workingBarcode1 == barcodeRecord1):
-                workingSet1.append(barcodeRecord1)
+                workingSet1.append(record)
             else:
                 mergedRecord1, success = compareSamRecords(workingSet1)
                 if(success == True):
@@ -72,7 +73,7 @@ def Consolidate(inbam, outbam="default"):
                 workingSet2 = []
                 workingSet2.append(record)
             elif(workingBarcode2 == barcodeRecord2):
-                workingSet2.append(barcodeRecord2)
+                workingSet2.append(record)
             else:
                 mergedRecord2, success = compareSamRecords(workingSet2)
                 if(success == True):
@@ -158,11 +159,14 @@ def fuzzyJoining(inputBAM,referenceFasta,output="default",):
     return
 '''
 
-def GenerateBarcodeIndexBAM(doubleTaggedBAM, index_file="default"):
+def GenerateBarcodeIndexBAM(doubleTaggedBAM, index_file="default",paired=True):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(doubleTaggedBAM.split('.')[0:1]) + ".DoubleIdx"
-    call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
+    if(paired==True):
+        call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
+    if(paired==False):
+        call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
     return index_file
 
 def GenerateBarcodeIndexReference(doubleIdx, output="default"):
@@ -176,9 +180,6 @@ def GenerateFamilyHistochart(BamBarcodeIndex, output="default"):
     from subprocess import call
     if(output == "default"):
         output = '.'.join(BamBarcodeIndex.split('.')[:-1])
-    handle = open(output, "w")
-    handle.write("#OfFamilies\tFamilySize")
-    handle.close()
     commandStr = "cat {} | awk 'BEGIN {{print $1}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(BamBarcodeIndex, output)
     call(commandStr, shell=True)
     print("Histochart for family sizes now available at {}".format(output))
@@ -403,22 +404,6 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default"):
     postFilterBAM.close()
     return outputBAM
 
-def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
-    presplitBAM = pysam.Samfile(BAM, "rb")
-    if(read1BAM == "default"):
-        read1BAM = '.'.join(BAM.split('.')[0:-1]) + '.R1.bam'
-    if(read2BAM == "default"):
-        read2BAM = '.'.join(BAM.split('.')[0:-1]) + '.R2.bam'
-    out1 = pysam.Samfile(read1BAM, "wb", template=presplitBAM)
-    out2 = pysam.Samfile(read2BAM, "wb", template=presplitBAM)
-    for entry in presplitBAM:
-        if(entry.is_read1):
-            out1.write(entry)
-        if(entry.is_read2):
-            out2.write(entry)
-    out1.close()
-    out2.close()
-    return read1BAM, read2BAM
 
 def SingleConsolidate(inbam, outbam="default"):
     if(outbam == "default"):
@@ -435,7 +420,7 @@ def SingleConsolidate(inbam, outbam="default"):
             workingSet = []
             workingSet.append(record)
         elif(workingBarcode == barcodeRecord):
-            workingSet.append(barcodeRecord)
+            workingSet.append(record)
         else:
             mergedRecord, success = compareSamRecords(workingSet)
             if(success == True):
@@ -491,7 +476,6 @@ def singleCriteriaTest(read, filter="default"):
     
     return True
 
-
 # Filters out both reads in a pair based on a list of comma-separated criteria. Both reads must pass to be written.
 # Required: SAM file be sorted by name, supplementary and secondary alignments removed, unmapped reads retained.
 def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="default"):
@@ -524,3 +508,20 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
+
+def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
+    presplitBAM = pysam.Samfile(BAM, "rb")
+    if(read1BAM == "default"):
+        read1BAM = '.'.join(BAM.split('.')[0:-1]) + '.R1.bam'
+    if(read2BAM == "default"):
+        read2BAM = '.'.join(BAM.split('.')[0:-1]) + '.R2.bam'
+    out1 = pysam.Samfile(read1BAM, "wb", template=presplitBAM)
+    out2 = pysam.Samfile(read2BAM, "wb", template=presplitBAM)
+    for entry in presplitBAM:
+        if(entry.is_read1):
+            out1.write(entry)
+        if(entry.is_read2):
+            out2.write(entry)
+    out1.close()
+    out2.close()
+    return read1BAM, read2BAM
