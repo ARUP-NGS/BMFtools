@@ -24,7 +24,7 @@ def ENST2Gene(countsFile,table,outfile="default"):
     tableFile.close()
     counts = open(countsFile,"r")
     if(outfile=="default"):
-        outfile=-'.'.join(countsFile.split('.'))+'.mergedConv.counts.txt'
+        outfile='.'.join(countsFile.split('.')[0:-1])+'.mergedConv.counts.txt'
     write=open(outfile,"w",0)
     countsEntries = [line.split() for line in counts]
     SpamAndEggs = csv.writer(write,delimiter="\t")

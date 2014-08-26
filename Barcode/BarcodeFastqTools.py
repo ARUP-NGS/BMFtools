@@ -2,33 +2,26 @@ from Bio import SeqIO
 import pysam
 from BarcodeUtils import *
 
-def AdapterLoc(fq,adapter,bar_len=12,keepFailed=True):
+def HomingSeqLoc(fq,homing,bar_len=12):
     InFastq=SeqIO.parse(fq,"fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix=Tpref.split('/')[-1]
-    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format("adapter"+str(bar_len)), Prefix+ '.else.fastq', Prefix + '.else.supp'
-    StdFastq=open(StdFilename,'w',0) #Adapter at expected Location
-    ElseFastq=open(ElseFilename,'w',0) #Adapter sequence found elsewhere, even if it's simply part of the read itself
+    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format("homing"+str(bar_len)), Prefix+ '.else.fastq', Prefix + '.else.supp'
+    StdFastq=open(StdFilename,'w',0) #Homing at expected Location
+    ElseFastq=open(ElseFilename,'w',0) #Homing sequence found elsewhere, even if it's simply part of the read itself
     ElseLocations=open(ElseLoc,'w',0)
     for read in InFastq:
         seq = str(read.seq)
-        if(seq.find(adapter)==-1):
-            if(keepFailed==False):
-                raise NameError("Sanity check failure. Adapter Sequence Not Found. HTML 404")
-            else:
-                read.description+=" ###AdapterFail"
-                SeqIO.write(read,StdFastq,"fastq")
-        elif(seq[bar_len:bar_len+len(adapter)] == adapter):
-            read.description+=" ###AdapterPass"
-            SeqIO.write(read,StdFastq,"fastq") #Checks the expected adapter location. Avoiding find command, as sometimes the adapter sequence occurs before and at the expected location
+        if(seq.find(homing)==-1):
+            read.description+=" ###HomingFail"
+            SeqIO.write(read,StdFastq,"fastq")
+        elif(seq[bar_len:bar_len+len(homing)] == homing):
+            read.description+=" ###HomingPass"
+            SeqIO.write(read,StdFastq,"fastq") #Checks the expected homing location. Avoiding find command, as sometimes the homing sequence occurs before and at the expected location
         else:
-            if(keepFailed==False):
-                SeqIO.write(read,ElseFastq,"fastq")
-                ElseLocations.write(repr(seq.find(adapter)) + "\t" + read.name + "\n")
-            else:
-                read.description=" ###AdapterFail"
-                SeqIO.write(read,StdFastq,"fastq")
-                ElseLocations.write(repr(seq.find(adapter)) + "\t" + read.name + "\n")
+            read.description=" ###HomingFail"
+            SeqIO.write(read,StdFastq,"fastq")
+            ElseLocations.write(repr(seq.find(homing)) + "\t" + read.name + "\n")
     StdFastq.close()
     ElseFastq.close()
     ElseLocations.close()
@@ -65,11 +58,11 @@ def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    call("cat {} | sed 's:###: ###:g' | grep -v \"AdapterFail\" | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
+    call("cat {} | sed 's:###: ###:g' | grep -v \"HomingFail\" | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
     return index_file
 
 
-def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default",keepFailed=True):
+def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
@@ -98,8 +91,7 @@ def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default",k
         #print("The value of this comparison to 1 is {}".format(str(famSize=="1")))
         if(famSize == "1"):
             SeqIO.write(newRead,singlefqBuffer,"fastq")
-            if(keepFailed==True):
-                SeqIO.write(newRead,outfqBuffers,"fastq")
+            SeqIO.write(newRead,outfqBuffers,"fastq")
         else:
             ReadsWithFamilies+=1
             SeqIO.write(newRead,outfqBuffers,"fastq")
@@ -141,7 +133,7 @@ def reverseComplement(fq,dest="default"):
     OutFastq.close()
     return dest
 
-def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1,keepFailed=True):
+def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1):
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
     if(trim_err=="default"):
@@ -156,17 +148,17 @@ def TrimAdapter(fq,adapter,trimfq="default",bar_len=12,tags_file="default",trim_
     tagsOpen = open(tags_file,"w",0)
     trimOpen = open(trimfq,"w",0)
     InFastq = SeqIO.parse(fq,"fastq")
-    AdaptLen=len(adapter)
-    TotalTrim=AdaptLen+bar_len+start_trim
-    print("Adapter Length is {}".format(AdaptLen))
+    HomingLen=len(homing)
+    TotalTrim=HomingLen+bar_len+start_trim
+    print("Homing Length is {}".format(HomingLen))
     for record in InFastq:
         pre_tag = SeqRecord(
                 Seq(str(record.seq)[0:bar_len],"fastq"), \
                 id=record.id)
         pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:bar_len]
         '''
-        if adapter not in pre_tag.seq:
-            print("I'm sorry, but your adapter sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
+        if homing not in pre_tag.seq:
+            print("I'm sorry, but your homing sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
             SeqIO.write(record,errOpen,"fastq")
             continue
         '''

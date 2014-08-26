@@ -43,10 +43,10 @@ def main():
             else:
                 print("Regex operation avoided for compatibility.")
                 Hits = args.fq[0]
-            StdFilenames,ElseFilenames=BarcodeFastqTools.AdapterLoc(Hits,adapter=adapter,keepFailed=args.keepFailed)
+            StdFilenames,ElseFilenames=BarcodeFastqTools.HomingSeqLoc(Hits,adapter=adapter,keepFailed=args.keepFailed)
             print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
             print("Now removing the adapter and the barcode.")
-            tags, trimfq = BarcodeFastqTools.TrimAdapter(StdFilenames,adapter)
+            tags, trimfq = BarcodeFastqTools.TrimHoming(StdFilenames,adapter)
             print("Now generating the barcode index.")
             BarcodeIndex = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags)
             FamilyFastq,TotalReads,ReadsWithFamilies = BarcodeFastqTools.GetFamilySizeSingle(trimfq,BarcodeIndex,keepFailed=args.keepFailed)
@@ -74,9 +74,9 @@ def main():
         print("Converting BAM to fastq.")
         consulateFastq = BarcodeBamtools.SamtoolsBam2fq(ConsBamSingle, '.'.join(ConsBamSingle.split('.')[0:-1]) + ".cons.fastq")
         print("Realigning.")
-        bwa_commandCons = BarcodeHTSTools.align_bwa_se(consulateFastq,args.ref,args.opts,'.'.join( consulateFastq.split('.')[0:-1] ) )
+        ConsBamRealigned, bwa_commandCons = BarcodeHTSTools.align_bwa_se(consulateFastq,args.ref,args.opts,'.'.join( consulateFastq.split('.')[0:-1] ) + '.sam' )
         print("Removing reads which aren't different from the reference.")
-        dissentingCons,boringCons = BarcodeBamtools.singleFilterBam(ConsBamSingle,criteria='editdistance')
+        dissentingCons,boringCons = BarcodeBamtools.singleFilterBam(ConsBamRealigned,criteria='editdistance')
         print("Now sorting reads by coordinate to prepare for MPileup.")
         CorrCons = BarcodeBamtools.CorrSort(dissentingCons)
         print("Now creating a VCF using mpileup for variant calling.")
@@ -98,19 +98,19 @@ def main():
                 raise NameError("You provided two fastq files, but you did not select paired-end as an option. What's up with that?")
             print("Regex operation avoided for compatibility.")
             Hits1 = args.fq[0]
-            StdFilenames1,ElseFilenames1=BarcodeFastqTools.AdapterLoc(Hits1,adapter=adapter,keepFailed=args.keepFailed)
+            StdFilenames1,ElseFilenames1=BarcodeFastqTools.HomingSeqLoc(Hits1,adapter=adapter,keepFailed=args.keepFailed)
             print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
             print("Now removing the adapter and the barcode.")
-            tags1, trimfq1 = BarcodeFastqTools.TrimAdapter(StdFilenames1,adapter)
+            tags1, trimfq1 = BarcodeFastqTools.TrimHoming(StdFilenames1,adapter)
             print("Now generating the barcode index.")
             
             #For end 2
             print("Regex operation avoided for compatibility.")
             Hits2 = args.fq[1]
-            StdFilenames2,ElseFilenames2=BarcodeFastqTools.AdapterLoc(Hits2,adapter=adapter,keepFailed=args.keepFailed)
+            StdFilenames2,ElseFilenames2=BarcodeFastqTools.HomingSeqLoc(Hits2,adapter=adapter,keepFailed=args.keepFailed)
             print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
             print("Now removing the adapter and the barcode.")
-            tags2, trimfq2 = BarcodeFastqTools.TrimAdapter(StdFilenames2,adapter)
+            tags2, trimfq2 = BarcodeFastqTools.TrimHoming(StdFilenames2,adapter)
             
             #Section 2: Completes Alignment
             print("Now commencing paired-end alignment with extra options: {}.".format(args.opts))
@@ -120,7 +120,7 @@ def main():
             outbam = '.'.join(outsam.split('.')[0:-1])+'.bam'
             print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
             if(args.aligner=="bwa"):
-                bwa_command = BarcodeHTSTools.align_bwa(trimfq1,trimfq2,args.ref,args.opts,outsam)
+                outsam, bwa_command = BarcodeHTSTools.align_bwa(trimfq1,trimfq2,args.ref,args.opts,outsam)
                 print("Aligner command was {}".format(bwa_command))
             else:
                 raise ValueError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")

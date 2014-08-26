@@ -12,13 +12,18 @@ def Bam2Sam(inbam, outsam):
     call(command_str, stdout=output, shell=True)
     return(command_str, outsam)
 
-def BarcodeSort(inbam, outbam="default"):
+def BarcodeSort(inbam, outbam="default",paired=True):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
     outsam = '.'.join(outbam.split('.')[0:-1]) + "barcodeSorted.sam"
     from subprocess import call
     call("samtools view -H {} > {}".format(inbam, outbam), shell=True)
-    call("samtools view {} | awk '{{print $(NF-2),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
+    print("Now converting bam to sam for sorting by barcode.")
+    if(paired==False):
+        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
+    else:
+        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
+    print("Now converting sam back to bam for further operations.")
     call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
     call("rm {}".format(outsam), shell=True)
     return outbam
@@ -179,8 +184,9 @@ def GenerateBarcodeIndexReference(doubleIdx, output="default"):
 def GenerateFamilyHistochart(BamBarcodeIndex, output="default"):
     from subprocess import call
     if(output == "default"):
-        output = '.'.join(BamBarcodeIndex.split('.')[:-1])
-    commandStr = "cat {} | awk 'BEGIN {{print $1}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(BamBarcodeIndex, output)
+        output = '.'.join(BamBarcodeIndex.split('.')[:-1]) + 'hist.txt'
+    commandStr = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(BamBarcodeIndex, output)
+    print("Command str: {}".format(commandStr))
     call(commandStr, shell=True)
     print("Histochart for family sizes now available at {}".format(output))
     return output
@@ -253,16 +259,20 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
     outSAM.close()
     return outfile
 
-def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default"):
+def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default",secondSuppBAM="default"):
     if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
+    if(secondSuppBAM=="default"):
+        secondSuppBAM = bam.split('.')[0]+'.2ndSupp.bam'
     read1 = SeqIO.parse(fq1, "fastq")
     read2 = SeqIO.parse(fq2, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
+    suppBAM = pysam.Samfile(secondSuppBAM,"wb",template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
+            suppBAM.write(entry)
             continue
         if(entry.is_read1):
             # print("Read is read 1, with name {}. Now getting variables from read 1's files for the tags.".format(entry.qname))
@@ -272,12 +282,17 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default"):
             # print("Read is read 2, with name {}. Now getting variables from read 2's files for the tags.".format(entry.qname))
             tempRead = read2.next()
         descArray = tempRead.description.split("###")
-        entry.tags = entry.tags + [("BS", descArray[-1].strip())]
-        if(descArray[-2].strip() == "AdapterPass"):
+        try:
+            entry.tags = entry.tags + [("BS", descArray[2].strip())]
+        except IndexError:
+            print(descArray)
+            raise ValueError("Something's wrong!!!")
+        if(descArray[1].strip() == "AdapterPass"):
             entry.tags = entry.tags + [("AL", 1)]
         else:
             entry.tags = entry.tags + [("AL", 0)]
         outBAM.write(entry)
+    suppBAM.close()
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
@@ -395,6 +410,10 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default"):
         descArray = tempRead.description.split("###")
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
+        if("Adapter" not in descArray[-3]):
+            print("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3]))
+            print("descArray is {}".format(descArray))
+            raise ValueError("Something has gone wrong! The adapter pass/fail ")
         if(descArray[-3].strip() == "AdapterPass"):
             entry.tags = entry.tags + [("AL", 1)]
         else:
