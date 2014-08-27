@@ -119,7 +119,7 @@ def singleBamProc(FamilyFastq,outbam,ref,opts):
     consensuses,bwa_commandCons = BarcodeHTSTools.align_bwa_se(consulateFastq,ref,opts,consulateFastq.split('.')[0] + ".cons.realigned.sam" )
     print("Realigned, now in {}".format(consensuses))
     print("Now sorting reads by coordinate to prepare for MPileup.")
-    ConsBamRealigned = BarcodeBamtools.Sam2Bam(consensuses, '.'.join(consensuses.split('.')[0:-1])+'.bam')
+    ConsBamStr, ConsBamRealigned = BarcodeBamtools.Sam2Bam(consensuses, '.'.join(consensuses.split('.')[0:-1])+'.bam')
     CorrCons = BarcodeBamtools.CorrSort(ConsBamRealigned)
     return CorrCons
 

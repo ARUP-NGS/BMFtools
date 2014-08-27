@@ -26,7 +26,7 @@ def main():
     print(args.paired_end)
     if(args.paired_end==False or args.paired_end.lower()=="false"):
         if(args.initialStep==1):
-            outbam, FamilyFastq = BarcodeSteps.singleFastqProcAlign(args.fq[0], ref, homing,opts=opts)
+            outbam, FamilyFastq = BarcodeSteps.singleFastqProcAlign(args.fq[0], ref,aligner, homing=homing,opts=opts)
             ConsensusBam = BarcodeSteps.singleBamProc(FamilyFastq, outbam, ref, opts)
             CleanParsedVCF = BarcodeSteps.singleVCFProc(ConsensusBam, bed, ref)
             print("This is far as the program goes at this point. Thank you for playing!")

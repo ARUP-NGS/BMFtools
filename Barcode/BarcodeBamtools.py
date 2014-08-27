@@ -17,7 +17,7 @@ def BarcodeSort(inbam, outbam="default",paired=True):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
     outsam = '.'.join(outbam.split('.')[0:-1]) + "barcodeSorted.sam"
     from subprocess import call
-    call("samtools view -H {} > {}".format(inbam, outbam), shell=True)
+    call("samtools view -H {} > {}".format(inbam, outsam), shell=True)
     print("Now converting bam to sam for sorting by barcode.")
     if(paired==False):
         call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
@@ -92,6 +92,7 @@ def Consolidate(inbam, outbam="default"):
 
 def CorrSort(inbam, outprefix="default"):
     from subprocess import call
+    print("inbam variable is {}".format(inbam))
     if(outprefix == "default"):
         outprefix = '.'.join(inbam.split('.')[0:-1]) + ".CorrSort"
     command_str = "samtools sort {} {}".format(inbam, outprefix)
@@ -144,7 +145,7 @@ def criteriaTest(read1, read2, filter="default"):
         FMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "FM"][0]
         FMValue1 = int(read1.tags[FMloc1][1])
         FMValue2 = int(read2.tags[FMloc2][1])
-        if(FMValue1 < 6 or FMValue2 < 6):
+        if(FMValue1 < 4 or FMValue2 < 4):
             return False
     
     if(filter == "ismapped"):
