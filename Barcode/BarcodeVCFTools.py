@@ -1,4 +1,7 @@
-#!/mounts/anaconda/bin/python
+from BarcodeHTSTools import IllegalArgumentError
+
+#TODO: Write VCFRecordTest
+#TODO: 
 
 class VCFFile:
     """A simple VCFFile object, consisting of a header, a name for the file from which they came, and a list of all VCFRecords."""
@@ -6,22 +9,42 @@ class VCFFile:
         self.sampleName = inputVCFName
         self.header = VCFHeader
         self.Records = VCFEntries
+        self.sampleNamesArray = [inputVCFName]
+        self.numSamples = len(self.sampleNamesArray)
         
     def cleanRecords(self):
         NewRecordList = [entry for entry in self.Records if entry.ALT != "X"]
         self.Records = NewRecordList
-        return
        
-    def Filter(self,filterOpt="default",bed="default"):
+    def filter(self,filterOpt="default",bed="default"):
+        if(filterOpt=="default"):
+            try:
+                raise IllegalArgumentError("Sorry, I can't filter your VCF if you don't provide a filter method")
+            except IllegalArgumentError:
+                print("Returning nothing.")
+                return
         NewVCFEntries = []
         for entry in self.VCFEntries:
-                if(criteriaTest(entry, filterOpt)==True):
+                if(VCFRecordTest(entry, filterOpt)==True):
                     NewVCFEntries.append(entry)
-        if(bed!="default"):
+        if(filterOpt=="bed"):
+            if(bed=="default"):
+                try:
+                    raise IllegalArgumentError("I can't filter by a bed file if you don't provide one! (Fine, I'll take a Large, but I don't GAF, alright??")
+                except IllegalArgumentError:
+                    print("Returning nothing.")
             filterOpt = filterOpt + "&" +  bed
         NewVCFFile = VCFFile(NewVCFEntries,self.header,self.sampleName + "FilteredBy{}".format(filterOpt))
         #TODO: make a new VCFFile object based on location.
         return NewVCFFile
+    
+    def update(self):
+        SetNames = []
+        for record in self.Records:
+            record.update()
+            SetNames.append(record.VCFFilename)
+        self.sampleNamesArray = list(set(SetNames))
+        self.numSamples = len(self.sampleNamesArray)
     
     def len(self):
         try:
@@ -66,10 +89,27 @@ class VCFRecord:
             for field in VCFEntry[10:]:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
-                
+        
+    def update(self):
+        self.InfoValues = [','.join(InfoValArray) for InfoValArray in self.InfoValArrays]
+        infoEntryArray = [InfoKey+"="+InfoValue for InfoKey, InfoValue in zip(self.InfoKeys, self.InfoValues)]
+        self.INFO = ';'.join(infoEntryArray)
+        self.InfoKeys=[entry.split('=')[0] for entry in self.INFO.split(';')]
+        self.InfoValues=[entry.split('=')[1] for entry in self.INFO.split(';')]
+        self.InfoValArrays = [entry.split(',') for entry in self.InfoValues]
+        self.InfoDict=dict(zip(self.InfoKeys,self.InfoValues)) 
+        self.InfoArrayDict=dict(zip(self.InfoKeys,self.InfoValArrays)) 
+        self.GenotypeKeys = self.FORMAT.split(':')
+        self.GenotypeValues = self.GENOTYPE.split(':')
+        self.FORMAT = ":".join(self.GenotypeKeys)
+        self.GENOTYPE = ":".join(self.GenotypeValues)
+        self.GenotypeDict = dict(zip(self.FORMAT.split(':'),self.GENOTYPE.split(':')))
+            
     def str(self):
-        recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
-                                 self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE,'\t'.join(self.Samples)])
+        self.update()
+        if(len(self.Samples==0)):
+            recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
+                                 self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE])
         return recordStr
         
 #I also want to be able to grab all of the records for a given record, as well as grab the file from which the records came.

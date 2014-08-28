@@ -287,8 +287,8 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default",secondSuppBAM="defau
             entry.tags = entry.tags + [("BS", descArray[2].strip())]
         except IndexError:
             print(descArray)
-            raise ValueError("Something's wrong!!!")
-        if(descArray[1].strip() == "AdapterPass"):
+            raise IndexError("Something's wrong!!! Index error thrown!")
+        if(descArray[1].strip() == "HomingPass"):
             entry.tags = entry.tags + [("AL", 1)]
         else:
             entry.tags = entry.tags + [("AL", 0)]
@@ -411,11 +411,11 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default"):
         descArray = tempRead.description.split("###")
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
-        if("Adapter" not in descArray[-3]):
+        if("Homing" not in descArray[-3]):
             print("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3]))
             print("descArray is {}".format(descArray))
             raise ValueError("Something has gone wrong! The adapter pass/fail ")
-        if(descArray[-3].strip() == "AdapterPass"):
+        if(descArray[-3].strip() == "HomingPass"):
             entry.tags = entry.tags + [("AL", 1)]
         else:
             entry.tags = entry.tags + [("AL", 0)]
