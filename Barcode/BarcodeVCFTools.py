@@ -1,3 +1,5 @@
+#/mounts/anaconda/bin/python
+
 from BarcodeHTSTools import IllegalArgumentError
 
 #TODO: Write VCFRecordTest
