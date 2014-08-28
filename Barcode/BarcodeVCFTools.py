@@ -27,7 +27,7 @@ class VCFFile:
                 return
         NewVCFEntries = []
         for entry in self.VCFEntries:
-                if(VCFRecordTest(entry, filterOpt)==True):
+                if(VCFRecordTest(entry, filterOpt,bed=bed)==True):
                     NewVCFEntries.append(entry)
         if(filterOpt=="bed"):
             if(bed=="default"):
@@ -59,9 +59,7 @@ class VCFFile:
         for headerLine in self.header:
             FileHandle.write(headerLine)
         for VCFEntry in self.Records:
-            recordStr = '\t'.join([VCFEntry.CHROM,VCFEntry.POS,VCFEntry.ID,VCFEntry.REF,VCFEntry.ALT,VCFEntry.QUAL, \
-                                 VCFEntry.FILTER,VCFEntry.INFO,VCFEntry.FORMAT,VCFEntry.GENOTYPE,'\t'.join(VCFEntry.Samples)])
-            FileHandle.write(recordStr)
+            FileHandle.write(VCFEntry.str())
         FileHandle.close()
         return
 
@@ -106,13 +104,18 @@ class VCFRecord:
         self.FORMAT = ":".join(self.GenotypeKeys)
         self.GENOTYPE = ":".join(self.GenotypeValues)
         self.GenotypeDict = dict(zip(self.FORMAT.split(':'),self.GENOTYPE.split(':')))
-            
-    def str(self):
-        self.update()
         if(len(self.Samples==0)):
             recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
                                  self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE])
-        return recordStr
+        else:
+            sampleStr = "\t".join(self.Samples)
+            recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
+                                 self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE,sampleStr])
+        self.str=recordStr
+            
+    def str(self):
+        self.update()
+        return self.str
         
 #I also want to be able to grab all of the records for a given record, as well as grab the file from which the records came.
 
@@ -169,3 +172,32 @@ def ParseVCF(inputVCFName):
     VCFEntries = [VCFRecord(entry,inputVCFName) for entry in VCFLines]
     ParsedVCF = VCFFile(VCFEntries,VCFHeader,inputVCFName)
     return ParsedVCF
+
+def VCFRecordTest(inputVCFRec,filterOpt="default",bed="default",num=1337,I16type=1337):
+    passRecord = True
+    if(filterOpt=="default"):
+        raise IllegalArgumentError("A filter option must be set in order to pass or fail this VCFRecord.")
+    if(filterOpt=="bed"):
+        if(bed=="default"):
+            raise IllegalArgumentError("A bed file must be provided in order to filter this VCFRecord by the selected \"bed\" option")
+        bedReader = open(bed,'r')
+        bedEntries = [line.strip().split('\t') for line in bedReader.readlines()] 
+        chr, pos =inputVCFRec.CHROM, inputVCFRec.POS
+        chrMatches = [bedEntry for bedEntry in bedEntries if bedEntry[0]==chr]
+        try:
+            posMatches = [match for match in chrMatches if match[2]+1>=pos and match[1]+1<=pos]
+            if len(posMatches) >= 1 and passRecord==True:
+                passRecord = True
+            else:
+                passRecord = False
+        except ValueError:
+            raise ValueError("Malformed bedfile: the fields in the bed file cannot be converted to int.")
+            #print("Malformed bedfile: the fields in the bed file cannot be converted to int. Failing record just to be safe.")
+            #return False
+    if(filterOpt=="I16"):
+        if(I16type==1337):
+            raise IllegalArgumentError("A form of filtering based on I16 must be selected!")
+        
+    return passRecord
+            
+    

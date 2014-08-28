@@ -15,14 +15,14 @@ def Bam2Sam(inbam, outsam):
 def BarcodeSort(inbam, outbam="default",paired=True):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
-    outsam = '.'.join(outbam.split('.')[0:-1]) + "barcodeSorted.sam"
+    outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     from subprocess import call
     call("samtools view -H {} > {}".format(inbam, outsam), shell=True)
     print("Now converting bam to sam for sorting by barcode.")
     if(paired==False):
-        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
+        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam), shell=True)
     else:
-        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- -d' ' >> {}".format(inbam, outsam), shell=True)
+        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam), shell=True)
     print("Now converting sam back to bam for further operations.")
     call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
     call("rm {}".format(outsam), shell=True)
@@ -433,21 +433,40 @@ def SingleConsolidate(inbam, outbam="default"):
     workingBarcode = ""
     workingSet = []
     for record in inputHandle:
-        BSloc = [i for i, j in enumerate(record.tags) if j[0] == "BS"][0]
-        barcodeRecord = record.tags[BSloc][1]
+        barcodeRecord = [tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]
+        #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
+        #print("name of read with this barcode: {}".format(record.qname))
+        #print("Working set: {}".format(workingSet))
         if(workingBarcode == ""):
             workingBarcode = barcodeRecord
             workingSet = []
             workingSet.append(record)
+            continue
         elif(workingBarcode == barcodeRecord):
+            print(record.qname)
+            print(workingBarcode==barcodeRecord)
+            #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
+            #print("workingSet contains {} and is having this next record added: {}".format(','.join([entry.qname for entry in workingSet]),record.qname))
+            try:
+                #print("BS for first: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1]))
+                #print("BS for second: {}".format([tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
+                assert([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1]==[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1])
+            except AssertionError:
+                print("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
+                raise AssertionError("Well, there you go.")
+            #print("Barcode for first in set is {}. while barcode for the new item is {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]) )
             workingSet.append(record)
-        else:
+            continue
+        elif(workingBarcode != barcodeRecord):
             mergedRecord, success = compareSamRecords(workingSet)
             if(success == True):
                 outputHandle.write(mergedRecord)
-            WorkingSet = []
-            WorkingSet.append(record)
+            workingSet = []
+            workingSet.append(record)
             workingBarcode = barcodeRecord
+            continue
+        else:
+            raise RuntimeError("No idea what's going on...")
     inputHandle.close()
     outputHandle.close()
     return outbam 

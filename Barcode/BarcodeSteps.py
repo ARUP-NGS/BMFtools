@@ -111,8 +111,10 @@ def singleBamProc(FamilyFastq,outbam,ref,opts):
     print("Now filtering based on complexity of barcodes, the homing presence, and a reasonably-sized family.")
     taggedBAM = BarcodeBamtools.singleBarcodeTagging(FamilyFastq,outbam)
     mappedPassingBarcodes,failures = BarcodeBamtools.singleFilterBam(taggedBAM,criteria="complexity,adapter,family") #Barcodes must be the same on pairs, no homopolymers of >=10, homing sequence must be found in the correct location
+    print("Sorting by barcode to prepare for consolidation.")
+    sortPassingBarcodes = BarcodeBamtools.BarcodeSort(mappedPassingBarcodes, paired=False)
     print("Consolidating families.")
-    ConsBamSingle = BarcodeBamtools.SingleConsolidate(mappedPassingBarcodes)
+    ConsBamSingle = BarcodeBamtools.SingleConsolidate(sortPassingBarcodes)
     print("Converting BAM to fastq.")
     consulateFastq = BarcodeBamtools.SamtoolsBam2fq(ConsBamSingle, '.'.join(ConsBamSingle.split('.')[0:-1]) + ".cons.fastq")
     print("Consulate Fastq is at {}".format(consulateFastq))
