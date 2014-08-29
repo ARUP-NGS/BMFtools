@@ -17,34 +17,42 @@ def BarcodeSort(inbam, outbam="default",paired=True):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     from subprocess import call
-    call("samtools view -H {} > {}".format(inbam, outsam), shell=True)
+    headerCommand = "samtools view -H {} > {}".format(inbam,outsam)
+    print(headerCommand)
+    call(headerCommand, shell=True)
     print("Now converting bam to sam for sorting by barcode.")
     if(paired==False):
-        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam), shell=True)
+        commandStr="samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
+        print("Command string for this sorting process is: {}".format(commandStr))
+        call(commandStr,shell=True)
     else:
         call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam), shell=True)
+        print("Command string for this sorting process is: {}".format(commandStr))
+        call(commandStr,shell=True)
     print("Now converting sam back to bam for further operations.")
     call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
     call("rm {}".format(outsam), shell=True)
     return outbam
 
-def compareSamRecords(RecordList):
+def compareSamRecords(RecordList,stringency=0.9):
     seqs = [record.seq for record in RecordList]
     max = 0
     Success = False
     for seq in seqs:
+        print("Seq: {}".format(seq))
         numEq = sum(seq == seqItem for seqItem in seqs)
         if(numEq > max):
             max = numEq
             finalSeq = seq
     frac = numEq * 1.0 / len(RecordList)
-    if(frac > 0.9):
+    print("Fraction {}. Stringency: {}. Pass? {}.".format(frac,stringency,(frac>stringency)))
+    if(frac > stringency):
         Success = True
     consolidatedRecord = RecordList[0]
     consolidatedRecord.seq = finalSeq
     return consolidatedRecord, Success
 
-def Consolidate(inbam, outbam="default"):
+def Consolidate(inbam, outbam="default",stringency=0.9):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "consolidated.bam"
     inputHandle = pysam.Samfile(inbam, 'rb')
@@ -64,7 +72,7 @@ def Consolidate(inbam, outbam="default"):
             elif(workingBarcode1 == barcodeRecord1):
                 workingSet1.append(record)
             else:
-                mergedRecord1, success = compareSamRecords(workingSet1)
+                mergedRecord1, success = compareSamRecords(workingSet1,stringency=stringency)
                 if(success == True):
                     outputHandle.write(mergedRecord1)
                 WorkingSet1 = []
@@ -80,7 +88,7 @@ def Consolidate(inbam, outbam="default"):
             elif(workingBarcode2 == barcodeRecord2):
                 workingSet2.append(record)
             else:
-                mergedRecord2, success = compareSamRecords(workingSet2)
+                mergedRecord2, success = compareSamRecords(workingSet2,stringency=stringency)
                 if(success == True):
                     outputHandle.write(mergedRecord2)
                 WorkingSet2 = []
@@ -308,8 +316,8 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if(failBAM == "default"):
         failBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}F.bam".format(criteria)
     inBAM = pysam.Samfile(inputBAM, "rb")
-    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
-    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
+    passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
+    failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
         print("Criteria #{} is \"{}\"".format(i, entry))
@@ -425,7 +433,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default"):
     return outputBAM
 
 
-def SingleConsolidate(inbam, outbam="default"):
+def SingleConsolidate(inbam, outbam="default",stringency=0.9):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "consolidated.bam"
     inputHandle = pysam.Samfile(inbam, 'rb')
@@ -443,8 +451,8 @@ def SingleConsolidate(inbam, outbam="default"):
             workingSet.append(record)
             continue
         elif(workingBarcode == barcodeRecord):
-            print(record.qname)
-            print(workingBarcode==barcodeRecord)
+            #print(record.qname)
+            #print(workingBarcode==barcodeRecord)
             #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
             #print("workingSet contains {} and is having this next record added: {}".format(','.join([entry.qname for entry in workingSet]),record.qname))
             try:
@@ -458,7 +466,7 @@ def SingleConsolidate(inbam, outbam="default"):
             workingSet.append(record)
             continue
         elif(workingBarcode != barcodeRecord):
-            mergedRecord, success = compareSamRecords(workingSet)
+            mergedRecord, success = compareSamRecords(workingSet,stringency=stringency)
             if(success == True):
                 outputHandle.write(mergedRecord)
             workingSet = []
@@ -466,7 +474,7 @@ def SingleConsolidate(inbam, outbam="default"):
             workingBarcode = barcodeRecord
             continue
         else:
-            raise RuntimeError("No idea what's going on...")
+            raise RuntimeError("No idea what's going on. This code should be unreachable")
     inputHandle.close()
     outputHandle.close()
     return outbam 
@@ -525,8 +533,8 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     if(failBAM == "default"):
         failBAM = '.'.join(inputBAM.split('.')[0:-1]) + ".{}F.bam".format(criteria)
     inBAM = pysam.Samfile(inputBAM, "rb")
-    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
-    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
+    passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
+    failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
         print("Criteria #{} is \"{}\"".format(i, entry))

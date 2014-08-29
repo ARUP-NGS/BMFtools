@@ -1,6 +1,6 @@
 from Bio import SeqIO
 import pysam
-from BarcodeUtils import *
+import BarcodeUtils
 
 def HomingSeqLoc(fq,homing,bar_len=12):
     InFastq=SeqIO.parse(fq,"fastq")

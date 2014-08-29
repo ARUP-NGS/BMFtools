@@ -153,14 +153,14 @@ def criteriaTest(entry,filterOpt="default",bed="default"):
 
 
 
-def MPileup(inputBAM,bedfile,ref, outputBCF="default"):
+def MPileup(inputBAM,ref, outputBCF="default"):
     import subprocess
     if(outputBCF=="default"):
         if(len(inputBAM.split('.')) >= 6):
             outputBCF = inputBAM.split('.')[0] + ".fullMP.vcf";
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf";
-    commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 -l {} {} | bcftools view - > {}".format(ref,bedfile,inputBAM,outputBCF)
+    commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 {} | bcftools view - > {}".format(ref,inputBAM,outputBCF)
     print("{} is command string".format(commandStr))
     subprocess.call(commandStr, shell=True)
     return outputBCF
@@ -197,6 +197,7 @@ def VCFRecordTest(inputVCFRec,filterOpt="default",bed="default",num=1337,I16type
     if(filterOpt=="I16"):
         if(I16type==1337):
             raise IllegalArgumentError("A form of filtering based on I16 must be selected!")
+
         
     return passRecord
             

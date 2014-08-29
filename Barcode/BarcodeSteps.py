@@ -99,7 +99,7 @@ def pairedVCFProc(sortedByBarcode,ref="",opts="",bed=""):
     CorrCons = BarcodeBamtools.CorrSort(consBam)
     
     print("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, bed, ref)
+    MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, ref)
     print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
     ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
     ParsedVCF.cleanRecords() #Removes entries in the VCF where there is no variant
@@ -150,7 +150,7 @@ def singleFastqProcAlign(inFastq,ref,aligner,opts,homing="default",bamPrefix="de
 
 def singleVCFProc(ConsensusBam,bed,ref):
     print("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BarcodeVCFTools.MPileup(ConsensusBam, bed, ref)
+    MPileupVCF = BarcodeVCFTools.MPileup(ConsensusBam, ref)
     print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
     ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
     print("Now removing those entries and parsing in the VCF Data")
