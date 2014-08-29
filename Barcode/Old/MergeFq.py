@@ -7,21 +7,24 @@ def main():
     parser.add_argument('-i','--fq', help="Provide your fastq file(s). Note: if '--BAM' option is set, this needs to be the Family Fastq files. Note: must the the output of ", nargs = "+", metavar = ('reads'))
     parser.add_argument('-o','--outfq', help="Sets a destination file for the fastq. If not set, follows a default", metavar = ('reads'),default="default")
     parser.add_argument('-s','--stringency',help="Provide a stringency - fraction of family members who must entirely agree to be written.",default="0.9")
-    parser.add_argument()
     args=parser.parse_args()
-    inFq = SeqIO.parse(args.fq[0],'fastq')
     outFq = args.outfq
+    stringency = args.stringency
+    inFq = SeqIO.parse(args.fq[0],'fastq')
     if(outFq=="default"):
         outFq= '.'.join(args.fq[0].split('.')[0:-1]) + 'cons.fastq'
     outputHandle = open(outFq,'w')
-    stringency = args.stringency
     workingBarcode = ""
     workingSet = []
     for fqRec in inFq:
-        barcode4fq = fqRec.description.split("###").strip()
+        barcode4fq = fqRec.description.split("###")[-2].strip()
         #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
         #print("name of read with this barcode: {}".format(record.qname))
         #print("Working set: {}".format(workingSet))
+        if("AAAAAAAAAA" in barcode4fq or "TTTTTTTTTT" in barcode4fq or "CCCCCCCCCC" in barcode4fq or "GGGGGGGGGG" in barcode4fq):
+            continue
+        if(int(fqRec.description.split('###')[-1].strip()) < 2):
+            continue
         if(workingBarcode == ""):
             workingBarcode = barcode4fq
             workingSet = []
@@ -42,6 +45,7 @@ def main():
             raise RuntimeError("No idea what's going on. This code should be unreachable")
     inFq.close()
     outputHandle.close()
+    return "SMILES"
 
 if(__name__=="__main__"):
     main()

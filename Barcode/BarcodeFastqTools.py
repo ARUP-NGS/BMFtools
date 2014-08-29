@@ -2,6 +2,28 @@ from Bio import SeqIO
 import pysam
 import BarcodeUtils
 
+def BarcodeSort(inFastq,outFastq="default"):
+    if(outFastq=="default"):
+        outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
+    
+def compareFastqRecords(RecordList,stringency=0.9):
+    from Bio.SeqRecord import SeqRecord
+    seqs = [str(record.seq) for record in RecordList]
+    max = 0
+    Success = False
+    for seq in seqs:
+        #print("Seq: {}".format(str(seq)))
+        numEq = sum(str(seq) == str(seqItem) for seqItem in seqs)
+        if(numEq > max):
+            max = numEq
+            finalSeq = str(seq)
+    frac = numEq * 1.0 / len(RecordList)
+    #print("Fraction {}. Stringency: {}. Pass? {}.".format(frac,stringency,(frac>stringency)))
+    if(frac > stringency):
+        Success = True
+    consolidatedRecord = SeqRecord(seq=finalSeq,id=RecordList[0].id,letter_annotations=RecordList[0].letter_annotations,name=RecordList[0].name,description=RecordList[0].description)
+    return consolidatedRecord, Success
+
 def HomingSeqLoc(fq,homing,bar_len=12):
     InFastq=SeqIO.parse(fq,"fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
@@ -132,6 +154,44 @@ def reverseComplement(fq,dest="default"):
         SeqIO.write(rc_record,OutFastq,"fastq")
     OutFastq.close()
     return dest
+
+def singleFastqConsolidate(fq,outFq="default",stringency=0.9):
+    if(outFq=="default"):
+        outFq= '.'.join(fq.split('.')[0:-1]) + 'cons.fastq'
+    inFq = SeqIO.parse(fq,'fastq')
+    outputHandle = open(outFq,'w')
+    workingBarcode = ""
+    workingSet = []
+    for fqRec in inFq:
+        barcode4fq = fqRec.description.split("###")[-2].strip()
+        #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
+        #print("name of read with this barcode: {}".format(record.qname))
+        #print("Working set: {}".format(workingSet))
+        if("AAAAAAAAAA" in barcode4fq or "TTTTTTTTTT" in barcode4fq or "CCCCCCCCCC" in barcode4fq or "GGGGGGGGGG" in barcode4fq):
+            continue
+        if(int(fqRec.description.split('###')[-1].strip()) < 2):
+            continue
+        if(workingBarcode == ""):
+            workingBarcode = barcode4fq
+            workingSet = []
+            workingSet.append(fqRec)
+            continue
+        elif(workingBarcode == barcode4fq):
+            workingSet.append(fqRec)
+            continue
+        elif(workingBarcode != barcode4fq):
+            mergedRecord, success = compareFastqRecords(workingSet,stringency=float(stringency))
+            if(success == True):
+                SeqIO.write(mergedRecord, outputHandle, "fastq")
+            workingSet = []
+            workingSet.append(fqRec)
+            workingBarcode = barcode4fq
+            continue
+        else:
+            raise RuntimeError("No idea what's going on. This code should be unreachable")
+    inFq.close()
+    outputHandle.close()
+    return outFq
 
 def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1):
     from Bio.SeqRecord import SeqRecord
