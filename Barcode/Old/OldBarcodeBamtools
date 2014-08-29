@@ -400,20 +400,16 @@ def SamtoolsBam2fq(bamPath, outFastqPath):
 
     return outFastqPath
 
-def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"):
+def singleBarcodeTagging(fastq, bam, outputBAM="default"):
     if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
-    if(secondSuppBAM=="default"):
-        secondSuppBAM = bam.split('.')[0]+'.2ndSupp.bam'
     print("Tagged BAM file is: {}.".format(outputBAM))
     reads = SeqIO.parse(fastq, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
-    suppBAM = pysam.Samfile(secondSuppBAM,"wb",template=postFilterBAM)
     outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
-            suppBAM.write(entry)
             continue
         else:
             try:

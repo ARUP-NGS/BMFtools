@@ -3,9 +3,14 @@ import pysam
 import BarcodeUtils
 
 def BarcodeSort(inFastq,outFastq="default"):
+    from subprocess import call
     if(outFastq=="default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
-    
+    BSstring = "cat {} | paste - - - - | grep 'AdapterPass' | sed 's:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | sed 's:###\t:###:g' | sed 's:\t$::g' | sed 's:\t$::g' | tr '\t' '\n' > {}".format(inFastq,outFastq)
+    call(BSstring,shell=True)
+    print("Command: {}".format(BSstring))
+    return outFastq
+
 def compareFastqRecords(RecordList,stringency=0.9):
     from Bio.SeqRecord import SeqRecord
     seqs = [str(record.seq) for record in RecordList]

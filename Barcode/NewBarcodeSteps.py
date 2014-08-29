@@ -106,30 +106,26 @@ def pairedVCFProc(sortedByBarcode,ref="",opts="",bed=""):
     CleanParsedVCF = BarcodeVCFTools.CleanupPileup(MPileupVCF)
     return CleanParsedVCF
 
-def singleBamProc(FamilyFastq,outbam,ref,opts):
+def singleBamProc(FamilyFastq,ref,opts,aligner="bwa",bamPrefix="default"):
     print("Now tagging reads with barcodes, family counts, and a pass/fail for the homing sequence.")
     print("Now filtering based on complexity of barcodes, the homing presence, and a reasonably-sized family.")
+    if(bamPrefix == "default"):
+        bamPrefix = FamilyFastq.split('.')[0]+'.FMS'
+        outsam, outbam = bamPrefix + '.sam', bamPrefix + '.bam'
+    print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
+    if(aligner=="bwa"):
+        outsamFile, bwa_command = BarcodeHTSTools.align_bwa_se(FamilyFastq,ref,opts,outsam)
+        print("Aligner command was {}".format(bwa_command))
+    else:
+        raise BarcodeHTSTools.IllegalArgumentError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
+    print("Converting SAM to BAM")
+    BarcodeBamtools.Sam2Bam(outsam, outbam)
     taggedBAM = BarcodeBamtools.singleBarcodeTagging(FamilyFastq,outbam)
-    mappedPassingBarcodes,failures = BarcodeBamtools.singleFilterBam(taggedBAM,criteria="complexity,adapter,family") #Barcodes must be the same on pairs, no homopolymers of >=10, homing sequence must be found in the correct location
-    print("Sorting by barcode to prepare for consolidation.")
-    sortPassingBarcodes = BarcodeBamtools.BarcodeSort(mappedPassingBarcodes, paired=False)
-    print("Consolidating families.")
-    ConsBamSingle = BarcodeBamtools.SingleConsolidate(sortPassingBarcodes)
-    print("Converting BAM to fastq.")
-    consulateFastq = BarcodeBamtools.SamtoolsBam2fq(ConsBamSingle, '.'.join(ConsBamSingle.split('.')[0:-1]) + ".cons.fastq")
-    print("Consulate Fastq is at {}".format(consulateFastq))
-    consensuses,bwa_commandCons = BarcodeHTSTools.align_bwa_se(consulateFastq,ref,opts,consulateFastq.split('.')[0] + ".cons.realigned.sam" )
-    print("Realigned, now in {}".format(consensuses))
-    print("Now sorting reads by coordinate to prepare for MPileup.")
-    ConsBamStr, ConsBamRealigned = BarcodeBamtools.Sam2Bam(consensuses, '.'.join(consensuses.split('.')[0:-1])+'.bam')
-    CorrCons = BarcodeBamtools.CorrSort(ConsBamRealigned)
-    return CorrCons
+    return taggedBAM
 
-def singleFastqProcAlign(inFastq,ref,aligner,opts,homing="default",bamPrefix="default"):
+def singleFastqProc(inFastq,ref,opts,homing="default"):
     if(homing == "default"):
         homing = "CAGT"
-    if(bamPrefix == "default"):
-        bamPrefix = '.'.join(inFastq.split('.')[0:-1])
     StdFilenames,ElseFilenames=BarcodeFastqTools.HomingSeqLoc(inFastq,homing=homing)
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the homing and the barcode.")
@@ -139,19 +135,7 @@ def singleFastqProcAlign(inFastq,ref,aligner,opts,homing="default",bamPrefix="de
     FamilyFastq,TotalReads,ReadsWithFamilies = BarcodeFastqTools.GetFamilySizeSingle(trimfq,BarcodeIndex)
     BarcodeSortedFastq = BarcodeFastqTools.BarcodeSort(FamilyFastq)
     BarcodeConsFastq = BarcodeFastqTools.singleFastqConsolidate(BarcodeSortedFastq,stringency=0.667)
-    
-    ####Just to make the program stop here.
-    return "SMILES"
-    outsam, outbam = bamPrefix + '.sam', bamPrefix + '.bam'
-    print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
-    if(aligner=="bwa"):
-        outsamFile, bwa_command = BarcodeHTSTools.align_bwa_se(FamilyFastq,ref,opts,outsam)
-        print("Aligner command was {}".format(bwa_command))
-    else:
-        raise BarcodeHTSTools.IllegalArgumentError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
-    print("Converting SAM to BAM")
-    BarcodeBamtools.Sam2Bam(outsam, outbam)
-    return outbam, FamilyFastq
+    return BarcodeConsFastq
 
 def singleVCFProc(ConsensusBam,bed,ref):
     print("Now creating a VCF using mpileup for variant calling.")

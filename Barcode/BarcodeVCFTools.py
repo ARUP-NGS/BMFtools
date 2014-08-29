@@ -151,8 +151,6 @@ def criteriaTest(entry,filterOpt="default",bed="default"):
     raise RuntimeWarning("This should never happen. It seems that no valid filters were set and then something went horribly wrong!")
     return False
 
-
-
 def MPileup(inputBAM,ref, outputBCF="default"):
     import subprocess
     if(outputBCF=="default"):
