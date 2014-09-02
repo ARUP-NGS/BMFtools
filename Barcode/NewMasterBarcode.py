@@ -47,8 +47,8 @@ def main():
             raise ValueError("You have chosen an illegal initial step.")
     elif(args.paired_end==True or args.paired_end.lower()=="true"):
         if(args.initialStep==1):
-            outbam, trimfq1, trimfq2 = NewBarcodeSteps.pairedFastqProc(args.fq[0], args.fq[1], homing, ref=ref, aligner=aligner)
-            procSortedBam = NewBarcodeSteps.pairedBamProc(trimfq1, trimfq2, outbam)
+            outbam, trimfq1, trimfq2 = NewBarcodeSteps.pairedFastqProc(args.fq[0], args.fq[1], homing=homing)
+            procSortedBam = NewBarcodeSteps.pairedBamProc(trimfq1, trimfq2, outbam,aligner=aligner, ref=ref)
             CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(procSortedBam, ref=ref, opts=opts, bed=bed)
             print("This is far as the program goes at this point. Thank you for playing!")
         elif(args.initialStep==2):

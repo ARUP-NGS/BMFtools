@@ -148,6 +148,67 @@ def mergeSequencesFastq(fq1,fq2,output="default"):
     outFastq.close()
     return output
 
+def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",outFqSingle="default",stringency=0.9):
+    if(outFqPair1=="default"):
+        outFqPair1= '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
+    if(outFqPair2=="default"):
+        outFqPair2= '.'.join(fq2.split('.')[0:-1]) + 'cons.fastq'
+    if(outFqSingle=="default"):
+        outFqSingle = '.'.join(fq1.split('.')[0:-1]) + 'cons.single.fastq'
+    inFq1 = SeqIO.parse(fq1,'fastq')
+    inFq2 = SeqIO.parse(fq2,'fastq')
+    outputHandle1 = open(outFqPair1,'w')
+    outputHandle2 = open(outFqPair2,'w')
+    outputSingle = open(outFqSingle,'w')
+    workingBarcode = ""
+    workingSet1 = []
+    workingSet2 = []
+    for fqRec in inFq1:
+        fqRec2 = inFq2.next()
+        barcode4fq1 = fqRec.description.split("###")[-2].strip()
+        #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
+        #print("name of read with this barcode: {}".format(record.qname))
+        #print("Working set: {}".format(workingSet1))
+        if("AAAAAAAAAA" in barcode4fq1 or "TTTTTTTTTT" in barcode4fq1 or "CCCCCCCCCC" in barcode4fq1 or "GGGGGGGGGG" in barcode4fq1):
+            continue
+        if(int(fqRec.description.split('###')[-1].strip()) < 4):
+            continue
+        if(workingBarcode == ""):
+            workingBarcode = barcode4fq1
+            workingSet1 = []
+            workingSet1.append(fqRec)
+            workingSet2 = []
+            workingSet2.append(fqRec2)
+            continue
+        elif(workingBarcode == barcode4fq1):
+            workingSet1.append(fqRec)
+            workingSet2.append(fqRec2)
+            continue
+        elif(workingBarcode != barcode4fq1):
+            mergedRecord1, success1 = compareFastqRecords(workingSet1,stringency=float(stringency))
+            mergedRecord2, success2 = compareFastqRecords(workingSet2,stringency=float(stringency))
+            if(success1 == True and success2 == True):
+                SeqIO.write(mergedRecord1, outputHandle1, "fastq")
+                SeqIO.write(mergedRecord2, outputHandle2, "fastq")
+            elif(success1 == True):
+                SeqIO.write(mergedRecord1, outputSingle, "fastq")
+            elif(success2 == True):
+                SeqIO.write(mergedRecord2, outputSingle, "fastq")
+            workingSet1 = []
+            workingSet1.append(fqRec)
+            workingSet2 = []
+            workingSet2.append(fqRec2)
+            workingBarcode = barcode4fq1
+            continue
+        else:
+            raise RuntimeError("No idea what's going on. This code should be unreachable")
+    inFq1.close()
+    inFq2.close()
+    outputHandle1.close()
+    outputHandle2.close()
+    outputSingle.close()
+    return outFqPair1,outFqPair2,outFqSingle
+
 def reverseComplement(fq,dest="default"):
     if(dest=="default"):
         temp = '.'.join(fq.split('.')[0:-1])+"_rc.fastq"
@@ -160,9 +221,7 @@ def reverseComplement(fq,dest="default"):
     OutFastq.close()
     return dest
 
-def singleFastqConsolidate(fq,outFq="default",stringency=0.9,readEnd="-1"):
-    if(readEnd=="-1"):
-        raise ValueError("Sorry, I need you to specify whether it's read 1, read 2, or read 0. (Read 0: unpaired)")
+def singleFastqConsolidate(fq,outFq="default",stringency=0.9):
     if(outFq=="default"):
         outFq= '.'.join(fq.split('.')[0:-1]) + 'cons.fastq'
     inFq = SeqIO.parse(fq,'fastq')

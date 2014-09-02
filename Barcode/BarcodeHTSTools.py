@@ -21,7 +21,7 @@ def align_bwa(R1,R2,ref,opts,outsam):
     import subprocess
     opt_concat = ""
     if(opts== ""):
-        opts='-t 4 -v 1'
+        opts='-t 4 -v 1 -Y -T 0'
     output = open(outsam,'w',0)
     for i, opt_it in enumerate(opts.split()):
         opt_concat+=opt_it+" "
@@ -36,7 +36,7 @@ def align_bwa_se(reads,ref,opts,outsam):
     import subprocess
     opt_concat = ""
     if(opts== ""):
-        opts='-t 4 -T 0 -v 1'
+        opts='-t 4 -v 1 -Y -T 0'
     output = open(outsam,'w',0)
     for i, opt_it in enumerate(opts.split()):
         opt_concat+=opt_it+" "
