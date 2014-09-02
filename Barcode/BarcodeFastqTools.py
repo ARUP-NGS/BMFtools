@@ -6,7 +6,7 @@ def BarcodeSort(inFastq,outFastq="default"):
     from subprocess import call
     if(outFastq=="default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
-    BSstring = "cat {} | paste - - - - | grep 'AdapterPass' | sed 's:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | sed 's:###\t:###:g' | sed 's:\t$::g' | sed 's:\t$::g' | tr '\t' '\n' > {}".format(inFastq,outFastq)
+    BSstring = "cat {} | paste - - - - | grep 'HomingPass' | sed 's:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | sed 's:###\t:###:g' | sed 's:\t$::g' | sed 's:\t$::g' | tr '\t' '\n' > {}".format(inFastq,outFastq)
     call(BSstring,shell=True)
     print("Command: {}".format(BSstring))
     return outFastq
@@ -160,7 +160,9 @@ def reverseComplement(fq,dest="default"):
     OutFastq.close()
     return dest
 
-def singleFastqConsolidate(fq,outFq="default",stringency=0.9):
+def singleFastqConsolidate(fq,outFq="default",stringency=0.9,readEnd="-1"):
+    if(readEnd=="-1"):
+        raise ValueError("Sorry, I need you to specify whether it's read 1, read 2, or read 0. (Read 0: unpaired)")
     if(outFq=="default"):
         outFq= '.'.join(fq.split('.')[0:-1]) + 'cons.fastq'
     inFq = SeqIO.parse(fq,'fastq')

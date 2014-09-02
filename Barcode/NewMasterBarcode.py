@@ -26,7 +26,7 @@ def main():
     print(args.paired_end)
     if(args.paired_end==False or args.paired_end.lower()=="false"):
         if(args.initialStep==1):
-            consFq = NewBarcodeSteps.singleFastqProc(args.fq[0], ref,aligner=aligner, homing=homing,opts=opts)
+            consFq = NewBarcodeSteps.singleFastqProc(args.fq[0], homing=homing)
             TaggedBam = NewBarcodeSteps.singleBamProc(consFq, ref, opts, aligner=aligner)
             CleanParsedVCF = NewBarcodeSteps.singleVCFProc(TaggedBam, bed, ref)
             print("This is far as the program goes at this point. Thank you for playing!")
@@ -47,7 +47,7 @@ def main():
             raise ValueError("You have chosen an illegal initial step.")
     elif(args.paired_end==True or args.paired_end.lower()=="true"):
         if(args.initialStep==1):
-            outbam, trimfq1, trimfq2 = NewBarcodeSteps.pairedFastqProcAlign(args.fq[0], args.fq[1], homing, ref=ref, aligner=aligner)
+            outbam, trimfq1, trimfq2 = NewBarcodeSteps.pairedFastqProc(args.fq[0], args.fq[1], homing, ref=ref, aligner=aligner)
             procSortedBam = NewBarcodeSteps.pairedBamProc(trimfq1, trimfq2, outbam)
             CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(procSortedBam, ref=ref, opts=opts, bed=bed)
             print("This is far as the program goes at this point. Thank you for playing!")

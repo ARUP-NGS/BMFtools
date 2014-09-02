@@ -8,9 +8,26 @@ import BarcodeFastqTools
 import BarcodeHTSTools
 import BarcodeVCFTools
 
-def pairedBamProc(trimfq1, trimfq2,outbam):
+def pairedBamProc(consfq1, consfq2,opts="",bamPrefix="default",ref="default"):
+    if(ref=="default"):
+        raise ValueError("Reference index required!")
+    if(bamPrefix == "default"):
+        bamPrefix = '.'.join(inFastq1.split('.')[0:-1])
+    if(aligner=="default"):
+        print("No aligner set, defaulting to bwa.")
+        aligner="bwa"
+    outsamProperPair = bamPrefix + '.sam'#TODO: Parse out the fastq sets which both last through the merging step.
+    outbamProperPair = bamPrefix + '.bam'
+    print("The output SAM file with be {}, while the output BAM file will be {}".format(outsamProperPair,outbamPair))
+    if(aligner=="bwa"):
+        outsam, bwa_command = BarcodeHTSTools.align_bwa(consfq1,consfq2,ref,opts,outsam)
+        print("Aligner command was {}".format(bwa_command))
+    else:
+        raise ValueError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
+    print("Converting SAM to BAM")
+    BarcodeBamtools.Sam2Bam(outsam, outbam)
     print("Now tagging reads with barcodes, family counts, and a pass/fail for the homing sequence.")
-    taggedBAM = BarcodeBamtools.pairedBarcodeTagging(trimfq1,trimfq2,outbam)
+    taggedBAM = BarcodeBamtools.pairedBarcodeTagging(consfq1,consfq2,outbam)
     print("Now splitting the BAM into read 1 and read 2 files.")
     read1BAM, read2BAM = BarcodeBamtools.splitBAMByReads(taggedBAM)
     print("Now merging the barcodes from both BAM files and writing to a BAM file with a BS (Barcode Sequence) tag of the barcodes from the read and its mate.")
@@ -41,40 +58,31 @@ def pairedBamProc(trimfq1, trimfq2,outbam):
     sortedByBarcode = BarcodeBamtools.BarcodeSort(familyPass)
     return sortedByBarcode
 
-def pairedFastqProcAlign(inFastq1,inFastq2,homing,opts="",bamPrefix="default",ref="default", aligner="default"):
-    if(ref=="default"):
-        raise ValueError("Reference index required!")
+def pairedFastqProc(inFastq1,inFastq2,homing,ref="default", aligner="default"):
     if(homing == "default"):
         homing = "CAGT"
-    if(bamPrefix == "default"):
-        bamPrefix = '.'.join(inFastq1.split('.')[0:-1])
-    if(aligner=="default"):
-        aligner="bwa"
-    outsam = bamPrefix + '.sam'
-    outbam = bamPrefix + '.bam'
     #For reads 1
     StdFilenames1,ElseFilenames1=BarcodeFastqTools.HomingSeqLoc(inFastq1,homing=homing)
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the homing sequence and the barcode.")
     tags1, trimfq1 = BarcodeFastqTools.TrimHoming(StdFilenames1,homing)
     print("Now generating the barcode index.")
-    
+    BarcodeIndex1 = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags1)
+    FamilyFastq1,TotalReads1,ReadsWithFamilies1 = BarcodeFastqTools.GetFamilySizeSingle(trimfq1,BarcodeIndex1)
+    BarcodeSortedFastq1 = BarcodeFastqTools.BarcodeSort(FamilyFastq1)
+    BarcodeConsFastq1 = BarcodeFastqTools.singleFastqConsolidate(BarcodeSortedFastq1,stringency=0.667)
+     
     #For reads 2
     StdFilenames2,ElseFilenames2=BarcodeFastqTools.HomingSeqLoc(inFastq2,homing=homing)
     print("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
     print("Now removing the homing sequence and the barcode.")
     tags2, trimfq2 = BarcodeFastqTools.TrimHoming(StdFilenames2,homing)
     print("Now generating the barcode index.")
-    
-    print("The output SAM file with be {}, while the output BAM file will be {}".format(outsam,outbam))
-    if(aligner=="bwa"):
-        outsam, bwa_command = BarcodeHTSTools.align_bwa(trimfq1,trimfq2,ref,opts,outsam)
-        print("Aligner command was {}".format(bwa_command))
-    else:
-        raise ValueError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
-    print("Converting SAM to BAM")
-    BarcodeBamtools.Sam2Bam(outsam, outbam)
-    return outbam, trimfq1, trimfq2
+    BarcodeIndex2 = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags2)
+    FamilyFastq2,TotalReads2,ReadsWithFamilies2 = BarcodeFastqTools.GetFamilySizeSingle(trimfq2,BarcodeIndex2)
+    BarcodeSortedFastq2 = BarcodeFastqTools.BarcodeSort(famFq2)
+    BarcodeConsFastq2 = BarcodeFastqTools.singleFastqConsolidate(BarcodeSortedFastqi2,stringency=0.667)
+    return BarcodeConsFastq1, BarcodeConsFastq2
 
 def pairedVCFProc(sortedByBarcode,ref="",opts="",bed=""):
     if(bed==""):
@@ -123,7 +131,7 @@ def singleBamProc(FamilyFastq,ref,opts,aligner="bwa",bamPrefix="default"):
     taggedBAM = BarcodeBamtools.singleBarcodeTagging(FamilyFastq,outbam)
     return taggedBAM
 
-def singleFastqProc(inFastq,ref,opts,homing="default"):
+def singleFastqProc(inFastq,homing="default"):
     if(homing == "default"):
         homing = "CAGT"
     StdFilenames,ElseFilenames=BarcodeFastqTools.HomingSeqLoc(inFastq,homing=homing)
@@ -134,12 +142,12 @@ def singleFastqProc(inFastq,ref,opts,homing="default"):
     BarcodeIndex = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags)
     FamilyFastq,TotalReads,ReadsWithFamilies = BarcodeFastqTools.GetFamilySizeSingle(trimfq,BarcodeIndex)
     BarcodeSortedFastq = BarcodeFastqTools.BarcodeSort(FamilyFastq)
-    BarcodeConsFastq = BarcodeFastqTools.singleFastqConsolidate(BarcodeSortedFastq,stringency=0.667)
+    BarcodeConsFastq = BarcodeFastqTools.singleFastqConsolidate(BarcodeSortedFastq,stringency=0.667,readEnd="0")
     return BarcodeConsFastq
 
 def singleVCFProc(ConsensusBam,bed,ref):
     print("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BarcodeVCFTools.MPileup(ConsensusBam, ref)
+    MPileupVCF = BarcodeVCFTools.MPileup(ConsensusBam, ref,bed=bed)
     print("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
     ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
     print("Now removing those entries and parsing in the VCF Data")

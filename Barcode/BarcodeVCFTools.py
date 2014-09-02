@@ -151,14 +151,17 @@ def criteriaTest(entry,filterOpt="default",bed="default"):
     raise RuntimeWarning("This should never happen. It seems that no valid filters were set and then something went horribly wrong!")
     return False
 
-def MPileup(inputBAM,ref, outputBCF="default"):
+def MPileup(inputBAM,ref,bed="default", outputBCF="default"):
     import subprocess
     if(outputBCF=="default"):
         if(len(inputBAM.split('.')) >= 6):
             outputBCF = inputBAM.split('.')[0] + ".fullMP.vcf";
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf";
-    commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 {} | bcftools view - > {}".format(ref,inputBAM,outputBCF)
+    if(bed!="default"):
+        commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 -l {} {} | bcftools view - > {}".format(ref,bed,inputBAM,outputBCF)
+    else:
+        commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 {} | bcftools view - > {}".format(ref,inputBAM,outputBCF)
     print("{} is command string".format(commandStr))
     subprocess.call(commandStr, shell=True)
     return outputBCF
