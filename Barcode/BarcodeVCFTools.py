@@ -123,7 +123,7 @@ def CleanupPileup(inputPileup,outputPileup="default"):
     import subprocess
     if(outputPileup=="default"):
         outputPileup='.'.joioffsetn(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
-    commandStr = "awk '$5!=\"X\"' {} > {}".format(inputPileup,outputPileup)
+    commandStr = "awk '$5!=\"X\"' {} | sed 's:,X::g' > {}".format(inputPileup,outputPileup)
     subprocess.call(commandStr,shell=True)
     return outputPileup
 
