@@ -57,9 +57,9 @@ class VCFFile:
     def write(self,Filename):
         FileHandle = open(Filename,"w")
         for headerLine in self.header:
-            FileHandle.write(headerLine)
+            FileHandle.write("{}\n".format(headerLine))
         for VCFEntry in self.Records:
-            FileHandle.write(VCFEntry.str())
+            FileHandle.write("{}\n".format(VCFEntry.toString()))
         FileHandle.close()
         return
 
@@ -104,16 +104,16 @@ class VCFRecord:
         self.FORMAT = ":".join(self.GenotypeKeys)
         self.GENOTYPE = ":".join(self.GenotypeValues)
         self.GenotypeDict = dict(zip(self.FORMAT.split(':'),self.GENOTYPE.split(':')))
-        if(len(self.Samples==0)):
+        if(len(self.Samples)==0):
             recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
                                  self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE])
         else:
             sampleStr = "\t".join(self.Samples)
             recordStr = '\t'.join([self.CHROM,self.POS,self.ID,self.REF,self.ALT,self.QUAL, \
                                  self.FILTER,self.INFO,self.FORMAT,self.GENOTYPE,sampleStr])
-        self.str=recordStr
+        self.str=recordStr.strip()
             
-    def str(self):
+    def toString(self):
         self.update()
         return self.str
         
@@ -122,7 +122,7 @@ class VCFRecord:
 def CleanupPileup(inputPileup,outputPileup="default"):
     import subprocess
     if(outputPileup=="default"):
-        outputPileup='.'.join(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
+        outputPileup='.'.joioffsetn(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
     commandStr = "awk '$5!=\"X\"' {} > {}".format(inputPileup,outputPileup)
     subprocess.call(commandStr,shell=True)
     return outputPileup
@@ -169,6 +169,7 @@ def MPileup(inputBAM,ref,bed="default", outputBCF="default"):
 def ParseVCF(inputVCFName):
     infile = open(inputVCFName,"r")
     VCFLines = [entry.strip().split('\t') for entry in infile.readlines() if entry[0]!="#"]
+    infile.seek(0)
     VCFHeader = [entry.strip() for entry in infile.readlines() if entry[0]=="#"]
     VCFEntries = [VCFRecord(entry,inputVCFName) for entry in VCFLines]
     ParsedVCF = VCFFile(VCFEntries,VCFHeader,inputVCFName)

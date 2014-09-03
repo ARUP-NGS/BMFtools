@@ -171,7 +171,7 @@ def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",out
         #print("Working set: {}".format(workingSet1))
         if("AAAAAAAAAA" in barcode4fq1 or "TTTTTTTTTT" in barcode4fq1 or "CCCCCCCCCC" in barcode4fq1 or "GGGGGGGGGG" in barcode4fq1):
             continue
-        if(int(fqRec.description.split('###')[-1].strip()) < 4):
+        if(int(fqRec.description.split('###')[-1].strip()) < 2):
             continue
         if(workingBarcode == ""):
             workingBarcode = barcode4fq1

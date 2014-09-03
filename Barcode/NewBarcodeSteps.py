@@ -8,7 +8,7 @@ import BarcodeFastqTools
 import BarcodeHTSTools
 import BarcodeVCFTools
 
-def pairedBamProc(consfq1, consfq2,opts="",bamPrefix="default",ref="default",aligner="default"):
+def pairedBamProc(consfq1, consfq2,consfqSingle="default", opts="",bamPrefix="default",ref="default",aligner="default"):
     if(ref=="default"):
         raise ValueError("Reference index required!")
     if(bamPrefix == "default"):

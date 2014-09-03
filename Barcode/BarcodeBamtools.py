@@ -34,6 +34,9 @@ def BarcodeSort(inbam, outbam="default",paired=True):
     call("rm {}".format(outsam), shell=True)
     return outbam
 
+def CoordinateSort(inBam, outBam="default"):
+    
+
 def compareSamRecords(RecordList,stringency=0.9):
     seqs = [record.seq for record in RecordList]
     max = 0
