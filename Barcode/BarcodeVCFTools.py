@@ -2,9 +2,6 @@
 
 from BarcodeHTSTools import IllegalArgumentError
 
-#TODO: Write VCFRecordTest
-#TODO: 
-
 class VCFFile:
     """A simple VCFFile object, consisting of a header, a name for the file from which they came, and a list of all VCFRecords."""
     def __init__(self,VCFEntries,VCFHeader,inputVCFName):
@@ -18,7 +15,7 @@ class VCFFile:
         NewRecordList = [entry for entry in self.Records if entry.ALT != "X"]
         self.Records = NewRecordList
        
-    def filter(self,filterOpt="default",bed="default"):
+    def filter(self,filterOpt="default",param="default"):
         if(filterOpt=="default"):
             try:
                 raise IllegalArgumentError("Sorry, I can't filter your VCF if you don't provide a filter method")
@@ -26,16 +23,16 @@ class VCFFile:
                 print("Returning nothing.")
                 return
         NewVCFEntries = []
-        for entry in self.VCFEntries:
-                if(VCFRecordTest(entry, filterOpt,bed=bed)==True):
+        for entry in self.Records:
+                if(VCFRecordTest(entry, filterOpt,param=param)==True):
                     NewVCFEntries.append(entry)
         if(filterOpt=="bed"):
-            if(bed=="default"):
+            if(param=="default"):
                 try:
                     raise IllegalArgumentError("I can't filter by a bed file if you don't provide one! (Fine, I'll take a Large, but I don't GAF, alright??")
                 except IllegalArgumentError:
                     print("Returning nothing.")
-            filterOpt = filterOpt + "&" +  bed
+            filterOpt = filterOpt + "&" + param
         NewVCFFile = VCFFile(NewVCFEntries,self.header,self.sampleName + "FilteredBy{}".format(filterOpt))
         #TODO: make a new VCFFile object based on location.
         return NewVCFFile
@@ -76,7 +73,8 @@ class VCFRecord:
         self.INFO = VCFEntry[7]
         self.InfoKeys=[entry.split('=')[0] for entry in self.INFO.split(';')]
         self.InfoValues=[entry.split('=')[1] for entry in self.INFO.split(';')]
-        self.InfoValArrays = [entry.split(',') for entry in self.InfoValues]
+        tempValArrays = [entry.split(',') for entry in self.InfoValues]
+        self.InfoValArrays = [[float(entry) for entry in array] for array in tempValArrays]
         self.InfoDict=dict(zip(self.InfoKeys,self.InfoValues)) 
         self.InfoArrayDict=dict(zip(self.InfoKeys,self.InfoValArrays)) 
         self.FORMAT = VCFEntry[8]
@@ -96,7 +94,8 @@ class VCFRecord:
         self.INFO = ';'.join(infoEntryArray)
         self.InfoKeys=[entry.split('=')[0] for entry in self.INFO.split(';')]
         self.InfoValues=[entry.split('=')[1] for entry in self.INFO.split(';')]
-        self.InfoValArrays = [entry.split(',') for entry in self.InfoValues]
+        tempValArrays = [entry.split(',') for entry in self.InfoValues]
+        self.InfoValArrays = [[float(entry) for entry in array] for array in tempValArrays]
         self.InfoDict=dict(zip(self.InfoKeys,self.InfoValues)) 
         self.InfoArrayDict=dict(zip(self.InfoKeys,self.InfoValArrays)) 
         self.GenotypeKeys = self.FORMAT.split(':')
@@ -127,30 +126,6 @@ def CleanupPileup(inputPileup,outputPileup="default"):
     subprocess.call(commandStr,shell=True)
     return outputPileup
 
-def criteriaTest(entry,filterOpt="default",bed="default"):
-    list="bed"
-    if(filterOpt=="default"):
-        print("List of valid filters: {}".format(', '.join(list)))
-        raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
-    if(filterOpt=="bed"):
-        if(bed=="default"):
-            raise ValueError("Bed file must be provided in order to filter thereby!")
-        bedHandle = open(bed,"r")
-        bedEntries = [line.strip().split('\t') for line in bedHandle]
-        for line in bedEntries:
-            if(line[0]!=entry.CHROM):
-                continue
-            else:
-                if(int(entry.POS)-1 >= int(line[1]) and int(entry.POS)-1 <= int(line[2])):
-                    bedHandle.close()
-                    return True
-                else:
-                    continue
-        bedHandle.close()
-        return False
-    raise RuntimeWarning("This should never happen. It seems that no valid filters were set and then something went horribly wrong!")
-    return False
-
 def MPileup(inputBAM,ref,bed="default", outputBCF="default"):
     import subprocess
     if(outputBCF=="default"):
@@ -175,14 +150,16 @@ def ParseVCF(inputVCFName):
     ParsedVCF = VCFFile(VCFEntries,VCFHeader,inputVCFName)
     return ParsedVCF
 
-def VCFRecordTest(inputVCFRec,filterOpt="default",bed="default",num=1337,I16type=1337):
+def VCFRecordTest(inputVCFRec,filterOpt="default",param="default"):
+    list="bed,I16".split(',')
+    #print("list = {}".format(list))
     passRecord = True
     if(filterOpt=="default"):
         raise IllegalArgumentError("A filter option must be set in order to pass or fail this VCFRecord.")
     if(filterOpt=="bed"):
-        if(bed=="default"):
+        if(param=="default"):
             raise IllegalArgumentError("A bed file must be provided in order to filter this VCFRecord by the selected \"bed\" option")
-        bedReader = open(bed,'r')
+        bedReader = open(param,'r')
         bedEntries = [line.strip().split('\t') for line in bedReader.readlines()] 
         chr, pos =inputVCFRec.CHROM, inputVCFRec.POS
         chrMatches = [bedEntry for bedEntry in bedEntries if bedEntry[0]==chr]
@@ -196,11 +173,14 @@ def VCFRecordTest(inputVCFRec,filterOpt="default",bed="default",num=1337,I16type
             raise ValueError("Malformed bedfile: the fields in the bed file cannot be converted to int.")
             #print("Malformed bedfile: the fields in the bed file cannot be converted to int. Failing record just to be safe.")
             #return False
+    #Set param to an integer, where it is the minimum number of reads supporting a minority 
     if(filterOpt=="I16"):
-        if(I16type==1337):
-            raise IllegalArgumentError("A form of filtering based on I16 must be selected!")
-
-        
+        if(param=="default"):
+            raise IllegalArgumentError("A minimum number of dissenting reads from the majority must be set.")    
+        if(inputVCFRec.InfoArrayDict['I16'][2]+inputVCFRec.InfoArrayDict['I16'][3] >= param):
+            return True
+        else:
+            return False
     return passRecord
             
     

@@ -26,7 +26,7 @@ def BarcodeSort(inbam, outbam="default",paired=True):
         print("Command string for this sorting process is: {}".format(commandStr))
         call(commandStr,shell=True)
     else:
-        call("samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam), shell=True)
+        commandStr="samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
         print("Command string for this sorting process is: {}".format(commandStr))
         call(commandStr,shell=True)
     print("Now converting sam back to bam for further operations.")
@@ -35,6 +35,8 @@ def BarcodeSort(inbam, outbam="default",paired=True):
     return outbam
 
 def CoordinateSort(inBam, outBam="default"):
+    from subprocess import call
+    call()
     
 
 def compareSamRecords(RecordList,stringency=0.9):
