@@ -79,8 +79,11 @@ def pairedFastqProc(inFastq1,inFastq2,homing="default"):
     BarcodeIndex2 = BarcodeFastqTools.GenerateSingleBarcodeIndex(tags2)
     FamilyFastq2,TotalReads2,ReadsWithFamilies2 = BarcodeFastqTools.GetFamilySizeSingle(trimfq2,BarcodeIndex2)
     BarcodeSortedFastq2 = BarcodeFastqTools.BarcodeSort(FamilyFastq2)
-    BarcodeConsFastq1, BarcodeConsFastq2, BarcodeConsSingle = BarcodeFastqTools.pairedFastqConsolidate(BarcodeSortedFastq1,BarcodeSortedFastq2,stringency=0.667)
-    return BarcodeConsFastq1, BarcodeConsFastq2, BarcodeConsSingle
+    BarcodeConsFastq1, BarcodeConsFastq2 = BarcodeFastqTools.pairedFastqConsolidate(BarcodeSortedFastq1,BarcodeSortedFastq2,stringency=0.75)
+    BarcodeConsFqIndex1 = BarcodeFastqTools.GenerateSingleBarcodeIndex(BarcodeConsFastq1)
+    BarcodeConsFqIndex2 = BarcodeFastqTools.GenerateSingleBarcodeIndex(BarcodeConsFastq2)
+    BarcodeConsPair1, BarcodeConsPair2, BarcodeSingle = BarcodeFastqTools.findProperPairs(BarcodeConsFastq1,BarcodeConsFastq2,index1=BarcodeConsFqIndex1,index2=BarcodeConsFqIndex2)
+    return BarcodeConsFastq1, BarcodeConsFastq2
 
 def pairedVCFProc(sortedByBarcode,ref="",opts="",bed=""):
     if(bed==""):

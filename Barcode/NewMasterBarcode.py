@@ -26,20 +26,26 @@ def main():
     print(args.paired_end)
     if(args.paired_end==False or args.paired_end.lower()=="false"):
         if(args.initialStep==1):
+            print("Beginning fastq processing.")
             consFq = NewBarcodeSteps.singleFastqProc(args.fq[0], homing=homing)
+            print("Beginning BAM processing.")
             TaggedBam = NewBarcodeSteps.singleBamProc(consFq, ref, opts, aligner=aligner)
+            print("Beginning VCF processing.")
             CleanParsedVCF = NewBarcodeSteps.singleVCFProc(TaggedBam, bed, ref)
             print("This is far as the program goes at this point. Thank you for playing!")
             return
         elif(args.initialStep==2):
             outbam=args.BAM
             consFq = args.fq[0]
+            print("Beginning BAM processing.")
             TaggedBam = NewBarcodeSteps.singleBamProc(consFq, ref, opts, aligner=aligner)
+            print("Beginning VCF processing.")
             CleanParsedVCF = NewBarcodeSteps.singleVCFProc(TaggedBam, bed, ref)
             print("This is far as the program goes at this point. Thank you for playing!")
             return
         elif(args.initialStep==3):
             ConsensusBam = args.BAM
+            print("Beginning VCF processing.")
             CleanParsedVCF = NewBarcodeSteps.singleVCFProc(TaggedBam, bed, ref)
             print("This is far as the program goes at this point. Thank you for playing!")
             return
@@ -47,16 +53,20 @@ def main():
             raise ValueError("You have chosen an illegal initial step.")
     elif(args.paired_end==True or args.paired_end.lower()=="true"):
         if(args.initialStep==1):
+            print("Beginning fastq processing.")
             trimfq1, trimfq2, trimfqSingle = NewBarcodeSteps.pairedFastqProc(args.fq[0], args.fq[1], homing=homing)
+            print("Beginning BAM processing.")
             procSortedBam = NewBarcodeSteps.pairedBamProc(trimfq1, trimfq2, consfqSingle=trimfqSingle,aligner=aligner, ref=ref)
             CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(procSortedBam, ref=ref, opts=opts, bed=bed)
             print("This is far as the program goes at this point. Thank you for playing!")
         elif(args.initialStep==2):
+            print("Beginning BAM processing.")
             procSortedBam = NewBarcodeSteps.pairedBamProc(trimfq1, trimfq2, consfqSingle="default",aligner=aligner, ref=ref)
-            procSortedBam = NewBarcodeSteps.pairedBamProc(args.fq[0], args.fq[1], args.BAM)
+            print("Beginning VCF processing.")
             CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(procSortedBam, ref=ref, opts=opts, bed=bed)
             print("This is far as the program goes at this point. Thank you for playing!")
         elif(args.initialStep==3):
+            print("Beginning VCF processing.")
             CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(args.BAM, ref=ref,opts=opts,bed=bed)    
             print("This is far as the program goes at this point. Thank you for playing!")
         return

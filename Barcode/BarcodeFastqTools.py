@@ -3,6 +3,7 @@ import pysam
 import BarcodeUtils
 
 def BarcodeSort(inFastq,outFastq="default"):
+    print("Sorting fastq by barcode sequence.")
     from subprocess import call
     if(outFastq=="default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
@@ -81,6 +82,55 @@ def fastx_trim(infq, outfq, n):
     subprocess.call(command_str)
     return(command_str)
 
+def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="default",outfq2="default",outfqSingle="default"):
+    print("Now attempting to parse out proper pairs from reads which need to be aligned as single-end.")
+    from Bio import SeqIO
+    if(index1=="default"):
+        raise ValueError("An index for the barcodes in reads1 set must be present.")
+    if(index2=="default"):
+        raise ValueError("An index for the barcodes in reads2 set must be present.")
+    if(outfq1=="default"):
+        outfq1 = '.'.join(infq1.split('.')[0:-1])+'.proper.fastq'
+    if(outfq2=="default"):
+        outfq2 = '.'.join(infq2.split('.')[0:-1])+'.proper.fastq'
+    if(outfqSingle=="default"):
+        outfqSingle = '.'.join(infq1.split('.')[0:-1])+'.solo.fastq'
+    outfq1Handle = open(outfq1,'w')
+    outfq2Handle = open(outfq2,'w')
+    outfqSingleHandle = open(outfqSingle,'w')
+    indexHandle1 = open(index1,"r")
+    dictEntries = [line.split() for line in indexHandle1]
+    BarDict1 = {}
+    for entry in dictEntries:
+        BarDict1[entry[1]]=entry[0]
+    indexHandle2 = open(index2,"r")
+    for read in infq2:
+        queryBC = read.description.split('###')[-2]
+        try:
+            temp = BarDict1[queryBC]
+            SeqIO.write(read, outfq2Handle, "fastq")
+        except KeyError:
+            SeqIO.write(read,outfqSingleHandle,"fastq")
+             
+    dictEntries = [line.split() for line in indexHandle2]
+    BarDict2 = {}
+    for entry in dictEntries:
+        BarDict2[entry[1]]=entry[0]
+    for read in infq1:
+        queryBC = read.description.split('###')[-2]
+        try:
+            temp = BarDict2[queryBC]
+            SeqIO.write(read, outfq1Handle, "fastq")
+        except KeyError:
+            SeqIO.write(read,outfqSingleHandle,"fastq")
+    outfq1Handle.close()
+    outfq2Handle.close()
+    indexHandle1.close()
+    indexHandle2.close()
+    
+    return outfq1,outfq1,outfqSingle
+
+
 def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
@@ -90,6 +140,7 @@ def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
 
 
 def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
+    print("Getting family sizes for all of the grouped families.")
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
@@ -148,18 +199,16 @@ def mergeSequencesFastq(fq1,fq2,output="default"):
     outFastq.close()
     return output
 
-def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",outFqSingle="default",stringency=0.9):
+def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",stringency=0.9):
+    print("Now consolidating paired-end reads.")
     if(outFqPair1=="default"):
         outFqPair1= '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
     if(outFqPair2=="default"):
         outFqPair2= '.'.join(fq2.split('.')[0:-1]) + 'cons.fastq'
-    if(outFqSingle=="default"):
-        outFqSingle = '.'.join(fq1.split('.')[0:-1]) + 'cons.single.fastq'
     inFq1 = SeqIO.parse(fq1,'fastq')
     inFq2 = SeqIO.parse(fq2,'fastq')
     outputHandle1 = open(outFqPair1,'w')
     outputHandle2 = open(outFqPair2,'w')
-    outputSingle = open(outFqSingle,'w')
     workingBarcode = ""
     workingSet1 = []
     workingSet2 = []
@@ -187,13 +236,10 @@ def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",out
         elif(workingBarcode != barcode4fq1):
             mergedRecord1, success1 = compareFastqRecords(workingSet1,stringency=float(stringency))
             mergedRecord2, success2 = compareFastqRecords(workingSet2,stringency=float(stringency))
-            if(success1 == True and success2 == True):
+            if(success1 == True):
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
+            if(success2 == True):
                 SeqIO.write(mergedRecord2, outputHandle2, "fastq")
-            elif(success1 == True):
-                SeqIO.write(mergedRecord1, outputSingle, "fastq")
-            elif(success2 == True):
-                SeqIO.write(mergedRecord2, outputSingle, "fastq")
             workingSet1 = []
             workingSet1.append(fqRec)
             workingSet2 = []
@@ -206,8 +252,7 @@ def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",out
     inFq2.close()
     outputHandle1.close()
     outputHandle2.close()
-    outputSingle.close()
-    return outFqPair1,outFqPair2,outFqSingle
+    return outFqPair1,outFqPair2
 
 def reverseComplement(fq,dest="default"):
     if(dest=="default"):
