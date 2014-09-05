@@ -168,7 +168,10 @@ def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
         readTag = read.description.split("###")[-1].strip()
         newRead = read
         #print("readTag is _" + readTag + "_")
-        famSize = BarDict[readTag]
+        try:
+            famSize = BarDict[readTag]
+        except KeyError:
+            famSize= 0
         newRead.description = read.description+" ###"+famSize
         #print("famSize = _{}_".format(str(famSize)))
         #print("The value of this comparison to 1 is {}".format(str(famSize=="1")))
