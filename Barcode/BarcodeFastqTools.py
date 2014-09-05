@@ -1,15 +1,15 @@
 from Bio import SeqIO
 import pysam
-import BarcodeUtils
+import logging
 
 def BarcodeSort(inFastq,outFastq="default"):
-    print("Sorting fastq by barcode sequence.")
+    logging.info("Sorting fastq by barcode sequence.")
     from subprocess import call
     if(outFastq=="default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
     BSstring = "cat {} | paste - - - - | grep 'HomingPass' | sed 's:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | sed 's:###\t:###:g' | sed 's:\t$::g' | sed 's:\t$::g' | tr '\t' '\n' > {}".format(inFastq,outFastq)
     call(BSstring,shell=True)
-    print("Command: {}".format(BSstring.replace("\t","\\t")))
+    logging.info("Command: {}".format(BSstring.replace("\t","\\t")))
     return outFastq
 
 def compareFastqRecords(RecordList,stringency=0.9):
@@ -78,12 +78,12 @@ def FastqRegex(fq,string,matchFile="default",missFile="default"):
 def fastx_trim(infq, outfq, n):
     import subprocess
     command_str = ['fastx_trimmer','-l',str(n),'-i',infq,'-o',outfq]
-    print(command_str)
+    logging.info(command_str)
     subprocess.call(command_str)
     return(command_str)
 
 def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="default",outfq2="default",outfqSingle="default"):
-    print("Now attempting to parse out proper pairs from reads which need to be aligned as single-end.")
+    logging.info("Now attempting to parse out proper pairs from reads which need to be aligned as single-end.")
     from Bio import SeqIO
     if(index1=="default"):
         raise ValueError("An index for the barcodes in reads1 set must be present.")
@@ -139,13 +139,13 @@ def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
     commandStr ="cat {} | sed 's:###: ###:g' | paste - - - - | grep -v \"HomingFail\" | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file)
-    print("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
+    logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
     call(commandStr,shell=True)
     return index_file
 
 
 def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
-    print("Getting family sizes for all of the grouped families.")
+    logging.info("Getting family sizes for all of the grouped families.")
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq=="default"):
         outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
@@ -172,10 +172,12 @@ def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
             famSize = BarDict[readTag]
         except KeyError:
             famSize= 0
-        newRead.description = read.description+" ###"+famSize
+        newRead.description = read.description+" ###"+str(famSize)
         #print("famSize = _{}_".format(str(famSize)))
         #print("The value of this comparison to 1 is {}".format(str(famSize=="1")))
-        if(famSize == "1"):
+        if(str(famSize) == "0"):
+            continue
+        if(str(famSize) == "1"):
             SeqIO.write(newRead,singlefqBuffer,"fastq")
             SeqIO.write(newRead,outfqBuffers,"fastq")
         else:
@@ -208,7 +210,7 @@ def mergeSequencesFastq(fq1,fq2,output="default"):
     return output
 
 def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",stringency=0.9):
-    print("Now consolidating paired-end reads.")
+    logging.info("Now consolidating paired-end reads.")
     if(outFqPair1=="default"):
         outFqPair1= '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
     if(outFqPair2=="default"):
@@ -329,7 +331,7 @@ def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_er
     InFastq = SeqIO.parse(fq,"fastq")
     HomingLen=len(homing)
     TotalTrim=HomingLen+bar_len+start_trim
-    print("Homing Length is {}".format(HomingLen))
+    logging.info("Homing Length is {}".format(HomingLen))
     for record in InFastq:
         pre_tag = SeqRecord(
                 Seq(str(record.seq)[0:bar_len],"fastq"), \
@@ -337,7 +339,7 @@ def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_er
         pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:bar_len]
         '''
         if homing not in pre_tag.seq:
-            print("I'm sorry, but your homing sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
+            logging.info("I'm sorry, but your homing sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
             SeqIO.write(record,errOpen,"fastq")
             continue
         '''

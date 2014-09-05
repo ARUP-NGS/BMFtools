@@ -1,6 +1,7 @@
 #/mounts/anaconda/bin/python
 
 from BarcodeHTSTools import IllegalArgumentError
+import logging
 
 class VCFFile:
     """A simple VCFFile object, consisting of a header, a name for the file from which they came, and a list of all VCFRecords."""
@@ -137,7 +138,7 @@ def MPileup(inputBAM,ref,bed="default", outputBCF="default"):
         commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 -l {} {} | bcftools view - > {}".format(ref,bed,inputBAM,outputBCF)
     else:
         commandStr = "samtools mpileup -f {} -F 0.0001 -I -S -g -D -R -q 10 -Q 30 {} | bcftools view - > {}".format(ref,inputBAM,outputBCF)
-    print("{} is command string".format(commandStr))
+    logging.info("{} is command string".format(commandStr))
     subprocess.call(commandStr, shell=True)
     return outputBCF
 

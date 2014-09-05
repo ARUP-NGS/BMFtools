@@ -2,13 +2,14 @@
 
 import pysam
 from Bio import SeqIO
+import logging
 
 
 def Bam2Sam(inbam, outsam):
     from subprocess import call
     output = open(outsam, 'w', 0)
     command_str = 'samtools view -h {}'.format(inbam)
-    print(command_str)
+    logging.info(command_str)
     call(command_str, stdout=output, shell=True)
     return(command_str, outsam)
 
@@ -18,18 +19,18 @@ def BarcodeSort(inbam, outbam="default",paired=True):
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     from subprocess import call
     headerCommand = "samtools view -H {} > {}".format(inbam,outsam)
-    print(headerCommand)
+    logging.info(headerCommand)
     call(headerCommand, shell=True)
-    print("Now converting bam to sam for sorting by barcode.")
+    logging.info("Now converting bam to sam for sorting by barcode.")
     if(paired==False):
         commandStr="samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
-        print("Command string for this sorting process is: {}".format(commandStr))
+        logging.info("Command string for this sorting process is: {}".format(commandStr))
         call(commandStr,shell=True)
     else:
         commandStr="samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
-        print("Command string for this sorting process is: {}".format(commandStr))
+        logging.info("Command string for this sorting process is: {}".format(commandStr))
         call(commandStr,shell=True)
-    print("Now converting sam back to bam for further operations.")
+    logging.info("Now converting sam back to bam for further operations.")
     call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
     call("rm {}".format(outsam), shell=True)
     return outbam
@@ -44,13 +45,13 @@ def compareSamRecords(RecordList,stringency=0.9):
     max = 0
     Success = False
     for seq in seqs:
-        print("Seq: {}".format(seq))
+        logging.info("Seq: {}".format(seq))
         numEq = sum(seq == seqItem for seqItem in seqs)
         if(numEq > max):
             max = numEq
             finalSeq = seq
     frac = numEq * 1.0 / len(RecordList)
-    print("Fraction {}. Stringency: {}. Pass? {}.".format(frac,stringency,(frac>stringency)))
+    logging.info("Fraction {}. Stringency: {}. Pass? {}.".format(frac,stringency,(frac>stringency)))
     if(frac > stringency):
         Success = True
     consolidatedRecord = RecordList[0]
@@ -105,11 +106,11 @@ def Consolidate(inbam, outbam="default",stringency=0.9):
 
 def CorrSort(inbam, outprefix="default"):
     from subprocess import call
-    print("inbam variable is {}".format(inbam))
+    logging.info("inbam variable is {}".format(inbam))
     if(outprefix == "default"):
         outprefix = '.'.join(inbam.split('.')[0:-1]) + ".CorrSort"
     command_str = "samtools sort {} {}".format(inbam, outprefix)
-    print(command_str)
+    logging.info(command_str)
     call(command_str, shell=True)
     return(outprefix + ".bam")
 
@@ -117,7 +118,7 @@ def criteriaTest(read1, read2, filter="default"):
     list = "adapter barcode complexity editdistance family ismapped qc".split(' ')
     
     if(filter == "default"):
-        print("List of valid filters: {}".format(', '.join(list)))
+        logging.info("List of valid filters: {}".format(', '.join(list)))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
     
     if(filter not in list):
@@ -200,9 +201,9 @@ def GenerateFamilyHistochart(BamBarcodeIndex, output="default"):
     if(output == "default"):
         output = '.'.join(BamBarcodeIndex.split('.')[:-1]) + 'hist.txt'
     commandStr = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(BamBarcodeIndex, output)
-    print("Command str: {}".format(commandStr))
+    logging.info("Command str: {}".format(commandStr))
     call(commandStr, shell=True)
-    print("Histochart for family sizes now available at {}".format(output))
+    logging.info("Histochart for family sizes now available at {}".format(output))
     return output
 
 def getFamilySizeBAM(inputBAM, indexFile, output="default", trueFamilyList="default"):
@@ -299,7 +300,7 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default",secondSuppBAM="defau
         try:
             entry.tags = entry.tags + [("BS", descArray[2].strip())]
         except IndexError:
-            print(descArray)
+            logging.info((descArray)
             raise IndexError("Something's wrong!!! Index error thrown!")
         if(descArray[1].strip() == "HomingPass"):
             entry.tags = entry.tags + [("AL", 1)]
@@ -325,7 +326,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
-        print("Criteria #{} is \"{}\"".format(i, entry))
+        logging.info(("Criteria #{} is \"{}\"".format(i, entry))
     for read in inBAM:
         failed = False
         if(read.is_read1):
@@ -357,7 +358,7 @@ def removeSecondary(inBAM, outBAM="default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.2ndrm.bam'
     input = pysam.Samfile(inBAM, "rb")
     output = pysam.Samfile(outBAM, "wb", template=input)
-    print("Attempting to remove secondary")
+    logging.info(("Attempting to remove secondary")
     for entry in input:
         if(entry.is_secondary or entry.flag > 2048):
             continue
@@ -369,7 +370,7 @@ def Sam2Bam(insam, outbam):
     from subprocess import call
     output = open(outbam, 'w', 0)
     command_str = 'samtools view -Sbh {}'.format(insam, shell=True)
-    print(command_str)
+    logging.info((command_str)
     call(command_str, stdout=output, shell=True)
     return(command_str, outbam)
 
@@ -398,9 +399,9 @@ def SamtoolsBam2fq(bamPath, outFastqPath):
     outFastq.flush()
     outFastq.close()
     # if processErr:
-    #    print('Error: in bwa mem function', end='\n', file=sys.stderr)
-    #    print('From bwa and samtools:', end='\n', file=sys.stderr)
-    #    print(processErr, end='\n', file=sys.stderr)
+    #    logging.info(('Error: in bwa mem function', end='\n', file=sys.stderr)
+    #    logging.info(('From bwa and samtools:', end='\n', file=sys.stderr)
+    #    logging.info((processErr, end='\n', file=sys.stderr)
     #    sys.exit(1)
 
     return outFastqPath
@@ -410,7 +411,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     if(secondSuppBAM=="default"):
         secondSuppBAM = bam.split('.')[0]+'.2ndSupp.bam'
-    print("Tagged BAM file is: {}.".format(outputBAM))
+    logging.info(("Tagged BAM file is: {}.".format(outputBAM))
     reads = SeqIO.parse(fastq, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
@@ -429,8 +430,8 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
         if("Homing" not in descArray[-3]):
-            print("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3]))
-            print("descArray is {}".format(descArray))
+            logging.info(("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3]))
+            logging.info(("descArray is {}".format(descArray))
             raise ValueError("Something has gone wrong! The adapter pass/fail ")
         if(descArray[-3].strip() == "HomingPass"):
             entry.tags = entry.tags + [("AL", 1)]
@@ -469,7 +470,7 @@ def SingleConsolidate(inbam, outbam="default",stringency=0.9):
                 #print("BS for second: {}".format([tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
                 assert([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1]==[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1])
             except AssertionError:
-                print("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
+                logging.info(("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
                 raise AssertionError("Well, there you go.")
             #print("Barcode for first in set is {}. while barcode for the new item is {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]) )
             workingSet.append(record)
@@ -492,7 +493,7 @@ def singleCriteriaTest(read, filter="default"):
     list = "adapter complexity editdistance family ismapped qc".split(' ')
     
     if(filter == "default"):
-        print("List of valid filters: {}".format(', '.join(list)))
+        logging.info(("List of valid filters: {}".format(', '.join(list)))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
     
     if(filter not in list):
@@ -546,7 +547,7 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
-        print("Criteria #{} is \"{}\"".format(i, entry))
+        logging.info(("Criteria #{} is \"{}\"".format(i, entry))
     for read in inBAM:
         failed = False
         for criterion in criteriaList:

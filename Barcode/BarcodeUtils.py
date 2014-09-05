@@ -1,11 +1,12 @@
 from Bio import SeqIO
 import argparse
 import pysam
+import logging
 
 def generateHammingMatrix(input, outputTSV="default"):
     if(outputTSV=="default"):
         outputTSV = input.split('.')[0]+'.HammingMatrix.tsv'
-    print("Output file for tab-separated values is {}.".format(outputTSV))
+    logging.info("Output file for tab-separated values is {}.".format(outputTSV))
     import csv
     tsvWriter = open(outputTSV,'w',0)
     MatrixWriter = csv.writer(tsvWriter,delimiter="\t")
@@ -29,7 +30,7 @@ def generateLevenshteinMatrix(input, outputTSV="default"):
     import Levenshtein
     if(outputTSV=="default"):
         outputTSV = input.split('.')[0]+'.HammingMatrix.tsv'
-    print("Output file for tab-separated values is {}.".format(outputTSV))
+    logging.info("Output file for tab-separated values is {}.".format(outputTSV))
     import csv
     tsvWriter = open(outputTSV,'w',0)
     MatrixWriter = csv.writer(tsvWriter,delimiter="\t")
@@ -58,8 +59,8 @@ def hamming(str1, str2):
     try:
         assert len(str1) == len(str2)
     except AssertionError:
-        print("String 1 is {} with length {}, while String 2 is {} with length {}".format(str1,len(str1),str2,len(str2)))
-        print("Calculating Levenshtein distance instead.")
+        logging.info("String 1 is {} with length {}, while String 2 is {} with length {}".format(str1,len(str1),str2,len(str2)))
+        logging.info("Calculating Levenshtein distance instead.")
         return Levenshtein.distance(str1,str2)
      '''   
     #ne = str.__ne__  ## this is surprisingly slow
