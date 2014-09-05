@@ -9,7 +9,7 @@ def BarcodeSort(inFastq,outFastq="default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
     BSstring = "cat {} | paste - - - - | grep 'HomingPass' | sed 's:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | sed 's:###\t:###:g' | sed 's:\t$::g' | sed 's:\t$::g' | tr '\t' '\n' > {}".format(inFastq,outFastq)
     call(BSstring,shell=True)
-    print("Command: {}".format(BSstring))
+    print("Command: {}".format(BSstring.replace("\t","\\t")))
     return outFastq
 
 def compareFastqRecords(RecordList,stringency=0.9):
@@ -99,12 +99,14 @@ def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="defaul
     outfq2Handle = open(outfq2,'w')
     outfqSingleHandle = open(outfqSingle,'w')
     indexHandle1 = open(index1,"r")
+    infq1Handle = open(infq1,"r")
+    infq2Handle = open(infq2,"r")
     dictEntries = [line.split() for line in indexHandle1]
     BarDict1 = {}
     for entry in dictEntries:
         BarDict1[entry[1]]=entry[0]
     indexHandle2 = open(index2,"r")
-    for read in infq2:
+    for read in infq2Handle:
         queryBC = read.description.split('###')[-2]
         try:
             temp = BarDict1[queryBC]
@@ -116,7 +118,7 @@ def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="defaul
     BarDict2 = {}
     for entry in dictEntries:
         BarDict2[entry[1]]=entry[0]
-    for read in infq1:
+    for read in infq1Handle:
         queryBC = read.description.split('###')[-2]
         try:
             temp = BarDict2[queryBC]
@@ -125,17 +127,20 @@ def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="defaul
             SeqIO.write(read,outfqSingleHandle,"fastq")
     outfq1Handle.close()
     outfq2Handle.close()
+    infq1Handle.close()
+    infq2Handle.close()
     indexHandle1.close()
     indexHandle2.close()
     
     return outfq1,outfq1,outfqSingle
 
-
 def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    call("cat {} | sed 's:###: ###:g' | grep -v \"HomingFail\" | paste - - - - | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file),shell=True)
+    commandStr ="cat {} | sed 's:###: ###:g' | paste - - - - | grep -v \"HomingFail\" | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file)
+    print("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
+    call(commandStr,shell=True)
     return index_file
 
 
@@ -189,7 +194,7 @@ def mergeSequencesFastq(fq1,fq2,output="default"):
             read2 = reads2.next()
             outread = read1
             outread=SeqRecord(
-                Seq(str(read1.seq)+str(read2.seq),"fastq"), id=read1.id) 
+                Seq(str(read1.seq)+str(read2.seq),"fastq"), id=read1.id,description=read1.description) 
             outread.letter_annotations['phred_quality']=read1.letter_annotations['phred_quality'] + read2.letter_annotations['phred_quality'] 
             SeqIO.write(outread, outFastq, "fastq")
         except StopIteration:
@@ -325,7 +330,7 @@ def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_er
     for record in InFastq:
         pre_tag = SeqRecord(
                 Seq(str(record.seq)[0:bar_len],"fastq"), \
-                id=record.id)
+                id=record.id,description=record.description)
         pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:bar_len]
         '''
         if homing not in pre_tag.seq:
