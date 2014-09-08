@@ -1,7 +1,6 @@
-#/mounts/anaconda/bin/python
+import logging
 
 from BarcodeHTSTools import IllegalArgumentError
-import logging
 
 class VCFFile:
     """A simple VCFFile object, consisting of a header, a name for the file from which they came, and a list of all VCFRecords."""

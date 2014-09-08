@@ -4,8 +4,6 @@ import argparse
 import logging
 
 from Bio import SeqIO
-import pysam
-import subprocess
 import NewBarcodeSteps
 #Contains utilities for the completion of a variety of 
 #tasks related to barcoded protocols for ultra-low

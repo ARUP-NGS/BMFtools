@@ -1,8 +1,6 @@
-#/mounts/anaconda/bin/python
-
-import subprocess
-import re
 import logging
+import re
+import subprocess
 
 import BarcodeBamtools
 import BarcodeFastqTools
@@ -148,8 +146,10 @@ def singleFastqProc(inFastq,homing="default"):
     return BarcodeConsFastq
 
 def singleVCFProc(ConsensusBam,bed,ref):
+    logging.info("Now sorting reads by coordinate to prepare for MPileup.")
+    CorrCons = BarcodeBamtools.CorrSort(ConsensusBam)
     logging.info("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BarcodeVCFTools.MPileup(ConsensusBam, ref,bed=bed)
+    MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, ref,bed=bed)
     logging.info("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
     ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
     logging.info("Now removing those entries and parsing in the VCF Data")

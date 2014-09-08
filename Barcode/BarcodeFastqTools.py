@@ -99,8 +99,8 @@ def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="defaul
     outfq2Handle = open(outfq2,'w')
     outfqSingleHandle = open(outfqSingle,'w')
     indexHandle1 = open(index1,"r")
-    infq1Handle = open(infq1,"r")
-    infq2Handle = open(infq2,"r")
+    infq1Handle = SeqIO.parse(infq1,"fastq")
+    infq2Handle = SeqIO.parse(infq2, "fastq")
     dictEntries = [line.split() for line in indexHandle1]
     BarDict1 = {}
     for entry in dictEntries:

@@ -1,7 +1,8 @@
-from Bio import SeqIO
 import argparse
-import pysam
 import logging
+
+from Bio import SeqIO
+import pysam
 
 def generateHammingMatrix(input, outputTSV="default"):
     if(outputTSV=="default"):

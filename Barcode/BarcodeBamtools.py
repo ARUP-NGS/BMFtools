@@ -1,5 +1,3 @@
-#!/mounts/anaconda/bin/python
-
 import pysam
 from Bio import SeqIO
 import logging
@@ -300,7 +298,7 @@ def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default",secondSuppBAM="defau
         try:
             entry.tags = entry.tags + [("BS", descArray[2].strip())]
         except IndexError:
-            logging.info((descArray)
+            logging.info((descArray))
             raise IndexError("Something's wrong!!! Index error thrown!")
         if(descArray[1].strip() == "HomingPass"):
             entry.tags = entry.tags + [("AL", 1)]
@@ -326,7 +324,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
-        logging.info(("Criteria #{} is \"{}\"".format(i, entry))
+        logging.info(("Criteria #{} is \"{}\"".format(i, entry)))
     for read in inBAM:
         failed = False
         if(read.is_read1):
@@ -358,7 +356,7 @@ def removeSecondary(inBAM, outBAM="default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.2ndrm.bam'
     input = pysam.Samfile(inBAM, "rb")
     output = pysam.Samfile(outBAM, "wb", template=input)
-    logging.info(("Attempting to remove secondary")
+    logging.info(("Attempting to remove secondary"))
     for entry in input:
         if(entry.is_secondary or entry.flag > 2048):
             continue
@@ -370,7 +368,7 @@ def Sam2Bam(insam, outbam):
     from subprocess import call
     output = open(outbam, 'w', 0)
     command_str = 'samtools view -Sbh {}'.format(insam, shell=True)
-    logging.info((command_str)
+    logging.info((command_str))
     call(command_str, stdout=output, shell=True)
     return(command_str, outbam)
 
@@ -411,7 +409,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     if(secondSuppBAM=="default"):
         secondSuppBAM = bam.split('.')[0]+'.2ndSupp.bam'
-    logging.info(("Tagged BAM file is: {}.".format(outputBAM))
+    logging.info(("Tagged BAM file is: {}.".format(outputBAM)))
     reads = SeqIO.parse(fastq, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
@@ -430,8 +428,8 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
         if("Homing" not in descArray[-3]):
-            logging.info(("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3]))
-            logging.info(("descArray is {}".format(descArray))
+            logging.info(("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3])))  
+            logging.info(("descArray is {}".format(descArray)))
             raise ValueError("Something has gone wrong! The adapter pass/fail ")
         if(descArray[-3].strip() == "HomingPass"):
             entry.tags = entry.tags + [("AL", 1)]
@@ -470,7 +468,7 @@ def SingleConsolidate(inbam, outbam="default",stringency=0.9):
                 #print("BS for second: {}".format([tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
                 assert([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1]==[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1])
             except AssertionError:
-                logging.info(("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
+                logging.info(("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1])))
                 raise AssertionError("Well, there you go.")
             #print("Barcode for first in set is {}. while barcode for the new item is {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]) )
             workingSet.append(record)
@@ -493,7 +491,7 @@ def singleCriteriaTest(read, filter="default"):
     list = "adapter complexity editdistance family ismapped qc".split(' ')
     
     if(filter == "default"):
-        logging.info(("List of valid filters: {}".format(', '.join(list)))
+        logging.info(("List of valid filters: {}".format(', '.join(list))))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
     
     if(filter not in list):
@@ -547,7 +545,7 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
-        logging.info(("Criteria #{} is \"{}\"".format(i, entry))
+        logging.info(("Criteria #{} is \"{}\"".format(i, entry)))
     for read in inBAM:
         failed = False
         for criterion in criteriaList:
