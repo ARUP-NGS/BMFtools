@@ -11,34 +11,31 @@ def Bam2Sam(inbam, outsam):
     call(command_str, stdout=output, shell=True)
     return(command_str, outsam)
 
-def BarcodeSort(inbam, outbam="default",paired=True):
+
+def BarcodeSort(inbam, outbam="default", paired=True):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     from subprocess import call
-    headerCommand = "samtools view -H {} > {}".format(inbam,outsam)
+    headerCommand = "samtools view -H {} > {}".format(inbam, outsam)
     logging.info(headerCommand)
     call(headerCommand, shell=True)
     logging.info("Now converting bam to sam for sorting by barcode.")
-    if(paired==False):
-        commandStr="samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
+    if(paired is False):
+        commandStr = "samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
         logging.info("Command string for this sorting process is: {}".format(commandStr))
-        call(commandStr,shell=True)
+        call(commandStr, shell=True)
     else:
-        commandStr="samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
+        commandStr = "samtools view {} | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(inbam, outsam)
         logging.info("Command string for this sorting process is: {}".format(commandStr))
-        call(commandStr,shell=True)
+        call(commandStr, shell=True)
     logging.info("Now converting sam back to bam for further operations.")
     call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
     call("rm {}".format(outsam), shell=True)
     return outbam
 
-def CoordinateSort(inBam, outBam="default"):
-    from subprocess import call
-    call()
-    
 
-def compareSamRecords(RecordList,stringency=0.9):
+def compareSamRecords(RecordList, stringency=0.9):
     seqs = [record.seq for record in RecordList]
     max = 0
     Success = False
@@ -49,12 +46,13 @@ def compareSamRecords(RecordList,stringency=0.9):
             max = numEq
             finalSeq = seq
     frac = numEq * 1.0 / len(RecordList)
-    logging.info("Fraction {}. Stringency: {}. Pass? {}.".format(frac,stringency,(frac>stringency)))
+    logging.info("Fraction {}. Stringency: {}. Pass? {}.".format(frac, stringency, (frac > stringency)))
     if(frac > stringency):
         Success = True
     consolidatedRecord = RecordList[0]
     consolidatedRecord.seq = finalSeq
     return consolidatedRecord, Success
+
 
 def Consolidate(inbam, outbam="default",stringency=0.9):
     if(outbam == "default"):
@@ -76,8 +74,8 @@ def Consolidate(inbam, outbam="default",stringency=0.9):
             elif(workingBarcode1 == barcodeRecord1):
                 workingSet1.append(record)
             else:
-                mergedRecord1, success = compareSamRecords(workingSet1,stringency=stringency)
-                if(success == True):
+                mergedRecord1, success = compareSamRecords(workingSet1, stringency=stringency)
+                if(success is True):
                     outputHandle.write(mergedRecord1)
                 WorkingSet1 = []
                 WorkingSet1.append(record)
@@ -92,15 +90,16 @@ def Consolidate(inbam, outbam="default",stringency=0.9):
             elif(workingBarcode2 == barcodeRecord2):
                 workingSet2.append(record)
             else:
-                mergedRecord2, success = compareSamRecords(workingSet2,stringency=stringency)
-                if(success == True):
+                mergedRecord2, success = compareSamRecords(workingSet2, stringency=stringency)
+                if(success is True):
                     outputHandle.write(mergedRecord2)
                 WorkingSet2 = []
                 WorkingSet2.append(record)
                 workingBarcode2 = barcodeRecord2
     inputHandle.close()
     outputHandle.close()
-    return outbam 
+    return outbam
+
 
 def CorrSort(inbam, outprefix="default"):
     from subprocess import call
@@ -114,14 +113,14 @@ def CorrSort(inbam, outprefix="default"):
 
 def criteriaTest(read1, read2, filter="default"):
     list = "adapter barcode complexity editdistance family ismapped qc".split(' ')
-    
+
     if(filter == "default"):
         logging.info("List of valid filters: {}".format(', '.join(list)))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
-    
+
     if(filter not in list):
         raise ValueError("Your filter is not a supported criterion. The list is: {}".format(list))
-    
+
     if(filter == "adapter"):
         ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "AL"][0]
         try:
@@ -135,23 +134,23 @@ def criteriaTest(read1, read2, filter="default"):
             ALValue2 = 0
         if(ALValue1 == 0 or ALValue2 == 0 or ALValue1 == "0" or ALValue2 == "0"):
             return False
-    
+
     if(filter == "barcode"):
-        BSloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BS"][0] 
+        BSloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "BS"][0]
         BSloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "BS"][0]
         if(read1.tags[BSloc1][1] != read2.tags[BSloc2][1]):
             return False
-        
+
     if(filter == "complexity"):
         if("AAAAAAAAAAA" in str(read1.tags) + str(read2.tags) or "TTTTTTTTTTT" in str(read1.tags) + str(read2.tags) or "GGGGGGGGGGG" in str(read1.tags) + str(read2.tags) or "CCCCCCCCCCC" in str(read1.tags) + str(read2.tags)):
             return False
-        
+
     if(filter == "editdistance"):
         NMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "NM"][0]
         NMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "NM"][0]
         if(read1.tags[NMloc1][1] == 0 and read2.tags[NMloc2] == 0):
             return False
-        
+
     if(filter == "family"):
         FMloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "FM"][0]
         FMloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "FM"][0]
@@ -159,17 +158,17 @@ def criteriaTest(read1, read2, filter="default"):
         FMValue2 = int(read2.tags[FMloc2][1])
         if(FMValue1 < 4 or FMValue2 < 4):
             return False
-    
+
     if(filter == "ismapped"):
         if(read1.is_unmapped or read2.is_unmapped):
             return False
-     
+
     if(filter == "qc"):
         if(read1.is_qcfail or read2.is_qcfail):
             return False
-    
+
     return True
-        
+
 # I'm not a huge fan of this. We could only rescue a small fraction. Maybe it becomes valuable if we have deeper coverage, but for now, we can't really get much out of this.
 '''
 def fuzzyJoining(inputBAM,referenceFasta,output="default",):
@@ -177,15 +176,17 @@ def fuzzyJoining(inputBAM,referenceFasta,output="default",):
     return
 '''
 
-def GenerateBarcodeIndexBAM(doubleTaggedBAM, index_file="default",paired=True):
+
+def GenerateBarcodeIndexBAM(doubleTaggedBAM, index_file="default", paired=True):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(doubleTaggedBAM.split('.')[0:1]) + ".DoubleIdx"
-    if(paired==True):
+    if(paired is True):
         call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
-    if(paired==False):
+    if(paired is False):
         call("samtools view {} | grep -v 'AL:i:0' | awk '{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(doubleTaggedBAM, index_file), shell=True)
     return index_file
+
 
 def GenerateBarcodeIndexReference(doubleIdx, output="default"):
     if(output == "default"):
@@ -193,6 +194,7 @@ def GenerateBarcodeIndexReference(doubleIdx, output="default"):
     from subprocess import call
     call("paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(doubleIdx, output), shell=True)
     return output
+
 
 def GenerateFamilyHistochart(BamBarcodeIndex, output="default"):
     from subprocess import call
@@ -234,7 +236,7 @@ def getFamilySizeBAM(inputBAM, indexFile, output="default", trueFamilyList="defa
             try:
                 BDloc = [i for i, j in enumerate(record.tags) if j[0] == "BD"][0]
                 if(BDloc == len(record.tags) - 1):
-                    record.tags = record.tags[0:BDloc] + [("BD", 0)] 
+                    record.tags = record.tags[0:BDloc] + [("BD", 0)]
                 else:
                     record.tags = record.tags[0:BDloc] + [("BD", 0)] + record.tags[BDloc + 1:]
             except IndexError:
@@ -248,14 +250,15 @@ def getFamilySizeBAM(inputBAM, indexFile, output="default", trueFamilyList="defa
     call("cat {0} | sort | uniq > {1};mv {1} {0}".format(trueFamilyList, tempname), shell=True)
     return output, trueFamilyList
 
-def mergeBams(BAM1,BAM2,PT="default",outbam="default"):
-    if(PT=="default"):
-        PT="/mounts/bin/picard-tools"
+
+def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
+    if(PT == "default"):
+        PT = "/mounts/bin/picard-tools"
     from subprocess import call
-    if(outbam=="default"):
-        outbam='.'.join(BAM1.split('.')[0:-1])+'.merged.bam'
-    commandStr = "java -jar {}/MergeSamFiles.jar I={} I={} O={} SO=coordinate AS=true MSD=true USE_THREADING=true".format(PT,BAM1,BAM2,outbam)
-    call(commandStr,shell=True)
+    if(outbam == "default"):
+        outbam = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
+    commandStr = "java -jar {}/MergeSamFiles.jar I={} I={} O={} SO=coordinate AS=true MSD=true USE_THREADING=true".format(PT, BAM1, BAM2, outbam)
+    call(commandStr, shell=True)
     logging.info("Command string for merging was: {}".format(commandStr))
     return outbam
 
@@ -286,14 +289,14 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
 def pairedBarcodeTagging(fq1, fq2, bam, outputBAM="default",secondSuppBAM="default"):
     if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
-    if(secondSuppBAM=="default"):
-        secondSuppBAM = bam.split('.')[0]+'.2ndSupp.bam'
+    if(secondSuppBAM == "default"):
+        secondSuppBAM = bam.split('.')[0] + '.2ndSupp.bam'
     read1 = SeqIO.parse(fq1, "fastq")
     read2 = SeqIO.parse(fq2, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
-    suppBAM = pysam.Samfile(secondSuppBAM,"wb",template=postFilterBAM)
+    suppBAM = pysam.Samfile(secondSuppBAM,"wb", template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
             suppBAM.write(entry)
@@ -346,14 +349,14 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
             assert read1.qname == read2.qname  # Sanity check here to make sure that the reads are each other's mates
             for criterion in criteriaList:
                 result = criteriaTest(read1, read2, filter=criterion)
-                if(result == False):
+                if(result is False):
                     failed = True
                     failFilter.write(read1)
                     failFilter.write(read2)
                     break
                 else:
                     continue
-            if(failed == True):
+            if(failed is True):
                 continue
             passFilter.write(read1)
             passFilter.write(read2)
@@ -361,6 +364,7 @@ def pairedFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
+
 
 def removeSecondary(inBAM, outBAM="default"):
     if(outBAM == "default"):
@@ -375,6 +379,7 @@ def removeSecondary(inBAM, outBAM="default"):
             output.write(entry)
     return outBAM
 
+
 def Sam2Bam(insam, outbam):
     from subprocess import call
     output = open(outbam, 'w', 0)
@@ -387,14 +392,8 @@ def Sam2Bam(insam, outbam):
 def SamtoolsBam2fq(bamPath, outFastqPath):
     import subprocess
     # Build commands that will be piped
-    samtoolsBam2fqCommand = [ 
-                'samtools', 'bam2fq',
-                bamPath
-                ]   
-
-    gzipCommand = [ 
-                'gzip'
-                ]   
+    samtoolsBam2fqCommand = ['samtools', 'bam2fq', bamPath]
+    gzipCommand = ['gzip']
 
     # Open output fastq.gz file to be piped into
     outFastq = open(outFastqPath, 'w')
@@ -415,16 +414,17 @@ def SamtoolsBam2fq(bamPath, outFastqPath):
 
     return outFastqPath
 
+
 def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"):
     if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
-    if(secondSuppBAM=="default"):
-        secondSuppBAM = bam.split('.')[0]+'.2ndSupp.bam'
+    if(secondSuppBAM == "default"):
+        secondSuppBAM = bam.split('.')[0] + '.2ndSupp.bam'
     logging.info(("Tagged BAM file is: {}.".format(outputBAM)))
     reads = SeqIO.parse(fastq, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
-    suppBAM = pysam.Samfile(secondSuppBAM,"wb",template=postFilterBAM)
+    suppBAM = pysam.Samfile(secondSuppBAM, "wb", template=postFilterBAM)
     outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
@@ -439,7 +439,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default",secondSuppBAM="default"
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
         if("Homing" not in descArray[-3]):
-            logging.info(("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3])))  
+            logging.info(("The value in descArray[-3] is not what it should be! Value: {}".format(descArray[-3])))
             logging.info(("descArray is {}".format(descArray)))
             raise ValueError("Something has gone wrong! The adapter pass/fail ")
         if(descArray[-3].strip() == "HomingPass"):
@@ -460,7 +460,7 @@ def SingleConsolidate(inbam, outbam="default",stringency=0.9):
     workingBarcode = ""
     workingSet = []
     for record in inputHandle:
-        barcodeRecord = [tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]
+        barcodeRecord = [tagSet for tagSet in record.tags if tagSet[0] == "BS"][0][1]
         #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
         #print("name of read with this barcode: {}".format(record.qname))
         #print("Working set: {}".format(workingSet))
@@ -477,15 +477,15 @@ def SingleConsolidate(inbam, outbam="default",stringency=0.9):
             try:
                 #print("BS for first: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1]))
                 #print("BS for second: {}".format([tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]))
-                assert([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1]==[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1])
+                assert([tagSet for tagSet in workingSet[0].tags if tagSet[0] == "BS"][0][1] == [tagSet for tagSet in record.tags if tagSet[0] == "BS"][0][1])
             except AssertionError:
-                logging.info(("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1])))
+                logging.info(("First barcode: {}. Last barcode: {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0] == "BS"][0][1], [tagSet for tagSet in record.tags if tagSet[0] == "BS"][0][1])))
                 raise AssertionError("Well, there you go.")
             #print("Barcode for first in set is {}. while barcode for the new item is {}".format([tagSet for tagSet in workingSet[0].tags if tagSet[0]=="BS"][0][1],[tagSet for tagSet in record.tags if tagSet[0]=="BS"][0][1]) )
             workingSet.append(record)
             continue
         elif(workingBarcode != barcodeRecord):
-            mergedRecord, success = compareSamRecords(workingSet,stringency=stringency)
+            mergedRecord, success = compareSamRecords(workingSet, stringency=stringency)
             if(success == True):
                 outputHandle.write(mergedRecord)
             workingSet = []
@@ -496,18 +496,19 @@ def SingleConsolidate(inbam, outbam="default",stringency=0.9):
             raise RuntimeError("No idea what's going on. This code should be unreachable")
     inputHandle.close()
     outputHandle.close()
-    return outbam 
+    return outbam
+
 
 def singleCriteriaTest(read, filter="default"):
     list = "adapter complexity editdistance family ismapped qc".split(' ')
-    
+
     if(filter == "default"):
         logging.info(("List of valid filters: {}".format(', '.join(list))))
         raise ValueError("Filter must be set! Requires an exact match (case insensitive).")
-    
+
     if(filter not in list):
         raise ValueError("Your filter is not a supported criterion. The list is: {}".format(list))
-    
+
     if(filter == "adapter"):
         ALloc1 = [i for i, j in enumerate(read.tags) if j[0] == "AL"][0]
         try:
@@ -516,30 +517,30 @@ def singleCriteriaTest(read, filter="default"):
             ALValue1 = 0
         if(ALValue1 == 0):
             return False
-    
+
     if(filter == "complexity"):
         if("AAAAAAAAAAA" in str(read.tags) or "TTTTTTTTTTT" in str(read.tags) or "GGGGGGGGGGG" in str(read.tags) or "CCCCCCCCCCC" in str(read.tags)):
             return False
-        
+
     if(filter == "editdistance"):
         NMloc1 = [i for i, j in enumerate(read.tags) if j[0] == "NM"][0]
         if(read.tags[NMloc1][1] == 0):
             return False
-        
+
     if(filter == "family"):
         FMloc1 = [i for i, j in enumerate(read.tags) if j[0] == "FM"][0]
         FMValue1 = int(read.tags[FMloc1][1])
         if(FMValue1 < 3):
             return False
-    
+
     if(filter == "ismapped"):
         if(read.is_unmapped):
             return False
-     
+
     if(filter == "qc"):
         if(read.is_qcfail):
             return False
-    
+
     return True
 
 # Filters out both reads in a pair based on a list of comma-separated criteria. Both reads must pass to be written.
@@ -561,19 +562,20 @@ def singleFilterBam(inputBAM, passBAM="default", failBAM="default", criteria="de
         failed = False
         for criterion in criteriaList:
             result = singleCriteriaTest(read, filter=criterion)
-            if(result == False):
+            if(result is False):
                 failFilter.write(read)
                 failed = True
                 break
             else:
                 continue
-        if(failed == True):
+        if(failed is True):
             continue
         passFilter.write(read)
     passFilter.close()
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
+
 
 def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
     presplitBAM = pysam.Samfile(BAM, "rb")
