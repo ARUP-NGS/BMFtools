@@ -134,6 +134,15 @@ def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="defaul
     
     return outfq1,outfq1,outfqSingle
 
+def GenerateFullFastqBarcodeIndex(tags_file,index_file="default"):
+    from subprocess import call
+    if(index_file=="default"):
+        index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
+    commandStr ="cat {} | sed 's:###::g' | paste - - - - | awk '{{print $4}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file)
+    logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
+    call(commandStr,shell=True)
+    return index_file
+
 def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
     from subprocess import call
     if(index_file=="default"):

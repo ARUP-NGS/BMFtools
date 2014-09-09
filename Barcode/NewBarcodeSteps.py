@@ -15,12 +15,28 @@ def pairedBamProc(consfq1, consfq2,consfqSingle="default", opts="",bamPrefix="de
     if(aligner=="default"):
         logging.info("No aligner set, defaulting to bwa.")
         aligner="bwa"
-    outsamProperPair = bamPrefix + '.sam'#TODO: Parse out the fastq sets which both last through the merging step.
+    outsamProperPair = bamPrefix + '.sam'
     outbamProperPair = bamPrefix + '.bam'
+    outsamSingle = bamPrefix + "solo.sam";
+    outbamSingle = bamPrefix + "solo.bam";
     logging.info("The output SAM file with be {}, while the output BAM file will be {}".format(outsamProperPair,outbamProperPair))
     if(aligner=="bwa"):
         outsamProperPair, bwa_command = BarcodeHTSTools.align_bwa(consfq1,consfq2,ref,opts,outsamProperPair)
         logging.info("Aligner command was {}".format(bwa_command))
+        if(consfqSingle!="default"):
+            outsamSingle, bwase_command = BarcodeHTSTools.align_bwa_se(consfqSingle, ref, opts, outsamSingle)
+            logging.info("Aligner command for single-end was {}".format(bwase_command))
+            logging.info("Converting single-end sam to bam")
+            BarcodeBamtools.Sam2Bam(outsamSingle, outbamSingle)
+            logging.info("Tagging solo BAM")
+            taggedSingleBAM = BarcodeBamtools.singleBarcodeTagging(consfqSingle, outbamSingle)
+            logging.info("Now removing unmapped reads and those failing other filters from the solo bam.")
+            passTaggedSingleBAM = BarcodeBamtools.singleFilterBam(taggedSingleBAM, criteria="complexity,adapter,barcode,ismapped")
+            logging.info("Now generating index for solo reads")
+            singleIndex = BarcodeBamtools.GenerateBarcodeIndexBAM(passTaggedSingleBAM)
+            logging.info("Now tagging BAM file with family size.")
+            familySizeSoloBAM = BarcodeBamtools.getFamilySizeBAM(passTaggedSingleBAM, singleIndex)
+            sortFSSBam = BarcodeBamtools.CorrSort(familySizeSoloBAM)
     else:
         raise ValueError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
     logging.info("Converting SAM to BAM")
@@ -54,8 +70,11 @@ def pairedBamProc(consfq1, consfq2,consfqSingle="default", opts="",bamPrefix="de
     logging.info("Now determining family size for the doubled barcodes.")
     families,BarcodeFamilyList = BarcodeBamtools.getFamilySizeBAM(mappedPassingBarcodes, doubleIndex)
     familyPass,familyFail = BarcodeBamtools.pairedFilterBam(families,criteria="family")
-    sortedByBarcode = BarcodeBamtools.BarcodeSort(familyPass)
-    return sortedByBarcode
+    corrSorted = BarcodeBamtools.CorrSort(familyPass)
+    if(consfqSingle!="default"):
+        mergedSinglePair = BarcodeBamtools.mergeBams(corrSorted,sortFSSBam)
+        return mergedSinglePair
+    return corrSorted
 
 def pairedFastqProc(inFastq1,inFastq2,homing="default"):
     if(homing == "default"):
@@ -79,35 +98,24 @@ def pairedFastqProc(inFastq1,inFastq2,homing="default"):
     FamilyFastq2,TotalReads2,ReadsWithFamilies2 = BarcodeFastqTools.GetFamilySizeSingle(trimfq2,BarcodeIndex2)
     BarcodeSortedFastq2 = BarcodeFastqTools.BarcodeSort(FamilyFastq2)
     BarcodeConsFastq1, BarcodeConsFastq2 = BarcodeFastqTools.pairedFastqConsolidate(BarcodeSortedFastq1,BarcodeSortedFastq2,stringency=0.75)
-    BarcodeConsFqIndex1 = BarcodeFastqTools.GenerateSingleBarcodeIndex(BarcodeConsFastq1)
-    BarcodeConsFqIndex2 = BarcodeFastqTools.GenerateSingleBarcodeIndex(BarcodeConsFastq2)
+    BarcodeConsFqIndex1 = BarcodeFastqTools.GenerateFullFastqBarcodeIndex(BarcodeConsFastq1)
+    BarcodeConsFqIndex2 = BarcodeFastqTools.GenerateFullFastqBarcodeIndex(BarcodeConsFastq2)
     BarcodeConsPair1, BarcodeConsPair2, BarcodeSingle = BarcodeFastqTools.findProperPairs(BarcodeConsFastq1,BarcodeConsFastq2,index1=BarcodeConsFqIndex1,index2=BarcodeConsFqIndex2)
-    return BarcodeConsFastq1, BarcodeConsFastq2
+    return BarcodeConsPair1, BarcodeConsPair2, BarcodeSingle
 
-def pairedVCFProc(sortedByBarcode,ref="",opts="",bed=""):
+def pairedVCFProc(consMergeSortBAM,ref="",opts="",bed=""):
     if(bed==""):
         raise ValueError("Bed file location must be set!")
     if(ref==""):
         raise ValueError("Reference index location must be set!")
     #Consolidating families into single reads
-    consolidatedFamilies = BarcodeBamtools.Consolidate(sortedByBarcode)
-    consulate1,consulate2 = BarcodeBamtools.splitBAMByReads(consolidatedFamilies)
-    consulateFastq1 = BarcodeBamtools.SamtoolsBam2fq(consulate1, '.'.join(consulate1.split('.')[0:-1]) + ".cons.fastq")
-    consulateFastq2 = BarcodeBamtools.SamtoolsBam2fq(consulate2, '.'.join(consulate2.split('.')[0:-1]) + ".cons.fastq")
-    consSam = '.'.join(consulate1.split('.')[0:-1]) + "cons.bwa.sam"
-    consBam = '.'.join(consulate1.split('.')[0:-1]) + "cons.bwa.bam"
-    consSam, bwa_command = BarcodeHTSTools.align_bwa(consulateFastq1,consulateFastq2,ref,opts,consSam)
-    logging.info("Now attempting to convert {} to BAM, with the finished file at {}".format(consSam,consBam))
-    commandStr, consBam = BarcodeBamtools.Sam2Bam(consSam,consBam) 
     ####Variant Calling Step using MPileup
     #print("Now filtering for reads with NM > 0")
     #dissentingCons,boringCons = BarcodeBamtools.pairedFilterBam(consBam,criteria='editdistance')
     #print("Dissenting consolidated families are in {}, while the mindless meat puppets are in {}".format(dissentingCons,boringCons))
     logging.info("Now sorting reads by coordinate to prepare for MPileup.")
-    CorrCons = BarcodeBamtools.CorrSort(consBam)
-    
     logging.info("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BarcodeVCFTools.MPileup(CorrCons, ref)
+    MPileupVCF = BarcodeVCFTools.MPileup(consMergeSortBAM, ref,bed=bed)
     logging.info("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
     ParsedVCF = BarcodeVCFTools.ParseVCF(MPileupVCF)
     ParsedVCF.cleanRecords() #Removes entries in the VCF where there is no variant

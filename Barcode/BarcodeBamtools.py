@@ -248,6 +248,17 @@ def getFamilySizeBAM(inputBAM, indexFile, output="default", trueFamilyList="defa
     call("cat {0} | sort | uniq > {1};mv {1} {0}".format(trueFamilyList, tempname), shell=True)
     return output, trueFamilyList
 
+def mergeBams(BAM1,BAM2,PT="default",outbam="default"):
+    if(PT=="default"):
+        PT="/mounts/bin/picard-tools"
+    from subprocess import call
+    if(outbam=="default"):
+        outbam='.'.join(BAM1.split('.')[0:-1])+'.merged.bam'
+    commandStr = "java -jar {}/MergeSamFiles.jar I={} I={} O={} SO=coordinate AS=true MSD=true USE_THREADING=true".format(PT,BAM1,BAM2,outbam)
+    call(commandStr,shell=True)
+    logging.info("Command string for merging was: {}".format(commandStr))
+    return outbam
+
 def mergeBarcodes(reads1, reads2, outfile="default"):
     reader1 = pysam.Samfile(reads1, "rb")
     reader2 = pysam.Samfile(reads2, "rb")
