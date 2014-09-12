@@ -2,19 +2,27 @@ from Bio import SeqIO
 import pysam
 import logging
 
-def BarcodeSort(inFastq,outFastq="default"):
+
+def BarcodeSort(inFastq, outFastq="default"):
     logging.info("Sorting fastq by barcode sequence.")
     from subprocess import call
-    if(outFastq=="default"):
+    if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
-    BSstring = "cat {} | paste - - - - | grep 'HomingPass' | sed 's:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | sed 's:###\t:###:g' | sed 's:\t$::g' | sed 's:\t$::g' | tr '\t' '\n' > {}".format(inFastq,outFastq)
-    call(BSstring,shell=True)
-    logging.info("Command: {}".format(BSstring.replace("\t","\\t")))
+    BS1 = "cat " + inFastq + " | paste - - - - | grep 'HomingPass' | sed "
+    BS2 = "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | "
+    BS3 = "sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};"
+    BS4 = "{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | "
+    BS5 = "sed 's:###\t:###:g' | sed 's:\t$::g' "
+    BS6 = "| sed 's:\t$::g' | tr '\t' '\n' > "
+    BSstring = BS1 + BS2 + BS3 + BS4 + BS5 + BS6 + outFastq
+    call(BSstring, shell=True)
+    logging.info("Command: {}".format(BSstring.replace("\t", "\\t")))
     return outFastq
 
-def compareFastqRecords(RecordList,stringency=0.9):
+
+def compareFastqRecords(R, stringency=0.9):
     from Bio.SeqRecord import SeqRecord
-    seqs = [str(record.seq) for record in RecordList]
+    seqs = [str(record.seq) for record in Rec]
     max = 0
     Success = False
     for seq in seqs:
@@ -23,17 +31,23 @@ def compareFastqRecords(RecordList,stringency=0.9):
         if(numEq > max):
             max = numEq
             finalSeq = str(seq)
-    frac = numEq * 1.0 / len(RecordList)
-    #print("Fraction {}. Stringency: {}. Pass? {}.".format(frac,stringency,(frac>stringency)))
+    frac = numEq * 1.0 / len(Rec)
+    PASS = frac > stringency
+    #print("Fraction {}. Stringency: {}. Pass? {}.".format(
+    # frac,stringency,PASS))
     if(frac > stringency):
         Success = True
-    consolidatedRecord = SeqRecord(seq=finalSeq,id=RecordList[0].id,letter_annotations=RecordList[0].letter_annotations,name=RecordList[0].name,description=RecordList[0].description)
+    consolidatedRecord = SeqRecord(seq=finalSeq, id=R[0].id,
+                                   letter_annotations=R[0].letter_annotations,
+                                   name=R[0].name,
+                                   description=R[0].description)
     return consolidatedRecord, Success
 
-def HomingSeqLoc(fq,homing,bar_len=12):
-    InFastq=SeqIO.parse(fq,"fastq")
+
+def HomingSeqLoc(fq, homing, bar_len=12):
+    InFastq = SeqIO.parse(fq, "fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
-    Prefix=Tpref.split('/')[-1]
+    Prefix = Tpref.split('/')[-1]
     StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format("homing"+str(bar_len)), Prefix+ '.else.fastq', Prefix + '.else.supp'
     StdFastq=open(StdFilename,'w',0) #Homing at expected Location
     ElseFastq=open(ElseFilename,'w',0) #Homing sequence found elsewhere, even if it's simply part of the read itself
