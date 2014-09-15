@@ -22,7 +22,7 @@ def BarcodeSort(inFastq, outFastq="default"):
 
 def compareFastqRecords(R, stringency=0.9):
     from Bio.SeqRecord import SeqRecord
-    seqs = [str(record.seq) for record in Rec]
+    seqs = [str(record.seq) for record in R]
     max = 0
     Success = False
     for seq in seqs:
@@ -31,7 +31,7 @@ def compareFastqRecords(R, stringency=0.9):
         if(numEq > max):
             max = numEq
             finalSeq = str(seq)
-    frac = numEq * 1.0 / len(Rec)
+    frac = numEq * 1.0 / len(R)
     PASS = frac > stringency
     #print("Fraction {}. Stringency: {}. Pass? {}.".format(
     # frac,stringency,PASS))
@@ -69,7 +69,8 @@ def HomingSeqLoc(fq, homing, bar_len=12):
     ElseLocations.close()
     return StdFilename,ElseFilename
 
-def fastq_sort(in_fastq,out_fastq):
+
+def fastq_sort(in_fastq, out_fastq):
     import subprocess
     outfile=open(out_fastq,'w')
     command_str='cat {} | paste - - - - | sort -k1,1 -t " " | tr "\t" "\n"'.format(in_fastq)
@@ -77,7 +78,8 @@ def fastq_sort(in_fastq,out_fastq):
     outfile.close()
     return(command_str)
 
-def FastqRegex(fq,string,matchFile="default",missFile="default"):
+
+def FastqRegex(fq, string, matchFile="default", missFile="default"):
     from subprocess import call
     if(matchFile=="default"):
         matchFile = ('.'.join(fq.split('.')[0:-1])+'.match.fastq').split('/')[-1]

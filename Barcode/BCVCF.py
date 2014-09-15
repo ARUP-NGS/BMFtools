@@ -1,6 +1,6 @@
 import logging
 
-from BarcodeHTSTools import IllegalArgumentError
+from HTSUtils import IllegalArgumentError
 
 
 class VCFFile:
@@ -37,6 +37,7 @@ class VCFFile:
         NewVCFFile = VCFFile(NewVCFEntries, self.header, self.sampleName + "FilteredBy{}".format(filterOpt))
         #TODO: make a new VCFFile object based on location.
         return NewVCFFile
+
 
     def update(self):
         SetNames = []
