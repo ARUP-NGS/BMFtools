@@ -3,6 +3,7 @@ import logging
 
 from Bio import SeqIO
 import pysam
+from HTSUtils import printlog as pl
 
 
 def generateHammingMatrix(input, outTSV="default"):
@@ -38,7 +39,7 @@ def generateLevenshteinMatrix(input, outTSV="default"):
     import Levenshtein
     if(outTSV == "default"):
         outTSV = input.split('.')[0] + '.HammingMatrix.tsv'
-    logging.info("Output file for tab-separated values is {}.".format(outTSV))
+    pl("Output file for tab-separated values is {}.".format(outTSV))
     import csv
     tsvWriter = open(outTSV, 'w', 0)
     MatrixWriter = csv.writer(tsvWriter, delimiter="\t")
@@ -76,8 +77,8 @@ def hamming(str1, str2):
     except AssertionError:
         str="String 1 is {} with length {}".format(str1,len(str1))
         str+=" while String 2 iswith length {}".format(str2, len(str2))
-        logging.info(str)
-        logging.info("Calculating Levenshtein distance instead.")
+        pl(str)
+        pl("Calculating Levenshtein distance instead.")
         return Levenshtein.distance(str1,str2)
      '''
     # ne = str.__ne__  ## this is surprisingly slow

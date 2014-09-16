@@ -1,10 +1,10 @@
 from Bio import SeqIO
 import pysam
-import logging
+from HTSUtils import printlog as pl
 
 
 def BarcodeSort(inFastq, outFastq="default"):
-    logging.info("Sorting fastq by barcode sequence.")
+    pl("Sorting fastq by barcode sequence.")
     from subprocess import call
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
@@ -16,7 +16,7 @@ def BarcodeSort(inFastq, outFastq="default"):
     BS1 += "| sed 's:\t$::g' | tr '\t' '\n' > "
     BSstring = BS1 + outFastq
     call(BSstring, shell=True)
-    logging.info("Command: {}".format(BSstring.replace("\t", "\\t")))
+    pl("Command: {}".format(BSstring.replace("\t", "\\t")))
     return outFastq
 
 
@@ -105,14 +105,14 @@ def FastqRegex(fq, string, matchFile="default", missFile="default"):
 def fastx_trim(infq, outfq, n):
     import subprocess
     command_str = ['fastx_trimmer', '-l', str(n), '-i', infq, '-o', outfq]
-    logging.info(command_str)
+    pl(command_str)
     subprocess.call(command_str)
     return(command_str)
 
 
 def findProperPairs(infq1, infq2, index1="default", index2="default",
                     outfq1="default", outfq2="default", outfqSingle="default"):
-    logging.info(
+    pl(
         "Now attempting to parse out proper pairs and those w/o.")
     from Bio import SeqIO
     if(index1 == "default"):
@@ -173,7 +173,7 @@ def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
     cmd = "cat {} | sed 's:###::g' | paste - - - - | awk ".format(tags_file)
     cmd += "'{{print $4}}' | sort | uniq -c | awk 'BEGIN "
     cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(index_file)
-    logging.info("CommandStr = {}".format(cmd.replace("\t", "\\t")))
+    pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
     call(cmd, shell=True)
     return index_file
 
@@ -187,7 +187,7 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
     cmd += "{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}}"
     ";{{print $1,$2}}' > {}".format(index_file)
-    logging.info("CommandStr = {}".format(cmd.replace("\t", "\\t")))
+    pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
     call(cmd, shell=True)
     return index_file
 
@@ -197,7 +197,7 @@ def GetFamilySizeSingle(
         BarcodeIndex,
         outfq="default",
         singlefq="default"):
-    logging.info("Getting family sizes for all of the grouped families.")
+    pl("Getting family sizes for all of the grouped families.")
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq == "default"):
         outfq = '.'.join(trimfq.split('.')[0:-1]) + ".fam.fastq"
@@ -273,7 +273,7 @@ def mergeSequencesFastq(fq1, fq2, output="default"):
 
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default", stringency=0.9):
-    logging.info("Now consolidating paired-end reads.")
+    pl("Now consolidating paired-end reads.")
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
     if(outFqPair2 == "default"):
@@ -420,7 +420,7 @@ def TrimHoming(
     InFastq = SeqIO.parse(fq, "fastq")
     HomingLen = len(homing)
     TotalTrim = HomingLen + bar_len + start_trim
-    logging.info("Homing Length is {}".format(HomingLen))
+    pl("Homing Length is {}".format(HomingLen))
     for rec in InFastq:
         pre_tag = SeqRecord(
             Seq(str(rec.seq)[0:bar_len], "fastq"),
@@ -429,7 +429,7 @@ def TrimHoming(
             'phred_quality'][0:bar_len]
         '''
         if homing not in pre_tag.seq:
-            logging.info("Homing sequence not in tag. Writing to error file.")
+            pl("Homing sequence not in tag. Writing to error file.")
             SeqIO.write(rec,errOpen,"fastq")
             continue
         '''

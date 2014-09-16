@@ -17,7 +17,7 @@ def align_bowtie2(R1, R2, ref, opts, outsam):
         opt_concat += opt_it + " "
     command_str = 'bowtie2 {} --local --very'.format(opt_concat)
     command_str += '-sensitive-local -x {} -1 {} -2 {}'.format(ref, R1, R2)
-    logging.info(command_str)
+    printlog(command_str)
     # command_list=command_str.split(' ')
     subprocess.call(command_str, stdout=output, shell=True)
     output.close()
@@ -34,7 +34,7 @@ def align_bwa(R1, R2, ref, opts, outsam):
         opt_concat += opt_it + " "
     command_str = 'bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2)
     # command_list = command_str.split(' ')
-    logging.info(command_str)
+    printlog(command_str)
     subprocess.call(command_str, stdout=output, shell=True)
     output.close()
     return outsam, command_str
@@ -50,7 +50,7 @@ def align_bwa_se(reads, ref, opts, outsam):
         opt_concat += opt_it + " "
     command_str = 'bwa mem {} {} {}'.format(opt_concat, ref, reads)
     # command_list = command_str.split(' ')
-    logging.info(command_str)
+    printlog(command_str)
     subprocess.call(command_str, stdout=output, shell=True)
     output.close()
     return outsam, command_str
@@ -67,7 +67,7 @@ def align_snap(R1, R2, ref, opts, outbam):
         R2,
         outbam,
         opt_concat)
-    logging.info(command_str)
+    printlog(command_str)
     subprocess.call(command_str)
     return(command_str)
 
@@ -107,7 +107,7 @@ def sam_sort(insam, outsam):
     tmp = open(tmpname, 'w', 0)
     import subprocess
     command_str = str('grep -v "@SQ\|@PG\|VN:\|@HD" {}'.format(insam))
-    logging.info(command_str)
+    printlog(command_str)
     subprocess.call(command_str, stdout=tmp, shell=True)
     tmp.close()
     # Save the header to the outsam
@@ -116,7 +116,7 @@ def sam_sort(insam, outsam):
     # sort the reads by query name
     tmp = open(tmpname, 'r')
     command_str1 = str('sort -k1,1 -t " " {}'.format(tmpname))
-    logging.info(command_str1)
+    printlog(command_str1)
     subprocess.call(command_str1, stdout=output, shell=True)
     output.close()
     tmp.close()

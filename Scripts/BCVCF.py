@@ -1,4 +1,4 @@
-import logging
+from HTSUtils import printlog as pl
 
 
 class VCFFile:
@@ -165,7 +165,7 @@ def MPileup(inputBAM, ref, bed="default", outputBCF="default"):
         cmd = "samtools mpileup -f {} -F 0.0001 ".format(ref)
         cmd += "-I -S -g -D -R -q 10 -Q 30 {} |".format(inputBAM)
         cmd += " bcftools view - > {}".format(outputBCF)
-    logging.info("{} is command string".format(cmd))
+    pl("{} is command string".format(cmd))
     subprocess.call(cmd, shell=True)
     return outputBCF
 
