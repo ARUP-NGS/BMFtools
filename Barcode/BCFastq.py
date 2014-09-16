@@ -48,145 +48,157 @@ def HomingSeqLoc(fq, homing, bar_len=12):
     InFastq = SeqIO.parse(fq, "fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix = Tpref.split('/')[-1]
-    StdFilename, ElseFilename, ElseLoc = Prefix+'.{}.fastq'.format("homing"+str(bar_len)), Prefix+ '.else.fastq', Prefix + '.else.supp'
-    StdFastq=open(StdFilename,'w',0) #Homing at expected Location
-    ElseFastq=open(ElseFilename,'w',0) #Homing sequence found elsewhere, even if it's simply part of the read itself
-    ElseLocations=open(ElseLoc,'w',0)
+    StdFilename, ElseFilename, ElseLoc = Prefix +
+    '.{}.fastq'.format("homing"+str(bar_len)),
+    Prefix + '.else.fastq', Prefix + '.else.supp'
+    StdFastq = open(StdFilename, 'w', 0)  # Homing at expected Location
+    ElseFastq = open(ElseFilename, 'w', 0)
+    ElseLocations = open(ElseLoc, 'w', 0)
     for read in InFastq:
         seq = str(read.seq)
-        if(seq.find(homing)==-1):
-            read.description+=" ###HomingFail"
-            SeqIO.write(read,StdFastq,"fastq")
-        elif(seq[bar_len:bar_len+len(homing)] == homing):
-            read.description+=" ###HomingPass"
-            SeqIO.write(read,StdFastq,"fastq") #Checks the expected homing location. Avoiding find command, as sometimes the homing sequence occurs before and at the expected location
+        if(seq.find(homing) == -1):
+            read.description += " ###HomingFail"
+            SeqIO.write(read, StdFastq, "fastq")
+        elif(seq[bar_len:bar_len + len(homing)] == homing):
+            read.description += " ###HomingPass"
+            SeqIO.write(read, StdFastq, "fastq")
         else:
-            read.description=" ###HomingFail"
-            SeqIO.write(read,StdFastq,"fastq")
-            ElseLocations.write(repr(seq.find(homing)) + "\t" + read.name + "\n")
+            read.description = " ###HomingFail"
+            SeqIO.write(read, StdFastq, "fastq")
+            ElseLocations.write(repr(seq.find(homing)) + "\t" +
+                                read.name + "\n")
     StdFastq.close()
     ElseFastq.close()
     ElseLocations.close()
-    return StdFilename,ElseFilename
+    return StdFilename, ElseFilename
 
 
 def fastq_sort(in_fastq, out_fastq):
     import subprocess
-    outfile=open(out_fastq,'w')
-    command_str='cat {} | paste - - - - | sort -k1,1 -t " " | tr "\t" "\n"'.format(in_fastq)
-    subprocess.call(command_str,stdout=outfile,shell=True)
+    outfile = open(out_fastq, 'w')
+    command_str = 'cat {} | paste - - - - | '.format(in_fastq) +
+    'sort -k1,1 -t " " | tr "\t" "\n"'
+    subprocess.call(command_str, stdout=outfile, shell=True)
     outfile.close()
     return(command_str)
 
 
 def FastqRegex(fq, string, matchFile="default", missFile="default"):
     from subprocess import call
-    if(matchFile=="default"):
-        matchFile = ('.'.join(fq.split('.')[0:-1])+'.match.fastq').split('/')[-1]
-    if(missFile=="default"):
-        missFile = ('.'.join(fq.split('.')[0:-1])+'.miss.fastq').split('/')[-1]
-    CommandStr = "cat {} | paste - - - - | grep '{}' | tr '\t' '\n' > {}".format(fq,string,matchFile)
-    call(CommandStr,shell=True)
-    CommandStr2 = "cat {} | paste - - - - | grep -v '{}' | tr '\t' '\n' > {}".format(fq,string,missFile)
-    call(CommandStr2,shell=True)
-    return(CommandStr,CommandStr2,matchFile,missFile)
+    if(matchFile == "default"):
+        matchFile = ('.'.join(fq.split('.')[0:-1]) + '.match.fastq').split('/')[-1]
+    if(missFile == "default"):
+        missFile = ('.'.join(fq.split('.')[0:-1]) + '.miss.fastq').split('/')[-1]
+    CommandStr = "cat {} | paste - - - - | grep '{}' | tr '\t' '\n' > {}".format(fq, string, matchFile)
+    call(CommandStr, shell=True)
+    CommandStr2 = "cat {} | paste - - - - | grep -v '{}' | tr '\t' '\n' > {}".format(fq, string, missFile)
+    call(CommandStr2, shell=True)
+    return(CommandStr, CommandStr2, matchFile, missFile)
+
 
 def fastx_trim(infq, outfq, n):
     import subprocess
-    command_str = ['fastx_trimmer','-l',str(n),'-i',infq,'-o',outfq]
+    command_str = ['fastx_trimmer', '-l', str(n), '-i', infq, '-o', outfq]
     logging.info(command_str)
     subprocess.call(command_str)
     return(command_str)
 
-def findProperPairs(infq1,infq2,index1="default",index2="default",outfq1="default",outfq2="default",outfqSingle="default"):
+
+def findProperPairs(infq1, infq2, index1="default", index2="default",
+                    outfq1="default", outfq2="default", outfqSingle="default"):
     logging.info("Now attempting to parse out proper pairs from reads which need to be aligned as single-end.")
     from Bio import SeqIO
-    if(index1=="default"):
+    if(index1 == "default"):
         raise ValueError("An index for the barcodes in reads1 set must be present.")
-    if(index2=="default"):
+    if(index2 == "default"):
         raise ValueError("An index for the barcodes in reads2 set must be present.")
-    if(outfq1=="default"):
-        outfq1 = '.'.join(infq1.split('.')[0:-1])+'.proper.fastq'
-    if(outfq2=="default"):
-        outfq2 = '.'.join(infq2.split('.')[0:-1])+'.proper.fastq'
-    if(outfqSingle=="default"):
-        outfqSingle = '.'.join(infq1.split('.')[0:-1])+'.solo.fastq'
-    outfq1Handle = open(outfq1,'w')
-    outfq2Handle = open(outfq2,'w')
-    outfqSingleHandle = open(outfqSingle,'w')
-    indexHandle1 = open(index1,"r")
-    infq1Handle = SeqIO.parse(infq1,"fastq")
+    if(outfq1 == "default"):
+        outfq1 = '.'.join(infq1.split('.')[0:-1]) + '.proper.fastq'
+    if(outfq2 == "default"):
+        outfq2 = '.'.join(infq2.split('.')[0:-1]) + '.proper.fastq'
+    if(outfqSingle == "default"):
+        outfqSingle = '.'.join(infq1.split('.')[0:-1]) + '.solo.fastq'
+    outfq1Handle = open(outfq1, 'w')
+    outfq2Handle = open(outfq2, 'w')
+    outfqSingleHandle = open(outfqSingle, 'w')
+    indexHandle1 = open(index1, "r")
+    infq1Handle = SeqIO.parse(infq1, "fastq")
     infq2Handle = SeqIO.parse(infq2, "fastq")
     dictEntries = [line.split() for line in indexHandle1]
     BarDict1 = {}
     for entry in dictEntries:
-        BarDict1[entry[1]]=entry[0]
-    indexHandle2 = open(index2,"r")
+        BarDict1[entry[1]] = entry[0]
+    indexHandle2 = open(index2, "r")
     for read in infq2Handle:
         queryBC = read.description.split('###')[-2]
         try:
             temp = BarDict1[queryBC]
             SeqIO.write(read, outfq2Handle, "fastq")
         except KeyError:
-            SeqIO.write(read,outfqSingleHandle,"fastq")
-             
+            SeqIO.write(read, outfqSingleHandle, "fastq")
+
     dictEntries = [line.split() for line in indexHandle2]
     BarDict2 = {}
     for entry in dictEntries:
-        BarDict2[entry[1]]=entry[0]
+        BarDict2[entry[1]] = entry[0]
     for read in infq1Handle:
         queryBC = read.description.split('###')[-2]
         try:
             temp = BarDict2[queryBC]
             SeqIO.write(read, outfq1Handle, "fastq")
         except KeyError:
-            SeqIO.write(read,outfqSingleHandle,"fastq")
+            SeqIO.write(read, outfqSingleHandle, "fastq")
     outfq1Handle.close()
     outfq2Handle.close()
     infq1Handle.close()
     infq2Handle.close()
     indexHandle1.close()
     indexHandle2.close()
-    
-    return outfq1,outfq1,outfqSingle
+    return outfq1, outfq1, outfqSingle
 
-def GenerateFullFastqBarcodeIndex(tags_file,index_file="default"):
-    from subprocess import call
-    if(index_file=="default"):
-        index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    commandStr ="cat {} | sed 's:###::g' | paste - - - - | awk '{{print $4}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file)
-    logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
-    call(commandStr,shell=True)
-    return index_file
 
-def GenerateSingleBarcodeIndex(tags_file,index_file="default"):
+def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
     from subprocess import call
-    if(index_file=="default"):
+    if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    commandStr ="cat {} | sed 's:###: ###:g' | paste - - - - | grep -v \"HomingFail\" | awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file,index_file)
+    commandStr = "cat {} | sed 's:###::g' | paste - - - - | awk '{{print $4}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file, index_file)
     logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
-    call(commandStr,shell=True)
+    call(commandStr, shell=True)
     return index_file
 
 
-def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
+def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
+    from subprocess import call
+    if(index_file == "default"):
+        index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
+    commandStr = "cat {} | sed 's:###: ###:g' | ".format(tags_file) +
+    "paste - - - - | grep -v \"HomingFail\" | " +
+    "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};" +
+    "{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}}" +
+    ";{{print $1,$2}}' > {}".format(index_file)
+    logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
+    call(commandStr, shell=True)
+    return index_file
+
+
+def GetFamilySizeSingle(trimfq, BarcodeIndex, outfq="default", singlefq="default"):
     logging.info("Getting family sizes for all of the grouped families.")
     infq = SeqIO.parse(trimfq, "fastq")
-    if(outfq=="default"):
-        outfq = '.'.join(trimfq.split('.')[0:-1])+".fam.fastq"
-    outfqBuffers = open(outfq,"w",0)
-    index = open(BarcodeIndex,"r")
-    if(singlefq=="default"):
-        singlefq = '.'.join(trimfq.split('.')[0:-1])+".lonely.hearts.club.band.fastq"
-    singlefqBuffer = open(singlefq,"w",0)
-    TotalReads, ReadsWithFamilies = 0,0
+    if(outfq == "default"):
+        outfq = '.'.join(trimfq.split('.')[0:-1]) + ".fam.fastq"
+    outfqBuffers = open(outfq, "w", 0)
+    index = open(BarcodeIndex, "r")
+    if(singlefq == "default"):
+        singlefq = '.'.join(trimfq.split('.')[0:-1]) + ".lonely.hearts.club.band.fastq"
+    singlefqBuffer = open(singlefq, "w", 0)
+    TotalReads, ReadsWithFamilies = 0, 0
     dictEntries = [line.split() for line in index]
     BarDict = {}
     for entry in dictEntries:
-        BarDict[entry[1]]=entry[0]
+        BarDict[entry[1]] = entry[0]
     for read in infq:
         index.seek(0)
-        TotalReads+=1
+        TotalReads += 1
         #print("description is {}".format(read.description)) #FOR DEBUGGING PURPOSES, UNCOMMENT
         #print("-1 index of description is {}".format(read.description.split("###")[-1].strip()))
         #print("-2 index of description is {}".format(read.description.split("###")[-2].strip()))
@@ -196,36 +208,40 @@ def GetFamilySizeSingle(trimfq,BarcodeIndex,outfq="default",singlefq="default"):
         try:
             famSize = BarDict[readTag]
         except KeyError:
-            famSize= 0
-        newRead.description = read.description+" ###"+str(famSize)
+            famSize = 0
+        newRead.description = read.description + " ###" + str(famSize)
         #print("famSize = _{}_".format(str(famSize)))
         #print("The value of this comparison to 1 is {}".format(str(famSize=="1")))
         if(str(famSize) == "0"):
             continue
         if(str(famSize) == "1"):
-            SeqIO.write(newRead,singlefqBuffer,"fastq")
-            SeqIO.write(newRead,outfqBuffers,"fastq")
+            SeqIO.write(newRead, singlefqBuffer, "fastq")
+            SeqIO.write(newRead, outfqBuffers, "fastq")
         else:
-            ReadsWithFamilies+=1
-            SeqIO.write(newRead,outfqBuffers,"fastq")
-    return outfq,TotalReads, ReadsWithFamilies
+            ReadsWithFamilies += 1
+            SeqIO.write(newRead, outfqBuffers, "fastq")
+    return outfq, TotalReads, ReadsWithFamilies
 
-def mergeSequencesFastq(fq1,fq2,output="default"):
-    if(output=="default"):
+
+def mergeSequencesFastq(fq1, fq2, output="default"):
+    if(output == "default"):
         output = fq1.split('.')[0] + '.merged.fastq'
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
-    reads1=SeqIO.parse(fq1,"fastq")
-    reads2=SeqIO.parse(fq2,"fastq")
-    outFastq = open(output,"w",0)
+    reads1 = SeqIO.parse(fq1, "fastq")
+    reads2 = SeqIO.parse(fq2, "fastq")
+    outFastq = open(output, "w", 0)
     while True:
         try:
             read1 = reads1.next()
             read2 = reads2.next()
             outread = read1
-            outread=SeqRecord(
-                Seq(str(read1.seq)+str(read2.seq),"fastq"), id=read1.id,description=read1.description) 
-            outread.letter_annotations['phred_quality']=read1.letter_annotations['phred_quality'] + read2.letter_annotations['phred_quality'] 
+            outread = SeqRecord(
+                Seq(str(read1.seq) + str(read2.seq), "fastq"),
+                id=read1.id, description=read1.description)
+            outread.letter_annotations['phred_quality'] =
+            read1.letter_annotations['phred_quality'] +
+            read2.letter_annotations['phred_quality']
             SeqIO.write(outread, outFastq, "fastq")
         except StopIteration:
             break
@@ -234,7 +250,9 @@ def mergeSequencesFastq(fq1,fq2,output="default"):
     outFastq.close()
     return output
 
-def pairedFastqConsolidate(fq1,fq2,outFqPair1="default",outFqPair2="default",stringency=0.9):
+
+def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
+                           outFqPair2="default", stringency=0.9):
     logging.info("Now consolidating paired-end reads.")
     if(outFqPair1=="default"):
         outFqPair1= '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'

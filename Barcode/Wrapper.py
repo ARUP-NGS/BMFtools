@@ -9,6 +9,7 @@ import NewBarcodeSteps
 #tasks related to barcoded protocols for ultra-low
 #frequency variant detection, particularly for circulating tumor DNA
 #
+# Sept. 15, 2014: Redesigned. New homing sequence: GACGG(T)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i','--fq', help="Provide your fastq file(s). Note: if '--BAM' option is set, this needs to be the Family Fastq files", nargs = "+", metavar = ('reads'))

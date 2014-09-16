@@ -42,7 +42,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                 taggedSingleBAM,
                 criteria="complexity,adapter,ismapped")
             logging.info("Now generating index for solo reads")
-            singleIndex = BCBam.GenerateBarcodeIndexBAM(
+            singleIndex = BCBam.GenBCIndexBAM(
                 passTaggedSingleBAM)
             logging.info("Now tagging BAM file with family size.")
             familySizeSoloBAM = BCBam.getFamilySizeBAM(
@@ -63,7 +63,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     logging.info("Now generating double barcode index.")
     mappedMerge, failures = BCBam.pairedFilterBam(
         concatBS, criteria="complexity,adapter,barcode")
-    doubleIndex = BCBam.GenerateBarcodeIndexBAM(mappedMerge)
+    doubleIndex = BCBam.GenBCIndexBAM(mappedMerge)
     p = subprocess.Popen(["wc", "-l", doubleIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()
     logging.info("Number of families found: {}".format(
@@ -104,8 +104,9 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default"):
     tags1, trimfq1 = BCFastq.TrimHoming(homingP1, homing)
     logging.info("Now generating the barcode index.")
     BarcodeIndex1 = BCFastq.GenerateSingleBarcodeIndex(tags1)
-    FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(trimfq1, BarcodeIndex1)
-    BarcodeSortedFastq1 = BCFastq.BarcodeSort(FamFq1)
+    FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(
+        trimfq1, BarcodeIndex1)
+    BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     #For reads 2
     homingP2, homingF2 = BCFastq.HomingSeqLoc(
         inFastq2, homing=homing)
@@ -114,13 +115,16 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default"):
     tags2, trimfq2 = BCFastq.TrimHoming(homingP2, homing)
     logging.info("Now generating the barcode index.")
     BarcodeIndex2 = BCFastq.GenerateSingleBarcodeIndex(tags2)
-    FamilyFastq2, TotalReads2, ReadsWithFamilies2 = BCFastq.GetFamilySizeSingle(trimfq2, BarcodeIndex2)
-    BarcodeSortedFastq2 = BCFastq.BarcodeSort(FamilyFastq2)
-    BarcodeConsFastq1, BarcodeConsFastq2 = BCFastq.pairedFastqConsolidate(BarcodeSortedFastq1, BarcodeSortedFastq2, stringency=0.75)
-    BarcodeConsFqIndex1 = BCFastq.GenerateFullFastqBarcodeIndex(BarcodeConsFastq1)
-    BarcodeConsFqIndex2 = BCFastq.GenerateFullFastqBarcodeIndex(BarcodeConsFastq2)
-    BarcodeConsPair1, BarcodeConsPair2, BarcodeSingle = BCFastq.findProperPairs(BarcodeConsFastq1, BarcodeConsFastq2, index1=BarcodeConsFqIndex1, index2=BarcodeConsFqIndex2)
-    return BarcodeConsPair1, BarcodeConsPair2, BarcodeSingle
+    FamFq2, TotalReads2, FamReads2 = BCFastq.GetFamilySizeSingle(
+        trimfq2, BarcodeIndex2)
+    BarcodeSortedFastq2 = BCFastq.BarcodeSort(FamFq2)
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
+        BSortFq1, BarcodeSortedFastq2, stringency=0.75)
+    BConsFqIndex1 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq1)
+    BConsFqIndex2 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq2)
+    BConsPair1, BConsPair2, BarcodeSingle = BCFastq.findProperPairs(
+        BConsFastq1, BConsFastq2, index1=BConsFqIndex1, index2=BConsFqIndex2)
+    return BConsPair1, BConsPair2, BarcodeSingle
 
 
 def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
@@ -134,25 +138,26 @@ def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
     logging.info("Now sorting reads by coordinate to prepare for MPileup.")
     logging.info("Now creating a VCF using mpileup for variant calling.")
     MPileupVCF = BCVCF.MPileup(consMergeSortBAM, ref, bed=bed)
-    logging.info("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
+    logging.info("Initial mpileup: {}. Filtering.".format(MPileupVCF))
     ParsedVCF = BCVCF.ParseVCF(MPileupVCF)
-    ParsedVCF.cleanRecords()  # Removes entries in the VCF where there is no variant
+    ParsedVCF.cleanRecords()
     CleanParsedVCF = BCVCF.CleanupPileup(MPileupVCF)
     return CleanParsedVCF
 
 
 def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):
-    logging.info("Now tagging reads with barcodes, family counts, and a pass/fail for the homing sequence.")
-    logging.info("Now filtering based on complexity of barcodes, the homing presence, and a reasonably-sized family.")
+    logging.info("Now tagging reads.")
+    logging.info("Now filtering reads")
     if(bamPrefix == "default"):
         bamPrefix = FamilyFastq.split('.')[0] + '.FMS'
         outsam, outbam = bamPrefix + '.sam', bamPrefix + '.bam'
-    logging.info("The output SAM file with be {}, while the output BAM file will be {}".format(outsam, outbam))
+    logging.info("Output Sam: {}. Output Bam: {}".format(outsam, outbam))
     if(aligner == "bwa"):
-        outsamFile, bwa_command = HTSUtils.align_bwa_se(FamilyFastq, ref, opts, outsam)
+        outsamFile, bwa_command = HTSUtils.align_bwa_se(
+            FamilyFastq, ref, opts, outsam)
         logging.info("Aligner command was {}".format(bwa_command))
     else:
-        raise HTSUtils.IllegalArgumentError("Sorry, I haven't bothered to handle other aligners yet. Whoops! Remember, I warned you about this in the help menu")
+        raise ValueError("Sorry, I don't handle that aligner.")
     logging.info("Converting SAM to BAM")
     BCBam.Sam2Bam(outsam, outbam)
     taggedBAM = BCBam.singleBarcodeTagging(FamilyFastq, outbam)
@@ -162,26 +167,27 @@ def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):
 def singleFastqProc(inFastq, homing="default"):
     if(homing == "default"):
         homing = "CAGT"
-    StdFilenames,ElseFilenames = BCFastq.HomingSeqLoc(inFastq, homing=homing)
-    logging.info("Adapter sequences located. Hits and misses (correct location vs. incorrect location or not found) parsed out.")
+    StdFilenames, ElseFilenames = BCFastq.HomingSeqLoc(inFastq, homing=homing)
+    logging.info("Homing seq located, parsing these out.")
     logging.info("Now removing the homing and the barcode.")
     tags, trimfq = BCFastq.TrimHoming(StdFilenames, homing)
     logging.info("Now generating the barcode index.")
     BarcodeIndex = BCFastq.GenerateSingleBarcodeIndex(tags)
-    FamilyFastq, TotalReads, ReadsWithFamilies = BCFastq.GetFamilySizeSingle(trimfq, BarcodeIndex)
-    BarcodeSortedFastq = BCFastq.BarcodeSort(FamilyFastq)
-    BarcodeConsFastq = BCFastq.singleFastqConsolidate(BarcodeSortedFastq, stringency=0.667)
-    return BarcodeConsFastq
+    FamilyFastq, TotalReads, FamReads = BCFastq.GetFamilySizeSingle(
+        trimfq, BarcodeIndex)
+    BSortFq = BCFastq.BarcodeSort(FamilyFastq)
+    BConsFastq = BCFastq.singleFastqConsolidate(BSortFq, stringency=0.667)
+    return BConsFastq
+
 
 def singleVCFProc(ConsensusBam, bed, ref):
     logging.info("Now sorting reads by coordinate to prepare for MPileup.")
     CorrCons = BCBam.CorrSort(ConsensusBam)
     logging.info("Now creating a VCF using mpileup for variant calling.")
     MPileupVCF = BCVCF.MPileup(CorrCons, ref, bed=bed)
-    logging.info("Initial mpileup VCF is at {}. Now removing entries which have no information.".format(MPileupVCF))
+    logging.info("Initial mpileup: {}".format(MPileupVCF))
     ParsedVCF = BCVCF.ParseVCF(MPileupVCF)
     logging.info("Now removing those entries and parsing in the VCF Data")
-    ParsedVCF.cleanRecords() # Removes entries in the VCF where there is no variant
-    logging.info("Now removing entries from the VCF and writing to a new file.")
+    ParsedVCF.cleanRecords()
     CleanParsedVCF = BCVCF.CleanupPileup(MPileupVCF)
     return CleanParsedVCF
