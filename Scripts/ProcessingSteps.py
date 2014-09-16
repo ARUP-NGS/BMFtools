@@ -93,7 +93,47 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return corrSorted
 
 
-def pairedFastqProc(inFastq1, inFastq2, homing="default"):
+def pairedFastqEnd(inFastq, homing="default"):
+    if(homing == "default"):
+        raise ValueError("Homing sequence required.")
+    # For reads 1
+    homingP, homingF = BCFastq.HomingSeqLoc(
+        inFastq, homing=homing)
+    logging.info("Homing sequences located, reads parsed out.")
+    logging.info("Now removing the homing sequence and the barcode.")
+    tags, trimfq = BCFastq.TrimHoming(homingP, homing)
+    logging.info("Now generating the barcode index.")
+    BarcodeIndex = BCFastq.GenerateSingleBarcodeIndex(tags)
+    FamFq, AllRds, FamRds = BCFastq.GetFamilySizeSingle(
+        trimfq, BarcodeIndex)
+    BSortFq = BCFastq.BarcodeSort(FamFq)
+    return BSortFq
+
+
+def pairedFastqProcDev(inFastq1, inFastq2, homing="default"):
+    from multiprocessing import Process
+    if(homing == "default"):
+        raise ValueError("Homing sequence required.")
+    if(stringency == "default"):
+        stringency = 0.75
+    P1 = Process(target=pairedFastqEnd, args=(inFastq1, homing=homing,))
+    P1.start()
+    BSortFq2 = pairedFastqEnd(inFastq2, homing=homing)
+    P1.join()
+    BSortFq1 = string.replace(BSortFq2, "_R2_", "_R1_")
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
+        BSortFq1, BSortFq2, stringency=stringency)
+    BConsFqIndex1 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq1)
+    BConsFqIndex2 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq2)
+    BConsPair1, BConsPair2, BarcodeSingle = BCFastq.findProperPairs(
+        BConsFastq1, BConsFastq2, index1=BConsFqIndex1, index2=BConsFqIndex2)
+    return BConsPair1, BConsPair2, BarcodeSingle
+
+
+def pairedFastqProc(inFastq1, inFastq2, homing="default",
+                    stringency="default"):
+    if(stringency == "default"):
+        stringency = 0.75
     if(homing == "default"):
         homing = "CAGT"
     # For reads 1
@@ -117,9 +157,9 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default"):
     BarcodeIndex2 = BCFastq.GenerateSingleBarcodeIndex(tags2)
     FamFq2, TotalReads2, FamReads2 = BCFastq.GetFamilySizeSingle(
         trimfq2, BarcodeIndex2)
-    BarcodeSortedFastq2 = BCFastq.BarcodeSort(FamFq2)
+    BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BarcodeSortedFastq2, stringency=0.75)
+        BSortFq1, BSortFq2, stringency=stringency)
     BConsFqIndex1 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq1)
     BConsFqIndex2 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq2)
     BConsPair1, BConsPair2, BarcodeSingle = BCFastq.findProperPairs(
