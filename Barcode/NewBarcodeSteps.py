@@ -38,7 +38,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
             taggedSingleBAM = BCBam.singleBarcodeTagging(
                 consfqSingle, outbamSingle)
             logging.info("Removing unmapped reads and those failing filters.")
-            passTaggedSingleBAM = BCBam.singleFilterBam(
+            passTaggedSingleBAM, failTSB = BCBam.singleFilterBam(
                 taggedSingleBAM,
                 criteria="complexity,adapter,ismapped")
             logging.info("Now generating index for solo reads")
