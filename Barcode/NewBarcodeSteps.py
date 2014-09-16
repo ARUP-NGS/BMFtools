@@ -70,7 +70,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         re.findall(r'\d+', out)[0]))
     histochart = BCBam.GenerateFamilyHistochart(doubleIndex)
     logging.info("Histochart of family sizes: {}".format(histochart))
-    #UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
+    # UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
     '''
         logging.info("Rescue step, marking the BD as their Hamming distance.")
         newRef = GenerateBarcodeIndexReference(uniqueBigFamilies)
@@ -96,7 +96,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 def pairedFastqProc(inFastq1, inFastq2, homing="default"):
     if(homing == "default"):
         homing = "CAGT"
-    #For reads 1
+    # For reads 1
     homingP1, homingF1 = BCFastq.HomingSeqLoc(
         inFastq1, homing=homing)
     logging.info("Homing sequences located, reads parsed out.")
@@ -107,7 +107,7 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default"):
     FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(
         trimfq1, BarcodeIndex1)
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
-    #For reads 2
+    # For reads 2
     homingP2, homingF2 = BCFastq.HomingSeqLoc(
         inFastq2, homing=homing)
     logging.info("Homing sequences located, parsing reads.")
@@ -132,9 +132,9 @@ def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
         raise ValueError("Bed file location must be set!")
     if(ref == ""):
         raise ValueError("Reference index location must be set!")
-    #Consolidating families into single reads
-    ####Variant Calling Step using MPileup
-    #print("Now filtering for reads with NM > 0 only if you want to.")
+    # Consolidating families into single reads
+    # Variant Calling Step using MPileup
+    # print("Now filtering for reads with NM > 0 only if you want to.")
     logging.info("Now sorting reads by coordinate to prepare for MPileup.")
     logging.info("Now creating a VCF using mpileup for variant calling.")
     MPileupVCF = BCVCF.MPileup(consMergeSortBAM, ref, bed=bed)

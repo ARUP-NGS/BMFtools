@@ -1,11 +1,11 @@
 import logging
 
-from HTSUtils import IllegalArgumentError
-
 
 class VCFFile:
+
     """A simple VCFFile object, consisting of a header, a name for the file
     from which they came, and a list of all VCFRecords."""
+
     def __init__(self, VCFEntries, VCFHeader, inputVCFName):
         self.sampleName = inputVCFName
         self.header = VCFHeader
@@ -27,8 +27,8 @@ class VCFFile:
                 return
         NewVCFEntries = []
         for entry in self.Records:
-                if(VCFRecordTest(entry, filterOpt, param=param) is True):
-                    NewVCFEntries.append(entry)
+            if(VCFRecordTest(entry, filterOpt, param=param) is True):
+                NewVCFEntries.append(entry)
         if(filterOpt == "bed"):
             if(param == "default"):
                 try:
@@ -38,7 +38,7 @@ class VCFFile:
             filterOpt = filterOpt + "&" + param
         NewVCFFile = VCFFile(NewVCFEntries, self.header, self.sampleName
                              + "FilteredBy{}".format(filterOpt))
-        #TODO: make a new VCFFile object based on location.
+        # TODO: make a new VCFFile object based on location.
         return NewVCFFile
 
     def update(self):
@@ -66,8 +66,10 @@ class VCFFile:
 
 
 class VCFRecord:
+
     """A simple VCFRecord object, taken from an item from
     the list which ParseVCF returns as "VCFEntries" """
+
     def __init__(self, VCFEntry, VCFFilename):
         self.CHROM = VCFEntry[0]
         self.POS = VCFEntry[1]
@@ -134,17 +136,17 @@ class VCFRecord:
         self.update()
         return self.str
 
-#TODO: I also want to be able to grab all of the records for a given record,
-#as well as grab the file from which the records came.
+# TODO: I also want to be able to grab all of the records for a given record,
+# as well as grab the file from which the records came.
 
 
 def CleanupPileup(inputPileup, outputPileup="default"):
     import subprocess
     if(outputPileup == "default"):
         outputPileup = '.'.join(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
-    commandStr = "awk '$5!=\"X\"' {} | sed 's:,X::g' > {}".format(
+    cmd = "awk '$5!=\"X\"' {} | sed 's:,X::g' > {}".format(
         inputPileup, outputPileup)
-    subprocess.call(commandStr, shell=True)
+    subprocess.call(cmd, shell=True)
     return outputPileup
 
 
@@ -156,15 +158,15 @@ def MPileup(inputBAM, ref, bed="default", outputBCF="default"):
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf"
     if(bed != "default"):
-        commandStr = "samtools mpileup -f {} -F 0.0001 ".format(ref) +
-        "-I -S -g -D -R -q 10 -Q 30 -l {} {}".format(bed, inputBAM) +
-        " | bcftools view - > {}".format(outputBCF)
+        cmd = "samtools mpileup -f {} -F 0.0001 ".format(ref)
+        cmd += "-I -S -g -D -R -q 10 -Q 30 -l {} {}".format(bed, inputBAM)
+        cmd += " | bcftools view - > {}".format(outputBCF)
     else:
-        commandStr = "samtools mpileup -f {} -F 0.0001 ".format(ref) +
-        "-I -S -g -D -R -q 10 -Q 30 {} |".format(inputBAM) +
-        " bcftools view - > {}".format(outputBCF)
-    logging.info("{} is command string".format(commandStr))
-    subprocess.call(commandStr, shell=True)
+        cmd = "samtools mpileup -f {} -F 0.0001 ".format(ref)
+        cmd += "-I -S -g -D -R -q 10 -Q 30 {} |".format(inputBAM)
+        cmd += " bcftools view - > {}".format(outputBCF)
+    logging.info("{} is command string".format(cmd))
+    subprocess.call(cmd, shell=True)
     return outputBCF
 
 
@@ -181,8 +183,8 @@ def ParseVCF(inputVCFName):
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    list = "bed,I16".split(',')
-    #print("list = {}".format(list))
+    lst = "bed,I16".split(',')
+    # print("lst = {}".format(lst))
     passRecord = True
     if(filterOpt == "default"):
         raise ValueError("Filter option required.")
@@ -202,8 +204,8 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
                 passRecord = False
         except ValueError:
             raise ValueError("Malformed bedfile.")
-            #return False
-    #Set param to int, where it is the minimum dissent reads
+            # return False
+    # Set param to int, where it is the minimum dissent reads
     if(filterOpt == "I16"):
         if(param == "default"):
             raise ValueError("Men# dissenting reads must be set.")

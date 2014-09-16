@@ -1,101 +1,129 @@
 import logging
 
-def align_bowtie2(R1,R2,ref,opts,outsam):
+
+def align_bowtie2(R1, R2, ref, opts, outsam):
     import subprocess
-    opt_concat=""
-    output=open(outsam,'w',0) #Zero buffer size means it gets sent immediately straight to the file
-    if(opts==""):
-        opts='--threads 4 '
+    opt_concat = ""
+    output = open(
+        outsam,
+        'w', 0)
+    if(opts == ""):
+        opts = '--threads 4 '
     if('--reorder' not in opts):
-        opts+='--reorder '
+        opts += '--reorder '
     if('--mm' not in opts):
-        opts+=' --mm '
+        opts += ' --mm '
     for i, opt_it in enumerate(opts.split()):
-        opt_concat+=opt_it+" "
-    command_str = 'bowtie2 {} --local --very-sensitive-local -x {} -1 {} -2 {}'.format(opt_concat,ref,R1,R2)
+        opt_concat += opt_it + " "
+    command_str = 'bowtie2 {} --local --very'.format(opt_concat)
+    command_str += '-sensitive-local -x {} -1 {} -2 {}'.format(ref, R1, R2)
     logging.info(command_str)
-    #command_list=command_str.split(' ')
-    subprocess.call(command_str, stdout=output,shell=True)
+    # command_list=command_str.split(' ')
+    subprocess.call(command_str, stdout=output, shell=True)
     output.close()
     return(command_str)
 
-def align_bwa(R1,R2,ref,opts,outsam):
-    import subprocess
-    opt_concat = ""
-    if(opts== ""):
-        opts='-t 4 -v 1 -Y -T 0'
-    output = open(outsam,'w',0)
-    for i, opt_it in enumerate(opts.split()):
-        opt_concat+=opt_it+" "
-    command_str = 'bwa mem {} {} {} {}'.format(opt_concat,ref,R1,R2)
-    #command_list = command_str.split(' ')
-    logging.info(command_str)
-    subprocess.call(command_str, stdout=output,shell=True)
-    output.close()
-    return outsam,command_str;
 
-def align_bwa_se(reads,ref,opts,outsam):
+def align_bwa(R1, R2, ref, opts, outsam):
     import subprocess
     opt_concat = ""
-    if(opts== ""):
-        opts='-t 4 -v 1 -Y -T 0'
-    output = open(outsam,'w',0)
+    if(opts == ""):
+        opts = '-t 4 -v 1 -Y -T 0'
+    output = open(outsam, 'w', 0)
     for i, opt_it in enumerate(opts.split()):
-        opt_concat+=opt_it+" "
-    command_str = 'bwa mem {} {} {}'.format(opt_concat,ref,reads)
-    #command_list = command_str.split(' ')
+        opt_concat += opt_it + " "
+    command_str = 'bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2)
+    # command_list = command_str.split(' ')
     logging.info(command_str)
-    subprocess.call(command_str, stdout=output,shell=True)
+    subprocess.call(command_str, stdout=output, shell=True)
     output.close()
-    return outsam,command_str;
+    return outsam, command_str
 
-def align_snap(R1,R2,ref,opts,outbam):
+
+def align_bwa_se(reads, ref, opts, outsam):
+    import subprocess
+    opt_concat = ""
+    if(opts == ""):
+        opts = '-t 4 -v 1 -Y -T 0'
+    output = open(outsam, 'w', 0)
+    for i, opt_it in enumerate(opts.split()):
+        opt_concat += opt_it + " "
+    command_str = 'bwa mem {} {} {}'.format(opt_concat, ref, reads)
+    # command_list = command_str.split(' ')
+    logging.info(command_str)
+    subprocess.call(command_str, stdout=output, shell=True)
+    output.close()
+    return outsam, command_str
+
+
+def align_snap(R1, R2, ref, opts, outbam):
     import subprocess
     opt_concat = ""
     for i, opt_it in enumerate(opts.split()):
-        opt_concat+=opt_it+" "
-    command_str = "snap paired {} {} {} -o {} {}".format(ref,R1,R2,outbam,opt_concat)
+        opt_concat += opt_it + " "
+    command_str = "snap paired {} {} {} -o {} {}".format(
+        ref,
+        R1,
+        R2,
+        outbam,
+        opt_concat)
     logging.info(command_str)
     subprocess.call(command_str)
     return(command_str)
 
-def CustomRefBowtiePaired(mergedFq,ref,output="default"):
+
+def CustomRefBowtiePaired(mergedFq, ref, output="default"):
     from subprocess import call
-    if(output=="default"):
-        output=mergedFq.split('.')[0]+'.mergingFamilies.sam'
-    command_list = ["bowtie","--threads","4","-S","-n","3","-l","24","--norc",ref,mergedFq,output]
+    if(output == "default"):
+        output = mergedFq.split('.')[0] + '.mergingFamilies.sam'
+    command_list = [
+        "bowtie",
+        "--threads",
+        "4",
+        "-S",
+        "-n",
+        "3",
+        "-l",
+        "24",
+        "--norc",
+        ref,
+        mergedFq,
+        output]
     call(command_list)
     return output
 
+
 def indexBowtie(fasta):
     from subprocess import call
-    call('bowtie-build {0} {0}'.format(fasta),shell=True)
-    return 
+    call('bowtie-build {0} {0}'.format(fasta), shell=True)
+    return
 
-def sam_sort(insam,outsam):
-    #Skip header and funnel all reads into a temp file
+
+def sam_sort(insam, outsam):
+    # Skip header and funnel all reads into a temp file
     import random
-    output=open(outsam,'w+')
-    tmpname='temp{}.txt'.format(random.randint(0,200))
-    tmp=open(tmpname,'w',0)
+    output = open(outsam, 'w+')
+    tmpname = 'temp{}.txt'.format(random.randint(0, 200))
+    tmp = open(tmpname, 'w', 0)
     import subprocess
-    command_str=str('grep -v "@SQ\|@PG\|VN:\|@HD" {}'.format(insam))
+    command_str = str('grep -v "@SQ\|@PG\|VN:\|@HD" {}'.format(insam))
     logging.info(command_str)
-    subprocess.call(command_str,stdout=tmp,shell=True)
+    subprocess.call(command_str, stdout=tmp, shell=True)
     tmp.close()
-    #Save the header to the outsam
+    # Save the header to the outsam
     command_header = 'grep "@SQ\|@PG\|@HD" {}'.format(insam)
     subprocess.call(command_header, stdout=output, shell=True)
-    #sort the reads by query name
-    tmp=open(tmpname,'r')
-    command_str1=str('sort -k1,1 -t " " {}'.format(tmpname))
+    # sort the reads by query name
+    tmp = open(tmpname, 'r')
+    command_str1 = str('sort -k1,1 -t " " {}'.format(tmpname))
     logging.info(command_str1)
-    subprocess.call(command_str1,stdout=output,shell=True)
+    subprocess.call(command_str1, stdout=output, shell=True)
     output.close()
     tmp.close()
-    subprocess.call('rm {}'.format(tmpname),shell=True)
-    both_cmds=command_str+"\n"+command_str1
+    subprocess.call('rm {}'.format(tmpname), shell=True)
+    both_cmds = command_str + "\n" + command_str1
     return(both_cmds)
+
 
 class IllegalArgumentError(ValueError):
     pass

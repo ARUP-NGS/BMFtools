@@ -7,14 +7,14 @@ def BarcodeSort(inFastq, outFastq="default"):
     logging.info("Sorting fastq by barcode sequence.")
     from subprocess import call
     if(outFastq == "default"):
-        outFastq = '.'.join(inFastq.split('.')[0:-1])+'.BS.fastq'
+        outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
     BS1 = "cat " + inFastq + " | paste - - - - | grep 'HomingPass' | sed "
-    BS2 = "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' | "
-    BS3 = "sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};"
-    BS4 = "{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | "
-    BS5 = "sed 's:###\t:###:g' | sed 's:\t$::g' "
-    BS6 = "| sed 's:\t$::g' | tr '\t' '\n' > "
-    BSstring = BS1 + BS2 + BS3 + BS4 + BS5 + BS6 + outFastq
+    BS1 += "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' |"
+    BS1 += " sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};"
+    BS1 += "{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | "
+    BS1 += "sed 's:###\t:###:g' | sed 's:\t$::g' "
+    BS1 += "| sed 's:\t$::g' | tr '\t' '\n' > "
+    BSstring = BS1 + outFastq
     call(BSstring, shell=True)
     logging.info("Command: {}".format(BSstring.replace("\t", "\\t")))
     return outFastq
@@ -23,19 +23,19 @@ def BarcodeSort(inFastq, outFastq="default"):
 def compareFastqRecords(R, stringency=0.9):
     from Bio.SeqRecord import SeqRecord
     seqs = [str(record.seq) for record in R]
-    max = 0
+    maxScore = 0
     Success = False
     for seq in seqs:
-        #print("Seq: {}".format(str(seq)))
+        # print("Seq: {}".format(str(seq)))
         numEq = sum(str(seq) == str(seqItem) for seqItem in seqs)
-        if(numEq > max):
-            max = numEq
+        if(numEq > maxScore):
+            maxScore = numEq
             finalSeq = str(seq)
     frac = numEq * 1.0 / len(R)
     PASS = frac > stringency
-    #print("Fraction {}. Stringency: {}. Pass? {}.".format(
+    # print("Fraction {}. Stringency: {}. Pass? {}.".format(
     # frac,stringency,PASS))
-    if(frac > stringency):
+    if(PASS):
         Success = True
     consolidatedRecord = SeqRecord(seq=finalSeq, id=R[0].id,
                                    letter_annotations=R[0].letter_annotations,
@@ -48,9 +48,9 @@ def HomingSeqLoc(fq, homing, bar_len=12):
     InFastq = SeqIO.parse(fq, "fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix = Tpref.split('/')[-1]
-    StdFilename, ElseFilename, ElseLoc = Prefix +
-    '.{}.fastq'.format("homing"+str(bar_len)),
-    Prefix + '.else.fastq', Prefix + '.else.supp'
+    StdFilename = Prefix + '.{}.fastq'.format("homing" + str(bar_len))
+    ElseFilename = Prefix + '.else.fastq'
+    ElseLoc = Prefix + '.else.supp'
     StdFastq = open(StdFilename, 'w', 0)  # Homing at expected Location
     ElseFastq = open(ElseFilename, 'w', 0)
     ElseLocations = open(ElseLoc, 'w', 0)
@@ -76,8 +76,8 @@ def HomingSeqLoc(fq, homing, bar_len=12):
 def fastq_sort(in_fastq, out_fastq):
     import subprocess
     outfile = open(out_fastq, 'w')
-    command_str = 'cat {} | paste - - - - | '.format(in_fastq) +
-    'sort -k1,1 -t " " | tr "\t" "\n"'
+    command_str = 'cat {} | paste - - - - | '.format(in_fastq)
+    command_str += 'sort -k1,1 -t " " | tr "\t" "\n"'
     subprocess.call(command_str, stdout=outfile, shell=True)
     outfile.close()
     return(command_str)
@@ -86,12 +86,18 @@ def fastq_sort(in_fastq, out_fastq):
 def FastqRegex(fq, string, matchFile="default", missFile="default"):
     from subprocess import call
     if(matchFile == "default"):
-        matchFile = ('.'.join(fq.split('.')[0:-1]) + '.match.fastq').split('/')[-1]
+        matchFile = ('.'.join(fq.split(
+                     '.')[0:-1]) + '.match.fastq').split('/')[-1]
     if(missFile == "default"):
-        missFile = ('.'.join(fq.split('.')[0:-1]) + '.miss.fastq').split('/')[-1]
-    CommandStr = "cat {} | paste - - - - | grep '{}' | tr '\t' '\n' > {}".format(fq, string, matchFile)
+        missFile = (
+            '.'.join(fq.split('.')[0:-1]) + '.miss.fastq').split('/')[-1]
+    CommandStr = "cat {} | paste - - - - | grep ".format(fq)
+    CommandStr += "'{}' | tr '\t' '\n' > {}".format(string, matchFile)
     call(CommandStr, shell=True)
-    CommandStr2 = "cat {} | paste - - - - | grep -v '{}' | tr '\t' '\n' > {}".format(fq, string, missFile)
+    CommandStr2 = "cat {} | paste - - - - | grep ".format(fq)
+    CommandStr2 += "-v '{}' | tr '\t' '\n' > {}".format(
+        string,
+        missFile)
     call(CommandStr2, shell=True)
     return(CommandStr, CommandStr2, matchFile, missFile)
 
@@ -106,12 +112,15 @@ def fastx_trim(infq, outfq, n):
 
 def findProperPairs(infq1, infq2, index1="default", index2="default",
                     outfq1="default", outfq2="default", outfqSingle="default"):
-    logging.info("Now attempting to parse out proper pairs from reads which need to be aligned as single-end.")
+    logging.info(
+        "Now attempting to parse out proper pairs and those w/o.")
     from Bio import SeqIO
     if(index1 == "default"):
-        raise ValueError("An index for the barcodes in reads1 set must be present.")
+        raise ValueError(
+            "An index for the barcodes in reads1 set must be present.")
     if(index2 == "default"):
-        raise ValueError("An index for the barcodes in reads2 set must be present.")
+        raise ValueError(
+            "An index for the barcodes in reads2 set must be present.")
     if(outfq1 == "default"):
         outfq1 = '.'.join(infq1.split('.')[0:-1]) + '.proper.fastq'
     if(outfq2 == "default"):
@@ -161,9 +170,11 @@ def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    commandStr = "cat {} | sed 's:###::g' | paste - - - - | awk '{{print $4}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(tags_file, index_file)
-    logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
-    call(commandStr, shell=True)
+    cmd = "cat {} | sed 's:###::g' | paste - - - - | awk ".format(tags_file)
+    cmd += "'{{print $4}}' | sort | uniq -c | awk 'BEGIN "
+    cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(index_file)
+    logging.info("CommandStr = {}".format(cmd.replace("\t", "\\t")))
+    call(cmd, shell=True)
     return index_file
 
 
@@ -171,17 +182,21 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    commandStr = "cat {} | sed 's:###: ###:g' | ".format(tags_file) +
-    "paste - - - - | grep -v \"HomingFail\" | " +
-    "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};" +
-    "{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}}" +
+    cmd = "cat {} | sed 's:###: ###:g' | ".format(tags_file)
+    cmd += "paste - - - - | grep -v \"HomingFail\" | "
+    cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
+    cmd += "{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}}"
     ";{{print $1,$2}}' > {}".format(index_file)
-    logging.info("CommandStr = {}".format(commandStr.replace("\t", "\\t")))
-    call(commandStr, shell=True)
+    logging.info("CommandStr = {}".format(cmd.replace("\t", "\\t")))
+    call(cmd, shell=True)
     return index_file
 
 
-def GetFamilySizeSingle(trimfq, BarcodeIndex, outfq="default", singlefq="default"):
+def GetFamilySizeSingle(
+        trimfq,
+        BarcodeIndex,
+        outfq="default",
+        singlefq="default"):
     logging.info("Getting family sizes for all of the grouped families.")
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq == "default"):
@@ -189,7 +204,9 @@ def GetFamilySizeSingle(trimfq, BarcodeIndex, outfq="default", singlefq="default
     outfqBuffers = open(outfq, "w", 0)
     index = open(BarcodeIndex, "r")
     if(singlefq == "default"):
-        singlefq = '.'.join(trimfq.split('.')[0:-1]) + ".lonely.hearts.club.band.fastq"
+        singlefq = '.'.join(
+            trimfq.split('.')[
+                0:-1]) + ".lonely.hearts.club.band.fastq"
     singlefqBuffer = open(singlefq, "w", 0)
     TotalReads, ReadsWithFamilies = 0, 0
     dictEntries = [line.split() for line in index]
@@ -199,19 +216,22 @@ def GetFamilySizeSingle(trimfq, BarcodeIndex, outfq="default", singlefq="default
     for read in infq:
         index.seek(0)
         TotalReads += 1
-        #print("description is {}".format(read.description)) #FOR DEBUGGING PURPOSES, UNCOMMENT
-        #print("-1 index of description is {}".format(read.description.split("###")[-1].strip()))
-        #print("-2 index of description is {}".format(read.description.split("###")[-2].strip()))
+        # print("description is {}".format(read.description))
+        # print("-1 index of description is {}".format(
+        # read.description.split("###")[-1].strip()))
+        # print("-2 index of description is {}".format(
+        # read.description.split("###")[-2].strip()))
         readTag = read.description.split("###")[-1].strip()
         newRead = read
-        #print("readTag is _" + readTag + "_")
+        # print("readTag is _" + readTag + "_")
         try:
             famSize = BarDict[readTag]
         except KeyError:
             famSize = 0
         newRead.description = read.description + " ###" + str(famSize)
-        #print("famSize = _{}_".format(str(famSize)))
-        #print("The value of this comparison to 1 is {}".format(str(famSize=="1")))
+        # print("famSize = _{}_".format(str(famSize)))
+        # print("The value of this comparison to 1 is {}".format(
+        # str(famSize=="1")))
         if(str(famSize) == "0"):
             continue
         if(str(famSize) == "1"):
@@ -239,9 +259,9 @@ def mergeSequencesFastq(fq1, fq2, output="default"):
             outread = SeqRecord(
                 Seq(str(read1.seq) + str(read2.seq), "fastq"),
                 id=read1.id, description=read1.description)
-            outread.letter_annotations['phred_quality'] =
-            read1.letter_annotations['phred_quality'] +
-            read2.letter_annotations['phred_quality']
+            outread.letter_annotations[
+                'phred_quality'] = read1.letter_annotations[
+                'phred_quality'] + read2.letter_annotations['phred_quality']
             SeqIO.write(outread, outFastq, "fastq")
         except StopIteration:
             break
@@ -254,113 +274,139 @@ def mergeSequencesFastq(fq1, fq2, output="default"):
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default", stringency=0.9):
     logging.info("Now consolidating paired-end reads.")
-    if(outFqPair1=="default"):
-        outFqPair1= '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
-    if(outFqPair2=="default"):
-        outFqPair2= '.'.join(fq2.split('.')[0:-1]) + 'cons.fastq'
-    inFq1 = SeqIO.parse(fq1,'fastq')
-    inFq2 = SeqIO.parse(fq2,'fastq')
-    outputHandle1 = open(outFqPair1,'w')
-    outputHandle2 = open(outFqPair2,'w')
+    if(outFqPair1 == "default"):
+        outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
+    if(outFqPair2 == "default"):
+        outFqPair2 = '.'.join(fq2.split('.')[0:-1]) + 'cons.fastq'
+    inFq1 = SeqIO.parse(fq1, 'fastq')
+    inFq2 = SeqIO.parse(fq2, 'fastq')
+    outputHandle1 = open(outFqPair1, 'w')
+    outputHandle2 = open(outFqPair2, 'w')
     workingBarcode = ""
     workingSet1 = []
     workingSet2 = []
     for fqRec in inFq1:
         fqRec2 = inFq2.next()
-        barcode4fq1 = fqRec.description.split("###")[-2].strip()
-        #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
-        #print("name of read with this barcode: {}".format(record.qname))
-        #print("Working set: {}".format(workingSet1))
-        if("AAAAAAAAAA" in barcode4fq1 or "TTTTTTTTTT" in barcode4fq1 or "CCCCCCCCCC" in barcode4fq1 or "GGGGGGGGGG" in barcode4fq1):
+        bc4fq1 = fqRec.description.split("###")[-2].strip()
+        # print("Working barcode: {}. Current barcode: {}.".format(
+        #       workingBarcode,barcodeRecord))
+        # print("name of read with this barcode: {}".format(
+        #       record.qname))
+        # print("Working set: {}".format(workingSet1))
+        a = "AAAAAAAAAA"
+        t = "TTTTTTTTTT"
+        g = "GGGGGGGGGG"
+        c = "CCCCCCCCCC"
+        if(a in bc4fq1 or t in bc4fq1 or c in bc4fq1 or g in bc4fq1):
             continue
         if(int(fqRec.description.split('###')[-1].strip()) < 2):
             continue
         if(workingBarcode == ""):
-            workingBarcode = barcode4fq1
+            workingBarcode = bc4fq1
             workingSet1 = []
             workingSet1.append(fqRec)
             workingSet2 = []
             workingSet2.append(fqRec2)
             continue
-        elif(workingBarcode == barcode4fq1):
+        elif(workingBarcode == bc4fq1):
             workingSet1.append(fqRec)
             workingSet2.append(fqRec2)
             continue
-        elif(workingBarcode != barcode4fq1):
-            mergedRecord1, success1 = compareFastqRecords(workingSet1,stringency=float(stringency))
-            mergedRecord2, success2 = compareFastqRecords(workingSet2,stringency=float(stringency))
-            if(success1 == True):
+        elif(workingBarcode != bc4fq1):
+            mergedRecord1, success1 = compareFastqRecords(
+                workingSet1, stringency=float(stringency))
+            mergedRecord2, success2 = compareFastqRecords(
+                workingSet2, stringency=float(stringency))
+            if(success1):
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
-            if(success2 == True):
+            if(success2):
                 SeqIO.write(mergedRecord2, outputHandle2, "fastq")
             workingSet1 = []
             workingSet1.append(fqRec)
             workingSet2 = []
             workingSet2.append(fqRec2)
-            workingBarcode = barcode4fq1
+            workingBarcode = bc4fq1
             continue
         else:
-            raise RuntimeError("No idea what's going on. This code should be unreachable")
+            raise RuntimeError(
+                "No idea what's going on. This code should be unreachable")
     inFq1.close()
     inFq2.close()
     outputHandle1.close()
     outputHandle2.close()
-    return outFqPair1,outFqPair2
+    return outFqPair1, outFqPair2
 
-def reverseComplement(fq,dest="default"):
-    if(dest=="default"):
-        temp = '.'.join(fq.split('.')[0:-1])+"_rc.fastq"
+
+def reverseComplement(fq, dest="default"):
+    if(dest == "default"):
+        temp = '.'.join(fq.split('.')[0:-1]) + "_rc.fastq"
         dest = temp.split('/')[-1]
-    InFastq = SeqIO.parse(fq,"fastq")
-    OutFastq = open(dest,"w",0)
+    InFastq = SeqIO.parse(fq, "fastq")
+    OutFastq = open(dest, "w", 0)
     for record in InFastq:
-        rc_record = record.reverse_complement(id=record.id+"_rc")
-        SeqIO.write(rc_record,OutFastq,"fastq")
+        rc_record = record.reverse_complement(id=record.id + "_rc")
+        SeqIO.write(rc_record, OutFastq, "fastq")
     OutFastq.close()
     return dest
 
-def singleFastqConsolidate(fq,outFq="default",stringency=0.9):
-    if(outFq=="default"):
-        outFq= '.'.join(fq.split('.')[0:-1]) + 'cons.fastq'
-    inFq = SeqIO.parse(fq,'fastq')
-    outputHandle = open(outFq,'w')
+
+def singleFastqConsolidate(fq, outFq="default", stringency=0.9):
+    if(outFq == "default"):
+        outFq = '.'.join(fq.split('.')[0:-1]) + 'cons.fastq'
+    inFq = SeqIO.parse(fq, 'fastq')
+    outputHandle = open(outFq, 'w')
     workingBarcode = ""
     workingSet = []
     for fqRec in inFq:
-        barcode4fq = fqRec.description.split("###")[-2].strip()
-        #print("Working barcode: {}. Current barcode: {}.".format(workingBarcode,barcodeRecord))
-        #print("name of read with this barcode: {}".format(record.qname))
-        #print("Working set: {}".format(workingSet))
-        if("AAAAAAAAAA" in barcode4fq or "TTTTTTTTTT" in barcode4fq or "CCCCCCCCCC" in barcode4fq or "GGGGGGGGGG" in barcode4fq):
+        bc4fq = fqRec.description.split("###")[-2].strip()
+        # print("Working barcode: {}. Current barcode: {}.".format(
+        #   workingBarcode,barcodeRecord))
+        # print("name of read with this barcode: {}".format(record.qname))
+        # print("Working set: {}".format(workingSet))
+        a = "AAAAAAAAAA"
+        t = "TTTTTTTTTT"
+        g = "GGGGGGGGGG"
+        c = "CCCCCCCCCC"
+        if(a in bc4fq or t in bc4fq or c in bc4fq or g in bc4fq):
             continue
         if(int(fqRec.description.split('###')[-1].strip()) < 2):
             continue
         if(workingBarcode == ""):
-            workingBarcode = barcode4fq
+            workingBarcode = bc4fq
             workingSet = []
             workingSet.append(fqRec)
             continue
-        elif(workingBarcode == barcode4fq):
+        elif(workingBarcode == bc4fq):
             workingSet.append(fqRec)
             continue
-        elif(workingBarcode != barcode4fq):
-            mergedRecord, success = compareFastqRecords(workingSet,stringency=float(stringency))
-            if(success == True):
+        elif(workingBarcode != bc4fq):
+            mergedRecord, success = compareFastqRecords(
+                workingSet, stringency=float(stringency))
+            if(success):
                 SeqIO.write(mergedRecord, outputHandle, "fastq")
             workingSet = []
             workingSet.append(fqRec)
-            workingBarcode = barcode4fq
+            workingBarcode = bc4fq
             continue
         else:
-            raise RuntimeError("No idea what's going on. This code should be unreachable")
+            raise RuntimeError(
+                "No idea what's going on. This code should be unreachable")
     inFq.close()
     outputHandle.close()
     return outFq
 
-def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_err="default",start_trim=1):
+
+def TrimHoming(
+        fq,
+        homing,
+        trimfq="default",
+        bar_len=12,
+        tags_file="default",
+        trim_err="default",
+        start_trim=1):
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
-    if(trim_err=="default"):
+    if(trim_err == "default"):
         temp = '.'.join(fq.split('.')[0:-1]) + '.err.fastq'
         trim_err = temp.split('/')[-1]
     if(trimfq == "default"):
@@ -369,28 +415,33 @@ def TrimHoming(fq,homing,trimfq="default",bar_len=12,tags_file="default",trim_er
     if(tags_file == "default"):
         temp = '.'.join(fq.split('.')[0:-1]) + '.tags.fastq'
         tags_file = temp.split('/')[-1]
-    tagsOpen = open(tags_file,"w",0)
-    trimOpen = open(trimfq,"w",0)
-    InFastq = SeqIO.parse(fq,"fastq")
-    HomingLen=len(homing)
-    TotalTrim=HomingLen+bar_len+start_trim
+    tagsOpen = open(tags_file, "w", 0)
+    trimOpen = open(trimfq, "w", 0)
+    InFastq = SeqIO.parse(fq, "fastq")
+    HomingLen = len(homing)
+    TotalTrim = HomingLen + bar_len + start_trim
     logging.info("Homing Length is {}".format(HomingLen))
-    for record in InFastq:
+    for rec in InFastq:
         pre_tag = SeqRecord(
-                Seq(str(record.seq)[0:bar_len],"fastq"), \
-                id=record.id,description=record.description)
-        pre_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][0:bar_len]
+            Seq(str(rec.seq)[0:bar_len], "fastq"),
+            id=rec.id, description=rec.description)
+        pre_tag.letter_annotations['phred_quality'] = rec.letter_annotations[
+            'phred_quality'][0:bar_len]
         '''
         if homing not in pre_tag.seq:
-            logging.info("I'm sorry, but your homing sequence is not in the tag. I will write this to an error fastq, which you are free to use or discard at your discretion")
-            SeqIO.write(record,errOpen,"fastq")
+            logging.info("Homing sequence not in tag. Writing to error file.")
+            SeqIO.write(rec,errOpen,"fastq")
             continue
         '''
-        SeqIO.write(pre_tag,tagsOpen,"fastq")
-        post_tag = SeqRecord(
-                Seq(str(record.seq)[TotalTrim:],"fastq"), id=record.id,description=record.description+" ###" + str(record.seq[0:bar_len])) 
-        post_tag.letter_annotations['phred_quality']=record.letter_annotations['phred_quality'][TotalTrim:]
-        SeqIO.write(post_tag,trimOpen,"fastq")
+        SeqIO.write(pre_tag, tagsOpen, "fastq")
+        descString = rec.description + " ###" + str(rec.seq[0:bar_len])
+        post_tag = SeqRecord(Seq(str(rec.seq)[TotalTrim:],
+                                 "fastq"),
+                             id=rec.id,
+                             description=descString)
+        post_tag.letter_annotations['phred_quality'] = rec.letter_annotations[
+            'phred_quality'][TotalTrim:]
+        SeqIO.write(post_tag, trimOpen, "fastq")
     tagsOpen.close()
     trimOpen.close()
-    return(tags_file,trimfq)
+    return(tags_file, trimfq)

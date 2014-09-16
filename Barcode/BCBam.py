@@ -22,16 +22,16 @@ def BarcodeSort(inbam, outbam="default", paired=True):
     call(headerCommand, shell=True)
     logging.info("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
-        cmd = "samtools view {} | ".format(inbam) +
-        "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}}" +
-        ";{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam)
+        cmd = "samtools view {} | ".format(inbam)
+        cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
+        cmd += "{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam)
         logging.info(
             "Command string for this sorting process is: {}".format(cmd))
         call(cmd, shell=True)
     else:
-        cmd = "samtools view {} | ".format(inbam) +
-        "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}}" +
-        ";{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam)
+        cmd = "samtools view {} | ".format(inbam)
+        cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
+        cmd += "{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam)
         logging.info(
             "Command string for this sorting process is: {}".format(cmd))
         call(cmd, shell=True)
@@ -197,14 +197,14 @@ def GenBCIndexBAM(tagBAM, idx="default", paired=True):
     if(idx == "default"):
         idx = '.'.join(tagBAM.split('.')[0:1]) + ".DoubleIdx"
     if(paired is True):
-        str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
-        "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |" +
-        " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
+        str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
+        str += "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
+        str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
         call(str, shell=True)
     if(paired is False):
-        str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
-        "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |" +
-        " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
+        str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
+        str += "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
+        str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
         call(str, shell=True)
     return idx
 
@@ -223,10 +223,10 @@ def GenerateFamilyHistochart(BCIdx, output="default"):
     from subprocess import call
     if(output == "default"):
         output = '.'.join(BCIdx.split('.')[:-1]) + 'hist.txt'
-    str = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk ".format(BCIdx) +
-    "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(output)
-    logging.info("Command str: {}".format(command))
-    call(command, shell=True)
+    str = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk ".format(BCIdx)
+    str += "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(output)
+    logging.info("Command str: {}".format(str))
+    call(str, shell=True)
     logging.info("Family size histochart: {}".format(output))
     return output
 
@@ -286,8 +286,8 @@ def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
     from subprocess import call
     if(outbam == "default"):
         outbam = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
-    command = "java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1) +
-    " I={} O={} SO=coordinate AS=true".format(BAM2, outbam)
+    command = "java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1)
+    command += " I={} O={} SO=coordinate AS=true".format(BAM2, outbam)
     call(command, shell=True)
     logging.info("Command string for merging was: {}".format(command))
     return outbam
@@ -366,11 +366,11 @@ def pairedFilterBam(inputBAM, passBAM="default",
     if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set.")
     if(passBAM == "default"):
-        passBAM = '.'.join(inputBAM.split('.')[0:-1]) +
-        ".{}P.bam".format(criteria)
+        passBAM = '.'.join(inputBAM.split('.')[0:-1])
+        passBAM += ".{}P.bam".format(criteria)
     if(failBAM == "default"):
-        failBAM = '.'.join(inputBAM.split('.')[0:-1]) +
-        ".{}F.bam".format(criteria)
+        failBAM = '.'.join(inputBAM.split('.')[0:-1])
+        failBAM += ".{}F.bam".format(criteria)
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
@@ -500,18 +500,18 @@ def SingleConsolidate(inbam, outbam="default", stringency=0.9):
     for record in inputHandle:
         barcodeRecord = [
             tagSet for tagSet in record.tags if tagSet[0] == "BS"][0][1]
-        #print("Working: {}. Current: {}.".format(workBC,barcodeRecord))
-        #print("name of read with this barcode: {}".format(record.qname))
-        #print("Working set: {}".format(Set))
+        # print("Working: {}. Current: {}.".format(workBC,barcodeRecord))
+        # print("name of read with this barcode: {}".format(record.qname))
+        # print("Working set: {}".format(Set))
         if(workBC == ""):
             workBC = barcodeRecord
             Set = []
             Set.append(record)
             continue
         elif(workBC == barcodeRecord):
-            #print(record.qname)
-            #print(workBC==barcodeRecord)
-            #print("WorkBC: {}. Current: {}.".format(workBC,barcodeRecord))
+            # print(record.qname)
+            # print(workBC==barcodeRecord)
+            # print("WorkBC: {}. Current: {}.".format(workBC,barcodeRecord))
             try:
                 assert([tagSet for tagSet in Set[0].tags if tagSet[
                     0] == "BS"][0][1] == [
@@ -600,11 +600,11 @@ def singleFilterBam(inputBAM, passBAM="default",
     if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set.")
     if(passBAM == "default"):
-        passBAM = '.'.join(inputBAM.split('.')[0:-1]) +
-        ".{}P.bam".format(criteria)
+        passBAM = '.'.join(inputBAM.split('.')[0:-1])
+        passBAM += ".{}P.bam".format(criteria)
     if(failBAM == "default"):
-        failBAM = '.'.join(inputBAM.split('.')[0:-1]) +
-        ".{}F.bam".format(criteria)
+        failBAM = '.'.join(inputBAM.split('.')[0:-1])
+        failBAM += ".{}F.bam".format(criteria)
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
@@ -646,4 +646,4 @@ def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
     out1.close()
     out2.close()
     return read1BAM, read2BAM
-#The end
+# The end

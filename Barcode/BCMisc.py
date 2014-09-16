@@ -7,7 +7,7 @@ import pysam
 
 def generateHammingMatrix(input, outTSV="default"):
     if(outTSV == "default"):
-        outTSV = input.split('.')[0]+'.HammingMatrix.tsv'
+        outTSV = input.split('.')[0] + '.HammingMatrix.tsv'
     print('Output file for tab-separated values is {}.'.format(outTSV))
     import csv
     tsvWriter = open(outTSV, 'w', 0)
@@ -23,13 +23,12 @@ def generateHammingMatrix(input, outTSV="default"):
         BSentry = entry.tags[[i for i,
                               j in enumerate(
                                   entry.tags) if j[0] == "BS"][0]][1]
-        HammingDistanceRow = [hamming(BSentry,
-                              entry2.tags[[i for i,
-                                           j in enumerate(entry2.tags) if j[
-                                               0] == "BS"][0]][
-                                      1]) for entry2 in iteratorBAM]
-        HammingDistanceRow.insert(0, entry.qname)
-        MatrixWriter.writerow(HammingDistanceRow)
+        HDisRow = [hamming(BSentry, entry2.tags[[i for i,
+                   j in enumerate(entry2.tags) if j[
+                       0] == "BS"][0]][
+                   1]) for entry2 in iteratorBAM]
+        HDisRow.insert(0, entry.qname)
+        MatrixWriter.writerow(HDisRow)
     inputBAM.close()
     tsvWriter.close()
     return outTSV
@@ -38,7 +37,7 @@ def generateHammingMatrix(input, outTSV="default"):
 def generateLevenshteinMatrix(input, outTSV="default"):
     import Levenshtein
     if(outTSV == "default"):
-        outTSV = input.split('.')[0]+'.HammingMatrix.tsv'
+        outTSV = input.split('.')[0] + '.HammingMatrix.tsv'
     logging.info("Output file for tab-separated values is {}.".format(outTSV))
     import csv
     tsvWriter = open(outTSV, 'w', 0)
@@ -54,12 +53,12 @@ def generateLevenshteinMatrix(input, outTSV="default"):
         BSentry = entry.tags[[i for i,
                               j in enumerate(entry.tags) if j[
                                   0] == "BS"][0]][1]
-        HammingDistanceRow = [Levenshtein.distance(
-                              BSentry, entry2.tags[[i for i, j in enumerate(
-                                  entry2.tags) if j[0] == "BS"][
-                                  0]][1]) for entry2 in iteratorBAM]
-        HammingDistanceRow.insert(0, entry.qname)
-        MatrixWriter.writerow(HammingDistanceRow)
+        HDisRow = [Levenshtein.distance(BSentry, entry2.tags[
+            [i for i, j in enumerate(
+                entry2.tags) if j[0] == "BS"][
+                0]][1]) for entry2 in iteratorBAM]
+        HDisRow.insert(0, entry.qname)
+        MatrixWriter.writerow(HDisRow)
     inputBAM.close()
     tsvWriter.close()
     return outTSV
@@ -80,12 +79,12 @@ def hamming(str1, str2):
         logging.info("Calculating Levenshtein distance instead.")
         return Levenshtein.distance(str1,str2)
      '''
-    #ne = str.__ne__  ## this is surprisingly slow
-    #ne = operator.ne
+    # ne = str.__ne__  ## this is surprisingly slow
+    # ne = operator.ne
     return sum(imap(operator.ne, str1, str2))
 
 
-#This function is to handle StopIterations with a little elegance
+# This function is to handle StopIterations with a little elegance
 def has_elements(iterable):
     from itertools import tee
     iterable, any_check = tee(iterable)
