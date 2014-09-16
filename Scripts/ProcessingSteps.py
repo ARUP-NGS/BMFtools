@@ -1,6 +1,7 @@
 import logging
 import re
 import subprocess
+import string
 
 import BCBam
 import BCFastq
@@ -93,7 +94,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return corrSorted
 
 
-def pairedFastqEnd(inFastq, homing="default"):
+def pairedFastqEnd(argLst):
+    inFastq = argLst[0]
+    homing = argLst[1]
     if(homing == "default"):
         raise ValueError("Homing sequence required.")
     # For reads 1
@@ -110,13 +113,15 @@ def pairedFastqEnd(inFastq, homing="default"):
     return BSortFq
 
 
-def pairedFastqProcDev(inFastq1, inFastq2, homing="default"):
+def pFPD(
+        inFastq1, inFastq2, homing="default", stringency="default"):
     from multiprocessing import Process
     if(homing == "default"):
         raise ValueError("Homing sequence required.")
     if(stringency == "default"):
         stringency = 0.75
-    P1 = Process(target=pairedFastqEnd, args=(inFastq1, homing=homing,))
+    argLst = [inFastq1, homing]
+    P1 = Process(target=pairedFastqEnd, args=(argLst))
     P1.start()
     BSortFq2 = pairedFastqEnd(inFastq2, homing=homing)
     P1.join()

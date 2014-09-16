@@ -125,5 +125,11 @@ def sam_sort(insam, outsam):
     return(both_cmds)
 
 
+def printlog(string):
+    print(string)
+    logging.info(string)
+    return
+
+
 class IllegalArgumentError(ValueError):
     pass

@@ -1,8 +1,7 @@
 import argparse
 import logging
 
-from Bio import SeqIO
-import NewBarcodeSteps
+import ProcessingSteps as ps
 # Contains utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA
@@ -64,6 +63,11 @@ def main():
         '--logfile',
         help="To change default logfile location.",
         default="default")
+    parser.add_argument('-e',
+                        '-experimental-multithreading',
+                        help="Set to \"True\" to multithread.",
+                        default="False")
+
     args = parser.parse_args()
     if(args.logfile != "default"):
         logfile = args.logfile
@@ -76,35 +80,35 @@ def main():
     if(args.paired_end is False or args.paired_end.lower() == "false"):
         if(args.initialStep == 1):
             logging.info("Beginning fastq processing.")
-            consFq = NewBarcodeSteps.singleFastqProc(args.fq[0], homing=homing)
+            consFq = ps.singleFastqProc(args.fq[0], homing=homing)
             logging.info("Beginning BAM processing.")
-            TaggedBam = NewBarcodeSteps.singleBamProc(
+            TaggedBam = ps.singleBamProc(
                 consFq,
                 ref,
                 opts,
                 aligner=aligner)
             logging.info("Beginning VCF processing.")
-            CleanParsedVCF = NewBarcodeSteps.singleVCFProc(TaggedBam, bed, ref)
+            CleanParsedVCF = ps.singleVCFProc(TaggedBam, bed, ref)
             logging.info(
                 "Last stop! Watch your step.")
             return
         elif(args.initialStep == 2):
             consFq = args.fq[0]
             logging.info("Beginning BAM processing.")
-            TaggedBam = NewBarcodeSteps.singleBamProc(
+            TaggedBam = ps.singleBamProc(
                 consFq,
                 ref,
                 opts,
                 aligner=aligner)
             logging.info("Beginning VCF processing.")
-            CleanParsedVCF = NewBarcodeSteps.singleVCFProc(TaggedBam, bed, ref)
+            CleanParsedVCF = ps.singleVCFProc(TaggedBam, bed, ref)
             logging.info(
                 "Last stop! Watch your step.")
             return
         elif(args.initialStep == 3):
             ConsensusBam = args.BAM
             logging.info("Beginning VCF processing.")
-            CleanParsedVCF = NewBarcodeSteps.singleVCFProc(
+            CleanParsedVCF = ps.singleVCFProc(
                 ConsensusBam,
                 bed,
                 ref)
@@ -116,16 +120,21 @@ def main():
     elif(args.paired_end or args.paired_end.lower() == "true"):
         if(args.initialStep == 1):
             logging.info("Beginning fastq processing.")
-            trimfq1, trimfq2, trimfqSingle = NewBarcodeSteps.pairedFastqProc(
-                args.fq[0], args.fq[1], homing=homing)
+            if(args.experimental_multithreading != "False"):
+                trimfq1, trimfq2, trimfqSingle = ps.pFPD(args.fq[0],
+                                                         args.fq[1],
+                                                         homing=homing)
+            else:
+                trimfq1, trimfq2, trimfqSingle = ps.pairedFastqProc(
+                    args.fq[0], args.fq[1], homing=homing)
             logging.info("Beginning BAM processing.")
-            procSortedBam = NewBarcodeSteps.pairedBamProc(
+            procSortedBam = ps.pairedBamProc(
                 trimfq1,
                 trimfq2,
                 consfqSingle=trimfqSingle,
                 aligner=aligner,
                 ref=ref)
-            CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(
+            CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
                 opts=opts,
@@ -134,14 +143,14 @@ def main():
                 "Last stop! Watch your step.")
         elif(args.initialStep == 2):
             logging.info("Beginning BAM processing.")
-            procSortedBam = NewBarcodeSteps.pairedBamProc(
+            procSortedBam = ps.pairedBamProc(
                 trimfq1,
                 trimfq2,
                 consfqSingle="default",
                 aligner=aligner,
                 ref=ref)
             logging.info("Beginning VCF processing.")
-            CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(
+            CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
                 opts=opts,
@@ -150,7 +159,7 @@ def main():
                 "Last stop! Watch your step")
         elif(args.initialStep == 3):
             logging.info("Beginning VCF processing.")
-            CleanParsedVCF = NewBarcodeSteps.pairedVCFProc(
+            CleanParsedVCF = ps.pairedVCFProc(
                 args.BAM,
                 ref=ref,
                 opts=opts,

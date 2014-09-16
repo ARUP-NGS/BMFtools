@@ -33,7 +33,7 @@ def generateHammingMatrix(input, outTSV="default"):
     tsvWriter.close()
     return outTSV
 
-
+'''
 def generateLevenshteinMatrix(input, outTSV="default"):
     import Levenshtein
     if(outTSV == "default"):
@@ -62,6 +62,7 @@ def generateLevenshteinMatrix(input, outTSV="default"):
     inputBAM.close()
     tsvWriter.close()
     return outTSV
+'''
 
 
 def hamming(str1, str2):
