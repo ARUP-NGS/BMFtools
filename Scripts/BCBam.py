@@ -275,8 +275,8 @@ def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default"):
     from subprocess import call
     import uuid
     tempname = str(uuid.uuid4().get_hex().upper()[0:12]) + ".OMGZZZZ.tmp"
-    str = "cat {0} | sort | uniq > {1};mv {1} {0}".format(passBC, tempname)
-    call(str, shell=True)
+    string1 = "cat {0} | sort | uniq > {1};mv {1} {0}".format(passBC, tempname)
+    call(string1, shell=True)
     return output, passBC
 
 
@@ -606,8 +606,8 @@ def singleFilterBam(inputBAM, passBAM="default",
         failBAM = '.'.join(inputBAM.split('.')[0:-1])
         failBAM += ".{}F.bam".format(criteria)
     inBAM = pysam.Samfile(inputBAM, "rb")
-    passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
-    failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
+    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
+    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
         pl(("Criteria #{} is \"{}\"".format(i, entry)))
