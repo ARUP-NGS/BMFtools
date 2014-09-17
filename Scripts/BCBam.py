@@ -4,6 +4,7 @@ from HTSUtils import printlog as pl
 
 
 def Bam2Sam(inbam, outsam):
+    pl("Bam2Sam. Input: {}. Output: {}.".format(inbam, outsam))
     from subprocess import call
     output = open(outsam, 'w', 0)
     command_str = 'samtools view -h {}'.format(inbam)
@@ -15,6 +16,7 @@ def Bam2Sam(inbam, outsam):
 def BarcodeSort(inbam, outbam="default", paired=True):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
+    pl("BarcodeSort. Input: {}. Output: {}.".format(inbam, outbam))
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     from subprocess import call
     headerCommand = "samtools view -H {} > {}".format(inbam, outsam)
@@ -109,6 +111,7 @@ def Consolidate(inbam, outbam="default", stringency=0.9):
 
 
 def CorrSort(inbam, outprefix="default"):
+    pl("CorrSort. Input: {}".format(inbam))
     from subprocess import call
     pl("inbam variable is {}".format(inbam))
     if(outprefix == "default"):
@@ -193,29 +196,31 @@ def fuzzyJoining(inputBAM,referenceFasta,output="default",):
 
 
 def GenBCIndexBAM(tagBAM, idx="default", paired=True):
+    pl("GenBCIndexBAM for {}".format(tagBAM))
     from subprocess import call
     if(idx == "default"):
         idx = '.'.join(tagBAM.split('.')[0:1]) + ".DoubleIdx"
     if(paired is True):
-        str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
-        str += "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
-        str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
-        call(str, shell=True)
+        Str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
+        Str += "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
+        Str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
+        call(Str, shell=True)
     if(paired is False):
-        str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
-        str += "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
-        str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
-        call(str, shell=True)
+        Str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
+        Str += "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
+        Str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
+        call(Str, shell=True)
     return idx
 
 
 def GenBCIndexRef(idx, output="default"):
+    pl("GenBCIndexRef. Input index: {}".format(idx))
     if(output == "default"):
         output = idx.split('.')[0] + '.ref.fasta'
     from subprocess import call
-    str = "paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(
+    Str = "paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(
           idx, output)
-    call(str, shell=True)
+    call(Str, shell=True)
     return output
 
 
@@ -223,15 +228,16 @@ def GenerateFamilyHistochart(BCIdx, output="default"):
     from subprocess import call
     if(output == "default"):
         output = '.'.join(BCIdx.split('.')[:-1]) + 'hist.txt'
-    str = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk ".format(BCIdx)
-    str += "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(output)
-    pl("Command str: {}".format(str))
-    call(str, shell=True)
+    Str = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk ".format(BCIdx)
+    Str += "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(output)
+    pl("Command str: {}".format(Str))
+    call(Str, shell=True)
     pl("Family size histochart: {}".format(output))
     return output
 
 
 def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default"):
+    pl("getFamilySizeBAM. Input: {}".format(inputBAM))
     if(output == "default"):
         output = inputBAM.split('.')[0] + ".doubleFam.bam"
     if(passBC == "default"):
@@ -281,6 +287,7 @@ def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default"):
 
 
 def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
+    pl("mergeBams. BAM1: {}. BAM2: {}".format(BAM1, BAM2))
     if(PT == "default"):
         PT = "/mounts/bin/picard-tools"
     from subprocess import call
@@ -294,6 +301,7 @@ def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
 
 
 def mergeBarcodes(reads1, reads2, outfile="default"):
+    pl("mergeBarcodes. R1: {}. R2: {}".format(reads1, reads2))
     reader1 = pysam.Samfile(reads1, "rb")
     reader2 = pysam.Samfile(reads2, "rb")
     if(outfile == "default"):
@@ -325,6 +333,7 @@ def pairedBarcodeTagging(fq1, fq2, bam, outBAM="default", suppBam="default"):
         outBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
+    pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAM))
     read1 = SeqIO.parse(fq1, "fastq")
     read2 = SeqIO.parse(fq2, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
@@ -371,6 +380,7 @@ def pairedFilterBam(inputBAM, passBAM="default",
     if(failBAM == "default"):
         failBAM = '.'.join(inputBAM.split('.')[0:-1])
         failBAM += ".{}F.bam".format(criteria)
+    pl("pairedFilterBam. Input: {}. Pass: {}".format(inputBAM, passBAM))
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
@@ -419,6 +429,7 @@ def removeSecondary(inBAM, outBAM="default"):
 
 
 def Sam2Bam(insam, outbam):
+    pl("Sam2Bam converting {} to {}".format(insam, outbam))
     from subprocess import call
     output = open(outbam, 'w', 0)
     command_str = 'samtools view -Sbh {}'.format(insam, shell=True)
@@ -429,6 +440,7 @@ def Sam2Bam(insam, outbam):
 
 # Taken from Scrutils, by Jacob Durtschi
 def SamtoolsBam2fq(bamPath, outFastqPath):
+    pl("SamtoolsBam2fq converting {}".format(bamPath))
     import subprocess
     # Build commands that will be piped
     samtoolsBam2fqCommand = ['samtools', 'bam2fq', bamPath]
@@ -457,7 +469,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
-    pl(("Tagged BAM file is: {}.".format(outputBAM)))
+    pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
     reads = SeqIO.parse(fastq, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
@@ -493,6 +505,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
 def SingleConsolidate(inbam, outbam="default", stringency=0.9):
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "consolidated.bam"
+    pl("SingleConsolidate. Input: {}. Output: {}".format(inbam, outbam))
     inputHandle = pysam.Samfile(inbam, 'rb')
     outputHandle = pysam.Samfile(outbam, 'wb', template=inputHandle)
     workBC = ""
@@ -605,6 +618,7 @@ def singleFilterBam(inputBAM, passBAM="default",
     if(failBAM == "default"):
         failBAM = '.'.join(inputBAM.split('.')[0:-1])
         failBAM += ".{}F.bam".format(criteria)
+    pl("singleFilterBam. Input: {}. Pass: {}".format(inputBAM, passBAM))
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
@@ -631,6 +645,7 @@ def singleFilterBam(inputBAM, passBAM="default",
 
 
 def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
+    pl("splitBAMByReads. Input: {}".format(BAM))
     presplitBAM = pysam.Samfile(BAM, "rb")
     if(read1BAM == "default"):
         read1BAM = '.'.join(BAM.split('.')[0:-1]) + '.R1.bam'

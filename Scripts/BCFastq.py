@@ -4,7 +4,7 @@ from HTSUtils import printlog as pl
 
 
 def BarcodeSort(inFastq, outFastq="default"):
-    pl("Sorting fastq by barcode sequence.")
+    pl("Sorting {} by barcode sequence.".format(inFastq))
     from subprocess import call
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
@@ -16,7 +16,8 @@ def BarcodeSort(inFastq, outFastq="default"):
     BS1 += "| sed 's:\t$::g' | tr '\t' '\n' > "
     BSstring = BS1 + outFastq
     call(BSstring, shell=True)
-    pl("Command: {}".format(BSstring.replace("\t", "\\t")))
+    pl("Command: {}".format(BSstring.replace(
+        "\t", "\\t")).replace("\n", "\\n"))
     return outFastq
 
 
@@ -45,6 +46,7 @@ def compareFastqRecords(R, stringency=0.9):
 
 
 def HomingSeqLoc(fq, homing, bar_len=12):
+    pl("Now beginning HomingSeqLoc.")
     InFastq = SeqIO.parse(fq, "fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix = Tpref.split('/')[-1]
@@ -74,6 +76,7 @@ def HomingSeqLoc(fq, homing, bar_len=12):
 
 
 def fastq_sort(in_fastq, out_fastq):
+    pl("Now beginning fastq_sort.")
     import subprocess
     outfile = open(out_fastq, 'w')
     command_str = 'cat {} | paste - - - - | '.format(in_fastq)
@@ -103,6 +106,7 @@ def FastqRegex(fq, string, matchFile="default", missFile="default"):
 
 
 def fastx_trim(infq, outfq, n):
+    pl("Now beginning fastx_trimmer.")
     import subprocess
     command_str = ['fastx_trimmer', '-l', str(n), '-i', infq, '-o', outfq]
     pl(command_str)
@@ -113,7 +117,7 @@ def fastx_trim(infq, outfq, n):
 def findProperPairs(infq1, infq2, index1="default", index2="default",
                     outfq1="default", outfq2="default", outfqSingle="default"):
     pl(
-        "Now attempting to parse out proper pairs and those w/o.")
+        "Now beginning findProperPairs.")
     from Bio import SeqIO
     if(index1 == "default"):
         raise ValueError(
@@ -167,6 +171,7 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
 
 
 def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
+    pl("Now beginning GenerateFullFastqBarcodeIndex for {}.".format(tags_file))
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
@@ -179,6 +184,7 @@ def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
 
 
 def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
+    pl("Now beginning GenerateSingleBarcodeIndex for {}.".format(tags_file))
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
@@ -186,7 +192,7 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     cmd += "paste - - - - | grep -v \"HomingFail\" | "
     cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
     cmd += "{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}}"
-    ";{{print $1,$2}}' > {}".format(index_file)
+    cmd += ";{{print $1,$2}}' > {}".format(index_file)
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
     call(cmd, shell=True)
     return index_file
@@ -197,7 +203,7 @@ def GetFamilySizeSingle(
         BarcodeIndex,
         outfq="default",
         singlefq="default"):
-    pl("Getting family sizes for all of the grouped families.")
+    pl("Running GetFamilySizeSingle for {}.".format(trimfq))
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq == "default"):
         outfq = '.'.join(trimfq.split('.')[0:-1]) + ".fam.fastq"
@@ -244,6 +250,7 @@ def GetFamilySizeSingle(
 
 
 def mergeSequencesFastq(fq1, fq2, output="default"):
+    pl("mergeSequencesFastq for {} and {}".format(fq1, fq2))
     if(output == "default"):
         output = fq1.split('.')[0] + '.merged.fastq'
     from Bio.SeqRecord import SeqRecord
@@ -273,7 +280,7 @@ def mergeSequencesFastq(fq1, fq2, output="default"):
 
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default", stringency=0.9):
-    pl("Now consolidating paired-end reads.")
+    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
     if(outFqPair2 == "default"):
@@ -404,6 +411,7 @@ def TrimHoming(
         tags_file="default",
         trim_err="default",
         start_trim=1):
+    pl("TrimHoming: \"{}\" from {}".format(homing, fq))
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
     if(trim_err == "default"):
