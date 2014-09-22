@@ -328,17 +328,17 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
     return outfile
 
 
-def pairedBarcodeTagging(fq1, fq2, bam, outBAM="default", suppBam="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
+def pairedBarcodeTagging(fq1, fq2, bam, outBAMFile="default", suppBam="default"):
+    if(outBAMFile == "default"):
+        outBAMFile = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
-    pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAM))
+    pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
     read1 = SeqIO.parse(fq1, "fastq")
     read2 = SeqIO.parse(fq2, "fastq")
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
-    outBAM = pysam.Samfile(outBAM, "wb", template=postFilterBAM)
+    outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
@@ -363,7 +363,7 @@ def pairedBarcodeTagging(fq1, fq2, bam, outBAM="default", suppBam="default"):
     suppBAM.close()
     outBAM.close()
     postFilterBAM.close()
-    return outBAM
+    return outBAMFile
 
 
 # Filters out both reads in a pair based on a list of comma-separated criteria.
@@ -382,8 +382,8 @@ def pairedFilterBam(inputBAM, passBAM="default",
         failBAM += ".{}F.bam".format(criteria)
     pl("pairedFilterBam. Input: {}. Pass: {}".format(inputBAM, passBAM))
     inBAM = pysam.Samfile(inputBAM, "rb")
-    passFilter = pysam.Samfile(passBAM, "wbu", template=inBAM)
-    failFilter = pysam.Samfile(failBAM, "wbu", template=inBAM)
+    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
+    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
     criteriaList = criteria.lower().split(',')
     for i, entry in enumerate(criteriaList):
         pl(("Criteria #{} is \"{}\"".format(i, entry)))

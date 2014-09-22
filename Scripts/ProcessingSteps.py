@@ -46,7 +46,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
             singleIndex = BCBam.GenBCIndexBAM(
                 passTaggedSingleBAM)
             pl("Now tagging BAM file with family size.")
-            familySizeSoloBAM = BCBam.getFamilySizeBAM(
+            familySizeSoloBAM, famLst = BCBam.getFamilySizeBAM(
                 passTaggedSingleBAM, singleIndex)
             sortFSSBam = BCBam.CorrSort(familySizeSoloBAM)
     else:
