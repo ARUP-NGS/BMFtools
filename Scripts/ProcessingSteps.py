@@ -168,8 +168,10 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
         BSortFq1, BSortFq2, stringency=stringency)
     BConsFqIndex1 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq1)
     BConsFqIndex2 = BCFastq.GenerateFullFastqBarcodeIndex(BConsFastq2)
+    BConsBSort1 = BCFastq.BarcodeSort(BConsFastq1)
+    BConsBSort2 = BCFastq.BarcodeSort(BConsFastq2)
     BConsPair1, BConsPair2, BarcodeSingle = BCFastq.findProperPairs(
-        BConsFastq1, BConsFastq2, index1=BConsFqIndex1, index2=BConsFqIndex2)
+        BConsBSort1, BConsBSort2, index1=BConsFqIndex1, index2=BConsFqIndex2)
     return BConsPair1, BConsPair2, BarcodeSingle
 
 

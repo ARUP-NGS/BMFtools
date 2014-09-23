@@ -116,8 +116,9 @@ def fastx_trim(infq, outfq, n):
 
 def findProperPairs(infq1, infq2, index1="default", index2="default",
                     outfq1="default", outfq2="default", outfqSingle="default"):
-    pl(
-        "Now beginning findProperPairs.")
+    """Assuming that the information here is sorted by barcode..."""
+    import collections
+    pl("Now beginning findProperPairs.")
     from Bio import SeqIO
     if(index1 == "default"):
         raise ValueError(
@@ -131,33 +132,43 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
         outfq2 = '.'.join(infq2.split('.')[0:-1]) + '.proper.fastq'
     if(outfqSingle == "default"):
         outfqSingle = '.'.join(infq1.split('.')[0:-1]) + '.solo.fastq'
+    prefix = '.'.join(infq1.split('.')[0])
     outfq1Handle = open(outfq1, 'w')
     outfq2Handle = open(outfq2, 'w')
     outfqSingleHandle = open(outfqSingle, 'w')
     indexHandle1 = open(index1, "r")
+    indexHandle2 = open(index2, "r")
+    barcodeList1 = [l.strip().split()[-1] for l in indexHandle1.readlines()]
+    barcodeList2 = [l.strip().split()[-1] for l in indexHandle1.readlines()]
+    indexHandle1.close()
+    indexHandle2.close()
+    fullList = barcodeList1 + barcodeList2
+    del barcodeList1
+    del barcodeList2
+    shared = [x for x, y in collections.Counter(fullList).items() if y > 1]
     infq1Handle = SeqIO.parse(infq1, "fastq")
     infq2Handle = SeqIO.parse(infq2, "fastq")
-    dictEntries = [line.split() for line in indexHandle1]
-    BarDict1 = {}
-    for entry in dictEntries:
-        BarDict1[entry[1]] = entry[0]
-    indexHandle2 = open(index2, "r")
+    BarDict = {}
+    for entry in shared:
+        BarDict[entry] = "SpanishInquisition"
+    indexHandle2.seek(0)
+    readNum = 0
     for read in infq2Handle:
         queryBC = read.description.split('###')[-2]
         try:
-            temp = BarDict1[queryBC]
+            temp = BarDict[queryBC]
+            read.name = "{}:ProperPairRd#{}".format(prefix, readNum)
+            readNum += 1
             SeqIO.write(read, outfq2Handle, "fastq")
         except KeyError:
             SeqIO.write(read, outfqSingleHandle, "fastq")
 
-    dictEntries = [line.split() for line in indexHandle2]
-    BarDict2 = {}
-    for entry in dictEntries:
-        BarDict2[entry[1]] = entry[0]
+    readNum = 0
     for read in infq1Handle:
         queryBC = read.description.split('###')[-2]
         try:
-            temp = BarDict2[queryBC]
+            temp = BarDict[queryBC]
+            read.name = "{}:ProperPairRd#{}".format(prefix, readNum)
             SeqIO.write(read, outfq1Handle, "fastq")
         except KeyError:
             SeqIO.write(read, outfqSingleHandle, "fastq")
@@ -165,9 +176,16 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
     outfq2Handle.close()
     infq1Handle.close()
     infq2Handle.close()
-    indexHandle1.close()
-    indexHandle2.close()
     return outfq1, outfq1, outfqSingle
+
+
+def findProperPairsDev(infq1, infq2,
+                       index1="default", index2="default",
+                       outfq1="default", outfq2="default",
+                       outfqSingle="default"):
+    """This is the development branch of findProperPairs.
+    The idea behind this is to consolidate each fastq file by itself"""
+    return
 
 
 def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
