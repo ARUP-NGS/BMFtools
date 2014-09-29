@@ -17,7 +17,7 @@ def BarcodeSort(inFastq, outFastq="default"):
     BSstring = BS1 + outFastq
     call(BSstring, shell=True)
     pl("Command: {}".format(BSstring.replace(
-        "\t", "\\t")).replace("\n", "\\n"))
+        "\t", "\\t").replace("\n", "\\n")))
     return outFastq
 
 
@@ -141,7 +141,6 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
     barcodeList1 = [l.strip().split()[-1] for l in indexHandle1.readlines()]
     barcodeList2 = [l.strip().split()[-1] for l in indexHandle1.readlines()]
     indexHandle1.close()
-    indexHandle2.close()
     fullList = barcodeList1 + barcodeList2
     del barcodeList1
     del barcodeList2
@@ -169,6 +168,7 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
         try:
             temp = BarDict[queryBC]
             read.name = "{}:ProperPairRd#{}".format(prefix, readNum)
+            readNum += 1
             SeqIO.write(read, outfq1Handle, "fastq")
         except KeyError:
             SeqIO.write(read, outfqSingleHandle, "fastq")
@@ -176,16 +176,8 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
     outfq2Handle.close()
     infq1Handle.close()
     infq2Handle.close()
+    indexHandle2.close()
     return outfq1, outfq1, outfqSingle
-
-
-def findProperPairsDev(infq1, infq2,
-                       index1="default", index2="default",
-                       outfq1="default", outfq2="default",
-                       outfqSingle="default"):
-    """This is the development branch of findProperPairs.
-    The idea behind this is to consolidate each fastq file by itself"""
-    return
 
 
 def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
@@ -267,6 +259,35 @@ def GetFamilySizeSingle(
     return outfq, TotalReads, ReadsWithFamilies
 
 
+def mergeBarcodes(fq1, fq2, out1="default", out2="default"):
+    if(out1 == "default"):
+        out1 = '.'.join(fq1.split('.')[0:-1]) + '.mergeBC.fastq'
+    if(out2 == "default"):
+        out2 = '.'.join(fq2.split('.')[0:-1]) + '.mergeBC.fastq'
+    reads1 = SeqIO.parse(fq1, "fastq")
+    reads2 = SeqIO.parse(fq2, "fastq")
+    outFq1 = open(out1, "w")
+    outFq2 = open(out2, "w")
+    while True:
+        try:
+            read1 = reads1.next()
+            read2 = reads2.next()
+            read1Desc = read1.description.split('###')
+            read2Desc = read2.description.split('###')
+            newBarcode = read1Desc[-1] + read2Desc[-1]
+            read1Desc[-1] = newBarcode
+            read2Desc[-1] = newBarcode
+            read1.description = "###".join(read1Desc)
+            read2.description = "###".join(read2Desc)
+            SeqIO.write(read1, outFq1, "fastq")
+            SeqIO.write(read2, outFq2, "fastq")
+        except StopIteration:
+            break
+    reads1.close()
+    reads2.close()
+    return out1, out2
+
+
 def mergeSequencesFastq(fq1, fq2, output="default"):
     pl("mergeSequencesFastq for {} and {}".format(fq1, fq2))
     if(output == "default"):
@@ -324,8 +345,11 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
         c = "CCCCCCCCCC"
         if(a in bc4fq1 or t in bc4fq1 or c in bc4fq1 or g in bc4fq1):
             continue
-        if(int(fqRec.description.split('###')[-1].strip()) < 2):
-            continue
+        # if(int(fqRec.description.split('###')[-1].strip()) < 2):
+        #    continue
+        # Originally removing reads with family size <2, since one pair could
+        # have more than the other, it's important that I keep these reads in
+        # and filter them from the BAM file
         if(workingBarcode == ""):
             workingBarcode = bc4fq1
             workingSet1 = []

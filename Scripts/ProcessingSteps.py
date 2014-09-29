@@ -148,21 +148,22 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     pl("Homing sequences located, reads parsed out.")
     pl("Now removing the homing sequence and the barcode.")
     tags1, trimfq1 = BCFastq.TrimHoming(homingP1, homing)
-    pl("Now generating the barcode index.")
-    BarcodeIndex1 = BCFastq.GenerateSingleBarcodeIndex(tags1)
-    FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(
-        trimfq1, BarcodeIndex1)
-    BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     # For reads 2
     homingP2, homingF2 = BCFastq.HomingSeqLoc(
         inFastq2, homing=homing)
     pl("Homing sequences located, parsing reads.")
     pl("Now removing the homing sequence and the barcode.")
     tags2, trimfq2 = BCFastq.TrimHoming(homingP2, homing)
+    mergeTags1, mergeTags2 = BCFastq.mergeBarcodes(trimfq1, trimfq2)
     pl("Now generating the barcode index.")
     BarcodeIndex2 = BCFastq.GenerateSingleBarcodeIndex(tags2)
-    FamFq2, TotalReads2, FamReads2 = BCFastq.GetFamilySizeSingle(
-        trimfq2, BarcodeIndex2)
+    pl("Now generating the barcode index.")
+    BarcodeIndex1 = BCFastq.GenerateSingleBarcodeIndex(tags1)
+    FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(mergeTags1,
+                                                           BarcodeIndex1)
+    FamFq2, AllRds2, FamRds2 = BCFastq.GetFamilySizeSingle(mergeTags2,
+                                                           BarcodeIndex2)
+    BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
         BSortFq1, BSortFq2, stringency=stringency)

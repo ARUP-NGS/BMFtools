@@ -93,6 +93,17 @@ def CustomRefBowtiePaired(mergedFq, ref, output="default"):
     return output
 
 
+# This function is to handle StopIterations with a little elegance
+def has_elements(iterable):
+    from itertools import tee
+    iterable, any_check = tee(iterable)
+    try:
+        any_check.next()
+        return True, iterable
+    except StopIteration:
+        return False, iterable
+
+
 def indexBowtie(fasta):
     from subprocess import call
     call('bowtie-build {0} {0}'.format(fasta), shell=True)
