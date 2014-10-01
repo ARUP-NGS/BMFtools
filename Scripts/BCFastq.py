@@ -156,6 +156,8 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
         queryBC = read.description.split('###')[-2]
         try:
             temp = BarDict[queryBC]
+            # This is simply checking whether or not
+            # it has a mate with the same barcode sequence.
             read.name = "{}:ProperPairRd#{}".format(prefix, readNum)
             readNum += 1
             SeqIO.write(read, outfq2Handle, "fastq")
@@ -177,10 +179,26 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
     infq1Handle.close()
     infq2Handle.close()
     indexHandle2.close()
-    return outfq1, outfq1, outfqSingle
+    return outfq1, outfq2, outfqSingleHandle
 
 
-def GenerateFullFastqBarcodeIndex(tags_file, index_file="default"):
+def PairFastqBarcodeIndex(tags_file1, tags_file2, index_file="default"):
+    pl("Now beginning GenerateFullFastqBarcodeIndex for {} and {}.".format(
+        tags_file1, tags_file2))
+    from subprocess import call
+    if(index_file == "default"):
+        index_file = '.'.join(tags_file1.split('.')[0:-1]) + ".barIdx"
+    cmd = "cat {} {} | sed 's:###::g' | paste - - - - | awk ".format(
+        tags_file1, tags_file2)
+    cmd += "'BEGIN {{FS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN "
+    cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n > {}".format(
+        index_file)
+    pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
+    call(cmd, shell=True)
+    return index_file
+
+
+def GenerateOnePairFastqBarcodeIndex(tags_file, index_file="default"):
     pl("Now beginning GenerateFullFastqBarcodeIndex for {}.".format(tags_file))
     from subprocess import call
     if(index_file == "default"):
@@ -230,7 +248,7 @@ def GetFamilySizeSingle(
     for entry in dictEntries:
         BarDict[entry[1]] = entry[0]
     for read in infq:
-        index.seek(0)
+        # index.seek(0)
         TotalReads += 1
         # print("description is {}".format(read.description))
         # print("-1 index of description is {}".format(
@@ -251,11 +269,14 @@ def GetFamilySizeSingle(
         if(str(famSize) == "0"):
             continue
         if(str(famSize) == "1"):
+            print("Hey, I found a singleton")
             SeqIO.write(newRead, singlefqBuffer, "fastq")
-            SeqIO.write(newRead, outfqBuffers, "fastq")
         else:
+            print("Hey, I found a read with a family!")
             ReadsWithFamilies += 1
             SeqIO.write(newRead, outfqBuffers, "fastq")
+    outfqBuffers.close()
+    singlefqBuffer.close()
     return outfq, TotalReads, ReadsWithFamilies
 
 
@@ -274,6 +295,10 @@ def mergeBarcodes(fq1, fq2, out1="default", out2="default"):
             read2 = reads2.next()
             read1Desc = read1.description.split('###')
             read2Desc = read2.description.split('###')
+            if(read1Desc[1].strip() == "HomingFail"):
+                continue
+            if(read2Desc[1].strip() == "HomingFail"):
+                continue
             newBarcode = read1Desc[-1] + read2Desc[-1]
             read1Desc[-1] = newBarcode
             read2Desc[-1] = newBarcode

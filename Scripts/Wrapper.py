@@ -64,11 +64,8 @@ def main():
         '--logfile',
         help="To change default logfile location.",
         default="default")
-    parser.add_argument('-m',
-                        help="Set to \"True\" to multithread.",
-                        default="False")
-
     args = parser.parse_args()
+    # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
     else:
@@ -117,16 +114,11 @@ def main():
             return
         else:
             raise ValueError("You have chosen an illegal initial step.")
-    elif(args.paired_end or args.paired_end.lower() == "true"):
+    elif(args.paired_end == "true" or args.paired_end.lower() == "true"):
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
-            if(args.m != "False"):
-                trimfq1, trimfq2, trimfqSingle = ps.pFPD(args.fq[0],
-                                                         args.fq[1],
-                                                         homing=homing)
-            else:
-                trimfq1, trimfq2, trimfqSingle = ps.pairedFastqProc(
-                    args.fq[0], args.fq[1], homing=homing)
+            trimfq1, trimfq2, trimfqSingle = ps.pairedFastqProc(
+                args.fq[0], args.fq[1], homing=homing)
             pl("Beginning BAM processing.")
             procSortedBam = ps.pairedBamProc(
                 trimfq1,
