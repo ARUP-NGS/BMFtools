@@ -179,7 +179,7 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
     infq1Handle.close()
     infq2Handle.close()
     indexHandle2.close()
-    return outfq1, outfq2, outfqSingleHandle
+    return outfq1, outfq2, outfqSingle
 
 
 def PairFastqBarcodeIndex(tags_file1, tags_file2, index_file="default"):
