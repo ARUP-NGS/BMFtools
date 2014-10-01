@@ -182,15 +182,15 @@ def findProperPairs(infq1, infq2, index1="default", index2="default",
     return outfq1, outfq2, outfqSingle
 
 
-def PairFastqBarcodeIndex(tags_file1, tags_file2, index_file="default"):
+def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
     pl("Now beginning GenerateFullFastqBarcodeIndex for {} and {}.".format(
-        tags_file1, tags_file2))
+        taggedFile1, taggedFile2))
     from subprocess import call
     if(index_file == "default"):
-        index_file = '.'.join(tags_file1.split('.')[0:-1]) + ".barIdx"
-    cmd = "cat {} {} | sed 's:###::g' | paste - - - - | awk ".format(
-        tags_file1, tags_file2)
-    cmd += "'BEGIN {{FS=\"\t\"}};{{print $2}}' | sort | uniq -c | awk 'BEGIN "
+        index_file = '.'.join(taggedFile1.split('.')[0:-1]) + ".barIdx"
+    cmd = "cat {} {} | sed 's: ###:\t:g' | paste - - - - | awk ".format(
+        taggedFile1, taggedFile2)
+    cmd += "'BEGIN {{FS=\"\t\"}};{{print $3}}' | sort | uniq -c | awk 'BEGIN "
     cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n > {}".format(
         index_file)
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))

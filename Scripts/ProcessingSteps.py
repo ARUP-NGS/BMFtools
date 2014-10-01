@@ -133,7 +133,7 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     tags2, trimfq2 = BCFastq.TrimHoming(homingP2, homing)
     mergeTags1, mergeTags2 = BCFastq.mergeBarcodes(trimfq1, trimfq2)
     pl("Now generating the barcode index.")
-    BarcodeIndex = BCFastq.PairFastqBarcodeIndex(tags1, tags2)
+    BarcodeIndex = BCFastq.PairFastqBarcodeIndex(mergeTags1, mergeTags2)
     pl("Now generating the barcode index.")
     FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(mergeTags1,
                                                            BarcodeIndex)
