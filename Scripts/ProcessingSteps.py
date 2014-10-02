@@ -145,15 +145,17 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
         BSortFq1, BSortFq2, stringency=stringency)
     BConsFqIndex1 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq1)
     BConsFqIndex2 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq2)
-    BConsBSort1 = BCFastq.BarcodeSort(BConsFastq1)
-    BConsBSort2 = BCFastq.BarcodeSort(BConsFastq2)
-    BConsPair1, BConsPair2, BarcodeSingle = BCFastq.findProperPairs(
-        BConsBSort1, BConsBSort2, index1=BConsFqIndex1, index2=BConsFqIndex2)
+    sharedBC = BCFastq.getSharedBC(BConsFqIndex1, BConsFqIndex2)
+    BConsPair1, BConsPair2, BarcodeSingle = BCFastq.getProperPairs(
+        BConsFastq1, BConsFastq2, shared=sharedBC)
+    BConsBSort1 = BCFastq.BarcodeSort(BConsPair1)
+    BConsBSort2 = BCFastq.BarcodeSort(BConsPair2)
+    RenameFq1, RenameFq2 = BCFastq.renameReads(BConsBSort1, BConsBSort2)
     printStr = "Now returning BConsPair1 ({}), BConsPair2, ({})".format(
-        BConsPair1, BConsPair2)
+        RenameFq1, RenameFq2)
     printStr += ", and BarcodeSingle ({})".format(BarcodeSingle)
     pl(printStr)
-    return BConsPair1, BConsPair2, BarcodeSingle
+    return RenameFq1, RenameFq2, BarcodeSingle
 
 
 def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
