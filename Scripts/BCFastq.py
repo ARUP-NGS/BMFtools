@@ -207,10 +207,11 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
     prefix = '.'.join(infq1.split('.')[0])
 
     readNum = 0
-    with open(shared, 'r') as f:
-        sharedBC = [line.strip() for line in f.readlines()]
+    f = open(shared, "r")
+    sharedBC = [line.strip() for line in f.readlines()]
+    f.close()
     for read in infq2Handle:
-        queryBC = read.description.split('###')[-2]
+        queryBC = read.description.split('###')[-2].strip()
         if(queryBC in sharedBC):
             # This is simply checking whether or not
             # it has a mate with the same barcode sequence.
@@ -221,12 +222,12 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
 
     readNum = 0
     for read in infq1Handle:
-        queryBC = read.description.split('###')[-2]
+        queryBC = read.description.split('###')[-2].strip()
         if queryBC in sharedBC:
             SeqIO.write(read, outfq1Handle, "fastq")
         else:
             SeqIO.write(read, outfqSingleHandle, "fastq")
-    return
+    return outfq1, outfq2, outfqSingle
 
 
 def getSharedBC(barIdx1, barIdx2, shared="default"):
@@ -353,10 +354,10 @@ def GetFamilySizeSingle(
         if(str(famSize) == "0"):
             continue
         if(str(famSize) == "1"):
-            print("Hey, I found a singleton")
+            #  print("Hey, I found a singleton")
             SeqIO.write(newRead, singlefqBuffer, "fastq")
         else:
-            print("Hey, I found a read with a family!")
+            #  print("Hey, I found a read with a family!")
             ReadsWithFamilies += 1
             SeqIO.write(newRead, outfqBuffers, "fastq")
     outfqBuffers.close()

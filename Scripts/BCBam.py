@@ -328,7 +328,12 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
     return outfile
 
 
-def pairedBarcodeTagging(fq1, fq2, bam, outBAMFile="default", suppBam="default"):
+def pairedBarcodeTagging(
+        fq1,
+        fq2,
+        bam,
+        outBAMFile="default",
+        suppBam="default"):
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
     if(suppBam == "default"):
