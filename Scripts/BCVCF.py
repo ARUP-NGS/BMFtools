@@ -4,7 +4,10 @@ from HTSUtils import printlog as pl
 class VCFFile:
 
     """A simple VCFFile object, consisting of a header, a name for the file
-    from which they came, and a list of all VCFRecords."""
+    from which they came, and a list of all VCFRecords.
+    Access header through self.header (list of strings, one for each line)
+    Access VCF Entries through self.Records (list of VCFRecord objects)
+    """
 
     def __init__(self, VCFEntries, VCFHeader, inputVCFName):
         self.sampleName = inputVCFName
@@ -83,8 +86,12 @@ class VCFRecord:
         self.InfoValues = [
             entry.split('=')[1] for entry in self.INFO.split(';')]
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
-        self.InfoValArrays = [
-            [float(entry) for entry in array] for array in tempValArrays]
+        try:
+            self.InfoValArrays = [
+                [float(entry) for entry in array] for array in tempValArrays]
+        except ValueError:
+            self.InfoValArrays = [
+                [entry for entry in array] for array in tempValArrays]
         self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
         self.FORMAT = VCFEntry[8]
@@ -109,8 +116,12 @@ class VCFRecord:
         self.InfoValues = [
             entry.split('=')[1] for entry in self.INFO.split(';')]
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
-        self.InfoValArrays = [
-            [float(entry) for entry in array] for array in tempValArrays]
+        try:
+            self.InfoValArrays = [
+                [float(entry) for entry in array] for array in tempValArrays]
+        except ValueError:
+            self.InfoValArrays = [
+                [entry for entry in array] for array in tempValArrays]
         self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
         self.GenotypeKeys = self.FORMAT.split(':')
@@ -148,6 +159,29 @@ def CleanupPileup(inputPileup, outputPileup="default"):
         inputPileup, outputPileup)
     subprocess.call(cmd, shell=True)
     return outputPileup
+
+
+def fixVCF(inputVCF, outputVCF="default"):
+    if(outputVCF == "default"):
+        outputVCF = '.'.join(inputVCF.split('.')[0:-1]) + '.fixed.vcf'
+    startVCF = ParseVCF(inputVCF)
+    outVCFHeader = startVCF.header
+    stdEntries = [i for i in startVCF.Records if(
+                  len(i.REF) != len(i.ALT) or len(i.REF) == 1)]
+    elseEntries = [i for i in startVCF.Records if(
+                   len(i.REF) == len(i.ALT) and len(i.REF) > 1)]
+    NewEntries = []
+    for e in elseEntries:
+        for pair in zip(e.REF, e.ALT):
+            e.REF, e.ALT = pair[0], pair[1]
+            newRecord = VCFRecord(e.toString().split('\t'), outputVCF)
+            if(newRecord.ALT != newRecord.REF):
+                stdEntries.append(newRecord)
+    for s in stdEntries:
+        NewEntries.append(s)
+    outVCF = VCFFile(NewEntries, outVCFHeader, outputVCF)
+    outVCF.write(outputVCF)
+    return outVCF
 
 
 def MPileup(inputBAM, ref, bed="default", outputBCF="default"):

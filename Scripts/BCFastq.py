@@ -1,5 +1,4 @@
 from Bio import SeqIO
-import pysam
 from HTSUtils import printlog as pl
 
 
@@ -114,76 +113,6 @@ def fastx_trim(infq, outfq, n):
     return(command_str)
 
 
-'''
-def findProperPairs(infq1, infq2, index1="default", index2="default",
-                    outfq1="default", outfq2="default", outfqSingle="default"):
-    """Assuming that the information here is sorted by barcode..."""
-    import collections
-    pl("Now beginning findProperPairs.")
-    from Bio import SeqIO
-    if(index1 == "default"):
-        raise ValueError(
-            "An index for the barcodes in reads1 set must be present.")
-    if(index2 == "default"):
-        raise ValueError(
-            "An index for the barcodes in reads2 set must be present.")
-    if(outfq1 == "default"):
-        outfq1 = '.'.join(infq1.split('.')[0:-1]) + '.proper.fastq'
-    if(outfq2 == "default"):
-        outfq2 = '.'.join(infq2.split('.')[0:-1]) + '.proper.fastq'
-    if(outfqSingle == "default"):
-        outfqSingle = '.'.join(infq1.split('.')[0:-1]) + '.solo.fastq'
-    prefix = '.'.join(infq1.split('.')[0])
-    outfq1Handle = open(outfq1, 'w')
-    outfq2Handle = open(outfq2, 'w')
-    outfqSingleHandle = open(outfqSingle, 'w')
-    indexHandle1 = open(index1, "r")
-    indexHandle2 = open(index2, "r")
-    barcodeList1 = [l.strip().split()[-1] for l in indexHandle1.readlines()]
-    barcodeList2 = [l.strip().split()[-1] for l in indexHandle1.readlines()]
-    indexHandle1.close()
-    fullList = barcodeList1 + barcodeList2
-    del barcodeList1
-    del barcodeList2
-    shared = [x for x, y in collections.Counter(fullList).items() if y > 1]
-    infq1Handle = SeqIO.parse(infq1, "fastq")
-    infq2Handle = SeqIO.parse(infq2, "fastq")
-    BarDict = {}
-    for entry in shared:
-        BarDict[entry] = "SpanishInquisition"
-    indexHandle2.seek(0)
-    readNum = 0
-    for read in infq2Handle:
-        queryBC = read.description.split('###')[-2]
-        try:
-            temp = BarDict[queryBC]
-            # This is simply checking whether or not
-            # it has a mate with the same barcode sequence.
-            read.name = "{}:ProperPairRd#{}".format(prefix, readNum)
-            readNum += 1
-            SeqIO.write(read, outfq2Handle, "fastq")
-        except KeyError:
-            SeqIO.write(read, outfqSingleHandle, "fastq")
-
-    readNum = 0
-    for read in infq1Handle:
-        queryBC = read.description.split('###')[-2]
-        try:
-            temp = BarDict[queryBC]
-            read.name = "{}:ProperPairRd#{}".format(prefix, readNum)
-            readNum += 1
-            SeqIO.write(read, outfq1Handle, "fastq")
-        except KeyError:
-            SeqIO.write(read, outfqSingleHandle, "fastq")
-    outfq1Handle.close()
-    outfq2Handle.close()
-    infq1Handle.close()
-    infq2Handle.close()
-    indexHandle2.close()
-    return outfq1, outfq2, outfqSingle
-'''
-
-
 def getProperPairs(infq1, infq2, shared="default", outfq1="default",
                    outfq2="default", outfqSingle="default"):
     """Assuming that the information here is sorted by barcode..."""
@@ -204,28 +133,27 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
     outfq1Handle = open(outfq1, 'w')
     outfq2Handle = open(outfq2, 'w')
     outfqSingleHandle = open(outfqSingle, 'w')
-    prefix = '.'.join(infq1.split('.')[0])
 
-    readNum = 0
     f = open(shared, "r")
-    sharedBC = [line.strip() for line in f.readlines()]
+    BarDict = {}
+    for line in f.readlines():
+        BarDict[line.strip()] = ""
     f.close()
     for read in infq2Handle:
-        queryBC = read.description.split('###')[-2].strip()
-        if(queryBC in sharedBC):
+        try:
+            BarDict[read.description.split('###')[-2].strip()]
+            # Testing if it's in the dictionary, no need to assign
             # This is simply checking whether or not
             # it has a mate with the same barcode sequence.
-            readNum += 1
             SeqIO.write(read, outfq2Handle, "fastq")
-        else:
+        except KeyError:
             SeqIO.write(read, outfqSingleHandle, "fastq")
 
-    readNum = 0
     for read in infq1Handle:
-        queryBC = read.description.split('###')[-2].strip()
-        if queryBC in sharedBC:
+        try:
+            BarDict[read.description.split('###')[-2].strip()]
             SeqIO.write(read, outfq1Handle, "fastq")
-        else:
+        except KeyError:
             SeqIO.write(read, outfqSingleHandle, "fastq")
     return outfq1, outfq2, outfqSingle
 
@@ -240,47 +168,6 @@ def getSharedBC(barIdx1, barIdx2, shared="default"):
     call(Str, shell=True)
     return shared
 
-
-def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
-    #  Requires barcode-sorted, consolidated fastq files,
-    #  filtered to only the shared barcode families
-    if(outfq1 == "default"):
-        outfq1 = fq1.split('.')[0] + '.cons.R1fastq'
-    if(outfq2 == "default"):
-        outfq2 = fq2.split('.')[0] + '.cons.R2fastq'
-    from Bio import SeqIO
-    infq1 = SeqIO.parse(fq1, "fastq")
-    infq2 = SeqIO.parse(fq2, "fastq")
-    outfqhandle1 = open(outfq1, "w")
-    outfqhandle2 = open(outfq2, "w")
-    for read1 in infq1:
-        read2 = infq2.next()
-        read2.id = read1.id
-        read2.description = ' '.join(
-            read1.description.split()[1:]).replace('1:N', '2:N')
-        SeqIO.write(read1, outfqhandle1, "fastq")
-        SeqIO.write(read2, outfqhandle2, "fastq")
-    outfqhandle1.close()
-    outfqhandle2.close()
-    infq1.close()
-    infq2.close()
-    return
-
-
-def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
-    pl("Now beginning GenerateFullFastqBarcodeIndex for {} and {}.".format(
-        taggedFile1, taggedFile2))
-    from subprocess import call
-    if(index_file == "default"):
-        index_file = '.'.join(taggedFile1.split('.')[0:-1]) + ".barIdx"
-    cmd = "cat {} {} | sed 's: ###:\t:g' | paste - - - - | awk ".format(
-        taggedFile1, taggedFile2)
-    cmd += "'BEGIN {{FS=\"\t\"}};{{print $3}}' | sort | uniq -c | awk 'BEGIN "
-    cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n > {}".format(
-        index_file)
-    pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
-    call(cmd, shell=True)
-    return index_file
 
 
 def GenerateOnePairFastqBarcodeIndex(tags_file, index_file="default"):
@@ -427,6 +314,22 @@ def mergeSequencesFastq(fq1, fq2, output="default"):
     return output
 
 
+def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
+    pl("Now beginning GenerateFullFastqBarcodeIndex for {} and {}.".format(
+        taggedFile1, taggedFile2))
+    from subprocess import call
+    if(index_file == "default"):
+        index_file = '.'.join(taggedFile1.split('.')[0:-1]) + ".barIdx"
+    cmd = "cat {} {} | sed 's: ###:\t:g' | paste - - - - | awk ".format(
+        taggedFile1, taggedFile2)
+    cmd += "'BEGIN {{FS=\"\t\"}};{{print $3}}' | sort | uniq -c | awk 'BEGIN "
+    cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n > {}".format(
+        index_file)
+    pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
+    call(cmd, shell=True)
+    return index_file
+
+
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default", stringency=0.9):
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
@@ -494,6 +397,32 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     outputHandle1.close()
     outputHandle2.close()
     return outFqPair1, outFqPair2
+
+
+def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
+    #  Requires barcode-sorted, consolidated fastq files,
+    #  filtered to only the shared barcode families
+    if(outfq1 == "default"):
+        outfq1 = fq1.split('.')[0] + '.cons.R1fastq'
+    if(outfq2 == "default"):
+        outfq2 = fq2.split('.')[0] + '.cons.R2fastq'
+    from Bio import SeqIO
+    infq1 = SeqIO.parse(fq1, "fastq")
+    infq2 = SeqIO.parse(fq2, "fastq")
+    outfqhandle1 = open(outfq1, "w")
+    outfqhandle2 = open(outfq2, "w")
+    for read1 in infq1:
+        read2 = infq2.next()
+        read2.id = read1.id
+        read2.description = ' '.join(
+            read1.description.split()[1:]).replace('1:N', '2:N')
+        SeqIO.write(read1, outfqhandle1, "fastq")
+        SeqIO.write(read2, outfqhandle2, "fastq")
+    outfqhandle1.close()
+    outfqhandle2.close()
+    infq1.close()
+    infq2.close()
+    return
 
 
 def reverseComplement(fq, dest="default"):
