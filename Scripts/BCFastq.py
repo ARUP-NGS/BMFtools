@@ -422,7 +422,7 @@ def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
     outfqhandle2.close()
     infq1.close()
     infq2.close()
-    return
+    return outfq1, outfq2
 
 
 def reverseComplement(fq, dest="default"):
