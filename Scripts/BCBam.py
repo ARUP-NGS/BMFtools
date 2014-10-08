@@ -227,10 +227,11 @@ def GenBCIndexRef(idx, output="default"):
 def GenerateFamilyHistochart(BCIdx, output="default"):
     from subprocess import call
     if(output == "default"):
-        output = '.'.join(BCIdx.split('.')[:-1]) + 'hist.txt'
+        output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
     Str = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk ".format(BCIdx)
-    Str += "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' >> {}".format(output)
-    pl("Command str: {}".format(Str))
+    Str += "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n "
+    Str += "> {}".format(output)
+    pl("Command str: {}".format(Str.replace("\t", "\\t")))
     call(Str, shell=True)
     pl("Family size histochart: {}".format(output))
     return output
@@ -348,6 +349,8 @@ def pairedBarcodeTagging(
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag > 2048):
             suppBAM.write(entry)
+            continue
+        if(not entry.is_paired):
             continue
         if(entry.is_read1):
             tempRead = read1.next()

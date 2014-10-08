@@ -57,13 +57,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     taggedBAM = BCBam.pairedBarcodeTagging(
         consfq1, consfq2, outbamProperPair)
     pl("Now splitting the BAM into read 1 and read 2 files.")
-    read1BAM, read2BAM = BCBam.splitBAMByReads(taggedBAM)
-    pl("Now merging the barcodes from each pair in the BAM files.")
-    concatBS = BCBam.mergeBarcodes(read1BAM, read2BAM)
-    pl("BAM with merged barcodes is {}".format(concatBS))
     pl("Now generating double barcode index.")
     mappedMerge, failures = BCBam.pairedFilterBam(
-        concatBS, criteria="complexity,adapter,barcode")
+        taggedBAM, criteria="complexity,adapter,barcode")
     doubleIndex = BCBam.GenBCIndexBAM(mappedMerge)
     p = subprocess.Popen(["wc", "-l", doubleIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()

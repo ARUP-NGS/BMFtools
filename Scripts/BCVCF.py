@@ -82,20 +82,36 @@ class VCFRecord:
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]
-        self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')]
-        self.InfoValues = [
-            entry.split('=')[1] for entry in self.INFO.split(';')]
+        self.InfoKeys = [entry.split(
+            '=')[0] for entry in self.INFO.split(';') if entry != "NoCG"]
+        self.InfoValues = []
+        self.InfoUnpaired = []
+        for entry in self.INFO.split(';'):
+            #  print("entry: {}. INFO: {}".format(entry, self.INFO))
+            try:
+                self.InfoValues.append(entry.split('=')[1])
+            except IndexError:
+                self.InfoUnpaired
+                continue
+        #  print(self.InfoValues)
+        #  Might not reproduce the original information when written to file.
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
         try:
             self.InfoValArrays = [
-                [float(entry) for entry in array] for array in tempValArrays]
+                [entry for entry in array] for array in tempValArrays]
         except ValueError:
             self.InfoValArrays = [
                 [entry for entry in array] for array in tempValArrays]
         self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
-        self.FORMAT = VCFEntry[8]
-        self.GENOTYPE = VCFEntry[9]
+        try:
+            self.FORMAT = VCFEntry[8]
+        except IndexError:
+            self.FORMAT = ""
+        try:
+            self.GENOTYPE = VCFEntry[9]
+        except IndexError:
+            self.GENOTYPE = ""
         self.GenotypeDict = dict(
             zip(self.FORMAT.split(':'), self.GENOTYPE.split(':')))
         self.GenotypeKeys = self.FORMAT.split(':')
@@ -111,14 +127,14 @@ class VCFRecord:
             InfoValArray) for InfoValArray in self.InfoValArrays]
         infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
                           InfoValue in zip(self.InfoKeys, self.InfoValues)]
-        self.INFO = ';'.join(infoEntryArray)
+        self.INFO = ';'.join(infoEntryArray) + ';'.join(self.InfoUnpaired)
         self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')]
         self.InfoValues = [
             entry.split('=')[1] for entry in self.INFO.split(';')]
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
         try:
             self.InfoValArrays = [
-                [float(entry) for entry in array] for array in tempValArrays]
+                [entry for entry in array] for array in tempValArrays]
         except ValueError:
             self.InfoValArrays = [
                 [entry for entry in array] for array in tempValArrays]
