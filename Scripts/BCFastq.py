@@ -169,7 +169,6 @@ def getSharedBC(barIdx1, barIdx2, shared="default"):
     return shared
 
 
-
 def GenerateOnePairFastqBarcodeIndex(tags_file, index_file="default"):
     pl("Now beginning GenerateFullFastqBarcodeIndex for {}.".format(tags_file))
     from subprocess import call
@@ -196,6 +195,40 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
     call(cmd, shell=True)
     return index_file
+
+
+def halveFqRecords(fq, outfq1="default", outfq2="default"):
+    from Bio.Seq import Seq
+    from Bio.SeqRecord import SeqRecord
+    if(outfq1 == "default"):
+        outfq1 = '.'.join(fq.split('.'))[0:-1] + '_R1.fastq'
+    if(outfq2 == "default"):
+        outfq2 = '.'.join(fq.split('.'))[0:-1] + '_R2.fastq'
+    infq = SeqIO.parse(fq, "fastq")
+    out1 = open(outfq1, "w")
+    out2 = open(outfq2, "w")
+    for read in infq:
+        halfLen = len(read.seq)/2
+        #  read2.id = read1.id
+        #  read2.description = ' '.join(
+        #      read1.description.split()[1:]).replace('1:N', '2:N')
+        outread1 = SeqRecord(Seq(str(read.seq[0:halfLen]), "fastq"),
+                             id=read.id,
+                             description=read.description + ' 1:N:0:1')
+        outread1.letter_annotations[
+            'phred_quality'] = read.letter_annotations[
+            'phred_quality'][0:halfLen]
+        SeqIO.write(outread1, out1, "fastq")
+        outread2 = SeqRecord(Seq(str(read.seq[halfLen:]), "fastq"),
+                             id=read.id,
+                             description=read.description + ' 2:N:0:1')
+        outread2.letter_annotations[
+            'phred_quality'] = read.letter_annotations[
+            'phred_quality'][halfLen:]
+        SeqIO.write(outread2, out2, "fastq")
+    out1.close()
+    out2.close()
+    return
 
 
 def GetFamilySizeSingle(
