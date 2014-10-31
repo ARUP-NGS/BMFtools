@@ -25,9 +25,9 @@ def main():
         required=True)
     parser.add_argument(
         '--homing',
-        help="Homing sequence for samples. If not set, defaults to CAGT.",
+        help="Homing sequence for samples. If not set, defaults to GACGG.",
         metavar=('HomingSequence'),
-        default="CAGT")
+        default="GACGG")
     parser.add_argument(
         '-p',
         '--paired-end',

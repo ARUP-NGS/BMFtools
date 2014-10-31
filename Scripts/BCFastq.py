@@ -116,7 +116,6 @@ def fastx_trim(infq, outfq, n):
 def getProperPairs(infq1, infq2, shared="default", outfq1="default",
                    outfq2="default", outfqSingle="default"):
     """Assuming that the information here is sorted by barcode..."""
-    import collections
     pl("Now beginning getProperPairs.")
     from Bio import SeqIO
     if(shared == "default"):
@@ -197,17 +196,19 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     return index_file
 
 
-def halveFqRecords(fq, outfq1="default", outfq2="default"):
+def halveFqRecords(fq, outfq1="default", outfq2="default", minLength=40):
     from Bio.Seq import Seq
     from Bio.SeqRecord import SeqRecord
     if(outfq1 == "default"):
-        outfq1 = '.'.join(fq.split('.'))[0:-1] + '_R1.fastq'
+        outfq1 = '.'.join(fq.split('.')[0:-1]) + '_R1.fastq'
     if(outfq2 == "default"):
-        outfq2 = '.'.join(fq.split('.'))[0:-1] + '_R2.fastq'
+        outfq2 = '.'.join(fq.split('.')[0:-1]) + '_R2.fastq'
     infq = SeqIO.parse(fq, "fastq")
     out1 = open(outfq1, "w")
     out2 = open(outfq2, "w")
     for read in infq:
+        if(len(read.seq) < minLength):
+            continue
         halfLen = len(read.seq)/2
         #  read2.id = read1.id
         #  read2.description = ' '.join(
