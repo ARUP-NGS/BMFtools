@@ -42,6 +42,27 @@ def compareFastqRecords(R, stringency=0.9):
                                    name=R[0].name,
                                    description=R[0].description)
     return consolidatedRecord, Success
+    # TODO: Add inexact matching to consensus
+
+
+def compareFastqRecordsInexact(R):
+    """Uses the phred scores of base qualities to """
+    from Bio.SeqRecord import SeqRecord
+    seqs = [str(record.seq) for record in R]
+    quals = [record.letter_annotations['phred_quality'] for record in R]
+    Success = False
+    consolidatedRecord = SeqRecord(
+        seq="", letter_annotations={'phred_quality': ""},
+        name=R[0].name, description=R[0].name)
+    for base in len(seqs[0]):
+        # Find most likely base based on phred scores.
+        # append the base and a composite quality score
+        # to the qualities.
+        print(seqs[0][base] + str(quals[0][base]))
+        pass
+    # print("Fraction {}. Stringency: {}. Pass? {}.".format(
+    # frac,stringency,PASS))
+    return consolidatedRecord, Success
 
 
 def HomingSeqLoc(fq, homing, bar_len=12):
