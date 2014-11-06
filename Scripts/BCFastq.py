@@ -46,22 +46,35 @@ def compareFastqRecords(R, stringency=0.9):
 
 
 def compareFastqRecordsInexact(R):
+    import math
     """Uses the phred scores of base qualities to """
     from Bio.SeqRecord import SeqRecord
     seqs = [str(record.seq) for record in R]
     quals = [record.letter_annotations['phred_quality'] for record in R]
     Success = False
     consolidatedRecord = SeqRecord(
-        seq="", letter_annotations={'phred_quality': ""},
+        seq="",
         name=R[0].name, description=R[0].name)
-    for base in len(seqs[0]):
-        # Find most likely base based on phred scores.
-        # append the base and a composite quality score
-        # to the qualities.
-        print(seqs[0][base] + str(quals[0][base]))
-        pass
-    # print("Fraction {}. Stringency: {}. Pass? {}.".format(
-    # frac,stringency,PASS))
+    newQuals = []
+    for i in range(len(seqs[0])):
+        candidates = zip([s[i] for s in seqs], [q[i] for q in quals])
+        candidates.sort(key=lambda tup: tup[0])
+        # print(repr(candidates) + " is candidates repr.")
+        canBases = list(set([c[0] for c in candidates]))
+        canBases.sort()
+        # print(repr(canBases) + " is canBases repr.")
+        pIncorr = []
+        for base in canBases:
+            bSupport = [c for c in candidates if c[0] == base]
+            pIncorr.append(prod([math.pow(10, -c[1]/10.) for c in bSupport]))
+        winners = zip(canBases, pIncorr)
+        winners.sort(key=lambda tup: tup[1])
+        winner = winners[0]
+        del winners
+        consolidatedRecord.seq += (winner[0])
+        newQuals.append(
+            int(-10*math.log10(math.pow(winner[1], 1./len(winner)))))
+    consolidatedRecord.letter_annotations['phred_quality'] = newQuals
     return consolidatedRecord, Success
 
 
@@ -386,7 +399,8 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
 
 
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
-                           outFqPair2="default", stringency=0.9):
+                           outFqPair2="default",
+                           stringency=0.9, inexact=False):
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
@@ -430,10 +444,16 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            mergedRecord1, success1 = compareFastqRecords(
-                workingSet1, stringency=float(stringency))
-            mergedRecord2, success2 = compareFastqRecords(
-                workingSet2, stringency=float(stringency))
+            if(inexact is False):
+                    mergedRecord1, success1 = compareFastqRecords(
+                        workingSet1, stringency=float(stringency))
+                    mergedRecord2, success2 = compareFastqRecords(
+                        workingSet2, stringency=float(stringency))
+            if(inexact is True):
+                    mergedRecord1, success1 = compareFastqRecordsInexact(
+                        workingSet1)
+                    mergedRecord2, success2 = compareFastqRecordsInexact(
+                        workingSet2,)
             if(success1):
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
             if(success2):
@@ -452,6 +472,11 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     outputHandle1.close()
     outputHandle2.close()
     return outFqPair1, outFqPair2
+
+
+def prod(iterable):
+    import operator
+    return reduce(operator.mul, iterable, 1)
 
 
 def renameReads(fq1, fq2, outfq1="default", outfq2="default"):

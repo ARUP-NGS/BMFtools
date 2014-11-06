@@ -90,25 +90,6 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return corrSorted
 
 
-def pairedFastqEnd(argLst):
-    inFastq = argLst[0]
-    homing = argLst[1]
-    if(homing == "default"):
-        raise ValueError("Homing sequence required.")
-    # For reads 1
-    homingP, homingF = BCFastq.HomingSeqLoc(
-        inFastq, homing=homing)
-    pl("Homing sequences located, reads parsed out.")
-    pl("Now removing the homing sequence and the barcode.")
-    tags, trimfq = BCFastq.TrimHoming(homingP, homing)
-    pl("Now generating the barcode index.")
-    BarcodeIndex = BCFastq.GenerateSingleBarcodeIndex(tags)
-    FamFq, AllRds, FamRds = BCFastq.GetFamilySizeSingle(
-        trimfq, BarcodeIndex)
-    BSortFq = BCFastq.BarcodeSort(FamFq)
-    return BSortFq
-
-
 def pairedFastqProc(inFastq1, inFastq2, homing="default",
                     stringency="default"):
     if(stringency == "default"):
@@ -138,7 +119,7 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BSortFq2, stringency=stringency)
+        BSortFq1, BSortFq2, stringency=stringency, inexact=True)
     BConsFqIndex1 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq1)
     BConsFqIndex2 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq2)
     sharedBC = BCFastq.getSharedBC(BConsFqIndex1, BConsFqIndex2)
