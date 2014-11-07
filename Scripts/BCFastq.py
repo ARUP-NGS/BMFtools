@@ -48,10 +48,11 @@ def compareFastqRecords(R, stringency=0.9):
 def compareFastqRecordsInexact(R):
     import math
     """Uses the phred scores of base qualities to """
+    # pl("Doing inexact fastq merging for family.")
     from Bio.SeqRecord import SeqRecord
     seqs = [str(record.seq) for record in R]
     quals = [record.letter_annotations['phred_quality'] for record in R]
-    Success = False
+    Success = True
     consolidatedRecord = SeqRecord(
         seq="",
         name=R[0].name, description=R[0].name)
@@ -431,7 +432,8 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
         #    continue
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
-        # and filter them from the BAM file
+        # and filter them from the BAM filea
+        numFams = 0
         if(workingBarcode == ""):
             workingBarcode = bc4fq1
             workingSet1 = []
@@ -444,6 +446,7 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
+            #pl("About to collapse a family.")
             if(inexact is False):
                     mergedRecord1, success1 = compareFastqRecords(
                         workingSet1, stringency=float(stringency))
@@ -463,6 +466,7 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             workingSet2 = []
             workingSet2.append(fqRec2)
             workingBarcode = bc4fq1
+            numFams += 1
             continue
         else:
             raise RuntimeError(
@@ -471,6 +475,7 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     inFq2.close()
     outputHandle1.close()
     outputHandle2.close()
+    pl("Total families merged together: " + str(numFams))
     return outFqPair1, outFqPair2
 
 
