@@ -1,5 +1,6 @@
 from Bio import SeqIO
 from HTSUtils import printlog as pl
+from Bio.Nexus.Trees import consensus
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -47,16 +48,16 @@ def compareFastqRecords(R, stringency=0.9):
 
 def compareFastqRecordsInexact(R):
     import math
+    import numpy as np
     """Uses the phred scores of base qualities to """
     # pl("Doing inexact fastq merging for family.")
     from Bio.SeqRecord import SeqRecord
     seqs = [str(record.seq) for record in R]
     quals = [record.letter_annotations['phred_quality'] for record in R]
     Success = True
-    consolidatedRecord = SeqRecord(
-        seq="",
-        name=R[0].name, description=R[0].name)
-    newQuals = []
+    consensusString = ""
+    numQuals = []
+    numWinningBases = []
     for i in range(len(seqs[0])):
         candidates = zip([s[i] for s in seqs], [q[i] for q in quals])
         candidates.sort(key=lambda tup: tup[0])
@@ -66,15 +67,24 @@ def compareFastqRecordsInexact(R):
         # print(repr(canBases) + " is canBases repr.")
         pIncorr = []
         for base in canBases:
-            bSupport = [c for c in candidates if c[0] == base]
-            pIncorr.append(prod([math.pow(10, -c[1]/10.) for c in bSupport]))
+            pIncorr.append(np.prod(np.power(10, np.multiply(-1/10.,
+                                            [c[1] for c in candidates if c[
+                                                0] == base]))))
         winners = zip(canBases, pIncorr)
         winners.sort(key=lambda tup: tup[1])
         winner = winners[0]
         del winners
-        consolidatedRecord.seq += (winner[0])
-        newQuals.append(
-            int(-10*math.log10(math.pow(winner[1], 1./len(winner)))))
+        consensusString += (winner[0])
+        numQuals.append(winner[1])
+        numBases.append(len())
+    numQuals = np.multiply(-10, np.log10(numQuals))
+    newQuals = []
+    consolidatedRecord = SeqRecord(
+        seq=consensusString,
+        id=R[0].id,
+        name=R[0].name,
+        description=R[0].description,
+        letter_annotations={'phred_quality': newQuals})
     consolidatedRecord.letter_annotations['phred_quality'] = newQuals
     return consolidatedRecord, Success
 
