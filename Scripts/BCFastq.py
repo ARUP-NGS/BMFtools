@@ -55,9 +55,9 @@ def compareFastqRecordsInexact(R):
     seqs = [str(record.seq) for record in R]
     quals = [record.letter_annotations['phred_quality'] for record in R]
     Success = True
-    consensusString = ""
-    numQuals = []
-    numWinningBases = []
+    newQuals = []
+    newSeq = ""
+    count = 0
     for i in range(len(seqs[0])):
         candidates = zip([s[i] for s in seqs], [q[i] for q in quals])
         candidates.sort(key=lambda tup: tup[0])
@@ -67,24 +67,26 @@ def compareFastqRecordsInexact(R):
         # print(repr(canBases) + " is canBases repr.")
         pIncorr = []
         for base in canBases:
-            pIncorr.append(np.prod(np.power(10, np.multiply(-1/10.,
-                                            [c[1] for c in candidates if c[
-                                                0] == base]))))
-        winners = zip(canBases, pIncorr)
-        winners.sort(key=lambda tup: tup[1])
-        winner = winners[0]
-        del winners
-        consensusString += (winner[0])
-        numQuals.append(winner[1])
-        numBases.append(len())
-    numQuals = np.multiply(-10, np.log10(numQuals))
-    newQuals = []
+            bSupport = [c for c in candidates if c[0] == base]
+            pIncorr.append(prod([math.pow(10, -c[1]/10.) for c in bSupport]))
+        if(len(pIncorr) > 1):
+            winners = zip(canBases, pIncorr)
+            winners.sort(key=lambda tup: tup[1])
+            winner = winners[0]
+            del winners
+        else:
+            winner = zip(canBases, pIncorr)[0]
+        newSeq += (winner[0])
+        newQuals.append(
+            int(-10*np.log10(winner[1]*winner[1]/np.prod(pIncorr))))
+        count += 1
+        if(count < 20):
+            print(str(newQuals[-1]) + " = phred score for this base.")
     consolidatedRecord = SeqRecord(
-        seq=consensusString,
+        seq=newSeq,
         id=R[0].id,
         name=R[0].name,
-        description=R[0].description,
-        letter_annotations={'phred_quality': newQuals})
+        description=R[0].name)
     consolidatedRecord.letter_annotations['phred_quality'] = newQuals
     return consolidatedRecord, Success
 
