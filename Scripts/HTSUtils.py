@@ -3,7 +3,6 @@ import logging
 
 def align_bowtie2(R1, R2, ref, opts, outsam):
     import subprocess
-    opt_concat = ""
     output = open(
         outsam,
         'w', 0)
@@ -13,10 +12,9 @@ def align_bowtie2(R1, R2, ref, opts, outsam):
         opts += '--reorder '
     if('--mm' not in opts):
         opts += ' --mm '
-    for i, opt_it in enumerate(opts.split()):
-        opt_concat += opt_it + " "
-    command_str = 'bowtie2 {} --local --very'.format(opt_concat)
-    command_str += '-sensitive-local -x {} -1 {} -2 {}'.format(ref, R1, R2)
+    opt_concat = ' '.join(opts.split())
+    command_str = ('bowtie2 {} --local --very'.format(opt_concat) +
+                   '-sensitive-local -x {} -1 {} -2 {}'.format(ref, R1, R2))
     printlog(command_str)
     # command_list=command_str.split(' ')
     subprocess.call(command_str, stdout=output, shell=True)
@@ -25,13 +23,20 @@ def align_bowtie2(R1, R2, ref, opts, outsam):
 
 
 def align_bwa(R1, R2, ref, opts, outsam):
+    """Aligns a set of paired-end
+    reads to a reference
+    with provided options using bwa mem.
+    Defaults to 4 threads, silent alignment, listing
+    supplementary alignments, and
+    writing each reads' alignment,
+    regardless of mapping quality.
+    """
     import subprocess
-    opt_concat = ""
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -T 0'
     output = open(outsam, 'w', 0)
-    for i, opt_it in enumerate(opts.split()):
-        opt_concat += opt_it + " "
+    opt_concat = ' '.join(opts.split())
+
     command_str = 'bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2)
     # command_list = command_str.split(' ')
     printlog(command_str)
@@ -41,13 +46,18 @@ def align_bwa(R1, R2, ref, opts, outsam):
 
 
 def align_bwa_se(reads, ref, opts, outsam):
+    """Aligns a set of reads to a reference
+    with provided options. Defaults to
+    4 threads, silent alignment, listing
+    supplementary alignments, and
+    writing each reads' alignment,
+    regardless of mapping quality.
+    """
     import subprocess
-    opt_concat = ""
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -T 0'
     output = open(outsam, 'w', 0)
-    for i, opt_it in enumerate(opts.split()):
-        opt_concat += opt_it + " "
+    opt_concat = ' '.join(opts.split())
     command_str = 'bwa mem {} {} {}'.format(opt_concat, ref, reads)
     # command_list = command_str.split(' ')
     printlog(command_str)
@@ -110,6 +120,21 @@ def indexBowtie(fasta):
     return
 
 
+def mergeBam(samList, memoryStr="-XmX16",
+             MergeJar="/mounts/bin/picard-tools/MergeSamFiles.jar",
+             outBam="default"):
+    if(outBam == "default"):
+        outBam = '.'.join(samList[0].split('.')[0:-1]) + '.merged.bam'
+    from subprocess import call
+    cStr = ("java -jar " + MergeJar + " " + memoryStr + " I=" +
+            " I=".join(samList) + " O=" + outBam + " MSD=True " +
+            "AS=True SO=coordinate"
+            )
+    printlog("About to merge bams. Command string: " + cStr)
+    call(cStr, shell=True)
+    return outBam
+
+
 def sam_sort(insam, outsam):
     # Skip header and funnel all reads into a temp file
     import random
@@ -140,6 +165,20 @@ def printlog(string):
     print(string)
     logging.info(string)
     return
+
+
+def parseConfigXML(string):
+    import xmltodict
+    orderedDict = xmltodict.parse(open(string, "r"))
+    return orderedDict
+
+
+def parseConfig(string):
+    parsedLines = [l.strip() for l in open(string, "r").readlines()]
+    ConfigDict = {}
+    for line in parsedLines:
+        ConfigDict[line.split("=").strip()[0]] = line.split("=")[1].strip()
+    return ConfigDict
 
 
 class IllegalArgumentError(ValueError):

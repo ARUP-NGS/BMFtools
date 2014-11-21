@@ -1,6 +1,18 @@
 from Bio import SeqIO
 from HTSUtils import printlog as pl
-from Bio.Nexus.Trees import consensus
+
+"""
+Contains various utilities for working with barcoded fastq files.
+
+TODO: change steps relying on pass/fail for homing sequence to check only
+for presence or absence of "pass" in the .lower() of that field,
+as a pass/fail will be used for the i7 indexing protocol to take
+its place, generalizing the code.
+
+TODO: Try using a preallocated numpy multidimensional array to speed up
+inexact matching. compareFastqRecordsInexactNumpy
+
+"""
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -8,12 +20,12 @@ def BarcodeSort(inFastq, outFastq="default"):
     from subprocess import call
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
-    BS1 = "cat " + inFastq + " | paste - - - - | grep 'HomingPass' | sed "
-    BS1 += "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' |"
-    BS1 += " sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};"
-    BS1 += "{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | "
-    BS1 += "sed 's:###\t:###:g' | sed 's:\t$::g' "
-    BS1 += "| sed 's:\t$::g' | tr '\t' '\n' > "
+    BS1 = ("cat " + inFastq + " | paste - - - - | grep 'HomingPass' | sed "
+           "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' |"
+           " sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};"
+           "{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | "
+           "sed 's:###\t:###:g' | sed 's:\t$::g' "
+           "| sed 's:\t$::g' | tr '\t' '\n' > ")
     BSstring = BS1 + outFastq
     call(BSstring, shell=True)
     pl("Command: {}".format(BSstring.replace(
@@ -21,7 +33,7 @@ def BarcodeSort(inFastq, outFastq="default"):
     return outFastq
 
 
-def compareFastqRecords(R, stringency=0.9):
+def compareFastqRecords(R, stringency=0.9, hybrid=False):
     from Bio.SeqRecord import SeqRecord
     seqs = [str(record.seq) for record in R]
     maxScore = 0
@@ -38,12 +50,13 @@ def compareFastqRecords(R, stringency=0.9):
     # frac,stringency,PASS))
     if(PASS):
         Success = True
+    elif(hybrid is True):
+        return compareFastqRecordsInexact(R)
     consolidatedRecord = SeqRecord(seq=finalSeq, id=R[0].id,
                                    letter_annotations=R[0].letter_annotations,
                                    name=R[0].name,
                                    description=R[0].description)
     return consolidatedRecord, Success
-    # TODO: Add inexact matching to consensus
 
 
 def compareFastqRecordsInexact(R):
@@ -65,7 +78,7 @@ def compareFastqRecordsInexact(R):
         canBases = list(set([c[0] for c in candidates]))
         canBases.sort()
         # print(repr(canBases) + " is canBases repr.")
-        pIncorr = []
+        pIncorr = []  # 4 x 100 array, tallying p-scores ?
         for base in canBases:
             bSupport = [c for c in candidates if c[0] == base]
             pIncorr.append(prod([math.pow(10, -c[1]/10.) for c in bSupport]))
@@ -89,6 +102,12 @@ def compareFastqRecordsInexact(R):
         description=R[0].name)
     consolidatedRecord.letter_annotations['phred_quality'] = newQuals
     return consolidatedRecord, Success
+
+
+def compareFastqRecordsInexactNumpy(R):
+    import math
+    import numpy as np
+    return
 
 
 def HomingSeqLoc(fq, homing, bar_len=12):
@@ -125,8 +144,8 @@ def fastq_sort(in_fastq, out_fastq):
     pl("Now beginning fastq_sort.")
     import subprocess
     outfile = open(out_fastq, 'w')
-    command_str = 'cat {} | paste - - - - | '.format(in_fastq)
-    command_str += 'sort -k1,1 -t " " | tr "\t" "\n"'
+    command_str = ('cat ' + in_fastq + ' | paste - - - - | '
+                   'sort -k1,1 -t " " | tr "\t" "\n"')
     subprocess.call(command_str, stdout=outfile, shell=True)
     outfile.close()
     return(command_str)
@@ -140,13 +159,13 @@ def FastqRegex(fq, string, matchFile="default", missFile="default"):
     if(missFile == "default"):
         missFile = (
             '.'.join(fq.split('.')[0:-1]) + '.miss.fastq').split('/')[-1]
-    CommandStr = "cat {} | paste - - - - | grep ".format(fq)
-    CommandStr += "'{}' | tr '\t' '\n' > {}".format(string, matchFile)
+    CommandStr = ("cat " + fq + " | paste - - - - | grep '" +
+                  string + "' | tr '\t' '\n' > " + matchFile)
     call(CommandStr, shell=True)
-    CommandStr2 = "cat {} | paste - - - - | grep ".format(fq)
-    CommandStr2 += "-v '{}' | tr '\t' '\n' > {}".format(
+    CommandStr2 = ("cat {} | paste - - - - | grep ".format(fq) +
+                   "-v '{}' | tr '\t' '\n' > {}".format(
         string,
-        missFile)
+        missFile))
     call(CommandStr2, shell=True)
     return(CommandStr, CommandStr2, matchFile, missFile)
 
