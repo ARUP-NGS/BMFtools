@@ -73,6 +73,9 @@ def main():
                         "-o",
                         help="Prefix for out files. Defaults based on input",
                         default="default")
+    parser.add_argument("--picardDir",
+                        help="Directory for Picard Jar files.",
+                        default="default")
     args = parser.parse_args()
     fq = args.input_fq
     paired = True
@@ -138,7 +141,11 @@ def main():
                 i[0].split('.')[0:-1]) + '.sam', '.'.join(
                     i[0].split('.')[0:-1]) + '.bam')
             outBAMs.append('.'.join(i[0].split('.')[0:-1]) + '.bam')
-    return outBAMs
+    if(args.PicardDir != "default"):
+        outMerged = HTSUtils.mergeBam(outBAMs,
+                                      MergeJar=(args.PicardDir +
+                                                "MergeSamFiles.jar"))
+    return outMerged
 
 
 def SplitFastqToNmerReads(inFastq, read_length="default", n="30",
