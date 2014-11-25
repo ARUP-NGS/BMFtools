@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry excluding="src/" kind="src" path=""/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/argparse4j-0.4.4.jar"/>
+	<classpathentry kind="lib" path="lib/picard.samtools_1.0.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/log4j-api-2.1.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/log4j-core-2.1.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/gson-2.2.4.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-core-2.4.3.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-core-asl.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-jaxrs.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-mapper-asl.jar"/>
+	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-xc.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

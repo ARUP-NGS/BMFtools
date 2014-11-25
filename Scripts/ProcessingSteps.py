@@ -1,6 +1,5 @@
 import re
 import subprocess
-import string
 
 import BCBam
 import BCFastq

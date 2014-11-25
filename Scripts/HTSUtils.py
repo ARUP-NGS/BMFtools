@@ -180,8 +180,7 @@ def parseConfig(string):
         ConfigDict[line.split("=").strip()[0]] = line.split("=")[1].strip()
     return ConfigDict
 
-
-class IllegalArgumentError(ValueError):
+def FacePalm(string):
     str = ("............................................________ "
     "\n....................................,.-'\"...................``~. "
     "\n.............................,.-\"...................................\"-., "
@@ -207,4 +206,8 @@ class IllegalArgumentError(ValueError):
     "\n........................................_..........._,-%.......` "
     "\n...................................,")
     print(str)
+    raise IllegalArgumentError(string)
+
+
+class IllegalArgumentError(ValueError):
     pass

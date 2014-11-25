@@ -13,6 +13,7 @@ TODO: Try using a preallocated numpy multidimensional array to speed up
 inexact matching. compareFastqRecordsInexactNumpy
 
 """
+from numpy import argmin
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -81,7 +82,7 @@ def compareFastqRecordsInexact(R):
         pIncorr = []  # 4 x 100 array, tallying p-scores ?
         for base in canBases:
             bSupport = [c for c in candidates if c[0] == base]
-            pIncorr.append(prod([math.pow(10, -c[1]/10.) for c in bSupport]))
+            pIncorr.append(prod([math.pow(10, -c[1] / 10.) for c in bSupport]))
         if(len(pIncorr) > 1):
             winners = zip(canBases, pIncorr)
             winners.sort(key=lambda tup: tup[1])
@@ -91,7 +92,7 @@ def compareFastqRecordsInexact(R):
             winner = zip(canBases, pIncorr)[0]
         newSeq += (winner[0])
         newQuals.append(
-            int(-10*np.log10(winner[1]*winner[1]/np.prod(pIncorr))))
+            int(-10 * np.log10(winner[1] * winner[1] / np.prod(pIncorr))))
         count += 1
         if(count < 20):
             print(str(newQuals[-1]) + " = phred score for this base.")
@@ -105,9 +106,36 @@ def compareFastqRecordsInexact(R):
 
 
 def compareFastqRecordsInexactNumpy(R):
-    import math
+    from Bio.SeqRecord import SeqRecord
     import numpy as np
-    return
+    seqs = [str(record.seq) for record in R]
+    size = len(seqs[0])
+    quals = [record.letter_annotations['phred_quality'] for record in R]
+    Success = True
+    matrix = np.ones((size, 4))
+    letterNumDict = {}
+    letterNumDict['A'] = 0
+    letterNumDict['C'] = 1
+    letterNumDict['G'] = 2
+    letterNumDict['T'] = 3
+    letterNumDict[0] = 'A'
+    letterNumDict[1] = 'C'
+    letterNumDict[2] = 'G'
+    letterNumDict[3] = 'T'
+    for seq, qual in zip(seqs, quals):
+        for i in range(size):
+            matrix[i][letterNumDict[seq[i]]] *= qual[i]
+    newSeq = [letterNumDict[i] for i in np.argmax(matrix, 1)]
+    print(newSeq + " is new sequence.")
+    newPvalue = np.multiply(-10, np.log10(np.amin(matrix, 1))).astype(int)
+    print("New list of int scores: " + str(newPvalue))
+    consolidatedRecord = SeqRecord(
+        seq=newSeq,
+        id=R[0].id,
+        name=R[0].name,
+        description=R[0].name)
+    consolidatedRecord.letter_annotations['phred_quality'] = newPvalue
+    return consolidatedRecord, Success
 
 
 def HomingSeqLoc(fq, homing, bar_len=12):
@@ -275,7 +303,7 @@ def halveFqRecords(fq, outfq1="default", outfq2="default", minLength=40):
     for read in infq:
         if(len(read.seq) < minLength):
             continue
-        halfLen = len(read.seq)/2
+        halfLen = len(read.seq) / 2
         #  read2.id = read1.id
         #  read2.description = ' '.join(
         #      read1.description.split()[1:]).replace('1:N', '2:N')
@@ -479,15 +507,15 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
         elif(workingBarcode != bc4fq1):
             #pl("About to collapse a family.")
             if(inexact is False):
-                    mergedRecord1, success1 = compareFastqRecords(
-                        workingSet1, stringency=float(stringency))
-                    mergedRecord2, success2 = compareFastqRecords(
-                        workingSet2, stringency=float(stringency))
+                mergedRecord1, success1 = compareFastqRecords(
+                    workingSet1, stringency=float(stringency))
+                mergedRecord2, success2 = compareFastqRecords(
+                    workingSet2, stringency=float(stringency))
             if(inexact is True):
-                    mergedRecord1, success1 = compareFastqRecordsInexact(
-                        workingSet1)
-                    mergedRecord2, success2 = compareFastqRecordsInexact(
-                        workingSet2,)
+                mergedRecord1, success1 = compareFastqRecordsInexactNumpy(
+                    workingSet1)
+                mergedRecord2, success2 = compareFastqRecordsInexactNumpy(
+                    workingSet2)
             if(success1):
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
             if(success2):
