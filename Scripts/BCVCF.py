@@ -1,5 +1,13 @@
 from HTSUtils import printlog as pl
 
+'''
+TODO: Filter based on variants supported by reads going both ways.
+TODO: Create a tsv file containing all passing variants, frequencies.
+TODO: Run a variant-caller on the sample as a whole to make a list
+    from which to subtract variants and heterozygotes
+
+'''
+
 
 class VCFFile:
 
@@ -208,13 +216,13 @@ def MPileup(inputBAM, ref, bed="default", outputBCF="default"):
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf"
     if(bed != "default"):
-        cmd = "samtools mpileup -f {} -F 0.0001 ".format(ref)
-        cmd += "-I -S -g -D -R -q 10 -Q 30 -l {} {}".format(bed, inputBAM)
-        cmd += " | bcftools view - > {}".format(outputBCF)
+        cmd = ("samtools mpileup -f {} -F 0.0001 ".format(ref) +
+               "-I -S -g -D -R -q 10 -Q 30 -l {} {}".format(bed, inputBAM) +
+               " | bcftools view - > {}".format(outputBCF))
     else:
-        cmd = "samtools mpileup -f {} -F 0.0001 ".format(ref)
-        cmd += "-I -S -g -D -R -q 10 -Q 30 {} |".format(inputBAM)
-        cmd += " bcftools view - > {}".format(outputBCF)
+        cmd = ("samtools mpileup -f {} -F 0.0001 ".format(ref) +
+               "-I -S -g -D -R -q 10 -Q 30 {} |".format(inputBAM) +
+               " bcftools view - > {}".format(outputBCF))
     pl("{} is command string".format(cmd))
     subprocess.call(cmd, shell=True)
     return outputBCF
@@ -235,6 +243,9 @@ def ParseVCF(inputVCFName):
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
     lst = "bed,I16".split(',')
     # print("lst = {}".format(lst))
+    if(filterOpt.lower() not in lst):
+        raise ValueError(
+            "Filter option not supported. Available options: " + lst)
     passRecord = True
     if(filterOpt == "default"):
         raise ValueError("Filter option required.")

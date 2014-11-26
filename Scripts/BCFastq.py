@@ -106,13 +106,8 @@ def compareFastqRecordsInexact(R):
 
 
 def compareFastqRecordsInexactNumpy(R):
-    from Bio.SeqRecord import SeqRecord
     import numpy as np
-    seqs = [str(record.seq) for record in R]
-    size = len(seqs[0])
-    quals = [record.letter_annotations['phred_quality'] for record in R]
-    Success = True
-    matrix = np.ones((size, 4))
+    from Bio.SeqRecord import SeqRecord
     letterNumDict = {}
     letterNumDict['A'] = 0
     letterNumDict['C'] = 1
@@ -122,20 +117,134 @@ def compareFastqRecordsInexactNumpy(R):
     letterNumDict[1] = 'C'
     letterNumDict[2] = 'G'
     letterNumDict[3] = 'T'
-    for seq, qual in zip(seqs, quals):
-        for i in range(size):
-            matrix[i][letterNumDict[seq[i]]] *= qual[i]
-    newSeq = [letterNumDict[i] for i in np.argmax(matrix, 1)]
-    print(newSeq + " is new sequence.")
-    newPvalue = np.multiply(-10, np.log10(np.amin(matrix, 1))).astype(int)
-    print("New list of int scores: " + str(newPvalue))
+    def dAccess(x):
+        return letterNumDict[x]
+    dAccess = np.vectorize(dAccess)
+    seqs = [str(record.seq) for record in R]
+    stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
+    seqArray = np.vstack(stackArrays)
+    # print(repr(seqArray))
+    quals = [record.letter_annotations['phred_quality'] for record in R]
+    qualProb = np.power(10, np.multiply(-1/10., quals))
+    qualA = qualProb.copy()
+    qualC = qualProb.copy()
+    qualG = qualProb.copy()
+    qualT = qualProb.copy()
+    qualA[seqArray != "A"] = 1.0
+    qualAProd = np.prod(qualA, 0)
+    qualC[seqArray != "C"] = 1.0
+    qualCProd = np.prod(qualC, 0)
+    qualG[seqArray != "G"] = 1.0
+    qualGProd = np.prod(qualG, 0)
+    qualT[seqArray != "T"] = 1.0
+    qualTProd = np.prod(qualT, 0)
+    qualAllProd = np.vstack([qualAProd, qualCProd, qualGProd, qualTProd])
+    '''
+    v2 - maybe faster?
+    qualA[seqArray != "A"] = 1.0
+    qualC[seqArray != "C"] = 1.0
+    qualG[seqArray != "G"] = 1.0
+    qualT[seqArray != "T"] = 1.0
+    qualAllProd = np.vstack([
+        np.prod(qualA, 0), np.prod(
+        qualC, 0), np.prod(qualG, 0), np.prod(qualT, 0)])
+
+    '''
+    Success = True
+    newSeq = "".join(
+        np.apply_along_axis(dAccess, 0, np.argmin(qualAllProd, 0)))
+    # Calculates new probability that the best
+    # candidate is right and all the others are wrong
+    # based on base qualities.
+    # NOT WORKING
+    # phredQuals = np.multiply(
+    #    -10, np.log10(np.multiply(np.power(np.prod(
+    #         qualAllProd, 0), -1), np.power(
+    #         np.amin(qualAllProd, 0), 2)))).astype(int)
+    # omgz = np.multiply(np.power(np.prod(
+    # qualAllProd, 0), -1), np.power(np.amin(qualAllProd, 0), 2))
+    # if((phredQuals < 0).any()):
+    #    print(repr(qualAllProd))
+    #    print(repr(np.prod(qualAllProd, 0)))
+    #    print(repr(np.amin(qualAllProd, 0)))
+    #    raise ValueError("Shouldn't be negative.")
+    phredQuals = np.multiply(
+        -10, np.log10(np.amin(qualAllProd, 0))).astype(int)
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
         name=R[0].name,
-        description=R[0].name)
-    consolidatedRecord.letter_annotations['phred_quality'] = newPvalue
+        description=R[0].description)
+    consolidatedRecord.letter_annotations[
+        'phred_quality'] = phredQuals.tolist()
     return consolidatedRecord, Success
+
+
+def FastqPairedShading(fq1,
+                       fq2,
+                       indexfq="default",
+                       outfq1="default",
+                       outfq2="default",
+                       gzip=True):
+    pl("Now beginning fastq marking: Pass/Fail and Barcode")
+    if(indexfq == "default"):
+        raise ValueError("For an i5/i7 index ")
+    if(outfq1 == "default"):
+        outfq1 = '.'.join(fq1.split('.')[0:-1]) + '.shaded.fastq'
+    if(outfq2 == "default"):
+        outfq2 = '.'.join(fq1.split('.')[0:-1]) + '.shaded.fastq'
+    inFq1 = SeqIO.parse(fq1, "fastq")
+    inFq2 = SeqIO.parse(fq2, "fastq")
+    outFqHandle1 = open(outfq1, "w")
+    outFqHandle2 = open(outfq2, "w")
+    inIndex = SeqIO.parse(indexfq)
+    for read1 in inFq1:
+        read2 = inFq2.next()
+        indexRead = inIndex.next()
+        if("N" in indexRead.seq):
+            read1.description += " ###IndexFail ###" + indexRead.seq
+            read2.description += " ###IndexFail ###" + indexRead.seq
+            SeqIO.write(read1, outFqHandle1, "fastq")
+            SeqIO.write(read2, outFqHandle2, "fastq")
+        else:
+            read1.description += " ###IndexPass ###" + indexRead.seq
+            read2.description += " ###IndexPass ###" + indexRead.seq
+            SeqIO.write(read1, outFqHandle1, "fastq")
+            SeqIO.write(read2, outFqHandle2, "fastq")
+    outFqHandle1.close()
+    outFqHandle2.close()
+    if(gzip is True):
+        from subprocess import call
+        call(['gzip', fq1], shell=False)
+        call(['gzip', fq2], shell=False)
+    return outfq1, outfq2
+
+
+def FastqSingleShading(fq,
+                       indexfq="default",
+                       outfq="default",
+                       gzip=True):
+    pl("Now beginning fastq marking: Pass/Fail and Barcode")
+    if(indexfq == "default"):
+        raise ValueError("For an i5/i7 index ")
+    if(outfq == "default"):
+        outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
+    inFq1 = SeqIO.parse(fq, "fastq")
+    outFqHandle1 = open(outfq, "w")
+    inIndex = SeqIO.parse(indexfq)
+    for read1 in inFq1:
+        indexRead = inIndex.next()
+        if("N" in indexRead.seq):
+            read1.description += " ###IndexFail ###" + indexRead.seq
+            SeqIO.write(read1, outFqHandle1, "fastq")
+        else:
+            read1.description += " ###IndexPass ###" + indexRead.seq
+            SeqIO.write(read1, outFqHandle1, "fastq")
+    outFqHandle1.close()
+    if(gzip is True):
+        from subprocess import call
+        call(['gzip', fq], shell=False)
+    return
 
 
 def HomingSeqLoc(fq, homing, bar_len=12):
@@ -272,6 +381,17 @@ def GenerateOnePairFastqBarcodeIndex(tags_file, index_file="default"):
     cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(index_file)
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
     call(cmd, shell=True)
+    return index_file
+
+
+def GenerateShadesIndex(indexFastq, index_file="default"):
+    from subprocess import call
+    if(index_file == "default"):
+        index_file = '.'.join(indexFastq.split('.')[0:-1]) + ".barIdx"
+    commandStr = ("cat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
+                  "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
+                  ",$2}}' > {}".format(index_file))
+    call(commandStr, shell=True)
     return index_file
 
 

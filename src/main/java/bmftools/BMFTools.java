@@ -39,6 +39,10 @@ import main.java.util.DeepMagic.ValueErrorThrower;
 
 public class BMFTools {
 
+	public static final String BEDFILE = "bedfile";
+	
+	public String bedfile = "default";
+	
 	public static void main(String[] arguments) throws IOException{
 	Namespace args = null;
 	Logger log = Logger.getLogger("Main Log");
@@ -70,7 +74,7 @@ public class BMFTools {
 	LinkedTreeMap<String, Object> GlobalSettings = (LinkedTreeMap<String, Object>) runProtocol.get("Config");
 	System.out.println("Successfully loaded global settings.");
 	boolean paired = Boolean.parseBoolean((String) GlobalSettings.get("paired"));
-	String bedfile = (String) GlobalSettings.get("bedfile");
+	String bedfile = ((String) GlobalSettings.get("bedfile"));
 	if(bedfile == null)
 		VET.ValueError("Bed file required.");
 	
@@ -98,8 +102,16 @@ public class BMFTools {
 	if(FastqAL.size() != expectedFastqCount) {
 		VET.ValueError("Expected " + expectedFastqCount + " fastq files but received " + FastqAL.size() + "!");
 	}
-	
+	if(i7_index){
+		MergedFamilies = MergeFamilies(FastqAL);
+	}
 	}
 
-
+	public void setBedfile(String bedfile){
+		this.bedfile = bedfile;
+	}
+	
+	public String getBedfile(){
+		return this.bedfile;
+	}
 }

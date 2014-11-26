@@ -89,6 +89,19 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return corrSorted
 
 
+def pairedFastqShades(inFastq1, inFastq2, indexFastq):
+    bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
+                                                    inFastq2,
+                                                    indexFastq,
+                                                    gzip=False)
+    barcodeIndex = BCFastq.GenerateShadesIndex(indexFastq)
+    FamFq1, numReads, numReadsWFam = BCFastq.GetFamilySizeSingle(
+        bcFastq1, barcodeIndex)
+    FamFq2, numReads, numReadsWFam = BCFastq.GetFamilySizeSingle(
+        bcFastq2, barcodeIndex)
+    return
+
+
 def pairedFastqProc(inFastq1, inFastq2, homing="default",
                     stringency="default"):
     if(stringency == "default"):
@@ -110,7 +123,6 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     mergeTags1, mergeTags2 = BCFastq.mergeBarcodes(trimfq1, trimfq2)
     pl("Now generating the barcode index.")
     BarcodeIndex = BCFastq.PairFastqBarcodeIndex(mergeTags1, mergeTags2)
-    pl("Now generating the barcode index.")
     FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(mergeTags1,
                                                            BarcodeIndex)
     FamFq2, AllRds2, FamRds2 = BCFastq.GetFamilySizeSingle(mergeTags2,

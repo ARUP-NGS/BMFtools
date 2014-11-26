@@ -19,6 +19,5 @@ public class BMFFastq {
 	public ArrayList<String> MergeFamilies(ArrayList<String> inFastqs) {
 		ArrayList<String> output = new ArrayList<String>();
 		return output;
-
 	}
 }
