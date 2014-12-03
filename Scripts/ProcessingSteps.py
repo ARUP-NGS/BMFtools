@@ -106,10 +106,12 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
     FamFq2 = FamFqs[1]
     SingleFq1 = SingleFqs[0]
     SingleFq2 = SingleFqs[1]
+    '''
     NumberRescued = BCFastq.ShadesRescuePaired(SingleFq1, SingleFq2,
                                                appendFq1=FamFq1,
                                                appendFq2=FamFq2,
                                                index=barcodeIndex)
+    '''
     pl("Number of reads total: " + numReads)
     pl("Number of reads with >=2 family members: " + numReadsWFam)
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
@@ -152,7 +154,7 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BSortFq2, stringency=stringency, inexact=True)
+        BSortFq1, BSortFq2, stringency=stringency, numpy=True)
     BConsFqIndex1 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq1)
     BConsFqIndex2 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq2)
     sharedBC = BCFastq.getSharedBC(BConsFqIndex1, BConsFqIndex2)

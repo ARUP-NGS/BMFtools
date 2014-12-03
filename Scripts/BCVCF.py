@@ -213,7 +213,7 @@ def fixVCF(inputVCF, outputVCF="default"):
 
 
 def FreeBayesCall(inputBAM, ref="default", bed="default", ):
-    """"""
+    """I'm not exactly excited about """
     pass
     return
 

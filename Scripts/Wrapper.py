@@ -29,6 +29,10 @@ def main():
         metavar=('HomingSequence'),
         default="GACGG")
     parser.add_argument(
+        '--shades',
+        help="Set to true if using the shades barcode method.",
+        default="false")
+    parser.add_argument(
         '-p',
         '--paired-end',
         help="Whether the experiment is paired-end or not. Default: True",
@@ -116,16 +120,27 @@ def main():
     elif(args.paired_end.lower() == "true"):
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
-            trimfq1, trimfq2, trimfqSingle, barcodeIndex = ps.pairedFastqProc(
-                args.fq[0], args.fq[1], homing=homing)
-            pl("Beginning BAM processing.")
-            procSortedBam = ps.pairedBamProc(
-                trimfq1,
-                trimfq2,
-                consfqSingle=trimfqSingle,
-                aligner=aligner,
-                ref=ref,
-                barIndex=barcodeIndex)
+            if(args.shades.lower() != "true"):
+                (trimfq1, trimfq2, trimfqSingle,
+                 barcodeIndex) = ps.pairedFastqProc(
+                    args.fq[0], args.fq[1], homing=homing)
+                pl("Beginning BAM processing.")
+                procSortedBam = ps.pairedBamProc(
+                    trimfq1,
+                    trimfq2,
+                    consfqSingle=trimfqSingle,
+                    aligner=aligner,
+                    ref=ref,
+                    barIndex=barcodeIndex)
+            elif(args.shades.lower() == "true"):
+                trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
+                    args.fq[0], args.fq[1], args.fq[2])
+                procSortedBam = ps.pairedBamProc(
+                    trimfq1,
+                    trimfq2,
+                    aligner=aligner,
+                    ref=ref,
+                    barIndex=barcodeIndex)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,

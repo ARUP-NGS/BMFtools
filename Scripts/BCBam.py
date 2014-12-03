@@ -7,17 +7,44 @@ from HTSUtils import printlog as pl
 def AbraCadabra(inbam,
                 outbam,
                 jar="default",
-                memStr="default"):
+                memStr="default",
+                ref="default",
+                threads="4",
+                bed="default",
+                working="default",
+                log="default"):
     if(jar == "default"):
         jar = "/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar"
         pl("Default jar used: " + jar)
     else:
         pl("Non-default abra jar used: " + jar)
     if(memStr == "default"):
-        memStr = "-Xmx8G"
+        memStr = "-Xmx16G"
         pl("Default memory string used: " + memStr)
     else:
         pl("Non-default memory string used: " + memStr)
+    if(ref == "default"):
+        raise ValueError("Reference fasta must be provided!")
+    else:
+        pl("Reference file set: {}.".format(ref))
+    if(bed == "default"):
+        raise ValueError("Bed file required.")
+    else:
+        pl("Bed file set: {}.".format(bed))
+    if(working == "default"):
+        working = inbam.split('.')[0] + "working_dir"
+        pl("Default working directory set to be: " + working)
+    else:
+        pl("Non-default working directory: " + working)
+    if(log == "default"):
+        log = "abra.log"
+    command = ("java {} -jar {} --in {}".format(memStr, jar, inbam) +
+               " --out {} --ref {} --targets".format(outbam, ref) +
+               " {} --threads {} ".format(bed, threads) +
+               "--working {}".format(working))
+    pl("Command: {}.".format(command))
+    from subprocess import call
+    call(shlex.split(command), shell=False, stdout=log)
     return
 
 

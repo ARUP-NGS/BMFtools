@@ -95,6 +95,7 @@ def compareFastqRecordsInexact(R):
         count += 1
         # if(count < 20):
         #     print(str(newQuals[-1]) + " = phred score for this base.")
+    newQuals = [i if i <= 93 else 93 for i in newQuals]
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
@@ -711,10 +712,10 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                 mergedRecord2, success2 = compareFastqRecords(
                     workingSet2, stringency=float(stringency))
             elif(inexact is True):
-                mergedRecord1, success1 = compareFastqRecordsInexact(
-                    workingSet1)
-                mergedRecord2, success2 = compareFastqRecordsInexact(
-                    workingSet2)
+                mergedRecord1, success1 = compareFastqRecords(
+                    workingSet1, hybrid=True)
+                mergedRecord2, success2 = compareFastqRecords(
+                    workingSet2, hybrid=True)
             elif(numpy is True):
                 mergedRecord1, success1 = compareFastqRecordsInexactNumpy(
                     workingSet1)
