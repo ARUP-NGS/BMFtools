@@ -70,7 +70,9 @@ def main():
         logfile = args.logfile
     else:
         logfile = args.fq[0].split('.')[0] + '.log'
-    logging.basicConfig(filename=logfile, level=logging.INFO)
+    logging.basicConfig(filename=logfile,
+                        level=logging.INFO,
+                        format="%(levelname)s [%(asctime)s]: %(message)s")
     aligner, homing = args.aligner, args.homing
     ref, opts, bed = args.ref, args.opts, args.bed
     pl("Paired-end: {}".format(args.paired_end))
@@ -86,8 +88,7 @@ def main():
                 aligner=aligner)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.singleVCFProc(TaggedBam, bed, ref)
-            pl(
-                "Last stop! Watch your step.")
+            pl("Last stop! Watch your step.")
             return
         elif(args.initialStep == 2):
             consFq = args.fq[0]
@@ -99,8 +100,7 @@ def main():
                 aligner=aligner)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.singleVCFProc(TaggedBam, bed, ref)
-            pl(
-                "Last stop! Watch your step.")
+            pl("Last stop! Watch your step.")
             return
         elif(args.initialStep == 3):
             ConsensusBam = args.BAM
@@ -109,15 +109,14 @@ def main():
                 ConsensusBam,
                 bed,
                 ref)
-            pl(
-                "Last stop! Watch your step.")
+            pl("Last stop! Watch your step.")
             return
         else:
             raise ValueError("You have chosen an illegal initial step.")
-    elif(args.paired_end == "true" or args.paired_end.lower() == "true"):
+    elif(args.paired_end.lower() == "true"):
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
-            trimfq1, trimfq2, trimfqSingle = ps.pairedFastqProc(
+            trimfq1, trimfq2, trimfqSingle, barcodeIndex = ps.pairedFastqProc(
                 args.fq[0], args.fq[1], homing=homing)
             pl("Beginning BAM processing.")
             procSortedBam = ps.pairedBamProc(
@@ -125,7 +124,8 @@ def main():
                 trimfq2,
                 consfqSingle=trimfqSingle,
                 aligner=aligner,
-                ref=ref)
+                ref=ref,
+                barIndex=barcodeIndex)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,

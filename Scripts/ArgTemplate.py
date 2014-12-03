@@ -13,8 +13,8 @@ def main():
             "comma-delimited exon starts and stops "
             "respectively.")
         )
-
     args = parser.parse_args()
+    print(a)
     return
 
 

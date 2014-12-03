@@ -1,6 +1,24 @@
 import pysam
 from Bio import SeqIO
+import shlex
 from HTSUtils import printlog as pl
+
+
+def AbraCadabra(inbam,
+                outbam,
+                jar="default",
+                memStr="default"):
+    if(jar == "default"):
+        jar = "/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar"
+        pl("Default jar used: " + jar)
+    else:
+        pl("Non-default abra jar used: " + jar)
+    if(memStr == "default"):
+        memStr = "-Xmx8G"
+        pl("Default memory string used: " + memStr)
+    else:
+        pl("Non-default memory string used: " + memStr)
+    return
 
 
 def Bam2Sam(inbam, outsam):
@@ -9,7 +27,7 @@ def Bam2Sam(inbam, outsam):
     output = open(outsam, 'w', 0)
     command_str = 'samtools view -h {}'.format(inbam)
     pl(command_str)
-    call(command_str, stdout=output, shell=True)
+    call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outsam)
 
 
@@ -19,27 +37,28 @@ def BarcodeSort(inbam, outbam="default", paired=True):
     pl("BarcodeSort. Input: {}. Output: {}.".format(inbam, outbam))
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     from subprocess import call
-    headerCommand = "samtools view -H {} > {}".format(inbam, outsam)
+    headerCommand = "samtools view -H {}".format(inbam)
     pl(headerCommand)
-    call(headerCommand, shell=True)
+    call(shlex.split(headerCommand), shell=False, stdout=outsam)
     pl("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
-        cmd = "samtools view {} | ".format(inbam)
-        cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
-        cmd += "{{print $(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam)
+        cmd = ("samtools view {} | ".format(inbam) +
+               "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
+               "$(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam))
         pl(
             "Command string for this sorting process is: {}".format(cmd))
         call(cmd, shell=True)
     else:
-        cmd = "samtools view {} | ".format(inbam)
-        cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
-        cmd += "{{print $(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam)
+        cmd = ("samtools view {} | ".format(inbam) +
+               "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
+               "$(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam))
         pl(
             "Command string for this sorting process is: {}".format(cmd))
         call(cmd, shell=True)
     pl("Now converting sam back to bam for further operations.")
-    call("samtools view -Sbh {} > {}".format(outsam, outbam), shell=True)
-    call("rm {}".format(outsam), shell=True)
+    call(shlex.split("samtools view -Sbh {}".format(outsam)),
+         shell=False, stdout=outbam)
+    call(["rm", outsam], shell=False)
     return outbam
 
 
@@ -110,15 +129,15 @@ def Consolidate(inbam, outbam="default", stringency=0.9):
     return outbam
 
 
-def CorrSort(inbam, outprefix="default"):
+def CoorSort(inbam, outprefix="default"):
     pl("CorrSort. Input: {}".format(inbam))
     from subprocess import call
     pl("inbam variable is {}".format(inbam))
     if(outprefix == "default"):
-        outprefix = '.'.join(inbam.split('.')[0:-1]) + ".CorrSort"
-    command_str = "samtools sort {} {}".format(inbam, outprefix)
+        outprefix = '.'.join(inbam.split('.')[0:-1]) + ".CoorSort"
+    command_str = "samtools sort {} {}".format(inbam)
     pl(command_str)
-    call(command_str, shell=True)
+    call(shlex.split(command_str), shell=False, stdout=outprefix + ".bam")
     return(outprefix + ".bam")
 
 
@@ -201,14 +220,14 @@ def GenBCIndexBAM(tagBAM, idx="default", paired=True):
     if(idx == "default"):
         idx = '.'.join(tagBAM.split('.')[0:1]) + ".DoubleIdx"
     if(paired is True):
-        Str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
-        Str += "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
-        Str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
+        Str = ("samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
+               "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
+               " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx))
         call(Str, shell=True)
     if(paired is False):
-        Str = "samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM)
-        Str += "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
-        Str += " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx)
+        Str = ("samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
+               "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
+               " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx))
         call(Str, shell=True)
     return idx
 
@@ -228,9 +247,9 @@ def GenerateFamilyHistochart(BCIdx, output="default"):
     from subprocess import call
     if(output == "default"):
         output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
-    Str = "cat {} | awk '{{print $1}}' | sort | uniq -c | awk ".format(BCIdx)
-    Str += "'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n "
-    Str += "> {}".format(output)
+    Str = ("cat {} | awk '{{print $1}}' | sort | uniq -c | ".format(BCIdx) +
+           "awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort " +
+           "-k1,1n > {}".format(output))
     pl("Command str: {}".format(Str.replace("\t", "\\t")))
     call(Str, shell=True)
     pl("Family size histochart: {}".format(output))
@@ -294,9 +313,9 @@ def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
     from subprocess import call
     if(outbam == "default"):
         outbam = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
-    command = "java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1)
-    command += " I={} O={} SO=coordinate AS=true".format(BAM2, outbam)
-    call(command, shell=True)
+    command = ("java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1) +
+               " I={} O={} SO=coordinate AS=true".format(BAM2, outbam))
+    call(shlex.split(command), shell=False)
     pl("Command string for merging was: {}".format(command))
     return outbam
 
@@ -440,9 +459,9 @@ def Sam2Bam(insam, outbam):
     pl("Sam2Bam converting {} to {}".format(insam, outbam))
     from subprocess import call
     output = open(outbam, 'w', 0)
-    command_str = 'samtools view -Sbh {}'.format(insam, shell=True)
+    command_str = 'samtools view -Sbh {}'.format(insam)
     pl((command_str))
-    call(command_str, stdout=output, shell=True)
+    call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outbam)
 
 

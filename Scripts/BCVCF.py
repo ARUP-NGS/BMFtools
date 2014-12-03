@@ -86,7 +86,10 @@ class VCFRecord:
         self.POS = VCFEntry[1]
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
-        self.ALT = VCFEntry[4]
+        if("X" != VCFEntry[4]):
+            self.ALT = '.'.join(VCFEntry[4].split(',').remove("X"))
+        else:
+            self.ALT = "X"
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]
@@ -175,6 +178,7 @@ class VCFRecord:
 # as well as grab the file from which the records came.
 
 
+# @Deprecated
 def CleanupPileup(inputPileup, outputPileup="default"):
     import subprocess
     if(outputPileup == "default"):
@@ -208,7 +212,17 @@ def fixVCF(inputVCF, outputVCF="default"):
     return outVCF
 
 
-def MPileup(inputBAM, ref, bed="default", outputBCF="default"):
+def FreeBayesCall(inputBAM, ref="default", bed="default", ):
+    """"""
+    pass
+    return
+
+
+def MPileup(inputBAM, ref,
+            bed="default",
+            outputBCF="default",
+            minbqual="20",
+            minmqual="10"):
     import subprocess
     if(outputBCF == "default"):
         if(len(inputBAM.split('.')) >= 6):
@@ -216,13 +230,14 @@ def MPileup(inputBAM, ref, bed="default", outputBCF="default"):
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf"
     if(bed != "default"):
-        cmd = ("samtools mpileup -f {} -F 0.0001 ".format(ref) +
-               "-I -S -g -D -R -q 10 -Q 30 -l {} {}".format(bed, inputBAM) +
+        cmd = ("samtools mpileup -f {} -F 0.00001 ".format(ref) +
+               "-I -S -g -D -R -q " + minmqual + " -Q " + minbqual +
+               " -l {} {}".format(bed, inputBAM) +
                " | bcftools view - > {}".format(outputBCF))
     else:
-        cmd = ("samtools mpileup -f {} -F 0.0001 ".format(ref) +
-               "-I -S -g -D -R -q 10 -Q 30 {} |".format(inputBAM) +
-               " bcftools view - > {}".format(outputBCF))
+        cmd = ("samtools mpileup -f {} -F 0.00001 ".format(ref) +
+               "-I -S -g -D -R -q " + minmqual + " -Q " + minbqual +
+               " " + inputBAM + " | bcftools view - > {}".format(outputBCF))
     pl("{} is command string".format(cmd))
     subprocess.call(cmd, shell=True)
     return outputBCF
@@ -235,7 +250,9 @@ def ParseVCF(inputVCFName):
     infile.seek(0)
     VCFHeader = [entry.strip(
     ) for entry in infile.readlines() if entry[0] == "#"]
-    VCFEntries = [VCFRecord(entry, inputVCFName) for entry in VCFLines]
+    VCFEntries = [VCFRecord(
+        entry, inputVCFName) for entry in VCFLines if entry.split(
+            '\t')[4] != "X"]
     ParsedVCF = VCFFile(VCFEntries, VCFHeader, inputVCFName)
     return ParsedVCF
 

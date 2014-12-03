@@ -9,9 +9,17 @@ from HTSUtils import printlog as pl
 
 
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
-                  bamPrefix="default", ref="default", aligner="default"):
+                  bamPrefix="default", ref="default", aligner="default",
+                  barIndex="default"):
+    """
+    Performs alignment and sam tagging of consolidated fastq files.
+    Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
+    """
     if(ref == "default"):
         raise ValueError("Reference index required!")
+    if(barIndex == "default"):
+        raise ValueError(("Barcode index required - generate one at the "
+                          "pre-merge fastq stage."))
     if(bamPrefix == "default"):
         bamPrefix = '.'.join(consfq1.split('.')[0:-1])
     if(aligner == "default"):
@@ -41,13 +49,10 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
             passTaggedSingleBAM, failTSB = BCBam.singleFilterBam(
                 taggedSingleBAM,
                 criteria="complexity,adapter,ismapped")
-            pl("Now generating index for solo reads")
-            singleIndex = BCBam.GenBCIndexBAM(
-                passTaggedSingleBAM)
             pl("Now tagging BAM file with family size.")
             familySizeSoloBAM, famLst = BCBam.getFamilySizeBAM(
-                passTaggedSingleBAM, singleIndex)
-            sortFSSBam = BCBam.CorrSort(familySizeSoloBAM)
+                passTaggedSingleBAM, barIndex)
+            sortFSSBam = BCBam.CoorSort(familySizeSoloBAM)
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
     pl("Converting SAM to BAM")
@@ -59,12 +64,11 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Now generating double barcode index.")
     mappedMerge, failures = BCBam.pairedFilterBam(
         taggedBAM, criteria="complexity,adapter,barcode")
-    doubleIndex = BCBam.GenBCIndexBAM(mappedMerge)
-    p = subprocess.Popen(["wc", "-l", doubleIndex], stdout=subprocess.PIPE)
+    p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()
     pl("Number of families found: {}".format(
         re.findall(r'\d+', out)[0]))
-    histochart = BCBam.GenerateFamilyHistochart(doubleIndex)
+    histochart = BCBam.GenerateFamilyHistochart(barIndex)
     pl("Histochart of family sizes: {}".format(histochart))
     # UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
     '''
@@ -79,27 +83,45 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     '''
     pl("Now determining family size for the doubled barcodes.")
     families, BCList = BCBam.getFamilySizeBAM(
-        mappedMerge, doubleIndex)
+        mappedMerge, barIndex)
     familyP, familyF = BCBam.pairedFilterBam(
         families, criteria="family")
-    corrSorted = BCBam.CorrSort(familyP)
+    coorSorted = BCBam.CoorSort(familyP)
     if(consfqSingle != "default"):
-        mergedSinglePair = BCBam.mergeBams(corrSorted, sortFSSBam)
+        mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
         return mergedSinglePair
-    return corrSorted
+    return coorSorted
 
 
-def pairedFastqShades(inFastq1, inFastq2, indexFastq):
+def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexFastq,
                                                     gzip=False)
     barcodeIndex = BCFastq.GenerateShadesIndex(indexFastq)
-    FamFq1, numReads, numReadsWFam = BCFastq.GetFamilySizeSingle(
-        bcFastq1, barcodeIndex)
-    FamFq2, numReads, numReadsWFam = BCFastq.GetFamilySizeSingle(
-        bcFastq2, barcodeIndex)
-    return
+    (FamFqs, SingleFqs, numReads,
+     numReadsWFam) = BCFastq.GetFamilySizePaired(bcFastq1,
+                                                 bcFastq2, barcodeIndex)
+    FamFq1 = FamFqs[0]
+    FamFq2 = FamFqs[1]
+    SingleFq1 = SingleFqs[0]
+    SingleFq2 = SingleFqs[1]
+    NumberRescued = BCFastq.ShadesRescuePaired(SingleFq1, SingleFq2,
+                                               appendFq1=FamFq1,
+                                               appendFq2=FamFq2,
+                                               index=barcodeIndex)
+    pl("Number of reads total: " + numReads)
+    pl("Number of reads with >=2 family members: " + numReadsWFam)
+    BSortFq1 = BCFastq.BarcodeSort(FamFq1)
+    BSortFq2 = BCFastq.BarcodeSort(FamFq2)
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(BSortFq1,
+                                                              BSortFq2,
+                                                              stringency=0.75,
+                                                              numpy=True)
+    # Assuming that no reads are failed (numpy
+    # consolidation does not fail reads or read pairs,
+    # just tag them, no need to check for shared pairs.
+    return BConsFastq1, BConsFastq2, barcodeIndex
 
 
 def pairedFastqProc(inFastq1, inFastq2, homing="default",
@@ -143,7 +165,7 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
         RenameFq1, RenameFq2)
     printStr += ", and BarcodeSingle ({})".format(BarcodeSingle)
     pl(printStr)
-    return RenameFq1, RenameFq2, BarcodeSingle
+    return RenameFq1, RenameFq2, BarcodeSingle, BarcodeIndex
 
 
 def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
@@ -159,9 +181,7 @@ def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
     MPileupVCF = BCVCF.MPileup(consMergeSortBAM, ref, bed=bed)
     pl("Initial mpileup: {}. Filtering.".format(MPileupVCF))
     ParsedVCF = BCVCF.ParseVCF(MPileupVCF)
-    ParsedVCF.cleanRecords()
-    CleanParsedVCF = BCVCF.CleanupPileup(MPileupVCF)
-    return CleanParsedVCF
+    return ParsedVCF
 
 
 def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):
@@ -201,12 +221,9 @@ def singleFastqProc(inFastq, homing="default"):
 
 def singleVCFProc(ConsensusBam, bed, ref):
     pl("Now sorting reads by coordinate to prepare for MPileup.")
-    CorrCons = BCBam.CorrSort(ConsensusBam)
+    CorrCons = BCBam.CoorSort(ConsensusBam)
     pl("Now creating a VCF using mpileup for variant calling.")
     MPileupVCF = BCVCF.MPileup(CorrCons, ref, bed=bed)
-    pl("Initial mpileup: {}".format(MPileupVCF))
+    pl("Initial mpileup, with ALT entries of X removed: {}".format(MPileupVCF))
     ParsedVCF = BCVCF.ParseVCF(MPileupVCF)
-    pl("Now removing those entries and parsing in the VCF Data")
-    ParsedVCF.cleanRecords()
-    CleanParsedVCF = BCVCF.CleanupPileup(MPileupVCF)
-    return CleanParsedVCF
+    return ParsedVCF

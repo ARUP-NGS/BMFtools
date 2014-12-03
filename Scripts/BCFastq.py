@@ -13,7 +13,6 @@ TODO: Try using a preallocated numpy multidimensional array to speed up
 inexact matching. compareFastqRecordsInexactNumpy
 
 """
-from numpy import argmin
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -94,8 +93,8 @@ def compareFastqRecordsInexact(R):
         newQuals.append(
             int(-10 * np.log10(winner[1] * winner[1] / np.prod(pIncorr))))
         count += 1
-        if(count < 20):
-            print(str(newQuals[-1]) + " = phred score for this base.")
+        # if(count < 20):
+        #     print(str(newQuals[-1]) + " = phred score for this base.")
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
@@ -117,6 +116,7 @@ def compareFastqRecordsInexactNumpy(R):
     letterNumDict[1] = 'C'
     letterNumDict[2] = 'G'
     letterNumDict[3] = 'T'
+
     def dAccess(x):
         return letterNumDict[x]
     dAccess = np.vectorize(dAccess)
@@ -176,7 +176,7 @@ def compareFastqRecordsInexactNumpy(R):
         name=R[0].name,
         description=R[0].description)
     consolidatedRecord.letter_annotations[
-        'phred_quality'] = phredQuals.tolist()
+        'phred_quality'] = [i if i <= 93 else 93 for i in phredQuals.tolist()]
     return consolidatedRecord, Success
 
 
@@ -446,6 +446,82 @@ def halveFqRecords(fq, outfq1="default", outfq2="default", minLength=40):
     return
 
 
+def GetFamilySizePaired(
+        trimfq1,
+        trimfq2,
+        BarcodeIndex,
+        outfq1="default",
+        outfq2="default",
+        singlefq1="default",
+        singlefq2="default"):
+    pl("Running GetFamilySizeSingle for {}, {}.".format(trimfq1, trimfq2))
+    infq1 = SeqIO.parse(trimfq1, "fastq")
+    infq2 = SeqIO.parse(trimfq2, "fastq")
+    if(outfq1 == "default"):
+        outfq1 = '.'.join(trimfq1.split('.')[0:-1]) + ".fam.fastq"
+    if(outfq2 == "default"):
+        outfq2 = '.'.join(trimfq2.split('.')[0:-1]) + ".fam.fastq"
+    outfqBuffer1 = open(outfq1, "w")
+    outfqBuffer2 = open(outfq2, "w")
+    if(singlefq1 == "default"):
+        singlefq1 = '.'.join(
+            trimfq1.split('.')[
+                0:-1]) + ".lonely.hearts.club.band.fastq"
+    if(singlefq2 == "default"):
+        singlefq2 = '.'.join(
+            trimfq2.split('.')[
+                0:-1]) + ".lonely.hearts.club.band.fastq"
+    singlefqBuffer1 = open(singlefq1, "w")
+    singlefqBuffer2 = open(singlefq2, "w")
+    TotalReads, ReadsWithFamilies = 0, 0
+    index = open(BarcodeIndex, "r")
+    dictEntries = [line.split() for line in index]
+    BarDict = {}
+    for entry in dictEntries:
+        BarDict[entry[1]] = entry[0]
+    for read in infq1:
+        read2 = infq2.next()
+        # index.seek(0)
+        TotalReads += 1
+        # print("description is {}".format(read.description))
+        # print("-1 index of description is {}".format(
+        # read.description.split("###")[-1].strip()))
+        # print("-2 index of description is {}".format(
+        # read.description.split("###")[-2].strip()))
+        readTag1 = read.description.split("###")[-1].strip()
+        newRead1 = read
+        newRead2 = read2
+        # print("readTag is _" + readTag + "_")
+        try:
+            famSize = BarDict[readTag1]
+        except KeyError:
+            famSize = 0
+        newRead1.description = read.description + " ###" + str(famSize)
+        newRead2.description = read.description + " ###" + str(famSize)
+        # print("famSize = _{}_".format(str(famSize)))
+        # print("The value of this comparison to 1 is {}".format(
+        # str(famSize=="1")))
+        if(str(famSize) == "0"):
+            continue
+        if(str(famSize) == "1" or str(famSize) == "2"):
+            #  print("Hey, I found a singleton")
+            SeqIO.write(newRead1, singlefqBuffer1, "fastq")
+            SeqIO.write(newRead2, singlefqBuffer2, "fastq")
+        else:
+            #  print("Hey, I found a read with a family!")
+            ReadsWithFamilies += 1
+            SeqIO.write(newRead1, outfqBuffer1, "fastq")
+            SeqIO.write(newRead2, outfqBuffer2, "fastq")
+    outfqBuffer1.close()
+    outfqBuffer2.close()
+    singlefqBuffer1.close()
+    singlefqBuffer2.close()
+    return ([outfq1, outfq2],
+            [singlefq1, singlefq2],
+            TotalReads,
+            ReadsWithFamilies)
+
+
 def GetFamilySizeSingle(
         trimfq,
         BarcodeIndex,
@@ -580,7 +656,10 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
 
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default",
-                           stringency=0.9, inexact=False):
+                           stringency=0.9, inexact=False,
+                           numpy=False):
+    if(numpy is True and inexact is True):
+        raise ValueError("You must choose either numpy or inexact, not both.")
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
@@ -625,13 +704,18 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            #pl("About to collapse a family.")
-            if(inexact is False):
+            # pl("About to collapse a family.")
+            if(inexact is False and numpy is False):
                 mergedRecord1, success1 = compareFastqRecords(
                     workingSet1, stringency=float(stringency))
                 mergedRecord2, success2 = compareFastqRecords(
                     workingSet2, stringency=float(stringency))
-            if(inexact is True):
+            elif(inexact is True):
+                mergedRecord1, success1 = compareFastqRecordsInexact(
+                    workingSet1)
+                mergedRecord2, success2 = compareFastqRecordsInexact(
+                    workingSet2)
+            elif(numpy is True):
                 mergedRecord1, success1 = compareFastqRecordsInexactNumpy(
                     workingSet1)
                 mergedRecord2, success2 = compareFastqRecordsInexactNumpy(
@@ -700,6 +784,25 @@ def reverseComplement(fq, dest="default"):
         SeqIO.write(rc_record, OutFastq, "fastq")
     OutFastq.close()
     return dest
+
+
+def ShadesRescuePaired(singlefq1,
+                       singlefq2,
+                       appendFq1="default",
+                       appendFq2="default",
+                       index="default"):
+    if(appendFq1 == "default" or appendFq2 == "default"):
+        raise ValueError("Fastq for appending rescued reads required.")
+    if(index == "default"):
+        raise ValueError("Index for initial family sizes required.")
+    ind = open(index, "r")
+    dictEntries = [line.split() for line in ind]
+    BarDict = {}
+    for entry in dictEntries:
+        BarDict[entry[1]] = entry[0]
+    a = BarDict.keys()
+    pass
+    return
 
 
 def singleFastqConsolidate(fq, outFq="default", stringency=0.9):
