@@ -3,6 +3,7 @@ import logging
 
 import ProcessingSteps as ps
 from HTSUtils import printlog as pl
+import HTSUtils
 # Contains utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA
@@ -19,10 +20,15 @@ def main():
         nargs="+",
         metavar=('reads'))
     parser.add_argument(
+        '--conf',
+        help="Path to config file with settings.",
+        metavar="ConfigPath",
+        default="default")
+    parser.add_argument(
         '-r',
         '--ref',
         help="Prefix for the reference index. Required.",
-        required=True)
+        default="default")
     parser.add_argument(
         '--homing',
         help="Homing sequence for samples. If not set, defaults to GACGG.",
@@ -78,7 +84,23 @@ def main():
                         level=logging.INFO,
                         format="%(levelname)s [%(asctime)s]: %(message)s")
     aligner, homing = args.aligner, args.homing
-    ref, opts, bed = args.ref, args.opts, args.bed
+    if(args.ref != "default"):
+        ref = args.ref
+    opts, bed = args.opts, args.bed
+    confDict = {}
+    if(args.conf != "default"):
+        confLines = [line.strip().split("=") for line in open(
+                     args.conf, "r").readlines() if line[0] != "#"]
+        for line in confLines:
+            confDict[line[0]] = line[1]
+        try:
+            ref = confDict["ref"]
+        except KeyError:
+            ref = args.ref
+            pl("Config file does not contain a ref key.")
+            if(ref == "default"):
+                HTSUtils.FacePalm("Reference required either "
+                                  "as command line option or config file.")
     pl("Paired-end: {}".format(args.paired_end))
     if(args.paired_end is False or args.paired_end.lower() == "false"):
         if(args.initialStep == 1):
@@ -121,6 +143,9 @@ def main():
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             if(args.shades.lower() != "true"):
+                pl("About to run"
+                    " ps.pairedFastqProc("
+                    "{}, {}, homing={})".format(args.fq[0], args.fq[1], homing))
                 (trimfq1, trimfq2, trimfqSingle,
                  barcodeIndex) = ps.pairedFastqProc(
                     args.fq[0], args.fq[1], homing=homing)

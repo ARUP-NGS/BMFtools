@@ -1,6 +1,8 @@
 package main.java.bmftools;
 
 import java.util.ArrayList;
+import htsjdk.samtools.fastq.*;
+
 
 /*
  * A Java re-write of BMFTools from Pipeline's BCFastq.py
@@ -16,8 +18,8 @@ public class BMFFastq {
 	 * @return output An ArrayList of Strings of final fastqs. 1 (single-end) or
 	 * 2 (paired-end)
 	 */
-	public ArrayList<String> MergeFamilies(ArrayList<String> inFastqs) {
-		ArrayList<String> output = new ArrayList<String>();
+	public FastqRecord MergeFamilies(ArrayList<FastqRecord> inFastqs) {
+		FastqRecord output = new FastqRecord(null, null, null, null);
 		return output;
 	}
 }

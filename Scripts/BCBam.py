@@ -156,16 +156,18 @@ def Consolidate(inbam, outbam="default", stringency=0.9):
     return outbam
 
 
-def CoorSort(inbam, outprefix="default"):
+def CoorSort(inbam, outbam="default"):
+    import uuid
     pl("CorrSort. Input: {}".format(inbam))
     from subprocess import call
     pl("inbam variable is {}".format(inbam))
-    if(outprefix == "default"):
-        outprefix = '.'.join(inbam.split('.')[0:-1]) + ".CoorSort"
-    command_str = "samtools sort {} {}".format(inbam)
+    if(outbam == "default"):
+        outbam = '.'.join(inbam.split('.')[0:-1]) + ".CoorSort.bam"
+    command_str = ("samtools sort {} -o {} -T test".format(inbam, outbam) +
+                   str(uuid.uuid4().get_hex().upper()[0:8]))
     pl(command_str)
-    call(shlex.split(command_str), shell=False, stdout=outprefix + ".bam")
-    return(outprefix + ".bam")
+    call(shlex.split(command_str), shell=False)
+    return(outbam)
 
 
 def criteriaTest(read1, read2, filter="default"):

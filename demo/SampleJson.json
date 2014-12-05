@@ -1,22 +1,15 @@
 {"Config": {
+		"config":"/yggdrasil/workspace/BMFTools/demo/config.txt"
 		"paired":"false",
 		"bedfile":  "/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
 		"fastqConfig": {
-			"homing": "GACGG",
-			"i7_index" : "false",
-			"stringency" : "0.9",
+			"i7_index" : "true",
+			"stringency" : "0.75",
 			"pythonScriptsDir" : "/yggdrasil/workspace/BMFTools/Scripts"
 		},
 		"bamConfig": {
-			"reference": {
-				"genome": "/mounts/genome/human_g1k_v37.fasta"
-			},
 			"aligner": "bwa",
 			"opts" : "-L 0 -v 1",
-			"paths": {
-				"picardDir": "/mounts/bin/picard-tools",
-				"USeqDir": "/yggdrasil/codeRepository/Packages/USeq_8.8.0/Apps"
-			}
 		}
     },
 "Analysis": {

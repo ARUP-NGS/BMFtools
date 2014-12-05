@@ -25,6 +25,8 @@ import net.sourceforge.argparse4j.inf.Namespace;
 import main.java.util.DeepMagic;
 import main.java.util.DeepMagic.FileParser;
 import main.java.util.DeepMagic.ValueErrorThrower;
+import main.java.bmftools.BMFFastq;
+import htsjdk;
 
 
 /**
@@ -102,8 +104,9 @@ public class BMFTools {
 	if(FastqAL.size() != expectedFastqCount) {
 		VET.ValueError("Expected " + expectedFastqCount + " fastq files but received " + FastqAL.size() + "!");
 	}
+	BMFFastq bf = new BMFFastq();
 	if(i7_index){
-		MergedFamilies = MergeFamilies(FastqAL);
+		MergedFamilies = bf.MergeFamilies(FastqAL);
 	}
 	}
 

@@ -98,6 +98,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
                                                     inFastq2,
                                                     indexFastq,
                                                     gzip=False)
+    pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     barcodeIndex = BCFastq.GenerateShadesIndex(indexFastq)
     (FamFqs, SingleFqs, numReads,
      numReadsWFam) = BCFastq.GetFamilySizePaired(bcFastq1,
@@ -112,8 +113,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
                                                appendFq2=FamFq2,
                                                index=barcodeIndex)
     '''
-    pl("Number of reads total: " + numReads)
-    pl("Number of reads with >=2 family members: " + numReadsWFam)
+    pl("Number of reads total: " + str(numReads))
+    pl("Number of reads with >=2 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(BSortFq1,

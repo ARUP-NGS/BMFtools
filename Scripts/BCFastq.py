@@ -4,14 +4,6 @@ from HTSUtils import printlog as pl
 """
 Contains various utilities for working with barcoded fastq files.
 
-TODO: change steps relying on pass/fail for homing sequence to check only
-for presence or absence of "pass" in the .lower() of that field,
-as a pass/fail will be used for the i7 indexing protocol to take
-its place, generalizing the code.
-
-TODO: Try using a preallocated numpy multidimensional array to speed up
-inexact matching. compareFastqRecordsInexactNumpy
-
 """
 
 
@@ -20,10 +12,9 @@ def BarcodeSort(inFastq, outFastq="default"):
     from subprocess import call
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
-    BS1 = ("cat " + inFastq + " | paste - - - - | grep 'HomingPass' | sed "
+    BS1 = ("cat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
            "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' |"
-           " sort -k1,1 | awk 'BEGIN {{OFS=FS=\"\t\"}};"
-           "{{print $2,$3,$4,$5,$6,$7,$8,$9,$10}}' | "
+           " sort -k1,1 | cut -f2-10 | "
            "sed 's:###\t:###:g' | sed 's:\t$::g' "
            "| sed 's:\t$::g' | tr '\t' '\n' > ")
     BSstring = BS1 + outFastq
@@ -193,23 +184,23 @@ def FastqPairedShading(fq1,
     if(outfq1 == "default"):
         outfq1 = '.'.join(fq1.split('.')[0:-1]) + '.shaded.fastq'
     if(outfq2 == "default"):
-        outfq2 = '.'.join(fq1.split('.')[0:-1]) + '.shaded.fastq'
+        outfq2 = '.'.join(fq2.split('.')[0:-1]) + '.shaded.fastq'
     inFq1 = SeqIO.parse(fq1, "fastq")
     inFq2 = SeqIO.parse(fq2, "fastq")
     outFqHandle1 = open(outfq1, "w")
     outFqHandle2 = open(outfq2, "w")
-    inIndex = SeqIO.parse(indexfq)
+    inIndex = SeqIO.parse(indexfq, "fastq")
     for read1 in inFq1:
         read2 = inFq2.next()
         indexRead = inIndex.next()
         if("N" in indexRead.seq):
-            read1.description += " ###IndexFail ###" + indexRead.seq
-            read2.description += " ###IndexFail ###" + indexRead.seq
+            read1.description += " ###IndexFail ###" + str(indexRead.seq)
+            read2.description += " ###IndexFail ###" + str(indexRead.seq)
             SeqIO.write(read1, outFqHandle1, "fastq")
             SeqIO.write(read2, outFqHandle2, "fastq")
         else:
-            read1.description += " ###IndexPass ###" + indexRead.seq
-            read2.description += " ###IndexPass ###" + indexRead.seq
+            read1.description += " ###IndexPass ###" + str(indexRead.seq)
+            read2.description += " ###IndexPass ###" + str(indexRead.seq)
             SeqIO.write(read1, outFqHandle1, "fastq")
             SeqIO.write(read2, outFqHandle2, "fastq")
     outFqHandle1.close()
@@ -232,7 +223,7 @@ def FastqSingleShading(fq,
         outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
     inFq1 = SeqIO.parse(fq, "fastq")
     outFqHandle1 = open(outfq, "w")
-    inIndex = SeqIO.parse(indexfq)
+    inIndex = SeqIO.parse(indexfq, "fastq")
     for read1 in inFq1:
         indexRead = inIndex.next()
         if("N" in indexRead.seq):
@@ -377,9 +368,9 @@ def GenerateOnePairFastqBarcodeIndex(tags_file, index_file="default"):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    cmd = "cat {} | sed 's:###::g' | paste - - - - | awk ".format(tags_file)
-    cmd += "'{{print $4}}' | sort | uniq -c | awk 'BEGIN "
-    cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(index_file)
+    cmd = ("cat {} | sed 's:###::g' | paste - - - - | ".format(tags_file) +
+           "cut -f4 | sort | uniq -c | awk 'BEGIN "
+           "{{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(index_file))
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
     call(cmd, shell=True)
     return index_file
@@ -498,13 +489,11 @@ def GetFamilySizePaired(
         except KeyError:
             famSize = 0
         newRead1.description = read.description + " ###" + str(famSize)
-        newRead2.description = read.description + " ###" + str(famSize)
+        newRead2.description = read2.description + " ###" + str(famSize)
         # print("famSize = _{}_".format(str(famSize)))
         # print("The value of this comparison to 1 is {}".format(
         # str(famSize=="1")))
-        if(str(famSize) == "0"):
-            continue
-        if(str(famSize) == "1" or str(famSize) == "2"):
+        if(str(famSize) == "1"):
             #  print("Hey, I found a singleton")
             SeqIO.write(newRead1, singlefqBuffer1, "fastq")
             SeqIO.write(newRead2, singlefqBuffer2, "fastq")
@@ -692,7 +681,6 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
         # and filter them from the BAM filea
-        numFams = 0
         if(workingBarcode == ""):
             workingBarcode = bc4fq1
             workingSet1 = []
@@ -739,7 +727,6 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     inFq2.close()
     outputHandle1.close()
     outputHandle2.close()
-    pl("Total families merged together: " + str(numFams))
     return outFqPair1, outFqPair2
 
 

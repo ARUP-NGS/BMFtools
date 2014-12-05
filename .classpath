@@ -13,5 +13,6 @@
 	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-jaxrs.jar"/>
 	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-mapper-asl.jar"/>
 	<classpathentry kind="lib" path="/yggdrasil/workspace/BMFTools/lib/jackson-xc.jar"/>
+	<classpathentry kind="lib" path="lib/htsjdk-1.126.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
