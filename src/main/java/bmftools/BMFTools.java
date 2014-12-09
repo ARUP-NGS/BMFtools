@@ -26,7 +26,7 @@ import main.java.util.DeepMagic;
 import main.java.util.DeepMagic.FileParser;
 import main.java.util.DeepMagic.ValueErrorThrower;
 import main.java.bmftools.BMFFastq;
-import htsjdk;
+import htsjdk.samtools.fastq.*;
 
 
 /**

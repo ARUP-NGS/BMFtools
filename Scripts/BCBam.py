@@ -405,7 +405,7 @@ def pairedBarcodeTagging(
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             tempRead = read2.next()
-        descArray = tempRead.description.split("###")
+        descArray = tempRead.description.split("#G~")
         try:
             entry.tags = entry.tags + [("BS", descArray[2].strip())]
         except IndexError:
@@ -540,7 +540,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
                 tempRead = reads.next()
             except StopIteration:
                 break
-        descArray = tempRead.description.split("###")
+        descArray = tempRead.description.split("#G~")
         entry.tags = entry.tags + [("BS", descArray[-2].strip())]
         entry.tags = entry.tags + [("FM", descArray[-1].strip())]
         if("Homing" not in descArray[-3]):

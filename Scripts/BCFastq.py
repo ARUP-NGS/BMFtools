@@ -13,9 +13,9 @@ def BarcodeSort(inFastq, outFastq="default"):
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
     BS1 = ("cat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
-           "'s:###:###\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' |"
+           "'s:#G~:#G~\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $3,$0}}' |"
            " sort -k1,1 | cut -f2-10 | "
-           "sed 's:###\t:###:g' | sed 's:\t$::g' "
+           "sed 's:#G~\t:#G~:g' | sed 's:\t$::g' "
            "| sed 's:\t$::g' | tr '\t' '\n' > ")
     BSstring = BS1 + outFastq
     call(BSstring, shell=True)
@@ -26,6 +26,7 @@ def BarcodeSort(inFastq, outFastq="default"):
 
 def compareFastqRecords(R, stringency=0.9, hybrid=False):
     from Bio.SeqRecord import SeqRecord
+    import numpy as np
     seqs = [str(record.seq) for record in R]
     maxScore = 0
     Success = False
@@ -41,12 +42,17 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False):
     # frac,stringency,PASS))
     if(PASS):
         Success = True
+    elif(frac < 0.5):
+        Success = False
     elif(hybrid is True):
-        return compareFastqRecordsInexact(R)
+        return compareFastqRecordsInexactNumpy(R)
     consolidatedRecord = SeqRecord(seq=finalSeq, id=R[0].id,
                                    letter_annotations=R[0].letter_annotations,
                                    name=R[0].name,
                                    description=R[0].description)
+    consolidatedRecord.letter_annotations['phred_quality'] = np.power(
+        10., np.multiply(
+            -1/10, np.array(R[0].letter_annotations['phred_quality'])))
     return consolidatedRecord, Success
 
 
@@ -193,14 +199,18 @@ def FastqPairedShading(fq1,
     for read1 in inFq1:
         read2 = inFq2.next()
         indexRead = inIndex.next()
-        if("N" in indexRead.seq):
-            read1.description += " ###IndexFail ###" + str(indexRead.seq)
-            read2.description += " ###IndexFail ###" + str(indexRead.seq)
+        tempBar, bLen = indexRead.seq, len(indexRead.seq) * 5 / 6
+        # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
+        # This is for removing low complexity reads
+        if(("N" in tempBar or "A"*bLen in tempBar
+                or "C"*bLen in tempBar or "G"*bLen in tempBar or "T"*bLen)):
+            read1.description += " #G~IndexFail #G~" + str(indexRead.seq)
+            read2.description += " #G~IndexFail #G~" + str(indexRead.seq)
             SeqIO.write(read1, outFqHandle1, "fastq")
             SeqIO.write(read2, outFqHandle2, "fastq")
         else:
-            read1.description += " ###IndexPass ###" + str(indexRead.seq)
-            read2.description += " ###IndexPass ###" + str(indexRead.seq)
+            read1.description += " #G~IndexPass #G~" + str(indexRead.seq)
+            read2.description += " #G~IndexPass #G~" + str(indexRead.seq)
             SeqIO.write(read1, outFqHandle1, "fastq")
             SeqIO.write(read2, outFqHandle2, "fastq")
     outFqHandle1.close()
@@ -227,10 +237,10 @@ def FastqSingleShading(fq,
     for read1 in inFq1:
         indexRead = inIndex.next()
         if("N" in indexRead.seq):
-            read1.description += " ###IndexFail ###" + indexRead.seq
+            read1.description += " #G~IndexFail #G~" + indexRead.seq
             SeqIO.write(read1, outFqHandle1, "fastq")
         else:
-            read1.description += " ###IndexPass ###" + indexRead.seq
+            read1.description += " #G~IndexPass #G~" + indexRead.seq
             SeqIO.write(read1, outFqHandle1, "fastq")
     outFqHandle1.close()
     if(gzip is True):
@@ -253,13 +263,13 @@ def HomingSeqLoc(fq, homing, bar_len=12):
     for read in InFastq:
         seq = str(read.seq)
         if(seq.find(homing) == -1):
-            read.description += " ###HomingFail"
+            read.description += " #G~HomingFail"
             SeqIO.write(read, StdFastq, "fastq")
         elif(seq[bar_len:bar_len + len(homing)] == homing):
-            read.description += " ###HomingPass"
+            read.description += " #G~HomingPass"
             SeqIO.write(read, StdFastq, "fastq")
         else:
-            read.description = " ###HomingFail"
+            read.description = " #G~HomingFail"
             SeqIO.write(read, StdFastq, "fastq")
             ElseLocations.write(repr(seq.find(homing)) + "\t" +
                                 read.name + "\n")
@@ -308,6 +318,15 @@ def fastx_trim(infq, outfq, n):
     return(command_str)
 
 
+def GetDescriptionTags(readDesc):
+    tagSetEntries = [kvp.split('=') for kvp in readDesc.split('#G~')[1:]]
+    tagDict = {}
+    for pair in tagSetEntries:
+        dict[pair[0]] = pair[1]
+    # pl("Repr of tagDict is {}".format(tagDict))
+    return tagDict
+
+
 def getProperPairs(infq1, infq2, shared="default", outfq1="default",
                    outfq2="default", outfqSingle="default"):
     """Assuming that the information here is sorted by barcode..."""
@@ -335,7 +354,7 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
     f.close()
     for read in infq2Handle:
         try:
-            BarDict[read.description.split('###')[-2].strip()]
+            BarDict[read.description.split('#G~')[-2].strip()]
             # Testing if it's in the dictionary, no need to assign
             # This is simply checking whether or not
             # it has a mate with the same barcode sequence.
@@ -345,7 +364,7 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
 
     for read in infq1Handle:
         try:
-            BarDict[read.description.split('###')[-2].strip()]
+            BarDict[read.description.split('#G~')[-2].strip()]
             SeqIO.write(read, outfq1Handle, "fastq")
         except KeyError:
             SeqIO.write(read, outfqSingleHandle, "fastq")
@@ -368,7 +387,7 @@ def GenerateOnePairFastqBarcodeIndex(tags_file, index_file="default"):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    cmd = ("cat {} | sed 's:###::g' | paste - - - - | ".format(tags_file) +
+    cmd = ("cat {} | sed 's:#G~::g' | paste - - - - | ".format(tags_file) +
            "cut -f4 | sort | uniq -c | awk 'BEGIN "
            "{{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(index_file))
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
@@ -392,7 +411,7 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(tags_file.split('.')[0:-1]) + ".barIdx"
-    cmd = "cat {} | sed 's:###: ###:g' | ".format(tags_file)
+    cmd = "cat {} | sed 's:#G~: #G~:g' | ".format(tags_file)
     cmd += "paste - - - - | grep -v \"HomingFail\" | "
     cmd += "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};"
     cmd += "{{print $2}}' | sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}}"
@@ -477,10 +496,10 @@ def GetFamilySizePaired(
         TotalReads += 1
         # print("description is {}".format(read.description))
         # print("-1 index of description is {}".format(
-        # read.description.split("###")[-1].strip()))
+        # read.description.split("#G~")[-1].strip()))
         # print("-2 index of description is {}".format(
-        # read.description.split("###")[-2].strip()))
-        readTag1 = read.description.split("###")[-1].strip()
+        # read.description.split("#G~")[-2].strip()))
+        readTag1 = read.description.split("#G~")[-1].strip()
         newRead1 = read
         newRead2 = read2
         # print("readTag is _" + readTag + "_")
@@ -488,8 +507,8 @@ def GetFamilySizePaired(
             famSize = BarDict[readTag1]
         except KeyError:
             famSize = 0
-        newRead1.description = read.description + " ###" + str(famSize)
-        newRead2.description = read2.description + " ###" + str(famSize)
+        newRead1.description = read.description + " #G~" + str(famSize)
+        newRead2.description = read2.description + " #G~" + str(famSize)
         # print("famSize = _{}_".format(str(famSize)))
         # print("The value of this comparison to 1 is {}".format(
         # str(famSize=="1")))
@@ -538,17 +557,17 @@ def GetFamilySizeSingle(
         TotalReads += 1
         # print("description is {}".format(read.description))
         # print("-1 index of description is {}".format(
-        # read.description.split("###")[-1].strip()))
+        # read.description.split("#G~")[-1].strip()))
         # print("-2 index of description is {}".format(
-        # read.description.split("###")[-2].strip()))
-        readTag = read.description.split("###")[-1].strip()
+        # read.description.split("#G~")[-2].strip()))
+        readTag = read.description.split("#G~")[-1].strip()
         newRead = read
         # print("readTag is _" + readTag + "_")
         try:
             famSize = BarDict[readTag]
         except KeyError:
             famSize = 0
-        newRead.description = read.description + " ###" + str(famSize)
+        newRead.description = read.description + " #G~" + str(famSize)
         # print("famSize = _{}_".format(str(famSize)))
         # print("The value of this comparison to 1 is {}".format(
         # str(famSize=="1")))
@@ -579,8 +598,8 @@ def mergeBarcodes(fq1, fq2, out1="default", out2="default"):
         try:
             read1 = reads1.next()
             read2 = reads2.next()
-            read1Desc = read1.description.split('###')
-            read2Desc = read2.description.split('###')
+            read1Desc = read1.description.split('#G~')
+            read2Desc = read2.description.split('#G~')
             if(read1Desc[1].strip() == "HomingFail"):
                 continue
             if(read2Desc[1].strip() == "HomingFail"):
@@ -588,8 +607,8 @@ def mergeBarcodes(fq1, fq2, out1="default", out2="default"):
             newBarcode = read1Desc[-1] + read2Desc[-1]
             read1Desc[-1] = newBarcode
             read2Desc[-1] = newBarcode
-            read1.description = "###".join(read1Desc)
-            read2.description = "###".join(read2Desc)
+            read1.description = "#G~".join(read1Desc)
+            read2.description = "#G~".join(read2Desc)
             SeqIO.write(read1, outFq1, "fastq")
             SeqIO.write(read2, outFq2, "fastq")
         except StopIteration:
@@ -634,7 +653,7 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
     from subprocess import call
     if(index_file == "default"):
         index_file = '.'.join(taggedFile1.split('.')[0:-1]) + ".barIdx"
-    cmd = "cat {} {} | sed 's: ###:\t:g' | paste - - - - | awk ".format(
+    cmd = "cat {} {} | sed 's: #G~:\t:g' | paste - - - - | awk ".format(
         taggedFile1, taggedFile2)
     cmd += "'BEGIN {{FS=\"\t\"}};{{print $3}}' | sort | uniq -c | awk 'BEGIN "
     cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n > {}".format(
@@ -646,10 +665,8 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
 
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default",
-                           stringency=0.9, inexact=False,
+                           stringency=0.9,
                            numpy=False):
-    if(numpy is True and inexact is True):
-        raise ValueError("You must choose either numpy or inexact, not both.")
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
@@ -663,20 +680,20 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     workingSet1 = []
     workingSet2 = []
     for fqRec in inFq1:
-        fqRec2 = inFq2.next()
-        bc4fq1 = fqRec.description.split("###")[-2].strip()
+        try:
+            fqRec2 = inFq2.next()
+        except ValueError:
+            print("Trying to read in from " + fq2)
+            print(fqRec)
+            print inFq2.next()
+            raise ValueError("I am confused.")
+        bc4fq1 = fqRec.description.split("#G~")[-2].strip()
         # print("Working barcode: {}. Current barcode: {}.".format(
         #       workingBarcode,barcodeRecord))
         # print("name of read with this barcode: {}".format(
         #       record.qname))
         # print("Working set: {}".format(workingSet1))
-        a = "AAAAAAAAAA"
-        t = "TTTTTTTTTT"
-        g = "GGGGGGGGGG"
-        c = "CCCCCCCCCC"
-        if(a in bc4fq1 or t in bc4fq1 or c in bc4fq1 or g in bc4fq1):
-            continue
-        # if(int(fqRec.description.split('###')[-1].strip()) < 2):
+        # if(int(fqRec.description.split('#G~')[-1].strip()) < 2):
         #    continue
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
@@ -694,21 +711,16 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             continue
         elif(workingBarcode != bc4fq1):
             # pl("About to collapse a family.")
-            if(inexact is False and numpy is False):
+            if(numpy is False):
                 mergedRecord1, success1 = compareFastqRecords(
                     workingSet1, stringency=float(stringency))
                 mergedRecord2, success2 = compareFastqRecords(
                     workingSet2, stringency=float(stringency))
-            elif(inexact is True):
+            elif(numpy is True):
                 mergedRecord1, success1 = compareFastqRecords(
                     workingSet1, hybrid=True)
                 mergedRecord2, success2 = compareFastqRecords(
                     workingSet2, hybrid=True)
-            elif(numpy is True):
-                mergedRecord1, success1 = compareFastqRecordsInexactNumpy(
-                    workingSet1)
-                mergedRecord2, success2 = compareFastqRecordsInexactNumpy(
-                    workingSet2)
             if(success1):
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
             if(success2):
@@ -718,7 +730,6 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             workingSet2 = []
             workingSet2.append(fqRec2)
             workingBarcode = bc4fq1
-            numFams += 1
             continue
         else:
             raise RuntimeError(
@@ -801,7 +812,7 @@ def singleFastqConsolidate(fq, outFq="default", stringency=0.9):
     workingBarcode = ""
     workingSet = []
     for fqRec in inFq:
-        bc4fq = fqRec.description.split("###")[-2].strip()
+        bc4fq = fqRec.description.split("#G~")[-2].strip()
         # print("Working barcode: {}. Current barcode: {}.".format(
         #   workingBarcode,barcodeRecord))
         # print("name of read with this barcode: {}".format(record.qname))
@@ -812,7 +823,7 @@ def singleFastqConsolidate(fq, outFq="default", stringency=0.9):
         c = "CCCCCCCCCC"
         if(a in bc4fq or t in bc4fq or c in bc4fq or g in bc4fq):
             continue
-        if(int(fqRec.description.split('###')[-1].strip()) < 2):
+        if(int(fqRec.description.split('#G~')[-1].strip()) < 2):
             continue
         if(workingBarcode == ""):
             workingBarcode = bc4fq
@@ -878,7 +889,7 @@ def TrimHoming(
             continue
         '''
         SeqIO.write(pre_tag, tagsOpen, "fastq")
-        descString = rec.description + " ###" + str(rec.seq[0:bar_len])
+        descString = rec.description + " #G~" + str(rec.seq[0:bar_len])
         post_tag = SeqRecord(Seq(str(rec.seq)[TotalTrim:],
                                  "fastq"),
                              id=rec.id,
