@@ -2,6 +2,7 @@ import pysam
 from Bio import SeqIO
 import shlex
 from HTSUtils import printlog as pl
+import BCFastq
 
 
 def AbraCadabra(inbam,
@@ -181,12 +182,12 @@ def criteriaTest(read1, read2, filter="default"):
         raise ValueError("Select valid filter. Options: {}".format(list))
 
     if(filter == "adapter"):
-        ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "AL"][0]
+        ALloc1 = [i for i, j in enumerate(read1.tags) if j[0] == "FP"][0]
         try:
             ALValue1 = int(read1.tags[ALloc1][1])
         except IndexError:
             ALValue1 = 0
-        ALloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "AL"][0]
+        ALloc2 = [i for i, j in enumerate(read2.tags) if j[0] == "FP"][0]
         try:
             ALValue2 = int(read2.tags[ALloc2][1])
         except IndexError:
@@ -405,16 +406,23 @@ def pairedBarcodeTagging(
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             tempRead = read2.next()
-        descArray = tempRead.description.split("#G~")
+        descDict = BCFastq.GetDescriptionTagDict(tempRead.description)
+        entry.tags = entry.tags + [("FM", descDict["FM"])]
         try:
-            entry.tags = entry.tags + [("BS", descArray[2].strip())]
-        except IndexError:
-            pl((descArray))
-            raise IndexError("Something's wrong!!! Index error thrown!")
-        if(descArray[1].strip() == "HomingPass"):
-            entry.tags = entry.tags + [("AL", 1)]
-        else:
-            entry.tags = entry.tags + [("AL", 0)]
+            entry.tags = entry.tags + [("BS", descDict["BS"])]
+        except KeyError:
+            pl(("Dict: {}".format(descDict)))
+            pl("Read: {}".format(entry))
+            raise KeyError("Your fastq record is missing a BS tag.")
+        try:
+            if("Pass" in descDict["FP"]):
+                entry.tags = entry.tags + [("FP", 1)]
+            else:
+                entry.tags = entry.tags + [("FP", 0)]
+        except KeyError():
+            pl(("Dict: {}".format(descDict)))
+            pl("Read: {}".format(entry))
+            raise KeyError("Your fastq record is missing an FP tag.")
         outBAM.write(entry)
     suppBAM.close()
     outBAM.close()
@@ -540,18 +548,18 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
                 tempRead = reads.next()
             except StopIteration:
                 break
-        descArray = tempRead.description.split("#G~")
-        entry.tags = entry.tags + [("BS", descArray[-2].strip())]
-        entry.tags = entry.tags + [("FM", descArray[-1].strip())]
-        if("Homing" not in descArray[-3]):
+        descDict = BCFastq.GetDescriptionTagDict(tempRead.description)
+        entry.tags = entry.tags + [("BS", descDict["BS"])]
+        entry.tags = entry.tags + [("FM", descDict["FM"])]
+        if("Pass" not in descDict["FP"]):
             pl(("Homing sequence seems off. Val: {}".format(
-                descArray[-3])))
-            pl(("descArray is {}".format(descArray)))
+                descDict["FP"])))
+            pl(("Tags dictionary is {}".format(descDict)))
             raise ValueError("Something has gone wrong!")
-        if(descArray[-3].strip() == "HomingPass"):
-            entry.tags = entry.tags + [("AL", 1)]
+        if("Pass" in descDict["FP"]):
+            entry.tags = entry.tags + [("FP", 1)]
         else:
-            entry.tags = entry.tags + [("AL", 0)]
+            entry.tags = entry.tags + [("FP", 0)]
         outBAM.write(entry)
     outBAM.close()
     postFilterBAM.close()
@@ -621,7 +629,8 @@ def singleCriteriaTest(read, filter="default"):
         raise ValueError("Filter not supported. The list is: {}".format(list))
 
     if(filter == "adapter"):
-        ALloc1 = [i for i, j in enumerate(read.tags) if j[0] == "AL"][0]
+        ALloc1 = [i for i, j in enumerate(read.tags) if j[0] == "FP"][0]
+        
         try:
             ALValue1 = int(read.tags[ALloc1][1])
         except IndexError:
