@@ -32,9 +32,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("The output SAM file: {}. Output BAM file: {}".format(
         outsamProperPair, outbamProperPair))
     if(aligner == "bwa"):
-        outsamProperPair, bwa_command = HTSUtils.align_bwa(
+        outsamProperPair = HTSUtils.align_bwa(
             consfq1, consfq2, ref, opts, outsamProperPair)
-        pl("Aligner command was {}".format(bwa_command))
         if(consfqSingle != "default"):
             outsamSingle, bwase_command = HTSUtils.align_bwa_se(
                 consfqSingle, ref, opts, outsamSingle)
@@ -63,7 +62,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
     mappedMerge, failures = BCBam.pairedFilterBam(
-        taggedBAM, criteria="complexity,adapter,barcode")
+        taggedBAM, criteria="adapter")
     p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()
     pl("Number of families found: {}".format(
@@ -108,6 +107,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
     SingleFq1 = SingleFqs[0]
     SingleFq2 = SingleFqs[1]
     '''
+    TODO: Write this step
     NumberRescued = BCFastq.ShadesRescuePaired(SingleFq1, SingleFq2,
                                                appendFq1=FamFq1,
                                                appendFq2=FamFq2,
@@ -122,13 +122,14 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
                                                               stringency=0.75,
                                                               numpy=True)
     # Assuming that no reads are failed (numpy
-    # consolidation does not fail reads or read pairs,
-    # just tag them, no need to check for shared pairs.
+    # consolidation does not fail reads or read pairs unless
+    # there is less than 50% agreement or there are too many members
+    # in a family.), just tag them, no need to check for shared pairs.
     return BConsFastq1, BConsFastq2, barcodeIndex
 
 
 def pairedFastqProc(inFastq1, inFastq2, homing="default",
-                    stringency="default"):
+                    stringency="default", useNumpy=True):
     if(stringency == "default"):
         stringency = 0.75
     if(homing == "default"):
@@ -155,9 +156,9 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BSortFq2, stringency=stringency, numpy=True)
-    BConsFqIndex1 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq1)
-    BConsFqIndex2 = BCFastq.GenerateOnePairFastqBarcodeIndex(BConsFastq2)
+        BSortFq1, BSortFq2, stringency=stringency, numpy=numpy)
+    BConsFqIndex1 = BCFastq.GenerateSingleBarcodeIndex(BConsFastq1)
+    BConsFqIndex2 = BCFastq.GenerateSingleBarcodeIndex(BConsFastq2)
     sharedBC = BCFastq.getSharedBC(BConsFqIndex1, BConsFqIndex2)
     BConsPair1, BConsPair2, BarcodeSingle = BCFastq.getProperPairs(
         BConsFastq1, BConsFastq2, shared=sharedBC)

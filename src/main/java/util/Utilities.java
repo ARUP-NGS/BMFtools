@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.logging.Logger;
 
 import com.google.gson.JsonObject;
 import com.google.gson.internal.LinkedTreeMap;
@@ -32,6 +33,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+
+import main.java.bmftools.BMFToolsMain;
+
 
 public class Utilities {
 		String OutputStr = "";
@@ -119,7 +123,7 @@ public class Utilities {
 	    }
 	}
 	
-	public LinkedTreeMap<String, Object> ParseRunJson(String jsonPath) throws JsonParseException, IOException {
+	public LinkedTreeMap<String, Object> ParseRunJson(String jsonPath) throws JsonParseException, IOException, ThisIsMadnessException {
 		Scanner scanner = new Scanner(new File(jsonPath));
 		String jsonStr = scanner.useDelimiter("\\Z").next();
 		Gson gson = new Gson();
@@ -139,8 +143,79 @@ public class Utilities {
 		return map;
 	}
 	
+	
+	
+	/**
+	 * Execute the given system command in its own process, and wait until the process has completed
+	 * to return. If the exit value of the process is not zero, an OperationFailedException is thrown
+	 * @param command
+	 * @throws OperationFailedException
+	 */
+	protected void executeCommand(final String command) throws ThisIsMadnessException {
+		executeCommand(command, false);
+	}
+	
+	/**
+	 * Execute the given system command in its own process, and wait until the process has completed
+	 * to return. If the exit value of the process is not zero, an ThisIsMadnessException in thrown
+	 * TODO: Add logging
+	 * @param command
+	 * @param permitNonZero If true, tolerate nonzero exit values from subordinate processes
+	 * @throws ThisIsMadnessException
+	 */
+	protected void executeCommand(final String command, final boolean permitNonZero) throws ThisIsMadnessException {
+		Runtime r = Runtime.getRuntime();
+		final Process p;
+
+		try {
+			p = r.exec(command);
+			
+			//Weirdly, processes that emits tons of data to their error stream can cause some kind of 
+			//system hang if the data isn't read. Since BWA and samtools both have the potential to do this
+			//we by default capture the error stream here and write it to System.err to avoid hangs. s
+			final Thread errConsumer = new StringPipeHandler(p.getErrorStream(), System.err);
+			errConsumer.start();
+			//Apparently, same goes for std out, if we dont capture and redirect it we can encounter a hang
+			final Thread outConsumer = new StringPipeHandler(p.getInputStream(), System.out);
+			outConsumer.start();
+			
+			//If runtime is going down, destroy the process so it won't become orphaned
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+				public void run() {
+					//System.err.println("Invoking shutdown thread, destroying task with command : " + command);
+					p.destroy();
+					errConsumer.interrupt();
+					outConsumer.interrupt();
+				}
+			});
+
+			
+			try {
+				int exitVal =p.waitFor(); 
+				if (exitVal != 0) {
+					if(permitNonZero==false) {
+						throw new ThisIsMadnessException("Task terminated with nonzero exit value : " + System.err.toString() + " command was: " + command, this);
+					}
+					else {
+						//Logger.getLogger(BMFTools.Pipeline.primaryLoggerName).info("Task terminated with nonzero exit value: " + System.err.toString() + " command was: " + command);
+						//Logger.getLogger(Pipeline.primaryLoggerName).info("Settings: Nonzero exit status permitted. Continuing Pipeline.");
+					}
+				} else {
+					//Logger.getLogger(Pipeline.primaryLoggerName).info("Task completed successfully: " + command);
+				}
+			} catch (InterruptedException e) {
+				throw new ThisIsMadnessException("Task was interrupted : " + System.err.toString() + "\n" + e.getLocalizedMessage(), this);
+			}
+
+			
+		}
+		catch (IOException e1) {
+			throw new ThisIsMadnessException("Task encountered an IO exception : " + System.err.toString() + "\n" + e1.getLocalizedMessage(), this);
+		}
+	}	
+	
 	public class ValueErrorThrower{
-		public void ValueError(String message){
+		public void ValueError(String message) throws ThisIsMadnessException{
 			String fp = "............................................________" + "\n";
 			fp += "....................................,.-'\"...................``~.," + "\n";
 			fp += ".............................,.-\"...................................-.," + "\n";
@@ -166,7 +241,7 @@ public class Utilities {
 			fp += "........................................_..........._,-%.......`" + "\n";
 			fp += "..................................., " + "\n";
 			System.out.println(fp);
-			throw new IllegalArgumentException(message);
+			throw new ThisIsMadnessException(message);
 		}
 
 	}	

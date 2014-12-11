@@ -1,5 +1,6 @@
 from Bio import SeqIO
 from HTSUtils import printlog as pl
+import logging
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -10,23 +11,35 @@ import HTSUtils
 
 def BarcodeSort(inFastq, outFastq="default"):
     pl("Sorting {} by barcode sequence.".format(inFastq))
-    from subprocess import call
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
     BSstring = ("cat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
-                "'s:#G~BS=:#G~BS=\t:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                " $3,$0}}' | sort -k1,1 | cut -f2-10 | "
-                "sed 's:#G~BS=\t:#G~BS=:g' | sed 's:\t$::g' "
-                "| sed 's:\t$::g' | tr '\t' '\n' > " + outFastq)
-    call(BSstring, shell=True)
+                "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
+    HTSUtils.PipedShellCall(BSstring)
     pl("Command: {}".format(BSstring.replace(
         "\t", "\\t").replace("\n", "\\n")))
     return outFastq
 
 
-def compareFastqRecords(R, stringency=0.9, hybrid=False):
+def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100):
+    """
+    Compares the fastq records to create a consensus sequence (if it
+    passes a filter)
+    """
     from Bio.SeqRecord import SeqRecord
     import numpy as np
+    try:
+        famLimit = int(famLimit)
+    except ValueError:
+        pl("famLimit arg must be integer. Set to default: 100.")
+    if(len(R) > famLimit):
+        logging.debug(
+            "Read family - {} with {} members was capped at {}. ".format(
+                R[0], len(R), famLimit))
+        R = R[:famLimit]
+        # Add debugging logging for this step.
     seqs = [str(record.seq) for record in R]
     maxScore = 0
     Success = False
@@ -52,12 +65,17 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False):
                                    description=R[0].description)
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
-    # consolidatedRecord.letter_annotations['phred_quality']
-    probs = np.multiply(-10, np.log10(np.power(np.power(
-        10., np.multiply(
-            -1/10, np.array(
-                R[0].letter_annotations[
-                    'phred_quality']))), len(seqs)))).astype(int)
+    try:
+        probs = np.multiply(-10, np.log10(np.power(np.power(
+            10., np.multiply(
+                -1/10, np.array(
+                    R[0].letter_annotations[
+                        'phred_quality']))), len(seqs)))).astype(int)
+    except RuntimeWarning:
+        probs = [93] * len(seqs)
+    if(np.any(np.less(probs, 1))):
+        Success = False
+    probs[probs < 0] = 0
     consolidatedRecord.letter_annotations[
         'phred_quality'] = [i if i <= 93 else 93 for i in probs]
     return consolidatedRecord, Success
@@ -129,6 +147,9 @@ def compareFastqRecordsInexactNumpy(R):
     #    raise ValueError("Shouldn't be negative.")
     phredQuals = np.multiply(
         -10, np.log10(np.amin(qualAllProd, 0))).astype(int)
+    if(np.any(np.less(phredQuals, 1))):
+        Success = False
+    phredQuals[phredQuals < 0] = 0
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
@@ -152,9 +173,11 @@ def FastqPairedShading(fq1,
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
     if(outfq1 == "default"):
-        outfq1 = '.'.join(fq1.split('.')[0:-1]) + '.shaded.fastq'
+        outfq1 = ('.'.join(
+            fq1.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
     if(outfq2 == "default"):
-        outfq2 = '.'.join(fq2.split('.')[0:-1]) + '.shaded.fastq'
+        outfq2 = ('.'.join(
+            fq2.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
     inFq1 = SeqIO.parse(fq1, "fastq")
     inFq2 = SeqIO.parse(fq2, "fastq")
     outFqHandle1 = open(outfq1, "w")

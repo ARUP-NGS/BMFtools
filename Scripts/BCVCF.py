@@ -1,3 +1,5 @@
+import subprocess
+
 from HTSUtils import printlog as pl
 
 '''
@@ -180,12 +182,11 @@ class VCFRecord:
 
 # @Deprecated
 def CleanupPileup(inputPileup, outputPileup="default"):
-    import subprocess
     if(outputPileup == "default"):
         outputPileup = '.'.join(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
     cmd = "awk '$5!=\"X\"' {} | sed 's:,X::g' > {}".format(
         inputPileup, outputPileup)
-    subprocess.call(cmd, shell=True)
+    subprocess.check_call(cmd, shell=True)
     return outputPileup
 
 
@@ -223,7 +224,6 @@ def MPileup(inputBAM, ref,
             outputBCF="default",
             minbqual="20",
             minmqual="10"):
-    import subprocess
     if(outputBCF == "default"):
         if(len(inputBAM.split('.')) >= 6):
             outputBCF = inputBAM.split('.')[0] + ".fullMP.vcf"
@@ -239,7 +239,7 @@ def MPileup(inputBAM, ref,
                "-I -S -g -D -R -q " + minmqual + " -Q " + minbqual +
                " " + inputBAM + " | bcftools view - > {}".format(outputBCF))
     pl("{} is command string".format(cmd))
-    subprocess.call(cmd, shell=True)
+    subprocess.check_call(cmd, shell=True)
     return outputBCF
 
 

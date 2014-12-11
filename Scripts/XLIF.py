@@ -37,7 +37,8 @@ def main():
         '-l',
         help=("Provide read length. Assumption of"
               "Illumina data and uniform length."
-              "\nIf not set, will guess from the data.")
+              "\nIf not set, will guess from the data."),
+        default="default"
     )
     parser.add_argument(
         '--name_tag',

@@ -1,8 +1,12 @@
-import pysam
-from Bio import SeqIO
 import shlex
-from HTSUtils import printlog as pl
+import subprocess
+
+from Bio import SeqIO
+import pysam
+
 import BCFastq
+from HTSUtils import printlog as pl
+import HTSUtils
 
 
 def AbraCadabra(inbam,
@@ -18,7 +22,7 @@ def AbraCadabra(inbam,
         jar = "/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar"
         pl("Default jar used: " + jar)
     else:
-        pl("Non-default abra jar used: " + jar)
+        pl("Non-default abra jnar used: " + jar)
     if(memStr == "default"):
         memStr = "-Xmx16G"
         pl("Default memory string used: " + memStr)
@@ -44,18 +48,16 @@ def AbraCadabra(inbam,
                " {} --threads {} ".format(bed, threads) +
                "--working {}".format(working))
     pl("Command: {}.".format(command))
-    from subprocess import call
-    call(shlex.split(command), shell=False, stdout=log)
+    subprocess.check_call(shlex.split(command), shell=False, stdout=log)
     return
 
 
 def Bam2Sam(inbam, outsam):
     pl("Bam2Sam. Input: {}. Output: {}.".format(inbam, outsam))
-    from subprocess import call
     output = open(outsam, 'w', 0)
     command_str = 'samtools view -h {}'.format(inbam)
     pl(command_str)
-    call(shlex.split(command_str), stdout=output, shell=False)
+    subprocess.check_call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outsam)
 
 
@@ -64,10 +66,9 @@ def BarcodeSort(inbam, outbam="default", paired=True):
         outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
     pl("BarcodeSort. Input: {}. Output: {}.".format(inbam, outbam))
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
-    from subprocess import call
     headerCommand = "samtools view -H {}".format(inbam)
     pl(headerCommand)
-    call(shlex.split(headerCommand), shell=False, stdout=outsam)
+    subprocess.check_call(shlex.split(headerCommand), shell=False, stdout=outsam)
     pl("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
         cmd = ("samtools view {} | ".format(inbam) +
@@ -75,18 +76,18 @@ def BarcodeSort(inbam, outbam="default", paired=True):
                "$(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam))
         pl(
             "Command string for this sorting process is: {}".format(cmd))
-        call(cmd, shell=True)
+        HTSUtils.PipedShellCall(cmd)
     else:
         cmd = ("samtools view {} | ".format(inbam) +
                "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
                "$(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam))
         pl(
             "Command string for this sorting process is: {}".format(cmd))
-        call(cmd, shell=True)
+        HTSUtils.PipedShellCall(cmd)
     pl("Now converting sam back to bam for further operations.")
-    call(shlex.split("samtools view -Sbh {}".format(outsam)),
-         shell=False, stdout=outbam)
-    call(["rm", outsam], shell=False)
+    subprocess.check_call(shlex.split("samtools view -Sbh {}".format(outsam)),
+                          shell=False, stdout=outbam)
+    subprocess.check_call(["rm", outsam], shell=False)
     return outbam
 
 
@@ -160,18 +161,21 @@ def Consolidate(inbam, outbam="default", stringency=0.9):
 def CoorSort(inbam, outbam="default"):
     import uuid
     pl("CorrSort. Input: {}".format(inbam))
-    from subprocess import call
     pl("inbam variable is {}".format(inbam))
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + ".CoorSort.bam"
     command_str = ("samtools sort {} -o {} -T test".format(inbam, outbam) +
                    str(uuid.uuid4().get_hex().upper()[0:8]))
     pl(command_str)
-    call(shlex.split(command_str), shell=False)
+    subprocess.check_call(shlex.split(command_str), shell=False)
     return(outbam)
 
 
 def criteriaTest(read1, read2, filter="default"):
+    """
+    Tool for filtering a pair of BAM files by criteria.
+    Note: complexity filter is typically not needed for shades protocol.
+    """
     list = "adapter barcode complexity editdistance family ismapped qc".split()
 
     if(filter == "default"):
@@ -236,7 +240,7 @@ def criteriaTest(read1, read2, filter="default"):
 
     return True
 
-# I'm not a huge fan of this. We could only rescue a small fraction.
+# Rescue step moved to BCFastq, processing before alignment
 '''
 def fuzzyJoining(inputBAM,referenceFasta,output="default",):
     import subprocess
@@ -246,19 +250,18 @@ def fuzzyJoining(inputBAM,referenceFasta,output="default",):
 
 def GenBCIndexBAM(tagBAM, idx="default", paired=True):
     pl("GenBCIndexBAM for {}".format(tagBAM))
-    from subprocess import call
     if(idx == "default"):
         idx = '.'.join(tagBAM.split('.')[0:1]) + ".DoubleIdx"
     if(paired is True):
         Str = ("samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
                "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
                " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx))
-        call(Str, shell=True)
+        HTSUtils.PipedShellCall(Str)
     if(paired is False):
         Str = ("samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
                "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
                " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx))
-        call(Str, shell=True)
+        HTSUtils.PipedShellCall(Str)
     return idx
 
 
@@ -266,22 +269,20 @@ def GenBCIndexRef(idx, output="default"):
     pl("GenBCIndexRef. Input index: {}".format(idx))
     if(output == "default"):
         output = idx.split('.')[0] + '.ref.fasta'
-    from subprocess import call
     Str = "paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(
           idx, output)
-    call(Str, shell=True)
+    HTSUtils.PipedShellCall(Str)
     return output
 
 
 def GenerateFamilyHistochart(BCIdx, output="default"):
-    from subprocess import call
     if(output == "default"):
         output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
     Str = ("cat {} | awk '{{print $1}}' | sort | uniq -c | ".format(BCIdx) +
            "awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort " +
            "-k1,1n > {}".format(output))
-    pl("Command str: {}".format(Str.replace("\t", "\\t")))
-    call(Str, shell=True)
+    pl("Command str: {}".format(Str))
+    HTSUtils.PipedShellCall(Str)
     pl("Family size histochart: {}".format(output))
     return output
 
@@ -328,11 +329,11 @@ def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default"):
         outfile.write(record)
     writeList.close()
     outfile.close()
-    from subprocess import call
     import uuid
     tempname = str(uuid.uuid4().get_hex().upper()[0:12]) + ".OMGZZZZ.tmp"
-    string1 = "cat {0} | sort | uniq > {1};mv {1} {0}".format(passBC, tempname)
-    call(string1, shell=True)
+    string1 = "cat {0} | sort | uniq > {1} && mv {1} {0}".format(
+        passBC, tempname)
+    HTSUtils.PipedShellCall(string1)
     return output, passBC
 
 
@@ -340,12 +341,11 @@ def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
     pl("mergeBams. BAM1: {}. BAM2: {}".format(BAM1, BAM2))
     if(PT == "default"):
         PT = "/mounts/bin/picard-tools"
-    from subprocess import call
     if(outbam == "default"):
         outbam = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
     command = ("java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1) +
                " I={} O={} SO=coordinate AS=true".format(BAM2, outbam))
-    call(shlex.split(command), shell=False)
+    subprocess.check_call(shlex.split(command), shell=False)
     pl("Command string for merging was: {}".format(command))
     return outbam
 
@@ -494,18 +494,16 @@ def removeSecondary(inBAM, outBAM="default"):
 
 def Sam2Bam(insam, outbam):
     pl("Sam2Bam converting {} to {}".format(insam, outbam))
-    from subprocess import call
     output = open(outbam, 'w', 0)
     command_str = 'samtools view -Sbh {}'.format(insam)
     pl((command_str))
-    call(shlex.split(command_str), stdout=output, shell=False)
+    subprocess.check_call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outbam)
 
 
 # Taken from Scrutils, by Jacob Durtschi
 def SamtoolsBam2fq(bamPath, outFastqPath):
     pl("SamtoolsBam2fq converting {}".format(bamPath))
-    import subprocess
     # Build commands that will be piped
     samtoolsBam2fqCommand = ['samtools', 'bam2fq', bamPath]
     gzipCommand = ['gzip']
