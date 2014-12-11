@@ -33,7 +33,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-public class DeepMagic {
+public class Utilities {
 		String OutputStr = "";
 		String ErrorStr = "";
 		LinkedTreeMap<String, Object> Output = new LinkedTreeMap<String, Object>();
@@ -105,7 +105,8 @@ public class DeepMagic {
 	    
 	    /*
 	    * Parses a configuration file. Lines can be commented out with a #.
-	    * First token becomes key, second value. 
+	    * First token becomes key, second value.
+	    * Additional tokens are ignored. 
 	    */
 	    public LinkedTreeMap<String, String> parseConfig(String filename) throws IOException {
 	    	LinkedTreeMap<String, String> config = new LinkedTreeMap<String, String>();
@@ -118,23 +119,27 @@ public class DeepMagic {
 	    }
 	}
 	
-	public LinkedTreeMap ParseRunJson(String jsonPath) throws JsonParseException, IOException {
-		String jsonStr = new Scanner(new File(jsonPath)).useDelimiter("\\Z").next();
+	public LinkedTreeMap<String, Object> ParseRunJson(String jsonPath) throws JsonParseException, IOException {
+		Scanner scanner = new Scanner(new File(jsonPath));
+		String jsonStr = scanner.useDelimiter("\\Z").next();
 		Gson gson = new Gson();
 		JsonReader reader = new JsonReader(new StringReader(jsonStr));
 		reader.setLenient(true);
-		LinkedTreeMap<String, Object> map = gson.fromJson(reader, new TypeToken<LinkedTreeMap<String, Object>>() {}.getType());
+		LinkedTreeMap<String, Object> map = new LinkedTreeMap<String, Object>();
+		ValueErrorThrower Pitcher = new ValueErrorThrower();
+		scanner.close();
+		try {
+			map = gson.fromJson(reader, new TypeToken<LinkedTreeMap<String, Object>>() {}.getType());
+		} catch (JsonParseException e) {
+			e.printStackTrace();
+			Pitcher.ValueError("The JSON was not successfully parsed. Check your path and file for validity.");
+		}
 		System.out.println("Json string: " + jsonStr);
 		System.out.println("Map: " + map);
 		return map;
 	}
 	
 	public class ValueErrorThrower{
-		/**
-		 * Extension of standard IllegalArgument with some syntactic sugar.
-		 */
-		private static final long serialVersionUID = -9109740105599604181L;
-
 		public void ValueError(String message){
 			String fp = "............................................________" + "\n";
 			fp += "....................................,.-'\"...................``~.," + "\n";
@@ -161,6 +166,7 @@ public class DeepMagic {
 			fp += "........................................_..........._,-%.......`" + "\n";
 			fp += "..................................., " + "\n";
 			System.out.println(fp);
+			throw new IllegalArgumentException(message);
 		}
 
 	}	

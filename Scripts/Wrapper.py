@@ -7,8 +7,6 @@ import HTSUtils
 # Contains utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA
-#
-# Sept. 15, 2014: Redesigned. New homing sequence: GACGG(T)
 
 
 def main():

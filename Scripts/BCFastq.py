@@ -5,6 +5,7 @@ from HTSUtils import printlog as pl
 Contains various utilities for working with barcoded fastq files.
 
 """
+import HTSUtils
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -49,7 +50,7 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False):
                                    letter_annotations=R[0].letter_annotations,
                                    name=R[0].name,
                                    description=R[0].description)
-    if("Fail" in GetDescTagValue(consolidatedRecord, "FP")):
+    if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
     # consolidatedRecord.letter_annotations['phred_quality']
     probs = np.multiply(-10, np.log10(np.power(np.power(
@@ -135,7 +136,7 @@ def compareFastqRecordsInexactNumpy(R):
         description=R[0].description)
     consolidatedRecord.letter_annotations[
         'phred_quality'] = [i if i <= 93 else 93 for i in phredQuals.tolist()]
-    if("Fail" in GetDescTagValue(consolidatedRecord, "FP")):
+    if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
     return consolidatedRecord, Success
 
@@ -145,7 +146,8 @@ def FastqPairedShading(fq1,
                        indexfq="default",
                        outfq1="default",
                        outfq2="default",
-                       gzip=True):
+                       gzip=True,
+                       logFails=False):
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
@@ -164,8 +166,13 @@ def FastqPairedShading(fq1,
         tempBar, bLen = indexRead.seq, len(indexRead.seq) * 5 / 6
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
+        # print("bLen is {}".format(bLen))
         if(("N" in tempBar or "A"*bLen in tempBar
-                or "C"*bLen in tempBar or "G"*bLen in tempBar or "T"*bLen)):
+                or "C"*bLen in tempBar or "G"*bLen in tempBar
+                or "T"*bLen in tempBar)):
+            if(logFails is True):
+                pl("Failing barcode for read {} is {} ".format(indexRead,
+                                                               tempBar))
             read1.description += " #G~FP=IndexFail #G~BS=" + str(indexRead.seq)
             read2.description += " #G~FP=IndexFail #G~BS=" + str(indexRead.seq)
             SeqIO.write(read1, outFqHandle1, "fastq")
@@ -281,8 +288,16 @@ def fastx_trim(infq, outfq, n):
 
 
 def GetDescTagValue(readDesc, tag="default"):
+    """
+    Gets the value associated with a given tag.
+    If a SeqRecord object rather than a string
+    of read description (string), then the seq
+    attribute is used instead of the description.
+    """
     if(tag == "default"):
         raise ValueError("A tag must be specified!")
+    if(hasattr(readDesc, "seq")):
+        readDesc = readDesc.seq
     try:
         return GetDescriptionTagDict(readDesc)[tag]
     except KeyError:
@@ -293,17 +308,19 @@ def GetDescTagValue(readDesc, tag="default"):
 
 def GetDescriptionTagDict(readDesc):
     """Returns a set of key/value pairs in a dictionary for """
-    tagSetEntries = [
-        kvp.strip().split('=') for kvp in readDesc.split('#G~')[1:]]
+    tagSetEntries = [i.strip().split("=") for i in readDesc.split("#G~")][1:]
     tagDict = {}
     try:
         for pair in tagSetEntries:
-            dict[pair[0]] = pair[1]
+            tagDict[pair[0]] = pair[1]
     except IndexError:
         pl("A value is stored with the #G~ tag which doesn't contain an =.")
         pl("tagSetEntries: {}".format(tagSetEntries))
         raise IndexError("Check that fastq description meets specifications.")
     # pl("Repr of tagDict is {}".format(tagDict))
+    except TypeError:
+        pl("tagSetEntries: {}".format(tagSetEntries))
+        HTSUtils.ThisIsMadness("YOU HAVE NO CHANCE TO SURVIVE MAKE YOUR TIME")
     return tagDict
 
 
@@ -630,10 +647,14 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                     workingSet1, hybrid=True)
                 mergedRecord2, success2 = compareFastqRecords(
                     workingSet2, hybrid=True)
-            if(success1):
-                SeqIO.write(mergedRecord1, outputHandle1, "fastq")
-            if(success2):
+            if(success1 is False):
+                mergedRecord1.description.replace("Pass", "Fail")
+            if(success2 is False):
+                mergedRecord1.description.replace("Pass", "Fail")
+            if("Fail" not in (mergedRecord1.description +
+                              mergedRecord2.description)):
                 SeqIO.write(mergedRecord2, outputHandle2, "fastq")
+                SeqIO.write(mergedRecord1, outputHandle1, "fastq")
             workingSet1 = []
             workingSet1.append(fqRec)
             workingSet2 = []

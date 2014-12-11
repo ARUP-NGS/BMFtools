@@ -2,6 +2,23 @@ import logging
 import shlex
 
 
+class Configurations:
+    """
+    Holds both the config '=' dictionary
+    and the config xml orderedDict
+    """
+    def __init__(self, configFile, configXml):
+        self.config = parseConfig(configFile)
+        self.configOrderedDict = parseConfigXML(configXml)
+
+    def GetValueForKey(self, key, multiple=False):
+        if(key in self.config.keys()):
+            return self.config[key]
+        else:
+            return get_recursively(
+                self.configOrderedDict, key, multiple=multiple)
+
+
 def align_bowtie2(R1, R2, ref, opts, outsam):
     import subprocess
     output = open(
@@ -171,6 +188,38 @@ def sam_sort(insam, outsam):
     return(both_cmds)
 
 
+def get_recursively(search_dict, field, multiple=False):
+    """
+    Takes a dict with nested lists and dicts,
+    and searches all dicts for a key of the field
+    provided.
+    If multiple is set, it returns a list.
+    Otherwise, the first found value is returned.
+    """
+    fields_found = []
+
+    for key, value in search_dict.iteritems():
+
+        if key == field:
+            if(multiple is False):
+                return value
+            fields_found.append(value)
+
+        elif isinstance(value, dict):
+            results = get_recursively(value, field)
+            for result in results:
+                fields_found.append(result)
+
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    more_results = get_recursively(item, field)
+                    for another_result in more_results:
+                        fields_found.append(another_result)
+
+    return fields_found
+
+
 def printlog(string):
     print(string)
     logging.info(string)
@@ -221,4 +270,8 @@ def FacePalm(string):
 
 
 class IllegalArgumentError(ValueError):
+    pass
+
+
+class ThisIsMadness(Exception):
     pass
