@@ -230,12 +230,12 @@ def MPileup(inputBAM, ref,
         else:
             outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf"
     if(bed != "default"):
-        cmd = ("samtools mpileup -f {} -F 0.00001 ".format(ref) +
-               "-I -S -g -D -R -q " + minmqual + " -Q " + minbqual +
+        cmd = ("samtools mpileup -f {} -F 0.0000001 ".format(ref) +
+               "-g -R -q " + minmqual + " -Q " + minbqual +
                " -l {} {}".format(bed, inputBAM) +
                " | bcftools view - > {}".format(outputBCF))
     else:
-        cmd = ("samtools mpileup -f {} -F 0.00001 ".format(ref) +
+        cmd = ("samtools mpileup -f {} -F 0.0000001 ".format(ref) +
                "-I -S -g -D -R -q " + minmqual + " -Q " + minbqual +
                " " + inputBAM + " | bcftools view - > {}".format(outputBCF))
     pl("{} is command string".format(cmd))

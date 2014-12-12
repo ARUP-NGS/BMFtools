@@ -16,5 +16,6 @@
 	<classpathentry kind="lib" path="lib/picard-lib.jar"/>
 	<classpathentry kind="lib" path="lib/picard.jar"/>
 	<classpathentry kind="lib" path="/home/daniel/.m2/repository/commons-lang/commons-lang/2.6/commons-lang-2.6.jar"/>
+	<classpathentry kind="lib" path="lib/picard-1.86p.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
