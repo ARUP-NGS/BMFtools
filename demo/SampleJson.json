@@ -1,5 +1,6 @@
 {"Config": {
-		"config":"/yggdrasil/workspace/BMFTools/demo/config.txt"
+		"bmftools.wrapper.path":"/yggdrasil/workspace/BMFTools/Scripts/Wrapper.py"
+		"config":"/yggdrasil/workspace/BMFTools/demo/config.txt",
 		"paired":"false",
 		"bedfile":  "/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
 		"fastqConfig": {

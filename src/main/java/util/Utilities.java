@@ -6,6 +6,8 @@
 package main.java.util;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -34,6 +36,8 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
+import main.java.util.BinaryPipeHandler;
+import main.java.util.StringPipeHandler;
 import main.java.bmftools.BMFToolsMain;
 
 public class Utilities {
@@ -51,7 +55,7 @@ public class Utilities {
 	 * 
 	 * @return Object Default: LinkedTreeMap.
 	 */
-	private void Call(List<String> call, Object metadata) {
+	public void Call(List<String> call, Object metadata) {
 
 		// Resetting output and error strings for each new Call
 		this.OutputStr = "";
@@ -90,7 +94,7 @@ public class Utilities {
 	}
 
 	/*
-	 * Tool for reading JSONs
+	 * Tool for reading JSONs and config files.
 	 */
 
 	public class FileParser {
@@ -152,10 +156,10 @@ public class Utilities {
 	/**
 	 * Execute the given system command in its own process, and wait until the
 	 * process has completed to return. If the exit value of the process is not
-	 * zero, an OperationFailedException is thrown
+	 * zero, an ThisIsMadnessException is thrown
 	 * 
 	 * @param command
-	 * @throws OperationFailedException
+	 * @throws ThisIsMadnessException
 	 */
 	protected void executeCommand(final String command)
 			throws ThisIsMadnessException {
@@ -239,6 +243,8 @@ public class Utilities {
 							+ e1.getLocalizedMessage(), this);
 		}
 	}
+	
+
 
 	public class ValueErrorThrower {
 		public void ValueError(String message) throws ThisIsMadnessException {

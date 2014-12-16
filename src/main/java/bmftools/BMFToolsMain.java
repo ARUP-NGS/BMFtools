@@ -38,11 +38,9 @@ public class BMFToolsMain {
 		log.info("Parsing arguments.");
 		ArgumentParser parser = ArgumentParsers.newArgumentParser("BMFTools")
 				.description("Run BMFTools analysis");
-		parser.addArgument("--conf").metavar("configFile").type(String.class)
-				.required(true).help("File path to config file (required)");
-		parser.addArgument("--run", "-r").metavar("Analysis run XML")
+		parser.addArgument("--conf", "-c").metavar("Analysis conf JSON")
 				.type(String.class).required(true)
-				.help("Path to xml for the run.");
+				.help("Path to json for the conf.");
 		parser.addArgument("-i", "--input").required(true).nargs("+")
 				.type(String.class).help("Path(s) to input fastq.");
 		parser.addArgument("-l", "--log").metavar("Logger name")
@@ -66,14 +64,12 @@ public class BMFToolsMain {
 		// confParser.parseConfig(args.getString("conf"));
 		@SuppressWarnings("unchecked")
 		LinkedTreeMap<String, Object> runProtocol = deepMagic
-				.ParseRunJson((args.getString("run")));
+				.ParseRunJson((args.getString("conf")));
 		Gson gson = new Gson();
-		LinkedTreeMap<String, String> configDict = confParser.parseConfig(args
-				.getString("conf"));
-		System.out.println(runProtocol.get("Config").getClass());
-		System.out
-				.println("Trying to load global settings. Current json string for Config: "
-						+ runProtocol.get("Config"));
+		//System.out.println(runProtocol.get("Config").getClass());
+		//System.out
+		//		.println("Trying to load global settings. Current json string for Config: "
+		//				+ runProtocol.get("Config"));
 		LinkedTreeMap<String, Object> GlobalSettings = (LinkedTreeMap<String, Object>) runProtocol
 				.get("Config");
 		System.out.println("Successfully loaded global settings.");

@@ -27,3 +27,8 @@ Faster than using a homing sequence-specified barcode (informatically). More iss
 ####Homing sequence-specified regions for barcode.
 
 Using a homing sequence as input for consolidating families of PCR duplicates.
+
+# Config JSON
+
+The run JSON has two main fields: "Config", which contains the system variables and general preferences, and "Analysis", which controls the the run protocol. 
+Previously, there were two config files, but they have been consolidated.

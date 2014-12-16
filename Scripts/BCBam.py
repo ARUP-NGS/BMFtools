@@ -64,6 +64,7 @@ def AbraCadabra(inbam,
                               bed, newbed),
                               shell=True)
         bed = newbed
+    subprocess.check_call(['samtools', 'index', inbam])
     command = ("java {} -jar {} --in {}".format(memStr, jar, inbam) +
                " --out {} --ref {} --targets".format(outbam, ref) +
                " {} --threads {} ".format(bed, threads) +

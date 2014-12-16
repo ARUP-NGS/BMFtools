@@ -2,10 +2,13 @@ package main.java.bmftools;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
 
 import htsjdk.samtools.fastq.*;
 import main.java.util.InconsistentCountsException;
+import main.java.util.ThisIsMadnessException;
+
 import org.apache.commons.lang.StringUtils;
 
 /*
@@ -26,6 +29,32 @@ public class BMFFastq {
 		FastqRecord output = new FastqRecord(inFastqs.get(0).getReadHeader(),
 				null, null, null);
 		return output;
+	}
+
+	/*
+	 * Parses the fastq read header into a LinkedHashMap
+	 */
+	public LinkedHashMap<String, String> GetFastqTagsDict(FastqRecord rec)
+			throws ThisIsMadnessException {
+		String[] HeaderTags = rec.getReadHeader().split("#G~");
+		if (HeaderTags.length == 1) {
+			throw new ThisIsMadnessException(
+					"The provided fastq record has no tags!");
+		}
+		LinkedHashMap<String, String> TagDictionary = new LinkedHashMap<String, String>();
+		for (int i = 1; i < HeaderTags.length; i++) {
+			String[] TagValuePair = HeaderTags[i].split("=");
+			TagDictionary.put(TagValuePair[0], TagValuePair[1]);
+		}
+		return TagDictionary;
+	}
+
+	/*
+	 * Calls GetFastqTagsDict and uses
+	 */
+	public String GetFastqTag(FastqRecord rec, String tag)
+			throws ThisIsMadnessException {
+		return GetFastqTagsDict(rec).get(tag);
 	}
 
 	/*
@@ -79,8 +108,7 @@ public class BMFFastq {
 						|| barcodeString.contains(StringUtils.repeat("T",
 								HomopolymerMax))) {
 					PassesQC = false;
-				}
-				else {
+				} else {
 					PassesQC = true;
 				}
 			} catch (NoSuchElementException e) {
@@ -94,13 +122,25 @@ public class BMFFastq {
 						"Index reads files does not have the same number of reads as read 1 and read 2.",
 						indexFq.toString());
 			}
-			
-			if(PassesQC){
-				outFq1.write(new FastqRecord(read1.getReadHeader() + " #G~IndexPass #G~" + barcodeString, read1.getReadString(), read1.getBaseQualityHeader(), read1.getBaseQualityString()));
-				outFq2.write(new FastqRecord(read2.getReadHeader() + " #G~IndexPass #G~" + barcodeString, read2.getReadString(), read2.getBaseQualityHeader(), read2.getBaseQualityString()));
+
+			if (PassesQC) {
+				outFq1.write(new FastqRecord(read1.getReadHeader()
+						+ " #G~IndexPass #G~" + barcodeString, read1
+						.getReadString(), read1.getBaseQualityHeader(), read1
+						.getBaseQualityString()));
+				outFq2.write(new FastqRecord(read2.getReadHeader()
+						+ " #G~IndexPass #G~" + barcodeString, read2
+						.getReadString(), read2.getBaseQualityHeader(), read2
+						.getBaseQualityString()));
 			} else {
-				outFq1.write(new FastqRecord(read1.getReadHeader() + " #G~IndexFail #G~" + barcodeString, read1.getReadString(), read1.getBaseQualityHeader(), read1.getBaseQualityString()));
-				outFq2.write(new FastqRecord(read2.getReadHeader() + " #G~IndexFail #G~" + barcodeString, read2.getReadString(), read2.getBaseQualityHeader(), read2.getBaseQualityString()));
+				outFq1.write(new FastqRecord(read1.getReadHeader()
+						+ " #G~IndexFail #G~" + barcodeString, read1
+						.getReadString(), read1.getBaseQualityHeader(), read1
+						.getBaseQualityString()));
+				outFq2.write(new FastqRecord(read2.getReadHeader()
+						+ " #G~IndexFail #G~" + barcodeString, read2
+						.getReadString(), read2.getBaseQualityHeader(), read2
+						.getBaseQualityString()));
 			}
 
 		}
