@@ -31,7 +31,8 @@ public class BMFToolsMain {
 
 	public static final String BEDFILE = "bedfile";
 
-	public static void main(String[] arguments) throws IOException, ThisIsMadnessException {
+	public static void main(String[] arguments) throws IOException,
+			ThisIsMadnessException {
 		Namespace args = null;
 		Logger log = Logger.getLogger("Main Log");
 		log.info("Parsing arguments.");
@@ -44,6 +45,10 @@ public class BMFToolsMain {
 				.help("Path to xml for the run.");
 		parser.addArgument("-i", "--input").required(true).nargs("+")
 				.type(String.class).help("Path(s) to input fastq.");
+		parser.addArgument("-l", "--log").metavar("Logger name")
+				.type(String.class).required(true)
+				.help("String name for Logger");
+		String LoggerName = "Default_Loggername";
 		try {
 			args = parser.parseArgs(arguments);
 		} catch (ArgumentParserException e) {
@@ -63,6 +68,8 @@ public class BMFToolsMain {
 		LinkedTreeMap<String, Object> runProtocol = deepMagic
 				.ParseRunJson((args.getString("run")));
 		Gson gson = new Gson();
+		LinkedTreeMap<String, String> configDict = confParser.parseConfig(args
+				.getString("conf"));
 		System.out.println(runProtocol.get("Config").getClass());
 		System.out
 				.println("Trying to load global settings. Current json string for Config: "
@@ -71,12 +78,8 @@ public class BMFToolsMain {
 				.get("Config");
 		System.out.println("Successfully loaded global settings.");
 		ArrayList<String> FastqAL = args.get("input");
-		BMFAnalysis RunBMF = new BMFAnalysis(runProtocol, GlobalSettings, FastqAL);
+		BMFAnalysis RunBMF = new BMFAnalysis(args.getString("log"),runProtocol, FastqAL);
 
-		
-		
 	}
 
-	
-	
 }

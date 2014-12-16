@@ -65,17 +65,15 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100):
                                    description=R[0].description)
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
-    try:
-        probs = np.multiply(-10, np.log10(np.power(np.power(
-            10., np.multiply(
-                -1/10, np.array(
-                    R[0].letter_annotations[
-                        'phred_quality']))), len(seqs)))).astype(int)
-    except RuntimeWarning:
-        probs = [93] * len(seqs)
+    probs = np.multiply(-10, np.log10(np.power(np.power(
+        10., np.multiply(
+            -1/10, np.array(
+                R[0].letter_annotations[
+                    'phred_quality']))), len(seqs)))).astype(int)
     if(np.any(np.less(probs, 1))):
         Success = False
-    probs[probs < 0] = 0
+    probs[probs <= 0] = 93
+    probs[probs > 93] = 93
     consolidatedRecord.letter_annotations[
         'phred_quality'] = [i if i <= 93 else 93 for i in probs]
     return consolidatedRecord, Success
@@ -277,7 +275,7 @@ def fastq_sort(in_fastq, out_fastq):
     outfile = open(out_fastq, 'w')
     command_str = ('cat ' + in_fastq + ' | paste - - - - | '
                    'sort -k1,1 -t " " | tr "\t" "\n"')
-    subprocess.call(command_str, stdout=outfile, shell=True)
+    subprocess.call(command_str, stdout=open(outfile, "w"), shell=True)
     outfile.close()
     return(command_str)
 
@@ -477,7 +475,7 @@ def GetFamilySizePaired(
         # print("famSize = _{}_".format(str(famSize)))
         # print("The value of this comparison to 1 is {}".format(
         # str(famSize=="1")))
-        if(str(famSize) == "1"):
+        if(int(famSize) <= 2):
             #  print("Hey, I found a singleton")
             SeqIO.write(newRead1, singlefqBuffer1, "fastq")
             SeqIO.write(newRead2, singlefqBuffer2, "fastq")

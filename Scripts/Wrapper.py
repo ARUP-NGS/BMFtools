@@ -81,6 +81,8 @@ def main():
     logging.basicConfig(filename=logfile,
                         level=logging.INFO,
                         format="%(levelname)s [%(asctime)s]: %(message)s")
+    import sys
+    pl("Command string to call BMFTools: python {}".format(' '.join(sys.argv)))
     aligner, homing = args.aligner, args.homing
     if(args.ref != "default"):
         ref = args.ref
@@ -143,7 +145,8 @@ def main():
             if(args.shades.lower() != "true"):
                 pl("About to run"
                     " ps.pairedFastqProc("
-                    "{}, {}, homing={})".format(args.fq[0], args.fq[1], homing))
+                    "{}, {}, homing={})".format(
+                        args.fq[0], args.fq[1], homing))
                 (trimfq1, trimfq2, trimfqSingle,
                  barcodeIndex) = ps.pairedFastqProc(
                     args.fq[0], args.fq[1], homing=homing)
@@ -154,7 +157,8 @@ def main():
                     consfqSingle=trimfqSingle,
                     aligner=aligner,
                     ref=ref,
-                    barIndex=barcodeIndex)
+                    barIndex=barcodeIndex,
+                    bed=bed)
             elif(args.shades.lower() == "true"):
                 trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
                     args.fq[0], args.fq[1], args.fq[2])
@@ -163,7 +167,8 @@ def main():
                     trimfq2,
                     aligner=aligner,
                     ref=ref,
-                    barIndex=barcodeIndex)
+                    barIndex=barcodeIndex,
+                    bed=bed)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,

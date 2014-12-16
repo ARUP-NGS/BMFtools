@@ -50,7 +50,7 @@ def align_bwa(R1, R2, ref, opts, outsam):
     regardless of mapping quality.
     """
     if(opts == ""):
-        opts = '-t 4 -v 1 -Y -T 0'
+        opts = '-t 4 -v 1 -Y -T 0 -U 5'
     output = open(outsam, 'w', 0)
     opt_concat = ' '.join(opts.split())
 

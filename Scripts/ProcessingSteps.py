@@ -10,7 +10,8 @@ from HTSUtils import printlog as pl
 
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bamPrefix="default", ref="default", aligner="default",
-                  barIndex="default"):
+                  barIndex="default",
+                  bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -61,8 +62,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         consfq1, consfq2, outbamProperPair)
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
+    realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     mappedMerge, failures = BCBam.pairedFilterBam(
-        taggedBAM, criteria="adapter")
+        taggedBAM, criteria="adapter,ismapped")
     p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()
     pl("Number of families found: {}".format(
@@ -82,7 +84,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     '''
     pl("Now determining family size for the doubled barcodes.")
     families, BCList = BCBam.getFamilySizeBAM(
-        mappedMerge, barIndex)
+        realignedFull, barIndex)
     familyP, familyF = BCBam.pairedFilterBam(
         families, criteria="family")
     coorSorted = BCBam.CoorSort(familyP)
@@ -114,7 +116,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
                                                index=barcodeIndex)
     '''
     pl("Number of reads total: " + str(numReads))
-    pl("Number of reads with >=2 family members: " + str(numReadsWFam))
+    pl("Number of reads with >=3 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(BSortFq1,
@@ -156,7 +158,7 @@ def pairedFastqProc(inFastq1, inFastq2, homing="default",
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BSortFq2, stringency=stringency, numpy=numpy)
+        BSortFq1, BSortFq2, stringency=stringency, numpy=useNumpy)
     BConsFqIndex1 = BCFastq.GenerateSingleBarcodeIndex(BConsFastq1)
     BConsFqIndex2 = BCFastq.GenerateSingleBarcodeIndex(BConsFastq2)
     sharedBC = BCFastq.getSharedBC(BConsFqIndex1, BConsFqIndex2)

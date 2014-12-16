@@ -19,17 +19,20 @@ public class BMFAnalysis {
 	public boolean i7_index = false;
 	public boolean paired = true;
 	LinkedTreeMap<String, Object> FastqSettings = null;
+	LinkedTreeMap<String, Object> GlobalSettings = null;
 
-	public BMFAnalysis(LinkedTreeMap<String, Object> runProtocol,
-			LinkedTreeMap<String, Object> GlobalSettings,
+	public BMFAnalysis(String LoggerName,
+			LinkedTreeMap<String, Object> runProtocol,
 			ArrayList<String> FastqAL) throws ThisIsMadnessException {
 		Utilities deepMagic = new Utilities();
 		ValueErrorThrower VET = deepMagic.new ValueErrorThrower();
+		LinkedTreeMap<String, Object> GlobalSettings = (LinkedTreeMap<String, Object>) runProtocol.get("Config");
 		String bedfile = ((String) GlobalSettings.get("bedfile"));
-		this.FastqSettings = (LinkedTreeMap<String, Object>) GlobalSettings
+		LinkedTreeMap<String, Object> FastqSettings = (LinkedTreeMap<String, Object>) GlobalSettings
 				.get("fastqConfig");
 		this.i7_index = Boolean.parseBoolean((String) FastqSettings
 				.get("i7_index"));
+		this.i7_index =
 		this.paired = Boolean.parseBoolean((String) GlobalSettings
 				.get("paired"));
 		if (bedfile == null)

@@ -10,7 +10,7 @@ import HTSUtils
 
 
 def AbraCadabra(inbam,
-                outbam,
+                outbam="default",
                 jar="default",
                 memStr="default",
                 ref="default",
@@ -18,11 +18,17 @@ def AbraCadabra(inbam,
                 bed="default",
                 working="default",
                 log="default"):
+    '''
+    Calls abra for indel realignment. It supposedly
+    out-performs GATK's IndelRealigner.
+    Note: bed file must be first 3 columns only and
+    coordinate sorted. You will likely need an additional bed file for this.
+    '''
     if(jar == "default"):
         jar = "/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar"
         pl("Default jar used: " + jar)
     else:
-        pl("Non-default abra jnar used: " + jar)
+        pl("Non-default abra jar used: " + jar)
     if(memStr == "default"):
         memStr = "-Xmx16G"
         pl("Default memory string used: " + memStr)
@@ -43,13 +49,28 @@ def AbraCadabra(inbam,
         pl("Non-default working directory: " + working)
     if(log == "default"):
         log = "abra.log"
+    if(outbam == "default"):
+        outbam = '.'.join(inbam.split('.')[0:-1]) + '.abra.bam'
+    from os import path
+    if(path.isdir(working)):
+        pl("Working directory already exists - deleting!")
+        subprocess.check_call(['rm', '-r', working], shell=False)
+    # Check bed file to make sure it is in appropriate format for abra
+    bedLines = [line.strip() for line in open(bed, "r").readlines()]
+    if(len(bedLines[0]) > 3):
+        newbed = '.'.join(bed.split('.')[0:-1]) + 'abra.bed'
+        pl("Bed file provided not in form abra accepts.")
+        subprocess.check_call("cut -f1-3 {} | sort -k1,1 -k2,2n > {}".format(
+                              bed, newbed),
+                              shell=True)
+        bed = newbed
     command = ("java {} -jar {} --in {}".format(memStr, jar, inbam) +
                " --out {} --ref {} --targets".format(outbam, ref) +
                " {} --threads {} ".format(bed, threads) +
                "--working {}".format(working))
     pl("Command: {}.".format(command))
-    subprocess.check_call(shlex.split(command), shell=False, stdout=log)
-    return
+    subprocess.check_call(shlex.split(command), shell=False)
+    return outbam
 
 
 def Bam2Sam(inbam, outsam):
@@ -68,7 +89,8 @@ def BarcodeSort(inbam, outbam="default", paired=True):
     outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
     headerCommand = "samtools view -H {}".format(inbam)
     pl(headerCommand)
-    subprocess.check_call(shlex.split(headerCommand), shell=False, stdout=outsam)
+    subprocess.check_call(shlex.split(headerCommand),
+                          shell=False, stdout=outsam)
     pl("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
         cmd = ("samtools view {} | ".format(inbam) +
