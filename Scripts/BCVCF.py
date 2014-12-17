@@ -1,4 +1,5 @@
 import subprocess
+import numpy as np
 
 from HTSUtils import printlog as pl
 
@@ -77,6 +78,20 @@ class VCFFile:
         FileHandle.close()
         return
 
+    def GetLoFreqVariants(self, outVCF="default", replace=False):
+        NewVCFEntries = [entry for entry in self.Records if VCFRecordTest(
+                         entry, filterOpt="I16", param="3")]
+        NewVCF = VCFFile(NewVCFEntries,
+                         self.header,
+                         self.sampleName.replace(".vcf", "") + ".lofreq.vcf")
+        if(replace is True):
+            self = NewVCF
+        if(outVCF == "default"):
+            pl("outVCF not set, not writing to file.")
+        else:
+            self.write(outVCF)
+        return NewVCF
+
 
 class VCFRecord:
 
@@ -88,10 +103,16 @@ class VCFRecord:
         self.POS = VCFEntry[1]
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
-        if("X" != VCFEntry[4]):
-            self.ALT = '.'.join(VCFEntry[4].split(',').remove("X"))
+        if("<X>" in VCFEntry[4]):
+            self.ALT = VCFEntry[4].replace(",<X>", "")
         else:
-            self.ALT = "X"
+            self.ALT = VCFEntry[4]
+        '''
+        if("<X>" != VCFEntry[4]):
+            self.ALT = ','.join(VCFEntry[4].split(',').remove("<X>"))
+        else:
+            self.ALT = "<X>"
+        '''
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]
@@ -153,6 +174,9 @@ class VCFRecord:
                 [entry for entry in array] for array in tempValArrays]
         self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
+        if("I16" in self.InfoArrayDict.keys()):
+            self.InfoArrayDict['I16'] = [
+                int(i) for i in self.InfoArrayDict['I16']]
         self.GenotypeKeys = self.FORMAT.split(':')
         self.GenotypeValues = self.GENOTYPE.split(':')
         self.FORMAT = ":".join(self.GenotypeKeys)
@@ -190,31 +214,8 @@ def CleanupPileup(inputPileup, outputPileup="default"):
     return outputPileup
 
 
-def fixVCF(inputVCF, outputVCF="default"):
-    if(outputVCF == "default"):
-        outputVCF = '.'.join(inputVCF.split('.')[0:-1]) + '.fixed.vcf'
-    startVCF = ParseVCF(inputVCF)
-    outVCFHeader = startVCF.header
-    stdEntries = [i for i in startVCF.Records if(
-                  len(i.REF) != len(i.ALT) or len(i.REF) == 1)]
-    elseEntries = [i for i in startVCF.Records if(
-                   len(i.REF) == len(i.ALT) and len(i.REF) > 1)]
-    NewEntries = []
-    for e in elseEntries:
-        for pair in zip(e.REF, e.ALT):
-            e.REF, e.ALT = pair[0], pair[1]
-            newRecord = VCFRecord(e.toString().split('\t'), outputVCF)
-            if(newRecord.ALT != newRecord.REF):
-                stdEntries.append(newRecord)
-    for s in stdEntries:
-        NewEntries.append(s)
-    outVCF = VCFFile(NewEntries, outVCFHeader, outputVCF)
-    outVCF.write(outputVCF)
-    return outVCF
-
-
-def FreeBayesCall(inputBAM, ref="default", bed="default", ):
-    """I'm not exactly excited about """
+def LofreqCall(inputBAM, ref="default", bed="default", ):
+    """I'm rather exactly excited about this."""
     pass
     return
 
@@ -246,23 +247,22 @@ def MPileup(inputBAM, ref,
 def ParseVCF(inputVCFName):
     infile = open(inputVCFName, "r")
     VCFLines = [entry.strip().split('\t') for entry in infile.readlines(
-    ) if entry[0] != "#"]
+    ) if entry[0] != "#" and entry.strip().split('\t')[4] != "<X>"]
     infile.seek(0)
     VCFHeader = [entry.strip(
     ) for entry in infile.readlines() if entry[0] == "#"]
     VCFEntries = [VCFRecord(
-        entry, inputVCFName) for entry in VCFLines if entry.split(
-            '\t')[4] != "X"]
+        line, inputVCFName) for line in VCFLines]
     ParsedVCF = VCFFile(VCFEntries, VCFHeader, inputVCFName)
     return ParsedVCF
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    lst = "bed,I16".split(',')
+    lst = [i.lower() for i in "bed,I16".split(',')]
     # print("lst = {}".format(lst))
     if(filterOpt.lower() not in lst):
-        raise ValueError(
-            "Filter option not supported. Available options: " + lst)
+        raise ValueError(("Filter option not supported. Available options: " +
+                          ', '.join(lst)))
     passRecord = True
     if(filterOpt == "default"):
         raise ValueError("Filter option required.")
@@ -286,19 +286,19 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
     # Set param to int, where it is the minimum dissent reads
     if(filterOpt == "I16"):
         if(param == "default"):
-            raise ValueError("Men# dissenting reads must be set.")
-        if(inputVCFRec.InfoArrayDict['I16'][0] +
-           inputVCFRec.InfoArrayDict['I16'][1] <
-           inputVCFRec.InfoArrayDict['I16'][2] +
-           inputVCFRec.InfoArrayDict['I16'][3]):
-            if(inputVCFRec.InfoArrayDict['I16'][0] +
-               inputVCFRec.InfoArrayDict['I16'][1] >= param):
+            raise ValueError("Minimum # dissenting reads must be set.")
+        param = int(param)
+        ConsensusIsRef = True
+        I16Array = np.array(inputVCFRec.InfoArrayDict['I16']).astype("int")
+        if(np.sum(I16Array[0:2]) < np.sum(I16Array[2:4])):
+            ConsensusIsRef = False
+        if(ConsensusIsRef is True):
+            if(np.sum(I16Array[2:4]) > param):
                 return True
             else:
                 return False
         else:
-            if(inputVCFRec.InfoArrayDict['I16'][2] +
-               inputVCFRec.InfoArrayDict['I16'][3] >= param):
+            if(np.sum(I16Array[0:2]) > param):
                 return True
             else:
                 return False

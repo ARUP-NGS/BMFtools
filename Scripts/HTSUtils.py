@@ -94,13 +94,16 @@ def align_snap(R1, R2, ref, opts, outbam):
     return(command_str)
 
 
-def PipedShellCall(commandStr):
+def PipedShellCall(commandStr, delete=True):
     import uuid
     PipedShellCallFilename = "PipedShellCall{}.sh".format(
         str(uuid.uuid4().get_hex().upper()[0:8]))
     printlog("Command string: {}".format(commandStr))
     open(PipedShellCallFilename, "w").write(commandStr)
     subprocess.check_call(['bash', PipedShellCallFilename])
+    if(delete is True):
+        subprocess.check_call(shlex.split(
+            "rm {}".format(PipedShellCallFilename)))
     return commandStr
 
 
@@ -151,6 +154,43 @@ def indexBowtie(fasta):
     return
 
 
+def CoorSortAndIndexBam(inbam, prefix="MetasyntacticVar",
+                        outbam="default",
+                        uuid="true",
+                        threads="4"):
+    # If uuid is either a boolean true or is a string containing true,
+    # then a random string is generated for the output
+    if(str(uuid).lower() == "true"):
+        import uuid
+        prefix += str(uuid.uuid4().get_hex().upper()[0:8])
+    if(outbam == "default"):
+        outbam = '.'.join(inbam.split('.')[0:-1]) + '.CoorSort.bam'
+    CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outbam) +
+                  " -@ {} {}".format(threads, inbam))
+    printlog("About to call sort command: {}".format(CommandStr))
+    subprocess.check_call(shlex.split(CommandStr))
+    printlog("Now indexing.")
+    subprocess.check_call(shlex.split("samtools index {}".format(outbam)))
+    return outbam
+
+
+def NameSort(inbam, outbam="default", prefix="MetasyntacticVar",
+             uuid="true", threads="4"):
+    # If uuid is either a boolean true or is a string containing true,
+    # then a random string is generated for the output
+    if(str(uuid).lower() == "true"):
+        import uuid
+        prefix += str(uuid.uuid4().get_hex().upper()[0:8])
+    if(outbam == "default"):
+        outbam = '.'.join(inbam.split('.')[0:-1]) + '.NameSort.bam'
+    CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outbam) +
+                  " -@ {} -n {}".format(threads, inbam))
+    printlog("About to call sort command: {}".format(CommandStr))
+    subprocess.check_call(shlex.split(CommandStr))
+    printlog("Namesort successful, sorted bam available at: {}".format(outbam))
+    return outbam
+
+
 def mergeBam(samList, memoryStr="-XmX16",
              MergeJar="/mounts/bin/picard-tools/MergeSamFiles.jar",
              outBam="default"):
@@ -165,31 +205,23 @@ def mergeBam(samList, memoryStr="-XmX16",
     return outBam
 
 
-def sam_sort(insam, outsam):
-    # Skip header and funnel all reads into a temp file
-    import random
-    output = open(outsam, 'w+')
-    tmpname = 'temp{}.txt'.format(random.randint(0, 200))
-    tmp = open(tmpname, 'w', 0)
-    command_str = str('grep -v "@SQ\|@PG\|VN:\|@HD" {}'.format(insam))
-    printlog(command_str)
-    subprocess.check_call(shlex.split(command_str), stdout=tmp)
-    tmp.close()
-    # Save the header to the outsam
-    command_header = 'grep "@SQ\|@PG\|@HD" {}'.format(insam)
-    subprocess.check_call(shlex.split(command_header), stdout=output)
-    # sort the reads by query name
-    tmp = open(tmpname, 'r')
-    command_str1 = str('sort -k1,1 -t " " {}'.format(tmpname))
-    printlog(command_str1)
-    subprocess.check_call(shlex.split(command_str1), stdout=output)
-    output.close()
-    tmp.close()
-    subprocess.check_call(['rm', tmpname])
-    printlog("Command 1 for sam sort: " + command_str)
-    printlog("Command 2 for sam sort: " + command_str1)
-    return(outsam)
+def GetBamTagsDictionary(samRecord):
+    TagsDict = {}
+    for pair in samRecord.tags:
+        TagsDict[pair[0]] = pair[1]
+    return TagsDict
 
+
+def GetBamTag(samRecord, tag):
+    try:
+        return GetBamTagsDictionary(samRecord)[tag]
+    except KeyError:
+        raise ThisIsMadness("Alignment record missing requested tag.")
+
+
+def ReadContainedInBed(samRecord, bedfile):
+    
+    return False
 
 def get_recursively(search_dict, field, multiple=False):
     """

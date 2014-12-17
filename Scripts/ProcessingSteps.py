@@ -63,8 +63,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
     realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
-    mappedMerge, failures = BCBam.pairedFilterBam(
-        taggedBAM, criteria="adapter,ismapped")
+    namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
+    mappedPass, failures = BCBam.pairedFilterBam(
+        namesortedRealignedFull, criteria="adapter,ismapped")
     p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()
     pl("Number of families found: {}".format(
@@ -84,7 +85,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     '''
     pl("Now determining family size for the doubled barcodes.")
     families, BCList = BCBam.getFamilySizeBAM(
-        realignedFull, barIndex)
+        mappedPass, barIndex)
     familyP, familyF = BCBam.pairedFilterBam(
         families, criteria="family")
     coorSorted = BCBam.CoorSort(familyP)

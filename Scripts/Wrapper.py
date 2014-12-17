@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os.path
 
 import ProcessingSteps as ps
 from HTSUtils import printlog as pl
@@ -77,7 +78,11 @@ def main():
     if(args.logfile != "default"):
         logfile = args.logfile
     else:
-        logfile = args.fq[0].split('.')[0] + '.log'
+        logfile = args.fq[0][0:-6].split('/')[-1] + '.log'
+    if(os.path.isfile(logfile)):
+        os.remove(logfile)
+        pl("Log file existed - deleting!")
+    pl("Log file is {}".format(logfile))
     logging.basicConfig(filename=logfile,
                         level=logging.INFO,
                         format="%(levelname)s [%(asctime)s]: %(message)s")

@@ -206,9 +206,9 @@ def FastqPairedShading(fq1,
     outFqHandle1.close()
     outFqHandle2.close()
     if(gzip is True):
-        from subprocess import call
-        call(['gzip', fq1], shell=False)
-        call(['gzip', fq2], shell=False)
+        from subprocess import check_call
+        check_call(['gzip', fq1], shell=False)
+        check_call(['gzip', fq2], shell=False)
     return outfq1, outfq2
 
 
@@ -234,8 +234,8 @@ def FastqSingleShading(fq,
             SeqIO.write(read1, outFqHandle1, "fastq")
     outFqHandle1.close()
     if(gzip is True):
-        from subprocess import call
-        call(['gzip', fq], shell=False)
+        from subprocess import check_call
+        check_call(['gzip', fq], shell=False)
     return
 
 
@@ -275,13 +275,13 @@ def fastq_sort(in_fastq, out_fastq):
     outfile = open(out_fastq, 'w')
     command_str = ('cat ' + in_fastq + ' | paste - - - - | '
                    'sort -k1,1 -t " " | tr "\t" "\n"')
-    subprocess.call(command_str, stdout=open(outfile, "w"), shell=True)
+    subprocess.check_call(command_str, stdout=open(outfile, "w"), shell=True)
     outfile.close()
     return(command_str)
 
 
 def FastqRegex(fq, string, matchFile="default", missFile="default"):
-    from subprocess import call
+    from subprocess import check_call
     if(matchFile == "default"):
         matchFile = ('.'.join(fq.split(
                      '.')[0:-1]) + '.match.fastq').split('/')[-1]
@@ -290,12 +290,12 @@ def FastqRegex(fq, string, matchFile="default", missFile="default"):
             '.'.join(fq.split('.')[0:-1]) + '.miss.fastq').split('/')[-1]
     CommandStr = ("cat " + fq + " | paste - - - - | grep '" +
                   string + "' | tr '\t' '\n' > " + matchFile)
-    call(CommandStr, shell=True)
+    check_call(CommandStr, shell=True)
     CommandStr2 = ("cat {} | paste - - - - | grep ".format(fq) +
                    "-v '{}' | tr '\t' '\n' > {}".format(
         string,
         missFile))
-    call(CommandStr2, shell=True)
+    check_call(CommandStr2, shell=True)
     return(CommandStr, CommandStr2, matchFile, missFile)
 
 
@@ -304,7 +304,7 @@ def fastx_trim(infq, outfq, n):
     import subprocess
     command_str = ['fastx_trimmer', '-l', str(n), '-i', infq, '-o', outfq]
     pl(command_str)
-    subprocess.call(command_str)
+    subprocess.check_call(command_str)
     return(command_str)
 
 
@@ -390,24 +390,24 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
 
 
 def getSharedBC(barIdx1, barIdx2, shared="default"):
-    from subprocess import call
+    from subprocess import check_call
     if(shared == "default"):
         shared = '.'.join(barIdx1.split('.')[0:-1]) + '.sharedBC'
     Str = "cat {} {} | awk '{{print $2}}' | sort |".format(barIdx1, barIdx2)
     Str += " uniq -c | grep -v '1' | awk '{{print $NF}}' > {}".format(shared)
     pl("Command for shared barcodes is: {}".format(Str))
-    call(Str, shell=True)
+    check_call(Str, shell=True)
     return shared
 
 
 def GenerateShadesIndex(indexFastq, index_file="default"):
-    from subprocess import call
+    from subprocess import check_call
     if(index_file == "default"):
         index_file = '.'.join(indexFastq.split('.')[0:-1]) + ".barIdx"
     commandStr = ("cat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
                   "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
                   ",$2}}' > {}".format(index_file))
-    call(commandStr, shell=True)
+    check_call(commandStr, shell=True)
     return index_file
 
 
@@ -604,7 +604,7 @@ def mergeSequencesFastq(fq1, fq2, output="default"):
 def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
     pl("Now beginning GenerateFullFastqBarcodeIndex for {} and {}.".format(
         taggedFile1, taggedFile2))
-    from subprocess import call
+    from subprocess import check_call
     if(index_file == "default"):
         index_file = '.'.join(taggedFile1.split('.')[0:-1]) + ".barIdx"
     cmd = "cat {} {} | sed 's: #G~BS=:\t:g' | paste - - - - | awk ".format(
@@ -613,7 +613,7 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
     cmd += "{{OFS=\"\t\"}};{{print $1,$2}}' | sort -k1,1n > {}".format(
         index_file)
     pl("CommandStr = {}".format(cmd.replace("\t", "\\t")))
-    call(cmd, shell=True)
+    check_call(cmd, shell=True)
     return index_file
 
 
