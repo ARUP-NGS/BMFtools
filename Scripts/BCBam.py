@@ -607,8 +607,6 @@ def pairedFilterBam(inputBAM, passBAM="default",
                 failed = True
                 failFilter.write(read1)
                 failFilter.write(read2)
-                break
-            else:
                 continue
             if(failed is True):
                 continue

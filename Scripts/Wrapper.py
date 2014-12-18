@@ -24,7 +24,7 @@ def main():
         '--conf',
         help="Path to config file with settings.",
         metavar="ConfigPath",
-        default="default")
+        default="/yggdrasil/workspace/BMFTools/demo/SampleJson.json")
     parser.add_argument(
         '-r',
         '--ref',
@@ -122,13 +122,14 @@ def main():
     Logger.addHandler(fl)
 
     pl("Log file is {}".format(logfile))
-
-    config = HTSUtils.Configurations(args.conf)
     pl("Command string to call BMFTools: python {}".format(' '.join(sys.argv)))
     aligner, homing = args.aligner, args.homing
     if(args.ref != "default"):
         ref = args.ref
     opts, bed = args.opts, args.bed
+
+    '''
+    config = HTSUtils.Configurations(args.conf)
     confDict = {}
     if(args.conf != "default"):
         confLines = [line.strip().split("=") for line in open(
@@ -143,6 +144,7 @@ def main():
             if(ref == "default"):
                 HTSUtils.FacePalm("Reference required either "
                                   "as command line option or config file.")
+    '''
     if(args.single_end is True):
         pl("Single-end analysis chosen.")
     else:
