@@ -14,6 +14,16 @@ BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 FP | Read Passes Filter related to barcoding | String. Required: "Pass" or "Fail" |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 BD | Barcode Edit Distance | Integer |
+SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
+
+Valid Tags for SV SAM tag
+Tag | Meaning |
+---- | ---- |
+LI | Large Insert - Default cutoff: 1,000,000 min |
+MDC | Reads in pair are mapped to different contigs |
+MSS | Mapped to Same Strand |
+ORB | Only one read in pair mapped to Expected Bed Region |
+ORU | One Read Unmapped |
 
 Barcode Edit Distance is 0 for members in a family whose barcode matches the family's exactly. If a rescue step is performed to merge a read with a small number of mismatches due to sequencing errors, this tag will reflect the number of differing characters.
 

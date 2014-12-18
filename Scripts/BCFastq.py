@@ -1,5 +1,5 @@
 from Bio import SeqIO
-from HTSUtils import printlog as pl
+from HTSUtils import printlog as pl, ThisIsMadness
 import logging
 
 """
@@ -75,7 +75,7 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100):
     probs[probs <= 0] = 93
     probs[probs > 93] = 93
     consolidatedRecord.letter_annotations[
-        'phred_quality'] = [i if i <= 93 else 93 for i in probs]
+        'phred_quality'] = probs
     return consolidatedRecord, Success
 
 
@@ -114,17 +114,6 @@ def compareFastqRecordsInexactNumpy(R):
     qualT[seqArray != "T"] = 1.0
     qualTProd = np.prod(qualT, 0)
     qualAllProd = np.vstack([qualAProd, qualCProd, qualGProd, qualTProd])
-    '''
-    v2 - maybe faster?
-    qualA[seqArray != "A"] = 1.0
-    qualC[seqArray != "C"] = 1.0
-    qualG[seqArray != "G"] = 1.0
-    qualT[seqArray != "T"] = 1.0
-    qualAllProd = np.vstack([
-        np.prod(qualA, 0), np.prod(
-        qualC, 0), np.prod(qualG, 0), np.prod(qualT, 0)])
-
-    '''
     Success = True
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmin(qualAllProd, 0)))
@@ -143,11 +132,21 @@ def compareFastqRecordsInexactNumpy(R):
     #    print(repr(np.prod(qualAllProd, 0)))
     #    print(repr(np.amin(qualAllProd, 0)))
     #    raise ValueError("Shouldn't be negative.")
+    #
+    # Product of all p values
+    # Debugging...print("pValuesProd has shape: {}".format(pValuesProd.shape))
+    # Minimum p value in set
+    pValuesMin = np.amin(qualAllProd, 0)  # Avoid calculating twice.
+    # Debugging...print("pValuesMin has shape: {}".format(pValuesMin.shape))
+    # divide pValuesMin by pValuesProd to get the product of all
+    # alternative p values, then multiple by itself to find the
+    # relative probability.
     phredQuals = np.multiply(
-        -10, np.log10(np.amin(qualAllProd, 0))).astype(int)
-    if(np.any(np.less(phredQuals, 1))):
-        Success = False
+        -10, np.log10(pValuesMin / np.prod(
+            qualAllProd, 0) * pValuesMin)).astype(int)
     phredQuals[phredQuals < 0] = 0
+    phredQuals[phredQuals == 0] = 93
+    phredQuals[phredQuals > 93] = 93
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
@@ -622,6 +621,10 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            stringency=0.9,
                            numpy=False):
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
+    pl(("Command required to duplicate this action:"
+        " pairedFastqConsolidate('{}', '{}', outFqPair1".format(fq1, fq2)) +
+        "='{}', outFqPair2='{}', ".format(outFqPair1, outFqPair2) +
+        "stringency='{}', numpy='{}'".format(stringency, numpy))
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
     if(outFqPair2 == "default"):
@@ -693,8 +696,10 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
 
 
 def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
-    #  Requires barcode-sorted, consolidated fastq files,
-    #  filtered to only the shared barcode families
+    '''
+    Requires barcode-sorted, consolidated fastq files,
+    filtered to only the shared barcode families
+    '''
     if(outfq1 == "default"):
         outfq1 = fq1.split('.')[0] + '.cons.R1fastq'
     if(outfq2 == "default"):
@@ -733,9 +738,23 @@ def reverseComplement(fq, dest="default"):
 
 def ShadesRescuePaired(singlefq1,
                        singlefq2,
+                       toBeRescuedFq1="default",
+                       toBeRescuedFq2="default",
+                       fqToAlign="default",
                        appendFq1="default",
                        appendFq2="default",
-                       index="default"):
+                       index="default",
+                       minFamSize=3,
+                       maxMismatches=2):
+    """
+    This extracts a list of all barcodes which have families
+    from the index file provided.
+    It then creates a custom reference for those barcodes.
+    It then creates a dummy fastq which it then aligns to the custom
+    reference.
+    Finally, these reads have their barcodes changed to match the family's,
+    and a BD:i: tag is added to specify how far removed it was.
+    """
     if(appendFq1 == "default" or appendFq2 == "default"):
         raise ValueError("Fastq for appending rescued reads required.")
     if(index == "default"):
@@ -744,9 +763,21 @@ def ShadesRescuePaired(singlefq1,
     dictEntries = [line.split() for line in ind]
     BarDict = {}
     for entry in dictEntries:
-        BarDict[entry[1]] = entry[0]
+        if(int(entry[0]) >= minFamSize):
+            BarDict[entry[1]] = entry[0]
     a = BarDict.keys()
-    pass
+    readFq1 = SeqIO.parse(singlefq1, "fastq")
+    readFq2 = SeqIO.parse(singlefq2, "fastq")
+    readToRescue1 = open(toBeRescuedFq1, "w")
+    readToRescue2 = open(toBeRescuedFq2, "w")
+    for read1 in readFq1:
+        read2 = readFq2.next()
+        try:
+            GetDescTagValue(read1.desc, "FM")
+        except KeyError:
+            SeqIO.write(read1, readToRescue1, "fastq")
+            SeqIO.write(read2, readToRescue2, "fastq")
+    raise ThisIsMadness("This rescue function has not been written.")
     return
 
 

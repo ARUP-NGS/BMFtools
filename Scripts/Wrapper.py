@@ -1,6 +1,7 @@
 import argparse
-import logging
 import os.path
+import logging
+import sys
 
 import ProcessingSteps as ps
 from HTSUtils import printlog as pl
@@ -8,6 +9,7 @@ import HTSUtils
 # Contains utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA
+# Structural Variant detection tools are in active development.
 
 
 def main():
@@ -38,10 +40,11 @@ def main():
         help="Set to true if using the shades barcode method.",
         default="false")
     parser.add_argument(
-        '-p',
-        '--paired-end',
+        '-s',
+        '--single-end',
+        action="store_true",
         help="Whether the experiment is paired-end or not. Default: True",
-        default="True")
+        default=False)
     parser.add_argument(
         '-a',
         '--aligner',
@@ -73,20 +76,54 @@ def main():
         '--logfile',
         help="To change default logfile location.",
         default="default")
+    parser.add_argument(
+        '-p',
+        '--file-prefix',
+        help="Set non-default prefix.",
+        default="default")
     args = parser.parse_args()
     # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
     else:
-        logfile = args.fq[0][0:-6].split('/')[-1] + '.log'
+        print("Basename for log: {}".format(os.path.basename(args.fq[0])))
+        logfile = (os.getcwd() + "/" +
+                   os.path.basename(args.fq[0]).split('.')[0] +
+                   '.log')
+    if(args.file_prefix != "default"):
+        logfile = os.getcwd() + "/" + args.file_prefix + ".log"
     if(os.path.isfile(logfile)):
         os.remove(logfile)
         pl("Log file existed - deleting!")
+
+    # Logger which holds both console and file loggers
+    Logger = logging.getLogger("Primarylogger")
+    Logger.setLevel(logging.DEBUG)
+
+    # Console handler - outputs to console.
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    Logger.addHandler(ch)
+
+    # File logger - outputs to log file.
+    fl = logging.FileHandler(filename=logfile)
+    fl.setFormatter(formatter)
+    fl.setLevel(logging.DEBUG)
+
+    Logger.addHandler(fl)
+
     pl("Log file is {}".format(logfile))
-    logging.basicConfig(filename=logfile,
-                        level=logging.INFO,
-                        format="%(levelname)s [%(asctime)s]: %(message)s")
-    import sys
+
+    config = HTSUtils.Configurations(args.conf)
     pl("Command string to call BMFTools: python {}".format(' '.join(sys.argv)))
     aligner, homing = args.aligner, args.homing
     if(args.ref != "default"):
@@ -106,8 +143,11 @@ def main():
             if(ref == "default"):
                 HTSUtils.FacePalm("Reference required either "
                                   "as command line option or config file.")
-    pl("Paired-end: {}".format(args.paired_end))
-    if(args.paired_end is False or args.paired_end.lower() == "false"):
+    if(args.single_end is True):
+        pl("Single-end analysis chosen.")
+    else:
+        pl("Paired-end analysis chosen.")
+    if(args.single_end is True):
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             consFq = ps.singleFastqProc(args.fq[0], homing=homing)
@@ -144,7 +184,7 @@ def main():
             return
         else:
             raise ValueError("You have chosen an illegal initial step.")
-    elif(args.paired_end.lower() == "true"):
+    else:
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             if(args.shades.lower() != "true"):
@@ -206,10 +246,6 @@ def main():
                 bed=bed)
             pl("Last stop! Watch your step.")
         return
-
-    else:
-        raise ValueError(
-            "Not a valid Boolean value for paired-end.")
 
 if(__name__ == "__main__"):
     main()

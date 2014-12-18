@@ -3,9 +3,11 @@ import subprocess
 import os
 import shutil
 import math
+import logging
 
 from Bio import SeqIO
 import pysam
+import pybedtools
 
 import BCFastq
 from HTSUtils import printlog as pl, ThisIsMadness
@@ -210,23 +212,41 @@ def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
     """
     list = ("adapter barcode complexity editdistance family "
             "ismapped qc notinbed").split()
-    filterSet = filterSet.lower().split()
+    Logger = logging.getLogger("Primarylogger")
+    try:
+        assert isinstance(filterSet, str)  # This should be a string.
+    except AssertionError:
+        if(isinstance(filterSet, list)):
+            pl("filterSet is a list, which was not expected. repr: {}".format(
+                repr(filterSet)))
+            pl("Joining filterSet into a string.")
+            filterSet = ''.join(filterSet)
+            if(isinstance(filterSet, str) is False):
+                raise ValueError("filterSet isn't a string after joining.")
+        else:
+            pl("Filter set is not as expected! Repr: {}".format(
+                repr(filterSet)))
+            raise ValueError("What is this? filterSet is not string or list.")
     if(filterSet == "default"):
         pl("List of valid filters: {}".format(', '.join(list)))
         raise ValueError("Filter must be set!")
+    filterSet = filterSet.split(',')
     for filt in filterSet:
         if filt not in list:
+            pl("filterSet provided: {}".format(filterSet))
             raise ValueError("Select valid filter(s) - {}".format(list))
 
     if("adapter" in filterSet):
         ALValue1 = int(read1.opt("FP"))
         ALValue2 = int(read2.opt("FP"))
-        if(0 in [ALValue1, ALValue2]):
+        if(sum([ALValue1, ALValue2]) != 2):
             return False
 
     if("barcode" in filterSet):
         if(read1.opt("BS") != read2.opt("BS")):
             return False
+            Logger.debug(
+                "Barcode sequence didn't match. Are you running shades?")
 
     if("editdistance" in filterSet):
         NMValue1 = int(read1.opt("NM"))
@@ -238,6 +258,8 @@ def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
         FMValue1 = int(read1.opt("FM"))
         FMValue2 = int(read2.opt("FM"))
         if(FMValue1 < int(minFamSize) or FMValue2 < int(minFamSize)):
+            Logger.debug(("This family didn't survive. Their FMValues:" +
+                          "{}, {}".format(FMValue1, FMValue2)))
             return False
 
     if("ismapped" in filterSet):
@@ -339,7 +361,8 @@ def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default",
 
 def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                                supplementary="default",
-                               maxInsert=10000):
+                               maxInsert=1000000,
+                               tempBAMPrefix="default"):
     """
     Requires a name-sorted, paired-end bam file where pairs have been kept
     together. (If a read is to be removed, its mate must also be removed.)
@@ -347,16 +370,27 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
     information.
     Additionally, adds tags for different characteristics relevant
     to structural variants.
+    If tempBAMPrefix is set, then reads relevant to each feature will be
+    written to BAM files labeled accordingly.
     "SV" is the tag. It can hold multiple values, separated by commas.
     LI for Large Insert
     MDC for Mapped to Different Contig
     ORU for One Read Unmapped
     MSS for Mapped to Same Strand
+    ORB for One Read In Bed Region
     """
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + '.sv.bam'
+    bed = pybedtools.BedTool(bedfile)
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = pysam.AlignmentFile(outbam, "wb")
+    FeatureList = "ORU,LI,MDC,MSS,ORB".split(',')
+    if(tempBAMPrefix != "default"):
+        BamHandles = [pysam.AlignmentFile(
+            tempBAMPrefix + feat + '.bam', "wb") for feat in FeatureList]
+        BamHandleDict = {}
+        for feat, handle in zip(FeatureList, BamHandles):
+            BamHandleDict[feat] = BamHandleDict[handle]
     for read in inHandle:
         WritePair = False
         if(read.is_read1 is True):
@@ -370,6 +404,18 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
             outHandle.write(read2)
             continue
         '''
+        # One read is mapped while the other isn't
+        if(sum([read1.is_unmapped, read2.is_unmapped]) == 1):
+            try:
+                read1.setTag("SV", read1.opt("SV") + ",ORU")
+                read2.setTag("SV", read2.opt("SV") + ",ORU")
+            except KeyError:
+                read1.setTag("SV", "ORU")
+            if("BamHandleDict" in locals()):
+                BamHandleDict["ORU"].write(read1)
+                BamHandleDict["ORU"].write(read2)
+            WritePair = True
+            continue
         # Read pairs with enormous insert size
         if(abs(read1.tlen) > int(maxInsert) or abs(
                 read2.tlen) > int(maxInsert)):
@@ -378,6 +424,9 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                 read2.setTag("SV", read2.opt("SV") + ",LI")
             except KeyError:
                 read1.setTag("SV", "LI")
+            if("BamHandleDict" in locals()):
+                BamHandleDict["LI"].write(read1)
+                BamHandleDict["LI"].write(read2)
             WritePair = True
         # Read pairs mapped to a different contig
         if(read1.reference_id != read2.reference_id):
@@ -386,15 +435,11 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                 read2.setTag("SV", read2.opt("SV") + ",MDC")
             except KeyError:
                 read1.setTag("SV", "MDC")
+            if("BamHandleDict" in locals()):
+                BamHandleDict["MDC"].write(read1)
+                BamHandleDict["MDC"].write(read2)
             WritePair = True
-        # One read is mapped while the other isn't
-        if(sum([read1.is_unmapped, read2.is_unmapped]) == 1):
-            try:
-                read1.setTag("SV", read1.opt("SV") + ",ORU")
-                read2.setTag("SV", read2.opt("SV") + ",ORU")
-            except KeyError:
-                read1.setTag("SV", "ORU")
-            WritePair = True
+
         # Reads are mapped to the same strand
         if(sum([read1.is_reverse, read2.is_reverse]) != 1):
             try:
@@ -402,11 +447,28 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                 read2.setTag("SV", read2.opt("SV") + ",MSS")
             except KeyError:
                 read1.setTag("SV", "MSS")
+            if("BamHandleDict" in locals()):
+                BamHandleDict["MSS"].write(read1)
+                BamHandleDict["MSS"].write(read2)
+            WritePair = True
+        if(sum([HTSUtils.ReadContainedInBed(read1, bedRef=bed),
+                HTSUtils.ReadContainedInBed(read2, bedRef=bed)]) == 1):
+            try:
+                read1.setTag("SV", read1.opt("SV") + ",ORB")
+                read2.setTag("SV", read2.opt("SV") + ",ORB")
+            except KeyError:
+                read1.setTag("SV", "ORB")
+            if("BamHandleDict" in locals()):
+                BamHandleDict["ORB"].write(read1)
+                BamHandleDict["ORB"].write(read2)
             WritePair = True
         outHandle.write(read1)
         outHandle.write(read2)
     inHandle.close()
     outHandle.close()
+    if("BamHandleDict" in locals()):
+        for key in BamHandleDict.keys():
+            BamHandleDict[key].close()
     return outbam
 
 
@@ -503,9 +565,15 @@ def pairedBarcodeTagging(
 # Both reads must pass for the pair to be written
 # Required: [sb]am file, name-sorted, keep unmapped reads,
 # and remove supplementary and secondary alignments.
+# criteria must be a string. If multiple filters are set,
+# they must be comma-separated and have no spaces.
 def pairedFilterBam(inputBAM, passBAM="default",
                     failBAM="default", criteria="default",
                     deleteFailBam=False):
+    cStr = ("pairedFilterBam({}, passBAM='{}', ".format(inputBAM, passBAM) +
+            "failBAM='{}', criteria='{}', delete".format(failBAM, criteria) +
+            "FailBam='{}')".format(deleteFailBam))
+    pl("Command required to reproduce this call: {}".format(cStr))
     if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set.")
     if(passBAM == "default"):
@@ -518,9 +586,10 @@ def pairedFilterBam(inputBAM, passBAM="default",
     inBAM = pysam.Samfile(inputBAM, "rb")
     passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
     failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
-    criteriaList = [i.strip() for i in criteria.lower().split(',')]
-    for i, entry in enumerate(criteriaList):
-        pl(("Criteria #{} is \"{}\"".format(i, entry)))
+    criteriaList = criteria.lower()
+    pl("Criteria string is: {}".format(criteriaList))
+    pl("Following criteria will be used: {}".format(
+        str(criteriaList.split(','))))
     for read in inBAM:
         failed = False
         if(read.is_read1):
@@ -742,12 +811,14 @@ def singleCriteriaTest(read, filter="default"):
     return True
 
 
-# Filters out both reads in a pair based on a list of
-# comma-separated criteria. Both reads must pass to be written.
-# Required: [SB]AM file, coordinate-sorted,
-# supplementary and secondary alignments removed,unmapped reads retained.
 def singleFilterBam(inputBAM, passBAM="default",
                     failBAM="default", criteria="default"):
+    '''
+    Filters out both reads in a pair based on a list of
+    comma-separated criteria. Both reads must pass to be written.
+    Required: [SB]AM file, coordinate-sorted,
+    supplementary and secondary alignments removed,unmapped reads retained.
+    '''
     if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set.")
     if(passBAM == "default"):
