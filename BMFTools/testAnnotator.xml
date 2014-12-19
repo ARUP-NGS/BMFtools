@@ -1,0 +1,25 @@
+
+<Pipeline>
+
+
+<InputVCF class="buffer.VCFFile" filename="/home/chrisk/workspace/UK10K/testVCF.vcf"/>
+
+<VariantPool class ="buffer.variant.VariantPool">
+	<InputVCF />
+</VariantPool>
+
+
+<!-- Annotate the vars -->
+<Annotate class="operator.variant.UK10KAnnotator_2">
+		<VariantPool />
+</Annotate>
+
+<!-- And write them to an output file -->
+<VCFwrite class="operator.writer.VarViewerWriter">
+ 	<VariantPool />
+ 	<Outputfile class="buffer.CSVFile" filename="annotatedTEST.vars.csv" />
+</VCFwrite>
+
+
+
+</Pipeline>
