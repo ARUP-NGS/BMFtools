@@ -16,9 +16,10 @@ FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 
-Valid Tags for SV SAM tag
+## Valid Tags for SV SAM tag
+
 Tag | Meaning |
----- | ---- |
+---- | ----- |
 LI | Large Insert - Default cutoff: 1,000,000 min |
 MDC | Reads in pair are mapped to different contigs |
 MSS | Mapped to Same Strand |
