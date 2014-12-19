@@ -1,12 +1,12 @@
 from Bio import SeqIO
-from utils.HTSUtils import printlog as pl, ThisIsMadness
+from BMFTools.utils.HTSUtils import printlog as pl, ThisIsMadness
 import logging
 
 """
 Contains various utilities for working with barcoded fastq files.
 
 """
-from utils import HTSUtils
+from BMFTools.utils import HTSUtils
 
 
 def BarcodeSort(inFastq, outFastq="default"):

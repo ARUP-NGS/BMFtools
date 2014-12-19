@@ -1,7 +1,7 @@
 import subprocess
 import numpy as np
 
-from utils.HTSUtils import printlog as pl
+from BMFTools.utils.HTSUtils import printlog as pl
 
 '''
 TODO: Filter based on variants supported by reads going both ways.

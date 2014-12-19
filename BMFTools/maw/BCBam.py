@@ -10,8 +10,8 @@ import pysam
 import pybedtools
 
 import BCFastq
-from utils.HTSUtils import printlog as pl, ThisIsMadness
-from utils import HTSUtils
+from BMFTools.utils.HTSUtils import printlog as pl, ThisIsMadness
+from BMFTools.utils import HTSUtils
 
 
 def AbraCadabra(inbam,
@@ -341,7 +341,7 @@ def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default",
             famSize = int(BarDict[Barcode])
         except KeyError:
             famSize = 0
-        record.setTag(famSize, "FM")
+        record.setTag("FM", famSize)
         if(int(famSize) >= minFamSize):
             writeList.write('{}\n'.format(Barcode))
             try:

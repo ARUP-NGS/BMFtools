@@ -5,8 +5,8 @@ import logging
 import sys
 
 import ProcessingSteps as ps
-from utils.HTSUtils import printlog as pl
-from utils import HTSUtils
+from BMFTools.utils.HTSUtils import printlog as pl
+from BMFTools.utils import HTSUtils
 # Contains utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA

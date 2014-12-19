@@ -1,11 +1,11 @@
 import re
 import subprocess
 
-from maw import BCBam
-from maw import BCFastq
-from utils import HTSUtils
-from maw import BCVCF
-from utils.HTSUtils import printlog as pl
+from BMFTools.maw import BCBam
+from BMFTools.maw import BCFastq
+from BMFTools.utils import HTSUtils
+from BMFTools.maw import BCVCF
+from BMFTools.utils.HTSUtils import printlog as pl
 
 
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",

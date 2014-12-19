@@ -1,7 +1,7 @@
 import argparse
 
-from utils.HTSUtils import printlog as pl, IllegalArgumentError
-from utils import HTSUtils
+from BMFTools.utils.HTSUtils import printlog as pl, IllegalArgumentError
+from BMFTools.utils import HTSUtils
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 import BCBam
