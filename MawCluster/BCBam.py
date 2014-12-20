@@ -392,6 +392,28 @@ def ORB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
 SVTestDict['ORB'] = ORB_SV_Tag_Condition
 
 
+def FBB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+    '''
+    Gets reads where only one pair mapped inside the bed file
+    and the insert size is either above a threshold (default: 1000000)
+    or the reads are mapped to different contigs.
+    extraField should contain a bedRef as formatted for ORB as field 0,
+    and the second an integer for the minimum insert size to be makred
+    as FBB.
+    '''
+    bedRef = extraField[0]
+    if(bedRef == "default"):
+        raise ThisIsMadness("bedRef must be provded to run this test!")
+    from BMFUtils.HTSUtils import ReadContainedInBed as ORIB
+    if(sum([ORIB(read1, bedRef=bedRef), ORIB(read2, bedRef=bedRef)]) == 1):
+        if(read1.reference_id != read2.reference_id):
+            return True
+        if(abs(read1.tlen) > int(extraField[1])):
+            return True
+        return False
+    return False
+
+SVTestDict['FBB'] = FBB_SV_Tag_Condition
 SVParamDict = {}
 for key in SVTestDict.keys():
     SVParamDict[key] = ''
@@ -418,6 +440,7 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
     ORU for One Read Unmapped
     MSS for Mapped to Same Strand
     ORB for One Read In Bed Region
+    FBB for Foo Bar Baz, as I don't know a good name for it yet.
     """
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + '.sv.bam'
