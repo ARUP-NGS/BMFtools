@@ -6,11 +6,13 @@ import sys
 
 import ProcessingSteps as ps
 from BMFUtils.HTSUtils import printlog as pl
-from BMFUtils import HTSUtils
 # Contains utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA
 # Structural Variant detection tools are in active development.
+
+# Global Variables
+Logger = logging.getLogger("Primarylogger")
 
 
 def main():
@@ -82,6 +84,7 @@ def main():
         '--file-prefix',
         help="Set non-default prefix.",
         default="default")
+    global Logger
     args = parser.parse_args()
     # Begin logging
     if(args.logfile != "default"):
@@ -98,7 +101,6 @@ def main():
         pl("Log file existed - deleting!")
 
     # Logger which holds both console and file loggers
-    Logger = logging.getLogger("Primarylogger")
     Logger.setLevel(logging.DEBUG)
 
     # Console handler - outputs to console.

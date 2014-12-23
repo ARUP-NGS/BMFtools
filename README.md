@@ -25,6 +25,7 @@ MDC | Reads in pair are mapped to different contigs |
 MSS | Mapped to Same Strand |
 ORB | Only one read in pair mapped to Expected Bed Region |
 ORU | One Read Unmapped |
+SBI | SBI for having ORB and one of either MDC or LI |
 
 Barcode Edit Distance is 0 for members in a family whose barcode matches the family's exactly. If a rescue step is performed to merge a read with a small number of mismatches due to sequencing errors, this tag will reflect the number of differing characters.
 

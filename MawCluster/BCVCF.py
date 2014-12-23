@@ -532,6 +532,8 @@ def CustomPileupToTsv(inputBAM,
                                   StrandedTransMergedDict[key] / float(
                                       NumTransitionsMerged),
                                   ))
+    pl("Transition Table: {}".format(TransitionTable))
+    pl("Stranded Transition Table: {}".format(StrandedTTable))
     TransHandle.close()
     PileupHandle.close()
     return PileupTsv
