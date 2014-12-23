@@ -1,12 +1,14 @@
-from Bio import SeqIO
-from BMFUtils.HTSUtils import printlog as pl, ThisIsMadness
 import logging
+
+from Bio import SeqIO
+
+from BMFUtils.HTSUtils import printlog as pl, ThisIsMadness
+from BMFUtils.HTSUtils import PipedShellCall
 
 """
 Contains various utilities for working with barcoded fastq files.
 
 """
-from BMFUtils import HTSUtils
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -17,7 +19,7 @@ def BarcodeSort(inFastq, outFastq="default"):
                 "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
                 " $3,$0}}' | sort -k1,1 | cut -f2- | "
                 "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
-    HTSUtils.PipedShellCall(BSstring)
+    PipedShellCall(BSstring)
     pl("Command: {}".format(BSstring.replace(
         "\t", "\\t").replace("\n", "\\n")))
     return outFastq
@@ -340,7 +342,7 @@ def GetDescriptionTagDict(readDesc):
     # pl("Repr of tagDict is {}".format(tagDict))
     except TypeError:
         pl("tagSetEntries: {}".format(tagSetEntries))
-        HTSUtils.ThisIsMadness("YOU HAVE NO CHANCE TO SURVIVE MAKE YOUR TIME")
+        ThisIsMadness("YOU HAVE NO CHANCE TO SURVIVE MAKE YOUR TIME")
     return tagDict
 
 

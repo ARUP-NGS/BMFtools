@@ -1,7 +1,12 @@
 import subprocess
+import decimal
 import numpy as np
 
-from BMFUtils.HTSUtils import printlog as pl
+import pysam
+
+from BMFUtils.HTSUtils import ThisIsMadness, printlog as pl
+from BMFUtils import HTSUtils
+import BMFUtils
 
 '''
 TODO: Filter based on variants supported by reads going both ways.
@@ -139,6 +144,13 @@ class VCFRecord:
         self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
         try:
+            self.InfoArrayDict['I16'] = [
+                int(i) for i in self.InfoArrayDict['I16']]
+        except ValueError:
+            if("I16" in self.InfoArrayDict.keys()):
+                self.InfoArrayDict['I16'] = [
+                    int(decimal.Decimal(i)) for i in self.InfoArrayDict['I16']]
+        try:
             self.FORMAT = VCFEntry[8]
         except IndexError:
             self.FORMAT = ""
@@ -155,6 +167,31 @@ class VCFRecord:
             for field in VCFEntry[10:]:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
+        if(len(self.Samples) == 0):
+            recordStr = '\t'.join([self.CHROM,
+                                   self.POS,
+                                   self.ID,
+                                   self.REF,
+                                   self.ALT,
+                                   self.QUAL,
+                                   self.FILTER,
+                                   self.INFO,
+                                   self.FORMAT,
+                                   self.GENOTYPE])
+        else:
+            sampleStr = "\t".join(self.Samples)
+            recordStr = '\t'.join([self.CHROM,
+                                   self.POS,
+                                   self.ID,
+                                   self.REF,
+                                   self.ALT,
+                                   self.QUAL,
+                                   self.FILTER,
+                                   self.INFO,
+                                   self.FORMAT,
+                                   self.GENOTYPE,
+                                   sampleStr])
+        self.str = recordStr.strip()
 
     def update(self):
         self.InfoValues = [','.join(
@@ -174,9 +211,15 @@ class VCFRecord:
                 [entry for entry in array] for array in tempValArrays]
         self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
-        if("I16" in self.InfoArrayDict.keys()):
-            self.InfoArrayDict['I16'] = [
-                int(i) for i in self.InfoArrayDict['I16']]
+        if('I16' in self.InfoArrayDict.keys()):
+            try:
+                self.InfoArrayDict['I16'] = [
+                    int(i) for i in self.InfoArrayDict['I16']]
+            except ValueError:
+                if("I16" in self.InfoArrayDict.keys()):
+                    self.InfoArrayDict['I16'] = [
+                        int(decimal.Decimal(
+                            i)) for i in self.InfoArrayDict['I16']]
         self.GenotypeKeys = self.FORMAT.split(':')
         self.GenotypeValues = self.GENOTYPE.split(':')
         self.FORMAT = ":".join(self.GenotypeKeys)
@@ -200,18 +243,298 @@ class VCFRecord:
         self.update()
         return self.str
 
+
+class PRInfo:
+    '''
+    Created from a pysam.PileupRead object.
+    Holds family size, SV tags, base quality,
+    mapping quality, and base.
+    '''
+    def __init__(self, PileupRead):
+        self.FM = int(PileupRead.alignment.opt("FM"))
+        self.SVTags = PileupRead.alignment.opt("SV").split(",")
+        self.BaseCall = PileupRead.alignment.query_sequence[
+            PileupRead.query_position]
+        self.BQ = PileupRead.alignment.query_qualities[
+            PileupRead.query_position]
+        self.MQ = PileupRead.alignment.mapq
+
+
+def is_reverse_to_str(boolean):
+    if(boolean is True):
+        return "reverse"
+    elif(boolean is False):
+        return "forward"
+    else:
+        return "unmapped"
+
+
+class AltAggregateInfo:
+    '''
+    Class which holds summary information for a given alt allele
+    at a specific position. Meant to be used as part of the PCInfo
+    class as values in the VariantDict.
+    All alt alleles in this set of reads should be identical.
+    recList must be a list of PRInfo objects.
+    '''
+    def __init__(self, recList, acceptMQ0=False, consensus="default"):
+        import collections
+        if(consensus == "default"):
+            raise ThisIsMadness("A consensus nucleotide must be provided.")
+        # Check that all alt alleles are identical
+        self.recList = recList
+        self.acceptMQ0 = acceptMQ0
+        try:
+            assert(sum([rec.BaseCall == recList[
+                0] for rec in recList]) == len(recList))
+        except AssertionError:
+            raise ThisIsMadness(
+                "AltAggregateInfo requires that all alt alleles agree.")
+        self.TotalReads = np.sum([rec.FM for rec in recList])
+        self.MergedReads = len(recList)
+        self.AveFamSize = float(self.TotalReads) / self.MergedReads
+        if(acceptMQ0 is False):
+            self.SumBQScore = sum([rec.BQ for rec in recList if rec.MQ != 0])
+        else:
+            self.SumBQScore = sum([rec.BQ for rec in recList])
+        if(acceptMQ0 is False):
+            self.SumMQScore = sum([rec.MQ for rec in recList if rec.MQ != 0])
+        else:
+            self.SumMQScore = sum([rec.MQ for rec in recList])
+        self.AveMQ = float(self.SumMQScore) / len(self.recList)
+        self.AveBQ = float(self.SumBQScore) / len(self.recList)
+        self.ALT = recList[0].alignment.query_sequence[
+            recList[0].query_position]
+        self.transition = "->".join([consensus, self.ALT])
+
+        self.strandedTransitions = {}
+        self.strandedTransitionDict = collections.Counter(
+            ["&&".join([self.transition, is_reverse_to_str(
+                rec.is_reverse)]) for rec in self.recList])
+        self.strandedTotalTransitionDict = collections.Counter(
+            ["&&".join([self.transition, is_reverse_to_str(
+                rec.is_reverse)]) for rec in self.recList]*rec.FM)
+        self.StrandCountsDict = {}
+        self.StrandCountsDict['reverse'] = sum([
+            rec.is_reverse for rec in self.recList])
+        self.StrandCountsDict['forward'] = sum([
+            rec.is_reverse is False for rec in self.recList])
+        self.StrandCountsTotalDict = {}
+        self.StrandCountsTotalDict['reverse'] = sum(
+            [rec.FM for rec in self.recList if rec.is_reverse is True])
+        self.StrandCountsTotalDict['forward'] = sum(
+            [rec.FM for rec in self.recList if rec.is_reverse is False])
+
+
+class PCInfo:
+    '''
+    Takes a pysam.PileupColumn covering one base in the reference
+    and makes a new class which has "reference" (inferred from
+    consensus) and a list of PRData (one for each read).
+    '''
+    def __init__(self, PileupColumn, acceptMQ0=False):
+        PysamToChrDict = BMFUtils.HTSUtils.GetRefIdDicts()['idtochr']
+        self.contig = PysamToChrDict[PileupColumn.reference_id]
+        self.pos = PileupColumn.reference_pos
+        self.Records = [PRInfo(pileupRead) for pileupRead in PileupColumn]
+        from collections import Counter
+        self.VariantDict = {}
+        for alt in list(set([rec.BaseCall for rec in self.Records])):
+            self.VariantDict[alt] = [
+                rec for rec in self.Records if rec.BaseCall == alt]
+        self.consensus = Counter(
+            [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
+        self.AltAlleleData = [AltAggregateInfo(
+            self.VariantDict[
+                key], acceptMQ0=acceptMQ0) for key in self.VariantDict.keys()]
+        self.TotalReads = sum([alt.TotalReads for alt in self.AltAlleleData])
+        self.TotalFracDict = {}
+        for alt in self.AltAlleleData:
+            self.TotalFracDict[alt.ALT] = alt.TotalReads / self.TotalReads
+        self.MergedReads = sum([alt.MergedReads for alt in self.AltAlleleData])
+        self.MergedFracDict = {}
+        for alt in self.AltAlleleData:
+            self.MergedFracDict[alt.ALT] = alt.MergedReads / self.MergedReads
+        TransMergedCounts = {}
+        for alt in self.AltAlleleData:
+            try:
+                TransMergedCounts[alt.transition] += alt.MergedReads
+            except KeyError:
+                TransMergedCounts[alt.transition] = alt.MergedReads
+        self.TransMergedCounts = TransMergedCounts
+        TransTotalCounts = {}
+        for alt in self.AltAlleleData:
+            try:
+                TransTotalCounts[alt.transition] += alt.TotalReads
+            except KeyError:
+                TransTotalCounts[alt.transition] = alt.TotalReads
+        self.TransTotalCounts = TransTotalCounts
+        self.StrandedTransTotalCounts = {}
+        for alt in self.AltAlleleData:
+                for trans in alt.strandedTotalTransitionDict.keys():
+                    try:
+                        self.StrandedTransTotalCounts[
+                            trans] += alt.strandedTotalTransitionDict[trans]
+                    except KeyError:
+                        self.StrandedTransTotalCounts[
+                            trans] = alt.strandedTotalTransitionDict[trans]
+        self.StrandedTransMergedCounts = {}
+        for alt in self.AltAlleleData:
+                for trans in alt.strandedMergedTransitionDict.keys():
+                    try:
+                        self.StrandedTransMergedCounts[
+                            trans] += alt.strandedMergedTransitionDict[trans]
+                    except KeyError:
+                        self.StrandedTransMergedCounts[
+                            trans] = alt.strandedMergedTransitionDict[trans]
+
+    def toString(self, header=False):
+        outStr = ""
+        if(header is True):
+            outStr = ("#Chr\tPos (0-based)\tRef (Consensus)\tAlt\tTotal "
+                      "Reads\tMerged Reads\tReverse Total Reads\tForward Total"
+                      " Reads\tReverse Merged Reads\tForward Merged Reads"
+                      "\tFraction Of Total Reads\t"
+                      "Fraction Of Merged Reads\tAverage "
+                      "Family Size\t"
+                      "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
+        for alt in self.AltAlleleData:
+            outStr += '\t'.join([str(i) for i in [(self.contig, self.pos,
+                                 self.consensus,
+                                 alt.ALT,
+                                 alt.TotalReads,
+                                 alt.MergedReads,
+                                 alt.StrandCountsTotalDict['reverse'],
+                                 alt.StrandCountsTotalDict['forward'],
+                                 alt.StrandCountsDict['reverse'],
+                                 alt.StrandCountsDict['forward'],
+                                 self.TotalFracDict[alt.ALT],
+                                 self.MergedFracDict[alt.ALT],
+                                 alt.AveFamSize,
+                                 alt.SumBQScore,
+                                 alt.AveBQ,
+                                 alt.SumMQScore,
+                                 alt.AveMQ)]]) + "\n"
+        self.str = outStr
+        return self.str
+
+
 # TODO: I also want to be able to grab all of the records for a given record,
 # as well as grab the file from which the records came.
 
 
-# @Deprecated
-def CleanupPileup(inputPileup, outputPileup="default"):
-    if(outputPileup == "default"):
-        outputPileup = '.'.join(inputPileup.split('.')[0:-1]) + ".xrm.vcf"
-    cmd = "awk '$5!=\"X\"' {} | sed 's:,X::g' > {}".format(
-        inputPileup, outputPileup)
-    subprocess.check_call(cmd, shell=True)
-    return outputPileup
+def CustomPileupToTsv(inputBAM,
+                      PileupTsv="default",
+                      TransitionTable="default",
+                      StrandedTTable="default",
+                      bedfile="default"):
+    '''
+    A pileup tool for creating a tsv for each position in the bed file.
+    Used for calling SNPs with high confidence.
+    Also creates several tables:
+    1. Counts for all consensus-->alt transitions (By Total and Merged reads)
+    2. Counts for the above, specifying strandedness
+    3. Number of Merged Reads supporting each allele
+    '''
+    TransTotalDict = {}
+    TransMergedDict = {}
+    StrandedTransTotalDict = {}
+    StrandedTransMergedDict = {}
+    NumTransitionsTotal = 0
+    NumTransitionsMerged = 0
+    import os.path
+    if(PileupTsv == "default"):
+        PileupTsv = inputBAM[0:-4] + '.Pileup.tsv'
+    if(TransitionTable == "default"):
+        TransitionTable = inputBAM[0:-4] + '.Trans.tsv'
+    if(StrandedTTable == "default"):
+        StrandedTTable = inputBAM[0:-4] + '.StrandedTrans.tsv'
+    if(bedfile == "default"):
+        raise ThisIsMadness("Bedfile required for a pileup!")
+    bedlines = HTSUtils.ParseBed(bedfile)
+    if(os.path.isfile(inputBAM + ".bai") is False):
+        pl("No bam index found for input bam - creating!")
+        try:
+            subprocess.check_call(['samtools', 'index', inputBAM])
+        except subprocess.CalledProcessError:
+            pl("Couldn't index BAM - coor sorting, then indexing!")
+            inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
+    bamHandle = pysam.AlignmentFile(inputBAM, "rb")
+    PileupHandle = open(PileupTsv, "w")
+    TransHandle = open(TransitionTable, "w")
+    StrandedTransHandle = open(StrandedTTable, "w")
+    FirstLine = True
+    for line in bedlines:
+        for pileupColumn in bamHandle.pileup(line[0], line[1], line[2]):
+            PColSum = PCInfo(pileupColumn)
+            if(FirstLine is True):
+                PileupHandle.write(PColSum.toString(header=True))
+                FirstLine = False
+            else:
+                PileupHandle.write(PColSum.toString())
+            for key in PColSum.TransMergedCounts.keys():
+                try:
+                    TransMergedDict[
+                        key] += PColSum.TransMergedCounts[key]
+                except KeyError:
+                    TransMergedDict[
+                        key] = PColSum.TransMergedCounts[key]
+                NumTransitionsMerged += PColSum.TransMergedCounts[
+                    key]
+            for key in PColSum.TransTotalCounts.keys():
+                try:
+                    TransTotalDict[
+                        key] += PColSum.TransTotalCounts[key]
+                except KeyError:
+                    TransTotalDict[
+                        key] = PColSum.TransTotalCounts[key]
+                NumTransitionsTotal += PColSum.TransTotalCounts[
+                    key]
+            for key in PColSum.StrandedTransMergedCounts.keys():
+                try:
+                    StrandedTransMergedDict[
+                        key] += PColSum.StrandedTransMergedCounts[
+                            key]
+                except KeyError:
+                    StrandedTransMergedDict[
+                        key] = PColSum.StrandedTransMergedCounts[
+                            key]
+            for key in PColSum.StrandedTransTotalCounts.keys():
+                try:
+                    StrandedTransTotalDict[
+                        key] += PColSum.StrandedTransTotalCounts[
+                            key]
+                except KeyError:
+                    StrandedTransTotalDict[
+                        key] = PColSum.StrandedTransTotalCounts[
+                            key]
+    TransHandle.write(("Transition\tTotal Reads With Transition (Unflattened)"
+                       "\tMerged Reads With Transition\tFraction Of Total "
+                       "Transitions\tFraction Of Merged Transitions\n"))
+    for key in TransTotalDict.keys():
+        TransHandle.write("{}\t{}\t{}\n".format(key,
+                                                TransTotalDict[key],
+                                                TransMergedDict[key],
+                                                TransTotalDict[key]/float(
+                                                    NumTransitionsTotal),
+                                                TransMergedDict[key]/float(
+                                                    NumTransitionsMerged)))
+    StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
+                               "(Unflattened)\tMergedReads With Transition\t"
+                               "Fraction Of Total (Unflattened) Transitions"
+                               "\tFraction of Merged Transitions\n"))
+    for key in StrandedTransTotalDict.keys():
+        StrandedTransHandle.write("{}\t{}\t{}\n".format(key,
+                                  StrandedTransTotalDict[key],
+                                  StrandedTransMergedDict[key],
+                                  StrandedTransTotalDict[key] / float(
+                                      NumTransitionsTotal),
+                                  StrandedTransMergedDict[key] / float(
+                                      NumTransitionsMerged),
+                                  ))
+    TransHandle.close()
+    PileupHandle.close()
+    return PileupTsv
 
 
 def LofreqCall(inputBAM, ref="default", bed="default", ):

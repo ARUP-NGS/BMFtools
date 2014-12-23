@@ -1,10 +1,10 @@
 import re
 import subprocess
 
-from BMFMawCluster import BCBam
-from BMFMawCluster import BCFastq
+from MawCluster import BCBam
+from MawCluster import BCFastq
 from BMFUtils import HTSUtils
-from BMFMawCluster import BCVCF
+from MawCluster import BCVCF
 from BMFUtils.HTSUtils import printlog as pl
 
 
@@ -28,20 +28,17 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         aligner = "bwa"
     outsamProperPair = bamPrefix + '.sam'
     outbamProperPair = bamPrefix + '.bam'
-    outsamSingle = bamPrefix + "solo.sam"
     outbamSingle = bamPrefix + "solo.bam"
     pl("The output SAM file: {}. Output BAM file: {}".format(
         outsamProperPair, outbamProperPair))
     if(aligner == "bwa"):
-        outsamProperPair = HTSUtils.align_bwa(
+        outbamProperPair = HTSUtils.align_bwa(
             consfq1, consfq2, ref, opts, outsamProperPair)
         if(consfqSingle != "default"):
-            outsamSingle, bwase_command = HTSUtils.align_bwa_se(
-                consfqSingle, ref, opts, outsamSingle)
+            outbamSingle, bwase_command = HTSUtils.align_bwa_se(
+                consfqSingle, ref, opts, outbamSingle)
             pl(
                 "Aligner command for single-end was {}".format(bwase_command))
-            pl("Converting single-end sam to bam")
-            BCBam.Sam2Bam(outsamSingle, outbamSingle)
             pl("Tagging solo BAM")
             taggedSingleBAM = BCBam.singleBarcodeTagging(
                 consfqSingle, outbamSingle)
@@ -55,8 +52,6 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
             sortFSSBam = BCBam.CoorSort(familySizeSoloBAM)
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
-    pl("Converting SAM to BAM")
-    BCBam.Sam2Bam(outsamProperPair, outbamProperPair)
     pl("Now tagging BAM with custom SAM tags.")
     taggedBAM = BCBam.pairedBarcodeTagging(
         consfq1, consfq2, outbamProperPair)
@@ -86,9 +81,19 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Now determining family size for the doubled barcodes.")
     families, BCList = BCBam.getFamilySizeBAM(
         mappedPass, barIndex)
-    familyP, familyF = BCBam.pairedFilterBam(
-        families, criteria="family")
-    coorSorted = BCBam.CoorSort(familyP)
+    # This step not needed for shades protocol, as fastq
+    # families have already been filtered for size.
+    # familyP, familyF = BCBam.pairedFilterBam(
+    #    families, criteria="family")
+    SVBam = BCBam.GetSVRelevantRecordsPaired(families,
+                                             bedfile=bed,
+                                             tempBAMPrefix=families[0:-4],
+                                             summary=(families[0:-4] +
+                                                      '.SV.txt'))
+    pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
+        "to translocations."))
+    # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
+    coorSorted = BCBam.CoorSort(families)
     if(consfqSingle != "default"):
         mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
         return mergedSinglePair
@@ -199,13 +204,11 @@ def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):
         outsam, outbam = bamPrefix + '.sam', bamPrefix + '.bam'
     pl("Output Sam: {}. Output Bam: {}".format(outsam, outbam))
     if(aligner == "bwa"):
-        outsamFile, bwa_command = HTSUtils.align_bwa_se(
+        outbam, bwa_command = HTSUtils.align_bwa_se(
             FamilyFastq, ref, opts, outsam)
         pl("Aligner command was {}".format(bwa_command))
     else:
         raise ValueError("Sorry, I don't handle that aligner.")
-    pl("Converting SAM to BAM")
-    BCBam.Sam2Bam(outsam, outbam)
     taggedBAM = BCBam.singleBarcodeTagging(FamilyFastq, outbam)
     return taggedBAM
 

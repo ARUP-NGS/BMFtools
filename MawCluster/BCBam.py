@@ -6,7 +6,6 @@ import logging
 
 from Bio import SeqIO
 import pysam
-import pybedtools
 
 import BCFastq
 from BMFUtils.HTSUtils import printlog as pl, ThisIsMadness
@@ -377,7 +376,11 @@ SVTestDict['ORU'] = ORU_SV_Tag_Condition
 
 
 def MSS_SV_Tag_Condition(read1, read2, tag, extraField="default"):
-    return (sum([read1.is_reverse, read2.is_reverse]) != 1)
+    if(read1.reference_id == read2.reference_id):
+        return ((sum([read1.is_reverse, read2.is_reverse]) != 1 and
+                 read1.reference_id == read2.reference_id))
+    else:
+        return False
 
 SVTestDict['MSS'] = MSS_SV_Tag_Condition
 
@@ -392,15 +395,21 @@ def ORB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
 SVTestDict['ORB'] = ORB_SV_Tag_Condition
 
 
-def FBB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
     '''
     Gets reads where only one pair mapped inside the bed file
     and the insert size is either above a threshold (default: 1000000)
     or the reads are mapped to different contigs.
     extraField should contain a bedRef as formatted for ORB as field 0,
-    and the second an integer for the minimum insert size to be makred
-    as FBB.
+    and field 1 an integer for the minimum insert size to be makred
+    as SBI.
     '''
+    try:
+        SVTags = read1.opt("SV").split(',')
+        if("ORB" in SVTags and ("LI" in SVTags or "MDC" in SVTags)):
+            return True
+    except KeyError:
+        pass
     bedRef = extraField[0]
     if(bedRef == "default"):
         raise ThisIsMadness("bedRef must be provded to run this test!")
@@ -413,18 +422,20 @@ def FBB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
         return False
     return False
 
-SVTestDict['FBB'] = FBB_SV_Tag_Condition
+SVTestDict['SBI'] = SBI_SV_Tag_Condition
 SVParamDict = {}
 for key in SVTestDict.keys():
     SVParamDict[key] = ''
 SVParamDict['LI'] = 1000000
 SVParamDict['ORB'] = "default"
+SVParamDict['SBI'] = ["default", 1000000]
 
 
 def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                                supplementary="default",
                                maxInsert=1000000,
-                               tempBAMPrefix="default"):
+                               tempBAMPrefix="default",
+                               summary="default"):
     """
     Requires a name-sorted, paired-end bam file where pairs have been kept
     together. (If a read is to be removed, its mate must also be removed.)
@@ -440,7 +451,8 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
     ORU for One Read Unmapped
     MSS for Mapped to Same Strand
     ORB for One Read In Bed Region
-    FBB for Foo Bar Baz, as I don't know a good name for it yet.
+    SBI for having ORB and one of either MDC or LI
+    (Spanning Bed with Improper pair)
     """
     if(outbam == "default"):
         outbam = '.'.join(inbam.split('.')[0:-1]) + '.sv.bam'
@@ -450,12 +462,15 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
     global SVTestDict
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
+    SVParamDict['SBI'] = [bed, maxInsert]
     SVCountDict = {}
     for key in SVParamDict.keys():
         SVCountDict[key] = 0
+    SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
+    SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = pysam.AlignmentFile(outbam, "wb", template=inHandle)
-    FeatureList = SVTestDict.keys()
+    FeatureList = sorted(SVTestDict.keys())
     pl("FeatureList: {}".format(FeatureList))
     print("FeatureList: {}".format(FeatureList))
     for key in FeatureList:
@@ -477,12 +492,13 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
             continue
         if(read.is_read2 is True):
             read2 = read
+        assert read1.query_name == read2.query_name
         for key in FeatureList:
             if(SVTestDict[key](
                     read1, read2, key, extraField=SVParamDict[key]) is True):
                 try:
-                    read1.setTag("SV", read1.opt("SV") + key)
-                    read2.setTag("SV", read2.opt("SV") + key)
+                    read1.setTag("SV", read1.opt("SV") + "," + key)
+                    read2.setTag("SV", read2.opt("SV") + "," + key)
                 except KeyError:
                     read1.setTag("SV", key)
                     read2.setTag("SV", key)
@@ -494,14 +510,28 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
         if(WritePair is True):
             outHandle.write(read1)
             outHandle.write(read2)
+            SVCountDict["SVR"] += 1
+        else:
+            SVCountDict["NOSVR"] += 1
     inHandle.close()
     outHandle.close()
     if("BamHandleDict" in locals()):
         for key in BamHandleDict.keys():
             BamHandleDict[key].close()
+    SVCountDict["TOTAL"] = SVCountDict["SVR"] + SVCountDict["NOSVR"]
     for key in SVCountDict.keys():
         pl("Number of reads marked with key {}: {}".format(
             key, SVCountDict[key]))
+    if(summary != "default"):
+        writeSum = open(summary, "w")
+        writeSum.write("#Category\tCount\tFraction\n")
+        for key in SVCountDict.keys():
+            writeSum.write(
+                "{}\t{}\t{}\n".format(key,
+                                      SVCountDict[key],
+                                      SVCountDict[key] / float(
+                                          SVCountDict['TOTAL'])))
+        writeSum.close()
     return outbam
 
 
@@ -594,15 +624,17 @@ def pairedBarcodeTagging(
     return outBAMFile
 
 
-# Filters out both reads in a pair based on a list of comma-separated criteria.
-# Both reads must pass for the pair to be written
-# Required: [sb]am file, name-sorted, keep unmapped reads,
-# and remove supplementary and secondary alignments.
-# criteria must be a string. If multiple filters are set,
-# they must be comma-separated and have no spaces.
 def pairedFilterBam(inputBAM, passBAM="default",
                     failBAM="default", criteria="default",
                     deleteFailBam=False):
+    '''
+    Filters out both reads in a pair based on a list of ","-separated criteria.
+    Both reads must pass for the pair to be written
+    Required: [sb]am file, name-sorted, keep unmapped reads,
+    and remove supplementary and secondary alignments.
+    criteria must be a string. If multiple filters are set,
+    they must be comma-separated and have no spaces.
+    '''
     cStr = ("pairedFilterBam({}, passBAM='{}', ".format(inputBAM, passBAM) +
             "failBAM='{}', criteria='{}', delete".format(failBAM, criteria) +
             "FailBam='{}')".format(deleteFailBam))
