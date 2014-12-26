@@ -398,15 +398,17 @@ SVTestDict['ORB'] = ORB_SV_Tag_Condition
 def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
     '''
     Gets reads where only one pair mapped inside the bed file
-    and the insert size is either above a threshold (default: 1000000)
-    or the reads are mapped to different contigs.
+    and the insert size is either above a threshold (default: 1000000),
+    the reads are mapped to different contigs, or the reads are mapped
+    to the same strand.
     extraField should contain a bedRef as formatted for ORB as field 0,
-    and field 1 an integer for the minimum insert size to be makred
+    and field 1 an integer for the minimum insert size to be marked
     as SBI.
     '''
     try:
         SVTags = read1.opt("SV").split(',')
-        if("ORB" in SVTags and ("LI" in SVTags or "MDC" in SVTags)):
+        if("ORB" in SVTags and ("LI" in SVTags or "MDC" in SVTags or
+                                "MSS" in SVTags)):
             return True
     except KeyError:
         pass
@@ -418,6 +420,8 @@ def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
         if(read1.reference_id != read2.reference_id):
             return True
         if(abs(read1.tlen) > int(extraField[1])):
+            return True
+        if(sum([read1.is_reverse, read2.is_reverse]) != 1):
             return True
         return False
     return False

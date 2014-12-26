@@ -29,6 +29,9 @@ def printlog(string, level=logging.INFO):
         Logger.critical(string.replace(
             "\t", "\\t").replace("\n", "\\n").replace(
             "'", "\'").replace('"', '\\"'))
+    print(string.replace(
+          "\t", "\\t").replace("\n", "\\n").replace(
+          "'", "\'").replace('"', '\\"'))
     return
 
 
@@ -346,6 +349,142 @@ def has_elements(iterable):
 def indexBowtie(fasta):
     subprocess.check_call('bowtie-build {0} {0}'.format(fasta), shell=True)
     return
+
+
+def BedtoolsGenomeCov(inbam, ref="default", outfile="default"):
+    if(ref == "default"):
+        raise ThisIsMadness("A reference file path must be provided!")
+    if(outfile == "default"):
+        outfile = inbam[0:-3] + ".doc.txt"
+    outfileHandle = open(outfile, "w")
+    subprocess.check_call(
+        (shlex.split("bedtools genomecov -ibam {}".format(inbam) +
+                     " -dz -g {}").format(ref)), stdout=outfileHandle)
+    outfileHandle.close()
+    return outfile
+
+
+def BedtoolsBamToBed(inbam, outbed="default", ref="default"):
+    if(ref == "default"):
+        raise ThisIsMadness("A reference file path must be provided!")
+    if(outbed == "default"):
+        outbed = inbam[0:-4] + ".doc.bed"
+    outfile = BedtoolsGenomeCov(inbam, ref=ref)
+    OutbedAppendingList = []
+    lastPos = 0
+    outbedHandle = open(outbed, "w")
+    for line in [l.strip().split(
+                 '\t') for l in open(outfile, "r").readlines()]:
+        if(len(OutbedAppendingList) == 0):
+            OutbedAppendingList = [line[0], line[1], "unset"]
+            lastPos = int(line[1])
+        if(int(line[1]) - lastPos == 1):
+            lastPos += 1
+        else:
+            OutbedAppendingList[2] = int(line[1]) + 1
+            outbedHandle.write("\t".join(OutbedAppendingList) + "\n")
+            OutbedAppendingList = []
+    outbedHandle.close()
+    return outbed
+
+
+class PileupInterval:
+    '''
+    Container for holding summary information over a given interval.
+    Written for the pysam PileupColumn data structure.
+    Contig should be in the pysam format (IE, a number, not a string)
+    '''
+    def __init__(self, contig="default", start="default",
+                 end="default"):
+        self.contig = contig
+        self.start = int(start)
+        self.end = int(end)
+        self.TotalCoverage = 0
+        self.UniqueCoverage = 0
+        self.AvgTotalCoverage = 0
+        self.AvgUniqueCoverage = 0
+        self.str = self.toString()
+
+    def updateWithPileupColumn(self, PileupColumn):
+        self.end = PileupColumn.reference_pos + 1
+        self.TotalCoverage += sum([int(pu.alignment.opt(
+                                   "FM")) for pu in PileupColumn.pileups])
+        self.UniqueCoverage += PileupColumn.nsegments
+        self.AvgTotalCoverage = self.TotalCoverage / float(
+            self.end - self.start)
+        self.AvgUniqueCoverage = self.UniqueCoverage / float(
+            self.end - self.start)
+
+    def toString(self):
+        self.str = "\t".join([str(i) for i in [self.contig,
+                                               self.start,
+                                               self.end,
+                                               self.UniqueCoverage,
+                                               self.TotalCoverage,
+                                               self.AvgUniqueCoverage,
+                                               self.AvgTotalCoverage]])
+        return self.str
+
+
+def PysamBamToBed(inbam, outbed="default", mincov=5):
+    """
+    Takes a bam file and creates a bed file containing each position
+    """
+    import pysam
+    if(outbed == "default"):
+        outbed = inbam[0:-4] + ".doc.bed"
+    inHandle = pysam.AlignmentFile(inbam, "rb")
+    outHandle = open(outbed, "w")
+    PileupColumnIterator = inHandle.pileup()
+    workingChr = 0
+    workingPos = 0
+    outHandle.write("\t".join(["#Chr", "Start", "End",
+                               "Number Of Merged Mapped Reads",
+                               "Number of Unmerged Mapped Reads",
+                               "Avg Merged Coverage",
+                               "Avg Total Coverage"]) + "\n")
+    printlog("Beginning PileupToBed.")
+    for PC in PileupColumnIterator:
+        if("Interval" not in locals()):
+            if(PC.nsegments > mincov):
+                Interval = PileupInterval(contig=PC.reference_id,
+                                          start=PC.reference_pos,
+                                          end=PC.reference_pos + 1)
+                Interval.updateWithPileupColumn(PC)
+                workingChr = PC.reference_id
+                workingPos = PC.reference_pos
+            continue
+        else:
+            if(workingChr == PC.reference_id and PC.nsegments >= mincov):
+                if(PC.reference_pos - workingPos == 1):
+                    Interval.updateWithPileupColumn(PC)
+                    workingPos += 1
+                else:
+                    outHandle.write(Interval.toString() + "\n")
+                    if(PC.nsegments >= mincov):
+                        Interval = PileupInterval(contig=PC.reference_id,
+                                                  start=PC.reference_pos,
+                                                  end=PC.reference_pos + 1)
+                        workingChr = PC.reference_id
+                        workingPos = PC.reference_pos
+                        Interval.updateWithPileupColumn(PC)
+                    else:
+                        del Interval
+            else:
+                Interval.updateWithPileupColumn(PC)
+                outHandle.write(Interval.toString() + "\n")
+                if(PC.nsegments >= mincov):
+                    Interval = PileupInterval(contig=PC.reference_id,
+                                              start=PC.reference_pos,
+                                              end=PC.reference_pos + 1)
+                    workingChr = PC.reference_id
+                    workingPos = PC.reference_pos
+                    Interval.updateWithPileupColumn(PC)
+                else:
+                    del Interval
+    inHandle.close()
+    outHandle.close()
+    pass
 
 
 def CoorSortAndIndexBam(inbam, prefix="MetasyntacticVar",

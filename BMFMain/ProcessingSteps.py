@@ -5,6 +5,7 @@ from MawCluster import BCBam
 from MawCluster import BCFastq
 from BMFUtils import HTSUtils
 from MawCluster import BCVCF
+from MawCluster.BCBam import GetSVRelevantRecordsPaired as SVRP
 from BMFUtils.HTSUtils import printlog as pl
 
 
@@ -85,11 +86,11 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     # families have already been filtered for size.
     # familyP, familyF = BCBam.pairedFilterBam(
     #    families, criteria="family")
-    SVBam, MarkedFamilies = BCBam.GetSVRelevantRecordsPaired(families,
-                                             bedfile=bed,
-                                             tempBAMPrefix=families[0:-4],
-                                             summary=(families[0:-4] +
-                                                      '.SV.txt'))
+    SVBam, MarkedFamilies = SVRP(families,
+                                 bedfile=bed,
+                                 tempBAMPrefix=families[0:-4],
+                                 summary=(families[0:-4] +
+                                          '.SV.txt'))
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
