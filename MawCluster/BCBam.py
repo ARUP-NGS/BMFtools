@@ -431,10 +431,12 @@ SVParamDict['ORB'] = "default"
 SVParamDict['SBI'] = ["default", 1000000]
 
 
-def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
+def GetSVRelevantRecordsPaired(inbam, SVBam="default",
+                               bedfile="default",
                                supplementary="default",
                                maxInsert=1000000,
                                tempBAMPrefix="default",
+                               FullBam="default",
                                summary="default"):
     """
     Requires a name-sorted, paired-end bam file where pairs have been kept
@@ -453,9 +455,12 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
     ORB for One Read In Bed Region
     SBI for having ORB and one of either MDC or LI
     (Spanning Bed with Improper pair)
+    NF for None Found
     """
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + '.sv.bam'
+    if(SVBam == "default"):
+        SVBam = '.'.join(inbam.split('.')[0:-1]) + '.sv.bam'
+    if(FullBam == "default"):
+        FullBam = '.'.join(inbam.split('.')[0:-1]) + '.SVmarked.bam'
     from BMFUtils.HTSUtils import ParseBed
     bed = ParseBed(bedfile)
     global SVParamDict
@@ -469,7 +474,8 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
     inHandle = pysam.AlignmentFile(inbam, "rb")
-    outHandle = pysam.AlignmentFile(outbam, "wb", template=inHandle)
+    SVOutHandle = pysam.AlignmentFile(SVBam, "wb", template=inHandle)
+    FullOutHandle = pysam.AlignmentFile(FullBam, "wb", template=inHandle)
     FeatureList = sorted(SVTestDict.keys())
     pl("FeatureList: {}".format(FeatureList))
     print("FeatureList: {}".format(FeatureList))
@@ -499,6 +505,14 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                 try:
                     read1.setTag("SV", read1.opt("SV") + "," + key)
                     read2.setTag("SV", read2.opt("SV") + "," + key)
+                    if("NF" in read1.opt("SV").split(",")):
+                        read1.setTag("SV", ','.join([i
+                            for i in read1.opt(
+                                "SV").split(",") if i != "NF"]))
+                    if("NF" in read2.opt("SV").split(",")):
+                        read2.setTag("SV", ','.join([i
+                            for i in read2.opt(
+                                "SV").split(",") if i != "NF"]))
                 except KeyError:
                     read1.setTag("SV", key)
                     read2.setTag("SV", key)
@@ -507,14 +521,19 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                 if("BamHandleDict" in locals()):
                     BamHandleDict[key].write(read1)
                     BamHandleDict[key].write(read2)
+            FullOutHandle.write(read1)
+            FullOutHandle.write(read2)
         if(WritePair is True):
-            outHandle.write(read1)
-            outHandle.write(read2)
+            SVOutHandle.write(read1)
+            SVOutHandle.write(read2)
             SVCountDict["SVR"] += 1
         else:
             SVCountDict["NOSVR"] += 1
+            read1.setTag("SV", "NF")
+            read2.setTag("SV", "NF")
     inHandle.close()
-    outHandle.close()
+    SVOutHandle.close()
+    FullOutHandle.close()
     if("BamHandleDict" in locals()):
         for key in BamHandleDict.keys():
             BamHandleDict[key].close()
@@ -532,7 +551,7 @@ def GetSVRelevantRecordsPaired(inbam, outbam="default", bedfile="default",
                                       SVCountDict[key] / float(
                                           SVCountDict['TOTAL'])))
         writeSum.close()
-    return outbam
+    return SVBam, FullBam
 
 
 def mergeBams(BAM1, BAM2, PT="default", outbam="default"):

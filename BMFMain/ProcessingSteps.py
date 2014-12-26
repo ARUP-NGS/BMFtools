@@ -85,7 +85,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     # families have already been filtered for size.
     # familyP, familyF = BCBam.pairedFilterBam(
     #    families, criteria="family")
-    SVBam = BCBam.GetSVRelevantRecordsPaired(families,
+    SVBam, MarkedFamilies = BCBam.GetSVRelevantRecordsPaired(families,
                                              bedfile=bed,
                                              tempBAMPrefix=families[0:-4],
                                              summary=(families[0:-4] +
@@ -93,7 +93,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
-    coorSorted = BCBam.CoorSort(families)
+    coorSorted = BCBam.CoorSort(MarkedFamilies)
     if(consfqSingle != "default"):
         mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
         return mergedSinglePair

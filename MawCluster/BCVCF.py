@@ -251,13 +251,21 @@ class PRInfo:
     mapping quality, and base.
     '''
     def __init__(self, PileupRead):
-        self.FM = int(PileupRead.alignment.opt("FM"))
-        self.SVTags = PileupRead.alignment.opt("SV").split(",")
+        try:
+            self.FM = int(PileupRead.alignment.opt("FM"))
+        except KeyError:
+            self.FM = 1
+        try:
+            self.SVTags = PileupRead.alignment.opt("SV").split(",")
+        except KeyError:
+            self.SVTags = "NF"
+            # print("Warning: SV Tags unset.")
         self.BaseCall = PileupRead.alignment.query_sequence[
             PileupRead.query_position]
         self.BQ = PileupRead.alignment.query_qualities[
             PileupRead.query_position]
         self.MQ = PileupRead.alignment.mapq
+        self.is_reverse = PileupRead.alignment.is_reverse
 
 
 def is_reverse_to_str(boolean):
@@ -286,8 +294,10 @@ class AltAggregateInfo:
         self.acceptMQ0 = acceptMQ0
         try:
             assert(sum([rec.BaseCall == recList[
-                0] for rec in recList]) == len(recList))
+                0].BaseCall for rec in recList]) == len(recList))
         except AssertionError:
+            # print("recList repr: {}".format(repr(recList)))
+            print("Alt alleles: {}".format([i.BaseCall for i in recList]))
             raise ThisIsMadness(
                 "AltAggregateInfo requires that all alt alleles agree.")
         self.TotalReads = np.sum([rec.FM for rec in recList])
@@ -303,8 +313,7 @@ class AltAggregateInfo:
             self.SumMQScore = sum([rec.MQ for rec in recList])
         self.AveMQ = float(self.SumMQScore) / len(self.recList)
         self.AveBQ = float(self.SumBQScore) / len(self.recList)
-        self.ALT = recList[0].alignment.query_sequence[
-            recList[0].query_position]
+        self.ALT = recList[0].BaseCall
         self.transition = "->".join([consensus, self.ALT])
 
         self.strandedTransitions = {}
@@ -314,6 +323,9 @@ class AltAggregateInfo:
         self.strandedTotalTransitionDict = collections.Counter(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList]*rec.FM)
+        self.strandedMergedTransitionDict = collections.Counter(
+            ["&&".join([self.transition, is_reverse_to_str(
+                rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
         self.StrandCountsDict['reverse'] = sum([
             rec.is_reverse for rec in self.recList])
@@ -333,20 +345,25 @@ class PCInfo:
     consensus) and a list of PRData (one for each read).
     '''
     def __init__(self, PileupColumn, acceptMQ0=False):
+        from collections import Counter
         PysamToChrDict = BMFUtils.HTSUtils.GetRefIdDicts()['idtochr']
         self.contig = PysamToChrDict[PileupColumn.reference_id]
         self.pos = PileupColumn.reference_pos
-        self.Records = [PRInfo(pileupRead) for pileupRead in PileupColumn]
-        from collections import Counter
+        self.Records = [PRInfo(
+            pileupRead) for pileupRead in PileupColumn.pileups]
+        self.consensus = Counter(
+            [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
         self.VariantDict = {}
         for alt in list(set([rec.BaseCall for rec in self.Records])):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
-        self.consensus = Counter(
-            [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
+        # for key in self.VariantDict.keys():
+        #     print("Key: {}. Value: {}.".format(key, self.VariantDict[key]))
         self.AltAlleleData = [AltAggregateInfo(
-            self.VariantDict[
-                key], acceptMQ0=acceptMQ0) for key in self.VariantDict.keys()]
+                              self.VariantDict[key],
+                              acceptMQ0=acceptMQ0,
+                              consensus=self.consensus
+                              ) for key in self.VariantDict.keys()]
         self.TotalReads = sum([alt.TotalReads for alt in self.AltAlleleData])
         self.TotalFracDict = {}
         for alt in self.AltAlleleData:
@@ -399,7 +416,7 @@ class PCInfo:
                       "Family Size\t"
                       "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
-            outStr += '\t'.join([str(i) for i in [(self.contig, self.pos,
+            outStr += '\t'.join([str(i) for i in [self.contig, self.pos,
                                  self.consensus,
                                  alt.ALT,
                                  alt.TotalReads,
@@ -414,7 +431,7 @@ class PCInfo:
                                  alt.SumBQScore,
                                  alt.AveBQ,
                                  alt.SumMQScore,
-                                 alt.AveMQ)]]) + "\n"
+                                 alt.AveMQ]]) + "\n"
         self.str = outStr
         return self.str
 
