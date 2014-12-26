@@ -95,6 +95,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     coorSorted = BCBam.CoorSort(MarkedFamilies)
+    CoverageBed = HTSUtils.BamToCoverageBed(coorSorted, mincov=1)
+    pl("Coverage bed: {}".format(CoverageBed))
     if(consfqSingle != "default"):
         mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
         return mergedSinglePair

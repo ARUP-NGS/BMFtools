@@ -416,7 +416,7 @@ class PileupInterval:
             self.end - self.start)
 
     def toString(self):
-        self.str = "\t".join([str(i) for i in [self.contig,
+        self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
                                                self.start,
                                                self.end,
                                                self.UniqueCoverage,
@@ -426,7 +426,7 @@ class PileupInterval:
         return self.str
 
 
-def PysamBamToBed(inbam, outbed="default", mincov=5):
+def BamToCoverageBed(inbam, outbed="default", mincov=5):
     """
     Takes a bam file and creates a bed file containing each position
     """

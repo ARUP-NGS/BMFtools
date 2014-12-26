@@ -684,26 +684,29 @@ def CustomPileupToTsv(inputBAM,
                        "\tMerged Reads With Transition\tFraction Of Total "
                        "Transitions\tFraction Of Merged Transitions\n"))
     for key in TransTotalDict.keys():
-        TransHandle.write("{}\t{}\t{}\n".format(key,
-                                                TransTotalDict[key],
-                                                TransMergedDict[key],
-                                                TransTotalDict[key]/float(
-                                                    NumTransitionsTotal),
-                                                TransMergedDict[key]/float(
-                                                    NumTransitionsMerged)))
+        if(key[0] != key[3]):
+            TransHandle.write("{}\t{}\t{}\n".format(key,
+                              TransTotalDict[key],
+                              TransMergedDict[key],
+                              TransTotalDict[key]/float(
+                                  NumTransitionsTotal),
+                              TransMergedDict[key]/float(
+                                  NumTransitionsMerged)))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
                                "\tFraction of Merged Transitions\n"))
     for key in StrandedTransTotalDict.keys():
-        StrandedTransHandle.write("{}\t{}\t{}\n".format(key,
-                                  StrandedTransTotalDict[key],
-                                  StrandedTransMergedDict[key],
-                                  StrandedTransTotalDict[key] / float(
-                                      NumTransitionsTotal),
-                                  StrandedTransMergedDict[key] / float(
-                                      NumTransitionsMerged),
-                                  ))
+        if(key.split("&&")[0].split("->")[0] != key.split(
+                "&&")[0].split("->")[1]):
+            StrandedTransHandle.write("{}\t{}\t{}\n".format(key,
+                                      StrandedTransTotalDict[key],
+                                      StrandedTransMergedDict[key],
+                                      StrandedTransTotalDict[key] / float(
+                                          NumTransitionsTotal),
+                                      StrandedTransMergedDict[key] / float(
+                                          NumTransitionsMerged),
+                                      ))
     pl("Transition Table: {}".format(TransitionTable))
     pl("Stranded Transition Table: {}".format(StrandedTTable))
     TransHandle.close()
