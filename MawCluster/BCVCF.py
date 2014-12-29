@@ -322,6 +322,7 @@ class AltAggregateInfo:
         self.AveMQ = float(self.SumMQScore) / len(self.recList)
         self.AveBQ = float(self.SumBQScore) / len(self.recList)
         self.ALT = recList[0].BaseCall
+        self.consensus = consensus
         self.transition = "->".join([consensus, self.ALT])
 
         self.strandedTransitions = {}
@@ -362,7 +363,10 @@ class PCInfo:
         self.Records = [PRInfo(
             pileupRead) for pileupRead in PileupColumn.pileups]
         self.MergedReads = len(self.Records)
-        self.TotalReads = sum([rec.FM for rec in self.Records])
+        try:
+            self.TotalReads = sum([rec.FM for rec in self.Records])
+        except KeyError:
+            self.TotalReads = self.MergedReads
         self.consensus = Counter(
             [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
         self.VariantDict = {}
@@ -418,7 +422,20 @@ class PCInfo:
                     except KeyError:
                         self.StrandedTransMergedCounts[
                             trans] = alt.strandedMergedTransitionDict[trans]
-
+        self.MergedAlleleDict = {"A" : 0, "C" : 0, "G": 0, "T": 0}
+        self.TotalAlleleDict = {"A" : 0, "C" : 0, "G": 0, "T": 0}
+        for alt in self.AltAlleleData:
+            self.MergedAlleleDict[alt.consensus] = alt.MergedReads
+            self.TotalAlleleDict[alt.consensus] = alt.TotalReads
+        self.MergedAlleleFreqDict = {"A" : 0., "C" : 0., "G": 0., "T": 0.}
+        self.TotalAlleleFreqDict = {"A" : 0., "C" : 0., "G": 0., "T": 0.}
+        for key in self.MergedAlleleDict:
+            self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
+                key] / float(self.MergedReads)
+            self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
+                key] / float(self.TotalReads)
+        
+                
     def toString(self, header=False):
         outStr = ""
         if(header is True):
@@ -457,7 +474,6 @@ def CustomPileupFullGenome(inputBAM,
                            PileupTsv="default",
                            TransitionTable="default",
                            StrandedTTable="default",
-                           bedfile="default",
                            progRepInterval=1000):
     '''
     A pileup tool for creating a tsv for each position in the bed file.
@@ -497,9 +513,9 @@ def CustomPileupFullGenome(inputBAM,
     FirstLine = True
     for pileupColumn in bamHandle.pileup():
         NumProcessed += 1
-        if((NumProcessed + 1) % progRepInterval == 0):
+        if((NumProcessed) % progRepInterval == 0):
             pl("Number of positions processed: {}".format(
-                NumProcessed + 1))
+                NumProcessed))
             pl("Total reads processed: {}".format(TotalReadsProcessed))
             pl("Merged reads processed: {}".format(MergedReadsProcessed))
         PColSum = PCInfo(pileupColumn)
@@ -630,7 +646,7 @@ def CustomPileupToTsv(inputBAM,
     for line in bedlines:
         for pileupColumn in bamHandle.pileup(line[0], line[1], line[2]):
             NumProcessed += 1
-            if((NumProcessed + 1) % progRepInterval == 0):
+            if((NumProcessed) % progRepInterval == 0):
                 pl("Number of positions processed: {}".format(
                     NumProcessed + 1))
                 pl("{:.1%} complete".format(NumProcessed / float(NumPos)))
@@ -713,6 +729,31 @@ def CustomPileupToTsv(inputBAM,
     PileupHandle.close()
     return PileupTsv
 
+
+def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
+                            progRepInterval=1000):
+    if(outputTsv == "default"):
+        outputTsv = inputBAM[0:-4] + '.allele.freq.tsv'
+    if(os.path.isfile(inputBAM + ".bai") is False):
+        pl("No bam index found for input bam - creating!")
+        try:
+            subprocess.check_call(['samtools', 'index', inputBAM])
+        except subprocess.CalledProcessError:
+            pl("Couldn't index BAM - coor sorting, then indexing!")
+            inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
+    NumProcessed = 0  # Number of processed positions in pileup
+    inHandle = pysam.AlignmentFile(inputBAM, "rb")
+    outHandle = open(outputTsv, "w")
+    for pileup in inHandle.pileup():
+        NumProcessed += 1
+        if(NumProcessed % progRepInterval == 0):
+            pl("Number of base positions processed: {}".format(NumProcessed))
+        PColInfo = PCInfo(pileup)
+    #TODO: Have it write contig, position, ref, and then counts for A, C, G, T
+    # and then frequencies for A C G and T at each position, both by total
+    # and merged counts.
+    raise HTSUtils.ThisIsMadness("This script has not yet been completed.")
+    return outputTsv
 
 def MPileup(inputBAM, ref,
             bed="default",

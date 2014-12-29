@@ -194,7 +194,7 @@ def FacePalm(string):
     Str = ("............................................________ "
            "\n....................................,.-'\"...................``~. "
            "\n.............................,.-\"...................................\"-., "
-           "\n.........................,/...............................................\":, " 
+           "\n.........................,/...............................................\":, "
            "\n.....................,?......................................................, "
            "\n.................../...........................................................,} "
            "\n................./......................................................,:`^`..} "
@@ -407,8 +407,11 @@ class PileupInterval:
 
     def updateWithPileupColumn(self, PileupColumn):
         self.end = PileupColumn.reference_pos + 1
-        self.TotalCoverage += sum([int(pu.alignment.opt(
-                                   "FM")) for pu in PileupColumn.pileups])
+        try:
+            self.TotalCoverage += sum([int(pu.alignment.opt(
+                                      "FM")) for pu in PileupColumn.pileups])
+        except KeyError:
+            self.TotalCoverage = PileupColumn.nsegments
         self.UniqueCoverage += PileupColumn.nsegments
         self.AvgTotalCoverage = self.TotalCoverage / float(
             self.end - self.start)
@@ -433,14 +436,21 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
     import pysam
     import os.path
     printlog(("Command required to reproduce this call: "
-        "BamToCoverageBed(\'{}\', outbed=".format(inbam) +
-        "\'{}\', mincov={})".format(outbed, mincov)))
+              "BamToCoverageBed(\'{}\', outbed=".format(inbam) +
+              "\'{}\', mincov={})".format(outbed, mincov)))
+    printlog(("WARNING: Coverage counts for this script"
+             " are wrong. Fix in the works!"))
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.bed"
     if(os.path.isfile(inbam+".bai") is False):
         printlog(("Bam index not present for {}.".format(inbam) +
                  "\nCreating!"))
-        subprocess.check_call(shlex.split("samtools index {}"), shell=False)
+        subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+                              shell=False)
+        if(os.path.isfile(inbam+".bai") is False):
+            printlog("Bam index file was not created. Sorting and indexing.")
+            inbam = CoorSortAndIndexBam(inbam)
+            printlog("Sorted BAM Location: {}".format(inbam))
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = open(outbed, "w")
     PileupColumnIterator = inHandle.pileup()
@@ -613,4 +623,3 @@ def parseConfigJSON(path):
     json_str = json_file.read()
     json_data = json.loads(json_str)
     return json_data
-
