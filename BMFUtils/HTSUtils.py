@@ -431,8 +431,16 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
     Takes a bam file and creates a bed file containing each position
     """
     import pysam
+    import os.path
+    printlog(("Command required to reproduce this call: "
+        "BamToCoverageBed(\'{}\', outbed=".format(inbam) +
+        "\'{}\', mincov={})".format(outbed, mincov)))
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.bed"
+    if(os.path.isfile(inbam+".bai") is False):
+        printlog(("Bam index not present for {}.".format(inbam) +
+                 "\nCreating!"))
+        subprocess.check_call(shlex.split("samtools index {}"), shell=False)
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = open(outbed, "w")
     PileupColumnIterator = inHandle.pileup()
