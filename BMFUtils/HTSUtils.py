@@ -446,18 +446,16 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
               " It seems to only show up for very long regions."))
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.bed"
+    printlog(("Bam index not present for {}.".format(inbam) +
+             "\nCreating!"))
+    subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+                          shell=False)
     if(os.path.isfile(inbam+".bai") is False):
-        printlog(("Bam index not present for {}.".format(inbam) +
-                 "\nCreating!"))
-        subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
-                              shell=False)
-        if(os.path.isfile(inbam+".bai") is False):
-            printlog("Bam index file was not created. Sorting and indexing.")
-            inbam = CoorSortAndIndexBam(inbam)
-            printlog("Sorted BAM Location: {}".format(inbam))
+        printlog("Bam index file was not created. Sorting and indexing.")
+        inbam = CoorSortAndIndexBam(inbam)
+        printlog("Sorted BAM Location: {}".format(inbam))
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = open(outbed, "w")
-    PileupColumnIterator = inHandle.pileup()
     workingChr = 0
     workingPos = 0
     outHandle.write("\t".join(["#Chr", "Start", "End",
@@ -466,35 +464,22 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     printlog("Beginning PileupToBed.")
-    try:
-        for VPC in PileupColumnIterator:
-            if("Interval" not in locals()):
-                if(PC.nsegments > mincov):
-                    Interval = PileupInterval(contig=PC.reference_id,
-                                              start=PC.reference_pos,
-                                              end=PC.reference_pos + 1)
+    for PC in inHandle.pileup():
+        if("Interval" not in locals()):
+            if(PC.nsegments > mincov):
+                Interval = PileupInterval(contig=PC.reference_id,
+                                          start=PC.reference_pos,
+                                          end=PC.reference_pos + 1)
+                Interval.updateWithPileupColumn(PC)
+                workingChr = PC.reference_id
+                workingPos = PC.reference_pos
+            continue
+        else:
+            if(workingChr == PC.reference_id and PC.nsegments >= mincov):
+                if(PC.reference_pos - workingPos == 1):
                     Interval.updateWithPileupColumn(PC)
-                    workingChr = PC.reference_id
-                    workingPos = PC.reference_pos
-                continue
-            else:
-                if(workingChr == PC.reference_id and PC.nsegments >= mincov):
-                    if(PC.reference_pos - workingPos == 1):
-                        Interval.updateWithPileupColumn(PC)
-                        workingPos += 1
-                    else:
-                        outHandle.write(Interval.toString() + "\n")
-                        if(PC.nsegments >= mincov):
-                            Interval = PileupInterval(contig=PC.reference_id,
-                                                      start=PC.reference_pos,
-                                                      end=PC.reference_pos + 1)
-                            workingChr = PC.reference_id
-                            workingPos = PC.reference_pos
-                            Interval.updateWithPileupColumn(PC)
-                        else:
-                            del Interval
+                    workingPos += 1
                 else:
-                    Interval.updateWithPileupColumn(PC)
                     outHandle.write(Interval.toString() + "\n")
                     if(PC.nsegments >= mincov):
                         Interval = PileupInterval(contig=PC.reference_id,
@@ -505,11 +490,18 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
                         Interval.updateWithPileupColumn(PC)
                     else:
                         del Interval
-    except ValueError:
-            pl(("ValueError thrown - pysam's pileup() doesn't handle "
-                "finishing its iterations with any elegance. Continuing!\n"
-                " This can be expected to be thrown each run until pysam"
-                "is improved."))
+            else:
+                Interval.updateWithPileupColumn(PC)
+                outHandle.write(Interval.toString() + "\n")
+                if(PC.nsegments >= mincov):
+                    Interval = PileupInterval(contig=PC.reference_id,
+                                              start=PC.reference_pos,
+                                              end=PC.reference_pos + 1)
+                    workingChr = PC.reference_id
+                    workingPos = PC.reference_pos
+                    Interval.updateWithPileupColumn(PC)
+                else:
+                    del Interval
     inHandle.close()
     outHandle.close()
     pass
