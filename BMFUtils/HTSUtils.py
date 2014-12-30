@@ -442,7 +442,8 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
               "BamToCoverageBed(\'{}\', outbed=".format(inbam) +
               "\'{}\', mincov={})".format(outbed, mincov)))
     printlog(("WARNING: Coverage counts for this script"
-             " are wrong. Fix in the works!"))
+              " are wrong. Fix in the works!"
+              " It seems to only show up for very long regions."))
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.bed"
     if(os.path.isfile(inbam+".bai") is False):
