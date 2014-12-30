@@ -350,7 +350,6 @@ def getProperPairs(infq1, infq2, shared="default", outfq1="default",
                    outfq2="default", outfqSingle="default"):
     """Assuming that the information here is sorted by barcode..."""
     pl("Now beginning getProperPairs.")
-    from Bio import SeqIO
     if(shared == "default"):
         raise ValueError(
             "An index for the barcodes shared must be present.")
@@ -706,7 +705,6 @@ def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
         outfq1 = fq1.split('.')[0] + '.cons.R1fastq'
     if(outfq2 == "default"):
         outfq2 = fq2.split('.')[0] + '.cons.R2fastq'
-    from Bio import SeqIO
     infq1 = SeqIO.parse(fq1, "fastq")
     infq2 = SeqIO.parse(fq2, "fastq")
     outfqhandle1 = open(outfq1, "w")
@@ -767,7 +765,6 @@ def ShadesRescuePaired(singlefq1,
     for entry in dictEntries:
         if(int(entry[0]) >= minFamSize):
             BarDict[entry[1]] = entry[0]
-    a = BarDict.keys()
     readFq1 = SeqIO.parse(singlefq1, "fastq")
     readFq2 = SeqIO.parse(singlefq2, "fastq")
     readToRescue1 = open(toBeRescuedFq1, "w")

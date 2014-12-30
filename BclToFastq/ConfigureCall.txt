@@ -1,8 +1,12 @@
 #Command for the shades protocol fastq generation:
 
-# For index size 8 and an i5 index. (Call from the directory containing the Data folder)
+# For index size 8 and an i7 index. (Call from the directory containing the Data folder)
 /illumina/software/CASAVA-1.8.0/bin/configureBclToFastq.pl --input-dir Data/Intensities/BaseCalls/ --output-dir 14_0018432_cfDNA --sample-sheet NewSampleSheetMod.csv --fastq-cluster-count 1000000000 --ignore-missing-stats --ignore-missing-bcl --use-bases-mask Y148,N16,I8,Y* --force
 # For generating a fastq which has the indices
 /illumina/software/CASAVA-1.8.0/bin/configureBclToFastq.pl --input-dir Data/Intensities/BaseCalls/ --output-dir 14_0018432_cfDNA_index --sample-sheet NewSampleSheetMod.csv --fastq-cluster-count 1000000000 --ignore-missing-stats --ignore-missing-bcl --use-bases-mask Y148,Y16,I8,N* --force
 
-#For an i7 index, switch the middle two numbers. BAM
+#For an i5 index, switch the middle two numbers. BAM
+# For index size 8 and an i7 index. (Call from the directory containing the Data folder)
+/illumina/software/CASAVA-1.8.0/bin/configureBclToFastq.pl --input-dir Data/Intensities/BaseCalls/ --output-dir 14_0018432_cfDNA --sample-sheet NewSampleSheetMod.csv --fastq-cluster-count 1000000000 --ignore-missing-stats --ignore-missing-bcl --use-bases-mask Y148,Y16,I8,Y* --force
+# For generating a fastq which has the indices
+/illumina/software/CASAVA-1.8.0/bin/configureBclToFastq.pl --input-dir Data/Intensities/BaseCalls/ --output-dir 14_0018432_cfDNA_index --sample-sheet NewSampleSheetMod.csv --fastq-cluster-count 1000000000 --ignore-missing-stats --ignore-missing-bcl --use-bases-mask Y148,Y16,I8,N* --force
