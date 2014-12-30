@@ -1,6 +1,7 @@
 import subprocess
 import decimal
 import numpy as np
+import os.path
 
 import pysam
 
@@ -422,20 +423,49 @@ class PCInfo:
                     except KeyError:
                         self.StrandedTransMergedCounts[
                             trans] = alt.strandedMergedTransitionDict[trans]
-        self.MergedAlleleDict = {"A" : 0, "C" : 0, "G": 0, "T": 0}
-        self.TotalAlleleDict = {"A" : 0, "C" : 0, "G": 0, "T": 0}
+        self.MergedAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
+        self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
-            self.MergedAlleleDict[alt.consensus] = alt.MergedReads
-            self.TotalAlleleDict[alt.consensus] = alt.TotalReads
-        self.MergedAlleleFreqDict = {"A" : 0., "C" : 0., "G": 0., "T": 0.}
-        self.TotalAlleleFreqDict = {"A" : 0., "C" : 0., "G": 0., "T": 0.}
+            self.MergedAlleleDict[alt.ALT] = alt.MergedReads
+            self.TotalAlleleDict[alt.ALT] = alt.TotalReads
+        self.MergedAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
+        self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for key in self.MergedAlleleDict:
             self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
                 key] / float(self.MergedReads)
             self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
                 key] / float(self.TotalReads)
-        
-                
+        self.MergedAlleleCountStr = "\t".join([
+            str(i) for i in [self.MergedAlleleDict['A'],
+                             self.MergedAlleleDict['C'],
+                             self.MergedAlleleDict['G'],
+                             self.MergedAlleleDict['T']]])
+        self.TotalAlleleCountStr = "\t".join([
+            str(i) for i in [self.TotalAlleleDict['A'],
+                             self.TotalAlleleDict['C'],
+                             self.TotalAlleleDict['G'],
+                             self.TotalAlleleDict['T']]])
+        self.MergedAlleleFreqStr = "\t".join([
+            str(i) for i in [self.MergedAlleleFreqDict['A'],
+                             self.MergedAlleleFreqDict['C'],
+                             self.MergedAlleleFreqDict['G'],
+                             self.MergedAlleleFreqDict['T']]])
+        self.TotalAlleleFreqStr = "\t".join([
+            str(i) for i in [self.TotalAlleleFreqDict['A'],
+                             self.TotalAlleleFreqDict['C'],
+                             self.TotalAlleleFreqDict['G'],
+                             self.TotalAlleleFreqDict['T']]])
+        self.AlleleFreqStr = "\t".join(
+            [str(i) for i in [self.contig,
+                              self.pos,
+                              self.consensus,
+                              self.MergedReads,
+                              self.TotalReads,
+                              self.MergedAlleleCountStr,
+                              self.TotalAlleleCountStr,
+                              self.MergedAlleleFreqStr,
+                              self.TotalAlleleFreqStr]])
+
     def toString(self, header=False):
         outStr = ""
         if(header is True):
@@ -598,7 +628,8 @@ def CustomPileupToTsv(inputBAM,
                       TransitionTable="default",
                       StrandedTTable="default",
                       bedfile="default",
-                      progRepInterval=1000):
+                      progRepInterval=1000,
+                      CalcAlleleFreq=True):
     '''
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
@@ -625,7 +656,7 @@ def CustomPileupToTsv(inputBAM,
     if(bedfile == "default"):
         return CustomPileupFullGenome(inputBAM, PileupTsv=PileupTsv,
                                       TransitionTable=TransitionTable,
-                                      StrandedTTable="default",
+                                      StrandedTTable=StrandedTTable,
                                       progRepInterval=progRepInterval)
     bedlines = HTSUtils.ParseBed(bedfile)
     if(os.path.isfile(inputBAM + ".bai") is False):
@@ -727,11 +758,23 @@ def CustomPileupToTsv(inputBAM,
     pl("Stranded Transition Table: {}".format(StrandedTTable))
     TransHandle.close()
     PileupHandle.close()
+    if(CalcAlleleFreq is True):
+        AlleleFreqTsv = AlleleFrequenciesByBase(inputBAM)
+        pl("Optional allele frequency table generated. Path: {}".format(
+            AlleleFreqTsv))
     return PileupTsv
 
 
 def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
                             progRepInterval=1000):
+    '''
+    Creates a tsv file with counts and frequencies for each allele at
+    each position. I should expand this to include strandedness information.
+    '''
+    pl(("Command required to reproduce results: "
+        "AlleleFrequenciesByBase(inputBAM={},".format(inputBAM) +
+        " outputTsv={}, progRepInterval=".format(outputTsv) +
+        "{})".format(progRepInterval)))
     if(outputTsv == "default"):
         outputTsv = inputBAM[0:-4] + '.allele.freq.tsv'
     if(os.path.isfile(inputBAM + ".bai") is False):
@@ -744,16 +787,38 @@ def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
     NumProcessed = 0  # Number of processed positions in pileup
     inHandle = pysam.AlignmentFile(inputBAM, "rb")
     outHandle = open(outputTsv, "w")
+    outHandle.write("\t".join(["#Contig",
+                               "Position (0-based)",
+                               "Consensus Base",
+                               "Merged DOC",
+                               "Total DOC",
+                               "Merged Count: A",
+                               "Merged Count: C",
+                               "Merged Count: G",
+                               "Merged Count: T",
+                               "Total Count: A",
+                               "Total Count: C",
+                               "Total Count: G",
+                               "Total Count: T",
+                               "Merged Freq: A",
+                               "Merged Freq: C",
+                               "Merged Freq: G",
+                               "Merged Freq: T",
+                               "Total Freq: A",
+                               "Total Freq: C",
+                               "Total Freq: G",
+                               "Total Freq: T",
+                               ]))
     for pileup in inHandle.pileup():
         NumProcessed += 1
         if(NumProcessed % progRepInterval == 0):
             pl("Number of base positions processed: {}".format(NumProcessed))
         PColInfo = PCInfo(pileup)
-    #TODO: Have it write contig, position, ref, and then counts for A, C, G, T
-    # and then frequencies for A C G and T at each position, both by total
-    # and merged counts.
-    raise HTSUtils.ThisIsMadness("This script has not yet been completed.")
+        outHandle.write(PColInfo.AlleleFreqStr + "\n")
+    inHandle.close()
+    outHandle.close()
     return outputTsv
+
 
 def MPileup(inputBAM, ref,
             bed="default",

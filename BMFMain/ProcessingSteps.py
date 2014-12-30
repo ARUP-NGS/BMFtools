@@ -191,13 +191,13 @@ def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
     # Consolidating families into single reads
     # Variant Calling Step using MPileup
     # print("Now filtering for reads with NM > 0 only if you want to.")
-    pl("Now sorting reads by coordinate to prepare for MPileup.")
-    pl("Now creating a VCF using mpileup for variant calling.")
     PileupTSV = BCVCF.CustomPileupToTsv(consMergeSortBAM, bedfile=bed)
     pl("PileupTSV: {}".format(PileupTSV))
-
+    AlleleFreqTSV = BCVCF.AlleleFrequenciesByBase(consMergeSortBAM)
     # This is probably useless given that I'm doing this "manually",
     # but I'm keeping this in here for good measure.
+    pl("Now sorting reads by coordinate to prepare for MPileup.")
+    pl("Now creating a VCF using mpileup for variant calling.")
     MPileupVCF = BCVCF.MPileup(consMergeSortBAM, ref, bed=bed)
     pl("Initial mpileup: {}. Filtering.".format(MPileupVCF))
     ParsedVCF = BCVCF.ParseVCF(MPileupVCF)

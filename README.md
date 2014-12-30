@@ -3,6 +3,23 @@ BMF ( Barcode Manipulation and Factorization)
 
 Suite of tools for barcoded reads taking advantage of PCR redundancy for error reduction/elimination.
 
+## Installation
+
+Run:
+```
+python setup.py install
+```
+You might have an error claiming that README.md is not in dist/. If necessary, copy that file from the distribution base to dist.
+
+## Use
+
+To run the main program, call the main.py function after installation.
+
+```
+python main.py -i R1.fastq R2.fastq BC.fastq -r ${PathToGenomeIndex} --shades True --bed ${PathToBedFile}
+```
+
+
 ## BMF Tags
 
 These tags are used both in the fastq and the SAM/BAM files.
