@@ -895,7 +895,7 @@ def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
                                "Total Reverse fraction: C",
                                "Total Reverse fraction: G",
                                "Total Reverse fraction: T",
-                               ]))
+                               ]) + "\n")
     try:
         for pileup in inHandle.pileup():
             NumProcessed += 1

@@ -23,7 +23,7 @@ def main():
         "--p",
         "--progRepInterval",
         help="Number of positions between progress reports.",
-        default=1000
+        default=10000
         )
     args = parser.parse_args()
     Output = AlleleFrequenciesByBase(

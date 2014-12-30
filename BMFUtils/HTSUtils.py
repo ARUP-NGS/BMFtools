@@ -466,22 +466,35 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     printlog("Beginning PileupToBed.")
-    for PC in PileupColumnIterator:
-        if("Interval" not in locals()):
-            if(PC.nsegments > mincov):
-                Interval = PileupInterval(contig=PC.reference_id,
-                                          start=PC.reference_pos,
-                                          end=PC.reference_pos + 1)
-                Interval.updateWithPileupColumn(PC)
-                workingChr = PC.reference_id
-                workingPos = PC.reference_pos
-            continue
-        else:
-            if(workingChr == PC.reference_id and PC.nsegments >= mincov):
-                if(PC.reference_pos - workingPos == 1):
+    try:
+        for VPC in PileupColumnIterator:
+            if("Interval" not in locals()):
+                if(PC.nsegments > mincov):
+                    Interval = PileupInterval(contig=PC.reference_id,
+                                              start=PC.reference_pos,
+                                              end=PC.reference_pos + 1)
                     Interval.updateWithPileupColumn(PC)
-                    workingPos += 1
+                    workingChr = PC.reference_id
+                    workingPos = PC.reference_pos
+                continue
+            else:
+                if(workingChr == PC.reference_id and PC.nsegments >= mincov):
+                    if(PC.reference_pos - workingPos == 1):
+                        Interval.updateWithPileupColumn(PC)
+                        workingPos += 1
+                    else:
+                        outHandle.write(Interval.toString() + "\n")
+                        if(PC.nsegments >= mincov):
+                            Interval = PileupInterval(contig=PC.reference_id,
+                                                      start=PC.reference_pos,
+                                                      end=PC.reference_pos + 1)
+                            workingChr = PC.reference_id
+                            workingPos = PC.reference_pos
+                            Interval.updateWithPileupColumn(PC)
+                        else:
+                            del Interval
                 else:
+                    Interval.updateWithPileupColumn(PC)
                     outHandle.write(Interval.toString() + "\n")
                     if(PC.nsegments >= mincov):
                         Interval = PileupInterval(contig=PC.reference_id,
@@ -492,18 +505,11 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
                         Interval.updateWithPileupColumn(PC)
                     else:
                         del Interval
-            else:
-                Interval.updateWithPileupColumn(PC)
-                outHandle.write(Interval.toString() + "\n")
-                if(PC.nsegments >= mincov):
-                    Interval = PileupInterval(contig=PC.reference_id,
-                                              start=PC.reference_pos,
-                                              end=PC.reference_pos + 1)
-                    workingChr = PC.reference_id
-                    workingPos = PC.reference_pos
-                    Interval.updateWithPileupColumn(PC)
-                else:
-                    del Interval
+    except ValueError:
+            pl(("ValueError thrown - pysam's pileup() doesn't handle "
+                "finishing its iterations with any elegance. Continuing!\n"
+                " This can be expected to be thrown each run until pysam"
+                "is improved."))
     inHandle.close()
     outHandle.close()
     pass
