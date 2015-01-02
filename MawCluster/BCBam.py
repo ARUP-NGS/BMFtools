@@ -73,9 +73,10 @@ def AbraCadabra(inbam,
         bed = newbed
     import os.path
     if(os.path.isfile(inbam + ".bai") is False):
-        pl("No bam index found for input bam - creating!")
-        inbam = HTSUtils.CoorSortAndIndexBam(inbam, outbam, uuid=True)
+        pl("No bam index found for input bam - attempting to create.")
         subprocess.check_call(['samtools', 'index', inbam])
+        if(os.path.isfile(inbam + ".bai") is False):
+            inbam = HTSUtils.CoorSortAndIndexBam(inbam, outbam, uuid=True)
     command = ("java {} -jar {} --in {}".format(memStr, jar, inbam) +
                " --out {} --ref {} --targets".format(outbam, ref) +
                " {} --threads {} ".format(bed, threads) +

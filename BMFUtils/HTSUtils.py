@@ -1,12 +1,15 @@
 import logging
 import shlex
 import subprocess
+from build.lib.MawCluster import BCVCF
 
 
 class Configurations:
+
     """
     Holds the config json dict
     """
+
     def __init__(self, configJSON):
         self.config = parseConfigJSON(configJSON)
 
@@ -41,6 +44,8 @@ class IllegalArgumentError(ValueError):
 
 class ThisIsMadness(Exception):
     pass
+
+# TODO: Write something to create these dictionaries from a SAM header
 
 
 def GetRefIdDicts():
@@ -392,16 +397,19 @@ def BedtoolsBamToBed(inbam, outbed="default", ref="default"):
 
 
 class PileupInterval:
+
     '''
     Container for holding summary information over a given interval.
     Written for the pysam PileupColumn data structure.
     Contig should be in the pysam format (IE, a number, not a string)
     '''
+
     def __init__(self, contig="default", start="default",
                  end="default"):
         self.contig = contig
         self.start = int(start)
         self.end = int(end)
+        assert self.start < self.end  # Interval must be positive...
         self.TotalCoverage = 0
         self.UniqueCoverage = 0
         self.AvgTotalCoverage = 0
@@ -409,7 +417,8 @@ class PileupInterval:
         self.str = self.toString()
 
     def updateWithPileupColumn(self, PileupColumn):
-        self.end = PileupColumn.reference_pos + 1
+        self.end += 1
+        assert self.start < self.end  # Interval must be positive...
         try:
             self.TotalCoverage += sum([int(pu.alignment.opt(
                                       "FM")) for pu in PileupColumn.pileups])
@@ -432,7 +441,7 @@ class PileupInterval:
         return self.str
 
 
-def BamToCoverageBed(inbam, outbed="default", mincov=5):
+def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
     """
     Takes a bam file and creates a bed file containing each position
     """
@@ -446,11 +455,9 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
               " It seems to only show up for very long regions."))
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.bed"
-    printlog(("Bam index not present for {}.".format(inbam) +
-             "\nCreating!"))
     subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
                           shell=False)
-    if(os.path.isfile(inbam+".bai") is False):
+    if(os.path.isfile(inbam + ".bai") is False):
         printlog("Bam index file was not created. Sorting and indexing.")
         inbam = CoorSortAndIndexBam(inbam)
         printlog("Sorted BAM Location: {}".format(inbam))
@@ -464,44 +471,179 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5):
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     printlog("Beginning PileupToBed.")
-    for PC in inHandle.pileup():
+    for PC in [BCVCF.PCInfo(
+            col, minMQ=minMQ, minBQ=minBQ) for col in inHandle.pileup(
+                max_depth=30000)]:
         if("Interval" not in locals()):
-            if(PC.nsegments > mincov):
-                Interval = PileupInterval(contig=PC.reference_id,
-                                          start=PC.reference_pos,
-                                          end=PC.reference_pos + 1)
-                Interval.updateWithPileupColumn(PC)
-                workingChr = PC.reference_id
-                workingPos = PC.reference_pos
+            if(PC.PCol.nsegments > mincov):
+                Interval = PileupInterval(contig=PC.PCol.reference_id,
+                                          start=PC.PCol.reference_pos,
+                                          end=PC.PCol.reference_pos + 1)
+                try:
+                    Interval.updateWithPileupColumn(PC.PCol)
+                except AssertionError:
+                    del Interval
+                workingChr = PC.PCol.reference_id
+                workingPos = PC.PCol.reference_pos
             continue
         else:
-            if(workingChr == PC.reference_id and PC.nsegments >= mincov):
-                if(PC.reference_pos - workingPos == 1):
-                    Interval.updateWithPileupColumn(PC)
-                    workingPos += 1
+            if(workingChr ==
+               PC.PCol.reference_id and PC.PCol.nsegments >= mincov):
+                if(PC.PCol.reference_pos - workingPos == 1):
+                    try:
+                        Interval.updateWithPileupColumn(PC.PCol)
+                        workingPos += 1
+                    except AssertionError:
+                        del Interval
                 else:
                     outHandle.write(Interval.toString() + "\n")
-                    if(PC.nsegments >= mincov):
-                        Interval = PileupInterval(contig=PC.reference_id,
-                                                  start=PC.reference_pos,
-                                                  end=PC.reference_pos + 1)
-                        workingChr = PC.reference_id
-                        workingPos = PC.reference_pos
-                        Interval.updateWithPileupColumn(PC)
+                    if(PC.PCol.nsegments >= mincov):
+                        Interval = PileupInterval(
+                            contig=PC.PCol.reference_id,
+                            start=PC.PCol.reference_pos,
+                            end=PC.PCol.reference_pos + 1)
+                        workingChr = PC.PCol.reference_id
+                        workingPos = PC.PCol.reference_pos
+                        Interval.updateWithPileupColumn(PC.PCol)
                     else:
                         del Interval
             else:
-                Interval.updateWithPileupColumn(PC)
-                outHandle.write(Interval.toString() + "\n")
-                if(PC.nsegments >= mincov):
-                    Interval = PileupInterval(contig=PC.reference_id,
-                                              start=PC.reference_pos,
-                                              end=PC.reference_pos + 1)
-                    workingChr = PC.reference_id
-                    workingPos = PC.reference_pos
-                    Interval.updateWithPileupColumn(PC)
+                try:
+                    Interval.updateWithPileupColumn(PC.PCol)
+                    outHandle.write(Interval.toString() + "\n")
+                except AssertionError:
+                    del Interval
+                if(PC.PCol.nsegments >= mincov):
+                    Interval = PileupInterval(contig=PC.PCol.reference_id,
+                                              start=PC.PCol.reference_pos,
+                                              end=PC.PCol.reference_pos + 1)
+                    workingChr = PC.PCol.reference_id
+                    workingPos = PC.PCol.reference_pos
+                    Interval.updateWithPileupColumn(PC.PCol)
                 else:
                     del Interval
+    inHandle.close()
+    outHandle.close()
+    pass
+
+
+def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
+                          outbed="default"):
+    """
+    Calculates DOC and creates a bed file containing coverage information
+    for each position in a provided bed, only counting reads with
+    a given minimum mapping quality or base quality.
+    """
+    import pysam
+    import os.path
+    if(outbed == "default"):
+        outbed = inbam[0:-4] + ".doc.bed"
+    printlog(("Command required to reproduce this call: "
+              "CalcWithinBedCoverage(\'{}\', bed=".format(inbam) +
+              "\'{}\', minMQ=\'{}\', minBQ=".format(bed, minMQ) +
+              "\'{}\', outbed={})".format(minBQ, outbed)))
+    if(bed == "default"):
+        printlog("Bed file required for CalcWithinBedCoverage")
+        raise ThisIsMadness("Bedfile required for calculating coverage.")
+    bedLines = ParseBed(bed)
+    subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+                          shell=False)
+    if(os.path.isfile(inbam + ".bai") is False):
+        printlog("Bam index file could not be created. Sorting and indexing.")
+        inbam = CoorSortAndIndexBam(inbam)
+        printlog("Sorted BAM Location: {}".format(inbam))
+    inHandle = pysam.AlignmentFile(inbam, "rb")
+    outHandle = open(outbed, "w")
+    outHandle.write("\t".join(["#Chr", "Start", "End",
+                               "Number Of Merged Mapped Reads",
+                               "Number of Unmerged Mapped Reads",
+                               "Avg Merged Coverage",
+                               "Avg Total Coverage"]) + "\n")
+    for line in bedLines:
+        TotalReads = 0
+        MergedReads = 0
+        for PC in [
+            BCVCF.PCInfo(
+                pu,
+                minMQ=minMQ,
+                minBQ=minBQ) for pu in inHandle.pileup(
+                line[0],
+                line[1],
+                line[2],
+                max_depth=30000)]:
+            TotalReads += PC.TotalReads
+            MergedReads += PC.MergedReads
+        outHandle.write(
+            "\t".join(
+                [str(i)
+                 for i in
+                 [line[0],
+                  line[1],
+                  line[2],
+                  MergedReads, TotalReads, MergedReads /
+                  float(line[2] - line[1]),
+                  TotalReads / float(line[2] - line[1])]]))
+    inHandle.close()
+    outHandle.close()
+    return outbed
+
+
+def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
+                           outbed="default"):
+    """
+    Calculates DOC and creates a bed file containing each position
+    not in provided bed, only counting reads with a given minimum mapping
+    quality or base quality.
+    """
+    import pysam
+    import os.path
+    if(outbed == "default"):
+        outbed = inbam[0:-4] + ".doc.SBI.bed"
+    printlog(("Command required to reproduce this call: "
+              "CalcWithoutBedCoverage(\'{}\', bed=".format(inbam) +
+              "\'{}\', minMQ=\'{}\', minBQ=".format(bed, minMQ) +
+              "\'{}\', outbed={})".format(minBQ, outbed)))
+    if(bed == "default"):
+        printlog("Bed file required for CalcWithoutBedCoverage")
+        raise ThisIsMadness("Bedfile required for calculating coverage.")
+    bedLines = ParseBed(bed)
+    subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+                          shell=False)
+    if(os.path.isfile(inbam + ".bai") is False):
+        printlog("Bam index file could not be created. Sorting and indexing.")
+        inbam = CoorSortAndIndexBam(inbam)
+        printlog("Sorted BAM Location: {}".format(inbam))
+    inHandle = pysam.AlignmentFile(inbam, "rb")
+    outHandle = open(outbed, "w")
+    outHandle.write("\t".join(["#Chr", "Start", "End",
+                               "Number Of Merged Mapped Reads",
+                               "Number of Unmerged Mapped Reads",
+                               "Avg Merged Coverage",
+                               "Avg Total Coverage"]) + "\n")
+    for line in bedLines:
+        TotalReads = 0
+        MergedReads = 0
+        for PC in [
+            BCVCF.PCInfo(
+                pu,
+                minMQ=minMQ,
+                minBQ=minBQ) for pu in inHandle.pileup(
+                line[0],
+                line[1],
+                line[2],
+                max_depth=30000)]:
+            TotalReads += PC.TotalReads
+            MergedReads += PC.MergedReads
+        outHandle.write(
+            "\t".join(
+                [str(i)
+                 for i in
+                 [line[0],
+                  line[1],
+                  line[2],
+                  MergedReads, TotalReads, MergedReads /
+                  float(line[2] - line[1]),
+                  TotalReads / float(line[2] - line[1])]]))
     inHandle.close()
     outHandle.close()
     pass
@@ -511,9 +653,12 @@ def CoorSortAndIndexBam(inbam, prefix="MetasyntacticVar",
                         outbam="default",
                         uuid="true",
                         threads="4"):
-    # If uuid is either a boolean true or is a string containing true,
-    # then a random string is generated for the output
-    if(str(uuid).lower() == "true"):
+    '''
+    Uses samtools >= 1.0.0 to coordinate sort and index a bam file.
+    If uuid is either a boolean true or is a string containing true,
+    then a random string is generated for the output
+    '''
+    if("true" in str(uuid).lower()):
         import uuid
         prefix += str(uuid.uuid4().get_hex().upper()[0:8])
     if(outbam == "default"):
@@ -574,8 +719,8 @@ def GetBamTag(samRecord, tag):
 
 def ParseBed(bedfile):
     bed = [line.strip().split(
-        )[0:3] for line in open(
-            bedfile, "r").readlines() if line[0] != "#"]
+    )[0:3] for line in open(
+        bedfile, "r").readlines() if line[0] != "#"]
     for line in bed:
         line[1] = int(line[1])
         line[2] = int(line[2])

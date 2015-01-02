@@ -245,11 +245,13 @@ class VCFRecord:
 
 
 class PRInfo:
+
     '''
     Created from a pysam.PileupRead object.
     Holds family size, SV tags, base quality,
     mapping quality, and base.
     '''
+
     def __init__(self, PileupRead):
         try:
             self.FM = int(PileupRead.alignment.opt("FM"))
@@ -278,6 +280,7 @@ def is_reverse_to_str(boolean):
 
 
 class AltAggregateInfo:
+
     '''
     Class which holds summary information for a given alt allele
     at a specific position. Meant to be used as part of the PCInfo
@@ -285,6 +288,7 @@ class AltAggregateInfo:
     All alt alleles in this set of reads should be identical.
     recList must be a list of PRInfo objects.
     '''
+
     def __init__(self, recList, acceptMQ0=False, consensus="default",
                  mergedSize="default",
                  totalSize="default"):
@@ -337,7 +341,7 @@ class AltAggregateInfo:
                 rec.is_reverse)]) for rec in self.recList])
         self.strandedTotalTransitionDict = collections.Counter(
             ["&&".join([self.transition, is_reverse_to_str(
-                rec.is_reverse)]) for rec in self.recList]*rec.FM)
+                rec.is_reverse)]) for rec in self.recList] * rec.FM)
         self.strandedMergedTransitionDict = collections.Counter(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
@@ -356,18 +360,29 @@ class AltAggregateInfo:
 
 
 class PCInfo:
+
     '''
     Takes a pysam.PileupColumn covering one base in the reference
     and makes a new class which has "reference" (inferred from
     consensus) and a list of PRData (one for each read).
+    TODO: Modify the creation of this object to handle minimum mapping
+    and base quality scores.
     '''
-    def __init__(self, PileupColumn, acceptMQ0=False):
+
+    def __init__(self, PileupColumn, acceptMQ0=False, minBQ=0, minMQ=0):
         from collections import Counter
         PysamToChrDict = BMFUtils.HTSUtils.GetRefIdDicts()['idtochr']
+        self.PCol = PileupColumn
         self.contig = PysamToChrDict[PileupColumn.reference_id]
         self.pos = PileupColumn.reference_pos
-        self.Records = [PRInfo(
-            pileupRead) for pileupRead in PileupColumn.pileups]
+        self.PCol.pileups = [pileupRead
+                             for pileupRead in PileupColumn.pileups
+                             if (pileupRead.alignment.mapping_quality >=
+                                 minMQ) and
+                             pileupRead.alignment.query_qualities
+                             [pileupRead.query_position] >= minBQ]
+        self.PCol.nsegments = len(self.Records)
+        self.Records = [PRInfo(pileupRead) for pileupRead in self.PCol.pileups]
         self.MergedReads = len(self.Records)
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])
@@ -413,22 +428,22 @@ class PCInfo:
         self.TransTotalCounts = TransTotalCounts
         self.StrandedTransTotalCounts = {}
         for alt in self.AltAlleleData:
-                for trans in alt.strandedTotalTransitionDict.keys():
-                    try:
-                        self.StrandedTransTotalCounts[
-                            trans] += alt.strandedTotalTransitionDict[trans]
-                    except KeyError:
-                        self.StrandedTransTotalCounts[
-                            trans] = alt.strandedTotalTransitionDict[trans]
+            for trans in alt.strandedTotalTransitionDict.keys():
+                try:
+                    self.StrandedTransTotalCounts[
+                        trans] += alt.strandedTotalTransitionDict[trans]
+                except KeyError:
+                    self.StrandedTransTotalCounts[
+                        trans] = alt.strandedTotalTransitionDict[trans]
         self.StrandedTransMergedCounts = {}
         for alt in self.AltAlleleData:
-                for trans in alt.strandedMergedTransitionDict.keys():
-                    try:
-                        self.StrandedTransMergedCounts[
-                            trans] += alt.strandedMergedTransitionDict[trans]
-                    except KeyError:
-                        self.StrandedTransMergedCounts[
-                            trans] = alt.strandedMergedTransitionDict[trans]
+            for trans in alt.strandedMergedTransitionDict.keys():
+                try:
+                    self.StrandedTransMergedCounts[
+                        trans] += alt.strandedMergedTransitionDict[trans]
+                except KeyError:
+                    self.StrandedTransMergedCounts[
+                        trans] = alt.strandedMergedTransitionDict[trans]
         self.MergedAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
@@ -504,7 +519,9 @@ class PCInfo:
                       "Family Size\t"
                       "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
-            outStr += '\t'.join([str(i) for i in [self.contig, self.pos,
+            outStr += '\t'.join([
+                str(i) for i in [self.contig,
+                                 self.pos,
                                  self.consensus,
                                  alt.ALT,
                                  alt.TotalReads,
@@ -530,7 +547,9 @@ def CustomPileupFullGenome(inputBAM,
                            PileupTsv="default",
                            TransitionTable="default",
                            StrandedTTable="default",
-                           progRepInterval=10000):
+                           progRepInterval=10000,
+                           minBQ=0,
+                           minMQ=0):
     '''
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
@@ -570,7 +589,7 @@ def CustomPileupFullGenome(inputBAM,
                 NumProcessed))
             pl("Total reads processed: {}".format(TotalReadsProcessed))
             pl("Merged reads processed: {}".format(MergedReadsProcessed))
-        PColSum = PCInfo(pileupColumn)
+        PColSum = PCInfo(pileupColumn, minBQ=minBQ, minMQ=minMQ)
         MergedReadsProcessed += PColSum.MergedReads
         TotalReadsProcessed += PColSum.TotalReads
         if(FirstLine is True):
@@ -621,23 +640,25 @@ def CustomPileupFullGenome(inputBAM,
         TransHandle.write("{}\t{}\t{}\n".format(key,
                                                 TransTotalDict[key],
                                                 TransMergedDict[key],
-                                                TransTotalDict[key]/float(
+                                                TransTotalDict[key] / float(
                                                     NumTransitionsTotal),
-                                                TransMergedDict[key]/float(
+                                                TransMergedDict[key] / float(
                                                     NumTransitionsMerged)))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
                                "\tFraction of Merged Transitions\n"))
     for key in StrandedTransTotalDict.keys():
-        StrandedTransHandle.write("{}\t{}\t{}\n".format(key,
-                                  StrandedTransTotalDict[key],
-                                  StrandedTransMergedDict[key],
-                                  StrandedTransTotalDict[key] / float(
-                                      NumTransitionsTotal),
-                                  StrandedTransMergedDict[key] / float(
-                                      NumTransitionsMerged),
-                                  ))
+        StrandedTransHandle.write(
+            "{}\t{}\t{}\n".format(
+                key,
+                StrandedTransTotalDict[key],
+                StrandedTransMergedDict[key],
+                StrandedTransTotalDict[key] /
+                float(NumTransitionsTotal),
+                StrandedTransMergedDict[key] /
+                float(NumTransitionsMerged),
+            ))
     pl("Transition Table: {}".format(TransitionTable))
     pl("Stranded Transition Table: {}".format(StrandedTTable))
     TransHandle.close()
@@ -651,7 +672,9 @@ def CustomPileupToTsv(inputBAM,
                       StrandedTTable="default",
                       bedfile="default",
                       progRepInterval=1000,
-                      CalcAlleleFreq=True):
+                      CalcAlleleFreq=True,
+                      minMQ=0,
+                      minBQ=0):
     '''
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
@@ -686,7 +709,7 @@ def CustomPileupToTsv(inputBAM,
     except subprocess.CalledProcessError:
         pl("Couldn't index BAM - coor sorting, then indexing!")
         inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
-    NumPos = sum([line[2]-line[1] for line in bedlines])
+    NumPos = sum([line[2] - line[1] for line in bedlines])
     NumProcessed = 0  # Number of processed positions in pileup
     pl("Number of positions in bed file: {}".format(NumPos))
     bamHandle = pysam.AlignmentFile(inputBAM, "rb")
@@ -705,7 +728,7 @@ def CustomPileupToTsv(inputBAM,
                 pl("Total reads processed: {}".format(TotalReadsProcessed))
                 pl("Merged reads processed: {}".format(
                     MergedReadsProcessed))
-            PColSum = PCInfo(pileupColumn)
+            PColSum = PCInfo(pileupColumn, minMQ=minMQ, minBQ=minBQ)
             MergedReadsProcessed += PColSum.MergedReads
             TotalReadsProcessed += PColSum.TotalReads
             if(FirstLine is True):
@@ -749,19 +772,21 @@ def CustomPileupToTsv(inputBAM,
                     StrandedTransTotalDict[
                         key] = PColSum.StrandedTransTotalCounts[
                             key]
-        TransHandle.write((
-            "Transition\tTotal Reads With Transition (Unflatt"
-            "ened)\tMerged Reads With Transition\tFraction Of Total "
-            "Transitions\tFraction Of Merged Transitions\n"))
+    TransHandle.write((
+        "Transition\tTotal Reads With Transition (Unflatt"
+        "ened)\tMerged Reads With Transition\tFraction Of Total "
+        "Transitions\tFraction Of Merged Transitions\n"))
     for key in TransTotalDict.keys():
         if(key[0] != key[3]):
-            TransHandle.write("{}\t{}\t{}\n".format(key,
-                              TransTotalDict[key],
-                              TransMergedDict[key],
-                              TransTotalDict[key]/float(
-                                  NumTransitionsTotal),
-                              TransMergedDict[key]/float(
-                                  NumTransitionsMerged)))
+            TransHandle.write(
+                "{}\t{}\t{}\n".format(
+                    key,
+                    TransTotalDict[key],
+                    TransMergedDict[key],
+                    TransTotalDict[key] /
+                    float(NumTransitionsTotal),
+                    TransMergedDict[key] /
+                    float(NumTransitionsMerged)))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
@@ -769,14 +794,16 @@ def CustomPileupToTsv(inputBAM,
     for key in StrandedTransTotalDict.keys():
         if(key.split("&&")[0].split("->")[0] != key.split(
                 "&&")[0].split("->")[1]):
-            StrandedTransHandle.write("{}\t{}\t{}\n".format(key,
-                                      StrandedTransTotalDict[key],
-                                      StrandedTransMergedDict[key],
-                                      StrandedTransTotalDict[key] / float(
-                                          NumTransitionsTotal),
-                                      StrandedTransMergedDict[key] / float(
-                                          NumTransitionsMerged),
-                                      ))
+            StrandedTransHandle.write(
+                "{}\t{}\t{}\t{}\t{}\n".format(
+                    key,
+                    StrandedTransTotalDict[key],
+                    StrandedTransMergedDict[key],
+                    StrandedTransTotalDict[key] /
+                    float(NumTransitionsTotal),
+                    StrandedTransMergedDict[key] /
+                    float(NumTransitionsMerged),
+                ))
     pl("Transition Table: {}".format(TransitionTable))
     pl("Stranded Transition Table: {}".format(StrandedTTable))
     TransHandle.close()
@@ -789,7 +816,9 @@ def CustomPileupToTsv(inputBAM,
 
 
 def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
-                            progRepInterval=10000):
+                            progRepInterval=10000,
+                            minMQ=0,
+                            minBQ=0):
     '''
     Creates a tsv file with counts and frequencies for each allele at
     each position. I should expand this to include strandedness information.
@@ -843,7 +872,7 @@ def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
         if(NumProcessed % progRepInterval == 0):
             pl("Number of base positions processed: {}".format(
                 NumProcessed))
-        PColInfo = PCInfo(pileup)
+        PColInfo = PCInfo(pileup, minMQ=minMQ, minBQ=minBQ)
         outHandle.write(PColInfo.AlleleFreqStr + "\n")
     inHandle.close()
     outHandle.close()
