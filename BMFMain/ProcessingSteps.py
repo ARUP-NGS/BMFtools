@@ -3,10 +3,11 @@ import subprocess
 
 from MawCluster import BCBam
 from MawCluster import BCFastq
-from BMFUtils import HTSUtils
+from utilBMF import HTSUtils
+from MawCluster import PileupUtils
 from MawCluster import BCVCF
-from MawCluster.BCBam import GetSVRelevantRecordsPaired as SVRP
-from BMFUtils.HTSUtils import printlog as pl
+from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
+from utilBMF.HTSUtils import printlog as pl
 
 
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
@@ -191,9 +192,9 @@ def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
     # Consolidating families into single reads
     # Variant Calling Step using MPileup
     # print("Now filtering for reads with NM > 0 only if you want to.")
-    PileupTSV = BCVCF.CustomPileupToTsv(consMergeSortBAM, bedfile=bed)
+    PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM, bedfile=bed)
     pl("PileupTSV: {}".format(PileupTSV))
-    AlleleFreqTSV = BCVCF.AlleleFrequenciesByBase(consMergeSortBAM)
+    AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM)
     # This is probably useless given that I'm doing this "manually",
     # but I'm keeping this in here for good measure.
     pl("Now sorting reads by coordinate to prepare for MPileup.")

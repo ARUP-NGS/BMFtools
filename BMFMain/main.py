@@ -5,8 +5,8 @@ import logging
 import sys
 
 import ProcessingSteps as ps
-from BMFUtils.HTSUtils import printlog as pl
-# Contains utilities for the completion of a variety of
+from utilBMF.HTSUtils import printlog as pl
+# Contains Utilities for the completion of a variety of
 # tasks related to barcoded protocols for ultra-low
 # frequency variant detection, particularly for circulating tumor DNA
 # Structural Variant detection tools are in active development.

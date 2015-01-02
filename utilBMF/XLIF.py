@@ -1,10 +1,10 @@
 import argparse
 
-from BMFUtils.HTSUtils import printlog as pl, IllegalArgumentError
-from BMFUtils import HTSUtils
+from utilBMF.HTSUtils import printlog as pl, IllegalArgumentError
+from utilBMF import HTSUtils
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-from BMFMawCluster import BCBam
+from MawCluster import BCBam
 # Translocation Informatics by Fractionation, IE
 # XLIF: X-Location Informatics by Fractional Alignment
 #

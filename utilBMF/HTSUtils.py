@@ -1,7 +1,7 @@
 import logging
 import shlex
 import subprocess
-from build.lib.MawCluster import BCVCF
+from MawCluster import PileupUtils
 
 
 class Configurations:
@@ -354,6 +354,51 @@ def has_elements(iterable):
         return False, iterable
 
 
+def ReadContainedInBed(samRecord, bedRef="default"):
+    """
+    Checks to see if a samRecord is contained in a bedfile.
+    bedRef must be a tab-delimited list of lists, where
+    line[1] and line[2] are integers. ParseBed returns such an object.
+    """
+    # if(isinstance(bedRef, str) is True):
+    #     bedRef = ParseBed(bedRef)
+    for line in bedRef:
+        if(PysamToChrDict[samRecord.reference_id] == line[0]):
+            if(samRecord.reference_start > int(
+                    line[2] - 1) or samRecord.reference_end < int(
+                        line[1]) - 1):
+                continue
+            else:
+                # print("Read {} was contained in bed file".format(
+                #       samRecord.query_name))
+                return True
+        else:
+            continue
+    # print("Read {} which was not contained in bed file".format(
+    #       samRecord.query_name))
+    return False
+
+
+def PosContainedInBed(contig, pos, bedRef="default"):
+    """
+    Checks to see if a position is contained in a bedfile.
+    0-based
+    """
+    if(isinstance(bedRef, str) is True):
+        bedRef = ParseBed(bedRef)
+    for line in bedRef:
+        if(contig == line[0]):
+            if(pos >= line[2] or pos <= line[1]):
+                continue
+            else:
+                return True
+        else:
+            continue
+    # print("Read {} which was not contained in bed file".format(
+    #       samRecord.query_name))
+    return False
+
+
 def indexBowtie(fasta):
     subprocess.check_call('bowtie-build {0} {0}'.format(fasta), shell=True)
     return
@@ -466,12 +511,12 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
     workingChr = 0
     workingPos = 0
     outHandle.write("\t".join(["#Chr", "Start", "End",
-                               "Number Of Merged Mapped Reads",
-                               "Number of Unmerged Mapped Reads",
+                               "Number Of Merged Mapped Bases",
+                               "Number of Unmerged Mapped Bases",
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     printlog("Beginning PileupToBed.")
-    for PC in [BCVCF.PCInfo(
+    for PC in [PileupUtils.PCInfo(
             col, minMQ=minMQ, minBQ=minBQ) for col in inHandle.pileup(
                 max_depth=30000)]:
         if("Interval" not in locals()):
@@ -555,15 +600,15 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = open(outbed, "w")
     outHandle.write("\t".join(["#Chr", "Start", "End",
-                               "Number Of Merged Mapped Reads",
-                               "Number of Unmerged Mapped Reads",
+                               "Number Of Merged Mapped Bases",
+                               "Number of Unmerged Mapped Bases",
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     for line in bedLines:
         TotalReads = 0
         MergedReads = 0
         for PC in [
-            BCVCF.PCInfo(
+            PileupUtils.PCInfo(
                 pu,
                 minMQ=minMQ,
                 minBQ=minBQ) for pu in inHandle.pileup(
@@ -582,7 +627,7 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
                   line[2],
                   MergedReads, TotalReads, MergedReads /
                   float(line[2] - line[1]),
-                  TotalReads / float(line[2] - line[1])]]))
+                  TotalReads / float(line[2] - line[1])]]) + "\n")
     inHandle.close()
     outHandle.close()
     return outbed
@@ -616,34 +661,25 @@ def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     inHandle = pysam.AlignmentFile(inbam, "rb")
     outHandle = open(outbed, "w")
     outHandle.write("\t".join(["#Chr", "Start", "End",
-                               "Number Of Merged Mapped Reads",
-                               "Number of Unmerged Mapped Reads",
-                               "Avg Merged Coverage",
-                               "Avg Total Coverage"]) + "\n")
-    for line in bedLines:
-        TotalReads = 0
-        MergedReads = 0
-        for PC in [
-            BCVCF.PCInfo(
-                pu,
-                minMQ=minMQ,
-                minBQ=minBQ) for pu in inHandle.pileup(
-                line[0],
-                line[1],
-                line[2],
-                max_depth=30000)]:
-            TotalReads += PC.TotalReads
-            MergedReads += PC.MergedReads
+                               "Number Of Merged Mapped Bases",
+                               "Number of Unmerged Mapped Bases"]) + "\n")
+    for PC in [
+        PileupUtils.PCInfo(
+            pu,
+            minMQ=minMQ,
+            minBQ=minBQ) for pu in inHandle.pileup(
+            max_depth=30000) if PosContainedInBed(
+                PC.contig,
+                PC.pos,
+            bedLines) is True]:
         outHandle.write(
             "\t".join(
                 [str(i)
                  for i in
-                 [line[0],
-                  line[1],
-                  line[2],
-                  MergedReads, TotalReads, MergedReads /
-                  float(line[2] - line[1]),
-                  TotalReads / float(line[2] - line[1])]]))
+                 [PC.contig,
+                  PC.pos,
+                  PC.pos + 1,
+                  PC.MergedReads, PC.TotalReads]]) + "\n")
     inHandle.close()
     outHandle.close()
     pass
@@ -725,29 +761,6 @@ def ParseBed(bedfile):
         line[1] = int(line[1])
         line[2] = int(line[2])
     return bed
-
-
-def ReadContainedInBed(samRecord, bedRef="default"):
-    """
-    Checks to see if a samRecord is contained in a bedfile.
-    bedRef must be a tab-delimited list of lists, where
-    line[1] and line[2] are integers. ParseBed returns such an object.
-    """
-    for line in bedRef:
-        if(PysamToChrDict[samRecord.reference_id] == line[0]):
-            if(samRecord.reference_start > int(
-                    line[2] - 1) or samRecord.reference_end < int(
-                        line[1]) - 1):
-                continue
-            else:
-                # print("Read {} was contained in bed file".format(
-                #       samRecord.query_name))
-                return True
-        else:
-            continue
-    # print("Read {} which was not contained in bed file".format(
-    #       samRecord.query_name))
-    return False
 
 
 def parseConfigXML(string):

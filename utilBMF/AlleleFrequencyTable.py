@@ -2,8 +2,8 @@
 
 import argparse
 
-from BMFUtils.HTSUtils import printlog as pl
-from MawCluster.BCVCF import AlleleFrequenciesByBase
+from utilBMF.HTSUtils import printlog as pl
+from MawCluster.PileupUtils import AlleleFrequenciesByBase
 
 
 def main():

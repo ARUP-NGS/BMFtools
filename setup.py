@@ -10,7 +10,7 @@ config = {
     'author_email': 'daniel.baker@aruplab.com',
     'version': '0.3.1',
     'install_requires': ['pysam', 'biopython'],
-    'packages': ['BMFMain', 'BMFUtils', 'MawCluster'],
+    'packages': ['BMFMain', 'utilBMF', 'MawCluster'],
     'scripts': [],
     'name': 'BMFTools',
     'license': 'GPLv3',

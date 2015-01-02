@@ -2,11 +2,11 @@ import logging
 
 from Bio import SeqIO
 
-from BMFUtils.HTSUtils import printlog as pl, ThisIsMadness
-from BMFUtils.HTSUtils import PipedShellCall
+from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from utilBMF.HTSUtils import PipedShellCall
 
 """
-Contains various utilities for working with barcoded fastq files.
+Contains various Utilities for working with barcoded fastq files.
 
 """
 

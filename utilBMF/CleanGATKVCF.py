@@ -2,7 +2,7 @@
 
 import argparse
 
-from BMFMawCluster import BCVCF
+from MawCluster import BCVCF
 
 #  Cleans up FreeBayes/GATK VCFEntries which should be split into
 #  multiple lines.

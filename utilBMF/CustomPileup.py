@@ -2,8 +2,7 @@
 
 import argparse
 
-from BMFUtils.HTSUtils import printlog as pl
-from MawCluster.BCVCF import CustomPileupToTsv
+from MawCluster.PileupUtils import CustomPileupToTsv
 
 
 def main():
