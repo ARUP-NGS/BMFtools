@@ -1,7 +1,6 @@
 import logging
 import shlex
 import subprocess
-from MawCluster import PileupUtils
 
 
 class Configurations:

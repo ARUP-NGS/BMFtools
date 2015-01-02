@@ -6,8 +6,7 @@ from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
 
 """
-Contains various Utilities for working with barcoded fastq files.
-
+Contains various utilities for working with barcoded fastq files.
 """
 
 
@@ -25,7 +24,8 @@ def BarcodeSort(inFastq, outFastq="default"):
     return outFastq
 
 
-def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100):
+def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
+                        keepFails=True):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
@@ -346,60 +346,6 @@ def GetDescriptionTagDict(readDesc):
     return tagDict
 
 
-def getProperPairs(infq1, infq2, shared="default", outfq1="default",
-                   outfq2="default", outfqSingle="default"):
-    """Assuming that the information here is sorted by barcode..."""
-    pl("Now beginning getProperPairs.")
-    if(shared == "default"):
-        raise ValueError(
-            "An index for the barcodes shared must be present.")
-    if(outfq1 == "default"):
-        outfq1 = '.'.join(infq1.split('.')[0:-1]) + '.proper.fastq'
-    if(outfq2 == "default"):
-        outfq2 = '.'.join(infq2.split('.')[0:-1]) + '.proper.fastq'
-    if(outfqSingle == "default"):
-        outfqSingle = '.'.join(infq1.split('.')[0:-1]) + '.solo.fastq'
-    infq1Handle = SeqIO.parse(infq1, "fastq")
-    infq2Handle = SeqIO.parse(infq2, "fastq")
-    outfq1Handle = open(outfq1, 'w')
-    outfq2Handle = open(outfq2, 'w')
-    outfqSingleHandle = open(outfqSingle, 'w')
-
-    f = open(shared, "r")
-    BarDict = {}
-    for line in f.readlines():
-        BarDict[line.strip()] = ""
-    f.close()
-    for read in infq2Handle:
-        try:
-            BarDict[GetDescTagValue(read.description, "BS")]
-            # Testing if it's in the dictionary, no need to assign
-            # This is simply checking whether or not
-            # it has a mate with the same barcode sequence.
-            SeqIO.write(read, outfq2Handle, "fastq")
-        except KeyError:
-            SeqIO.write(read, outfqSingleHandle, "fastq")
-
-    for read in infq1Handle:
-        try:
-            BarDict[GetDescTagValue(read.description, "BS")]
-            SeqIO.write(read, outfq1Handle, "fastq")
-        except KeyError:
-            SeqIO.write(read, outfqSingleHandle, "fastq")
-    return outfq1, outfq2, outfqSingle
-
-
-def getSharedBC(barIdx1, barIdx2, shared="default"):
-    from subprocess import check_call
-    if(shared == "default"):
-        shared = '.'.join(barIdx1.split('.')[0:-1]) + '.sharedBC'
-    Str = "cat {} {} | awk '{{print $2}}' | sort |".format(barIdx1, barIdx2)
-    Str += " uniq -c | grep -v '1' | awk '{{print $NF}}' > {}".format(shared)
-    pl("Command for shared barcodes is: {}".format(Str))
-    check_call(Str, shell=True)
-    return shared
-
-
 def GenerateShadesIndex(indexFastq, index_file="default"):
     from subprocess import check_call
     if(index_file == "default"):
@@ -498,7 +444,8 @@ def GetFamilySizeSingle(
         trimfq,
         BarcodeIndex,
         outfq="default",
-        singlefq="default"):
+        singlefq="default",
+        minFamSize=2):
     pl("Running GetFamilySizeSingle for {}.".format(trimfq))
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq == "default"):
@@ -529,7 +476,7 @@ def GetFamilySizeSingle(
         newRead.description = read.description + " #G~FM=" + str(famSize)
         if(str(famSize) == "0"):
             continue
-        if(str(famSize) == "1"):
+        if(int(famSize) < minFamSize):
             #  print("Hey, I found a singleton")
             SeqIO.write(newRead, singlefqBuffer, "fastq")
         else:
@@ -620,7 +567,8 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default",
                            stringency=0.9,
-                           numpy=False):
+                           numpy=False,
+                           keepFailedPairs=True):
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     pl(("Command required to duplicate this action:"
         " pairedFastqConsolidate('{}', '{}', outFqPair1".format(fq1, fq2)) +
@@ -676,8 +624,11 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                 mergedRecord1.description.replace("Pass", "Fail")
             if(success2 is False):
                 mergedRecord1.description.replace("Pass", "Fail")
-            if("Fail" not in (mergedRecord1.description +
-                              mergedRecord2.description)):
+            if(keepFailedPairs is True):
+                SeqIO.write(mergedRecord2, outputHandle2, "fastq")
+                SeqIO.write(mergedRecord1, outputHandle1, "fastq")
+            elif("Fail" not in (mergedRecord1.description +
+                                mergedRecord2.description)):
                 SeqIO.write(mergedRecord2, outputHandle2, "fastq")
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
             workingSet1 = []
