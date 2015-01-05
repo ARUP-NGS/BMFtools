@@ -20,16 +20,45 @@ def main():
         help="Output Allele Frequency Tsv",
         default="default")
     parser.add_argument(
-        "--p",
+        "-p",
         "--progRepInterval",
         help="Number of positions between progress reports.",
         default=10000
         )
+    parser.add_argument(
+        "-b",
+        "--bed",
+        help="Path to bedfile.",
+        default="default"
+        )
+    parser.add_argument(
+        "--minMQ",
+        "-m",
+        help="Minimum mapping quality for inclusion. Default: 0.",
+        default=0)
+    parser.add_argument(
+        "--minBQ",
+        "-q",
+        help="Minimum base quality score for inclusion. Default: 20.",
+        default=20)
     args = parser.parse_args()
-    Output = AlleleFrequenciesByBase(
-        args.bam,
-        outputTsv=args.AlleleFreqTsv,
-        progRepInterval=int(args.progRepInterval))
+    minMQ = int(args.minMQ)
+    minBQ = int(args.minBQ)
+    if(args.bed == "default"):
+        Output = AlleleFrequenciesByBase(
+            args.bam,
+            outputTsv=args.AlleleFreqTsv,
+            progRepInterval=int(args.progRepInterval),
+            minMQ=minMQ,
+            minBQ=minBQ)
+    else:
+        Output = AlleleFrequenciesByBase(
+            args.bam,
+            outputTsv=args.AlleleFreqTsv,
+            progRepInterval=int(args.progRepInterval),
+            bedfile=args.bed,
+            minMQ=minMQ,
+            minBQ=minBQ)
     return Output
 
 

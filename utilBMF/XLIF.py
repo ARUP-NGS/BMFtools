@@ -5,10 +5,10 @@ from utilBMF import HTSUtils
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from MawCluster import BCBam
-# Translocation Informatics by Fractionation, IE
-# XLIF: X-Location Informatics by Fractional Alignment
-#
-#
+'''
+Translocation Informatics by Fractionation, IE
+XLIF: X-Location Informatics by Fractional Alignment
+'''
 
 
 def main():

@@ -21,12 +21,12 @@ def AbraCadabra(inbam,
                 bed="default",
                 working="default",
                 log="default"):
-    '''
+    """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
     Note: bed file must be first 3 columns only and
     coordinate sorted. You will likely need an additional bed file for this.
-    '''
+    """
     if(jar == "default"):
         jar = "/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar"
         pl("Default jar used: " + jar)
@@ -443,14 +443,14 @@ def pairedBarcodeTagging(
 def pairedFilterBam(inputBAM, passBAM="default",
                     failBAM="default", criteria="default",
                     deleteFailBam=False):
-    '''
+    """
     Filters out both reads in a pair based on a list of ","-separated criteria.
     Both reads must pass for the pair to be written
     Required: [sb]am file, name-sorted, keep unmapped reads,
     and remove supplementary and secondary alignments.
     criteria must be a string. If multiple filters are set,
     they must be comma-separated and have no spaces.
-    '''
+    """
     cStr = ("pairedFilterBam({}, passBAM='{}', ".format(inputBAM, passBAM) +
             "failBAM='{}', criteria='{}', delete".format(failBAM, criteria) +
             "FailBam='{}')".format(deleteFailBam))
@@ -692,12 +692,12 @@ def singleCriteriaTest(read, filter="default"):
 
 def singleFilterBam(inputBAM, passBAM="default",
                     failBAM="default", criteria="default"):
-    '''
+    """
     Filters out both reads in a pair based on a list of
     comma-separated criteria. Both reads must pass to be written.
     Required: [SB]AM file, coordinate-sorted,
     supplementary and secondary alignments removed,unmapped reads retained.
-    '''
+    """
     if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set.")
     if(passBAM == "default"):

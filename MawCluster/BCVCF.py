@@ -5,9 +5,9 @@ import numpy as np
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
 
-'''
+"""
 Contains tools for working with VCF Files - writing, reading, processing.
-'''
+"""
 
 
 class VCFFile:
@@ -105,12 +105,12 @@ class VCFRecord:
             self.ALT = VCFEntry[4].replace(",<X>", "")
         else:
             self.ALT = VCFEntry[4]
-        '''
+        """
         if("<X>" != VCFEntry[4]):
             self.ALT = ','.join(VCFEntry[4].split(',').remove("<X>"))
         else:
             self.ALT = "<X>"
-        '''
+        """
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]

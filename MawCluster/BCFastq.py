@@ -648,10 +648,10 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
 
 
 def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
-    '''
+    """
     Requires barcode-sorted, consolidated fastq files,
     filtered to only the shared barcode families
-    '''
+    """
     if(outfq1 == "default"):
         outfq1 = fq1.split('.')[0] + '.cons.R1fastq'
     if(outfq2 == "default"):
@@ -809,12 +809,12 @@ def TrimHoming(
             id=rec.id, description=rec.description)
         pre_tag.letter_annotations['phred_quality'] = rec.letter_annotations[
             'phred_quality'][0:bar_len]
-        '''
+        """
         if homing not in pre_tag.seq:
             pl("Homing sequence not in tag. Writing to error file.")
             SeqIO.write(rec,errOpen,"fastq")
             continue
-        '''
+        """
         SeqIO.write(pre_tag, tagsOpen, "fastq")
         descString = rec.description + " #G~BS=" + str(rec.seq[0:bar_len])
         post_tag = SeqRecord(Seq(str(rec.seq)[TotalTrim:],

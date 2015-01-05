@@ -2,6 +2,10 @@ import pysam
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 
+"""
+TODO: Make calls based on an analysis of SBI tags
+SBI tag subsets - MDC/ORB, LI/ORB
+"""
 #  Made a dictionary for all structural variant candidate types
 #  such that cycling through the list will be easier.
 #  Extra field provided for each.
@@ -48,7 +52,7 @@ SVTestDict['ORB'] = ORB_SV_Tag_Condition
 
 
 def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
-    '''
+    """
     Gets reads where only one pair mapped inside the bed file
     and the insert size is either above a threshold (default: 1000000),
     the reads are mapped to different contigs, or the reads are mapped
@@ -56,7 +60,7 @@ def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
     extraField should contain a bedRef as formatted for ORB as field 0,
     and field 1 an integer for the minimum insert size to be marked
     as SBI.
-    '''
+    """
     try:
         SVTags = read1.opt("SV").split(',')
         if("ORB" in SVTags and ("LI" in SVTags or "MDC" in SVTags or
@@ -134,7 +138,6 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
     FullOutHandle = pysam.AlignmentFile(FullBam, "wb", template=inHandle)
     FeatureList = sorted(SVTestDict.keys())
     pl("FeatureList: {}".format(FeatureList))
-    print("FeatureList: {}".format(FeatureList))
     for key in FeatureList:
         if(key not in SVParamDict.keys()):
             SVTestDict[key] = ""

@@ -70,7 +70,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     histochart = BCBam.GenerateFamilyHistochart(barIndex)
     pl("Histochart of family sizes: {}".format(histochart))
     # UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
-    '''
+    """
         pl("Rescue step, marking the BD as their Hamming distance.")
         newRef = GenerateBarcodeIndexReference(uniqueBigFamilies)
         indexBowtie(newRef)
@@ -79,7 +79,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         return
         joinedFamilies = fuzzyJoining(familyMarked,joiningSAM)
         pl("joinedFamilies is {}".format(joinedFamilies))
-    '''
+    """
     pl("Now determining family size for the doubled barcodes.")
     families, BCList = BCBam.getFamilySizeBAM(
         mappedPass, barIndex)
@@ -96,7 +96,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     coorSorted = BCBam.CoorSort(MarkedFamilies)
-    CoverageBed = HTSUtils.BamToCoverageBed(coorSorted, mincov=1)
+    CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=1)
     pl("Coverage bed: {}".format(CoverageBed))
     if(consfqSingle != "default"):
         mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
@@ -118,13 +118,13 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
     FamFq2 = FamFqs[1]
     SingleFq1 = SingleFqs[0]
     SingleFq2 = SingleFqs[1]
-    '''
+    """
     TODO: Write this step
     NumberRescued = BCFastq.ShadesRescuePaired(SingleFq1, SingleFq2,
                                                appendFq1=FamFq1,
                                                appendFq2=FamFq2,
                                                index=barcodeIndex)
-    '''
+    """
     pl("Number of reads total: " + str(numReads))
     pl("Number of reads with >=3 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
@@ -138,50 +138,6 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
     # there is less than 50% agreement or there are too many members
     # in a family.), just tag them, no need to check for shared pairs.
     return BConsFastq1, BConsFastq2, barcodeIndex
-
-
-def pairedFastqProc(inFastq1, inFastq2, homing="default",
-                    stringency="default", useNumpy=True):
-    if(stringency == "default"):
-        stringency = 0.75
-    if(homing == "default"):
-        homing = "CAGT"
-    # For reads 1
-    homingP1, homingF1 = BCFastq.HomingSeqLoc(
-        inFastq1, homing=homing)
-    pl("Homing sequences located, reads parsed out.")
-    pl("Now removing the homing sequence and the barcode.")
-    tags1, trimfq1 = BCFastq.TrimHoming(homingP1, homing)
-    # For reads 2
-    homingP2, homingF2 = BCFastq.HomingSeqLoc(
-        inFastq2, homing=homing)
-    pl("Homing sequences located, parsing reads.")
-    pl("Now removing the homing sequence and the barcode.")
-    tags2, trimfq2 = BCFastq.TrimHoming(homingP2, homing)
-    mergeTags1, mergeTags2 = BCFastq.mergeBarcodes(trimfq1, trimfq2)
-    pl("Now generating the barcode index.")
-    BarcodeIndex = BCFastq.PairFastqBarcodeIndex(mergeTags1, mergeTags2)
-    FamFq1, AllRds1, FamRds1 = BCFastq.GetFamilySizeSingle(mergeTags1,
-                                                           BarcodeIndex)
-    FamFq2, AllRds2, FamRds2 = BCFastq.GetFamilySizeSingle(mergeTags2,
-                                                           BarcodeIndex)
-    BSortFq1 = BCFastq.BarcodeSort(FamFq1)
-    BSortFq2 = BCFastq.BarcodeSort(FamFq2)
-    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BSortFq2, stringency=stringency, numpy=useNumpy)
-    BConsFqIndex1 = BCFastq.GenerateSingleBarcodeIndex(BConsFastq1)
-    BConsFqIndex2 = BCFastq.GenerateSingleBarcodeIndex(BConsFastq2)
-    sharedBC = BCFastq.getSharedBC(BConsFqIndex1, BConsFqIndex2)
-    BConsPair1, BConsPair2, BarcodeSingle = BCFastq.getProperPairs(
-        BConsFastq1, BConsFastq2, shared=sharedBC)
-    BConsBSort1 = BCFastq.BarcodeSort(BConsPair1)
-    BConsBSort2 = BCFastq.BarcodeSort(BConsPair2)
-    RenameFq1, RenameFq2 = BCFastq.renameReads(BConsBSort1, BConsBSort2)
-    printStr = "Now returning BConsPair1 ({}), BConsPair2, ({})".format(
-        RenameFq1, RenameFq2)
-    printStr += ", and BarcodeSingle ({})".format(BarcodeSingle)
-    pl(printStr)
-    return RenameFq1, RenameFq2, BarcodeSingle, BarcodeIndex
 
 
 def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):

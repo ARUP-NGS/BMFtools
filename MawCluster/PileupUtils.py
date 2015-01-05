@@ -9,21 +9,19 @@ from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
 import utilBMF
 
-'''
-TODO: Filter based on variants supported by reads going both ways.
-TODO: Make calls based on an analysis of SBI tags
-TODO: Make calls for SNPs, not just reporting frequencies.
-
-'''
+"""
+Contains various utilities for working with pileup generators
+and preparing for variant calls.
+"""
 
 
 class PRInfo:
 
-    '''
+    """
     Created from a pysam.PileupRead object.
     Holds family size, SV tags, base quality,
     mapping quality, and base.
-    '''
+    """
 
     def __init__(self, PileupRead):
         try:
@@ -54,17 +52,19 @@ def is_reverse_to_str(boolean):
 
 class AltAggregateInfo:
 
-    '''
+    """
     Class which holds summary information for a given alt allele
     at a specific position. Meant to be used as part of the PCInfo
     class as values in the VariantDict.
     All alt alleles in this set of reads should be identical.
     recList must be a list of PRInfo objects.
-    '''
+    """
 
-    def __init__(self, recList, acceptMQ0=False, consensus="default",
+    def __init__(self, recList, consensus="default",
                  mergedSize="default",
-                 totalSize="default"):
+                 totalSize="default",
+                 minMQ=0,
+                 minBQ=0):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -75,8 +75,8 @@ class AltAggregateInfo:
             raise ThisIsMadness(("mergedSize must be provided: number of "
                                  "PRInfo at given position."))
         # Check that all alt alleles are identical
-        self.recList = recList
-        self.acceptMQ0 = acceptMQ0
+        self.recList = [rec for rec in recList
+                        if rec.MQ >= minMQ and rec.BQ >= minBQ]
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -94,14 +94,8 @@ class AltAggregateInfo:
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         self.AveFamSize = float(self.TotalReads) / self.MergedReads
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        if(acceptMQ0 is False):
-            self.SumBQScore = sum([rec.BQ for rec in recList if rec.MQ != 0])
-        else:
-            self.SumBQScore = sum([rec.BQ for rec in recList])
-        if(acceptMQ0 is False):
-            self.SumMQScore = sum([rec.MQ for rec in recList if rec.MQ != 0])
-        else:
-            self.SumMQScore = sum([rec.MQ for rec in recList])
+        self.SumBQScore = sum([rec.BQ for rec in recList])
+        self.SumMQScore = sum([rec.MQ for rec in recList])
         self.AveMQ = float(self.SumMQScore) / len(self.recList)
         self.AveBQ = float(self.SumBQScore) / len(self.recList)
         self.ALT = recList[0].BaseCall
@@ -129,8 +123,8 @@ class AltAggregateInfo:
             [rec.FM for rec in self.recList if rec.is_reverse is True])
         self.StrandCountsTotalDict['forward'] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is False])
-        self.TotalAlleleFrequency = self.TotalReads / totalSize
-        self.MergedAlleleFrequency = self.MergedReads / mergedSize
+        self.TotalAlleleFrequency = self.TotalReads / float(totalSize)
+        self.MergedAlleleFrequency = self.MergedReads / float(mergedSize)
         if(self.ReverseMergedReads != 0 and self.ForwardMergedReads != 0):
             self.BothStrandSupport = True
         else:
@@ -139,16 +133,15 @@ class AltAggregateInfo:
 
 class PCInfo:
 
-    '''
+    """
     Takes a pysam.PileupColumn covering one base in the reference
     and makes a new class which has "reference" (inferred from
     consensus) and a list of PRData (one for each read).
-    '''
+    """
 
     def __init__(self, PileupColumn, acceptMQ0=False, minBQ=0, minMQ=0):
         from collections import Counter
         PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()['idtochr']
-        self.PCol = PileupColumn
         self.contig = PysamToChrDict[PileupColumn.reference_id]
         self.pos = PileupColumn.reference_pos
         self.FailedBQReads = sum(
@@ -158,14 +151,10 @@ class PCInfo:
         self.FailedMQReads = sum(
             [pileupRead.alignment.mapping_quality < minMQ
              for pileupRead in PileupColumn.pileups])
-        self.PCol.pileups = [pileupRead
-                             for pileupRead in PileupColumn.pileups
-                             if (pileupRead.alignment.mapping_quality >=
-                                 minMQ) and
-                             pileupRead.alignment.query_qualities
-                             [pileupRead.query_position] >= minBQ]
-        self.PCol.nsegments = len(self.Records)
-        self.Records = [PRInfo(pileupRead) for pileupRead in self.PCol.pileups]
+        self.Records = [
+            PRInfo(pileupRead) for pileupRead in PileupColumn.pileups
+            if(pileupRead.alignment.mapping_quality >= minMQ) and
+            (pileupRead.alignment.query_qualities >= minBQ)]
         self.MergedReads = len(self.Records)
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])
@@ -177,8 +166,6 @@ class PCInfo:
         for alt in list(set([rec.BaseCall for rec in self.Records])):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
-        # for key in self.VariantDict.keys():
-        #     print("Key: {}. Value: {}.".format(key, self.VariantDict[key]))
         self.AltAlleleData = [AltAggregateInfo(
                               self.VariantDict[key],
                               acceptMQ0=acceptMQ0,
@@ -328,11 +315,11 @@ class PCInfo:
 
 class PileupInterval:
 
-    '''
+    """
     Container for holding summary information over a given interval.
     Written for the pysam PileupColumn data structure.
     Contig should be in the pysam format (IE, a number, not a string)
-    '''
+    """
 
     def __init__(self, contig="default", start="default",
                  end="default"):
@@ -379,14 +366,14 @@ def CustomPileupFullGenome(inputBAM,
                            progRepInterval=10000,
                            minBQ=0,
                            minMQ=0):
-    '''
+    """
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
     Also creates several tables:
     1. Counts for all consensus-->alt transitions (By Total and Merged reads)
     2. Counts for the above, specifying strandedness
     3. Number of Merged Reads supporting each allele
-    '''
+    """
     TransTotalDict = {}
     TransMergedDict = {}
     StrandedTransTotalDict = {}
@@ -504,14 +491,14 @@ def CustomPileupToTsv(inputBAM,
                       CalcAlleleFreq=True,
                       minMQ=0,
                       minBQ=0):
-    '''
+    """
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
     Also creates several tables:
     1. Counts for all consensus-->alt transitions (By Total and Merged reads)
     2. Counts for the above, specifying strandedness
     3. Number of Merged Reads supporting each allele
-    '''
+    """
     TransTotalDict = {}
     TransMergedDict = {}
     StrandedTransTotalDict = {}
@@ -643,14 +630,16 @@ def CustomPileupToTsv(inputBAM,
     return PileupTsv
 
 
-def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
+def AlleleFrequenciesByBase(inputBAM,
+                            outputTsv="default",
                             progRepInterval=10000,
                             minMQ=0,
-                            minBQ=0):
-    '''
+                            minBQ=0,
+                            bedfile="default"):
+    """
     Creates a tsv file with counts and frequencies for each allele at
     each position. I should expand this to include strandedness information.
-    '''
+    """
     pl(("Command required to reproduce results: "
         "AlleleFrequenciesByBase(inputBAM={},".format(inputBAM) +
         " outputTsv={}, progRepInterval=".format(outputTsv) +
@@ -695,13 +684,27 @@ def AlleleFrequenciesByBase(inputBAM, outputTsv="default",
                                "Total Reverse fraction: G",
                                "Total Reverse fraction: T",
                                ]) + "\n")
-    for pileup in inHandle.pileup(max_depth=30000):
-        NumProcessed += 1
-        if(NumProcessed % progRepInterval == 0):
-            pl("Number of base positions processed: {}".format(
-                NumProcessed))
-        PColInfo = PCInfo(pileup, minMQ=minMQ, minBQ=minBQ)
-        outHandle.write(PColInfo.AlleleFreqStr + "\n")
+    if(bedfile == "default"):
+        for pileup in inHandle.pileup(max_depth=30000):
+            NumProcessed += 1
+            if(NumProcessed % progRepInterval == 0):
+                pl("Number of base positions processed: {}".format(
+                    NumProcessed))
+            PColInfo = PCInfo(pileup, minMQ=minMQ, minBQ=minBQ)
+            outHandle.write(PColInfo.AlleleFreqStr + "\n")
+    else:
+        bedLines = HTSUtils.ParseBed(bedfile)
+        for line in bedLines:
+            for pileup in inHandle.pileup(reference=line[0], start=line[1],
+                                          end=line[2],
+                                          max_depth=30000):
+                NumProcessed += 1
+                if(NumProcessed % progRepInterval == 0):
+                    pl("Number of base positions processed: {}".format(
+                        NumProcessed))
+                outHandle.write(PCInfo(pileup,
+                                       minMQ=minMQ,
+                                       minBQ=minBQ).AlleleFreqStr + "\n")
     inHandle.close()
     outHandle.close()
     return outputTsv
@@ -886,7 +889,7 @@ def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
             max_depth=30000) if HTSUtils.PosContainedInBed(
                 PC.contig,
                 PC.pos,
-            bedLines) is True]:
+            bedLines) is False]:
         outHandle.write(
             "\t".join(
                 [str(i)
