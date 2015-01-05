@@ -96,8 +96,14 @@ class AltAggregateInfo:
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum([rec.BQ for rec in recList])
         self.SumMQScore = sum([rec.MQ for rec in recList])
-        self.AveMQ = float(self.SumMQScore) / len(self.recList)
-        self.AveBQ = float(self.SumBQScore) / len(self.recList)
+        try:
+            self.AveMQ = float(self.SumMQScore) / len(self.recList)
+        except ZeroDivisionError:
+            self.AveMQ = 0
+        try:
+            self.AveBQ = float(self.SumBQScore) / len(self.recList)
+        except ZeroDivisionError:
+            self.AveBQ = 0
         self.ALT = recList[0].BaseCall
         self.consensus = consensus
 
@@ -139,7 +145,7 @@ class PCInfo:
     consensus) and a list of PRData (one for each read).
     """
 
-    def __init__(self, PileupColumn, acceptMQ0=False, minBQ=0, minMQ=0):
+    def __init__(self, PileupColumn, minBQ=0, minMQ=0):
         from collections import Counter
         PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()['idtochr']
         self.contig = PysamToChrDict[PileupColumn.reference_id]
@@ -168,10 +174,11 @@ class PCInfo:
                 rec for rec in self.Records if rec.BaseCall == alt]
         self.AltAlleleData = [AltAggregateInfo(
                               self.VariantDict[key],
-                              acceptMQ0=acceptMQ0,
                               consensus=self.consensus,
                               mergedSize=self.MergedReads,
-                              totalSize=self.TotalReads
+                              totalSize=self.TotalReads,
+                              minMQ=minMQ,
+                              minBQ=minBQ
                               ) for key in self.VariantDict.keys()]
         self.TotalFracDict = {}
         for alt in self.AltAlleleData:

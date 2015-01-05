@@ -1,6 +1,6 @@
 import subprocess
 
-from MawCluster import PileupUtils
+from MawCluster.PileupUtils import *
 
 """
 This module contains a variety of tools for calling variants.
@@ -11,5 +11,9 @@ TODO: Make calls for SNPs, not just reporting frequencies.
 """
 
 
-def SNVCrawler(inBAM):
+def SNVCrawler(inBAM,
+               bedfile="default",
+               ):
+    if(isinstance(bedfile, str)):
+        bedfile = HTSUtils.ParseBed(bedfile)
     return None
