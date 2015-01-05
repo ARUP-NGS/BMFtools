@@ -16,4 +16,5 @@ def SNVCrawler(inBAM,
                ):
     if(isinstance(bedfile, str)):
         bedfile = HTSUtils.ParseBed(bedfile)
+        
     return None

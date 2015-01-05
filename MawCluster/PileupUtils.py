@@ -146,6 +146,8 @@ class PCInfo:
     """
 
     def __init__(self, PileupColumn, minBQ=0, minMQ=0):
+        minMQ = int(minMQ)
+        minBQ = int(minBQ)
         from collections import Counter
         PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()['idtochr']
         self.contig = PysamToChrDict[PileupColumn.reference_id]
@@ -157,17 +159,36 @@ class PCInfo:
         self.FailedMQReads = sum(
             [pileupRead.alignment.mapping_quality < minMQ
              for pileupRead in PileupColumn.pileups])
+        '''
+        if(self.FailedMQReads != 0):
+            print("Mapping qualities of reads which failed: {}".format(
+                  str([pu.alignment.mapping_quality
+                      for pu in PileupColumn.pileups
+                      if pu.alignment.mapping_quality >= minMQ])))
+        print("Number of reads failed for BQ < {}: {}".format(minBQ,
+              self.FailedBQReads))
+        print("Number of reads failed for MQ < {}: {}".format(minMQ,
+              self.FailedMQReads))
+        '''
         self.Records = [
             PRInfo(pileupRead) for pileupRead in PileupColumn.pileups
-            if(pileupRead.alignment.mapping_quality >= minMQ) and
-            (pileupRead.alignment.query_qualities >= minBQ)]
+            if(pileupRead.alignment.mapq >= minMQ) and
+            (pileupRead.alignment.query_qualities[
+                pileupRead.query_position] >= minBQ)]
         self.MergedReads = len(self.Records)
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])
         except KeyError:
             self.TotalReads = self.MergedReads
-        self.consensus = Counter(
-            [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
+        try:
+            self.consensus = Counter(
+                [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
+        except IndexError:
+            self.consensus = Counter([rec.BaseCall
+                                      for rec in
+                                      [PRInfo(pileupRead) for pileupRead in
+                                       PileupColumn.pileups]]).most_common(
+                1)[0][0]
         self.VariantDict = {}
         for alt in list(set([rec.BaseCall for rec in self.Records])):
             self.VariantDict[alt] = [
@@ -229,11 +250,16 @@ class PCInfo:
         # Process allele frequencies, both by unique and unmerged reads
         self.MergedAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
-        for key in self.MergedAlleleDict:
-            self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
-                key] / float(self.MergedReads)
-            self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
-                key] / float(self.TotalReads)
+        try:
+            for key in self.MergedAlleleDict:
+                self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
+                    key] / float(self.MergedReads)
+                self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
+                    key] / float(self.TotalReads)
+        except ZeroDivisionError:
+            for key in self.MergedAlleleDict:
+                self.MergedAlleleFreqDict[key] = 0.
+                self.TotalAlleleFreqDict[key] = 0.
         self.MergedAlleleCountStr = "\t".join([
             str(i) for i in [self.MergedAlleleDict['A'],
                              self.MergedAlleleDict['C'],

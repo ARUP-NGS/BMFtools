@@ -41,18 +41,30 @@ def main():
         help="Output stranded transition table.",
         default="default")
     parser.add_argument(
-        "--p",
+        "-p",
         "--progRepInterval",
         help="Number of positions between progress reports.",
-        default=1000
+        default=10000
+        )
+    parser.add_argument(
+        "--minMQ",
+        help="Minimum mapping quality.",
+        default=10
+        )
+    parser.add_argument(
+        "--minBQ",
+        help="Minimum base quality.",
+        default=20
         )
     args = parser.parse_args()
     Output = CustomPileupToTsv(args.bam,
-                               PileupTsv=args.pileupTsv,
+                               PileupTsv=args.PileupTsv,
                                TransitionTable=args.TransitionTable,
                                StrandedTTable=args.StrandedTTable,
                                bedfile=args.bed,
-                               progRepInterval=int(args.progRepInterval))
+                               progRepInterval=int(args.progRepInterval),
+                               minMQ=args.minMQ,
+                               minBQ=args.minBQ)
     return Output
 
 
