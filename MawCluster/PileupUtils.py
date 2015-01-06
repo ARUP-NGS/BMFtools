@@ -8,6 +8,7 @@ import pysam
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
 import utilBMF
+from csamtools import PileupColumn
 
 """
 Contains various utilities for working with pileup generators
@@ -159,6 +160,7 @@ class PCInfo:
         self.FailedMQReads = sum(
             [pileupRead.alignment.mapping_quality < minMQ
              for pileupRead in PileupColumn.pileups])
+        self.PCol = PileupColumn
         '''
         if(self.FailedMQReads != 0):
             print("Mapping qualities of reads which failed: {}".format(
@@ -431,7 +433,17 @@ def CustomPileupFullGenome(inputBAM,
     TransHandle = open(TransitionTable, "w")
     StrandedTransHandle = open(StrandedTTable, "w")
     FirstLine = True
-    for pileupColumn in bamHandle.pileup(max_depth=30000):
+    pileupIterator = bamHandle.pileup(max_depth=30000)
+    while True:
+        try:
+            pileupColumn = pileupIterator.next()
+        except ValueError:
+            pl(("Pysam sometimes runs into errors during iteration which"
+                " are not handled with any elegance. Continuing!"))
+            continue
+        except StopIteration:
+            pl("Finished iterations.")
+            break
         NumProcessed += 1
         if((NumProcessed) % progRepInterval == 0):
             pl("Number of positions processed: {}".format(
@@ -566,8 +578,18 @@ def CustomPileupToTsv(inputBAM,
     StrandedTransHandle = open(StrandedTTable, "w")
     FirstLine = True
     for line in bedlines:
-        for pileupColumn in bamHandle.pileup(line[0], line[1], line[2],
-                                             max_depth=30000):
+        pileupIterator = bamHandle.pileup(line[0], line[1], line[2],
+                                          max_depth=30000)
+        while True:
+            try:
+                pileupColumn = pileupIterator.next()
+            except ValueError:
+                pl(("Pysam sometimes runs into errors during iteration which"
+                    " are not handled with any elegance. Continuing!"))
+                continue
+            except StopIteration:
+                pl("Finished iterations.")
+                break
             NumProcessed += 1
             if((NumProcessed) % progRepInterval == 0):
                 pl("Number of positions processed: {}".format(
@@ -718,7 +740,17 @@ def AlleleFrequenciesByBase(inputBAM,
                                "Total Reverse fraction: T",
                                ]) + "\n")
     if(bedfile == "default"):
-        for pileup in inHandle.pileup(max_depth=30000):
+        pileupIterator = inHandle.pileup(max_depth=30000)
+        while True:
+            try:
+                pileup = pileupIterator.next()
+            except ValueError:
+                pl(("Pysam sometimes runs into errors during iteration which"
+                    " are not handled with any elegance. Continuing!"))
+                continue
+            except StopIteration:
+                pl("Finished iterations.")
+                break
             NumProcessed += 1
             if(NumProcessed % progRepInterval == 0):
                 pl("Number of base positions processed: {}".format(
@@ -728,9 +760,19 @@ def AlleleFrequenciesByBase(inputBAM,
     else:
         bedLines = HTSUtils.ParseBed(bedfile)
         for line in bedLines:
-            for pileup in inHandle.pileup(reference=line[0], start=line[1],
-                                          end=line[2],
-                                          max_depth=30000):
+            puIterator = inHandle.pileup(reference=line[0], start=line[1],
+                                         end=line[2],
+                                         max_depth=30000)
+            while True:
+                try:
+                    pileup = puIterator.next()
+                except ValueError:
+                    pl(("Pysam sometimes runs into errors during iteration "
+                        "which are not handled well. Continuing!"))
+                    continue
+                except StopIteration:
+                    pl("Finished iterations.")
+                    break
                 NumProcessed += 1
                 if(NumProcessed % progRepInterval == 0):
                     pl("Number of base positions processed: {}".format(
@@ -771,11 +813,20 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     pl("Beginning PileupToBed.")
-    for PC in [PCInfo(
-            col, minMQ=minMQ, minBQ=minBQ) for col in inHandle.pileup(
-                max_depth=30000)]:
+    pileupIterator = inHandle.pileup(max_depth=30000)
+    ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()['chrtoid']
+    while True:
+        try:
+            PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
+        except ValueError:
+            pl(("Pysam sometimes runs into errors during iteration which"
+                " are not handled with any elegance. Continuing!"))
+            continue
+        except StopIteration:
+            pl("Finished iterations.")
+            break
         if("Interval" not in locals()):
-            if(PC.PCol.nsegments > mincov):
+            if(PC.MergedReads >= mincov):
                 Interval = PileupInterval(contig=PC.PCol.reference_id,
                                           start=PC.PCol.reference_pos,
                                           end=PC.PCol.reference_pos + 1)
@@ -783,8 +834,8 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
                     Interval.updateWithPileupColumn(PC.PCol)
                 except AssertionError:
                     del Interval
-                workingChr = PC.PCol.reference_id
-                workingPos = PC.PCol.reference_pos
+                workingChr = PC.contig
+                workingPos = PC.pos
             continue
         else:
             if(workingChr ==
@@ -860,15 +911,20 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     for line in bedLines:
         TotalReads = 0
         MergedReads = 0
-        for PC in [
-            PCInfo(
-                pu,
-                minMQ=minMQ,
-                minBQ=minBQ) for pu in inHandle.pileup(
-                line[0],
-                line[1],
-                line[2],
-                max_depth=30000)]:
+        pileupIterator = inHandle.pileup(line[0],
+                                         line[1],
+                                         line[2],
+                                         max_depth=30000)
+        while True:
+            try:
+                PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
+            except ValueError:
+                pl(("Pysam sometimes runs into errors during iteration which"
+                    " are not handled with any elegance. Continuing!"))
+                continue
+            except StopIteration:
+                pl("Finished iterations.")
+                break
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         outHandle.write(
@@ -914,23 +970,24 @@ def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     outHandle.write("\t".join(["#Chr", "Start", "End",
                                "Number Of Merged Mapped Bases",
                                "Number of Unmerged Mapped Bases"]) + "\n")
-    for PC in [
-        PCInfo(
-            pu,
-            minMQ=minMQ,
-            minBQ=minBQ) for pu in inHandle.pileup(
-            max_depth=30000) if HTSUtils.PosContainedInBed(
-                PC.contig,
-                PC.pos,
-            bedLines) is False]:
-        outHandle.write(
-            "\t".join(
+    pileupIterator = inHandle.pileup(max_depth=30000)
+    while True:
+        try:
+            PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
+            if HTSUtils.PosContainedInBed(PC.contig, PC.pos, bedLines):
+                continue
+            outHandle.write("\t".join(
                 [str(i)
                  for i in
-                 [PC.contig,
-                  PC.pos,
-                  PC.pos + 1,
-                  PC.MergedReads, PC.TotalReads]]) + "\n")
+                 [PC.contig, PC.pos, PC.pos + 1, PC.MergedReads,
+                  PC.TotalReads]]) + "\n")
+        except ValueError:
+            pl(("Pysam sometimes runs into errors during iteration which"
+                " are not handled with any elegance. Continuing!"))
+            continue
+        except StopIteration:
+            pl("Finished iterations.")
+            break
     inHandle.close()
     outHandle.close()
     pass
