@@ -50,7 +50,10 @@ class VCFLine:
         self.ID = ID
         try:
             if(float(MaxPValue) > 10 ** (self.QUAL / -10)):
-                self.FILTER = "PASS"
+                if(AltAggregateObject.BothStrandSupport is True):
+                    self.FILTER = "PASS"
+                else:
+                    self.FILTER = "ModQual"
             else:
                 self.FILTER = "LowQual"
         except TypeError:
