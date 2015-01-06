@@ -5,10 +5,9 @@ import shlex
 
 import pysam
 
-from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
+from utilBMF.HTSUtils import ThisIsMadness, printlog as pl, PysamToChrDict
 from utilBMF import HTSUtils
 import utilBMF
-from csamtools import PileupColumn
 
 """
 Contains various utilities for working with pileup generators
@@ -65,10 +64,28 @@ class AltAggregateInfo:
                  mergedSize="default",
                  totalSize="default",
                  minMQ=0,
-                 minBQ=0):
+                 minBQ=0,
+                 contig="default",
+                 pos="default",
+                 DOC="default",
+                 DOCTotal="default"):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
+        if(DOC == "default"):
+            raise ThisIsMadness("Full depth of coverage must be provided.")
+        else:
+            self.DOC = int(DOC)
+        if(DOCTotal != "default"):
+            self.DOCTotal = int(DOCTotal)
+        if(contig == "default"):
+            raise ThisIsMadness("A contig must be provided (string).")
+        else:
+            self.contig = contig
+        if(pos == "default"):
+            raise ThisIsMadness("A position (0-based) must be provided (int).")
+        else:
+            self.pos = int(pos)
         if(mergedSize == "default"):
             raise ThisIsMadness(("mergedSize must be provided: number of "
                                  "PRInfo at given position."))
@@ -107,6 +124,8 @@ class AltAggregateInfo:
             self.AveBQ = 0
         self.ALT = recList[0].BaseCall
         self.consensus = consensus
+        self.minMQ = minMQ
+        self.minBQ = minBQ
 
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = "->".join([consensus, self.ALT])
@@ -201,7 +220,11 @@ class PCInfo:
                               mergedSize=self.MergedReads,
                               totalSize=self.TotalReads,
                               minMQ=minMQ,
-                              minBQ=minBQ
+                              minBQ=minBQ,
+                              contig=self.contig,
+                              pos=self.pos,
+                              DOC=self.MergedReads,
+                              DOCTotal=self.TotalReads
                               ) for key in self.VariantDict.keys()]
         self.TotalFracDict = {}
         for alt in self.AltAlleleData:
@@ -211,7 +234,7 @@ class PCInfo:
         for alt in self.AltAlleleData:
             self.MergedFracDict[
                 alt.ALT] = float(alt.MergedReads) / self.MergedReads
-        # Generate statistics based on transitions, e.g. ref-->alt
+        # Generates statistics based on transitions, e.g. ref-->alt
         TransMergedCounts = {}
         for alt in self.AltAlleleData:
             try:
