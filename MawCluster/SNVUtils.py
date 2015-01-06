@@ -49,13 +49,13 @@ class VCFLine:
             # This is terribly arbitrary...
         self.ID = ID
         try:
-            if(float(MaxPValue) > 10 ** float(self.QUAL / -10)):
+            if(float(MaxPValue) > 10 ** (self.QUAL / -10)):
                 self.FILTER = "PASS"
+            else:
+                self.FILTER = "LowQual"
         except TypeError:
             print("TypeError! MaxPValue is: {}".format(MaxPValue))
             raise TypeError("MaxPValue not properly parsed.")
-        else:
-            self.FILTER = "LowQual"
         if(self.ALT == AltAggregateObject.consensus):
             self.FILTER = "CONSENSUS"
         self.InfoFields = {"AF": AltAggregateObject.MergedReads
@@ -190,16 +190,38 @@ def SNVCrawler(inBAM,
                MaxPValue=1e-15,
                keepConsensus=False
                ):
-    if(isinstance(bed, str)):
+    if(isinstance(bed, str) and bed != "default"):
         bed = HTSUtils.ParseBed(bed)
-        if(VariantCallingTsv == "default"):
-            VariantCallingTsv = inBAM[0:-4] + ".vc.tsv"
+    if(VariantCallingTsv == "default"):
+        VariantCallingTsv = inBAM[0:-4] + ".vc.tsv"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(VariantCallingTsv, "w")
-    outHandle.write("##HEADER___NOT_WRITTEN")
-    for line in bed:
-        puIterator = inHandle.pileup(line[0], line[1], line[2],
-                                     max_depth=30000)
+    outHandle.write("##HEADER_NOT_WRITTEN\n")
+    if(bed != "default"):
+        for line in bed:
+            print(repr(bed))
+            puIterator = inHandle.pileup(line[0], line[1], line[2],
+                                         max_depth=30000)
+            while True:
+                try:
+                    PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)
+                except ValueError:
+                    pl(("Pysam sometimes runs into errors during iteration w"
+                        "hich are not handled with any elegance. Continuing!"))
+                    continue
+                except StopIteration:
+                    pl("Finished iterations.")
+                    break
+                VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
+                                    keepConsensus=keepConsensus)
+                # TODO: Check to see if it speeds up to not assign and only write.
+                VCFLineString = VCFLineSet.ToString()
+                if(len(VCFLineString) != 0):
+                    outHandle.write(VCFLineSet.ToString() + "\n")
+                    outHandle.close()
+                    inHandle.close()
+    else:
+        puIterator = inHandle.pileup(max_depth=30000)
         while True:
             try:
                 PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)
@@ -213,7 +235,7 @@ def SNVCrawler(inBAM,
             VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
                                 keepConsensus=keepConsensus)
             # TODO: Check to see if it speeds up to not assign and only write.
-            outHandle.write(VCFLineSet.ToString() + "\n")
-    outHandle.close()
-    inHandle.close()
-    return None
+            VCFLineString = VCFLineSet.ToString()
+            if(len(VCFLineString) != 0):
+                outHandle.write(VCFLineSet.ToString() + "\n")
+    return

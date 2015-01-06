@@ -21,7 +21,8 @@ def main():
     parser.add_argument(
         "--bed",
         "-b",
-        help="Full path to bed file.")
+        help="Full path to bed file.",
+        default="default")
     parser.add_argument(
         "--minBQ",
         help="Minimum Base Quality to consider",
@@ -88,12 +89,20 @@ def main():
     pl("Log file is {}".format(logfile))
 
     # Beckon the Kraken
-    OutVCF = SNVCrawler(args.inBAM,
-                        bed=args.bed,
-                        minMQ=args.minMQ,
-                        minBQ=args.minBQ,
-                        MaxPValue=args.MaxPValue,
-                        keepConsensus=args.keepConsensus)
+    if(args.bed != "default"):
+        OutVCF = SNVCrawler(args.inBAM,
+                            bed=args.bed,
+                            minMQ=args.minMQ,
+                            minBQ=args.minBQ,
+                            MaxPValue=args.MaxPValue,
+                            keepConsensus=args.keepConsensus)
+    else:
+        OutVCF = SNVCrawler(args.inBAM,
+                            minMQ=args.minMQ,
+                            minBQ=args.minBQ,
+                            MaxPValue=args.MaxPValue,
+                            keepConsensus=args.keepConsensus)
+
     return OutVCF
 
 
