@@ -76,6 +76,8 @@ class AlleleAggregateInfo:
             raise ThisIsMadness("A consensus nucleotide must be provided.")
         if(NUMALT == "default"):
             raise ThisIsMadness("Number of alternate alleles required.")
+        else:
+            self.NUMALT = NUMALT
         if(DOC == "default"):
             raise ThisIsMadness("Full depth of coverage must be provided.")
         else:
@@ -232,44 +234,36 @@ class PCInfo:
                               pos=self.pos,
                               DOC=self.MergedReads,
                               DOCTotal=self.TotalReads,
-                              NUMALT=self.NUMALT,
+                              NUMALT=len(self.VariantDict[key]),
                               ) for key in self.VariantDict.keys()]
-        self.TotalFracDict = {}
+        self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.TotalFracDict[
                 alt.ALT] = float(alt.TotalReads) / self.TotalReads
-        self.TotalFracFormatDict = {
-            ",".join([key for key in self.TotalFracDict.keys(
-                )]): ",".join([str(i)for i in
-                               [self.TotalFracDict[key]
-                               in self.TotalFracDict.keys()]])}
-        self.TotalCountDict = {}
+        self.TotalFracStr = ",".join(
+            ["->".join([key, str(self.TotalFracDict[key])])
+             for key in self.TotalFracDict.keys()])
+        self.TotalCountDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
             self.TotalCountDict[
                 alt.ALT] = alt.TotalReads
-        self.TotalCountFormatDict = {
-            ",".join([key for key in self.TotalCountDict.keys(
-                )]): ",".join([str(i) for i in
-                               [self.TotalCountDict[key]
-                               in self.TotalCountDict.keys()]])}
-        self.MergedFracDict = {}
+        self.TotalCountStr = ",".join(
+            ["->".join([key, str(self.TotalCountDict[key])])
+             for key in self.TotalCountDict.keys()])
+        self.MergedFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedFracDict[
                 alt.ALT] = float(alt.MergedReads) / self.MergedReads
-        self.MergedFracFormatDict = {
-            ",".join([key for key in self.MergedFracDict.keys(
-                )]): ",".join([str(i) for i in
-                               [self.MergedFracDict[key]
-                               in self.MergedFracDict.keys()]])}
-        self.MergedCountDict = {}
+        self.MergedFracStr = ",".join(
+            ["->".join([key, str(self.MergedFracDict[key])])
+             for key in self.MergedFracDict.keys()])
+        self.MergedCountDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
             self.MergedCountDict[
                 alt.ALT] = alt.MergedReads
-        self.MergedCountFormatDict = {
-            ",".join([key for key in self.MergedCountDict.keys(
-                )]): ",".join([str(i) for i in
-                               [self.MergedCountDict[key]
-                               in self.MergedCountDict.keys()]])}
+        self.MergedCountStr = ",".join(
+            ["->".join([key, str(self.MergedCountDict[key])])
+             for key in self.MergedCountDict.keys()])
         # Generates statistics based on transitions, e.g. ref-->alt
         TransMergedCounts = {}
         for alt in self.AltAlleleData:

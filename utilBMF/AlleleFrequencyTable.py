@@ -23,7 +23,8 @@ def main():
         "-p",
         "--progRepInterval",
         help="Number of positions between progress reports.",
-        default=10000
+        default=10000,
+        type=int
         )
     parser.add_argument(
         "-b",
@@ -35,15 +36,17 @@ def main():
         "--minMQ",
         "-m",
         help="Minimum mapping quality for inclusion. Default: 0.",
-        default=0)
+        default=0,
+        type=int)
     parser.add_argument(
         "--minBQ",
         "-q",
         help="Minimum base quality score for inclusion. Default: 20.",
-        default=20)
+        default=20,
+        type=int)
     args = parser.parse_args()
-    minMQ = int(args.minMQ)
-    minBQ = int(args.minBQ)
+    minMQ = args.minMQ
+    minBQ = args.minBQ
     if(args.bed == "default"):
         Output = AlleleFrequenciesByBase(
             args.bam,

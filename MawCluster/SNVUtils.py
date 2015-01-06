@@ -22,14 +22,16 @@ class VCFLine:
 
     def __init__(self,
                  AltAggregateObject,
-                 MaxPValue=1e-15,
+                 MaxPValue=float("1e-15"),
                  ID=".",
                  DOCMerged="default",
                  DOCTotal="default",
-                 TotalAlleleFracStr="default",
-                 MergedAlleleFracStr="default",
-                 TotalAlleleCountStr="default",
-                 MergedAlleleCountStr="default"):
+                 TotalFracStr="default",
+                 MergedFracStr="default",
+                 TotalCountStr="default",
+                 MergedCountStr="default",
+                 FailedBQReads="default",
+                 FailedMQReads="default"):
         if(isinstance(AltAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
@@ -46,8 +48,12 @@ class VCFLine:
             self.QUAL *= 100
             # This is terribly arbitrary...
         self.ID = ID
-        if(float(MaxPValue) > 10 ** float(self.QUAL / -10)):
-            self.FILTER = "PASS"
+        try:
+            if(float(MaxPValue) > 10 ** float(self.QUAL / -10)):
+                self.FILTER = "PASS"
+        except TypeError:
+            print("TypeError! MaxPValue is: {}".format(MaxPValue))
+            raise TypeError("MaxPValue not properly parsed.")
         else:
             self.FILTER = "LowQual"
         if(self.ALT == AltAggregateObject.consensus):
@@ -65,20 +71,21 @@ class VCFLine:
                            "MBQ": AltAggregateObject.minBQ,
                            "QA": AltAggregateObject.SumBQScore,
                            "NUMALT": AltAggregateObject.NUMALT,
-                           "BQF": AltAggregateObject.FailedBQReads,
-                           "MQF": AltAggregateObject.FailedMQReads,
+                           "BQF": FailedBQReads,
+                           "MQF": FailedMQReads,
                            "TYPE": "snp",
                            "MVQ": MaxPValue}
-        if(TotalAlleleCountStr != "default"):
-            self.InfoFields["TACS"] = TotalAlleleCountStr
-        if(TotalAlleleFracStr != "default"):
-            self.InfoFields["TAFS"] = TotalAlleleFracStr
-        if(MergedAlleleCountStr != "default"):
-            self.InfoFields["MACS"] = MergedAlleleCountStr
-        if(MergedAlleleFracStr != "default"):
-            self.InfoFields["MAFS"] = MergedAlleleFracStr
-        self.InfoStr = ";".join(["=".join(key, str(self.InfoFields[key]))
-                                 for key in self.InfoFields.keys()])
+        if(TotalCountStr != "default"):
+            self.InfoFields["TACS"] = TotalCountStr
+        if(TotalFracStr != "default"):
+            self.InfoFields["TAFS"] = TotalFracStr
+        if(MergedCountStr != "default"):
+            self.InfoFields["MACS"] = MergedCountStr
+        if(MergedFracStr != "default"):
+            self.InfoFields["MAFS"] = MergedFracStr
+        self.InfoStr = ";".join(
+            ["=".join([key, str(self.InfoFields[key])])
+             for key in self.InfoFields.keys()])
         self.FormatFields = {"DP": DOCMerged,
                              "DPA": AltAggregateObject.MergedReads,
                              "DPT": DOCTotal,
@@ -86,83 +93,93 @@ class VCFLine:
         self.FormatStr = (":".join(self.FormatFields.keys()) + "\t" +
                           ":".join(str(self.FormatFields[key])
                                    for key in self.FormatFields.keys()))
-        self.str = ToString(self)
+        self.str = "\t".join([str(i) for i in [self.CHROM,
+                                               self.POS,
+                                               self.ID,
+                                               self.CONS,
+                                               self.ALT,
+                                               self.QUAL,
+                                               self.FILTER,
+                                               self.InfoStr,
+                                               self.FormatStr]])
 
-        def update():
-            self.FormatStr = (":".join(self.FormatFields.keys()) + "\t" +
-                              ":".join(str(self.FormatFields[key])
-                                       for key in self.FormatFields.keys()))
-            self.InfoStr = ";".join(["=".join(key, str(self.InfoFields[key]))
-                                    for key in self.InfoFields.keys()])
+    def update(self):
+        self.FormatKey = ":".join(self.FormatFields.keys())
+        self.FormatValue = ":".join([str(self.FormatFields[key])
+                                     for key in self.FormatFields.keys()])
+        self.FormatStr = (":".join(self.FormatFields.keys()) + "\t" +
+                          ":".join(str(self.FormatFields[key])
+                                   for key in self.FormatFields.keys()))
+        self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
+                                 for key in self.InfoFields.keys()])
 
-        def ToString():
-            self.update()
-            self.str = "\t".join([str(i) for i in [self.CHROM,
-                                                   self.POS,
-                                                   self.ID,
-                                                   self.CONS,
-                                                   self.ALT,
-                                                   self.QUAL,
-                                                   self.FILTER,
-                                                   self.InfoStr,
-                                                   self.FormatStr]])
-            return self.str
+    def ToString(self):
+        self.update()
+        self.str = "\t".join([str(i) for i in [self.CHROM,
+                                               self.POS,
+                                               self.ID,
+                                               self.CONS,
+                                               self.ALT,
+                                               self.QUAL,
+                                               self.FILTER,
+                                               self.InfoStr,
+                                               self.FormatStr]])
+        return self.str
 
 
 class VCFPos:
 
-    def __init__(self, PCInfoObject, MaxPValue=1e-15, keepConsensus=True):
+    def __init__(self, PCInfoObject,
+                 MaxPValue=1e-15,
+                 keepConsensus=True):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
         self.pos = PCInfoObject.pos
         self.minMQ = PCInfoObject.minMQ
         self.consensus = PCInfoObject.consensus
-        self.TotalAlleleFracStr = ",".join(
-            [key +
-             "->" +
-             str(PCInfoObject.TotalFracFormatDict[key][0:6])
-             for key in PCInfoObject.TotalFracFormatDict.keys()])
-        self.MergedAlleleFracStr = ",".join(
-            [key +
-             "->" +
-             str(PCInfoObject.MergedFracFormatDict[key][0:6])
-             for key in PCInfoObject.MergedFracFormatDict.keys()])
-        self.TotalAlleleCountStr = ",".join(
-            [key +
-             "->" +
-             str(PCInfoObject.TotalCountFormatDict[key])
-             for key in PCInfoObject.TotalCountFormatDict.keys()])
-        self.MergedAlleleCountStr = ",".join(
-            [key +
-             "->" +
-             str(PCInfoObject.MergedCountFormatDict[key])
-             for key in PCInfoObject.MergedCountFormatDict.keys()])
+        self.TotalFracStr = PCInfoObject.TotalFracStr
+        self.MergedFracStr = PCInfoObject.MergedFracStr
+        self.TotalCountStr = PCInfoObject.TotalCountStr
+        self.MergedCountStr = PCInfoObject.MergedCountStr
         # Create VCFLines object using the calculated statistics
+        # if(isinstance(MaxPValue, float) is False):
+        #     print("repr of MaxPValue: {}".format(repr(MaxPValue)))
+        #     raise HTSUtils.ThisIsMadness("MaxPValue must be a float!")
         self.VCFLines = [VCFLine(
-            alt, TotalAlleleCountStr=self.TotalAlleleCountStr,
-            MergedAlleleCountStr=self.MergedAlleleCountStr,
-            TotalAlleleFracStr=self.TotalAlleleFracStr,
-            MergedAlleleFracStr=self.MergedAlleleFracStr,
+            alt, TotalCountStr=self.TotalCountStr,
+            MergedCountStr=self.MergedCountStr,
+            TotalFracStr=self.TotalFracStr,
+            MergedFracStr=self.MergedFracStr,
             DOCMerged=PCInfoObject.MergedReads,
             DOCTotal=PCInfoObject.TotalReads,
-            MaxPValue=MaxPValue)
+            MaxPValue=MaxPValue,
+            FailedBQReads=PCInfoObject.FailedBQReads,
+            FailedMQReads=PCInfoObject.FailedMQReads)
             for alt in PCInfoObject.AltAlleleData]
-        self.str = self.ToString()
         self.keepConsensus = keepConsensus
+        if(self.keepConsensus is True):
+            self.str = "\n".join([line.ToString()
+                                  for line in
+                                  self.VCFLines])
+        else:
+            self.str = "\n".join([line.ToString()
+                                  for line in
+                                  self.VCFLines
+                                  if line.FILTER != "CONSENSUS"])
 
-        def ToString(self):
-            [line.update() for line in self.VCFLines]
-            if(self.keepConsensus is True):
-                self.str = "\n".join([line.ToString()
-                                      for line in
-                                      self.VCFLines])
-            else:
-                self.str = "\n".join([line.ToString()
-                                      for line in
-                                      self.VCFLines
-                                      if line.FILTER != "CONSENSUS"])
-            return self.str
+    def ToString(self):
+        [line.update() for line in self.VCFLines]
+        if(self.keepConsensus is True):
+            self.str = "\n".join([line.ToString()
+                                  for line in
+                                  self.VCFLines])
+        else:
+            self.str = "\n".join([line.ToString()
+                                  for line in
+                                  self.VCFLines
+                                  if line.FILTER != "CONSENSUS"])
+        return self.str
 
 
 def SNVCrawler(inBAM,

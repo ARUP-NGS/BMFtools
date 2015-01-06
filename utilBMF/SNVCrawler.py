@@ -6,7 +6,8 @@ import logging
 from MawCluster.SNVUtils import SNVCrawler
 from HTSUtils import printlog as pl
 
-global Logger
+# Global Variables
+Logger = logging.getLogger("Primarylogger")
 
 
 def main():
@@ -24,31 +25,38 @@ def main():
     parser.add_argument(
         "--minBQ",
         help="Minimum Base Quality to consider",
-        default=30)
+        default=30,
+        type=int)
     parser.add_argument(
         "--minMQ",
         help="Minimum Mapping Quality to consider",
-        default=10)
+        default=10,
+        type=int)
     parser.add_argument(
         "--MaxPValue",
         "-p",
-        help="Maximum P value to consider, in e notation.")
+        help="Maximum P value to consider, in e notation.",
+        type=float,
+        default=1e-15)
     parser.add_argument(
         "--keepConsensus",
         "-k",
         action="store_true")
+    parser.add_argument(
+        "--logfile",
+        help="Name for logfile.",
+        default="default")
     args = parser.parse_args()
 
     # Begin logging
+    global Logger
     if(args.logfile != "default"):
         logfile = args.logfile
     else:
-        print("Basename for log: {}".format(os.path.basename(args.fq[0])))
+        print("Basename for log: {}".format(os.path.basename(args.inBAM)))
         logfile = (os.getcwd() + "/" +
-                   os.path.basename(args.fq[0]).split('.')[0] +
+                   os.path.basename(args.inBAM).split('.')[0] +
                    '.log')
-    if(args.file_prefix != "default"):
-        logfile = os.getcwd() + "/" + args.file_prefix + ".log"
     if(os.path.isfile(logfile)):
         os.remove(logfile)
         pl("Log file existed - deleting!")
@@ -84,7 +92,7 @@ def main():
                         bed=args.bed,
                         minMQ=args.minMQ,
                         minBQ=args.minBQ,
-                        MaxPValue=float(args.MaxPValue),
+                        MaxPValue=args.MaxPValue,
                         keepConsensus=args.keepConsensus)
     return OutVCF
 
