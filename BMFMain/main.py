@@ -4,7 +4,7 @@ import os.path
 import logging
 import sys
 
-import ProcessingSteps as ps
+import BMFMain.ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl
 """
 Contains Utilities for the completion of a variety of
