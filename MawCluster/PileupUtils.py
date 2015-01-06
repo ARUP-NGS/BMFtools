@@ -39,6 +39,7 @@ class PRInfo:
             PileupRead.query_position]
         self.MQ = PileupRead.alignment.mapq
         self.is_reverse = PileupRead.alignment.is_reverse
+        self.is_proper_pair = PileupRead.alignment.is_proper_pair
 
 
 def is_reverse_to_str(boolean):
@@ -50,7 +51,7 @@ def is_reverse_to_str(boolean):
         return "unmapped"
 
 
-class AltAggregateInfo:
+class AlleleAggregateInfo:
 
     """
     Class which holds summary information for a given alt allele
@@ -68,10 +69,13 @@ class AltAggregateInfo:
                  contig="default",
                  pos="default",
                  DOC="default",
-                 DOCTotal="default"):
+                 DOCTotal="default",
+                 NUMALT="default"):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
+        if(NUMALT == "default"):
+            raise ThisIsMadness("Number of alternate alleles required.")
         if(DOC == "default"):
             raise ThisIsMadness("Full depth of coverage must be provided.")
         else:
@@ -102,7 +106,7 @@ class AltAggregateInfo:
             # print("recList repr: {}".format(repr(recList)))
             print("Alt alleles: {}".format([i.BaseCall for i in recList]))
             raise ThisIsMadness(
-                "AltAggregateInfo requires that all alt alleles agree.")
+                "AlleleAggregateInfo requires that all alt alleles agree.")
         self.TotalReads = np.sum([rec.FM for rec in recList])
         self.MergedReads = len(recList)
         self.ReverseMergedReads = np.sum([rec.is_reverse for rec in recList])
@@ -114,6 +118,8 @@ class AltAggregateInfo:
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum([rec.BQ for rec in recList])
         self.SumMQScore = sum([rec.MQ for rec in recList])
+        self.PAIRED = sum([rec.is_proper_pair is True for rec in recList]
+                          ) / float(len(recList))
         try:
             self.AveMQ = float(self.SumMQScore) / len(self.recList)
         except ZeroDivisionError:
@@ -140,14 +146,14 @@ class AltAggregateInfo:
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
-        self.StrandCountsDict['reverse'] = sum([
+        self.StrandCountsDict["reverse"] = sum([
             rec.is_reverse for rec in self.recList])
-        self.StrandCountsDict['forward'] = sum([
+        self.StrandCountsDict["forward"] = sum([
             rec.is_reverse is False for rec in self.recList])
         self.StrandCountsTotalDict = {}
-        self.StrandCountsTotalDict['reverse'] = sum(
+        self.StrandCountsTotalDict["reverse"] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is True])
-        self.StrandCountsTotalDict['forward'] = sum(
+        self.StrandCountsTotalDict["forward"] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is False])
         self.TotalAlleleFrequency = self.TotalReads / float(totalSize)
         self.MergedAlleleFrequency = self.MergedReads / float(mergedSize)
@@ -166,36 +172,36 @@ class PCInfo:
     """
 
     def __init__(self, PileupColumn, minBQ=0, minMQ=0):
-        minMQ = int(minMQ)
-        minBQ = int(minBQ)
+        self.minMQ = int(minMQ)
+        self.minBQ = int(minBQ)
         from collections import Counter
-        PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()['idtochr']
+        PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()["idtochr"]
         self.contig = PysamToChrDict[PileupColumn.reference_id]
         self.pos = PileupColumn.reference_pos
         self.FailedBQReads = sum(
             [pileupRead.alignment.query_qualities
-             [pileupRead.query_position] < minBQ
+             [pileupRead.query_position] < self.minBQ
              for pileupRead in PileupColumn.pileups])
         self.FailedMQReads = sum(
-            [pileupRead.alignment.mapping_quality < minMQ
+            [pileupRead.alignment.mapping_quality < self.minMQ
              for pileupRead in PileupColumn.pileups])
         self.PCol = PileupColumn
-        '''
+        """
         if(self.FailedMQReads != 0):
             print("Mapping qualities of reads which failed: {}".format(
                   str([pu.alignment.mapping_quality
                       for pu in PileupColumn.pileups
-                      if pu.alignment.mapping_quality >= minMQ])))
-        print("Number of reads failed for BQ < {}: {}".format(minBQ,
+                      if pu.alignment.mapping_quality >= self.minMQ])))
+        print("Number of reads failed for BQ < {}: {}".format(self.minBQ,
               self.FailedBQReads))
-        print("Number of reads failed for MQ < {}: {}".format(minMQ,
+        print("Number of reads failed for MQ < {}: {}".format(self.minMQ,
               self.FailedMQReads))
-        '''
+        """
         self.Records = [
             PRInfo(pileupRead) for pileupRead in PileupColumn.pileups
-            if(pileupRead.alignment.mapq >= minMQ) and
+            if(pileupRead.alignment.mapq >= self.minMQ) and
             (pileupRead.alignment.query_qualities[
-                pileupRead.query_position] >= minBQ)]
+                pileupRead.query_position] >= self.minBQ)]
         self.MergedReads = len(self.Records)
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])
@@ -214,26 +220,56 @@ class PCInfo:
         for alt in list(set([rec.BaseCall for rec in self.Records])):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
-        self.AltAlleleData = [AltAggregateInfo(
+
+        self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],
                               consensus=self.consensus,
                               mergedSize=self.MergedReads,
                               totalSize=self.TotalReads,
-                              minMQ=minMQ,
-                              minBQ=minBQ,
+                              minMQ=self.minMQ,
+                              minBQ=self.minBQ,
                               contig=self.contig,
                               pos=self.pos,
                               DOC=self.MergedReads,
-                              DOCTotal=self.TotalReads
+                              DOCTotal=self.TotalReads,
+                              NUMALT=self.NUMALT,
                               ) for key in self.VariantDict.keys()]
         self.TotalFracDict = {}
         for alt in self.AltAlleleData:
             self.TotalFracDict[
                 alt.ALT] = float(alt.TotalReads) / self.TotalReads
+        self.TotalFracFormatDict = {
+            ",".join([key for key in self.TotalFracDict.keys(
+                )]): ",".join([str(i)for i in
+                               [self.TotalFracDict[key]
+                               in self.TotalFracDict.keys()]])}
+        self.TotalCountDict = {}
+        for alt in self.AltAlleleData:
+            self.TotalCountDict[
+                alt.ALT] = alt.TotalReads
+        self.TotalCountFormatDict = {
+            ",".join([key for key in self.TotalCountDict.keys(
+                )]): ",".join([str(i) for i in
+                               [self.TotalCountDict[key]
+                               in self.TotalCountDict.keys()]])}
         self.MergedFracDict = {}
         for alt in self.AltAlleleData:
             self.MergedFracDict[
                 alt.ALT] = float(alt.MergedReads) / self.MergedReads
+        self.MergedFracFormatDict = {
+            ",".join([key for key in self.MergedFracDict.keys(
+                )]): ",".join([str(i) for i in
+                               [self.MergedFracDict[key]
+                               in self.MergedFracDict.keys()]])}
+        self.MergedCountDict = {}
+        for alt in self.AltAlleleData:
+            self.MergedCountDict[
+                alt.ALT] = alt.MergedReads
+        self.MergedCountFormatDict = {
+            ",".join([key for key in self.MergedCountDict.keys(
+                )]): ",".join([str(i) for i in
+                               [self.MergedCountDict[key]
+                               in self.MergedCountDict.keys()]])}
         # Generates statistics based on transitions, e.g. ref-->alt
         TransMergedCounts = {}
         for alt in self.AltAlleleData:
@@ -286,25 +322,25 @@ class PCInfo:
                 self.MergedAlleleFreqDict[key] = 0.
                 self.TotalAlleleFreqDict[key] = 0.
         self.MergedAlleleCountStr = "\t".join([
-            str(i) for i in [self.MergedAlleleDict['A'],
-                             self.MergedAlleleDict['C'],
-                             self.MergedAlleleDict['G'],
-                             self.MergedAlleleDict['T']]])
+            str(i) for i in [self.MergedAlleleDict["A"],
+                             self.MergedAlleleDict["C"],
+                             self.MergedAlleleDict["G"],
+                             self.MergedAlleleDict["T"]]])
         self.TotalAlleleCountStr = "\t".join([
-            str(i) for i in [self.TotalAlleleDict['A'],
-                             self.TotalAlleleDict['C'],
-                             self.TotalAlleleDict['G'],
-                             self.TotalAlleleDict['T']]])
+            str(i) for i in [self.TotalAlleleDict["A"],
+                             self.TotalAlleleDict["C"],
+                             self.TotalAlleleDict["G"],
+                             self.TotalAlleleDict["T"]]])
         self.MergedAlleleFreqStr = "\t".join([
-            str(i) for i in [self.MergedAlleleFreqDict['A'],
-                             self.MergedAlleleFreqDict['C'],
-                             self.MergedAlleleFreqDict['G'],
-                             self.MergedAlleleFreqDict['T']]])
+            str(i) for i in [self.MergedAlleleFreqDict["A"],
+                             self.MergedAlleleFreqDict["C"],
+                             self.MergedAlleleFreqDict["G"],
+                             self.MergedAlleleFreqDict["T"]]])
         self.TotalAlleleFreqStr = "\t".join([
-            str(i) for i in [self.TotalAlleleFreqDict['A'],
-                             self.TotalAlleleFreqDict['C'],
-                             self.TotalAlleleFreqDict['G'],
-                             self.TotalAlleleFreqDict['T']]])
+            str(i) for i in [self.TotalAlleleFreqDict["A"],
+                             self.TotalAlleleFreqDict["C"],
+                             self.TotalAlleleFreqDict["G"],
+                             self.TotalAlleleFreqDict["T"]]])
         # MergedStrandednessRatioDict is the fraction of reverse reads
         # supporting an alternate allele.
         # E.g., if 5 support the alt, but 2 are mapped to the reverse
@@ -347,7 +383,7 @@ class PCInfo:
                       "Family Size\t"
                       "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
-            outStr += '\t'.join([
+            outStr += "\t".join([
                 str(i) for i in [self.contig,
                                  self.pos,
                                  self.consensus,
@@ -356,10 +392,10 @@ class PCInfo:
                                  alt.MergedReads,
                                  alt.TotalAlleleFrequency,
                                  alt.MergedAlleleFrequency,
-                                 alt.StrandCountsTotalDict['reverse'],
-                                 alt.StrandCountsTotalDict['forward'],
-                                 alt.StrandCountsDict['reverse'],
-                                 alt.StrandCountsDict['forward'],
+                                 alt.StrandCountsTotalDict["reverse"],
+                                 alt.StrandCountsTotalDict["forward"],
+                                 alt.StrandCountsDict["reverse"],
+                                 alt.StrandCountsDict["forward"],
                                  self.TotalFracDict[alt.ALT],
                                  self.MergedFracDict[alt.ALT],
                                  alt.AveFamSize,
@@ -406,7 +442,7 @@ class PileupInterval:
             self.end - self.start)
 
     def toString(self):
-        PysamToChrDict = HTSUtils.GetRefIdDicts()['idtochr']
+        PysamToChrDict = HTSUtils.GetRefIdDicts()["idtochr"]
         self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
                                                self.start,
                                                self.end,
@@ -441,14 +477,14 @@ def CustomPileupFullGenome(inputBAM,
     MergedReadsProcessed = 0
     TotalReadsProcessed = 0
     if(PileupTsv == "default"):
-        PileupTsv = inputBAM[0:-4] + '.Pileup.tsv'
+        PileupTsv = inputBAM[0:-4] + ".Pileup.tsv"
     if(TransitionTable == "default"):
-        TransitionTable = inputBAM[0:-4] + '.Trans.tsv'
+        TransitionTable = inputBAM[0:-4] + ".Trans.tsv"
     if(StrandedTTable == "default"):
-        StrandedTTable = inputBAM[0:-4] + '.StrandedTrans.tsv'
-    subprocess.check_call(['samtools', 'index', inputBAM])
+        StrandedTTable = inputBAM[0:-4] + ".StrandedTrans.tsv"
+    subprocess.check_call(["samtools", "index", inputBAM])
     if(os.path.isfile(inputBAM + ".bai") is False):
-        pl("Couldn't index BAM - coor sorting, then indexing!")
+        pl("Couldn\'t index BAM - coor sorting, then indexing!")
         inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
     NumProcessed = 0  # Number of processed positions in pileup
     bamHandle = pysam.AlignmentFile(inputBAM, "rb")
@@ -465,7 +501,7 @@ def CustomPileupFullGenome(inputBAM,
                 " are not handled with any elegance. Continuing!"))
             continue
         except StopIteration:
-            pl("Finished iterations.")
+            # pl("Finished iterations.")
             break
         NumProcessed += 1
         if((NumProcessed) % progRepInterval == 0):
@@ -576,11 +612,11 @@ def CustomPileupToTsv(inputBAM,
     MergedReadsProcessed = 0
     TotalReadsProcessed = 0
     if(PileupTsv == "default"):
-        PileupTsv = inputBAM[0:-4] + '.Pileup.tsv'
+        PileupTsv = inputBAM[0:-4] + ".Pileup.tsv"
     if(TransitionTable == "default"):
-        TransitionTable = inputBAM[0:-4] + '.Trans.tsv'
+        TransitionTable = inputBAM[0:-4] + ".Trans.tsv"
     if(StrandedTTable == "default"):
-        StrandedTTable = inputBAM[0:-4] + '.StrandedTrans.tsv'
+        StrandedTTable = inputBAM[0:-4] + ".StrandedTrans.tsv"
     if(bedfile == "default"):
         return CustomPileupFullGenome(inputBAM, PileupTsv=PileupTsv,
                                       TransitionTable=TransitionTable,
@@ -588,7 +624,7 @@ def CustomPileupToTsv(inputBAM,
                                       progRepInterval=progRepInterval)
     bedlines = HTSUtils.ParseBed(bedfile)
     try:
-        subprocess.check_call(['samtools', 'index', inputBAM])
+        subprocess.check_call(["samtools", "index", inputBAM])
     except subprocess.CalledProcessError:
         pl("Couldn't index BAM - coor sorting, then indexing!")
         inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
@@ -611,7 +647,7 @@ def CustomPileupToTsv(inputBAM,
                     " are not handled with any elegance. Continuing!"))
                 continue
             except StopIteration:
-                pl("Finished iterations.")
+                # pl("Finished iterations.")
                 break
             NumProcessed += 1
             if((NumProcessed) % progRepInterval == 0):
@@ -702,7 +738,10 @@ def CustomPileupToTsv(inputBAM,
     TransHandle.close()
     PileupHandle.close()
     if(CalcAlleleFreq is True):
-        AlleleFreqTsv = AlleleFrequenciesByBase(inputBAM)
+        AlleleFreqTsv = AlleleFrequenciesByBase(inputBAM,
+                                                bedfile=bedfile,
+                                                minMQ=minMQ,
+                                                minBQ=minBQ)
         pl("Optional allele frequency table generated. Path: {}".format(
             AlleleFreqTsv))
     return PileupTsv
@@ -719,13 +758,14 @@ def AlleleFrequenciesByBase(inputBAM,
     each position. I should expand this to include strandedness information.
     """
     pl(("Command required to reproduce results: "
-        "AlleleFrequenciesByBase(inputBAM={},".format(inputBAM) +
-        " outputTsv={}, progRepInterval=".format(outputTsv) +
-        "{})".format(progRepInterval)))
+        "AlleleFrequenciesByBase(inputBAM=\"{}\",".format(inputBAM) +
+        " outputTsv=\"{}\", progRepInterval=".format(outputTsv) +
+        "\"{}\", minMQ=\"{}\", )".format(progRepInterval, minMQ) +
+        "minBQ=\"{}\"".format(minBQ)))
     if(outputTsv == "default"):
-        outputTsv = inputBAM[0:-4] + '.allele.freq.tsv'
+        outputTsv = inputBAM[0:-4] + ".allele.freq.tsv"
     try:
-        subprocess.check_call(['samtools', 'index', inputBAM])
+        subprocess.check_call(["samtools", "index", inputBAM])
     except subprocess.CalledProcessError:
         pl("Couldn't index BAM - coor sorting, then indexing!")
         inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
@@ -772,7 +812,7 @@ def AlleleFrequenciesByBase(inputBAM,
                     " are not handled with any elegance. Continuing!"))
                 continue
             except StopIteration:
-                pl("Finished iterations.")
+                # pl("Finished iterations.")
                 break
             NumProcessed += 1
             if(NumProcessed % progRepInterval == 0):
@@ -794,7 +834,7 @@ def AlleleFrequenciesByBase(inputBAM,
                         "which are not handled well. Continuing!"))
                     continue
                 except StopIteration:
-                    pl("Finished iterations.")
+                    # pl("Finished iterations.")
                     break
                 NumProcessed += 1
                 if(NumProcessed % progRepInterval == 0):
@@ -813,8 +853,8 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
     Takes a bam file and creates a bed file containing each position
     """
     pl(("Command required to reproduce this call: "
-        "BamToCoverageBed(\'{}\', outbed=".format(inbam) +
-        "\'{}\', mincov={})".format(outbed, mincov)))
+        "BamToCoverageBed(\"{}\", outbed=".format(inbam) +
+        "\"{}\", mincov={})".format(outbed, mincov)))
     pl(("WARNING: Coverage counts for this script"
         " are wrong. Fix in the works!"
         " It seems to only show up for very long regions."))
@@ -837,7 +877,7 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
                                "Avg Total Coverage"]) + "\n")
     pl("Beginning PileupToBed.")
     pileupIterator = inHandle.pileup(max_depth=30000)
-    ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()['chrtoid']
+    ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
     while True:
         try:
             PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
@@ -846,7 +886,7 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
                 " are not handled with any elegance. Continuing!"))
             continue
         except StopIteration:
-            pl("Finished iterations.")
+            # pl("Finished iterations.")
             break
         if("Interval" not in locals()):
             if(PC.MergedReads >= mincov):
@@ -911,9 +951,9 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.bed"
     pl(("Command required to reproduce this call: "
-        "CalcWithinBedCoverage(\'{}\', bed=".format(inbam) +
-        "\'{}\', minMQ=\'{}\', minBQ=".format(bed, minMQ) +
-        "\'{}\', outbed={})".format(minBQ, outbed)))
+        "CalcWithinBedCoverage(\"{}\", bed=".format(inbam) +
+        "\"{}\", minMQ=\"{}\", minBQ=".format(bed, minMQ) +
+        "\"{}\", outbed=\"{}\")".format(minBQ, outbed)))
     if(bed == "default"):
         pl("Bed file required for CalcWithinBedCoverage")
         raise ThisIsMadness("Bedfile required for calculating coverage.")
@@ -946,7 +986,7 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
                     " are not handled with any elegance. Continuing!"))
                 continue
             except StopIteration:
-                pl("Finished iterations.")
+                # pl("Finished iterations.")
                 break
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
@@ -975,9 +1015,9 @@ def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     if(outbed == "default"):
         outbed = inbam[0:-4] + ".doc.SBI.bed"
     pl(("Command required to reproduce this call: "
-        "CalcWithoutBedCoverage(\'{}\', bed=".format(inbam) +
-        "\'{}\', minMQ=\'{}\', minBQ=".format(bed, minMQ) +
-        "\'{}\', outbed={})".format(minBQ, outbed)))
+        "CalcWithoutBedCoverage(\"{}\", bed=".format(inbam) +
+        "\"{}\", minMQ=\"{}\", minBQ=".format(bed, minMQ) +
+        "\"{}\", outbed={})".format(minBQ, outbed)))
     if(bed == "default"):
         pl("Bed file required for CalcWithoutBedCoverage")
         raise ThisIsMadness("Bedfile required for calculating coverage.")
@@ -1009,7 +1049,7 @@ def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
                 " are not handled with any elegance. Continuing!"))
             continue
         except StopIteration:
-            pl("Finished iterations.")
+            # pl("Finished iterations.")
             break
     inHandle.close()
     outHandle.close()

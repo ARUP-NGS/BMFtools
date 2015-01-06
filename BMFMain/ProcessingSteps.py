@@ -13,7 +13,8 @@ from utilBMF.HTSUtils import printlog as pl
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bamPrefix="default", ref="default", aligner="default",
                   barIndex="default",
-                  bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed"):
+                  bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
+                  mincov=5):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -96,7 +97,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     coorSorted = BCBam.CoorSort(MarkedFamilies)
-    CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=1)
+    CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=mincov)
     pl("Coverage bed: {}".format(CoverageBed))
     if(consfqSingle != "default"):
         mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
@@ -140,25 +141,29 @@ def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
     return BConsFastq1, BConsFastq2, barcodeIndex
 
 
-def pairedVCFProc(consMergeSortBAM, ref="", opts="", bed=""):
-    if(bed == ""):
+def pairedVCFProc(consMergeSortBAM,
+                  ref="default",
+                  opts="",
+                  bed="default",
+                  minMQ=10,
+                  minBQ=20):
+    if(bed == "default"):
         raise ValueError("Bed file location must be set!")
-    if(ref == ""):
+    if(ref == "default"):
         raise ValueError("Reference index location must be set!")
     # Consolidating families into single reads
     # Variant Calling Step using MPileup
     # print("Now filtering for reads with NM > 0 only if you want to.")
-    PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM, bedfile=bed)
+    PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
+                                              bedfile=bed,
+                                              minMQ=minMQ,
+                                              minBQ=minBQ)
     pl("PileupTSV: {}".format(PileupTSV))
-    AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM)
+    # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,
+    #                                                     bedfile=bed)
     # This is probably useless given that I'm doing this "manually",
     # but I'm keeping this in here for good measure.
-    pl("Now sorting reads by coordinate to prepare for MPileup.")
-    pl("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BCVCF.MPileup(consMergeSortBAM, ref, bed=bed)
-    pl("Initial mpileup: {}. Filtering.".format(MPileupVCF))
-    ParsedVCF = BCVCF.ParseVCF(MPileupVCF)
-    return ParsedVCF
+    return PileupTSV
 
 
 def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):

@@ -227,8 +227,7 @@ def SplitFastqToNmerReads(inFastq, read_length="default", n="30",
                         'phred_quality'][count*n-n:]
             SeqIO.write(tempSeq, buffer, "fastq")
             count += 1
-    for buffer in outBuffers:
-        buffer.close()
+    [buffer.close for buffer in outBuffers]
     return outFiles
 
 

@@ -6,10 +6,12 @@ import sys
 
 import ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl
-# Contains Utilities for the completion of a variety of
-# tasks related to barcoded protocols for ultra-low
-# frequency variant detection, particularly for circulating tumor DNA
-# Structural Variant detection tools are in active development.
+"""
+Contains Utilities for the completion of a variety of
+tasks related to barcoded protocols for ultra-low
+frequency variant detection, particularly for circulating tumor DNA
+Structural Variant detection tools are in active development.
+"""
 
 # Global Variables
 Logger = logging.getLogger("Primarylogger")
@@ -84,6 +86,20 @@ def main():
         '--file-prefix',
         help="Set non-default prefix.",
         default="default")
+    parser.add_argument(
+        '--minMQ',
+        help="Minimum mapping quality for variant call inclusion.",
+        default=10)
+    parser.add_argument(
+        '--minBQ',
+        help="Minimum base quality for variant call inclusion.",
+        default=20)
+    parser.add_argument(
+        "--minCov",
+        help="Minimum coverage for including a position"
+        " in the BamToCoverageBed",
+        default=5
+        )
     global Logger
     args = parser.parse_args()
     # Begin logging
@@ -194,6 +210,7 @@ def main():
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             if(args.shades.lower() != "true"):
+                '''
                 pl("About to run"
                     " ps.pairedFastqProc("
                     "{}, {}, homing={})".format(
@@ -210,6 +227,8 @@ def main():
                     ref=ref,
                     barIndex=barcodeIndex,
                     bed=bed)
+                '''
+                return 0
             elif(args.shades.lower() == "true"):
                 trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
                     args.fq[0], args.fq[1], args.fq[2])
@@ -219,12 +238,15 @@ def main():
                     aligner=aligner,
                     ref=ref,
                     barIndex=barcodeIndex,
-                    bed=bed)
+                    bed=bed,
+                    mincov=int(args.minCov))
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
                 opts=opts,
-                bed=bed)
+                bed=bed,
+                minMQ=args.minMQ,
+                minBQ=args.minBQ)
             pl(
                 "Last stop! Watch your step.")
         elif(args.initialStep == 2):
@@ -234,13 +256,16 @@ def main():
                 trimfq2,
                 consfqSingle="default",
                 aligner=aligner,
-                ref=ref)
+                ref=ref,
+                mincov=int(args.minCov))
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
                 opts=opts,
-                bed=bed)
+                bed=bed,
+                minMQ=args.minMQ,
+                minBQ=args.minBQ)
             pl(
                 "Last stop! Watch your step")
         elif(args.initialStep == 3):
@@ -249,7 +274,9 @@ def main():
                 args.BAM,
                 ref=ref,
                 opts=opts,
-                bed=bed)
+                bed=bed,
+                minMQ=args.minMQ,
+                minBQ=args.minBQ)
             pl("Last stop! Watch your step.")
         return
 
