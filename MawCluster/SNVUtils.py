@@ -77,7 +77,7 @@ class VCFLine:
                            "BQF": FailedBQReads,
                            "MQF": FailedMQReads,
                            "TYPE": "snp",
-                           "MVQ": MaxPValue}
+                           "PVC": MaxPValue}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
         if(TotalFracStr != "default"):
@@ -373,28 +373,122 @@ class HeaderContigLine:
 """
 This next section contains the dictionaries which hold the
 FILTER Header entries
+Valid tags: PASS,ModQual,LowQual
 """
 
-HeaderFormatDict = {}
-HeaderFormatDict["PASS"] = HeaderFormatLine(ID="PASS",
+HeaderFilterDict = {}
+HeaderFilterDict["PASS"] = HeaderFilterLine(ID="PASS",
                                             Description="All filters passed")
-HeaderFormatDict["ModQual"] = HeaderFormatLine(
+HeaderFilterDict["ModQual"] = HeaderFilterLine(
     ID="ModQual",
     Description="High quality but only supported by reads on one strand")
-HeaderFormatDict["LowQual"] = HeaderFormatLine(ID="LowQual",
+HeaderFilterDict["LowQual"] = HeaderFilterLine(ID="LowQual",
                                                Description="Low Quality")
+
+
 """
 This next section contains the dictionaries which hold the
 INFO Header entries
+Valid tags: AF,TF,BS,RSF,MQM,MQB,MMQ,MBQ,QA,NUMALT,BQF,MQF,
+TYPE,PVC,TACS,TAFS,MACS,MAFS
 """
 
 HeaderInfoDict = {}
-HeaderInfoDict["PASS"] = HeaderInfoLine(ID="PASS", Description="All filters passed")
-HeaderInfoDict["ModQual"] = HeaderInfoLine(
-    ID="ModQual",
-    Description="High quality but only supported by reads on one strand")
-HeaderInfoDict["LowQual"] = HeaderInfoLine(ID="LowQual",
-                                               Description="Low Quality")
+HeaderInfoDict["AF"] = HeaderInfoLine(
+    ID="AF",
+    Type="Float",
+    Description=("Allele Frequency, for each ALT allele, "
+                 "in the same order as listed for Merged read families."),
+    Number="A")
+
+HeaderInfoDict["TF"] = HeaderInfoLine(
+    ID="TF",
+    Type="Float",
+    Description=("Total Allele Frequency, for each ALT allele, "
+                 "in the same order as listed for unmerged read families,"
+                 "IE, without having removed the duplicates."),
+    Number="A")
+
+HeaderInfoDict["BS"] = HeaderInfoLine(
+    ID="BS",
+    Type="String",
+    Description="Variant supported by reads mapping to both strands.",
+    Number="A")
+
+HeaderInfoDict["RSF"] = HeaderInfoLine(
+    ID="RSF",
+    Type="Float",
+    Description=("Fraction of reads supporting allele "
+                 "aligned to reverse strand."),
+    Number="A")
+HeaderInfoDict["MQM"] = HeaderInfoLine(ID="MQM",
+                                       Description="Mean Quality for Mapping",
+                                       Number="A",
+                                       Type="Float")
+HeaderInfoDict["MQB"] = HeaderInfoLine(ID="MQB",
+                                       Description="Mean Base Quality",
+                                       Number="A",
+                                       Type="Float")
+HeaderInfoDict["MMQ"] = HeaderInfoLine(
+    ID="MMQ",
+    Description="Min Mapping Quality for reads used in variant calling.",
+    Number="A",
+    Type="Integer")
+HeaderInfoDict["MBQ"] = HeaderInfoLine(
+    ID="MBQ",
+    Description="Min Base Quality for reads used in variant calling.",
+    Number="A",
+    Type="Integer")
+HeaderInfoDict["QA"] = HeaderInfoLine(
+    ID="QA",
+    Description="Alternate allele quality sum in phred",
+    Number="A",
+    Type="Integer")
+HeaderInfoDict["NUMALT"] = HeaderInfoLine(
+    ID="NUMALT",
+    Description="Number of unique alternate alleles at position.",
+    Number=1,
+    Type="Integer")
+HeaderInfoDict["BQF"] = HeaderInfoLine(
+    ID="BQF",
+    Description="Number of (merged) reads failed for low BQ.",
+    Number=1,
+    Type="Integer")
+HeaderInfoDict["MQF"] = HeaderInfoLine(
+    ID="MQF",
+    Description="Number of (merged) reads failed for low MQ.",
+    Number=1,
+    Type="Integer")
+HeaderInfoDict["TYPE"] = HeaderInfoLine(
+    ID="TYPE",
+    Description="The type of allele, either snp, mnp, ins, del, or complex.",
+    Number="A",
+    Type="String")
+HeaderInfoDict["PVC"] = HeaderInfoLine(
+    ID="PVC",
+    Description="P-value cutoff used.",
+    Number=1,
+    Type="Float")
+HeaderInfoDict["TACS"] = HeaderInfoLine(
+    ID="TACS",
+    Description="Total (Unmerged) Allele Count String.",
+    Number=1,
+    Type="String")
+HeaderInfoDict["TAFS"] = HeaderInfoLine(
+    ID="TAFS",
+    Description="Total (Unmerged) Allele Frequency String.",
+    Number=1,
+    Type="String")
+HeaderInfoDict["MACS"] = HeaderInfoLine(
+    ID="MACS",
+    Description="Merged Allele Count String.",
+    Number=1,
+    Type="String")
+HeaderInfoDict["MAFS"] = HeaderInfoLine(
+    ID="MAFS",
+    Description="Merged Allele Frequency String.",
+    Number=1,
+    Type="String")
 
 
 def GetContigHeaderLines(header):
@@ -426,15 +520,26 @@ def GetVCFHeader(fileFormat="default",
     HeaderLinesList.append(HeaderFileFormatLine(header=header).ToString())
     # FILTER lines
     if(FILTERTags == "default"):
-        for key in HeaderFormatDict.keys():
-            HeaderLinesList.append(HeaderFormatDict[key].ToString())
+        for key in HeaderFilterDict.keys():
+            HeaderLinesList.append(HeaderFilterDict[key].ToString())
     else:
         for filter in FILTERTags.split(","):
             try:
                 HeaderLinesList.append(
-                    HeaderFormatDict[filter.upper()].ToString())
+                    HeaderFilterDict[filter.upper()].ToString())
             except KeyError:
                 pl("Filter {} not found - continuing.".format(filter))
+    # INFO lines
+    if(INFOTags == "default"):
+        for key in HeaderInfoDict.keys():
+            HeaderLinesList.append(HeaderInfoDict[key].ToString())
+    else:
+        for filter in INFOTags.split(","):
+            try:
+                HeaderLinesList.append(
+                    HeaderInfoDict[filter.upper()].ToString())
+            except KeyError:
+                pl("Info {} not found - continuing.".format(filter))
     # commandline line
     if(commandStr != "default"):
         HeaderLinesList.append(HeaderCommandLine(commandStr=commandStr))
