@@ -91,8 +91,7 @@ class VCFLine:
              for key in self.InfoFields.keys()])
         self.FormatFields = {"DP": DOCMerged,
                              "DPA": AltAggregateObject.MergedReads,
-                             "DPT": DOCTotal,
-                             "QA": AltAggregateObject.SumBQScore}
+                             "DPT": DOCTotal}
         self.FormatStr = (":".join(self.FormatFields.keys()) + "\t" +
                           ":".join(str(self.FormatFields[key])
                                    for key in self.FormatFields.keys()))
@@ -366,7 +365,7 @@ class HeaderContigLine:
 
     def ToString(self):
         self.str = "##contig=<ID={},length={}>".format(
-            self.assembly, self.length)
+            self.contig, self.length)
         return self.str
 
 
@@ -400,7 +399,6 @@ HeaderInfoDict["AF"] = HeaderInfoLine(
     Description=("Allele Frequency, for each ALT allele, "
                  "in the same order as listed for Merged read families."),
     Number="A")
-
 HeaderInfoDict["TF"] = HeaderInfoLine(
     ID="TF",
     Type="Float",
@@ -408,13 +406,11 @@ HeaderInfoDict["TF"] = HeaderInfoLine(
                  "in the same order as listed for unmerged read families,"
                  "IE, without having removed the duplicates."),
     Number="A")
-
 HeaderInfoDict["BS"] = HeaderInfoLine(
     ID="BS",
     Type="String",
     Description="Variant supported by reads mapping to both strands.",
     Number="A")
-
 HeaderInfoDict["RSF"] = HeaderInfoLine(
     ID="RSF",
     Type="Float",
@@ -425,6 +421,7 @@ HeaderInfoDict["MQM"] = HeaderInfoLine(ID="MQM",
                                        Description="Mean Quality for Mapping",
                                        Number="A",
                                        Type="Float")
+
 HeaderInfoDict["MQB"] = HeaderInfoLine(ID="MQB",
                                        Description="Mean Base Quality",
                                        Number="A",
@@ -490,6 +487,29 @@ HeaderInfoDict["MAFS"] = HeaderInfoLine(
     Number=1,
     Type="String")
 
+"""
+This next section contains the dictionaries which hold the
+FORMAT Header entries
+Valid tags: DP, DPA, DPT
+"""
+
+HeaderFormatDict = {}
+HeaderFormatDict["DP"] = HeaderFormatLine(
+    ID="DP",
+    Type="Integer",
+    Description=("Merged Read Depth."),
+    Number=1)
+HeaderFormatDict["DPA"] = HeaderFormatLine(
+    ID="DPA",
+    Type="Integer",
+    Description=("Merged Read Depth for Allele."),
+    Number="A")
+HeaderFormatDict["DPT"] = HeaderFormatLine(
+    ID="DPT",
+    Type="Integer",
+    Description=("Unmerged Read Depth for Allele."),
+    Number="A")
+
 
 def GetContigHeaderLines(header):
     """
@@ -506,18 +526,17 @@ def GetContigHeaderLines(header):
     return "\n".join(contigLineList)
 
 
-def GetVCFHeader(fileFormat="default",
-                 FILTERTags="default",
+def GetVCFHeader(fileFormat="default", FILTERTags="default",
                  commandStr="default",
-                 reference="default",
-                 reference_is_path=False,
+                 reference="default", reference_is_path=False,
                  header="default",
                  INFOTags="default",
                  FORMATTags="default"
                  ):
     HeaderLinesList = []
     # fileformat line
-    HeaderLinesList.append(HeaderFileFormatLine(header=header).ToString())
+    HeaderLinesList.append(HeaderFileFormatLine(
+        fileformat=fileFormat).ToString())
     # FILTER lines
     if(FILTERTags == "default"):
         for key in HeaderFilterDict.keys():
@@ -534,12 +553,24 @@ def GetVCFHeader(fileFormat="default",
         for key in HeaderInfoDict.keys():
             HeaderLinesList.append(HeaderInfoDict[key].ToString())
     else:
-        for filter in INFOTags.split(","):
+        for info in INFOTags.split(","):
             try:
                 HeaderLinesList.append(
-                    HeaderInfoDict[filter.upper()].ToString())
+                    HeaderInfoDict[info.upper()].ToString())
             except KeyError:
-                pl("Info {} not found - continuing.".format(filter))
+                pl("Info {} not found - continuing.".format(info))
+    print(repr(HeaderLinesList))
+    # FORMAT lines
+    if(FORMATTags == "default"):
+        for key in HeaderFormatDict.keys():
+            HeaderLinesList.append(HeaderFormatDict[key].ToString())
+    else:
+        for format in FORMATTags.split(","):
+            try:
+                HeaderLinesList.append(
+                    HeaderFormatDict[format.upper()].ToString())
+            except KeyError:
+                pl("Format {} not found - continuing.".format(format))
     # commandline line
     if(commandStr != "default"):
         HeaderLinesList.append(HeaderCommandLine(commandStr=commandStr))
@@ -556,28 +587,36 @@ def SNVCrawler(inBAM,
                bed="default",
                minMQ=0,
                minBQ=0,
-               VariantCallingTsv="default",
+               OutVCF="default",
                MaxPValue=1e-15,
                keepConsensus=False,
                reference="default",
                reference_is_path=False,
-               commandStr="default"
+               commandStr="default",
+               fileFormat="default",
+               FILTERTags="default",
+               INFOTags="default",
+               FORMATTags="default"
                ):
     if(isinstance(bed, str) and bed != "default"):
         bed = HTSUtils.ParseBed(bed)
-    if(VariantCallingTsv == "default"):
-        VariantCallingTsv = inBAM[0:-4] + ".bmf.vcf"
+    if(OutVCF == "default"):
+        OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    outHandle = open(VariantCallingTsv, "w")
-
+    outHandle = open(OutVCF, "w")
+    """
+    VCFHeader is not yet debugged. Do not use!
+    inHandle.write(GetVCFHeader(fileFormat=fileFormat,
+                                FILTERTags=FILTERTags,
+                                commandStr=commandStr,
+                                reference=reference,
+                                reference_is_path=False,
+                                header=inHandle.header,
+                                INFOTags=INFOTags,
+                                FORMATTags=FORMATTags))
+    """
     if(bed != "default"):
         for line in bed:
-            # print(repr(line))
-            """
-            puIterator = inHandle.pileup(line[0], line[1], line[2],
-                                         max_depth=30000,
-                                         multiple_iterators=True)
-            """
             puIterator = inHandle.pileup(line[0], line[1],
                                          max_depth=30000,
                                          multiple_iterators=True)
