@@ -59,6 +59,9 @@ def main():
         metavar='aligner',
         default='bwa')
     parser.add_argument(
+        "--abrapath",
+        help="Path to ABRA jar")
+    parser.add_argument(
         '-o',
         '--opts',
         help="Additional aligner opts. E.g.: --opts '-L 0' ",
@@ -221,7 +224,8 @@ def main():
                     ref=ref,
                     barIndex=barcodeIndex,
                     bed=bed,
-                    mincov=int(args.minCov))
+                    mincov=int(args.minCov),
+                    abrapath=args.abrapath)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
@@ -239,6 +243,7 @@ def main():
                 consfqSingle="default",
                 aligner=aligner,
                 ref=ref,
+                abrapath=args.abrapath,
                 mincov=int(args.minCov))
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(

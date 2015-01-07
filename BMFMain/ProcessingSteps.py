@@ -14,7 +14,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bamPrefix="default", ref="default", aligner="default",
                   barIndex="default",
                   bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
-                  mincov=5):
+                  mincov=5,
+                  abrapath="default"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -60,7 +61,11 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         consfq1, consfq2, outbamProperPair)
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
-    realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
+    if(abrapath != "default"):
+        realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed,
+                                          jar=abrapath)
+    else:
+        realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
     mappedPass, failures = BCBam.pairedFilterBam(
         namesortedRealignedFull, criteria="adapter,ismapped")
