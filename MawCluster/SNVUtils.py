@@ -196,7 +196,7 @@ class HeaderFileFormatLine:
 
     def ToString(self):
         self.str = "##fileformat={}".format(self.fileformat)
-
+        return self.str
 
 class HeaderInfoLine:
     """
