@@ -19,4 +19,5 @@ config = {
     'package_data': {'': ['LICENSE']}
 }
 
+
 setup(**config)

@@ -2,7 +2,7 @@ import pysam
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
-from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 
 """
 This module contains a variety of tools for calling variants.
@@ -67,7 +67,7 @@ class VCFLine:
                            / float(AltAggregateObject.DOCTotal),
                            "BS": AltAggregateObject.BothStrandSupport,
                            "RSF": AltAggregateObject.ReverseMergedReads
-                           / AltAggregateObject.MergedReads,
+                           / float(AltAggregateObject.MergedReads),
                            "MQM": AltAggregateObject.AveMQ,
                            "MQB": AltAggregateObject.AveBQ,
                            "MMQ": AltAggregateObject.minMQ,
@@ -138,7 +138,8 @@ class VCFPos:
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
-        self.pos = PCInfoObject.pos
+        # Because bamtools is 0-based but vcfs are 1-based
+        self.pos = PCInfoObject.pos + 1
         self.minMQ = PCInfoObject.minMQ
         self.consensus = PCInfoObject.consensus
         self.TotalFracStr = PCInfoObject.TotalFracStr
@@ -185,29 +186,301 @@ class VCFPos:
         return self.str
 
 
+class HeaderFileFormatLine:
+    """
+    This class holds the fileformat line in a VCF.
+    Defaults to VCFv4.1
+    """
+
+    def __init__(self, fileformat="VCFv4.1"):
+        self.fileformat = fileformat
+
+    def ToString(self):
+        self.str = "##fileformat={}".format(self.fileformat)
+
+
+class HeaderInfoLine:
+    """
+    This class holds a VCF INFO header line.
+    """
+    def __init__(self, ID="default", Number="default", Type="default",
+                 Description="default"):
+        Types = "integer,float,string,flag,character,string"
+        if(Type.lower() not in Types.lower().split(",")):
+            raise ThisIsMadness("Invalid Type provided!")
+        self.Type = Type
+
+        Numbers = "A,G"
+        try:
+            self.Number = int(Number)
+        except ValueError:
+            if(Number) in Numbers.split(','):
+                self.Number = Number
+            else:
+                raise ThisIsMadness("Invalid \"Number\" provided.")
+
+        self.ID = ID.upper()
+
+        if(Description != "default"):
+            self.Description = Description
+        else:
+            raise ThisIsMadness("A description is required.")
+
+    def ToString(self):
+        self.str = ("##INFO=<ID="
+                    "{},Number={},Type=".format(self.ID, self.Number) +
+                    "{},Description={}>".format(self.Type, self.Description))
+        return self.str
+
+
+class HeaderFormatLine:
+    """
+    This class holds a VCF FORMAT header line.
+    """
+    def __init__(self, ID="default", Number="default", Type="default",
+                 Description="default"):
+        Types = "integer,float,string,character"
+        if(Type.lower() not in Types.lower().split(",")):
+            raise ThisIsMadness("Invalid Type provided!")
+        self.Type = Type
+
+        Numbers = "A,G"
+        try:
+            self.Number = int(Number)
+        except ValueError:
+            if(Number) in Numbers.split(','):
+                self.Number = Number
+            else:
+                raise ThisIsMadness("Invalid \"Number\" provided.")
+
+        self.ID = ID.upper()
+
+        if(Description != "default"):
+            self.Description = Description
+        else:
+            raise ThisIsMadness("A description is required.")
+
+    def ToString(self):
+        self.str = ("##FORMAT=<ID="
+                    "{},Number={},Type=".format(self.ID, self.Number) +
+                    "{},Description={}>".format(self.Type, self.Description))
+        return self.str
+
+
+class HeaderAltLine:
+    """
+    This class holds a VCF ALT header line.
+    """
+    def __init__(self, ID="default", Description="default"):
+        Types = "DEL,INS,DUP,INV,CNV,DUP:TANDEM,DEL:ME,INS:ME"
+        if(ID.upper() in Types.split(",")):
+            self.ID = ID.upper()
+        else:
+            raise ThisIsMadness("VCF4.1 Specifications require that"
+                                " this field be one of the following:"
+                                " {}".format(Types.replace(",", ", ")))
+        self.Description = Description
+
+    def ToString(self):
+        self.str = "##ALT=<ID={},Description={}>".format(self.ID,
+                                                         self.Description)
+        return self.str
+
+
+class HeaderFilterLine:
+    """
+    This class holds a VCF FILTER header line.
+    """
+    def __init__(self, ID="default", Description="default"):
+        self.ID = ID
+        self.Description = Description
+
+    def ToString(self):
+        self.str = "##FILTER=<ID={},Description={}>".format(
+            self.ID, self.Description)
+        return self.str
+
+
+class HeaderAssemblyLine:
+    """
+    This class holds a VCF assembly header line.
+    """
+    def __init__(self, assembly="default"):
+        self.assembly = assembly
+
+    def ToString(self):
+        self.str = "##assembly={}".format(self.assembly)
+        return self.str
+
+
+class HeaderCommandLine:
+    """
+    This class holds a VCF command header line.
+    """
+    def __init__(self, commandStr="default"):
+        self.commandStr = commandStr
+
+    def ToString(self):
+        self.str = "##commandStr={}".format(self.commandStr)
+        return self.str
+
+
+class HeaderReferenceLine:
+    """
+    This class holds a VCF Reference header line.
+    """
+    def __init__(self, reference="default", isfile=False):
+        self.reference = reference
+        if(isinstance(isfile, bool) is True):
+            self.isfile = isfile
+        elif(isinstance(isfile, str) is True):
+            if("true" in isfile.lower()):
+                self.isfile = True
+            elif("false" in isfile.lower()):
+                self.isfile = False
+            else:
+                raise ValueError(
+                    "isfile kwarg provided was not true or false!")
+        else:
+            raise ValueError(
+                "isfile kwarg provided was not true or false!")
+
+    def ToString(self):
+        if(self.isfile is False):
+            self.str = "##reference={}".format(self.reference)
+        else:
+            self.str = "##reference=file://{}".format(self.reference)
+        return self.str
+
+
+class HeaderContigLine:
+    """
+    This class holds a VCF Assembly header line.
+    """
+    def __init__(self, contig="default", length="default"):
+        self.contig = contig
+        try:
+            self.length = int(length)
+        except ValueError:
+            raise ThisIsMadness("Length must be an integer!")
+
+    def ToString(self):
+        self.str = "##contig=<ID={},length={}>".format(
+            self.assembly, self.length)
+        return self.str
+
+
+"""
+This next section contains the dictionaries which hold the
+FILTER Header entries
+"""
+
+HeaderFormatDict = {}
+HeaderFormatDict["PASS"] = HeaderFormatLine(ID="PASS",
+                                            Description="All filters passed")
+HeaderFormatDict["ModQual"] = HeaderFormatLine(
+    ID="ModQual",
+    Description="High quality but only supported by reads on one strand")
+HeaderFormatDict["LowQual"] = HeaderFormatLine(ID="LowQual",
+                                               Description="Low Quality")
+"""
+This next section contains the dictionaries which hold the
+INFO Header entries
+"""
+
+HeaderInfoDict = {}
+HeaderInfoDict["PASS"] = HeaderInfoLine(ID="PASS", Description="All filters passed")
+HeaderInfoDict["ModQual"] = HeaderInfoLine(
+    ID="ModQual",
+    Description="High quality but only supported by reads on one strand")
+HeaderInfoDict["LowQual"] = HeaderInfoLine(ID="LowQual",
+                                               Description="Low Quality")
+
+
+def GetContigHeaderLines(header):
+    """
+    This program creates the string for the contig lines
+    in a VCF from the pysam.AlignmentFile attribute "header".
+    """
+    if(isinstance(header, dict) is False):
+        raise ThisIsMadness("Requires pysam.AlignmentFile header dictionary")
+    contigLineList = []
+    for contigDict in header['SQ']:
+        contigLineList.append(
+            HeaderContigLine(contig=contigDict["SN"],
+                             length=contigDict["LN"]).ToString() + "\n")
+    return "\n".join(contigLineList)
+
+
+def GetVCFHeader(fileFormat="default",
+                 FILTERTags="default",
+                 commandStr="default",
+                 reference="default",
+                 reference_is_path=False,
+                 header="default",
+                 INFOTags="default",
+                 FORMATTags="default"
+                 ):
+    HeaderLinesList = []
+    # fileformat line
+    HeaderLinesList.append(HeaderFileFormatLine(header=header).ToString())
+    # FILTER lines
+    if(FILTERTags == "default"):
+        for key in HeaderFormatDict.keys():
+            HeaderLinesList.append(HeaderFormatDict[key].ToString())
+    else:
+        for filter in FILTERTags.split(","):
+            try:
+                HeaderLinesList.append(
+                    HeaderFormatDict[filter.upper()].ToString())
+            except KeyError:
+                pl("Filter {} not found - continuing.".format(filter))
+    # commandline line
+    if(commandStr != "default"):
+        HeaderLinesList.append(HeaderCommandLine(commandStr=commandStr))
+    # reference line
+    if(reference != "default"):
+        HeaderLinesList.append(HeaderReferenceLine(reference=reference,
+                                                   isfile=reference_is_path))
+    # contig lines
+    HeaderLinesList.append(GetContigHeaderLines(header))
+    return "\n".join(HeaderLinesList)
+
+
 def SNVCrawler(inBAM,
                bed="default",
                minMQ=0,
                minBQ=0,
                VariantCallingTsv="default",
                MaxPValue=1e-15,
-               keepConsensus=False
+               keepConsensus=False,
+               reference="default",
+               reference_is_path=False,
+               commandStr="default"
                ):
     if(isinstance(bed, str) and bed != "default"):
         bed = HTSUtils.ParseBed(bed)
     if(VariantCallingTsv == "default"):
-        VariantCallingTsv = inBAM[0:-4] + ".vc.tsv"
+        VariantCallingTsv = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(VariantCallingTsv, "w")
-    outHandle.write("##HEADER_NOT_WRITTEN\n")
+
     if(bed != "default"):
         for line in bed:
-            print(repr(bed))
+            # print(repr(line))
+            """
             puIterator = inHandle.pileup(line[0], line[1], line[2],
-                                         max_depth=30000)
+                                         max_depth=30000,
+                                         multiple_iterators=True)
+            """
+            puIterator = inHandle.pileup(line[0], line[1],
+                                         max_depth=30000,
+                                         multiple_iterators=True)
             while True:
                 try:
-                    PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)
+                    PileupColumn = puIterator.next()
+                    PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
+                    # print(PC.toString())
                 except ValueError:
                     pl(("Pysam sometimes runs into errors during iteration w"
                         "hich are not handled with any elegance. Continuing!"))
@@ -215,14 +488,14 @@ def SNVCrawler(inBAM,
                 except StopIteration:
                     pl("Finished iterations.")
                     break
+                if(line[2] <= PC.pos):
+                    break
                 VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
                                     keepConsensus=keepConsensus)
-                # TODO: Check to see if it speeds up to not assign and only write.
+                # Check to see if it speeds up to not assign and only write.
                 VCFLineString = VCFLineSet.ToString()
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineSet.ToString() + "\n")
-                    outHandle.close()
-                    inHandle.close()
     else:
         puIterator = inHandle.pileup(max_depth=30000)
         while True:
@@ -233,7 +506,6 @@ def SNVCrawler(inBAM,
                     " are not handled with any elegance. Continuing!"))
                 continue
             except StopIteration:
-                pl("Finished iterations.")
                 break
             VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
                                 keepConsensus=keepConsensus)

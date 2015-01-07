@@ -234,7 +234,7 @@ class PCInfo:
                               pos=self.pos,
                               DOC=self.MergedReads,
                               DOCTotal=self.TotalReads,
-                              NUMALT=len(self.VariantDict[key]),
+                              NUMALT=len(self.VariantDict.keys()),
                               ) for key in self.VariantDict.keys()]
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:

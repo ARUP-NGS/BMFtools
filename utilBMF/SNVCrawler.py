@@ -2,6 +2,7 @@
 import argparse
 import os
 import logging
+import sys
 
 from MawCluster.SNVUtils import SNVCrawler
 from HTSUtils import printlog as pl
@@ -48,6 +49,7 @@ def main():
         help="Name for logfile.",
         default="default")
     args = parser.parse_args()
+    commandStr = " ".join(sys.argv)
 
     # Begin logging
     global Logger
@@ -95,13 +97,15 @@ def main():
                             minMQ=args.minMQ,
                             minBQ=args.minBQ,
                             MaxPValue=args.MaxPValue,
-                            keepConsensus=args.keepConsensus)
+                            keepConsensus=args.keepConsensus,
+                            commandStr=commandStr)
     else:
         OutVCF = SNVCrawler(args.inBAM,
                             minMQ=args.minMQ,
                             minBQ=args.minBQ,
                             MaxPValue=args.MaxPValue,
-                            keepConsensus=args.keepConsensus)
+                            keepConsensus=args.keepConsensus,
+                            commandStr=commandStr)
 
     return OutVCF
 

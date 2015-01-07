@@ -42,8 +42,9 @@ def main():
         default="GACGG")
     parser.add_argument(
         '--shades',
-        help="Set to true if using the shades barcode method.",
-        default="false")
+        help="Use flag if using the shades barcode method.",
+        default=True,
+        action="store_true")
     parser.add_argument(
         '-s',
         '--single-end',
@@ -70,7 +71,8 @@ def main():
         default="default")
     parser.add_argument(
         '--bed',
-        help="full path to bed file used for variant-calling steps.",)
+        help="full path to bed file used for variant-calling steps.",
+        metavar="BEDFile")
     parser.add_argument(
         '--initialStep',
         help="1: Fastq. 2: Bam. 3. VCF",
@@ -89,11 +91,11 @@ def main():
     parser.add_argument(
         '--minMQ',
         help="Minimum mapping quality for variant call inclusion.",
-        default=10)
+        default=20)
     parser.add_argument(
         '--minBQ',
         help="Minimum base quality for variant call inclusion.",
-        default=20)
+        default=30)
     parser.add_argument(
         "--minCov",
         help="Minimum coverage for including a position"
@@ -209,27 +211,7 @@ def main():
     else:
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
-            if(args.shades.lower() != "true"):
-                '''
-                pl("About to run"
-                    " ps.pairedFastqProc("
-                    "{}, {}, homing={})".format(
-                        args.fq[0], args.fq[1], homing))
-                (trimfq1, trimfq2, trimfqSingle,
-                 barcodeIndex) = ps.pairedFastqProc(
-                    args.fq[0], args.fq[1], homing=homing)
-                pl("Beginning BAM processing.")
-                procSortedBam = ps.pairedBamProc(
-                    trimfq1,
-                    trimfq2,
-                    consfqSingle=trimfqSingle,
-                    aligner=aligner,
-                    ref=ref,
-                    barIndex=barcodeIndex,
-                    bed=bed)
-                '''
-                return 0
-            elif(args.shades.lower() == "true"):
+            if(args.shades is True):
                 trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
                     args.fq[0], args.fq[1], args.fq[2])
                 procSortedBam = ps.pairedBamProc(
@@ -279,6 +261,8 @@ def main():
                 minBQ=args.minBQ)
             pl("Last stop! Watch your step.")
         return
+
+__version__ = "0.4.0"
 
 if(__name__ == "__main__"):
     main()

@@ -1,7 +1,7 @@
 import re
 import subprocess
 
-from MawCluster import BCBam
+from MawCluster import BCBam, SNVUtils
 from MawCluster import BCFastq
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
@@ -146,7 +146,9 @@ def pairedVCFProc(consMergeSortBAM,
                   opts="",
                   bed="default",
                   minMQ=10,
-                  minBQ=20):
+                  minBQ=20,
+                  MakePileupTsv=True,
+                  MakeVCF=True):
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")
     if(ref == "default"):
@@ -154,16 +156,24 @@ def pairedVCFProc(consMergeSortBAM,
     # Consolidating families into single reads
     # Variant Calling Step using MPileup
     # print("Now filtering for reads with NM > 0 only if you want to.")
-    PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
-                                              bedfile=bed,
-                                              minMQ=minMQ,
-                                              minBQ=minBQ)
-    pl("PileupTSV: {}".format(PileupTSV))
+    Results = {}
+    if(MakePileupTsv is True):
+        PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
+                                                  bedfile=bed,
+                                                  minMQ=minMQ,
+                                                  minBQ=minBQ)
+        pl("PileupTSV: {}".format(PileupTSV))
+        Results["tsv"] = PileupTSV
+    if(MakeVCF is True):
+        SNP_VCF = SNVUtils.SNVCrawler(consMergeSortBAM, minMQ=minMQ,
+                                      minBQ=minBQ)
+        pl("SNP VCF: {}".format(SNP_VCF))
+        Results["vcf"] = SNP_VCF
     # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,
     #                                                     bedfile=bed)
     # This is probably useless given that I'm doing this "manually",
     # but I'm keeping this in here for good measure.
-    return PileupTSV
+    return Results
 
 
 def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):
