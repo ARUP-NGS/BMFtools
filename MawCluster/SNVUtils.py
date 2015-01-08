@@ -22,7 +22,7 @@ class VCFLine:
 
     def __init__(self,
                  AltAggregateObject,
-                 MaxPValue=float("1e-15"),
+                 MaxPValue=float("1e-30"),
                  ID=".",
                  DOCMerged="default",
                  DOCTotal="default",
@@ -45,7 +45,7 @@ class VCFLine:
         self.ALT = AltAggregateObject.ALT
         self.QUAL = AltAggregateObject.SumBQScore
         if(AltAggregateObject.BothStrandSupport is True):
-            self.QUAL *= 10
+            self.QUAL *= 2
             # This is entirely arbitrary...
         self.ID = ID
         try:

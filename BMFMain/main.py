@@ -107,6 +107,10 @@ def main():
         " in the BamToCoverageBed",
         default=5
         )
+    parser.add_argument(
+        "--barcodeIndex",
+        help="If starting with the BAM step, provide the "
+             "path to your barcode index as created.")
     global Logger
     args = parser.parse_args()
     # Begin logging
@@ -248,7 +252,8 @@ def main():
                 aligner=aligner,
                 ref=ref,
                 abrapath=args.abrapath,
-                mincov=int(args.minCov))
+                mincov=int(args.minCov),
+                barIndex=args.barcodeIndex)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,

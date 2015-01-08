@@ -148,7 +148,8 @@ class VCFRecord:
                 self.InfoArrayDict['I16'] = [
                     int(decimal.Decimal(i)) for i in self.InfoArrayDict['I16']]
         except KeyError:
-            print("No I16 present; continuing.")
+            pass
+            # print("No I16 present; continuing.")
         try:
             self.FORMAT = VCFEntry[8]
         except IndexError:
@@ -277,7 +278,10 @@ def MPileup(inputBAM, ref,
 
 
 def ParseVCF(inputVCFName):
-    infile = open(inputVCFName, "r")
+    try:
+        infile = open(inputVCFName, "r")
+    except TypeError:
+        raise TypeError("Argument provided: {}".format(inputVCFName))
     VCFLines = [entry.strip().split('\t') for entry in infile.readlines(
     ) if entry[0] != "#"]
     infile.seek(0)
@@ -338,6 +342,8 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
 
 
 def VCFStats(inVCF, TransCountsTable="default"):
+    if(TransCountsTable == "default"):
+        TransCountsTable = inVCF[0:-3] + "trans.vcf.tsv"
     inVCF = ParseVCF(inVCF)
     TransCountsTableHandle = open(TransCountsTable, "w")
     TransitionDict = {}
@@ -356,15 +362,16 @@ def VCFStats(inVCF, TransCountsTable="default"):
             if(RefCons == Var):
                 continue
             TransitionDict[RefCons + "-->" + Var] = [
-                (rec for rec
-                 in inVCF.Records
-                 if rec.InfoArrayDict['CONS'] == RefCons
-                 or rec.REF == RefCons)]
+                rec for rec
+                in inVCF.Records
+                if rec.InfoArrayDict['CONS'] == RefCons
+                or rec.REF == RefCons and rec.ALT == Var]
             TransitionPASSDict[RefCons + "-->" + Var] = [
-                (rec for rec
-                 in inVCF.Records
-                 if (rec.InfoArrayDict['CONS'] == RefCons
-                     or rec.REF == RefCons) is True and rec.FILTER == "PASS")]
+                rec for rec
+                in inVCF.Records
+                if (rec.InfoArrayDict['CONS'] == RefCons
+                    or rec.REF == RefCons) is True and (rec.FILTER == "PASS"
+                                                        and rec.ALT == Var)]
             TransitionCountsDict[RefCons + "-->" + Var] = len(
                 TransitionDict[RefCons + "-->" + Var])
             TransitionCountsPASSDict[RefCons + "-->" + Var] = len(
@@ -386,10 +393,13 @@ def VCFStats(inVCF, TransCountsTable="default"):
     MeanAlleleFractionDict = {}
     MeanAlleleFractionPASSDict = {}
     for key in TransitionCountsDict.keys():
-        MeanAlleleFractionDict[key] = np.mean([float(rec.InfoDict['AF'])
-                                               for rec in TransitionDict[key]])
+        MeanAlleleFractionDict[key] = np.mean([float(rec.InfoDict['AF']) for
+                                               rec in TransitionDict[key] if
+                                               float(
+                                                   rec.InfoDict['AF']) < 0.1])
         MeanAlleleFractionPASSDict[key] = np.mean(
-            [float(rec.InfoDict['AF'])for rec in TransitionPASSDict[key]])
+            [float(rec.InfoDict['AF'])for rec in
+             TransitionPASSDict[key] if float(rec.InfoDict['AF']) < 0.1])
     TransitionFractionForRefConsDict = {}
     TransitionFractionForRefConsPASSDict = {}
     for key in TransitionCountsDict.keys():
@@ -414,6 +424,6 @@ def VCFStats(inVCF, TransCountsTable="default"):
                                    MeanAlleleFractionDict[key],
                                    TransitionFractionForRefConsPASSDict[key],
                                    MeanAlleleFractionPASSDict[key]
-                                   ]]))
+                                   ]]) + "\n")
     TransCountsTableHandle.close()
     return TransCountsTable
