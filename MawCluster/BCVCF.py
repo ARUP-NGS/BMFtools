@@ -411,7 +411,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
             TransitionFractionForRefConsDict[key] = 0
         try:
             TransitionFractionForRefConsPASSDict[
-                key] = TransitionCountsDict[key] / float(
+                key] = TransitionCountsPASSDict[key] / float(
                     RefConsCallsCountsPASSDict[key[0]])
         except ZeroDivisionError:
             TransitionFractionForRefConsPASSDict[key] = 0
