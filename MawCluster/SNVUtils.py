@@ -45,8 +45,8 @@ class VCFLine:
         self.ALT = AltAggregateObject.ALT
         self.QUAL = AltAggregateObject.SumBQScore
         if(AltAggregateObject.BothStrandSupport is True):
-            self.QUAL *= 100
-            # This is terribly arbitrary...
+            self.QUAL *= 10
+            # This is entirely arbitrary...
         self.ID = ID
         try:
             if(float(MaxPValue) > 10 ** (self.QUAL / -10)):
@@ -77,7 +77,8 @@ class VCFLine:
                            "BQF": FailedBQReads,
                            "MQF": FailedMQReads,
                            "TYPE": "snp",
-                           "PVC": MaxPValue}
+                           "PVC": MaxPValue,
+                           "CONS": self.CONS}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
         if(TotalFracStr != "default"):
@@ -133,10 +134,13 @@ class VCFPos:
 
     def __init__(self, PCInfoObject,
                  MaxPValue=1e-15,
-                 keepConsensus=True):
+                 keepConsensus=True,
+                 reference="default"):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
+        if(reference == "default"):
+            HTSUtils.FacePalm("VCFPos requires a reference fasta.")
         # Because bamtools is 0-based but vcfs are 1-based
         self.pos = PCInfoObject.pos + 1
         self.minMQ = PCInfoObject.minMQ
@@ -145,10 +149,9 @@ class VCFPos:
         self.MergedFracStr = PCInfoObject.MergedFracStr
         self.TotalCountStr = PCInfoObject.TotalCountStr
         self.MergedCountStr = PCInfoObject.MergedCountStr
-        # Create VCFLines object using the calculated statistics
-        # if(isinstance(MaxPValue, float) is False):
-        #     print("repr of MaxPValue: {}".format(repr(MaxPValue)))
-        #     raise HTSUtils.ThisIsMadness("MaxPValue must be a float!")
+        self.REF = pysam.FastaFile(reference).fetch(
+            PCInfoObject.contig, self.pos - 1, self.pos)
+
         self.VCFLines = [VCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
@@ -581,79 +584,8 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
             reference=reference, isfile=reference_is_path).ToString() + "\n"
     # contig lines
     HeaderLinesStr += GetContigHeaderLines(header) + "\n"
+    HeaderLinesStr += "\t".join(["#CHROM", "POS",
+                                 "ID", "REF",
+                                 "ALT", "QUAL",
+                                 "FILTER", "INFO"]) + "\n"
     return HeaderLinesStr
-
-
-def SNVCrawler(inBAM,
-               bed="default",
-               minMQ=0,
-               minBQ=0,
-               OutVCF="default",
-               MaxPValue=1e-15,
-               keepConsensus=False,
-               reference="default",
-               reference_is_path=False,
-               commandStr="default",
-               fileFormat="default",
-               FILTERTags="default",
-               INFOTags="default",
-               FORMATTags="default"
-               ):
-    if(isinstance(bed, str) and bed != "default"):
-        bed = HTSUtils.ParseBed(bed)
-    if(OutVCF == "default"):
-        OutVCF = inBAM[0:-4] + ".bmf.vcf"
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    outHandle = open(OutVCF, "w")
-    outHandle.write(GetVCFHeader(fileFormat=fileFormat,
-                                 FILTERTags=FILTERTags,
-                                 commandStr=commandStr,
-                                 reference=reference,
-                                 reference_is_path=False,
-                                 header=inHandle.header,
-                                 INFOTags=INFOTags,
-                                 FORMATTags=FORMATTags))
-
-    if(bed != "default"):
-        for line in bed:
-            puIterator = inHandle.pileup(line[0], line[1],
-                                         max_depth=30000,
-                                         multiple_iterators=True)
-            while True:
-                try:
-                    PileupColumn = puIterator.next()
-                    PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
-                    # print(PC.toString())
-                except ValueError:
-                    pl(("Pysam sometimes runs into errors during iteration w"
-                        "hich are not handled with any elegance. Continuing!"))
-                    continue
-                except StopIteration:
-                    pl("Finished iterations.")
-                    break
-                if(line[2] <= PC.pos):
-                    break
-                VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
-                                    keepConsensus=keepConsensus)
-                # Check to see if it speeds up to not assign and only write.
-                VCFLineString = VCFLineSet.ToString()
-                if(len(VCFLineString) != 0):
-                    outHandle.write(VCFLineSet.ToString() + "\n")
-    else:
-        puIterator = inHandle.pileup(max_depth=30000)
-        while True:
-            try:
-                PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)
-            except ValueError:
-                pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"))
-                continue
-            except StopIteration:
-                break
-            VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
-                                keepConsensus=keepConsensus)
-            # TODO: Check to see if it speeds up to not assign and only write.
-            VCFLineString = VCFLineSet.ToString()
-            if(len(VCFLineString) != 0):
-                outHandle.write(VCFLineSet.ToString() + "\n")
-    return

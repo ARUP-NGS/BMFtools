@@ -223,7 +223,7 @@ def FacePalm(string):
            "\n........................................_..........._,-%.......`"
            " \n...................................,")
     print(Str)
-    raise IllegalArgumentError(string)
+    raise ThisIsMadness(string)
 
 
 def align_bowtie2(R1, R2, ref, opts, outsam):

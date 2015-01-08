@@ -4,7 +4,7 @@ import os
 import logging
 import sys
 
-from MawCluster.SNVUtils import SNVCrawler
+from MawCluster.VCFWriters import SNVCrawler
 from HTSUtils import printlog as pl
 
 # Global Variables
@@ -48,6 +48,11 @@ def main():
         "--logfile",
         help="Name for logfile.",
         default="default")
+    parser.add_argument(
+        "-r",
+        "--reference-fasta",
+        help="Provide reference fasta.",
+        required=True)
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
 
@@ -98,14 +103,16 @@ def main():
                             minBQ=args.minBQ,
                             MaxPValue=args.MaxPValue,
                             keepConsensus=args.keepConsensus,
-                            commandStr=commandStr)
+                            commandStr=commandStr,
+                            reference=args.reference_fasta)
     else:
         OutVCF = SNVCrawler(args.inBAM,
                             minMQ=args.minMQ,
                             minBQ=args.minBQ,
                             MaxPValue=args.MaxPValue,
                             keepConsensus=args.keepConsensus,
-                            commandStr=commandStr)
+                            commandStr=commandStr,
+                            reference=args.reference_fasta)
 
     return OutVCF
 

@@ -14,7 +14,7 @@ config = {
     'scripts': [],
     'name': 'BMFTools',
     'license': 'GPLv3',
-    'long_description': open('dist/README.md').read(),
+#    'long_description': open('dist/README.md').read(),
     'include': 'README.md',
     'package_data': {'': ['LICENSE']}
 }
