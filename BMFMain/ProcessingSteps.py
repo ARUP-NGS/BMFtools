@@ -1,7 +1,7 @@
 import re
 import subprocess
 
-from MawCluster import BCBam, SNVUtils
+from MawCluster import BCBam, SNVUtils, VCFWriters
 from MawCluster import BCFastq
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
@@ -153,7 +153,9 @@ def pairedVCFProc(consMergeSortBAM,
                   minMQ=10,
                   minBQ=20,
                   MakePileupTsv=True,
-                  MakeVCF=True):
+                  MakeVCF=True,
+                  reference="default",
+                  commandStr="default"):
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")
     if(ref == "default"):
@@ -170,8 +172,10 @@ def pairedVCFProc(consMergeSortBAM,
         pl("PileupTSV: {}".format(PileupTSV))
         Results["tsv"] = PileupTSV
     if(MakeVCF is True):
-        SNP_VCF = SNVUtils.SNVCrawler(consMergeSortBAM, minMQ=minMQ,
-                                      minBQ=minBQ)
+        SNP_VCF = VCFWriters.SNVCrawler(consMergeSortBAM, minMQ=minMQ,
+                                        minBQ=minBQ, reference=reference,
+                                        commandStr=commandStr,
+                                        reference_is_path=True)
         pl("SNP VCF: {}".format(SNP_VCF))
         Results["vcf"] = SNP_VCF
     # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,

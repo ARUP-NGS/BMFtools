@@ -56,14 +56,12 @@ def SNVCrawler(inBAM,
                     break
                 if(line[2] <= PC.pos):
                     break
-                VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
-                                    keepConsensus=keepConsensus,
-                                    reference=reference
-                                    )
-                # Check to see if it speeds up to not assign and only write.
-                VCFLineString = VCFLineSet.ToString()
+                VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
+                                       keepConsensus=keepConsensus,
+                                       reference=reference
+                                       ).ToString()
                 if(len(VCFLineString) != 0):
-                    outHandle.write(VCFLineSet.ToString() + "\n")
+                    outHandle.write(VCFLineString + "\n")
     else:
         puIterator = inHandle.pileup(max_depth=30000)
         while True:
@@ -75,10 +73,9 @@ def SNVCrawler(inBAM,
                 continue
             except StopIteration:
                 break
-            VCFLineSet = VCFPos(PC, MaxPValue=MaxPValue,
-                                keepConsensus=keepConsensus)
             # TODO: Check to see if it speeds up to not assign and only write.
-            VCFLineString = VCFLineSet.ToString()
+            VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
+                                   keepConsensus=keepConsensus).ToString()
             if(len(VCFLineString) != 0):
-                outHandle.write(VCFLineSet.ToString() + "\n")
-    return
+                outHandle.write(VCFLineString + "\n")
+    return OutVCF

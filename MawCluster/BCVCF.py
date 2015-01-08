@@ -98,7 +98,11 @@ class VCFRecord:
 
     def __init__(self, VCFEntry, VCFFilename):
         self.CHROM = VCFEntry[0]
-        self.POS = VCFEntry[1]
+        try:
+            self.POS = VCFEntry[1]
+        except IndexError:
+            print("Line: {}".format(VCFEntry))
+            raise ThisIsMadness("Something went wrong.")
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
         if("<X>" in VCFEntry[4]):
@@ -143,6 +147,8 @@ class VCFRecord:
             if("I16" in self.InfoArrayDict.keys()):
                 self.InfoArrayDict['I16'] = [
                     int(decimal.Decimal(i)) for i in self.InfoArrayDict['I16']]
+        except KeyError:
+            print("No I16 present; continuing.")
         try:
             self.FORMAT = VCFEntry[8]
         except IndexError:
@@ -273,7 +279,7 @@ def MPileup(inputBAM, ref,
 def ParseVCF(inputVCFName):
     infile = open(inputVCFName, "r")
     VCFLines = [entry.strip().split('\t') for entry in infile.readlines(
-    ) if entry[0] != "#" and entry.strip().split('\t')[4] != "<X>"]
+    ) if entry[0] != "#"]
     infile.seek(0)
     VCFHeader = [entry.strip(
     ) for entry in infile.readlines() if entry[0] == "#"]
@@ -329,3 +335,85 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
             else:
                 return False
     return passRecord
+
+
+def VCFStats(inVCF, TransCountsTable="default"):
+    inVCF = ParseVCF(inVCF)
+    TransCountsTableHandle = open(TransCountsTable, "w")
+    TransitionDict = {}
+    TransitionPASSDict = {}
+    TransitionCountsDict = {}
+    TransitionCountsPASSDict = {}
+    RefConsCallsCountsDict = {}
+    RefConsCallsCountsPASSDict = {}
+    TransCountsTableHandle.write("Transition\tCount\tCount marked \"PASS"
+                                 "\"\tFraction Of Calls With Given Ref/Cons\t"
+                                 "MeanAlleleFraction\tFraction Of PASS Calls "
+                                 "With Given Ref/Cons\tMean Allele Fraction "
+                                 "Of PASS Calls\n")
+    for RefCons in ["A", "C", "G", "T"]:
+        for Var in ["A", "C", "G", "T"]:
+            if(RefCons == Var):
+                continue
+            TransitionDict[RefCons + "-->" + Var] = [
+                (rec for rec
+                 in inVCF.Records
+                 if rec.InfoArrayDict['CONS'] == RefCons
+                 or rec.REF == RefCons)]
+            TransitionPASSDict[RefCons + "-->" + Var] = [
+                (rec for rec
+                 in inVCF.Records
+                 if (rec.InfoArrayDict['CONS'] == RefCons
+                     or rec.REF == RefCons) is True and rec.FILTER == "PASS")]
+            TransitionCountsDict[RefCons + "-->" + Var] = len(
+                TransitionDict[RefCons + "-->" + Var])
+            TransitionCountsPASSDict[RefCons + "-->" + Var] = len(
+                TransitionPASSDict[RefCons + "-->" + Var])
+    for RefCons in ["A", "C", "G", "T"]:
+        for key in TransitionCountsDict.keys():
+            if key[0] == RefCons:
+                try:
+                    RefConsCallsCountsDict[
+                        RefCons] += TransitionCountsDict[key]
+                except KeyError:
+                    RefConsCallsCountsDict[RefCons] = TransitionCountsDict[key]
+                try:
+                    RefConsCallsCountsPASSDict[
+                        RefCons] += TransitionCountsPASSDict[key]
+                except KeyError:
+                    RefConsCallsCountsPASSDict[
+                        RefCons] = TransitionCountsPASSDict[key]
+    MeanAlleleFractionDict = {}
+    MeanAlleleFractionPASSDict = {}
+    for key in TransitionCountsDict.keys():
+        MeanAlleleFractionDict[key] = np.mean([float(rec.InfoDict['AF'])
+                                               for rec in TransitionDict[key]])
+        MeanAlleleFractionPASSDict[key] = np.mean(
+            [float(rec.InfoDict['AF'])for rec in TransitionPASSDict[key]])
+    TransitionFractionForRefConsDict = {}
+    TransitionFractionForRefConsPASSDict = {}
+    for key in TransitionCountsDict.keys():
+        try:
+            TransitionFractionForRefConsDict[
+                key] = TransitionCountsDict[key] / float(
+                    RefConsCallsCountsDict[key[0]])
+        except ZeroDivisionError:
+            TransitionFractionForRefConsDict[key] = 0
+        try:
+            TransitionFractionForRefConsPASSDict[
+                key] = TransitionCountsDict[key] / float(
+                    RefConsCallsCountsPASSDict[key[0]])
+        except ZeroDivisionError:
+            TransitionFractionForRefConsPASSDict[key] = 0
+    for key in TransitionCountsDict.keys():
+        TransCountsTableHandle.write("\t".join(
+            [str(i)[0:8] for i in [key,
+                                   TransitionCountsDict[key],
+                                   TransitionCountsPASSDict[key],
+                                   TransitionFractionForRefConsDict[key],
+                                   MeanAlleleFractionDict[key],
+                                   TransitionFractionForRefConsPASSDict[key],
+                                   MeanAlleleFractionPASSDict[key]
+                                   ]]))
+    TransCountsTableHandle.close()
+    return TransCountsTable

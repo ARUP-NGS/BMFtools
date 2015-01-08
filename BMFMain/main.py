@@ -234,7 +234,9 @@ def main():
                 opts=opts,
                 bed=bed,
                 minMQ=args.minMQ,
-                minBQ=args.minBQ)
+                minBQ=args.minBQ,
+                reference=args.ref,
+                commandStr=" ".join(sys.argv))
             pl(
                 "Last stop! Watch your step.")
         elif(args.initialStep == 2):
@@ -254,7 +256,9 @@ def main():
                 opts=opts,
                 bed=bed,
                 minMQ=args.minMQ,
-                minBQ=args.minBQ)
+                minBQ=args.minBQ,
+                reference=args.ref,
+                commandStr=" ".join(sys.argv))
             pl(
                 "Last stop! Watch your step")
         elif(args.initialStep == 3):
@@ -265,7 +269,9 @@ def main():
                 opts=opts,
                 bed=bed,
                 minMQ=args.minMQ,
-                minBQ=args.minBQ)
+                minBQ=args.minBQ,
+                reference=args.ref,
+                commandStr=" ".join(sys.argv))
             pl("Last stop! Watch your step.")
         return
 

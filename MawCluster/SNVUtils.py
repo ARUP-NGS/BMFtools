@@ -53,7 +53,7 @@ class VCFLine:
                 if(AltAggregateObject.BothStrandSupport is True):
                     self.FILTER = "PASS"
                 else:
-                    self.FILTER = "ModQual"
+                    self.FILTER = "OneStrandSupport"
             else:
                 self.FILTER = "LowQual"
         except TypeError:
@@ -195,7 +195,10 @@ class HeaderFileFormatLine:
     """
 
     def __init__(self, fileformat="VCFv4.1"):
-        self.fileformat = fileformat
+        if(fileformat == "default"):
+            self.fileformat = "VCFv4.1"
+        else:
+            self.fileformat = fileformat
 
     def ToString(self):
         self.str = "##fileformat={}".format(self.fileformat)
@@ -324,7 +327,7 @@ class HeaderCommandLine:
         self.commandStr = commandStr
 
     def ToString(self):
-        self.str = "##commandStr={}".format(self.commandStr)
+        self.str = "##commandline={}".format(self.commandStr)
         return self.str
 
 
@@ -376,17 +379,17 @@ class HeaderContigLine:
 """
 This next section contains the dictionaries which hold the
 FILTER Header entries
-Valid tags: PASS,ModQual,LowQual
+Valid tags: PASS,OneStrandSupport,LowQual
 """
 
 HeaderFilterDict = {}
 HeaderFilterDict["PASS"] = HeaderFilterLine(ID="PASS",
                                             Description="All filters passed")
-HeaderFilterDict["ModQual"] = HeaderFilterLine(
-    ID="ModQual",
+HeaderFilterDict["OneStrandSupport"] = HeaderFilterLine(
+    ID="OneStrandSupport",
     Description="High quality but only supported by reads on one strand")
-HeaderFilterDict["LowQual"] = HeaderFilterLine(ID="LowQual",
-                                               Description="Low Quality")
+HeaderFilterDict["LowQual"] = HeaderFilterLine(
+    ID="LowQual", Description="Low Quality, below P-Value Cutoff")
 
 
 """
@@ -526,7 +529,7 @@ def GetContigHeaderLines(header):
     for contigDict in header['SQ']:
         contigLineList.append(
             HeaderContigLine(contig=contigDict["SN"],
-                             length=contigDict["LN"]).ToString() + "\n")
+                             length=contigDict["LN"]).ToString())
     return "\n".join(contigLineList)
 
 

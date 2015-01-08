@@ -64,7 +64,7 @@ def main():
         print("Basename for log: {}".format(os.path.basename(args.inBAM)))
         logfile = (os.getcwd() + "/" +
                    os.path.basename(args.inBAM).split('.')[0] +
-                   '.log')
+                   '.bmf.vcf.log')
     if(os.path.isfile(logfile)):
         os.remove(logfile)
         pl("Log file existed - deleting!")
@@ -104,7 +104,8 @@ def main():
                             MaxPValue=args.MaxPValue,
                             keepConsensus=args.keepConsensus,
                             commandStr=commandStr,
-                            reference=args.reference_fasta)
+                            reference=args.reference_fasta,
+                            reference_is_path=True)
     else:
         OutVCF = SNVCrawler(args.inBAM,
                             minMQ=args.minMQ,
@@ -112,7 +113,8 @@ def main():
                             MaxPValue=args.MaxPValue,
                             keepConsensus=args.keepConsensus,
                             commandStr=commandStr,
-                            reference=args.reference_fasta)
+                            reference=args.reference_fasta,
+                            reference_is_path=True)
 
     return OutVCF
 
