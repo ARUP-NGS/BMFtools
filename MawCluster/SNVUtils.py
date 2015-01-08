@@ -73,7 +73,7 @@ class VCFLine:
                            "MMQ": AltAggregateObject.minMQ,
                            "MBQ": AltAggregateObject.minBQ,
                            "QA": AltAggregateObject.SumBQScore,
-                           "NUMALT": AltAggregateObject.NUMALT,
+                           "NUMALL": AltAggregateObject.NUMALT,
                            "BQF": FailedBQReads,
                            "MQF": FailedMQReads,
                            "TYPE": "snp",
@@ -197,6 +197,7 @@ class HeaderFileFormatLine:
     def ToString(self):
         self.str = "##fileformat={}".format(self.fileformat)
         return self.str
+
 
 class HeaderInfoLine:
     """
@@ -388,7 +389,7 @@ HeaderFilterDict["LowQual"] = HeaderFilterLine(ID="LowQual",
 """
 This next section contains the dictionaries which hold the
 INFO Header entries
-Valid tags: AF,TF,BS,RSF,MQM,MQB,MMQ,MBQ,QA,NUMALT,BQF,MQF,
+Valid tags: AF,TF,BS,RSF,MQM,MQB,MMQ,MBQ,QA,NUMALL,BQF,MQF,
 TYPE,PVC,TACS,TAFS,MACS,MAFS
 """
 
@@ -441,9 +442,9 @@ HeaderInfoDict["QA"] = HeaderInfoLine(
     Description="Alternate allele quality sum in phred",
     Number="A",
     Type="Integer")
-HeaderInfoDict["NUMALT"] = HeaderInfoLine(
-    ID="NUMALT",
-    Description="Number of unique alternate alleles at position.",
+HeaderInfoDict["NUMALL"] = HeaderInfoLine(
+    ID="NUMALL",
+    Description="Number of unique alleles at position.",
     Number=1,
     Type="Integer")
 HeaderInfoDict["BQF"] = HeaderInfoLine(
@@ -533,54 +534,54 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
                  INFOTags="default",
                  FORMATTags="default"
                  ):
-    HeaderLinesList = []
+    HeaderLinesStr = ""
     # fileformat line
-    HeaderLinesList.append(HeaderFileFormatLine(
-        fileformat=fileFormat).ToString())
+    HeaderLinesStr += HeaderFileFormatLine(
+        fileformat=fileFormat).ToString() + "\n"
     # FILTER lines
     if(FILTERTags == "default"):
         for key in HeaderFilterDict.keys():
-            HeaderLinesList.append(HeaderFilterDict[key].ToString())
+            HeaderLinesStr += HeaderFilterDict[key].ToString() + "\n"
     else:
         for filter in FILTERTags.split(","):
             try:
-                HeaderLinesList.append(
-                    HeaderFilterDict[filter.upper()].ToString())
+                HeaderLinesStr += HeaderFilterDict[
+                    filter.upper()].ToString() + "\n"
             except KeyError:
                 pl("Filter {} not found - continuing.".format(filter))
     # INFO lines
     if(INFOTags == "default"):
         for key in HeaderInfoDict.keys():
-            HeaderLinesList.append(HeaderInfoDict[key].ToString())
+            HeaderLinesStr += HeaderInfoDict[key].ToString() + "\n"
     else:
         for info in INFOTags.split(","):
             try:
-                HeaderLinesList.append(
-                    HeaderInfoDict[info.upper()].ToString())
+                HeaderLinesStr += HeaderInfoDict[
+                    info.upper()].ToString() + "\n"
             except KeyError:
                 pl("Info {} not found - continuing.".format(info))
-    print(repr(HeaderLinesList))
     # FORMAT lines
     if(FORMATTags == "default"):
         for key in HeaderFormatDict.keys():
-            HeaderLinesList.append(HeaderFormatDict[key].ToString())
+            HeaderLinesStr += HeaderFormatDict[key].ToString() + "\n"
     else:
         for format in FORMATTags.split(","):
             try:
-                HeaderLinesList.append(
-                    HeaderFormatDict[format.upper()].ToString())
+                HeaderLinesStr += HeaderFormatDict[
+                    format.upper()].ToString() + "\n"
             except KeyError:
                 pl("Format {} not found - continuing.".format(format))
     # commandline line
     if(commandStr != "default"):
-        HeaderLinesList.append(HeaderCommandLine(commandStr=commandStr))
+        HeaderLinesStr += HeaderCommandLine(
+            commandStr=commandStr).ToString() + "\n"
     # reference line
     if(reference != "default"):
-        HeaderLinesList.append(HeaderReferenceLine(reference=reference,
-                                                   isfile=reference_is_path))
+        HeaderLinesStr += HeaderReferenceLine(
+            reference=reference, isfile=reference_is_path).ToString() + "\n"
     # contig lines
-    HeaderLinesList.append(GetContigHeaderLines(header))
-    return "\n".join(HeaderLinesList)
+    HeaderLinesStr += GetContigHeaderLines(header) + "\n"
+    return HeaderLinesStr
 
 
 def SNVCrawler(inBAM,
@@ -604,17 +605,15 @@ def SNVCrawler(inBAM,
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(OutVCF, "w")
-    """
-    VCFHeader is not yet debugged. Do not use!
-    inHandle.write(GetVCFHeader(fileFormat=fileFormat,
-                                FILTERTags=FILTERTags,
-                                commandStr=commandStr,
-                                reference=reference,
-                                reference_is_path=False,
-                                header=inHandle.header,
-                                INFOTags=INFOTags,
-                                FORMATTags=FORMATTags))
-    """
+    outHandle.write(GetVCFHeader(fileFormat=fileFormat,
+                                 FILTERTags=FILTERTags,
+                                 commandStr=commandStr,
+                                 reference=reference,
+                                 reference_is_path=False,
+                                 header=inHandle.header,
+                                 INFOTags=INFOTags,
+                                 FORMATTags=FORMATTags))
+
     if(bed != "default"):
         for line in bed:
             puIterator = inHandle.pileup(line[0], line[1],

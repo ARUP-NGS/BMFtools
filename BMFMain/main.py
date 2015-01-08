@@ -7,7 +7,7 @@ import sys
 import BMFMain.ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl
 """
-Contains Utilities for the completion of a variety of
+Contains utilities for the completion of a variety of
 tasks related to barcoded protocols for ultra-low
 frequency variant detection, particularly for circulating tumor DNA
 Structural Variant detection tools are in active development.
@@ -60,7 +60,8 @@ def main():
         default='bwa')
     parser.add_argument(
         "--abrapath",
-        help="Path to ABRA jar")
+        help="Path to ABRA jar",
+        default="/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar")
     parser.add_argument(
         '-o',
         '--opts',
@@ -75,7 +76,8 @@ def main():
     parser.add_argument(
         '--bed',
         help="full path to bed file used for variant-calling steps.",
-        metavar="BEDFile")
+        metavar="BEDFile",
+        required=True)
     parser.add_argument(
         '--initialStep',
         help="1: Fastq. 2: Bam. 3. VCF",

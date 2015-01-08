@@ -2,10 +2,14 @@
 
 from subprocess import *
 import argparse
+import sys
 
 
 def main():
-    check_call(["python", "setup.py", "install"])
+    print(sys.argv)
+    dir = "/".join(sys.argv[0].split("/")[0:-1])
+    try:
+        check_call(["python", dir + "/setup.py", "install"])
     except CalledProcessError:
         print("You might not have permission to install the BMFTools packages.")
         return 1

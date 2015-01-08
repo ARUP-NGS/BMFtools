@@ -28,8 +28,7 @@ def AbraCadabra(inbam,
     coordinate sorted. You will likely need an additional bed file for this.
     """
     if(jar == "default"):
-        jar = "/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar"
-        pl("Default jar used: " + jar)
+        HTSUtils.FacePalm("Required: Path to abra jar!")
     else:
         pl("Non-default abra jar used: " + jar)
     if(memStr == "default"):
@@ -221,7 +220,7 @@ def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
             pl("Joining filterSet into a string.")
             filterSet = ''.join(filterSet)
             if(isinstance(filterSet, str) is False):
-                raise ValueError("filterSet isn't a string after joining.")
+                HTSUtils.FacePalm("filterSet isn't a string after joining.")
         else:
             pl("Filter set is not as expected! Repr: {}".format(
                 repr(filterSet)))
