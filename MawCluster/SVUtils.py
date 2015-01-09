@@ -12,7 +12,7 @@ SBI tag subsets - MDC/ORB, LI/ORB
 SVTestDict = {}
 
 
-def LI_SV_Tag_Condition(read1, read2, tag, extraField=100000):
+def LI_SV_Tag_Condition(read1, read2, tag, extraField=50000):
     maxInsert = int(extraField)
     return (abs(read1.tlen) >= maxInsert or abs(read2.tlen) >= maxInsert)
 
@@ -54,7 +54,7 @@ SVTestDict['ORB'] = ORB_SV_Tag_Condition
 def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
     """
     Gets reads where only one pair mapped inside the bed file
-    and the insert size is either above a threshold (default: 1000000),
+    and the insert size is either above a threshold (default: 50000),
     the reads are mapped to different contigs, or the reads are mapped
     to the same strand.
     extraField should contain a bedRef as formatted for ORB as field 0,
@@ -86,15 +86,15 @@ SVTestDict['SBI'] = SBI_SV_Tag_Condition
 SVParamDict = {}
 for key in SVTestDict.keys():
     SVParamDict[key] = ''
-SVParamDict['LI'] = 1000000
+SVParamDict['LI'] = 50000
 SVParamDict['ORB'] = "default"
-SVParamDict['SBI'] = ["default", 1000000]
+SVParamDict['SBI'] = ["default", 50000]
 
 
 def GetSVRelevantRecordsPaired(inbam, SVBam="default",
                                bedfile="default",
                                supplementary="default",
-                               maxInsert=1000000,
+                               maxInsert=50000,
                                tempBAMPrefix="default",
                                FullBam="default",
                                summary="default"):

@@ -64,7 +64,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed,
                                           jar=abrapath)
     else:
-        realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
+        pl("ABRA path not provided. Skipping realignment.")
+        realignedFull = taggedBAM
+        # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
     mappedPass, failures = BCBam.pairedFilterBam(
         namesortedRealignedFull, criteria="adapter,ismapped")
