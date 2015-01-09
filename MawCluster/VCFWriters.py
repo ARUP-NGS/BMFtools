@@ -75,7 +75,8 @@ def SNVCrawler(inBAM,
                 break
             # TODO: Check to see if it speeds up to not assign and only write.
             VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
-                                   keepConsensus=keepConsensus).ToString()
+                                   keepConsensus=keepConsensus,
+                                   reference=reference).ToString()
             if(len(VCFLineString) != 0):
                 outHandle.write(VCFLineString + "\n")
     return OutVCF

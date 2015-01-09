@@ -1,11 +1,10 @@
 import re
 import subprocess
 
-from MawCluster import BCBam, SNVUtils, VCFWriters
+from MawCluster import BCBam, VCFWriters
 from MawCluster import BCFastq
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
-from MawCluster import BCVCF
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
 from utilBMF.HTSUtils import printlog as pl
 
@@ -152,7 +151,7 @@ def pairedVCFProc(consMergeSortBAM,
                   bed="default",
                   minMQ=10,
                   minBQ=20,
-                  MakePileupTsv=True,
+                  MakePileupTsv=False,
                   MakeVCF=True,
                   reference="default",
                   commandStr="default"):
@@ -172,8 +171,10 @@ def pairedVCFProc(consMergeSortBAM,
         pl("PileupTSV: {}".format(PileupTSV))
         Results["tsv"] = PileupTSV
     if(MakeVCF is True):
-        SNP_VCF = VCFWriters.SNVCrawler(consMergeSortBAM, minMQ=minMQ,
-                                        minBQ=minBQ, reference=reference,
+        SNP_VCF = VCFWriters.SNVCrawler(consMergeSortBAM,
+                                        minMQ=minMQ,
+                                        minBQ=minBQ,
+                                        reference=reference,
                                         commandStr=commandStr,
                                         reference_is_path=True)
         pl("SNP VCF: {}".format(SNP_VCF))
@@ -183,46 +184,3 @@ def pairedVCFProc(consMergeSortBAM,
     # This is probably useless given that I'm doing this "manually",
     # but I'm keeping this in here for good measure.
     return Results
-
-
-def singleBamProc(FamilyFastq, ref, opts, aligner="bwa", bamPrefix="default"):
-    pl("Now tagging reads.")
-    pl("Now filtering reads")
-    if(bamPrefix == "default"):
-        bamPrefix = FamilyFastq.split('.')[0] + '.FMS'
-        outsam, outbam = bamPrefix + '.sam', bamPrefix + '.bam'
-    pl("Output Sam: {}. Output Bam: {}".format(outsam, outbam))
-    if(aligner == "bwa"):
-        outbam, bwa_command = HTSUtils.align_bwa_se(
-            FamilyFastq, ref, opts, outsam)
-        pl("Aligner command was {}".format(bwa_command))
-    else:
-        raise ValueError("Sorry, I don't handle that aligner.")
-    taggedBAM = BCBam.singleBarcodeTagging(FamilyFastq, outbam)
-    return taggedBAM
-
-
-def singleFastqProc(inFastq, homing="default"):
-    if(homing == "default"):
-        homing = "CAGT"
-    StdFilenames, ElseFilenames = BCFastq.HomingSeqLoc(inFastq, homing=homing)
-    pl("Homing seq located, parsing these out.")
-    pl("Now removing the homing and the barcode.")
-    tags, trimfq = BCFastq.TrimHoming(StdFilenames, homing)
-    pl("Now generating the barcode index.")
-    BarcodeIndex = BCFastq.GenerateSingleBarcodeIndex(tags)
-    FamilyFastq, TotalReads, FamReads = BCFastq.GetFamilySizeSingle(
-        trimfq, BarcodeIndex)
-    BSortFq = BCFastq.BarcodeSort(FamilyFastq)
-    BConsFastq = BCFastq.singleFastqConsolidate(BSortFq, stringency=0.667)
-    return BConsFastq
-
-
-def singleVCFProc(ConsensusBam, bed, ref):
-    pl("Now sorting reads by coordinate to prepare for MPileup.")
-    CorrCons = BCBam.CoorSort(ConsensusBam)
-    pl("Now creating a VCF using mpileup for variant calling.")
-    MPileupVCF = BCVCF.MPileup(CorrCons, ref, bed=bed)
-    pl("Initial mpileup, with ALT entries of X removed: {}".format(MPileupVCF))
-    ParsedVCF = BCVCF.ParseVCF(MPileupVCF)
-    return ParsedVCF

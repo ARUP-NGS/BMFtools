@@ -31,7 +31,8 @@ class VCFLine:
                  TotalCountStr="default",
                  MergedCountStr="default",
                  FailedBQReads="default",
-                 FailedMQReads="default"):
+                 FailedMQReads="default",
+                 minNumFam=2):
         if(isinstance(AltAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
@@ -50,8 +51,11 @@ class VCFLine:
         self.ID = ID
         try:
             if(float(MaxPValue) > 10 ** (self.QUAL / -10)):
-                if(AltAggregateObject.BothStrandSupport is True):
+                if(AltAggregateObject.BothStrandSupport is True and
+                   AltAggregateObject.MergedReads >= minNumFam):
                     self.FILTER = "PASS"
+                elif(AltAggregateObject.BothStrandSupport is True):
+                    self.FILTER = "Too few families supporting variant"
                 else:
                     self.FILTER = "OneStrandSupport"
             else:
@@ -133,7 +137,7 @@ class VCFLine:
 class VCFPos:
 
     def __init__(self, PCInfoObject,
-                 MaxPValue=1e-15,
+                 MaxPValue=1e-18,
                  keepConsensus=True,
                  reference="default"):
         if(isinstance(PCInfoObject, PCInfo) is False):
@@ -390,6 +394,11 @@ HeaderFilterDict["OneStrandSupport"] = HeaderFilterLine(
     Description="High quality but only supported by reads on one strand")
 HeaderFilterDict["LowQual"] = HeaderFilterLine(
     ID="LowQual", Description="Low Quality, below P-Value Cutoff")
+HeaderFilterDict["CONSENSUS"] = HeaderFilterLine(
+    ID="CONSENSUS",
+    Description="Not printed due to being the "
+    "consensus sequence, not somatic. (Unless the consensus is cancerous, "
+    "in which case the patient is dead in the water.)")
 
 
 """

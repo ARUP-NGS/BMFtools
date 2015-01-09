@@ -22,8 +22,21 @@ def main():
         default="/usr/local/bin"
         )
     args = parser.parse_args()
+    print("Now installing BMFMain in: " + args.prefix)
     try:
-        check_call(["cp", "BMFMain/main.py", args.prefix + "/bmftools"])
+        check_call(["cp", "BMFMain/main.py", args.prefix + "/BMFMain"])
+    except CalledProcessError:
+        print("You might not have permission to install the BMFMain executable.")
+        return 1
+    print("Now installing SNVCrawler in: " + args.prefix)
+    try:
+        check_call(["cp", "utilBMF/SNVCrawler.py", args.prefix + "/SNVCrawler"])
+    except CalledProcessError:
+        print("You might not have permission to install the SNVCrawler executable.")
+        return 1
+    print("Now installing bmftools in: " + args.prefix)
+    try:
+        check_call(["cp", "utilBMF/bmftools.py", args.prefix + "/bmftools"])
     except CalledProcessError:
         print("You might not have permission to install the bmftools executable.")
         return 1

@@ -3,7 +3,7 @@ import argparse
 import logging
 
 from MawCluster.BCVCF import VCFStats
-from HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl
 
 # Global Variables
 Logger = logging.getLogger("Primarylogger")

@@ -5,7 +5,7 @@ import logging
 import sys
 
 from MawCluster.VCFWriters import SNVCrawler
-from HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl
 
 # Global Variables
 Logger = logging.getLogger("Primarylogger")

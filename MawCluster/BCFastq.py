@@ -379,7 +379,8 @@ def GetFamilySizePaired(
         outfq1="default",
         outfq2="default",
         singlefq1="default",
-        singlefq2="default"):
+        singlefq2="default",
+        minFamSize=1):
     pl("Running GetFamilySizeSingle for {}, {}.".format(trimfq1, trimfq2))
     infq1 = SeqIO.parse(trimfq1, "fastq")
     infq2 = SeqIO.parse(trimfq2, "fastq")
@@ -421,7 +422,7 @@ def GetFamilySizePaired(
         # print("famSize = _{}_".format(str(famSize)))
         # print("The value of this comparison to 1 is {}".format(
         # str(famSize=="1")))
-        if(int(famSize) <= 2):
+        if(int(famSize) <= int(minFamSize)):
             #  print("Hey, I found a singleton")
             SeqIO.write(newRead1, singlefqBuffer1, "fastq")
             SeqIO.write(newRead2, singlefqBuffer2, "fastq")
@@ -445,7 +446,7 @@ def GetFamilySizeSingle(
         BarcodeIndex,
         outfq="default",
         singlefq="default",
-        minFamSize=2):
+        minFamSize=1):
     pl("Running GetFamilySizeSingle for {}.".format(trimfq))
     infq = SeqIO.parse(trimfq, "fastq")
     if(outfq == "default"):

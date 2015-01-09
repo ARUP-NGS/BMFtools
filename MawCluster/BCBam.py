@@ -7,7 +7,7 @@ import logging
 from Bio import SeqIO
 import pysam
 
-import BCFastq
+from MawCluster import BCFastq
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
 
