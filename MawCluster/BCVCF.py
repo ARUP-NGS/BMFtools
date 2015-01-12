@@ -127,7 +127,7 @@ class VCFRecord:
             try:
                 self.InfoValues.append(entry.split('=')[1])
             except IndexError:
-                self.InfoUnpaired
+                self.InfoUnpaired.append(entry)
                 continue
         #  print(self.InfoValues)
         #  Might not reproduce the original information when written to file.
@@ -342,6 +342,7 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
 
 
 def VCFStats(inVCF, TransCountsTable="default"):
+    print("About to run VCFStats on {}".format(inVCF))
     if(TransCountsTable == "default"):
         TransCountsTable = inVCF[0:-3] + "trans.vcf.tsv"
     inVCF = ParseVCF(inVCF)

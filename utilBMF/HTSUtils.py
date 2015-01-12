@@ -494,18 +494,32 @@ def mergeBam(samList, memoryStr="-XmX16",
     return outBam
 
 
-def GetBamTagsDictionary(samRecord):
-    TagsDict = {}
-    for pair in samRecord.tags:
-        TagsDict[pair[0]] = pair[1]
-    return TagsDict
+class ReadPair:
+    """
+    Holds both bam record objects in a pair
+    """
+    def __init__(self, read1, read2):
+        self.read1 = read1
+        self.read2 = read2
+        try:
+            self.SVTags = read1.opt("SV").split(',')
+        except KeyError:
+            self.SVTags = None
+        self.insert_size = abs(read1.tlen)
 
 
-def GetBamTag(samRecord, tag):
+def GetReadPair(inHandle):
+    """
+    Simply contains both pairs of reads in an object
+    """
+    read1 = inHandle.next()
+    read2 = inHandle.next()
     try:
-        return GetBamTagsDictionary(samRecord)[tag]
-    except KeyError:
-        raise ThisIsMadness("Alignment record missing requested tag.")
+        assert read1.query_name == read2.query_name
+    except AssertionError:
+        FacePalm("These two reads have "
+                 "different query names. Abort!")
+    return ReadPair(read1, read2)
 
 
 def ParseBed(bedfile):

@@ -7,6 +7,7 @@ from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
 from utilBMF.HTSUtils import printlog as pl
+from MawCluster.BCVCF import VCFStats
 
 
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
@@ -155,6 +156,7 @@ def pairedVCFProc(consMergeSortBAM,
                   minBQ=20,
                   MakePileupTsv=False,
                   MakeVCF=True,
+                  MakeCoverageBed=True,
                   reference="default",
                   commandStr="default"):
     if(bed == "default"):
@@ -165,6 +167,11 @@ def pairedVCFProc(consMergeSortBAM,
     # Variant Calling Step using MPileup
     # print("Now filtering for reads with NM > 0 only if you want to.")
     Results = {}
+    if(MakeCoverageBed is True):
+        OutBed = PileupUtils.CalcWithinBedCoverage(consMergeSortBAM,
+                                                   bed=bed,
+                                                   minMQ=minMQ,
+                                                   minBQ=minBQ)
     if(MakePileupTsv is True):
         PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
                                                   bedfile=bed,
@@ -178,9 +185,11 @@ def pairedVCFProc(consMergeSortBAM,
                                         minBQ=minBQ,
                                         reference=reference,
                                         commandStr=commandStr,
-                                        reference_is_path=True)
+                                        reference_is_path=True,
+                                        bedfile=bed)
         pl("SNP VCF: {}".format(SNP_VCF))
         Results["vcf"] = SNP_VCF
+        VCFStatsFile = VCFStats(SNP_VCF)
     # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,
     #                                                     bedfile=bed)
     # This is probably useless given that I'm doing this "manually",

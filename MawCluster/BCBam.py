@@ -55,16 +55,19 @@ def AbraCadabra(inbam,
         outbam = '.'.join(inbam.split('.')[0:-1]) + '.abra.bam'
     from os import path
     pl(("Command to reproduce the call of this function: "
-        "AbraCadabra({}, outbam={}, jar={}, ".format(inbam, outbam, jar) +
-        "memStr={}, ref={}, threads={}, ".format(memStr, ref, threads) +
-        "bed={}, working={}, log={})".format(bed, working, log)))
+        "AbraCadabra(\"{}\", outbam=\"{}\", jar=\"{}\", ".format(inbam,
+                                                                 outbam,
+                                                                 jar) +
+        "memStr=\"{}\", ref=\"{}\", threads=\"{}\", ".format(memStr,
+                                                             ref, threads) +
+        "bed=\"{}\", working=\"{}\", log=\"{}\")".format(bed, working, log)))
     if(path.isdir(working)):
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
     bedLines = [line.strip() for line in open(bed, "r").readlines()]
     if(len(bedLines[0]) > 3):
-        newbed = '.'.join(bed.split('.')[0:-1]) + 'abra.bed'
+        newbed = '.'.join(bed.split('.')[0:-1]) + '.abra.bed'
         pl("Bed file provided not in form abra accepts.")
         subprocess.check_call("cut -f1-3 {} | sort -k1,1 -k2,2n > {}".format(
                               bed, newbed),

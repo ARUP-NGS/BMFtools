@@ -5,7 +5,9 @@ import shlex
 
 import pysam
 
-from utilBMF.HTSUtils import ThisIsMadness, printlog as pl, PysamToChrDict
+from utilBMF.HTSUtils import (ThisIsMadness,
+                              printlog as pl,
+                              PysamToChrDict)
 from utilBMF import HTSUtils
 import utilBMF
 

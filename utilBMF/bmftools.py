@@ -3,6 +3,7 @@ import argparse
 import sys
 
 from MawCluster.VCFWriters import SNVCrawler
+from MawCluster.BCVCF import VCFStats
 """
 bmftools contains various utilities for barcoded reads and for
 somatic variant calling. Written to be in similar form to bcftools
@@ -13,6 +14,7 @@ and samtools.
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    VCFStatsParser = subparsers.add_parser("vcfstats")
     SNVParser = subparsers.add_parser("snv")
     SNVParser.add_argument("inBAM",
                            help="Input BAM, Coordinate-sorted and indexed, "
@@ -25,6 +27,11 @@ def main():
         help="Full path to bed file.",
         default="default")
     SNVParser.add_argument(
+        "-o",
+        "--outVCF",
+        help="Output VCF File.",
+        default="default")
+    SNVParser.add_argument(
         "--minBQ",
         help="Minimum Base Quality to consider",
         default=30,
@@ -32,7 +39,7 @@ def main():
     SNVParser.add_argument(
         "--minMQ",
         help="Minimum Mapping Quality to consider",
-        default=10,
+        default=20,
         type=int)
     SNVParser.add_argument(
         "--MaxPValue",
@@ -53,6 +60,9 @@ def main():
         "--reference-fasta",
         help="Provide reference fasta.",
         required=True)
+    VCFStatsParser.add_argument(
+        "inVCF",
+        help="Input VCF, as created by SNVCrawler.")
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
 
@@ -67,7 +77,8 @@ def main():
                                 keepConsensus=args.keepConsensus,
                                 commandStr=commandStr,
                                 reference=args.reference_fasta,
-                                reference_is_path=True)
+                                reference_is_path=True,
+                                OutVCF=args.outVCF)
         else:
             OutVCF = SNVCrawler(args.inBAM,
                                 minMQ=args.minMQ,
@@ -76,7 +87,10 @@ def main():
                                 keepConsensus=args.keepConsensus,
                                 commandStr=commandStr,
                                 reference=args.reference_fasta,
-                                reference_is_path=True)
+                                reference_is_path=True,
+                                OutVCF=args.outVCF)
+    if(args.bmfsuites == "vcfstats"):
+        OutTable = VCFStats(args.inVCF)
     return
 
 
