@@ -509,6 +509,13 @@ class ReadPair:
         except KeyError:
             self.SVTags = None
         self.insert_size = abs(read1.tlen)
+        self.read1_soft_clipped = ("S" in read1.cigarstring)
+        if(self.read1_soft_clipped is True):
+            self.read1_softclip_seqs = []
+        self.read2_soft_clipped = ("S" in read2.cigarstring)
+        if(self.read2_soft_clipped is True):
+            self.read2_softclip_seqs = []
+        # TODO: write a script to create an array of soft-clipped sequences from each read
 
 
 def GetReadPair(inHandle):
