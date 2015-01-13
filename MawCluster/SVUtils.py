@@ -184,8 +184,6 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
                 if("BamHandleDict" in locals()):
                     BamHandleDict[key].write(read1)
                     BamHandleDict[key].write(read2)
-        FullOutHandle.write(read1)
-        FullOutHandle.write(read2)
         if(WritePair is True):
             SVOutHandle.write(read1)
             SVOutHandle.write(read2)
@@ -194,6 +192,8 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
             SVCountDict["NOSVR"] += 1
             read1.setTag("SV", "NF")
             read2.setTag("SV", "NF")
+        FullOutHandle.write(read1)
+        FullOutHandle.write(read2)
     inHandle.close()
     SVOutHandle.close()
     FullOutHandle.close()

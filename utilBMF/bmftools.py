@@ -4,6 +4,8 @@ import sys
 
 from MawCluster.VCFWriters import SNVCrawler
 from MawCluster.BCVCF import VCFStats
+from MawCluster import BCFastq
+from BMFMain.ProcessingSteps import pairedFastqShades
 """
 bmftools contains various utilities for barcoded reads and for
 somatic variant calling. Written to be in similar form to bcftools
@@ -15,6 +17,8 @@ def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
     VCFStatsParser = subparsers.add_parser("vcfstats")
+    DMultiPlexParser = subparsers.add_parser("dmp")
+    BamTagsParser = subparsers.add_parser("tagbam")
     SNVParser = subparsers.add_parser("snv")
     SNVParser.add_argument("inBAM",
                            help="Input BAM, Coordinate-sorted and indexed, "
@@ -63,6 +67,26 @@ def main():
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
+    DMultiPlexParser.add_argument(
+        "inFqs",
+        nargs="+",
+        help="Input Fastq Files")
+    DMultiPlexParser.add_argument(
+        "-i",
+        "--indexFq",
+        metavar="indexFastq",
+        help="Index Fastq")
+    BamTagsParser.add_argument(
+        "inBAM",
+        metavar="inBAM",
+        help="Untagged Bam")
+    BamTagsParser.add_argument(
+        "--fastq",
+        "-f",
+        metavar="InFastqs",
+        nargs="+",
+        help="Tagged, Merged Fastq File")
+
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
 
@@ -73,7 +97,7 @@ def main():
                                 bed=args.bed,
                                 minMQ=args.minMQ,
                                 minBQ=args.minBQ,
-                                MaxPValue=args.MaxPValue,
+                                MaxPValue=float(args.MaxPValue),
                                 keepConsensus=args.keepConsensus,
                                 commandStr=commandStr,
                                 reference=args.reference_fasta,
@@ -83,7 +107,7 @@ def main():
             OutVCF = SNVCrawler(args.inBAM,
                                 minMQ=args.minMQ,
                                 minBQ=args.minBQ,
-                                MaxPValue=args.MaxPValue,
+                                MaxPValue=float(args.MaxPValue),
                                 keepConsensus=args.keepConsensus,
                                 commandStr=commandStr,
                                 reference=args.reference_fasta,
@@ -91,7 +115,12 @@ def main():
                                 OutVCF=args.outVCF)
     if(args.bmfsuites == "vcfstats"):
         OutTable = VCFStats(args.inVCF)
-    return
+    if(args.bmfsuites == "dmp"):
+        OutFastq1, OutFastq2 = pairedFastqShades(
+            args.inFqs[0],
+            args.inFqs[1],
+            indexfq=args.indexFq)
+    return 0
 
 
 if(__name__ == "__main__"):

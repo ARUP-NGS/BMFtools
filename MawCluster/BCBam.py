@@ -203,6 +203,7 @@ def CoorSort(inbam, outbam="default"):
                    str(uuid.uuid4().get_hex().upper()[0:8]))
     pl(command_str)
     subprocess.check_call(shlex.split(command_str), shell=False)
+    subprocess.check_call(["samtools", "index", outbam])
     return(outbam)
 
 

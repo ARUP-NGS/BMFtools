@@ -24,14 +24,6 @@ def XLocCaller(inBAM,
     """
     # Do calls for LI first.
     # Now looking for intrachromosomal translocations
-    LIBamRecords = []
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    while True:
-        try:
-            WorkingReadPair = HTSUtils.GetReadPair(inHandle)
-            if("LI" in WorkingReadPair.SVTags):
-                LIBamRecords.append(WorkingReadPair)
-        except StopIteration:
-            break
-    LIBamRecords = sorted(LIBamRecords, key=lambda read: abs(read.insert_size))
+    LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB")
+    MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB")
     return None

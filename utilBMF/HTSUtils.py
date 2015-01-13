@@ -1,6 +1,7 @@
 import logging
 import shlex
 import subprocess
+from build.lib.utilBMF.HTSUtils import ReadPair
 
 
 class Configurations:
@@ -495,9 +496,11 @@ def mergeBam(samList, memoryStr="-XmX16",
 
 
 class ReadPair:
+
     """
     Holds both bam record objects in a pair
     """
+
     def __init__(self, read1, read2):
         self.read1 = read1
         self.read2 = read2
@@ -520,6 +523,69 @@ def GetReadPair(inHandle):
         FacePalm("These two reads have "
                  "different query names. Abort!")
     return ReadPair(read1, read2)
+
+
+def ReadsOverlap(read1, read2):
+    if(read1.reference_id != read2.reference_id):
+        return False
+    if(read1.reference_start > read2.reference_end or
+       read1.reference_end < read2.reference_start):
+        return False
+    else:
+        return True
+
+
+def ReadPairsOverlap(ReadPair1, ReadPair2, distance=300):
+    if(ReadsOverlap(ReadPair1.read1, ReadPair2.read1) or
+       ReadsOverlap(ReadPair1.read2, ReadPair2.read2) or
+       ReadsOverlap(ReadPair1.read1, ReadPair2.read2) or
+       ReadsOverlap(ReadPair1.read2, ReadPair2.read1)):
+        return True
+    else:
+        return False
+
+
+def ReadPairWithinDistance(ReadPair1, ReadPair2, distance=300):
+    if(sum(
+        [abs(ReadPair1.read1.pos - ReadPair2.read1.pos) < distance,
+         abs(ReadPair1.read1.pos - ReadPair2.read2.pos) < distance,
+         abs(ReadPair1.read2.pos - ReadPair2.read1.pos) < distance,
+         abs(ReadPair1.read2.pos - ReadPair2.read2.pos) < distance]) > 0):
+        return True
+    else:
+        return False
+
+
+def LoadReadPairsFromFile(inBAM, SVTag="default"):
+    """
+    Loads all pairs of reads from a name-sorted paired-end
+    bam file into ReadPair objects. If SVTag is specified,
+    then check that all entries in SVTag.split(",") are in
+    the tags
+    """
+    import pysam
+    RecordsArray = []
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    tags = SVTag.split(',')
+    if(SVTag != "default"):
+        while True:
+            try:
+                WorkingReadPair = GetReadPair(inHandle)
+                if(sum(
+                    [tag in WorkingReadPair.SVTags
+                     for tag in tags]) == len(tags) and SVTag != "default"):
+                    RecordsArray.append(WorkingReadPair)
+            except StopIteration:
+                break
+    else:
+        try:
+            RecordsArray.append(GetReadPair(inHandle))
+        except StopIteration:
+            pass
+    if("LI" in tags):
+        return sorted(RecordsArray, key=lambda read: abs(read.insert_size))
+    else:
+        return RecordsArray
 
 
 def ParseBed(bedfile):

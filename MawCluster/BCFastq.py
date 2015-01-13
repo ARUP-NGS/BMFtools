@@ -177,6 +177,7 @@ def FastqPairedShading(fq1,
     if(outfq2 == "default"):
         outfq2 = ('.'.join(
             fq2.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
+    pl("Output fastqs: {}, {}.".format(outfq1, outfq2))
     inFq1 = SeqIO.parse(fq1, "fastq")
     inFq2 = SeqIO.parse(fq2, "fastq")
     outFqHandle1 = open(outfq1, "w")

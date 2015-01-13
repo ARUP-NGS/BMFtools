@@ -6,6 +6,7 @@ import sys
 
 import BMFMain.ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl
+from utilBMF import HTSUtils
 """
 Contains utilities for the completion of a variety of
 tasks related to barcoded protocols for ultra-low
@@ -20,11 +21,15 @@ Logger = logging.getLogger("Primarylogger")
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-i',
-        '--fq',
+        'fq',
         help="Provide your fastq file(s).",
         nargs="+",
         metavar=('reads'))
+    parser.add_argument(
+        "--idxFastq",
+        "-i",
+        help="Path to index fastq",
+        metavar="indexFastq")
     parser.add_argument(
         '--conf',
         help="Path to config file with settings.",
@@ -181,48 +186,14 @@ def main():
     else:
         pl("Paired-end analysis chosen.")
     if(args.single_end is True):
-        if(args.initialStep == 1):
-            pl("Beginning fastq processing.")
-            consFq = ps.singleFastqProc(args.fq[0], homing=homing)
-            pl("Beginning BAM processing.")
-            TaggedBam = ps.singleBamProc(
-                consFq,
-                ref,
-                opts,
-                aligner=aligner)
-            pl("Beginning VCF processing.")
-            CleanParsedVCF = ps.singleVCFProc(TaggedBam, bed, ref)
-            pl("Last stop! Watch your step.")
-            return
-        elif(args.initialStep == 2):
-            consFq = args.fq[0]
-            pl("Beginning BAM processing.")
-            TaggedBam = ps.singleBamProc(
-                consFq,
-                ref,
-                opts,
-                aligner=aligner)
-            pl("Beginning VCF processing.")
-            CleanParsedVCF = ps.singleVCFProc(TaggedBam, bed, ref)
-            pl("Last stop! Watch your step.")
-            return
-        elif(args.initialStep == 3):
-            ConsensusBam = args.BAM
-            pl("Beginning VCF processing.")
-            CleanParsedVCF = ps.singleVCFProc(
-                ConsensusBam,
-                bed,
-                ref)
-            pl("Last stop! Watch your step.")
-            return
-        else:
-            raise ValueError("You have chosen an illegal initial step.")
+        HTSUtils.ThisIsMadness("Single-end analysis not currently "
+                               "supported. Soon!")
     else:
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             if(args.shades is True):
                 trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
-                    args.fq[0], args.fq[1], args.fq[2])
+                    args.fq[0], args.fq[1], indexfq=args.idxFastq)
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
                     trimfq2,

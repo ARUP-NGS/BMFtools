@@ -345,6 +345,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
     print("About to run VCFStats on {}".format(inVCF))
     if(TransCountsTable == "default"):
         TransCountsTable = inVCF[0:-3] + "trans.vcf.tsv"
+    pl("VCFStats table: {}".format(TransCountsTable))
     inVCF = ParseVCF(inVCF)
     TransCountsTableHandle = open(TransCountsTable, "w")
     TransitionDict = {}

@@ -30,14 +30,12 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     if(aligner == "default"):
         pl("No aligner set, defaulting to bwa.")
         aligner = "bwa"
-    outsamProperPair = bamPrefix + '.sam'
     outbamProperPair = bamPrefix + '.bam'
     outbamSingle = bamPrefix + "solo.bam"
-    pl("The output SAM file: {}. Output BAM file: {}".format(
-        outsamProperPair, outbamProperPair))
+    pl("Output BAM file: {}".format(outbamProperPair))
     if(aligner == "bwa"):
         outbamProperPair = HTSUtils.align_bwa(
-            consfq1, consfq2, ref, opts, outsamProperPair)
+            consfq1, consfq2, ref, opts, outbamProperPair)
         if(consfqSingle != "default"):
             outbamSingle, bwase_command = HTSUtils.align_bwa_se(
                 consfqSingle, ref, opts, outbamSingle)
@@ -103,7 +101,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
-    coorSorted = BCBam.CoorSort(MarkedFamilies)
+    pl("Change of plans - now, the SV-marked BAM is not used for "
+       "SNP calling due to an error.")
+    coorSorted = BCBam.CoorSort(families)
     CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=mincov)
     pl("Coverage bed: {}".format(CoverageBed))
     if(consfqSingle != "default"):
@@ -112,13 +112,15 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return coorSorted
 
 
-def pairedFastqShades(inFastq1, inFastq2, indexFastq, stringency=0.75):
+def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75):
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
-                                                    indexFastq,
+                                                    indexfq=indexfq,
                                                     gzip=False)
+    if(indexfq == "default"):
+        HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
-    barcodeIndex = BCFastq.GenerateShadesIndex(indexFastq)
+    barcodeIndex = BCFastq.GenerateShadesIndex(indexfq)
     (FamFqs, SingleFqs, numReads,
      numReadsWFam) = BCFastq.GetFamilySizePaired(bcFastq1,
                                                  bcFastq2, barcodeIndex)
@@ -186,7 +188,7 @@ def pairedVCFProc(consMergeSortBAM,
                                         reference=reference,
                                         commandStr=commandStr,
                                         reference_is_path=True,
-                                        bedfile=bed)
+                                        bed=bed)
         pl("SNP VCF: {}".format(SNP_VCF))
         Results["vcf"] = SNP_VCF
         VCFStatsFile = VCFStats(SNP_VCF)
