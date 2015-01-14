@@ -1,7 +1,6 @@
 import logging
 import shlex
 import subprocess
-from build.lib.utilBMF.HTSUtils import ReadPair
 
 
 class Configurations:

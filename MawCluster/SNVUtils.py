@@ -17,6 +17,15 @@ Allele Fraction - AF
 DP - Depth (Merged)
 """
 
+#TODO:
+#1. Require 3 families (min BQSum of 279?)
+#2. Filter By Bed
+#3. Check to see if any pairs of reads both cover the nucleotide in question and have the same call.
+#4. Should I put the extra (>93) q score information somewhere?
+skjdfhasdkjfhasdkf
+This module won\'t work until I remove this terrible text.
+
+The idea is t do so so that I can't forget.
 
 class VCFLine:
 
@@ -32,7 +41,8 @@ class VCFLine:
                  MergedCountStr="default",
                  FailedBQReads="default",
                  FailedMQReads="default",
-                 minNumFam=2):
+                 minNumFam=2,
+                 minNumSS=2):
         if(isinstance(AltAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
@@ -40,6 +50,7 @@ class VCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal == "default"):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
+        self.NumStartStops = len(list(set([PR.ssString for PR in AltAggregateObject.recList])))
         self.CHROM = AltAggregateObject.contig
         self.POS = AltAggregateObject.pos
         self.CONS = AltAggregateObject.consensus
@@ -50,28 +61,37 @@ class VCFLine:
             # This is entirely arbitrary...
         self.ID = ID
         try:
-            if(float(MaxPValue) > 10 ** (self.QUAL / -10)):
-                if(AltAggregateObject.BothStrandSupport is True and
-                   AltAggregateObject.MergedReads >= minNumFam):
-                    self.FILTER = "PASS"
-                elif(AltAggregateObject.BothStrandSupport is True):
-                    self.FILTER = "Too few families supporting variant"
+            if(float(MaxPValue) < 10 ** (self.QUAL / -10)):
+                if("FILTER" in dir(self)):
+                    self.FILTER += ",LowQual"
+                else:
+                    self.FILTER = "LowQual"
+            if(AltAggregateObject.BothStrandSupport is False):
+                if("FILTER" in dir(self)):
+                    self.FILTER += ",OneStrandSupport"
                 else:
                     self.FILTER = "OneStrandSupport"
-            else:
-                self.FILTER = "LowQual"
+            if(self.NumStartStops < minNumSS):
+                if("FILTER" in dir(self)):
+                    self.FILTER += ",OneCoordinateSetSupport"
+                else:
+                    self.FILTER = "OneCoordinateSetSupport"
+            if("FILTER" not in dir(self)):
+                self.FILTER = "PASS"
         except TypeError:
             print("TypeError! MaxPValue is: {}".format(MaxPValue))
             raise TypeError("MaxPValue not properly parsed.")
         if(self.ALT == AltAggregateObject.consensus):
             self.FILTER = "CONSENSUS"
-        self.InfoFields = {"AF": AltAggregateObject.MergedReads
+        self.InfoFields = {"AC": AltAggregateObject.MergedReads,
+                           "AF": AltAggregateObject.MergedReads
                            / float(AltAggregateObject.DOC),
                            "TF": AltAggregateObject.TotalReads
                            / float(AltAggregateObject.DOCTotal),
                            "BS": AltAggregateObject.BothStrandSupport,
                            "RSF": AltAggregateObject.ReverseMergedReads
                            / float(AltAggregateObject.MergedReads),
+                           "NSS": self.NumStartStops,
                            "MQM": AltAggregateObject.AveMQ,
                            "MQB": AltAggregateObject.AveBQ,
                            "MMQ": AltAggregateObject.minMQ,
@@ -389,6 +409,10 @@ Valid tags: PASS,OneStrandSupport,LowQual
 HeaderFilterDict = {}
 HeaderFilterDict["PASS"] = HeaderFilterLine(ID="PASS",
                                             Description="All filters passed")
+HeaderFilterDict["OneCoordinateSetSupport"] = HeaderFilterLine(
+    ID="OneCoordinateSetSupport",
+    Description=("High quality but only supported by "
+                 "reads with the same start and stop."))
 HeaderFilterDict["OneStrandSupport"] = HeaderFilterLine(
     ID="OneStrandSupport",
     Description="High quality but only supported by reads on one strand")
@@ -405,7 +429,7 @@ HeaderFilterDict["CONSENSUS"] = HeaderFilterLine(
 This next section contains the dictionaries which hold the
 INFO Header entries
 Valid tags: AF,TF,BS,RSF,MQM,MQB,MMQ,MBQ,QA,NUMALL,BQF,MQF,
-TYPE,PVC,TACS,TAFS,MACS,MAFS
+TYPE,PVC,TACS,TAFS,MACS,MAFS,NSS,AC
 """
 
 HeaderInfoDict = {}
@@ -414,6 +438,19 @@ HeaderInfoDict["AF"] = HeaderInfoLine(
     Type="Float",
     Description=("Allele Frequency, for each ALT allele, "
                  "in the same order as listed for Merged read families."),
+    Number="A")
+HeaderInfoDict["AC"] = HeaderInfoLine(
+    ID="AC",
+    Type="Integer",
+    Description=("Allele Count, for each ALT allele, "
+                 "in the same order as listed for Merged read families."
+                 " Note: BMFTools writes VCFs one ALT per line."),
+    Number="A")
+HeaderInfoDict["NSS"] = HeaderInfoLine(
+    ID="NSS",
+    Type="Integer",
+    Description=("Number of unique sets of starts & stops supporting ALT all"
+                 "ele in the same order as listed for Merged read families."),
     Number="A")
 HeaderInfoDict["TF"] = HeaderInfoLine(
     ID="TF",

@@ -103,6 +103,7 @@ def main():
                                 reference=args.reference_fasta,
                                 reference_is_path=True,
                                 OutVCF=args.outVCF)
+            OutTable = VCFStats(OutVCF)
         else:
             OutVCF = SNVCrawler(args.inBAM,
                                 minMQ=args.minMQ,
@@ -113,6 +114,7 @@ def main():
                                 reference=args.reference_fasta,
                                 reference_is_path=True,
                                 OutVCF=args.outVCF)
+            OutTable = VCFStats(OutVCF)
     if(args.bmfsuites == "vcfstats"):
         OutTable = VCFStats(args.inVCF)
     if(args.bmfsuites == "dmp"):

@@ -42,6 +42,8 @@ class PRInfo:
         self.MQ = PileupRead.alignment.mapq
         self.is_reverse = PileupRead.alignment.is_reverse
         self.is_proper_pair = PileupRead.alignment.is_proper_pair
+        self.read = PileupRead.alignment
+        self.ssString = "#".join([str(i) for i in sorted([self.read.reference_start, self.read.reference_end])])
 
 
 def is_reverse_to_str(boolean):
