@@ -395,9 +395,12 @@ def VCFLineContainedInBed(VCFLineObject, bedRef="default"):
     except AssertionError:
         FacePalm("VCFLineContainedInBed requires a VCFRecord object!")
     for line in bedRef:
-        contig = VCFLineObject.CHROM
-        if(contig == line[0]):
-            if(VCFLineObject.POS > line[2] or VCFLineObject.POS < line[1]):
+        if(VCFLineObject.CHROM == line[0]):
+            assert isinstance(line[1], int)
+            assert isinstance(line[2], int)
+            assert isinstance(line[0], str)
+            assert isinstance(VCFLineObject.POS, int)
+            if(VCFLineObject.POS > line[2] or VCFLineObject.POS <= line[1]):
                 continue
             else:
                 return True

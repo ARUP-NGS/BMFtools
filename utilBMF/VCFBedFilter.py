@@ -35,7 +35,7 @@ def main():
     pl("Filtering by bed: {}".format(args.bed))
     pl("Output VCF: {}".format(outVCF))
     print("Beginning to filter VCF by bed file.")
-    outVCF = FilterVCFFileByBed(inVCF, args.bed, outVCF=outVCF)
+    outVCF = FilterVCFFileByBed(inVCF, bedfile=args.bed, outVCF=outVCF)
     print("Output VCF: {}".format(outVCF))
     return outVCF
 

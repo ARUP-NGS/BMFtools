@@ -100,10 +100,12 @@ class VCFRecord:
     def __init__(self, VCFEntry, VCFFilename):
         self.CHROM = VCFEntry[0]
         try:
-            self.POS = VCFEntry[1]
+            self.POS = int(VCFEntry[1])
         except IndexError:
             print("Line: {}".format(VCFEntry))
             raise ThisIsMadness("Something went wrong.")
+        except ValueError:
+            raise ThisIsMadness("Improperly formatted VCF.")
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
         if("<X>" in VCFEntry[4]):
@@ -163,13 +165,13 @@ class VCFRecord:
             zip(self.FORMAT.split(':'), self.GENOTYPE.split(':')))
         self.GenotypeKeys = self.FORMAT.split(':')
         self.GenotypeValues = self.GENOTYPE.split(':')
-        self.Samples = [""]
+        self.Samples = []
         if(len(VCFEntry) > 10):
             for field in VCFEntry[10:]:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
         if(len(self.Samples) == 0):
-            recordStr = '\t'.join([self.CHROM,
+            recordStr = '\t'.join([str(i) for i in [self.CHROM,
                                    self.POS,
                                    self.ID,
                                    self.REF,
@@ -178,10 +180,10 @@ class VCFRecord:
                                    self.FILTER,
                                    self.INFO,
                                    self.FORMAT,
-                                   self.GENOTYPE])
+                                   self.GENOTYPE]])
         else:
             sampleStr = "\t".join(self.Samples)
-            recordStr = '\t'.join([self.CHROM,
+            recordStr = '\t'.join([str(i) for i in [self.CHROM,
                                    self.POS,
                                    self.ID,
                                    self.REF,
@@ -191,7 +193,7 @@ class VCFRecord:
                                    self.INFO,
                                    self.FORMAT,
                                    self.GENOTYPE,
-                                   sampleStr])
+                                   sampleStr]])
         self.str = recordStr.strip()
 
     def update(self):
@@ -228,16 +230,18 @@ class VCFRecord:
         self.GenotypeDict = dict(
             zip(self.FORMAT.split(':'), self.GENOTYPE.split(':')))
         if(len(self.Samples) == 0):
-            recordStr = '\t'.join([self.CHROM, self.POS,
+            recordStr = '\t'.join([str(i) for i in [self.CHROM, self.POS,
                                    self.ID, self.REF, self.ALT, self.QUAL,
                                    self.FILTER, self.INFO, self.FORMAT,
-                                   self.GENOTYPE])
+                                   self.GENOTYPE]])
         else:
+            print("Sample is being used...")
             sampleStr = "\t".join(self.Samples)
-            recordStr = '\t'.join([self.CHROM, self.POS, self.ID,
+            recordStr = '\t'.join([str(i) for i in [self.CHROM, self.POS,
+                                                    self.ID,
                                    self.REF, self.ALT, self.QUAL,
                                    self.FILTER, self.INFO, self.FORMAT,
-                                   self.GENOTYPE, sampleStr])
+                                   self.GENOTYPE, sampleStr]])
         self.str = recordStr.strip()
 
     def ToString(self):
@@ -434,17 +438,23 @@ def VCFStats(inVCF, TransCountsTable="default"):
 
 def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
     inVCF = ParseVCF(inVCF)
+    print("bedfile used: {}".format(bedfile))
     bed = HTSUtils.ParseBed(bedfile)
     if(outVCF == "default"):
         outVCF = inVCF[0:-4] + ".bedfilter.vcf"
     outHandle = open(outVCF, "w")
+    count = 0
     for line in inVCF.header:
+        if(count == 1):
+                outHandle.write(SNVUtils.HeaderCustomLine(
+                    customKey="FilterVCFFileByBed",
+                    customValue=bedfile).ToString())
         outHandle.write(line + "\n")
-    outHandle.write(SNVUtils.HeaderCustomLine(
-        customKey="FilterVCFFileByBed",
-        customValue=bedfile).ToString())
+        count += 1
     for line in inVCF.Records:
-        if(HTSUtils.VCFLineContainedInBed(line, bed) is True):
-            outHandle.write(line.ToString())
+        if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
+            outHandle.write(line.ToString() + "\n")
+        else:
+            pass
     outHandle.close()
     return outVCF
