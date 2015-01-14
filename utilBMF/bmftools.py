@@ -108,7 +108,7 @@ def main():
             OutVCF = SNVCrawler(args.inBAM,
                                 minMQ=args.minMQ,
                                 minBQ=args.minBQ,
-                                MaxPValue=float(args.MaxPValue),
+                                MaxPValue=args.MaxPValue,
                                 keepConsensus=args.keepConsensus,
                                 commandStr=commandStr,
                                 reference=args.reference_fasta,

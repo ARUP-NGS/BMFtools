@@ -15,7 +15,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   barIndex="default",
                   bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
                   mincov=5,
-                  abrapath="default"):
+                  abrapath="default",
+                  coverageForAllRegions=False):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -37,21 +38,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         outbamProperPair = HTSUtils.align_bwa(
             consfq1, consfq2, ref, opts, outbamProperPair)
         if(consfqSingle != "default"):
-            outbamSingle, bwase_command = HTSUtils.align_bwa_se(
-                consfqSingle, ref, opts, outbamSingle)
-            pl(
-                "Aligner command for single-end was {}".format(bwase_command))
-            pl("Tagging solo BAM")
-            taggedSingleBAM = BCBam.singleBarcodeTagging(
-                consfqSingle, outbamSingle)
-            pl("Removing unmapped reads and those failing filters.")
-            passTaggedSingleBAM, failTSB = BCBam.singleFilterBam(
-                taggedSingleBAM,
-                criteria="complexity,adapter,ismapped")
-            pl("Now tagging BAM file with family size.")
-            familySizeSoloBAM, famLst = BCBam.getFamilySizeBAM(
-                passTaggedSingleBAM, barIndex)
-            sortFSSBam = BCBam.CoorSort(familySizeSoloBAM)
+            HTSUtils.FacePalm("This step is not required "
+                              "or important for shades.")
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
     pl("Now tagging BAM with custom SAM tags.")
@@ -67,8 +55,6 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         realignedFull = taggedBAM
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
-    mappedPass, failures = BCBam.pairedFilterBam(
-        namesortedRealignedFull, criteria="adapter,ismapped")
     p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
     out, err = p.communicate()
     pl("Number of families found: {}".format(
@@ -86,29 +72,26 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         joinedFamilies = fuzzyJoining(familyMarked,joiningSAM)
         pl("joinedFamilies is {}".format(joinedFamilies))
     """
-    pl("Now determining family size for the doubled barcodes.")
-    families, BCList = BCBam.getFamilySizeBAM(
-        mappedPass, barIndex)
     # This step not needed for shades protocol, as fastq
     # families have already been filtered for size.
     # familyP, familyF = BCBam.pairedFilterBam(
     #    families, criteria="family")
-    SVBam, MarkedFamilies = SVRP(families,
+    SVBam, MarkedFamilies = SVRP(namesortedRealignedFull,
                                  bedfile=bed,
-                                 tempBAMPrefix=families[0:-4],
-                                 summary=(families[0:-4] +
+                                 tempBAMPrefix=namesortedRealignedFull[0:-4],
+                                 summary=(namesortedRealignedFull[0:-4] +
                                           '.SV.txt'))
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
         "to translocations."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to an error.")
-    coorSorted = BCBam.CoorSort(families)
-    CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=mincov)
+    coorSorted = BCBam.CoorSort(namesortedRealignedFull)
+    if(coverageForAllRegions is False):
+        CoverageBed = PileupUtils.CalcWithinBedCoverage(coorSorted, bed=bed)
+    else:
+        CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=mincov)
     pl("Coverage bed: {}".format(CoverageBed))
-    if(consfqSingle != "default"):
-        mergedSinglePair = BCBam.mergeBams(coorSorted, sortFSSBam)
-        return mergedSinglePair
     return coorSorted
 
 

@@ -362,7 +362,12 @@ def ReadContainedInBed(samRecord, bedRef="default"):
     # if(isinstance(bedRef, str) is True):
     #     bedRef = ParseBed(bedRef)
     for line in bedRef:
-        if(PysamToChrDict[samRecord.reference_id] == line[0]):
+        try:
+            contig = PysamToChrDict[samRecord.reference_id]
+        except KeyError:
+            # Read most likely unmapped.
+            return False
+        if(contig == line[0]):
             if(samRecord.reference_start > int(
                     line[2] - 1) or samRecord.reference_end < int(
                         line[1]) - 1):

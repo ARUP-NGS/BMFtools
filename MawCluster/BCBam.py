@@ -45,7 +45,7 @@ def AbraCadabra(inbam,
     else:
         pl("Bed file set: {}.".format(bed))
     if(working == "default"):
-        working = inbam.split('.')[0] + "working_dir"
+        working = inbam.split('.')[0] + ".working_dir"
         pl("Default working directory set to be: " + working)
     else:
         pl("Non-default working directory: " + working)
@@ -432,10 +432,15 @@ def pairedBarcodeTagging(
                 entry.setTag("FP", 1)
             else:
                 entry.setTag("FP", 0)
-        except KeyError():
+        except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing an FP tag.")
+        try:
+            entry.setTag("PV", descDict["PV"])
+        except KeyError:
+            # print("Phred Values > 93 not set. Oh well.)
+            pass
         outBAM.write(entry)
     suppBAM.close()
     outBAM.close()

@@ -3,6 +3,26 @@ BMF ( Barcode Manipulation and Factorization)
 
 Suite of tools for barcoded reads taking advantage of PCR redundancy for error reduction/elimination.
 
+## Installation
+
+Run:
+```
+python setup.py install
+```
+You might have an error claiming that README.md is not in dist/. If necessary, copy that file from the distribution base to dist.
+
+## Use
+
+To run the main program, call the main.py function after installation, or, if installed, run the executable BMFMain.
+
+```
+python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
+```
+
+```
+BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
+```
+
 ## BMF Tags
 
 These tags are used both in the fastq and the SAM/BAM files.
@@ -15,6 +35,7 @@ FP | Read Passes Filter related to barcoding | String. Required: "Pass" or "Fail
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
+PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\] ]| 
 
 ## Valid Tags for SV SAM tag
 
@@ -26,6 +47,7 @@ MSS | Mapped to Same Strand |
 ORB | Only one read in pair mapped to Expected Bed Region |
 ORU | One Read Unmapped |
 SBI | SBI for having ORB and one of either MDC or LI |
+NOSVR | No structural variant relevance |
 
 Barcode Edit Distance is 0 for members in a family whose barcode matches the family's exactly. If a rescue step is performed to merge a read with a small number of mismatches due to sequencing errors, this tag will reflect the number of differing characters.
 

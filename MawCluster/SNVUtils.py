@@ -17,15 +17,9 @@ Allele Fraction - AF
 DP - Depth (Merged)
 """
 
-#TODO:
-#1. Require 3 families (min BQSum of 279?)
-#2. Filter By Bed
-#3. Check to see if any pairs of reads both cover the nucleotide in question and have the same call.
-#4. Should I put the extra (>93) q score information somewhere?
-skjdfhasdkjfhasdkf
-This module won\'t work until I remove this terrible text.
+# TODO:
+# 1. Filter By Bed
 
-The idea is t do so so that I can't forget.
 
 class VCFLine:
 
@@ -41,7 +35,7 @@ class VCFLine:
                  MergedCountStr="default",
                  FailedBQReads="default",
                  FailedMQReads="default",
-                 minNumFam=2,
+                 minNumFam=3,
                  minNumSS=2):
         if(isinstance(AltAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
@@ -50,7 +44,8 @@ class VCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal == "default"):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
-        self.NumStartStops = len(list(set([PR.ssString for PR in AltAggregateObject.recList])))
+        self.NumStartStops = len(list(set([PR.ssString for PR in
+                                           AltAggregateObject.recList])))
         self.CHROM = AltAggregateObject.contig
         self.POS = AltAggregateObject.pos
         self.CONS = AltAggregateObject.consensus
@@ -102,7 +97,8 @@ class VCFLine:
                            "MQF": FailedMQReads,
                            "TYPE": "snp",
                            "PVC": MaxPValue,
-                           "CONS": self.CONS}
+                           "CONS": self.CONS,
+                           "NDPS": AltAggregateObject.NumberDuplexReads}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
         if(TotalFracStr != "default"):
@@ -539,6 +535,11 @@ HeaderInfoDict["MAFS"] = HeaderInfoLine(
     Description="Merged Allele Frequency String.",
     Number=1,
     Type="String")
+HeaderInfoDict["NDPS"] = HeaderInfoLine(
+    ID="NDPS",
+    Description="Number of Duplex Reads Supporting Variant",
+    Number="A",
+    Type="Integer")
 
 """
 This next section contains the dictionaries which hold the

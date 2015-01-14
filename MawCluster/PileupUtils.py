@@ -43,7 +43,9 @@ class PRInfo:
         self.is_reverse = PileupRead.alignment.is_reverse
         self.is_proper_pair = PileupRead.alignment.is_proper_pair
         self.read = PileupRead.alignment
-        self.ssString = "#".join([str(i) for i in sorted([self.read.reference_start, self.read.reference_end])])
+        self.ssString = "#".join(
+            [str(i) for i in sorted(
+                [self.read.reference_start, self.read.reference_end])])
 
 
 def is_reverse_to_str(boolean):
@@ -167,6 +169,12 @@ class AlleleAggregateInfo:
             self.BothStrandSupport = True
         else:
             self.BothStrandSupport = False
+
+        # Check to see if a read pair supports a variant with both ends
+        from collections import Counter
+        ReadNameCounter = Counter([r.read.query_name for r in recList])
+        self.NumberDuplexReads = sum([
+            ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
 
 
 class PCInfo:
@@ -821,6 +829,7 @@ def AlleleFrequenciesByBase(inputBAM,
     else:
         bedLines = HTSUtils.ParseBed(bedfile)
         for line in bedLines:
+            print("Now running through the bedLine: {}".format(line))
             puIterator = inHandle.pileup(reference=line[0], start=line[1],
                                          end=line[2],
                                          max_depth=30000)
@@ -970,6 +979,7 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     for line in bedLines:
+        print("bedLine: {}".format(line))
         TotalReads = 0
         MergedReads = 0
         pileupIterator = inHandle.pileup(line[0],

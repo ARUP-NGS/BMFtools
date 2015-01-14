@@ -67,13 +67,11 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
                                    description=R[0].description)
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
-    probs = np.multiply(-10, np.log10(np.power(np.power(
-        10., np.multiply(
-            -1/10, np.array(
-                R[0].letter_annotations[
-                    'phred_quality']))), len(seqs)))).astype(int)
+    probs = np.multiply(len(R), R[0].letter_annotations['phred_quality'])
     if(np.any(np.less(probs, 1))):
         Success = False
+    if(np.any(np.greater(probs, 93))):
+        consolidatedRecord.description += " #G~PV=" + repr(probs)
     probs[probs <= 0] = 93
     probs[probs > 93] = 93
     consolidatedRecord.letter_annotations[
@@ -82,6 +80,7 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
 
 
 def compareFastqRecordsInexactNumpy(R):
+    import copy
     import numpy as np
     from Bio.SeqRecord import SeqRecord
     letterNumDict = {}
@@ -101,61 +100,44 @@ def compareFastqRecordsInexactNumpy(R):
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
-    quals = [record.letter_annotations['phred_quality'] for record in R]
-    qualProb = np.power(10, np.multiply(-1/10., quals))
-    qualA = qualProb.copy()
-    qualC = qualProb.copy()
-    qualG = qualProb.copy()
-    qualT = qualProb.copy()
-    qualA[seqArray != "A"] = 1.0
-    qualAProd = np.prod(qualA, 0)
-    qualC[seqArray != "C"] = 1.0
-    qualCProd = np.prod(qualC, 0)
-    qualG[seqArray != "G"] = 1.0
-    qualGProd = np.prod(qualG, 0)
-    qualT[seqArray != "T"] = 1.0
-    qualTProd = np.prod(qualT, 0)
-    qualAllProd = np.vstack([qualAProd, qualCProd, qualGProd, qualTProd])
+    quals = np.array([record.letter_annotations['phred_quality']
+                      for record in R])
+    qualA = copy.copy(quals)
+    qualC = copy.copy(quals)
+    qualG = copy.copy(quals)
+    qualT = copy.copy(quals)
+    qualA[seqArray != "A"] = 0
+    qualASum = np.sum(qualA, 0)
+    qualC[seqArray != "C"] = 0
+    qualCSum = np.sum(qualC, 0)
+    qualG[seqArray != "G"] = 0
+    qualGSum = np.sum(qualG, 0)
+    qualT[seqArray != "T"] = 0
+    qualTSum = np.sum(qualT, 0)
+    qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
     Success = True
     newSeq = "".join(
-        np.apply_along_axis(dAccess, 0, np.argmin(qualAllProd, 0)))
-    # Calculates new probability that the best
-    # candidate is right and all the others are wrong
-    # based on base qualities.
-    # NOT WORKING
-    # phredQuals = np.multiply(
-    #    -10, np.log10(np.multiply(np.power(np.prod(
-    #         qualAllProd, 0), -1), np.power(
-    #         np.amin(qualAllProd, 0), 2)))).astype(int)
-    # omgz = np.multiply(np.power(np.prod(
-    # qualAllProd, 0), -1), np.power(np.amin(qualAllProd, 0), 2))
-    # if((phredQuals < 0).any()):
-    #    print(repr(qualAllProd))
-    #    print(repr(np.prod(qualAllProd, 0)))
-    #    print(repr(np.amin(qualAllProd, 0)))
-    #    raise ValueError("Shouldn't be negative.")
-    #
-    # Product of all p values
-    # Debugging...print("pValuesProd has shape: {}".format(pValuesProd.shape))
-    # Minimum p value in set
-    pValuesMin = np.amin(qualAllProd, 0)  # Avoid calculating twice.
-    # Debugging...print("pValuesMin has shape: {}".format(pValuesMin.shape))
-    # divide pValuesMin by pValuesProd to get the product of all
+        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
+    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+    # Debugging...print("MaxPhredSum has shape: {}".format(MaxPhredSum.shape))
+    # divide MaxPhredSum by pValuesProd to get the product of all
     # alternative p values, then multiple by itself to find the
     # relative probability.
-    phredQuals = np.multiply(
-        -10, np.log10(pValuesMin / np.prod(
-            qualAllProd, 0) * pValuesMin)).astype(int)
-    phredQuals[phredQuals < 0] = 0
-    phredQuals[phredQuals == 0] = 93
-    phredQuals[phredQuals > 93] = 93
+    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
+                             np.sum(qualAllSum, 0))
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
         name=R[0].name,
         description=R[0].description)
+    if(np.any(np.greater(phredQuals, 93))):
+        consolidatedRecord.description += (" #G~PV=" +
+                                           ",".join(phredQuals.astype(str)))
+    phredQuals[phredQuals < 0] = 0
+    phredQuals[phredQuals == 0] = 93
+    phredQuals[phredQuals > 93] = 93
     consolidatedRecord.letter_annotations[
-        'phred_quality'] = [i if i <= 93 else 93 for i in phredQuals.tolist()]
+        'phred_quality'] = phredQuals.tolist()
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
     return consolidatedRecord, Success
