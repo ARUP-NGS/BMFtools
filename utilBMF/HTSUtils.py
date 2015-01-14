@@ -1,6 +1,7 @@
 import logging
 import shlex
 import subprocess
+import MawCluster
 
 
 class Configurations:
@@ -380,6 +381,28 @@ def ReadContainedInBed(samRecord, bedRef="default"):
             continue
     # print("Read {} which was not contained in bed file".format(
     #       samRecord.query_name))
+    return False
+
+
+def VCFLineContainedInBed(VCFLineObject, bedRef="default"):
+    """
+    Checks to see if a VCF Line is contained in a bedfile.
+    bedRef must be a tab-delimited list of lists, where
+    line[1] and line[2] are integers. ParseBed returns such an object.
+    """
+    try:
+        assert(isinstance(VCFLineObject, MawCluster.BCVCF.VCFRecord))
+    except AssertionError:
+        FacePalm("VCFLineContainedInBed requires a VCFRecord object!")
+    for line in bedRef:
+        contig = VCFLineObject.CHROM
+        if(contig == line[0]):
+            if(VCFLineObject.POS > line[2] or VCFLineObject.POS < line[1]):
+                continue
+            else:
+                return True
+        else:
+            continue
     return False
 
 

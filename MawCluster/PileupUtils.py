@@ -377,7 +377,7 @@ class PCInfo:
                               self.MergedStrandednessStr,
                               self.TotalStrandednessStr]])
 
-    def toString(self, header=False):
+    def ToString(self, header=False):
         outStr = ""
         if(header is True):
             outStr = ("#Chr\tPos (0-based)\tRef (Consensus)\tAlt\tTotal "
@@ -431,7 +431,7 @@ class PileupInterval:
         self.UniqueCoverage = 0
         self.AvgTotalCoverage = 0
         self.AvgUniqueCoverage = 0
-        self.str = self.toString()
+        self.str = self.ToString()
 
     def updateWithPileupColumn(self, PileupColumn):
         self.end += 1
@@ -447,7 +447,7 @@ class PileupInterval:
         self.AvgUniqueCoverage = self.UniqueCoverage / float(
             self.end - self.start)
 
-    def toString(self):
+    def ToString(self):
         PysamToChrDict = HTSUtils.GetRefIdDicts()["idtochr"]
         self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
                                                self.start,
@@ -519,10 +519,10 @@ def CustomPileupFullGenome(inputBAM,
         MergedReadsProcessed += PColSum.MergedReads
         TotalReadsProcessed += PColSum.TotalReads
         if(FirstLine is True):
-            PileupHandle.write(PColSum.toString(header=True))
+            PileupHandle.write(PColSum.ToString(header=True))
             FirstLine = False
         else:
-            PileupHandle.write(PColSum.toString())
+            PileupHandle.write(PColSum.ToString())
         for key in PColSum.TransMergedCounts.keys():
             try:
                 TransMergedDict[
@@ -667,10 +667,10 @@ def CustomPileupToTsv(inputBAM,
             MergedReadsProcessed += PColSum.MergedReads
             TotalReadsProcessed += PColSum.TotalReads
             if(FirstLine is True):
-                PileupHandle.write(PColSum.toString(header=True))
+                PileupHandle.write(PColSum.ToString(header=True))
                 FirstLine = False
             else:
-                PileupHandle.write(PColSum.toString())
+                PileupHandle.write(PColSum.ToString())
             for key in PColSum.TransMergedCounts.keys():
                 try:
                     TransMergedDict[
@@ -917,7 +917,7 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
                     except AssertionError:
                         del Interval
                 else:
-                    outHandle.write(Interval.toString() + "\n")
+                    outHandle.write(Interval.ToString() + "\n")
                     if(PC.PCol.nsegments >= mincov):
                         Interval = PileupInterval(
                             contig=PC.PCol.reference_id,
@@ -931,7 +931,7 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
             else:
                 try:
                     Interval.updateWithPileupColumn(PC.PCol)
-                    outHandle.write(Interval.toString() + "\n")
+                    outHandle.write(Interval.ToString() + "\n")
                 except AssertionError:
                     del Interval
                 if(PC.PCol.nsegments >= mincov):

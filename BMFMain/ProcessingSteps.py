@@ -1,7 +1,7 @@
 import re
 import subprocess
 
-from MawCluster import BCBam, VCFWriters
+from MawCluster import BCBam, VCFWriters, BCVCF
 from MawCluster import BCFastq
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
@@ -172,6 +172,7 @@ def pairedVCFProc(consMergeSortBAM,
                                         commandStr=commandStr,
                                         reference_is_path=True,
                                         bed=bed)
+        CleanedVCF = BCVCF.FilterVCFFileByBed(SNP_VCF, bed)
         pl("SNP VCF: {}".format(SNP_VCF))
         Results["vcf"] = SNP_VCF
         VCFStatsFile = VCFStats(SNP_VCF)

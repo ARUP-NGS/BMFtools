@@ -13,7 +13,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'inVCF',
-        help=("Coordinate-sorted, indexed BAM"),
+        help=("Input VCF"),
         )
     args = parser.parse_args()
     print("Beginning VCFStats")

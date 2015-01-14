@@ -23,7 +23,7 @@ def fixVCF(inputVCF, outputVCF="default", write="False"):
             e.REF, e.ALT = pair[0], pair[1]
             if(num != 0):
                 e.POS = str(int(e.POS) + 1)  # Incrementing location
-            newRecord = BCVCF.VCFRecord(e.toString().split('\t'), outputVCF)
+            newRecord = BCVCF.VCFRecord(e.ToString().split('\t'), outputVCF)
             if(newRecord.ALT != newRecord.REF):
                 stdEntries.append(newRecord)
     for s in stdEntries:

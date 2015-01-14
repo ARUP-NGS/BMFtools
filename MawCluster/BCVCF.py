@@ -4,6 +4,7 @@ import numpy as np
 
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
+from MawCluster import SNVUtils
 
 """
 Contains tools for working with VCF Files - writing, reading, processing.
@@ -72,7 +73,7 @@ class VCFFile:
         for headerLine in self.header:
             FileHandle.write("{}\n".format(headerLine))
         for VCFEntry in self.Records:
-            FileHandle.write("{}\n".format(VCFEntry.toString()))
+            FileHandle.write("{}\n".format(VCFEntry.ToString()))
         FileHandle.close()
         return
 
@@ -239,7 +240,7 @@ class VCFRecord:
                                    self.GENOTYPE, sampleStr])
         self.str = recordStr.strip()
 
-    def toString(self):
+    def ToString(self):
         self.update()
         return self.str
 
@@ -429,3 +430,21 @@ def VCFStats(inVCF, TransCountsTable="default"):
                                    ]]) + "\n")
     TransCountsTableHandle.close()
     return TransCountsTable
+
+
+def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
+    inVCF = ParseVCF(inVCF)
+    bed = HTSUtils.ParseBed(bedfile)
+    if(outVCF == "default"):
+        outVCF = inVCF[0:-4] + ".bedfilter.vcf"
+    outHandle = open(outVCF, "w")
+    for line in inVCF.header:
+        outHandle.write(line + "\n")
+    outHandle.write(SNVUtils.HeaderCustomLine(
+        customKey="FilterVCFFileByBed",
+        customValue=bedfile).ToString())
+    for line in inVCF.Records:
+        if(HTSUtils.VCFLineContainedInBed(line, bed) is True):
+            outHandle.write(line.ToString())
+    outHandle.close()
+    return outVCF

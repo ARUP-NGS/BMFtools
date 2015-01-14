@@ -351,6 +351,19 @@ class HeaderCommandLine:
         return self.str
 
 
+class HeaderCustomLine:
+    """
+    This class holds a custom VCF header line.
+    """
+    def __init__(self, customValue="default", customKey="default"):
+        self.customValue = customValue
+        self.customKey = customKey
+
+    def ToString(self):
+        self.str = "##{}={}".format(self.customKey, self.customValue)
+        return self.str
+
+
 class HeaderReferenceLine:
     """
     This class holds a VCF Reference header line.
