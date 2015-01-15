@@ -119,13 +119,8 @@ def compareFastqRecordsInexactNumpy(R):
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    print("MaxPhredSums: {}".format(MaxPhredSum))
-    print("Sum of all phred scores: {}".format(qualAllSum))
-    # Debugging...print("MaxPhredSum has shape: {}".format(MaxPhredSum.shape))
-    # divide MaxPhredSum by pValuesProd to get the product of all
-    # alternative p values, then multiple by itself to find the
-    # relative probability.
-    phredQuals = np.subtract(np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
+    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
+                             np.sum(qualAllSum, 0))
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,

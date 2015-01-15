@@ -25,7 +25,7 @@ def main():
         '--bed',
         "-b",
         help=("Bed file"),
-        )
+        required=True)
     args = parser.parse_args()
     inVCF = args.inVCF
     if(args.outVCF != "default"):

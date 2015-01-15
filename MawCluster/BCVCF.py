@@ -437,11 +437,11 @@ def VCFStats(inVCF, TransCountsTable="default"):
 
 
 def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
+    if(outVCF == "default"):
+        outVCF = inVCF[0:-4] + ".bedfilter.vcf"
     inVCF = ParseVCF(inVCF)
     print("bedfile used: {}".format(bedfile))
     bed = HTSUtils.ParseBed(bedfile)
-    if(outVCF == "default"):
-        outVCF = inVCF[0:-4] + ".bedfilter.vcf"
     outHandle = open(outVCF, "w")
     count = 0
     for line in inVCF.header:
