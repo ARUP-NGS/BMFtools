@@ -105,7 +105,7 @@ def main():
     parser.add_argument(
         '--minBQ',
         help="Minimum base quality for variant call inclusion.",
-        default=30)
+        default=90)
     parser.add_argument(
         "--minCov",
         help="Minimum coverage for including a position"
@@ -210,7 +210,6 @@ def main():
                 bed=bed,
                 minMQ=args.minMQ,
                 minBQ=args.minBQ,
-                reference=args.ref,
                 commandStr=" ".join(sys.argv))
             pl(
                 "Last stop! Watch your step.")
@@ -233,7 +232,6 @@ def main():
                 bed=bed,
                 minMQ=args.minMQ,
                 minBQ=args.minBQ,
-                reference=args.ref,
                 commandStr=" ".join(sys.argv))
             pl(
                 "Last stop! Watch your step")
@@ -246,7 +244,6 @@ def main():
                 bed=bed,
                 minMQ=args.minMQ,
                 minBQ=args.minBQ,
-                reference=args.ref,
                 commandStr=" ".join(sys.argv))
             pl("Last stop! Watch your step.")
         return

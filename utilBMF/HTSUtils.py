@@ -1,6 +1,9 @@
 import logging
 import shlex
 import subprocess
+
+import pysam
+
 import MawCluster
 
 
@@ -545,6 +548,9 @@ class ReadPair:
         self.read2_soft_clipped = ("S" in read2.cigarstring)
         if(self.read2_soft_clipped is True):
             self.read2_softclip_seqs = []
+        self.read1_contig = PysamToChrDict[read1.reference_id]
+        self.read2_contig = PysamToChrDict[read2.reference_id]
+        self.SameContig = (read1.reference_id == read2.reference_id)
         # TODO: write a script to create an array of soft-clipped sequences from each read
 
 
@@ -572,7 +578,13 @@ def ReadsOverlap(read1, read2):
         return True
 
 
-def ReadPairsOverlap(ReadPair1, ReadPair2, distance=300):
+def ReadPairsInsertSizeWithinDistance(ReadPair1, ReadPair2, distance=300):
+    if(abs(ReadPair1.read1.tlen - ReadPair2.read1.tlen) <= distance):
+        return True
+    return False
+
+
+def ReadPairsOverlap(ReadPair1, ReadPair2):
     if(ReadsOverlap(ReadPair1.read1, ReadPair2.read1) or
        ReadsOverlap(ReadPair1.read2, ReadPair2.read2) or
        ReadsOverlap(ReadPair1.read1, ReadPair2.read2) or
@@ -582,7 +594,7 @@ def ReadPairsOverlap(ReadPair1, ReadPair2, distance=300):
         return False
 
 
-def ReadPairWithinDistance(ReadPair1, ReadPair2, distance=300):
+def ReadPairsWithinDistance(ReadPair1, ReadPair2, distance=300):
     if(sum(
         [abs(ReadPair1.read1.pos - ReadPair2.read1.pos) < distance,
          abs(ReadPair1.read1.pos - ReadPair2.read2.pos) < distance,
@@ -593,7 +605,20 @@ def ReadPairWithinDistance(ReadPair1, ReadPair2, distance=300):
         return False
 
 
-def LoadReadPairsFromFile(inBAM, SVTag="default"):
+def ReadPairPassesMinQ(ReadPair, minMQ=0, minBQ=0):
+    import numpy as np
+    assert isinstance(ReadPair, ReadPair)
+    if(ReadPair.read1.mapq < minMQ or ReadPair.read2.mapq < minMQ):
+        return False
+    if(np.any(np.less(ReadPair.read1.query_qualities, minBQ)) or
+       np.any(np.less(ReadPair.read2.query_qualities, minBQ))):
+        return False
+    else:
+        return True
+
+
+def LoadReadPairsFromFile(inBAM, SVTag="default",
+                          minMQ=0, minBQ=0):
     """
     Loads all pairs of reads from a name-sorted paired-end
     bam file into ReadPair objects. If SVTag is specified,
@@ -610,7 +635,8 @@ def LoadReadPairsFromFile(inBAM, SVTag="default"):
                 WorkingReadPair = GetReadPair(inHandle)
                 if(sum(
                     [tag in WorkingReadPair.SVTags
-                     for tag in tags]) == len(tags) and SVTag != "default"):
+                     for tag in tags]) == len(tags) and ReadPairPassesMinQ(
+                        WorkingReadPair)):
                     RecordsArray.append(WorkingReadPair)
             except StopIteration:
                 break
@@ -623,6 +649,16 @@ def LoadReadPairsFromFile(inBAM, SVTag="default"):
         return sorted(RecordsArray, key=lambda read: abs(read.insert_size))
     else:
         return RecordsArray
+
+
+def WritePairToFile(ReadPair, handle="default"):
+    """
+    Writes a pair to a
+    """
+    assert isinstance(handle, pysam.calignmentfile.AlignmentFile)
+    handle.write(ReadPair.read1)
+    handle.write(ReadPair.read2)
+    return True
 
 
 def ParseBed(bedfile):
@@ -642,10 +678,10 @@ def parseConfigXML(string):
 
 
 def parseConfig(string):
-    parsedLines = [l.strip() for l in open(string, "r").readlines()]
+    parsedLines = [l.strip() for l in open(string, "r").readlines() if l[0] != "#"]
     ConfigDict = {}
     for line in parsedLines:
-        ConfigDict[line.split("=").strip()[0]] = line.split("=")[1].strip()
+        ConfigDict[line.split("=")[0].strip()] = line.split("=")[1].strip()
     return ConfigDict
 
 

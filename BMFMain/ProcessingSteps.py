@@ -142,7 +142,6 @@ def pairedVCFProc(consMergeSortBAM,
                   MakePileupTsv=False,
                   MakeVCF=True,
                   MakeCoverageBed=True,
-                  reference="default",
                   commandStr="default"):
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")
@@ -168,7 +167,7 @@ def pairedVCFProc(consMergeSortBAM,
         SNP_VCF = VCFWriters.SNVCrawler(consMergeSortBAM,
                                         minMQ=minMQ,
                                         minBQ=minBQ,
-                                        reference=reference,
+                                        reference=ref,
                                         commandStr=commandStr,
                                         reference_is_path=True,
                                         bed=bed)
