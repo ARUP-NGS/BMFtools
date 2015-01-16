@@ -1,6 +1,9 @@
 from MawCluster.SVUtils import SVParamDict
-from utilBMF.HTSUtils import ParseBed, printlog as pl, FacePalm, DefaultSamHeader
+from utilBMF.HTSUtils import ParseBed, printlog as pl, FacePalm, DefaultSamHeader,\
+    ThisIsMadness
 from utilBMF import HTSUtils
+
+import pysam
 
 import uuid
 
@@ -19,9 +22,10 @@ class XLocSegment:
         except AssertionError:
             FacePalm("interval must be in ParseBed output format!")
         try:
-            assert isinstance(bedIntervals[0], str) and isinstance(
-                bedIntervals[1], int)
+            assert isinstance(bedIntervals[0][0], str) and isinstance(
+                bedIntervals[0][1], int)
         except AssertionError:
+            print(repr(bedIntervals))
             FacePalm("bedIntervals must be in ParseBed output format!")
         self.IntervalInBed = HTSUtils.IntervalOverlapsBed(
             interval, bedIntervals)
@@ -33,7 +37,8 @@ class XLocSegment:
     def ToString(self):
         return "\t".join([str(i) for i in [["SegmentID=" + self.ID] +
                                            self.interval + [self.DOR] +
-                                           ["InBed=" + self.IntervalInBed]]])
+                                           ["InBed={}".format(
+                                            self.IntervalInBed)]]])
 
 
 class PutativeXLoc:
@@ -47,7 +52,9 @@ class PutativeXLoc:
     def __init__(self, DORList="default",
                  intervalList="default",
                  ReadPairs="default",
-                 bedIntervals="default"):
+                 bedIntervals="default",
+                 header="default"):
+        """
         try:
             assert (isinstance(DORList, list) and
                     isinstance(intervalList, list) and
@@ -71,22 +78,29 @@ class PutativeXLoc:
             assert isinstance(ReadPairs[0], HTSUtils.ReadPair)
         except AssertionError:
             FacePalm("ReadPairs argument is not a list of ReadPair objects!")
+        """
+        assert isinstance(header, dict)
         self.segments = [XLocSegment(DOR=dor, bedIntervals=bedIntervals,
                                      interval=interval)
                          for dor, interval in zip(DORList, intervalList)]
         self.ID = str(uuid.uuid4().get_hex().upper()[0:12])
+        self.ReadPairs = ReadPairs
 
     def ToString(self):
         string = ("@PutativeTranslocationID={}\tContig\tStart "
                   "[0-based]\tStop\tMean DOR\n".format(self.ID))
         for segment in self.segments:
-            string += segment + "\n"
+            if(isinstance(segment.ToString(), str)):
+                string += segment.ToString() + "\n"
+        return string
 
-    def WriteReads(self, outBAM="default"):
+    def WriteReads(self, outBAM="default", header="default"):
         if(outBAM == "default"):
             outBAM = self.ID + ".xloc.bam"
+        assert isinstance(header, dict)
+        outHandle = pysam.AlignmentFile(outBAM, "wb", header=header)
         for ReadPair in self.ReadPairs:
-            HTSUtils.WritePairToFile(ReadPair, outfile=outBAM)
+            HTSUtils.WritePairToHandle(ReadPair, handle=outHandle)
 
 
 def ClusterByInsertSize(ReadPairs, distance="default", bedfile="default",
@@ -96,20 +110,19 @@ def ClusterByInsertSize(ReadPairs, distance="default", bedfile="default",
     # Assert that these are all mapped to the same contig
     assert len(list(set([pair.read1_contig for pair in ReadPairs]))) == 1
     if(distance == "default"):
-        distance = ReadPairs[0].read1.query_length * 2
-        pl("No distance provided - default of 2 * "
-           "read length set: {}".format(distance))
+        distance = 0  # ReadPairs[0].read1.query_length * 1
+        pl("No distance provided - default of 0 set: {}".format(distance))
     if(insDistance == "default"):
-        insDistance = ReadPairs[0].read1.query_length * 2
-        pl("No insert size distance provided - default of 2 * "
+        insDistance = ReadPairs[0].read1.query_length
+        pl("No insert size distance provided - default of "
            "read length set: {}".format(insDistance))
     ClusterList = []
     for pair in ReadPairs:
         # Checks to see if it's already in a cluster. If so, skip.
-        if(len(ClusterList) != 0):
-            for cluster in ClusterList:
-                if(pair in cluster):
-                    continue
+        # if(len(ClusterList) != 0):
+        #    for cluster in ClusterList:
+        #        if(pair in cluster):
+        #            continue
         # Expand cluster iteratively based on current members.
         InsertSizeClusterSet = [l for l in ReadPairs if
                                 HTSUtils.ReadPairsInsertSizeWithinDistance(
@@ -129,53 +142,57 @@ def ClusterByInsertSize(ReadPairs, distance="default", bedfile="default",
         del InsertSizeClusterSet
         if(clusterSize >= 3):
             ClusterList.append(Cluster)
-            print(repr(ClusterList))
+            # print(repr(ClusterList))
     return ClusterList
 
 
-def PileupISClustersByPos(ClusterList, minClustDepth=3,
-                          bedfile="default", minPileupLen=10):
+def PileupISClustersByPos(ClusterList, minClustDepth=5,
+                          bedfile="default", minPileupLen=8,
+                          header="default"):
     if(isinstance(bedfile, str)):
         bedfile = HTSUtils.ParseBed(bedfile)
-    assert isinstance(ClusterList[0][0], HTSUtils.ReadPair)
+    try:
+        assert isinstance(ClusterList[0][0], HTSUtils.ReadPair)
+    except IndexError:
+        print(repr(ClusterList))
+        raise ThisIsMadness("Something is wrong!!!")
     from collections import Counter
     for cluster in ClusterList:
         print("Length of cluster: {}".format(len(cluster)))
     for cluster in ClusterList:
         PutativeEvents = []
-        for cs in cluster:
-            # Find locations at which each cluster piles up
-            posList = []
-            posListDuplex = []
-            potTransPos = {}
-            print(repr(cs) + " is the repr of the cluster I'm looking at")
-            for pair in cs:
-                R1Pos = pair.read1.get_reference_positions()
-                R2Pos = pair.read2.get_reference_positions()
-                posList += R1Pos
-                posList += R2Pos
-                if([pos for pos in R1Pos if pos in R2Pos]):
-                    posListDuplex.append(pos)
-            PosCounts = Counter(posList)
-            PosDuplexCounts = Counter(posListDuplex)
-            # decrement the counts for each position to account for
-            # both reads in a pair mapping to the same location.
-            for key in PosDuplexCounts.keys():
-                PosCounts[key] += -1 * PosDuplexCounts[key]
-            for key in PosCounts.keys():
-                potTransPos[key] = []
-            PosCounts = dict([i for i in PosCounts.items()
-                              if i[1] >= minClustDepth])
-            # How should minPileupLen be chosen?
-            if(len(PosCounts) < minPileupLen):
-                continue
-            bedIntervalList, MeanDORList = HTSUtils.CreateIntervalsFromCounter(
-                PosCounts, minPileupLen=minPileupLen,
-                contig=ClusterList[0][0].read1_contig)
-            PutativeEvent = PutativeXLoc(DORList=MeanDORList,
-                                         intervalList=bedIntervalList,
-                                         ReadPairs=cluster, bedLines=bedfile)
-            PutativeEvents.append(PutativeEvent)
+        # Find locations at which each cluster piles up
+        posList = []
+        posListDuplex = []
+        potTransPos = {}
+        for pair in cluster:
+            R1Pos = pair.read1.get_reference_positions()
+            R2Pos = pair.read2.get_reference_positions()
+            posList += R1Pos
+            posList += R2Pos
+            if([pos for pos in R1Pos if pos in R2Pos]):
+                posListDuplex.append(pos)
+        PosCounts = Counter(posList)
+        PosDuplexCounts = Counter(posListDuplex)
+        # decrement the counts for each position to account for
+        # both reads in a pair mapping to the same location.
+        for key in PosDuplexCounts.keys():
+            PosCounts[key] += -1 * PosDuplexCounts[key]
+        for key in PosCounts.keys():
+            potTransPos[key] = []
+        PosCounts = dict([i for i in PosCounts.items()
+                          if i[1] >= minClustDepth])
+        # How should minPileupLen be chosen?
+        if(len(PosCounts) < minPileupLen):
+            continue
+        [bedIntervalList, MeanDORList] = HTSUtils.CreateIntervalsFromCounter(
+            PosCounts, minPileupLen=minPileupLen,
+            contig=ClusterList[0][0].read1_contig)
+        PutativeEvent = PutativeXLoc(DORList=MeanDORList,
+                                     intervalList=bedIntervalList,
+                                     ReadPairs=cluster, bedIntervals=bedfile,
+                                     header=header)
+        PutativeEvents.append(PutativeEvent)
     return PutativeEvents
     # TODO: star the ones which are outside the bedfile.
 
@@ -185,7 +202,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                      minBQ=0,
                                      bedfile="default",
                                      minClustDepth=3,
-                                     minPileupLen=10,
+                                     minPileupLen=25,
                                      outfile="default"):
     """
     Makes calls for translocations using SV Tags placed during SVUtils
@@ -198,7 +215,6 @@ def XLocIntrachromosomalFusionCaller(inBAM,
         outfile = inBAM[0:-4] + ".putativeSV.txt"
         print("Outfile: {}".format(outfile))
     outHandle = open(outfile, "w")
-    print("{}".format(isinstance(outHandle, file)))
     """
     if(isinstance(bedfile, str) is True and bedfile != "default"):
         bedLines = ParseBed(bedfile)
@@ -207,6 +223,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     # Now looking for intrachromosomal translocations
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
                                                   minMQ=minMQ, minBQ=minBQ)
+    header = pysam.AlignmentFile(inBAM, "rb").header
     print("Number of records meeting requirements: {}".format(
         len(LIBamRecords)))
     ContigList = list(set([pair.read1_contig for pair in LIBamRecords]))
@@ -217,10 +234,13 @@ def XLocIntrachromosomalFusionCaller(inBAM,
         PutativeEvents = PileupISClustersByPos(Clusters,
                                                minClustDepth=minClustDepth,
                                                bedfile=bedfile,
-                                               minPileupLen=minPileupLen)
+                                               minPileupLen=minPileupLen,
+                                               header=header)
+        print("Number of putative events: {}".format(len(PutativeEvents)))
         for event in PutativeEvents:
-            outHandle.write(event.ToString())
-            event.WriteReads()
+            if(len(event.segments) == 2):
+                outHandle.write(event.ToString())
+                event.WriteReads(header=header)
     outHandle.close()
     """
     Draft calls complete for intrachromosomal rearrangements.

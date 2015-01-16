@@ -747,12 +747,13 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
                 read1 = inHandle.next()
                 read2 = inHandle.next()
                 WorkingReadPair = ReadPair(read1, read2)
-                if(ReadPairPassesMinQ(WorkingReadPair) and
+                if(WorkingReadPair.read1.mapq >= minMQ and
+                   WorkingReadPair.read2.mapq >= minMQ and
                    sum([tag in WorkingReadPair.SVTags
                         for tag in tags]) == len(tags)):
                     RecordsArray.append(WorkingReadPair)
                 else:
-                    print("Read tags in read pair: {}".format(WorkingReadPair.SVTags))
+                    pass
             except StopIteration:
                 print("Stopping iterations...")
                 break
@@ -767,24 +768,10 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
         return RecordsArray
 
 
-def WritePairToFile(ReadPair, outfile="default", header="default"):
+def WritePairToHandle(ReadPair, handle="default"):
     """
     Writes a pair to a file handle.
     """
-    if(header == "default"):
-        header = DefaultSamHeader
-    outHandle = open(outfile, "w+")
-    outHandle.write(ReadPair.read1)
-    outHandle.write(ReadPair.read2)
-    return True
-
-
-def WritePairToHandle(ReadPair, handle="default", header="default"):
-    """
-    Writes a pair to a file handle.
-    """
-    if(header == "default"):
-        header = DefaultSamHeader
     assert isinstance(handle, pysam.calignmentfile.AlignmentFile)
     handle.write(ReadPair.read1)
     handle.write(ReadPair.read2)
@@ -832,7 +819,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default"):
     returns a list of tuples containing the 0-based open intervals and the mean
     coverage of that interval.
     """
-    assert isinstance(CounterObj, Counter)
+    assert isinstance(CounterObj, dict)
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):
@@ -843,5 +830,5 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default"):
         posList = map(itemgetter(1), g)
         IntervalList.append([contig, posList[0], posList[-1] + 1])
         MeanCovList.append(np.mean([CounterObj[key] for key in posList if
-                                    posList[-1] - posList[0] >= minPileupLen]))
-    return zip(IntervalList, MeanCovList)
+                                    len(posList) >= minPileupLen]))
+    return IntervalList, MeanCovList
