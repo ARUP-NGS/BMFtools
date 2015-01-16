@@ -5,8 +5,9 @@ import logging
 import sys
 
 import BMFMain.ProcessingSteps as ps
-from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl, FacePalm
 from utilBMF import HTSUtils
+
 """
 Contains utilities for the completion of a variety of
 tasks related to barcoded protocols for ultra-low
@@ -34,12 +35,13 @@ def main():
         '--conf',
         help="Path to config file with settings.",
         metavar="ConfigPath",
-        default="/yggdrasil/workspace/BMFTools/demo/SampleJson.json")
+        default="/yggdrasil/workspace/BMFTools/demo/config.txt")
     parser.add_argument(
-        '-r',
-        '--ref',
-        help="Prefix for the reference index. Required.",
-        default="default")
+        '-s',
+        '--single-end',
+        action="store_true",
+        help="Whether the experiment is single-end or not. Default: False",
+        default=False)
     parser.add_argument(
         '--homing',
         help="Homing sequence for samples. If not set, defaults to GACGG.",
@@ -51,22 +53,12 @@ def main():
         default=True,
         action="store_true")
     parser.add_argument(
-        '-s',
-        '--single-end',
-        action="store_true",
-        help="Whether the experiment is paired-end or not. Default: True",
-        default=False)
-    parser.add_argument(
         '-a',
         '--aligner',
         help="Provide your aligner. Default: bwa",
         nargs='?',
         metavar='aligner',
         default='bwa')
-    parser.add_argument(
-        "--abrapath",
-        help="Path to ABRA jar",
-        default="/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar")
     parser.add_argument(
         '-o',
         '--opts',
@@ -80,9 +72,10 @@ def main():
         default="default")
     parser.add_argument(
         '--bed',
-        help="full path to bed file used for variant-calling steps.",
+        help="full path to bed file used for variant-calling steps."
+             "Can be indicated by the config file.",
         metavar="BEDFile",
-        required=True)
+        default="default")
     parser.add_argument(
         '--initialStep',
         help="1: Fastq. 2: Bam. 3. VCF",
@@ -100,11 +93,13 @@ def main():
         default="default")
     parser.add_argument(
         '--minMQ',
-        help="Minimum mapping quality for variant call inclusion.",
+        help="Minimum mapping quality for variant call inclusion. "
+             "Can be indicated by the config file.",
         default=20)
     parser.add_argument(
         '--minBQ',
-        help="Minimum base quality for variant call inclusion.",
+        help="Minimum base quality for variant call inclusion. "
+             "Can be indicated by the config file.",
         default=90)
     parser.add_argument(
         "--minCov",
@@ -113,11 +108,34 @@ def main():
         default=5
         )
     parser.add_argument(
+        "--ref",
+        "-r",
+        default="default",
+        help="Path to reference index. Can be indicated by the config file.")
+    parser.add_argument(
+        "--abrapath",
+        "-a",
+        default="default",
+        help="Path to abra jar. Can be indicated by the config file.")
+    parser.add_argument(
         "--barcodeIndex",
         help="If starting with the BAM step, provide the "
              "path to your barcode index as created.")
     global Logger
     args = parser.parse_args()
+    confDict = HTSUtils.parseConfig(args.conf)
+    if("minMQ" in confDict.keys()):
+        minMQ = int(confDict['minMQ'])
+    else:
+        minMQ = args.minMQ
+    if("minBQ" in confDict.keys()):
+        minBQ = int(confDict['minBQ'])
+    else:
+        minBQ = args.minBQ
+    if("abrapath" in confDict.keys()):
+        abrapath = confDict['abrapath']
+    else:
+        abrapth = args.abrapath
     # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
@@ -159,33 +177,33 @@ def main():
     pl("Log file is {}".format(logfile))
     pl("Command string to call BMFTools: python {}".format(" ".join(sys.argv)))
     pl("Note: You may need to add quotes for more complicated options.")
-    aligner, homing = args.aligner, args.homing
-    if(args.ref != "default"):
-        ref = args.ref
-    opts, bed = args.opts, args.bed
-
-    '''
-    config = HTSUtils.Configurations(args.conf)
-    confDict = {}
-    if(args.conf != "default"):
-        confLines = [line.strip().split("=") for line in open(
-                     args.conf, "r").readlines() if line[0] != "#"]
-        for line in confLines:
-            confDict[line[0]] = line[1]
-        try:
-            ref = confDict["ref"]
-        except KeyError:
-            ref = args.ref
-            pl("Config file does not contain a ref key.")
-            if(ref == "default"):
-                HTSUtils.FacePalm("Reference required either "
-                                  "as command line option or config file.")
-    '''
-    if(args.single_end is True):
-        pl("Single-end analysis chosen.")
+    if("aligner" in confDict.keys()):
+        aligner = confDict['aligner']
     else:
+        aligner = args.aligner
+    homing = args.homing
+    if("ref" in confDict.keys()):
+        ref = confDict['ref']
+    else:
+        if(args.ref != "default"):
+            ref = args.ref
+        else:
+            HTSUtils.FacePalm("Reference fasta required either in "
+                              "config file or by command-line options.!")
+    opts = args.opts
+    if("opts" in confDict.keys()):
+        opts = args.opts
+    if("bed" in confDict.keys()):
+        bed = confDict['bed']
+    else:
+        if(args.bed != "default"):
+            bed = args.bed
+        else:
+            FacePalm("Bed file required for analysis.")
+    if(args.single_end is False):
         pl("Paired-end analysis chosen.")
     if(args.single_end is True):
+        pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
                                "supported. Soon!")
     else:
@@ -202,14 +220,14 @@ def main():
                     barIndex=barcodeIndex,
                     bed=bed,
                     mincov=int(args.minCov),
-                    abrapath=args.abrapath)
+                    abrapath=abrapath)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
                 opts=opts,
                 bed=bed,
-                minMQ=args.minMQ,
-                minBQ=args.minBQ,
+                minMQ=minMQ,
+                minBQ=minBQ,
                 commandStr=" ".join(sys.argv))
             pl(
                 "Last stop! Watch your step.")
@@ -221,7 +239,7 @@ def main():
                 consfqSingle="default",
                 aligner=aligner,
                 ref=ref,
-                abrapath=args.abrapath,
+                abrapath=abrapath,
                 mincov=int(args.minCov),
                 barIndex=args.barcodeIndex)
             pl("Beginning VCF processing.")
@@ -230,8 +248,8 @@ def main():
                 ref=ref,
                 opts=opts,
                 bed=bed,
-                minMQ=args.minMQ,
-                minBQ=args.minBQ,
+                minMQ=minMQ,
+                minBQ=minBQ,
                 commandStr=" ".join(sys.argv))
             pl(
                 "Last stop! Watch your step")
@@ -244,6 +262,7 @@ def main():
                 bed=bed,
                 minMQ=args.minMQ,
                 minBQ=args.minBQ,
+                reference=args.ref,
                 commandStr=" ".join(sys.argv))
             pl("Last stop! Watch your step.")
         return

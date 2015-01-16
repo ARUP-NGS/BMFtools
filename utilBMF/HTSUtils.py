@@ -1,10 +1,14 @@
 import logging
 import shlex
 import subprocess
+from collections import Counter
+from itertools import groupby
+import numpy as np
 
 import pysam
 
 import MawCluster
+from operator import itemgetter
 
 
 class Configurations:
@@ -198,6 +202,69 @@ PysamToChrDict = Dicts['idtochr']
 ChrToPysamDict = Dicts['chrtoid']
 
 
+DefaultSamHeader = repr("{'SQ': [{'LN': 249250621, 'SN': '1'}, {'LN': 2431"
+                        "99373, 'SN': '2'}, {'LN': 198022430, 'SN': '3'}, "
+                        "{'LN': 191154276, 'SN': '4'}, {'LN': 180915260, '"
+                        "SN': '5'}, {'LN': 171115067, 'SN': '6'}, {'LN': 1"
+                        "59138663, 'SN': '7'}, {'LN': 146364022, 'SN': '8'"
+                        "}, {'LN': 141213431, 'SN': '9'}, {'LN': 135534747"
+                        ", 'SN': '10'}, {'LN': 135006516, 'SN': '11'}, {'L"
+                        "N': 133851895, 'SN': '12'}, {'LN': 115169878, 'SN"
+                        "': '13'}, {'LN': 107349540, 'SN': '14'}, {'LN': 1"
+                        "02531392, 'SN': '15'}, {'LN': 90354753, 'SN': '16"
+                        "'}, {'LN': 81195210, 'SN': '17'}, {'LN': 78077248"
+                        ", 'SN': '18'}, {'LN': 59128983, 'SN': '19'}, {'LN"
+                        "': 63025520, 'SN': '20'}, {'LN': 48129895, 'SN': "
+                        "'21'}, {'LN': 51304566, 'SN': '22'}, {'LN': 15527"
+                        "0560, 'SN': 'X'}, {'LN': 59373566, 'SN': 'Y'}, {'"
+                        "LN': 16569, 'SN': 'MT'}, {'LN': 4262, 'SN': 'GL00"
+                        "0207.1'}, {'LN': 15008, 'SN': 'GL000226.1'}, {'LN"
+                        "': 19913, 'SN': 'GL000229.1'}, {'LN': 27386, 'SN'"
+                        ": 'GL000231.1'}, {'LN': 27682, 'SN': 'GL000210.1'"
+                        "}, {'LN': 33824, 'SN': 'GL000239.1'}, {'LN': 3447"
+                        "4, 'SN': 'GL000235.1'}, {'LN': 36148, 'SN': 'GL00"
+                        "0201.1'}, {'LN': 36422, 'SN': 'GL000247.1'}, {'LN"
+                        "': 36651, 'SN': 'GL000245.1'}, {'LN': 37175, 'SN'"
+                        ": 'GL000197.1'}, {'LN': 37498, 'SN': 'GL000203.1'"
+                        "}, {'LN': 38154, 'SN': 'GL000246.1'}, {'LN': 3850"
+                        "2, 'SN': 'GL000249.1'}, {'LN': 38914, 'SN': 'GL00"
+                        "0196.1'}, {'LN': 39786, 'SN': 'GL000248.1'}, {'LN"
+                        "': 39929, 'SN': 'GL000244.1'}, {'LN': 39939, 'SN'"
+                        ": 'GL000238.1'}, {'LN': 40103, 'SN': 'GL000202.1'"
+                        "}, {'LN': 40531, 'SN': 'GL000234.1'}, {'LN': 4065"
+                        "2, 'SN': 'GL000232.1'}, {'LN': 41001, 'SN': 'GL00"
+                        "0206.1'}, {'LN': 41933, 'SN': 'GL000240.1'}, {'LN"
+                        "': 41934, 'SN': 'GL000236.1'}, {'LN': 42152, 'SN'"
+                        ": 'GL000241.1'}, {'LN': 43341, 'SN': 'GL000243.1'"
+                        "}, {'LN': 43523, 'SN': 'GL000242.1'}, {'LN': 4369"
+                        "1, 'SN': 'GL000230.1'}, {'LN': 45867, 'SN': 'GL00"
+                        "0237.1'}, {'LN': 45941, 'SN': 'GL000233.1'}, {'LN"
+                        "': 81310, 'SN': 'GL000204.1'}, {'LN': 90085, 'SN'"
+                        ": 'GL000198.1'}, {'LN': 92689, 'SN': 'GL000208.1'"
+                        "}, {'LN': 106433, 'SN': 'GL000191.1'}, {'LN': 128"
+                        "374, 'SN': 'GL000227.1'}, {'LN': 129120, 'SN': 'G"
+                        "L000228.1'}, {'LN': 137718, 'SN': 'GL000214.1'}, "
+                        "{'LN': 155397, 'SN': 'GL000221.1'}, {'LN': 159169"
+                        ", 'SN': 'GL000209.1'}, {'LN': 161147, 'SN': 'GL00"
+                        "0218.1'}, {'LN': 161802, 'SN': 'GL000220.1'}, {'L"
+                        "N': 164239, 'SN': 'GL000213.1'}, {'LN': 166566, '"
+                        "SN': 'GL000211.1'}, {'LN': 169874, 'SN': 'GL00019"
+                        "9.1'}, {'LN': 172149, 'SN': 'GL000217.1'}, {'LN':"
+                        " 172294, 'SN': 'GL000216.1'}, {'LN': 172545, 'SN'"
+                        ": 'GL000215.1'}, {'LN': 174588, 'SN': 'GL000205.1"
+                        "'}, {'LN': 179198, 'SN': 'GL000219.1'}, {'LN': 17"
+                        "9693, 'SN': 'GL000224.1'}, {'LN': 180455, 'SN': '"
+                        "GL000223.1'}, {'LN': 182896, 'SN': 'GL000195.1'},"
+                        " {'LN': 186858, 'SN': 'GL000212.1'}, {'LN': 18686"
+                        "1, 'SN': 'GL000222.1'}, {'LN': 187035, 'SN': 'GL0"
+                        "00200.1'}, {'LN': 189789, 'SN': 'GL000193.1'}, {'"
+                        "LN': 191469, 'SN': 'GL000194.1'}, {'LN': 211173, "
+                        "'SN': 'GL000225.1'}, {'LN': 547496, 'SN': 'GL0001"
+                        "92.1'}], 'PG': [{'PN': 'bwa', 'ID': 'bwa', 'VN': "
+                        "'0.7.10-r789', 'CL': 'bwa mem -t 4 -v 1 -Y -M -T "
+                        "0'}], 'HD': {'SO': 'queryname', 'VN': '1.4'}}")
+
+
 def FacePalm(string):
     Str = ("............................................________ "
            "\n....................................,.-'\"...................`"
@@ -355,6 +422,23 @@ def has_elements(iterable):
         return True, iterable
     except StopIteration:
         return False, iterable
+
+
+def IntervalOverlapsBed(interval, bedIntervals):
+    """
+    Requires bedIntervals in the form of the output of ParseBed
+    Returns True or False as to whether or not an overlap exists
+    for this interval in the bed file.
+    """
+    for interval in bedIntervals:
+        if(interval[0] == bedIntervals):
+            if(interval[1] > bedIntervals[2] or interval[2] < bedIntervals[1]):
+                continue
+            else:
+                return True
+        else:
+            continue
+    return False
 
 
 def ReadContainedInBed(samRecord, bedRef="default"):
@@ -551,7 +635,8 @@ class ReadPair:
         self.read1_contig = PysamToChrDict[read1.reference_id]
         self.read2_contig = PysamToChrDict[read2.reference_id]
         self.SameContig = (read1.reference_id == read2.reference_id)
-        # TODO: write a script to create an array of soft-clipped sequences from each read
+        # TODO: write a script to create an array of soft-clipped sequences
+        # from each read
 
 
 def GetReadPair(inHandle):
@@ -651,10 +736,24 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
         return RecordsArray
 
 
-def WritePairToFile(ReadPair, handle="default"):
+def WritePairToFile(ReadPair, outfile="default", header="default"):
     """
-    Writes a pair to a
+    Writes a pair to a file handle.
     """
+    if(header == "default"):
+        header = DefaultSamHeader
+    outHandle = open(outfile, "w+")
+    outHandle.write(ReadPair.read1)
+    outHandle.write(ReadPair.read2)
+    return True
+
+
+def WritePairToHandle(ReadPair, handle="default", header="default"):
+    """
+    Writes a pair to a file handle.
+    """
+    if(header == "default"):
+        header = DefaultSamHeader
     assert isinstance(handle, pysam.calignmentfile.AlignmentFile)
     handle.write(ReadPair.read1)
     handle.write(ReadPair.read2)
@@ -678,7 +777,8 @@ def parseConfigXML(string):
 
 
 def parseConfig(string):
-    parsedLines = [l.strip() for l in open(string, "r").readlines() if l[0] != "#"]
+    parsedLines = [l.strip() for l in open(string, "r").readlines()
+                   if l[0] != "#"]
     ConfigDict = {}
     for line in parsedLines:
         ConfigDict[line.split("=")[0].strip()] = line.split("=")[1].strip()
@@ -691,3 +791,26 @@ def parseConfigJSON(path):
     json_str = json_file.read()
     json_data = json.loads(json_str)
     return json_data
+
+
+def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default"):
+    """
+    From a Counter object containing the sum of the output of
+    get_reference_positions for a list of AlignedSegment objects, it creates a
+    list of continuous intervals, calculates the mean coverage for each, and
+    returns a list of tuples containing the 0-based open intervals and the mean
+    coverage of that interval.
+    """
+    assert isinstance(CounterObj, Counter)
+    IntervalList = []
+    MeanCovList = []
+    if(contig == "default"):
+        FacePalm("contig required for this function!")
+    for k, g in groupby(
+            enumerate(CounterObj.keys()),
+            lambda i_x: i_x[0] - i_x[1]):
+        posList = map(itemgetter(1), g)
+        IntervalList.append([contig, posList[0], posList[-1] + 1])
+        MeanCovList.append(np.mean([CounterObj[key] for key in posList if
+                                    posList[-1] - posList[0] >= minPileupLen]))
+    return zip(IntervalList, MeanCovList)

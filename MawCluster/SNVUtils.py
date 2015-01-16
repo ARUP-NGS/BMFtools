@@ -109,13 +109,15 @@ class VCFLine:
             self.InfoFields["MAFS"] = MergedFracStr
         self.InfoStr = ";".join(
             ["=".join([key, str(self.InfoFields[key])])
-             for key in self.InfoFields.keys()])
+             for key in sorted(self.InfoFields.keys())])
         self.FormatFields = {"DP": DOCMerged,
                              "DPA": AltAggregateObject.MergedReads,
                              "DPT": DOCTotal}
-        self.FormatStr = (":".join(self.FormatFields.keys()) + "\t" +
-                          ":".join(str(self.FormatFields[key])
-                                   for key in self.FormatFields.keys()))
+        self.FormatStr = (
+            ":".join(sorted(self.FormatFields.keys())) +
+            "\t" + ":".join(str(
+                self.FormatFields[key]) for key in sorted(
+                    self.FormatFields.keys())))
         self.str = "\t".join([str(i) for i in [self.CHROM,
                                                self.POS,
                                                self.ID,
@@ -127,14 +129,16 @@ class VCFLine:
                                                self.FormatStr]])
 
     def update(self):
-        self.FormatKey = ":".join(self.FormatFields.keys())
+        self.FormatKey = ":".join(sorted(self.FormatFields.keys()))
         self.FormatValue = ":".join([str(self.FormatFields[key])
-                                     for key in self.FormatFields.keys()])
-        self.FormatStr = (":".join(self.FormatFields.keys()) + "\t" +
-                          ":".join(str(self.FormatFields[key])
-                                   for key in self.FormatFields.keys()))
+                                     for key in
+                                     sorted(self.FormatFields.keys())])
+        self.FormatStr = (":".join(sorted(self.FormatFields.keys())) + "\t" +
+                          ":".join(
+                              str(self.FormatFields[key])
+                              for key in sorted(self.FormatFields.keys())))
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
-                                 for key in self.InfoFields.keys()])
+                                 for key in sorted(self.InfoFields.keys())])
 
     def ToString(self):
         self.update()
@@ -209,6 +213,7 @@ class VCFPos:
 
 
 class HeaderFileFormatLine:
+
     """
     This class holds the fileformat line in a VCF.
     Defaults to VCFv4.1
@@ -226,9 +231,11 @@ class HeaderFileFormatLine:
 
 
 class HeaderInfoLine:
+
     """
     This class holds a VCF INFO header line.
     """
+
     def __init__(self, ID="default", Number="default", Type="default",
                  Description="default"):
         Types = "integer,float,string,flag,character,string"
@@ -260,9 +267,11 @@ class HeaderInfoLine:
 
 
 class HeaderFormatLine:
+
     """
     This class holds a VCF FORMAT header line.
     """
+
     def __init__(self, ID="default", Number="default", Type="default",
                  Description="default"):
         Types = "integer,float,string,character"
@@ -294,9 +303,11 @@ class HeaderFormatLine:
 
 
 class HeaderAltLine:
+
     """
     This class holds a VCF ALT header line.
     """
+
     def __init__(self, ID="default", Description="default"):
         Types = "DEL,INS,DUP,INV,CNV,DUP:TANDEM,DEL:ME,INS:ME"
         if(ID.upper() in Types.split(",")):
@@ -314,9 +325,11 @@ class HeaderAltLine:
 
 
 class HeaderFilterLine:
+
     """
     This class holds a VCF FILTER header line.
     """
+
     def __init__(self, ID="default", Description="default"):
         self.ID = ID
         self.Description = Description
@@ -328,9 +341,11 @@ class HeaderFilterLine:
 
 
 class HeaderAssemblyLine:
+
     """
     This class holds a VCF assembly header line.
     """
+
     def __init__(self, assembly="default"):
         self.assembly = assembly
 
@@ -340,9 +355,11 @@ class HeaderAssemblyLine:
 
 
 class HeaderCommandLine:
+
     """
     This class holds a VCF command header line.
     """
+
     def __init__(self, commandStr="default"):
         self.commandStr = commandStr
 
@@ -352,9 +369,11 @@ class HeaderCommandLine:
 
 
 class HeaderCustomLine:
+
     """
     This class holds a custom VCF header line.
     """
+
     def __init__(self, customValue="default", customKey="default"):
         self.customValue = customValue
         self.customKey = customKey
@@ -365,9 +384,11 @@ class HeaderCustomLine:
 
 
 class HeaderReferenceLine:
+
     """
     This class holds a VCF Reference header line.
     """
+
     def __init__(self, reference="default", isfile=False):
         self.reference = reference
         if(isinstance(isfile, bool) is True):
@@ -393,9 +414,11 @@ class HeaderReferenceLine:
 
 
 class HeaderContigLine:
+
     """
     This class holds a VCF Assembly header line.
     """
+
     def __init__(self, contig="default", length="default"):
         self.contig = contig
         try:
@@ -606,7 +629,7 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
         fileformat=fileFormat).ToString() + "\n"
     # FILTER lines
     if(FILTERTags == "default"):
-        for key in HeaderFilterDict.keys():
+        for key in sorted(HeaderFilterDict.keys()):
             HeaderLinesStr += HeaderFilterDict[key].ToString() + "\n"
     else:
         for filter in FILTERTags.split(","):
@@ -617,7 +640,7 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
                 pl("Filter {} not found - continuing.".format(filter))
     # INFO lines
     if(INFOTags == "default"):
-        for key in HeaderInfoDict.keys():
+        for key in sorted(HeaderInfoDict.keys()):
             HeaderLinesStr += HeaderInfoDict[key].ToString() + "\n"
     else:
         for info in INFOTags.split(","):
@@ -628,7 +651,7 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
                 pl("Info {} not found - continuing.".format(info))
     # FORMAT lines
     if(FORMATTags == "default"):
-        for key in HeaderFormatDict.keys():
+        for key in sorted(HeaderFormatDict.keys()):
             HeaderLinesStr += HeaderFormatDict[key].ToString() + "\n"
     else:
         for format in FORMATTags.split(","):

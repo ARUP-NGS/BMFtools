@@ -4,6 +4,7 @@ from Bio import SeqIO
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
+from utilBMF import HTSUtils
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -121,6 +122,7 @@ def compareFastqRecordsInexactNumpy(R):
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
                              np.sum(qualAllSum, 0))
+    phredQuals[phredQuals < 0] = 0
     consolidatedRecord = SeqRecord(
         seq=newSeq,
         id=R[0].id,
@@ -129,13 +131,19 @@ def compareFastqRecordsInexactNumpy(R):
     if(np.any(np.greater(phredQuals, 93))):
         consolidatedRecord.description += (" #G~PV=" +
                                            ",".join(phredQuals.astype(str)))
-    phredQuals[phredQuals < 0] = 0
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals > 93] = 93
     consolidatedRecord.letter_annotations[
         'phred_quality'] = phredQuals.tolist()
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
+    # Checking for a strange failure on the part of the package
+    # to correctly assign the phred score.
+    RealQuals = [int(i) for i in GetDescTagValue(
+        consolidatedRecord.description, "PV").split(',')]
+    assert np.all([q == r for q, r in
+                   zip(consolidatedRecord.letter_annotations[
+                       'phred_quality'], RealQuals)])
     return consolidatedRecord, Success
 
 
