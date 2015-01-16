@@ -129,6 +129,7 @@ def ClusterByInsertSize(ReadPairs, distance="default", bedfile="default",
         del InsertSizeClusterSet
         if(clusterSize >= 3):
             ClusterList.append(Cluster)
+            print(repr(ClusterList))
     return ClusterList
 
 
@@ -139,12 +140,15 @@ def PileupISClustersByPos(ClusterList, minClustDepth=3,
     assert isinstance(ClusterList[0][0], HTSUtils.ReadPair)
     from collections import Counter
     for cluster in ClusterList:
+        print("Length of cluster: {}".format(len(cluster)))
+    for cluster in ClusterList:
         PutativeEvents = []
         for cs in cluster:
             # Find locations at which each cluster piles up
             posList = []
             posListDuplex = []
             potTransPos = {}
+            print(repr(cs) + " is the repr of the cluster I'm looking at")
             for pair in cs:
                 R1Pos = pair.read1.get_reference_positions()
                 R2Pos = pair.read2.get_reference_positions()
@@ -192,7 +196,9 @@ def XLocIntrachromosomalFusionCaller(inBAM,
 
     if(outfile == "default"):
         outfile = inBAM[0:-4] + ".putativeSV.txt"
-
+        print("Outfile: {}".format(outfile))
+    outHandle = open(outfile, "w")
+    print("{}".format(isinstance(outHandle, file)))
     """
     if(isinstance(bedfile, str) is True and bedfile != "default"):
         bedLines = ParseBed(bedfile)
@@ -201,6 +207,8 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     # Now looking for intrachromosomal translocations
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
                                                   minMQ=minMQ, minBQ=minBQ)
+    print("Number of records meeting requirements: {}".format(
+        len(LIBamRecords)))
     ContigList = list(set([pair.read1_contig for pair in LIBamRecords]))
     for contig in ContigList:
         WorkingPairSet = [pair for pair in LIBamRecords
@@ -211,15 +219,16 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                                bedfile=bedfile,
                                                minPileupLen=minPileupLen)
         for event in PutativeEvents:
-            outfile.write(event.ToString())
+            outHandle.write(event.ToString())
             event.WriteReads()
+    outHandle.close()
     """
     Draft calls complete for intrachromosomal rearrangements.
     Now debugging, then expansion to interchromosomal rearrangements.
     Step 4: Try to create the consensus sequence using soft-clipped reads
     Step 5 (?): Create a variant graph using glia and verify the translocation.
     """
-    MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB")
+    # MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB")
     # For MDC, Repeat, except that before doing the (within distance) filter,
     # get sets of reads which align to the same set of different contigs.
     return None

@@ -615,7 +615,9 @@ def mergeBam(samList, memoryStr="-XmX16",
 class ReadPair:
 
     """
-    Holds both bam record objects in a pair
+    Holds both bam record objects in a pair.
+    Currently, one read unmapped and one read soft-clipped are
+    both marked as soft-clipped reads.
     """
 
     def __init__(self, read1, read2):
@@ -626,15 +628,39 @@ class ReadPair:
         except KeyError:
             self.SVTags = None
         self.insert_size = abs(read1.tlen)
-        self.read1_soft_clipped = ("S" in read1.cigarstring)
+        if(read1.is_unmapped):
+            self.read1_is_unmapped = True
+            self.read1_soft_clipped = True
+        else:
+            self.read1_is_unmapped = False
+            if("S" in read1.cigarstring is True):
+                self.read1_soft_clipped = True
+            else:
+                self.read1_soft_clipped = False
+        if(read2.is_unmapped):
+            self.read2_is_unmapped = True
+            self.read2_soft_clipped = True
+        else:
+            self.read2_is_unmapped = False
+            if("S" in read2.cigarstring is True):
+                self.read2_soft_clipped = True
+            else:
+                self.read2_soft_clipped = False
         if(self.read1_soft_clipped is True):
             self.read1_softclip_seqs = []
-        self.read2_soft_clipped = ("S" in read2.cigarstring)
         if(self.read2_soft_clipped is True):
             self.read2_softclip_seqs = []
-        self.read1_contig = PysamToChrDict[read1.reference_id]
-        self.read2_contig = PysamToChrDict[read2.reference_id]
+        if(self.read1_is_unmapped is True):
+            self.read1_contig = "UNMAPPED"
+        else:
+            self.read1_contig = PysamToChrDict[read1.reference_id]
+        if(self.read2_is_unmapped is True):
+            self.read2_contig = "UNMAPPED"
+        else:
+            self.read2_contig = PysamToChrDict[read2.reference_id]
         self.SameContig = (read1.reference_id == read2.reference_id)
+        self.ContigString = ",".join(sorted([self.read1_contig,
+                                             self.read2_contig]))
         # TODO: write a script to create an array of soft-clipped sequences
         # from each read
 
@@ -690,13 +716,13 @@ def ReadPairsWithinDistance(ReadPair1, ReadPair2, distance=300):
         return False
 
 
-def ReadPairPassesMinQ(ReadPair, minMQ=0, minBQ=0):
+def ReadPairPassesMinQ(Pair, minMQ=0, minBQ=0):
     import numpy as np
-    assert isinstance(ReadPair, ReadPair)
-    if(ReadPair.read1.mapq < minMQ or ReadPair.read2.mapq < minMQ):
+    assert isinstance(Pair, ReadPair)
+    if(Pair.read1.mapq < minMQ or Pair.read2.mapq < minMQ):
         return False
-    if(np.any(np.less(ReadPair.read1.query_qualities, minBQ)) or
-       np.any(np.less(ReadPair.read2.query_qualities, minBQ))):
+    if(np.any(np.less(Pair.read1.query_qualities, minBQ)) or
+       np.any(np.less(Pair.read2.query_qualities, minBQ))):
         return False
     else:
         return True
@@ -714,16 +740,21 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
     RecordsArray = []
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tags = SVTag.split(',')
+    print("Tags: {}".format(repr(tags)))
     if(SVTag != "default"):
         while True:
             try:
-                WorkingReadPair = GetReadPair(inHandle)
-                if(sum(
-                    [tag in WorkingReadPair.SVTags
-                     for tag in tags]) == len(tags) and ReadPairPassesMinQ(
-                        WorkingReadPair)):
+                read1 = inHandle.next()
+                read2 = inHandle.next()
+                WorkingReadPair = ReadPair(read1, read2)
+                if(ReadPairPassesMinQ(WorkingReadPair) and
+                   sum([tag in WorkingReadPair.SVTags
+                        for tag in tags]) == len(tags)):
                     RecordsArray.append(WorkingReadPair)
+                else:
+                    print("Read tags in read pair: {}".format(WorkingReadPair.SVTags))
             except StopIteration:
+                print("Stopping iterations...")
                 break
     else:
         try:

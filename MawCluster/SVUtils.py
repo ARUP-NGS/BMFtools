@@ -141,15 +141,6 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
     for key in FeatureList:
         if(key not in SVParamDict.keys()):
             SVTestDict[key] = ""
-    if(tempBAMPrefix != "default"):
-        BamHandles = [
-            pysam.AlignmentFile(
-                tempBAMPrefix + feat + '.bam',
-                "wb",
-                template=inHandle) for feat in FeatureList]
-        BamHandleDict = {}
-        for feat, handle in zip(FeatureList, BamHandles):
-            BamHandleDict[feat] = handle
     for read in inHandle:
         WritePair = False
         if(read.is_read1 is True):
@@ -181,9 +172,6 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
                     read2.setTag("SV", key)
                 WritePair = True
                 SVCountDict[key] += 1
-                if("BamHandleDict" in locals()):
-                    BamHandleDict[key].write(read1)
-                    BamHandleDict[key].write(read2)
         if(WritePair is True):
             SVOutHandle.write(read1)
             SVOutHandle.write(read2)
@@ -197,9 +185,6 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
     inHandle.close()
     SVOutHandle.close()
     FullOutHandle.close()
-    if("BamHandleDict" in locals()):
-        for key in BamHandleDict.keys():
-            BamHandleDict[key].close()
     SVCountDict["TOTAL"] = SVCountDict["SVR"] + SVCountDict["NOSVR"]
     for key in SVCountDict.keys():
         pl("Number of reads marked with key {}: {}".format(
