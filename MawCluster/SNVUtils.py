@@ -17,9 +17,6 @@ Allele Fraction - AF
 DP - Depth (Merged)
 """
 
-# TODO:
-# 1. Filter By Bed
-
 
 class VCFLine:
 
@@ -145,7 +142,7 @@ class VCFLine:
         self.str = "\t".join([str(i) for i in [self.CHROM,
                                                self.POS,
                                                self.ID,
-                                               self.CONS,
+                                               self.REF,
                                                self.ALT,
                                                self.QUAL,
                                                self.FILTER,

@@ -5,6 +5,7 @@ from collections import Counter
 from itertools import groupby
 import numpy as np
 
+
 import pysam
 
 import MawCluster
@@ -424,15 +425,22 @@ def has_elements(iterable):
         return False, iterable
 
 
-def IntervalOverlapsBed(interval, bedIntervals):
+def IntervalOverlapsBed(queryInterval, bedIntervals):
     """
     Requires bedIntervals in the form of the output of ParseBed
     Returns True or False as to whether or not an overlap exists
     for this interval in the bed file.
     """
+    if(queryInterval[1] > queryInterval[2]):
+        import copy
+        newInt = copy.copy(queryInterval)
+        newInt[1] = copy.copy(queryInterval[2])
+        newInt[2] = copy.copy(queryInterval[1])
+        queryInterval = newInt
     for interval in bedIntervals:
-        if(interval[0] == bedIntervals):
-            if(interval[1] > bedIntervals[2] or interval[2] < bedIntervals[1]):
+        if(queryInterval[0] == interval[0]):
+            if(queryInterval[1] > interval[2] or
+               queryInterval[2] < interval[1]):
                 continue
             else:
                 return True
@@ -441,7 +449,7 @@ def IntervalOverlapsBed(interval, bedIntervals):
     return False
 
 
-def ReadContainedInBed(samRecord, bedRef="default"):
+def ReadOverlapsBed(samRecord, bedRef="default"):
     """
     Checks to see if a samRecord is contained in a bedfile.
     bedRef must be a tab-delimited list of lists, where
@@ -651,11 +659,11 @@ class ReadPair:
         if(self.read2_soft_clipped is True):
             self.read2_softclip_seqs = []
         if(self.read1_is_unmapped is True):
-            self.read1_contig = "UNMAPPED"
+            self.read1_contig = "*"
         else:
             self.read1_contig = PysamToChrDict[read1.reference_id]
         if(self.read2_is_unmapped is True):
-            self.read2_contig = "UNMAPPED"
+            self.read2_contig = "*"
         else:
             self.read2_contig = PysamToChrDict[read2.reference_id]
         self.SameContig = (read1.reference_id == read2.reference_id)
@@ -663,6 +671,22 @@ class ReadPair:
                                              self.read2_contig]))
         # TODO: write a script to create an array of soft-clipped sequences
         # from each read
+
+    def NumOverlappingBed(self, bedLines="default"):
+        try:
+            assert isinstance(bedLines[0], str) and isinstance(
+                bedLines[1], int)
+        except AssertionError:
+            FacePalm("Sorry, bedLines must be in ParseBed format.")
+        if(self.read1_is_unmapped is False):
+            self.read1_in_bed = ReadOverlapsBed(self.read1, bedLines)
+        else:
+            self.read1_in_bed = False
+        if(self.read2_is_unmapped is False):
+            self.read2_in_bed = ReadOverlapsBed(self.read2, bedLines)
+        else:
+            self.read2_in_bed = False
+        return sum([self.read2_in_bed, self.read1_in_bed])
 
 
 def GetReadPair(inHandle):
@@ -690,7 +714,7 @@ def ReadsOverlap(read1, read2):
 
 
 def ReadPairsInsertSizeWithinDistance(ReadPair1, ReadPair2, distance=300):
-    if(abs(ReadPair1.read1.tlen - ReadPair2.read1.tlen) <= distance):
+    if(abs(ReadPair1.insert_size - ReadPair2.insert_size <= distance)):
         return True
     return False
 
@@ -811,15 +835,43 @@ def parseConfigJSON(path):
     return json_data
 
 
-def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default"):
+def ReadPairListToCovCounter(ReadPairList, minClustDepth=3, minPileupLen=10):
+    posList = []
+    posListDuplex = []
+    for pair in ReadPairList:
+        R1Pos = pair.read1.get_reference_positions()
+        R2Pos = pair.read2.get_reference_positions()
+        posList += R1Pos
+        posList += R2Pos
+        if([pos for pos in R1Pos if pos in R2Pos]):
+            posListDuplex.append(pos)
+    PosCounts = Counter(posList)
+    PosDuplexCounts = Counter(posListDuplex)
+    # decrement the counts for each position to account for
+    # both reads in a pair mapping to the same location.
+    for key in PosDuplexCounts.keys():
+        PosCounts[key] += -1 * PosDuplexCounts[key]
+    PosCounts = dict([i for i in PosCounts.items()
+                      if i[1] >= minClustDepth])
+    return PosCounts
+
+
+def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
+                               bedIntervals="default"):
     """
     From a Counter object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
     list of continuous intervals, calculates the mean coverage for each, and
-    returns a list of tuples containing the 0-based open intervals and the mean
-    coverage of that interval.
+    returns two lists, the first containing the 0-based open intervals and
+    second containing the mean coverage of that interval.
+    bedIntervals must be in ParseBed output format.
     """
     assert isinstance(CounterObj, dict)
+    try:
+        assert isinstance(bedIntervals, str) is False
+    except AssertionError:
+        print(repr(bedIntervals))
+        raise ValueError("OMGZ")
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):
@@ -828,7 +880,15 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default"):
             enumerate(CounterObj.keys()),
             lambda i_x: i_x[0] - i_x[1]):
         posList = map(itemgetter(1), g)
-        IntervalList.append([contig, posList[0], posList[-1] + 1])
+        if(posList[0] < posList[-1]):
+            interval = [contig, posList[0], posList[-1] + 1]
+        else:
+            interval = [contig, posList[-1], posList[0] + 1]
+        if(interval[2] - interval[1] < minPileupLen):
+            continue
+        if(IntervalOverlapsBed(interval, bedIntervals)):
+            continue
+        IntervalList.append(interval)
         MeanCovList.append(np.mean([CounterObj[key] for key in posList if
                                     len(posList) >= minPileupLen]))
     return IntervalList, MeanCovList
