@@ -26,9 +26,8 @@ def main():
         type=int)
     parser.add_argument(
         "--minBQ",
-        "-q",
-        help="Minimum base quality score for inclusion. Default: 20.",
-        default=20,
+        help="Minimum base quality for inclusion. Default: 0.",
+        default=0,
         type=int)
     parser.add_argument(
         "-o",
@@ -45,7 +44,7 @@ def main():
     parser.add_argument(
         "--minClustDepth",
         "-d",
-        default=3,
+        default=5,
         type=int,
         help="Minimum depth for a cluster to be considered for call.")
     parser.add_argument(
@@ -53,6 +52,10 @@ def main():
         "-r",
         help="Path to reference index.",
         required=True)
+    parser.add_argument("--insert-distance",
+                        "-i",
+                        help="Maximum difference between edit distances"
+                        " for clustering families together")
     args = parser.parse_args()
     if(args.bed == "default"):
         FacePalm("Bed file required!")

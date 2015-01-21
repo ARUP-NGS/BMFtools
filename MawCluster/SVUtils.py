@@ -124,7 +124,7 @@ def ClusterByInsertSize(ReadPairs, distance="default",
             workingSet.append(pair)
             workingInsertSize = pair.insert_size
         else:
-            print("Next ReadPair has a very different read size.")
+            print("Next ReadPair has a very different insert size.")
             if(len(workingSet) < 2):
                 workingSet = []
                 workingInsertSize = 0
@@ -137,12 +137,15 @@ def ClusterByInsertSize(ReadPairs, distance="default",
     return ClusterList
 
 
-def SVSupportingReadPairs2(bedInterval, recList="default", inHandle="default"):
+def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
+                          dist="default"):
     """
     Takes a bedInterval (chrom [str], start [int], stop [int],
     0-based, closed-end notation) and a list of records. (All
     SV-relevant BAM records is standard.)
     """
+    if isinstance(dist, str):
+        dist = recList[0].query_length
     assert (isinstance(bedInterval[0], str) and
             isinstance(bedInterval[1], int))
     assert isinstance(inHandle, pysam.calignmentfile.AlignmentFile)
@@ -151,7 +154,9 @@ def SVSupportingReadPairs2(bedInterval, recList="default", inHandle="default"):
     except AssertionError:
         ThisIsMadness("recList must be a list of AlignedSegment objects")
     ReadOutBedList = [rec for rec in recList if
-                      HTSUtils.ReadOverlapsBed(rec, bedInterval)]
+                      HTSUtils.ReadWithinDistOfBedInterval(rec,
+                                                           bedLine=bedInterval,
+                                                           dist=dist)]
     ReadMateInBed = []
     for read in ReadOutBedList:
         try:
@@ -171,61 +176,15 @@ def SVSupportingReadPairs2(bedInterval, recList="default", inHandle="default"):
     return list(set(ReadPairs))
 
 
-def SVSupportingReadPairs(bedInterval, bamHandle="default"):
-    """
-    Takes a bedInterval (chrom [str], start [int], stop [int],
-    0-based, closed-end notation). Returns a list of ReadPair
-    objects which support the putative translocation.
-    This is typically then provided to ReadPairListToCovCounter
-    """
-    assert (isinstance(bedInterval[0], str) and
-            isinstance(bedInterval[1], int))
-    try:
-        assert isinstance(bamHandle, pysam.calignmentfile.AlignmentFile)
-    except AssertionError:
-        pl("Working under the assumption that a string was "
-           "provided instead of a BAM Handle.")
-        bamHandle = pysam.AlignmentFile(bamHandle, "rb")
-    ReadOutBedList = []
-    samFetch = bamHandle.fetch(bedInterval[0], bedInterval[1], bedInterval[2])
-    while True:
-        try:
-            read = samFetch.next()
-            if(read.reference_start > bedInterval[2] or
-               PysamToChrDict[read.reference_id] != bedInterval[0]):
-                break
-            ReadOutBedList.append(samFetch.next())
-        except StopIteration:
-            print("Finished iterations")
-            break
-    ReadMateInBed = []
-    for read in ReadOutBedList:
-        try:
-            ReadMateInBed.append(bamHandle.mate(read))
-        except ValueError:
-            pl("Read mate not included, as it is unmapped.")
-            pass
-    ReadPairs = []
-    for out, inside in zip(ReadOutBedList, ReadMateInBed):
-        if(out.is_read1):
-            ReadPairs.append(HTSUtils.ReadPair(out, inside))
-        else:
-            ReadPairs.append(HTSUtils.ReadPair(inside, out))
-    # Changed the list of read pairs to a list of sets of readpairs, in
-    # case both reads are out of the bed region, so as to not artificially
-    # inflate the number of supporting read families.
-    return list(set(ReadPairs))
-
-
-def PileupISClustersByPos(ClusterList, minClustDepth=2,
+def PileupISClustersByPos(ClusterList, minClustDepth=5,
                           bedfile="default", minPileupLen=8,
-                          header="default"):
+                          header="default", bedDist=50000):
     """
     Takes a list of lists of ReadPair objects which have been clustered by
     insert size, creates a list of intervals outside the bed capture region.
     These are then fed to SVSupportingReadPairs.
-    TODO: Make it expand/cluster only in the direction which is outside
-    the BED file.
+    bedDist is provided to avoid calling translocations where the reads
+    are on the edge of the capture.
     """
     assert len(ClusterList) != 0
     import copy
@@ -244,6 +203,8 @@ def PileupISClustersByPos(ClusterList, minClustDepth=2,
         print("Length of cluster: {}".format(len(cluster)))
     PotTransIntervals = []
     for cluster in ClusterList:
+        if(len(cluster) < minClustDepth):
+            continue
         PosCounts = HTSUtils.ReadPairListToCovCounter(
             cluster, minClustDepth=minClustDepth, minPileupLen=minPileupLen)
         # Make a list of coordinates for investigating
@@ -254,7 +215,8 @@ def PileupISClustersByPos(ClusterList, minClustDepth=2,
         # Grab each region which lies outside of the bed file.
         RegionsToPull = []
         for bedLine, mean in zip(bedIntervalList, MeanDORList):
-            if(HTSUtils.IntervalOverlapsBed(bedLine, bedIntervals=bedfile)
+            if(HTSUtils.IntervalOverlapsBed(bedLine, bedIntervals=bedfile,
+                                            bedDist=bedDist)
                is False):
                 RegionsToPull.append(bedLine)
             else:

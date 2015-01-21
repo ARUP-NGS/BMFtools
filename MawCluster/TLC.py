@@ -1,10 +1,8 @@
 from MawCluster.SVUtils import *
 from utilBMF import HTSUtils
 
-import pysam
-import numpy as np
-
-import uuid
+import copy
+import pudb
 
 
 def XLocIntrachromosomalFusionCaller(inBAM,
@@ -14,14 +12,15 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                      minClustDepth=3,
                                      minPileupLen=20,
                                      outfile="default",
-                                     ref="default"):
+                                     ref="default",
+                                     insDistance="default"):
     """
     Makes calls for translocations using SV Tags placed during SVUtils
     BAM must have these tags in order to find structural variants.
     Name Sorting required.
     Minimum BQ is not recommended for translocation calls.
     """
-
+    pudb.set_trace()
     if(outfile == "default"):
         outfile = inBAM[0:-4] + ".putativeSV.txt"
         print("Outfile: {}".format(outfile))
@@ -30,6 +29,10 @@ def XLocIntrachromosomalFusionCaller(inBAM,
         FacePalm("Capture bed file required for translocation detection.")
     if(ref == "default"):
         ThisIsMadness("Path to reference index required!")
+    if(insDistance == "default"):
+        insDistance = 35
+    else:
+        insDistance = int(insDistance)
     # Do calls for LI first.
     # Now looking for intrachromosomal translocations
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
@@ -41,17 +44,19 @@ def XLocIntrachromosomalFusionCaller(inBAM,
             AllBamRecs.append(inHandle.next())
         except StopIteration:
             print("All BAM records loaded.")
+            break
     header = inHandle.header
     print("Number of records meeting requirements: {}".format(
         len(LIBamRecords)))
     ContigList = list(set([pair.read1_contig for pair in LIBamRecords]))
     PutativeXLocs = []
     parsedBedfile = HTSUtils.ParseBed(bedfile)
+    IntervalsFile = open("intervals.txt", "w")
     for contig in ContigList:
         print("Beginning contig: {}".format(contig))
         WorkingPairSet = [pair for pair in LIBamRecords
                           if pair.read1_contig == contig]
-        Clusters = ClusterByInsertSize(WorkingPairSet)
+        Clusters = ClusterByInsertSize(WorkingPairSet, insDistance=insDistance)
         if(len(Clusters) == 0):
             continue
         PutXIntervals = PileupISClustersByPos(Clusters,
@@ -59,12 +64,16 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                               bedfile=parsedBedfile,
                                               minPileupLen=minPileupLen,
                                               header=header)
+        for interval in PutXIntervals:
+            IntervalsFile.write(repr(interval) + "\n")
         print("Number of putative events to check: {}".format(
             len(PutXIntervals)))
         print(repr(PutXIntervals))
-        raise ThisIsMadness("Required!!! Add in the inHandle for grabbing the mates.")
-        PutTransReadPairSets = [SVSupportingReadPairs(interval, inHandle)
-                                for interval in PutXIntervals]
+        PutTransReadPairSets = [
+            SVSupportingReadPairs(interval,
+                                  inHandle=inHandle,
+                                  recList=copy.copy(AllBamRecs))
+            for interval in PutXIntervals]
         for event in PutTransReadPairSets:
             [bedIntervalList,
              MeanDORList] = HTSUtils.CreateIntervalsFromCounter(
@@ -91,6 +100,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
             print("TDIST: {}".format(line.TDIST))
             outHandle.write(line.ToString() + "\n")
     outHandle.close()
+    IntervalsFile.close()
     """
     Draft calls complete for intrachromosomal rearrangements.
     Now debugging, then expansion to interchromosomal rearrangements.

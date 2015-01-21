@@ -7,6 +7,7 @@ import sys
 import BMFMain.ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl, FacePalm
 from utilBMF import HTSUtils
+import pudb
 
 """
 Contains utilities for the completion of a variety of
@@ -20,6 +21,7 @@ Logger = logging.getLogger("Primarylogger")
 
 
 def main():
+    pudb.set_trace()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'fq',

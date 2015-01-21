@@ -425,11 +425,14 @@ def has_elements(iterable):
         return False, iterable
 
 
-def IntervalOverlapsBed(queryInterval, bedIntervals):
+def IntervalOverlapsBed(queryInterval, bedIntervals, bedDist=0):
     """
     Requires bedIntervals in the form of the output of ParseBed
     Returns True or False as to whether or not an overlap exists
     for this interval in the bed file.
+    Now expanded to create an allowance for distance from bed regions.
+    Default behavior has an bedDist of 0, equivalent to the original
+    function.
     """
     if(queryInterval[1] > queryInterval[2]):
         import copy
@@ -439,13 +442,35 @@ def IntervalOverlapsBed(queryInterval, bedIntervals):
         queryInterval = newInt
     for interval in bedIntervals:
         if(queryInterval[0] == interval[0]):
-            if(queryInterval[1] > interval[2] or
-               queryInterval[2] < interval[1]):
+            if(queryInterval[1] > interval[2] - 1 + bedDist or
+               queryInterval[2] < interval[1] - 1 + bedDist):
                 continue
             else:
                 return True
         else:
             continue
+    return False
+
+
+def ReadWithinDistOfBedInterval(samRecord, bedLine="default", dist=70):
+    """
+    Checks to see if a samRecord is contained in a bedfile.
+    bedLine must be a list, where list[0] is a string and
+    list[1] and list[2] are integers. ParseBed returns a list of such objects.
+    """
+    try:
+        contig = PysamToChrDict[samRecord.reference_id]
+    except KeyError:
+        # Read most likely unmapped.
+        return False
+    if(contig == bedLine[0]):
+        if((samRecord.reference_start > bedLine[2] - 1 + dist) or
+           (samRecord.reference_end < bedLine[1] - 1 - dist)):
+            return False
+        else:
+            return True
+    else:
+        return False
     return False
 
 
@@ -458,15 +483,21 @@ def ReadOverlapsBed(samRecord, bedRef="default"):
     # if(isinstance(bedRef, str) is True):
     #     bedRef = ParseBed(bedRef)
     for line in bedRef:
+        """
+        try:
+            assert isinstance(line, list)
+        except AssertionError:
+            print(repr(line))
+            raise ThisIsMadness("OMGZ")
+        """
         try:
             contig = PysamToChrDict[samRecord.reference_id]
         except KeyError:
             # Read most likely unmapped.
             return False
         if(contig == line[0]):
-            if(samRecord.reference_start > int(
-                    line[2] - 1) or samRecord.reference_end < int(
-                        line[1]) - 1):
+            if((samRecord.reference_start > line[2] - 1) or
+               (samRecord.reference_end < line[1] - 1)):
                 continue
             else:
                 # print("Read {} was contained in bed file".format(
@@ -856,8 +887,21 @@ def ReadPairListToCovCounter(ReadPairList, minClustDepth=3, minPileupLen=10):
     return PosCounts
 
 
+class Interval:
+    def __init__(self, intervalList, meanDOR=0):
+        assert isinstance(intervalList[0], str)
+        assert isinstance(intervalList[1], int)
+        self.interval = intervalList
+        self.meanDOR = meanDOR
+        self.length = self.interval[2] - self.interval[1]
+        self.contig = self.interval[0]
+        self.start = self.interval[1]
+        self.end = self.intefval[2]
+
+
 def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
-                               bedIntervals="default"):
+                               bedIntervals="default", keepInBed=False,
+                               returnIntervals=False):
     """
     From a Counter object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -867,11 +911,12 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     bedIntervals must be in ParseBed output format.
     """
     assert isinstance(CounterObj, dict)
-    try:
-        assert isinstance(bedIntervals, str) is False
-    except AssertionError:
-        print(repr(bedIntervals))
-        raise ValueError("OMGZ")
+    if(keepInBed is False):
+        try:
+            assert isinstance(bedIntervals, str) is False
+        except AssertionError:
+            print(repr(bedIntervals))
+            raise ValueError("OMGZ")
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):
@@ -885,10 +930,43 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
         else:
             interval = [contig, posList[-1], posList[0] + 1]
         if(interval[2] - interval[1] < minPileupLen):
+            print("Interval too short. Length: {}".format(interval[2]
+                                                          - interval[1]))
             continue
-        if(IntervalOverlapsBed(interval, bedIntervals)):
-            continue
+        if(keepInBed is False):
+            if(IntervalOverlapsBed(interval, bedIntervals)):
+                print("Interval overlaps the bed file...")
+                continue
         IntervalList.append(interval)
         MeanCovList.append(np.mean([CounterObj[key] for key in posList if
                                     len(posList) >= minPileupLen]))
-    return IntervalList, MeanCovList
+        # Now merge, in case some are entirely adjacent
+        OutputIntervals = []
+        for inter, mean in zip(IntervalList, MeanCovList):
+            OutputIntervals.append(Interval(inter, meanDOR=mean))
+        OutputIntervals = sorted(OutputIntervals,
+                                 key=lambda x: x.interval[1])
+        workingEnd = OutputIntervals[0].interval[2]
+        workingStart = OutputIntervals[0].interval[1]
+        workingMeanDOR = OutputIntervals[0].meanDOR
+        mergedOutInts = []
+        for out in OutputIntervals:
+            if(out.interval[2] == workingEnd):
+                continue
+            if(out.interval[1] - workingEnd == 1):
+                mergedOutInts.append(
+                    Interval([contig, workingStart, out.interval[2]],
+                             meanDOR=(out.meanDOR*out.length +
+                                      workingMeanDOR * (workingEnd -
+                                                        workingStart))))
+                workingEnd = out.interval[2]
+                workingMeanDOR = mergedOutInts[-1].meanDOR
+    if(returnIntervals is True):
+        return mergedOutInts
+    else:
+        IntervalList = []
+        MeanCovList = []
+        for itvl in mergedOutInts:
+            IntervalList.append(itvl.interval)
+            MeanCovList.append(itvl.meanDOR)
+        return IntervalList, MeanCovList
