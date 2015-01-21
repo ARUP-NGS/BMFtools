@@ -9,8 +9,8 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                      minMQ=0,
                                      minBQ=0,
                                      bedfile="default",
-                                     minClustDepth=3,
-                                     minPileupLen=20,
+                                     minClustDepth=10,
+                                     minPileupLen=8,
                                      outfile="default",
                                      ref="default",
                                      insDistance="default"):
@@ -20,7 +20,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     Name Sorting required.
     Minimum BQ is not recommended for translocation calls.
     """
-    pudb.set_trace()
+    # pudb.set_trace()
     if(outfile == "default"):
         outfile = inBAM[0:-4] + ".putativeSV.txt"
         print("Outfile: {}".format(outfile))
@@ -33,6 +33,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
         insDistance = 35
     else:
         insDistance = int(insDistance)
+    print("Insert distance increment: {}".format(insDistance))
     # Do calls for LI first.
     # Now looking for intrachromosomal translocations
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
@@ -56,7 +57,10 @@ def XLocIntrachromosomalFusionCaller(inBAM,
         print("Beginning contig: {}".format(contig))
         WorkingPairSet = [pair for pair in LIBamRecords
                           if pair.read1_contig == contig]
+        print("For contig {}, I am about to cluster by insert size.".format(
+            contig))
         Clusters = ClusterByInsertSize(WorkingPairSet, insDistance=insDistance)
+        print("Number of clusters: {}".format(len(Clusters)))
         if(len(Clusters) == 0):
             continue
         PutXIntervals = PileupISClustersByPos(Clusters,
@@ -75,16 +79,15 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                   recList=copy.copy(AllBamRecs))
             for interval in PutXIntervals]
         for event in PutTransReadPairSets:
-            [bedIntervalList,
-             MeanDORList] = HTSUtils.CreateIntervalsFromCounter(
+            bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
                 HTSUtils.ReadPairListToCovCounter(event,
                                                   minClustDepth=minClustDepth,
                                                   minPileupLen=minPileupLen),
                 minPileupLen=minPileupLen,
                 contig=contig,
-                bedIntervals=parsedBedfile)
-            PutativeXLocs.append(PutativeXLoc(DORList=MeanDORList,
-                                              intervalList=bedIntervalList,
+                bedIntervals=parsedBedfile,
+                mergeDist=150)
+            PutativeXLocs.append(PutativeXLoc(intervalList=bedIntervalList,
                                               ReadPairs=event,
                                               bedIntervals=parsedBedfile,
                                               header=header,

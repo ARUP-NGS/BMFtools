@@ -39,12 +39,12 @@ def main():
         "--minPileupLen",
         "-l",
         help="Length of interval to be considered for call.",
-        default=10,
+        default=8,
         type=int)
     parser.add_argument(
         "--minClustDepth",
         "-d",
-        default=5,
+        default=10,
         type=int,
         help="Minimum depth for a cluster to be considered for call.")
     parser.add_argument(
@@ -68,7 +68,8 @@ def main():
             minBQ=args.minBQ,
             minClustDepth=args.minClustDepth,
             minPileupLen=args.minPileupLen,
-            ref=args.ref)
+            ref=args.ref,
+            insDistance=args.insert_distance)
     return Output
 
 

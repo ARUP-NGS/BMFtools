@@ -70,6 +70,8 @@ class PutativeXLoc:
         self.ID = self.TransType + str(uuid.uuid4().get_hex().upper()[0:12])
         self.ReadPairs = ReadPairs
         self.intervals = intervalList
+        if(DORList == "default"):
+            DORList = [0] * len(self.intervals)
         self.bed = bedIntervals
         self.inBAM = inBAM
         self.nsegments = len(self.segments)
@@ -115,16 +117,14 @@ def ClusterByInsertSize(ReadPairs, distance="default",
     workingInsertSize = 0
     for pair in ReadPairs:
         if(workingInsertSize == 0):
-            print("First pair in set!")
             workingInsertSize = pair.insert_size
             workingSet.append(pair)
             continue
         if(pair.insert_size - workingInsertSize <= insDistance):
-            print("Adding pair to the list.")
             workingSet.append(pair)
             workingInsertSize = pair.insert_size
         else:
-            print("Next ReadPair has a very different insert size.")
+            # print("Next ReadPair has a very different insert size.")
             if(len(workingSet) < 2):
                 workingSet = []
                 workingInsertSize = 0
@@ -134,7 +134,7 @@ def ClusterByInsertSize(ReadPairs, distance="default",
             workingSet = []
     if(len(workingSet) != 0):
         ClusterList.append(workingSet)
-    return ClusterList
+    return [i for i in ClusterList if len(i) >= 5]
 
 
 def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
@@ -176,6 +176,9 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     return list(set(ReadPairs))
 
 
+# def CallIntraChrom(Interval, ):
+
+
 def PileupISClustersByPos(ClusterList, minClustDepth=5,
                           bedfile="default", minPileupLen=8,
                           header="default", bedDist=50000):
@@ -207,14 +210,15 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
             continue
         PosCounts = HTSUtils.ReadPairListToCovCounter(
             cluster, minClustDepth=minClustDepth, minPileupLen=minPileupLen)
+        print(repr(PosCounts))
         # Make a list of coordinates for investigating
-        [bedIntervalList, MeanDORList] = HTSUtils.CreateIntervalsFromCounter(
+        bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
             PosCounts, minPileupLen=minPileupLen,
             contig=ClusterList[0][0].read1_contig,
             bedIntervals=bedfile)
         # Grab each region which lies outside of the bed file.
         RegionsToPull = []
-        for bedLine, mean in zip(bedIntervalList, MeanDORList):
+        for bedLine in bedIntervalList:
             if(HTSUtils.IntervalOverlapsBed(bedLine, bedIntervals=bedfile,
                                             bedDist=bedDist)
                is False):

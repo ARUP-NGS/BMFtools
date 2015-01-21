@@ -4,12 +4,13 @@ import subprocess
 from collections import Counter
 from itertools import groupby
 import numpy as np
+from operator import itemgetter
+import copy
 
 
 import pysam
 
 import MawCluster
-from operator import itemgetter
 
 
 class Configurations:
@@ -896,12 +897,12 @@ class Interval:
         self.length = self.interval[2] - self.interval[1]
         self.contig = self.interval[0]
         self.start = self.interval[1]
-        self.end = self.intefval[2]
+        self.end = self.interval[2]
 
 
 def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
                                bedIntervals="default", keepInBed=False,
-                               returnIntervals=False):
+                               returnIntervals=False, mergeDist=0):
     """
     From a Counter object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -922,7 +923,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     if(contig == "default"):
         FacePalm("contig required for this function!")
     for k, g in groupby(
-            enumerate(CounterObj.keys()),
+            enumerate(sorted(CounterObj.keys())),
             lambda i_x: i_x[0] - i_x[1]):
         posList = map(itemgetter(1), g)
         if(posList[0] < posList[-1]):
@@ -933,40 +934,26 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
             print("Interval too short. Length: {}".format(interval[2]
                                                           - interval[1]))
             continue
-        if(keepInBed is False):
-            if(IntervalOverlapsBed(interval, bedIntervals)):
-                print("Interval overlaps the bed file...")
-                continue
         IntervalList.append(interval)
         MeanCovList.append(np.mean([CounterObj[key] for key in posList if
                                     len(posList) >= minPileupLen]))
-        # Now merge, in case some are entirely adjacent
-        OutputIntervals = []
-        for inter, mean in zip(IntervalList, MeanCovList):
-            OutputIntervals.append(Interval(inter, meanDOR=mean))
-        OutputIntervals = sorted(OutputIntervals,
-                                 key=lambda x: x.interval[1])
-        workingEnd = OutputIntervals[0].interval[2]
-        workingStart = OutputIntervals[0].interval[1]
-        workingMeanDOR = OutputIntervals[0].meanDOR
-        mergedOutInts = []
-        for out in OutputIntervals:
-            if(out.interval[2] == workingEnd):
-                continue
-            if(out.interval[1] - workingEnd == 1):
-                mergedOutInts.append(
-                    Interval([contig, workingStart, out.interval[2]],
-                             meanDOR=(out.meanDOR*out.length +
-                                      workingMeanDOR * (workingEnd -
-                                                        workingStart))))
-                workingEnd = out.interval[2]
-                workingMeanDOR = mergedOutInts[-1].meanDOR
+    # Now merge, in case some are entirely adjacent
+    print("Now attempting to merge any adjacent intervals. Number: {}".format(
+        len(IntervalList)))
+    IntervalList = sorted(IntervalList, key=lambda x: x[1])
+    workingIntval = copy.copy(IntervalList[0])
+    MergedInts = []
+    for intval in IntervalList:
+        if(workingIntval == intval):
+            continue
+        if(intval[1] - workingIntval[2] < 2 + mergeDist):
+            MergedInts.append([workingIntval[0], workingIntval[1], intval[2]])
+        else:
+            MergedInts.append(workingIntval)
+            workingIntval = copy.copy(intval)
+    MergedInts.append(intval)
+    print("MergedInts={}".format(MergedInts))
     if(returnIntervals is True):
-        return mergedOutInts
+        return Interval(MergedInts)
     else:
-        IntervalList = []
-        MeanCovList = []
-        for itvl in mergedOutInts:
-            IntervalList.append(itvl.interval)
-            MeanCovList.append(itvl.meanDOR)
-        return IntervalList, MeanCovList
+        return MergedInts
