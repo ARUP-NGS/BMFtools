@@ -35,6 +35,12 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
                                                   minMQ=minMQ, minBQ=minBQ)
     inHandle = pysam.AlignmentFile(inBAM, "rb")
+    AllBamRecs = []
+    while True:
+        try:
+            AllBamRecs.append(inHandle.next())
+        except StopIteration:
+            print("All BAM records loaded.")
     header = inHandle.header
     print("Number of records meeting requirements: {}".format(
         len(LIBamRecords)))
@@ -56,6 +62,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
         print("Number of putative events to check: {}".format(
             len(PutXIntervals)))
         print(repr(PutXIntervals))
+        raise ThisIsMadness("Required!!! Add in the inHandle for grabbing the mates.")
         PutTransReadPairSets = [SVSupportingReadPairs(interval, inHandle)
                                 for interval in PutXIntervals]
         for event in PutTransReadPairSets:

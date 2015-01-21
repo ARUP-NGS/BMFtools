@@ -128,8 +128,6 @@ def ClusterByInsertSize(ReadPairs, distance="default",
             if(len(workingSet) < 2):
                 workingSet = []
                 workingInsertSize = 0
-                print("Last set not big enough to write.")
-                print(str(pair.insert_size) + " isone insert, while working is {}".format(workingInsertSize))
                 continue
             ClusterList.append(workingSet)
             workingInsertSize = 0
@@ -137,6 +135,40 @@ def ClusterByInsertSize(ReadPairs, distance="default",
     if(len(workingSet) != 0):
         ClusterList.append(workingSet)
     return ClusterList
+
+
+def SVSupportingReadPairs2(bedInterval, recList="default", inHandle="default"):
+    """
+    Takes a bedInterval (chrom [str], start [int], stop [int],
+    0-based, closed-end notation) and a list of records. (All
+    SV-relevant BAM records is standard.)
+    """
+    assert (isinstance(bedInterval[0], str) and
+            isinstance(bedInterval[1], int))
+    assert isinstance(inHandle, pysam.calignmentfile.AlignmentFile)
+    try:
+        assert isinstance(recList[0], pysam.calignmentfile.AlignedSegment)
+    except AssertionError:
+        ThisIsMadness("recList must be a list of AlignedSegment objects")
+    ReadOutBedList = [rec for rec in recList if
+                      HTSUtils.ReadOverlapsBed(rec, bedInterval)]
+    ReadMateInBed = []
+    for read in ReadOutBedList:
+        try:
+            ReadMateInBed.append(inHandle.mate(read))
+        except ValueError:
+            pl("Read mate not included, as it is unmapped.")
+            pass
+    ReadPairs = []
+    for out, inside in zip(ReadOutBedList, ReadMateInBed):
+        if(out.is_read1):
+            ReadPairs.append(HTSUtils.ReadPair(out, inside))
+        else:
+            ReadPairs.append(HTSUtils.ReadPair(inside, out))
+    # Changed the list of read pairs to a list of sets of readpairs, in
+    # case both reads are out of the bed region, so as to not artificially
+    # inflate the number of supporting read families.
+    return list(set(ReadPairs))
 
 
 def SVSupportingReadPairs(bedInterval, bamHandle="default"):
@@ -154,26 +186,27 @@ def SVSupportingReadPairs(bedInterval, bamHandle="default"):
         pl("Working under the assumption that a string was "
            "provided instead of a BAM Handle.")
         bamHandle = pysam.AlignmentFile(bamHandle, "rb")
-    ReadMateOutBed = []
-    samFetch = bamHandle.fetch(bedInterval[0], bedInterval[1])
+    ReadOutBedList = []
+    samFetch = bamHandle.fetch(bedInterval[0], bedInterval[1], bedInterval[2])
     while True:
         try:
             read = samFetch.next()
             if(read.reference_start > bedInterval[2] or
                PysamToChrDict[read.reference_id] != bedInterval[0]):
                 break
-            ReadMateOutBed.append(samFetch.next())
+            ReadOutBedList.append(samFetch.next())
         except StopIteration:
+            print("Finished iterations")
             break
     ReadMateInBed = []
-    for read in ReadMateOutBed:
+    for read in ReadOutBedList:
         try:
             ReadMateInBed.append(bamHandle.mate(read))
         except ValueError:
             pl("Read mate not included, as it is unmapped.")
             pass
     ReadPairs = []
-    for out, inside in zip(ReadMateOutBed, ReadMateInBed):
+    for out, inside in zip(ReadOutBedList, ReadMateInBed):
         if(out.is_read1):
             ReadPairs.append(HTSUtils.ReadPair(out, inside))
         else:
@@ -228,7 +261,18 @@ def PileupISClustersByPos(ClusterList, minClustDepth=2,
                 FacePalm("Something's not working as hoped - regions not"
                          " in bed should have been filtered out already.")
         PotTransIntervals += RegionsToPull
-    return PotTransIntervals
+    PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
+    MergedPTIs = []
+    for pti in PotTransIntervals:
+        if("workingPTI" not in locals()):
+            workingPTI = copy.copy(pti)
+        else:
+            if(pti[1] - 1 == workingPTI[2]):
+                workingPTI = [pti[0], workingPTI[1], pti[2]]
+            else:
+                MergedPTIs.append(workingPTI)
+                del workingPTI
+    return MergedPTIs
 
 
 class TranslocationVCFLine:
