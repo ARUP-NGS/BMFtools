@@ -7,6 +7,8 @@ import pysam
 
 import numpy as np
 import uuid
+from itertools import groupby
+from operator import itemgetter
 
 
 class XLocSegment:
@@ -104,38 +106,36 @@ def ClusterByInsertSize(ReadPairs, distance="default",
     # Assert that these are all mapped to the same contig
     assert len(list(set([pair.read1_contig for pair in ReadPairs]))) == 1
     if(insDistance == "default"):
-        insDistance = ReadPairs[0].read1.query_length * 3
+        insDistance = ReadPairs[0].read1.query_length
         pl("No insert size distance provided - default of "
-           " 3 * read length set: {}".format(insDistance))
+           " read length set: {}".format(insDistance))
     ClusterList = []
+    ReadPairs = sorted(ReadPairs, key=lambda x: x.insert_size)
+    workingSet = []
+    workingInsertSize = 0
     for pair in ReadPairs:
-        # Checks to see if it's already in a cluster. If so, skip.
-        # if(len(ClusterList) != 0):
-        #    for cluster in ClusterList:
-        #        if(pair in cluster):
-        #            continue
-        # Expand cluster iteratively based on current members.
-        InsertSizeClusterSet = [l for l in ReadPairs if
-                                HTSUtils.ReadPairsInsertSizeWithinDistance(
-                                    pair, l, distance=insDistance)]
-        NewCS = []
-        Cluster = []
-        while True:
-            clusterSize = len(Cluster)
-            for p in InsertSizeClusterSet:
-                for l in ReadPairs:
-                    if(HTSUtils.ReadPairsInsertSizeWithinDistance(
-                            p, l, distance=insDistance)):
-                        NewCS.append(l)
-            Cluster = list(set(NewCS))
-            if(len(Cluster) == clusterSize):
-                break
-        del NewCS
-        del InsertSizeClusterSet
-        if(clusterSize >= 3):
-            ClusterList.append(Cluster)
-            # print(repr(ClusterList))
-    ClusterList = [i for i in ClusterList if len(i) != 0]
+        if(workingInsertSize == 0):
+            print("First pair in set!")
+            workingInsertSize = pair.insert_size
+            workingSet.append(pair)
+            continue
+        if(pair.insert_size - workingInsertSize <= insDistance):
+            print("Adding pair to the list.")
+            workingSet.append(pair)
+            workingInsertSize = pair.insert_size
+        else:
+            print("Next ReadPair has a very different read size.")
+            if(len(workingSet) < 2):
+                workingSet = []
+                workingInsertSize = 0
+                print("Last set not big enough to write.")
+                print(str(pair.insert_size) + " isone insert, while working is {}".format(workingInsertSize))
+                continue
+            ClusterList.append(workingSet)
+            workingInsertSize = 0
+            workingSet = []
+    if(len(workingSet) != 0):
+        ClusterList.append(workingSet)
     return ClusterList
 
 
