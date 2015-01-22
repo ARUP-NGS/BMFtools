@@ -6,6 +6,9 @@ from MawCluster.VCFWriters import SNVCrawler
 from MawCluster.BCVCF import VCFStats
 from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
+from utilBMF import HTSUtils
+from MawCluster.TLC import XLocIntrachromosomalFusionCaller as CallIntraTrans
+
 """
 bmftools contains various utilities for barcoded reads and for
 somatic variant calling. Written to be in similar form to bcftools
@@ -20,6 +23,7 @@ def main():
     DMultiPlexParser = subparsers.add_parser("dmp")
     BamTagsParser = subparsers.add_parser("tagbam")
     SNVParser = subparsers.add_parser("snv")
+    SVParser = subparsers.add_parser("sv")
     SNVParser.add_argument("inBAM",
                            help="Input BAM, Coordinate-sorted and indexed, "
                            "with BMF Tags included. bmftools runs on unflat"
@@ -86,6 +90,54 @@ def main():
         metavar="InFastqs",
         nargs="+",
         help="Tagged, Merged Fastq File")
+    SVParser.add_argument(
+        'bam',
+        help=("Coordinate-Sorted, Indexed Bam File"),
+        )
+    SVParser.add_argument(
+        "-b",
+        "--bed",
+        help="Path to bedfile.",
+        default="default"
+        )
+    SVParser.add_argument(
+        "--minMQ",
+        "-m",
+        help="Minimum mapping quality for inclusion. Default: 0.",
+        default=0,
+        type=int)
+    SVParser.add_argument(
+        "--minBQ",
+        help="Minimum base quality for inclusion. Default: 0.",
+        default=0,
+        type=int)
+    SVParser.add_argument(
+        "-o",
+        "--outTsv",
+        help="Output tsv",
+        default="default"
+        )
+    SVParser.add_argument(
+        "--minPileupLen",
+        "-l",
+        help="Length of interval to be considered for call.",
+        default=8,
+        type=int)
+    SVParser.add_argument(
+        "--minClustDepth",
+        "-d",
+        default=10,
+        type=int,
+        help="Minimum depth for a cluster to be considered for call.")
+    SVParser.add_argument(
+        "--ref",
+        "-r",
+        help="Path to reference index.",
+        required=True)
+    SVParser.add_argument("--insert-distance",
+                          "-i",
+                          help="Maximum difference between edit distances"
+                          " for clustering families together")
 
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
@@ -122,6 +174,21 @@ def main():
             args.inFqs[0],
             args.inFqs[1],
             indexfq=args.indexFq)
+    if(args.bmfsuites == "sv"):
+        if(args.bed == "default"):
+            HTSUtils.FacePalm("Bed file required!")
+        else:
+            Output = CallIntraTrans(
+                args.bam,
+                outfile=args.outTsv,
+                bedfile=args.bed,
+                minMQ=args.minMQ,
+                minBQ=args.minBQ,
+                minClustDepth=args.minClustDepth,
+                minPileupLen=args.minPileupLen,
+                ref=args.ref,
+                insDistance=args.insert_distance)
+        return Output
     return 0
 
 

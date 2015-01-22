@@ -41,9 +41,9 @@ def main():
     parser.add_argument(
         '-s',
         '--single-end',
-        action="store_true",
         help="Whether the experiment is single-end or not. Default: False",
-        default=False)
+        default=False,
+        type=bool)
     parser.add_argument(
         '--homing',
         help="Homing sequence for samples. If not set, defaults to GACGG.",
@@ -60,7 +60,7 @@ def main():
         help="Provide your aligner. Default: bwa",
         nargs='?',
         metavar='aligner',
-        default='bwa')
+        default='mem')
     parser.add_argument(
         '-o',
         '--opts',
@@ -201,9 +201,16 @@ def main():
             bed = args.bed
         else:
             FacePalm("Bed file required for analysis.")
-    if(args.single_end is False):
+    if("single_end" in confDict.keys()):
+        if(confDict['single_end'].lower() == "true"):
+            single_end = True
+        else:
+            single_end = False
+    else:
+        single_end = args.single_end
+    if(single_end is False):
         pl("Paired-end analysis chosen.")
-    if(args.single_end is True):
+    if(single_end is True):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
                                "supported. Soon!")
@@ -268,7 +275,7 @@ def main():
             pl("Last stop! Watch your step.")
         return
 
-__version__ = "0.4.0"
+__version__ = "0.5.0alpha"
 
 if(__name__ == "__main__"):
     main()

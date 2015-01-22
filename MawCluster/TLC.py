@@ -52,7 +52,6 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     ContigList = list(set([pair.read1_contig for pair in LIBamRecords]))
     PutativeXLocs = []
     parsedBedfile = HTSUtils.ParseBed(bedfile)
-    IntervalsFile = open("intervals.txt", "w")
     for contig in ContigList:
         print("Beginning contig: {}".format(contig))
         WorkingPairSet = [pair for pair in LIBamRecords
@@ -68,8 +67,6 @@ def XLocIntrachromosomalFusionCaller(inBAM,
                                               bedfile=parsedBedfile,
                                               minPileupLen=minPileupLen,
                                               header=header)
-        for interval in PutXIntervals:
-            IntervalsFile.write(repr(interval) + "\n")
         print("Number of putative events to check: {}".format(
             len(PutXIntervals)))
         print(repr(PutXIntervals))
@@ -103,7 +100,6 @@ def XLocIntrachromosomalFusionCaller(inBAM,
             print("TDIST: {}".format(line.TDIST))
             outHandle.write(line.ToString() + "\n")
     outHandle.close()
-    IntervalsFile.close()
     """
     Next, expansion to interchromosomal rearrangements.
     Step 4: Try to create the consensus sequence using soft-clipped reads
@@ -149,4 +145,11 @@ def InterChromXLocCaller(inBAM, minMQ=20,
     header = inHandle.header
     print("Number of records meeting requirements: {}".format(
         len(MDCBamRecords)))
-    pass
+    ContigSets = list(set([sorted([pair.read1_contig, pair.read2_contig]) for
+                           pair in MDCBamRecords]))
+    for cSet in ContigSets:
+        WorkingPairSet = [
+            pair for pair in MDCBamRecords if
+            sorted([pair.read1_contig, pair.read2_contig]) == cSet]
+    raise ThisIsMadness("Interchromosomal rearrangements analysis "
+                        "is unfinished.")

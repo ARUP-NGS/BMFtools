@@ -6,6 +6,8 @@ from itertools import groupby
 import numpy as np
 from operator import itemgetter
 import copy
+import uuid
+import os
 
 
 import pysam
@@ -319,7 +321,35 @@ def align_bowtie2(R1, R2, ref, opts, outsam):
     return(command_str)
 
 
-def align_bwa(R1, R2, ref, opts, outbam):
+def align_bwa_aln(R1, R2, ref="default", opts="", outbam="default"):
+    """
+    Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
+    """
+    if(ref == "default"):
+        FacePalm("Reference file index required for alignment!")
+    if(opts == ""):
+        opts = "-n 3 -t 4"
+    if(outbam == "default"):
+        outbam = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
+    str(uuid.uuid4().get_hex().upper()[0:8])
+    R1Sai = R1 + ".tmp.sai"
+    R2Sai = R2 + ".tmp.sai"
+    alnStr1 = ("bwa aln " + opts + " " + " ".join([ref, R1]) +
+               " > " + R1Sai)
+    PipedShellCall(alnStr1)
+    alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
+               " > " + R2Sai)
+    PipedShellCall(alnStr2)
+    sampeStr = ("bwa sampe " " " +
+                " ".join([ref, R1Sai, R2Sai, R1, R2]) +
+                " | samtools view -h - > " + outbam)
+    PipedShellCall(sampeStr)
+    os.remove(R1Sai)
+    os.remove(R2Sai)
+    return outbam
+
+
+def align_bwa_mem(R1, R2, ref="default", opts="", outbam="default"):
     """Aligns a set of paired-end
     reads to a reference
     with provided options using bwa mem.
@@ -330,6 +360,10 @@ def align_bwa(R1, R2, ref, opts, outbam):
     """
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -M -T 0'
+    if(outbam == "default"):
+        outbam = R1[0:-3] + "mem.bam"
+    if(ref == "default"):
+        FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
     command_str = ('bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2) +
                    " | samtools view -Sbh - > {}".format(outbam))
@@ -339,7 +373,7 @@ def align_bwa(R1, R2, ref, opts, outbam):
     return outbam
 
 
-def align_bwa_se(reads, ref, opts, outbam):
+def align_bwa_mem_se(reads, ref, opts, outbam):
     """Aligns a set of reads to a reference
     with provided options. Defaults to
     4 threads, silent alignment, listing
@@ -372,15 +406,13 @@ def align_snap(R1, R2, ref, opts, outbam):
 
 
 def PipedShellCall(commandStr, delete=True):
-    import uuid
     PipedShellCallFilename = "PipedShellCall{}.sh".format(
         str(uuid.uuid4().get_hex().upper()[0:8]))
     printlog("Command string: {}".format(commandStr))
     open(PipedShellCallFilename, "w").write(commandStr)
     subprocess.check_call(['bash', PipedShellCallFilename])
     if(delete is True):
-        subprocess.check_call(shlex.split(
-            "rm {}".format(PipedShellCallFilename)))
+        os.remove(PipedShellCallFilename)
     return commandStr
 
 
@@ -436,7 +468,6 @@ def IntervalOverlapsBed(queryInterval, bedIntervals, bedDist=0):
     function.
     """
     if(queryInterval[1] > queryInterval[2]):
-        import copy
         newInt = copy.copy(queryInterval)
         newInt[1] = copy.copy(queryInterval[2])
         newInt[2] = copy.copy(queryInterval[1])
@@ -773,7 +804,6 @@ def ReadPairsWithinDistance(ReadPair1, ReadPair2, distance=300):
 
 
 def ReadPairPassesMinQ(Pair, minMQ=0, minBQ=0):
-    import numpy as np
     assert isinstance(Pair, ReadPair)
     if(Pair.read1.mapq < minMQ or Pair.read2.mapq < minMQ):
         return False
@@ -792,7 +822,6 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
     then check that all entries in SVTag.split(",") are in
     the tags
     """
-    import pysam
     RecordsArray = []
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tags = SVTag.split(',')

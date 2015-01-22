@@ -128,7 +128,7 @@ def main():
     outBAMs = []
     if(len(outFqs[1]) == 1):
         for i in outFqs:
-            HTSUtils.align_bwa_se(i, ref, args.alignment_opts,
+            HTSUtils.align_bwa_mem_se(i, ref, args.alignment_opts,
                                   outsam='.'.join(i.split('.')[0:1]) + '.sam')
             BCBam.Sam2Bam('.'.join(
                 i.split('.')[0:-1]) + '.sam', '.'.join(
@@ -136,7 +136,7 @@ def main():
             outBAMs.append('.'.join(i.split('.')[0:1]) + '.bam')
     else:
         for i in outFqs:
-            HTSUtils.align_bwa(i[0], i[-1], ref, args.alignment_opts,
+            HTSUtils.align_bwa_mem(i[0], i[-1], ref, args.alignment_opts,
                                outsam='.'.join(i[0].split('.')[0:-1]) + '.sam')
             BCBam.Sam2Bam('.'.join(
                 i[0].split('.')[0:-1]) + '.sam', '.'.join(

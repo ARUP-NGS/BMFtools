@@ -29,14 +29,20 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     if(bamPrefix == "default"):
         bamPrefix = '.'.join(consfq1.split('.')[0:-1])
     if(aligner == "default"):
-        pl("No aligner set, defaulting to bwa.")
-        aligner = "bwa"
+        pl("No aligner set, defaulting to bwa mem.")
+        aligner = "mem"
     outbamProperPair = bamPrefix + '.bam'
     outbamSingle = bamPrefix + "solo.bam"
     pl("Output BAM file: {}".format(outbamProperPair))
-    if(aligner == "bwa"):
-        outbamProperPair = HTSUtils.align_bwa(
-            consfq1, consfq2, ref, opts, outbamProperPair)
+    if(aligner == "mem"):
+        outbamProperPair = HTSUtils.align_bwa_mem(
+            consfq1, consfq2, ref=ref, opts=opts, outbam=outbamProperPair)
+        if(consfqSingle != "default"):
+            HTSUtils.FacePalm("This step is not required "
+                              "or important for shades.")
+    elif(aligner == "aln"):
+        outbamProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2, ref=ref,
+                                                  opts=opts)
         if(consfqSingle != "default"):
             HTSUtils.FacePalm("This step is not required "
                               "or important for shades.")

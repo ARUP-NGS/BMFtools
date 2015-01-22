@@ -1,6 +1,7 @@
 import logging
 
 from Bio import SeqIO
+import os
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
@@ -20,8 +21,8 @@ def BarcodeSort(inFastq, outFastq="default"):
                 " $3,$0}}' | sort -k1,1 | cut -f2- | "
                 "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
     PipedShellCall(BSstring)
-    pl("Command: {}".format(BSstring.replace(
-        "\t", "\\t").replace("\n", "\\n")))
+    # pl("Command: {}".format(BSstring.replace(
+    #    "\t", "\\t").replace("\n", "\\n")))
     return outFastq
 
 
@@ -140,18 +141,29 @@ def compareFastqRecordsInexactNumpy(R):
         Success = False
     # Checking for a strange failure on the part of the package
     # to correctly assign the phred score.
-    RealQuals = [int(i) for i in GetDescTagValue(
-        consolidatedRecord.description, "PV").split(',')]
     try:
-        assert np.all([q == r for q, r in zip(
+        RealQuals = [int(i) for i in GetDescTagValue(
+            consolidatedRecord.description, "PV").split(',')]
+    except KeyError:
+        return consolidatedRecord, Success
+    try:
+        assert np.all([q == r or (r > q and q == 93) for q, r in zip(
             consolidatedRecord.letter_annotations['phred_quality'],
             RealQuals)])
     except AssertionError:
         newQuals = []
         for q, r in zip(consolidatedRecord.letter_annotations['phred_quality'],
                         RealQuals):
-            newQuals += np.amax([q, r])
-        consolidatedRecord.letter_annotations['phred_quality'] = newQuals
+            if(q > r):
+                newQuals.append(q)
+            else:
+                newQuals.append(r)
+            newQuals = [i if i <= 93 else 93 for i in newQuals]
+        try:
+            consolidatedRecord.letter_annotations['phred_quality'] = newQuals
+        except TypeError:
+            pl(repr(newQuals) + " and length {}".format(len(newQuals)))
+            raise ThisIsMadness("Problem with quality strings.")
     return consolidatedRecord, Success
 
 
@@ -318,8 +330,8 @@ def GetDescTagValue(readDesc, tag="default"):
     try:
         return GetDescriptionTagDict(readDesc)[tag]
     except KeyError:
-        pl("Tag {} is not available in the description.".format(tag))
-        pl("Description: {}".format(readDesc))
+        # pl("Tag {} is not available in the description.".format(tag))
+        # pl("Description: {}".format(readDesc))
         raise KeyError("Invalid tag.")
 
 
@@ -375,7 +387,8 @@ def GetFamilySizePaired(
         outfq2="default",
         singlefq1="default",
         singlefq2="default",
-        minFamSize=1):
+        minFamSize=1,
+        deleteInFqs=True):
     pl("Running GetFamilySizeSingle for {}, {}.".format(trimfq1, trimfq2))
     infq1 = SeqIO.parse(trimfq1, "fastq")
     infq2 = SeqIO.parse(trimfq2, "fastq")
@@ -430,6 +443,9 @@ def GetFamilySizePaired(
     outfqBuffer2.close()
     singlefqBuffer1.close()
     singlefqBuffer2.close()
+    if(deleteInFqs is True):
+        os.remove(trimfq1)
+        os.remove(trimfq2)
     return ([outfq1, outfq2],
             [singlefq1, singlefq2],
             TotalReads,
@@ -569,7 +585,7 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     pl(("Command required to duplicate this action:"
         " pairedFastqConsolidate('{}', '{}', outFqPair1".format(fq1, fq2)) +
         "='{}', outFqPair2='{}', ".format(outFqPair1, outFqPair2) +
-        "stringency='{}', numpy='{}'".format(stringency, numpy))
+        "stringency='{}', numpy='{}')".format(stringency, numpy))
     if(outFqPair1 == "default"):
         outFqPair1 = '.'.join(fq1.split('.')[0:-1]) + 'cons.fastq'
     if(outFqPair2 == "default"):
@@ -611,7 +627,7 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                     workingSet1, stringency=float(stringency))
                 mergedRecord2, success2 = compareFastqRecords(
                     workingSet2, stringency=float(stringency))
-            elif(numpy is True):
+            else:
                 mergedRecord1, success1 = compareFastqRecords(
                     workingSet1, hybrid=True)
                 mergedRecord2, success2 = compareFastqRecords(
