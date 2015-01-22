@@ -448,7 +448,7 @@ def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
         if(count == 1):
                 outHandle.write(SNVUtils.HeaderCustomLine(
                     customKey="FilterVCFFileByBed",
-                    customValue=bedfile).ToString())
+                    customValue=bedfile).ToString() + "\n")
         outHandle.write(line + "\n")
         count += 1
     for line in inVCF.Records:

@@ -21,7 +21,7 @@ Logger = logging.getLogger("Primarylogger")
 
 
 def main():
-    pudb.set_trace()
+    # pudb.set_trace()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'fq',
@@ -116,7 +116,6 @@ def main():
         help="Path to reference index. Can be indicated by the config file.")
     parser.add_argument(
         "--abrapath",
-        "-a",
         default="default",
         help="Path to abra jar. Can be indicated by the config file.")
     parser.add_argument(

@@ -105,8 +105,7 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     outHandle.close()
     IntervalsFile.close()
     """
-    Draft calls complete for intrachromosomal rearrangements.
-    Now debugging, then expansion to interchromosomal rearrangements.
+    Next, expansion to interchromosomal rearrangements.
     Step 4: Try to create the consensus sequence using soft-clipped reads
     Step 5 (?): Create a variant graph using glia and verify the translocation.
     """
@@ -114,3 +113,40 @@ def XLocIntrachromosomalFusionCaller(inBAM,
     # For MDC, Repeat, except that before doing the (within distance) filter,
     # get sets of reads which align to the same set of different contigs.
     return None
+
+
+def InterChromXLocCaller(inBAM, minMQ=20,
+                         minBQ=30, bedfile="default",
+                         minClustDepth=10, minPileupLen=8,
+                         outfile="default", ref="default"):
+    """
+    Makes calls for translocations using SV Tags placed during SVUtils
+    BAM must have these tags in order to find structural variants.
+    Name Sorting required.
+    Minimum BQ is not recommended for translocation calls.
+    """
+    # pudb.set_trace()
+    if(outfile == "default"):
+        outfile = inBAM[0:-4] + ".putativeSV.txt"
+        print("Outfile: {}".format(outfile))
+    outHandle = open(outfile, "w")
+    if(bedfile == "default"):
+        FacePalm("Capture bed file required for translocation detection.")
+    if(ref == "default"):
+        ThisIsMadness("Path to reference index required!")
+    # Do calls for MDC now.
+    # Now looking for interchromosomal translocations
+    MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB",
+                                                   minMQ=minMQ, minBQ=minBQ)
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    AllBamRecs = []
+    while True:
+        try:
+            AllBamRecs.append(inHandle.next())
+        except StopIteration:
+            print("All BAM records loaded.")
+            break
+    header = inHandle.header
+    print("Number of records meeting requirements: {}".format(
+        len(MDCBamRecords)))
+    pass

@@ -47,7 +47,7 @@ MSS | Mapped to Same Strand |
 ORB | Only one read in pair mapped to Expected Bed Region |
 ORU | One Read Unmapped |
 SBI | SBI for having ORB and one of either MDC or LI |
-NOSVR | No structural variant relevance |
+NF | No SV relevance found found. |
 
 Barcode Edit Distance is 0 for members in a family whose barcode matches the family's exactly. If a rescue step is performed to merge a read with a small number of mismatches due to sequencing errors, this tag will reflect the number of differing characters.
 
@@ -62,7 +62,14 @@ Faster than using a homing sequence-specified barcode (informatically). More iss
 
 Using a homing sequence as input for consolidating families of PCR duplicates.
 
-# Config JSON
+#Config JSON
 
 The run JSON has two main fields: "Config", which contains the system variables and general preferences, and "Analysis", which controls the the run protocol. 
 Previously, there were two config files, but they have been consolidated.
+
+#Changes in BMFTools v0.5
+1. Removal of standard BMFMain in lieu of the config-based one.
+2. Working intrachromosomal translocation detection. (Fast!)
+3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.
+4. Added filter by bed file to BCVCF. In spite of pysam's supposed ability to pileup over requested reasons, something seems off, so any variants which were called due to pysam's pileup but were outside the bed file are now removed.
+5. SNV calling is now in prototypical alpha mode.

@@ -72,7 +72,8 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
     if(np.any(np.less(probs, 1))):
         Success = False
     if(np.any(np.greater(probs, 93))):
-        consolidatedRecord.description += " #G~PV=" + ",".join(probs.astype(str))
+        consolidatedRecord.description += " #G~PV=" + ",".join(
+            probs.astype(str))
     probs[probs <= 0] = 93
     probs[probs > 93] = 93
     consolidatedRecord.letter_annotations[
@@ -141,9 +142,16 @@ def compareFastqRecordsInexactNumpy(R):
     # to correctly assign the phred score.
     RealQuals = [int(i) for i in GetDescTagValue(
         consolidatedRecord.description, "PV").split(',')]
-    assert np.all([q == r for q, r in
-                   zip(consolidatedRecord.letter_annotations[
-                       'phred_quality'], RealQuals)])
+    try:
+        assert np.all([q == r for q, r in zip(
+            consolidatedRecord.letter_annotations['phred_quality'],
+            RealQuals)])
+    except AssertionError:
+        newQuals = []
+        for q, r in zip(consolidatedRecord.letter_annotations['phred_quality'],
+                        RealQuals):
+            newQuals = np.amax([q, r])
+        consolidatedRecord.letter_annotations['phred_quality'] = newQuals
     return consolidatedRecord, Success
 
 
