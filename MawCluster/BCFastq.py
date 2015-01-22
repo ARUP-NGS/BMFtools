@@ -150,7 +150,7 @@ def compareFastqRecordsInexactNumpy(R):
         newQuals = []
         for q, r in zip(consolidatedRecord.letter_annotations['phred_quality'],
                         RealQuals):
-            newQuals = np.amax([q, r])
+            newQuals += np.amax([q, r])
         consolidatedRecord.letter_annotations['phred_quality'] = newQuals
     return consolidatedRecord, Success
 

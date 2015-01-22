@@ -136,7 +136,7 @@ def main():
     if("abrapath" in confDict.keys()):
         abrapath = confDict['abrapath']
     else:
-        abrapth = args.abrapath
+        abrapath = args.abrapath
     # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
