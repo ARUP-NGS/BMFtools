@@ -399,7 +399,7 @@ def pairedBarcodeTagging(
         outBAMFile="default",
         suppBam="default"):
     if(outBAMFile == "default"):
-        outBAMFile = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
+        outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
@@ -559,7 +559,7 @@ def SamtoolsBam2fq(bamPath, outFastqPath):
 
 def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     if(outputBAM == "default"):
-        outputBAM = '.'.join(bam.split('.')[0:-1]) + "tagged.bam"
+        outputBAM = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))

@@ -751,6 +751,9 @@ class ReadPair:
             self.read2_in_bed = False
         return sum([self.read2_in_bed, self.read1_in_bed])
 
+    def getReads(self):
+        return [self.read1, self.read2]
+
 
 def GetReadPair(inHandle):
     """
@@ -894,6 +897,14 @@ def parseConfigJSON(path):
     json_str = json_file.read()
     json_data = json.loads(json_str)
     return json_data
+
+
+def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
+    posList = []
+    for read in reads:
+        posList += read.get_reference_positions()
+    PosCounts = Counter(posList)
+    return PosCounts
 
 
 def ReadPairListToCovCounter(ReadPairList, minClustDepth=3, minPileupLen=10):

@@ -67,7 +67,7 @@ Using a homing sequence as input for consolidating families of PCR duplicates.
 The run JSON has two main fields: "Config", which contains the system variables and general preferences, and "Analysis", which controls the the run protocol. 
 Previously, there were two config files, but they have been consolidated.
 
-#Changes in BMFTools v0.5
+#Changes in BMFTools v0.0.5alpha
 1. Removal of standard BMFMain in lieu of the config-based one.
 2. Working intrachromosomal translocation detection. (Fast!)
 3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.

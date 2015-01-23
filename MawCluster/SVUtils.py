@@ -1,14 +1,14 @@
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
-from utilBMF.HTSUtils import FacePalm, PysamToChrDict
+from utilBMF.HTSUtils import FacePalm
+from utilBMF.HTSUtils import ParseBed
 from utilBMF import HTSUtils
 
 import pysam
 
 import numpy as np
 import uuid
-from itertools import groupby
-from operator import itemgetter
+import copy
 
 
 class XLocSegment:
@@ -181,8 +181,50 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
 
 def PileupMDC(ReadPairList, minClustDepth=5,
               bedfile="default", minPileupLen=8, bedDist=10000):
-    raise ThisIsMadness("This function has not yet been written. Whoops!")
-    pass
+    assert len(ReadPairList) != 0
+    try:
+        assert isinstance(ReadPairList[0][0], HTSUtils.ReadPair)
+    except IndexError:
+        print(repr(ReadPairList))
+        raise ThisIsMadness("Something is wrong!!!")
+    contigs = list(set([rp.read1_contig for rp in ReadPairList] +
+                       [rp.read2_contig for rp in ReadPairList]))
+    PotTransIntervals = []
+    for contig in contigs:
+        ContigReads = [rp.read1 for rp in ReadPairList if
+                       rp.read1_contig == contig] + [rp.read2 for rp in
+                                                     rp.read2_contig == contig]
+        PosCounts = HTSUtils.ReadListToCovCounter(ContigReads,
+                                                  minClustDepth=minClustDepth,
+                                                  minPileupLen=minPileupLen)
+        # Make a list of coordinates for investigating
+        bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
+            PosCounts, minPileupLen=minPileupLen,
+            contig=contig,
+            bedIntervals=ParseBed(bedfile))
+        # Grab each region which lies outside of the bed file.
+        RegionsToPull = []
+        for bedLine in bedIntervalList:
+            if(HTSUtils.IntervalOverlapsBed(bedLine, bedIntervals=bedfile,
+                                            bedDist=bedDist)
+               is False):
+                RegionsToPull.append(bedLine)
+            else:
+                FacePalm("Something's not working as hoped - regions not"
+                         " in bed should have been filtered out already.")
+        PotTransIntervals += RegionsToPull
+    PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
+    MergedPTIs = []
+    for pti in PotTransIntervals:
+        if("workingPTI" not in locals()):
+            workingPTI = copy.copy(pti)
+        else:
+            if(pti[1] - 1 == workingPTI[2]):
+                workingPTI = [pti[0], workingPTI[1], pti[2]]
+            else:
+                MergedPTIs.append(workingPTI)
+                del workingPTI
+    return MergedPTIs
 
 
 def PileupISClustersByPos(ClusterList, minClustDepth=5,
@@ -195,7 +237,6 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
     are on the edge of the capture.
     """
     assert len(ClusterList) != 0
-    import copy
     if(isinstance(bedfile, str)):
         bedpath = copy.copy(bedfile)
         bedfile = HTSUtils.ParseBed(bedfile)
@@ -215,7 +256,7 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
             continue
         PosCounts = HTSUtils.ReadPairListToCovCounter(
             cluster, minClustDepth=minClustDepth, minPileupLen=minPileupLen)
-        print(repr(PosCounts))
+        # print(repr(PosCounts))
         # Make a list of coordinates for investigating
         bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
             PosCounts, minPileupLen=minPileupLen,

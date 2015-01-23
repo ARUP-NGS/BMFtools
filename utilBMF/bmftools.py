@@ -4,6 +4,7 @@ import sys
 
 from MawCluster.VCFWriters import SNVCrawler
 from MawCluster.BCVCF import VCFStats
+from MawCluster import BCVCF
 from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
@@ -155,6 +156,7 @@ def main():
                                 reference=args.reference_fasta,
                                 reference_is_path=True,
                                 OutVCF=args.outVCF)
+            bedFilteredVCF = BCVCF.FilterVCFFileByBed(OutVCF, bedfile=args.bed)
             OutTable = VCFStats(OutVCF)
         else:
             OutVCF = SNVCrawler(args.inBAM,

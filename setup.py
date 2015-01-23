@@ -8,7 +8,7 @@ config = {
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.5.0.alpha',
+    'version': '0.0.5.alpha',
     'install_requires': ['pysam', 'biopython'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster'],
     'scripts': [],

@@ -111,14 +111,17 @@ def BMFXLC(inBAM,
                 recList=copy.copy(
                     AllBamRecs)) for interval in IntervalsToCheck]
         for event in PutTransReadPairSets:
-            bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
-                HTSUtils.ReadPairListToCovCounter(event,
-                                                  minClustDepth=minClustDepth,
-                                                  minPileupLen=minPileupLen),
-                minPileupLen=minPileupLen,
-                contig=contig,
-                bedIntervals=parsedBedfile,
-                mergeDist=150)
+            bedIntervalList = []
+            for contig in cSet:
+                bedIntervalList.append(HTSUtils.CreateIntervalsFromCounter(
+                    HTSUtils.ReadPairListToCovCounter(
+                        event,
+                        minClustDepth=minClustDepth,
+                        minPileupLen=minPileupLen),
+                    minPileupLen=minPileupLen,
+                    contig=contig,
+                    bedIntervals=parsedBedfile,
+                    mergeDist=150))
             PutativeXLocs.append(PutativeXLoc(intervalList=bedIntervalList,
                                               ReadPairs=event,
                                               bedIntervals=parsedBedfile,

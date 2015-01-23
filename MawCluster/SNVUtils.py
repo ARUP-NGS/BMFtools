@@ -21,7 +21,7 @@ DP - Depth (Merged)
 class VCFLine:
 
     def __init__(self,
-                 AltAggregateObject,
+                 AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
                  ID=".",
                  DOCMerged="default",
@@ -35,9 +35,9 @@ class VCFLine:
                  minNumFam=3,
                  minNumSS=2,
                  REF="default"):
-        if(REF == "default"):
+        if(REF != "default"):
             self.REF = REF
-        if(isinstance(AltAggregateObject, AlleleAggregateInfo) is False):
+        if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
         if(DOCMerged == "default"):
@@ -45,13 +45,13 @@ class VCFLine:
         if(DOCTotal == "default"):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
         self.NumStartStops = len(list(set([PR.ssString for PR in
-                                           AltAggregateObject.recList])))
-        self.CHROM = AltAggregateObject.contig
-        self.POS = AltAggregateObject.pos
-        self.CONS = AltAggregateObject.consensus
-        self.ALT = AltAggregateObject.ALT
-        self.QUAL = AltAggregateObject.SumBQScore
-        if(AltAggregateObject.BothStrandSupport is True):
+                                           AlleleAggregateObject.recList])))
+        self.CHROM = AlleleAggregateObject.contig
+        self.POS = AlleleAggregateObject.pos
+        self.CONS = AlleleAggregateObject.consensus
+        self.ALT = AlleleAggregateObject.ALT
+        self.QUAL = AlleleAggregateObject.SumBQScore
+        if(AlleleAggregateObject.BothStrandSupport is True):
             self.QUAL *= 2
             # This is entirely arbitrary...
         self.ID = ID
@@ -61,7 +61,7 @@ class VCFLine:
                     self.FILTER += ",LowQual"
                 else:
                     self.FILTER = "LowQual"
-            if(AltAggregateObject.BothStrandSupport is False):
+            if(AlleleAggregateObject.BothStrandSupport is False):
                 if("FILTER" in dir(self)):
                     self.FILTER += ",OneStrandSupport"
                 else:
@@ -76,29 +76,29 @@ class VCFLine:
         except TypeError:
             print("TypeError! MaxPValue is: {}".format(MaxPValue))
             raise TypeError("MaxPValue not properly parsed.")
-        if(self.ALT == AltAggregateObject.consensus):
+        if(self.ALT == AlleleAggregateObject.consensus):
             self.FILTER = "CONSENSUS"
-        self.InfoFields = {"AC": AltAggregateObject.MergedReads,
-                           "AF": AltAggregateObject.MergedReads
-                           / float(AltAggregateObject.DOC),
-                           "TF": AltAggregateObject.TotalReads
-                           / float(AltAggregateObject.DOCTotal),
-                           "BS": AltAggregateObject.BothStrandSupport,
-                           "RSF": AltAggregateObject.ReverseMergedReads
-                           / float(AltAggregateObject.MergedReads),
+        self.InfoFields = {"AC": AlleleAggregateObject.MergedReads,
+                           "AF": AlleleAggregateObject.MergedReads
+                           / float(AlleleAggregateObject.DOC),
+                           "TF": AlleleAggregateObject.TotalReads
+                           / float(AlleleAggregateObject.DOCTotal),
+                           "BS": AlleleAggregateObject.BothStrandSupport,
+                           "RSF": AlleleAggregateObject.ReverseMergedReads
+                           / float(AlleleAggregateObject.MergedReads),
                            "NSS": self.NumStartStops,
-                           "MQM": AltAggregateObject.AveMQ,
-                           "MQB": AltAggregateObject.AveBQ,
-                           "MMQ": AltAggregateObject.minMQ,
-                           "MBQ": AltAggregateObject.minBQ,
-                           "QA": AltAggregateObject.SumBQScore,
-                           "NUMALL": AltAggregateObject.NUMALT,
+                           "MQM": AlleleAggregateObject.AveMQ,
+                           "MQB": AlleleAggregateObject.AveBQ,
+                           "MMQ": AlleleAggregateObject.minMQ,
+                           "MBQ": AlleleAggregateObject.minBQ,
+                           "QA": AlleleAggregateObject.SumBQScore,
+                           "NUMALL": AlleleAggregateObject.NUMALT,
                            "BQF": FailedBQReads,
                            "MQF": FailedMQReads,
                            "TYPE": "snp",
                            "PVC": MaxPValue,
                            "CONS": self.CONS,
-                           "NDPS": AltAggregateObject.NumberDuplexReads}
+                           "NDPS": AlleleAggregateObject.NumberDuplexReads}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
         if(TotalFracStr != "default"):
@@ -111,7 +111,7 @@ class VCFLine:
             ["=".join([key, str(self.InfoFields[key])])
              for key in sorted(self.InfoFields.keys())])
         self.FormatFields = {"DP": DOCMerged,
-                             "DPA": AltAggregateObject.MergedReads,
+                             "DPA": AlleleAggregateObject.MergedReads,
                              "DPT": DOCTotal}
         self.FormatStr = (
             ":".join(sorted(self.FormatFields.keys())) +
