@@ -3,7 +3,7 @@
 import argparse
 
 from utilBMF.HTSUtils import printlog as pl, FacePalm
-from MawCluster.TLC import XLocIntrachromosomalFusionCaller as CallTrans
+from MawCluster.TLC import BMFXLC as CallTrans
 
 
 def main():

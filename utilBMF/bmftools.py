@@ -7,7 +7,7 @@ from MawCluster.BCVCF import VCFStats
 from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
-from MawCluster.TLC import XLocIntrachromosomalFusionCaller as CallIntraTrans
+from MawCluster.TLC import BMFXLC as CallIntraTrans
 
 """
 bmftools contains various utilities for barcoded reads and for

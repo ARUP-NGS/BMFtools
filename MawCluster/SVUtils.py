@@ -179,9 +179,14 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
 # def CallIntraChrom(Interval, ):
 
 
+def PileupMDC(ReadPairList, minClustDepth=5,
+              bedfile="default", minPileupLen=8, bedDist=10000):
+    raise ThisIsMadness("This function has not yet been written. Whoops!")
+    pass
+
+
 def PileupISClustersByPos(ClusterList, minClustDepth=5,
-                          bedfile="default", minPileupLen=8,
-                          header="default", bedDist=50000):
+                          bedfile="default", minPileupLen=8, bedDist=10000):
     """
     Takes a list of lists of ReadPair objects which have been clustered by
     insert size, creates a list of intervals outside the bed capture region.

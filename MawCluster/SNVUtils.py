@@ -33,7 +33,10 @@ class VCFLine:
                  FailedBQReads="default",
                  FailedMQReads="default",
                  minNumFam=3,
-                 minNumSS=2):
+                 minNumSS=2,
+                 REF="default"):
+        if(REF == "default"):
+            self.REF = REF
         if(isinstance(AltAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
@@ -182,7 +185,8 @@ class VCFPos:
             DOCTotal=PCInfoObject.TotalReads,
             MaxPValue=MaxPValue,
             FailedBQReads=PCInfoObject.FailedBQReads,
-            FailedMQReads=PCInfoObject.FailedMQReads)
+            FailedMQReads=PCInfoObject.FailedMQReads,
+            REF=self.REF)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus is True):
