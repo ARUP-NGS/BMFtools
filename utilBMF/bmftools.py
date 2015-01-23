@@ -138,7 +138,8 @@ def main():
     SVParser.add_argument("--insert-distance",
                           "-i",
                           help="Maximum difference between edit distances"
-                          " for clustering families together")
+                          " for clustering families together",
+                          default=35)
 
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)

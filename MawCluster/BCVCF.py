@@ -458,3 +458,82 @@ def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
             pass
     outHandle.close()
     return outVCF
+
+
+def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
+                          outVCF="default", Type=str,
+                          referenceValue="default"):
+    """
+    Filter a VCF File by whether or not a given INFO tag is great than or
+    to a query value. You must specify the type. Additionally, if you want
+    to negate the condition, you can set negation to True.
+    Written to (hopefully) be quite flexible.
+    """
+    if(INFOTag == "default"):
+        HTSUtils.FacePalm("INFO tag required!")
+    if(referenceValue == "default"):
+        HTSUtils.FacePalm("A query value required!")
+    try:
+        assert isinstance(referenceValue, Type)
+    except AssertionError:
+        HTSUtils.FacePalm("The query value and the INFOTag's type must agree."
+                          " How else could they be reasonably compared?")
+    inVCF = ParseVCF(inVCF)
+    outHandle = open(outVCF, "w")
+    count = 0
+    for line in inVCF.header:
+        if(count == 1):
+                outHandle.write(SNVUtils.HeaderFilterINFOGtLine(
+                    negation=negation, referenceValue=referenceValue,
+                    referenceType=Type,
+                    INFOTag=INFOTag))
+        outHandle.write(line + "\n")
+        count += 1
+    passRecord = [False] * len(inVCF.Records)
+    for pf, line in zip(passRecord, inVCF.Records):
+        pf = (Type(line.InfoArrayDict[INFOTag]) > referenceValue)
+        if(negation is True):
+            pf = not pf
+        if(pf is True):
+            outHandle.write(line.ToString() + "\n")
+    outHandle.close()
+    return outVCF
+
+
+def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
+                              outVCF="default", Type=str,
+                              referenceValue="default"):
+    """
+    Filter a VCF File by whether or not a given INFO tag is equal to a
+    query value. You must specify the type. Additionally, if you want
+    to negate the condition, you can set negation to True.
+    Written to (hopefully) be quite flexible.
+    """
+    if(INFOTag == "default"):
+        HTSUtils.FacePalm("INFO tag required!")
+    if(referenceValue == "default"):
+        HTSUtils.FacePalm("A query value required!")
+    try:
+        assert isinstance(referenceValue, Type)
+    except AssertionError:
+        HTSUtils.FacePalm("The query value and the INFOTag's type must agree."
+                          " How else could they be reasonably compared?")
+    inVCF = ParseVCF(inVCF)
+    outHandle = open(outVCF, "w")
+    count = 0
+    for line in inVCF.header:
+        if(count == 1):
+            outHandle.write(SNVUtils.HeaderFilterINFOEqLine(
+                negation=negation, referenceValue=referenceValue, referenceType=Type,
+                INFOTag=INFOTag) + "\n")
+        outHandle.write(line + "\n")
+        count += 1
+    passRecord = [False] * len(inVCF.Records)
+    for pf, line in zip(passRecord, inVCF.Records):
+        pf = (Type(line.InfoArrayDict[INFOTag]) == referenceValue)
+        if(negation is True):
+            pf = not pf
+        if(pf is True):
+            outHandle.write(line.ToString() + "\n")
+    outHandle.close()
+    return outVCF

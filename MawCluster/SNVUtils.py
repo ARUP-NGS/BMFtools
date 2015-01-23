@@ -369,6 +369,70 @@ class HeaderCommandLine:
         return self.str
 
 
+class HeaderFilterINFOGtLine:
+
+    """
+    This class holds a custom VCF header line for
+    a filtering of a VCF.
+    """
+
+    def __init__(self, INFOTag="default", negation="default",
+                 referenceValue="default",
+                 referenceType="default"):
+        self.INFOTag = INFOTag
+        self.ID = "INFOValGt"
+        self.Description = "INFO Tag Value > Reference Value"
+        self.referenceValue = referenceValue
+        self.referenceType = referenceType
+        if(negation != "default"):
+            self.negation = (negation.lower() == "true")
+            if(referenceValue == "default"):
+                ThisIsMadness(
+                    "A reference value must be present if negation is set.")
+        if(referenceType == "default"):
+            referenceType = str  # Default behavior sets the type to string.
+
+    def ToString(self):
+        self.str = "##FILTER=<ID={},Description={},".format(
+                   self.ID, self.Description)
+        self.str += "Type={},Negated={},RVal={},INFOTag={}>".format(
+                    self.referenceType, self.negation, self.referenceValue,
+                    self.INFOTag)
+        return self.str
+
+
+class HeaderFilterINFOEqLine:
+
+    """
+    This class holds a custom VCF header line for
+    a filtering of a VCF.
+    """
+
+    def __init__(self, INFOTag="default", negation="default",
+                 referenceValue="default",
+                 referenceType="default"):
+        self.INFOTag = INFOTag
+        self.ID = "INFOValEq"
+        self.Description = "INFO Tag Value == Reference Value"
+        self.referenceValue = referenceValue
+        self.referenceType = referenceType
+        if(negation != "default"):
+            self.negation = (negation.lower() == "true")
+            if(referenceValue == "default"):
+                ThisIsMadness(
+                    "A reference value must be present if negation is set.")
+        if(referenceType == "default"):
+            referenceType = str  # Default behavior sets the type to string.
+
+    def ToString(self):
+        self.str = "##FILTER=<ID={},Description={},".format(
+                   self.ID, self.Description)
+        self.str += "Type={},Negated={},RVal={},INFOTag={}>".format(
+                    self.referenceType, self.negation, self.referenceValue,
+                    self.INFOTag)
+        return self.str
+
+
 class HeaderCustomLine:
 
     """
