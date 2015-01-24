@@ -587,15 +587,15 @@ def SplitMultipleAlts(inVCF, outVCF="default"):
                 FORMAT = ":".join(line.GenotypeKeys)
                 GENOTYPE = ":".join(line.GenotypeValues)
                 if(len(line.Samples) == 0):
-                    splitLines.append(VCFRecord([line.CHROM, line.REF, line.ID,
-                                                 AltAllele,
+                    splitLines.append(VCFRecord([line.CHROM, line.POS,
+                                                 line.REF, line.ID, AltAllele,
                                                  line.QUAL, line.FILTER, INFO,
                                                  FORMAT, GENOTYPE],
                                                 line.VCFFilename))
                 else:
                     sampleStr = "\t".join(line.Samples)
-                    splitLines.append(VCFRecord([line.CHROM, line.REF, line.ID,
-                                                 AltAllele,
+                    splitLines.append(VCFRecord([line.CHROM, line.POS,
+                                                 line.REF, line.ID, AltAllele,
                                                  line.QUAL, line.FILTER, INFO,
                                                  FORMAT, GENOTYPE, sampleStr],
                                                 line.VCFFilename))

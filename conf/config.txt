@@ -1,0 +1,9 @@
+abrapath=/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar
+ref=/mounts/genome/human_g1k_v37.fasta
+picardDir=/mounts/bin/picard-tools
+USeqDir=/yggdrasil/codeRepository/Packages/USeq_8.8.0/Apps
+bed=/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed
+minMQ=20
+minBQ=90
+aligner=mem
+opts=-v 1 -t 4 -M -Y -T 0
