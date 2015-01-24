@@ -9,6 +9,7 @@ from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
 from MawCluster.TLC import BMFXLC as CallIntraTrans
+from pudb import set_trace
 
 """
 bmftools contains various utilities for barcoded reads and for
@@ -20,11 +21,29 @@ and samtools.
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
-    VCFStatsParser = subparsers.add_parser("vcfstats")
-    DMultiPlexParser = subparsers.add_parser("dmp")
-    BamTagsParser = subparsers.add_parser("tagbam")
-    SNVParser = subparsers.add_parser("snv")
-    SVParser = subparsers.add_parser("sv")
+    VCFStatsParser = subparsers.add_parser("vcfstats",
+                                           description="Gets counts and"
+                                           " frequencies for all SNV tr"
+                                           "ansitions.")
+    DMultiPlexParser = subparsers.add_parser("dmp",
+                                             description="Marks, combines, and"
+                                             " processes a dataset of fastqs f"
+                                             "or further analysis.")
+    BamTagsParser = subparsers.add_parser("tagbam",
+                                          description="Tags a BAM file with in"
+                                          "formation from Fastq file(s)")
+    SNVParser = subparsers.add_parser("snv", description="Call SNVs. Assumes "
+                                      "that reads have been collapsed from a "
+                                      "family size of at least 2")
+    SVParser = subparsers.add_parser("sv",
+                                     description="Call structural variants. R"
+                                     "equires an Input BAM, coordinate-sorted"
+                                     " and indexed, with BMF SV Tags included"
+                                     ", and a BED File.")
+    SMAParser = subparsers.add_parser(
+        "sma",
+        description="Tool for splitting a VCF File with multiple alts per"
+        " line into a VCF where each line has a unique alt.")
     SNVParser.add_argument("inBAM",
                            help="Input BAM, Coordinate-sorted and indexed, "
                            "with BMF Tags included. bmftools runs on unflat"
@@ -34,12 +53,14 @@ def main():
         "--bed",
         "-b",
         help="Full path to bed file.",
-        default="default")
+        default="default",
+        metavar="bedpath")
     SNVParser.add_argument(
         "-o",
         "--outVCF",
         help="Output VCF File.",
-        default="default")
+        default="default",
+        metavar="OutputVCF")
     SNVParser.add_argument(
         "--minBQ",
         help="Minimum Base Quality to consider",
@@ -122,7 +143,7 @@ def main():
         "--minPileupLen",
         "-l",
         help="Length of interval to be considered for call.",
-        default=8,
+        default=10,
         type=int)
     SVParser.add_argument(
         "--minClustDepth",
@@ -140,10 +161,19 @@ def main():
                           help="Maximum difference between edit distances"
                           " for clustering families together",
                           default=35)
+    SMAParser.add_argument(
+        "inVCF",
+        required=True,
+        help="Input VCF", type=str)
+    SMAParser.add_argument(
+        "--outVCF",
+        "-o",
+        help="Output VCF. If unset, defaults to a modified form of the input.",
+        default="default")
+    # set_trace()
 
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
-
     if(args.bmfsuites == "snv"):
         # Beckon the Kraken
         if(args.bed != "default"):
@@ -192,6 +222,8 @@ def main():
                 ref=args.ref,
                 insDistance=args.insert_distance)
         return Output
+    if(args.bmfsuites == "sma"):
+        Output = BCVCF.SplitMultipleAlts(args.inVCF, args.outVCF)
     return 0
 
 

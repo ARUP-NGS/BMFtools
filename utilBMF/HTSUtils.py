@@ -843,7 +843,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
                 else:
                     pass
             except StopIteration:
-                print("Stopping iterations...")
+                # print("Stopping iterations...")
                 break
     else:
         try:
@@ -867,6 +867,11 @@ def WritePairToHandle(ReadPair, handle="default"):
 
 
 def ParseBed(bedfile):
+    """
+    Parses a bedfile in, leaving a list of length 3.
+    bed[0] is a string (contig), and bed[1:] are all
+    integers.
+    """
     bed = [line.strip().split(
     )[0:3] for line in open(
         bedfile, "r").readlines() if line[0] != "#"]
@@ -907,7 +912,7 @@ def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
     return PosCounts
 
 
-def ReadPairListToCovCounter(ReadPairList, minClustDepth=3, minPileupLen=10):
+def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
     posList = []
     posListDuplex = []
     for pair in ReadPairList:
@@ -942,7 +947,8 @@ class Interval:
 
 def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
                                bedIntervals="default", keepInBed=False,
-                               returnIntervals=False, mergeDist=0):
+                               returnIntervals=False, mergeDist=0,
+                               minClustDepth=5):
     """
     From a Counter object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -952,6 +958,8 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     bedIntervals must be in ParseBed output format.
     """
     assert isinstance(CounterObj, dict)
+    CounterObj = dict([i for i in CounterObj.items()
+                      if i[1] >= minClustDepth])
     if(keepInBed is False):
         try:
             assert isinstance(bedIntervals, str) is False
@@ -978,6 +986,8 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
         MeanCovList.append(np.mean([CounterObj[key] for key in posList if
                                     len(posList) >= minPileupLen]))
     # Now merge, in case some are entirely adjacent
+    if(len(IntervalList) == 0):
+        return []
     print("Now attempting to merge any adjacent intervals. Number: {}".format(
         len(IntervalList)))
     IntervalList = sorted(IntervalList, key=lambda x: x[1])

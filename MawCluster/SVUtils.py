@@ -20,11 +20,6 @@ class XLocSegment:
     def __init__(self, interval="default", DOR="default",
                  bedIntervals="default"):
         try:
-            assert isinstance(interval[0], str) and isinstance(
-                interval[1], int)
-        except AssertionError:
-            FacePalm("interval must be in ParseBed output format!")
-        try:
             assert isinstance(bedIntervals[0][0], str) and isinstance(
                 bedIntervals[0][1], int)
         except AssertionError:
@@ -72,6 +67,13 @@ class PutativeXLoc:
         self.intervals = intervalList
         if(DORList == "default"):
             DORList = [0] * len(self.intervals)
+        try:
+            assert (isinstance(bedIntervals[0], list) and
+                    isinstance(bedIntervals[0][0], str)
+                    and isinstance(bedIntervals[0][1], int))
+        except AssertionError:
+            print(repr(bedIntervals))
+            FacePalm("bedIntervals should be in ParseBed format!")
         self.bed = bedIntervals
         self.inBAM = inBAM
         self.nsegments = len(self.segments)
@@ -138,12 +140,17 @@ def ClusterByInsertSize(ReadPairs, distance="default",
 
 
 def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
-                          dist="default"):
+                          dist="default", minMQ=20, SVType="default"):
     """
     Takes a bedInterval (chrom [str], start [int], stop [int],
     0-based, closed-end notation) and a list of records. (All
     SV-relevant BAM records is standard.)
     """
+    SVTypes = ["LI", "MDC"]
+    if(SVType == "default"):
+        SVType = ",".join(SVTypes)
+        pl("No SV type provided, so either LI or MDC is accepted.")
+    SVType += ",ORB"
     if isinstance(dist, str):
         dist = recList[0].query_length
     assert (isinstance(bedInterval[0], str) and
@@ -156,7 +163,8 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     ReadOutBedList = [rec for rec in recList if
                       HTSUtils.ReadWithinDistOfBedInterval(rec,
                                                            bedLine=bedInterval,
-                                                           dist=dist)]
+                                                           dist=dist) if
+                      rec.mapq >= minMQ]
     ReadMateInBed = []
     for read in ReadOutBedList:
         try:
@@ -173,7 +181,12 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     # Changed the list of read pairs to a list of sets of readpairs, in
     # case both reads are out of the bed region, so as to not artificially
     # inflate the number of supporting read families.
-    return list(set(ReadPairs))
+    RPSet = list(set(ReadPairs))
+    print("RPSet length before filtering: {}".format(len(RPSet)))
+    for tag in SVType.split(','):
+        RPSet = [rp for rp in RPSet if tag in rp.SVTags]
+    print("RPSet after filtering: {}".format(len(RPSet)))
+    return RPSet
 
 
 # def CallIntraChrom(Interval, ):
@@ -181,9 +194,11 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
 
 def PileupMDC(ReadPairList, minClustDepth=5,
               bedfile="default", minPileupLen=8, bedDist=10000):
+    if(isinstance(bedfile, str)):
+        bedfile = ParseBed(bedfile)
     assert len(ReadPairList) != 0
     try:
-        assert isinstance(ReadPairList[0][0], HTSUtils.ReadPair)
+        assert isinstance(ReadPairList[0], HTSUtils.ReadPair)
     except IndexError:
         print(repr(ReadPairList))
         raise ThisIsMadness("Something is wrong!!!")
@@ -193,6 +208,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
     for contig in contigs:
         ContigReads = [rp.read1 for rp in ReadPairList if
                        rp.read1_contig == contig] + [rp.read2 for rp in
+                                                     ReadPairList if
                                                      rp.read2_contig == contig]
         PosCounts = HTSUtils.ReadListToCovCounter(ContigReads,
                                                   minClustDepth=minClustDepth,
@@ -201,7 +217,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
         bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
             PosCounts, minPileupLen=minPileupLen,
             contig=contig,
-            bedIntervals=ParseBed(bedfile))
+            bedIntervals=bedfile)
         # Grab each region which lies outside of the bed file.
         RegionsToPull = []
         for bedLine in bedIntervalList:
@@ -210,8 +226,11 @@ def PileupMDC(ReadPairList, minClustDepth=5,
                is False):
                 RegionsToPull.append(bedLine)
             else:
+                continue
+                """
                 FacePalm("Something's not working as hoped - regions not"
                          " in bed should have been filtered out already.")
+                """
         PotTransIntervals += RegionsToPull
     PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
     MergedPTIs = []
@@ -288,8 +307,10 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
 
 
 class TranslocationVCFLine:
-    def __init__(self, PutativeXLocObj, ref="default", inBAM="default"):
+    def __init__(self, PutativeXLocObj, ref="default", inBAM="default",
+                 TransType="UnspecifiedSV"):
         assert isinstance(PutativeXLocObj, PutativeXLoc)
+        self.TransType = TransType
         if(ref == "default"):
             raise ThisIsMadness("Reference must be provided for "
                                 "creating a VCFLine.")

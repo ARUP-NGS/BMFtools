@@ -55,7 +55,9 @@ def main():
     parser.add_argument("--insert-distance",
                         "-i",
                         help="Maximum difference between edit distances"
-                        " for clustering families together")
+                        " for clustering families together",
+                        type=int,
+                        default=35)
     args = parser.parse_args()
     if(args.bed == "default"):
         FacePalm("Bed file required!")

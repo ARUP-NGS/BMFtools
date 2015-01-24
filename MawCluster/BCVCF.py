@@ -469,6 +469,8 @@ def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
     to negate the condition, you can set negation to True.
     Written to (hopefully) be quite flexible.
     """
+    if(outVCF == "default"):
+        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.InfGt.vcf'
     if(INFOTag == "default"):
         HTSUtils.FacePalm("INFO tag required!")
     if(referenceValue == "default"):
@@ -509,6 +511,8 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
     to negate the condition, you can set negation to True.
     Written to (hopefully) be quite flexible.
     """
+    if(outVCF == "default"):
+        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.InfEq.vcf'
     if(INFOTag == "default"):
         HTSUtils.FacePalm("INFO tag required!")
     if(referenceValue == "default"):
@@ -524,7 +528,8 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
     for line in inVCF.header:
         if(count == 1):
             outHandle.write(SNVUtils.HeaderFilterINFOEqLine(
-                negation=negation, referenceValue=referenceValue, referenceType=Type,
+                negation=negation, referenceValue=referenceValue,
+                referenceType=Type,
                 INFOTag=INFOTag) + "\n")
         outHandle.write(line + "\n")
         count += 1
@@ -536,4 +541,55 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
         if(pf is True):
             outHandle.write(line.ToString() + "\n")
     outHandle.close()
+    return outVCF
+
+
+def SplitMultipleAlts(inVCF, outVCF="default"):
+    inVCF = ParseVCF(inVCF)
+    if(outVCF == "default"):
+        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.AltSplit.vcf'
+    outHandle = open(outVCF, "w")
+    outHandle.writelines([line + "\n" for line in inVCF.header])
+    count = 0
+    outLines = []
+    for line in inVCF.Records:
+        splitLines = []
+        if("," in line.ALT):
+            NewInfoDict = {}
+            for count, AltAllele in enumerate(line.ALT.split(',')):
+                for key in line.InfoDict:
+                    if(len(line.InfoDict[key].split(',')) == len(
+                            line.ALT.split(','))):
+                        NewInfoDict[key] = line.InfoDict[key].split(',')[count]
+                    else:
+                        NewInfoDict[key] = line.InfoDict[key]
+                    infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
+                                      InfoValue in zip(NewInfoDict.keys(),
+                                                       NewInfoDict.values())]
+                    INFO = ';'.join(infoEntryArray) + ';'.join(
+                        line.InfoUnpaired)
+                GenotypeKeys = line.FORMAT.split(':')
+                GenotypeValues = line.GENOTYPE.split(':')
+                FORMAT = ":".join(line.GenotypeKeys)
+                GENOTYPE = ":".join(line.GenotypeValues)
+                if(len(line.Samples) == 0):
+                    splitLines.append(VCFRecord([line.CHROM, line.REF, line.ID,
+                                                 AltAllele,
+                                                 line.QUAL, line.FILTER, INFO,
+                                                 FORMAT, GENOTYPE],
+                                                line.VCFFilename))
+                else:
+                    sampleStr = "\t".join(line.Samples)
+                    splitLines.append(VCFRecord([line.CHROM, line.REF, line.ID,
+                                                 AltAllele,
+                                                 line.QUAL, line.FILTER, INFO,
+                                                 FORMAT, GENOTYPE, sampleStr],
+                                                line.VCFFilename))
+            outLines += splitLines
+        else:
+            outLines.append(line)
+    outStr = sum([line.str + "\n" for line in outLines])
+    outHandle.write(outStr)
+    outHandle.close()
+    print("Output VCF: {}".format(outVCF))
     return outVCF

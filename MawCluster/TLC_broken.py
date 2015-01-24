@@ -9,11 +9,12 @@ def BMFXLC(inBAM,
            minMQ=0,
            minBQ=0,
            bedfile="default",
-           minClustDepth=10,
-           minPileupLen=8,
+           minClustDepth=5,
+           minPileupLen=10,
            outfile="default",
            ref="default",
-           insDistance="default"):
+           insDistance="default",
+           bedDist=10000):
     """
     Makes calls for translocations using SV Tags placed during SVUtils
     BAM must have these tags in order to find structural variants.
@@ -29,7 +30,7 @@ def BMFXLC(inBAM,
         FacePalm("Capture bed file required for translocation detection.")
     if(ref == "default"):
         ThisIsMadness("Path to reference index required!")
-    if(insDistance == "default" or insDistance is None):
+    if(insDistance == "default"):
         insDistance = 35
     else:
         insDistance = int(insDistance)
@@ -38,6 +39,8 @@ def BMFXLC(inBAM,
     # Now looking for intrachromosomal translocations
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
                                                   minMQ=minMQ, minBQ=minBQ)
+    MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB",
+                                                   minMQ=minMQ, minBQ=minBQ)
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     AllBamRecs = []
     while True:
@@ -52,7 +55,6 @@ def BMFXLC(inBAM,
     ContigList = list(set([pair.read1_contig for pair in LIBamRecords]))
     PutativeXLocs = []
     parsedBedfile = HTSUtils.ParseBed(bedfile)
-    IntervalsFile = open("intervals.txt", "w")
     for contig in ContigList:
         print("Beginning contig: {}".format(contig))
         WorkingPairSet = [pair for pair in LIBamRecords
@@ -67,16 +69,20 @@ def BMFXLC(inBAM,
                                               minClustDepth=minClustDepth,
                                               bedfile=parsedBedfile,
                                               minPileupLen=minPileupLen)
-        for interval in PutXIntervals:
-            IntervalsFile.write(repr(interval) + "\n")
         print("Number of putative events to check: {}".format(
             len(PutXIntervals)))
-        print(repr(PutXIntervals))
+        if(len(PutXIntervals) == 0):
+            print("No PutXIntervals for contig {}".format(contig))
+            continue
         PutTransReadPairSets = [
             SVSupportingReadPairs(interval,
                                   inHandle=inHandle,
-                                  recList=copy.copy(AllBamRecs))
+                                  recList=copy.copy(AllBamRecs),
+                                  minMQ=minMQ,
+                                  SVType="LI")
             for interval in PutXIntervals]
+        print("PutXIntervals made. Repr: {}".format(repr(
+            PutTransReadPairSets)))
         for event in PutTransReadPairSets:
             bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
                 HTSUtils.ReadPairListToCovCounter(event,
@@ -93,19 +99,62 @@ def BMFXLC(inBAM,
                                               TransType="Intrachromosoma"
                                               "lRearrangement",
                                               inBAM=inBAM))
+        del WorkingPairSet
+    ContigSets = [i.split(',') for i in list(set([','.join(sorted([
+        pair.read1_contig,
+        pair.read2_contig])) for pair in MDCBamRecords])) if "GL" not in i]
+    for cSet in ContigSets:
+        WorkingPairSet = [
+            pair for pair in MDCBamRecords if
+            sorted([pair.read1_contig, pair.read2_contig]) == cSet]
+        IntervalsToCheck = PileupMDC(WorkingPairSet,
+                                     minClustDepth=minClustDepth,
+                                     bedfile=parsedBedfile,
+                                     minPileupLen=minPileupLen,
+                                     bedDist=bedDist)
+        PutTransReadPairSets = [
+            SVSupportingReadPairs(
+                interval, inHandle=inHandle,
+                recList=copy.copy(
+                    AllBamRecs),
+                minMQ=minMQ,
+                SVType="MDC") for interval in IntervalsToCheck]
+        for event in PutTransReadPairSets:
+            bedIntervalList = []
+            for contig in cSet:
+                bedIntervalList.append(HTSUtils.CreateIntervalsFromCounter(
+                    HTSUtils.ReadPairListToCovCounter(
+                        event,
+                        minClustDepth=minClustDepth,
+                        minPileupLen=minPileupLen),
+                    minPileupLen=minPileupLen,
+                    contig=contig,
+                    bedIntervals=parsedBedfile,
+                    mergeDist=150))
+            if(len(bedIntervalList) == 0 or len(bedIntervalList[0]) == 0):
+                continue
+            PutativeXLocs.append(PutativeXLoc(intervalList=bedIntervalList,
+                                              ReadPairs=event,
+                                              bedIntervals=parsedBedfile,
+                                              header=header,
+                                              TransType="Interchromosoma"
+                                              "lRearrangement",
+                                              inBAM=inBAM))
     XLocVCFLines = list(set([TranslocationVCFLine(xLoc, inBAM=xLoc.inBAM,
+                                                  TransType="Interchromosoma"
+                                                  "lRearrangement",
                                                   ref=ref)
                              for xLoc in PutativeXLocs if
                              xLoc.nsegments != 0]))
     for line in XLocVCFLines:
-        if(line.NumPartners != 0 and line.TDIST >= 50000):
-            print("TDIST: {}".format(line.TDIST))
-            outHandle.write(line.ToString() + "\n")
+        if(line.TransType == "IntrachromosomalRearrangement"):
+            if(line.NumPartners != 0 and line.TDIST >= 50000):
+                outHandle.write(line.ToString() + "\n")
+        if(line.TransType == "InterchromosomalRearrangement"):
+            if(line.NumPartners != 0):
+                outHandle.write(line.ToString() + "\n")
     outHandle.close()
-    IntervalsFile.close()
     """
-    Draft calls complete for intrachromosomal rearrangements.
-    Now debugging, then expansion to interchromosomal rearrangements.
     Step 4: Try to create the consensus sequence using soft-clipped reads
     Step 5 (?): Create a variant graph using glia and verify the translocation.
     """
