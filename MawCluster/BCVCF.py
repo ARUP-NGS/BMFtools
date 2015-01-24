@@ -105,6 +105,7 @@ class VCFRecord:
             print("Line: {}".format(VCFEntry))
             raise ThisIsMadness("Something went wrong.")
         except ValueError:
+            print(repr(VCFEntry))
             raise ThisIsMadness("Improperly formatted VCF.")
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
@@ -545,16 +546,31 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
 
 
 def SplitMultipleAlts(inVCF, outVCF="default"):
-    inVCF = ParseVCF(inVCF)
+    """
+    A simple function for splitting VCF lines with multiple
+    ALTs into several valid lines.
+    progRepInterval is simply how often a progress report is printed.
+    """
+    print("Beginning SplitMultipleAlts")
     if(outVCF == "default"):
+        print("OutputVCF is default - changing!")
         outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.AltSplit.vcf'
+    print("Output VCF: {}".format(outVCF))
+    inVCF = ParseVCF(inVCF)
     outHandle = open(outVCF, "w")
-    outHandle.writelines([line + "\n" for line in inVCF.header])
+    outHandle.write("\n".join([line for line in inVCF.header]))
     count = 0
+    numK = 0
     outLines = []
     for line in inVCF.Records:
+        if(len(outLines) == 1000):
+            outHandle.write("\n".join([line.str for line in outLines]))
+            outLines = []
+            numK += 1
+            print("Number of processed lines: {}".format(1000 * numK))
         splitLines = []
         if("," in line.ALT):
+            count += 1
             NewInfoDict = {}
             for count, AltAllele in enumerate(line.ALT.split(',')):
                 for key in line.InfoDict:
@@ -568,8 +584,6 @@ def SplitMultipleAlts(inVCF, outVCF="default"):
                                                        NewInfoDict.values())]
                     INFO = ';'.join(infoEntryArray) + ';'.join(
                         line.InfoUnpaired)
-                GenotypeKeys = line.FORMAT.split(':')
-                GenotypeValues = line.GENOTYPE.split(':')
                 FORMAT = ":".join(line.GenotypeKeys)
                 GENOTYPE = ":".join(line.GenotypeValues)
                 if(len(line.Samples) == 0):
@@ -588,8 +602,9 @@ def SplitMultipleAlts(inVCF, outVCF="default"):
             outLines += splitLines
         else:
             outLines.append(line)
-    outStr = sum([line.str + "\n" for line in outLines])
+    outStr = "\n".join([line.str for line in outLines])
     outHandle.write(outStr)
     outHandle.close()
     print("Output VCF: {}".format(outVCF))
+    print("Number of lines split: {}".format(count))
     return outVCF

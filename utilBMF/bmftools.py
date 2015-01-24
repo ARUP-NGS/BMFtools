@@ -163,7 +163,6 @@ def main():
                           default=35)
     SMAParser.add_argument(
         "inVCF",
-        required=True,
         help="Input VCF", type=str)
     SMAParser.add_argument(
         "--outVCF",
