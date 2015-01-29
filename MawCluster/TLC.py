@@ -2,6 +2,7 @@ from MawCluster.SVUtils import *
 from utilBMF import HTSUtils
 
 import pudb
+from utilBMF.HTSUtils import LoadReadsFromFile
 
 
 def BMFXLC(inBAM,
@@ -23,7 +24,7 @@ def BMFXLC(inBAM,
     # pudb.set_trace()
     if(outfile == "default"):
         outfile = inBAM[0:-4] + ".putativeSV.txt"
-        print("Outfile: {}".format(outfile))
+        pl("Outfile: {}".format(outfile))
     outHandle = open(outfile, "w")
     if(bedfile == "default"):
         FacePalm("Capture bed file required for translocation detection.")
@@ -33,35 +34,25 @@ def BMFXLC(inBAM,
         insDistance = 35
     else:
         insDistance = int(insDistance)
-    print("Insert distance increment: {}".format(insDistance))
+    pl("Insert distance increment: {}".format(insDistance))
     # Do calls for LI first.
     # Now looking for intrachromosomal translocations
     LIBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="LI,ORB",
                                                   minMQ=minMQ, minBQ=minBQ)
-    MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB",
-                                                   minMQ=minMQ, minBQ=minBQ)
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    AllBamRecs = []
-    while True:
-        try:
-            AllBamRecs.append(inHandle.next())
-        except StopIteration:
-            print("All BAM records loaded.")
-            break
     header = inHandle.header
-    print("Number of records meeting requirements: {}".format(
+    pl("Number of records meeting requirements: {}".format(
         len(LIBamRecords)))
     ContigList = list(set([pair.read1_contig for pair in LIBamRecords]))
     PutativeIntraXLocs = []
     parsedBedfile = HTSUtils.ParseBed(bedfile)
-    for contig in ContigList:
-        print("Beginning contig: {}".format(contig))
+    for contig in sorted(ContigList):
+        pl("Beginning contig: {}".format(contig))
         WorkingPairSet = [pair for pair in LIBamRecords
                           if pair.read1_contig == contig]
-        print("For contig {}, I am about to cluster by insert size.".format(
-            contig))
         Clusters = ClusterByInsertSize(WorkingPairSet, insDistance=insDistance)
-        print("Number of clusters: {}".format(len(Clusters)))
+        print("Number of clusters for contig {}: {}".format(contig,
+                                                            len(Clusters)))
         if(len(Clusters) == 0):
             continue
         PutXIntervals = PileupISClustersByPos(Clusters,
@@ -76,11 +67,8 @@ def BMFXLC(inBAM,
         PutTransReadPairSets = [
             SVSupportingReadPairs(interval,
                                   inHandle=inHandle,
-                                  recList=[rec for rec in AllBamRecs if "LI"
-                                           in rec.opt("SV") and "ORB" in
-                                           rec.opt("SV")],
-                                  minMQ=minMQ,
-                                  SVType="LI")
+                                  recList=HTSUtils.LoadReadsFromFile(
+                                      inBAM, SVTag="LI,ORB", minMQ=minMQ))
             for interval in PutXIntervals]
         print("PutXIntervals made. Repr: {}".format(repr(
             PutTransReadPairSets)))
@@ -98,15 +86,22 @@ def BMFXLC(inBAM,
                 bedIntervals=parsedBedfile, header=header,
                 TransType="IntrachromosomalRearrangement",
                 inBAM=inBAM))
+        print("PutativeXLocs: {}".format("\n".join([i.ToString() for i in
+                                                    PutativeIntraXLocs])))
         del WorkingPairSet
+    XLocVCFLinesIntra = list(set([TranslocationVCFLine(
+        xLoc, inBAM=xLoc.inBAM, TransType="IntrachromosomalRearrangement",
+        ref=ref)
+        for xLoc in PutativeIntraXLocs if xLoc.nsegments != 0]))
+    print("XLocVCFLinesIntra: {}".format(XLocVCFLinesIntra))
+    # Now preparing for interchromosomal translocation detection
+    """
+    MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB",
+                                                   minMQ=minMQ, minBQ=minBQ)
     ContigSets = [i.split(',') for i in list(set([','.join(sorted([
         pair.read1_contig,
         pair.read2_contig])) for pair in MDCBamRecords])) if "GL" not in i]
     PutativeInterXLocs = []
-    XLocVCFLinesIntra = list(set([TranslocationVCFLine(
-        xLoc, inBAM=xLoc.inBAM, TransType="InterchromosomalRearrangement",
-        ref=ref)
-        for xLoc in PutativeInterXLocs if xLoc.nsegments != 0]))
     for cSet in ContigSets:
         WorkingPairSet = [
             pair for pair in MDCBamRecords if
@@ -119,9 +114,12 @@ def BMFXLC(inBAM,
         PutTransReadPairSets = [
             SVSupportingReadPairs(
                 interval, inHandle=inHandle,
-                recList=[rec for rec in AllBamRecs if "MDC" in rec.opt("SV")],
-                minMQ=minMQ,
-                SVType="MDC") for interval in IntervalsToCheck]
+                recList=LoadReadsFromFile(
+                    inBAM, SVTag="MDC,ORB",
+                    minMQ=minMQ))for interval in IntervalsToCheck]
+        PutTransReadPairSets = [rp for rp in PutTransReadPairSets if
+                                sorted([rp.read1_contig,
+                                        rp.read2_contig]) == cSet]
         for event in PutTransReadPairSets:
             bedIntervalList = []
             for contig in cSet:
@@ -149,6 +147,8 @@ def BMFXLC(inBAM,
         for xLoc in PutativeInterXLocs if
         xLoc.nsegments != 0]))
     XLocVCFLines = XLocVCFLinesIntra + XLocVCFLinesInter
+    """
+    XLocVCFLines = XLocVCFLinesIntra
     for line in XLocVCFLines:
         if(line.TransType == "IntrachromosomalRearrangement"):
             if(line.NumPartners != 0 and line.TDIST >= 50000):

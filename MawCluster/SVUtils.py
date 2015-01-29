@@ -12,11 +12,13 @@ import copy
 
 
 class XLocSegment:
+
     """
     Contains evidence regarding a potential translocation. This includes the
     depth of supporting reads, the regions involved, and a list of those reads.
     TODO: Eventually remove the assertions for speed.
     """
+
     def __init__(self, interval="default", DOR="default",
                  bedIntervals="default"):
         try:
@@ -40,6 +42,7 @@ class XLocSegment:
 
 
 class PutativeXLoc:
+
     """
     Contains a list of XLocSegment objects and has a ToString method which
     produces a line with all regions (most likely only two) involved in the
@@ -47,6 +50,7 @@ class PutativeXLoc:
     basename for the bam file containing the supporting reads.
     TODO: Eventually remove the assertions for speed.
     """
+
     def __init__(self, DORList="default",
                  intervalList="default",
                  ReadPairs="default",
@@ -146,11 +150,6 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     0-based, closed-end notation) and a list of records. (All
     SV-relevant BAM records is standard.)
     """
-    SVTypes = ["LI", "MDC"]
-    if(SVType == "default"):
-        SVType = ",".join(SVTypes)
-        pl("No SV type provided, so either LI or MDC is accepted.")
-    SVType += ",ORB"
     if isinstance(dist, str):
         dist = recList[0].query_length
     assert (isinstance(bedInterval[0], str) and
@@ -182,6 +181,9 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     # case both reads are out of the bed region, so as to not artificially
     # inflate the number of supporting read families.
     RPSet = list(set(ReadPairs))
+    if(SVType == "default"):
+        print("RPSet length: {}".format(len(RPSet)))
+        return RPSet
     print("RPSet length before filtering: {}".format(len(RPSet)))
     for tag in SVType.split(','):
         RPSet = [rp for rp in RPSet if tag in rp.SVTags]
@@ -247,7 +249,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
 
 
 def PileupISClustersByPos(ClusterList, minClustDepth=5,
-                          bedfile="default", minPileupLen=8, bedDist=10000):
+                          bedfile="default", minPileupLen=8, bedDist=0):
     """
     Takes a list of lists of ReadPair objects which have been clustered by
     insert size, creates a list of intervals outside the bed capture region.
@@ -277,33 +279,30 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
             cluster, minClustDepth=minClustDepth, minPileupLen=minPileupLen)
         # print(repr(PosCounts))
         # Make a list of coordinates for investigating
-        bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
+        intervalList = HTSUtils.CreateIntervalsFromCounter(
             PosCounts, minPileupLen=minPileupLen,
             contig=ClusterList[0][0].read1_contig)
         pl("Number of intervals to investigate: {}".format(
-            len(bedIntervalList)))
+            len(intervalList)))
         # Grab each region which lies outside of the bed file.
-        bedIntervalList = [line for line in bedIntervalList if
-                           HTSUtils.IntervalOverlapsBed(line,
-                                                        bedIntervals=bedfile,
-                                                        bedDist=bedDist)]
-        pl("Number of intervals which passed the \"bedfilter"
-           "\" within distance {}: {}".format(bedDist, len(bedIntervalList)))
-        pl("bedIntervalList repr: {}".format(repr(bedIntervalList)))
-        bedIntervalList = [line for line in bedIntervalList if
-                           HTSUtils.IntervalOverlapsBed(line,
-                                                        bedIntervals=bedfile)]
+        intervalList = [line for line in intervalList if
+                        HTSUtils.IntervalOverlapsBed(line, bedfile)
+                        is False]
         pl("Number of intervals which overlap the bed direct"
-           "ly: {}".format(len(bedIntervalList)))
-        pl("bedIntervalList repr: {}".format(repr(bedIntervalList)))
-        PotTransIntervals += bedIntervalList
+           "ly: {}".format(len(intervalList)))
+        pl("intervalList repr: {}".format(repr(intervalList)))
+        PotTransIntervals += intervalList
     PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
-    pl("Number of intervals outside of bed for investigation: {}".format())
+    pl("Number of intervals outside of bed for investigation: {}".format(
+        len(PotTransIntervals)))
     pl("PotTransIntervals repr: {}".format(PotTransIntervals))
+    return PotTransIntervals
+    """
     MergedPTIs = []
     for pti in PotTransIntervals:
         if("workingPTI" not in locals()):
             workingPTI = copy.copy(pti)
+            MergedPTIs.append(workingPTI)
         else:
             if(pti[1] - 1 == workingPTI[2]):
                 workingPTI = [pti[0], workingPTI[1], pti[2]]
@@ -311,9 +310,11 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
                 MergedPTIs.append(workingPTI)
                 del workingPTI
     return MergedPTIs
+    """
 
 
 class TranslocationVCFLine:
+
     def __init__(self, PutativeXLocObj, ref="default", inBAM="default",
                  TransType="UnspecifiedSV"):
         assert isinstance(PutativeXLocObj, PutativeXLoc)

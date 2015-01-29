@@ -817,6 +817,31 @@ def ReadPairPassesMinQ(Pair, minMQ=0, minBQ=0):
         return True
 
 
+def LoadReadsFromFile(inBAM, SVTag="default", minMQ=0,
+                      minFamSize="default"):
+    RecordsArray = []
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    while True:
+        try:
+            RecordsArray.append(inHandle.next())
+        except StopIteration:
+            break
+    RecordsArray = [rec for rec in RecordsArray if rec.mapq >= minMQ]
+    if(SVTag != "default"):
+        for tag in SVTag.split(','):
+            RecordsArray = [rec for rec in RecordsArray if tag
+                            in rec.opt("SV")]
+    if(minFamSize != "default"):
+        try:
+            minFamSize = int(minFamSize)
+        except ValueError:
+            FacePalm("Minimum family size must be castable to int!")
+        RecordsArray = [rec for rec in RecordsArray if
+                        rec.opt("FM") >= minFamSize]
+    inHandle.close()
+    return RecordsArray
+
+
 def LoadReadPairsFromFile(inBAM, SVTag="default",
                           minMQ=0, minBQ=0):
     """
@@ -846,10 +871,11 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
                 # print("Stopping iterations...")
                 break
     else:
-        try:
-            RecordsArray.append(GetReadPair(inHandle))
-        except StopIteration:
-            pass
+        while True:
+            try:
+                RecordsArray.append(GetReadPair(inHandle))
+            except StopIteration:
+                break
     if("LI" in tags):
         return sorted(RecordsArray, key=lambda read: abs(read.insert_size))
     else:
