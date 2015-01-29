@@ -946,9 +946,8 @@ class Interval:
 
 
 def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
-                               bedIntervals="default", keepInBed=False,
-                               returnIntervals=False, mergeDist=0,
-                               minClustDepth=5):
+                               bedIntervals="default",
+                               mergeDist=0, minClustDepth=5):
     """
     From a Counter object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -960,12 +959,6 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     assert isinstance(CounterObj, dict)
     CounterObj = dict([i for i in CounterObj.items()
                       if i[1] >= minClustDepth])
-    if(keepInBed is False):
-        try:
-            assert isinstance(bedIntervals, str) is False
-        except AssertionError:
-            print(repr(bedIntervals))
-            raise ValueError("OMGZ")
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):
@@ -1003,7 +996,4 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
             workingIntval = copy.copy(intval)
     MergedInts.append(intval)
     print("MergedInts={}".format(MergedInts))
-    if(returnIntervals is True):
-        return Interval(MergedInts)
-    else:
-        return MergedInts
+    return MergedInts

@@ -9,6 +9,14 @@ from utilBMF import HTSUtils
 
 """
 Contains various utilities for working with barcoded fastq files.
+TODO: Convert fastq reading to pysam.FastqFile (reading)
+and to writing as a string
+FastqStr = "\n".join(["@" + c.name + c.comment, c.sequence , "+", c.quality])
+FastqSetStr = "\n".join(["\n".join(["@" + c.name + c.comment, c.sequence ,
+    "+", c.quality]) for c in FastqRecordsList])
+GzipFastqSetStr = zlib.compress(FastqSetStr)
+This will add support for gzipped FastqFiles as well as some
+significant performance increases.
 """
 
 

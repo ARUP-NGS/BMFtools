@@ -1,7 +1,6 @@
 from MawCluster.SVUtils import *
 from utilBMF import HTSUtils
 
-import copy
 import pudb
 
 
@@ -77,7 +76,9 @@ def BMFXLC(inBAM,
         PutTransReadPairSets = [
             SVSupportingReadPairs(interval,
                                   inHandle=inHandle,
-                                  recList=copy.copy(AllBamRecs),
+                                  recList=[rec for rec in AllBamRecs if "LI"
+                                           in rec.opt("SV") and "ORB" in
+                                           rec.opt("SV")],
                                   minMQ=minMQ,
                                   SVType="LI")
             for interval in PutXIntervals]
@@ -118,8 +119,7 @@ def BMFXLC(inBAM,
         PutTransReadPairSets = [
             SVSupportingReadPairs(
                 interval, inHandle=inHandle,
-                recList=copy.copy(
-                    AllBamRecs),
+                recList=[rec for rec in AllBamRecs if "MDC" in rec.opt("SV")],
                 minMQ=minMQ,
                 SVType="MDC") for interval in IntervalsToCheck]
         for event in PutTransReadPairSets:
@@ -127,8 +127,7 @@ def BMFXLC(inBAM,
             for contig in cSet:
                 bedIntervalList.append(HTSUtils.CreateIntervalsFromCounter(
                     HTSUtils.ReadPairListToCovCounter(
-                        event,
-                        minClustDepth=minClustDepth,
+                        event, minClustDepth=minClustDepth,
                         minPileupLen=minPileupLen),
                     minPileupLen=minPileupLen,
                     contig=contig,

@@ -95,8 +95,8 @@ class PutativeXLoc:
             HTSUtils.WritePairToHandle(ReadPair, handle=outHandle)
 
 
-def ClusterByInsertSize(ReadPairs, distance="default",
-                        insDistance="default"):
+def ClusterByInsertSize(ReadPairs,
+                        insDistance="default", minClustSize=3):
     """
     Takes a list of ReadPair objects and return a list of lists of ReadPair
     objects. Each list of ReadPair objects has been clustered by insert size.
@@ -136,7 +136,7 @@ def ClusterByInsertSize(ReadPairs, distance="default",
             workingSet = []
     if(len(workingSet) != 0):
         ClusterList.append(workingSet)
-    return [i for i in ClusterList if len(i) >= 5]
+    return [i for i in ClusterList if len(i) >= minClustSize]
 
 
 def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
@@ -163,14 +163,14 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     ReadOutBedList = [rec for rec in recList if
                       HTSUtils.ReadWithinDistOfBedInterval(rec,
                                                            bedLine=bedInterval,
-                                                           dist=dist) if
-                      rec.mapq >= minMQ]
+                                                           dist=dist)
+                      and rec.mapq >= minMQ]
     ReadMateInBed = []
     for read in ReadOutBedList:
         try:
             ReadMateInBed.append(inHandle.mate(read))
         except ValueError:
-            pl("Read mate not included, as it is unmapped.")
+            # pl("Read mate not included, as it is unmapped.")
             pass
     ReadPairs = []
     for out, inside in zip(ReadOutBedList, ReadMateInBed):
@@ -279,20 +279,27 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
         # Make a list of coordinates for investigating
         bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
             PosCounts, minPileupLen=minPileupLen,
-            contig=ClusterList[0][0].read1_contig,
-            bedIntervals=bedfile)
+            contig=ClusterList[0][0].read1_contig)
+        pl("Number of intervals to investigate: {}".format(
+            len(bedIntervalList)))
         # Grab each region which lies outside of the bed file.
-        RegionsToPull = []
-        for bedLine in bedIntervalList:
-            if(HTSUtils.IntervalOverlapsBed(bedLine, bedIntervals=bedfile,
-                                            bedDist=bedDist)
-               is False):
-                RegionsToPull.append(bedLine)
-            else:
-                FacePalm("Something's not working as hoped - regions not"
-                         " in bed should have been filtered out already.")
-        PotTransIntervals += RegionsToPull
+        bedIntervalList = [line for line in bedIntervalList if
+                           HTSUtils.IntervalOverlapsBed(line,
+                                                        bedIntervals=bedfile,
+                                                        bedDist=bedDist)]
+        pl("Number of intervals which passed the \"bedfilter"
+           "\" within distance {}: {}".format(bedDist, len(bedIntervalList)))
+        pl("bedIntervalList repr: {}".format(repr(bedIntervalList)))
+        bedIntervalList = [line for line in bedIntervalList if
+                           HTSUtils.IntervalOverlapsBed(line,
+                                                        bedIntervals=bedfile)]
+        pl("Number of intervals which overlap the bed direct"
+           "ly: {}".format(len(bedIntervalList)))
+        pl("bedIntervalList repr: {}".format(repr(bedIntervalList)))
+        PotTransIntervals += bedIntervalList
     PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
+    pl("Number of intervals outside of bed for investigation: {}".format())
+    pl("PotTransIntervals repr: {}".format(PotTransIntervals))
     MergedPTIs = []
     for pti in PotTransIntervals:
         if("workingPTI" not in locals()):

@@ -88,7 +88,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                                  summary=(namesortedRealignedFull[0:-4] +
                                           '.SV.txt'))
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
-        "to translocations."))
+        "to structural variants."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to an error.")
@@ -117,13 +117,6 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75):
     FamFq2 = FamFqs[1]
     SingleFq1 = SingleFqs[0]
     SingleFq2 = SingleFqs[1]
-    """
-    TODO: Write this step
-    NumberRescued = BCFastq.ShadesRescuePaired(SingleFq1, SingleFq2,
-                                               appendFq1=FamFq1,
-                                               appendFq2=FamFq2,
-                                               index=barcodeIndex)
-    """
     pl("Number of reads total: " + str(numReads))
     pl("Number of reads with >=3 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)

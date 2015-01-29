@@ -51,7 +51,6 @@ class VCFFile:
             filterOpt = filterOpt + "&" + param
         NewVCFFile = VCFFile(NewVCFEntries, self.header, self.sampleName
                              + "FilteredBy{}".format(filterOpt))
-        # TODO: make a new VCFFile object based on location.
         return NewVCFFile
 
     def update(self):
@@ -257,30 +256,6 @@ def is_reverse_to_str(boolean):
         return "forward"
     else:
         return "unmapped"
-
-
-def MPileup(inputBAM, ref,
-            bed="default",
-            outputBCF="default",
-            minbqual="20",
-            minmqual="10"):
-    if(outputBCF == "default"):
-        if(len(inputBAM.split('.')) >= 6):
-            outputBCF = inputBAM.split('.')[0] + ".fullMP.vcf"
-        else:
-            outputBCF = '.'.join(inputBAM.split('.')[0:-1]) + ".fullMP.vcf"
-    if(bed != "default"):
-        cmd = ("samtools mpileup -f {} -F 0.0000001 ".format(ref) +
-               "-g -R -q " + minmqual + " -Q " + minbqual +
-               " -l {} {}".format(bed, inputBAM) +
-               " | bcftools view - > {}".format(outputBCF))
-    else:
-        cmd = ("samtools mpileup -f {} -F 0.0000001 ".format(ref) +
-               "-I -S -g -D -R -q " + minmqual + " -Q " + minbqual +
-               " " + inputBAM + " | bcftools view - > {}".format(outputBCF))
-    pl("{} is command string".format(cmd))
-    subprocess.check_call(cmd, shell=True)
-    return outputBCF
 
 
 def ParseVCF(inputVCFName):

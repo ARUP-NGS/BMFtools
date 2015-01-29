@@ -3,6 +3,7 @@ import subprocess
 import os
 import shutil
 import logging
+from collections import Counter
 
 from Bio import SeqIO
 import pysam
@@ -740,20 +741,21 @@ def singleFilterBam(inputBAM, passBAM="default",
     return passBAM, failBAM
 
 
-def splitBAMByReads(BAM, read1BAM="default", read2BAM="default"):
-    pl("splitBAMByReads. Input: {}".format(BAM))
-    presplitBAM = pysam.Samfile(BAM, "rb")
-    if(read1BAM == "default"):
-        read1BAM = '.'.join(BAM.split('.')[0:-1]) + '.R1.bam'
-    if(read2BAM == "default"):
-        read2BAM = '.'.join(BAM.split('.')[0:-1]) + '.R2.bam'
-    out1 = pysam.Samfile(read1BAM, "wb", template=presplitBAM)
-    out2 = pysam.Samfile(read2BAM, "wb", template=presplitBAM)
-    for entry in presplitBAM:
-        if(entry.is_read1):
-            out1.write(entry)
-        if(entry.is_read2):
-            out2.write(entry)
-    out1.close()
-    out2.close()
-    return read1BAM, read2BAM
+def ReadPairIsDuplex(readPair, minShare="default"):
+    """
+    If minShare is an integer, require that many nucleotides
+    overlapping to count it as duplex.
+    """
+    if(isinstance(minShare, int)):
+        minLen = minShare
+    elif(isinstance(minShare, float)):
+        minLen = int(minShare * readPair.read1.query_length)
+    elif(minShare == "default"):
+        minLen = readPair.read1.query_length / 2
+    if(readPair.read1_contig != readPair.read2_contig):
+        return False
+    if(len([x for x in Counter(readPair.read1.get_reference_positions() +
+                               readPair.read2.get_reference_positions(
+                                   )).values() if x >= 2]) >= minLen):
+        return True
+    return False
