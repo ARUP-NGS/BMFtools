@@ -855,25 +855,25 @@ def AlleleFrequenciesByBase(inputBAM,
     return outputTsv
 
 
-def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
+def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
     """
     Takes a bam file and creates a bed file containing each position
     """
     pl(("Command required to reproduce this call: "
-        "BamToCoverageBed(\"{}\", outbed=".format(inbam) +
+        "BamToCoverageBed(\"{}\", outbed=".format(inBAM) +
         "\"{}\", mincov={})".format(outbed, mincov)))
     pl(("WARNING: Coverage counts for this script"
         " are wrong. Fix in the works!"
         " It seems to only show up for very long regions."))
     if(outbed == "default"):
-        outbed = inbam[0:-4] + ".doc.bed"
-    subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+        outbed = inBAM[0:-4] + ".doc.bed"
+    subprocess.check_call(shlex.split("samtools index {}".format(inBAM)),
                           shell=False)
-    if(os.path.isfile(inbam + ".bai") is False):
+    if(os.path.isfile(inBAM + ".bai") is False):
         pl("Bam index file was not created. Sorting and indexing.")
-        inbam = HTSUtils.CoorSortAndIndexBam(inbam)
-        pl("Sorted BAM Location: {}".format(inbam))
-    inHandle = pysam.AlignmentFile(inbam, "rb")
+        inBAM = HTSUtils.CoorSortAndIndexBam(inBAM)
+        pl("Sorted BAM Location: {}".format(inBAM))
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(outbed, "w")
     workingChr = 0
     workingPos = 0
@@ -948,7 +948,7 @@ def BamToCoverageBed(inbam, outbed="default", mincov=5, minMQ=0, minBQ=0):
     pass
 
 
-def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
+def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                           outbed="default"):
     """
     Calculates DOC and creates a bed file containing coverage information
@@ -956,22 +956,22 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     a given minimum mapping quality or base quality.
     """
     if(outbed == "default"):
-        outbed = inbam[0:-4] + ".doc.bed"
+        outbed = inBAM[0:-4] + ".doc.bed"
     pl(("Command required to reproduce this call: "
-        "CalcWithinBedCoverage(\"{}\", bed=".format(inbam) +
+        "CalcWithinBedCoverage(\"{}\", bed=".format(inBAM) +
         "\"{}\", minMQ=\"{}\", minBQ=".format(bed, minMQ) +
         "\"{}\", outbed=\"{}\")".format(minBQ, outbed)))
     if(bed == "default"):
         pl("Bed file required for CalcWithinBedCoverage")
         raise ThisIsMadness("Bedfile required for calculating coverage.")
     bedLines = HTSUtils.ParseBed(bed)
-    subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+    subprocess.check_call(shlex.split("samtools index {}".format(inBAM)),
                           shell=False)
-    if(os.path.isfile(inbam + ".bai") is False):
+    if(os.path.isfile(inBAM + ".bai") is False):
         pl("Bam index file could not be created. Sorting and indexing.")
-        inbam = HTSUtils.CoorSortAndIndexBam(inbam)
-        pl("Sorted BAM Location: {}".format(inbam))
-    inHandle = pysam.AlignmentFile(inbam, "rb")
+        inBAM = HTSUtils.CoorSortAndIndexBam(inBAM)
+        pl("Sorted BAM Location: {}".format(inBAM))
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(outbed, "w")
     outHandle.write("\t".join(["#Chr", "Start", "End",
                                "Number Of Merged Mapped Bases",
@@ -1012,7 +1012,7 @@ def CalcWithinBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     return outbed
 
 
-def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
+def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                            outbed="default"):
     """
     Calculates DOC and creates a bed file containing each position
@@ -1020,22 +1020,22 @@ def CalcWithoutBedCoverage(inbam, bed="default", minMQ=0, minBQ=0,
     quality or base quality.
     """
     if(outbed == "default"):
-        outbed = inbam[0:-4] + ".doc.SBI.bed"
+        outbed = inBAM[0:-4] + ".doc.SBI.bed"
     pl(("Command required to reproduce this call: "
-        "CalcWithoutBedCoverage(\"{}\", bed=".format(inbam) +
+        "CalcWithoutBedCoverage(\"{}\", bed=".format(inBAM) +
         "\"{}\", minMQ=\"{}\", minBQ=".format(bed, minMQ) +
         "\"{}\", outbed={})".format(minBQ, outbed)))
     if(bed == "default"):
         pl("Bed file required for CalcWithoutBedCoverage")
         raise ThisIsMadness("Bedfile required for calculating coverage.")
     bedLines = HTSUtils.ParseBed(bed)
-    subprocess.check_call(shlex.split("samtools index {}".format(inbam)),
+    subprocess.check_call(shlex.split("samtools index {}".format(inBAM)),
                           shell=False)
-    if(os.path.isfile(inbam + ".bai") is False):
+    if(os.path.isfile(inBAM + ".bai") is False):
         pl("Bam index file could not be created. Sorting and indexing.")
-        inbam = HTSUtils.CoorSortAndIndexBam(inbam)
-        pl("Sorted BAM Location: {}".format(inbam))
-    inHandle = pysam.AlignmentFile(inbam, "rb")
+        inBAM = HTSUtils.CoorSortAndIndexBam(inBAM)
+        pl("Sorted BAM Location: {}".format(inBAM))
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(outbed, "w")
     outHandle.write("\t".join(["#Chr", "Start", "End",
                                "Number Of Merged Mapped Bases",

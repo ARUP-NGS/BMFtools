@@ -4,6 +4,8 @@ import os
 import shutil
 import logging
 from collections import Counter
+import numpy as np
+import copy
 
 from Bio import SeqIO
 import pysam
@@ -11,10 +13,11 @@ import pysam
 from MawCluster import BCFastq
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
+from __builtin__ import False
 
 
-def AbraCadabra(inbam,
-                outbam="default",
+def AbraCadabra(inBAM,
+                outBAM="default",
                 jar="default",
                 memStr="default",
                 ref="default",
@@ -46,18 +49,18 @@ def AbraCadabra(inbam,
     else:
         pl("Bed file set: {}.".format(bed))
     if(working == "default"):
-        working = inbam.split('.')[0] + ".working_dir"
+        working = inBAM.split('.')[0] + ".working_dir"
         pl("Default working directory set to be: " + working)
     else:
         pl("Non-default working directory: " + working)
     if(log == "default"):
         log = "abra.log"
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + '.abra.bam'
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.abra.bam'
     from os import path
     pl(("Command to reproduce the call of this function: "
-        "AbraCadabra(\"{}\", outbam=\"{}\", jar=\"{}\", ".format(inbam,
-                                                                 outbam,
+        "AbraCadabra(\"{}\", outBAM=\"{}\", jar=\"{}\", ".format(inBAM,
+                                                                 outBAM,
                                                                  jar) +
         "memStr=\"{}\", ref=\"{}\", threads=\"{}\", ".format(memStr,
                                                              ref, threads) +
@@ -75,48 +78,48 @@ def AbraCadabra(inbam,
                               shell=True)
         bed = newbed
     import os.path
-    if(os.path.isfile(inbam + ".bai") is False):
+    if(os.path.isfile(inBAM + ".bai") is False):
         pl("No bam index found for input bam - attempting to create.")
-        subprocess.check_call(['samtools', 'index', inbam])
-        if(os.path.isfile(inbam + ".bai") is False):
-            inbam = HTSUtils.CoorSortAndIndexBam(inbam, outbam, uuid=True)
-    command = ("java {} -jar {} --in {}".format(memStr, jar, inbam) +
-               " --out {} --ref {} --targets".format(outbam, ref) +
+        subprocess.check_call(['samtools', 'index', inBAM])
+        if(os.path.isfile(inBAM + ".bai") is False):
+            inBAM = HTSUtils.CoorSortAndIndexBam(inBAM, outBAM, uuid=True)
+    command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
+               " --out {} --ref {} --targets".format(outBAM, ref) +
                " {} --threads {} ".format(bed, threads) +
                "--working {}".format(working))
     pl("Command: {}.".format(command))
     subprocess.check_call(shlex.split(command), shell=False)
-    return outbam
+    return outBAM
 
 
-def Bam2Sam(inbam, outsam):
-    pl("Bam2Sam. Input: {}. Output: {}.".format(inbam, outsam))
+def Bam2Sam(inBAM, outsam):
+    pl("Bam2Sam. Input: {}. Output: {}.".format(inBAM, outsam))
     output = open(outsam, 'w', 0)
-    command_str = 'samtools view -h {}'.format(inbam)
+    command_str = 'samtools view -h {}'.format(inBAM)
     pl(command_str)
     subprocess.check_call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outsam)
 
 
-def BarcodeSort(inbam, outbam="default", paired=True):
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + "barcodeSorted.bam"
-    pl("BarcodeSort. Input: {}. Output: {}.".format(inbam, outbam))
-    outsam = '.'.join(outbam.split('.')[0:-1]) + ".sam"
-    headerCommand = "samtools view -H {}".format(inbam)
+def BarcodeSort(inBAM, outBAM="default", paired=True):
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "barcodeSorted.bam"
+    pl("BarcodeSort. Input: {}. Output: {}.".format(inBAM, outBAM))
+    outsam = '.'.join(outBAM.split('.')[0:-1]) + ".sam"
+    headerCommand = "samtools view -H {}".format(inBAM)
     pl(headerCommand)
     subprocess.check_call(shlex.split(headerCommand),
                           shell=False, stdout=outsam)
     pl("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
-        cmd = ("samtools view {} | ".format(inbam) +
+        cmd = ("samtools view {} | ".format(inBAM) +
                "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
                "$(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam))
         pl(
             "Command string for this sorting process is: {}".format(cmd))
         HTSUtils.PipedShellCall(cmd)
     else:
-        cmd = ("samtools view {} | ".format(inbam) +
+        cmd = ("samtools view {} | ".format(inBAM) +
                "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
                "$(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam))
         pl(
@@ -124,36 +127,109 @@ def BarcodeSort(inbam, outbam="default", paired=True):
         HTSUtils.PipedShellCall(cmd)
     pl("Now converting sam back to bam for further operations.")
     subprocess.check_call(shlex.split("samtools view -Sbh {}".format(outsam)),
-                          shell=False, stdout=outbam)
+                          shell=False, stdout=outBAM)
     os.remove(outsam)
-    return outbam
+    return outBAM
 
 
-def compareRecs(RecordList, stringency=0.9):
-    seqs = [record.seq for record in RecordList]
-    max = 0
-    Success = False
-    for seq in seqs:
-        pl("Seq: {}".format(seq))
-        numEq = sum(seq == seqItem for seqItem in seqs)
-        if(numEq > max):
-            max = numEq
-            finalSeq = seq
-    frac = numEq * 1.0 / len(RecordList)
-    pl("Fraction {}. Stringency: {}. Pass? {}.".format(
-        frac, stringency, (frac > stringency)))
-    if(frac > stringency):
-        Success = True
-    consolidatedRecord = RecordList[0]
-    consolidatedRecord.seq = finalSeq
-    return consolidatedRecord, Success
+def compareRecs(RecordList):
+    Success = True
+    letterNumDict = {}
+    letterNumDict['A'] = 0
+    letterNumDict['C'] = 1
+    letterNumDict['G'] = 2
+    letterNumDict['T'] = 3
+    letterNumDict[0] = 'A'
+    letterNumDict[1] = 'C'
+    letterNumDict[2] = 'G'
+    letterNumDict[3] = 'T'
+    seqs = [str(record.seq) for record in RecordList]
+    stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
+    seqArray = np.vstack(stackArrays)
+    # print(repr(seqArray))
+
+    def dAccess(x):
+        return letterNumDict[x]
+    dAccess = np.vectorize(dAccess)
+    quals = np.array([record.query_qualities
+                      for record in RecordList])
+    qualA = copy.copy(quals)
+    qualC = copy.copy(quals)
+    qualG = copy.copy(quals)
+    qualT = copy.copy(quals)
+    qualA[seqArray != "A"] = 0
+    qualASum = np.sum(qualA, 0)
+    qualC[seqArray != "C"] = 0
+    qualCSum = np.sum(qualC, 0)
+    qualG[seqArray != "G"] = 0
+    qualGSum = np.sum(qualG, 0)
+    qualT[seqArray != "T"] = 0
+    qualTSum = np.sum(qualT, 0)
+    qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
+    newSeq = "".join(
+        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
+    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
+                             np.sum(qualAllSum, 0))
+    phredQuals[phredQuals < 0] = 0
+    outRec = RecordList[0]
+    outRec.seq = newSeq
+    outRec.query_qualities = phredQuals
+    if(np.any(np.greater(phredQuals, 93))):
+        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
+    return outRec, Success
 
 
-def Consolidate(inbam, outbam="default", stringency=0.9):
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.Samfile(inbam, 'rb')
-    outputHandle = pysam.Samfile(outbam, 'wb', template=inputHandle)
+def ConsolidateInferred(inBAM, outBAM="default"):
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
+    inputHandle = pysam.Samfile(inBAM, 'rb')
+    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
+    workBC1 = ""
+    workBC2 = ""
+    Set1 = []
+    Set2 = []
+    for record in inputHandle:
+        if(record.is_read1):
+            barcodeRecord1 = record.opt("RP")
+            if(workBC1 == ""):
+                workBC1 = barcodeRecord1
+                Set1 = []
+                Set1.append(record)
+            elif(workBC1 == barcodeRecord1):
+                Set1.append(record)
+            else:
+                mergeRec1, success = compareRecs(Set1)
+                if(success is False):
+                    mergeRec1.setTag("FP", 0)
+                outputHandle.write(mergeRec1)
+                Set1 = [record]
+                workBC1 = barcodeRecord1
+        if(record.is_read2):
+            barcodeRecord2 = record.opt("RP")
+            if(workBC2 == ""):
+                workBC2 = barcodeRecord2
+                Set2 = []
+                Set2.append(record)
+            elif(workBC2 == barcodeRecord2):
+                Set2.append(record)
+            else:
+                mergeRec2, success = compareRecs(Set2)
+                if(success is False):
+                    mergeRec2.setTag("FP", 0)
+                outputHandle.write(mergeRec2)
+                Set2 = [record]
+                workBC2 = barcodeRecord2
+    inputHandle.close()
+    outputHandle.close()
+    return outBAM
+
+
+def Consolidate(inBAM, outBAM="default"):
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
+    inputHandle = pysam.Samfile(inBAM, 'rb')
+    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
     workBC1 = ""
     workBC2 = ""
     Set1 = []
@@ -168,11 +244,11 @@ def Consolidate(inbam, outbam="default", stringency=0.9):
             elif(workBC1 == barcodeRecord1):
                 Set1.append(record)
             else:
-                mergeRec1, success = compareRecs(Set1, stringency=stringency)
-                if(success is True):
-                    outputHandle.write(mergeRec1)
-                WorkingSet1 = []
-                WorkingSet1.append(record)
+                mergeRec1, success = compareRecs(Set1)
+                if(success is False):
+                    mergeRec1.setTag("FP", 0)
+                outputHandle.write(mergeRec1)
+                Set1 = [record]
                 workBC1 = barcodeRecord1
         if(record.is_read2):
             barcodeRecord2 = record.opt("BS")
@@ -183,29 +259,29 @@ def Consolidate(inbam, outbam="default", stringency=0.9):
             elif(workBC2 == barcodeRecord2):
                 Set2.append(record)
             else:
-                mergeRec2, success = compareRecs(Set2, stringency=stringency)
-                if(success is True):
-                    outputHandle.write(mergeRec2)
-                WorkingSet2 = []
-                WorkingSet2.append(record)
+                mergeRec2, success = compareRecs(Set2)
+                if(success is False):
+                    mergeRec2.setTag("FP", 0)
+                outputHandle.write(mergeRec2)
+                Set2 = [record]
                 workBC2 = barcodeRecord2
     inputHandle.close()
     outputHandle.close()
-    return outbam
+    return outBAM
 
 
-def CoorSort(inbam, outbam="default"):
+def CoorSort(inBAM, outBAM="default"):
     import uuid
-    pl("CorrSort. Input: {}".format(inbam))
-    pl("inbam variable is {}".format(inbam))
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + ".CoorSort.bam"
-    command_str = ("samtools sort {} -o {} -T test".format(inbam, outbam) +
+    pl("CorrSort. Input: {}".format(inBAM))
+    pl("inBAM variable is {}".format(inBAM))
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + ".CoorSort.bam"
+    command_str = ("samtools sort {} -o {} -T test".format(inBAM, outBAM) +
                    str(uuid.uuid4().get_hex().upper()[0:8]))
     pl(command_str)
     subprocess.check_call(shlex.split(command_str), shell=False)
-    subprocess.check_call(["samtools", "index", outbam])
-    return(outbam)
+    subprocess.check_call(["samtools", "index", outBAM])
+    return(outBAM)
 
 
 def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
@@ -355,17 +431,17 @@ def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default",
     return output, passBC
 
 
-def mergeBams(BAM1, BAM2, PT="default", outbam="default"):
+def mergeBams(BAM1, BAM2, PT="default", outBAM="default"):
     pl("mergeBams. BAM1: {}. BAM2: {}".format(BAM1, BAM2))
     if(PT == "default"):
         PT = "/mounts/bin/picard-tools"
-    if(outbam == "default"):
-        outbam = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
+    if(outBAM == "default"):
+        outBAM = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
     command = ("java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1) +
-               " I={} O={} SO=coordinate AS=true".format(BAM2, outbam))
+               " I={} O={} SO=coordinate AS=true".format(BAM2, outBAM))
     subprocess.check_call(shlex.split(command), shell=False)
     pl("Command string for merging was: {}".format(command))
-    return outbam
+    return outBAM
 
 
 def mergeBarcodes(reads1, reads2, outfile="default"):
@@ -410,7 +486,7 @@ def pairedBarcodeTagging(
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag > 2048):
+        if(entry.is_secondary or entry.flag >> 11 == 1):
             suppBAM.write(entry)
             continue
         if(not entry.is_paired):
@@ -517,20 +593,20 @@ def removeSecondary(inBAM, outBAM="default"):
     output = pysam.Samfile(outBAM, "wb", template=input)
     pl(("Attempting to remove secondary"))
     for entry in input:
-        if(entry.is_secondary or entry.flag > 2048):
+        if(entry.is_secondary or entry.flag >> 11 == 1):
             continue
         else:
             output.write(entry)
     return outBAM
 
 
-def Sam2Bam(insam, outbam):
-    pl("Sam2Bam converting {} to {}".format(insam, outbam))
-    output = open(outbam, 'w', 0)
+def Sam2Bam(insam, outBAM):
+    pl("Sam2Bam converting {} to {}".format(insam, outBAM))
+    output = open(outBAM, 'w', 0)
     command_str = 'samtools view -Sbh {}'.format(insam)
     pl((command_str))
     subprocess.check_call(shlex.split(command_str), stdout=output, shell=False)
-    return(command_str, outbam)
+    return(command_str, outBAM)
 
 
 # Taken from Scrutils, by Jacob Durtschi
@@ -570,7 +646,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag > 2048):
+        if(entry.is_secondary or entry.flag >> 11 == 1):
             suppBAM.write(entry)
             continue
         else:
@@ -596,12 +672,12 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     return outputBAM
 
 
-def SingleConsolidate(inbam, outbam="default", stringency=0.9):
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + "consolidated.bam"
-    pl("SingleConsolidate. Input: {}. Output: {}".format(inbam, outbam))
-    inputHandle = pysam.Samfile(inbam, 'rb')
-    outputHandle = pysam.Samfile(outbam, 'wb', template=inputHandle)
+def SingleConsolidate(inBAM, outBAM="default"):
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
+    pl("SingleConsolidate. Input: {}. Output: {}".format(inBAM, outBAM))
+    inputHandle = pysam.Samfile(inBAM, 'rb')
+    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
     workBC = ""
     Set = []
     for record in inputHandle:
@@ -634,7 +710,7 @@ def SingleConsolidate(inbam, outbam="default", stringency=0.9):
             Set.append(record)
             continue
         elif(workBC != barcodeRecord):
-            mergeRec, success = compareRecs(Set, stringency=stringency)
+            mergeRec, success = compareRecs(Set)
             if(success is True):
                 outputHandle.write(mergeRec)
             Set = []
@@ -645,7 +721,7 @@ def SingleConsolidate(inbam, outbam="default", stringency=0.9):
             raise RuntimeError("This code should be unreachable")
     inputHandle.close()
     outputHandle.close()
-    return outbam
+    return outBAM
 
 
 def singleCriteriaTest(read, filter="default"):

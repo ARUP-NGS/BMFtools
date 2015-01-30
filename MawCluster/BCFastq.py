@@ -132,6 +132,7 @@ def compareFastqRecordsInexactNumpy(R):
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
                              np.sum(qualAllSum, 0))
+    phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
     consolidatedRecord = SeqRecord(
         seq=newSeq,
@@ -141,7 +142,6 @@ def compareFastqRecordsInexactNumpy(R):
     if(np.any(np.greater(phredQuals, 93))):
         consolidatedRecord.description += (" #G~PV=" +
                                            ",".join(phredQuals.astype(str)))
-    phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals > 93] = 93
     consolidatedRecord.letter_annotations[
         'phred_quality'] = phredQuals.tolist()

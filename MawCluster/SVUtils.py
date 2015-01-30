@@ -501,7 +501,7 @@ SVParamDict['ORB'] = "default"
 SVParamDict['SBI'] = ["default", 100000]
 
 
-def GetSVRelevantRecordsPaired(inbam, SVBam="default",
+def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
                                bedfile="default",
                                supplementary="default",
                                maxInsert=100000,
@@ -528,9 +528,9 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
     NF for None Found
     """
     if(SVBam == "default"):
-        SVBam = '.'.join(inbam.split('.')[0:-1]) + '.sv.bam'
+        SVBam = '.'.join(inBAM.split('.')[0:-1]) + '.sv.bam'
     if(FullBam == "default"):
-        FullBam = '.'.join(inbam.split('.')[0:-1]) + '.SVmarked.bam'
+        FullBam = '.'.join(inBAM.split('.')[0:-1]) + '.SVmarked.bam'
     from utilBMF.HTSUtils import ParseBed
     bed = ParseBed(bedfile)
     global SVParamDict
@@ -543,7 +543,7 @@ def GetSVRelevantRecordsPaired(inbam, SVBam="default",
         SVCountDict[key] = 0
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
-    inHandle = pysam.AlignmentFile(inbam, "rb")
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
     SVOutHandle = pysam.AlignmentFile(SVBam, "wb", template=inHandle)
     FullOutHandle = pysam.AlignmentFile(FullBam, "wb", template=inHandle)
     FeatureList = sorted(SVTestDict.keys())

@@ -32,13 +32,13 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         pl("No aligner set, defaulting to bwa mem.")
         aligner = "mem"
     if(aligner == "mem"):
-        outbamProperPair = HTSUtils.align_bwa_mem(
+        outBAMProperPair = HTSUtils.align_bwa_mem(
             consfq1, consfq2, ref=ref, opts=opts)
         if(consfqSingle != "default"):
             HTSUtils.FacePalm("This step is not required "
                               "or important for shades.")
     elif(aligner == "aln"):
-        outbamProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2, ref=ref,
+        outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2, ref=ref,
                                                   opts=opts)
         if(consfqSingle != "default"):
             HTSUtils.FacePalm("This step is not required "
@@ -47,7 +47,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         raise ValueError("Sorry, only bwa is supported currently.")
     pl("Now tagging BAM with custom SAM tags.")
     taggedBAM = BCBam.pairedBarcodeTagging(
-        consfq1, consfq2, outbamProperPair)
+        consfq1, consfq2, outBAMProperPair)
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
     if(abrapath != "default"):

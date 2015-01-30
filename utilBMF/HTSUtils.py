@@ -63,6 +63,7 @@ def GetRefIdDicts():
     PysamToChrDict = {}
     for i in range(22):
         PysamToChrDict[i] = str(i + 1)
+    PysamToChrDict[-1] = "*"
     PysamToChrDict[22] = "X"
     PysamToChrDict[23] = "Y"
     PysamToChrDict[24] = "MT"
@@ -129,6 +130,7 @@ def GetRefIdDicts():
     ChrToPysamDict = {}
     for i in range(22):
         ChrToPysamDict[str(i + 1)] = i
+    ChrToPysamDict["*"] = -1
     ChrToPysamDict["X"] = 22
     ChrToPysamDict["Y"] = 23
     ChrToPysamDict["MT"] = 24
@@ -321,7 +323,7 @@ def align_bowtie2(R1, R2, ref, opts, outsam):
     return(command_str)
 
 
-def align_bwa_aln(R1, R2, ref="default", opts="", outbam="default"):
+def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     """
     Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
     """
@@ -329,8 +331,8 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outbam="default"):
         FacePalm("Reference file index required for alignment!")
     if(opts == ""):
         opts = "-n 3 -t 4"
-    if(outbam == "default"):
-        outbam = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
+    if(outBAM == "default"):
+        outBAM = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
     str(uuid.uuid4().get_hex().upper()[0:8])
     R1Sai = R1 + ".tmp.sai"
     R2Sai = R2 + ".tmp.sai"
@@ -342,14 +344,14 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outbam="default"):
     PipedShellCall(alnStr2)
     sampeStr = ("bwa sampe " " " +
                 " ".join([ref, R1Sai, R2Sai, R1, R2]) +
-                " | samtools view -h - > " + outbam)
+                " | samtools view -h - > " + outBAM)
     PipedShellCall(sampeStr)
     os.remove(R1Sai)
     os.remove(R2Sai)
-    return outbam
+    return outBAM
 
 
-def align_bwa_mem(R1, R2, ref="default", opts="", outbam="default"):
+def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default"):
     """Aligns a set of paired-end
     reads to a reference
     with provided options using bwa mem.
@@ -360,20 +362,20 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outbam="default"):
     """
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -M -T 0'
-    if(outbam == "default"):
-        outbam = R1[0:-3] + "mem.bam"
+    if(outBAM == "default"):
+        outBAM = R1[0:-3] + "mem.bam"
     if(ref == "default"):
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
     command_str = ('bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2) +
-                   " | samtools view -Sbh - > {}".format(outbam))
+                   " | samtools view -Sbh - > {}".format(outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
     PipedShellCall(command_str, delete=True)
-    return outbam
+    return outBAM
 
 
-def align_bwa_mem_se(reads, ref, opts, outbam):
+def align_bwa_mem_se(reads, ref, opts, outBAM):
     """Aligns a set of reads to a reference
     with provided options. Defaults to
     4 threads, silent alignment, listing
@@ -385,20 +387,20 @@ def align_bwa_mem_se(reads, ref, opts, outbam):
         opts = '-t 4 -v 1 -Y -T 0'
     opt_concat = ' '.join(opts.split())
     command_str = ('bwa mem {} {} {}'.format(opt_concat, ref, reads) +
-                   " | samtools view -Sbh - > {}".format(outbam))
+                   " | samtools view -Sbh - > {}".format(outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
     PipedShellCall(command_str, delete=True)
-    return outbam, command_str
+    return outBAM, command_str
 
 
-def align_snap(R1, R2, ref, opts, outbam):
+def align_snap(R1, R2, ref, opts, outBAM):
     opt_concat = " ".join(opts.split())
     command_str = "snap paired {} {} {} -o {} {}".format(
         ref,
         R1,
         R2,
-        outbam,
+        outBAM,
         opt_concat)
     printlog(command_str)
     subprocess.check_call(shlex.split(command_str), shell=False)
@@ -592,25 +594,25 @@ def indexBowtie(fasta):
     return
 
 
-def BedtoolsGenomeCov(inbam, ref="default", outfile="default"):
+def BedtoolsGenomeCov(inBAM, ref="default", outfile="default"):
     if(ref == "default"):
         raise ThisIsMadness("A reference file path must be provided!")
     if(outfile == "default"):
-        outfile = inbam[0:-3] + ".doc.txt"
+        outfile = inBAM[0:-3] + ".doc.txt"
     outfileHandle = open(outfile, "w")
     subprocess.check_call(
-        (shlex.split("bedtools genomecov -ibam {}".format(inbam) +
+        (shlex.split("bedtools genomecov -ibam {}".format(inBAM) +
                      " -dz -g {}").format(ref)), stdout=outfileHandle)
     outfileHandle.close()
     return outfile
 
 
-def BedtoolsBamToBed(inbam, outbed="default", ref="default"):
+def BedtoolsBamToBed(inBAM, outbed="default", ref="default"):
     if(ref == "default"):
         raise ThisIsMadness("A reference file path must be provided!")
     if(outbed == "default"):
-        outbed = inbam[0:-4] + ".doc.bed"
-    outfile = BedtoolsGenomeCov(inbam, ref=ref)
+        outbed = inBAM[0:-4] + ".doc.bed"
+    outfile = BedtoolsGenomeCov(inBAM, ref=ref)
     OutbedAppendingList = []
     lastPos = 0
     outbedHandle = open(outbed, "w")
@@ -629,8 +631,8 @@ def BedtoolsBamToBed(inbam, outbed="default", ref="default"):
     return outbed
 
 
-def CoorSortAndIndexBam(inbam, prefix="MetasyntacticVar",
-                        outbam="default",
+def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
+                        outBAM="default",
                         uuid="true",
                         threads="4"):
     '''
@@ -641,32 +643,32 @@ def CoorSortAndIndexBam(inbam, prefix="MetasyntacticVar",
     if("true" in str(uuid).lower()):
         import uuid
         prefix += str(uuid.uuid4().get_hex().upper()[0:8])
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + '.CoorSort.bam'
-    CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outbam) +
-                  " -@ {} {}".format(threads, inbam))
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.CoorSort.bam'
+    CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outBAM) +
+                  " -@ {} {}".format(threads, inBAM))
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Now indexing.")
-    subprocess.check_call(shlex.split("samtools index {}".format(outbam)))
-    return outbam
+    subprocess.check_call(shlex.split("samtools index {}".format(outBAM)))
+    return outBAM
 
 
-def NameSort(inbam, outbam="default", prefix="MetasyntacticVar",
+def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
              uuid="true", threads="4"):
     # If uuid is either a boolean true or is a string containing true,
     # then a random string is generated for the output
     if(str(uuid).lower() == "true"):
         import uuid
         prefix += str(uuid.uuid4().get_hex().upper()[0:8])
-    if(outbam == "default"):
-        outbam = '.'.join(inbam.split('.')[0:-1]) + '.NameSort.bam'
-    CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outbam) +
-                  " -@ {} -n {}".format(threads, inbam))
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.NameSort.bam'
+    CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outBAM) +
+                  " -@ {} -n {}".format(threads, inBAM))
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
-    printlog("Namesort successful, sorted bam available at: {}".format(outbam))
-    return outbam
+    printlog("Namesort successful, sorted bam available at: {}".format(outBAM))
+    return outBAM
 
 
 def mergeBam(samList, memoryStr="-XmX16",
