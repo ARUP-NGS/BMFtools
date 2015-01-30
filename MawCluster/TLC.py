@@ -93,9 +93,9 @@ def BMFXLC(inBAM,
         xLoc, inBAM=xLoc.inBAM, TransType="IntrachromosomalRearrangement",
         ref=ref)
         for xLoc in PutativeIntraXLocs if xLoc.nsegments != 0]))
-    print("XLocVCFLinesIntra: {}".format(XLocVCFLinesIntra))
+    print("XLocVCFLinesIntra: {}".format(",".join([i.ToString() for i in
+                                                   XLocVCFLinesIntra])))
     # Now preparing for interchromosomal translocation detection
-    """
     MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB",
                                                    minMQ=minMQ, minBQ=minBQ)
     ContigSets = [i.split(',') for i in list(set([','.join(sorted([
@@ -117,9 +117,11 @@ def BMFXLC(inBAM,
                 recList=LoadReadsFromFile(
                     inBAM, SVTag="MDC,ORB",
                     minMQ=minMQ))for interval in IntervalsToCheck]
+        PutTransReadPairSets = [rpSet for rpSet in PutTransReadPairSets if
+                                len(rpSet) != 0]
         PutTransReadPairSets = [rp for rp in PutTransReadPairSets if
-                                sorted([rp.read1_contig,
-                                        rp.read2_contig]) == cSet]
+                                sorted([rp[0].read1_contig,
+                                        rp[0].read2_contig]) == cSet]
         for event in PutTransReadPairSets:
             bedIntervalList = []
             for contig in cSet:
@@ -147,11 +149,9 @@ def BMFXLC(inBAM,
         for xLoc in PutativeInterXLocs if
         xLoc.nsegments != 0]))
     XLocVCFLines = XLocVCFLinesIntra + XLocVCFLinesInter
-    """
-    XLocVCFLines = XLocVCFLinesIntra
     for line in XLocVCFLines:
         if(line.TransType == "IntrachromosomalRearrangement"):
-            if(line.NumPartners != 0 and line.TDIST >= 50000):
+            if(line.NumPartners != 0 and line.TDIST >= 10000):
                 outHandle.write(line.ToString() + "\n")
         if(line.TransType == "InterchromosomalRearrangement"):
             if(line.NumPartners != 0):

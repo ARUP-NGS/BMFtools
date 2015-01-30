@@ -671,16 +671,16 @@ def NameSort(inbam, outbam="default", prefix="MetasyntacticVar",
 
 def mergeBam(samList, memoryStr="-XmX16",
              MergeJar="/mounts/bin/picard-tools/MergeSamFiles.jar",
-             outBam="default"):
-    if(outBam == "default"):
-        outBam = '.'.join(samList[0].split('.')[0:-1]) + '.merged.bam'
+             outBAM="default"):
+    if(outBAM == "default"):
+        outBAM = '.'.join(samList[0].split('.')[0:-1]) + '.merged.bam'
     cStr = ("java -jar " + MergeJar + " " + memoryStr + " I=" +
-            " I=".join(samList) + " O=" + outBam + " MSD=True " +
+            " I=".join(samList) + " O=" + outBAM + " MSD=True " +
             "AS=True SO=coordinate"
             )
     printlog("About to merge bams. Command string: " + cStr)
     subprocess.check_call(shlex.split(cStr))
-    return outBam
+    return outBAM
 
 
 class ReadPair:

@@ -23,6 +23,17 @@ python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --
 BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
+To use bmftools subcommands, check instructions by executing the following:
+
+```
+bmftools --help
+```
+
+```
+bmftools <subcommand> --help
+```
+
+
 ## BMF Tags
 
 These tags are used both in the fastq and the SAM/BAM files.
@@ -35,7 +46,9 @@ FP | Read Passes Filter related to barcoding | String. Required: "Pass" or "Fail
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
-PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\] ]| 
+PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\] ]|
+RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
+CS | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 
 ## Valid Tags for SV SAM tag
 
