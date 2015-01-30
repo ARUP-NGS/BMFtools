@@ -1,6 +1,7 @@
 import subprocess
 import decimal
 import numpy as np
+from itertools import tee
 
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
@@ -247,6 +248,27 @@ class VCFRecord:
     def ToString(self):
         self.update()
         return self.str
+
+
+class IterativeVCFFile:
+
+    def __init__(self, VCFFilename):
+        self.handle = open(VCFFilename, "r")
+        self.header = []
+        self.Filename = VCFFilename
+        realIterator, checker = tee(self.handle)
+        while True:
+            if(checker.next()[0] == "#"):
+                self.header.append(realIterator.next())
+            else:
+                break
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        return VCFRecord(self.handle.next().split('\t'),
+                         self.Filename)
 
 
 def is_reverse_to_str(boolean):
@@ -583,3 +605,21 @@ def SplitMultipleAlts(inVCF, outVCF="default"):
     print("Output VCF: {}".format(outVCF))
     print("Number of lines split: {}".format(count))
     return outVCF
+
+
+def GetPotentialHetsVCF(inVCF, minHetFrac=0.2,
+                        maxHetFrac=0.8, outVCF="default"):
+    if(outVCF == "default"):
+        outVCF = inVCF[0:-3] + 'het.vcf'
+    pl("Input VCF: {}.".format(inVCF))
+    pl("minHetFrac: {}.".format(minHetFrac))
+    pl("maxHetFrac: {}.".format(maxHetFrac))
+    outHandle = open(outVCF, "w")
+    IVCF = IterativeVCFFile(inVCF)
+    outHandle.write("\n".join(IVCF.header))
+    for VCFRec in IVCF:
+        hetFreq = float(VCFRec.InfoDict["AC_Het"]) * 2 / int(
+            VCFRec.InfoDict["AN"])
+        if(hetFreq >= minHetFrac and hetFreq <= maxHetFrac):
+            outHandle.write(VCFRec.ToString() + "\n")
+    outHandle.close()

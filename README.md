@@ -75,10 +75,9 @@ Faster than using a homing sequence-specified barcode (informatically). More iss
 
 Using a homing sequence as input for consolidating families of PCR duplicates.
 
-#Config JSON
+#Config file
 
-The run JSON has two main fields: "Config", which contains the system variables and general preferences, and "Analysis", which controls the the run protocol. 
-Previously, there were two config files, but they have been consolidated.
+Each line has a set of keys and values. See demo/config.txt for an example.
 
 #Changes in BMFTools v0.0.5alpha
 1. Removal of standard BMFMain in lieu of the config-based one.
