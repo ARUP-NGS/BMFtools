@@ -1,4 +1,4 @@
-#!/usr/bin/env
+#!/usr/bin/env python
 import argparse
 """
 This program is motivated by the problem of deducing the effects of

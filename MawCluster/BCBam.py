@@ -174,9 +174,10 @@ def compareRecs(RecordList):
     phredQuals[phredQuals < 0] = 0
     outRec = RecordList[0]
     outRec.seq = newSeq
-    outRec.query_qualities = phredQuals
     if(np.any(np.greater(phredQuals, 93))):
         outRec.setTag("PV", ",".join(phredQuals.astype(str)))
+    phredQuals[phredQuals > 93] = 93
+    outRec.query_qualities = phredQuals
     return outRec, Success
 
 

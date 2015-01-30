@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 from utilBMF.HTSUtils import printlog as pl
-from utilBMF.HTSUtils import *
+from utilBMF.HTSUtils import PysamToChrDict, FacePalm
 
 import pysam
+from collections import Counter
 
 
 def MarkReadPairPositions(inBAM, outBAM="default"):
@@ -18,6 +19,7 @@ def MarkReadPairPositions(inBAM, outBAM="default"):
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
     contigSets = []
+    RPSetList = []
     while True:
         try:
             while True:
@@ -39,6 +41,7 @@ def MarkReadPairPositions(inBAM, outBAM="default"):
             contigSetStr = ",".join(sorted(
                 [PysamToChrDict[read1.reference_id],
                  PysamToChrDict[read2.reference_id]]))
+            RPSetList.append(coorString)
             read1.setTag("RP", coorString)
             read2.setTag("RP", coorString)
             read1.setTag("CS", contigSetStr)
@@ -50,13 +53,18 @@ def MarkReadPairPositions(inBAM, outBAM="default"):
             break
         except AssertionError:
             FacePalm("Input BAM is not name-sorted!")
+    RPSetCounts = Counter(RPSetList)
+    RPSCHandle = open(inBAM[0:-3] + "rpsc.table", "w")
+    for key in RPSetCounts.keys():
+        RPSCHandle.write("\t".join([str(RPSetCounts[key]), str(key)]) + "\n")
+    RPSCHandle.close()
     contigSets = list(set(contigSets))
     inHandle.close()
     outHandle.close()
     returnDict = {}
     returnDict["contigSets"] = contigSets
     returnDict["outBAM"] = outBAM
-    return outHandle
+    return returnDict
 
 
 def SortBamByRPTag(inBAM, outBAM="default", contigSets="default"):
@@ -70,7 +78,10 @@ def SortBamByRPTag(inBAM, outBAM="default", contigSets="default"):
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
     pl("Now sorting BAM by RP Tags")
+    writeCount = 0
     for cSet in contigSets:
+        inHandle = pysam.AlignmentFile(inBAM, "rb")
+        readCount = 0
         pl("Working with contig set: {}".format(cSet.split(',')))
         workingSetR1 = []
         workingSetR2 = []
@@ -83,17 +94,23 @@ def SortBamByRPTag(inBAM, outBAM="default", contigSets="default"):
                     workingSetR1.append(read)
                 else:
                     workingSetR2.append(read)
+                    readCount += 1
                 continue
             except StopIteration:
                 break
             except KeyError:
                 FacePalm("CS Key not present! Use MarkReadPairPositions")
                 return 1
+            if(readCount % 1000 == 0):
+                print("Number of read pairs read into memory"
+                      " for contigSet {}: {}".format(cSet, readCount))
         workingSetR1 = sorted(workingSetR1, key=lambda x: x.opt("RP"))
         workingSetR2 = sorted(workingSetR2, key=lambda x: x.opt("RP"))
         for r1, r2 in zip(workingSetR1, workingSetR2):
             outHandle.write(r1)
             outHandle.write(r2)
+            writeCount += 1
+        print("{} read pairs written so far.".format(writeCount))
     inHandle.close()
     outHandle.close()
     return outBAM
