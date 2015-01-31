@@ -222,7 +222,7 @@ def main():
                 insDistance=args.insert_distance)
         return Output
     if(args.bmfsuites == "sma"):
-        Output = BCVCF.SplitMultipleAlts(args.inVCF, args.outVCF)
+        Output = BCVCF.ISplitMultipleAlts(args.inVCF, args.outVCF)
     return 0
 
 

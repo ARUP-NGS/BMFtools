@@ -203,9 +203,11 @@ class VCFRecord:
         infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
                           InfoValue in zip(self.InfoKeys, self.InfoValues)]
         self.INFO = ';'.join(infoEntryArray) + ';'.join(self.InfoUnpaired)
-        self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')]
+        self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')
+                         if len(entry.split("=")) >= 2]
         self.InfoValues = [
-            entry.split('=')[1] for entry in self.INFO.split(';')]
+            entry.split('=')[1] for entry in self.INFO.split(';') if
+            len(entry.split("=")) >= 2]
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
         try:
             self.InfoValArrays = [
@@ -542,11 +544,58 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
     return outVCF
 
 
+def SplitVCFRecMultipleAlts(inVCFRecord):
+    """
+    Takes as input a VCF Record with multiple alts, then returns a list of
+    VCFRecord objects with one alt per line.
+    """
+    assert isinstance(inVCFRecord, VCFRecord)
+    splitLines = []
+    if("," in inVCFRecord.ALT):
+        NewInfoDict = {}
+        for count, AltAllele in enumerate(inVCFRecord.ALT.split(',')):
+            for key in inVCFRecord.InfoDict:
+                if(len(inVCFRecord.InfoDict[key].split(',')) == len(
+                        inVCFRecord.ALT.split(','))):
+                    NewInfoDict[key] = inVCFRecord.InfoDict[
+                        key].split(',')[count]
+                else:
+                    NewInfoDict[key] = inVCFRecord.InfoDict[key]
+                infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
+                                  InfoValue in zip(NewInfoDict.keys(),
+                                                   NewInfoDict.values())]
+                INFO = ';'.join(infoEntryArray) + ';'.join(
+                    inVCFRecord.InfoUnpaired)
+            FORMAT = ":".join(inVCFRecord.GenotypeKeys)
+            GENOTYPE = ":".join(inVCFRecord.GenotypeValues)
+            if(len(inVCFRecord.Samples) == 0):
+                splitLines.append(VCFRecord([inVCFRecord.CHROM,
+                                             inVCFRecord.POS,
+                                             inVCFRecord.REF, inVCFRecord.ID,
+                                             AltAllele,
+                                             inVCFRecord.QUAL,
+                                             inVCFRecord.FILTER, INFO,
+                                             FORMAT, GENOTYPE],
+                                            inVCFRecord.VCFFilename))
+            else:
+                sampleStr = "\t".join(inVCFRecord.Samples)
+                splitLines.append(VCFRecord([inVCFRecord.CHROM,
+                                             inVCFRecord.POS,
+                                             inVCFRecord.REF, inVCFRecord.ID,
+                                             AltAllele,
+                                             inVCFRecord.QUAL,
+                                             inVCFRecord.FILTER, INFO,
+                                             FORMAT, GENOTYPE, sampleStr],
+                                            inVCFRecord.VCFFilename))
+    else:
+        return [inVCFRecord]
+    return splitLines
+
+
 def SplitMultipleAlts(inVCF, outVCF="default"):
     """
     A simple function for splitting VCF lines with multiple
     ALTs into several valid lines.
-    progRepInterval is simply how often a progress report is printed.
     """
     print("Beginning SplitMultipleAlts")
     if(outVCF == "default"):
@@ -556,47 +605,46 @@ def SplitMultipleAlts(inVCF, outVCF="default"):
     inVCF = ParseVCF(inVCF)
     outHandle = open(outVCF, "w")
     outHandle.write("\n".join([line for line in inVCF.header]))
-    count = 0
     numK = 0
     outLines = []
     for line in inVCF.Records:
-        if(len(outLines) == 1000):
+        if(len(outLines) == 10000):
             outHandle.write("\n".join([line.str for line in outLines]))
             outLines = []
             numK += 1
-            print("Number of processed lines: {}".format(1000 * numK))
-        splitLines = []
+            print("Number of processed lines: {}".format(10000 * numK))
         if("," in line.ALT):
-            count += 1
-            NewInfoDict = {}
-            for count, AltAllele in enumerate(line.ALT.split(',')):
-                for key in line.InfoDict:
-                    if(len(line.InfoDict[key].split(',')) == len(
-                            line.ALT.split(','))):
-                        NewInfoDict[key] = line.InfoDict[key].split(',')[count]
-                    else:
-                        NewInfoDict[key] = line.InfoDict[key]
-                    infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
-                                      InfoValue in zip(NewInfoDict.keys(),
-                                                       NewInfoDict.values())]
-                    INFO = ';'.join(infoEntryArray) + ';'.join(
-                        line.InfoUnpaired)
-                FORMAT = ":".join(line.GenotypeKeys)
-                GENOTYPE = ":".join(line.GenotypeValues)
-                if(len(line.Samples) == 0):
-                    splitLines.append(VCFRecord([line.CHROM, line.POS,
-                                                 line.REF, line.ID, AltAllele,
-                                                 line.QUAL, line.FILTER, INFO,
-                                                 FORMAT, GENOTYPE],
-                                                line.VCFFilename))
-                else:
-                    sampleStr = "\t".join(line.Samples)
-                    splitLines.append(VCFRecord([line.CHROM, line.POS,
-                                                 line.REF, line.ID, AltAllele,
-                                                 line.QUAL, line.FILTER, INFO,
-                                                 FORMAT, GENOTYPE, sampleStr],
-                                                line.VCFFilename))
-            outLines += splitLines
+            outLines += SplitVCFRecMultipleAlts(line)
+        else:
+            outLines.append(line)
+    outStr = "\n".join([line.str for line in outLines])
+    outHandle.write(outStr)
+
+
+def ISplitMultipleAlts(inVCF, outVCF="default"):
+    """
+    A simple function for splitting VCF lines with multiple
+    ALTs into several valid lines.
+    """
+    print("Beginning SplitMultipleAlts")
+    if(outVCF == "default"):
+        print("OutputVCF is default - changing!")
+        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.AltSplit.vcf'
+    print("Output VCF: {}".format(outVCF))
+    inVCF = IterativeVCFFile(inVCF)
+    outHandle = open(outVCF, "w")
+    outHandle.write("\n".join(inVCF.header))
+    outLines = []
+    numK = 0
+    count = 0
+    for line in inVCF:
+        if(len(outLines) >= 10000):
+            outHandle.write("\n".join([line.str for line in outLines]))
+            outLines = []
+            numK += 1
+            print("Number of processed lines: {}".format(10000 * numK))
+        if("," in line.ALT):
+            outLines += SplitVCFRecMultipleAlts(line)
         else:
             outLines.append(line)
     outStr = "\n".join([line.str for line in outLines])
@@ -608,7 +656,8 @@ def SplitMultipleAlts(inVCF, outVCF="default"):
 
 
 def GetPotentialHetsVCF(inVCF, minHetFrac=0.2,
-                        maxHetFrac=0.8, outVCF="default"):
+                        maxHetFrac=0.8, outVCF="default",
+                        replaceIDWithHetFreq=True):
     if(outVCF == "default"):
         outVCF = inVCF[0:-3] + 'het.vcf'
     pl("Input VCF: {}.".format(inVCF))
@@ -621,5 +670,7 @@ def GetPotentialHetsVCF(inVCF, minHetFrac=0.2,
         hetFreq = float(VCFRec.InfoDict["AC_Het"]) * 2 / int(
             VCFRec.InfoDict["AN"])
         if(hetFreq >= minHetFrac and hetFreq <= maxHetFrac):
+            if(replaceIDWithHetFreq is True):
+                VCFRec.ID = str(hetFreq)[0:4]
             outHandle.write(VCFRec.ToString() + "\n")
     outHandle.close()
