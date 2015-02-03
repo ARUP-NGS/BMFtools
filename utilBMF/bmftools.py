@@ -25,6 +25,12 @@ def main():
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
                                            "ansitions.")
+    VCFHetParser = subparsers.add_parser("findhets",
+                                         description="Split VCF lines with mul"
+                                         "tiple ALTs, then writes to files onl"
+                                         "y those variants with either desired"
+                                         " Het frequency or given minor allele"
+                                         " frequency.")
     DMultiPlexParser = subparsers.add_parser("dmp",
                                              description="Marks, combines, and"
                                              " processes a dataset of fastqs f"
@@ -169,6 +175,24 @@ def main():
         "-o",
         help="Output VCF. If unset, defaults to a modified form of the input.",
         default="default")
+    VCFHetParser.add_argument(
+        "inVCF", help="Input VCF", type=str)
+    VCFHetParser.add_argument(
+        "--outVCF",
+        "-o",
+        help="Output VCF. If unset, defaults to a modified form of the input.",
+        default="default")
+    VCFHetParser.add_argument(
+        "--vcf-format",
+        "-f",
+        help="VCF Format. 'ExAC' for ExAC style, 'UK10K' for UK10K style.",
+        default="ExAC")
+    VCFHetParser.add_argument(
+        "--min-het-frac",
+        help="Minimum fraction of population het OR minimum minor "
+        "allele frequency, depending on dataset.",
+        type=float,
+        default=0.025)
     # set_trace()
 
     args = parser.parse_args()
@@ -222,7 +246,18 @@ def main():
                 insDistance=args.insert_distance)
         return Output
     if(args.bmfsuites == "sma"):
-        Output = BCVCF.ISplitMultipleAlts(args.inVCF, args.outVCF)
+        Output = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
+    if(args.bmfsuites == "findhets"):
+        smaOut = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
+        print("Multiple alts split: {}".format(smaOut))
+        if(args.vcf_format.lower() == "exac"):
+            hetOut = BCVCF.GetPotentialHetsVCF(smaOut,
+                                               minHetFrac=args.min_het_frac,
+                                               outVCF=args.outVCF)
+        elif(args.vcf_format.lower() == "uk10k"):
+            hetOut = BCVCF.GetPotentialHetsVCFUK10K(args.inVCF)
+        print("Potential Hets VCF: {}".format(hetOut))
+        return hetOut
     return 0
 
 

@@ -122,8 +122,9 @@ class VCFRecord:
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]
-        self.InfoKeys = [entry.split(
-            '=')[0] for entry in self.INFO.split(';') if entry != "NoCG"]
+        self.InfoKeys = [entry.split('=')[0] for entry in
+                         self.INFO.split(';') if
+                         len(entry.split("=")) != 1]
         self.InfoValues = []
         self.InfoUnpaired = []
         for entry in self.INFO.split(';'):
@@ -202,7 +203,7 @@ class VCFRecord:
             InfoValArray) for InfoValArray in self.InfoValArrays]
         infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
                           InfoValue in zip(self.InfoKeys, self.InfoValues)]
-        self.INFO = ';'.join(infoEntryArray) + ';'.join(self.InfoUnpaired)
+        self.INFO = ';'.join(infoEntryArray + self.InfoUnpaired)
         self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')
                          if len(entry.split("=")) >= 2]
         self.InfoValues = [
@@ -245,7 +246,7 @@ class VCFRecord:
                                    self.REF, self.ALT, self.QUAL,
                                    self.FILTER, self.INFO, self.FORMAT,
                                    self.GENOTYPE, sampleStr]])
-        self.str = recordStr.strip()
+        self.str = recordStr.strip().replace("\n", "")
 
     def ToString(self):
         self.update()
@@ -261,7 +262,7 @@ class IterativeVCFFile:
         realIterator, checker = tee(self.handle)
         while True:
             if(checker.next()[0] == "#"):
-                self.header.append(realIterator.next())
+                self.header.append(realIterator.next().strip())
             else:
                 break
 
@@ -564,14 +565,15 @@ def SplitVCFRecMultipleAlts(inVCFRecord):
                 infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
                                   InfoValue in zip(NewInfoDict.keys(),
                                                    NewInfoDict.values())]
-                INFO = ';'.join(infoEntryArray) + ';'.join(
-                    inVCFRecord.InfoUnpaired)
+                INFO = (';'.join(infoEntryArray +
+                                 inVCFRecord.InfoUnpaired)).replace("\n", "")
             FORMAT = ":".join(inVCFRecord.GenotypeKeys)
             GENOTYPE = ":".join(inVCFRecord.GenotypeValues)
             if(len(inVCFRecord.Samples) == 0):
                 splitLines.append(VCFRecord([inVCFRecord.CHROM,
                                              inVCFRecord.POS,
-                                             inVCFRecord.REF, inVCFRecord.ID,
+                                             inVCFRecord.ID,
+                                             inVCFRecord.REF,
                                              AltAllele,
                                              inVCFRecord.QUAL,
                                              inVCFRecord.FILTER, INFO,
@@ -581,7 +583,8 @@ def SplitVCFRecMultipleAlts(inVCFRecord):
                 sampleStr = "\t".join(inVCFRecord.Samples)
                 splitLines.append(VCFRecord([inVCFRecord.CHROM,
                                              inVCFRecord.POS,
-                                             inVCFRecord.REF, inVCFRecord.ID,
+                                             inVCFRecord.ID,
+                                             inVCFRecord.REF,
                                              AltAllele,
                                              inVCFRecord.QUAL,
                                              inVCFRecord.FILTER, INFO,
@@ -590,35 +593,6 @@ def SplitVCFRecMultipleAlts(inVCFRecord):
     else:
         return [inVCFRecord]
     return splitLines
-
-
-def SplitMultipleAlts(inVCF, outVCF="default"):
-    """
-    A simple function for splitting VCF lines with multiple
-    ALTs into several valid lines.
-    """
-    print("Beginning SplitMultipleAlts")
-    if(outVCF == "default"):
-        print("OutputVCF is default - changing!")
-        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.AltSplit.vcf'
-    print("Output VCF: {}".format(outVCF))
-    inVCF = ParseVCF(inVCF)
-    outHandle = open(outVCF, "w")
-    outHandle.write("\n".join([line for line in inVCF.header]))
-    numK = 0
-    outLines = []
-    for line in inVCF.Records:
-        if(len(outLines) == 10000):
-            outHandle.write("\n".join([line.str for line in outLines]))
-            outLines = []
-            numK += 1
-            print("Number of processed lines: {}".format(10000 * numK))
-        if("," in line.ALT):
-            outLines += SplitVCFRecMultipleAlts(line)
-        else:
-            outLines.append(line)
-    outStr = "\n".join([line.str for line in outLines])
-    outHandle.write(outStr)
 
 
 def ISplitMultipleAlts(inVCF, outVCF="default"):
@@ -633,13 +607,13 @@ def ISplitMultipleAlts(inVCF, outVCF="default"):
     print("Output VCF: {}".format(outVCF))
     inVCF = IterativeVCFFile(inVCF)
     outHandle = open(outVCF, "w")
-    outHandle.write("\n".join(inVCF.header))
+    outHandle.write("\n".join(inVCF.header) + "\n")
     outLines = []
     numK = 0
     count = 0
     for line in inVCF:
         if(len(outLines) >= 10000):
-            outHandle.write("\n".join([line.str for line in outLines]))
+            outHandle.write("\n".join([line.ToString() for line in outLines]))
             outLines = []
             numK += 1
             print("Number of processed lines: {}".format(10000 * numK))
@@ -655,22 +629,63 @@ def ISplitMultipleAlts(inVCF, outVCF="default"):
     return outVCF
 
 
-def GetPotentialHetsVCF(inVCF, minHetFrac=0.2,
-                        maxHetFrac=0.8, outVCF="default",
+def GetPotentialHetsVCF(inVCF, minHetFrac=0.025,
+                        maxHetFrac=1, outVCF="default",
                         replaceIDWithHetFreq=True):
+    """
+    Gets a list of potentially heterozygous sites, parsing in from
+    the ExAC VCF.
+    """
     if(outVCF == "default"):
-        outVCF = inVCF[0:-3] + 'het.vcf'
+        outVCF = inVCF[0:-3] + 'ExAC63K.het.vcf'
     pl("Input VCF: {}.".format(inVCF))
     pl("minHetFrac: {}.".format(minHetFrac))
     pl("maxHetFrac: {}.".format(maxHetFrac))
     outHandle = open(outVCF, "w")
     IVCF = IterativeVCFFile(inVCF)
-    outHandle.write("\n".join(IVCF.header))
+    outHandle.write("\n".join(IVCF.header) + "\n")
     for VCFRec in IVCF:
-        hetFreq = float(VCFRec.InfoDict["AC_Het"]) * 2 / int(
-            VCFRec.InfoDict["AN"])
+        try:
+            hetFreq = float(VCFRec.InfoDict["AC_Het"]) * 2 / int(
+                VCFRec.InfoDict["AN"])
+        except KeyError:
+            # print(repr(VCFRec.InfoDict))
+            # print("This record has no AC_Het field. Continue!")
+            continue
+        except ValueError:
+            hetFreq = sum([int(i) for i in VCFRec.InfoDict[
+                "AC_Het"].split(',')]) / float(VCFRec.InfoDict["AN"])
         if(hetFreq >= minHetFrac and hetFreq <= maxHetFrac):
             if(replaceIDWithHetFreq is True):
-                VCFRec.ID = str(hetFreq)[0:4]
+                VCFRec.ID = str(hetFreq)[0:6]
+            outHandle.write(VCFRec.ToString() + "\n")
+    outHandle.close()
+
+
+def GetPotentialHetsVCFUK10K(inVCF, minAlFrac=0.2,
+                             maxAlFrac=0.8, outVCF="default",
+                             replaceIDWithAlFreq=True):
+    """
+    Gets a list of potentially heterozygous sites, parsing in from
+    the UK10K VCF.
+    """
+    if(outVCF == "default"):
+        outVCF = inVCF[0:-3] + 'UK10K.het.vcf'
+    pl("Input VCF: {}.".format(inVCF))
+    pl("minAlFrac: {}.".format(minAlFrac))
+    pl("maxAlFrac: {}.".format(maxAlFrac))
+    outHandle = open(outVCF, "w")
+    IVCF = IterativeVCFFile(inVCF)
+    outHandle.write("\n".join(IVCF.header) + "\n")
+    for VCFRec in IVCF:
+        try:
+            alleleFreq = float(VCFRec.InfoDict["AF"])
+        except KeyError:
+            # print(repr(VCFRec.InfoDict))
+            # print("This record has no AC_Het field. Continue!")
+            continue
+        if(alleleFreq >= minAlFrac and alleleFreq <= maxAlFrac):
+            if(replaceIDWithAlFreq is True):
+                VCFRec.ID = str(alleleFreq)[0:6]
             outHandle.write(VCFRec.ToString() + "\n")
     outHandle.close()
