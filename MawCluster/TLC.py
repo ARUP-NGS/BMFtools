@@ -21,6 +21,13 @@ def BMFXLC(inBAM,
     Name Sorting required.
     Minimum BQ is not recommended for translocation calls.
     """
+    pl("Command required to reproduce call: BMFXLC"
+       "(\"{}\", minMQ={}, minBQ={}, bedfile=\"{}\", ".format(inBAM, minMQ,
+                                                              minBQ, bedfile) +
+       "minClustDepth={}, minPileupLen={}".format(minClustDepth,
+                                                  minPileupLen) +
+       ", outfile=\"{}\", ref=\"{}\", insDistance=".format(outfile, ref) +
+       "{}, bedDist={})".format(insDistance, bedDist))
     # pudb.set_trace()
     if(outfile == "default"):
         outfile = inBAM[0:-4] + ".putativeSV.txt"
@@ -72,6 +79,7 @@ def BMFXLC(inBAM,
             for interval in PutXIntervals]
         print("PutXIntervals made. Repr: {}".format(repr(
             PutTransReadPairSets)))
+        lastEvent = []
         for event in PutTransReadPairSets:
             bedIntervalList = HTSUtils.CreateIntervalsFromCounter(
                 HTSUtils.ReadPairListToCovCounter(event,
@@ -81,11 +89,16 @@ def BMFXLC(inBAM,
                 contig=contig,
                 bedIntervals=parsedBedfile,
                 mergeDist=150)
+            ConsensusSequence, PassFail = BkptSequenceFromRPSet(event,
+                                                                intra=True)
             PutativeIntraXLocs.append(PutativeXLoc(
                 intervalList=bedIntervalList, ReadPairs=event,
                 bedIntervals=parsedBedfile, header=header,
                 TransType="IntrachromosomalRearrangement",
                 inBAM=inBAM))
+            # lastEvent = event # This is here to just make it easier to work
+            #  with the variables produced here for interactive work.
+        # return lastEvent
         print("PutativeXLocs: {}".format("\n".join([i.ToString() for i in
                                                     PutativeIntraXLocs])))
         del WorkingPairSet

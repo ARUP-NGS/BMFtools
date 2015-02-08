@@ -122,6 +122,21 @@ def main():
         "--barcodeIndex",
         help="If starting with the BAM step, provide the "
              "path to your barcode index as created.")
+    parser.add_argument(
+        "--lighter",
+        help="Whether or not to use Lighter for error correction.",
+        action="store_true",
+        default=True)
+    parser.add_argument(
+        "--kmer",
+        help="Kmer for error correction.",
+        type=int)
+    parser.add_argument(
+        "--captureSize",
+        help="Size of capture in base pairs. Required for Lighter.",
+        type=int)
+    parser.add_argument(
+        "--alpha", help="Alpha parameter for Lighter.", type=float)
     global Logger
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
@@ -137,6 +152,26 @@ def main():
         abrapath = confDict['abrapath']
     else:
         abrapath = args.abrapath
+    captureSize = None
+    kmer = None
+    alpha = None
+    if("lighter" in confDict.keys()):
+        lighter = (confDict['lighter'].lower() == "true")
+    if "lighter" in args:
+        lighter = args.lighter
+    if("lighter" in locals()):
+        if("kmer" in confDict.keys()):
+            kmer = int(confDict["kmer"])
+        if(args.kmer is not None):
+            kmer = args.kmer
+        if("captureSize" in confDict.keys()):
+            captureSize = confDict['captureSize']
+        if(args.captureSize is not None):
+            captureSize = args.captureSize
+        if("alpha" in confDict.keys()):
+            alpha = confDict['alpha']
+        if(args.alpha is not None):
+            alpha = args.alpha
     # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
@@ -218,8 +253,14 @@ def main():
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             if(args.shades is True):
-                trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
-                    args.fq[0], args.fq[1], indexfq=args.idxFastq)
+                if kmer is None and alpha is not None:
+                    trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
+                        args.fq[0], args.fq[1], indexfq=args.idxFastq,
+                        lighter=lighter, captureSize=captureSize, alpha=alpha)
+                else:
+                    trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
+                        args.fq[0], args.fq[1], indexfq=args.idxFastq,
+                        lighter=lighter, kmer=kmer, captureSize=captureSize)
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
                     trimfq2,

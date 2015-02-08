@@ -363,7 +363,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default"):
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -M -T 0'
     if(outBAM == "default"):
-        outBAM = R1[0:-3] + "mem.bam"
+        outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())

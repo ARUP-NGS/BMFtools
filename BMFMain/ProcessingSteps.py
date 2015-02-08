@@ -79,16 +79,17 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     # families have already been filtered for size.
     # familyP, familyF = BCBam.pairedFilterBam(
     #    families, criteria="family")
+    tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
+    summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])
     SVBam, MarkedFamilies = SVRP(namesortedRealignedFull,
                                  bedfile=bed,
-                                 tempBAMPrefix=namesortedRealignedFull[0:-4],
-                                 summary=(namesortedRealignedFull[0:-4] +
-                                          '.SV.txt'))
+                                 tempBAMPrefix=tempBAMPrefix,
+                                 summary=summary)
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
         "to structural variants."))
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
-       "SNP calling due to an error.")
+       "SNP calling due to the differing alignment needs.")
     coorSorted = BCBam.CoorSort(namesortedRealignedFull)
     if(coverageForAllRegions is False):
         CoverageBed = PileupUtils.CalcWithinBedCoverage(coorSorted, bed=bed)
@@ -98,7 +99,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return coorSorted
 
 
-def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75):
+def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
+                      lighter=False, kmer="default", alpha="default",
+                      captureSize="default"):
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq,
@@ -122,6 +125,10 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75):
                                                               BSortFq2,
                                                               stringency=0.75,
                                                               numpy=True)
+    if(lighter is True):
+        BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
+            BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
+            alpha=alpha)
     # Assuming that no reads are failed (numpy
     # consolidation does not fail reads or read pairs unless
     # there is less than 50% agreement or there are too many members

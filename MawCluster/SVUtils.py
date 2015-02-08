@@ -3,12 +3,14 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import FacePalm
 from utilBMF.HTSUtils import ParseBed
 from utilBMF import HTSUtils
+from Bio.Seq import Seq
 
 import pysam
 
 import numpy as np
 import uuid
 import copy
+from itertools import chain
 
 
 class XLocSegment:
@@ -610,3 +612,82 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
                                           SVCountDict['TOTAL'])))
         writeSum.close()
     return SVBam, FullBam
+
+
+def MakeConsensus(seqs):
+    assert isinstance(seqs, list)
+    pass
+
+
+def BkptSequenceInterReads(reads):
+    newSeq = ""
+    try:
+        assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
+    except AssertionError:
+        FacePalm("BkptSequenceIntraReads requires a list of "
+                 "pysam AlignedSegment objects as input!")
+    try:
+        assert len(list(set([read.reference_id for read in reads if
+                             read.is_unmapped is False]))) == 1
+    except AssertionError:
+        FacePalm("Intrachromosomal translocations should all be"
+                 "on the same contig.")
+    return newSeq
+
+
+def BkptSequenceIntraReads(reads):
+    Success = False
+    newSeq = ""
+    try:
+        assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
+    except AssertionError:
+        FacePalm("BkptSequenceIntraReads requires a list of "
+                 "pysam AlignedSegment objects as input!")
+    try:
+        assert len(list(set([read.reference_id for read in reads if
+                             read.is_unmapped is False]))) == 1
+    except AssertionError:
+        FacePalm("Intrachromosomal translocations should all be"
+                 "on the same contig.")
+    # Separate reads based on which end of the translocation they're part of.
+    negReads = [read for read in reads if read.tlen < 0]
+    posReads = [read for read in reads if read.tlen > 0]
+    negSeqs = [read.seq if read.is_reverse else
+               Seq(read.seq).reverse_complement().seq for read in negReads]
+    posSeqs = [read.seq if read.is_reverse else
+               Seq(read.seq).reverse_complement().seq for read in posReads]
+    negConsensus = MakeConsensus(negSeqs)
+    posConsensus = MakeConsensus(posSeqs)
+    return newSeq, Success
+
+
+def BkptSequenceIntraRP(ReadPairs):
+    """
+    Calls converts a list of read pairs to a list of reads and
+    calls BkptSequenceIntraReads
+    """
+    return BkptSequenceIntraReads(list(chain.from_iterable([i.getReads()
+                                                            for i in
+                                                            ReadPairs])))
+
+
+def BkptSequenceInterRP(ReadPairs):
+    """
+    Calls converts a list of read pairs to a list of reads and
+    calls BkptSequenceInterReads
+    """
+    return BkptSequenceInterReads(list(chain.from_iterable([i.getReads()
+                                                            for i in
+                                                            ReadPairs])))
+
+
+def BkptSequenceFromRPSet(ReadPairs, intra=True):
+    try:
+        assert isinstance(ReadPairs[0], HTSUtils.ReadPair)
+    except AssertionError:
+        FacePalm("Input for Breakpoint sequence construction must be a "
+                 "list of ReadPair objects!")
+    if(intra is True):
+        return BkptSequenceIntraRP(ReadPairs)
+    elif(intra is False):
+        return BkptSequenceInterRP(ReadPairs)

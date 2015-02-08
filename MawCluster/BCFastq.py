@@ -1,7 +1,9 @@
 import logging
+import os
+import shlex
+import subprocess
 
 from Bio import SeqIO
-import os
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
@@ -506,6 +508,32 @@ def GetFamilySizeSingle(
     outfqBuffers.close()
     singlefqBuffer.close()
     return outfq, TotalReads, ReadsWithFamilies
+
+
+def LighterCallPaired(fq1, fq2, kmer="default",
+                      captureSize="default",
+                      alpha="default"):
+    """
+    Calls Lighter on both sets of fastq files. Default kmer of 20.
+    Capture size is required. If alpha is unset, lighter will infer the value.
+    """
+    if(kmer == "default"):
+        kmer = 20
+        pl("kmer not set - default of 20 used.")
+    outfq1 = ".".join(fq1.split(".")[0:-1] + ["cor", "fq"])
+    outfq2 = ".".join(fq2.split(".")[0:-1] + ["cor", "fq"])
+    if(isinstance(captureSize, str)):
+        raise ThisIsMadness("Capture size must be set for error correction.")
+    if(isinstance(alpha, str)):
+        pl("Alpha constant not provided. Lighter will infer it from captureS"
+           "ize, the number of reads, and the length of each.")
+        commandArray = shlex.split("lighter -r {} -r {} -K {} {}".format(
+            fq1, fq2, kmer, captureSize))
+        subprocess.check_call(commandArray, shell=False)
+    else:
+        commandArray = shlex.split("lighter -r {} -r {} -K {} {} {}".format(
+            fq1, fq2, kmer, captureSize, alpha))
+    return outfq1, outfq2
 
 
 def mergeBarcodes(fq1, fq2, out1="default", out2="default"):
