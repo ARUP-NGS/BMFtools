@@ -5,7 +5,7 @@ import logging
 import sys
 
 import BMFMain.ProcessingSteps as ps
-from utilBMF.HTSUtils import printlog as pl, FacePalm
+from utilBMF.HTSUtils import printlog as pl, FacePalm, ThisIsMadness
 from utilBMF import HTSUtils
 import pudb
 
@@ -167,16 +167,18 @@ def main():
         if("captureSize" in confDict.keys()):
             captureSize = confDict['captureSize']
         if(args.captureSize is not None):
-            captureSize = args.captureSize
+            captureSize = int(args.captureSize)
         if("alpha" in confDict.keys()):
             alpha = confDict['alpha']
         if(args.alpha is not None):
             alpha = args.alpha
+        pl("captureSize: {}".format(captureSize))
+        if(captureSize is None):
+            raise ThisIsMadness("required captureSize variable not set!")
     # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
     else:
-        print("Basename for log: {}".format(os.path.basename(args.fq[0])))
         logfile = (os.getcwd() + "/" +
                    os.path.basename(args.fq[0]).split('.')[0] +
                    '.log')

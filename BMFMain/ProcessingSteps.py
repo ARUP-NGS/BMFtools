@@ -102,6 +102,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
                       lighter=False, kmer="default", alpha="default",
                       captureSize="default"):
+    if(lighter is True and captureSize == "default"):
+        HTSUtils.FacePalm("Capture size must be set if lighter is true!")
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq,
