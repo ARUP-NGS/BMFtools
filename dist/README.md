@@ -33,6 +33,22 @@ bmftools --help
 bmftools <subcommand> --help
 ```
 
+## Dependencies
+
+Required python packages: Biopython, pysam, pudb
+
+### Required external tools:
+bwa	aln (for SNV calling)
+bwa mem (for SV calling)
+
+### Optional, but recommended:
+#### Indel Realigners
+Assembly Based Realigner (abra)
+GATK IndelRealigner
+#### Error Correction Tools
+Lighter (Error correction via Bloom Filters)
+Reptile (Error correction based on K-mers)
+
 
 ## BMF Tags
 
@@ -46,7 +62,9 @@ FP | Read Passes Filter related to barcoding | String. Required: "Pass" or "Fail
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
-PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\] ]| 
+PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\]]|
+RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
+CS | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 
 ## Valid Tags for SV SAM tag
 
@@ -73,10 +91,10 @@ Faster than using a homing sequence-specified barcode (informatically). More iss
 
 Using a homing sequence as input for consolidating families of PCR duplicates.
 
-#Config JSON
+#Config file
 
-The run JSON has two main fields: "Config", which contains the system variables and general preferences, and "Analysis", which controls the the run protocol. 
-Previously, there were two config files, but they have been consolidated.
+Each line has a set of keys and values. See conf/config.txt for an example.
+Most options are available for command-line as well. If an option is set in both a config file and on the command-line, the command-line option clobbers the config setting.
 
 #Changes in BMFTools v0.0.5alpha
 1. Removal of standard BMFMain in lieu of the config-based one.

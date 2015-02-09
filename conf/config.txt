@@ -11,4 +11,4 @@ minBQ=90
 shades=True
 captureSize=58370
 lighter=True
-kmer=40
+kmer=32

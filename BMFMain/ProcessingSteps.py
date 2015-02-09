@@ -6,7 +6,7 @@ from MawCluster import BCFastq
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
-from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from MawCluster.BCVCF import VCFStats
 
 
@@ -104,6 +104,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
                       captureSize="default"):
     if(lighter is True and captureSize == "default"):
         HTSUtils.FacePalm("Capture size must be set if lighter is true!")
+    if isinstance(captureSize, str):
+        captureSize = int(captureSize)
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq,
@@ -115,10 +117,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
     (FamFqs, SingleFqs, numReads,
      numReadsWFam) = BCFastq.GetFamilySizePaired(bcFastq1,
                                                  bcFastq2, barcodeIndex)
-    FamFq1 = FamFqs[0]
-    FamFq2 = FamFqs[1]
-    SingleFq1 = SingleFqs[0]
-    SingleFq2 = SingleFqs[1]
+    FamFq1, FamFq2 = FamFqs
+    SingleFq1, SingleFq2 = SingleFqs
     pl("Number of reads total: " + str(numReads))
     pl("Number of reads with >=3 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
@@ -128,9 +128,17 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
                                                               stringency=0.75,
                                                               numpy=True)
     if(lighter is True):
-        BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
-            BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
-            alpha=alpha)
+        try:
+            BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
+                BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
+                alpha=alpha)
+        except ThisIsMadness:
+            pl("captureSize repr: {}".format(repr(captureSize)))
+            pl("captureSize variable was somehow lost.")
+            captureSize = 58370
+            BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
+                BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
+                alpha=alpha)
     # Assuming that no reads are failed (numpy
     # consolidation does not fail reads or read pairs unless
     # there is less than 50% agreement or there are too many members

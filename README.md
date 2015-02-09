@@ -37,15 +37,15 @@ bmftools <subcommand> --help
 
 Required python packages: Biopython, pysam, pudb
 
-Required external tools:
+### Required external tools:
 bwa	aln (for SNV calling)
 bwa mem (for SV calling)
 
-Optional, but recommended:
-# Indel Realigners
+### Optional, but recommended:
+#### Indel Realigners
 Assembly Based Realigner (abra)
 GATK IndelRealigner
-# Error Correction Tools
+#### Error Correction Tools
 Lighter (Error correction via Bloom Filters)
 Reptile (Error correction based on K-mers)
 

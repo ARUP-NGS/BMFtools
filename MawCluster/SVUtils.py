@@ -616,6 +616,7 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
 
 def MakeConsensus(seqs):
     assert isinstance(seqs, list)
+    assert isinstance(seqs[0], str)
     pass
 
 
@@ -635,7 +636,23 @@ def BkptSequenceInterReads(reads):
     return newSeq
 
 
+def SplitSCReadSet(reads):
+    scReads = []
+    trimmedReads = []
+    for read in reads:
+        SCSplitReads = SplitSCReads(read)
+        scReads.append(SCSplitReads[0])
+        trimmedReads.append(SCSplitReads[1])
+    return trimmedReads, scReads
+
+
 def BkptSequenceIntraReads(reads):
+    """
+    Attempts to create a consensus sequence out of the reads for
+    reads with large inserts.
+    """
+    SCSplitReads = SplitSCReadSet(reads)
+
     Success = False
     newSeq = ""
     try:

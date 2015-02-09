@@ -34,7 +34,7 @@ def main():
     except CalledProcessError:
         print("You might not have permission to install the bmftools executable.")
         return 1
-    return
+    return 0
 
 
 if(__name__ == "__main__"):
