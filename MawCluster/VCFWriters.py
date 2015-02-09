@@ -1,5 +1,9 @@
-from MawCluster.SNVUtils import *
+import logging
+
 import pysam
+
+from MawCluster.SNVUtils import *
+
 
 """
 Programs which write VCFs.
@@ -57,14 +61,15 @@ def SNVCrawler(inBAM,
             while True:
                 try:
                     PileupColumn = puIterator.next()
-                    PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
                 except ValueError:
                     pl(("Pysam sometimes runs into errors during iteration w"
-                        "hich are not handled with any elegance. Continuing!"))
+                        "hich aren't handled elegantly. Continuing!"),
+                       level=logging.DEBUG)
                     continue
                 except StopIteration:
                     pl("Finished iterations.")
                     break
+                PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
                 if(line[2] <= PC.pos):
                     break
                 VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
@@ -80,7 +85,8 @@ def SNVCrawler(inBAM,
                 PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)
             except ValueError:
                 pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"))
+                    " are not handled with any elegance. Continuing!"),
+                   level=logging.DEBUG)
                 continue
             except StopIteration:
                 break

@@ -671,7 +671,11 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
             if(success1 is False):
                 mergedRecord1.description.replace("Pass", "Fail")
             if(success2 is False):
-                mergedRecord1.description.replace("Pass", "Fail")
+                mergedRecord2.description.replace("Pass", "Fail")
+            # Remove the " bad_prefix" added to the fastq name by Lighter.
+            # Compatibility purposes.
+            mergedRecord1.description.replace(" bad_prefix", "")
+            mergedRecord2.description.replace(" bad_prefix", "")
             if(keepFailedPairs is True):
                 SeqIO.write(mergedRecord2, outputHandle2, "fastq")
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")

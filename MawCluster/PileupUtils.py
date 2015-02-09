@@ -1,8 +1,9 @@
 import subprocess
-import numpy as np
 import os.path
 import shlex
+import logging
 
+import numpy as np
 import pysam
 
 from utilBMF.HTSUtils import (ThisIsMadness,
@@ -504,7 +505,8 @@ def CustomPileupFullGenome(inputBAM,
             pileupColumn = pileupIterator.next()
         except ValueError:
             pl(("Pysam sometimes runs into errors during iteration which"
-                " are not handled with any elegance. Continuing!"))
+                " are not handled with any elegance. Continuing!"),
+               level=logging.DEBUG)
             continue
         except StopIteration:
             # pl("Finished iterations.")
@@ -650,7 +652,8 @@ def CustomPileupToTsv(inputBAM,
                 pileupColumn = pileupIterator.next()
             except ValueError:
                 pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"))
+                    " are not handled with any elegance. Continuing!"),
+                   level=logging.DEBUG)
                 continue
             except StopIteration:
                 # pl("Finished iterations.")
@@ -815,7 +818,8 @@ def AlleleFrequenciesByBase(inputBAM,
                 pileup = pileupIterator.next()
             except ValueError:
                 pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"))
+                    " are not handled with any elegance. Continuing!"),
+                   level=logging.DEBUG)
                 continue
             except StopIteration:
                 # pl("Finished iterations.")
@@ -990,7 +994,8 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                 PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
             except ValueError:
                 pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"))
+                    " are not handled with any elegance. Continuing!"),
+                   level=logging.DEBUG)
                 continue
             except StopIteration:
                 # pl("Finished iterations.")
@@ -1053,7 +1058,8 @@ def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                   PC.TotalReads]]) + "\n")
         except ValueError:
             pl(("Pysam sometimes runs into errors during iteration which"
-                " are not handled with any elegance. Continuing!"))
+                " are not handled with any elegance. Continuing!"),
+               level=logging.DEBUG)
             continue
         except StopIteration:
             # pl("Finished iterations.")

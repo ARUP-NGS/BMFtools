@@ -2,6 +2,7 @@ from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import FacePalm
 from utilBMF.HTSUtils import ParseBed
+from utilBMF.HTSUtils import SplitSCRead
 from utilBMF import HTSUtils
 from Bio.Seq import Seq
 
@@ -638,12 +639,12 @@ def BkptSequenceInterReads(reads):
 
 def SplitSCReadSet(reads):
     scReads = []
-    trimmedReads = []
+    clippedSeqs = []
     for read in reads:
-        SCSplitReads = SplitSCReads(read)
+        SCSplitReads = SplitSCRead(read)
         scReads.append(SCSplitReads[0])
-        trimmedReads.append(SCSplitReads[1])
-    return trimmedReads, scReads
+        clippedSeqs += SCSplitReads[1]
+    return scReads, clippedSeqs
 
 
 def BkptSequenceIntraReads(reads):
@@ -651,7 +652,7 @@ def BkptSequenceIntraReads(reads):
     Attempts to create a consensus sequence out of the reads for
     reads with large inserts.
     """
-    SCSplitReads = SplitSCReadSet(reads)
+    # reads, clippedSeqs = SplitSCReadSet(reads)
 
     Success = False
     newSeq = ""

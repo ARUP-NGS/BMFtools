@@ -58,7 +58,7 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 Tag | Content | Format |
 ----|-----|-----|
 BS | Barcode Sequence | String. Regex: [ATGCN]+ |
-FP | Read Passes Filter related to barcoding | String. Required: "Pass" or "Fail" |
+FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |

@@ -3,14 +3,14 @@ import shlex
 import subprocess
 from collections import Counter
 from itertools import groupby
-import numpy as np
 from operator import itemgetter
 import copy
 import uuid
 import os
 
-
 import pysam
+import numpy as np
+from Bio.Seq import Seq
 
 import MawCluster
 
@@ -31,6 +31,8 @@ def printlog(string, level=logging.INFO):
         Logger.debug(string.replace(
             "\t", "\\t").replace("\n", "\\n").replace(
                 "'", "\'").replace('"', '\\"'))
+        return
+        # Doesn't print to string if set to debug mode.
     elif(level == logging.INFO):
         Logger.info(string.replace(
             "\t", "\\t").replace("\n", "\\n").replace(
@@ -909,13 +911,13 @@ def ParseBed(bedfile):
     return bed
 
 
-def parseConfigXML(string):
-    import xmltodict
-    orderedDict = xmltodict.parse(open(string, "r"))
-    return orderedDict
-
-
 def parseConfig(string):
+    """
+    Parses in a file into a dictionary of key value pairs.
+    Key is line.strip().split("=")[0].
+    Value is line.strip().split("=")[1].
+    Any further values are ignored.
+    """
     parsedLines = [l.strip() for l in open(string, "r").readlines()
                    if l[0] != "#"]
     ConfigDict = {}
@@ -924,15 +926,11 @@ def parseConfig(string):
     return ConfigDict
 
 
-def parseConfigJSON(path):
-    import json
-    json_file = open(path)
-    json_str = json_file.read()
-    json_data = json.loads(json_str)
-    return json_data
-
-
 def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
+    """
+    Makes a Counter object of positions covered by a set of reads.
+    Only safe at this point for intrachromosomal rearrangements!
+    """
     posList = []
     for read in reads:
         posList += read.get_reference_positions()
@@ -941,6 +939,10 @@ def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
 
 
 def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
+    """
+    Makes a Counter object of positions covered by a set of read pairs.
+    Only safe at this point for intrachromosomal rearrangements!
+    """
     posList = []
     posListDuplex = []
     for pair in ReadPairList:
@@ -959,6 +961,55 @@ def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
     PosCounts = dict([i for i in PosCounts.items()
                       if i[1] >= minClustDepth])
     return PosCounts
+
+
+class SoftClippedSeq:
+    def __init__(self, seq, contig=None, is_reverse=None):
+        assert isinstance(seq, str)
+        if isinstance(contig, str) is False:
+            raise ThisIsMadness("Soft-clipped seq is ambiguous "
+                                "without a contig.")
+        if isinstance(is_reverse, bool) is False:
+            raise ThisIsMadness("SoftClippedSeq needs to know to which"
+                                "strand it is mapped.")
+        self.seq = seq
+        self.contig = contig
+        self.is_reverse = is_reverse
+
+    def RCChangeStrand(self):
+        self.seq = str(Seq(self.seq).reverse_complement())
+        self.is_reverse = not self.is_reverse
+
+
+def SplitSCRead(read):
+    try:
+        assert isinstance(read, pysam.calignmentfile.AlignedSegment)
+    except AssertionError:
+        FacePalm("You can't split a read by soft-clipping if it's not a read!")
+    try:
+        assert "S" in read.cigarstring
+    except AssertionError:
+        FacePalm("You can't split a read by soft-clipping "
+                 "if it's not soft-clipped!")
+    SoftClips = []
+    clippedStart = 0
+    clippedEnd = read.query_length
+    if(read.cigar[0][0] == 4):
+        SoftClips.append(SoftClippedSeq(read.str[0:read.cigar[0][1]],
+                                        contig=PysamToChrDict[
+                                            read.reference_id],
+                                        is_reverse=read.is_reverse))
+        clippedStart = read.cigar[0][1]
+    if(read.cigar[-1][0] == 4):
+        SoftClips.append(SoftClippedSeq(read.str[read.cigar[-1][1]:],
+                                        contig=PysamToChrDict[
+                                            read.reference_id],
+                                        is_reverse=read.is_reverse))
+        clippedEnd -= read.cigar[-1][1]
+    newQuals = read.seq[clippedStart:clippedEnd]
+    read.seq = read.seq[clippedStart:clippedEnd]
+    read.query_qualities = newQuals
+    return read, SoftClips
 
 
 class Interval:
