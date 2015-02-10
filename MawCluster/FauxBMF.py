@@ -100,7 +100,6 @@ def SortBamByRPTag(inBAM, outBAM="default", contigSets="default"):
                 break
             except KeyError:
                 FacePalm("CS Key not present! Use MarkReadPairPositions")
-                return 1
             if(readCount % 1000 == 0):
                 print("Number of read pairs read into memory"
                       " for contigSet {}: {}".format(cSet, readCount))

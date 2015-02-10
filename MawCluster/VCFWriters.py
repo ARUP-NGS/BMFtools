@@ -61,14 +61,16 @@ def SNVCrawler(inBAM,
             while True:
                 try:
                     PileupColumn = puIterator.next()
+                except StopIteration:
+                    pl("Finished iterations.")
+                    break
+                '''
                 except ValueError:
                     pl(("Pysam sometimes runs into errors during iteration w"
                         "hich aren't handled elegantly. Continuing!"),
                        level=logging.DEBUG)
                     continue
-                except StopIteration:
-                    pl("Finished iterations.")
-                    break
+                '''
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
                 if(line[2] <= PC.pos):
                     break

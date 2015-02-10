@@ -73,8 +73,6 @@ def dupDistribution(size):
             if(dropTheNeedle < bin):
                 dupHist[count + 1] += 1
                 break
-    return dupHist
-
     print("Completing distribution of duplication.")
     print(repr(dupHist))
     return dupHist

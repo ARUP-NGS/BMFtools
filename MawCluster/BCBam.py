@@ -324,9 +324,9 @@ def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
 
     if("barcode" in filterSet):
         if(read1.opt("BS") != read2.opt("BS")):
-            return False
             Logger.debug(
                 "Barcode sequence didn't match. Are you running shades?")
+            return False
 
     if("editdistance" in filterSet):
         NMValue1 = int(read1.opt("NM"))

@@ -4,6 +4,7 @@ import shlex
 import subprocess
 
 from Bio import SeqIO
+import cython
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
@@ -22,6 +23,8 @@ significant performance increases.
 """
 
 
+@cython.locals(inFastq=cython.str, outFastq=cython.str)
+@cython.returns(cython.str)
 def BarcodeSort(inFastq, outFastq="default"):
     pl("Sorting {} by barcode sequence.".format(inFastq))
     if(outFastq == "default"):
@@ -36,6 +39,8 @@ def BarcodeSort(inFastq, outFastq="default"):
     return outFastq
 
 
+@cython.locals(stringency=cython.float, hybrid=cython.bint,
+               famLimit=cython.int, keepFails=cython.bint)
 def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
                         keepFails=True):
     """
@@ -780,7 +785,6 @@ def ShadesRescuePaired(singlefq1,
             SeqIO.write(read1, readToRescue1, "fastq")
             SeqIO.write(read2, readToRescue2, "fastq")
     raise ThisIsMadness("This rescue function has not been written.")
-    return
 
 
 def singleFastqConsolidate(fq, outFq="default", stringency=0.9):

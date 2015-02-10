@@ -1,7 +1,9 @@
 import subprocess
 import decimal
-import numpy as np
 from itertools import tee
+
+import numpy as np
+import cython
 
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils

@@ -2,6 +2,7 @@ import subprocess
 import os.path
 import shlex
 import logging
+import re
 
 import numpy as np
 import pysam
@@ -31,6 +32,14 @@ class PRInfo:
             self.FM = int(PileupRead.alignment.opt("FM"))
         except KeyError:
             self.FM = 1
+        except ValueError:
+            p = re.compile("\D")
+            try:
+                self.FM = int(p.sub("", PileupRead.alignment.opt("FM")))
+            except ValueError:
+                pl("Ain't nothing I can do. Something's wrong"
+                   " with your FM tag: {}".format(p.sub(
+                       "", PileupRead.alignment.opt("FM"))))
         try:
             self.SVTags = PileupRead.alignment.opt("SV").split(",")
         except KeyError:
@@ -190,7 +199,6 @@ class PCInfo:
         self.minMQ = int(minMQ)
         self.minBQ = int(minBQ)
         from collections import Counter
-        PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()["idtochr"]
         self.contig = PysamToChrDict[PileupColumn.reference_id]
         self.pos = PileupColumn.reference_pos
         self.FailedBQReads = sum(
@@ -449,7 +457,6 @@ class PileupInterval:
             self.end - self.start)
 
     def ToString(self):
-        PysamToChrDict = HTSUtils.GetRefIdDicts()["idtochr"]
         self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
                                                self.start,
                                                self.end,

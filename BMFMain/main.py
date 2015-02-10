@@ -285,8 +285,8 @@ def main():
         elif(args.initialStep == 2):
             pl("Beginning BAM processing.")
             procSortedBam = ps.pairedBamProc(
-                trimfq1,
-                trimfq2,
+                args.fq[0],
+                args.fq[1],
                 consfqSingle="default",
                 aligner=aligner,
                 ref=ref,

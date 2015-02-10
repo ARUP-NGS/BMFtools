@@ -15,16 +15,6 @@ from Bio.Seq import Seq
 import MawCluster
 
 
-class Configurations:
-
-    """
-    Holds the config json dict
-    """
-
-    def __init__(self, configJSON):
-        self.config = parseConfigJSON(configJSON)
-
-
 def printlog(string, level=logging.INFO):
     Logger = logging.getLogger("Primarylogger")
     if(level == logging.DEBUG):
@@ -507,7 +497,6 @@ def ReadWithinDistOfBedInterval(samRecord, bedLine="default", dist=70):
             return True
     else:
         return False
-    return False
 
 
 def ReadOverlapsBed(samRecord, bedRef="default"):
