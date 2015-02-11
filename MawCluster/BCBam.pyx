@@ -1,3 +1,5 @@
+#!python
+#cython: boundscheck=False
 import shlex
 import subprocess
 import os
@@ -9,11 +11,12 @@ import copy
 
 from Bio import SeqIO
 import pysam
+import cython
+cimport cython
 
 from MawCluster import BCFastq
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
-from __builtin__ import False
 
 
 def AbraCadabra(inBAM,
@@ -277,7 +280,7 @@ def CoorSort(inBAM, outBAM="default"):
     pl("inBAM variable is {}".format(inBAM))
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + ".CoorSort.bam"
-    command_str = ("samtools sort {} -o {} -T test".format(inBAM, outBAM) +
+    command_str = ("samtools sort {} -o {} -T temp".format(inBAM, outBAM) +
                    str(uuid.uuid4().get_hex().upper()[0:8]))
     pl(command_str)
     subprocess.check_call(shlex.split(command_str), shell=False)
@@ -725,6 +728,7 @@ def SingleConsolidate(inBAM, outBAM="default"):
     return outBAM
 
 
+@cython.returns(cython.bint)
 def singleCriteriaTest(read, filter="default"):
     list = "adapter complexity editdistance family ismapped qc".split(' ')
 
@@ -818,6 +822,7 @@ def singleFilterBam(inputBAM, passBAM="default",
     return passBAM, failBAM
 
 
+@cython.returns(cython.bint)
 def ReadPairIsDuplex(readPair, minShare="default"):
     """
     If minShare is an integer, require that many nucleotides

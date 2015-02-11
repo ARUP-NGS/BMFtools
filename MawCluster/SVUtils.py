@@ -109,8 +109,6 @@ def ClusterByInsertSize(ReadPairs,
     objects. Each list of ReadPair objects has been clustered by insert size.
     The difference between this function and ClusterByInsertSize is that this
     only expands clusters with the reads outside of the bed file.
-    Bug fix, 1/20/15: The expanding cluster feature expands by clustered
-    insert sizes, not by overlaps.
     """
     # Check that it's a list of ReadPairs
     assert isinstance(ReadPairs[0], HTSUtils.ReadPair)
@@ -317,6 +315,10 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
 
 
 class TranslocationVCFLine:
+    """
+    Contains all the information required for writing a line in a VCF file for
+    a translocation.
+    """
 
     def __init__(self, PutativeXLocObj, ref="default", inBAM="default",
                  TransType="UnspecifiedSV"):

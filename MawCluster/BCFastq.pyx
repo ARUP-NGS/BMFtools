@@ -1,14 +1,31 @@
+#cython: boundscheck=False
 import logging
 import os
 import shlex
 import subprocess
+import copy
 
 from Bio import SeqIO
+import Bio
+from Bio.SeqRecord import SeqRecord
 import cython
+cimport cython
+import numpy as np
+cimport numpy as np
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
 from utilBMF import HTSUtils
+
+letterNumDict = {}
+letterNumDict['A'] = 0
+letterNumDict['C'] = 1
+letterNumDict['G'] = 2
+letterNumDict['T'] = 3
+letterNumDict[0] = 'A'
+letterNumDict[1] = 'C'
+letterNumDict[2] = 'G'
+letterNumDict[3] = 'T'
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -23,8 +40,6 @@ significant performance increases.
 """
 
 
-@cython.locals(inFastq=cython.str, outFastq=cython.str)
-@cython.returns(cython.str)
 def BarcodeSort(inFastq, outFastq="default"):
     pl("Sorting {} by barcode sequence.".format(inFastq))
     if(outFastq == "default"):
@@ -40,15 +55,14 @@ def BarcodeSort(inFastq, outFastq="default"):
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.int, keepFails=cython.bint)
+               famLimit=cython.int, keepFails=cython.bint,
+               Success=cython.bint, PASS=cython.bint, frac=cython.float)
 def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
                         keepFails=True):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
-    from Bio.SeqRecord import SeqRecord
-    import numpy as np
     try:
         famLimit = int(famLimit)
     except ValueError:
@@ -97,19 +111,12 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
     return consolidatedRecord, Success
 
 
+@cython.locals(Success=cython.bint)
 def compareFastqRecordsInexactNumpy(R):
-    import copy
-    import numpy as np
-    from Bio.SeqRecord import SeqRecord
-    letterNumDict = {}
-    letterNumDict['A'] = 0
-    letterNumDict['C'] = 1
-    letterNumDict['G'] = 2
-    letterNumDict['T'] = 3
-    letterNumDict[0] = 'A'
-    letterNumDict[1] = 'C'
-    letterNumDict[2] = 'G'
-    letterNumDict[3] = 'T'
+    """
+    Calculates the most likely nucleotide
+    at each position and returns the joined record.
+    """
 
     def dAccess(x):
         return letterNumDict[x]
@@ -118,27 +125,29 @@ def compareFastqRecordsInexactNumpy(R):
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
-    quals = np.array([record.letter_annotations['phred_quality']
-                      for record in R])
-    qualA = copy.copy(quals)
-    qualC = copy.copy(quals)
-    qualG = copy.copy(quals)
-    qualT = copy.copy(quals)
+    cdef np.ndarray[np.int, ndim = 1] quals = np.array([
+        record.letter_annotations['phred_quality'] for record in R])
+    cdef np.ndarray[np.int, ndim = 1] qualA = copy.copy(quals)
+    cdef np.ndarray[np.int, ndim = 1] qualC = copy.copy(quals)
+    cdef np.ndarray[np.int, ndim = 1] qualG = copy.copy(quals)
+    cdef np.ndarray[np.int, ndim = 1] qualT = copy.copy(quals)
     qualA[seqArray != "A"] = 0
-    qualASum = np.sum(qualA, 0)
+    qualA = np.sum(qualA, 0)
     qualC[seqArray != "C"] = 0
-    qualCSum = np.sum(qualC, 0)
+    qualC = np.sum(qualC, 0)
     qualG[seqArray != "G"] = 0
-    qualGSum = np.sum(qualG, 0)
+    qualG = np.sum(qualG, 0)
     qualT[seqArray != "T"] = 0
-    qualTSum = np.sum(qualT, 0)
-    qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
+    qualT = np.sum(qualT, 0)
+    cdef np.ndarray[np.int, ndim = 2] qualAllSum = np.vstack(
+        [qualA, qualC, qualG, qualT])
     Success = True
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
-                             np.sum(qualAllSum, 0))
+    cdef np.ndarray[np.int, ndim = 1] MaxPhredSum = np.amax(
+        qualAllSum, 0)  # Avoid calculating twice.
+    cdef np.ndarray[np.int, ndim = 1] phredQuals = np.subtract(
+        np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
     consolidatedRecord = SeqRecord(
@@ -166,6 +175,7 @@ def compareFastqRecordsInexactNumpy(R):
             consolidatedRecord.letter_annotations['phred_quality'],
             RealQuals)])
     except AssertionError:
+        pl("phred quality seemed to have been jumbled just a bit - fixing!")
         newQuals = []
         for q, r in zip(consolidatedRecord.letter_annotations['phred_quality'],
                         RealQuals):
@@ -182,13 +192,17 @@ def compareFastqRecordsInexactNumpy(R):
     return consolidatedRecord, Success
 
 
+@cython.locals(gzip=cython.bint, bLen=cython.int)
 def FastqPairedShading(fq1,
                        fq2,
                        indexfq="default",
                        outfq1="default",
                        outfq2="default",
-                       gzip=True,
-                       logFails=False):
+                       gzip=True):
+    """
+    Tags fastqs with barcodes from an index fastq.
+    TODO: change the write-out to concatenate strings before writing.
+    """
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
@@ -214,9 +228,9 @@ def FastqPairedShading(fq1,
         if(("N" in tempBar or "A"*bLen in tempBar
                 or "C"*bLen in tempBar or "G"*bLen in tempBar
                 or "T"*bLen in tempBar)):
-            if(logFails is True):
-                pl("Failing barcode for read {} is {} ".format(indexRead,
-                                                               tempBar))
+            pl("Failing barcode for read {} is {} ".format(indexRead,
+                                                           tempBar),
+               level=logging.DEBUG)
             read1.description += " #G~FP=IndexFail #G~BS=" + str(indexRead.seq)
             read2.description += " #G~FP=IndexFail #G~BS=" + str(indexRead.seq)
             SeqIO.write(read1, outFqHandle1, "fastq")
@@ -324,7 +338,6 @@ def FastqRegex(fq, string, matchFile="default", missFile="default"):
 
 def fastx_trim(infq, outfq, n):
     pl("Now beginning fastx_trimmer.")
-    import subprocess
     command_str = ['fastx_trimmer', '-l', str(n), '-i', infq, '-o', outfq]
     pl(command_str)
     subprocess.check_call(command_str)
@@ -340,8 +353,6 @@ def GetDescTagValue(readDesc, tag="default"):
     """
     if(tag == "default"):
         raise ValueError("A tag must be specified!")
-    if(hasattr(readDesc, "seq")):
-        readDesc = readDesc.seq
     try:
         return GetDescriptionTagDict(readDesc)[tag]
     except KeyError:
@@ -394,6 +405,7 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     return index_file
 
 
+@cython.locals(deleteInFqs=cython.bint, minFamSize=cython.int)
 def GetFamilySizePaired(
         trimfq1,
         trimfq2,
@@ -408,9 +420,9 @@ def GetFamilySizePaired(
     infq1 = SeqIO.parse(trimfq1, "fastq")
     infq2 = SeqIO.parse(trimfq2, "fastq")
     if(outfq1 == "default"):
-        outfq1 = '.'.join(trimfq1.split('.')[0:-1]) + ".fam.fastq"
+        outfq1 = '.'.join(trimfq1.split('.')[0:-1] + ['fam', 'fastq'])
     if(outfq2 == "default"):
-        outfq2 = '.'.join(trimfq2.split('.')[0:-1]) + ".fam.fastq"
+        outfq1 = '.'.join(trimfq2.split('.')[0:-1] + ['fam', 'fastq'])
     outfqBuffer1 = open(outfq1, "w")
     outfqBuffer2 = open(outfq2, "w")
     if(singlefq1 == "default"):
@@ -439,9 +451,9 @@ def GetFamilySizePaired(
         try:
             famSize = BarDict[readTag1]
         except KeyError:
-            famSize = 0
-        newRead1.description = read.description + " #G~FM=" + str(famSize)
-        newRead2.description = read2.description + " #G~FM=" + str(famSize)
+            famSize = "0"
+        newRead1.description = read.description + " #G~FM=" + famSize
+        newRead2.description = read2.description + " #G~FM=" + famSize
         # print("famSize = _{}_".format(str(famSize)))
         # print("The value of this comparison to 1 is {}".format(
         # str(famSize=="1")))
@@ -617,6 +629,8 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
     return index_file
 
 
+@cython.locals(stringency=cython.float,
+               numpy=cython.bint, keepFailedPairs=cython.bint)
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default",
                            stringency=0.9,
@@ -679,8 +693,6 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                 mergedRecord2.description.replace("Pass", "Fail")
             # Remove the " bad_prefix" added to the fastq name by Lighter.
             # Compatibility purposes.
-            mergedRecord1.description.replace(" bad_prefix", "")
-            mergedRecord2.description.replace(" bad_prefix", "")
             if(keepFailedPairs is True):
                 SeqIO.write(mergedRecord2, outputHandle2, "fastq")
                 SeqIO.write(mergedRecord1, outputHandle1, "fastq")
@@ -731,19 +743,6 @@ def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
     return outfq1, outfq2
 
 
-def reverseComplement(fq, dest="default"):
-    if(dest == "default"):
-        temp = '.'.join(fq.split('.')[0:-1]) + "_rc.fastq"
-        dest = temp.split('/')[-1]
-    InFastq = SeqIO.parse(fq, "fastq")
-    OutFastq = open(dest, "w", 0)
-    for record in InFastq:
-        rc_record = record.reverse_complement(id=record.id + "_rc")
-        SeqIO.write(rc_record, OutFastq, "fastq")
-    OutFastq.close()
-    return dest
-
-
 def ShadesRescuePaired(singlefq1,
                        singlefq2,
                        toBeRescuedFq1="default",
@@ -762,6 +761,7 @@ def ShadesRescuePaired(singlefq1,
     reference.
     Finally, these reads have their barcodes changed to match the family's,
     and a BD:i: tag is added to specify how far removed it was.
+    This function has also not been fully written
     """
     if(appendFq1 == "default" or appendFq2 == "default"):
         raise ValueError("Fastq for appending rescued reads required.")
@@ -845,13 +845,13 @@ def TrimHoming(
     from Bio.SeqRecord import SeqRecord
     from Bio.Seq import Seq
     if(trim_err == "default"):
-        temp = '.'.join(fq.split('.')[0:-1]) + '.err.fastq'
+        temp = '.'.join(fq.split('.')[0:-1] + ['err', 'fastq'])
         trim_err = temp.split('/')[-1]
     if(trimfq == "default"):
-        temp = '.'.join(fq.split('.')[0:-1]) + '.trim.fastq'
+        temp = '.'.join(fq.split('.')[0:-1] + ['trim', 'fastq'])
         trimfq = temp.split('/')[-1]
     if(tags_file == "default"):
-        temp = '.'.join(fq.split('.')[0:-1]) + '.tags.fastq'
+        temp = '.'.join(fq.split('.')[0:-1] + ['tags', 'fastq'])
         tags_file = temp.split('/')[-1]
     tagsOpen = open(tags_file, "w", 0)
     trimOpen = open(trimfq, "w", 0)

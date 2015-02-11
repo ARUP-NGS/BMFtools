@@ -1,6 +1,8 @@
 import re
 import subprocess
 
+import cython
+
 from MawCluster import BCBam, VCFWriters, BCVCF
 from MawCluster import BCFastq
 from utilBMF import HTSUtils
@@ -16,7 +18,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
                   mincov=5,
                   abrapath="default",
-                  coverageForAllRegions=False):
+                  coverageForAllRegions=False,
+                  calcCoverage=False):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -91,14 +94,18 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to the differing alignment needs.")
     coorSorted = BCBam.CoorSort(namesortedRealignedFull)
-    if(coverageForAllRegions is False):
-        CoverageBed = PileupUtils.CalcWithinBedCoverage(coorSorted, bed=bed)
-    else:
-        CoverageBed = PileupUtils.BamToCoverageBed(coorSorted, mincov=mincov)
-    pl("Coverage bed: {}".format(CoverageBed))
+    if(calcCoverage is True):
+        if(coverageForAllRegions is False):
+            CoverageBed = PileupUtils.CalcWithinBedCoverage(coorSorted,
+                                                            bed=bed)
+        else:
+            CoverageBed = PileupUtils.BamToCoverageBed(coorSorted,
+                                                       mincov=mincov)
+        pl("Coverage bed: {}".format(CoverageBed))
     return coorSorted
 
 
+@cython.locals(lighter=cython.bint)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
                       lighter=False, kmer="default", alpha="default",
                       captureSize="default"):
@@ -146,6 +153,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
     return BConsFastq1, BConsFastq2, barcodeIndex
 
 
+@cython.locals(minMQ=cython.int, minBQ=cython.int, MakeVCF=cython.bint, MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint)
 def pairedVCFProc(consMergeSortBAM,
                   ref="default",
                   opts="",
@@ -154,7 +162,7 @@ def pairedVCFProc(consMergeSortBAM,
                   minBQ=20,
                   MakePileupTsv=False,
                   MakeVCF=True,
-                  MakeCoverageBed=True,
+                  MakeCoverageBed=False,
                   commandStr="default"):
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")

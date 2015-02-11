@@ -9,6 +9,11 @@ import sys
 def main():
     print(sys.argv)
     try:
+        check_call(["python", "setup.py", "build_ext"])
+    except CalledProcessError:
+        print("Could not build C extensions. Abort!")
+        return 1
+    try:
         check_call(["python", "setup.py", "install"])
     except CalledProcessError:
         print("You might not have permission to install the BMFTools packages.")
