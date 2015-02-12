@@ -113,10 +113,10 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
         HTSUtils.FacePalm("Capture size must be set if lighter is true!")
     if isinstance(captureSize, str):
         captureSize = int(captureSize)
-    bcFastq1, bcFastq2 = BCFastq.FastqPairedShadingFaster(inFastq1,
-                                                          inFastq2,
-                                                          indexfq=indexfq,
-                                                          useGzip=False)
+    bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
+                                                    inFastq2,
+                                                    indexfq=indexfq,
+                                                    useGzip=False)
     if(indexfq == "default"):
         HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
