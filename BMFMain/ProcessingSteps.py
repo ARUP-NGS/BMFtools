@@ -113,10 +113,9 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
         HTSUtils.FacePalm("Capture size must be set if lighter is true!")
     if isinstance(captureSize, str):
         captureSize = int(captureSize)
-    bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
-                                                    inFastq2,
-                                                    indexfq=indexfq,
-                                                    useGzip=False)
+    bcFastq1, bcFastq2 = BCFastq.FastqPairedShadingFaster(inFastq1,
+                                                          inFastq2,
+                                                          indexfq=indexfq)
     if(indexfq == "default"):
         HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
@@ -153,7 +152,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
     return BConsFastq1, BConsFastq2, barcodeIndex
 
 
-@cython.locals(minMQ=cython.int, minBQ=cython.int, MakeVCF=cython.bint, MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint)
+@cython.locals(minMQ=cython.int, minBQ=cython.int, MakeVCF=cython.bint,
+               MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint)
 def pairedVCFProc(consMergeSortBAM,
                   ref="default",
                   opts="",

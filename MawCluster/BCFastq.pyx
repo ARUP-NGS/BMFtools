@@ -61,7 +61,7 @@ def BarcodeSort(inFastq, outFastq="default"):
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
                famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float)
-def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
+def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=200,
                         keepFails=True):
     """
     Compares the fastq records to create a consensus sequence (if it
@@ -70,7 +70,7 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=100,
     try:
         famLimit = int(famLimit)
     except ValueError:
-        pl("famLimit arg must be integer. Set to default: 100.")
+        pl("famLimit arg must be integer. Set to default: 200.")
     if(len(R) > famLimit):
         logging.debug(
             "Read family - {} with {} members was capped at {}. ".format(
@@ -202,7 +202,7 @@ def FastqPairedShading(fq1,
                        indexfq="default",
                        outfq1="default",
                        outfq2="default",
-                       gzip=True):
+                       gzip=False):
     """
     Tags fastqs with barcodes from an index fastq.
     TODO: change the write-out to concatenate strings before writing.
@@ -268,16 +268,21 @@ def FastqPairedShadingFaster(fq1, fq2, indexfq="default",
         raise ValueError("For an i5/i7 index ")
     if(outfq1 == "default"):
         outfq1 = ('.'.join(
-            fq1.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
+            fq1.split('.')[0:-1] + ['shaded', 'fastq'])).split('/')[-1]
     if(outfq2 == "default"):
         outfq2 = ('.'.join(
-            fq2.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
+            fq2.split('.')[0:-1] + ['shaded', 'fastq'])).split('/')[-1]
+    if(useGzip is True):
+        outfq1 += ".gz"
+        outfq2 += ".gz"
     pl("Output fastqs: {}, {}.".format(outfq1, outfq2))
     inFq1 = pysam.FastqFile(fq1)
     inFq2 = pysam.FastqFile(fq2)
     if useGzip is False:
         outFqHandle1 = open(outfq1, "w")
         outFqHandle2 = open(outfq2, "w")
+        f1 = cStringIO.StringIO()
+        f2 = cStringIO.StringIO()
     else:
         outFqHandle1 = open(outfq1, "wb")
         outFqHandle2 = open(outfq2, "wb")
@@ -292,31 +297,6 @@ def FastqPairedShadingFaster(fq1, fq2, indexfq="default",
     cdef pysam.cfaidx.FastqProxy read2
     cdef pysam.cfaidx.FastqProxy indexRead
     while True:
-        if(fqSetSize != 0 and len(outFqSet1) >= fqSetSize):
-            if(useGzip is False):
-                outFqHandle1.write("\n".join([
-                    "\n".join(["@" + c.name + c.comment,
-                               c.sequence, "+",
-                               c.quality]) for c in outFqSet1]))
-                outFqSet1 = []
-                outFqHandle2.write("\n".join([
-                    "\n".join(["@" + c.name + c.comment,
-                               c.sequence, "+",
-                               c.quality]) for c in outFqSet2]))
-                outFqSet2 = []
-            else:
-                f1.write("\n".join(["\n".join(["@" + c.name + c.comment,
-                                               c.sequence,
-                                               "+",
-                                               c.quality]) for
-                                    c in outFqSet1]))
-                f2.write("\n".join(["\n".join(["@" + c.name + c.comment,
-                                               c.sequence,
-                                               "+",
-                                               c.quality]) for
-                                    c in outFqSet2]))
-                outFqSet1 = []
-                outFqSet2 = []
         try:
             read1 = inFq1.next()
         except StopIteration:
@@ -330,37 +310,34 @@ def FastqPairedShadingFaster(fq1, fq2, indexfq="default",
         if(("N" in tempBar or "A"*bLen in tempBar
                 or "C"*bLen in tempBar or "G"*bLen in tempBar
                 or "T"*bLen in tempBar)):
+            '''
             pl("Failing barcode for read {} is {} ".format(indexRead,
                                                            tempBar),
                level=logging.DEBUG)
-            read1.comment += " #G~FP=IndexFail #G~BS=" + tempBar
-            read2.comment += " #G~FP=IndexFail #G~BS=" + tempBar
+            '''
+            f1.write("\n".join(["@" + read1.name + read1.comment +
+                                " #G~FP=IndexFail #G~BS=" + tempBar,
+                                read1.sequence,
+                                "+", read1.quality]))
+            f2.write("\n".join(["@" + read2.name + read2.comment +
+                                " #G~FP=IndexFail #G~BS=" + tempBar,
+                                read2.sequence,
+                                "+", read2.quality]))
         else:
-            read1.comment += " #G~FP=IndexPass #G~BS=" + tempBar
-            read2.comment += " #G~FP=IndexPass #G~BS=" + tempBar
-        outFqSet1.append(read1)
-        outFqSet2.append(read2)
-    if(len(outFqSet1) != 0):
-        if useGzip is True:
-            f1.write("\n".join(["\n".join(["@" + c.name + c.comment,
-                                           c.sequence, "+", c.quality]) for c
-                                in outFqSet1]))
-            f2.write("\n".join(["\n".join(["@" + c.name + c.comment,
-                                           c.sequence, "+", c.quality]) for c
-                                in outFqSet2]))
-            outFqHandle1.write(cString1.getvalue())
-            outFqHandle2.write(cString2.getvalue())
-        else:
-            outFqHandle1.write("\n".join(["\n".join(["@" + c.name + c.comment,
-                                                     c.sequence,
-                                                     "+",
-                                                     c.quality]) for
-                                          c in outFqSet1]))
-            outFqHandle2.write("\n".join(["\n".join(["@" + c.name + c.comment,
-                                                     c.sequence,
-                                                     "+",
-                                                     c.quality]) for
-                                          c in outFqSet2]))
+            f1.write("\n".join(["@" + read1.name + read1.comment +
+                                " #G~FP=IndexPass #G~BS=" + tempBar,
+                                read1.sequence,
+                                "+", read1.quality]))
+            f2.write("\n".join(["@" + read2.name + read2.comment +
+                                " #G~FP=IndexPass #G~BS=" + tempBar,
+                                read2.sequence,
+                                "+", read2.quality]))
+    if(useGzip is False):
+        outFqHandle1.write(f1.getvalue())
+        outFqHandle2.write(f2.getvalue())
+    else:
+        outFqHandle1.write(cString1.getvalue())
+        outFqHandle2.write(cString2.getvalue())
     outFqHandle1.close()
     outFqHandle2.close()
     return outfq1, outfq2
@@ -752,7 +729,7 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
 def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
                            outFqPair2="default",
                            stringency=0.9,
-                           numpy=False,
+                           numpy=True,
                            keepFailedPairs=True):
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     pl(("Command required to duplicate this action:"
@@ -770,6 +747,9 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
     workingBarcode = ""
     workingSet1 = []
     workingSet2 = []
+    # Get this information so that the numpy string array can
+    # be declared the right size
+    inFq1 = SeqIO.parse(fq1, 'fastq')  # Reset after getting read length
     for fqRec in inFq1:
         try:
             fqRec2 = inFq2.next()
@@ -781,7 +761,7 @@ def pairedFastqConsolidate(fq1, fq2, outFqPair1="default",
         bc4fq1 = GetDescTagValue(fqRec.description, "BS")
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
-        # and filter them from the BAM filea
+        # and filter them from the BAM file
         if(workingBarcode == ""):
             workingBarcode = bc4fq1
             workingSet1 = []
