@@ -1,4 +1,5 @@
 import numpy as np
+import pysam
 
 try:
     from setuptools import setup
@@ -19,7 +20,7 @@ config = {
     'packages': ['BMFMain', 'utilBMF', 'MawCluster'],
     'ext_modules': ext,
     'extra_compile_args': ["-O3"],
-    'include_dirs': [np.get_include()],
+    'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': [],
     'name': 'BMFTools',
     'license': 'GPLv3',

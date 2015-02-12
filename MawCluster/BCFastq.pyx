@@ -4,6 +4,7 @@ import os
 import shlex
 import subprocess
 import copy
+import gzip
 
 from Bio import SeqIO
 import Bio
@@ -12,6 +13,9 @@ import cython
 cimport cython
 import numpy as np
 cimport numpy as np
+import pysam
+cimport pysam.cfaidx
+import cStringIO
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
@@ -121,7 +125,7 @@ def compareFastqRecordsInexactNumpy(R):
     def dAccess(x):
         return letterNumDict[x]
     dAccess = np.vectorize(dAccess)
-    seqs = [str(record.seq) for record in R]
+    seqs = np.array([str(record.seq) for record in R])
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
@@ -246,6 +250,119 @@ def FastqPairedShading(fq1,
         from subprocess import check_call
         check_call(['gzip', fq1], shell=False)
         check_call(['gzip', fq2], shell=False)
+    return outfq1, outfq2
+
+
+@cython.locals(useGzip=cython.bint, bLen=cython.int, fqSetSize=cython.int)
+def FastqPairedShadingFaster(fq1, fq2, indexfq="default",
+                             outfq1="default",
+                             outfq2="default",
+                             useGzip=False, fqSetSize=10000):
+    """
+    Tags fastqs with barcodes from an index fastq.
+    TODO: change the write-out to concatenate strings before writing.
+    TODO: change reading-in to allow for using gzipped fastqs
+    """
+    pl("Now beginning fastq marking: Pass/Fail and Barcode")
+    if(indexfq == "default"):
+        raise ValueError("For an i5/i7 index ")
+    if(outfq1 == "default"):
+        outfq1 = ('.'.join(
+            fq1.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
+    if(outfq2 == "default"):
+        outfq2 = ('.'.join(
+            fq2.split('.')[0:-1]) + '.shaded.fastq').split('/')[-1]
+    pl("Output fastqs: {}, {}.".format(outfq1, outfq2))
+    inFq1 = pysam.FastqFile(fq1)
+    inFq2 = pysam.FastqFile(fq2)
+    if useGzip is False:
+        outFqHandle1 = open(outfq1, "w")
+        outFqHandle2 = open(outfq2, "w")
+    else:
+        outFqHandle1 = open(outfq1, "wb")
+        outFqHandle2 = open(outfq2, "wb")
+        cString1 = cStringIO.StringIO()
+        cString2 = cStringIO.StringIO()
+        f1 = gzip.GzipFile(fileobj=cString1, mode="w")
+        f2 = gzip.GzipFile(fileobj=cString2, mode="w")
+    inIndex = pysam.FastqFile(indexfq)
+    outFqSet1 = []
+    outFqSet2 = []
+    cdef pysam.cfaidx.FastqProxy read1
+    cdef pysam.cfaidx.FastqProxy read2
+    cdef pysam.cfaidx.FastqProxy indexRead
+    while True:
+        if(fqSetSize != 0 and len(outFqSet1) >= fqSetSize):
+            if(useGzip is False):
+                outFqHandle1.write("\n".join([
+                    "\n".join(["@" + c.name + c.comment,
+                               c.sequence, "+",
+                               c.quality]) for c in outFqSet1]))
+                outFqSet1 = []
+                outFqHandle2.write("\n".join([
+                    "\n".join(["@" + c.name + c.comment,
+                               c.sequence, "+",
+                               c.quality]) for c in outFqSet2]))
+                outFqSet2 = []
+            else:
+                f1.write("\n".join(["\n".join(["@" + c.name + c.comment,
+                                               c.sequence,
+                                               "+",
+                                               c.quality]) for
+                                    c in outFqSet1]))
+                f2.write("\n".join(["\n".join(["@" + c.name + c.comment,
+                                               c.sequence,
+                                               "+",
+                                               c.quality]) for
+                                    c in outFqSet2]))
+                outFqSet1 = []
+                outFqSet2 = []
+        try:
+            read1 = inFq1.next()
+        except StopIteration:
+            break
+        read2 = inFq2.next()
+        indexRead = inIndex.next()
+        tempBar, bLen = indexRead.sequence, len(indexRead.sequence) * 5 / 6
+        # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
+        # This is for removing low complexity reads
+        # print("bLen is {}".format(bLen))
+        if(("N" in tempBar or "A"*bLen in tempBar
+                or "C"*bLen in tempBar or "G"*bLen in tempBar
+                or "T"*bLen in tempBar)):
+            pl("Failing barcode for read {} is {} ".format(indexRead,
+                                                           tempBar),
+               level=logging.DEBUG)
+            read1.comment += " #G~FP=IndexFail #G~BS=" + tempBar
+            read2.comment += " #G~FP=IndexFail #G~BS=" + tempBar
+        else:
+            read1.comment += " #G~FP=IndexPass #G~BS=" + tempBar
+            read2.comment += " #G~FP=IndexPass #G~BS=" + tempBar
+        outFqSet1.append(read1)
+        outFqSet2.append(read2)
+    if(len(outFqSet1) != 0):
+        if useGzip is True:
+            f1.write("\n".join(["\n".join(["@" + c.name + c.comment,
+                                           c.sequence, "+", c.quality]) for c
+                                in outFqSet1]))
+            f2.write("\n".join(["\n".join(["@" + c.name + c.comment,
+                                           c.sequence, "+", c.quality]) for c
+                                in outFqSet2]))
+            outFqHandle1.write(cString1.getvalue())
+            outFqHandle2.write(cString2.getvalue())
+        else:
+            outFqHandle1.write("\n".join(["\n".join(["@" + c.name + c.comment,
+                                                     c.sequence,
+                                                     "+",
+                                                     c.quality]) for
+                                          c in outFqSet1]))
+            outFqHandle2.write("\n".join(["\n".join(["@" + c.name + c.comment,
+                                                     c.sequence,
+                                                     "+",
+                                                     c.quality]) for
+                                          c in outFqSet2]))
+    outFqHandle1.close()
+    outFqHandle2.close()
     return outfq1, outfq2
 
 
@@ -405,7 +522,8 @@ def GenerateSingleBarcodeIndex(tags_file, index_file="default"):
     return index_file
 
 
-@cython.locals(deleteInFqs=cython.bint, minFamSize=cython.int)
+@cython.locals(deleteInFqs=cython.bint, minFamSize=cython.int,
+               )
 def GetFamilySizePaired(
         trimfq1,
         trimfq2,
