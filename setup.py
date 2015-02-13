@@ -19,7 +19,6 @@ config = {
     'install_requires': ['pysam', 'biopython', 'pudb', 'cython'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster'],
     'ext_modules': ext,
-    'extra_compile_args': ["-O3"],
     'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': [],
     'name': 'BMFTools',

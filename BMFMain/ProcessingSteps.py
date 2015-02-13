@@ -113,26 +113,23 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
         HTSUtils.FacePalm("Capture size must be set if lighter is true!")
     if isinstance(captureSize, str):
         captureSize = int(captureSize)
-    bcFastq1, bcFastq2 = BCFastq.FastqPairedShadingFaster(inFastq1,
-                                                          inFastq2,
-                                                          indexfq=indexfq)
+    bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
+                                                    inFastq2,
+                                                    indexfq=indexfq)
     if(indexfq == "default"):
         HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     barcodeIndex = BCFastq.GenerateShadesIndex(indexfq)
-    (FamFqs, SingleFqs, numReads,
-     numReadsWFam) = BCFastq.GetFamilySizePaired(bcFastq1,
-                                                 bcFastq2, barcodeIndex)
+    (FamFqs, numReads,
+     numReadsWFam) = BCFastq.GetFamilySizePairedFaster(bcFastq1,
+                                                       bcFastq2, barcodeIndex)
     FamFq1, FamFq2 = FamFqs
-    SingleFq1, SingleFq2 = SingleFqs
     pl("Number of reads total: " + str(numReads))
     pl("Number of reads with >=3 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
-    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(BSortFq1,
-                                                              BSortFq2,
-                                                              stringency=0.75,
-                                                              numpy=True)
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
+        BSortFq1, BSortFq2, stringency=0.75, numpy=True)
     if(lighter is True):
         try:
             BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
