@@ -13,6 +13,8 @@ from Bio import SeqIO
 import pysam
 import cython
 cimport cython
+from BCFastq import dAccess
+dAccess = np.vectorize(dAccess)
 
 from MawCluster import BCFastq
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
@@ -118,333 +120,6 @@ def BarcodeSort(inBAM, outBAM="default", paired=True):
         cmd = ("samtools view {} | ".format(inBAM) +
                "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
                "$(NF-2),$0}}' - | sort | cut -f2- >> {}".format(outsam))
-        pl(
-            "Command string for this sorting process is: {}".format(cmd))
-        HTSUtils.PipedShellCall(cmd)
-    else:
-        cmd = ("samtools view {} | ".format(inBAM) +
-               "awk 'BEGIN {{FS=\"\t\";OFS=\"\t\"}};{{print "
-               "$(NF-1),$0}}' - | sort | cut -f2- >> {}".format(outsam))
-        pl(
-            "Command string for this sorting process is: {}".format(cmd))
-        HTSUtils.PipedShellCall(cmd)
-    pl("Now converting sam back to bam for further operations.")
-    subprocess.check_call(shlex.split("samtools view -Sbh {}".format(outsam)),
-                          shell=False, stdout=outBAM)
-    os.remove(outsam)
-    return outBAM
-
-
-def compareRecs(RecordList):
-    Success = True
-    letterNumDict = {}
-    letterNumDict['A'] = 0
-    letterNumDict['C'] = 1
-    letterNumDict['G'] = 2
-    letterNumDict['T'] = 3
-    letterNumDict[0] = 'A'
-    letterNumDict[1] = 'C'
-    letterNumDict[2] = 'G'
-    letterNumDict[3] = 'T'
-    seqs = [str(record.seq) for record in RecordList]
-    stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
-    seqArray = np.vstack(stackArrays)
-    # print(repr(seqArray))
-
-    def dAccess(x):
-        return letterNumDict[x]
-    dAccess = np.vectorize(dAccess)
-    quals = np.array([record.query_qualities
-                      for record in RecordList])
-    qualA = copy.copy(quals)
-    qualC = copy.copy(quals)
-    qualG = copy.copy(quals)
-    qualT = copy.copy(quals)
-    qualA[seqArray != "A"] = 0
-    qualASum = np.sum(qualA, 0)
-    qualC[seqArray != "C"] = 0
-    qualCSum = np.sum(qualC, 0)
-    qualG[seqArray != "G"] = 0
-    qualGSum = np.sum(qualG, 0)
-    qualT[seqArray != "T"] = 0
-    qualTSum = np.sum(qualT, 0)
-    qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join(
-        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
-                             np.sum(qualAllSum, 0))
-    phredQuals[phredQuals < 0] = 0
-    outRec = RecordList[0]
-    outRec.seq = newSeq
-    if(np.any(np.greater(phredQuals, 93))):
-        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
-    phredQuals[phredQuals > 93] = 93
-    outRec.query_qualities = phredQuals
-    return outRec, Success
-
-
-def ConsolidateInferred(inBAM, outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.Samfile(inBAM, 'rb')
-    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
-    workBC1 = ""
-    workBC2 = ""
-    Set1 = []
-    Set2 = []
-    for record in inputHandle:
-        if(record.is_read1):
-            barcodeRecord1 = record.opt("RP")
-            if(workBC1 == ""):
-                workBC1 = barcodeRecord1
-                Set1 = []
-                Set1.append(record)
-            elif(workBC1 == barcodeRecord1):
-                Set1.append(record)
-            else:
-                mergeRec1, success = compareRecs(Set1)
-                if(success is False):
-                    mergeRec1.setTag("FP", 0)
-                outputHandle.write(mergeRec1)
-                Set1 = [record]
-                workBC1 = barcodeRecord1
-        if(record.is_read2):
-            barcodeRecord2 = record.opt("RP")
-            if(workBC2 == ""):
-                workBC2 = barcodeRecord2
-                Set2 = []
-                Set2.append(record)
-            elif(workBC2 == barcodeRecord2):
-                Set2.append(record)
-            else:
-                mergeRec2, success = compareRecs(Set2)
-                if(success is False):
-                    mergeRec2.setTag("FP", 0)
-                outputHandle.write(mergeRec2)
-                Set2 = [record]
-                workBC2 = barcodeRecord2
-    inputHandle.close()
-    outputHandle.close()
-    return outBAM
-
-
-def Consolidate(inBAM, outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.Samfile(inBAM, 'rb')
-    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
-    workBC1 = ""
-    workBC2 = ""
-    Set1 = []
-    Set2 = []
-    for record in inputHandle:
-        if(record.is_read1):
-            barcodeRecord1 = record.opt("BS")
-            if(workBC1 == ""):
-                workBC1 = barcodeRecord1
-                Set1 = []
-                Set1.append(record)
-            elif(workBC1 == barcodeRecord1):
-                Set1.append(record)
-            else:
-                mergeRec1, success = compareRecs(Set1)
-                if(success is False):
-                    mergeRec1.setTag("FP", 0)
-                outputHandle.write(mergeRec1)
-                Set1 = [record]
-                workBC1 = barcodeRecord1
-        if(record.is_read2):
-            barcodeRecord2 = record.opt("BS")
-            if(workBC2 == ""):
-                workBC2 = barcodeRecord2
-                Set2 = []
-                Set2.append(record)
-            elif(workBC2 == barcodeRecord2):
-                Set2.append(record)
-            else:
-                mergeRec2, success = compareRecs(Set2)
-                if(success is False):
-                    mergeRec2.setTag("FP", 0)
-                outputHandle.write(mergeRec2)
-                Set2 = [record]
-                workBC2 = barcodeRecord2
-    inputHandle.close()
-    outputHandle.close()
-    return outBAM
-
-
-def CoorSort(inBAM, outBAM="default"):
-    import uuid
-    pl("CorrSort. Input: {}".format(inBAM))
-    pl("inBAM variable is {}".format(inBAM))
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + ".CoorSort.bam"
-    command_str = ("samtools sort {} -o {} -T temp".format(inBAM, outBAM) +
-                   str(uuid.uuid4().get_hex().upper()[0:8]))
-    pl(command_str)
-    subprocess.check_call(shlex.split(command_str), shell=False)
-    subprocess.check_call(["samtools", "index", outBAM])
-    return(outBAM)
-
-
-def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
-    """
-    Tool for filtering a pair of BAM files by criteria.
-    Note: complexity filter is not needed for shades protocol.
-    """
-    list = ("adapter barcode complexity editdistance family "
-            "ismapped qc notinbed").split()
-    Logger = logging.getLogger("Primarylogger")
-    try:
-        assert isinstance(filterSet, str)  # This should be a string.
-    except AssertionError:
-        if(isinstance(filterSet, list)):
-            pl("filterSet is a list, which was not expected. repr: {}".format(
-                repr(filterSet)))
-            pl("Joining filterSet into a string.")
-            filterSet = ''.join(filterSet)
-            if(isinstance(filterSet, str) is False):
-                HTSUtils.FacePalm("filterSet isn't a string after joining.")
-        else:
-            pl("Filter set is not as expected! Repr: {}".format(
-                repr(filterSet)))
-            raise ValueError("What is this? filterSet is not string or list.")
-    if(filterSet == "default"):
-        pl("List of valid filters: {}".format(', '.join(list)))
-        raise ValueError("Filter must be set!")
-    filterSet = filterSet.split(',')
-    for filt in filterSet:
-        if filt not in list:
-            pl("filterSet provided: {}".format(filterSet))
-            raise ValueError("Select valid filter(s) - {}".format(list))
-
-    if("adapter" in filterSet):
-        ALValue1 = int(read1.opt("FP"))
-        ALValue2 = int(read2.opt("FP"))
-        if(sum([ALValue1, ALValue2]) != 2):
-            return False
-
-    if("barcode" in filterSet):
-        if(read1.opt("BS") != read2.opt("BS")):
-            Logger.debug(
-                "Barcode sequence didn't match. Are you running shades?")
-            return False
-
-    if("editdistance" in filterSet):
-        NMValue1 = int(read1.opt("NM"))
-        NMValue2 = int(read2.opt("NM"))
-        if(NMValue1 == 0 and NMValue2 == 0):
-            return False
-
-    if("family" in filterSet):
-        FMValue1 = int(read1.opt("FM"))
-        FMValue2 = int(read2.opt("FM"))
-        if(FMValue1 < int(minFamSize) or FMValue2 < int(minFamSize)):
-            Logger.debug(("This family didn't survive. Their FMValues:" +
-                          "{}, {}".format(FMValue1, FMValue2)))
-            return False
-
-    if("ismapped" in filterSet):
-        if(read1.is_unmapped and read2.is_unmapped):
-            return False
-
-    if("qc" in filterSet):
-        if(read1.is_qcfail or read2.is_qcfail):
-            return False
-
-    return True
-
-
-def GenBCIndexBAM(tagBAM, idx="default", paired=True):
-    pl("GenBCIndexBAM for {}".format(tagBAM))
-    if(idx == "default"):
-        idx = '.'.join(tagBAM.split('.')[0:1]) + ".DoubleIdx"
-    if(paired is True):
-        Str = ("samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
-               "'{{print $(NF-1)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
-               " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx))
-        HTSUtils.PipedShellCall(Str)
-    if(paired is False):
-        Str = ("samtools view {} | grep -v 'AL:i:0' | awk ".format(tagBAM) +
-               "'{{print $(NF-2)}}' | sed 's/BS:Z://g' | sort | uniq -c |"
-               " awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' > {}".format(idx))
-        HTSUtils.PipedShellCall(Str)
-    return idx
-
-
-def GenBCIndexRef(idx, output="default"):
-    pl("GenBCIndexRef. Input index: {}".format(idx))
-    if(output == "default"):
-        output = idx.split('.')[0] + '.ref.fasta'
-    Str = "paste {0} {0} | sed 's:^:>:g' | tr '\t' '\n' > {1}".format(
-          idx, output)
-    HTSUtils.PipedShellCall(Str)
-    return output
-
-
-def GenerateFamilyHistochart(BCIdx, output="default"):
-    if(output == "default"):
-        output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
-    Str = ("cat {} | awk '{{print $1}}' | sort | uniq -c | ".format(BCIdx) +
-           "awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort " +
-           "-k1,1n > {}".format(output))
-    pl("Command str: {}".format(Str))
-    HTSUtils.PipedShellCall(Str)
-    pl("Family size histochart: {}".format(output))
-    return output
-
-
-def getFamilySizeBAM(inputBAM, idx, output="default", passBC="default",
-                     minFamSize=3):
-    pl("getFamilySizeBAM. Input: {}".format(inputBAM))
-    if(output == "default"):
-        output = inputBAM.split('.')[0] + ".doubleFam.bam"
-    if(passBC == "default"):
-        passBC = inputBAM.split('.')[0] + ".doubleFam.lst"
-    index = open(idx, "r")
-    dictEntries = [line.split() for line in index]
-    BarDict = {}
-    for entry in dictEntries:
-        BarDict[entry[1]] = entry[0]
-    index.close()
-    Reads = pysam.Samfile(inputBAM, "rb")
-    outfile = pysam.Samfile(output, "wb", template=Reads)
-    writeList = open(passBC, "w", 0)
-    for record in Reads:
-        Barcode = record.opt("BS")
-        try:
-            famSize = int(BarDict[Barcode])
-        except KeyError:
-            famSize = 0
-        record.setTag("FM", famSize)
-        if(int(famSize) >= minFamSize):
-            writeList.write('{}\n'.format(Barcode))
-            try:
-                record.opt("BD")
-            except KeyError:
-                record.setTag("BD", 0)
-        outfile.write(record)
-    writeList.close()
-    outfile.close()
-    import uuid
-    tempname = str(uuid.uuid4().get_hex().upper()[0:12]) + ".OMGZZZZ.tmp"
-    string1 = "cat {0} | sort | uniq > {1} && mv {1} {0}".format(
-        passBC, tempname)
-    HTSUtils.PipedShellCall(string1)
-    return output, passBC
-
-
-def mergeBams(BAM1, BAM2, PT="default", outBAM="default"):
-    pl("mergeBams. BAM1: {}. BAM2: {}".format(BAM1, BAM2))
-    if(PT == "default"):
-        PT = "/mounts/bin/picard-tools"
-    if(outBAM == "default"):
-        outBAM = '.'.join(BAM1.split('.')[0:-1]) + '.merged.bam'
-    command = ("java -jar {}/MergeSamFiles.jar I={}".format(PT, BAM1) +
-               " I={} O={} SO=coordinate AS=true".format(BAM2, outBAM))
-    subprocess.check_call(shlex.split(command), shell=False)
-    pl("Command string for merging was: {}".format(command))
     return outBAM
 
 
@@ -527,6 +202,156 @@ def pairedBarcodeTagging(
     outBAM.close()
     postFilterBAM.close()
     return outBAMFile
+
+
+def compareRecs(RecordList):
+    Success = True
+    seqs = [str(record.seq) for record in RecordList]
+    stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
+    seqArray = np.vstack(stackArrays)
+    # print(repr(seqArray))
+
+    quals = np.array([record.query_qualities
+                      for record in RecordList])
+    qualA = copy.copy(quals)
+    qualC = copy.copy(quals)
+    qualG = copy.copy(quals)
+    qualT = copy.copy(quals)
+    qualA[seqArray != "A"] = 0
+    qualASum = np.sum(qualA, 0)
+    qualC[seqArray != "C"] = 0
+    qualCSum = np.sum(qualC, 0)
+    qualG[seqArray != "G"] = 0
+    qualGSum = np.sum(qualG, 0)
+    qualT[seqArray != "T"] = 0
+    qualTSum = np.sum(qualT, 0)
+    qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
+    newSeq = "".join(
+        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
+    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
+                             np.sum(qualAllSum, 0))
+    phredQuals[phredQuals < 0] = 0
+    outRec = RecordList[0]
+    outRec.seq = newSeq
+    if(np.any(np.greater(phredQuals, 93))):
+        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
+    phredQuals[phredQuals > 93] = 93
+    outRec.query_qualities = phredQuals
+    return outRec, Success
+
+
+def ConsolidateInferred(inBAM, outBAM="default"):
+    if(outBAM == "default"):
+        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
+    inputHandle = pysam.Samfile(inBAM, 'rb')
+    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
+    workBC1 = ""
+    workBC2 = ""
+    Set1 = []
+    Set2 = []
+    for record in inputHandle:
+        if(record.is_read1):
+            barcodeRecord1 = record.opt("RP")
+            if(workBC1 == ""):
+                workBC1 = barcodeRecord1
+                Set1 = []
+                Set1.append(record)
+            elif(workBC1 == barcodeRecord1):
+                Set1.append(record)
+            else:
+                mergeRec1, success = compareRecs(Set1)
+                if(success is False):
+                    mergeRec1.setTag("FP", 0)
+                outputHandle.write(mergeRec1)
+                Set1 = [record]
+                workBC1 = barcodeRecord1
+        if(record.is_read2):
+            barcodeRecord2 = record.opt("RP")
+            if(workBC2 == ""):
+                workBC2 = barcodeRecord2
+                Set2 = []
+                Set2.append(record)
+            elif(workBC2 == barcodeRecord2):
+                Set2.append(record)
+            else:
+                mergeRec2, success = compareRecs(Set2)
+                if(success is False):
+                    mergeRec2.setTag("FP", 0)
+                outputHandle.write(mergeRec2)
+                Set2 = [record]
+                workBC2 = barcodeRecord2
+    inputHandle.close()
+    outputHandle.close()
+    return outBAM
+
+
+def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
+    """
+    Tool for filtering a pair of BAM files by criteria.
+    Note: complexity filter is not needed for shades protocol.
+    """
+    list = ("adapter barcode complexity editdistance family "
+            "ismapped qc notinbed").split()
+    Logger = logging.getLogger("Primarylogger")
+    try:
+        assert isinstance(filterSet, str)  # This should be a string.
+    except AssertionError:
+        if(isinstance(filterSet, list)):
+            pl("filterSet is a list, which was not expected. repr: {}".format(
+                repr(filterSet)))
+            pl("Joining filterSet into a string.")
+            filterSet = ''.join(filterSet)
+            if(isinstance(filterSet, str) is False):
+                HTSUtils.FacePalm("filterSet isn't a string after joining.")
+        else:
+            pl("Filter set is not as expected! Repr: {}".format(
+                repr(filterSet)))
+            raise ValueError("What is this? filterSet is not string or list.")
+    if(filterSet == "default"):
+        pl("List of valid filters: {}".format(', '.join(list)))
+        raise ValueError("Filter must be set!")
+    filterSet = filterSet.split(',')
+    for filt in filterSet:
+        if filt not in list:
+            pl("filterSet provided: {}".format(filterSet))
+            raise ValueError("Select valid filter(s) - {}".format(list))
+
+    if("adapter" in filterSet):
+        ALValue1 = int(read1.opt("FP"))
+        ALValue2 = int(read2.opt("FP"))
+        if(sum([ALValue1, ALValue2]) != 2):
+            return False
+
+    if("barcode" in filterSet):
+        if(read1.opt("BS") != read2.opt("BS")):
+            Logger.debug(
+                "Barcode sequence didn't match. Are you running shades?")
+            return False
+
+    if("editdistance" in filterSet):
+        NMValue1 = int(read1.opt("NM"))
+        NMValue2 = int(read2.opt("NM"))
+        if(NMValue1 == 0 and NMValue2 == 0):
+            return False
+
+    if("family" in filterSet):
+        FMValue1 = int(read1.opt("FM"))
+        FMValue2 = int(read2.opt("FM"))
+        if(FMValue1 < int(minFamSize) or FMValue2 < int(minFamSize)):
+            Logger.debug(("This family didn't survive. Their FMValues:" +
+                          "{}, {}".format(FMValue1, FMValue2)))
+            return False
+
+    if("ismapped" in filterSet):
+        if(read1.is_unmapped and read2.is_unmapped):
+            return False
+
+    if("qc" in filterSet):
+        if(read1.is_qcfail or read2.is_qcfail):
+            return False
+
+    return True
 
 
 def pairedFilterBam(inputBAM, passBAM="default",

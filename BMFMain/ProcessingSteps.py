@@ -128,8 +128,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
     pl("Number of reads with >=3 family members: " + str(numReadsWFam))
     BSortFq1 = BCFastq.BarcodeSort(FamFq1)
     BSortFq2 = BCFastq.BarcodeSort(FamFq2)
-    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
-        BSortFq1, BSortFq2, stringency=0.75, numpy=True)
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
+        BSortFq1, BSortFq2, stringency=0.75)
     if(lighter is True):
         try:
             BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
