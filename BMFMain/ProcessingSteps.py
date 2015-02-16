@@ -93,7 +93,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to the differing alignment needs.")
-    coorSorted = BCBam.CoorSort(namesortedRealignedFull)
+    coorSorted = HTSUtils.CoorSortAndIndexBam(namesortedRealignedFull)
     if(calcCoverage is True):
         if(coverageForAllRegions is False):
             CoverageBed = PileupUtils.CalcWithinBedCoverage(coorSorted,
@@ -108,7 +108,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 @cython.locals(lighter=cython.bint)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
                       lighter=False, kmer="default", alpha="default",
-                      captureSize="default"):
+                      captureSize="default", p3Seq="default", p5Seq="default",
+                      overlapLen=6):
     if(lighter is True and captureSize == "default"):
         HTSUtils.FacePalm("Capture size must be set if lighter is true!")
     if isinstance(captureSize, str):
@@ -131,6 +132,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
         BSortFq1, BSortFq2, stringency=0.75)
     if(lighter is True):
+        pl("About to run lighter for error correction.")
         try:
             BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
                 BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
@@ -142,6 +144,12 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
             BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
                 BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
                 alpha=alpha)
+    if(p3Seq != "default"):
+        BConsFastq1 = BCFastq.CallCutadapt(BConsFastq1, overlapLen=overlapLen,
+                                           p3Seq=p3Seq, p5Seq=p5Seq)
+        BConsFastq2 = BCFastq.CallCutadapt(BConsFastq2, overlapLen=overlapLen,
+                                           p3Seq=p3Seq, p5Seq=p5Seq)
+    # Assuming that no reads are failed (numpy
     # Assuming that no reads are failed (numpy
     # consolidation does not fail reads or read pairs unless
     # there is less than 50% agreement or there are too many members

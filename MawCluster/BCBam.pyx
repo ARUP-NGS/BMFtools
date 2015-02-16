@@ -354,6 +354,18 @@ def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
     return True
 
 
+def GenerateFamilyHistochart(BCIdx, output="default"):
+    if(output == "default"):
+        output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
+    Str = ("cat {} | awk '{{print $1}}' | sort | uniq -c | ".format(BCIdx) +
+           "awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort " +
+           "-k1,1n > {}".format(output))
+    pl("Command str: {}".format(Str))
+    HTSUtils.PipedShellCall(Str)
+    pl("Family size histochart: {}".format(output))
+    return output
+
+
 def pairedFilterBam(inputBAM, passBAM="default",
                     failBAM="default", criteria="default",
                     deleteFailBam=False):

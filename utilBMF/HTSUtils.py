@@ -399,10 +399,11 @@ def align_snap(R1, R2, ref, opts, outBAM):
     return(command_str)
 
 
-def PipedShellCall(commandStr, delete=True):
+def PipedShellCall(commandStr, delete=True, silent=True):
     PipedShellCallFilename = "PipedShellCall{}.sh".format(
         str(uuid.uuid4().get_hex().upper()[0:8]))
-    printlog("Command string: {}".format(commandStr))
+    if silent is False:
+        printlog("Command string: {}".format(commandStr), level=logging.DEBUG)
     open(PipedShellCallFilename, "w").write(commandStr)
     subprocess.check_call(['bash', PipedShellCallFilename])
     if(delete is True):

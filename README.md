@@ -96,9 +96,14 @@ Using a homing sequence as input for consolidating families of PCR duplicates.
 Each line has a set of keys and values. See conf/config.txt for an example.
 Most options are available for command-line as well. If an option is set in both a config file and on the command-line, the command-line option clobbers the config setting.
 
-#Changes in BMFTools v0.0.5alpha
+#Changes in BMFTools v0.0.5
 1. Removal of standard BMFMain in lieu of the config-based one.
 2. Working intrachromosomal translocation detection. (Fast!)
 3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.
 4. Added filter by bed file to BCVCF. In spite of pysam's supposed ability to pileup over requested reasons, something seems off, so any variants which were called due to pysam's pileup but were outside the bed file are now removed.
 5. SNV calling is now in prototypical alpha mode.
+
+#Changes in BMFTools v0.0.5.1
+1. Gzipped Fastq's supported.
+2. Performance improvements
+3. Code now departing from valid python code to cython.

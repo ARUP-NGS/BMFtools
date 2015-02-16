@@ -624,18 +624,22 @@ def MakeConsensus(seqs):
 
 
 def BkptSequenceInterReads(reads):
+    """
+    Not written yet.
+    """
+    raise ThisIsMadness("Unfinished function.")
     newSeq = ""
     try:
         assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
     except AssertionError:
-        FacePalm("BkptSequenceIntraReads requires a list of "
+        FacePalm("BkptSequenceInterReads requires a list of "
                  "pysam AlignedSegment objects as input!")
     try:
         assert len(list(set([read.reference_id for read in reads if
-                             read.is_unmapped is False]))) == 1
+                             read.is_unmapped is False]))) == 2
     except AssertionError:
-        FacePalm("Intrachromosomal translocations should all be"
-                 "on the same contig.")
+        FacePalm("Interchromosomal translocations should be between 2"
+                 "contigs.")
     return newSeq
 
 

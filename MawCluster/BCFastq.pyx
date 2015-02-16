@@ -244,7 +244,18 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     Calls cutadapt to remove adapter sequence at either end of the reads.
     Written for v1.7.1
     """
-    pass
+    outfq = ".".join(fq.split('.')[0:-1] + ["cutadapt", "fastq"])
+    if(p3Seq == "default"):
+        HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
+    if(p5Seq == "default"):
+        pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
+        commandStr = shlex.split("cutadapt -a {} -o {} -O {} {}".format(
+            p3Seq, outfq, overlapLen, fq))
+    else:
+        commandStr = shlex.split("cutadapt -a {} -g {} -o {} -O {} {}".format(
+            p3Seq, p5Seq, outfq, overlapLen, fq))
+    subprocess.check_call(commandStr)
+    return outfq
 
 
 @cython.locals(useGzip=cython.bint, bLen=cython.int)
@@ -252,8 +263,6 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                        useGzip=False):
     """
     Tags fastqs with barcodes from an index fastq.
-    TODO: change the write-out to concatenate strings before writing.
-    TODO: change reading-in to allow for using gzipped fastqs
     """
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):

@@ -137,6 +137,10 @@ def main():
         type=int)
     parser.add_argument(
         "--alpha", help="Alpha parameter for Lighter.", type=float)
+    parser.add_argument(
+        "--p3Seq", help="3' primer sequence for cutadapt.", default="default")
+    parser.add_argument(
+        "--p5Seq", help="5' primer sequence for cutadapt.", default="default")
     global Logger
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
@@ -245,6 +249,14 @@ def main():
             single_end = False
     else:
         single_end = args.single_end
+    if("p3Seq" in confDict.keys()):
+        p3Seq = confDict['p3Seq']
+    if(args.p3Seq != "default"):
+        p3Seq = args.p3Seq
+    if("p5Seq" in confDict.keys()):
+        p5Seq = confDict['p5Seq']
+    if(args.p5Seq != "default"):
+        p5Seq = args.p5Seq
     if(single_end is False):
         pl("Paired-end analysis chosen.")
     if(single_end is True):
@@ -258,11 +270,13 @@ def main():
                 if kmer is None and alpha is not None:
                     trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
                         args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                        lighter=lighter, captureSize=captureSize, alpha=alpha)
+                        lighter=lighter, captureSize=captureSize, alpha=alpha,
+                        p3Seq=p3Seq, p5Seq=p5Seq)
                 else:
                     trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
                         args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                        lighter=lighter, kmer=kmer, captureSize=captureSize)
+                        lighter=lighter, kmer=kmer, captureSize=captureSize,
+                        p3Seq=p3Seq, p5Seq=p5Seq)
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
                     trimfq2,
