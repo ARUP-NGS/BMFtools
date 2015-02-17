@@ -58,7 +58,7 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 Tag | Content | Format |
 ----|-----|-----|
 BS | Barcode Sequence | String. Regex: [ATGCN]+ |
-FP | Read Passes Filter related to barcoding | String. Required: "Pass" or "Fail" |
+FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
@@ -96,9 +96,21 @@ Using a homing sequence as input for consolidating families of PCR duplicates.
 Each line has a set of keys and values. See conf/config.txt for an example.
 Most options are available for command-line as well. If an option is set in both a config file and on the command-line, the command-line option clobbers the config setting.
 
-#Changes in BMFTools v0.0.5alpha
+#Changes in BMFTools v0.0.5
 1. Removal of standard BMFMain in lieu of the config-based one.
 2. Working intrachromosomal translocation detection. (Fast!)
 3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.
 4. Added filter by bed file to BCVCF. In spite of pysam's supposed ability to pileup over requested reasons, something seems off, so any variants which were called due to pysam's pileup but were outside the bed file are now removed.
 5. SNV calling is now in prototypical alpha mode.
+
+#Changes in BMFTools v0.0.5.1
+1. Gzipped Fastq's supported.
+2. Performance improvements
+3. Code now departing from valid python code to cython.
+
+#TODO:
+1. Speed up consolidateInexactNumpy (pysam/cStringIO)
+2. Finish consensus sequence for intrachromosomal.
+3. Finish writing structural variants to a VCF format
+4. Work on interchromosomal translocations
+5. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.

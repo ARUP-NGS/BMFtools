@@ -106,14 +106,18 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 
 
 @cython.locals(lighter=cython.bint)
-def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
+def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       lighter=False, kmer="default", alpha="default",
                       captureSize="default", p3Seq="default", p5Seq="default",
                       overlapLen=6):
     if(lighter is True and captureSize == "default"):
         HTSUtils.FacePalm("Capture size must be set if lighter is true!")
     if isinstance(captureSize, str):
-        captureSize = int(captureSize)
+        try:
+            captureSize = int(captureSize)
+        except ValueError:
+            captureSize = 58370
+            pl("Capture Size not set - default of 58370 set.")
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq)
@@ -149,7 +153,6 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.75,
                                            p3Seq=p3Seq, p5Seq=p5Seq)
         BConsFastq2 = BCFastq.CallCutadapt(BConsFastq2, overlapLen=overlapLen,
                                            p3Seq=p3Seq, p5Seq=p5Seq)
-    # Assuming that no reads are failed (numpy
     # Assuming that no reads are failed (numpy
     # consolidation does not fail reads or read pairs unless
     # there is less than 50% agreement or there are too many members

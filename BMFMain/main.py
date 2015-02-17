@@ -125,8 +125,7 @@ def main():
     parser.add_argument(
         "--lighter",
         help="Whether or not to use Lighter for error correction.",
-        action="store_true",
-        default=True)
+        default="default")
     parser.add_argument(
         "--kmer",
         help="Kmer for error correction.",
@@ -161,8 +160,8 @@ def main():
     alpha = None
     if("lighter" in confDict.keys()):
         lighter = (confDict['lighter'].lower() == "true")
-    if "lighter" in args:
-        lighter = args.lighter
+    if "lighter" in args and args.lighter != "default":
+        lighter = (args.lighter.lower() == "true")
     if("lighter" in locals()):
         if("kmer" in confDict.keys()):
             kmer = int(confDict["kmer"])

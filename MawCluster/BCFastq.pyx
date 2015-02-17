@@ -254,6 +254,7 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     else:
         commandStr = shlex.split("cutadapt -a {} -g {} -o {} -O {} {}".format(
             p3Seq, p5Seq, outfq, overlapLen, fq))
+    pl("Cutadapt command string: {}".format(" ".join(commandStr)))
     subprocess.check_call(commandStr)
     return outfq
 

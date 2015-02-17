@@ -674,8 +674,10 @@ def BkptSequenceIntraReads(reads):
         FacePalm("Intrachromosomal translocations should all be"
                  "on the same contig.")
     # Separate reads based on which end of the translocation they're part of.
-    negReads = [read for read in reads if read.tlen < 0]
-    posReads = [read for read in reads if read.tlen > 0]
+    negReads = sorted([read for read in reads if read.tlen < 0],
+                      key=lambda x: x.pos)
+    posReads = sorted([read for read in reads if read.tlen > 0],
+                      key=lambda x: x.pos)
     negSeqs = [read.seq if read.is_reverse else
                Seq(read.seq).reverse_complement().seq for read in negReads]
     posSeqs = [read.seq if read.is_reverse else

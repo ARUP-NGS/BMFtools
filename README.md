@@ -107,3 +107,10 @@ Most options are available for command-line as well. If an option is set in both
 1. Gzipped Fastq's supported.
 2. Performance improvements
 3. Code now departing from valid python code to cython.
+
+#TODO:
+1. Speed up consolidateInexactNumpy (pysam/cStringIO)
+2. Finish consensus sequence for intrachromosomal.
+3. Finish writing structural variants to a VCF format
+4. Work on interchromosomal translocations
+5. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
