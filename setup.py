@@ -2,10 +2,10 @@ import numpy as np
 import pysam
 
 try:
-    from setuptools import setup
+    from setuptools import setup, Extension
 except ImportError:
     print("setuptools not available. Trying distutils.")
-    from distutils.core import setup
+    from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
 ext = cythonize('*/*.pyx') + cythonize('*/*.py')

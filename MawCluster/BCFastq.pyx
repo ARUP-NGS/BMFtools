@@ -73,7 +73,6 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=200,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], len(R), famLimit))
         R = R[:famLimit]
-        # Add debugging logging for this step.
     seqs = [str(record.seq) for record in R]
     maxScore = 0
     Success = False
@@ -110,6 +109,58 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=200,
     consolidatedRecord.letter_annotations[
         'phred_quality'] = probs
     return consolidatedRecord, Success
+
+
+@cython.locals(stringency=cython.float, hybrid=cython.bint,
+               famLimit=cython.int, keepFails=cython.bint,
+               Success=cython.bint, PASS=cython.bint, frac=cython.float)
+def compareFastqRecordsFastqProxy(R, stringency=0.9, hybrid=False,
+                                  famLimit=200, keepFails=True):
+    """
+    Compares the fastq records to create a consensus sequence (if it
+    passes a filter)
+    """
+    if(len(R) > famLimit):
+        logging.debug(
+            "Read family - {} with {} members was capped at {}. ".format(
+                R[0], len(R), famLimit))
+        R = R[:famLimit]
+    assert isinstance(R[0], pysam.cfaidx.FastqProxy)
+    seqs = [record.sequence for record in R]
+    maxScore = 0
+    Success = False
+    for seq in seqs:
+        # print("Seq: {}".format(str(seq)))
+        numEq = sum(str(seq) == str(seqItem) for seqItem in seqs)
+        if(numEq > maxScore):
+            maxScore = numEq
+            finalSeq = str(seq)
+    frac = numEq * 1.0 / len(R)
+    PASS = frac > stringency
+    # print("Fraction {}. Stringency: {}. Pass? {}.".format(
+    # frac,stringency,PASS))
+    if(PASS):
+        Success = True
+    elif(frac < 0.5):
+        Success = False
+    elif(hybrid is True):
+        return compareFqRecsFast(R)
+    probs = np.multiply(len(R), [ord(i) - 33 for i in R[0].quality])
+    if(np.any(np.less(probs, 1))):
+        Success = False
+    else:
+        Success = True
+    if(np.any(np.greater(probs, 93))):
+        consFqString = "\n".join(["@" + R[0].name + R[0].comment +
+                                  " #G~PV=" + ",".join(
+            probs.astype(str)), finalSeq, "+", "".join([chr(i + 33)
+                                                        for i in probs])])
+    else:
+        probs[probs <= 0] = 93
+        probs[probs > 93] = 93
+        consFqString = "\n".join(["@" + R[0].name + R[0].comment, finalSeq,
+                                  "+", "".join([chr(i + 33) for i in probs])])
+    return consFqString, Success
 
 
 @cython.locals(Success=cython.bint)
@@ -261,7 +312,7 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
 
 @cython.locals(useGzip=cython.bint, bLen=cython.int)
 def FastqPairedShading(fq1, fq2, indexfq="default",
-                       useGzip=False):
+                       useGzip=False, readPairsPerWrite=250000):
     """
     Tags fastqs with barcodes from an index fastq.
     """
@@ -298,7 +349,21 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     cdef pysam.cfaidx.FastqProxy read1
     cdef pysam.cfaidx.FastqProxy read2
     cdef pysam.cfaidx.FastqProxy indexRead
+    numWritten = 0
     while True:
+        if(numWritten % readPairsPerWrite == 0):
+            if(useGzip is False):
+                outFqHandle1.write(f1.getvalue())
+                outFqHandle2.write(f2.getvalue())
+                f1 = cStringIO.StringIO()
+                f2 = cStringIO.StringIO()
+            else:
+                outFqHandle1.write(f1.getvalue())
+                outFqHandle2.write(f2.getvalue())
+                cString1 = cStringIO.StringIO()
+                cString2 = cStringIO.StringIO()
+                f1 = gzip.GzipFile(fileobj=cString1, mode="w")
+                f2 = gzip.GzipFile(fileobj=cString2, mode="w")
         try:
             read1 = inFq1.next()
         except StopIteration:
@@ -334,6 +399,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                                 " #G~FP=IndexPass #G~BS=" + tempBar,
                                 read2.sequence,
                                 "+", read2.quality, ""]))
+        numWritten += 1
     if(useGzip is False):
         outFqHandle1.write(f1.getvalue())
         outFqHandle2.write(f2.getvalue())
@@ -463,7 +529,7 @@ def GetDescriptionTagDict(readDesc):
     tagDict = {}
     try:
         for pair in tagSetEntries:
-            tagDict[pair[0]] = pair[1]
+            tagDict[pair[0]] = pair[1].split(' ')[0]
     except IndexError:
         pl("A value is stored with the #G~ tag which doesn't contain an =.")
         pl("tagSetEntries: {}".format(tagSetEntries))
@@ -806,8 +872,9 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
     return outFqPair1, outFqPair2
 
 
-@cython.locals(stringency=cython.float)
-def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9):
+@cython.locals(stringency=cython.float, readPairsPerWrite=cython.int)
+def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
+                                 readPairsPerWrite=250000):
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
     outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
     pl("Now running pairedFastqConsolidateFaster on {} and {}.".format(fq1,
@@ -826,7 +893,13 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9):
     workingSet2 = []
     cdef pysam.cfaidx.FastqProxy fqRec
     cdef pysam.cfaidx.FastqProxy fqRec2
+    numProc = 0
     while True:
+        if(numProc % readPairsPerWrite == 0):
+            outputHandle1.write(cString1.getvalue())
+            outputHandle2.write(cString2.getvalue())
+            cString1 = cStringIO.StringIO()
+            cString2 = cStringIO.StringIO()
         try:
             fqRec = inFq1.next()
         except StopIteration:
@@ -848,13 +921,14 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9):
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            cString1.write(compareFqRecsFast(workingSet1) + "\n")
-            cString2.write(compareFqRecsFast(workingSet2) + "\n")
+            cString1.write(compareFastqRecordsFastqProxy(workingSet1) + "\n")
+            cString2.write(compareFastqRecordsFastqProxy(workingSet2) + "\n")
             workingSet1 = []
             workingSet1.append(fqRec)
             workingSet2 = []
             workingSet2.append(fqRec2)
             workingBarcode = bc4fq1
+            numProc += 1
             continue
     outputHandle1.write(cString1.getvalue())
     outputHandle2.write(cString2.getvalue())

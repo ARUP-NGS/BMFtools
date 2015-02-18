@@ -19,7 +19,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   mincov=5,
                   abrapath="default",
                   coverageForAllRegions=False,
-                  calcCoverage=False):
+                  calcCoverage=False,
+                  bwapath="default"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -36,7 +37,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         aligner = "mem"
     if(aligner == "mem"):
         outBAMProperPair = HTSUtils.align_bwa_mem(
-            consfq1, consfq2, ref=ref, opts=opts)
+            consfq1, consfq2, ref=ref, opts=opts, path=bwapath)
         if(consfqSingle != "default"):
             HTSUtils.FacePalm("This step is not required "
                               "or important for shades.")

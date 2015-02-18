@@ -287,26 +287,6 @@ def FacePalm(string):
     raise ThisIsMadness(string)
 
 
-def align_bowtie2(R1, R2, ref, opts, outsam):
-    output = open(
-        outsam,
-        'w', 0)
-    if(opts == ""):
-        opts = '--threads 4 '
-    if('--reorder' not in opts):
-        opts += '--reorder '
-    if('--mm' not in opts):
-        opts += ' --mm '
-    opt_concat = ' '.join(opts.split())
-    command_str = ('bowtie2 {} --local --very'.format(opt_concat) +
-                   '-sensitive-local -x {} -1 {} -2 {}'.format(ref, R1, R2))
-    printlog(command_str)
-    # command_list=command_str.split(' ')
-    subprocess.check_call(command_str, stdout=output, shell=True)
-    output.close()
-    return(command_str)
-
-
 def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     """
     Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
@@ -336,8 +316,10 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     return outBAM
 
 
-def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default"):
-    """Aligns a set of paired-end
+def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
+                  path="default"):
+    """
+    Aligns a set of paired-end
     reads to a reference
     with provided options using bwa mem.
     Defaults to 4 threads, silent alignment, listing
@@ -352,8 +334,12 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default"):
     if(ref == "default"):
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
-    command_str = ('bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2) +
-                   " | samtools view -Sbh - > {}".format(outBAM))
+    if(path == "default"):
+        command_str = ('bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2) +
+                       " | samtools view -Sbh - > {}".format(outBAM))
+    else:
+        command_str = (path + ' mem {} {} {}'.format(opt_concat, ref, R1, R2) +
+                       " {} | samtools view -Sbh - > {}".format(R2, outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
     PipedShellCall(command_str, delete=True)
@@ -900,8 +886,9 @@ def parseConfig(string):
     Key is line.strip().split("=")[0].
     Value is line.strip().split("=")[1].
     Any further values are ignored.
+    New with BMFTools v0.0.5.2 (or so?): # comment the rest of a line out.
     """
-    parsedLines = [l.strip() for l in open(string, "r").readlines()
+    parsedLines = [l.strip().split("#")[0] for l in open(string, "r").readlines()
                    if l[0] != "#"]
     ConfigDict = {}
     for line in parsedLines:

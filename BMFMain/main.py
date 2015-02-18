@@ -256,13 +256,14 @@ def main():
         p5Seq = confDict['p5Seq']
     if(args.p5Seq != "default"):
         p5Seq = args.p5Seq
-    if(single_end is False):
-        pl("Paired-end analysis chosen.")
+    if("bwapath" in confDict.keys()):
+        bwapath = confDict["bwapath"]
     if(single_end is True):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
                                "supported. Soon!")
     else:
+        pl("Paired-end analysis chosen.")
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             if(args.shades is True):
@@ -276,6 +277,7 @@ def main():
                         args.fq[0], args.fq[1], indexfq=args.idxFastq,
                         lighter=lighter, kmer=kmer, captureSize=captureSize,
                         p3Seq=p3Seq, p5Seq=p5Seq)
+            if("bwapath" not in locals()):    
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
                     trimfq2,
@@ -284,7 +286,18 @@ def main():
                     barIndex=barcodeIndex,
                     bed=bed,
                     mincov=int(args.minCov),
-                    abrapath=abrapath)
+                    abrapath=abrapath,
+                    bwapath=bwapath)
+            else:
+                procSortedBam = ps.pairedBamProc(
+                            trimfq1,
+                            trimfq2,
+                            aligner=aligner,
+                            ref=ref,
+                            barIndex=barcodeIndex,
+                            bed=bed,
+                            mincov=int(args.minCov),
+                            abrapath=abrapath)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
@@ -293,19 +306,31 @@ def main():
                 minMQ=minMQ,
                 minBQ=minBQ,
                 commandStr=" ".join(sys.argv))
-            pl(
-                "Last stop! Watch your step.")
+            pl("Last stop! Watch your step.")
         elif(args.initialStep == 2):
             pl("Beginning BAM processing.")
-            procSortedBam = ps.pairedBamProc(
-                args.fq[0],
-                args.fq[1],
-                consfqSingle="default",
-                aligner=aligner,
-                ref=ref,
-                abrapath=abrapath,
-                mincov=int(args.minCov),
-                barIndex=args.barcodeIndex)
+            if("bwapath" not in locals()):    
+                procSortedBam = ps.pairedBamProc(
+                    args.fq[0],
+                    args.fq[1],
+                    aligner=aligner,
+                    ref=ref,
+                    barIndex=args.barcodeIndex,
+                    bed=bed,
+                    mincov=int(args.minCov),
+                    abrapath=abrapath,
+                    bwapath=bwapath, barIndex=args.barcodeIndex)
+            else:
+                procSortedBam = ps.pairedBamProc(
+                    args.fq[0],
+                    args.fq[1],
+                    aligner=aligner,
+                    ref=ref,
+                    barIndex=args.barcodeIndex,
+                    bed=bed,
+                    mincov=int(args.minCov),
+                    abrapath=abrapath,
+                    barIndex=args.barcodeIndex)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
@@ -315,8 +340,7 @@ def main():
                 minMQ=minMQ,
                 minBQ=minBQ,
                 commandStr=" ".join(sys.argv))
-            pl(
-                "Last stop! Watch your step")
+            pl("Last stop! Watch your step")
         elif(args.initialStep == 3):
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
@@ -329,9 +353,9 @@ def main():
                 reference=args.ref,
                 commandStr=" ".join(sys.argv))
             pl("Last stop! Watch your step.")
-        return
+    return
 
-__version__ = "0.5.0alpha"
+__version__ = "0.5.0.2"
 
 if(__name__ == "__main__"):
     main()
