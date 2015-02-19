@@ -351,7 +351,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     cdef pysam.cfaidx.FastqProxy indexRead
     numWritten = 0
     while True:
-        if(numWritten % readPairsPerWrite == 0):
+        if(numWritten >= readPairsPerWrite):
             if(useGzip is False):
                 outFqHandle1.write(f1.getvalue())
                 outFqHandle2.write(f2.getvalue())
@@ -364,6 +364,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                 cString2 = cStringIO.StringIO()
                 f1 = gzip.GzipFile(fileobj=cString1, mode="w")
                 f2 = gzip.GzipFile(fileobj=cString2, mode="w")
+            numWritten = 0
         try:
             read1 = inFq1.next()
         except StopIteration:
@@ -545,9 +546,15 @@ def GenerateShadesIndex(indexFastq, index_file="default"):
     from subprocess import check_call
     if(index_file == "default"):
         index_file = '.'.join(indexFastq.split('.')[0:-1]) + ".barIdx"
-    commandStr = ("cat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
-                  "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
-                  ",$2}}' > {}".format(index_file))
+    if(indexFastq.endswith(".gz") is True):
+        commandStr = ("cat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
+                      "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
+                      ",$2}}' > {}".format(index_file))
+    else:
+        commandStr = ("zcat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
+                      "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
+                      ",$2}}' > {}".format(index_file))
+    logging.debug(commandStr)
     check_call(commandStr, shell=True)
     return index_file
 

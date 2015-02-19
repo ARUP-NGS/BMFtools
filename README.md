@@ -114,3 +114,5 @@ Most options are available for command-line as well. If an option is set in both
 3. Finish writing structural variants to a VCF format
 4. Work on interchromosomal translocations
 5. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
+6. Add # of reads aligned to forward or reverse at position (not counting filters at all) as an INFO field.
+7. Consider haplotyping (http://genetics.cs.ucla.edu/harsh/ as a model?)
