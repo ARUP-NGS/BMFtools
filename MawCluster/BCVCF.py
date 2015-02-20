@@ -11,6 +11,7 @@ from MawCluster import SNVUtils
 
 """
 Contains tools for working with VCF Files - writing, reading, processing.
+
 """
 
 

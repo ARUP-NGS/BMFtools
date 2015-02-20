@@ -1,15 +1,19 @@
 import pysam
+import cython
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 
+
 """
 This module contains a variety of tools for calling variants.
 Currently, it primarily works with SNPs primarily with experimental
 features present for structural variants
-TODO: Filter based on variants supported by reads going both ways.
-TODO: Make calls for SNPs, not just reporting frequencies.
+TODO: INFO field: reverse read fraction (RRF)
+TODO: INFO field: discrepancy between a given allele's RRF and the average
+TODO: INFO fields: mean and standard deviation of positions within reads
+TODO: (continued) for nucleotides supporting variant.
 Reverse Strand Fraction - RSF
 Both Strands Support Variant - BS
 Fraction of unmerged reads supporting variant - TF
@@ -18,8 +22,9 @@ DP - Depth (Merged)
 """
 
 
-class VCFLine:
+class SNVCFLine:
 
+    @cython.locals(minNumSS=cython.int, minNumFam=cython.int, MaxPValue=cython.float)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
@@ -176,7 +181,7 @@ class VCFPos:
         self.REF = pysam.FastaFile(reference).fetch(
             PCInfoObject.contig, self.pos - 1, self.pos)
 
-        self.VCFLines = [VCFLine(
+        self.VCFLines = [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
             TotalFracStr=self.TotalFracStr,

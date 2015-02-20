@@ -38,6 +38,7 @@ dAccess = np.vectorize(dAccess)
 
 """
 Contains various utilities for working with barcoded fastq files.
+TODO: Write fastq files already gzipped.
 """
 
 
@@ -252,27 +253,27 @@ def compareFqRecsFast(R):
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
-    cdef np.ndarray[cython.long, ndim = 2] quals = np.array([
+    cdef np.ndarray[cython.int, ndim = 2] quals = np.array([
         [ord(i) - 33 for i in record.quality] for record in R])
-    cdef np.ndarray[cython.long, ndim = 2] qualA = copy.copy(quals)
-    cdef np.ndarray[cython.long, ndim = 2] qualC = copy.copy(quals)
-    cdef np.ndarray[cython.long, ndim = 2] qualG = copy.copy(quals)
-    cdef np.ndarray[cython.long, ndim = 2] qualT = copy.copy(quals)
+    cdef np.ndarray[cython.int, ndim = 2] qualA = copy.copy(quals)
+    cdef np.ndarray[cython.int, ndim = 2] qualC = copy.copy(quals)
+    cdef np.ndarray[cython.int, ndim = 2] qualG = copy.copy(quals)
+    cdef np.ndarray[cython.int, ndim = 2] qualT = copy.copy(quals)
     qualA[seqArray != "A"] = 0
-    cdef np.ndarray[cython.long, ndim = 1] qualAFlat = np.sum(qualA, 0)
+    cdef np.ndarray[cython.int, ndim = 1] qualAFlat = np.sum(qualA, 0)
     qualC[seqArray != "C"] = 0
-    cdef np.ndarray[cython.long, ndim = 1] qualCFlat = np.sum(qualC, 0)
+    cdef np.ndarray[cython.int, ndim = 1] qualCFlat = np.sum(qualC, 0)
     qualG[seqArray != "G"] = 0
-    cdef np.ndarray[cython.long, ndim = 1] qualGFlat = np.sum(qualG, 0)
+    cdef np.ndarray[cython.int, ndim = 1] qualGFlat = np.sum(qualG, 0)
     qualT[seqArray != "T"] = 0
-    cdef np.ndarray[cython.long, ndim = 1]  qualTFlat = np.sum(qualT, 0)
-    cdef np.ndarray[cython.long, ndim = 2] qualAllSum = np.vstack(
+    cdef np.ndarray[cython.int, ndim = 1]  qualTFlat = np.sum(qualT, 0)
+    cdef np.ndarray[cython.int, ndim = 2] qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
-    cdef np.ndarray[cython.long, ndim = 1] MaxPhredSum = np.amax(
+    cdef np.ndarray[cython.int, ndim = 1] MaxPhredSum = np.amax(
         qualAllSum, 0)  # Avoid calculating twice.
-    cdef np.ndarray[cython.long, ndim = 1] phredQuals = np.subtract(
+    cdef np.ndarray[cython.int, ndim = 1] phredQuals = np.subtract(
         np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
