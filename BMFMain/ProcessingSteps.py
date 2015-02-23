@@ -19,7 +19,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   mincov=5,
                   abrapath="default",
                   coverageForAllRegions=False,
-                  calcCoverage=False,
+                  calcCoverage=True,
                   bwapath="default"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
@@ -95,14 +95,6 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to the differing alignment needs.")
     coorSorted = HTSUtils.CoorSortAndIndexBam(namesortedRealignedFull)
-    if(calcCoverage is True):
-        if(coverageForAllRegions is False):
-            CoverageBed = PileupUtils.CalcWithinBedCoverage(coorSorted,
-                                                            bed=bed)
-        else:
-            CoverageBed = PileupUtils.BamToCoverageBed(coorSorted,
-                                                       mincov=mincov)
-        pl("Coverage bed: {}".format(CoverageBed))
     return coorSorted
 
 
@@ -169,9 +161,9 @@ def pairedVCFProc(consMergeSortBAM,
                   bed="default",
                   minMQ=10,
                   minBQ=20,
-                  MakePileupTsv=False,
+                  MakePileupTsv=True,
                   MakeVCF=True,
-                  MakeCoverageBed=False,
+                  MakeCoverageBed=True,
                   commandStr="default"):
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")
@@ -186,6 +178,7 @@ def pairedVCFProc(consMergeSortBAM,
                                                    bed=bed,
                                                    minMQ=minMQ,
                                                    minBQ=minBQ)
+        Results["bed"] = OutBed
     if(MakePileupTsv is True):
         PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
                                                   bedfile=bed,
@@ -205,6 +198,7 @@ def pairedVCFProc(consMergeSortBAM,
         pl("SNP VCF: {}".format(SNP_VCF))
         Results["vcf"] = SNP_VCF
         VCFStatsFile = VCFStats(SNP_VCF)
+        Results["vcfstats"] = VCFStatsFile
     # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,
     #                                                     bedfile=bed)
     # This is probably useless given that I'm doing this "manually",

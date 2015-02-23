@@ -165,7 +165,7 @@ def pairedBarcodeTagging(
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag >> 11 == 1):
+        if(entry.is_secondary or entry.flag >= 2048):
             suppBAM.write(entry)
             continue
         if(not entry.is_paired):
@@ -196,6 +196,11 @@ def pairedBarcodeTagging(
             entry.setTag("PV", descDict["PV"])
         except KeyError:
             # print("Phred Values > 93 not set. Oh well.)
+            pass
+        try:
+            entry.setTag("FA", descDict["FA"])
+        except KeyError:
+            # print("Number of reads agreeing per position mssing. Oh well.")
             pass
         outBAM.write(entry)
     suppBAM.close()

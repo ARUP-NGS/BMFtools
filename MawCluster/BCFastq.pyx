@@ -45,11 +45,17 @@ TODO: Write fastq files already gzipped.
 def BarcodeSort(inFastq, outFastq="default"):
     pl("Sorting {} by barcode sequence.".format(inFastq))
     if(outFastq == "default"):
-        outFastq = '.'.join(inFastq.split('.')[0:-1]) + '.BS.fastq'
-    BSstring = ("cat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
-                "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                " $3,$0}}' | sort -k1,1 | cut -f2- | "
-                "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
+        outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
+    if(inFastq.endswith(".gz")):
+        BSstring = ("zcat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
+                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
+    else:
+        BSstring = ("cat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
+                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
     PipedShellCall(BSstring)
     # pl("Command: {}".format(BSstring.replace(
     #    "\t", "\\t").replace("\n", "\\n")))
@@ -205,9 +211,13 @@ def compareFastqRecordsInexactNumpy(R):
         id=R[0].id,
         name=R[0].name,
         description=R[0].description)
+    numFamAgreed = [sum([seq[i] == newSeq[i] for seq in seqs]) for
+                    i in range(len(seqs[0]))]
     if(np.any(np.greater(phredQuals, 93))):
         consolidatedRecord.description += (" #G~PV=" +
                                            ",".join(phredQuals.astype(str)))
+    consolidatedRecord.description += " #G~FA=" + ",".join([
+        str(i) for i in numFamAgreed])
     phredQuals[phredQuals > 93] = 93
     consolidatedRecord.letter_annotations[
         'phred_quality'] = phredQuals.tolist()
@@ -275,17 +285,22 @@ def compareFqRecsFast(R):
         qualAllSum, 0)  # Avoid calculating twice.
     cdef np.ndarray[cython.int, ndim = 1] phredQuals = np.subtract(
         np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
+    numFamAgreed = [sum([seq[i] == newSeq[i] for seq in seqs]) for
+                    i in range(len(seqs[0]))]
+    FAString = " #G~FA=" + ",".join([str(i) for i in numFamAgreed])
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
     phredQualsStr = "".join([chr(q + 33) if q <= 93 else "~" for
                              q in phredQuals])
     if(np.any(np.greater(phredQuals, 93)) is False):
-        consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment,
+        consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment
+                                       + FAString,
                                        newSeq, "+", phredQualsStr])
     else:
         consolidatedFqStr = "\n".join(["@" + R[0].name + " " +
                                        R[0].comment + " #G~PV=" +
-                                       ",".join(phredQuals.astype(str)),
+                                       ",".join(phredQuals.astype(str))
+                                       + FAString,
                                       newSeq, "+", phredQualsStr])
     return consolidatedFqStr
 
@@ -548,14 +563,16 @@ def GenerateShadesIndex(indexFastq, index_file="default"):
     if(index_file == "default"):
         index_file = '.'.join(indexFastq.split('.')[0:-1]) + ".barIdx"
     if(indexFastq.endswith(".gz") is True):
-        commandStr = ("cat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
+        commandStr = ("zcat {} | paste - - - - | ".format(indexFastq) +
+                      "cut -f2 | "
                       "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
                       ",$2}}' > {}".format(index_file))
     else:
-        commandStr = ("zcat {} | paste - - - - | cut -f2 | ".format(indexFastq) +
+        commandStr = ("cat {} | paste - - - - | ".format(indexFastq) +
+                      "cut -f2 | "
                       "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
                       ",$2}}' > {}".format(index_file))
-    logging.debug(commandStr)
+    pl("Barcode index generation string: " + commandStr)
     check_call(commandStr, shell=True)
     return index_file
 
@@ -585,7 +602,7 @@ def GetFamilySizePaired(
         singlefq2="default",
         minFamSize=1,
         deleteInFqs=True):
-    pl("Running GetFamilySizeSingle for {}, {}.".format(trimfq1, trimfq2))
+    pl("Running GetFamilySizePaired for {}, {}.".format(trimfq1, trimfq2))
     infq1 = SeqIO.parse(trimfq1, "fastq")
     infq2 = SeqIO.parse(trimfq2, "fastq")
     outfq1 = '.'.join(trimfq1.split('.')[0:-1] + ['fam', 'fastq'])
@@ -647,11 +664,12 @@ def GetFamilySizePaired(
 
 
 @cython.locals(deleteInFqs=cython.bint, minFamSize=cython.int,
-               TotalReads=cython.int, ReadsWithFamilies=cython.int,
-               )
+               TotalReads=cython.int, ReadsWithFamilies=cython.int)
 def GetFamilySizePairedFaster(
-        trimfq1, trimfq2, BarcodeIndex, deleteInFqs=True, minFamSize=3):
-    pl("Running GetFamilySizePaired: for {}, {}.".format(trimfq1, trimfq2))
+        trimfq1, trimfq2, BarcodeIndex, deleteInFqs=True, minFamSize=3,
+        readPairsPerWrite=25000):
+    pl("Running GetFamilySizePairedFaster: for {}, {}.".format(trimfq1,
+                                                               trimfq2))
     infq1 = pysam.FastqFile(trimfq1)
     infq2 = pysam.FastqFile(trimfq2)
     outfq1 = '.'.join(trimfq1.split('.')[0:-1] + ['fam', 'fastq'])
@@ -666,6 +684,7 @@ def GetFamilySizePairedFaster(
     BarDict = {}
     cdef pysam.cfaidx.FastqProxy read1
     cdef pysam.cfaidx.FastqProxy read2
+    numWritten = 0
     for entry in dictEntries:
         BarDict[entry[1]] = entry[0]
     while True:
@@ -690,6 +709,12 @@ def GetFamilySizePairedFaster(
                                   read2.sequence,
                                   "+", read2.quality, ""]))
         # str(famSize=="1")))
+        if(numWritten >= readPairsPerWrite):
+            numWritten = 0
+            outfqBuffer1.write(cString1.getvalue())
+            outfqBuffer2.write(cString2.getvalue())
+            cString1 = cStringIO.StringIO
+            cString2 = cStringIO.StringIO
         if(int(famSize) >= minFamSize):
             ReadsWithFamilies += 1
     outfqBuffer1.write(cString1.getvalue())

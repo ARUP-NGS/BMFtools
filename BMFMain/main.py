@@ -277,7 +277,7 @@ def main():
                         args.fq[0], args.fq[1], indexfq=args.idxFastq,
                         lighter=lighter, kmer=kmer, captureSize=captureSize,
                         p3Seq=p3Seq, p5Seq=p5Seq)
-            if("bwapath" not in locals()):    
+            if("bwapath" in locals()):
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
                     trimfq2,
@@ -290,14 +290,10 @@ def main():
                     bwapath=bwapath)
             else:
                 procSortedBam = ps.pairedBamProc(
-                            trimfq1,
-                            trimfq2,
-                            aligner=aligner,
-                            ref=ref,
-                            barIndex=barcodeIndex,
-                            bed=bed,
-                            mincov=int(args.minCov),
-                            abrapath=abrapath)
+                    trimfq1, trimfq2,
+                    aligner=aligner, ref=ref,
+                    barIndex=barcodeIndex, bed=bed,
+                    mincov=int(args.minCov), abrapath=abrapath)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
@@ -309,7 +305,7 @@ def main():
             pl("Last stop! Watch your step.")
         elif(args.initialStep == 2):
             pl("Beginning BAM processing.")
-            if("bwapath" not in locals()):    
+            if("bwapath" not in locals()):
                 procSortedBam = ps.pairedBamProc(
                     args.fq[0],
                     args.fq[1],

@@ -6,6 +6,7 @@ import re
 
 import numpy as np
 import pysam
+import cython
 
 from utilBMF.HTSUtils import (ThisIsMadness,
                               printlog as pl,
@@ -56,6 +57,7 @@ class PRInfo:
         self.ssString = "#".join(
             [str(i) for i in sorted(
                 [self.read.reference_start, self.read.reference_end])])
+        self.query_position = PileupRead.query_position
 
 
 def is_reverse_to_str(boolean):
@@ -86,7 +88,8 @@ class AlleleAggregateInfo:
                  pos="default",
                  DOC="default",
                  DOCTotal="default",
-                 NUMALT="default"):
+                 NUMALT="default",
+                 AABPSD="default", AAMBP="default"):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -150,6 +153,7 @@ class AlleleAggregateInfo:
         self.consensus = consensus
         self.minMQ = minMQ
         self.minBQ = minBQ
+        self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
 
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = "->".join([consensus, self.ALT])
@@ -179,12 +183,23 @@ class AlleleAggregateInfo:
             self.BothStrandSupport = True
         else:
             self.BothStrandSupport = False
+        self.meanBasePosition = np.mean([float(i.query_position) for i
+                                         in self.recList])
+        self.BasePositionSD = np.std([float(i.query_position) for i
+                                      in self.recList])
+        if(AABPSD != "default"):
+            self.AABPSD = AABPSD
+        if(AAMBP != "default"):
+            self.AAMBP = AAMBP
 
         # Check to see if a read pair supports a variant with both ends
         from collections import Counter
         ReadNameCounter = Counter([r.read.query_name for r in recList])
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
+        query_positions = [float(i.query_position) for i in recList]
+        self.MBP = np.mean(query_positions)
+        self.BPSD = np.std(query_positions)
 
 
 class PCInfo:
@@ -193,9 +208,14 @@ class PCInfo:
     Takes a pysam.PileupColumn covering one base in the reference
     and makes a new class which has "reference" (inferred from
     consensus) and a list of PRData (one for each read).
+    The option "duplex required" determines whether or not variants must
+    be supported by both reads in a pair for a proper call. Increases
+    stringency, might lose some sensitivity for a given sequencing depth.
     """
 
-    def __init__(self, PileupColumn, minBQ=0, minMQ=0):
+    @cython.locals(reverseStrandFraction=cython.float)
+    def __init__(self, PileupColumn, minBQ=0, minMQ=0,
+                 requireDuplex=True):
         self.minMQ = int(minMQ)
         self.minBQ = int(minBQ)
         from collections import Counter
@@ -225,6 +245,9 @@ class PCInfo:
             if(pileupRead.alignment.mapq >= self.minMQ) and
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
+        self.reverseStrandFraction = len([i for i in self.Records if
+                                          i.read.is_reverse is
+                                          True]) / len(self.Records)
         self.MergedReads = len(self.Records)
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])
@@ -243,6 +266,9 @@ class PCInfo:
         for alt in list(set([rec.BaseCall for rec in self.Records])):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
+        query_positions = [float(i.query_position) for i in self.Records]
+        self.AAMBP = np.mean(query_positions)
+        self.AABPSD = np.std(query_positions)
 
         self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],
@@ -256,7 +282,8 @@ class PCInfo:
                               DOC=self.MergedReads,
                               DOCTotal=self.TotalReads,
                               NUMALT=len(self.VariantDict.keys()),
-                              ) for key in self.VariantDict.keys()]
+                              AAMBP=self.AAMBP, AABPSD=self.AABPSD)
+                              for key in self.VariantDict.keys()]
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.TotalFracDict[

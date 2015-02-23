@@ -48,6 +48,10 @@ class IllegalArgumentError(ValueError):
 class ThisIsMadness(Exception):
     pass
 
+
+class PermissionError(BaseException):
+    pass
+
 # TODO: Write something to create these dictionaries from a SAM header
 
 
@@ -888,7 +892,8 @@ def parseConfig(string):
     Any further values are ignored.
     New with BMFTools v0.0.5.2 (or so?): # comment the rest of a line out.
     """
-    parsedLines = [l.strip().split("#")[0] for l in open(string, "r").readlines()
+    parsedLines = [l.strip().split("#")[0] for l in
+                   open(string, "r").readlines()
                    if l[0] != "#"]
     ConfigDict = {}
     for line in parsedLines:

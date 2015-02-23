@@ -60,6 +60,7 @@ Tag | Content | Format |
 BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
+FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\]]|

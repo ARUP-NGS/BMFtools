@@ -4,14 +4,14 @@ import cython
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from MawCluster.SNVUtils import AlleleAggregateInfo
 
 
 """
 This module contains a variety of tools for calling variants.
 Currently, it primarily works with SNPs primarily with experimental
 features present for structural variants
-TODO: INFO field: reverse read fraction (RRF)
-TODO: INFO field: discrepancy between a given allele's RRF and the average
+TODO: INFO field: discrepancy between a given allele's RSF and the average
 TODO: INFO fields: mean and standard deviation of positions within reads
 TODO: (continued) for nucleotides supporting variant.
 Reverse Strand Fraction - RSF
@@ -24,7 +24,17 @@ DP - Depth (Merged)
 
 class SNVCFLine:
 
-    @cython.locals(minNumSS=cython.int, minNumFam=cython.int, MaxPValue=cython.float)
+    """
+    Contains data for writing to a VCF Line, where each ALT has its own line.
+
+    If reverseStrandFraction is negative, it means that that information was
+    not provided at initialization.
+    minNumSS is the minumum number of start/stop combinations required to
+    support a variant call.
+    """
+    @cython.locals(minNumSS=cython.int, minNumFam=cython.int,
+                   MaxPValue=cython.float,
+                   reverseStrandFraction=cython.float)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
@@ -39,7 +49,9 @@ class SNVCFLine:
                  FailedMQReads="default",
                  minNumFam=3,
                  minNumSS=2,
-                 REF="default"):
+                 REF="default",
+                 reverseStrandFraction=-1.0,
+                 requireDuplex=True, minDuplexPairs=0):
         if(REF != "default"):
             self.REF = REF
         if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
@@ -56,9 +68,11 @@ class SNVCFLine:
         self.CONS = AlleleAggregateObject.consensus
         self.ALT = AlleleAggregateObject.ALT
         self.QUAL = AlleleAggregateObject.SumBQScore
-        if(AlleleAggregateObject.BothStrandSupport is True):
-            self.QUAL *= 2
+        if(AlleleAggregateObject.BothStrandSupport is False):
+            self.QUAL *= 0.1
             # This is entirely arbitrary...
+        self.reverseStrandFraction = reverseStrandFraction
+        self.RRFSet = (reverseStrandFraction >= 0)
         self.ID = ID
         try:
             if(float(MaxPValue) < 10 ** (self.QUAL / -10)):
@@ -73,9 +87,14 @@ class SNVCFLine:
                     self.FILTER = "OneStrandSupport"
             if(self.NumStartStops < minNumSS):
                 if("FILTER" in dir(self)):
-                    self.FILTER += ",OneCoordinateSetSupport"
+                    self.FILTER += ",InsufficientCoordinateSetsSupport"
                 else:
-                    self.FILTER = "OneCoordinateSetSupport"
+                    self.FILTER = "InsufficientCoordinateSetsSupport"
+            if(AlleleAggregateObject.NumberDuplexReads < minDuplexPairs):
+                if("FILTER" in dir(self)):
+                    self.FILTER += ",InsufficientDuplexSupport"
+                else:
+                    self.FILTER = "InsufficientDuplexSupport"
             if("FILTER" not in dir(self)):
                 self.FILTER = "PASS"
         except TypeError:
@@ -89,9 +108,10 @@ class SNVCFLine:
                            "TF": AlleleAggregateObject.TotalReads
                            / float(AlleleAggregateObject.DOCTotal),
                            "BS": AlleleAggregateObject.BothStrandSupport,
-                           "RSF": AlleleAggregateObject.ReverseMergedReads
-                           / float(AlleleAggregateObject.MergedReads),
                            "NSS": self.NumStartStops,
+                           "MBP": AlleleAggregateInfo.MeanBasePosition,
+                           "BPSD": AlleleAggregateInfo.BasePositionSD,
+                           "MNCS": minNumSS, "MDP": minDuplexPairs,
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
                            "MMQ": AlleleAggregateObject.minMQ,
@@ -112,6 +132,14 @@ class SNVCFLine:
             self.InfoFields["MACS"] = MergedCountStr
         if(MergedFracStr != "default"):
             self.InfoFields["MAFS"] = MergedFracStr
+        if(self.reverseStrandFraction >= 0):
+            self.InfoFields["AARSF"] = self.reverseStrandFraction
+            # All Alleles Reverse Read Fraction
+        self.InfoFields["RSF"] = AlleleAggregateObject.reverseStrandFraction
+        if("AABPSD" in dir(AlleleAggregateObject)):
+            self.InfoFields["AABPSD"] = AlleleAggregateObject.AABPSD
+        if("AAMBP" in dir(AlleleAggregateObject)):
+            self.InfoFields["AAMBP"] = AlleleAggregateObject.AAMBP
         self.InfoStr = ";".join(
             ["=".join([key, str(self.InfoFields[key])])
              for key in sorted(self.InfoFields.keys())])
@@ -160,11 +188,19 @@ class SNVCFLine:
 
 
 class VCFPos:
-
+    """
+    Holds the multiple SNVCFLine Objects and other information
+    for writing VCF lines for each alt at a given position.
+    """
+    @cython.locals(requireDuplex=cython.bint, keepConsensus=cython.bint,
+                   minDuplexPairs=cython.int, MaxPValue=cython.float)
     def __init__(self, PCInfoObject,
                  MaxPValue=1e-18,
                  keepConsensus=True,
-                 reference="default"):
+                 reference="default",
+                 requireDuplex=True,
+                 minDuplexPairs=3,
+                 reverseStrandFraction="default"):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
@@ -180,7 +216,8 @@ class VCFPos:
         self.MergedCountStr = PCInfoObject.MergedCountStr
         self.REF = pysam.FastaFile(reference).fetch(
             PCInfoObject.contig, self.pos - 1, self.pos)
-
+        self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
+        self.requireDuplex = requireDuplex
         self.VCFLines = [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
@@ -191,7 +228,9 @@ class VCFPos:
             MaxPValue=MaxPValue,
             FailedBQReads=PCInfoObject.FailedBQReads,
             FailedMQReads=PCInfoObject.FailedMQReads,
-            REF=self.REF)
+            REF=self.REF, requireDuplex=self.requireDuplex,
+            reverseStrandFraction=self.reverseStrandFraction,
+            minDuplexPairs=minDuplexPairs)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus is True):
@@ -203,6 +242,8 @@ class VCFPos:
                                   for line in
                                   self.VCFLines
                                   if line.FILTER != "CONSENSUS"])
+        self.DuplexRequired = requireDuplex
+        self.minDuplexPairs = minDuplexPairs
 
     def ToString(self):
         [line.update() for line in self.VCFLines]
@@ -646,6 +687,48 @@ HeaderInfoDict["NDPS"] = HeaderInfoLine(
     Description="Number of Duplex Reads Supporting Variant",
     Number="A",
     Type="Integer")
+HeaderInfoDict["AARSF"] = HeaderInfoLine(ID="AARSF",
+                                         Description="The fraction of reads a"
+                                         "t position supporting any allele pa"
+                                         "ssing all filters mapped to the rev"
+                                         "erse strand",
+                                         Number=1,
+                                         Type="Float")
+HeaderInfoDict["RSF"] = HeaderInfoLine(ID="RSF", Description="Fraction of r"
+                                       "eads for given allele passing all f"
+                                       "ilters mapped to the reverse strand.",
+                                       Number="A", Type="Float")
+HeaderInfoDict["MNCS"] = HeaderInfoLine(ID="MNCS",
+                                        Description="Minimum number of coordi"
+                                        "nate sets for read pairs supporting "
+                                        "variant to pass filter.",
+                                        Number=1, Type="Integer")
+HeaderInfoDict["MDP"] = HeaderInfoLine("MDP",
+                                       Description="Minimum duplex pairs supp"
+                                       "orting variant to pass filter.",
+                                       Number=1,
+                                       Type="Integer")
+HeaderInfoDict["MBP"] = HeaderInfoLine(ID="MBP",
+                                       Description="Mean base position in rea"
+                                       "d for reads supporting variant passin"
+                                       "g all filters. 0-based.",
+                                       Number="A", Type="Float")
+HeaderInfoDict["AAMBP"] = HeaderInfoLine(ID="AAMBP",
+                                       Description="Mean base position in rea"
+                                       "d for all reads at position passin"
+                                       "g all filters. 0-based.",
+                                       Number="A", Type="Float")
+HeaderInfoDict["BPSD"] = HeaderInfoLine(ID="BPSD", Description="Standard dev"
+                                        "iation of base position in read fo"
+                                        "r reads supporting variant passing"
+                                        " all filters.", Number="A",
+                                        Type="Float")
+HeaderInfoDict["AABPSD"] = HeaderInfoDict(ID="AABPSD",
+                                          Description="Standard deviation of"
+                                          " base position in read for all re"
+                                          "ads at position passing filters.",
+                                          Number=1, Type="Float")
+
 
 """
 This next section contains the dictionaries which hold the
