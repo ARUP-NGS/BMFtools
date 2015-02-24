@@ -13,7 +13,6 @@ class PermissionException(Exception):
     pass
 
 
-
 class IllegalArgumentError(ValueError):
     pass
 

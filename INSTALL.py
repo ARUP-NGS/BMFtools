@@ -13,7 +13,7 @@ def main():
         check_call(["python", "setup.py", "build_ext"])
     except CalledProcessError:
         print("Could not build C extensions. Abort!")
-        return 1
+        sys.exit(1)
     try:
         check_call(["python", "setup.py", "install"])
     except CalledProcessError:

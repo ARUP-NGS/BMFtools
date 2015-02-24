@@ -16,6 +16,7 @@ import copy
 import gzip
 import sys
 import collections
+import time
 
 from Bio import SeqIO
 import Bio
@@ -56,13 +57,57 @@ def ph2chr(x):
     return chr(x + 33) if x <= 93 else "~"
 ph2chr = np.vectorize(ph2chr)
 
-@cython.locals(x=cython.char)
-@cython.returns(cython.int)
-def chr2ph(x):
-    """
-    Converts a fastq-encoded phred score to an integer.
-    """
-    return ord(x) - 33
+
+@cython.locals(checks=cython.int)
+def BarcodeSortBoth(inFq1, inFq2):
+    outFq1 = '.'.join(inFq1.split('.')[0:-1] + ["BS", "fastq"])
+    outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
+    pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
+    if(inFq1.endswith(".gz")):
+        BSstring1 = ("zcat " + inFq1 + " | paste - - - - | grep 'Pass' | sed "
+                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
+    else:
+        BSstring1 = ("cat " + inFq1 + " | paste - - - - | grep 'Pass' | sed "
+                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
+    if(inFq2.endswith(".gz")):
+        BSstring2 = ("zcat " + inFq2 + " | paste - - - - | grep 'Pass' | sed "
+                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
+    else:
+        BSstring2 = ("cat " + inFq2 + " | paste - - - - | grep 'Pass' | sed "
+                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
+    pl("Background calling barcode sorting "
+       "for read 1. Command: {}".format(BSstring1))
+    BSCall1 = subprocess.Popen(BSstring1, stderr=None, shell=True,
+                               stdout=None, stdin=None, close_fds=True)
+    PipedShellCall(BSstring2)
+    BSCall1.poll()
+    checks = 0
+    if(BSCall1.returncode == 0):
+        return outFq1, outFq2
+    elif(BSCall1.returncode is not None):
+        raise subprocess.CalledProcessError("Barcode sort failed for read 1."
+                                            " Call: {}".format(BSstring1))
+    else:
+        while checks < 300:
+            checks = 0
+            time.sleep(1)
+            BSCall1.poll()
+            if(BSCall1.returncode == 0):
+                return outFq1, outFq2
+            else:
+                checks += 1
+        raise subprocess.CalledProcessError("Barcode first sort didn't work, "
+                                            "it seems - took more than 5 minu"
+                                            "tes longer than the second barco"
+                                            "de sort.")
 
 
 def BarcodeSort(inFastq, outFastq="default"):
@@ -176,24 +221,36 @@ def compareFastqRecordsFastqProxy(R, stringency=0.9, hybrid=False,
         Success = False
     elif(hybrid is True):
         return compareFqRecsFast(R)
-    probs = np.multiply(len(R), np.apply_along_axis(chr2ph, 0, R[0].quality))
-    if(np.any(np.less(probs, 1))):
-        Success = False
-    else:
-        Success = True
-    cdef np.ndarray[cython.int, ndim = 1] numFamAgreed = np.array(
-        [sum([seq[i] == finalSeq[i] for seq in seqs]) for i in range(len(seqs[0]))])
-    cdef np.ndarray[cython.char, ndim = 1] FAString = " #G~FA=" + ",".join(
-        numFamAgreed.astype(str))
+    try:
+        probs = np.multiply(len(R), [ord(i) - 33 for i in R[0].quality])
+    except TypeError:
+        pl("Length of R: {}".format(len(R)))
+        pl(R[0].quality)
+        pl("Died when trying to make the phred scores from characters.")
+        raise TypeError("Confused!")
+    try:
+        if(np.any(np.less(probs, 1))):
+            Success = False
+        else:
+            Success = True
+    except TypeError:
+        pl("probs: {}".format(repr(probs)))
+        pl("Length of R: {}".format(len(R)))
+        pl("Died when trying to set a value for Success.")
+        raise TypeError("Confused!")
+    TagString = " #G~FM=" + str(len(R))
+    numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
+        for i in range(len(seqs[0]))])
+    TagString += " #G~FA=" + ",".join(numFamAgreed.astype(str))
     if(np.any(np.greater(probs, 93))):
-        consFqString = "\n".join(["@" + R[0].name + R[0].comment + FAString +
+        consFqString = "\n".join(["@" + R[0].name + R[0].comment + TagString +
                                   " #G~PV=" + ",".join(
             probs.astype(str)), finalSeq, "+", "".join(
                 np.apply_along_axis(ph2chr, 0, probs))])
     else:
         probs[probs <= 0] = 93
         probs[probs > 93] = 93
-        consFqString = "\n".join(["@" + R[0].name + R[0].comment + FAString,
+        consFqString = "\n".join(["@" + R[0].name + R[0].comment + TagString,
                                   finalSeq, "+",
                                   "".join(np.apply_along_axis(ph2chr,
                                                                    0, probs))])
@@ -293,8 +350,8 @@ def compareFqRecsFast(R):
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
-    cdef np.ndarray[cython.int, ndim = 2] quals = np.array([
-        np.apply_along_axis(chr2ph, 0, record.quality) for record in R])
+    cdef np.ndarray[cython.int, ndim = 2] quals = np.array(
+        [[ord(i) - 33 for i in list(record.quality)] for record in R])
     cdef np.ndarray[cython.int, ndim = 2] qualA = copy.copy(quals)
     cdef np.ndarray[cython.int, ndim = 2] qualC = copy.copy(quals)
     cdef np.ndarray[cython.int, ndim = 2] qualG = copy.copy(quals)
@@ -317,22 +374,22 @@ def compareFqRecsFast(R):
         np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
-    cdef np.ndarray[cython.char, ndim = 1]  phredQualsStr = "".join(
+    phredQualsStr = "".join(
         np.apply_along_axis(ph2chr, 0, phredQuals))
-    cdef np.ndarray[cython.int, ndim = 1] numFamAgreed = np.array(
-        [sum([seq[i] == newSeq[i] for seq in seqs]) for i
-         in range(len(seqs[0]))])
-    cdef np.ndarray[cython.char, ndim = 1] FAString = " #G~FA=" + ",".join(
-        numFamAgreed.astype(str))
+
+    TagString = " #G~FM=" + str(len(R))
+    numFamAgreed = np.array([sum([seq[i] == newSeq[i] for seq in seqs])
+                             for i in range(len(seqs[0]))])
+    TagString += " #G~FA=" + ",".join(numFamAgreed.astype(str))
     if(np.any(np.greater(phredQuals, 93)) is False):
         consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment
-                                       + FAString,
+                                       + TagString,
                                        newSeq, "+", phredQualsStr])
     else:
         consolidatedFqStr = "\n".join(["@" + R[0].name + " " +
                                        R[0].comment + " #G~PV=" +
                                        ",".join(phredQuals.astype(str))
-                                       + FAString,
+                                       + TagString,
                                       newSeq, "+", phredQualsStr])
     return consolidatedFqStr
 
@@ -360,7 +417,7 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
 
 @cython.locals(useGzip=cython.bint, bLen=cython.int)
 def FastqPairedShading(fq1, fq2, indexfq="default",
-                       useGzip=False, readPairsPerWrite=250000):
+                       useGzip=False, readPairsPerWrite=1000000):
     """
     Tags fastqs with barcodes from an index fastq.
     """
@@ -593,10 +650,36 @@ def GetDescriptionTagDict(readDesc):
     return tagDict
 
 
+def GenerateShadesIndexBG(indexFastq, index_file="default"):
+    """
+    Creates an index from the barcodes without waiting for it to complete.
+    Returns a Popen instance and a string (path to output file)
+    """
+    from subprocess import Popen
+    if(index_file == "default"):
+        index_file = '.'.join([i for i in indexFastq.split('.')[0:-1]
+                               if i != "fastq"]) + ".barIdx"
+    if(indexFastq.endswith(".gz") is True):
+        commandStr = ("zcat {} | paste - - - - | ".format(indexFastq) +
+                      "cut -f2 | "
+                      "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
+                      ",$2}}' > {}".format(index_file))
+    else:
+        commandStr = ("cat {} | paste - - - - | ".format(indexFastq) +
+                      "cut -f2 | "
+                      "sort | uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1"
+                      ",$2}}' > {}".format(index_file))
+    pl("Barcode index generation string: " + commandStr)
+    IndexingPopen = subprocess.Popen(commandStr, stderr=None, shell=True,
+                                     stdout=None, stdin=None, close_fds=True)
+    return IndexingPopen, index_file
+
+
 def GenerateShadesIndex(indexFastq, index_file="default"):
     from subprocess import check_call
     if(index_file == "default"):
-        index_file = '.'.join(indexFastq.split('.')[0:-1]) + ".barIdx"
+        index_file = '.'.join([i for i in indexFastq.split('.')[0:-1]
+                               if i != "fastq"]) + ".barIdx"
     if(indexFastq.endswith(".gz") is True):
         commandStr = ("zcat {} | paste - - - - | ".format(indexFastq) +
                       "cut -f2 | "
@@ -701,7 +784,7 @@ def GetFamilySizePaired(
                TotalReads=cython.int, ReadsWithFamilies=cython.int)
 def GetFamilySizePairedFaster(
         trimfq1, trimfq2, BarcodeIndex, deleteInFqs=True, minFamSize=3,
-        readPairsPerWrite=250000, useGzip=False):
+        readPairsPerWrite=1000000, useGzip=False):
     pl("Running GetFamilySizePairedFaster: for {}, {}.".format(trimfq1,
                                                                trimfq2))
     infq1 = pysam.FastqFile(trimfq1)
@@ -890,7 +973,7 @@ def PairFastqBarcodeIndex(taggedFile1, taggedFile2, index_file="default"):
                numpy=cython.bint, keepFailedPairs=cython.bint,
                readPairsPerWrite=cython.int, numWritten=cython.int)
 def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
-                           keepFailedPairs=True, readPairsPerWrite=250000):
+                           keepFailedPairs=True, readPairsPerWrite=1000000):
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
     outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
@@ -975,14 +1058,15 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
 @cython.locals(stringency=cython.float, readPairsPerWrite=cython.int)
 @cython.initializedcheck(False)
 def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
-                                 readPairsPerWrite=500000):
+                                 readPairsPerWrite=1000000):
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
     outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
     pl("Now running pairedFastqConsolidateFaster on {} and {}.".format(fq1,
                                                                        fq2))
-    pl(("Command required to duplicate this action:"
-        " pairedFastqConsolidateFaster('{}', '{}', ".format(fq1, fq2)) +
-        "stringency='{}')".format(stringency))
+    pl("Command required to duplicate this action:"
+       " pairedFastqConsolidateFaster('{}', '{}', ".format(fq1, fq2) +
+       "stringency={}, readPairsPerWrite={})".format(stringency,
+                                                     readPairsPerWrite))
     inFq1 = pysam.FastqFile(fq1)
     inFq2 = pysam.FastqFile(fq2)
     outputHandle1 = open(outFqPair1, 'w')
@@ -1030,12 +1114,10 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
         elif(workingBarcode != bc4fq1):
             string1 = compareFastqRecordsFastqProxy(workingSet1)[0] + "\n"
             string2 = compareFastqRecordsFastqProxy(workingSet2)[0] + "\n"
-            try:
-                assert string1.split(" ")[0] == string2.split(" ")[0]
-            except AssertionError:
-                pl("String1: {}".format(string1))
-                pl("String2: {}".format(string2))
+            if(string1.split(' ')[0] != string2.split(' ')[0]):
                 string2.replace(string2.split(' ')[0], string1.split(' ')[0])
+            else:
+                pl("Reads actually had their correct names.")
             cString1.write(string1)
             cString2.write(string2)
             workingSet1 = [fqRec]

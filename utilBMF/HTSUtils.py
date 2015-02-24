@@ -1,3 +1,5 @@
+#cython: c_string_type=str, c_string_encoding=ascii
+#cython: profile=True, cdivision=True, cdivision_warnings=True
 import logging
 import shlex
 import subprocess
@@ -372,7 +374,7 @@ def align_snap(R1, R2, ref, opts, outBAM):
     return(command_str)
 
 
-def PipedShellCall(commandStr, delete=True, silent=True):
+def PipedShellCall(commandStr, delete=True, silent=False):
     PipedShellCallFilename = "PipedShellCall{}.sh".format(
         str(uuid.uuid4().get_hex().upper()[0:8]))
     if silent is False:
@@ -380,7 +382,11 @@ def PipedShellCall(commandStr, delete=True, silent=True):
     open(PipedShellCallFilename, "w").write(commandStr)
     subprocess.check_call(['bash', PipedShellCallFilename])
     if(delete is True):
-        os.remove(PipedShellCallFilename)
+        try:
+            os.remove(PipedShellCallFilename)
+        except OSError:
+            printlog("Piped shell call deletion failed. Oh well!",
+                     level=logging.DEBUG)
     return commandStr
 
 
