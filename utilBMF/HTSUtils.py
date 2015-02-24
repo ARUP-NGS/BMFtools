@@ -13,6 +13,7 @@ import numpy as np
 from Bio.Seq import Seq
 
 import MawCluster
+from utilBMF.ErrorHandling import *
 
 
 def printlog(string, level=logging.INFO):
@@ -40,17 +41,6 @@ def printlog(string, level=logging.INFO):
           "'", "\'").replace('"', '\\"'))
     return
 
-
-class IllegalArgumentError(ValueError):
-    pass
-
-
-class ThisIsMadness(Exception):
-    pass
-
-
-class PermissionError(BaseException):
-    pass
 
 # TODO: Write something to create these dictionaries from a SAM header
 

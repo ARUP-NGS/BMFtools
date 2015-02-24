@@ -4,8 +4,7 @@ from subprocess import *
 import argparse
 import os
 import sys
-
-from utilBMF.HTSUtils import PermissionError
+from utilBMF.ErrorHandling import PermissionException
 
 
 def main():
@@ -18,8 +17,8 @@ def main():
     try:
         check_call(["python", "setup.py", "install"])
     except CalledProcessError:
-        raise PermissionError("You might not have permission to install the "
-                              "BMFTools packages.")
+        raise PermissionException("You might not have permission to install"
+                                  " the BMFTools packages.")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--prefix',
@@ -32,15 +31,14 @@ def main():
     try:
         check_call(["cp", "BMFMain/main.py", args.prefix + "/BMFMain"])
     except CalledProcessError:
-        raise PermissionError("You might not have permission to install the "
-                              "BMFMain executable.")
-        return 1
+        raise PermissionException("You might not have permission to install"
+                                  " the BMFMain executable.")
     print("Now installing bmftools in: " + args.prefix)
     try:
         check_call(["cp", "utilBMF/bmftools.py", args.prefix + "/bmftools"])
     except CalledProcessError:
-        raise PermissionError("You might not have permission to install the "
-                              "BMFTools packages.")
+        raise PermissionException("You might not have permission to install"
+                                  " the BMFTools packages.")
     return 0
 
 

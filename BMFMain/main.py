@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+#cython: boundscheck=False
+#cython: profile=True
+#cython: cdivision=True
+#cython: cdivision_warnings=True
 import argparse
 import os.path
 import logging
@@ -349,7 +353,7 @@ def main():
             pl("Last stop! Watch your step.")
     return
 
-__version__ = "0.5.0.2"
+__version__ = "0.0.5.2"
 
 if(__name__ == "__main__"):
     main()

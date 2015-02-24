@@ -1,3 +1,6 @@
+#cython: c_string_type=str, c_string_encoding=ascii
+#cython: profile=True, cdivision=True, cdivision_warnings=True
+
 import subprocess
 import os.path
 import shlex
@@ -245,9 +248,12 @@ class PCInfo:
             if(pileupRead.alignment.mapq >= self.minMQ) and
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
-        self.reverseStrandFraction = len([i for i in self.Records if
-                                          i.read.is_reverse is
-                                          True]) / len(self.Records)
+        try:
+            self.reverseStrandFraction = len([i for i in self.Records if
+                                              i.read.is_reverse is True]
+                                              ) / float(len(self.Records))
+        except ZeroDivisionError:
+            self.reverseStrandFraction = 0.
         self.MergedReads = len(self.Records)
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])

@@ -1,3 +1,6 @@
+#cython: c_string_type=str, c_string_encoding=ascii
+#cython: profile=True, cdivision=True, cdivision_warnings=True
+
 import subprocess
 import decimal
 from itertools import tee

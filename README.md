@@ -109,11 +109,20 @@ Most options are available for command-line as well. If an option is set in both
 2. Performance improvements
 3. Code now departing from valid python code to cython.
 
+#Changes in BMFTools v.0.0.5.2
+
+1. VCF Info fields for fractions of reads mapped to reverse strand for both alt allele and all reads.
+2. VCF Info fields for the mean and standard deviation of base position in read for bases supporting variant call. 
+2. Require duplex sequencing an option for variant calling.
+3. Adding extra BAM tags for the number of reads in a family supporting the merged read's nucleotide position by position.
+4. Moved exceptions to an ErrorHandling file, added PermissionException.
+5. Bug fixes for working with gzipped files.
+
+
 #TODO:
 1. Speed up consolidateInexactNumpy (pysam/cStringIO)
 2. Finish consensus sequence for intrachromosomal.
 3. Finish writing structural variants to a VCF format
 4. Work on interchromosomal translocations
 5. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
-6. Add # of reads aligned to forward or reverse at position (not counting filters at all) as an INFO field.
-7. Consider haplotyping (http://genetics.cs.ucla.edu/harsh/ as a model?)
+7. Consider haplotyping

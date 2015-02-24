@@ -12,8 +12,6 @@ This module contains a variety of tools for calling variants.
 Currently, it primarily works with SNPs primarily with experimental
 features present for structural variants
 TODO: INFO field: discrepancy between a given allele's RSF and the average
-TODO: INFO fields: mean and standard deviation of positions within reads
-TODO: (continued) for nucleotides supporting variant.
 Reverse Strand Fraction - RSF
 Both Strands Support Variant - BS
 Fraction of unmerged reads supporting variant - TF
@@ -714,16 +712,16 @@ HeaderInfoDict["MBP"] = HeaderInfoLine(ID="MBP",
                                        "g all filters. 0-based.",
                                        Number="A", Type="Float")
 HeaderInfoDict["AAMBP"] = HeaderInfoLine(ID="AAMBP",
-                                       Description="Mean base position in rea"
-                                       "d for all reads at position passin"
-                                       "g all filters. 0-based.",
-                                       Number="A", Type="Float")
+                                         Description="Mean base position in re"
+                                         "ad for all reads at position passin"
+                                         "g all filters. 0-based.",
+                                         Number="A", Type="Float")
 HeaderInfoDict["BPSD"] = HeaderInfoLine(ID="BPSD", Description="Standard dev"
                                         "iation of base position in read fo"
                                         "r reads supporting variant passing"
                                         " all filters.", Number="A",
                                         Type="Float")
-HeaderInfoDict["AABPSD"] = HeaderInfoDict(ID="AABPSD",
+HeaderInfoDict["AABPSD"] = HeaderInfoLine(ID="AABPSD",
                                           Description="Standard deviation of"
                                           " base position in read for all re"
                                           "ads at position passing filters.",
