@@ -125,13 +125,13 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
         HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
     if("barcodePopen" in locals()):
         countPolls = 0
-        while countPolls < 100:
+        while countPolls < 300:
             pl("Waiting for barcodePopen to close. Seconds elapsed, roughly"
-                  ": {}".format(3 * countPolls))
+               ": {}".format(countPolls))
             countPolls += 1
             barcodePopen.poll()
             if(barcodePopen.returncode is None):
-                time.sleep(3)
+                time.sleep(1)
                 continue
             elif(barcodePopen.returncode == 0):
                 break

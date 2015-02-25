@@ -27,7 +27,8 @@ def SNVCrawler(inBAM,
                FILTERTags="default",
                INFOTags="default",
                FORMATTags="default",
-               writeHeader=True):
+               writeHeader=True,
+               minFracAgreed=0.0, minFA=0):
     pl("Command to reproduce function call: "
        "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
@@ -36,7 +37,8 @@ def SNVCrawler(inBAM,
        "\"{}\", reference_is_path={}".format(reference, reference_is_path) +
        "commandStr=\"{}\", fileFormat=\"{}\"".format(commandStr, fileFormat) +
        ", FILTERTags=\"{}\", INFOTags=\"{}\"".format(FILTERTags, INFOTags) +
-       ", FORMATTags=\"{}\")".format(FORMATTags))
+       ", FORMATTags=\"{}\", writeHeader={}".format(FORMATTags, writeHeader) +
+       ", minFracAgreed={}, minFA={})".format(minFracAgreed, minFA))
     if(isinstance(bed, str) and bed != "default"):
         bed = HTSUtils.ParseBed(bed)
     if(OutVCF == "default"):
@@ -76,8 +78,9 @@ def SNVCrawler(inBAM,
                     break
                 VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                        keepConsensus=keepConsensus,
-                                       reference=reference
-                                       ).ToString()
+                                       reference=reference,
+                                       minFracAgreed=minFracAgreed,
+                                       minFA=minFA).ToString()
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
@@ -95,7 +98,9 @@ def SNVCrawler(inBAM,
             # TODO: Check to see if it speeds up to not assign and only write.
             VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                    keepConsensus=keepConsensus,
-                                   reference=reference).ToString()
+                                   reference=reference,
+                                   minFracAgreed=minFracAgreed,
+                                   minFA=minFA).ToString()
             if(len(VCFLineString) != 0):
                 outHandle.write(VCFLineString + "\n")
     return OutVCF

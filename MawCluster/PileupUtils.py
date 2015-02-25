@@ -27,8 +27,10 @@ class PRInfo:
 
     """
     Created from a pysam.PileupRead object.
-    Holds family size, SV tags, base quality,
-    mapping quality, and base.
+    Holds family size, SV tags, base quality, mapping quality, and base.
+    If you want to query the FA attribute or the FractionAgreed Attribute,
+    it is recommended that you run dir() on the PRInfo object for "FA" and
+    "FractionAgreed".
     """
 
     def __init__(self, PileupRead):
@@ -61,6 +63,12 @@ class PRInfo:
             [str(i) for i in sorted(
                 [self.read.reference_start, self.read.reference_end])])
         self.query_position = PileupRead.query_position
+        try:
+            self.FA = int(PileupRead.alignment.opt("FA").split(
+                ",")[self.query_position])
+            self.FractionAgreed = self.FA / float(self.FM)
+        except KeyError:
+            pass  # Looks like that wasn't set... Oops!
 
 
 def is_reverse_to_str(boolean):
@@ -80,8 +88,11 @@ class AlleleAggregateInfo:
     class as values in the VariantDict.
     All alt alleles in this set of reads should be identical.
     recList must be a list of PRInfo objects.
+
     """
 
+    @cython.locals(minFracAgreed=cython.float, minMQ=cython.int,
+                   minBQ=cython.int)
     def __init__(self, recList, consensus="default",
                  mergedSize="default",
                  totalSize="default",
@@ -92,7 +103,8 @@ class AlleleAggregateInfo:
                  DOC="default",
                  DOCTotal="default",
                  NUMALT="default",
-                 AABPSD="default", AAMBP="default"):
+                 AABPSD="default", AAMBP="default",
+                 minFracAgreed=0.0, minFA=0):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -122,7 +134,9 @@ class AlleleAggregateInfo:
                                  "PRInfo at given position."))
         # Check that all alt alleles are identical
         self.recList = [rec for rec in recList
-                        if rec.MQ >= minMQ and rec.BQ >= minBQ]
+                        if rec.MQ >= minMQ and rec.BQ >= minBQ
+                        and rec.FractionAgreed >= minFracAgreed
+                        and rec.FA >= minFA]
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -157,6 +171,10 @@ class AlleleAggregateInfo:
         self.minMQ = minMQ
         self.minBQ = minBQ
         self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
+        self.MFractionAgreed = np.mean([r.FractionAgreed for r in recList])
+        self.minFrac = minFracAgreed
+        self.minFA = minFA
+        self.MFA = np.mean([r.FA for r in recList])
 
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = "->".join([consensus, self.ALT])
@@ -249,9 +267,9 @@ class PCInfo:
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
         try:
-            self.reverseStrandFraction = len([i for i in self.Records if
-                                              i.read.is_reverse is True]
-                                              ) / float(len(self.Records))
+            self.reverseStrandFraction = len(
+                [i for i in self.Records if i.read.is_reverse is
+                 True]) / float(len(self.Records))
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = len(self.Records)

@@ -49,7 +49,8 @@ class SNVCFLine:
                  minNumSS=2,
                  REF="default",
                  reverseStrandFraction=-1.0,
-                 requireDuplex=True, minDuplexPairs=0):
+                 requireDuplex=True, minDuplexPairs=0,
+                 minFracAgreedForFilter=0.666):
         if(REF != "default"):
             self.REF = REF
         if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
@@ -93,6 +94,11 @@ class SNVCFLine:
                     self.FILTER += ",InsufficientDuplexSupport"
                 else:
                     self.FILTER = "InsufficientDuplexSupport"
+            if(AlleleAggregateObject.MFractionAgreed < minFracAgreedForFilter):
+                if("FILTER" in dir(self)):
+                    self.FILTER += ",DiscordantReadFamilies"
+                else:
+                    self.FILTER = "DiscordantReadFamilies"
             if("FILTER" not in dir(self)):
                 self.FILTER = "PASS"
         except TypeError:
@@ -110,6 +116,11 @@ class SNVCFLine:
                            "MBP": AlleleAggregateInfo.MeanBasePosition,
                            "BPSD": AlleleAggregateInfo.BasePositionSD,
                            "MNCS": minNumSS, "MDP": minDuplexPairs,
+                           "MFRAC": AlleleAggregateObject.MFractionAgreed,
+                           "MINFRACCALL": AlleleAggregateObject.MinFrac,
+                           "MINFRACFILTER": minFracAgreedForFilter,
+                           "MFA": AlleleAggregateObject.MFA,
+                           "MINFA": AlleleAggregateObject.MinFA,
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
                            "MMQ": AlleleAggregateObject.minMQ,
@@ -198,7 +209,8 @@ class VCFPos:
                  reference="default",
                  requireDuplex=True,
                  minDuplexPairs=3,
-                 reverseStrandFraction="default"):
+                 reverseStrandFraction="default",
+                 minFracAgreed=0.0, minFA=0):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
@@ -228,7 +240,8 @@ class VCFPos:
             FailedMQReads=PCInfoObject.FailedMQReads,
             REF=self.REF, requireDuplex=self.requireDuplex,
             reverseStrandFraction=self.reverseStrandFraction,
-            minDuplexPairs=minDuplexPairs)
+            minDuplexPairs=minDuplexPairs, minFracAgreed=minFracAgreed,
+            minFA=minFA)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus is True):
@@ -544,16 +557,17 @@ class HeaderContigLine:
 """
 This next section contains the dictionaries which hold the
 FILTER Header entries
-Valid tags: PASS,OneStrandSupport,LowQual
+Valid tags: PASS,OneStrandSupport,LowQual,CONSENSUS,
+InsufficientCoordinateSetSupport,DiscordantReadFamilies
 """
 
 HeaderFilterDict = {}
 HeaderFilterDict["PASS"] = HeaderFilterLine(ID="PASS",
                                             Description="All filters passed")
-HeaderFilterDict["OneCoordinateSetSupport"] = HeaderFilterLine(
-    ID="OneCoordinateSetSupport",
+HeaderFilterDict["InsufficientCoordinateSetSupport"] = HeaderFilterLine(
+    ID="InsufficientCoordinateSetSupport",
     Description=("High quality but only supported by "
-                 "reads with the same start and stop."))
+                 "reads with too few unique starts and stops."))
 HeaderFilterDict["OneStrandSupport"] = HeaderFilterLine(
     ID="OneStrandSupport",
     Description="High quality but only supported by reads on one strand")
@@ -564,13 +578,17 @@ HeaderFilterDict["CONSENSUS"] = HeaderFilterLine(
     Description="Not printed due to being the "
     "consensus sequence, not somatic. (Unless the consensus is cancerous, "
     "in which case the patient is dead in the water.)")
+HeaderFilterDict["DiscordantReadFamilies"] = HeaderFilterLine(
+    ID="DiscordantReadFamilies",
+    Description="Minimum read agreement fraction not met.")
 
 
 """
 This next section contains the dictionaries which hold the
 INFO Header entries
 Valid tags: AF,TF,BS,RSF,MQM,MQB,MMQ,MBQ,QA,NUMALL,BQF,MQF,
-TYPE,PVC,TACS,TAFS,MACS,MAFS,NSS,AC
+TYPE,PVC,TACS,TAFS,MACS,MAFS,NSS,AC,NDPS,AARSF,RSF,MNCS,MDP,MBP,AAMBP,
+BPSD,AABPSD,MFRAC,MINFRACCALL,MINFRACFILTER,MFA,MINFA 
 """
 
 HeaderInfoDict = {}
@@ -726,6 +744,21 @@ HeaderInfoDict["AABPSD"] = HeaderInfoLine(ID="AABPSD",
                                           " base position in read for all re"
                                           "ads at position passing filters.",
                                           Number=1, Type="Float")
+HeaderInfoDict["MFRAC"] = HeaderInfoLine(
+    ID="MFRAC", Description="Mean fraction of reads in a family supporting a "
+    "nucleotide at this position", Number="A", Type="Float")
+HeaderInfoDict["MINFRACFILTER"] = HeaderInfoLine(
+    ID="MINFRACFILTER", Description="Minimum fraction of reads in a family in"
+    "order to not be filtered out for discordance.", Number=1, Type="Float")
+HeaderInfoDict["MINFRACCALL"] = HeaderInfoLine(
+    ID="MINFRACCALL", Description="Minimum fraction of reads in a family "
+    "to be included in variant call", Number=1, Type="Float")
+HeaderInfoDict["MFA"] = HeaderInfoLine(
+    ID="MFA", Description="Mean number of reads in a family agreeing on allel"
+    "e.", Number="A", Type="Float")
+HeaderInfoDict["MINFA"] = HeaderInfoLine(
+    ID="MINFA", Description="Minimum number of agreeing reads in a family for"
+    "that family to be included in variant call", Number=1, Type="Integer")
 
 
 """

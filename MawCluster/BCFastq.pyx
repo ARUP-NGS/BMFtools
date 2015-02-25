@@ -48,6 +48,7 @@ def dAccess(x):
     return letterNumDict[x]
 dAccess = np.vectorize(dAccess)
 
+
 @cython.locals(x=cython.int)
 @cython.returns(cython.char)
 def ph2chr(x):
@@ -65,24 +66,24 @@ def BarcodeSortBoth(inFq1, inFq2):
     pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
     if(inFq1.endswith(".gz")):
         BSstring1 = ("zcat " + inFq1 + " | paste - - - - | grep 'Pass' | sed "
-                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
-                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
+                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
     else:
         BSstring1 = ("cat " + inFq1 + " | paste - - - - | grep 'Pass' | sed "
-                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
-                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
+                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
     if(inFq2.endswith(".gz")):
         BSstring2 = ("zcat " + inFq2 + " | paste - - - - | grep 'Pass' | sed "
-                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
-                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
+                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
     else:
         BSstring2 = ("cat " + inFq2 + " | paste - - - - | grep 'Pass' | sed "
-                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
-                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
+                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
+                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
     pl("Background calling barcode sorting "
        "for read 1. Command: {}".format(BSstring1))
     BSCall1 = subprocess.Popen(BSstring1, stderr=None, shell=True,
@@ -175,6 +176,10 @@ def compareFastqRecords(R, stringency=0.9, hybrid=False, famLimit=200,
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
     probs = np.multiply(len(R), R[0].letter_annotations['phred_quality'])
+    numAgreed = [str(sum([seq[i] == finalSeq[i] for i
+                          in range(len(seqs[0]))])) for seq in seqs]
+    consolidatedRecord.description += " #G~FA=" + ",".join(
+        numAgreed) + " #G~FM=" + str(len(seqs))
     if(np.any(np.less(probs, 1))):
         Success = False
     if(np.any(np.greater(probs, 93))):
@@ -240,7 +245,7 @@ def compareFastqRecordsFastqProxy(R, stringency=0.9, hybrid=False,
         raise TypeError("Confused!")
     TagString = " #G~FM=" + str(len(R))
     numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-        for i in range(len(seqs[0]))])
+                             for i in range(len(seqs[0]))])
     TagString += " #G~FA=" + ",".join(numFamAgreed.astype(str))
     if(np.any(np.greater(probs, 93))):
         consFqString = "\n".join(["@" + R[0].name + R[0].comment + TagString +
@@ -250,10 +255,9 @@ def compareFastqRecordsFastqProxy(R, stringency=0.9, hybrid=False,
     else:
         probs[probs <= 0] = 93
         probs[probs > 93] = 93
-        consFqString = "\n".join(["@" + R[0].name + R[0].comment + TagString,
-                                  finalSeq, "+",
-                                  "".join(np.apply_along_axis(ph2chr,
-                                                                   0, probs))])
+        consFqString = "\n".join(
+            ["@" + R[0].name + R[0].comment + TagString, finalSeq,
+             "+", "".join(np.apply_along_axis(ph2chr, 0, probs))])
     return consFqString, Success
 
 
@@ -302,19 +306,20 @@ def compareFastqRecordsInexactNumpy(R):
                     i in range(len(seqs[0]))]
     consolidatedRecord.description += " #G~FA=" + ",".join([
         str(i) for i in numFamAgreed])
+    consolidatedRecord.description += " #G~FM=" + str(len(R))
     if(np.any(np.greater(phredQuals, 93))):
         consolidatedRecord.description += (" #G~PV=" +
                                            ",".join(phredQuals.astype(str)))
+    descDict = GetDescriptionTagDict(consolidatedRecord.description)
     phredQuals[phredQuals > 93] = 93
     consolidatedRecord.letter_annotations[
         'phred_quality'] = phredQuals.tolist()
-    if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
+    if("Fail" in descDict["FP"]):
         Success = False
     # Checking for a strange failure on the part of the package
     # to correctly assign the phred score.
     try:
-        RealQuals = [int(i) for i in GetDescTagValue(
-            consolidatedRecord.description, "PV").split(',')]
+        RealQuals = [int(i) for i in descDict["PV"].split(',')]
     except KeyError:
         return consolidatedRecord, Success
     try:
@@ -831,13 +836,13 @@ def GetFamilySizePairedFaster(
         except KeyError:
             famSize = "0"
         f1.write("\n".join(["@" + read1.name + " " + read1.comment +
-                                  " #G~FM=" + famSize,
-                                  read1.sequence,
-                                  "+", read1.quality, ""]))
+                            " #G~FM=" + famSize,
+                            read1.sequence,
+                            "+", read1.quality, ""]))
         f2.write("\n".join(["@" + read2.name + " " + read2.comment +
-                                  " #G~FM=" + famSize,
-                                  read2.sequence,
-                                  "+", read2.quality, ""]))
+                            " #G~FM=" + famSize,
+                            read2.sequence,
+                            "+", read2.quality, ""]))
         # str(famSize=="1")))
         if(numWritten >= readPairsPerWrite):
             pl("{} read. Next write to file happening now.".format(
@@ -1115,7 +1120,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             string1 = compareFastqRecordsFastqProxy(workingSet1)[0] + "\n"
             string2 = compareFastqRecordsFastqProxy(workingSet2)[0] + "\n"
             if(string1.split(' ')[0] != string2.split(' ')[0]):
-                string2.replace(string2.split(' ')[0], string1.split(' ')[0])
+                string2 = string2.replace(string2.split(' ')[0],
+                                          string1.split(' ')[0])
             else:
                 pl("Reads actually had their correct names.")
             cString1.write(string1)
