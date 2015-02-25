@@ -156,14 +156,9 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                 BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
                 alpha=alpha)
     if(p3Seq != "default"):
-        BConsFastq1 = BCFastq.CallCutadapt(BConsFastq1, overlapLen=overlapLen,
-                                           p3Seq=p3Seq, p5Seq=p5Seq)
-        BConsFastq2 = BCFastq.CallCutadapt(BConsFastq2, overlapLen=overlapLen,
-                                           p3Seq=p3Seq, p5Seq=p5Seq)
-    # Assuming that no reads are failed (numpy
-    # consolidation does not fail reads or read pairs unless
-    # there is less than 50% agreement or there are too many members
-    # in a family.), just tag them, no need to check for shared pairs.
+        BConsFastq1, BConsFastq2 = BCFastq.CallCutadaptBoth(
+            BConsFastq1, BConsFastq2, overlapLen=overlapLen,
+            p3Seq=p3Seq, p5Seq=p5Seq)
     return BConsFastq1, BConsFastq2, barcodeIndex
 
 

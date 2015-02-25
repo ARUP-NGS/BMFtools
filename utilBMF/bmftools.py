@@ -9,7 +9,7 @@ from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
 from MawCluster.TLC import BMFXLC as CallIntraTrans
-from pudb import set_trace
+#  from pudb import set_trace
 
 """
 bmftools contains various utilities for barcoded reads and for

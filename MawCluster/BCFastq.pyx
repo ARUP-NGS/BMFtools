@@ -50,13 +50,11 @@ dAccess = np.vectorize(dAccess)
 
 
 @cython.locals(x=cython.int)
-@cython.returns(cython.char)
 def ph2chr(x):
     """
     Converts a phred score to a fastq-encodable character.
     """
     return chr(x + 33) if x <= 93 else "~"
-ph2chr = np.vectorize(ph2chr)
 
 
 @cython.locals(checks=cython.int)
@@ -207,7 +205,7 @@ def compareFastqRecordsFastqProxy(R, stringency=0.9, hybrid=False,
                 R[0], len(R), famLimit))
         R = R[:famLimit]
     assert isinstance(R[0], pysam.cfaidx.FastqProxy)
-    seqs = np.array([record.sequence for record in R])
+    seqs = [record.sequence for record in R]
     maxScore = 0
     Success = False
     for seq in seqs:
@@ -217,47 +215,30 @@ def compareFastqRecordsFastqProxy(R, stringency=0.9, hybrid=False,
             maxScore = numEq
             finalSeq = str(seq)
     frac = numEq * 1.0 / len(R)
-    PASS = frac > stringency
-    # print("Fraction {}. Stringency: {}. Pass? {}.".format(
-    # frac,stringency,PASS))
-    if(PASS):
+    if(frac > stringency):
         Success = True
     elif(frac < 0.5):
         Success = False
     elif(hybrid is True):
         return compareFqRecsFast(R)
-    try:
-        probs = np.multiply(len(R), [ord(i) - 33 for i in R[0].quality])
-    except TypeError:
-        pl("Length of R: {}".format(len(R)))
-        pl(R[0].quality)
-        pl("Died when trying to make the phred scores from characters.")
-        raise TypeError("Confused!")
-    try:
-        if(np.any(np.less(probs, 1))):
-            Success = False
-        else:
-            Success = True
-    except TypeError:
-        pl("probs: {}".format(repr(probs)))
-        pl("Length of R: {}".format(len(R)))
-        pl("Died when trying to set a value for Success.")
-        raise TypeError("Confused!")
+    lenR = len(R)
+    probs = [(ord(i) - 33) * lenR for i in R[0].quality]
     TagString = " #G~FM=" + str(len(R))
-    numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-                             for i in range(len(seqs[0]))])
-    TagString += " #G~FA=" + ",".join(numFamAgreed.astype(str))
+    TagString += " #G~FA=" + ",".join([str(i) for i in
+                                       [sum([seq[i] == finalSeq[i]
+                                             for seq in seqs])
+                                        for i in range(len(seqs[0]))]])
+    QualString = "".join([ph2chr(i) for i in probs])
     if(np.any(np.greater(probs, 93))):
-        consFqString = "\n".join(["@" + R[0].name + R[0].comment + TagString +
-                                  " #G~PV=" + ",".join(
-            probs.astype(str)), finalSeq, "+", "".join(
-                np.apply_along_axis(ph2chr, 0, probs))])
+        consFqString = "\n".join(["@" + R[0].name + " " + R[0].comment +
+                                  TagString + " #G~PV=" + ",".join(
+            [str(i) or i in probs]), finalSeq, "+", QualString])
     else:
         probs[probs <= 0] = 93
         probs[probs > 93] = 93
         consFqString = "\n".join(
-            ["@" + R[0].name + R[0].comment + TagString, finalSeq,
-             "+", "".join(np.apply_along_axis(ph2chr, 0, probs))])
+            ["@" + R[0].name + " " + R[0].comment + TagString, finalSeq,
+             "+", QualString])
     return consFqString, Success
 
 
@@ -350,32 +331,32 @@ def compareFqRecsFast(R):
     Calculates the most likely nucleotide
     at each position and returns the joined record.
     """
-
+    Success = True
     seqs = np.array([record.sequence for record in R])
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
-    cdef np.ndarray[cython.int, ndim = 2] quals = np.array(
+    cdef np.ndarray[cython.long, ndim = 2] quals = np.array(
         [[ord(i) - 33 for i in list(record.quality)] for record in R])
-    cdef np.ndarray[cython.int, ndim = 2] qualA = copy.copy(quals)
-    cdef np.ndarray[cython.int, ndim = 2] qualC = copy.copy(quals)
-    cdef np.ndarray[cython.int, ndim = 2] qualG = copy.copy(quals)
-    cdef np.ndarray[cython.int, ndim = 2] qualT = copy.copy(quals)
+    cdef np.ndarray[cython.long, ndim = 2] qualA = copy.copy(quals)
+    cdef np.ndarray[cython.long, ndim = 2] qualC = copy.copy(quals)
+    cdef np.ndarray[cython.long, ndim = 2] qualG = copy.copy(quals)
+    cdef np.ndarray[cython.long, ndim = 2] qualT = copy.copy(quals)
     qualA[seqArray != "A"] = 0
-    cdef np.ndarray[cython.int, ndim = 1] qualAFlat = np.sum(qualA, 0)
+    cdef np.ndarray[cython.long, ndim = 1] qualAFlat = np.sum(qualA, 0)
     qualC[seqArray != "C"] = 0
-    cdef np.ndarray[cython.int, ndim = 1] qualCFlat = np.sum(qualC, 0)
+    cdef np.ndarray[cython.long, ndim = 1] qualCFlat = np.sum(qualC, 0)
     qualG[seqArray != "G"] = 0
-    cdef np.ndarray[cython.int, ndim = 1] qualGFlat = np.sum(qualG, 0)
+    cdef np.ndarray[cython.long, ndim = 1] qualGFlat = np.sum(qualG, 0)
     qualT[seqArray != "T"] = 0
-    cdef np.ndarray[cython.int, ndim = 1]  qualTFlat = np.sum(qualT, 0)
-    cdef np.ndarray[cython.int, ndim = 2] qualAllSum = np.vstack(
+    cdef np.ndarray[cython.long, ndim = 1]  qualTFlat = np.sum(qualT, 0)
+    cdef np.ndarray[cython.long, ndim = 2] qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
-    cdef np.ndarray[cython.int, ndim = 1] MaxPhredSum = np.amax(
+    cdef np.ndarray[cython.long, ndim = 1] MaxPhredSum = np.amax(
         qualAllSum, 0)  # Avoid calculating twice.
-    cdef np.ndarray[cython.int, ndim = 1] phredQuals = np.subtract(
+    cdef np.ndarray[cython.long, ndim = 1] phredQuals = np.subtract(
         np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
@@ -396,14 +377,14 @@ def compareFqRecsFast(R):
                                        ",".join(phredQuals.astype(str))
                                        + TagString,
                                       newSeq, "+", phredQualsStr])
+    if(Success is False):
+        return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
 
 
-@cython.locals(overlapLen=cython.int)
-def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
+def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
-    Calls cutadapt to remove adapter sequence at either end of the reads.
-    Written for v1.7.1
+    Returns a string which can be called for running cutadapt v.1.7.1.
     """
     outfq = ".".join(fq.split('.')[0:-1] + ["cutadapt", "fastq"])
     if(p3Seq == "default"):
@@ -416,8 +397,45 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
         commandStr = shlex.split("cutadapt -a {} -g {} -o {} -O {} {}".format(
             p3Seq, p5Seq, outfq, overlapLen, fq))
     pl("Cutadapt command string: {}".format(" ".join(commandStr)))
+    return commandStr, outfq
+
+
+@cython.locals(overlapLen=cython.int)
+def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
+    """
+    Calls cutadapt to remove adapter sequence at either end of the reads.
+    Written for v1.7.1
+    """
+    commandStr, outfq = CutadaptString(fq, p3Seq=p3Seq, p5Seq=p5Seq,
+                                       overlapLen=overlapLen)
     subprocess.check_call(commandStr)
     return outfq
+
+
+def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
+    fq1Str, outfq1 = CutadaptString(fq1, p3Seq=p3Seq, p5Seq=p5Seq,
+                                    overlapLen=overlapLen)
+    fq2Str, outfq2 = CutadaptString(fq2, p3Seq=p3Seq, p5Seq=p5Seq,
+                                    overlapLen=overlapLen)
+    fq2Popen = subprocess.Popen(fq2Str, shell=True, stdin=None, stderr=None,
+                                stdout=None, close_fds=True)
+    subprocess.check_call(fq1Str)
+    numChecks = 0
+    while True:
+        if(numChecks >= 300):
+            raise subprocess.CalledProcessError(
+                "Cutadapt took more than 5 minutes longer for read 2 than rea"
+                "d 1. Did something go wrong???")
+        if fq2Popen.poll() == 0:
+            return outfq1, outfq2
+        elif(fq2Popen.poll() is None):
+            pl("Checking if cutadapt for read 2 is finished. Seconds elapsed ("
+               "approximate): {}".format(numChecks))
+            numChecks += 1
+            time.sleep(1)
+            continue
+        else:
+            raise subprocess.CalledProcessError("Cutadapt failed for read 2!")
 
 
 @cython.locals(useGzip=cython.bint, bLen=cython.int)
@@ -1117,15 +1135,19 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            string1 = compareFastqRecordsFastqProxy(workingSet1)[0] + "\n"
-            string2 = compareFastqRecordsFastqProxy(workingSet2)[0] + "\n"
+            """
             if(string1.split(' ')[0] != string2.split(' ')[0]):
                 string2 = string2.replace(string2.split(' ')[0],
                                           string1.split(' ')[0])
             else:
                 pl("Reads actually had their correct names.")
-            cString1.write(string1)
-            cString2.write(string2)
+            """
+            #  cString1.write(compareFastqRecordsFastqProxy(
+            #      workingSet1)[0] + "\n")
+            #  cString2.write(compareFastqRecordsFastqProxy(
+            #      workingSet2)[0] + "\n")
+            cString1.write(compareFqRecsFast(workingSet1) + "\n")
+            cString2.write(compareFqRecsFast(workingSet2) + "\n")
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1

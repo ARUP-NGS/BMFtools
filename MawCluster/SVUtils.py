@@ -608,6 +608,10 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         writeSum = open(summary, "w")
         writeSum.write("#Category\tCount\tFraction\n")
         for key in SVCountDict.keys():
+            if(SVCountDict['TOTAL'] == 0):
+                pl("No reads marked with SV tag - something has gone wrong.")
+                pl("WARNING!!!!!! SV analysis failed!")
+                return SVBam, FullBam
             writeSum.write(
                 "{}\t{}\t{}\n".format(key,
                                       SVCountDict[key],
