@@ -28,9 +28,6 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     """
     if(ref == "default"):
         raise ValueError("Reference index required!")
-    if(barIndex == "default"):
-        raise ValueError(("Barcode index required - generate one at the "
-                          "pre-merge fastq stage."))
     if(bamPrefix == "default"):
         bamPrefix = '.'.join(consfq1.split('.')[0:-1])
     if(aligner == "default"):
@@ -63,12 +60,13 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         realignedFull = taggedBAM
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
-    p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
-    out, err = p.communicate()
-    pl("Number of families found: {}".format(
-        re.findall(r'\d+', out)[0]))
-    histochart = BCBam.GenerateFamilyHistochart(barIndex)
-    pl("Histochart of family sizes: {}".format(histochart))
+    if(barIndex != "default"):
+        p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        pl("Number of families found: {}".format(
+            re.findall(r'\d+', out)[0]))
+        histochart = BCBam.GenerateFamilyHistochart(barIndex)
+        pl("Histochart of family sizes: {}".format(histochart))
     # UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
     """
         pl("Rescue step, marking the BD as their Hamming distance.")
@@ -113,14 +111,20 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
         except ValueError:
             captureSize = 58370
             pl("Capture Size not set - default of 58370 set.")
+    """
+    I'm seeing if I can get away with not making the index and just counting
+    as read families are demultiplexed.
     if(bgIndex is False):
         barcodeIndex = BCFastq.GenerateShadesIndex(indexfq)
     else:
         barcodePopen, barcodeIndex = BCFastq.GenerateShadesIndexBG(indexfq)
+    """
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq)
+    """
+    Same as previous blocked commment
     if(indexfq == "default"):
         HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
     if("barcodePopen" in locals()):
@@ -129,8 +133,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
             pl("Waiting for barcodePopen to close. Seconds elapsed, roughly"
                ": {}".format(countPolls))
             countPolls += 1
-            barcodePopen.poll()
-            if(barcodePopen.returncode is None):
+            if(barcodePopen.poll() is None):
                 time.sleep(1)
                 continue
             elif(barcodePopen.returncode == 0):
@@ -139,6 +142,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                 raise subprocess.CalledProcessError(
                     "Index generation in the background failed! ... or at "
                     "least took more than 5 minutes")
+    """
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
         BSortFq1, BSortFq2, stringency=0.9)
@@ -159,7 +163,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
         BConsFastq1, BConsFastq2 = BCFastq.CallCutadaptBoth(
             BConsFastq1, BConsFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq)
-    return BConsFastq1, BConsFastq2, barcodeIndex
+    return BConsFastq1, BConsFastq2
 
 
 @cython.locals(minMQ=cython.int, minBQ=cython.int, MakeVCF=cython.bint,

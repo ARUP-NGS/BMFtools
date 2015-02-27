@@ -251,6 +251,21 @@ DefaultSamHeader = repr("{'SQ': [{'LN': 249250621, 'SN': '1'}, {'LN': 2431"
                         "0'}], 'HD': {'SO': 'queryname', 'VN': '1.4'}}")
 
 
+def GetPysamToChrDict(alignmentFileText):
+    """
+    Input variable contains the "text" attribute from a pysam.AlignmentFile
+    object.
+    """
+    global PysamToChrDict
+    PysamToChrDict = dict(list(enumerate(
+        [i.replace("SN:","").split("\t")[1] for i in
+         alignmentFileText.split('\n') if i[0:3] == "@SQ"])))
+    global ChrToPysamDict
+    ChrToPysamDict = {PysamToChrDict[key]: key for key in
+                      PysamToChrDict.keys()}
+    return
+
+
 def FacePalm(string):
     Str = ("............................................________ "
            "\n....................................,.-'\"...................`"

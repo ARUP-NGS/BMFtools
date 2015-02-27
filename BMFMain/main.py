@@ -272,12 +272,12 @@ def main():
             pl("Beginning fastq processing.")
             if(args.shades is True):
                 if kmer is None and alpha is not None:
-                    trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
+                    trimfq1, trimfq2 = ps.pairedFastqShades(
                         args.fq[0], args.fq[1], indexfq=args.idxFastq,
                         lighter=lighter, captureSize=captureSize, alpha=alpha,
                         p3Seq=p3Seq, p5Seq=p5Seq)
                 else:
-                    trimfq1, trimfq2, barcodeIndex = ps.pairedFastqShades(
+                    trimfq1, trimfq2 = ps.pairedFastqShades(
                         args.fq[0], args.fq[1], indexfq=args.idxFastq,
                         lighter=lighter, kmer=kmer, captureSize=captureSize,
                         p3Seq=p3Seq, p5Seq=p5Seq)
@@ -287,7 +287,6 @@ def main():
                     trimfq2,
                     aligner=aligner,
                     ref=ref,
-                    barIndex=barcodeIndex,
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
@@ -296,7 +295,7 @@ def main():
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,
                     aligner=aligner, ref=ref,
-                    barIndex=barcodeIndex, bed=bed,
+                    bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath)
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
