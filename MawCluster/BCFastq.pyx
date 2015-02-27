@@ -29,7 +29,7 @@ import pysam
 cimport pysam.cfaidx
 import cStringIO
 
-ctypedef np.int32_t dtypei_t
+ctypedef np.int64_t dtypei_t
 
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
@@ -358,31 +358,31 @@ def compareFqRecsFast(R):
     # print(repr(seqArray))
     quals = np.array(
         [np.apply_along_axis(chr2ph, 0, list(record.quality)) for record in R],
-        dtype=np.int32)
+        dtype=np.int64)
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
     qualT = copy.copy(quals)
     qualA[seqArray != "A"] = 0
-    qualAFlat = np.sum(qualA, 0, dtype=np.int32)
+    qualAFlat = np.sum(qualA, 0, dtype=np.int64)
     qualC[seqArray != "C"] = 0
-    qualCFlat = np.sum(qualC, 0, dtype=np.int32)
+    qualCFlat = np.sum(qualC, 0, dtype=np.int64)
     qualG[seqArray != "G"] = 0
-    qualGFlat = np.sum(qualG, 0, dtype=np.int32)
+    qualGFlat = np.sum(qualG, 0, dtype=np.int64)
     qualT[seqArray != "T"] = 0
-    qualTFlat = np.sum(qualT, 0, dtype=np.int32)
+    qualTFlat = np.sum(qualT, 0, dtype=np.int64)
     qualAllSum = np.vstack(
-        [qualAFlat, qualCFlat, qualGFlat, qualTFlat], dtype=np.int32)
+        [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(qualAllSum, 0, dtype=np.int32)  # Avoid calculating twice.
-    phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int32),
-                             np.sum(qualAllSum, 0, dtype=np.int32), dtype=np.int32)
+    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+    phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int64),
+                             np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals < 0] = 0
     phredQualsStr = "".join(np.apply_along_axis(ph2chr, 0, phredQuals))
     TagString = " #G~FM=" + str(len(R))
     numFamAgreed = np.array([sum([seq[i] == newSeq[i] for seq in seqs])
-                             for i in range(len(seqs[0]))])
+                             for i in range(len(seqs[0]))], dtype=np.int64)
     TagString += " #G~FA=" + ",".join(numFamAgreed.astype(str))
     if(np.any(np.greater(phredQuals, 93)) is False):
         consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment
@@ -1100,7 +1100,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
 @cython.locals(stringency=cython.float, readPairsPerWrite=cython.int)
 @cython.initializedcheck(False)
 def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
-                                 readPairsPerWrite=1000000):
+                                 readPairsPerWrite=50000):
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
     outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
     pl("Now running pairedFastqConsolidateFaster on {} and {}.".format(fq1,
@@ -1161,10 +1161,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             else:
                 pl("Reads actually had their correct names.")
             """
-            cString1.write(compareFqRecsFqPrx(workingSet1)[0] + "\n")
-            cString2.write(compareFqRecsFqPrx(workingSet2)[0] + "\n")
-            cString1.write(compareFqRecsFast(workingSet1) + "\n")
-            cString2.write(compareFqRecsFast(workingSet2) + "\n")
+            cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
+            cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1
