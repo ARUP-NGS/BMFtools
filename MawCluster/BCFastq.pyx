@@ -37,6 +37,8 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
 from utilBMF.HTSUtils import ph2chr
 from utilBMF.HTSUtils import chr2ph
+from utilBMF.HTSUtils import Base85ToInt
+from utilBMF.HTSUtils import Int2Base85
 from utilBMF import HTSUtils
 
 letterNumDict = {}

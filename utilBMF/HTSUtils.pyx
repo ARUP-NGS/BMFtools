@@ -15,6 +15,7 @@ import numpy as np
 cimport numpy as np
 from Bio.Seq import Seq
 import cython
+import numconv
 
 import MawCluster
 from utilBMF.ErrorHandling import *
