@@ -59,7 +59,7 @@ def ph2chr(x):
 ph2chr = np.vectorize(ph2chr)
 
 
-@cython.returns(cython.int)
+@cython.returns(np.int64_t)
 def chr2ph(x):
     """
     Converts a character to its corresponding phred integer representation
@@ -189,9 +189,8 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
                           in range(len(seqs[0]))])) for seq in seqs]
     consolidatedRecord.description += " #G~FA=" + ",".join(
         numAgreed) + " #G~FM=" + str(len(seqs))
-    if(np.any(np.greater(probs, 93))):
-        consolidatedRecord.description += " #G~PV=" + ",".join(
-            probs.astype(str))
+    consolidatedRecord.description += " #G~PV=" + ",".join(
+        probs.astype(str))
     QualString = np.apply_along_axis(ph2chr, 0, probs)
     consFqString = "\n".join(
         ["@" + R[0].description, finalSeq, "+", QualString])
@@ -230,21 +229,19 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     elif(hybrid is True):
         return compareFqRecsFast(R)
     lenR = len(R)
-    probs = [(ord(i) - 33) * lenR for i in R[0].quality]
-    TagString = " #G~FM=" + str(len(R))
-    TagString += " #G~FA=" + ",".join([str(i) for i in
-                                       [sum([seq[i] == finalSeq[i]
-                                             for seq in seqs])
-                                        for i in range(len(seqs[0]))]])
-    QualString = "".join(np.apply_along_axis(ph2chr, 0, probs))
-    if(np.any(np.greater(probs, 93))):
-        consFqString = "\n".join(["@" + R[0].name + " " + R[0].comment +
-                                  TagString + " #G~PV=" + ",".join(
-            [str(i) or i in probs]), finalSeq, "+", QualString])
-    else:
-        consFqString = "\n".join(
-            ["@" + R[0].name + " " + R[0].comment + TagString, finalSeq,
-             "+", QualString])
+    phredQuals = np.multiply(lenR, np.apply_along_axis(ord, 0, R[0].quality,
+                                                  dtype=np.int64),
+                        dtype=np.int64)
+    PVString = " #G~PV=" + ",".join(phredQuals.astype(np.str_))
+    numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
+                             for i in range(len(seqs[0]))], dtype=np.int64)
+    TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
+                 ",".join(numFamAgreed.astype(str)) + PVString)
+    QualString = "".join(np.apply_along_axis(ph2chr, 0, phredQuals))
+    consFqString = "\n".join(["@" + R[0].name + " " + R[0].comment + TagString,
+                              finalSeq,
+                              "+",
+                              QualString])
     if(Success is False):
         return consFqString.replace("Pass", "Fail")
     return consFqString
@@ -257,9 +254,14 @@ def compareFastqRecordsInexactNumpy(R):
     at each position and returns the joined record.
     """
 
-    seqs = np.array([str(record.seq) for record in R])
+    seqs = np.array([str(record.seq) for record in R], dtype=np.str_)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
+    cdef np.ndarray[dtypei_t, ndim = 2] quals
+    cdef np.ndarray[dtypei_t, ndim = 2] qualA
+    cdef np.ndarray[dtypei_t, ndim = 2] qualC
+    cdef np.ndarray[dtypei_t, ndim = 2] qualG
+    cdef np.ndarray[dtypei_t, ndim = 2] qualT
     # print(repr(seqArray))
     quals = np.array([
         record.letter_annotations['phred_quality'] for record in R])
@@ -281,9 +283,10 @@ def compareFastqRecordsInexactNumpy(R):
     newSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
     MaxPhredSum = np.amax(
-        qualAllSum, 0)  # Avoid calculating twice.
+        qualAllSum)  # Avoid calculating twice.
     phredQuals = np.subtract(
-        np.multiply(2, MaxPhredSum), np.sum(qualAllSum, 0))
+        np.multiply(2, MaxPhredSum, dtype=np.int64),
+        np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
     consolidatedRecord = SeqRecord(
@@ -296,9 +299,8 @@ def compareFastqRecordsInexactNumpy(R):
     consolidatedRecord.description += " #G~FA=" + ",".join([
         str(i) for i in numFamAgreed])
     consolidatedRecord.description += " #G~FM=" + str(len(R))
-    if(np.any(np.greater(phredQuals, 93))):
-        consolidatedRecord.description += (" #G~PV=" +
-                                           ",".join(phredQuals.astype(str)))
+    consolidatedRecord.description += (" #G~PV=" +
+                                       ",".join(phredQuals.astype(str)))
     descDict = GetDescriptionTagDict(consolidatedRecord.description)
     phredQuals[phredQuals > 93] = 93
     consolidatedRecord.letter_annotations[
@@ -340,7 +342,7 @@ def compareFqRecsFast(R):
     at each position and returns the joined record.
     """
     Success = True
-    seqs = np.array([record.sequence for record in R])
+    seqs = np.array([record.sequence for record in R], dtype=np.str_)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     cdef np.ndarray[dtypei_t, ndim = 2] quals
@@ -380,20 +382,22 @@ def compareFqRecsFast(R):
                              np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals < 0] = 0
     phredQualsStr = "".join(np.apply_along_axis(ph2chr, 0, phredQuals))
-    TagString = " #G~FM=" + str(len(R))
+    PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
     numFamAgreed = np.array([sum([seq[i] == newSeq[i] for seq in seqs])
                              for i in range(len(seqs[0]))], dtype=np.int64)
-    TagString += " #G~FA=" + ",".join(numFamAgreed.astype(str))
-    if(np.any(np.greater(phredQuals, 93)) is False):
-        consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment
-                                       + TagString,
-                                       newSeq, "+", phredQualsStr])
-    else:
-        consolidatedFqStr = "\n".join(["@" + R[0].name + " " +
-                                       R[0].comment + " #G~PV=" +
-                                       ",".join(phredQuals.astype(str))
-                                       + TagString,
-                                       newSeq, "+", phredQualsStr])
+    TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
+                 ",".join(numFamAgreed.astype(str)) + PVString)
+    try:
+        assert len(PVString) != 1
+    except AssertionError:
+        pl(repr(phredQuals))
+        pl(repr(PVString))
+        raise ThisIsMadness("Something's wrong with my phredQuals. "
+                            "It should be the length of the read.")
+    consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment + TagString,
+                                   newSeq,
+                                   "+",
+                                   phredQualsStr])
     if(Success is False):
         return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
