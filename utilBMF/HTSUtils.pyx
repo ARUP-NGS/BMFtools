@@ -12,7 +12,9 @@ import os
 
 import pysam
 import numpy as np
+cimport numpy as np
 from Bio.Seq import Seq
+import cython
 
 import MawCluster
 from utilBMF.ErrorHandling import *
@@ -1062,3 +1064,33 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     MergedInts.append(intval)
     print("MergedInts={}".format(MergedInts))
     return MergedInts
+
+
+@cython.returns(np.int64_t)
+def Base85ToInt(x):
+    """
+    Converts base 85 integers back to base 10 for helping variant calls.
+    """
+    return numconv.NumConv(85).str2int(x)
+
+
+@cython.returns(np.int64_t)
+def chr2ph(x):
+    """
+    Converts a character to its corresponding phred integer representation
+    """
+    return ord(x) - 33
+
+
+def ph2chr(x):
+    """
+    Converts a phred score to a fastq-encodable character.
+    """
+    return chr(x + 33) if x <= 93 else "~"
+
+@cython.locals(x=np.int64_t)
+def Int2Base85(x):
+    """
+    Converts a base 10 number to a base 85 string for better compression.
+    """
+    return numconv.NumConv(85).int2str(x)

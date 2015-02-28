@@ -17,6 +17,7 @@ import gzip
 import sys
 import collections
 import time
+import cStringIO
 
 from Bio import SeqIO
 import Bio
@@ -27,12 +28,15 @@ import numpy as np
 cimport numpy as np
 import pysam
 cimport pysam.cfaidx
-import cStringIO
+import numconv
 
 ctypedef np.int64_t dtypei_t
 
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
+from utilBMF.HTSUtils import ph2chr
+from utilBMF.HTSUtils import chr2ph
 from utilBMF import HTSUtils
 
 letterNumDict = {}
@@ -50,22 +54,9 @@ def dAccess(x):
     return letterNumDict[x]
 dAccess = np.vectorize(dAccess)
 
-
-def ph2chr(x):
-    """
-    Converts a phred score to a fastq-encodable character.
-    """
-    return chr(x + 33) if x <= 93 else "~"
 ph2chr = np.vectorize(ph2chr)
-
-
-@cython.returns(np.int64_t)
-def chr2ph(x):
-    """
-    Converts a character to its corresponding phred integer representation
-    """
-    return ord(x) - 33
 chr2ph = np.vectorize(chr2ph)
+Int2Base85 = np.vectorize(Int2Base85)
 
 
 @cython.locals(checks=cython.int)
@@ -228,11 +219,12 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
         Success = False
     elif(hybrid is True):
         return compareFqRecsFast(R)
-    lenR = len(R)
-    phredQuals = np.multiply(lenR, np.apply_along_axis(ord, 0, R[0].quality,
-                                                  dtype=np.int64),
-                        dtype=np.int64)
-    PVString = " #G~PV=" + ",".join(phredQuals.astype(np.str_))
+    phredQuals = np.multiply(len(R),
+                             np.apply_along_axis(chr2ph, 0,
+                                                 list(R[0].quality)),
+                             dtype=np.int64)
+    PVString = " #G~PV=" + ",".join(np.apply_along_axis(
+        Int2Base85, 0, phredQuals).astype(np.str_))
     numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
                              for i in range(len(seqs[0]))], dtype=np.int64)
     TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
@@ -823,8 +815,10 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
     inFq2 = pysam.FastqFile(fq2)
     outputHandle1 = open(outFqPair1, 'w')
     outputHandle2 = open(outFqPair2, 'w')
-    cString1 = cStringIO.StringIO()
-    cString2 = cStringIO.StringIO()
+    # cString1 = cStringIO.StringIO()
+    # cString2 = cStringIO.StringIO()
+    String1 = ""
+    String2 = ""
     workingBarcode = ""
     workingSet1 = []
     workingSet2 = []
@@ -833,10 +827,14 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
     numProc = 0
     while True:
         if(numProc % readPairsPerWrite == 0):
-            outputHandle1.write(cString1.getvalue())
-            outputHandle2.write(cString2.getvalue())
-            cString1 = cStringIO.StringIO()
-            cString2 = cStringIO.StringIO()
+            # outputHandle1.write(cString1.getvalue())
+            # outputHandle2.write(cString2.getvalue())
+            outputHandle1.write(String1)
+            outputHandle2.write(String2)
+            # cString1 = cStringIO.StringIO()
+            # cString2 = cStringIO.StringIO()
+            String1 = ""
+            String2 = ""
         try:
             fqRec = inFq1.next()
         except StopIteration:
@@ -864,26 +862,25 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            """
-            if(string1.split(' ')[0] != string2.split(' ')[0]):
-                string2 = string2.replace(string2.split(' ')[0],
-                                          string1.split(' ')[0])
-            else:
-                pl("Reads actually had their correct names.")
-            """
-            cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
-            cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
+            # cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
+            # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
+            String1 += compareFqRecsFqPrx(workingSet1) + "\n"
+            String2 += compareFqRecsFqPrx(workingSet2) + "\n"
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1
             numProc += 1
             continue
-    outputHandle1.write(cString1.getvalue())
-    outputHandle2.write(cString2.getvalue())
+    # outputHandle1.write(cString1.getvalue())
+    # outputHandle2.write(cString2.getvalue())
+    outputHandle1.flush()
+    outputHandle2.flush()
+    outputHandle1.write(String1)
+    outputHandle2.write(String2)
     inFq1.close()
     inFq2.close()
-    cString1.close()
-    cString2.close()
+    # cString1.close()
+    # cString2.close()
     outputHandle1.close()
     outputHandle2.close()
     return outFqPair1, outFqPair2

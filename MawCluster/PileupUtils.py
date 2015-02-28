@@ -10,12 +10,16 @@ import re
 import numpy as np
 import pysam
 import cython
+import numconv
 
-from utilBMF.HTSUtils import (ThisIsMadness,
-                              printlog as pl,
-                              PysamToChrDict)
+from utilBMF.HTSUtils import ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import PysamToChrDict
+from utilBMF.HTSUtils import Base85ToInt
 from utilBMF import HTSUtils
 import utilBMF
+
+Base85ToInt = np.vectorize(Base85ToInt)
 
 """
 Contains various utilities for working with pileup generators
@@ -69,6 +73,13 @@ class PRInfo:
             self.FractionAgreed = self.FA / float(self.FM)
         except KeyError:
             pass  # Looks like that wasn't set... Oops!
+        if("FA" in dict(PileupRead.alignment.tags).keys()):
+            self.FA = np.ndarray(
+                PileupRead.alignment.opt("FA").split(",")).astype(np.int64)
+        if("PV" in dict(PileupRead.alignment.tags).keys()):
+            self.PV = np.apply_along_axis(
+                Base85ToInt, 0, np.ndarray(PileupRead.alignment.opt("PV").split(','),
+                                           dtype=np.int64))
 
 
 def is_reverse_to_str(boolean):

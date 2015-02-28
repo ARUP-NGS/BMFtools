@@ -38,8 +38,7 @@ bmftools <subcommand> --help
 Required python packages: Biopython, pysam, pudb
 
 ### Required external tools:
-bwa	aln (for SNV calling)
-bwa mem (for SV calling)
+bwa (mem or aln, depending on needs.)
 
 ### Optional, but recommended:
 #### Indel Realigners
@@ -61,9 +60,8 @@ BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
-BD | Barcode Edit Distance | Integer |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
-PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers. Regex: [0-9,\[\]]|
+PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers in base 85 encoding. Regex: ASCII|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
 CS | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 
@@ -114,15 +112,26 @@ Most options are available for command-line as well. If an option is set in both
 1. VCF Info fields for fractions of reads mapped to reverse strand for both alt allele and all reads.
 2. VCF Info fields for the mean and standard deviation of base position in read for bases supporting variant call. 
 2. Require duplex sequencing an option for variant calling.
-3. Adding extra BAM tags for the number of reads in a family supporting the merged read's nucleotide position by position.
+3. Adding extra BAM tags for the number of reads in a family supporting the merged read's nucleotide position by position (FA tag).
 4. Moved exceptions to an ErrorHandling file, added PermissionException.
 5. Bug fixes for working with gzipped files.
 
+#Changes in BMFTools v.0.0.5.3
+
+1. Sped-up, cythonized, and numpied version of fastq consolidation fully functional and fast.
+2. Compiler directives.
+3. More type definitions.
+4. Encoding the summed phred scores from demultiplexed families in base 85 format to save space.
 
 #TODO:
-1. Speed up consolidateInexactNumpy (pysam/cStringIO)
-2. Finish consensus sequence for intrachromosomal.
-3. Finish writing structural variants to a VCF format
-4. Work on interchromosomal translocations
-5. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
-7. Consider haplotyping
+1. Finish consensus sequence for intrachromosomal.
+2. Take advantage of PV tags.
+3. Write SV tags into a function, call that function during the standard FM/FP/BS tagging.
+4. Additional soft-clipped tags (ORS, MI [medium insert -- >= 500?])
+5. Work on smaller indels directly in BAM with cigar strings.
+6. Try calling freebayes at high ploidy for indels
+7. Try calling scalpel with indel irrelevant reads as normal and relevant reads as abnormal.
+8. Finish writing structural variants to a VCF format
+9. Work on interchromosomal translocations
+10. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
+11. Consider haplotyping by leveraging SNPs touched by multiple.
