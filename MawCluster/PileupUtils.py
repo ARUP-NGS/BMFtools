@@ -76,10 +76,10 @@ class PRInfo:
         if("FA" in dict(PileupRead.alignment.tags).keys()):
             self.FA = np.ndarray(
                 PileupRead.alignment.opt("FA").split(",")).astype(np.int64)
+        p = re.compile("[^0-9,]")
         if("PV" in dict(PileupRead.alignment.tags).keys()):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
-            p = re.compile("[^0-9,]")
             PVString = PileupRead.alignment.opt("PV")
             if(p.match(PVString) is not None):
                 self.PV = np.apply_along_axis(

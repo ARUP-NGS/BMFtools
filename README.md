@@ -134,4 +134,4 @@ Most options are available for command-line as well. If an option is set in both
 8. Finish writing structural variants to a VCF format
 9. Work on interchromosomal translocations
 10. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
-11. Consider haplotyping by leveraging SNPs touched by multiple.
+11. Consider haplotyping by leveraging reads covering multiple SNPs.

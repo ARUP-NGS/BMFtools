@@ -8,14 +8,13 @@ except ImportError:
     from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
-pyxList = cythonize('*/*.pyx')
-pyList = cythonize('*/*.py')
-for x in pyxList + pyList:
+ext = cythonize('*/*.pyx') + cythonize('*/*.py')
+# Insist on -O3 optimization
+for x in ext:
     if(x.extra_compile_args == []):
         x.extra_compile_args = ["-O3"]
     else:
         x.extra_compile_args += ["-O3"]
-ext = pyxList + pyList
 
 config = {
     'description': '',
