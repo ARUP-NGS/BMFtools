@@ -77,9 +77,17 @@ class PRInfo:
             self.FA = np.ndarray(
                 PileupRead.alignment.opt("FA").split(",")).astype(np.int64)
         if("PV" in dict(PileupRead.alignment.tags).keys()):
-            self.PV = np.apply_along_axis(
-                Base85ToInt, 0, np.ndarray(PileupRead.alignment.opt("PV").split(','),
-                                           dtype=np.int64))
+            # If there are characters beside digits and commas, then it these
+            # values must have been encoded in base 85.
+            p = re.compile("[^0-9,]")
+            PVString = PileupRead.alignment.opt("PV")
+            if(p.match(PVString) is not None):
+                self.PV = np.apply_along_axis(
+                    Base85ToInt, 0, np.ndarray(
+                        PVString.split(','),
+                        dtype=np.int64))
+            else:
+                self.PV = np.ndarray(PVString.split(','), dtype=np.int64)
 
 
 def is_reverse_to_str(boolean):

@@ -192,9 +192,10 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
                famLimit=cython.int, keepFails=cython.bint,
-               Success=cython.bint, PASS=cython.bint, frac=cython.float)
+               Success=cython.bint, PASS=cython.bint, frac=cython.float,
+               compressB85=cython.bint)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
-                                  famLimit=200, keepFails=True):
+                       famLimit=200, keepFails=True, compressB85=False):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
@@ -225,8 +226,14 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
                              np.apply_along_axis(chr2ph, 0,
                                                  list(R[0].quality)),
                              dtype=np.int64)
-    PVString = " #G~PV=" + ",".join(np.apply_along_axis(
-        Int2Base85, 0, phredQuals).astype(np.str_))
+    if(np.any(np.greater(phredQuals, 93))):
+        if(compressB85 is True):
+            PVString = " #G~PV=" + ",".join(np.apply_along_axis(
+                Int2Base85, 0, phredQuals).astype(np.str_))
+        else:
+            PVString = " #G~PV=" + ",".join(phredQuals).astype(np.str_)
+    else:
+        PVString = ""
     numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
                              for i in range(len(seqs[0]))], dtype=np.int64)
     TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
@@ -406,12 +413,12 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
         HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
-        commandStr = shlex.split("cutadapt -a {} -o {} -O {} {}".format(
-            p3Seq, outfq, overlapLen, fq))
+        commandStr = "cutadapt -a {} -o {} -O {} {}".format(
+            p3Seq, outfq, overlapLen, fq)
     else:
-        commandStr = shlex.split("cutadapt -a {} -g {} -o {} -O {} {}".format(
-            p3Seq, p5Seq, outfq, overlapLen, fq))
-    pl("Cutadapt command string: {}".format(" ".join(commandStr)))
+        commandStr = "cutadapt -a {} -g {} -o {} -O {} {}".format(
+            p3Seq, p5Seq, outfq, overlapLen, fq)
+    pl("Cutadapt command string: {}".format(commandStr))
     return commandStr, outfq
 
 
@@ -427,20 +434,24 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return outfq
 
 
+@cython.locals(overlapLap=cython.int, numChecks=cython.int)
 def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
     fq1Str, outfq1 = CutadaptString(fq1, p3Seq=p3Seq, p5Seq=p5Seq,
                                     overlapLen=overlapLen)
     fq2Str, outfq2 = CutadaptString(fq2, p3Seq=p3Seq, p5Seq=p5Seq,
                                     overlapLen=overlapLen)
+    pl("About to open a Popen instance for read 2. Command: {}".format(fq2Str))
     fq2Popen = subprocess.Popen(fq2Str, shell=True, stdin=None, stderr=None,
                                 stdout=None, close_fds=True)
-    subprocess.check_call(fq1Str)
+    pl("Cutadapt running in the background for read 2. Now calling for read "
+       "1: {}".format(fq1Str))
+    subprocess.check_call(fq1Str, shell=True)
     numChecks = 0
     while True:
         if(numChecks >= 300):
             raise subprocess.CalledProcessError(
                 "Cutadapt took more than 5 minutes longer for read 2 than rea"
-                "d 1. Did something go wrong???")
+                "d 1. Did something go wrong?")
         if fq2Popen.poll() == 0:
             return outfq1, outfq2
         elif(fq2Popen.poll() is None):
@@ -875,10 +886,10 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             continue
     # outputHandle1.write(cString1.getvalue())
     # outputHandle2.write(cString2.getvalue())
-    outputHandle1.flush()
-    outputHandle2.flush()
     outputHandle1.write(String1)
     outputHandle2.write(String2)
+    outputHandle1.flush()
+    outputHandle2.flush()
     inFq1.close()
     inFq2.close()
     # cString1.close()
