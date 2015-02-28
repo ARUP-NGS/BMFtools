@@ -24,7 +24,9 @@ Structural Variant detection tools are in active development.
 Logger = logging.getLogger("Primarylogger")
 
 
-def main():
+def main(argv=None):
+    if argv is not None:
+        sys.argv = argv
     # pudb.set_trace()
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -352,7 +354,7 @@ def main():
             pl("Last stop! Watch your step.")
     return
 
-__version__ = "0.0.5.2"
+__version__ = "0.0.5.3"
 
 if(__name__ == "__main__"):
     main()
