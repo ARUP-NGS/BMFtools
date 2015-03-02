@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import pysam
 import cython
 
@@ -763,6 +765,24 @@ HeaderInfoDict["MINFA"] = HeaderInfoLine(
     ID="MINFA", Description="Minimum number of agreeing reads in a family for"
     "that family to be included in variant call", Number=1, Type="Integer")
 
+
+SNVParamDict = defaultdict()
+SNVTestDict = {}
+
+
+@cython.returns(cython.bint)
+def DRP_SNV_Tag_Condition(read1, read2, extraField="default"):
+    """
+    Duplex Read Pair
+    Whether or not a read pair shares some minimum fraction of aligned
+    positions.
+    """
+    if(extraField != "default"):
+        return ReadPairIsDuplex(read1, read2, minShare=extraField)
+    else:
+        return ReadPairIsDuplex(read1, read2)
+
+SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
 """
 This next section contains the dictionaries which hold the

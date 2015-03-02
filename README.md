@@ -44,9 +44,6 @@ bwa (mem or aln, depending on needs.)
 #### Indel Realigners
 Assembly Based Realigner (abra)
 GATK IndelRealigner
-#### Error Correction Tools
-Lighter (Error correction via Bloom Filters)
-Reptile (Error correction based on K-mers)
 
 
 ## BMF Tags
@@ -60,6 +57,7 @@ BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
+SNV | Tags relevant to SNV calling assigned to BAM records. | Comma-separated list of tags. Regex: [A-Z,]+ |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers in base 85 encoding. Regex: ASCII|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
@@ -74,7 +72,7 @@ MDC | Reads in pair are mapped to different contigs |
 MSS | Mapped to Same Strand |
 ORB | Only one read in pair mapped to Expected Bed Region |
 ORU | One Read Unmapped |
-SBI | SBI for having ORB and one of either MDC or LI |
+SBI | SBI for having ORB and one of either MDC, MSS, or LI |
 NF | No SV relevance found. |
 
 Barcode Edit Distance is 0 for members in a family whose barcode matches the family's exactly. If a rescue step is performed to merge a read with a small number of mismatches due to sequencing errors, this tag will reflect the number of differing characters.
@@ -124,9 +122,12 @@ Most options are available for command-line as well. If an option is set in both
 4. Optionally encoding the summed phred scores from demultiplexed families in base 85 format to save space.
 
 #TODO:
+General:
+    1. Change BAM tagging after fq processing to do SV tags and SNV tags.
 SNV:
     1. Consider haplotyping by leveraging reads covering multiple SNPs.
     2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
+    3. (Minor) Consider additional SNV tags.
 Indels:
     1. Work on smaller indels directly in BAM with cigar strings.
     2. Indel realignment might perform better if the "normal" reads are removed, IE, properly-mapped reads without I, D, or S in it.
@@ -142,6 +143,7 @@ SV:
 
 TODO Backlog/Mostly finished:
 1. Take advantage of PV tags further (done to some extent - moving to backlog)
+2. Instruct pysam to make tags of a specific type.
 
 TODO, boring:
 1. Add annotations of PFSD and MPF (SD of PV Fraction and Mean PV Fraction) (Including the VCF Header lines)

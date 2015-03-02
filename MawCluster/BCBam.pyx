@@ -663,24 +663,3 @@ def singleFilterBam(inputBAM, passBAM="default",
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
-
-
-@cython.returns(cython.bint)
-def ReadPairIsDuplex(readPair, minShare="default"):
-    """
-    If minShare is an integer, require that many nucleotides
-    overlapping to count it as duplex.
-    """
-    if(isinstance(minShare, int)):
-        minLen = minShare
-    elif(isinstance(minShare, float)):
-        minLen = int(minShare * readPair.read1.query_length)
-    elif(minShare == "default"):
-        minLen = readPair.read1.query_length / 2
-    if(readPair.read1_contig != readPair.read2_contig):
-        return False
-    if(len([x for x in Counter(readPair.read1.get_reference_positions() +
-                               readPair.read2.get_reference_positions(
-                                   )).values() if x >= 2]) >= minLen):
-        return True
-    return False

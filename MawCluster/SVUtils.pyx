@@ -4,6 +4,7 @@ from utilBMF.HTSUtils import FacePalm
 from utilBMF.HTSUtils import ParseBed
 from utilBMF.HTSUtils import SplitSCRead
 from utilBMF.HTSUtils import is_read_softclipped
+from utilBMF.HTSUtils import ReadPairIsDuplex
 from utilBMF import HTSUtils
 from Bio.Seq import Seq
 
@@ -437,6 +438,7 @@ SVParamDict['LI'] = 100000
 SVParamDict['ORB'] = "default"
 SVParamDict['SBI'] = ["default", 100000]
 SVParamDict['MI'] = [500, 100000]
+SVParamDict['DRP'] = 0.5
 
 #  Made a dictionary for all structural variant candidate types
 #  such that cycling through the list will be easier.
@@ -513,10 +515,11 @@ def MI_SV_Tag_Condition(read1, read2, extraField=SVParamDict['MI']):
     (Defaults to 500 and 100000)
     Hoping to have it help with bigger indels.
     """
-    return (abs(read1.tlen) >= extraField[0] &&
+    return (abs(read1.tlen) >= extraField[0] and
             abs(read1.tlen) <= extraField[1])
 
 
+@cython.locals(cython.bint)
 def SBI_SV_Tag_Condition(read1, read2, extraField="default"):
     """
     Gets reads where only one pair mapped inside the bed file
@@ -551,7 +554,7 @@ def SBI_SV_Tag_Condition(read1, read2, extraField="default"):
 SVTestDict['SBI'] = SBI_SV_Tag_Condition
 
 
-def DSI_Tag_Condition(read1, read2, extraField="default"):
+def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     """
     Duplex Shared Indel - if read1 and read2 share an insertion
     and/or deletion at the same genomic coordinates.
@@ -560,7 +563,7 @@ def DSI_Tag_Condition(read1, read2, extraField="default"):
     """
     pass
 
-SVTestDict['DSI'] = lambda x: False
+# SVTestDict['DSI'] = lambda x: False
 
 
 def GetSVRelevantRecordsPaired(inBAM, SVBam="default",

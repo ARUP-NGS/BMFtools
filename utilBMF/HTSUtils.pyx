@@ -300,6 +300,7 @@ def FacePalm(string):
     print(Str)
     raise ThisIsMadness(string)
 
+
 @cython.returns(cython.bint)
 def is_read_softclipped(read):
     """
@@ -308,6 +309,28 @@ def is_read_softclipped(read):
     if("S" in read.cigarstring):
         return True
     return False
+
+
+@cython.returns(cython.bint)
+@cython.locals(minLen=cython.int)
+def ReadPairIsDuplex(readPair, minShare="default"):
+    """
+    If minShare is an integer, require that many nucleotides
+    overlapping to count it as duplex.
+    Defaults to sharing at least half.
+    """
+    if(readPair.read1_contig != readPair.read2_contig):
+        return False
+    if(isinstance(minShare, int)):
+        minLen = minShare
+    elif(isinstance(minShare, float)):
+        minLen = int(minShare * readPair.read1.query_length)
+    elif(minShare == "default"):
+        minLen = readPair.read1.query_length / 2
+    return sum([x == 2 for x in
+                Counter(readPair.read1.get_reference_positions() +
+                        readPair.read2.get_reference_positions()).values()]
+               ) >= minLen
 
 
 def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
