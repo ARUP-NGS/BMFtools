@@ -5,9 +5,9 @@ import cython
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
-from MawCluster.SNVUtils import AlleleAggregateInfo
-
+from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import ThisIsMadness
+from utilBMF.HTSUtils import ReadPairIsDuplex
 
 """
 This module contains a variety of tools for calling variants.
@@ -32,7 +32,7 @@ class SNVCFLine:
     minNumSS is the minumum number of start/stop combinations required to
     support a variant call.
     """
-    @cython.locals(minNumSS=cython.int, minNumFam=cython.int,
+    @cython.locals(minNumSS=cython.long, minNumFam=cython.long,
                    MaxPValue=cython.float,
                    reverseStrandFraction=cython.float,
                    minPVFrac=cython.float)
@@ -207,7 +207,7 @@ class VCFPos:
     for writing VCF lines for each alt at a given position.
     """
     @cython.locals(requireDuplex=cython.bint, keepConsensus=cython.bint,
-                   minDuplexPairs=cython.int, MaxPValue=cython.float)
+                   minDuplexPairs=cython.long, MaxPValue=cython.float)
     def __init__(self, PCInfoObject,
                  MaxPValue=1e-18,
                  keepConsensus=True,

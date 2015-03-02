@@ -61,7 +61,7 @@ chr2ph = np.vectorize(chr2ph)
 Int2Base85 = np.vectorize(Int2Base85)
 
 
-@cython.locals(checks=cython.int)
+@cython.locals(checks=cython.long)
 def BarcodeSortBoth(inFq1, inFq2):
     outFq1 = '.'.join(inFq1.split('.')[0:-1] + ["BS", "fastq"])
     outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
@@ -135,7 +135,7 @@ def BarcodeSort(inFastq, outFastq="default"):
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.int, keepFails=cython.bint,
+               famLimit=cython.long, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float)
 def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
                         keepFails=True):
@@ -191,7 +191,7 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.int, keepFails=cython.bint,
+               famLimit=cython.long, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB85=cython.bint)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
@@ -426,7 +426,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return commandStr, outfq
 
 
-@cython.locals(overlapLen=cython.int)
+@cython.locals(overlapLen=cython.long)
 def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Calls cutadapt to remove adapter sequence at either end of the reads.
@@ -438,7 +438,7 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return outfq
 
 
-@cython.locals(overlapLap=cython.int, numChecks=cython.int)
+@cython.locals(overlapLap=cython.long, numChecks=cython.long)
 def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
     fq1Str, outfq1 = CutadaptString(fq1, p3Seq=p3Seq, p5Seq=p5Seq,
                                     overlapLen=overlapLen)
@@ -468,7 +468,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
             raise subprocess.CalledProcessError("Cutadapt failed for read 2!")
 
 
-@cython.locals(useGzip=cython.bint, bLen=cython.int)
+@cython.locals(useGzip=cython.bint, bLen=cython.long)
 def FastqPairedShading(fq1, fq2, indexfq="default",
                        useGzip=False, readPairsPerWrite=1000000):
     """
@@ -732,7 +732,7 @@ def LighterCallPaired(fq1, fq2, kmer="default",
 
 @cython.locals(stringency=cython.float,
                numpy=cython.bint, keepFailedPairs=cython.bint,
-               readPairsPerWrite=cython.int, numWritten=cython.int)
+               readPairsPerWrite=cython.long, numWritten=cython.long)
 def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
                            keepFailedPairs=True, readPairsPerWrite=1000000):
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
@@ -816,7 +816,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
     return outFqPair1, outFqPair2
 
 
-@cython.locals(stringency=cython.float, readPairsPerWrite=cython.int)
+@cython.locals(stringency=cython.float, readPairsPerWrite=cython.long)
 @cython.initializedcheck(False)
 def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                                  readPairsPerWrite=50000):

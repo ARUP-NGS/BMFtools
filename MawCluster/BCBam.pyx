@@ -18,6 +18,7 @@ from BCFastq import dAccess
 dAccess = np.vectorize(dAccess)
 
 from MawCluster import BCFastq
+from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
 
@@ -160,8 +161,8 @@ def pairedBarcodeTagging(
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
-    read1 = SeqIO.parse(fq1, "fastq")
-    read2 = SeqIO.parse(fq2, "fastq")
+    read1Handle = SeqIO.parse(fq1, "fastq")
+    read2Handle = SeqIO.parse(fq2, "fastq")
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
@@ -172,38 +173,49 @@ def pairedBarcodeTagging(
         if(not entry.is_paired):
             continue
         if(entry.is_read1):
-            tempRead = read1.next()
+            read1bam = entry
+            read1fq = read1Handle.next()
+            continue
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
-            tempRead = read2.next()
-        descDict = BCFastq.GetDescriptionTagDict(tempRead.description)
-        entry.setTag("FM", descDict["FM"])
+            read2bam = entry
+            read2fq = read2Handle.next()
+        descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
+        read1bam.setTag("FM", descDict["FM"])
+        read2bam.setTag("FM", descDict["FM"])
         try:
-            entry.setTag("BS", descDict["BS"])
+            read1bam.setTag("BS", descDict["BS"])
+            read2bam.setTag("BS", descDict["BS"])
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing a BS tag.")
         try:
             if("Pass" in descDict["FP"]):
-                entry.setTag("FP", 1)
+                read1bam.setTag("FP", 1)
+                read2bam.setTag("FP", 1)
             else:
-                entry.setTag("FP", 0)
+                read1bam.setTag("FP", 0)
+                read2bam.setTag("FP", 0)
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing an FP tag.")
         try:
-            entry.setTag("PV", descDict["PV"])
+            read1bam.setTag("PV", descDict["PV"])
+            read2bam.setTag("PV", descDict["PV"])
         except KeyError:
             # print("Phred Values > 93 not set. Oh well.)
             pass
         try:
-            entry.setTag("FA", descDict["FA"])
+            read1bam.setTag("FA", descDict["FA"])
+            read2bam.setTag("FA", descDict["FA"])
         except KeyError:
             # print("Number of reads agreeing per position mssing. Oh well.")
             pass
-        outBAM.write(entry)
+        read1bam, read2bam = MarkSVTags(read1bam, read2bam)
+        outBAM.write(read1bam)
+        outBAM.write(read2bam)
     suppBAM.close()
     outBAM.close()
     postFilterBAM.close()

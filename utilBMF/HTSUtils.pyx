@@ -312,7 +312,7 @@ def is_read_softclipped(read):
 
 
 @cython.returns(cython.bint)
-@cython.locals(minLen=cython.int)
+@cython.locals(minLen=cython.long)
 def ReadPairIsDuplex(readPair, minShare="default"):
     """
     If minShare is an integer, require that many nucleotides

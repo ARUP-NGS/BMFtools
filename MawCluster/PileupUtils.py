@@ -117,8 +117,8 @@ class AlleleAggregateInfo:
 
     """
 
-    @cython.locals(minFracAgreed=cython.float, minMQ=cython.int,
-                   minBQ=cython.int, minFA=cython.int,
+    @cython.locals(minFracAgreed=cython.float, minMQ=cython.long,
+                   minBQ=cython.long, minFA=cython.long,
                    minPVFrac=cython.float)
     def __init__(self, recList, consensus="default",
                  mergedSize="default",

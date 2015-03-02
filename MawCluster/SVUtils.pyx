@@ -433,7 +433,7 @@ class TranslocationVCFLine:
 #Made a dictionary for the parameters for these SV tags.
 
 
-SVParamDict = defaultdict
+SVParamDict = defaultdict()
 SVParamDict['LI'] = 100000
 SVParamDict['ORB'] = "default"
 SVParamDict['SBI'] = ["default", 100000]
@@ -519,7 +519,7 @@ def MI_SV_Tag_Condition(read1, read2, extraField=SVParamDict['MI']):
             abs(read1.tlen) <= extraField[1])
 
 
-@cython.locals(cython.bint)
+@cython.returns(cython.bint)
 def SBI_SV_Tag_Condition(read1, read2, extraField="default"):
     """
     Gets reads where only one pair mapped inside the bed file
@@ -564,6 +564,42 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     pass
 
 # SVTestDict['DSI'] = lambda x: False
+
+
+@cython.locals(SVR=cython.bint)
+def MarkSVTags(read1, read2):
+    """
+    Marks all SV tags on a pair of reads.
+    """
+    FeatureList = sorted(SVTestDict.keys())
+    pl("FeatureList: {}".format(FeatureList))
+    SVR = False
+    for key in FeatureList:
+        if(SVTestDict[key](
+                read1, read2, extraField=SVParamDict[key]) is True):
+            SVR = True
+            if(read1.has_tag("SV")):
+                read1.setTag("SV", read1.opt("SV") + "," + key)
+                read2.setTag("SV", read2.opt("SV") + "," + key)
+                if("NF" in read1.opt("SV").split(",")):
+                    read1.setTag(
+                        "SV", ','.join([
+                            i for i in read1.opt(
+                                "SV").split(
+                                    ",") if i != "NF"]))
+                if("NF" in read2.opt("SV").split(",")):
+                    read2.setTag(
+                        "SV", ','.join([
+                            i for i in read2.opt(
+                                "SV").split(
+                                    ",") if i != "NF"]))
+            else:
+                read1.setTag("SV", key)
+                read2.setTag("SV", key)
+    if SVR is False:
+        read1.setTag("SV", "NF")
+        read2.setTag("SV", "NF")
+    return read1, read2
 
 
 def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
@@ -613,9 +649,6 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     FullOutHandle = pysam.AlignmentFile(FullBam, "wb", template=inHandle)
     FeatureList = sorted(SVTestDict.keys())
     pl("FeatureList: {}".format(FeatureList))
-    for key in FeatureList:
-        if(key not in SVParamDict.keys()):
-            SVTestDict[key] = ""
     for read in inHandle:
         WritePair = False
         if(read.is_read1 is True):
@@ -624,28 +657,10 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         if(read.is_read2 is True):
             read2 = read
         assert read1.query_name == read2.query_name
-        for key in FeatureList:
-            if(SVTestDict[key](
-                    read1, read2, extraField=SVParamDict[key]) is True):
-                try:
-                    read1.setTag("SV", read1.opt("SV") + "," + key)
-                    read2.setTag("SV", read2.opt("SV") + "," + key)
-                    if("NF" in read1.opt("SV").split(",")):
-                        read1.setTag(
-                            "SV", ','.join([
-                                i for i in read1.opt(
-                                    "SV").split(
-                                        ",") if i != "NF"]))
-                    if("NF" in read2.opt("SV").split(",")):
-                        read2.setTag(
-                            "SV", ','.join([
-                                i for i in read2.opt(
-                                    "SV").split(
-                                        ",") if i != "NF"]))
-                except KeyError:
-                    read1.setTag("SV", key)
-                    read2.setTag("SV", key)
-                WritePair = True
+        read1, read2 = MarkSVTags(read1, read2)
+        if(read1.opt("SV") != "NF"):
+            WritePair = True
+            for key in read1.opt("SV").split(","):
                 SVCountDict[key] += 1
         if(WritePair is True):
             SVOutHandle.write(read1)
