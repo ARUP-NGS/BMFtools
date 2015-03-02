@@ -200,6 +200,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
+    compress85 = False
     if(len(R) > famLimit):
         logging.debug(
             "Read family - {} with {} members was capped at {}. ".format(
@@ -227,11 +228,14 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
                                                  list(R[0].quality)),
                              dtype=np.int64)
     if(np.any(np.greater(phredQuals, 93))):
+        """
         if(compressB85 is True):
             PVString = " #G~PV=" + ",".join(np.apply_along_axis(
                 Int2Base85, 0, phredQuals).astype(np.str_))
         else:
             PVString = " #G~PV=" + ",".join(phredQuals).astype(np.str_)
+        """
+        PVString = " #G~PV=" + ",".join(phredQuals).astype(np.str_)
     else:
         PVString = ""
     numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])

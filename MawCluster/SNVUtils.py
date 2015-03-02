@@ -32,7 +32,8 @@ class SNVCFLine:
     """
     @cython.locals(minNumSS=cython.int, minNumFam=cython.int,
                    MaxPValue=cython.float,
-                   reverseStrandFraction=cython.float)
+                   reverseStrandFraction=cython.float,
+                   minPVFrac=cython.float)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
@@ -126,6 +127,8 @@ class SNVCFLine:
                            "MMQ": AlleleAggregateObject.minMQ,
                            "MBQ": AlleleAggregateObject.minBQ,
                            "QA": AlleleAggregateObject.SumBQScore,
+                           "PFSD": AlleleAggregateObject.PFSD,
+                           "MPF": AlleleAggregateObject.MPF,
                            "NUMALL": AlleleAggregateObject.NUMALT,
                            "BQF": FailedBQReads,
                            "MQF": FailedMQReads,

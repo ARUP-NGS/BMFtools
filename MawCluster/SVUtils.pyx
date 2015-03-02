@@ -3,15 +3,23 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import FacePalm
 from utilBMF.HTSUtils import ParseBed
 from utilBMF.HTSUtils import SplitSCRead
+from utilBMF.HTSUtils import is_read_softclipped
 from utilBMF import HTSUtils
 from Bio.Seq import Seq
 
 import pysam
-
 import numpy as np
+cimport numpy as np
+import cython
+cimport cython
+
 import uuid
 import copy
 from itertools import chain
+from collections import defaultdict
+
+from cpython cimport array as c_array
+from array import array
 
 
 class XLocSegment:
@@ -421,32 +429,47 @@ class TranslocationVCFLine:
                                                self.FormatStr]])
         return self.str
 
+#Made a dictionary for the parameters for these SV tags.
+
+
+SVParamDict = defaultdict
+SVParamDict['LI'] = 100000
+SVParamDict['ORB'] = "default"
+SVParamDict['SBI'] = ["default", 100000]
+SVParamDict['MI'] = [500, 100000]
+
 #  Made a dictionary for all structural variant candidate types
 #  such that cycling through the list will be easier.
 #  Extra field provided for each.
+
+
 SVTestDict = {}
 
 
-def LI_SV_Tag_Condition(read1, read2, tag, extraField=100000):
+@cython.returns(cython.bint)
+def LI_SV_Tag_Condition(read1, read2, extraField=100000):
     maxInsert = int(extraField)
     return (abs(read1.tlen) >= maxInsert or abs(read2.tlen) >= maxInsert)
 
 SVTestDict['LI'] = LI_SV_Tag_Condition
 
 
-def MDC_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+@cython.returns(cython.bint)
+def MDC_SV_Tag_Condition(read1, read2, extraField="default"):
     return (read1.reference_id != read2.reference_id)
 
 SVTestDict['MDC'] = MDC_SV_Tag_Condition
 
 
-def ORU_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+@cython.returns(cython.bint)
+def ORU_SV_Tag_Condition(read1, read2, extraField="default"):
     return (sum([read1.is_unmapped, read2.is_unmapped]) == 1)
 
 SVTestDict['ORU'] = ORU_SV_Tag_Condition
 
 
-def MSS_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+@cython.returns(cython.bint)
+def MSS_SV_Tag_Condition(read1, read2, extraField="default"):
     if(read1.reference_id == read2.reference_id):
         return ((sum([read1.is_reverse, read2.is_reverse]) != 1 and
                  read1.reference_id == read2.reference_id))
@@ -456,7 +479,11 @@ def MSS_SV_Tag_Condition(read1, read2, tag, extraField="default"):
 SVTestDict['MSS'] = MSS_SV_Tag_Condition
 
 
-def ORB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+@cython.returns(cython.bint)
+def ORB_SV_Tag_Condition(read1, read2, extraField="default"):
+    """
+    Returns true iff precisely one read is in the bed file region.
+    """
     bedRef = extraField
     if(bedRef == "default"):
         raise ThisIsMadness("bedRef must be provded to run this test!")
@@ -466,7 +493,31 @@ def ORB_SV_Tag_Condition(read1, read2, tag, extraField="default"):
 SVTestDict['ORB'] = ORB_SV_Tag_Condition
 
 
-def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
+@cython.returns(cython.bint)
+def ORS_SV_Tag_Condition(read1, read2, extraField="default"):
+    """
+    Returns true iff precisely one read is soft-clipped and the reads are
+    considered properly mapped.
+    """
+    return (sum([is_read_softclipped(read1),
+                 is_read_softclipped(read2)]) == 1
+            and read1.is_proper_pair)
+
+SVTestDict['ORS'] = ORS_SV_Tag_Condition
+
+
+@cython.returns(cython.bint)
+def MI_SV_Tag_Condition(read1, read2, extraField=SVParamDict['MI']):
+    """
+    Returns true if TLEN >= minimum length && TLEN =< LI requirements.
+    (Defaults to 500 and 100000)
+    Hoping to have it help with bigger indels.
+    """
+    return (abs(read1.tlen) >= extraField[0] &&
+            abs(read1.tlen) <= extraField[1])
+
+
+def SBI_SV_Tag_Condition(read1, read2, extraField="default"):
     """
     Gets reads where only one pair mapped inside the bed file
     and the insert size is either above a threshold (default: 100000),
@@ -498,12 +549,18 @@ def SBI_SV_Tag_Condition(read1, read2, tag, extraField="default"):
     return False
 
 SVTestDict['SBI'] = SBI_SV_Tag_Condition
-SVParamDict = {}
-for key in SVTestDict.keys():
-    SVParamDict[key] = ''
-SVParamDict['LI'] = 100000
-SVParamDict['ORB'] = "default"
-SVParamDict['SBI'] = ["default", 100000]
+
+
+def DSI_Tag_Condition(read1, read2, extraField="default"):
+    """
+    Duplex Shared Indel - if read1 and read2 share an insertion
+    and/or deletion at the same genomic coordinates.
+    Not finished - the idea is to find read pairs where they share reference
+    mappings and I/D characters in the cigar string.
+    """
+    pass
+
+SVTestDict['DSI'] = lambda x: False
 
 
 def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
@@ -566,7 +623,7 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         assert read1.query_name == read2.query_name
         for key in FeatureList:
             if(SVTestDict[key](
-                    read1, read2, key, extraField=SVParamDict[key]) is True):
+                    read1, read2, extraField=SVParamDict[key]) is True):
                 try:
                     read1.setTag("SV", read1.opt("SV") + "," + key)
                     read2.setTag("SV", read2.opt("SV") + "," + key)

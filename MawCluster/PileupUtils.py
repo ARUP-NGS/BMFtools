@@ -67,27 +67,34 @@ class PRInfo:
             [str(i) for i in sorted(
                 [self.read.reference_start, self.read.reference_end])])
         self.query_position = PileupRead.query_position
-        try:
-            self.FA = int(PileupRead.alignment.opt("FA").split(
-                ",")[self.query_position])
-            self.FractionAgreed = self.FA / float(self.FM)
-        except KeyError:
-            pass  # Looks like that wasn't set... Oops!
         if("FA" in dict(PileupRead.alignment.tags).keys()):
-            self.FA = np.ndarray(
+            self.FA_Array = np.ndarray(
                 PileupRead.alignment.opt("FA").split(",")).astype(np.int64)
+            self.FractionAgreed = self.FA / float(self.FM)
+            self.FA = self.FA_Array[self.query_position]
+        else:
+            self.FA = None
+            self.FractionAgreed = None
+            self.FA_Array = None
         p = re.compile("[^0-9,]")
         if("PV" in dict(PileupRead.alignment.tags).keys()):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = PileupRead.alignment.opt("PV")
             if(p.match(PVString) is not None):
-                self.PV = np.apply_along_axis(
+                self.PV_Array = np.apply_along_axis(
                     Base85ToInt, 0, np.ndarray(
                         PVString.split(','),
                         dtype=np.int64))
+                self.PV = self.PV_Array[self.query_position]
             else:
-                self.PV = np.ndarray(PVString.split(','), dtype=np.int64)
+                self.PV_Array = np.ndarray(PVString.split(','), dtype=np.int64)
+                self.PV = self.PV_Array[self.query_position]
+                self.PVFrac = float(self.PV) / np.max(self.PV_Array)
+        else:
+            self.PV = None
+            self.PV_Array = None
+            self.PVFrac = None
 
 
 def is_reverse_to_str(boolean):
@@ -111,7 +118,8 @@ class AlleleAggregateInfo:
     """
 
     @cython.locals(minFracAgreed=cython.float, minMQ=cython.int,
-                   minBQ=cython.int)
+                   minBQ=cython.int, minFA=cython.int,
+                   minPVFrac=cython.float)
     def __init__(self, recList, consensus="default",
                  mergedSize="default",
                  totalSize="default",
@@ -123,7 +131,8 @@ class AlleleAggregateInfo:
                  DOCTotal="default",
                  NUMALT="default",
                  AABPSD="default", AAMBP="default",
-                 minFracAgreed=0.0, minFA=0):
+                 minFracAgreed=0.0, minFA=0,
+                 minPVFrac=0.666):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -155,7 +164,7 @@ class AlleleAggregateInfo:
         self.recList = [rec for rec in recList
                         if rec.MQ >= minMQ and rec.BQ >= minBQ
                         and rec.FractionAgreed >= minFracAgreed
-                        and rec.FA >= minFA]
+                        and rec.FA >= minFA and rec.PVFrac >= minPVFrac]
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -223,10 +232,6 @@ class AlleleAggregateInfo:
             self.BothStrandSupport = True
         else:
             self.BothStrandSupport = False
-        self.meanBasePosition = np.mean([float(i.query_position) for i
-                                         in self.recList])
-        self.BasePositionSD = np.std([float(i.query_position) for i
-                                      in self.recList])
         if(AABPSD != "default"):
             self.AABPSD = AABPSD
         if(AAMBP != "default"):
@@ -237,9 +242,13 @@ class AlleleAggregateInfo:
         ReadNameCounter = Counter([r.read.query_name for r in recList])
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
-        query_positions = [float(i.query_position) for i in recList]
+        query_positions = np.array([i.query_position for i in recList]).astype(float)
         self.MBP = np.mean(query_positions)
         self.BPSD = np.std(query_positions)
+        self.minPVFrac = minPVFrac
+        PVFArray = np.array([i.PVFrac for i in self.recList])
+        self.MPF = np.mean(PVFArray)
+        self.PFSD = np.std(PVFArray)
 
 
 class PCInfo:
@@ -255,7 +264,8 @@ class PCInfo:
 
     @cython.locals(reverseStrandFraction=cython.float)
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
-                 requireDuplex=True):
+                 requireDuplex=True,
+                 minFracAgreed=0.0, minFA=0, minPVFrac=0.66):
         self.minMQ = int(minMQ)
         self.minBQ = int(minBQ)
         from collections import Counter
@@ -325,7 +335,9 @@ class PCInfo:
                               DOC=self.MergedReads,
                               DOCTotal=self.TotalReads,
                               NUMALT=len(self.VariantDict.keys()),
-                              AAMBP=self.AAMBP, AABPSD=self.AABPSD)
+                              AAMBP=self.AAMBP, AABPSD=self.AABPSD,
+                              minFracAgreed=minFracAgreed, minFA=minFA,
+                              minPVFrac=minPVFrac)
                               for key in self.VariantDict.keys()]
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:

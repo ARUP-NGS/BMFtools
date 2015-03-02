@@ -300,6 +300,15 @@ def FacePalm(string):
     print(Str)
     raise ThisIsMadness(string)
 
+@cython.returns(cython.bint)
+def is_read_softclipped(read):
+    """
+    Simply returns whether or not a read is soft-clipped
+    """
+    if("S" in read.cigarstring):
+        return True
+    return False
+
 
 def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     """
