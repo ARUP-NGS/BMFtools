@@ -49,7 +49,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         raise ValueError("Sorry, only bwa is supported currently.")
     pl("Now tagging BAM with custom SAM tags.")
     taggedBAM = BCBam.pairedBarcodeTagging(
-        consfq1, consfq2, outBAMProperPair)
+        consfq1, consfq2, outBAMProperPair, bedfile=bed)
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
     if(abrapath != "default"):
@@ -84,12 +84,14 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     #    families, criteria="family")
     tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
     summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])
+    """
     SVBam, MarkedFamilies = SVRP(namesortedRealignedFull,
                                  bedfile=bed,
                                  tempBAMPrefix=tempBAMPrefix,
                                  summary=summary)
     pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
         "to structural variants."))
+    """
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to the differing alignment needs.")

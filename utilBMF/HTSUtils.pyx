@@ -327,6 +327,10 @@ def ReadPairIsDuplex(readPair, minShare="default"):
         minLen = int(minShare * readPair.read1.query_length)
     elif(minShare == "default"):
         minLen = readPair.read1.query_length / 2
+    else:
+        raise ThisIsMadness("minShare parameter required. Integer for "
+                            "an absolute number of bases overlapped re"
+                            "quired, float for a fraction of read length.")
     return sum([x == 2 for x in
                 Counter(readPair.read1.get_reference_positions() +
                         readPair.read2.get_reference_positions()).values()]
@@ -1106,13 +1110,20 @@ def Base85ToInt(x):
     """
     return numconv.NumConv(85).str2int(x)
 
+ph2chrDict = {}
+for i in range(100):
+    ph2chrDict[i] = chr(i + 33)
+chr2ph = {ph2chrDict[key]: key for key in
+          ph2chrDict.keys()}
 
+"""
 @cython.returns(np.int64_t)
 def chr2ph(x):
-    """
+    \"""
     Converts a character to its corresponding phred integer representation
-    """
+    \"""
     return ord(x) - 33
+"""
 
 
 def ph2chr(x):

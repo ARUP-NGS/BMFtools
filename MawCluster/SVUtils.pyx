@@ -432,10 +432,8 @@ class TranslocationVCFLine:
 
 #Made a dictionary for the parameters for these SV tags.
 
-
-SVParamDict = defaultdict()
+SVParamDict = defaultdict(lambda x: "default")
 SVParamDict['LI'] = 100000
-SVParamDict['ORB'] = "default"
 SVParamDict['SBI'] = ["default", 100000]
 SVParamDict['MI'] = [500, 100000]
 SVParamDict['DRP'] = 0.5
@@ -566,17 +564,29 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
 # SVTestDict['DSI'] = lambda x: False
 
 
-@cython.locals(SVR=cython.bint)
-def MarkSVTags(read1, read2):
+@cython.locals(SVR=cython.bint, maxInsert=cython.long)
+def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000):
     """
     Marks all SV tags on a pair of reads.
     """
+    global SVParamDict
+    global SVTestDict
+    from utilBMF.HTSUtils import ParseBed
+    if bedfile == "default":
+        raise ThisIsMadness("Bed file required for marking SV tags.")
+    bed = ParseBed(bedfile)
+    SVParamDict['ORB'] = bed
+    SVParamDict['LI'] = maxInsert
+    SVParamDict['SBI'] = [bed, maxInsert]
     FeatureList = sorted(SVTestDict.keys())
     pl("FeatureList: {}".format(FeatureList))
     SVR = False
+    print("SVParamDict: {}".format(repr(SVParamDict)))
+    print("SVTestDict: {}".format(repr(SVTestDict)))
     for key in FeatureList:
         if(SVTestDict[key](
-                read1, read2, extraField=SVParamDict[key]) is True):
+                read1, read2,
+                extraField=SVParamDict[key]) is True):
             SVR = True
             if(read1.has_tag("SV")):
                 read1.setTag("SV", read1.opt("SV") + "," + key)

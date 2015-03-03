@@ -1,5 +1,5 @@
 #cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
-#cython: profile=True, cdivision=True, cdivision_warnings=True
+#cython: cdivision=True, cdivision_warnings=True, profile=True
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -36,6 +36,7 @@ from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import PipedShellCall
 from utilBMF.HTSUtils import ph2chr
+from utilBMF.HTSUtils import ph2chrDict
 from utilBMF.HTSUtils import chr2ph
 from utilBMF.HTSUtils import Base85ToInt
 from utilBMF.HTSUtils import Int2Base85
@@ -56,12 +57,10 @@ def dAccess(x):
     return letterNumDict[x]
 dAccess = np.vectorize(dAccess)
 
-ph2chr = np.vectorize(ph2chr)
-chr2ph = np.vectorize(chr2ph)
-Int2Base85 = np.vectorize(Int2Base85)
+# Int2Base85 = np.vectorize(Int2Base85)
 
 
-@cython.locals(checks=cython.long)
+@cython.locals(checks=cython.int)
 def BarcodeSortBoth(inFq1, inFq2):
     outFq1 = '.'.join(inFq1.split('.')[0:-1] + ["BS", "fastq"])
     outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
@@ -135,7 +134,7 @@ def BarcodeSort(inFastq, outFastq="default"):
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.long, keepFails=cython.bint,
+               famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float)
 def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
                         keepFails=True):
@@ -178,20 +177,20 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
     if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
         Success = False
     probs = np.multiply(len(R), R[0].letter_annotations['phred_quality'])
-    numAgreed = [str(sum([seq[i] == finalSeq[i] for i
-                          in range(len(seqs[0]))])) for seq in seqs]
+    numAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
+                          for i in range(len(finalSeq))])
     consolidatedRecord.description += " #G~FA=" + ",".join(
-        numAgreed) + " #G~FM=" + str(len(seqs))
+        numAgreed.astype(str)) + " #G~FM=" + str(len(seqs))
     consolidatedRecord.description += " #G~PV=" + ",".join(
         probs.astype(str))
-    QualString = np.apply_along_axis(ph2chr, 0, probs)
+    QualString = "".join([ph2chr(i) for i in probs])
     consFqString = "\n".join(
         ["@" + R[0].description, finalSeq, "+", QualString])
     return consFqString, Success
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.long, keepFails=cython.bint,
+               famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB85=cython.bint)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
@@ -206,7 +205,6 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], len(R), famLimit))
         R = R[:famLimit]
-    assert isinstance(R[0], pysam.cfaidx.FastqProxy)
     seqs = [record.sequence for record in R]
     maxScore = 0
     Success = False
@@ -224,25 +222,21 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     elif(hybrid is True):
         return compareFqRecsFast(R)
     phredQuals = np.multiply(len(R),
-                             np.apply_along_axis(chr2ph, 0,
-                                                 list(R[0].quality)),
+                             [chr2ph[i] for i in  list(R[0].quality)],
                              dtype=np.int64)
     if(np.any(np.greater(phredQuals, 93))):
-        """
+        QualString = "".join([ph2chr(i) for i in  phredQuals])
         if(compressB85 is True):
-            PVString = " #G~PV=" + ",".join(np.apply_along_axis(
-                Int2Base85, 0, phredQuals).astype(np.str_))
+            PVString = " #G~PV=" + ",".join([Int2Base85(i) for i in  phredQuals])
         else:
-            PVString = " #G~PV=" + ",".join(phredQuals).astype(np.str_)
-        """
-        PVString = " #G~PV=" + ",".join(phredQuals).astype(np.str_)
+            PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
     else:
+        QualString = "".join([ph2chrDict[i] for i in  phredQuals])
         PVString = ""
     numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
                              for i in range(len(seqs[0]))], dtype=np.int64)
     TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
                  ",".join(numFamAgreed.astype(str)) + PVString)
-    QualString = "".join(np.apply_along_axis(ph2chr, 0, phredQuals))
     consFqString = "\n".join(["@" + R[0].name + " " + R[0].comment + TagString,
                               finalSeq,
                               "+",
@@ -312,44 +306,23 @@ def compareFastqRecordsInexactNumpy(R):
         'phred_quality'] = phredQuals.tolist()
     if("Fail" in descDict["FP"]):
         Success = False
-    # Checking for a strange failure on the part of the package
-    # to correctly assign the phred score.
-    try:
-        RealQuals = [int(i) for i in descDict["PV"].split(',')]
-    except KeyError:
-        return consolidatedRecord, Success
-    try:
-        assert np.all([q == r or (r > q and q == 93) for q, r in zip(
-            consolidatedRecord.letter_annotations['phred_quality'],
-            RealQuals)])
-    except AssertionError:
-        pl("phred quality seemed to have been jumbled just a bit - fixing!")
-        newQuals = []
-        for q, r in zip(consolidatedRecord.letter_annotations['phred_quality'],
-                        RealQuals):
-            if(q > r):
-                newQuals.append(q)
-            else:
-                newQuals.append(r)
-            newQuals = [i if i <= 93 else 93 for i in newQuals]
-        try:
-            consolidatedRecord.letter_annotations['phred_quality'] = newQuals
-        except TypeError:
-            pl(repr(newQuals) + " and length {}".format(len(newQuals)))
-            raise ThisIsMadness("Problem with quality strings.")
-    return consolidatedRecord, Success
+    QualString = "".join([ph2chr(i) for i in phredQuals])
+    consFqString = "\n".join(
+        ["@" + consolidatedRecord.description, newSeq, "+", QualString])
+    return consFqString, Success
 
 
 @cython.locals(Success=cython.bint)
 def compareFqRecsFast(R):
     """
     Calculates the most likely nucleotide
-    at each position and returns the joined record.
+    at each position and returns the joined record string.
     """
     Success = True
     seqs = np.array([record.sequence for record in R], dtype=np.str_)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
+
     cdef np.ndarray[dtypei_t, ndim = 2] quals
     cdef np.ndarray[dtypei_t, ndim = 2] qualA
     cdef np.ndarray[dtypei_t, ndim = 2] qualC
@@ -362,9 +335,10 @@ def compareFqRecsFast(R):
     cdef np.ndarray[dtypei_t, ndim = 2] qualAllSum
     cdef np.ndarray[dtypei_t, ndim = 1] MaxPhredSum
     cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
+
     # print(repr(seqArray))
     quals = np.array(
-        [np.apply_along_axis(chr2ph, 0, list(record.quality)) for record in R],
+        [[chr2ph[i] for i in list(record.quality)] for record in R],
         dtype=np.int64)
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
@@ -380,18 +354,22 @@ def compareFqRecsFast(R):
     qualTFlat = np.sum(qualT, 0, dtype=np.int64)
     qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = "".join(
-        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
+    newSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int64),
                              np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals < 0] = 0
-    phredQualsStr = "".join(np.apply_along_axis(ph2chr, 0, phredQuals))
-    PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
-    numFamAgreed = np.array([sum([seq[i] == newSeq[i] for seq in seqs])
-                             for i in range(len(seqs[0]))], dtype=np.int64)
+    if(np.any(np.greater(phredQuals, 93))):
+        PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
+        phredQuals[phredQuals > 93] = 93
+        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+    else:
+        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+        PVString = ""
+    numFamAgreed = [str(sum([seq[i] == newSeq[i] for seq in seqs]))
+                    for i in range(len(seqs[0]))]
     TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
-                 ",".join(numFamAgreed.astype(str)) + PVString)
+                 ",".join(numFamAgreed) + PVString)
     try:
         assert len(PVString) != 1
     except AssertionError:
@@ -426,7 +404,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return commandStr, outfq
 
 
-@cython.locals(overlapLen=cython.long)
+@cython.locals(overlapLen=cython.int)
 def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Calls cutadapt to remove adapter sequence at either end of the reads.
@@ -438,7 +416,7 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return outfq
 
 
-@cython.locals(overlapLap=cython.long, numChecks=cython.long)
+@cython.locals(overlapLap=cython.int, numChecks=cython.int)
 def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
     fq1Str, outfq1 = CutadaptString(fq1, p3Seq=p3Seq, p5Seq=p5Seq,
                                     overlapLen=overlapLen)
@@ -468,9 +446,9 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
             raise subprocess.CalledProcessError("Cutadapt failed for read 2!")
 
 
-@cython.locals(useGzip=cython.bint, bLen=cython.long)
+@cython.locals(useGzip=cython.bint, bLen=cython.int)
 def FastqPairedShading(fq1, fq2, indexfq="default",
-                       useGzip=False, readPairsPerWrite=1000000):
+                       useGzip=False, readPairsPerWrite=10):
     """
     Tags fastqs with barcodes from an index fastq.
     """
@@ -730,96 +708,17 @@ def LighterCallPaired(fq1, fq2, kmer="default",
     return outfq1, outfq2
 
 
-@cython.locals(stringency=cython.float,
-               numpy=cython.bint, keepFailedPairs=cython.bint,
-               readPairsPerWrite=cython.long, numWritten=cython.long)
-def pairedFastqConsolidate(fq1, fq2, stringency=0.9, numpy=True,
-                           keepFailedPairs=True, readPairsPerWrite=1000000):
-    outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
-    outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
-    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
-    pl(("Command required to duplicate this action:"
-        " pairedFastqConsolidate('{}', '{}', ".format(fq1, fq2)) +
-        "stringency={}, numpy='{}')".format(stringency, numpy))
-    inFq1 = SeqIO.parse(fq1, 'fastq')
-    inFq2 = SeqIO.parse(fq2, 'fastq')
-    outputHandle1 = open(outFqPair1, 'w')
-    outputHandle2 = open(outFqPair2, 'w')
-    cString1 = cStringIO.StringIO()
-    cString2 = cStringIO.StringIO()
-    workingBarcode = ""
-    workingSet1 = []
-    workingSet2 = []
-    # Get this information so that the numpy string array can
-    # be declared the right size
-    numWritten = 0
-    inFq1 = SeqIO.parse(fq1, 'fastq')  # Reset after getting read length
-    for fqRec in inFq1:
-        try:
-            fqRec2 = inFq2.next()
-        except ValueError:
-            print("Trying to read in from " + fq2)
-            print(fqRec)
-            print inFq2.next()
-            raise ValueError("I am confused.")
-        bc4fq1 = GetDescTagValue(fqRec.description, "BS")
-        # Originally removing reads with family size <2, since one pair could
-        # have more than the other, it's important that I keep these reads in
-        # and filter them from the BAM file
-        if(workingBarcode == ""):
-            workingBarcode = bc4fq1
-            workingSet1 = []
-            workingSet1.append(fqRec)
-            workingSet2 = []
-            workingSet2.append(fqRec2)
-            continue
-        elif(workingBarcode == bc4fq1):
-            workingSet1.append(fqRec)
-            workingSet2.append(fqRec2)
-            continue
-        elif(workingBarcode != bc4fq1):
-            # pl("About to collapse a family.")
-            if(numpy is False):
-                mergedRecord1, success1 = compareFastqRecords(
-                    workingSet1, stringency=float(stringency))
-                mergedRecord2, success2 = compareFastqRecords(
-                    workingSet2, stringency=float(stringency))
-            else:
-                mergedRecord1, success1 = compareFastqRecords(
-                    workingSet1, hybrid=True)
-                mergedRecord2, success2 = compareFastqRecords(
-                    workingSet2, hybrid=True)
-            if(success1 is False):
-                mergedRecord1.description = mergedRecord1.description.replace("Pass", "Fail")
-            if(success2 is False):
-                mergedRecord2.description = mergedRecord2.description.replace("Pass", "Fail")
-            SeqIO.write(mergedRecord2, cString2, "fastq")
-            SeqIO.write(mergedRecord1, cString1, "fastq")
-            numWritten += 1
-            if(numWritten % readPairsPerWrite == 0):
-                outputHandle1.write(cString1.getvalue())
-                del cString1
-                cString1 = cStringIO.StringIO()
-                outputHandle2.write(cString2.getvalue())
-                del cString2
-                cString2 = cStringIO.StringIO()
-            workingSet1 = []
-            workingSet1.append(fqRec)
-            workingSet2 = []
-            workingSet2.append(fqRec2)
-            workingBarcode = bc4fq1
-            continue
-    inFq1.close()
-    inFq2.close()
-    outputHandle1.close()
-    outputHandle2.close()
-    return outFqPair1, outFqPair2
-
-
-@cython.locals(stringency=cython.float, readPairsPerWrite=cython.long)
-@cython.initializedcheck(False)
+@cython.locals(stringency=cython.float, readPairsPerWrite=cython.int,
+               UsecProfile=cython.bint, onlyNumpy=cython.bint)
 def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
-                                 readPairsPerWrite=50000):
+                                 readPairsPerWrite=100, UsecProfile=False,
+                                 onlyNumpy=False, skipSingles=True,
+                                 skipFails=False):
+    if(UsecProfile is True):
+        import cProfile
+        import pstats
+        pr = cProfile.Profile()
+        pr.enable()
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
     outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
     pl("Now running pairedFastqConsolidateFaster on {} and {}.".format(fq1,
@@ -879,15 +778,33 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
+            if(skipSingles is True and len(workingSet1) == 1):
+                workingBarcode = ""
+                workingSet1 = []
+                workingSet2 = []
+                continue
             # cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
-            String1 += compareFqRecsFqPrx(workingSet1) + "\n"
-            String2 += compareFqRecsFqPrx(workingSet2) + "\n"
+            # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
+            # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
+            tStr1 = compareFqRecsFqPrx(workingSet1) + "\n"
+            tStr2 = compareFqRecsFqPrx(workingSet2) + "\n"
+            if(skipFails is True and ("Fail" in tStr1 or "Fail" in tStr2)):
+                continue
+            String1 += tStr1
+            String2 += tStr2
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1
             numProc += 1
             continue
+    if(UsecProfile is True):
+        s = cStringIO.StringIO()
+        pr.disable()
+        sortby = "cumulative"
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        open("cProfile.stats.txt", "w").write(s.getvalue())
     # outputHandle1.write(cString1.getvalue())
     # outputHandle2.write(cString2.getvalue())
     outputHandle1.write(String1)
@@ -909,9 +826,9 @@ def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
     filtered to only the shared barcode families
     """
     if(outfq1 == "default"):
-        outfq1 = fq1.split('.')[0] + '.cons.R1fastq'
+        outfq1 = fq1.split('.')[0] + '.cons.R1.fastq'
     if(outfq2 == "default"):
-        outfq2 = fq2.split('.')[0] + '.cons.R2fastq'
+        outfq2 = fq2.split('.')[0] + '.cons.R2.fastq'
     infq1 = SeqIO.parse(fq1, "fastq")
     infq2 = SeqIO.parse(fq2, "fastq")
     outfqhandle1 = open(outfq1, "w")
@@ -1070,3 +987,30 @@ def TrimHoming(
     tagsOpen.close()
     trimOpen.close()
     return(tags_file, trimfq)
+
+
+def compareConsSpeed(fq1, fq2, stringency=0.666, readPairsPerWrite=100):
+    """
+    Made this quick script to compare speed for consolidation.
+    """
+    import subprocess
+    import time
+    from time import gmtime, strftime
+    print(strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime()))
+    b = subprocess.Popen("cp {} CyCons.R1.fastq".format(fq1), shell=True)
+    subprocess.check_call("cp {} CyCons.R2.fastq".format(fq2), shell=True)
+    while True:
+        if(b.poll() != 0):
+            time.sleep(1)
+            continue
+        else:
+            break
+    out1, out2 = pairedFastqConsolidateFaster("CyCons.R1.fastq", "CyCons.R2.fastq", stringency=stringency, readPairsPerWrite=readPairsPerWrite)
+    print("Time after CyCons: {}".format(strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())))
+    b = subprocess.Popen("cp {} PyCons.R1.fastq".format(fq1), shell=True)
+    subprocess.check_call("cp {} PyCons.R2.fastq".format(fq2), shell=True)
+    out1, out2 = pairedFastqConsolidateFaster(
+        "CyCons.R1.fastq", "CyCons.R2.fastq", stringency=stringency,
+        readPairsPerWrite=readPairsPerWrite, onlyNumpy=True)
+    print("Time after CyCons (only Numpy): {}".format(strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())))
+    return

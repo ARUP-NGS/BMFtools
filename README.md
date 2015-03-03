@@ -120,10 +120,25 @@ Most options are available for command-line as well. If an option is set in both
 2. Compiler directives.
 3. More type definitions.
 4. Optionally encoding the summed phred scores from demultiplexed families in base 85 format to save space.
+5. Removed the "slow" form of fastq consolidation.
+
+#Settings Recommendations
+
+1. The "readPairsPerWrite" parameter can provide great speed improvements. For my workstation, I have what looks like the following:
+
+|readPairsPerWrite | time | 
+|------|--------------|
+| 10 | 867 msec per loop |
+| 50 | 851 msec per loop |
+| 100 | 850 msec per loop |
+| 150 | 853 msec per loop |
+|250| 898 msec per loop | 
+|500 | 1830 msec per loop |
+
+Meaning peak performance at 100.
+
 
 #TODO:
-General:
-    1. Change BAM tagging after fq processing to do SV tags and SNV tags.
 SNV:
     1. Consider haplotyping by leveraging reads covering multiple SNPs.
     2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
@@ -135,7 +150,6 @@ Indels:
     4. Try calling scalpel with indel irrelevant reads as normal and relevant reads as abnormal.
     5. Write the DSI SV BAM tag function.
 SV:
-
     1. Finish consensus sequence for intrachromosomal.
     2. Write SV tags into a function, call that function during the standard FM/FP/BS tagging.
     3. Finish writing structural variants to a VCF format

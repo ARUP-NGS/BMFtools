@@ -155,12 +155,15 @@ def pairedBarcodeTagging(
         fq2,
         bam,
         outBAMFile="default",
-        suppBam="default"):
+        suppBam="default",
+        bedfile="default"):
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
+    cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2, bam)
+    pl("Command string to reproduce call: {}".format(cStr))
     read1Handle = SeqIO.parse(fq1, "fastq")
     read2Handle = SeqIO.parse(fq2, "fastq")
     postFilterBAM = pysam.Samfile(bam, "rb")
@@ -213,7 +216,7 @@ def pairedBarcodeTagging(
         except KeyError:
             # print("Number of reads agreeing per position mssing. Oh well.")
             pass
-        read1bam, read2bam = MarkSVTags(read1bam, read2bam)
+        read1bam, read2bam = MarkSVTags(read1bam, read2bam, bedfile=bedfile)
         outBAM.write(read1bam)
         outBAM.write(read2bam)
     suppBAM.close()
