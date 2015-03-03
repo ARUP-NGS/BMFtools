@@ -194,17 +194,19 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB85=cython.bint)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
-                       famLimit=200, keepFails=True, compressB85=False):
+                       famLimit=200, keepFails=True, compressB85=True,
+                       makeFA=False, makePV=True):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
-    compress85 = False
+    compress85 = True
     if(len(R) > famLimit):
         logging.debug(
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], len(R), famLimit))
         R = R[:famLimit]
+
     seqs = [record.sequence for record in R]
     maxScore = 0
     Success = False
@@ -224,19 +226,20 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     phredQuals = np.multiply(len(R),
                              [chr2ph[i] for i in  list(R[0].quality)],
                              dtype=np.int64)
+    TagString = " #G~FM=" + str(len(R))
     if(np.any(np.greater(phredQuals, 93))):
         QualString = "".join([ph2chr(i) for i in  phredQuals])
-        if(compressB85 is True):
-            PVString = " #G~PV=" + ",".join([Int2Base85(i) for i in  phredQuals])
-        else:
-            PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
+        if(makePV is True):
+            if(compressB85 is True):
+                TagString += " #G~PV=" + ",".join([Int2Base85(i) for i in  phredQuals])
+            else:
+                TagString += " #G~PV=" + ",".join([str(i) for i in phredQuals])
     else:
         QualString = "".join([ph2chrDict[i] for i in  phredQuals])
-        PVString = ""
-    numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-                             for i in range(len(seqs[0]))], dtype=np.int64)
-    TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
-                 ",".join(numFamAgreed.astype(str)) + PVString)
+    if(makeFA is True):
+        numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
+                                 for i in range(len(seqs[0]))], dtype=np.int64)
+        TagString += " #G~FA=" + ",".join([str(i) for i in numFamAgreed])
     consFqString = "\n".join(["@" + R[0].name + " " + R[0].comment + TagString,
                               finalSeq,
                               "+",
@@ -313,7 +316,7 @@ def compareFastqRecordsInexactNumpy(R):
 
 
 @cython.locals(Success=cython.bint)
-def compareFqRecsFast(R):
+def compareFqRecsFast(R, makePV=True, makeFA=False):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
@@ -359,17 +362,23 @@ def compareFqRecsFast(R):
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int64),
                              np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals < 0] = 0
-    if(np.any(np.greater(phredQuals, 93))):
-        PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
+    TagString = " #G~FM=" + str(len(R))
+    if(makeFA is True):
+        numFamAgreed = ",".join([str(sum([seq[i] == newSeq[i] for seq in seqs])))
+                        for i in range(len(seqs[0]))]
+        TagString += " #G~FA=" + numFamAgreed
+    if(makePV is True):
+        if(np.any(np.greater(phredQuals, 93))):
+            PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
+            phredQuals[phredQuals > 93] = 93
+            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+        else:
+            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+            PVString = ""
+        TagString += PVString
+    else:
         phredQuals[phredQuals > 93] = 93
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-    else:
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = ""
-    numFamAgreed = [str(sum([seq[i] == newSeq[i] for seq in seqs]))
-                    for i in range(len(seqs[0]))]
-    TagString = (" #G~FM=" + str(len(R)) + " #G~FA=" +
-                 ",".join(numFamAgreed) + PVString)
     try:
         assert len(PVString) != 1
     except AssertionError:
