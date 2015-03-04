@@ -6,6 +6,7 @@ import subprocess
 from collections import Counter
 from itertools import groupby
 from operator import itemgetter
+from operator import attrgetter
 import copy
 import uuid
 import os
@@ -306,6 +307,8 @@ def is_read_softclipped(read):
     """
     Simply returns whether or not a read is soft-clipped
     """
+    if("cigarstring" not in dir(read)):
+        return False
     if("S" in read.cigarstring):
         return True
     return False
@@ -904,7 +907,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
             except StopIteration:
                 break
     if("LI" in tags):
-        return sorted(RecordsArray, key=lambda read: abs(read.insert_size))
+        return sorted(RecordsArray, key=abs(attrgetter("insert_size")))
     else:
         return RecordsArray
 
@@ -1087,7 +1090,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
         return []
     print("Now attempting to merge any adjacent intervals. Number: {}".format(
         len(IntervalList)))
-    IntervalList = sorted(IntervalList, key=lambda x: x[1])
+    IntervalList = sorted(IntervalList, key=itemgetter(1))
     workingIntval = copy.copy(IntervalList[0])
     MergedInts = []
     for intval in IntervalList:

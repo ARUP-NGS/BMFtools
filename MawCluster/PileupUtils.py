@@ -6,6 +6,7 @@ import os.path
 import shlex
 import logging
 import re
+import operator
 
 import numpy as np
 import pysam
@@ -356,7 +357,8 @@ class PCInfo:
         self.MergedFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedFracDict[
-                alt.ALT] = float(alt.MergedReads) / self.MergedReads
+                alt.ALT] = operator.div(float(alt.MergedReads),
+                                        self.MergedReads)
         self.MergedFracStr = ",".join(
             ["->".join([key, str(self.MergedFracDict[key])])
              for key in self.MergedFracDict.keys()])
@@ -371,7 +373,8 @@ class PCInfo:
         TransMergedCounts = {}
         for alt in self.AltAlleleData:
             try:
-                TransMergedCounts[alt.transition] += alt.MergedReads
+                TransMergedCounts[alt.transition] = operator.add(
+                    TransMergedCounts[alt.transition], alt.MergedReads)
             except KeyError:
                 TransMergedCounts[alt.transition] = alt.MergedReads
         self.TransMergedCounts = TransMergedCounts

@@ -9,6 +9,7 @@ import logging
 from collections import Counter
 import numpy as np
 import copy
+from os import path
 
 from Bio import SeqIO
 import pysam
@@ -64,7 +65,6 @@ def AbraCadabra(inBAM,
         log = "abra.log"
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.abra.bam'
-    from os import path
     pl(("Command to reproduce the call of this function: "
         "AbraCadabra(\"{}\", outBAM=\"{}\", jar=\"{}\", ".format(inBAM,
                                                                  outBAM,
@@ -84,11 +84,10 @@ def AbraCadabra(inBAM,
                               bed, newbed),
                               shell=True)
         bed = newbed
-    import os.path
-    if(os.path.isfile(inBAM + ".bai") is False):
+    if(path.isfile(inBAM + ".bai") is False):
         pl("No bam index found for input bam - attempting to create.")
         subprocess.check_call(['samtools', 'index', inBAM])
-        if(os.path.isfile(inBAM + ".bai") is False):
+        if(path.isfile(inBAM + ".bai") is False):
             inBAM = HTSUtils.CoorSortAndIndexBam(inBAM, outBAM, uuid=True)
     command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
                " --out {} --ref {} --targets".format(outBAM, ref) +

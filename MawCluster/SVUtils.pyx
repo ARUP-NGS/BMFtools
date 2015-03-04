@@ -6,8 +6,8 @@ from utilBMF.HTSUtils import SplitSCRead
 from utilBMF.HTSUtils import is_read_softclipped
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from utilBMF import HTSUtils
-from Bio.Seq import Seq
 
+from Bio.Seq import Seq
 import pysam
 import numpy as np
 cimport numpy as np
@@ -18,9 +18,9 @@ import uuid
 import copy
 from itertools import chain
 from collections import defaultdict
+from operator import attrgetter
+from operator import itemgetter
 
-from cpython cimport array as c_array
-from array import array
 
 
 class XLocSegment:
@@ -128,7 +128,7 @@ def ClusterByInsertSize(ReadPairs,
         pl("No insert size distance provided - default of "
            " read length set: {}".format(insDistance))
     ClusterList = []
-    ReadPairs = sorted(ReadPairs, key=lambda x: x.insert_size)
+    ReadPairs = sorted(ReadPairs, key=attrgetter("insert_size"))
     workingSet = []
     workingInsertSize = 0
     for pair in ReadPairs:
@@ -244,7 +244,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
                          " in bed should have been filtered out already.")
                 """
         PotTransIntervals += RegionsToPull
-    PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
+    PotTransIntervals = sorted(PotTransIntervals, key=itemgetter(1))
     MergedPTIs = []
     for pti in PotTransIntervals:
         if("workingPTI" not in locals()):
@@ -302,7 +302,7 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
            "ly: {}".format(len(intervalList)))
         pl("intervalList repr: {}".format(repr(intervalList)))
         PotTransIntervals += intervalList
-    PotTransIntervals = sorted(PotTransIntervals, key=lambda x: x[1])
+    PotTransIntervals = sorted(PotTransIntervals, key=itemgetter(1))
     pl("Number of intervals outside of bed for investigation: {}".format(
         len(PotTransIntervals)))
     pl("PotTransIntervals repr: {}".format(PotTransIntervals))
@@ -432,7 +432,14 @@ class TranslocationVCFLine:
 
 #Made a dictionary for the parameters for these SV tags.
 
-SVParamDict = defaultdict(lambda x: "default")
+def returnDefault():
+    """
+    Simply returns default, facilitating the default convention
+    of BMFTools being applied to this default dictionary.
+    """
+    return "default"
+
+SVParamDict = defaultdict(returnDefault)
 SVParamDict['LI'] = 100000
 SVParamDict['SBI'] = ["default", 100000]
 SVParamDict['MI'] = [500, 100000]
@@ -764,9 +771,9 @@ def BkptSequenceIntraReads(reads):
                  "on the same contig.")
     # Separate reads based on which end of the translocation they're part of.
     negReads = sorted([read for read in reads if read.tlen < 0],
-                      key=lambda x: x.pos)
+                      key=attrgetter("pos"))
     posReads = sorted([read for read in reads if read.tlen > 0],
-                      key=lambda x: x.pos)
+                      key=attrgetter("pos"))
     negSeqs = [read.seq if read.is_reverse else
                Seq(read.seq).reverse_complement().seq for read in negReads]
     posSeqs = [read.seq if read.is_reverse else

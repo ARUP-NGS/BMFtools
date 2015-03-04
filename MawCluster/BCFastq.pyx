@@ -18,10 +18,13 @@ import sys
 import collections
 import time
 import cStringIO
+import operator
+from subprocess import check_call
 
-from Bio import SeqIO
 import Bio
+from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
 import cython
 cimport cython
 import numpy as np
@@ -105,7 +108,7 @@ def BarcodeSortBoth(inFq1, inFq2):
             if(BSCall1.returncode == 0):
                 return outFq1, outFq2
             else:
-                checks += 1
+                checks = operator.add(checks, 1)
         raise subprocess.CalledProcessError("Barcode first sort didn't work, "
                                             "it seems - took more than 5 minu"
                                             "tes longer than the second barco"
@@ -213,34 +216,40 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     for seq in seqs:
         # print("Seq: {}".format(str(seq)))
         numEq = sum(str(seq) == str(seqItem) for seqItem in seqs)
-        if(numEq > maxScore):
+        if(operator.ge(numEq, maxScore)):
             maxScore = numEq
             finalSeq = str(seq)
-    frac = numEq * 1.0 / len(R)
-    if(frac > stringency):
+    frac = operator.div(operator.mul(numEq, 1.0), len(R))
+    if(operator.ge(frac, stringency)):
         Success = True
-    elif(frac < 0.5):
+    elif(operator.le(frac, 0.5)):
         Success = False
     elif(hybrid is True):
         return compareFqRecsFast(R)
     phredQuals = np.multiply(len(R),
                              [chr2ph[i] for i in  list(R[0].quality)],
                              dtype=np.int64)
-    TagString = " #G~FM=" + str(len(R))
+    TagString = operator.add(" #G~FM=", str(len(R)))
     if(np.any(np.greater(phredQuals, 93))):
         QualString = "".join([ph2chr(i) for i in  phredQuals])
         if(makePV is True):
             if(compressB85 is True):
-                TagString += " #G~PV=" + ",".join([Int2Base85(i) for i in  phredQuals])
+                TagString = operator.add(operator.add(TagString, " #G~PV="),
+                                          ",".join([Int2Base85(i)
+                                                    for i in  phredQuals]))
             else:
-                TagString += " #G~PV=" + ",".join([str(i) for i in phredQuals])
+                TagString = operator.add(operator.add(TagString, " #G~PV="),
+                                          ",".join([str(i) for i
+                                                    in phredQuals]))
     else:
         QualString = "".join([ph2chrDict[i] for i in  phredQuals])
     if(makeFA is True):
         numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
                                  for i in range(len(seqs[0]))], dtype=np.int64)
-        TagString += " #G~FA=" + ",".join([str(i) for i in numFamAgreed])
-    consFqString = "\n".join(["@" + R[0].name + " " + R[0].comment + TagString,
+        TagString = operator.add(
+            operator.add(TagString, " #G~FA="),
+            ",".join([str(i) for i in numFamAgreed]))
+    consFqString = "\n".join(["".join(["@", R[0].name, " ", R[0].comment, TagString]),
                               finalSeq,
                               "+",
                               QualString])
@@ -362,20 +371,20 @@ def compareFqRecsFast(R, makePV=True, makeFA=False):
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int64),
                              np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals < 0] = 0
-    TagString = " #G~FM=" + str(len(R))
+    TagString = operator.add(" #G~FM=", str(len(R)))
     if(makeFA is True):
-        numFamAgreed = ",".join([str(sum([seq[i] == newSeq[i] for seq in seqs])))
-                        for i in range(len(seqs[0]))]
-        TagString += " #G~FA=" + numFamAgreed
+        numFamAgreed = ",".join([str(sum([seq[i] == newSeq[i] for seq in seqs]))
+                        for i in range(len(seqs[0]))])
+        TagString = operator.add(operator.add(TagString, " #G~FA="), numFamAgreed)
     if(makePV is True):
         if(np.any(np.greater(phredQuals, 93))):
-            PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
+            PVString = operator.add(" #G~PV=", ",".join(phredQuals.astype(str)))
             phredQuals[phredQuals > 93] = 93
             phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
         else:
             phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
             PVString = ""
-        TagString += PVString
+        TagString = operator.add(TagString, PVString)
     else:
         phredQuals[phredQuals > 93] = 93
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
@@ -386,10 +395,11 @@ def compareFqRecsFast(R, makePV=True, makeFA=False):
         pl(repr(PVString))
         raise ThisIsMadness("Something's wrong with my phredQuals. "
                             "It should be the length of the read.")
-    consolidatedFqStr = "\n".join(["@" + R[0].name + " " + R[0].comment + TagString,
-                                   newSeq,
-                                   "+",
-                                   phredQualsStr])
+    consolidatedFqStr = "\n".join([
+        "".join(["@", R[0].name, " ", R[0].comment. TagString]),
+        newSeq,
+        "+",
+        phredQualsStr])
     if(Success is False):
         return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
@@ -584,7 +594,6 @@ def FastqSingleShading(fq,
             SeqIO.write(read1, outFqHandle1, "fastq")
     outFqHandle1.close()
     if(gzip is True):
-        from subprocess import check_call
         check_call(['gzip', fq], shell=False)
     return
 
@@ -630,7 +639,6 @@ def fastq_sort(in_fastq, out_fastq):
 
 
 def FastqRegex(fq, string, matchFile="default", missFile="default"):
-    from subprocess import check_call
     if(matchFile == "default"):
         matchFile = ('.'.join(fq.split(
                      '.')[0:-1]) + '.match.fastq').split('/')[-1]
@@ -721,7 +729,7 @@ def LighterCallPaired(fq1, fq2, kmer="default",
                UsecProfile=cython.bint, onlyNumpy=cython.bint)
 def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                                  readPairsPerWrite=100, UsecProfile=False,
-                                 onlyNumpy=False, skipSingles=True,
+                                 onlyNumpy=False, skipSingles=False,
                                  skipFails=False):
     if(UsecProfile is True):
         import cProfile
@@ -742,24 +750,31 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
     outputHandle2 = open(outFqPair2, 'w')
     # cString1 = cStringIO.StringIO()
     # cString2 = cStringIO.StringIO()
-    String1 = ""
-    String2 = ""
+    StringList1 = []
+    StringList2 = []
     workingBarcode = ""
     workingSet1 = []
     workingSet2 = []
     cdef pysam.cfaidx.FastqProxy fqRec
     cdef pysam.cfaidx.FastqProxy fqRec2
     numProc = 0
+    wsAppend1 = workingSet1.append
+    wsAppend2 = workingSet2.append
+    slAppend1 = StringList1.append
+    slAppend2 = StringList2.append
+
     while True:
         if(numProc % readPairsPerWrite == 0):
             # outputHandle1.write(cString1.getvalue())
             # outputHandle2.write(cString2.getvalue())
-            outputHandle1.write(String1)
-            outputHandle2.write(String2)
+            outputHandle1.write("".join(StringList1))
+            outputHandle2.write("".join(StringList2))
+            StringList1 = []
+            StringList2 = []
+            slAppend1 = StringList1.append
+            slAppend2 = StringList2.append
             # cString1 = cStringIO.StringIO()
             # cString2 = cStringIO.StringIO()
-            String1 = ""
-            String2 = ""
         try:
             fqRec = inFq1.next()
         except StopIteration:
@@ -773,9 +788,9 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             try:
                 workingBarcode = bc4fq1
                 workingSet1 = []
-                workingSet1.append(fqRec)
+                wsAppend1(fqRec)
                 workingSet2 = []
-                workingSet2.append(fqRec2)
+                wsAppend2(fqRec2)
                 continue
             except TypeError:
                 print("workingBarcode = " + workingBarcode)
@@ -783,8 +798,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                 print("workingSet2 = " + repr(workingSet2))
                 sys.exit()
         elif(workingBarcode == bc4fq1):
-            workingSet1.append(fqRec)
-            workingSet2.append(fqRec2)
+            wsAppend1(fqRec)
+            wsAppend2(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
             if(skipSingles is True and len(workingSet1) == 1):
@@ -796,16 +811,18 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            tStr1 = compareFqRecsFqPrx(workingSet1) + "\n"
-            tStr2 = compareFqRecsFqPrx(workingSet2) + "\n"
+            tStr1 = operator.add(compareFqRecsFqPrx(workingSet1), "\n")
+            tStr2 = operator.add(compareFqRecsFqPrx(workingSet2), "\n")
             if(skipFails is True and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
-            String1 += tStr1
-            String2 += tStr2
+            slAppend1(tStr1)
+            slAppend2(tStr2)
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
+            wsAppend1 = workingSet1.append
+            wsAppend2 = workingSet2.append
             workingBarcode = bc4fq1
-            numProc += 1
+            numProc = operator.add(numProc, 1)
             continue
     if(UsecProfile is True):
         s = cStringIO.StringIO()
@@ -816,8 +833,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
         open("cProfile.stats.txt", "w").write(s.getvalue())
     # outputHandle1.write(cString1.getvalue())
     # outputHandle2.write(cString2.getvalue())
-    outputHandle1.write(String1)
-    outputHandle2.write(String2)
+    outputHandle1.write("".join(StringList1))
+    outputHandle2.write("".join(StringList2))
     outputHandle1.flush()
     outputHandle2.flush()
     inFq1.close()
@@ -955,8 +972,6 @@ def TrimHoming(
         trim_err="default",
         start_trim=1):
     pl("TrimHoming: \"{}\" from {}".format(homing, fq))
-    from Bio.SeqRecord import SeqRecord
-    from Bio.Seq import Seq
     if(trim_err == "default"):
         temp = '.'.join(fq.split('.')[0:-1] + ['err', 'fastq'])
         trim_err = temp.split('/')[-1]

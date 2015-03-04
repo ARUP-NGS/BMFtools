@@ -154,10 +154,13 @@ SV:
     2. Write SV tags into a function, call that function during the standard FM/FP/BS tagging.
     3. Finish writing structural variants to a VCF format
     4. Work on interchromosomal translocations
+Performance:
+    1. Implement "map" function for performance gains, especially in BCFastq
 
 TODO Backlog/Mostly finished:
 1. Take advantage of PV tags further (done to some extent - moving to backlog)
 2. Instruct pysam to make tags of a specific type.
+3. Note: Something seems wrong with the FA calculation.
 
 TODO, boring:
 1. Add annotations of PFSD and MPF (SD of PV Fraction and Mean PV Fraction) (Including the VCF Header lines)
