@@ -522,7 +522,7 @@ def MI_SV_Tag_Condition(read1, read2, extraField=SVParamDict['MI']):
     return (abs(read1.tlen) >= extraField[0] and
             abs(read1.tlen) <= extraField[1])
 
-SNVParamDict = defaultdict()
+SNVParamDict = defaultdict(returnDefault)
 SNVTestDict = {}
 
 
@@ -555,7 +555,7 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
 
 
 SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))
-SVParamDict = dict(operator.add(SVParamDict.items(), SNVParamDict.items()))
+SVParamDict = defaultdict(returnDefault, operator.add(SVParamDict.items(), SNVParamDict.items()))
 
 
 @cython.locals(SVR=cython.bint, maxInsert=cython.long)
