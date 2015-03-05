@@ -576,11 +576,10 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
     # print("SVTestDict: {}".format(repr(SVTestDict)))
     svGet = SVParamDict.get
     for key in FeatureList:
-        func = SVTestDict[key]
-        if(func(read1, read2,
+        if(SVTestDict[key](read1, read2,
                 extraField=svGet(key))):
             SVR = True
-            if(read1.has_tag("SV")):
+            try:
                 read1.setTag("SV", read1.opt("SV") + "," + key)
                 read2.setTag("SV", read2.opt("SV") + "," + key)
                 if("NF" in read1.opt("SV").split(",")):
@@ -595,7 +594,7 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
                             i for i in read2.opt(
                                 "SV").split(
                                     ",") if i != "NF"]))
-            else:
+            except KeyError:
                 read1.setTag("SV", key)
                 read2.setTag("SV", key)
     if SVR is False:

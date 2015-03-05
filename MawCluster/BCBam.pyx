@@ -10,18 +10,21 @@ from collections import Counter
 import numpy as np
 import copy
 from os import path
+import operator
+import string
 
 from Bio import SeqIO
 import pysam
 import cython
 cimport cython
-from BCFastq import dAccess
 dAccess = np.vectorize(dAccess)
 
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
+from BCFastq import dAccess
+
 
 
 def AbraCadabra(inBAM,
@@ -76,7 +79,7 @@ def AbraCadabra(inBAM,
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    bedLines = [line.strip() for line in open(bed, "r").readlines()]
+    bedLines = list(map(string.strip, open(bed, "r").readlines()))
     if(len(bedLines[0]) > 3):
         newbed = '.'.join(bed.split('.')[0:-1]) + '.abra.bed'
         pl("Bed file provided not in form abra accepts.")
@@ -166,7 +169,9 @@ def pairedBarcodeTagging(
     cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2, bam)
     pl("Command string to reproduce call: {}".format(cStr))
     read1Handle = SeqIO.parse(fq1, "fastq")
+    r1Next = read1Handle.next
     read2Handle = SeqIO.parse(fq2, "fastq")
+    r2Next = read2Handle.next
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
@@ -178,42 +183,44 @@ def pairedBarcodeTagging(
             continue
         if(entry.is_read1):
             read1bam = entry
-            read1fq = read1Handle.next()
+            read1fq = r1Next()
             continue
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             read2bam = entry
-            read2fq = read2Handle.next()
+            read2fq = r2Next()
+        r1Set = read1bam.setTag
+        r2Set = read2bam.setTag
         descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
-        read1bam.setTag("FM", descDict["FM"])
-        read2bam.setTag("FM", descDict["FM"])
+        r1Set("FM", descDict["FM"])
+        r2Set("FM", descDict["FM"])
         try:
-            read1bam.setTag("BS", descDict["BS"])
-            read2bam.setTag("BS", descDict["BS"])
+            r1Set("BS", descDict["BS"])
+            r2Set("BS", descDict["BS"])
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing a BS tag.")
         try:
             if("Pass" in descDict["FP"]):
-                read1bam.setTag("FP", 1)
-                read2bam.setTag("FP", 1)
+                r1Set("FP", 1)
+                r2Set("FP", 1)
             else:
-                read1bam.setTag("FP", 0)
-                read2bam.setTag("FP", 0)
+                r1Set("FP", 0)
+                r2Set("FP", 0)
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing an FP tag.")
         try:
-            read1bam.setTag("PV", descDict["PV"])
-            read2bam.setTag("PV", descDict["PV"])
+            r1Set("PV", descDict["PV"])
+            r2Set("PV", descDict["PV"])
         except KeyError:
             # print("Phred Values > 93 not set. Oh well.)
             pass
         try:
-            read1bam.setTag("FA", descDict["FA"])
-            read2bam.setTag("FA", descDict["FA"])
+            r1Set("FA", descDict["FA"])
+            r2Set("FA", descDict["FA"])
         except KeyError:
             raise ThisIsMadness("Currently, FA tags are required.")
             # print("Number of reads agreeing per position mssing. Oh well.")
@@ -231,13 +238,14 @@ def pairedBarcodeTagging(
 
 def compareRecs(RecordList):
     Success = True
+    seqs = map(operator.attrgetter("seq"), RecordList)
     seqs = [str(record.seq) for record in RecordList]
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = np.array([record.query_qualities
-                      for record in RecordList])
+    quals = np.array(list(map(operator.attrgetter("query_qualities"),
+                              RecordList)))
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
