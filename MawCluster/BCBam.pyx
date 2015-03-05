@@ -17,13 +17,13 @@ from Bio import SeqIO
 import pysam
 import cython
 cimport cython
-dAccess = np.vectorize(dAccess)
 
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
 from BCFastq import dAccess
+dAccess = np.vectorize(dAccess)
 
 
 
@@ -79,7 +79,7 @@ def AbraCadabra(inBAM,
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    bedLines = list(map(string.strip, open(bed, "r").readlines()))
+    bedLines = map(string.strip, open(bed, "r").readlines())
     if(len(bedLines[0]) > 3):
         newbed = '.'.join(bed.split('.')[0:-1]) + '.abra.bed'
         pl("Bed file provided not in form abra accepts.")
@@ -244,8 +244,8 @@ def compareRecs(RecordList):
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = np.array(list(map(operator.attrgetter("query_qualities"),
-                              RecordList)))
+    quals = np.array(map(operator.attrgetter("query_qualities"),
+                              RecordList))
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)

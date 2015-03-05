@@ -192,7 +192,7 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
         numAgreed.astype(str)) + " #G~FM=" + str(len(seqs))
     consolidatedRecord.description += " #G~PV=" + ",".join(
         probs.astype(str))
-    QualString = "".join(list(map(ph2chr, probs)))
+    QualString = "".join(map(ph2chr, probs))
     consFqString = "\n".join(
         ["@" + R[0].description, finalSeq, "+", QualString])
 
@@ -238,16 +238,16 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     elif(hybrid is True):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
     phredQuals = np.multiply(len(R),
-                             list(map(chr2phFunc, list(R[0].quality))),
+                             map(chr2phFunc, list(R[0].quality)),
                              dtype=np.int64)
     TagString = operator.add(" #G~FM=", str(len(R)))
     if(np.any(np.greater(phredQuals, 93))):
-        QualString = "".join(list(map(ph2chr, phredQuals)))
+        QualString = "".join(map(ph2chr, phredQuals))
         if(makePV is True):
             if(compressB85 is True):
                 TagString = operator.add(
                     operator.add(TagString, " #G~PV="),
-                    ",".join(list(map(Int2Base85, phredQuals))))
+                    ",".join(map(Int2Base85, phredQuals)))
             else:
                 TagString = operator.add(
                     operator.add(TagString, " #G~PV="),
@@ -339,7 +339,7 @@ def compareFastqRecordsInexactNumpy(R):
         'phred_quality'] = phredQuals.tolist()
     if("Fail" in descDict["FP"]):
         Success = False
-    QualString = "".join(list(map(ph2chr, phredQuals)))
+    QualString = "".join(map(ph2chr, phredQuals))
     consFqString = "\n".join(
         ["@" + consolidatedRecord.description, newSeq, "+", QualString])
     return consFqString, Success
@@ -371,7 +371,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
 
     # print(repr(seqArray))
     quals = np.array(
-        [list(map(chr2phFunc, list(record.quality))) for record in R],
+        [map(chr2phFunc, list(record.quality)) for record in R],
         dtype=np.int64)
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
@@ -405,8 +405,8 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
         if(compressB85 is True):
             if(np.any(np.greater(phredQuals, 93))):
                 PVString = operator.add(" #G~PV=",
-                                        ",".join(list(map(Int2Base85,
-                                                          phredQuals))))
+                                        ",".join(map(Int2Base85,
+                                                          phredQuals)))
                 phredQuals[phredQuals > 93] = 93
                 phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
             else:
