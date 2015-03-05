@@ -527,7 +527,7 @@ SNVTestDict = {}
 
 
 @cython.returns(cython.bint)
-def DRP_SNV_Tag_Condition(read1, read2, extraField=0.5):
+def DRP_SNV_Tag_Condition(read1, read2, extraField=SVParamDict['DRP']):
     """
     Duplex Read Pair
     Whether or not a read pair shares some minimum fraction of aligned
@@ -574,11 +574,11 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
     SVR = False
     # print("SVParamDict: {}".format(repr(SVParamDict)))
     # print("SVTestDict: {}".format(repr(SVTestDict)))
+    svGet = SVParamDict.get
     for key in FeatureList:
         func = SVTestDict[key]
-        print("Beginning function with key %s " % key)
         if(func(read1, read2,
-                extraField=SVParamDict[key])):
+                extraField=svGet(key))):
             SVR = True
             if(read1.has_tag("SV")):
                 read1.setTag("SV", read1.opt("SV") + "," + key)
