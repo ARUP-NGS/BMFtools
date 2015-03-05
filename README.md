@@ -65,6 +65,8 @@ CS | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 
 ## Valid Tags for SV SAM tag
 
+######Note: SNV tags have been lumped in with SV tags for the time being.
+
 Tag | Meaning |
 ---- | ----- |
 LI | Large Insert - Default cutoff: 1,000,000 min |
@@ -72,10 +74,10 @@ MDC | Reads in pair are mapped to different contigs |
 MSS | Mapped to Same Strand |
 ORB | Only one read in pair mapped to Expected Bed Region |
 ORU | One Read Unmapped |
-SBI | SBI for having ORB and one of either MDC, MSS, or LI |
+ORS | One Read Is Soft-Clipped |
+DRP | Duplex Read Pair |
 NF | No SV relevance found. |
 
-Barcode Edit Distance is 0 for members in a family whose barcode matches the family's exactly. If a rescue step is performed to merge a read with a small number of mismatches due to sequencing errors, this tag will reflect the number of differing characters.
 
 ## Barcode Determination methods
 

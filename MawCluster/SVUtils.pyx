@@ -5,6 +5,7 @@ from utilBMF.HTSUtils import ParseBed
 from utilBMF.HTSUtils import SplitSCRead
 from utilBMF.HTSUtils import is_read_softclipped
 from utilBMF.HTSUtils import ReadPairIsDuplex
+from utilBMF.HTSUtils import ReadPair
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -526,16 +527,16 @@ SNVTestDict = {}
 
 
 @cython.returns(cython.bint)
-def DRP_SNV_Tag_Condition(read1, read2, extraField="default"):
+def DRP_SNV_Tag_Condition(read1, read2, extraField=0.5):
     """
     Duplex Read Pair
     Whether or not a read pair shares some minimum fraction of aligned
     positions.
     """
     if(extraField != "default"):
-        return ReadPairIsDuplex(read1, read2, minShare=extraField)
+        return ReadPairIsDuplex(ReadPair(read1, read2), minShare=extraField)
     else:
-        return ReadPairIsDuplex(read1, read2)
+        return ReadPairIsDuplex(ReadPair(read1, read2))
 
 SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
