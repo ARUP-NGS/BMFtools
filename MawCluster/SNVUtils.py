@@ -1,7 +1,9 @@
 from collections import defaultdict
+import operator
 
 import pysam
 import cython
+import numpy as np
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
@@ -79,17 +81,19 @@ class SNVCFLine:
         try:
             if(float(MaxPValue) < 10 ** (self.QUAL / -10)):
                 if("FILTER" in dir(self)):
-                    self.FILTER += ",LowQual"
+                    self.FILTER = operator.add(self.FILTER, ",LowQual")
                 else:
                     self.FILTER = "LowQual"
             if(AlleleAggregateObject.BothStrandSupport is False):
                 if("FILTER" in dir(self)):
-                    self.FILTER += ",OneStrandSupport"
+                    self.FILTER = operator.add(
+                        self.FILTER, ",OneStrandSupport")
                 else:
                     self.FILTER = "OneStrandSupport"
-            if(self.NumStartStops < minNumSS):
+            if(operator.le(self.NumStartStops, minNumSS)):
                 if("FILTER" in dir(self)):
-                    self.FILTER += ",InsufficientCoordinateSetsSupport"
+                    self.FILTER = operator.add(
+                        self.FILTER, ",InsufficientCoordinateSetsSupport")
                 else:
                     self.FILTER = "InsufficientCoordinateSetsSupport"
             if(AlleleAggregateObject.NumberDuplexReads < minDuplexPairs):
@@ -165,15 +169,15 @@ class SNVCFLine:
             "\t" + ":".join(str(
                 self.FormatFields[key]) for key in sorted(
                     self.FormatFields.keys())))
-        self.str = "\t".join([str(i) for i in [self.CHROM,
-                                               self.POS,
-                                               self.ID,
-                                               self.CONS,
-                                               self.ALT,
-                                               self.QUAL,
-                                               self.FILTER,
-                                               self.InfoStr,
-                                               self.FormatStr]])
+        self.str = "\t".join(np.array([self.CHROM,
+                                       self.POS,
+                                       self.ID,
+                                       self.CONS,
+                                       self.ALT,
+                                       self.QUAL,
+                                       self.FILTER,
+                                       self.InfoStr,
+                                       self.FormatStr]).astype(str).tolist())
 
     def update(self):
         self.FormatKey = ":".join(sorted(self.FormatFields.keys()))
@@ -189,15 +193,15 @@ class SNVCFLine:
 
     def ToString(self):
         self.update()
-        self.str = "\t".join([str(i) for i in [self.CHROM,
-                                               self.POS,
-                                               self.ID,
-                                               self.REF,
-                                               self.ALT,
-                                               self.QUAL,
-                                               self.FILTER,
-                                               self.InfoStr,
-                                               self.FormatStr]])
+        self.str = "\t".join(np.array([self.CHROM,
+                                       self.POS,
+                                       self.ID,
+                                       self.REF,
+                                       self.ALT,
+                                       self.QUAL,
+                                       self.FILTER,
+                                       self.InfoStr,
+                                       self.FormatStr]).astype(str).tolist())
         return self.str
 
 
@@ -764,25 +768,19 @@ HeaderInfoDict["MFA"] = HeaderInfoLine(
 HeaderInfoDict["MINFA"] = HeaderInfoLine(
     ID="MINFA", Description="Minimum number of agreeing reads in a family for"
     "that family to be included in variant call", Number=1, Type="Integer")
+HeaderInfoDict["PFSD"] = HeaderInfoLine(
+    ID="PFSD",
+    Description="Standard deviation of Phred Fraction (summed phre"
+                "d score over maximum summed phred score in family.",
+    Number="A", Type="Float")
+HeaderInfoDict["MPF"] = HeaderInfoLine(
+    ID="MPF",
+    Description="Mean Phred Fraction (summed phred score over maximum summed"
+                " phred score in family) for families supporting this allele"
+                ". If this is far from 1, there might be something suspiciou"
+                "s going on.",
+    Number="A", Type="Float")
 
-
-SNVParamDict = defaultdict()
-SNVTestDict = {}
-
-
-@cython.returns(cython.bint)
-def DRP_SNV_Tag_Condition(read1, read2, extraField="default"):
-    """
-    Duplex Read Pair
-    Whether or not a read pair shares some minimum fraction of aligned
-    positions.
-    """
-    if(extraField != "default"):
-        return ReadPairIsDuplex(read1, read2, minShare=extraField)
-    else:
-        return ReadPairIsDuplex(read1, read2)
-
-SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
 """
 This next section contains the dictionaries which hold the

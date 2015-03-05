@@ -176,7 +176,7 @@ def pairedVCFProc(consMergeSortBAM,
                   bed="default",
                   minMQ=10,
                   minBQ=20,
-                  MakePileupTsv=True,
+                  MakePileupTsv=False,
                   MakeVCF=True,
                   MakeCoverageBed=True,
                   commandStr="default"):

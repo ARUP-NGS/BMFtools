@@ -93,38 +93,43 @@ Using a homing sequence as input for consolidating families of PCR duplicates.
 Each line has a set of keys and values. See conf/config.txt for an example.
 Most options are available for command-line as well. If an option is set in both a config file and on the command-line, the command-line option clobbers the config setting.
 
-#Changes in BMFTools v0.0.5
-1. Removal of standard BMFMain in lieu of the config-based one.
-2. Working intrachromosomal translocation detection. (Fast!)
-3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.
-4. Added filter by bed file to BCVCF. In spite of pysam's supposed ability to pileup over requested reasons, something seems off, so any variants which were called due to pysam's pileup but were outside the bed file are now removed.
-5. SNV calling is now in prototypical alpha mode.
+#Changes in BMFTools v0.0.5:
+    1. Removal of standard BMFMain in lieu of the config-based one.
+    2. Working intrachromosomal translocation detection. (Fast!)
+    3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.
+    4. Added filter by bed file to BCVCF. In spite of pysam's supposed ability to pileup over requested reasons, something seems off, so any variants which were called due to pysam's pileup but were outside the bed file are now removed.
+    5. SNV calling is now in prototypical alpha mode.
 
 #Changes in BMFTools v0.0.5.1
-1. Gzipped Fastq's supported.
-2. Performance improvements
-3. Code now departing from valid python code to cython.
+    1. Gzipped Fastq's supported.
+    2. Performance improvements
+    3. Code now departing from valid python code to cython.
 
-#Changes in BMFTools v.0.0.5.2
+#Changes in BMFTools v0.0.5.2
 
-1. VCF Info fields for fractions of reads mapped to reverse strand for both alt allele and all reads.
-2. VCF Info fields for the mean and standard deviation of base position in read for bases supporting variant call. 
-2. Require duplex sequencing an option for variant calling.
-3. Adding extra BAM tags for the number of reads in a family supporting the merged read's nucleotide position by position (FA tag).
-4. Moved exceptions to an ErrorHandling file, added PermissionException.
-5. Bug fixes for working with gzipped files.
+    1. VCF Info fields for fractions of reads mapped to reverse strand for both alt allele and all reads.
+    2. VCF Info fields for the mean and standard deviation of base position in read for bases supporting variant call. 
+    2. Require duplex sequencing an option for variant calling.
+    3. Adding extra BAM tags for the number of reads in a family supporting the merged read's nucleotide position by position (FA tag).
+    4. Moved exceptions to an ErrorHandling file, added PermissionException.
+    5. Bug fixes for working with gzipped files.
 
-#Changes in BMFTools v.0.0.5.3
+#Changes in BMFTools v0.0.5.3
 
-1. Sped-up, cythonized, and numpied version of fastq consolidation fully functional and fast.
-2. Compiler directives.
-3. More type definitions.
-4. Optionally encoding the summed phred scores from demultiplexed families in base 85 format to save space.
-5. Removed the "slow" form of fastq consolidation.
+    1. Sped-up, cythonized, and numpied version of fastq consolidation fully functional and fast.
+    2. Compiler directives.
+    3. More type definitions.
+    4. Optionally encoding the summed phred scores from demultiplexed families in base 85 format to save space.
+    5. Removed the "slow" form of fastq consolidation.
+
+#Changes in BMFTools v0.0.6.0
+
+    1. The most import thing is that all of the new features I've been adding finally are debugged and workable.
+    1. Performance improvements throughout, but perhaps not entirely relevant.
 
 #Settings Recommendations
 
-1. The "readPairsPerWrite" parameter can provide great speed improvements. For my workstation, I have what looks like the following:
+    1. The "readPairsPerWrite" parameter can provide great speed improvements. For my workstation, I have what looks like the following:
 
 |readPairsPerWrite | time | 
 |------|--------------|
@@ -155,14 +160,13 @@ SV:
     3. Finish writing structural variants to a VCF format
     4. Work on interchromosomal translocations
 Performance:
-    1. Implement "map" function for performance gains, especially in BCFastq
+    1. Continue to implement "map" function for performance gains, especially in BCFastq
 
 TODO Backlog/Mostly finished:
 1. Take advantage of PV tags further (done to some extent - moving to backlog)
 2. Instruct pysam to make tags of a specific type.
 3. Note: Something seems wrong with the FA calculation.
 
-TODO, boring:
-1. Add annotations of PFSD and MPF (SD of PV Fraction and Mean PV Fraction) (Including the VCF Header lines)
+TODO, lite:
 2. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **
 

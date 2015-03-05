@@ -10,6 +10,7 @@ from operator import attrgetter
 import copy
 import uuid
 import os
+import operator
 
 import pysam
 import numpy as np
@@ -46,6 +47,13 @@ def printlog(string, level=logging.INFO):
           "\t", "\\t").replace("\n", "\\n").replace(
           "'", "\'").replace('"', '\\"'))
     return
+
+
+def ToStr(x):
+    """
+    Needed to use map for str conversion
+    """
+    return str(x)
 
 
 # TODO: Write something to create these dictionaries from a SAM header
@@ -262,7 +270,7 @@ def GetPysamToChrDict(alignmentFileText):
     """
     global PysamToChrDict
     PysamToChrDict = dict(list(enumerate(
-        [i.replace("SN:","").split("\t")[1] for i in
+        [i.replace("SN:", "").split("\t")[1] for i in
          alignmentFileText.split('\n') if i[0:3] == "@SQ"])))
     global ChrToPysamDict
     ChrToPysamDict = {PysamToChrDict[key]: key for key in
@@ -307,7 +315,7 @@ def is_read_softclipped(read):
     """
     Simply returns whether or not a read is soft-clipped
     """
-    if("cigarstring" not in dir(read)):
+    if(read.cigarstring is None):
         return False
     if("S" in read.cigarstring):
         return True
@@ -976,16 +984,15 @@ def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
     for pair in ReadPairList:
         R1Pos = pair.read1.get_reference_positions()
         R2Pos = pair.read2.get_reference_positions()
-        posList += R1Pos
-        posList += R2Pos
-        if([pos for pos in R1Pos if pos in R2Pos]):
-            posListDuplex.append(pos)
+        operator.iadd(posList, R1Pos)
+        operator.iadd(posList, R2Pos)
+        operator.iadd(posListDuplex, [pos for pos in R1Pos if pos in R2Pos])
     PosCounts = Counter(posList)
     PosDuplexCounts = Counter(posListDuplex)
     # decrement the counts for each position to account for
     # both reads in a pair mapping to the same location.
     for key in PosDuplexCounts.keys():
-        PosCounts[key] += -1 * PosDuplexCounts[key]
+        PosCounts[key] -= PosDuplexCounts[key]
     PosCounts = dict([i for i in PosCounts.items()
                       if i[1] >= minClustDepth])
     return PosCounts
@@ -1134,6 +1141,7 @@ def ph2chr(x):
     Converts a phred score to a fastq-encodable character.
     """
     return chr(x + 33) if x <= 93 else "~"
+
 
 @cython.locals(x=np.int64_t)
 def Int2Base85(x):

@@ -18,9 +18,9 @@ import uuid
 import copy
 from itertools import chain
 from collections import defaultdict
+import operator
 from operator import attrgetter
 from operator import itemgetter
-
 
 
 class XLocSegment:
@@ -128,7 +128,7 @@ def ClusterByInsertSize(ReadPairs,
         pl("No insert size distance provided - default of "
            " read length set: {}".format(insDistance))
     ClusterList = []
-    ReadPairs = sorted(ReadPairs, key=attrgetter("insert_size"))
+    ReadPairs = sorted(ReadPairs, key=operator.attrgetter("insert_size"))
     workingSet = []
     workingInsertSize = 0
     for pair in ReadPairs:
@@ -244,7 +244,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
                          " in bed should have been filtered out already.")
                 """
         PotTransIntervals += RegionsToPull
-    PotTransIntervals = sorted(PotTransIntervals, key=itemgetter(1))
+    PotTransIntervals = sorted(PotTransIntervals, key=operator.itemgetter(1))
     MergedPTIs = []
     for pti in PotTransIntervals:
         if("workingPTI" not in locals()):
@@ -302,7 +302,7 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
            "ly: {}".format(len(intervalList)))
         pl("intervalList repr: {}".format(repr(intervalList)))
         PotTransIntervals += intervalList
-    PotTransIntervals = sorted(PotTransIntervals, key=itemgetter(1))
+    PotTransIntervals = sorted(PotTransIntervals, key=operator.itemgetter(1))
     pl("Number of intervals outside of bed for investigation: {}".format(
         len(PotTransIntervals)))
     pl("PotTransIntervals repr: {}".format(PotTransIntervals))
@@ -430,7 +430,6 @@ class TranslocationVCFLine:
                                                self.FormatStr]])
         return self.str
 
-#Made a dictionary for the parameters for these SV tags.
 
 def returnDefault():
     """
@@ -441,7 +440,6 @@ def returnDefault():
 
 SVParamDict = defaultdict(returnDefault)
 SVParamDict['LI'] = 100000
-SVParamDict['SBI'] = ["default", 100000]
 SVParamDict['MI'] = [500, 100000]
 SVParamDict['DRP'] = 0.5
 
@@ -523,42 +521,26 @@ def MI_SV_Tag_Condition(read1, read2, extraField=SVParamDict['MI']):
     return (abs(read1.tlen) >= extraField[0] and
             abs(read1.tlen) <= extraField[1])
 
+SNVParamDict = defaultdict()
+SNVTestDict = {}
+
 
 @cython.returns(cython.bint)
-def SBI_SV_Tag_Condition(read1, read2, extraField="default"):
+def DRP_SNV_Tag_Condition(read1, read2, extraField="default"):
     """
-    Gets reads where only one pair mapped inside the bed file
-    and the insert size is either above a threshold (default: 100000),
-    the reads are mapped to different contigs, or the reads are mapped
-    to the same strand.
-    extraField should contain a bedRef as formatted for ORB as field 0,
-    and field 1 an integer for the minimum insert size to be marked
-    as SBI.
+    Duplex Read Pair
+    Whether or not a read pair shares some minimum fraction of aligned
+    positions.
     """
-    try:
-        SVTags = read1.opt("SV").split(',')
-        if("ORB" in SVTags and ("LI" in SVTags or "MDC" in SVTags or
-                                "MSS" in SVTags)):
-            return True
-    except KeyError:
-        pass
-    bedRef = extraField[0]
-    if(bedRef == "default"):
-        raise ThisIsMadness("bedRef must be provded to run this test!")
-    from utilBMF.HTSUtils import ReadOverlapsBed as ORIB
-    if(sum([ORIB(read1, bedRef=bedRef), ORIB(read2, bedRef=bedRef)]) == 1):
-        if(read1.reference_id != read2.reference_id):
-            return True
-        if(abs(read1.tlen) > int(extraField[1])):
-            return True
-        if(sum([read1.is_reverse, read2.is_reverse]) != 1):
-            return True
-        return False
-    return False
+    if(extraField != "default"):
+        return ReadPairIsDuplex(read1, read2, minShare=extraField)
+    else:
+        return ReadPairIsDuplex(read1, read2)
 
-SVTestDict['SBI'] = SBI_SV_Tag_Condition
+SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
 
+@cython.returns(cython.bint)
 def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     """
     Duplex Shared Indel - if read1 and read2 share an insertion
@@ -566,34 +548,36 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     Not finished - the idea is to find read pairs where they share reference
     mappings and I/D characters in the cigar string.
     """
-    pass
+    return False
 
 # SVTestDict['DSI'] = lambda x: False
 
 
+SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))
+SVParamDict = dict(operator.add(SVParamDict.items(), SNVParamDict.items()))
+
+
 @cython.locals(SVR=cython.bint, maxInsert=cython.long)
-def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000):
+def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
+               testDict=SVTestDict, paramDict=SVParamDict):
     """
     Marks all SV tags on a pair of reads.
     """
-    global SVParamDict
-    global SVTestDict
     from utilBMF.HTSUtils import ParseBed
     if bedfile == "default":
         raise ThisIsMadness("Bed file required for marking SV tags.")
     bed = ParseBed(bedfile)
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
-    SVParamDict['SBI'] = [bed, maxInsert]
     FeatureList = sorted(SVTestDict.keys())
-    pl("FeatureList: {}".format(FeatureList))
     SVR = False
-    print("SVParamDict: {}".format(repr(SVParamDict)))
-    print("SVTestDict: {}".format(repr(SVTestDict)))
+    # print("SVParamDict: {}".format(repr(SVParamDict)))
+    # print("SVTestDict: {}".format(repr(SVTestDict)))
     for key in FeatureList:
-        if(SVTestDict[key](
-                read1, read2,
-                extraField=SVParamDict[key]) is True):
+        func = SVTestDict[key]
+        print("Beginning function with key %s " % key)
+        if(func(read1, read2,
+                extraField=SVParamDict[key])):
             SVR = True
             if(read1.has_tag("SV")):
                 read1.setTag("SV", read1.opt("SV") + "," + key)
@@ -641,7 +625,6 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     ORU for One Read Unmapped
     MSS for Mapped to Same Strand
     ORB for One Read In Bed Region
-    SBI for having ORB and one of either MDC or LI
     (Spanning Bed with Improper pair)
     NF for None Found
     """
@@ -651,11 +634,8 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         FullBam = '.'.join(inBAM.split('.')[0:-1]) + '.SVmarked.bam'
     from utilBMF.HTSUtils import ParseBed
     bed = ParseBed(bedfile)
-    global SVParamDict
-    global SVTestDict
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
-    SVParamDict['SBI'] = [bed, maxInsert]
     SVCountDict = {}
     for key in SVParamDict.keys():
         SVCountDict[key] = 0
@@ -771,9 +751,9 @@ def BkptSequenceIntraReads(reads):
                  "on the same contig.")
     # Separate reads based on which end of the translocation they're part of.
     negReads = sorted([read for read in reads if read.tlen < 0],
-                      key=attrgetter("pos"))
+                      key=operator.attrgetter("pos"))
     posReads = sorted([read for read in reads if read.tlen > 0],
-                      key=attrgetter("pos"))
+                      key=operator.attrgetter("pos"))
     negSeqs = [read.seq if read.is_reverse else
                Seq(read.seq).reverse_complement().seq for read in negReads]
     posSeqs = [read.seq if read.is_reverse else

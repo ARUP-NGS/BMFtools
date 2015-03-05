@@ -17,6 +17,7 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF.HTSUtils import Base85ToInt
+from utilBMF.HTSUtils import ToStr
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -69,10 +70,10 @@ class PRInfo:
                 [self.read.reference_start, self.read.reference_end])])
         self.query_position = PileupRead.query_position
         if("FA" in dict(PileupRead.alignment.tags).keys()):
-            self.FA_Array = np.ndarray(
+            self.FA_Array = np.array(
                 PileupRead.alignment.opt("FA").split(",")).astype(np.int64)
-            self.FractionAgreed = self.FA / float(self.FM)
             self.FA = self.FA_Array[self.query_position]
+            self.FractionAgreed = self.FA / float(self.FM)
         else:
             self.FA = None
             self.FractionAgreed = None
@@ -84,12 +85,12 @@ class PRInfo:
             PVString = PileupRead.alignment.opt("PV")
             if(p.match(PVString) is not None):
                 self.PV_Array = np.apply_along_axis(
-                    Base85ToInt, 0, np.ndarray(
+                    Base85ToInt, 0, np.array(
                         PVString.split(','),
                         dtype=np.int64))
                 self.PV = self.PV_Array[self.query_position]
             else:
-                self.PV_Array = np.ndarray(PVString.split(','), dtype=np.int64)
+                self.PV_Array = np.array(PVString.split(','), dtype=np.int64)
                 self.PV = self.PV_Array[self.query_position]
                 self.PVFrac = float(self.PV) / np.max(self.PV_Array)
         else:
@@ -174,19 +175,21 @@ class AlleleAggregateInfo:
             print("Alt alleles: {}".format([i.BaseCall for i in recList]))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
-        self.TotalReads = np.sum([rec.FM for rec in recList])
+        self.TotalReads = np.sum(list(map(operator.attrgetter("FM"), recList)))
         self.MergedReads = len(recList)
-        self.ReverseMergedReads = np.sum([rec.is_reverse for rec in recList])
+        self.ReverseMergedReads = np.sum(list(map(
+            operator.attrgetter("is_reverse"), recList)))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = np.sum([
-            rec.FM for rec in recList if rec.is_reverse])
+        self.ReverseTotalReads = np.sum(list(map(
+            operator.attrgetter("FM"),
+            [rec for rec in recList if rec.is_reverse])))
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         self.AveFamSize = float(self.TotalReads) / self.MergedReads
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        self.SumBQScore = sum([rec.BQ for rec in recList])
-        self.SumMQScore = sum([rec.MQ for rec in recList])
-        self.PAIRED = sum([rec.is_proper_pair is True for rec in recList]
-                          ) / float(len(recList))
+        self.SumBQScore = sum(list(map(operator.attrgetter("BQ"), recList)))
+        self.SumMQScore = sum(list(map(operator.attrgetter("MQ"), recList)))
+        self.ProperPairs = sum(list(map(operator.attrgetter("is_proper_pair"),
+                                        recList))) / float(len(recList))
         try:
             self.AveMQ = float(self.SumMQScore) / len(self.recList)
         except ZeroDivisionError:
@@ -200,10 +203,11 @@ class AlleleAggregateInfo:
         self.minMQ = minMQ
         self.minBQ = minBQ
         self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
-        self.MFractionAgreed = np.mean([r.FractionAgreed for r in recList])
+        self.MFractionAgreed = np.mean(list(map(
+            operator.attrgetter("FractionAgreed"),  recList)))
         self.minFrac = minFracAgreed
         self.minFA = minFA
-        self.MFA = np.mean([r.FA for r in recList])
+        self.MFA = np.mean(list(map(operator.attrgetter("FA"), recList)))
 
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = "->".join([consensus, self.ALT])
@@ -240,14 +244,17 @@ class AlleleAggregateInfo:
 
         # Check to see if a read pair supports a variant with both ends
         from collections import Counter
-        ReadNameCounter = Counter([r.read.query_name for r in recList])
+        ReadNameCounter = Counter(list(map(operator.attrgetter(
+            operator.attrgetter("read"), "query_name"), recList)))
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
-        query_positions = np.array([i.query_position for i in recList]).astype(float)
+        query_positions = np.array(list(map(
+            operator.attrgetter("query_position", recList)))).astype(float)
         self.MBP = np.mean(query_positions)
         self.BPSD = np.std(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = np.array([i.PVFrac for i in self.recList])
+        PVFArray = np.array(list(map(
+            operator.attrgetter("PVFrac"), self.recList)))
         self.MPF = np.mean(PVFArray)
         self.PFSD = np.std(PVFArray)
 
@@ -421,26 +428,26 @@ class PCInfo:
             for key in self.MergedAlleleDict:
                 self.MergedAlleleFreqDict[key] = 0.
                 self.TotalAlleleFreqDict[key] = 0.
-        self.MergedAlleleCountStr = "\t".join([
-            str(i) for i in [self.MergedAlleleDict["A"],
+        self.MergedAlleleCountStr = "\t".join(
+            list(map(ToStr, [self.MergedAlleleDict["A"],
                              self.MergedAlleleDict["C"],
                              self.MergedAlleleDict["G"],
-                             self.MergedAlleleDict["T"]]])
-        self.TotalAlleleCountStr = "\t".join([
-            str(i) for i in [self.TotalAlleleDict["A"],
+                             self.MergedAlleleDict["T"]])))
+        self.TotalAlleleCountStr = "\t".join(
+            list(map(ToStr, [self.TotalAlleleDict["A"],
                              self.TotalAlleleDict["C"],
                              self.TotalAlleleDict["G"],
-                             self.TotalAlleleDict["T"]]])
-        self.MergedAlleleFreqStr = "\t".join([
-            str(i) for i in [self.MergedAlleleFreqDict["A"],
+                             self.TotalAlleleDict["T"]])))
+        self.MergedAlleleFreqStr = "\t".join(
+            list(map(ToStr, [self.MergedAlleleFreqDict["A"],
                              self.MergedAlleleFreqDict["C"],
                              self.MergedAlleleFreqDict["G"],
-                             self.MergedAlleleFreqDict["T"]]])
-        self.TotalAlleleFreqStr = "\t".join([
-            str(i) for i in [self.TotalAlleleFreqDict["A"],
+                             self.MergedAlleleFreqDict["T"]])))
+        self.TotalAlleleFreqStr = "\t".join(
+            list(map(ToStr, [self.TotalAlleleFreqDict["A"],
                              self.TotalAlleleFreqDict["C"],
                              self.TotalAlleleFreqDict["G"],
-                             self.TotalAlleleFreqDict["T"]]])
+                             self.TotalAlleleFreqDict["T"]])))
         # MergedStrandednessRatioDict is the fraction of reverse reads
         # supporting an alternate allele.
         # E.g., if 5 support the alt, but 2 are mapped to the reverse
@@ -483,8 +490,8 @@ class PCInfo:
                       "Family Size\t"
                       "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
-            outStr += "\t".join([
-                str(i) for i in [self.contig,
+            outStr += "\t".join(
+                list(map(ToStr, [self.contig,
                                  self.pos,
                                  self.consensus,
                                  alt.ALT,
@@ -502,7 +509,7 @@ class PCInfo:
                                  alt.SumBQScore,
                                  alt.AveBQ,
                                  alt.SumMQScore,
-                                 alt.AveMQ]]) + "\n"
+                                 alt.AveMQ]))) + "\n"
         self.str = outStr
         return self.str
 

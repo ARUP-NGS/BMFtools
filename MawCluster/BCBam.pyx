@@ -156,6 +156,8 @@ def pairedBarcodeTagging(
         outBAMFile="default",
         suppBam="default",
         bedfile="default"):
+    from MawCluster.SVUtils import SVParamDict
+    from MawCluster.SVUtils import SVTestDict
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -213,9 +215,12 @@ def pairedBarcodeTagging(
             read1bam.setTag("FA", descDict["FA"])
             read2bam.setTag("FA", descDict["FA"])
         except KeyError:
+            raise ThisIsMadness("Currently, FA tags are required.")
             # print("Number of reads agreeing per position mssing. Oh well.")
             pass
-        read1bam, read2bam = MarkSVTags(read1bam, read2bam, bedfile=bedfile)
+        read1bam, read2bam = MarkSVTags(read1bam, read2bam, bedfile=bedfile,
+                                        testDict=SVTestDict,
+                                        paramDict=SVParamDict)
         outBAM.write(read1bam)
         outBAM.write(read2bam)
     suppBAM.close()

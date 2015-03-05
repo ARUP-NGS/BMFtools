@@ -9,14 +9,14 @@ except ImportError:
 from Cython.Build import cythonize
 
 ext = cythonize('*/*.pyx') + cythonize('*/*.py')
-"""
+
 # Insist on -O3 optimization
 for x in ext:
     if(x.extra_compile_args == []):
         x.extra_compile_args = ["-O3"]
     else:
         x.extra_compile_args += ["-O3"]
-"""
+
 
 config = {
     'description': '',
