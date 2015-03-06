@@ -1,5 +1,5 @@
 #gatk=/yggdrasil/codeRepository/GenomeAnalysisTK-1.4/GenomeAnalysisTK.jar
-#abrapath=/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar
+abrapath=/mounts/bin/abra-0.86-SNAPSHOT-jar-with-dependencies.jar
 bowtie=/mounts/bin/bowtie
 ref=/mounts/genome/human_g1k_v37.fasta
 picardDir=/mounts/bin/picard-tools

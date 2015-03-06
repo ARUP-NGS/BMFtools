@@ -39,6 +39,8 @@ def SNVCrawler(inBAM,
        ", FILTERTags=\"{}\", INFOTags=\"{}\"".format(FILTERTags, INFOTags) +
        ", FORMATTags=\"{}\", writeHeader={}".format(FORMATTags, writeHeader) +
        ", minFracAgreed={}, minFA={})".format(minFracAgreed, minFA))
+    if(bed != "default"):
+        pl("Bed file used: {}".format(bed))
     if(isinstance(bed, str) and bed != "default"):
         bed = HTSUtils.ParseBed(bed)
     if(OutVCF == "default"):
@@ -57,6 +59,7 @@ def SNVCrawler(inBAM,
 
     if(bed != "default"):
         for line in bed:
+            pl("Combing through bed region {}".format(line), level=logging.DEBUG)
             puIterator = inHandle.pileup(line[0], line[1],
                                          max_depth=30000,
                                          multiple_iterators=True)
@@ -74,6 +77,7 @@ def SNVCrawler(inBAM,
                     continue
                 '''
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
+                pl("Position for pileup (0-based): {}".format(PC.pos), level=logging.DEBUG)
                 if(line[2] <= PC.pos):
                     break
                 VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
@@ -84,15 +88,28 @@ def SNVCrawler(inBAM,
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
-        puIterator = inHandle.pileup(max_depth=30000)
+        lc = -666
+        puIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
         while True:
             try:
-                PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)
+                lc = 0
+                # Last command - 0 means iterator was where it crashed.
+                PCpysam = puIterator.next()
+                lc = 1
+                # Last command - 0 means the PCInfo call was where it crashed
+                PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ)
             except ValueError:
-                pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"),
+                pl("ValueError just got thrown!",
                    level=logging.DEBUG)
-                continue
+                if(lc == 0):
+                    pl("Iteration step is what failed.")
+                else:
+                    pl("PCInfo step failed.")
+                if("PC" in locals()):
+                    pl("Position (0-based) of last successful "
+                       "pileup: {}".format(PC.pos))
+                raise ThisIsMadness("Trying to figure out what's going on in "
+                                    "pysam's iterations.")
             except StopIteration:
                 break
             # TODO: Check to see if it speeds up to not assign and only write.

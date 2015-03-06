@@ -1,5 +1,5 @@
-#cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
-#cython: cdivision=True, cdivision_warnings=True, profile=True
+# cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True, cdivision_warnings=True, profile=True
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -40,8 +40,8 @@ from utilBMF.HTSUtils import PipedShellCall
 from utilBMF.HTSUtils import ph2chr
 from utilBMF.HTSUtils import ph2chrDict
 from utilBMF.HTSUtils import chr2ph
-from utilBMF.HTSUtils import Base85ToInt
-from utilBMF.HTSUtils import Int2Base85
+from utilBMF.HTSUtils import Base64ToInt
+from utilBMF.HTSUtils import Int2Base64
 from utilBMF.HTSUtils import ToStr
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
@@ -62,7 +62,7 @@ def dAccess(x):
     return letterNumDict[x]
 dAccess = np.vectorize(dAccess)
 
-# Int2Base85 = np.vectorize(Int2Base85)
+# Int2Base64 = np.vectorize(Int2Base64)
 
 
 def chr2phFunc(x):
@@ -247,7 +247,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
             if(compressB85 is True):
                 TagString = operator.add(
                     operator.add(TagString, " #G~PV="),
-                    ",".join(map(Int2Base85, phredQuals)))
+                    ",".join(map(Int2Base64, phredQuals)))
             else:
                 TagString = operator.add(
                     operator.add(TagString, " #G~PV="),
@@ -405,7 +405,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
         if(compressB85 is True):
             if(np.any(np.greater(phredQuals, 93))):
                 PVString = operator.add(" #G~PV=",
-                                        ",".join(map(Int2Base85,
+                                        ",".join(map(Int2Base64,
                                                           phredQuals)))
                 phredQuals[phredQuals > 93] = 93
                 phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])

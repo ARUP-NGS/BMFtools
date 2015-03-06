@@ -55,7 +55,8 @@ class SNVCFLine:
                  REF="default",
                  reverseStrandFraction=-1.0,
                  requireDuplex=True, minDuplexPairs=0,
-                 minFracAgreedForFilter=0.666):
+                 minFracAgreedForFilter=0.666,
+                 minFA=0):
         if(REF != "default"):
             self.REF = REF
         if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
@@ -120,14 +121,14 @@ class SNVCFLine:
                            / float(AlleleAggregateObject.DOCTotal),
                            "BS": AlleleAggregateObject.BothStrandSupport,
                            "NSS": self.NumStartStops,
-                           "MBP": AlleleAggregateInfo.MeanBasePosition,
-                           "BPSD": AlleleAggregateInfo.BasePositionSD,
+                           "MBP": AlleleAggregateObject.MBP,
+                           "BPSD": AlleleAggregateObject.BPSD,
                            "MNCS": minNumSS, "MDP": minDuplexPairs,
                            "MFRAC": AlleleAggregateObject.MFractionAgreed,
-                           "MINFRACCALL": AlleleAggregateObject.MinFrac,
+                           "MINFRACCALL": AlleleAggregateObject.minFrac,
                            "MINFRACFILTER": minFracAgreedForFilter,
                            "MFA": AlleleAggregateObject.MFA,
-                           "MINFA": AlleleAggregateObject.MinFA,
+                           "MINFA": AlleleAggregateObject.minFA,
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
                            "MMQ": AlleleAggregateObject.minMQ,
@@ -249,7 +250,8 @@ class VCFPos:
             FailedMQReads=PCInfoObject.FailedMQReads,
             REF=self.REF, requireDuplex=self.requireDuplex,
             reverseStrandFraction=self.reverseStrandFraction,
-            minDuplexPairs=minDuplexPairs, minFracAgreed=minFracAgreed,
+            minDuplexPairs=minDuplexPairs,
+            minFracAgreedForFilter=minFracAgreed,
             minFA=minFA)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus

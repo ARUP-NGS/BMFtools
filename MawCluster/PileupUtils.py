@@ -16,12 +16,10 @@ import numconv
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import Base85ToInt
+from utilBMF.HTSUtils import Base64ToInt
 from utilBMF.HTSUtils import ToStr
 from utilBMF import HTSUtils
 import utilBMF
-
-Base85ToInt = np.vectorize(Base85ToInt)
 
 """
 Contains various utilities for working with pileup generators
@@ -71,7 +69,7 @@ class PRInfo:
         self.query_position = PileupRead.query_position
         if("FA" in dict(PileupRead.alignment.tags).keys()):
             self.FA_Array = np.array(
-                PileupRead.alignment.opt("FA").split(",")).astype(np.int64)
+                PileupRead.alignment.opt("FA").split(",")).astype(int)
             self.FA = self.FA_Array[self.query_position]
             self.FractionAgreed = self.FA / float(self.FM)
         else:
@@ -79,24 +77,26 @@ class PRInfo:
             self.FractionAgreed = None
             self.FA_Array = None
         p = re.compile("[^0-9,]")
+        self.PV = None
+        self.PV_Array = None
+        self.PVFrac = None
         if("PV" in dict(PileupRead.alignment.tags).keys()):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = PileupRead.alignment.opt("PV")
             if(p.match(PVString) is not None):
-                self.PV_Array = np.apply_along_axis(
-                    Base85ToInt, 0, np.array(
-                        PVString.split(','),
-                        dtype=np.int64))
-                self.PV = self.PV_Array[self.query_position]
+                try:
+                    self.PV_Array = map(Base64ToInt, PVString.split(','))
+                    self.PV = self.PV_Array[self.query_position]
+                except ValueError:
+                    self.PV_Array = None
+                    self.PV = None
+                    self.PVFrac = None
+                    # Don't sweat it.
             else:
                 self.PV_Array = np.array(PVString.split(','), dtype=np.int64)
                 self.PV = self.PV_Array[self.query_position]
                 self.PVFrac = float(self.PV) / np.max(self.PV_Array)
-        else:
-            self.PV = None
-            self.PV_Array = None
-            self.PVFrac = None
 
 
 def is_reverse_to_str(boolean):
@@ -162,11 +162,20 @@ class AlleleAggregateInfo:
         if(totalSize == "default"):
             raise ThisIsMadness(("mergedSize must be provided: number of "
                                  "PRInfo at given position."))
-        # Check that all alt alleles are identical
         self.recList = [rec for rec in recList
-                        if rec.MQ >= minMQ and rec.BQ >= minBQ
-                        and rec.FractionAgreed >= minFracAgreed
-                        and rec.FA >= minFA and rec.PVFrac >= minPVFrac]
+                        if rec.MQ >= minMQ and rec.BQ >= minBQ]
+        try:
+            if("PVFrac" in dir(self.recList[0])):
+                self.recList = [rec for rec in self.recList
+                                if rec.PVFrac >= minPVFrac]
+            if("FractionAgreed" in dir(self.recList[0])):
+                self.recList = [rec for rec in self.recList
+                                if rec.FractionAgreed >= minFracAgreed]
+            if("FA" in dir(self.recList[0])):
+                self.recList = [rec for rec in self.recList if rec.FA >= minFA]
+        except IndexError:
+            self.recList = []
+        # Check that all alt alleles are identical
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -188,8 +197,6 @@ class AlleleAggregateInfo:
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum(map(operator.attrgetter("BQ"), recList))
         self.SumMQScore = sum(map(operator.attrgetter("MQ"), recList))
-        self.ProperPairs = sum(map(operator.attrgetter("is_proper_pair"),
-                                        recList)) / float(len(recList))
         try:
             self.AveMQ = float(self.SumMQScore) / len(self.recList)
         except ZeroDivisionError:
@@ -202,7 +209,10 @@ class AlleleAggregateInfo:
         self.consensus = consensus
         self.minMQ = minMQ
         self.minBQ = minBQ
-        self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
+        try:
+            self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
+        except ZeroDivisionError:
+            self.reverseStrandFraction = -1
         self.MFractionAgreed = np.mean(map(
             operator.attrgetter("FractionAgreed"),  recList))
         self.minFrac = minFracAgreed
@@ -231,8 +241,12 @@ class AlleleAggregateInfo:
             [rec.FM for rec in self.recList if rec.is_reverse is True])
         self.StrandCountsTotalDict["forward"] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is False])
-        self.TotalAlleleFrequency = self.TotalReads / float(totalSize)
-        self.MergedAlleleFrequency = self.MergedReads / float(mergedSize)
+        try:
+            self.TotalAlleleFrequency = self.TotalReads / float(totalSize)
+            self.MergedAlleleFrequency = self.MergedReads / float(mergedSize)
+        except ZeroDivisionError:
+            self.TotalAlleleFrequency = -1.0
+            self.MergedAlleleFrequency = -1.0
         if(self.ReverseMergedReads != 0 and self.ForwardMergedReads != 0):
             self.BothStrandSupport = True
         else:
@@ -244,12 +258,13 @@ class AlleleAggregateInfo:
 
         # Check to see if a read pair supports a variant with both ends
         from collections import Counter
-        ReadNameCounter = Counter(map(operator.attrgetter(
-            operator.attrgetter("read"), "query_name"), recList))
+        ReadNameCounter = Counter([r.read.query_name for r in recList])
+        ReadNameCounter = Counter(map(operator.attrgetter("query_name"),
+                                      [r.read for r in recList]))
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
         query_positions = np.array(map(
-            operator.attrgetter("query_position", recList))).astype(float)
+            operator.attrgetter("query_position"), recList)).astype(float)
         self.MBP = np.mean(query_positions)
         self.BPSD = np.std(query_positions)
         self.minPVFrac = minPVFrac
@@ -598,18 +613,9 @@ def CustomPileupFullGenome(inputBAM,
     TransHandle = open(TransitionTable, "w")
     StrandedTransHandle = open(StrandedTTable, "w")
     FirstLine = True
-    pileupIterator = bamHandle.pileup(max_depth=30000)
-    while True:
-        try:
-            pileupColumn = pileupIterator.next()
-        except ValueError:
-            pl(("Pysam sometimes runs into errors during iteration which"
-                " are not handled with any elegance. Continuing!"),
-               level=logging.DEBUG)
-            continue
-        except StopIteration:
-            # pl("Finished iterations.")
-            break
+    pileupIterator = bamHandle.pileup(max_depth=30000, multiple_iterators=True)
+    p = next(pileupIterator)
+    for pileupColumn in p.pileups:
         NumProcessed += 1
         if((NumProcessed) % progRepInterval == 0):
             pl("Number of positions processed: {}".format(
@@ -746,17 +752,8 @@ def CustomPileupToTsv(inputBAM,
     for line in bedlines:
         pileupIterator = bamHandle.pileup(line[0], line[1], line[2],
                                           max_depth=30000)
-        while True:
-            try:
-                pileupColumn = pileupIterator.next()
-            except ValueError:
-                pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"),
-                   level=logging.DEBUG)
-                continue
-            except StopIteration:
-                # pl("Finished iterations.")
-                break
+        p = next(pileupIterator)
+        for pileupColumn in p.pileups:
             NumProcessed += 1
             if((NumProcessed) % progRepInterval == 0):
                 pl("Number of positions processed: {}".format(
@@ -912,17 +909,8 @@ def AlleleFrequenciesByBase(inputBAM,
                                ]) + "\n")
     if(bedfile == "default"):
         pileupIterator = inHandle.pileup(max_depth=30000)
-        while True:
-            try:
-                pileup = pileupIterator.next()
-            except ValueError:
-                pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"),
-                   level=logging.DEBUG)
-                continue
-            except StopIteration:
-                # pl("Finished iterations.")
-                break
+        p = next(pileupIterator)
+        for pileup in p.pileups:
             NumProcessed += 1
             if(NumProcessed % progRepInterval == 0):
                 pl("Number of base positions processed: {}".format(
@@ -936,16 +924,8 @@ def AlleleFrequenciesByBase(inputBAM,
             puIterator = inHandle.pileup(reference=line[0], start=line[1],
                                          end=line[2],
                                          max_depth=30000)
-            while True:
-                try:
-                    pileup = puIterator.next()
-                except ValueError:
-                    pl(("Pysam sometimes runs into errors during iteration "
-                        "which are not handled well. Continuing!"))
-                    continue
-                except StopIteration:
-                    # pl("Finished iterations.")
-                    break
+            p = next(puIterator)
+            for pileup in p.pileups:
                 NumProcessed += 1
                 if(NumProcessed % progRepInterval == 0):
                     pl("Number of base positions processed: {}".format(
@@ -988,16 +968,9 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
     pl("Beginning PileupToBed.")
     pileupIterator = inHandle.pileup(max_depth=30000)
     ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
-    while True:
-        try:
-            PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
-        except ValueError:
-            pl(("Pysam sometimes runs into errors during iteration which"
-                " are not handled with any elegance. Continuing!"))
-            continue
-        except StopIteration:
-            # pl("Finished iterations.")
-            break
+    p = next(pileupIterator)
+    for PC in p.pileups:
+        PC = PCInfo(PC)
         if("Interval" not in locals()):
             if(PC.MergedReads >= mincov):
                 Interval = PileupInterval(contig=PC.PCol.reference_id,
@@ -1088,17 +1061,9 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                                          line[1],
                                          line[2],
                                          max_depth=30000)
-        while True:
-            try:
-                PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
-            except ValueError:
-                pl(("Pysam sometimes runs into errors during iteration which"
-                    " are not handled with any elegance. Continuing!"),
-                   level=logging.DEBUG)
-                continue
-            except StopIteration:
-                # pl("Finished iterations.")
-                break
+        p = next(pileupIterator)
+        for PC in p.pileups:
+            PC = PCInfo(PC)
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         outHandle.write(
@@ -1144,25 +1109,16 @@ def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
     outHandle.write("\t".join(["#Chr", "Start", "End",
                                "Number Of Merged Mapped Bases",
                                "Number of Unmerged Mapped Bases"]) + "\n")
-    pileupIterator = inHandle.pileup(max_depth=30000)
-    while True:
-        try:
-            PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
-            if HTSUtils.PosContainedInBed(PC.contig, PC.pos, bedLines):
-                continue
-            outHandle.write("\t".join(
-                [str(i)
-                 for i in
-                 [PC.contig, PC.pos, PC.pos + 1, PC.MergedReads,
-                  PC.TotalReads]]) + "\n")
-        except ValueError:
-            pl(("Pysam sometimes runs into errors during iteration which"
-                " are not handled with any elegance. Continuing!"),
-               level=logging.DEBUG)
+    pileupIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
+    p = next(pileupIterator)
+    for PC in p.pileups:
+        PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
+        if HTSUtils.PosContainedInBed(PC.contig, PC.pos, bedLines):
             continue
-        except StopIteration:
-            # pl("Finished iterations.")
-            break
+        outHandle.write("\t".join(
+            [str(i)
+             for i in [PC.contig, PC.pos, PC.pos + 1,
+                       PC.MergedReads, PC.TotalReads]]) + "\n")
     inHandle.close()
     outHandle.close()
     pass

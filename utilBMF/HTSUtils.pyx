@@ -1112,13 +1112,9 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     print("MergedInts={}".format(MergedInts))
     return MergedInts
 
-
-@cython.returns(np.int64_t)
-def Base85ToInt(x):
-    """
-    Converts base 85 integers back to base 10 for helping variant calls.
-    """
-    return numconv.NumConv(85).str2int(x)
+# Storing the numconv functions for easy application.
+Base64ToInt = numconv.NumConv(64).str2int
+Int2Base64 = numconv.NumConv(64).int2str
 
 ph2chrDict = {}
 for i in range(100):
@@ -1142,10 +1138,3 @@ def ph2chr(x):
     """
     return chr(x + 33) if x <= 93 else "~"
 
-
-@cython.locals(x=np.int64_t)
-def Int2Base85(x):
-    """
-    Converts a base 10 number to a base 85 string for better compression.
-    """
-    return numconv.NumConv(85).int2str(x)
