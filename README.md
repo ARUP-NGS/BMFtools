@@ -182,3 +182,9 @@ Meaning peak performance at 100.
 1. TODO, lite:
     1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **
 
+#Known Issues
+1. VCF
+    1. NSS INFO field does not work.
+    2. MQM, MPF, and MQB have nonsense values.
+    3. Need to test NDPS
+    4. Strangely-named empty files...???

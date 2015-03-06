@@ -38,6 +38,7 @@ class PRInfo:
     """
 
     def __init__(self, PileupRead):
+        self.Pass = True
         try:
             self.FM = int(PileupRead.alignment.opt("FM"))
         except KeyError:
@@ -76,7 +77,7 @@ class PRInfo:
             self.FA = None
             self.FractionAgreed = None
             self.FA_Array = None
-        p = re.compile("[^0-9,]")
+        p = re.compile("[^0-9,]+")
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
@@ -84,17 +85,34 @@ class PRInfo:
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = PileupRead.alignment.opt("PV")
-            if(p.match(PVString) is not None):
+            if(p.search(PVString) is not None):
                 try:
                     self.PV_Array = map(Base64ToInt, PVString.split(','))
-                    self.PV = self.PV_Array[self.query_position]
+                    try:
+                        assert len(self.PV_Array) == self.read.query_length
+                    except AssertionError:
+                        self.Pass = False
+                    try:
+                        self.PV = self.PV_Array[self.query_position]
+                    except IndexError:
+                        pl("PVString: {}".format(PVString), level=logging.DEBUG)
+                        pl("Len PV Array: {}".format(len(self.PV_Array)), level=logging.DEBUG)
+                        pl("QueryPos: {}".format(self.query_position), level=logging.DEBUG)
+                        pl("read.name {}.".format(self.read.qname), level=logging.DEBUG)
+                        pl("NOTE! Check the debug log for information"
+                           " regarding potential corruption.")
                 except ValueError:
                     self.PV_Array = None
                     self.PV = None
                     self.PVFrac = None
                     # Don't sweat it.
             else:
-                self.PV_Array = np.array(PVString.split(','), dtype=np.int64)
+                try:
+                    self.PV_Array = np.array(PVString.split(','), dtype=np.int64)
+                except ValueError:
+                    print("PVString = %s" % PVString)
+                    raise ValueError("This PV String should only "
+                                     "have digits and commas... ???")
                 self.PV = self.PV_Array[self.query_position]
                 self.PVFrac = float(self.PV) / np.max(self.PV_Array)
 
@@ -318,6 +336,7 @@ class PCInfo:
             if(pileupRead.alignment.mapq >= self.minMQ) and
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
+        self.Records = [rec for rec in self.Records if rec.Pass is True]
         try:
             self.reverseStrandFraction = len(
                 [i for i in self.Records if i.read.is_reverse is
