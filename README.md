@@ -1,15 +1,22 @@
 #BMFTools
-##By Reference: Barcoded Molecular Families
-##By Value: Barcode Manipulation and Factorization
+###Summary
+>BMFTools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
+
+###What is BMF?
+>BMF is a promiscuous acronym with multiple approriate meanings. Primarily:
+
+|By __Reference__| By __Value__ | 
+|---------------|-----------|
+|_**B**arcoded **M**olecular **F**amilies_ | _**B**arcode **M**anipulation and **F**actorization_ |
 ######[Cf. Nicklaus Wirth]
+
 ===================
 
-Suite of tools for barcoded reads taking advantage of PCR redundancy for error reduction/elimination.
 
 ## Installation
 
 Run:
-```
+```python
 python setup.py install
 ```
 You might have an error claiming that README.md is not in dist/. If necessary, copy that file from the distribution base to dist.
@@ -18,21 +25,21 @@ You might have an error claiming that README.md is not in dist/. If necessary, c
 
 To run the main program, call the main.py function after installation, or, if installed, run the executable BMFMain.
 
-```
+```python
 python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
-```
+```python
 BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
 To use bmftools subcommands, check instructions by executing the following:
 
-```
+```python
 bmftools --help
 ```
 
-```
+```python
 bmftools <subcommand> --help
 ```
 
