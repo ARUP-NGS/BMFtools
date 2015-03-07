@@ -987,9 +987,12 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
     pl("Beginning PileupToBed.")
     pileupIterator = inHandle.pileup(max_depth=30000)
     ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
-    p = next(pileupIterator)
-    for PC in p.pileups:
-        PC = PCInfo(PC)
+    while True:
+        try:
+            p = next(pileupIterator)
+        except StopIteration:
+            pl("Stopping iterations.")
+        PC = PCInfo(p)
         if("Interval" not in locals()):
             if(PC.MergedReads >= mincov):
                 Interval = PileupInterval(contig=PC.PCol.reference_id,
@@ -1080,9 +1083,13 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                                          line[1],
                                          line[2],
                                          max_depth=30000)
-        p = next(pileupIterator)
-        for PC in p.pileups:
-            PC = PCInfo(PC)
+        while True:
+            try:
+                p = next(pileupIterator)
+            except StopIteration:
+                pl("Stopping iteration for bed line: {}".format(line),
+                   level=logging.DEBUG)
+            PC = PCInfo(p)
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         outHandle.write(
@@ -1129,9 +1136,12 @@ def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                                "Number Of Merged Mapped Bases",
                                "Number of Unmerged Mapped Bases"]) + "\n")
     pileupIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
-    p = next(pileupIterator)
-    for PC in p.pileups:
-        PC = PCInfo(pileupIterator.next(), minMQ=minMQ, minBQ=minBQ)
+    while True:
+        try:
+            p = next(pileupIterator)
+        except StopIteration:
+            pl("Finished iterations. (CalcWithoutBedCoverage)")
+        PC = PCInfo(p, minMQ=minMQ, minBQ=minBQ)
         if HTSUtils.PosContainedInBed(PC.contig, PC.pos, bedLines):
             continue
         outHandle.write("\t".join(
