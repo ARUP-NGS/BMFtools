@@ -1138,3 +1138,52 @@ def ph2chr(x):
     """
     return chr(x + 33) if x <= 93 else "~"
 
+
+def CigarToQueryIndices(read):
+    """
+    Returns a list of lists of positions within the read.
+    sublist[0] is the cigarOp, sublist[1] is the list of positions.
+    """
+    assert isinstance(read, pysam.calignmentfile.AlignedSegment)
+    if(read.cigar is None):
+        raise ThisIsMadness("I can't get query indices if there's no cigar string.")
+    tuples = []
+    c = [i[1] for i in read.cigar]
+    cumSum = [sum([c[:i] for i in range(read.query_length)])]
+    for n, entry in enumerate(read.cigar):
+        if n == 0:
+            tuples += [entry[0], range(entry[1])]
+        else:
+            tuples += [entry[0], range(cumSum[n - 1], cumSum[n])]
+    return tuples
+
+
+@cython.locals(cigarOp=cython.int)
+def GetQueryIndexForCigarOperation(read, cigarOp=-1):
+    """
+    Returns a list of lists of positions within each read
+    which match the given cigarOp. The cigarOp must be an integer.
+    See pysam's documentation for details.
+    """
+    if(read.cigar is None):
+        raise ThisIsMadness("I can't get query indices if there's no cigar string.")
+    try:
+        assert(cigarOp in range(9))
+    except AssertionError:
+        raise ThisIsMadness("Please read the doc string for "
+                            "GetQueryIndexForCigarOperation. Invalid cigarOp")
+    assert isinstance(read, pysam.calignmentfile.AlignedSegment)
+    # Get positions in read which match cigar operation.
+    QueryCigar = CigarToQueryIndices(read)
+    print(repr(QueryCigar))
+    filtCigar = [i for i in QueryCigar if i[0] == cigarOp]
+    print(repr(filtCigar))
+    return filtCigar
+
+
+def GetDeletedCoordinates(read):
+    """
+    Returns a list of integers of genomic coordinates for deleted bases.
+    """
+    assert isinstance(read, pysam.calignmentfile.AlignedSegment)
+    return [i[1] for i in read.get_aligned_pairs() if i[0] is None]

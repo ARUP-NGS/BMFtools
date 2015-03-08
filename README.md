@@ -47,12 +47,19 @@ bmftools <subcommand> --help
 
 Required python packages: Biopython, pysam, pudb
 
+cutadapt is required for adapter trimming.
+
+numconv is required for conversion to base 64 for PV tags, but that compression is optional.
+
 ### Required external tools:
 bwa (mem or aln, depending on needs.)
 
-### Optional, but recommended:
+#### Adapter Trimming
+Cutadapt
+
 #### Indel Realigners
-Assembly Based Realigner (abra)
+Assembly Based Realigner (abra) (requires bwa)
+
 GATK IndelRealigner
 
 
@@ -67,7 +74,7 @@ BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
-SNV | Tags relevant to SNV calling assigned to BAM records. | Comma-separated list of tags. Regex: [A-Z,]+ |
+SNV | Tags relevant to SNV calling assigned to BAM records. Currently lumped in with SV due to the fact that many are relevant to both.| Comma-separated list of tags. Regex: [A-Z,]+ |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers in base 85 encoding. Regex: ASCII|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
@@ -86,6 +93,8 @@ ORB | Only one read in pair mapped to Expected Bed Region |
 ORU | One Read Unmapped |
 ORS | One Read Is Soft-Clipped |
 DRP | Duplex Read Pair |
+DSI | Duplex Supported Insertion |
+DSD | Duplex Supported Deletion |
 NF | No SV relevance found. |
 
 
@@ -105,7 +114,7 @@ Using a homing sequence as input for consolidating families of PCR duplicates.
 Each line has a set of keys and values. See conf/config.txt for an example.
 Most options are available for command-line as well. If an option is set in both a config file and on the command-line, the command-line option clobbers the config setting.
 
-#Changes in BMFTools v0.0.5:
+1. Changes in BMFTools v0.0.5:
     1. Removal of standard BMFMain in lieu of the config-based one.
     2. Working intrachromosomal translocation detection. (Fast!)
     3. Addition of >93 q scores to the read description. This isn't currently used by the variant callers, but it's information which could be used. It does significantly affect the speed of the bmftools dmp step, however.
@@ -139,10 +148,11 @@ Most options are available for command-line as well. If an option is set in both
     1. The most import thing is that all of the new features I've been adding finally are debugged and workable.
     1. Performance improvements throughout, but perhaps not entirely relevant.
 
-#Settings Recommendations
+1. Settings Recommendations
 
-    1. The "readPairsPerWrite" parameter can provide great speed improvements. For my workstation, I have what looks like the following:
-
+    1. The "readPairsPerWrite" parameter can provide great speed improvements.
+        1. For my workstation (64GB RAM, 16 threads), the following table indicates that 100 gives me peak performance.
+        2. For my cert server (192GB RAM, 24 threads), it looks like 10 might give me peak performance, but more rigorous tests are underway.
 |readPairsPerWrite | time | 
 |------|--------------|
 | 10 | 867 msec per loop |
@@ -152,20 +162,17 @@ Most options are available for command-line as well. If an option is set in both
 |250| 898 msec per loop | 
 |500 | 1830 msec per loop |
 
-Meaning peak performance at 100.
 
 
-#TODO:
+#TODO (maybe):
 1. SNV:
     1. Consider haplotyping by leveraging reads covering multiple SNPs.
     2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
-    3. (Minor) Consider additional SNV tags.
 2. Indels:
     1. Work on smaller indels directly in BAM with cigar strings.
     2. Indel realignment might perform better if the "normal" reads are removed, IE, properly-mapped reads without I, D, or S in it.
     3. Try calling freebayes at high ploidy for indels
     4. Try calling scalpel with indel irrelevant reads as normal and relevant reads as abnormal.
-    5. Write the DSI SV BAM tag function.
 3. SV:
     1. Finish consensus sequence for intrachromosomal.
     2. Write SV tags into a function, call that function during the standard FM/FP/BS tagging.
@@ -174,10 +181,8 @@ Meaning peak performance at 100.
 4. Performance:
     1. Continue to implement "map" function for performance gains, especially in BCFastq
 
-5. TODO Backlog/Mostly finished:
-    1. Take advantage of PV tags further (done to some extent - moving to backlog)
+5. TODO Backlog/Mostly finished/Maybe don't care:
     2. Instruct pysam to make tags of a specific type.
-    3. Note: Something seems wrong with the FA calculation.
 
 1. TODO, lite:
     1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **
@@ -187,4 +192,4 @@ Meaning peak performance at 100.
     1. NSS INFO field does not work.
     2. MQM, MPF, and MQB have nonsense values.
     3. Need to test NDPS
-    4. Strangely-named empty files...???
+    3. Something seems wrong with the FA calculation. The list comprehension is not providing accurate numbers.

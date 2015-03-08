@@ -6,6 +6,7 @@ from utilBMF.HTSUtils import SplitSCRead
 from utilBMF.HTSUtils import is_read_softclipped
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from utilBMF.HTSUtils import ReadPair
+from utilBMF.HTSUtils import GetInsertedCoordinates
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -542,16 +543,51 @@ SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
 
 @cython.returns(cython.bint)
-def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
+def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
     """
-    Duplex Shared Indel - if read1 and read2 share an insertion
-    and/or deletion at the same genomic coordinates.
-    Not finished - the idea is to find read pairs where they share reference
-    mappings and I/D characters in the cigar string.
+    Duplex Shared Deletion - if read1 and read2 share a deletion
+    at the same genomic coordinates.
     """
+    if(read1.cigarstring is None or read2.cigarstring is None):
+        return False
+    if(read1.reference_id != read2.reference_id):
+        return False
+    if("D" in read1.cigarstring and "D" in read2.cigarstring):
+        if(GetDeletedCoordinates(read1) == GetDeletedCoordinates(read2)):
+            return True
     return False
 
-# SVTestDict['DSI'] = lambda x: False
+SVTestDict['DSD'] = DSD_SV_Tag_Condition
+
+
+@cython.returns(cython.bint)
+def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
+    """
+    Duplex Shared Insertion - if read1 and read2 share an insertion
+    at the same genomic coordinates.
+    """
+    if("I" not in read1Pos.cigarstring or "I" not in read2Pos.cigarstring):
+        return False
+    read1Pos = read1.get_aligned_pairs()
+    read2Pos = read2.get_aligned_pairs()
+    r1Boundaries = [read1Pos[n-1] for n, i in enumerate(read1Pos) if i[1]
+                    is None and read1Pos[n - 1][1] is not None] +
+                    [read1Pos[n+1] for n, i in enumerate(read1Pos) if i[1]
+                     is None and read1Pos[n + 1][1] is not None]
+    r2Boundaries = [read2Pos[n-1] for n, i in enumerate(read2Pos) if i[1]
+                    is None and read2Pos[n - 1][1] is not None] +
+                    [read2Pos[n+1] for n, i in enumerate(read2Pos) if i[1]
+                     is None and read2Pos[n + 1][1] is not None]
+    # Do the insertions have the same nucleotides as their "boundaries"?
+    if(r1Boundaries != r2Boundaries):
+        return False
+    # Do the insertions have the same length?
+    if([i for i in read1.cigar if i[0] == 1][0][1] !=
+       [i for i in read2.cigar if i[0] == 1][0][1]):
+        return False
+    return True
+
+SVTestDict['DSI'] = DSI_SV_Tag_Condition
 
 
 SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))

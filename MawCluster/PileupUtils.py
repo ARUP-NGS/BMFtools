@@ -307,6 +307,7 @@ class PCInfo:
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66):
+        assert isinstance(PileupColumn, pysam.calignmentfile.PileupColumn)
         self.minMQ = int(minMQ)
         self.minBQ = int(minBQ)
         from collections import Counter
