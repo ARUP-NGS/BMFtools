@@ -6,7 +6,7 @@ from utilBMF.HTSUtils import SplitSCRead
 from utilBMF.HTSUtils import is_read_softclipped
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from utilBMF.HTSUtils import ReadPair
-from utilBMF.HTSUtils import GetInsertedCoordinates
+from utilBMF.HTSUtils import GetDeletedCoordinates
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -566,18 +566,22 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     Duplex Shared Insertion - if read1 and read2 share an insertion
     at the same genomic coordinates.
     """
-    if("I" not in read1Pos.cigarstring or "I" not in read2Pos.cigarstring):
+    if("I" not in read1.cigarstring or "I" not in read2.cigarstring):
         return False
     read1Pos = read1.get_aligned_pairs()
     read2Pos = read2.get_aligned_pairs()
-    r1Boundaries = [read1Pos[n-1] for n, i in enumerate(read1Pos) if i[1]
-                    is None and read1Pos[n - 1][1] is not None] +
-                    [read1Pos[n+1] for n, i in enumerate(read1Pos) if i[1]
-                     is None and read1Pos[n + 1][1] is not None]
-    r2Boundaries = [read2Pos[n-1] for n, i in enumerate(read2Pos) if i[1]
-                    is None and read2Pos[n - 1][1] is not None] +
-                    [read2Pos[n+1] for n, i in enumerate(read2Pos) if i[1]
-                     is None and read2Pos[n + 1][1] is not None]
+    r1Boundaries = ([read1Pos[n-1] for n, i in enumerate(read1Pos)
+                     if i[1] is None and
+                     read1Pos[n - 1][1] is not None] +
+                    [read1Pos[n+1] for n, i in enumerate(read1Pos)
+                     if i[1]is None and
+                     read1Pos[n + 1][1] is not None])
+    r2Boundaries = ([read2Pos[n-1] for n, i in enumerate(read2Pos)
+                     if i[1] is None and
+                     read2Pos[n - 1][1] is not None] +
+                    [read2Pos[n+1] for n, i in enumerate(read2Pos)
+                     if i[1]is None and
+                     read2Pos[n + 1][1] is not None])
     # Do the insertions have the same nucleotides as their "boundaries"?
     if(r1Boundaries != r2Boundaries):
         return False
