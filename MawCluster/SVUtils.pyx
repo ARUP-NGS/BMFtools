@@ -566,22 +566,22 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     Duplex Shared Insertion - if read1 and read2 share an insertion
     at the same genomic coordinates.
     """
+    if(read1.cigarstring is None or read2.cigarstring is None):
+        return False
     if("I" not in read1.cigarstring or "I" not in read2.cigarstring):
         return False
     read1Pos = read1.get_aligned_pairs()
     read2Pos = read2.get_aligned_pairs()
-    r1Boundaries = ([read1Pos[n-1] for n, i in enumerate(read1Pos)
-                     if i[1] is None and
-                     read1Pos[n - 1][1] is not None] +
-                    [read1Pos[n+1] for n, i in enumerate(read1Pos)
-                     if i[1]is None and
-                     read1Pos[n + 1][1] is not None])
-    r2Boundaries = ([read2Pos[n-1] for n, i in enumerate(read2Pos)
-                     if i[1] is None and
-                     read2Pos[n - 1][1] is not None] +
-                    [read2Pos[n+1] for n, i in enumerate(read2Pos)
-                     if i[1]is None and
-                     read2Pos[n + 1][1] is not None])
+    r1Boundaries = sorted(
+        [[read1Pos[n-1] for n, i in enumerate(read1Pos) if i[1] is None
+          and read1Pos[n - 1][1] is not None][0][1]],
+        [[read1Pos[n+1] for n, i in enumerate(read1Pos) if i[1]is None
+          and read1Pos[n + 1][1] is not None][0][1]])
+    r2Boundaries = sorted(
+        [[read2Pos[n-1] for n, i in enumerate(read2Pos) if i[1] is None
+          and read2Pos[n - 1][1] is not None][0][1]],
+        [[read2Pos[n+1] for n, i in enumerate(read2Pos) if i[1]is None
+          and read2Pos[n + 1][1] is not None][0][1]])
     # Do the insertions have the same nucleotides as their "boundaries"?
     if(r1Boundaries != r2Boundaries):
         return False

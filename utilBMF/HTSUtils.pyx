@@ -967,17 +967,15 @@ def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
     Makes a Counter object of positions covered by a set of reads.
     Only safe at this point for intrachromosomal rearrangements!
     """
-    posList = []
-    for read in reads:
-        posList += read.get_reference_positions()
-    PosCounts = Counter(posList)
-    return PosCounts
+    return Counter(reduce(lambda x, y: x + y, [r.get_reference_positions() for r in reads]))
 
 
 def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
     """
     Makes a Counter object of positions covered by a set of read pairs.
     Only safe at this point for intrachromosomal rearrangements!
+    We discount the "duplex" positions because we want to look for pileups of
+    read pairs (ultimately, for supporting a structural variant).
     """
     posList = []
     posListDuplex = []
@@ -1139,22 +1137,28 @@ def ph2chr(x):
     return chr(x + 33) if x <= 93 else "~"
 
 
-def CigarToQueryIndices(read):
+@cython.locals(rq1=cython.int, n=cython.int)
+def CigarToQueryIndices(cigar):
     """
     Returns a list of lists of positions within the read.
     sublist[0] is the cigarOp, sublist[1] is the list of positions.
     """
-    assert isinstance(read, pysam.calignmentfile.AlignedSegment)
-    if(read.cigar is None):
-        raise ThisIsMadness("I can't get query indices if there's no cigar string.")
+    if(cigar is None):
+        raise ThisIsMadness("I can't get query indices "
+                            "if there's no cigar string.")
+    try:
+        assert isinstance(cigar[0], tuple)
+    except AssertionError:
+        pl("Invalid argument - cigars are lists of tuples, but the first item"
+           " in this list is not a tuple!")
     tuples = []
-    c = [i[1] for i in read.cigar]
-    cumSum = [sum([c[:i] for i in range(read.query_length)])]
-    for n, entry in enumerate(read.cigar):
+    c = map(operator.itemgetter(1), cigar)
+    cumSum = [sum(c[:i + 1]) for i in range(len(c))]
+    for n, entry in enumerate(cigar):
         if n == 0:
-            tuples += [entry[0], range(entry[1])]
+            tuples.append((entry[0], range(entry[1])))
         else:
-            tuples += [entry[0], range(cumSum[n - 1], cumSum[n])]
+            tuples.append((entry[0], range(cumSum[n - 1], cumSum[n])))
     return tuples
 
 
@@ -1174,7 +1178,7 @@ def GetQueryIndexForCigarOperation(read, cigarOp=-1):
                             "GetQueryIndexForCigarOperation. Invalid cigarOp")
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
     # Get positions in read which match cigar operation.
-    QueryCigar = CigarToQueryIndices(read)
+    QueryCigar = CigarToQueryIndices(read.cigar)
     print(repr(QueryCigar))
     filtCigar = [i for i in QueryCigar if i[0] == cigarOp]
     print(repr(filtCigar))
@@ -1186,4 +1190,4 @@ def GetDeletedCoordinates(read):
     Returns a list of integers of genomic coordinates for deleted bases.
     """
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
-    return [i[1] for i in read.get_aligned_pairs() if i[0] is None]
+    return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])

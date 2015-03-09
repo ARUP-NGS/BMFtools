@@ -202,22 +202,24 @@ def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
                famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
-               compressB85=cython.bint)
+               compressB64=cython.bint, lenR=cython.int,
+               numEq=cython.int, maxScore=cython.int)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
-                       famLimit=200, keepFails=True, compressB85=True,
+                       famLimit=200, keepFails=True, compressB64=True,
                        makeFA=True, makePV=True):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
     compress85 = True
-    if(len(R) > famLimit):
+    lenR = len(R)
+    lenRStr = str(lenR)
+    if(lenR > famLimit):
         logging.debug(
             "Read family - {} with {} members was capped at {}. ".format(
-                R[0], len(R), famLimit))
+                R[0], lenR, famLimit))
         R = R[:famLimit]
-
-    seqs = [record.sequence for record in R]
+    seqs = map(operator.attrgetter("sequence"), R)
     maxScore = 0
     Success = False
     numEq = 0
@@ -227,9 +229,9 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
             maxScore = numEq
             finalSeq = seq
     try:
-        frac = operator.div(operator.mul(numEq, 1.0), len(R))
+        frac = operator.div(operator.mul(numEq, 1.0), lenR)
     except ZeroDivisionError:
-        pl("Length of R: {}".format(len(R)))
+        pl("Length of R: {}".format(lenR))
         pl("numEq: {}".format(numEq))
     if(operator.ge(frac, stringency)):
         Success = True
@@ -237,14 +239,21 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
         Success = False
     elif(hybrid is True):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
-    phredQuals = np.multiply(len(R),
+    if(makeFA is True):
+        FAString = operator.add(" #G~FA=", ",".join(
+            np.subtract(lenR,
+                        [sum([seq[i] != finalSeq[i] for seq in seqs])
+                         for i in range(len(finalSeq))]).astype(str)))
+    else:
+        FAString = ""
+    phredQuals = np.multiply(lenR,
                              map(chr2phFunc, list(R[0].quality)),
                              dtype=np.int64)
-    TagString = operator.add(" #G~FM=", str(len(R)))
+    TagString = operator.add(" #G~FM=", lenRStr)
     if(np.any(np.greater(phredQuals, 93))):
         QualString = "".join(map(ph2chr, phredQuals))
         if(makePV is True):
-            if(compressB85 is True):
+            if(compressB64 is True):
                 TagString = operator.add(
                     operator.add(TagString, " #G~PV="),
                     ",".join(map(Int2Base64, phredQuals)))
@@ -254,12 +263,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
                     ",".join(phredQuals.astype(str).tolist()))
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-    if(makeFA is True):
-        numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-                                 for i in range(len(seqs[0]))], dtype=np.int64)
-        TagString = operator.add(
-            operator.add(TagString, " #G~FA="),
-            ",".join(numFamAgreed.astype(str).tolist()))
+    TagString = operator.add(TagString, FAString)
     try:
         consFqString = "\n".join(
             ["".join(["@", R[0].name, " ", R[0].comment, TagString]),
@@ -346,7 +350,7 @@ def compareFastqRecordsInexactNumpy(R):
 
 
 @cython.locals(Success=cython.bint)
-def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
+def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
@@ -368,6 +372,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
     cdef np.ndarray[dtypei_t, ndim = 2] qualAllSum
     cdef np.ndarray[dtypei_t, ndim = 1] MaxPhredSum
     cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
+    cdef np.ndarray[dtypei_t, ndim = 1] FA
 
     # print(repr(seqArray))
     quals = np.array(
@@ -387,6 +392,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
     qualTFlat = np.sum(qualT, 0, dtype=np.int64)
     qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
+    FA = np.max(qualAllSum, 0)
     newSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int64),
@@ -395,14 +401,10 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB85=True):
     phredQuals[phredQuals < 0] = 0
     TagString = operator.add(" #G~FM=", str(len(R)))
     if(makeFA is True):
-        numFamAgreed = ",".join(
-            np.array([sum(
-                [seq[i] == newSeq[i] for seq in seqs]) for i in
-                range(len(seqs[0]))]).astype(str).tolist())
         TagString = operator.add(operator.add(TagString, " #G~FA="),
-                                 numFamAgreed)
+                                 FA.astype(str))
     if(makePV is True):
-        if(compressB85 is True):
+        if(compressB64 is True):
             if(np.any(np.greater(phredQuals, 93))):
                 PVString = operator.add(" #G~PV=",
                                         ",".join(map(Int2Base64,
