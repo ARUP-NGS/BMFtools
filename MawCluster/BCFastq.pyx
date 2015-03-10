@@ -576,11 +576,13 @@ def LighterCallPaired(fq1, fq2, kmer="default",
 
 
 @cython.locals(stringency=cython.float, readPairsPerWrite=cython.int,
-               UsecProfile=cython.bint, onlyNumpy=cython.bint)
-def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
-                                 readPairsPerWrite=100, UsecProfile=False,
-                                 onlyNumpy=False, skipSingles=False,
-                                 skipFails=False):
+               UsecProfile=cython.bint, onlyNumpy=cython.bint,
+               numProc=cython.int, skipSingles=cython.bint,
+               skipFails=cython.int)
+def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
+                           readPairsPerWrite=100, UsecProfile=False,
+                           onlyNumpy=False, skipSingles=False,
+                           skipFails=False):
     if(UsecProfile is True):
         import cProfile
         import pstats
@@ -594,8 +596,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
        " pairedFastqConsolidateFaster('{}', '{}', ".format(fq1, fq2) +
        "stringency={}, readPairsPerWrite={})".format(stringency,
                                                      readPairsPerWrite))
-    inFq1 = SeqIO.parse(fq1)
-    inFq2 = SeqIO.parse(fq2)
+    inFq1 = SeqIO.parse(fq1, "fastq")
+    inFq2 = SeqIO.parse(fq2, "fastq")
     outputHandle1 = open(outFqPair1, 'w')
     outputHandle2 = open(outFqPair2, 'w')
     # cString1 = cStringIO.StringIO()
@@ -624,7 +626,7 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
         except StopIteration:
             break
         bc4fq1 = GetDescTagValue(fqRec.description, "BS")
-        fqRec2 = next(inFq2.next)
+        fqRec2 = next(inFq2)
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
         # and filter them from the BAM file
@@ -870,14 +872,14 @@ def compareConsSpeed(fq1, fq2, stringency=0.666, readPairsPerWrite=100):
             continue
         else:
             break
-    out1, out2 = pairedFastqConsolidateFaster(
+    out1, out2 = pairedFastqConsolidate(
         "CyCons.R1.fastq", "CyCons.R2.fastq", stringency=stringency,
         readPairsPerWrite=readPairsPerWrite)
     print("Time after CyCons: {}".format(
         strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())))
     b = subprocess.Popen("cp {} PyCons.R1.fastq".format(fq1), shell=True)
     subprocess.check_call("cp {} PyCons.R2.fastq".format(fq2), shell=True)
-    out1, out2 = pairedFastqConsolidateFaster(
+    out1, out2 = pairedFastqConsolidate(
         "CyCons.R1.fastq", "CyCons.R2.fastq", stringency=stringency,
         readPairsPerWrite=readPairsPerWrite, onlyNumpy=True)
     print("Time after CyCons (only Numpy): {}".format(

@@ -169,17 +169,14 @@ Most options are available for command-line as well. If an option is set in both
     1. Consider haplotyping by leveraging reads covering multiple SNPs.
     2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
 2. Indels:
-    1. Work on smaller indels directly in BAM with cigar strings.
+    1. Work on smaller indels directly in BAM with cigar strings. (Some progress on it, but it has to wait until SNVs are fully-solved)
     2. Indel realignment might perform better if the "normal" reads are removed, IE, properly-mapped reads without I, D, or S in it.
-    3. Try calling freebayes at high ploidy for indels
-    4. Try calling scalpel with indel irrelevant reads as normal and relevant reads as abnormal.
+    3. FreeBayes with a longer --haplotype-length, demultiplexing first, and a high ploidy + pre-filtering should get us what we want.
+    4. And, perhaps we need something like Scalpel for larger indels.
 3. SV:
     1. Finish consensus sequence for intrachromosomal.
-    2. Write SV tags into a function, call that function during the standard FM/FP/BS tagging.
-    3. Finish writing structural variants to a VCF format
-    4. Work on interchromosomal translocations
-4. Performance:
-    1. Continue to implement "map" function for performance gains, especially in BCFastq
+    2. Finish writing structural variants to a VCF format
+    3. Work on interchromosomal translocations
 
 5. TODO Backlog/Mostly finished/Maybe don't care:
     2. Instruct pysam to make tags of a specific type.
@@ -189,7 +186,6 @@ Most options are available for command-line as well. If an option is set in both
 
 #Known Issues
 1. VCF
-    1. NSS INFO field does not work.
+    1. NSS INFO field does not seem to work.
     2. MQM, MPF, and MQB have nonsense values.
     3. Need to test NDPS
-    3. Something seems wrong with the FA calculation. The list comprehension is not providing accurate numbers.
