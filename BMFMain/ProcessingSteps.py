@@ -146,7 +146,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                     "least took more than 5 minutes")
     """
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2)
-    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
         BSortFq1, BSortFq2, stringency=0.9)
     if(lighter is True):
         pl("About to run lighter for error correction.")

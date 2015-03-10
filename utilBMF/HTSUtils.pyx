@@ -1179,10 +1179,44 @@ def GetQueryIndexForCigarOperation(read, cigarOp=-1):
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
     # Get positions in read which match cigar operation.
     QueryCigar = CigarToQueryIndices(read.cigar)
-    print(repr(QueryCigar))
     filtCigar = [i for i in QueryCigar if i[0] == cigarOp]
-    print(repr(filtCigar))
     return filtCigar
+
+
+def GetReadNucsForFiltCigar(filtCigar, read):
+    """
+    Returns a list of strings for nucleotides matching a filtCigar.
+    """
+    seq = read.seq
+    return ["".join([seq[i] for i in g[1]]) for g in filtCigar]
+
+
+def GetGenomicCoordsForFiltCigar(filtCigar, read):
+    """
+    Returns a list of lists for genomic coordinates matching a filtCigar.
+    """
+    dgap = dict(read.get_aligned_pairs())
+    return [[dgap[i] for i in g[1]] for g in filtCigar]
+
+
+def GetReadSequenceForCigarOp(read, cigarOp=-1):
+    if(read.cigar is None):
+        raise ThisIsMadness("Cigar must not be None to get "
+                            "sequence for an operation!")
+    try:
+        assert(cigarOp in range(9))
+    except AssertionError:
+        raise ThisIsMadness("Please read the doc string for "
+                            "GetReadSequenceForCigarOp. Invalid cigarOp")
+    filtCigar = GetQueryIndexForCigarOperation(read)
+    seqTups = []
+    for f in filtCigar:
+        if(len(f) == 0):
+            continue
+        else:
+            pass
+    raise ThisIsMadness("I haven't finished writing this function. Oops!")
+    return 
 
 
 def GetDeletedCoordinates(read):
@@ -1190,4 +1224,5 @@ def GetDeletedCoordinates(read):
     Returns a list of integers of genomic coordinates for deleted bases.
     """
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
+    
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])

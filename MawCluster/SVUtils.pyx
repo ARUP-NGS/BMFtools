@@ -542,6 +542,7 @@ def DRP_SNV_Tag_Condition(read1, read2, extraField=SVParamDict['DRP']):
 SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
 
+
 @cython.returns(cython.bint)
 def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
     """
@@ -557,7 +558,7 @@ def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
             return True
     return False
 
-SVTestDict['DSD'] = DSD_SV_Tag_Condition
+#  SVTestDict['DSD'] = DSD_SV_Tag_Condition
 
 
 @cython.returns(cython.bint)
@@ -570,6 +571,8 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
         return False
     if("I" not in read1.cigarstring or "I" not in read2.cigarstring):
         return False
+    if(sum([read1.is_reverse, read2.is_reverse]) != 1):
+       return False  # Reads aligned to same strand. Not a good sign.
     read1Pos = read1.get_aligned_pairs()
     read2Pos = read2.get_aligned_pairs()
     r1Boundaries = sorted(
@@ -591,7 +594,7 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
         return False
     return True
 
-SVTestDict['DSI'] = DSI_SV_Tag_Condition
+#  SVTestDict['DSI'] = DSI_SV_Tag_Condition
 
 
 SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))

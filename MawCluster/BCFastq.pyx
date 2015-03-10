@@ -144,142 +144,51 @@ def BarcodeSort(inFastq, outFastq="default"):
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
                famLimit=cython.int, keepFails=cython.bint,
-               Success=cython.bint, PASS=cython.bint, frac=cython.float)
-def compareFastqRecords(R, stringency=0.9, hybrid=True, famLimit=200,
+               Success=cython.bint, PASS=cython.bint, frac=cython.float,
+               numEq=cython.int, lenR=cython.int)
+def compareFastqRecords(R, stringency=0.9, famLimit=200,
                         keepFails=True):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
+    cdef np.ndarray[dtypei_t, ndim = 1] numAgreed
+    cdef np.ndarray[dtypei_t, ndim = 1] probs
+    lenR = len(R)
     try:
         famLimit = int(famLimit)
     except ValueError:
         pl("famLimit arg must be integer. Set to default: 200.")
-    if(len(R) > famLimit):
+    if(operator.ge(lenR, famLimit)):
         logging.debug(
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], len(R), famLimit))
         R = R[:famLimit]
-    seqs = [str(record.seq) for record in R]
+    seqs = np.array(map(operator.attrgetter("seq"), R)).astype(str)
     maxScore = 0
     Success = False
     for seq in seqs:
         # print("Seq: {}".format(str(seq)))
-        numEq = sum(str(seq) == str(seqItem) for seqItem in seqs)
-        if(numEq > maxScore):
-            maxScore = numEq
-            finalSeq = str(seq)
-    frac = numEq * 1.0 / len(R)
-    PASS = frac > stringency
-    # print("Fraction {}. Stringency: {}. Pass? {}.".format(
-    # frac,stringency,PASS))
-    if(PASS):
-        Success = True
-    elif(frac < 0.5):
-        Success = False
-    elif(hybrid is True):
-        return compareFastqRecordsInexactNumpy(R)
-    consolidatedRecord = SeqRecord(seq=finalSeq, id=R[0].id,
-                                   letter_annotations=R[0].letter_annotations,
-                                   name=R[0].name,
-                                   description=R[0].description)
-    if("Fail" in GetDescTagValue(consolidatedRecord.description, "FP")):
-        Success = False
-    probs = np.multiply(len(R), R[0].letter_annotations['phred_quality'])
-    numAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-                          for i in range(len(finalSeq))])
-    consolidatedRecord.description += " #G~FA=" + ",".join(
-        numAgreed.astype(str)) + " #G~FM=" + str(len(seqs))
-    consolidatedRecord.description += " #G~PV=" + ",".join(
-        probs.astype(str))
-    QualString = "".join(map(ph2chr, probs))
-    consFqString = "\n".join(
-        ["@" + R[0].description, finalSeq, "+", QualString])
-
-    return consFqString, Success
-
-
-@cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.int, keepFails=cython.bint,
-               Success=cython.bint, PASS=cython.bint, frac=cython.float,
-               compressB64=cython.bint, lenR=cython.int,
-               numEq=cython.int, maxScore=cython.int)
-def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
-                       famLimit=200, keepFails=True, compressB64=True,
-                       makeFA=True, makePV=True):
-    """
-    Compares the fastq records to create a consensus sequence (if it
-    passes a filter)
-    """
-    compress85 = True
-    lenR = len(R)
-    lenRStr = str(lenR)
-    if(lenR > famLimit):
-        logging.debug(
-            "Read family - {} with {} members was capped at {}. ".format(
-                R[0], lenR, famLimit))
-        R = R[:famLimit]
-    seqs = map(operator.attrgetter("sequence"), R)
-    maxScore = 0
-    Success = False
-    numEq = 0
-    for seq in seqs:
         numEq = sum(seq == seqItem for seqItem in seqs)
         if(operator.ge(numEq, maxScore)):
             maxScore = numEq
             finalSeq = seq
-    try:
-        frac = operator.div(operator.mul(numEq, 1.0), lenR)
-    except ZeroDivisionError:
-        pl("Length of R: {}".format(lenR))
-        pl("numEq: {}".format(numEq))
-    if(operator.ge(frac, stringency)):
-        Success = True
-    elif(operator.le(frac, 0.5)):
-        Success = False
-    elif(hybrid is True):
-        return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
-    if(makeFA is True):
-        FAString = operator.add(" #G~FA=", ",".join(
-            np.subtract(lenR,
-                        [sum([seq[i] != finalSeq[i] for seq in seqs])
-                         for i in range(len(finalSeq))]).astype(str)))
+    frac = numEq * 1.0 / lenR
+    if(operator.le(frac, 0.5)):
+        R[0].description = R[0].description.replace("Pass", "Fail")
     else:
-        FAString = ""
-    phredQuals = np.multiply(lenR,
-                             map(chr2phFunc, list(R[0].quality)),
-                             dtype=np.int64)
-    TagString = operator.add(" #G~FM=", lenRStr)
-    if(np.any(np.greater(phredQuals, 93))):
-        QualString = "".join(map(ph2chr, phredQuals))
-        if(makePV is True):
-            if(compressB64 is True):
-                TagString = operator.add(
-                    operator.add(TagString, " #G~PV="),
-                    ",".join(map(Int2Base64, phredQuals)))
-            else:
-                TagString = operator.add(
-                    operator.add(TagString, " #G~PV="),
-                    ",".join(phredQuals.astype(str).tolist()))
-    else:
-        QualString = "".join([ph2chrDict[i] for i in phredQuals])
-    TagString = operator.add(TagString, FAString)
-    try:
-        consFqString = "\n".join(
-            ["".join(["@", R[0].name, " ", R[0].comment, TagString]),
-             finalSeq,
-             "+",
-             QualString])
-    except TypeError:
-        print("TagString: {}".format(TagString))
-        print("finalSeq: {}".format(finalSeq))
-        print("QualString: {}".format(QualString))
-        print("Name {}".format(R[0].name))
-        print("Comment {}".format(R[0].comment))
-        print("".join(["@", R[0].name, " ", R[0].comment, TagString]))
-        raise ThisIsMadness("I can't figure out what's going on.")
-    if(Success is False):
-        return consFqString.replace("Pass", "Fail")
+        return compareFastqRecordsInexactNumpy(R)
+    probs = np.multiply(lenR, R[0].letter_annotations['phred_quality'],
+                        dtype=np.int64)
+    numAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
+                          for i in range(len(finalSeq))], dtype=np.int64)
+    TagString = "".join([" #G~FA=", ",".join(numAgreed.astype(str)),
+                         " #G~FM=", str(lenR),
+                         " #G~PV=", ",".join(probs.astype(str))])
+    probs[probs > 93] = 93
+    QualString = "".join([ph2chrDict[i] for i in probs])
+    consFqString = "\n".join(
+        ["".join(["@", R[0].description, TagString]), finalSeq, "+", QualString])
     return consFqString
 
 
@@ -298,9 +207,18 @@ def compareFastqRecordsInexactNumpy(R):
     cdef np.ndarray[dtypei_t, ndim = 2] qualC
     cdef np.ndarray[dtypei_t, ndim = 2] qualG
     cdef np.ndarray[dtypei_t, ndim = 2] qualT
+    cdef np.ndarray[dtypei_t, ndim = 1] qualAFlat
+    cdef np.ndarray[dtypei_t, ndim = 1] qualCFlat
+    cdef np.ndarray[dtypei_t, ndim = 1] qualGFlat
+    cdef np.ndarray[dtypei_t, ndim = 1] qualTFlat
+    cdef np.ndarray[dtypei_t, ndim = 2] qualAllSum
+    cdef np.ndarray[dtypei_t, ndim = 1] MaxPhredSum
+    cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
+    cdef np.ndarray[dtypei_t, ndim = 1] numFamAgreed
     # print(repr(seqArray))
     quals = np.array([
-        record.letter_annotations['phred_quality'] for record in R])
+        record.letter_annotations['phred_quality'] for record in R],
+                     dtype=np.int64)
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
@@ -315,133 +233,26 @@ def compareFastqRecordsInexactNumpy(R):
     qualTFlat = np.sum(qualT, 0)
     qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    Success = True
-    newSeq = "".join(
+    finalSeq = "".join(
         np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(
-        qualAllSum)  # Avoid calculating twice.
+    MaxPhredSum = np.amax(qualAllSum)  # Avoid calculating twice.
     phredQuals = np.subtract(
         np.multiply(2, MaxPhredSum, dtype=np.int64),
         np.sum(qualAllSum, 0, dtype=np.int64), dtype=np.int64)
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
-    consolidatedRecord = SeqRecord(
-        seq=newSeq,
-        id=R[0].id,
-        name=R[0].name,
-        description=R[0].description)
-    numFamAgreed = np.array([sum([seq[i] == newSeq[i] for seq in seqs]) for
-                             i in range(len(seqs[0]))])
-    consolidatedRecord.description += " #G~FA=" + ",".join(
-        numFamAgreed.astype(str).tolist())
-    consolidatedRecord.description += " #G~FM=" + str(len(R))
-    consolidatedRecord.description += (" #G~PV=" +
-                                       ",".join(phredQuals.astype(str)))
-    descDict = GetDescriptionTagDict(consolidatedRecord.description)
+    numFamAgreed = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for
+                             i in range(len(seqs[0]))], dtype=np.int64)
+    TagString = "".join([" #G~FA=",
+                         ",".join(numFamAgreed.astype(str)),
+                         " #G~FM=", str(len(R)),
+                         " #G~PV=", ",".join(phredQuals.astype(str))])
     phredQuals[phredQuals > 93] = 93
-    consolidatedRecord.letter_annotations[
-        'phred_quality'] = phredQuals.tolist()
-    if("Fail" in descDict["FP"]):
-        Success = False
-    QualString = "".join(map(ph2chr, phredQuals))
+    QualString = "".join([ph2chrDict[i] for i in phredQuals])
     consFqString = "\n".join(
-        ["@" + consolidatedRecord.description, newSeq, "+", QualString])
-    return consFqString, Success
-
-
-@cython.locals(Success=cython.bint)
-def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
-    """
-    Calculates the most likely nucleotide
-    at each position and returns the joined record string.
-    """
-    Success = True
-    seqs = np.array([record.sequence for record in R], dtype=np.str_)
-    stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
-    seqArray = np.vstack(stackArrays)
-
-    cdef np.ndarray[dtypei_t, ndim = 2] quals
-    cdef np.ndarray[dtypei_t, ndim = 2] qualA
-    cdef np.ndarray[dtypei_t, ndim = 2] qualC
-    cdef np.ndarray[dtypei_t, ndim = 2] qualG
-    cdef np.ndarray[dtypei_t, ndim = 2] qualT
-    cdef np.ndarray[dtypei_t, ndim = 1] qualAFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualCFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualGFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualTFlat
-    cdef np.ndarray[dtypei_t, ndim = 2] qualAllSum
-    cdef np.ndarray[dtypei_t, ndim = 1] MaxPhredSum
-    cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
-    cdef np.ndarray[dtypei_t, ndim = 1] FA
-
-    # print(repr(seqArray))
-    quals = np.array(
-        [map(chr2phFunc, list(record.quality)) for record in R],
-        dtype=np.int64)
-    qualA = copy.copy(quals)
-    qualC = copy.copy(quals)
-    qualG = copy.copy(quals)
-    qualT = copy.copy(quals)
-    qualA[seqArray != "A"] = 0
-    qualAFlat = np.sum(qualA, 0, dtype=np.int64)
-    qualC[seqArray != "C"] = 0
-    qualCFlat = np.sum(qualC, 0, dtype=np.int64)
-    qualG[seqArray != "G"] = 0
-    qualGFlat = np.sum(qualG, 0, dtype=np.int64)
-    qualT[seqArray != "T"] = 0
-    qualTFlat = np.sum(qualT, 0, dtype=np.int64)
-    qualAllSum = np.vstack(
-        [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    FA = np.max(qualAllSum, 0)
-    newSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
-    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = np.subtract(np.multiply(2, MaxPhredSum, dtype=np.int64),
-                             np.sum(qualAllSum, 0, dtype=np.int64),
-                             dtype=np.int64)
-    phredQuals[phredQuals < 0] = 0
-    TagString = operator.add(" #G~FM=", str(len(R)))
-    if(makeFA is True):
-        TagString = operator.add(operator.add(TagString, " #G~FA="),
-                                 FA.astype(str))
-    if(makePV is True):
-        if(compressB64 is True):
-            if(np.any(np.greater(phredQuals, 93))):
-                PVString = operator.add(" #G~PV=",
-                                        ",".join(map(Int2Base64,
-                                                          phredQuals)))
-                phredQuals[phredQuals > 93] = 93
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            else:
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-                PVString = ""
-        else:
-            if(np.any(np.greater(phredQuals, 93))):
-                PVString = operator.add(" #G~PV=",
-                                        ",".join(phredQuals.astype(str)))
-                phredQuals[phredQuals > 93] = 93
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            else:
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-                PVString = ""
-        TagString = operator.add(TagString, PVString)
-    else:
-        phredQuals[phredQuals > 93] = 93
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-    try:
-        assert len(PVString) != 1
-    except AssertionError:
-        pl(repr(phredQuals))
-        pl(repr(PVString))
-        raise ThisIsMadness("Something's wrong with my phredQuals. "
-                            "It should be the length of the read.")
-    consolidatedFqStr = "\n".join([
-        "".join(["@", R[0].name, " ", R[0].comment. TagString]),
-        newSeq,
-        "+",
-        phredQualsStr])
-    if(Success is False):
-        return consolidatedFqStr.replace("Pass", "Fail")
-    return consolidatedFqStr
+        ["".join(["@", R[0].description, TagString]), finalSeq,
+         "+", QualString])
+    return consFqString
 
 
 def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
@@ -783,8 +594,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
        " pairedFastqConsolidateFaster('{}', '{}', ".format(fq1, fq2) +
        "stringency={}, readPairsPerWrite={})".format(stringency,
                                                      readPairsPerWrite))
-    inFq1 = pysam.FastqFile(fq1)
-    inFq2 = pysam.FastqFile(fq2)
+    inFq1 = SeqIO.parse(fq1)
+    inFq2 = SeqIO.parse(fq2)
     outputHandle1 = open(outFqPair1, 'w')
     outputHandle2 = open(outFqPair2, 'w')
     # cString1 = cStringIO.StringIO()
@@ -792,12 +603,12 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
     StringList1 = []
     StringList2 = []
     workingBarcode = ""
+    previousBarcode = ""
     workingSet1 = []
     workingSet2 = []
-    cdef pysam.cfaidx.FastqProxy fqRec
-    cdef pysam.cfaidx.FastqProxy fqRec2
     numProc = 0
-
+    ws1a = workingSet1.append
+    ws2a = workingSet2.append
     while True:
         if(numProc % readPairsPerWrite == 0):
             # outputHandle1.write(cString1.getvalue())
@@ -809,11 +620,11 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             # cString1 = cStringIO.StringIO()
             # cString2 = cStringIO.StringIO()
         try:
-            fqRec = inFq1.next()
+            fqRec = next(inFq1)
         except StopIteration:
             break
-        bc4fq1 = GetDescTagValue(fqRec.comment, "BS")
-        fqRec2 = inFq2.next()
+        bc4fq1 = GetDescTagValue(fqRec.description, "BS")
+        fqRec2 = next(inFq2.next)
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
         # and filter them from the BAM file
@@ -829,21 +640,23 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                 print("workingSet2 = " + repr(workingSet2))
                 sys.exit()
         elif(workingBarcode == bc4fq1):
-            workingSet1.append(fqRec)
-            workingSet2.append(fqRec2)
+            ws1a(fqRec)
+            ws2a(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
             if(skipSingles is True and len(workingSet1) == 1):
                 workingBarcode = ""
                 workingSet1 = []
                 workingSet2 = []
+                ws1a = workingSet1.append
+                ws2a = workingSet2.append
                 continue
             # cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            tStr1 = operator.add(compareFqRecsFqPrx(workingSet1), "\n")
-            tStr2 = operator.add(compareFqRecsFqPrx(workingSet2), "\n")
+            tStr1 = operator.add(compareFastqRecords(workingSet1), "\n")
+            tStr2 = operator.add(compareFastqRecords(workingSet2), "\n")
             if(skipFails is True and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             StringList1.append(tStr1)
