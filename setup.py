@@ -1,15 +1,8 @@
 import numpy as np
 import pysam
 import subprocess
-
-try:
-    from setuptools import setup, Extension
-except ImportError:
-    print("setuptools not available. Trying distutils.")
-    from distutils.core import setup, Extension
-from Cython.Build import cythonize
-
-ext = cythonize('*/*.pyx') + cythonize('*/*.py')
+import operator
+import sys
 
 # Find the ideal -march argument for the system.
 try:
@@ -23,12 +16,26 @@ except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
 
+
+compilerList = ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2",
+                "-funroll-loops", "-fwhole-program", "-floop-block",
+                "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
+                "-fbranch-target-load-optimize2"]
+
+try:
+    from setuptools import setup, Extension
+except ImportError:
+    print("setuptools not available. Trying distutils.")
+    from distutils.core import setup, Extension
+from Cython.Build import cythonize
+
+ext = cythonize('*/*.pyx') + cythonize("*/*.py")
 # Insist on -O3 optimization
-for x in ext:
-    if(x.extra_compile_args == []):
-        x.extra_compile_args = ["-O3", "-flto", marchFlag, "-pipe", "-funroll-loops", "-ftree-vectorize", "-msse2"]
-    else:
-        x.extra_compile_args += ["-O3", "-flto", marchFlag, "-pipe", "-ftree-vectorize", "-msse2", "funroll-loops"]
+# If more complex optimizations fail, fall back from line 31 to line 30.
+for x in map(operator.attrgetter("extra_compile_args"), ext):
+    # x += ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2", "-funroll-loops", "-fwhole-program"]
+    x += compilerList
+    #  x.extra_compile_args += [marchFlag, "-pipe"]
 
 
 config = {
@@ -44,9 +51,9 @@ config = {
     'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': [],
     'name': 'BMFTools',
-    'license': 'GPLv3',
+    'license': 'GNU Affero General Public License, pending institutional approval',
     'include': 'README.md',
-    'package_data': {'': ['LICENSE']}
+    'package_data': {'': ['README.md']}
 }
 
 

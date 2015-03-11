@@ -175,6 +175,7 @@ Most options are available for command-line as well. If an option is set in both
 
 #TODO (ish):
 1. SNV:
+    00. Make a pPileupColumn for persistence.
     0. Just fix everything (See Known Issues)
     1. Consider haplotyping by leveraging reads covering multiple SNPs.
     2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
@@ -196,3 +197,4 @@ Most options are available for command-line as well. If an option is set in both
     1. NSS INFO field does not seem to work.
     2. MQM, MPF, and MQB have nonsense values.
     3. Need to test NDPS
+

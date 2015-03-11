@@ -191,38 +191,36 @@ def pairedBarcodeTagging(
         elif(entry.is_read2):
             read2bam = entry
             read2fq = r2Next()
-        r1Set = read1bam.setTag
-        r2Set = read2bam.setTag
         descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
-        r1Set("FM", descDict["FM"], "i")
-        r2Set("FM", descDict["FM"], "i")
+        read1bam.setTag("FM", int(descDict["FM"]), "i")
+        read2bam.setTag("FM", int(descDict["FM"]), "i")
         try:
-            r1Set("BS", descDict["BS"], "Z")
-            r2Set("BS", descDict["BS"], "Z")
+            read1bam.setTag("BS", descDict["BS"], "Z")
+            read2bam.setTag("BS", descDict["BS"], "Z")
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing a BS tag.")
         try:
             if("Pass" in descDict["FP"]):
-                r1Set("FP", 1, "i")
-                r2Set("FP", 1, "i")
+                read1bam.setTag("FP", 1, "i")
+                read2bam.setTag("FP", 1, "i")
             else:
-                r1Set("FP", 0, "i")
-                r2Set("FP", 0, "i")
+                read1bam.setTag("FP", 0, "i")
+                read2bam.setTag("FP", 0, "i")
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing an FP tag.")
         try:
-            r1Set("PV", descDict["PV"], "Z")
-            r2Set("PV", descDict["PV"], "Z")
+            read1bam.setTag("PV", descDict["PV"], "Z")
+            read2bam.setTag("PV", descDict["PV"], "Z")
         except KeyError:
             # print("Phred Values > 93 not set. Oh well.)
             pass
         try:
-            r1Set("FA", descDict["FA"], "Z")
-            r2Set("FA", descDict["FA"], "Z")
+            read1bam.setTag("FA", descDict["FA"], "Z")
+            read2bam.setTag("FA", descDict["FA"], "Z")
         except KeyError:
             raise ThisIsMadness("Currently, FA tags are required.")
             # print("Number of reads agreeing per position mssing. Oh well.")

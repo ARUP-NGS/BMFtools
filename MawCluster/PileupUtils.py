@@ -1086,11 +1086,10 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                                          max_depth=30000)
         while True:
             try:
-                p = next(pileupIterator)
+                PC = PCInfo(next(pileupIterator))
             except StopIteration:
                 pl("Stopping iteration for bed line: {}".format(line),
                    level=logging.DEBUG)
-            PC = PCInfo(p)
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         outHandle.write(

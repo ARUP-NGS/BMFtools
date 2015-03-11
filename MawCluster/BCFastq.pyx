@@ -933,12 +933,6 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
     workingSet1 = []
     workingSet2 = []
     numProc = 0
-    ws1a = workingSet1.append
-    ws2a = workingSet2.append
-    sl1a = StringList1.append
-    sl2a = StringList2.append
-    if1n = inFq1.next
-    if2n = inFq2.next
     while True:
         if(numProc % readPairsPerWrite == 0):
             # outputHandle1.write(cString1.getvalue())
@@ -952,11 +946,11 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             # cString1 = cStringIO.StringIO()
             # cString2 = cStringIO.StringIO()
         try:
-            fqRec = pFastqProxy(if1n())
+            fqRec = pFastqProxy(inFq1.next())
         except StopIteration:
             break
         bc4fq1 = GetDescTagValue(fqRec.comment, "BS")
-        fqRec2 = pFastqProxy(if2n())
+        fqRec2 = pFastqProxy(inFq2.next())
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
         # and filter them from the BAM file
@@ -972,16 +966,14 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                 print("workingSet2 = " + repr(workingSet2))
                 sys.exit()
         elif(workingBarcode == bc4fq1):
-            ws1a(fqRec)
-            ws2a(fqRec2)
+            workingSet1.append(fqRec)
+            workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
             if(skipSingles is True and len(workingSet1) == 1):
                 workingBarcode = ""
                 workingSet1 = []
                 workingSet2 = []
-                ws1a = workingSet1.append
-                ws2a = workingSet2.append
                 continue
             # cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
