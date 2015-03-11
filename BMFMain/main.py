@@ -354,7 +354,7 @@ def main(argv=None):
             pl("Last stop! Watch your step.")
     return
 
-__version__ = "0.0.5.3"
+__version__ = "0.0.6.1"
 
 if(__name__ == "__main__"):
     main()

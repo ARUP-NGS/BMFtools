@@ -54,6 +54,9 @@ numconv is required for conversion to base 64 for PV tags, but that compression 
 ### Required external tools:
 bwa (mem or aln, depending on needs.)
 
+#### Compiler
+gcc >= gccv4.5
+
 #### Adapter Trimming
 Cutadapt
 
@@ -148,11 +151,17 @@ Most options are available for command-line as well. If an option is set in both
     1. The most import thing is that all of the new features I've been adding finally are debugged and workable.
     1. Performance improvements throughout, but perhaps not entirely relevant.
 
+5. Changes in BMFTools v0.0.6.1:
+
+    1. Created a pFastqProxy object to cause pysam's FastqProxy object's information to persist.
+    2. Compiler optimizations
+
 1. Settings Recommendations
 
     1. The "readPairsPerWrite" parameter can provide great speed improvements.
         1. For my workstation (64GB RAM, 16 threads), the following table indicates that 100 gives me peak performance.
         2. For my cert server (192GB RAM, 24 threads), it looks like 10 might give me peak performance, but more rigorous tests are underway.
+    2. For optimal compilation, use the -march flag. BMFTools' setup.py automatically attempts to find that appropriate value for you.
 |readPairsPerWrite | time | 
 |------|--------------|
 | 10 | 867 msec per loop |
@@ -164,8 +173,9 @@ Most options are available for command-line as well. If an option is set in both
 
 
 
-#TODO (maybe):
+#TODO (ish):
 1. SNV:
+    0. Just fix everything (See Known Issues)
     1. Consider haplotyping by leveraging reads covering multiple SNPs.
     2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
 2. Indels:
@@ -177,9 +187,6 @@ Most options are available for command-line as well. If an option is set in both
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
-
-5. TODO Backlog/Mostly finished/Maybe don't care:
-    2. Instruct pysam to make tags of a specific type.
 
 1. TODO, lite:
     1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **

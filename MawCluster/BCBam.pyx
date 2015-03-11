@@ -175,9 +175,11 @@ def pairedBarcodeTagging(
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
+    obw = outBAM.write
+    sbw = suppBAM.write
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag >= 2048):
-            suppBAM.write(entry)
+            sbw(entry)
             continue
         if(not entry.is_paired):
             continue
@@ -192,44 +194,45 @@ def pairedBarcodeTagging(
         r1Set = read1bam.setTag
         r2Set = read2bam.setTag
         descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
-        r1Set("FM", descDict["FM"])
-        r2Set("FM", descDict["FM"])
+        r1Set("FM", descDict["FM"], "i")
+        r2Set("FM", descDict["FM"], "i")
         try:
-            r1Set("BS", descDict["BS"])
-            r2Set("BS", descDict["BS"])
+            r1Set("BS", descDict["BS"], "Z")
+            r2Set("BS", descDict["BS"], "Z")
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing a BS tag.")
         try:
             if("Pass" in descDict["FP"]):
-                r1Set("FP", 1)
-                r2Set("FP", 1)
+                r1Set("FP", 1, "i")
+                r2Set("FP", 1, "i")
             else:
-                r1Set("FP", 0)
-                r2Set("FP", 0)
+                r1Set("FP", 0, "i")
+                r2Set("FP", 0, "i")
         except KeyError:
             pl(("Dict: {}".format(descDict)))
             pl("Read: {}".format(entry))
             raise KeyError("Your fastq record is missing an FP tag.")
         try:
-            r1Set("PV", descDict["PV"])
-            r2Set("PV", descDict["PV"])
+            r1Set("PV", descDict["PV"], "Z")
+            r2Set("PV", descDict["PV"], "Z")
         except KeyError:
             # print("Phred Values > 93 not set. Oh well.)
             pass
         try:
-            r1Set("FA", descDict["FA"])
-            r2Set("FA", descDict["FA"])
+            r1Set("FA", descDict["FA"], "Z")
+            r2Set("FA", descDict["FA"], "Z")
         except KeyError:
             raise ThisIsMadness("Currently, FA tags are required.")
             # print("Number of reads agreeing per position mssing. Oh well.")
-            pass
+        """
         read1bam, read2bam = MarkSVTags(read1bam, read2bam, bedfile=bedfile,
                                         testDict=SVTestDict,
                                         paramDict=SVParamDict)
-        outBAM.write(read1bam)
-        outBAM.write(read2bam)
+        """
+        obw(read1bam)
+        obw(read2bam)
     suppBAM.close()
     outBAM.close()
     postFilterBAM.close()
