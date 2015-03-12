@@ -1,5 +1,5 @@
-#cython: c_string_type=str, c_string_encoding=ascii
-#cython: profile=True, cdivision=True, cdivision_warnings=True
+# cython: c_string_type=str, c_string_encoding=ascii
+# cython: profile=True, cdivision=True, cdivision_warnings=True
 import logging
 import shlex
 import subprocess
@@ -967,7 +967,8 @@ def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
     Makes a Counter object of positions covered by a set of reads.
     Only safe at this point for intrachromosomal rearrangements!
     """
-    return Counter(reduce(lambda x, y: x + y, [r.get_reference_positions() for r in reads]))
+    return Counter(reduce(lambda x, y: x + y,
+                          [r.get_reference_positions() for r in reads]))
 
 
 def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
@@ -1170,7 +1171,8 @@ def GetQueryIndexForCigarOperation(read, cigarOp=-1):
     See pysam's documentation for details.
     """
     if(read.cigar is None):
-        raise ThisIsMadness("I can't get query indices if there's no cigar string.")
+        raise ThisIsMadness("I can't get query indices "
+                            "if there's no cigar string.")
     try:
         assert(cigarOp in range(9))
     except AssertionError:
@@ -1216,7 +1218,7 @@ def GetReadSequenceForCigarOp(read, cigarOp=-1):
         else:
             pass
     raise ThisIsMadness("I haven't finished writing this function. Oops!")
-    return 
+    return
 
 
 def GetDeletedCoordinates(read):
@@ -1224,5 +1226,5 @@ def GetDeletedCoordinates(read):
     Returns a list of integers of genomic coordinates for deleted bases.
     """
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
-    
+
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])

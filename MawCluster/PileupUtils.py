@@ -1,5 +1,5 @@
-#cython: c_string_type=str, c_string_encoding=ascii
-#cython: profile=True, cdivision=True, cdivision_warnings=True
+# cython: c_string_type=str, c_string_encoding=ascii
+# cython: profile=True, cdivision=True, cdivision_warnings=True
 
 import subprocess
 import os.path
@@ -20,6 +20,30 @@ from utilBMF.HTSUtils import Base64ToInt
 from utilBMF.HTSUtils import ToStr
 from utilBMF import HTSUtils
 import utilBMF
+
+
+class pPileupRead:
+    """
+    Python container for the PileupRead proxy in pysam.
+    """
+    def __init__(self, PileupRead):
+        self.alignment = PileupRead.alignment
+        self.indel = PileupRead.indel
+        self.is_del = PileupRead.is_del
+        self.level = PileupRead.level
+        self.query_position = PileupRead.query_position
+
+
+class pPileupColumn:
+    """
+    Python container for the PileupColumn proxy in pysam.
+    """
+    def __init__(self, PileupColumn):
+        self.nsegments = PileupColumn.nsegments
+        self.reference_id = PileupColumn.reference_id
+        self.reference_pos = PileupColumn.reference_pos
+        self.pileups = [pPileupRead for i in PileupColumn.pileups]
+
 
 """
 Contains various utilities for working with pileup generators
@@ -95,10 +119,14 @@ class PRInfo:
                     try:
                         self.PV = self.PV_Array[self.query_position]
                     except IndexError:
-                        pl("PVString: {}".format(PVString), level=logging.DEBUG)
-                        pl("Len PV Array: {}".format(len(self.PV_Array)), level=logging.DEBUG)
-                        pl("QueryPos: {}".format(self.query_position), level=logging.DEBUG)
-                        pl("read.name {}.".format(self.read.qname), level=logging.DEBUG)
+                        pl("PVString: {}".format(PVString),
+                           level=logging.DEBUG)
+                        pl("Len PV Array: {}".format(len(self.PV_Array)),
+                           level=logging.DEBUG)
+                        pl("QueryPos: {}".format(self.query_position),
+                           level=logging.DEBUG)
+                        pl("read.name {}.".format(self.read.qname),
+                           level=logging.DEBUG)
                         pl("NOTE! Check the debug log for information"
                            " regarding potential corruption.")
                 except ValueError:
@@ -108,7 +136,8 @@ class PRInfo:
                     # Don't sweat it.
             else:
                 try:
-                    self.PV_Array = np.array(PVString.split(','), dtype=np.int64)
+                    self.PV_Array = np.array(PVString.split(','),
+                                             dtype=np.int64)
                 except ValueError:
                     print("PVString = %s" % PVString)
                     raise ValueError("This PV String should only "
@@ -228,7 +257,8 @@ class AlleleAggregateInfo:
         self.minMQ = minMQ
         self.minBQ = minBQ
         try:
-            self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
+            self.reverseStrandFraction = operator.div(self.ReverseMergedReads,
+                                                      self.MergedReads)
         except ZeroDivisionError:
             self.reverseStrandFraction = -1
         self.MFractionAgreed = np.mean(map(
@@ -307,7 +337,7 @@ class PCInfo:
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66):
-        assert isinstance(PileupColumn, pysam.calignmentfile.PileupColumn)
+        assert isinstance(PileupColumn, pPileupColumn)
         self.minMQ = int(minMQ)
         self.minBQ = int(minBQ)
         from collections import Counter
@@ -527,24 +557,24 @@ class PCInfo:
         for alt in self.AltAlleleData:
             outStr += "\t".join(
                 map(ToStr, [self.contig,
-                                 self.pos,
-                                 self.consensus,
-                                 alt.ALT,
-                                 alt.TotalReads,
-                                 alt.MergedReads,
-                                 alt.TotalAlleleFrequency,
-                                 alt.MergedAlleleFrequency,
-                                 alt.StrandCountsTotalDict["reverse"],
-                                 alt.StrandCountsTotalDict["forward"],
-                                 alt.StrandCountsDict["reverse"],
-                                 alt.StrandCountsDict["forward"],
-                                 self.TotalFracDict[alt.ALT],
-                                 self.MergedFracDict[alt.ALT],
-                                 alt.AveFamSize,
-                                 alt.SumBQScore,
-                                 alt.AveBQ,
-                                 alt.SumMQScore,
-                                 alt.AveMQ])) + "\n"
+                            self.pos,
+                            self.consensus,
+                            alt.ALT,
+                            alt.TotalReads,
+                            alt.MergedReads,
+                            alt.TotalAlleleFrequency,
+                            alt.MergedAlleleFrequency,
+                            alt.StrandCountsTotalDict["reverse"],
+                            alt.StrandCountsTotalDict["forward"],
+                            alt.StrandCountsDict["reverse"],
+                            alt.StrandCountsDict["forward"],
+                            self.TotalFracDict[alt.ALT],
+                            self.MergedFracDict[alt.ALT],
+                            alt.AveFamSize,
+                            alt.SumBQScore,
+                            alt.AveBQ,
+                            alt.SumMQScore,
+                            alt.AveMQ])) + "\n"
         self.str = outStr
         return self.str
 
@@ -634,7 +664,7 @@ def CustomPileupFullGenome(inputBAM,
     StrandedTransHandle = open(StrandedTTable, "w")
     FirstLine = True
     pileupIterator = bamHandle.pileup(max_depth=30000, multiple_iterators=True)
-    p = next(pileupIterator)
+    p = pPileupColumn(next(pileupIterator))
     for pileupColumn in p.pileups:
         NumProcessed += 1
         if((NumProcessed) % progRepInterval == 0):
@@ -772,7 +802,7 @@ def CustomPileupToTsv(inputBAM,
     for line in bedlines:
         pileupIterator = bamHandle.pileup(line[0], line[1], line[2],
                                           max_depth=30000)
-        p = next(pileupIterator)
+        p = pPileupColumn(next(pileupIterator))
         for pileupColumn in p.pileups:
             NumProcessed += 1
             if((NumProcessed) % progRepInterval == 0):
@@ -929,7 +959,7 @@ def AlleleFrequenciesByBase(inputBAM,
                                ]) + "\n")
     if(bedfile == "default"):
         pileupIterator = inHandle.pileup(max_depth=30000)
-        p = next(pileupIterator)
+        p = pPileupColumn(next(pileupIterator))
         for pileup in p.pileups:
             NumProcessed += 1
             if(NumProcessed % progRepInterval == 0):
@@ -944,7 +974,7 @@ def AlleleFrequenciesByBase(inputBAM,
             puIterator = inHandle.pileup(reference=line[0], start=line[1],
                                          end=line[2],
                                          max_depth=30000)
-            p = next(puIterator)
+            p = pPileupColumn(next(puIterator))
             for pileup in p.pileups:
                 NumProcessed += 1
                 if(NumProcessed % progRepInterval == 0):
@@ -990,7 +1020,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
     ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
     while True:
         try:
-            p = next(pileupIterator)
+            p = pPileupColumn(next(pileupIterator))
         except StopIteration:
             pl("Stopping iterations.")
         PC = PCInfo(p)
@@ -1086,10 +1116,11 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                                          max_depth=30000)
         while True:
             try:
-                PC = PCInfo(next(pileupIterator))
+                PC = PCInfo(pPileupColumn(next(pileupIterator)))
             except StopIteration:
                 pl("Stopping iteration for bed line: {}".format(line),
                    level=logging.DEBUG)
+                continue
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         outHandle.write(
@@ -1138,7 +1169,7 @@ def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
     pileupIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
     while True:
         try:
-            p = next(pileupIterator)
+            p = pPileupColumn(next(pileupIterator))
         except StopIteration:
             pl("Finished iterations. (CalcWithoutBedCoverage)")
         PC = PCInfo(p, minMQ=minMQ, minBQ=minBQ)

@@ -7,6 +7,7 @@ from utilBMF.HTSUtils import is_read_softclipped
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from utilBMF.HTSUtils import ReadPair
 from utilBMF.HTSUtils import GetDeletedCoordinates
+from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -542,7 +543,6 @@ def DRP_SNV_Tag_Condition(read1, read2, extraField=SVParamDict['DRP']):
 SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
 
 
-
 @cython.returns(cython.bint)
 def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
     """
@@ -572,7 +572,7 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     if("I" not in read1.cigarstring or "I" not in read2.cigarstring):
         return False
     if(sum([read1.is_reverse, read2.is_reverse]) != 1):
-       return False  # Reads aligned to same strand. Not a good sign.
+        return False  # Reads aligned to same strand. Not a good sign.
     read1Pos = read1.get_aligned_pairs()
     read2Pos = read2.get_aligned_pairs()
     r1Boundaries = sorted(
@@ -598,7 +598,9 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
 
 
 SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))
-SVParamDict = defaultdict(returnDefault, operator.add(SVParamDict.items(), SNVParamDict.items()))
+SVParamDict = defaultdict(returnDefault,
+                          operator.add(SVParamDict.items(),
+                                       SNVParamDict.items()))
 
 
 @cython.locals(SVR=cython.bint, maxInsert=cython.long)
@@ -619,8 +621,7 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
     # print("SVTestDict: {}".format(repr(SVTestDict)))
     svGet = SVParamDict.get
     for key in FeatureList:
-        if(SVTestDict[key](read1, read2,
-                extraField=svGet(key))):
+        if(SVTestDict[key](read1, read2, extraField=svGet(key))):
             SVR = True
             try:
                 read1.setTag("SV", read1.opt("SV") + "," + key)
@@ -795,8 +796,8 @@ def BkptSequenceIntraReads(reads):
     # Separate reads based on which end of the translocation they're part of.
     negReads = sorted([read for read in reads if read.tlen < 0],
                       key=operator.attrgetter("pos"))
-    posReads = sorted([read for read in reads if read.tlen > 0],
-                      key=operator.attrgetter("pos"))
+    posReads = sorted([read for read in reads
+                      if read.tlen > 0], key=operator.attrgetter("pos"))
     negSeqs = [read.seq if read.is_reverse else
                Seq(read.seq).reverse_complement().seq for read in negReads]
     posSeqs = [read.seq if read.is_reverse else

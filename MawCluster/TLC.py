@@ -108,6 +108,7 @@ def BMFXLC(inBAM,
         for xLoc in PutativeIntraXLocs if xLoc.nsegments != 0]))
     print("XLocVCFLinesIntra: {}".format(",".join([i.ToString() for i in
                                                    XLocVCFLinesIntra])))
+    """
     # Now preparing for interchromosomal translocation detection
     MDCBamRecords = HTSUtils.LoadReadPairsFromFile(inBAM, SVTag="MDC,ORB",
                                                    minMQ=minMQ, minBQ=minBQ)
@@ -161,7 +162,8 @@ def BMFXLC(inBAM,
         TransType="InterchromosomalRearrangement", ref=ref)
         for xLoc in PutativeInterXLocs if
         xLoc.nsegments != 0]))
-    XLocVCFLines = XLocVCFLinesIntra + XLocVCFLinesInter
+    """
+    XLocVCFLines = XLocVCFLinesIntra
     for line in XLocVCFLines:
         if(line.TransType == "IntrachromosomalRearrangement"):
             if(line.NumPartners != 0 and line.TDIST >= 10000):

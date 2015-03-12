@@ -88,8 +88,7 @@ class pFastqProxy:
     def ToString(self):
         return "\n".join(["".join(["@", self.name, " ", self.comment]),
                          self.sequence,
-                         "+",
-                         self.quality, ""])
+                         "+", self.quality, ""])
 
 
 @cython.locals(checks=cython.int)
@@ -210,7 +209,8 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
     probs[probs > 93] = 93
     QualString = "".join([ph2chrDict[i] for i in probs])
     consFqString = "\n".join(
-        ["".join(["@", R[0].description, TagString]), finalSeq, "+", QualString])
+        ["".join(["@", R[0].description, TagString]),
+         finalSeq, "+", QualString])
     return consFqString
 
 
@@ -239,8 +239,8 @@ def compareFastqRecordsInexactNumpy(R):
     cdef np.ndarray[dtypei_t, ndim = 1] numFamAgreed
     # print(repr(seqArray))
     quals = np.array([
-        record.letter_annotations['phred_quality'] for record in R],
-                     dtype=np.int64)
+        record.letter_annotations['phred_quality']
+        for record in R], dtype=np.int64)
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
@@ -320,7 +320,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     if(makeFA is True):
         FAString = operator.add(" #G~FA=", ",".join(
             np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-                         for i in range(len(finalSeq))]).astype(str)))
+                     for i in range(len(finalSeq))]).astype(str)))
     else:
         FAString = ""
     phredQuals = np.multiply(lenR, [chr2ph[i] for i in list(R[0].quality)],
@@ -419,7 +419,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
             if(np.any(np.greater(phredQuals, 93))):
                 PVString = operator.add(" #G~PV=",
                                         ",".join(map(Int2Base64,
-                                                          phredQuals)))
+                                                     phredQuals)))
                 phredQuals[phredQuals > 93] = 93
                 phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
             else:
@@ -796,8 +796,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
         pr.enable()
     outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
     outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
-    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1,
-                                                                       fq2))
+    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     pl("Command required to duplicate this action:"
        " pairedFastqConsolidate('{}', '{}', ".format(fq1, fq2) +
        "stringency={}, readPairsPerWrite={})".format(stringency,

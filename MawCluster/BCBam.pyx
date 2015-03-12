@@ -20,11 +20,12 @@ cimport cython
 
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
-from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
+from utilBMF.HTSUtils import ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF import HTSUtils
 from BCFastq import dAccess
 dAccess = np.vectorize(dAccess)
-
 
 
 def AbraCadabra(inBAM,
@@ -168,9 +169,11 @@ def pairedBarcodeTagging(
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
     cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2, bam)
     pl("Command string to reproduce call: {}".format(cStr))
-    read1Handle = SeqIO.parse(fq1, "fastq")
+    read1Handle = pysam.FastqFile(fq1)
+    read2Handle = pysam.FastqFile(fq2)
+    # read1Handle = SeqIO.parse(fq1, "fastq")
     r1Next = read1Handle.next
-    read2Handle = SeqIO.parse(fq2, "fastq")
+    # read2Handle = SeqIO.parse(fq2, "fastq")
     r2Next = read2Handle.next
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
@@ -190,10 +193,19 @@ def pairedBarcodeTagging(
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             read2bam = entry
-            read2fq = r2Next()
-        descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
+        descDict = BCFastq.GetDescriptionTagDict(read1fq.comment)
         read1bam.setTag("FM", int(descDict["FM"]), "i")
         read2bam.setTag("FM", int(descDict["FM"]), "i")
+        coorString = ",".join(sorted([":".join([PysamToChrDict[
+            read1bam.reference_id], str(read1bam.pos)]), ":".join([
+                PysamToChrDict[read2bam.reference_id], str(read2bam.pos)])]))
+        contigSetStr = ",".join(sorted(
+            [PysamToChrDict[read1bam.reference_id],
+             PysamToChrDict[read2bam.reference_id]]))
+        read1bam.setTag("RP", coorString, "Z")
+        read2bam.setTag("RP", coorString, "Z")
+        read1bam.setTag("CS", contigSetStr, "Z")
+        read2bam.setTag("CS", contigSetStr, "Z")
         try:
             read1bam.setTag("BS", descDict["BS"], "Z")
             read2bam.setTag("BS", descDict["BS"], "Z")
@@ -246,7 +258,7 @@ def compareRecs(RecordList):
     # print(repr(seqArray))
 
     quals = np.array(map(operator.attrgetter("query_qualities"),
-                              RecordList))
+                         RecordList))
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)

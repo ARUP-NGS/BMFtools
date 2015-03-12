@@ -18,9 +18,12 @@ except ImportError:
 
 
 compilerList = ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2",
-                "-funroll-loops", "-fwhole-program", "-floop-block",
+                "-funroll-loops", "-floop-block",
                 "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
-                "-fbranch-target-load-optimize2"]
+                "-fbranch-target-load-optimize2",
+                "-ftree-loop-distribution", "-ftree-loop-im", "-fivopts",
+                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
+                "-funswitch-loops", "-funsafe-math-optimizations"]
 
 try:
     from setuptools import setup, Extension
@@ -33,7 +36,8 @@ ext = cythonize('*/*.pyx') + cythonize("*/*.py")
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back from line 31 to line 30.
 for x in map(operator.attrgetter("extra_compile_args"), ext):
-    # x += ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2", "-funroll-loops", "-fwhole-program"]
+    # x += ["-Ofast", "-flto", marchFlag, "-pipe",
+    # "-msse2", "-funroll-loops", "-fwhole-program"]
     x += compilerList
     #  x.extra_compile_args += [marchFlag, "-pipe"]
 
@@ -51,7 +55,8 @@ config = {
     'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': [],
     'name': 'BMFTools',
-    'license': 'GNU Affero General Public License, pending institutional approval',
+    'license': 'GNU Affero General Public License, '
+               'pending institutional approval',
     'include': 'README.md',
     'package_data': {'': ['README.md']}
 }

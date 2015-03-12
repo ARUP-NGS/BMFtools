@@ -3,6 +3,7 @@ import logging
 import pysam
 
 from MawCluster.SNVUtils import *
+from MawCluster.PileupUtils import pPileupColumn
 
 
 """
@@ -59,13 +60,14 @@ def SNVCrawler(inBAM,
 
     if(bed != "default"):
         for line in bed:
-            pl("Combing through bed region {}".format(line), level=logging.DEBUG)
+            pl("Combing through bed region {}".format(line),
+               level=logging.DEBUG)
             puIterator = inHandle.pileup(line[0], line[1],
                                          max_depth=30000,
                                          multiple_iterators=True)
             while True:
                 try:
-                    PileupColumn = puIterator.next()
+                    PileupColumn = pPileupColumn(puIterator.next())
                 except StopIteration:
                     pl("Finished iterations.")
                     break
@@ -77,7 +79,8 @@ def SNVCrawler(inBAM,
                     continue
                 '''
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
-                pl("Position for pileup (0-based): {}".format(PC.pos), level=logging.DEBUG)
+                pl("Position for pileup (0-based): {}".format(PC.pos),
+                   level=logging.DEBUG)
                 if(line[2] <= PC.pos):
                     break
                 VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
@@ -94,7 +97,7 @@ def SNVCrawler(inBAM,
             try:
                 lc = 0
                 # Last command - 0 means iterator was where it crashed.
-                PCpysam = puIterator.next()
+                PCpysam = pPileupColumn(puIterator.next())
                 lc = 1
                 # Last command - 0 means the PCInfo call was where it crashed
                 PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ)

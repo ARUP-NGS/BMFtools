@@ -188,6 +188,7 @@ Most options are available for command-line as well. If an option is set in both
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
+    4. K-mer based SV approaches?
 
 1. TODO, lite:
     1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **
