@@ -1,0 +1,25 @@
+[Header]
+IEMFileVersion,4
+Investigator Name,Daniel
+Experiment Name,20150220 Samples
+Date,2/13/2015
+Workflow,GenerateFASTQ
+Application,NextSeq FASTQ Only
+Assay,cfDNA
+Description,Translocation Samples?
+Chemistry,Default
+
+[Reads]
+146
+16
+8
+146
+
+[Settings]
+
+[Data]
+Sample_ID,Sample_Name,Sample_Plate,Sample_Well,I7_Index_ID,index,Sample_Project,Description
+14-0017319_cfDNA_100ng_SP14-15849,14-0017319_cfDNA_100ng_SP14-15849,,,,AGGCTATA,BMFcfDNA,Same as SP14-15849
+14-0019055_cfDNA_90ng,14-0019055_cfDNA_90ng,,,,GCCTCTAT,BMFcfDNA,?
+HD-C751_no_repair_25ng,HD-C751_no_repair_25ng,,,,AGGATAGG,BMFcfDNA,FFPE No Repair
+HD-C751_NEB_FFPE_DNA_repair_25ng,HD-C751_NEB_FFPE_DNA_repair_25ng,,,,TCAGAGCC,BMFcfDNA,FFPE with Repair

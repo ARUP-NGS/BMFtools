@@ -42,7 +42,7 @@ class pPileupColumn:
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
-        self.pileups = [pPileupRead for i in PileupColumn.pileups]
+        self.pileups = [pPileupRead(i) for i in PileupColumn.pileups]
 
 
 """
@@ -89,14 +89,15 @@ class PRInfo:
         self.is_proper_pair = PileupRead.alignment.is_proper_pair
         self.read = PileupRead.alignment
         self.ssString = "#".join(
-            [str(i) for i in sorted(
-                [self.read.reference_start, self.read.reference_end])])
+            np.array(sorted(
+                [self.read.reference_start,
+                 self.read.reference_end])).astype(str))
         self.query_position = PileupRead.query_position
         if("FA" in dict(PileupRead.alignment.tags).keys()):
             self.FA_Array = np.array(
                 PileupRead.alignment.opt("FA").split(",")).astype(int)
             self.FA = self.FA_Array[self.query_position]
-            self.FractionAgreed = self.FA / float(self.FM)
+            self.FractionAgreed = operator.div(self.FA, float(self.FM))
         else:
             self.FA = None
             self.FractionAgreed = None
@@ -143,7 +144,7 @@ class PRInfo:
                     raise ValueError("This PV String should only "
                                      "have digits and commas... ???")
                 self.PV = self.PV_Array[self.query_position]
-                self.PVFrac = float(self.PV) / np.max(self.PV_Array)
+                self.PVFrac = operator.div(float(self.PV), np.max(self.PV_Array))
 
 
 def is_reverse_to_str(boolean):
@@ -223,6 +224,7 @@ class AlleleAggregateInfo:
         except IndexError:
             self.recList = []
         # Check that all alt alleles are identical
+        lenR = len(self.recList)
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -239,17 +241,17 @@ class AlleleAggregateInfo:
         self.ReverseTotalReads = np.sum(map(
             operator.attrgetter("FM"),
             [rec for rec in recList if rec.is_reverse]))
-        self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
-        self.AveFamSize = float(self.TotalReads) / self.MergedReads
+        self.ForwardTotalReads = operator.sub(self.TotalReads, self.ReverseTotalReads)
+        self.AveFamSize = operator.div(float(self.TotalReads), self.MergedReads)
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum(map(operator.attrgetter("BQ"), recList))
         self.SumMQScore = sum(map(operator.attrgetter("MQ"), recList))
         try:
-            self.AveMQ = float(self.SumMQScore) / len(self.recList)
+            self.AveMQ = operator.div(float(self.SumMQScore), lenR)
         except ZeroDivisionError:
             self.AveMQ = 0
         try:
-            self.AveBQ = float(self.SumBQScore) / len(self.recList)
+            self.AveBQ = operator.div(float(self.SumBQScore), lenR)
         except ZeroDivisionError:
             self.AveBQ = 0
         self.ALT = recList[0].BaseCall
@@ -368,13 +370,14 @@ class PCInfo:
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
         self.Records = [rec for rec in self.Records if rec.Pass is True]
+        lenR = len(self.Records)
         try:
-            self.reverseStrandFraction = len(
+            self.reverseStrandFraction = operator.div(len(
                 [i for i in self.Records if i.read.is_reverse is
-                 True]) / float(len(self.Records))
+                 True]), float(lenR))
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
-        self.MergedReads = len(self.Records)
+        self.MergedReads = lenR
         try:
             self.TotalReads = sum([rec.FM for rec in self.Records])
         except KeyError:
@@ -415,7 +418,8 @@ class PCInfo:
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.TotalFracDict[
-                alt.ALT] = float(alt.TotalReads) / self.TotalReads
+                alt.ALT] = operator.div(float(alt.TotalReads),
+                                        self.TotalReads)
         self.TotalFracStr = ",".join(
             ["->".join([key, str(self.TotalFracDict[key])])
              for key in self.TotalFracDict.keys()])
@@ -453,7 +457,8 @@ class PCInfo:
         TransTotalCounts = {}
         for alt in self.AltAlleleData:
             try:
-                TransTotalCounts[alt.transition] += alt.TotalReads
+                TransTotalCounts[alt.transition] = operator.add(
+                    alt.TotalReads, TransTotalCounts[alt.transition])
             except KeyError:
                 TransTotalCounts[alt.transition] = alt.TotalReads
         self.TransTotalCounts = TransTotalCounts
@@ -485,10 +490,10 @@ class PCInfo:
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         try:
             for key in self.MergedAlleleDict:
-                self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
-                    key] / float(self.MergedReads)
-                self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
-                    key] / float(self.TotalReads)
+                self.MergedAlleleFreqDict[key] = operator.div(self.MergedAlleleDict[
+                    key], float(self.MergedReads))
+                self.TotalAlleleFreqDict[key] = operator.div(self.TotalAlleleDict[
+                    key], float(self.TotalReads))
         except ZeroDivisionError:
             for key in self.MergedAlleleDict:
                 self.MergedAlleleFreqDict[key] = 0.
@@ -521,9 +526,9 @@ class PCInfo:
         self.TotalStrandednessRatioDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedStrandednessRatioDict[
-                alt.ALT] = alt.ReverseMergedReads / float(alt.MergedReads)
+                alt.ALT] = operator.div(alt.ReverseMergedReads, float(alt.MergedReads))
             self.TotalStrandednessRatioDict[
-                alt.ALT] = alt.ReverseTotalReads / float(alt.TotalReads)
+                alt.ALT] = operator.div(alt.ReverseTotalReads, float(alt.TotalReads))
         self.MergedStrandednessStr = "\t".join([
             str(self.MergedStrandednessRatioDict[
                 key]) for key in self.MergedStrandednessRatioDict.keys()])
@@ -600,7 +605,7 @@ class PileupInterval:
         self.str = self.ToString()
 
     def updateWithPileupColumn(self, PileupColumn):
-        self.end += 1
+        self.end = operator.add(self.end, 1)
         assert self.start < self.end  # Interval must be positive...
         try:
             self.TotalCoverage += sum([int(pu.alignment.opt(
@@ -608,10 +613,10 @@ class PileupInterval:
         except KeyError:
             self.TotalCoverage = PileupColumn.nsegments
         self.UniqueCoverage += PileupColumn.nsegments
-        self.AvgTotalCoverage = self.TotalCoverage / float(
-            self.end - self.start)
-        self.AvgUniqueCoverage = self.UniqueCoverage / float(
-            self.end - self.start)
+        self.AvgTotalCoverage = operator.div(self.TotalCoverage, float(
+            operator.sub(self.end, self.start)))
+        self.AvgUniqueCoverage = operator.div(self.UniqueCoverage, float(
+            operator.sub(self.end, self.start)))
 
     def ToString(self):
         self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
@@ -666,15 +671,17 @@ def CustomPileupFullGenome(inputBAM,
     pileupIterator = bamHandle.pileup(max_depth=30000, multiple_iterators=True)
     p = pPileupColumn(next(pileupIterator))
     for pileupColumn in p.pileups:
-        NumProcessed += 1
+        NumProcessed = operator.add(NumProcessed, 1)
         if((NumProcessed) % progRepInterval == 0):
             pl("Number of positions processed: {}".format(
                 NumProcessed))
             pl("Total reads processed: {}".format(TotalReadsProcessed))
             pl("Merged reads processed: {}".format(MergedReadsProcessed))
         PColSum = PCInfo(pileupColumn, minBQ=minBQ, minMQ=minMQ)
-        MergedReadsProcessed += PColSum.MergedReads
-        TotalReadsProcessed += PColSum.TotalReads
+        MergedReadsProcessed = operator.add(MergedReadsProcessed,
+                                            PColSum.MergedReads)
+        TotalReadsProcessed = operator.add(TotalReadsProcessed,
+                                           PColSum.TotalReads)
         if(FirstLine is True):
             PileupHandle.write(PColSum.ToString(header=True))
             FirstLine = False
@@ -723,10 +730,10 @@ def CustomPileupFullGenome(inputBAM,
         TransHandle.write("{}\t{}\t{}\n".format(key,
                                                 TransTotalDict[key],
                                                 TransMergedDict[key],
-                                                TransTotalDict[key] / float(
-                                                    NumTransitionsTotal),
-                                                TransMergedDict[key] / float(
-                                                    NumTransitionsMerged)))
+                                                operator.div(TransTotalDict[key], float(
+                                                    NumTransitionsTotal)),
+                                                operator.div(TransMergedDict[key], float(
+                                                    NumTransitionsMerged))))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
@@ -737,10 +744,10 @@ def CustomPileupFullGenome(inputBAM,
                 key,
                 StrandedTransTotalDict[key],
                 StrandedTransMergedDict[key],
-                StrandedTransTotalDict[key] /
-                float(NumTransitionsTotal),
-                StrandedTransMergedDict[key] /
-                float(NumTransitionsMerged),
+                operator.div(StrandedTransTotalDict[key],
+                             float(NumTransitionsTotal)),
+                operator.div(StrandedTransMergedDict[key],
+                             float(NumTransitionsMerged)),
             ))
     pl("Transition Table: {}".format(TransitionTable))
     pl("Stranded Transition Table: {}".format(StrandedTTable))
@@ -791,7 +798,7 @@ def CustomPileupToTsv(inputBAM,
     except subprocess.CalledProcessError:
         pl("Couldn't index BAM - coor sorting, then indexing!")
         inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
-    NumPos = sum([line[2] - line[1] for line in bedlines])
+    NumPos = sum([operator.sub(line[2], line[1]) for line in bedlines])
     NumProcessed = 0  # Number of processed positions in pileup
     pl("Number of positions in bed file: {}".format(NumPos))
     bamHandle = pysam.AlignmentFile(inputBAM, "rb")
@@ -867,10 +874,10 @@ def CustomPileupToTsv(inputBAM,
                     key,
                     TransTotalDict[key],
                     TransMergedDict[key],
-                    TransTotalDict[key] /
-                    float(NumTransitionsTotal),
-                    TransMergedDict[key] /
-                    float(NumTransitionsMerged)))
+                    operator.div(TransTotalDict[key],
+                                 float(NumTransitionsTotal)),
+                    operator.div(TransMergedDict[key],
+                                 float(NumTransitionsMerged))))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
@@ -1028,7 +1035,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
             if(PC.MergedReads >= mincov):
                 Interval = PileupInterval(contig=PC.PCol.reference_id,
                                           start=PC.PCol.reference_pos,
-                                          end=PC.PCol.reference_pos + 1)
+                                          end=operator.add(PC.PCol.reference_pos, 1))
                 try:
                     Interval.updateWithPileupColumn(PC.PCol)
                 except AssertionError:
@@ -1039,15 +1046,15 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
         else:
             if(workingChr ==
                PC.PCol.reference_id and PC.PCol.nsegments >= mincov):
-                if(PC.PCol.reference_pos - workingPos == 1):
+                if(operator.sub(PC.PCol.reference_pos, workingPos) == 1):
                     try:
                         Interval.updateWithPileupColumn(PC.PCol)
-                        workingPos += 1
+                        workingPos = operator.add(workingPos, 1)
                     except AssertionError:
                         del Interval
                 else:
-                    outHandle.write(Interval.ToString() + "\n")
-                    if(PC.PCol.nsegments >= mincov):
+                    outHandle.write(operator.add(Interval.ToString(), "\n"))
+                    if(operator.ge(PC.PCol.nsegments, mincov)):
                         Interval = PileupInterval(
                             contig=PC.PCol.reference_id,
                             start=PC.PCol.reference_pos,
@@ -1120,7 +1127,7 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
             except StopIteration:
                 pl("Stopping iteration for bed line: {}".format(line),
                    level=logging.DEBUG)
-                continue
+                break
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         outHandle.write(
@@ -1131,8 +1138,8 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                   line[1],
                   line[2],
                   MergedReads, TotalReads, MergedReads /
-                  float(line[2] - line[1]),
-                  TotalReads / float(line[2] - line[1])]]) + "\n")
+                  float(operator.sub(line[2], line[1])),
+                  TotalReads / float(operator.sub(line[2], line[1]))]]) + "\n")
     inHandle.close()
     outHandle.close()
     return outbed

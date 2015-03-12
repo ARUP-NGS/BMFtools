@@ -79,8 +79,8 @@ def SNVCrawler(inBAM,
                     continue
                 '''
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
-                pl("Position for pileup (0-based): {}".format(PC.pos),
-                   level=logging.DEBUG)
+                #  pl("Position for pileup (0-based): {}".format(PC.pos),
+                #     level=logging.DEBUG)
                 if(line[2] <= PC.pos):
                     break
                 VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,

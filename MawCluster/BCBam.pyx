@@ -169,31 +169,28 @@ def pairedBarcodeTagging(
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
     cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2, bam)
     pl("Command string to reproduce call: {}".format(cStr))
-    read1Handle = pysam.FastqFile(fq1)
-    read2Handle = pysam.FastqFile(fq2)
-    # read1Handle = SeqIO.parse(fq1, "fastq")
-    r1Next = read1Handle.next
+    # read1Handle = pysam.FastqFile(fq1)
+    # read2Handle = pysam.FastqFile(fq2)
+    read1Handle = SeqIO.parse(fq1, "fastq")
     # read2Handle = SeqIO.parse(fq2, "fastq")
-    r2Next = read2Handle.next
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     obw = outBAM.write
-    sbw = suppBAM.write
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag >= 2048):
-            sbw(entry)
+            suppBAM.write(entry)
             continue
         if(not entry.is_paired):
             continue
         if(entry.is_read1):
             read1bam = entry
-            read1fq = r1Next()
+            read1fq = read1Handle.next()
             continue
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             read2bam = entry
-        descDict = BCFastq.GetDescriptionTagDict(read1fq.comment)
+        descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
         read1bam.setTag("FM", int(descDict["FM"]), "i")
         read2bam.setTag("FM", int(descDict["FM"]), "i")
         coorString = ",".join(sorted([":".join([PysamToChrDict[

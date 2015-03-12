@@ -2,6 +2,7 @@ import numpy as np
 import pysam
 import subprocess
 import operator
+import os
 import sys
 
 # Find the ideal -march argument for the system.
@@ -12,6 +13,7 @@ try:
                                   shell=True,
                                   stdout=subprocess.PIPE).stdout.read().strip()
     marchFlag = "-march=%s" % marchValue
+    os.remove("help-dummy.o")
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
@@ -23,7 +25,9 @@ compilerList = ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2",
                 "-fbranch-target-load-optimize2",
                 "-ftree-loop-distribution", "-ftree-loop-im", "-fivopts",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-funswitch-loops", "-funsafe-math-optimizations"]
+                "-funswitch-loops", "-funsafe-math-optimizations",
+                "-fprefetch-loop-arrays", "-fmodulo-sched",
+                "-fmodulo-sched-allow-regmoves", "-fgcse"]
 
 try:
     from setuptools import setup, Extension
@@ -47,7 +51,7 @@ config = {
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.0.6.1',
+    'version': '0.0.7.0',
     'install_requires': ['pysam', 'biopython', 'pudb',
                          'cython', 'numconv', 'cutadapt'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster'],

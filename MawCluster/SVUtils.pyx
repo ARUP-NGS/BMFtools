@@ -681,7 +681,7 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
     SVCountDict = {}
-    for key in SVParamDict.keys():
+    for key in SVTestDict.keys():
         SVCountDict[key] = 0
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
@@ -698,25 +698,25 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         if(read.is_read2 is True):
             read2 = read
         assert read1.query_name == read2.query_name
-        read1, read2 = MarkSVTags(read1, read2)
+        read1, read2 = MarkSVTags(read1, read2, bedfile=bedfile)
         if(read1.opt("SV") != "NF"):
             WritePair = True
             for key in read1.opt("SV").split(","):
-                SVCountDict[key] += 1
+                SVCountDict[key] = operator.add(SVCountDict[key], 1)
         if(WritePair is True):
             SVOutHandle.write(read1)
             SVOutHandle.write(read2)
-            SVCountDict["SVR"] += 1
+            SVCountDict["SVR"] = operator.add(SVCountDict["SVR"], 1)
         else:
-            SVCountDict["NOSVR"] += 1
-            read1.setTag("SV", "NF")
-            read2.setTag("SV", "NF")
+            SVCountDict["NOSVR"] = operator.add(SVCountDict["NOSVR"], 1)
+            read1.setTag("SV", "NF", "Z")
+            read2.setTag("SV", "NF", "Z")
         FullOutHandle.write(read1)
         FullOutHandle.write(read2)
     inHandle.close()
     SVOutHandle.close()
     FullOutHandle.close()
-    SVCountDict["TOTAL"] = SVCountDict["SVR"] + SVCountDict["NOSVR"]
+    SVCountDict["TOTAL"] = operator.add(SVCountDict["SVR"], SVCountDict["NOSVR"])
     for key in SVCountDict.keys():
         pl("Number of reads marked with key {}: {}".format(
             key, SVCountDict[key]))
