@@ -117,12 +117,14 @@ class SNVCFLine:
         self.InfoFields = {"AC": AlleleAggregateObject.MergedReads,
                            "AF": AlleleAggregateObject.MergedReads
                            / float(AlleleAggregateObject.DOC),
+                           "EST": ",".join(
+                                AlleleAggregateObject.excludedSVTags),
                            "TF": AlleleAggregateObject.TotalReads
                            / float(AlleleAggregateObject.DOCTotal),
-                           "BS": AlleleAggregateObject.BothStrandSupport,
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,
                            "BPSD": AlleleAggregateObject.BPSD,
+                           "FSR": AlleleAggregateObject.FSR,
                            "MNCS": minNumSS, "MDP": minDuplexPairs,
                            "MFRAC": AlleleAggregateObject.MFractionAgreed,
                            "MINFRACCALL": AlleleAggregateObject.minFrac,
@@ -629,11 +631,11 @@ HeaderInfoDict["TF"] = HeaderInfoLine(
                  "in the same order as listed for unmerged read families,"
                  "IE, without having removed the duplicates."),
     Number="A")
-HeaderInfoDict["BS"] = HeaderInfoLine(
-    ID="BS",
-    Type="String",
-    Description="Variant supported by reads mapping to both strands.",
-    Number="A")
+HeaderInfoDict["FSR"] = HeaderInfoLine(
+    ID="FSR",
+    Type="Integer",
+    Description="Number of reads left out of pileup due to SV tags.",
+    Number=1)
 HeaderInfoDict["RSF"] = HeaderInfoLine(
     ID="RSF",
     Type="Float",
@@ -782,6 +784,8 @@ HeaderInfoDict["MPF"] = HeaderInfoLine(
                 ". If this is far from 1, there might be something suspiciou"
                 "s going on.",
     Number="A", Type="Float")
+HeaderInfoDict["EST"] = HeaderInfoLine(ID="EST", Description="Excluded SV Tags",
+                                       Number=1, Type="String")
 
 
 """

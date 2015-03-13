@@ -18,8 +18,8 @@ except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
 
-
-compilerList = ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2",
+"""
+compilerList = ["-flto", marchFlag, "-pipe", "-msse2",
                 "-funroll-loops", "-floop-block",
                 "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
                 "-fbranch-target-load-optimize2",
@@ -28,7 +28,9 @@ compilerList = ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2",
                 "-funswitch-loops", "-funsafe-math-optimizations",
                 "-fprefetch-loop-arrays", "-fmodulo-sched",
                 "-fmodulo-sched-allow-regmoves", "-fgcse",
-                "-floop-unroll-and-jam"]
+                "-floop-unroll-and-jam", "--mfpmath=sse", "-fomit-frame-pointer"]
+"""
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse"]
 
 try:
     from setuptools import setup, Extension

@@ -55,7 +55,7 @@ numconv is required for conversion to base 64 for PV tags, but that compression 
 bwa (mem or aln, depending on needs.)
 
 #### Compiler
-gcc >= gccv4.5
+gcc >= gccv5.0
 
 #### Adapter Trimming
 Cutadapt
@@ -183,6 +183,7 @@ Most options are available for command-line as well. If an option is set in both
 
 
 #TODO (ish):
+0. Replace the conf.txt file with the new config.py modules.
 1. SNV:
     0. Just fix everything (See Known Issues)
     1. Add INFO fields for the new NF tag (mean, max, SD)
@@ -199,7 +200,6 @@ Most options are available for command-line as well. If an option is set in both
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
-    4. K-mer based SV approaches?
 
 1. TODO, lite:
     1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **

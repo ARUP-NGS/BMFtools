@@ -43,7 +43,7 @@ def GetRawInfo(xmlObj, runXmlDict=-1, lane=-1, tile=-1):
     pass
 
 
-def BuildRunDict(xmlPath):
+def BuildRunDict(xmlPath, makeGlobal=True):
     """
     Written to take xmlObj as the output of ConversionStatsToLaneElements.
     Returns the a nested dictionary.
@@ -56,17 +56,19 @@ def BuildRunDict(xmlPath):
                                         str(readNum)])]["QualityScoreSum"]
     """
     xmlObj = ConversionStatsToLaneSuperelement(xmlPath)
-    newDict = {}
+    if makeGlobal is True:
+        global ConvXmlDict
+    ConvXmlDict = {}
     for lane in xmlObj:
         laneNum = lane.values()[0]
         for tile in lane:
             tileNum = tile.values()[0]
             Raw = tile.getchildren()[0]
             ClusterCount = int(Raw.getchildren()[0].text)
-            for entry in range(1, len(Raw)):
+            for i in range(1, len(Raw)):
                 tmpDict = {}
                 tmpDict["Yield"] = Raw[i].getchildren()[0].text
                 tmpDict["YieldQ30"] = Raw[i].getchildren()[1].text
                 tmpDict["QualityScoreSum"] = Raw[i].getchildren()[2].text
-                newDict[",".join([laneNum, tileNum, str(entry)])] = tmpDict
-    return newDict
+                ConvXmlDict[",".join([laneNum, tileNum, str(i)])] = tmpDict
+    return ConvXmlDict

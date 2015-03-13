@@ -4,14 +4,17 @@
 # cython: cdivision=True
 # cython: cdivision_warnings=True
 import argparse
-import os.path
 import logging
+import os
+import os.path
+import pudb
 import sys
+import datetime
+import subprocess
 
 import BMFMain.ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl, FacePalm, ThisIsMadness
 from utilBMF import HTSUtils
-import pudb
 
 """
 Contains utilities for the completion of a variety of
@@ -21,6 +24,7 @@ Structural Variant detection tools are in active development.
 """
 
 # Global Variables
+global Logger
 Logger = logging.getLogger("Primarylogger")
 
 
@@ -146,7 +150,9 @@ def main(argv=None):
         "--p3Seq", help="3' primer sequence for cutadapt.", default="default")
     parser.add_argument(
         "--p5Seq", help="5' primer sequence for cutadapt.", default="default")
-    global Logger
+    parser.add_argument(
+        "--review-dir", help="Prefix for review directory, where important re"
+        "sults files will be moved at the end of analysis.", default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     if("minMQ" in confDict.keys()):
@@ -161,6 +167,9 @@ def main(argv=None):
         abrapath = confDict['abrapath']
     else:
         abrapath = args.abrapath
+    global gatkpath
+    if("gatkpath" in confDict.keys()):
+        gatkpath = confDict['gatkpath']
     captureSize = None
     kmer = None
     alpha = None
@@ -184,6 +193,21 @@ def main(argv=None):
         pl("captureSize: {}".format(captureSize))
         if(captureSize is None):
             raise ThisIsMadness("required captureSize variable not set!")
+    dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m")
+    global reviewdir
+    reviewdir = ""
+    if(args.review_dir != "default"):
+        reviewdir = ".".join([args.review_dir, dateStr, "reviewdir"])
+    else:
+        reviewdir = ".".join([args.fq[0].split(".")[0], dateStr, "reviewdir"])
+    if(os.path.isdir(reviewdir)):
+        raise ThisIsMadness("Review directory exists - even with "
+                            "the time stamp. Abort!")
+    if(os.path.isfile(reviewdir)):
+        raise ThisIsMadness("Not only is the review directory name"
+                            " taken, but it's not even a folder?")
+    os.mkdir(reviewdir)
+    pl("Review directory: {}")
     # Begin logging
     if(args.logfile != "default"):
         logfile = args.logfile
@@ -272,17 +296,17 @@ def main(argv=None):
         pl("Paired-end analysis chosen.")
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
-            if(args.shades is True):
-                if kmer is None and alpha is not None:
-                    trimfq1, trimfq2 = ps.pairedFastqShades(
-                        args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                        lighter=lighter, captureSize=captureSize, alpha=alpha,
-                        p3Seq=p3Seq, p5Seq=p5Seq)
-                else:
-                    trimfq1, trimfq2 = ps.pairedFastqShades(
-                        args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                        lighter=lighter, kmer=kmer, captureSize=captureSize,
-                        p3Seq=p3Seq, p5Seq=p5Seq)
+            if kmer is None and alpha is not None:
+                trimfq1, trimfq2 = ps.pairedFastqShades(
+                    args.fq[0], args.fq[1], indexfq=args.idxFastq,
+                    lighter=lighter, captureSize=captureSize, alpha=alpha,
+                    p3Seq=p3Seq, p5Seq=p5Seq)
+            else:
+                trimfq1, trimfq2 = ps.pairedFastqShades(
+                    args.fq[0], args.fq[1], indexfq=args.idxFastq,
+                    lighter=lighter, kmer=kmer, captureSize=captureSize,
+                    p3Seq=p3Seq, p5Seq=p5Seq)
+            subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
             if("bwapath" in locals()):
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
@@ -299,7 +323,8 @@ def main(argv=None):
                     aligner=aligner, ref=ref,
                     bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath)
-            CleanParsedVCF = ps.pairedVCFProc(
+            subprocess.check_call(["cp", procSortedBam, reviewdir])
+            VCFOutDict = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
                 opts=opts,
@@ -307,6 +332,8 @@ def main(argv=None):
                 minMQ=minMQ,
                 minBQ=minBQ,
                 commandStr=" ".join(sys.argv))
+            for key in VCFOutDict.keys():
+                subprocess.check_call(["cp", VCFOutDict[key], reviewdir])
             pl("Last stop! Watch your step.")
         elif(args.initialStep == 2):
             pl("Beginning BAM processing.")
@@ -352,6 +379,7 @@ def main(argv=None):
                 reference=args.ref,
                 commandStr=" ".join(sys.argv))
             pl("Last stop! Watch your step.")
+    subprocess.check_call(["cp", logfile, reviewdir])
     return
 
 global __version__

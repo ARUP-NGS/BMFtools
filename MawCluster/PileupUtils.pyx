@@ -116,6 +116,7 @@ class PRInfo:
                     try:
                         assert len(self.PV_Array) == self.read.query_length
                     except AssertionError:
+                        pl("Assertion error failed... Fail read!")
                         self.Pass = False
                     try:
                         self.PV = self.PV_Array[self.query_position]
@@ -169,7 +170,8 @@ class AlleleAggregateInfo:
 
     @cython.locals(minFracAgreed=cython.float, minMQ=cython.long,
                    minBQ=cython.long, minFA=cython.long,
-                   minPVFrac=cython.float)
+                   minPVFrac=cython.float, FSR=cython.int,
+                   minFA=cython.int)
     def __init__(self, recList, consensus="default",
                  mergedSize="default",
                  totalSize="default",
@@ -182,7 +184,7 @@ class AlleleAggregateInfo:
                  NUMALT="default",
                  AABPSD="default", AAMBP="default",
                  minFracAgreed=0.0, minFA=0,
-                 minPVFrac=0.666):
+                 minPVFrac=0.5, FSR=-1):
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -212,17 +214,14 @@ class AlleleAggregateInfo:
                                  "PRInfo at given position."))
         self.recList = [rec for rec in recList
                         if rec.MQ >= minMQ and rec.BQ >= minBQ]
-        try:
-            if("PVFrac" in dir(self.recList[0])):
-                self.recList = [rec for rec in self.recList
-                                if rec.PVFrac >= minPVFrac]
-            if("FractionAgreed" in dir(self.recList[0])):
-                self.recList = [rec for rec in self.recList
-                                if rec.FractionAgreed >= minFracAgreed]
-            if("FA" in dir(self.recList[0])):
-                self.recList = [rec for rec in self.recList if rec.FA >= minFA]
-        except IndexError:
-            self.recList = []
+        if("PVFrac" in dir(self.recList[0])):
+            self.recList = [rec for rec in self.recList
+                            if rec.PVFrac >= minPVFrac]
+
+        self.recList = [rec for rec in self.recList
+                        if rec.FractionAgreed >= minFracAgreed]
+
+        self.recList = [rec for rec in self.recList if rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
         try:
@@ -268,6 +267,7 @@ class AlleleAggregateInfo:
         self.minFrac = minFracAgreed
         self.minFA = minFA
         self.MFA = np.mean(map(operator.attrgetter("FA"), recList))
+        self.FSR = FSR
 
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = "->".join([consensus, self.ALT])
@@ -333,18 +333,28 @@ class PCInfo:
     The option "duplex required" determines whether or not variants must
     be supported by both reads in a pair for a proper call. Increases
     stringency, might lose some sensitivity for a given sequencing depth.
+
+    exclusionSVTags should be a string of comma-separated SV tags.
+    The presence of one of these tags in a read causes it to be thrown out
+    of the pileup.
     """
 
     @cython.locals(reverseStrandFraction=cython.float)
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
-                 minFracAgreed=0.0, minFA=0, minPVFrac=0.66):
+                 minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
+                 exclusionSVTags=""):
+        #  pl("Number of reads in column: {}".format(len(PileupColumn.pileups)))
         assert isinstance(PileupColumn, pPileupColumn)
         self.minMQ = int(minMQ)
+        #  pl("minMQ: %s" % minMQ)
         self.minBQ = int(minBQ)
+        #  pl("minBQ: %s" % minBQ)
         from collections import Counter
         self.contig = PysamToChrDict[PileupColumn.reference_id]
+        #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
+        #  pl("pos: %s" % self.pos)
         self.FailedBQReads = sum(
             [pileupRead.alignment.query_qualities
              [pileupRead.query_position] < self.minBQ
@@ -353,6 +363,16 @@ class PCInfo:
             [pileupRead.alignment.mapping_quality < self.minMQ
              for pileupRead in PileupColumn.pileups])
         self.PCol = PileupColumn
+        self.excludedSVTags = exclusionSVTags.split(",")
+        #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
+        self.FailedSVReadDict = {}
+        for tag in self.excludedSVTags:
+            self.FailedSVReadDict[tag] = sum([p.alignment.has_tag("SV") and tag
+                                              not in p.alignment.opt("SV")
+                                              for p in PileupColumn.pileups])
+        self.FailedSVReads = sum([self.FailedSVReadDict[key] for key
+                                  in self.FailedSVReadDict.keys()])
+        #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
         """
         if(self.FailedMQReads != 0):
             print("Mapping qualities of reads which failed: {}".format(
@@ -369,7 +389,7 @@ class PCInfo:
             if(pileupRead.alignment.mapq >= self.minMQ) and
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
-        self.Records = [rec for rec in self.Records if rec.Pass is True]
+        self.Records = filter(operator.attrgetter("Pass"), self.Records)
         lenR = len(self.Records)
         try:
             self.reverseStrandFraction = operator.div(len(
@@ -413,7 +433,7 @@ class PCInfo:
                               NUMALT=len(self.VariantDict.keys()),
                               AAMBP=self.AAMBP, AABPSD=self.AABPSD,
                               minFracAgreed=minFracAgreed, minFA=minFA,
-                              minPVFrac=minPVFrac)
+                              minPVFrac=minPVFrac, FSR=self.FailedSVReads)
                               for key in self.VariantDict.keys()]
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
