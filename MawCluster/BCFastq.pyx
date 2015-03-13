@@ -450,10 +450,10 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
         HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
-        commandStr = "cutadapt -a {} -o {} -O {} {}".format(
+        commandStr = "cutadapt --mask-adapter -a {} -o {} -O {} {}".format(
             p3Seq, outfq, overlapLen, fq)
     else:
-        commandStr = "cutadapt -a {} -g {} -o {} -O {} {}".format(
+        commandStr = "cutadapt --mask-adapter -a {} -g {} -o {} -O {} {}".format(
             p3Seq, p5Seq, outfq, overlapLen, fq)
     pl("Cutadapt command string: {}".format(commandStr))
     return commandStr, outfq

@@ -116,6 +116,11 @@ class PRInfo:
                     try:
                         assert len(self.PV_Array) == self.read.query_length
                     except AssertionError:
+                        print(repr(PV_Array))
+                        print(repr(read.qual))
+                        print(repr(read.seq))
+                        print(repr(read.qname))
+                        raise AssertionError("What is this?")
                         pl("Assertion error failed... Fail read!")
                         self.Pass = False
                     try:

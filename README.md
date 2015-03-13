@@ -185,12 +185,21 @@ Most options are available for command-line as well. If an option is set in both
 #TODO (ish):
 0. Replace the conf.txt file with the new config.py modules.
 1. SNV:
-    0. Just fix everything (See Known Issues)
-    1. Add INFO fields for the new NF tag (mean, max, SD)
-    1. Consider haplotyping by leveraging reads covering multiple SNPs.
-    2. Error Characterization Code (Start looking at read families differently). Finding a "consensus" sequence for each family, followed by seeing what errors are found at lower family sizes.
-    3. Add tile/x pos/y pos information to error characterization code, along with cluster count. (Parse from the Stats xml from bcl2fastq2)
-    4. Remove BS INFO field, change how the FILTER requiring both strands.
+    0. ROCs for the standards? Hopefully we can figure out perfect specificity and then work on sensitivity.
+        0. Which parameters/filters at which places?
+        1. SV Filter (not implemented - was debugging)
+        2. FracAlignFilter?
+    1. Error Characterization Code
+        1. Write sliding window + database writes.
+        2. Add tile/x pos/y pos information to error characterization code (or at least an SVM for making calls), along with cluster count. (Parse from the Stats xml from bcl2fastq2)
+    2. VQS model (start, paper and pencil?)
+    2. Consider haplotyping by leveraging reads covering multiple SNPs.
+    3. Info Fields
+        1. Add INFO fields for the new NF/ND tags (mean, max, SD)
+        1. Remove BS INFO field, change how the FILTER requiring both strands.
+        2. Add "strand bias exact test" [Cf. http://sourceforge.net/p/samtools/mailman/samtools-help/thread/4E177430.7030802]
+        4. GC Content
+
 2. Indels:
     1. Work on smaller indels directly in BAM with cigar strings. (Some progress on it, but it has to wait until SNVs are fully-solved)
     2. Indel realignment might perform better if the "normal" reads are removed, IE, properly-mapped reads without I, D, or S in it.
