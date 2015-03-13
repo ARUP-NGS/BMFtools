@@ -27,7 +27,8 @@ compilerList = ["-Ofast", "-flto", marchFlag, "-pipe", "-msse2",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
                 "-funswitch-loops", "-funsafe-math-optimizations",
                 "-fprefetch-loop-arrays", "-fmodulo-sched",
-                "-fmodulo-sched-allow-regmoves", "-fgcse"]
+                "-fmodulo-sched-allow-regmoves", "-fgcse",
+                "-floop-unroll-and-jam"]
 
 try:
     from setuptools import setup, Extension

@@ -58,11 +58,6 @@ letterNumDict[1] = 'C'
 letterNumDict[2] = 'G'
 letterNumDict[3] = 'T'
 
-
-def dAccess(x):
-    return letterNumDict[x]
-dAccess = np.vectorize(dAccess)
-
 # Int2Base64 = np.vectorize(Int2Base64)
 
 
@@ -255,8 +250,7 @@ def compareFastqRecordsInexactNumpy(R):
     qualTFlat = np.sum(qualT, 0)
     qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    finalSeq = "".join(
-        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
+    finalSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum)  # Avoid calculating twice.
     phredQuals = np.subtract(
         np.multiply(2, MaxPhredSum),
@@ -281,14 +275,16 @@ def compareFastqRecordsInexactNumpy(R):
                famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB64=cython.bint, lenR=cython.int,
-               numEq=cython.int, maxScore=cython.int)
+               numEq=cython.int, maxScore=cython.int, ND=cython.int)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
-                       famLimit=200, keepFails=True, compressB64=True,
+                       famLimit=1000, keepFails=True, compressB64=True,
                        makeFA=True, makePV=True):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
+    cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
+    cdef np.ndarray[dtypei_t, ndim = 1] FA
     compress85 = True
     lenR = len(R)
     lenRStr = str(lenR)
@@ -317,29 +313,28 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
         Success = False
     elif(hybrid is True):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
-    if(makeFA is True):
-        FAString = operator.add(" #G~FA=", ",".join(
-            np.array([sum([seq[i] == finalSeq[i] for seq in seqs])
-                     for i in range(len(finalSeq))]).astype(str)))
-    else:
-        FAString = ""
-    phredQuals = np.multiply(lenR, [chr2ph[i] for i in list(R[0].quality)],
-                             dtype=np.int64)
-    TagString = operator.add(" #G~FM=", lenRStr)
+    FA = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for i
+          in range(len(finalSeq))], dtype=np.int64)
+    phredQuals = np.array([chr2ph[i] for i in list(R[0].quality)],
+                          dtype=np.int64)
+    phredQuals[phredQuals < 3] = 0
+    phredQuals = np.multiply(lenR, phredQuals, dtype=np.int64)
     if(np.any(np.greater(phredQuals, 93))):
         QualString = "".join(map(ph2chr, phredQuals))
-        if(makePV is True):
-            if(compressB64 is True):
-                TagString = operator.add(
-                    operator.add(TagString, " #G~PV="),
-                    ",".join(map(Int2Base64, phredQuals)))
-            else:
-                TagString = operator.add(
-                    operator.add(TagString, " #G~PV="),
-                    ",".join(phredQuals.astype(str).tolist()))
+        if(compressB64 is True):
+            PVString = operator.add(" #G~PV=",
+                ",".join(map(Int2Base64, phredQuals)))
+        else:
+            PVString = operator.add(" #G~PV=",
+                ",".join(phredQuals.astype(str).tolist()))
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-    TagString = operator.add(TagString, FAString)
+        PVString = ""
+    TagString = "".join([" #G~FM=", lenRStr, " #G~FA=",
+                         ",".join(np.array(FA).astype(str)),
+                         " #G~ND=", str(np.subtract(lenR * len(seqs[0]),
+                                                    np.sum(FA))),
+                         PVString])
     try:
         consFqString = "\n".join(
             ["".join(["@", R[0].name, " ", R[0].comment, TagString]),
@@ -359,12 +354,13 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     return consFqString
 
 
-@cython.locals(Success=cython.bint)
+@cython.locals(Success=cython.bint, ND=cython.int, lenR=cython.int)
 def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
+    lenR = len(R)
     Success = True
     seqs = np.array([record.sequence for record in R], dtype=np.str_)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
@@ -388,6 +384,9 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
     quals = np.array(
         [map(chr2phFunc, list(record.quality)) for record in R],
         dtype=np.int64)
+    # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
+    # Let's turn them into what they should be: nothing.
+    quals[quals < 3]= 0
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
@@ -409,44 +408,31 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
                              dtype=np.int64)
     FA = np.array([sum([seq[i] == newSeq[i] for seq in seqs]) for i
                    in range(len(newSeq))], dtype=np.int64)
+    ND = np.subtract(lenR * len(seqs[0]), np.sum(FA))
     phredQuals[phredQuals < 0] = 0
-    TagString = operator.add(" #G~FM=", str(len(R)))
-    if(makeFA is True):
-        TagString = operator.add(operator.add(TagString, " #G~FA="),
-                                 FA.astype(str))
-    if(makePV is True):
-        if(compressB64 is True):
-            if(np.any(np.greater(phredQuals, 93))):
-                PVString = operator.add(" #G~PV=",
-                                        ",".join(map(Int2Base64,
-                                                     phredQuals)))
-                phredQuals[phredQuals > 93] = 93
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            else:
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-                PVString = ""
+    if(compressB64 is True):
+        if(np.any(np.greater(phredQuals, 93))):
+            PVString = operator.add(" #G~PV=",
+                                    ",".join(map(Int2Base64,
+                                                 phredQuals)))
+            phredQuals[phredQuals > 93] = 93
+            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
         else:
-            if(np.any(np.greater(phredQuals, 93))):
-                PVString = operator.add(" #G~PV=",
-                                        ",".join(phredQuals.astype(str)))
-                phredQuals[phredQuals > 93] = 93
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            else:
-                phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-                PVString = ""
-        TagString = operator.add(TagString, PVString)
+            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+            PVString = ""
     else:
-        phredQuals[phredQuals > 93] = 93
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-    try:
-        assert len(PVString) != 1
-    except AssertionError:
-        pl(repr(phredQuals))
-        pl(repr(PVString))
-        raise ThisIsMadness("Something's wrong with my phredQuals. "
-                            "It should be the length of the read.")
+        if(np.any(np.greater(phredQuals, 93))):
+            PVString = operator.add(" #G~PV=",
+                                    ",".join(phredQuals.astype(str)))
+            phredQuals[phredQuals > 93] = 93
+            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+        else:
+            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+            PVString = ""
+    TagString = "".join([" #G~FM=", str(lenR), " #G~ND=",
+                         str(ND), " #G~FA=", FA.astype(str), PVString])
     consolidatedFqStr = "\n".join([
-        "".join(["@", R[0].name, " ", R[0].comment. TagString]),
+        "".join(["@", R[0].name, " ", R[0].comment, TagString]),
         newSeq,
         "+",
         phredQualsStr])

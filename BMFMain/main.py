@@ -354,7 +354,9 @@ def main(argv=None):
             pl("Last stop! Watch your step.")
     return
 
+global __version__
+
 __version__ = "0.0.7.0"
 
 if(__name__ == "__main__"):
-    main()
+    sys.exit(main())

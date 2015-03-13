@@ -11,6 +11,23 @@ Programs which write VCFs.
 Currently: SNVCrawler.
 
 In development: SV
+
+Note/TODO: Use two main filters for SNVs (after a min Q30):
+1. Min FA (number of family members agreeing) [int=3]
+2. Min Fraction Agreement Within Family [float=0.6667]
+
+Other possible, but less critical options.
+1. No LI/MDC/MSS/ORU/ORS reads.
+2. Requiring at least (1?) duplex, even for larger panels?
+3. Min PVFrac (Tosses out a read for up to a significant fraction
+of its positions if certain parts of the read have a lower PV)
+
+
+cfDNA limits:
+1. No LI/MDC/MSS/ORU/ORS reads. (Probably very important)
+2. Require N duplex read pairs [int = 2 (?)]
+
+More thoughts?
 """
 
 
@@ -91,26 +108,14 @@ def SNVCrawler(inBAM,
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
-        lc = -666
         puIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
         while True:
             try:
-                lc = 0
                 # Last command - 0 means iterator was where it crashed.
                 PCpysam = pPileupColumn(puIterator.next())
-                lc = 1
                 # Last command - 0 means the PCInfo call was where it crashed
                 PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ)
             except ValueError:
-                pl("ValueError just got thrown!",
-                   level=logging.DEBUG)
-                if(lc == 0):
-                    pl("Iteration step is what failed.")
-                else:
-                    pl("PCInfo step failed.")
-                if("PC" in locals()):
-                    pl("Position (0-based) of last successful "
-                       "pileup: {}".format(PC.pos))
                 raise ThisIsMadness("Trying to figure out what's going on in "
                                     "pysam's iterations.")
             except StopIteration:

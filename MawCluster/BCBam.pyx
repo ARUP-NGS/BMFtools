@@ -24,8 +24,7 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF import HTSUtils
-from BCFastq import dAccess
-dAccess = np.vectorize(dAccess)
+from MawCluster.BCFastq import letterNumDict
 
 
 def AbraCadabra(inBAM,
@@ -153,6 +152,7 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
     return outfile
 
 
+@cython.locals(FM=cython.int)
 def pairedBarcodeTagging(
         fq1,
         fq2,
@@ -191,8 +191,9 @@ def pairedBarcodeTagging(
         elif(entry.is_read2):
             read2bam = entry
         descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
-        read1bam.setTag("FM", int(descDict["FM"]), "i")
-        read2bam.setTag("FM", int(descDict["FM"]), "i")
+        FM = int(descDict["FM"])
+        read1bam.setTag("FM", FM, "i")
+        read2bam.setTag("FM", FM, "i")
         coorString = ",".join(sorted([":".join([PysamToChrDict[
             read1bam.reference_id], str(read1bam.pos)]), ":".join([
                 PysamToChrDict[read2bam.reference_id], str(read2bam.pos)])]))
@@ -227,6 +228,18 @@ def pairedBarcodeTagging(
         except KeyError:
             # print("Phred Values > 93 not set. Oh well.)
             pass
+        try:
+            ND = int(descDict["ND"])
+            read1bam.setTag("ND", ND, "i")
+            read2bam.setTag("ND", ND, "i")
+            read1bam.setTag("NF", operator.div(ND, FM), "f")
+            read2bam.setTag("NF", operator.div(ND, FM), "f")
+        except KeyError:
+            raise ThisIsMadness("Number of Differences tag required for "
+                                "BMFTools >= v0.0.7")
+        except ValueError:
+            raise ValueError("ND tag value is invalid: %s" % descDict["ND"])
+
         try:
             read1bam.setTag("FA", descDict["FA"], "Z")
             read2bam.setTag("FA", descDict["FA"], "Z")
@@ -269,8 +282,7 @@ def compareRecs(RecordList):
     qualT[seqArray != "T"] = 0
     qualTSum = np.sum(qualT, 0)
     qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join(
-        np.apply_along_axis(dAccess, 0, np.argmax(qualAllSum, 0)))
+    newSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
                              np.sum(qualAllSum, 0))
