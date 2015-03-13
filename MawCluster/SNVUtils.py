@@ -117,8 +117,6 @@ class SNVCFLine:
         self.InfoFields = {"AC": AlleleAggregateObject.MergedReads,
                            "AF": AlleleAggregateObject.MergedReads
                            / float(AlleleAggregateObject.DOC),
-                           "EST": ",".join(
-                                AlleleAggregateObject.excludedSVTags),
                            "TF": AlleleAggregateObject.TotalReads
                            / float(AlleleAggregateObject.DOCTotal),
                            "NSS": self.NumStartStops,

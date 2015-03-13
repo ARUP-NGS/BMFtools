@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import sys
+import warnings
 
 from MawCluster.VCFWriters import SNVCrawler
 from MawCluster.BCVCF import VCFStats
@@ -16,6 +17,8 @@ bmftools contains various utilities for barcoded reads and for
 somatic variant calling. Written to be in similar form to bcftools
 and samtools.
 """
+
+warnings.filterwarnings('error')
 
 
 def main():

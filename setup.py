@@ -39,7 +39,7 @@ except ImportError:
     from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
-ext = cythonize('*/*.pyx') + cythonize("*/*.py")
+ext = cythonize('*/*.pyx')
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back from line 31 to line 30.
 for x in map(operator.attrgetter("extra_compile_args"), ext):

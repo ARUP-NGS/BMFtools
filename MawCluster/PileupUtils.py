@@ -116,10 +116,10 @@ class PRInfo:
                     try:
                         assert len(self.PV_Array) == self.read.query_length
                     except AssertionError:
-                        print(repr(PV_Array))
-                        print(repr(read.qual))
-                        print(repr(read.seq))
-                        print(repr(read.qname))
+                        print(repr(self.PV_Array))
+                        print(repr(self.read.qual))
+                        print(repr(self.read.seq))
+                        print(repr(self.read.qname))
                         raise AssertionError("What is this?")
                         pl("Assertion error failed... Fail read!")
                         self.Pass = False
@@ -175,8 +175,7 @@ class AlleleAggregateInfo:
 
     @cython.locals(minFracAgreed=cython.float, minMQ=cython.long,
                    minBQ=cython.long, minFA=cython.long,
-                   minPVFrac=cython.float, FSR=cython.int,
-                   minFA=cython.int)
+                   minPVFrac=cython.float, FSR=cython.long)
     def __init__(self, recList, consensus="default",
                  mergedSize="default",
                  totalSize="default",
@@ -190,6 +189,7 @@ class AlleleAggregateInfo:
                  AABPSD="default", AAMBP="default",
                  minFracAgreed=0.0, minFA=0,
                  minPVFrac=0.5, FSR=-1):
+        print("length of recList at start %s " % len(recList))
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -234,7 +234,6 @@ class AlleleAggregateInfo:
                 0].BaseCall for rec in recList]) == len(recList))
         except AssertionError:
             # print("recList repr: {}".format(repr(recList)))
-            print("Alt alleles: {}".format([i.BaseCall for i in recList]))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
         self.TotalReads = np.sum(map(operator.attrgetter("FM"), recList))
@@ -323,10 +322,17 @@ class AlleleAggregateInfo:
         self.MBP = np.mean(query_positions)
         self.BPSD = np.std(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = np.array(map(
-            operator.attrgetter("PVFrac"), self.recList))
-        self.MPF = np.mean(PVFArray)
-        self.PFSD = np.std(PVFArray)
+        PVFArray = [i.PVFrac for i in self.recList if i is not None]
+        if(len(PVFArray) == 0):
+            self.MPF = -1
+            self.PFSD = -1
+        else:
+            try:
+                self.MPF = np.mean(PVFArray)
+                self.PFSD = np.std(PVFArray)
+            except Exception:
+                print(repr(PVFArray))
+                print("recList %s" % repr(self.recList))
 
 
 class PCInfo:
@@ -1020,7 +1026,7 @@ def AlleleFrequenciesByBase(inputBAM,
     return outputTsv
 
 
-def BamToCoverageBed(inBAM, outbed="default", mincov=5, minMQ=0, minBQ=0):
+def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
     """
     Takes a bam file and creates a bed file containing each position
     """
@@ -1165,6 +1171,7 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                   MergedReads, TotalReads, MergedReads /
                   float(operator.sub(line[2], line[1])),
                   TotalReads / float(operator.sub(line[2], line[1]))]]) + "\n")
+        outHandle.flush()
     inHandle.close()
     outHandle.close()
     return outbed
