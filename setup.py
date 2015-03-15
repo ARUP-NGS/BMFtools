@@ -28,9 +28,12 @@ compilerList = ["-flto", marchFlag, "-pipe", "-msse2",
                 "-funswitch-loops", "-funsafe-math-optimizations",
                 "-fprefetch-loop-arrays", "-fmodulo-sched",
                 "-fmodulo-sched-allow-regmoves", "-fgcse",
-                "-floop-unroll-and-jam", "--mfpmath=sse", "-fomit-frame-pointer"]
+                "-floop-unroll-and-jam",
+                "--mfpmath=sse", "-fomit-frame-pointer"]
 """
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse"]
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-flto",
+                "-funroll-loops", "-floop-unroll-and-jam",
+                "-floop-nest-optimize", "-fprefetch-loop-arrays"]
 
 try:
     from setuptools import setup, Extension
@@ -39,7 +42,7 @@ except ImportError:
     from distutils.core import setup, Extension
 from Cython.Build import cythonize
 
-ext = cythonize('*/*.pyx')
+ext = cythonize('*/*.pyx') + cythonize("*/*.py")
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back from line 31 to line 30.
 for x in map(operator.attrgetter("extra_compile_args"), ext):

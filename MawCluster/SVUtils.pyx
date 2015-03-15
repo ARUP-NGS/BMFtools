@@ -716,7 +716,8 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     inHandle.close()
     SVOutHandle.close()
     FullOutHandle.close()
-    SVCountDict["TOTAL"] = operator.add(SVCountDict["SVR"], SVCountDict["NOSVR"])
+    SVCountDict["TOTAL"] = operator.add(SVCountDict["SVR"],
+                                        SVCountDict["NOSVR"])
     for key in SVCountDict.keys():
         pl("Number of reads marked with key {}: {}".format(
             key, SVCountDict[key]))

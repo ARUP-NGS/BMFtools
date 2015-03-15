@@ -50,11 +50,11 @@ class SNVCFLine:
                  MergedCountStr="default",
                  FailedBQReads="default",
                  FailedMQReads="default",
-                 minNumFam=3,
+                 minNumFam=2,
                  minNumSS=2,
                  REF="default",
                  reverseStrandFraction=-1.0,
-                 requireDuplex=True, minDuplexPairs=0,
+                 requireDuplex=True, minDuplexPairs=2,
                  minFracAgreedForFilter=0.666,
                  minFA=0):
         if(REF != "default"):
@@ -218,7 +218,7 @@ class VCFPos:
                  keepConsensus=True,
                  reference="default",
                  requireDuplex=True,
-                 minDuplexPairs=3,
+                 minDuplexPairs=2,
                  reverseStrandFraction="default",
                  minFracAgreed=0.0, minFA=0):
         if(isinstance(PCInfoObject, PCInfo) is False):
@@ -782,7 +782,8 @@ HeaderInfoDict["MPF"] = HeaderInfoLine(
                 ". If this is far from 1, there might be something suspiciou"
                 "s going on.",
     Number="A", Type="Float")
-HeaderInfoDict["EST"] = HeaderInfoLine(ID="EST", Description="Excluded SV Tags",
+HeaderInfoDict["EST"] = HeaderInfoLine(ID="EST",
+                                       Description="Excluded SV Tags",
                                        Number=1, Type="String")
 
 

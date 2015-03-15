@@ -314,7 +314,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     elif(hybrid is True):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
     FA = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for i
-          in range(len(finalSeq))], dtype=np.int64)
+                   in range(len(finalSeq))], dtype=np.int64)
     phredQuals = np.array([chr2ph[i] for i in list(R[0].quality)],
                           dtype=np.int64)
     phredQuals[phredQuals < 3] = 0
@@ -323,13 +323,18 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
         QualString = "".join(map(ph2chr, phredQuals))
         if(compressB64 is True):
             PVString = operator.add(" #G~PV=",
-                ",".join(map(Int2Base64, phredQuals)))
+                                    ",".join(map(Int2Base64, phredQuals)))
         else:
             PVString = operator.add(" #G~PV=",
-                ",".join(phredQuals.astype(str).tolist()))
+                                    ",".join(phredQuals.astype(str).tolist()))
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = ""
+        if(compressB64 is True):
+            PVString = operator.add(" #G~PV=",
+                                    ",".join(map(Int2Base64, phredQuals)))
+        else:
+            PVString = operator.add(" #G~PV=",
+                                    ",".join(phredQuals.astype(str).tolist()))
     TagString = "".join([" #G~FM=", lenRStr, " #G~FA=",
                          ",".join(np.array(FA).astype(str)),
                          " #G~ND=", str(np.subtract(lenR * len(seqs[0]),
@@ -386,7 +391,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
         dtype=np.int64)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
-    quals[quals < 3]= 0
+    quals[quals < 3] = 0
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
@@ -419,7 +424,9 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
             phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
         else:
             phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            PVString = ""
+            PVString = operator.add(" #G~PV=",
+                                    ",".join(map(Int2Base64,
+                                                 phredQuals)))
     else:
         if(np.any(np.greater(phredQuals, 93))):
             PVString = operator.add(" #G~PV=",
@@ -428,7 +435,8 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
             phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
         else:
             phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            PVString = ""
+            PVString = operator.add(" #G~PV=",
+                                    ",".join(phredQuals.astype(str)))
     TagString = "".join([" #G~FM=", str(lenR), " #G~ND=",
                          str(ND), " #G~FA=", FA.astype(str), PVString])
     consolidatedFqStr = "\n".join([
@@ -453,8 +461,9 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
         commandStr = "cutadapt --mask-adapter -a {} -o {} -O {} {}".format(
             p3Seq, outfq, overlapLen, fq)
     else:
-        commandStr = "cutadapt --mask-adapter -a {} -g {} -o {} -O {} {}".format(
-            p3Seq, p5Seq, outfq, overlapLen, fq)
+        commandStr = ("cutadapt --mask-adapter -a "
+                      "{} -g {} -o {} -O {} {}".format(p3Seq, p5Seq, outfq,
+                                                       overlapLen, fq))
     pl("Cutadapt command string: {}".format(commandStr))
     return commandStr, outfq
 

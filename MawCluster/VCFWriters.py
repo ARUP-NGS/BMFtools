@@ -46,7 +46,7 @@ def SNVCrawler(inBAM,
                INFOTags="default",
                FORMATTags="default",
                writeHeader=True,
-               minFracAgreed=0.0, minFA=0):
+               minFracAgreed=0.0, minFA=2):
     pl("Command to reproduce function call: "
        "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +

@@ -165,6 +165,13 @@ Most options are available for command-line as well. If an option is set in both
     3. Replaced a vectorized function calling a dictionary into a list comprehension of that dictionary. (It's faster)
     4. Faster string operations in BCFastq
 
+7. Changes in BMFTools v0.0.7.1
+
+    1. Fixed NSS field.
+    2. Verified that NDPS field is working.
+    3. MQM and MQB are now working.
+    4. PV tags used for all reads now, making compatibility a little easier.
+
 1. Settings Recommendations
 
     1. The "readPairsPerWrite" parameter can provide great speed improvements.
@@ -212,10 +219,4 @@ Most options are available for command-line as well. If an option is set in both
 
 1. TODO, lite:
     1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **
-
-#Known Issues
-1. VCF
-    1. NSS INFO field does not seem to work.
-    2. MQM, MPF, and MQB have nonsense values.
-    3. Need to test NDPS
 

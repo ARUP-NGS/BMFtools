@@ -150,7 +150,8 @@ class PRInfo:
                     raise ValueError("This PV String should only "
                                      "have digits and commas... ???")
                 self.PV = self.PV_Array[self.query_position]
-                self.PVFrac = operator.div(float(self.PV), np.max(self.PV_Array))
+                self.PVFrac = operator.div(float(self.PV),
+                                           np.max(self.PV_Array))
 
 
 def is_reverse_to_str(boolean):
@@ -189,7 +190,6 @@ class AlleleAggregateInfo:
                  AABPSD="default", AAMBP="default",
                  minFracAgreed=0.0, minFA=0,
                  minPVFrac=0.5, FSR=-1):
-        print("length of recList at start %s " % len(recList))
         import collections
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
@@ -221,8 +221,8 @@ class AlleleAggregateInfo:
                         if rec.MQ >= minMQ and rec.BQ >= minBQ]
         if("PVFrac" in dir(self.recList[0])):
             self.recList = [rec for rec in self.recList
-                            if rec.PVFrac >= minPVFrac]
-
+                            if rec.PVFrac >= minPVFrac
+                            or rec.PVFrac is None]
         self.recList = [rec for rec in self.recList
                         if rec.FractionAgreed >= minFracAgreed]
 
@@ -237,15 +237,17 @@ class AlleleAggregateInfo:
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
         self.TotalReads = np.sum(map(operator.attrgetter("FM"), recList))
-        self.MergedReads = len(recList)
+        self.MergedReads = lenR
         self.ReverseMergedReads = np.sum(map(
             operator.attrgetter("is_reverse"), recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
         self.ReverseTotalReads = np.sum(map(
             operator.attrgetter("FM"),
             [rec for rec in recList if rec.is_reverse]))
-        self.ForwardTotalReads = operator.sub(self.TotalReads, self.ReverseTotalReads)
-        self.AveFamSize = operator.div(float(self.TotalReads), self.MergedReads)
+        self.ForwardTotalReads = operator.sub(self.TotalReads,
+                                              self.ReverseTotalReads)
+        self.AveFamSize = operator.div(float(self.TotalReads),
+                                       self.MergedReads)
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum(map(operator.attrgetter("BQ"), recList))
         self.SumMQScore = sum(map(operator.attrgetter("MQ"), recList))
@@ -262,8 +264,8 @@ class AlleleAggregateInfo:
         self.minMQ = minMQ
         self.minBQ = minBQ
         try:
-            self.reverseStrandFraction = operator.div(self.ReverseMergedReads,
-                                                      self.MergedReads)
+            self.reverseStrandFraction = operator.div(
+                float(self.ReverseMergedReads), self.MergedReads)
         except ZeroDivisionError:
             self.reverseStrandFraction = -1
         self.MFractionAgreed = np.mean(map(
@@ -322,17 +324,21 @@ class AlleleAggregateInfo:
         self.MBP = np.mean(query_positions)
         self.BPSD = np.std(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = [i.PVFrac for i in self.recList if i is not None]
+        PVFArray = [i.PVFrac for i in self.recList if i.PVFrac is not None]
         if(len(PVFArray) == 0):
             self.MPF = -1
             self.PFSD = -1
         else:
+            self.MPF = np.mean(PVFArray)
+            self.PFSD = np.std(PVFArray)
+            """
             try:
                 self.MPF = np.mean(PVFArray)
                 self.PFSD = np.std(PVFArray)
             except Exception:
                 print(repr(PVFArray))
                 print("recList %s" % repr(self.recList))
+            """
 
 
 class PCInfo:
@@ -355,7 +361,6 @@ class PCInfo:
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
                  exclusionSVTags=""):
-        #  pl("Number of reads in column: {}".format(len(PileupColumn.pileups)))
         assert isinstance(PileupColumn, pPileupColumn)
         self.minMQ = int(minMQ)
         #  pl("minMQ: %s" % minMQ)
@@ -521,10 +526,12 @@ class PCInfo:
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         try:
             for key in self.MergedAlleleDict:
-                self.MergedAlleleFreqDict[key] = operator.div(self.MergedAlleleDict[
-                    key], float(self.MergedReads))
-                self.TotalAlleleFreqDict[key] = operator.div(self.TotalAlleleDict[
-                    key], float(self.TotalReads))
+                self.MergedAlleleFreqDict[key] = operator.div(
+                    self.MergedAlleleDict[key],
+                    float(self.MergedReads))
+                self.TotalAlleleFreqDict[key] = operator.div(
+                    self.TotalAlleleDict[key],
+                    float(self.TotalReads))
         except ZeroDivisionError:
             for key in self.MergedAlleleDict:
                 self.MergedAlleleFreqDict[key] = 0.
@@ -761,10 +768,12 @@ def CustomPileupFullGenome(inputBAM,
         TransHandle.write("{}\t{}\t{}\n".format(key,
                                                 TransTotalDict[key],
                                                 TransMergedDict[key],
-                                                operator.div(TransTotalDict[key], float(
-                                                    NumTransitionsTotal)),
-                                                operator.div(TransMergedDict[key], float(
-                                                    NumTransitionsMerged))))
+                                                operator.div(
+                                                    TransTotalDict[key],
+                                                    float(NumTransitionsTotal)),
+                                                operator.div(
+                                                    TransMergedDict[key],
+                                                    float(NumTransitionsMerged))))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
@@ -1066,7 +1075,8 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
             if(PC.MergedReads >= mincov):
                 Interval = PileupInterval(contig=PC.PCol.reference_id,
                                           start=PC.PCol.reference_pos,
-                                          end=operator.add(PC.PCol.reference_pos, 1))
+                                          end=operator.add(
+                                              PC.PCol.reference_pos, 1))
                 try:
                     Interval.updateWithPileupColumn(PC.PCol)
                 except AssertionError:
