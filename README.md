@@ -75,6 +75,7 @@ Tag | Content | Format |
 ----|-----|-----|
 BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 CS | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
+CC | Cluster Count | Integer |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
@@ -178,6 +179,7 @@ Most options are available for command-line as well. If an option is set in both
         1. For my workstation (64GB RAM, 16 threads), the following table indicates that 100 gives me peak performance.
         2. For my cert server (192GB RAM, 24 threads), it looks like 10 might give me peak performance, but more rigorous tests are underway.
     2. For optimal compilation, use the -march flag. BMFTools' setup.py automatically attempts to find that appropriate value for you.
+
 |readPairsPerWrite | time | 
 |------|--------------|
 | 10 | 867 msec per loop |

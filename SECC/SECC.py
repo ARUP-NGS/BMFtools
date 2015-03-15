@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+import cython
 from lxml import etree
+
 from utilBMF.HTSUtils import ThisIsMadness
 
 """
-Sequencer Error Characterization & Correction (SEC) Utilities.
+Sequencer Error Characterization & Correction (SECC) Utilities.
 """
 
 
@@ -43,6 +45,7 @@ def GetRawInfo(xmlObj, runXmlDict=-1, lane=-1, tile=-1):
     pass
 
 
+@cython.locals(i=cython.long)
 def BuildRunDict(xmlPath, makeGlobal=True):
     """
     Written to take xmlObj as the output of ConversionStatsToLaneElements.
@@ -54,6 +57,8 @@ def BuildRunDict(xmlPath, makeGlobal=True):
     YieldQ30 = newDict[",".join([laneNum, tileNum, str(readNum)])]["YieldQ30"]
     QualityScoreSum = newDict[",".join([laneNum, tileNum,
                                         str(readNum)])]["QualityScoreSum"]
+    To access the ClusterCount, use
+    ConvXmlDict["laneNum:tileNum:readNum"] with appropriate substitutions
     """
     xmlObj = ConversionStatsToLaneSuperelement(xmlPath)
     if makeGlobal is True:
@@ -64,11 +69,36 @@ def BuildRunDict(xmlPath, makeGlobal=True):
         for tile in lane:
             tileNum = tile.values()[0]
             Raw = tile.getchildren()[0]
-            ClusterCount = int(Raw.getchildren()[0].text)
+            ClusterCount = Raw.getchildren()[0].text
             for i in range(1, len(Raw)):
                 tmpDict = {}
                 tmpDict["Yield"] = Raw[i].getchildren()[0].text
                 tmpDict["YieldQ30"] = Raw[i].getchildren()[1].text
                 tmpDict["QualityScoreSum"] = Raw[i].getchildren()[2].text
-                ConvXmlDict[",".join([laneNum, tileNum, str(i)])] = tmpDict
+                ConvXmlDict[":".join([laneNum, tileNum, str(i)])] = tmpDict
+                ConvXmlDict[":".join(
+                    [laneNum, tileNum, str(i), "CC"])] = ClusterCount
     return ConvXmlDict
+
+
+def GetClusterCount(read, convXml="default"):
+    """
+    Gets the CC for a read, written for SeqIO.parse
+    """
+    assert isinstance(convXml, dict)
+    rArray = read.name.split(":")
+    rNum = read.description.split(" ")[1].split(":")[0]
+    return convXml[":".join([rArray[3], rArray[4], rNum, "CC"])]
+
+
+def GetConvXmlTags(read, convXml="default"):
+    """
+    Gets the dictionary for those tags for a read, written for SeqIO.parse
+    """
+    assert isinstance(convXml, dict)
+    rArray = read.name.split(":")
+    rNum = read.description.split(" ")[1].split(":")[0]
+    cx = convXml[":".join([rArray[3], rArray[4], rNum])]
+    return {"Y": cx["Yield"], "YQ30": cx["YieldQ30"],
+            "QSS": cx["QualityScoreSum"],
+            "CC": convXml[":".join([rArray[3], rArray[4], rNum, "CC"])]}

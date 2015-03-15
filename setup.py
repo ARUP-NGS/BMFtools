@@ -33,7 +33,7 @@ compilerList = ["-flto", marchFlag, "-pipe", "-msse2",
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-flto",
                 "-funroll-loops", "-floop-unroll-and-jam",
-                "-floop-nest-optimize"]
+                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
 
 try:
     from setuptools import setup, Extension
@@ -60,7 +60,7 @@ config = {
     'version': '0.0.7.0',
     'install_requires': ['pysam', 'biopython', 'pudb',
                          'cython', 'numconv', 'cutadapt'],
-    'packages': ['BMFMain', 'utilBMF', 'MawCluster'],
+    'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SECC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': [],

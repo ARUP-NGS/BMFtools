@@ -18,13 +18,14 @@ import pysam
 import cython
 cimport cython
 
+from MawCluster.BCFastq import letterNumDict
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
-from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PysamToChrDict
+from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF import HTSUtils
-from MawCluster.BCFastq import letterNumDict
+from SECC import BuildRunDict
 
 
 def AbraCadabra(inBAM,
@@ -159,7 +160,8 @@ def pairedBarcodeTagging(
         bam,
         outBAMFile="default",
         suppBam="default",
-        bedfile="default"):
+        bedfile="default",
+        conversionXml="default"):
     from MawCluster.SVUtils import SVParamDict
     from MawCluster.SVUtils import SVTestDict
     if(outBAMFile == "default"):
@@ -172,10 +174,13 @@ def pairedBarcodeTagging(
     # read1Handle = pysam.FastqFile(fq1)
     # read2Handle = pysam.FastqFile(fq2)
     read1Handle = SeqIO.parse(fq1, "fastq")
+    read2Handle = SeqIO.parse(fq2, "fastq")
     # read2Handle = SeqIO.parse(fq2, "fastq")
     postFilterBAM = pysam.Samfile(bam, "rb")
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
+    if(conversionXml != "default"):
+        convData = BuildRunDict(conversionXml)
     obw = outBAM.write
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag >= 2048):
