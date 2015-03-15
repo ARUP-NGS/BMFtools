@@ -99,6 +99,11 @@ def main():
         "--reference-fasta",
         help="Provide reference fasta.",
         required=True)
+    SNVParser.add_argument("-m", "--min-frac-agreed",
+                           help="Minimum fraction of family agreed on base.",
+                           default=0.667, type=float)
+    SNVParser.add_argument("--minFA", help="Minimum family agreed on base.",
+                           default=2, type=int)
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
@@ -212,7 +217,9 @@ def main():
                                 commandStr=commandStr,
                                 reference=args.reference_fasta,
                                 reference_is_path=True,
-                                OutVCF=args.outVCF)
+                                OutVCF=args.outVCF,
+                                minFracAgreed=args.min_frac_agreed,
+                                minFA=args.minFA)
             bedFilteredVCF = BCVCF.FilterVCFFileByBed(OutVCF, bedfile=args.bed)
             OutTable = VCFStats(OutVCF)
         else:

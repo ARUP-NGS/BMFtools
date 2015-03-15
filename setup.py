@@ -33,7 +33,7 @@ compilerList = ["-flto", marchFlag, "-pipe", "-msse2",
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-flto",
                 "-funroll-loops", "-floop-unroll-and-jam",
-                "-floop-nest-optimize", "-fprefetch-loop-arrays"]
+                "-floop-nest-optimize"]
 
 try:
     from setuptools import setup, Extension

@@ -153,6 +153,8 @@ def main(argv=None):
     parser.add_argument(
         "--review-dir", help="Prefix for review directory, where important re"
         "sults files will be moved at the end of analysis.", default="default")
+    parser.add_argument("--minFA", help="Minimum family members agreed on bas"
+                        "e for inclusion in variant call", default=2, type=int)
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     if("minMQ" in confDict.keys()):
@@ -167,6 +169,14 @@ def main(argv=None):
         abrapath = confDict['abrapath']
     else:
         abrapath = args.abrapath
+    if("minFA" in confDict.keys()):
+        minFA = int(confDict['minFA'])
+    else:
+        minFA = args.minFA
+    if("minFracAgreed" in confDict.keys()):
+        minFracAgreed = float(confDict['minFracAgreed'])
+    else:
+        minFracAgreed = args.minFracAgreed
     global gatkpath
     if("gatkpath" in confDict.keys()):
         gatkpath = confDict['gatkpath']
@@ -331,7 +341,8 @@ def main(argv=None):
                 bed=bed,
                 minMQ=minMQ,
                 minBQ=minBQ,
-                commandStr=" ".join(sys.argv))
+                commandStr=" ".join(sys.argv),
+                minFA=minFA, minFracAgreed=minFracAgreed)
             for key in VCFOutDict.keys():
                 subprocess.check_call(["cp", VCFOutDict[key], reviewdir])
             pl("Last stop! Watch your step.")
@@ -365,7 +376,8 @@ def main(argv=None):
                 bed=bed,
                 minMQ=minMQ,
                 minBQ=minBQ,
-                commandStr=" ".join(sys.argv))
+                commandStr=" ".join(sys.argv),
+                minFA=minFA, minFracAgreed=minFracAgreed)
             pl("Last stop! Watch your step")
         elif(args.initialStep == 3):
             pl("Beginning VCF processing.")
@@ -377,7 +389,8 @@ def main(argv=None):
                 minMQ=args.minMQ,
                 minBQ=args.minBQ,
                 reference=args.ref,
-                commandStr=" ".join(sys.argv))
+                commandStr=" ".join(sys.argv),
+                minFA=minFA, minFracAgreed=minFracAgreed)
             pl("Last stop! Watch your step.")
     subprocess.check_call(["cp", logfile, reviewdir])
     return

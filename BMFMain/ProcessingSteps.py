@@ -179,7 +179,8 @@ def pairedVCFProc(consMergeSortBAM,
                   MakePileupTsv=False,
                   MakeVCF=True,
                   MakeCoverageBed=True,
-                  commandStr="default"):
+                  commandStr="default",
+                  minFA=2, minFracAgreed=0.667):
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")
     if(ref == "default"):
@@ -208,7 +209,8 @@ def pairedVCFProc(consMergeSortBAM,
                                         reference=ref,
                                         commandStr=commandStr,
                                         reference_is_path=True,
-                                        bed=bed)
+                                        bed=bed, minFA=minFA,
+                                        minFracAgreed=minFracAgreed)
         CleanedVCF = BCVCF.FilterVCFFileByBed(SNP_VCF, bed)
         pl("SNP VCF: {}".format(SNP_VCF))
         Results["vcf"] = SNP_VCF

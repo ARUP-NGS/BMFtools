@@ -53,6 +53,12 @@ def main():
         "--reference-fasta",
         help="Provide reference fasta.",
         required=True)
+    parser.add_argument("-m", "--min-frac-agreed",
+                        help="Minimum fraction of family agreed on base.",
+                        default=0.667, type=float)
+    parser.add_argument(
+        "--minFA", help="Minimum number of family agreed on base",
+        default=2, type=int)
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
 
@@ -105,7 +111,9 @@ def main():
                             keepConsensus=args.keepConsensus,
                             commandStr=commandStr,
                             reference=args.reference_fasta,
-                            reference_is_path=True)
+                            reference_is_path=True,
+                            minFracAgreed=args.min_frac_agreed,
+                            minFA=args.minFA)
     else:
         OutVCF = SNVCrawler(args.inBAM,
                             minMQ=args.minMQ,
@@ -114,7 +122,9 @@ def main():
                             keepConsensus=args.keepConsensus,
                             commandStr=commandStr,
                             reference=args.reference_fasta,
-                            reference_is_path=True)
+                            reference_is_path=True,
+                            minFracAgreed=args.min_frac_agreed,
+                            minFA=args.minFA)
 
     return OutVCF
 
