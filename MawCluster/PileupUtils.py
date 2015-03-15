@@ -564,9 +564,11 @@ class PCInfo:
         self.TotalStrandednessRatioDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedStrandednessRatioDict[
-                alt.ALT] = operator.div(alt.ReverseMergedReads, float(alt.MergedReads))
+                alt.ALT] = operator.div(alt.ReverseMergedReads,
+                                        float(alt.MergedReads))
             self.TotalStrandednessRatioDict[
-                alt.ALT] = operator.div(alt.ReverseTotalReads, float(alt.TotalReads))
+                alt.ALT] = operator.div(alt.ReverseTotalReads,
+                                        float(alt.TotalReads))
         self.MergedStrandednessStr = "\t".join([
             str(self.MergedStrandednessRatioDict[
                 key]) for key in self.MergedStrandednessRatioDict.keys()])
@@ -687,7 +689,7 @@ def CustomPileupFullGenome(inputBAM,
     StrandedTransTotalDict = {}
     StrandedTransMergedDict = {}
     NumTransitionsTotal = 0
-    NumTransitionsMerged = 0
+    NTransMerged = 0
     MergedReadsProcessed = 0
     TotalReadsProcessed = 0
     if(PileupTsv == "default"):
@@ -732,7 +734,7 @@ def CustomPileupFullGenome(inputBAM,
             except KeyError:
                 TransMergedDict[
                     key] = PColSum.TransMergedCounts[key]
-            NumTransitionsMerged += PColSum.TransMergedCounts[
+            NTransMerged += PColSum.TransMergedCounts[
                 key]
         for key in PColSum.TransTotalCounts.keys():
             try:
@@ -770,10 +772,12 @@ def CustomPileupFullGenome(inputBAM,
                                                 TransMergedDict[key],
                                                 operator.div(
                                                     TransTotalDict[key],
-                                                    float(NumTransitionsTotal)),
+                                                    float(
+                                                        NumTransitionsTotal)),
                                                 operator.div(
                                                     TransMergedDict[key],
-                                                    float(NumTransitionsMerged))))
+                                                    float(
+                                                        NTransMerged))))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
@@ -787,7 +791,7 @@ def CustomPileupFullGenome(inputBAM,
                 operator.div(StrandedTransTotalDict[key],
                              float(NumTransitionsTotal)),
                 operator.div(StrandedTransMergedDict[key],
-                             float(NumTransitionsMerged)),
+                             float(NTransMerged)),
             ))
     pl("Transition Table: {}".format(TransitionTable))
     pl("Stranded Transition Table: {}".format(StrandedTTable))
@@ -818,7 +822,7 @@ def CustomPileupToTsv(inputBAM,
     StrandedTransTotalDict = {}
     StrandedTransMergedDict = {}
     NumTransitionsTotal = 0
-    NumTransitionsMerged = 0
+    NTransMerged = 0
     MergedReadsProcessed = 0
     TotalReadsProcessed = 0
     if(PileupTsv == "default"):
@@ -874,7 +878,7 @@ def CustomPileupToTsv(inputBAM,
                 except KeyError:
                     TransMergedDict[
                         key] = PColSum.TransMergedCounts[key]
-                NumTransitionsMerged += PColSum.TransMergedCounts[
+                NTransMerged += PColSum.TransMergedCounts[
                     key]
             for key in PColSum.TransTotalCounts.keys():
                 try:
@@ -917,7 +921,7 @@ def CustomPileupToTsv(inputBAM,
                     operator.div(TransTotalDict[key],
                                  float(NumTransitionsTotal)),
                     operator.div(TransMergedDict[key],
-                                 float(NumTransitionsMerged))))
+                                 float(NTransMerged))))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
                                "Fraction Of Total (Unflattened) Transitions"
@@ -933,7 +937,7 @@ def CustomPileupToTsv(inputBAM,
                     StrandedTransTotalDict[key] /
                     float(NumTransitionsTotal),
                     StrandedTransMergedDict[key] /
-                    float(NumTransitionsMerged),
+                    float(NTransMerged),
                 ))
     pl("Transition Table: {}".format(TransitionTable))
     pl("Stranded Transition Table: {}".format(StrandedTTable))

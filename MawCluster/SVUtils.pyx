@@ -8,6 +8,7 @@ from utilBMF.HTSUtils import ReadPairIsDuplex
 from utilBMF.HTSUtils import ReadPair
 from utilBMF.HTSUtils import GetDeletedCoordinates
 from utilBMF.HTSUtils import PysamToChrDict
+from utilBMF.HTSUtils import GetGC2NMapForRead
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -558,7 +559,7 @@ def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
             return True
     return False
 
-#  SVTestDict['DSD'] = DSD_SV_Tag_Condition
+# SVTestDict['DSD'] = DSD_SV_Tag_Condition
 
 
 @cython.returns(cython.bint)
@@ -573,28 +574,10 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
         return False
     if(sum([read1.is_reverse, read2.is_reverse]) != 1):
         return False  # Reads aligned to same strand. Not a good sign.
-    read1Pos = read1.get_aligned_pairs()
-    read2Pos = read2.get_aligned_pairs()
-    r1Boundaries = sorted(
-        [[read1Pos[n-1] for n, i in enumerate(read1Pos) if i[1] is None
-          and read1Pos[n - 1][1] is not None][0][1]],
-        [[read1Pos[n+1] for n, i in enumerate(read1Pos) if i[1]is None
-          and read1Pos[n + 1][1] is not None][0][1]])
-    r2Boundaries = sorted(
-        [[read2Pos[n-1] for n, i in enumerate(read2Pos) if i[1] is None
-          and read2Pos[n - 1][1] is not None][0][1]],
-        [[read2Pos[n+1] for n, i in enumerate(read2Pos) if i[1]is None
-          and read2Pos[n + 1][1] is not None][0][1]])
-    # Do the insertions have the same nucleotides as their "boundaries"?
-    if(r1Boundaries != r2Boundaries):
-        return False
-    # Do the insertions have the same length?
-    if([i for i in read1.cigar if i[0] == 1][0][1] !=
-       [i for i in read2.cigar if i[0] == 1][0][1]):
-        return False
-    return True
-
-#  SVTestDict['DSI'] = DSI_SV_Tag_Condition
+    if(GetGC2NMapForRead(read1, cigarOp=1) == GetGC2NMapForRead(read2, cigarOp=1)):
+        return True
+    return False
+# SVTestDict['DSI'] = DSI_SV_Tag_Condition
 
 
 SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))

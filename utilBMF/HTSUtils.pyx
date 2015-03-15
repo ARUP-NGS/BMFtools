@@ -1201,6 +1201,32 @@ def GetGenomicCoordsForFiltCigar(filtCigar, read):
     return [[dgap[i] for i in g[1]] for g in filtCigar]
 
 
+def GetGenomicCoordToNucleotideMapForFiltCigar(read, filtCigar="default"):
+    """
+    Returns a dictionary of genomic positions: nucleotides for a "filtered"
+    cigar and a read. This is used to compare whether or not two reads with
+    an insertion agree on the inserted nucleotides.
+    """
+    assert not isinstance(filtCigar, str)
+    seq = read.seq
+    dgap = dict(read.get_aligned_pairs())
+    return {k: l for k, l in zip([[dgap[i] for i in g[1]] for g in filtCigar],
+                                 [[seq[i] for i in g[1]] for g in filtCigar])}
+
+
+@cython.locals(cigarOp=cython.long)
+def GetGC2NMapForRead(read, cigarOp=-1):
+    """
+    Returns a dictionary of genomic positions: nucleotides for a provided
+    cigar operation.
+    """
+    filtCigar = GetQueryIndexForCigarOperation(read, cigarOp=cigarOp)
+    return GetGenomicCoordsToNucleotideMapForFiltCigar(read,
+                                                       filtCigar=filtCigar)
+
+
+
+@cython.locals(cigarOp=cython.long)
 def GetReadSequenceForCigarOp(read, cigarOp=-1):
     if(read.cigar is None):
         raise ThisIsMadness("Cigar must not be None to get "
@@ -1221,10 +1247,27 @@ def GetReadSequenceForCigarOp(read, cigarOp=-1):
     return
 
 
+@cython.locals(k=cython.long)
 def GetDeletedCoordinates(read):
     """
     Returns a list of integers of genomic coordinates for deleted bases.
     """
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
-
+    apList = read.get_aligned_pairs()
+    k = 0
+    # Remove any soft-clipped bases at the front.
+    while True:
+        if(apList[k][0] is None):
+            k += 1
+        else:
+            break
+    apList = apList[k:]
+    k = len(apList) - 1
+    # Remove any soft-clipped bases at the end.
+    while True:
+        if(apList[k][0] is None):
+            k -= 1
+        else:
+            break
+    apList = apList[0:k + 1]
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])
