@@ -89,8 +89,10 @@ def BMFXLC(inBAM,
                 contig=contig,
                 bedIntervals=parsedBedfile,
                 mergeDist=150)
+            """
             ConsensusSequence, PassFail = BkptSequenceFromRPSet(event,
                                                                 intra=True)
+            """
             PutativeIntraXLocs.append(PutativeXLoc(
                 intervalList=bedIntervalList, ReadPairs=event,
                 bedIntervals=parsedBedfile, header=header,

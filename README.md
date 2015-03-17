@@ -210,6 +210,7 @@ Most options are available for command-line as well. If an option is set in both
         4. GC Content
 
 2. Indels:
+    0. Debugging DSD/DSI
     1. Work on smaller indels directly in BAM with cigar strings. (Some progress on it, but it has to wait until SNVs are fully-solved)
     2. Indel realignment might perform better if the "normal" reads are removed, IE, properly-mapped reads without I, D, or S in it.
     3. FreeBayes with a longer --haplotype-length, demultiplexing first, and a high ploidy + pre-filtering should get us what we want.
@@ -218,7 +219,4 @@ Most options are available for command-line as well. If an option is set in both
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
-
-1. TODO, lite:
-    1. Add control of AlleleAggregateInfo creation (e.g., minFA) to SNVCrawler. **
 

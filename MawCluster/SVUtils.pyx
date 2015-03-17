@@ -598,7 +598,8 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
     bed = ParseBed(bedfile)
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
-    FeatureList = sorted(SVTestDict.keys())
+    FeatureList = sorted([i for i in SVTestDict.keys() if
+                          i != "DSI" and i != "DSD"])
     SVR = False
     # print("SVParamDict: {}".format(repr(SVParamDict)))
     # print("SVTestDict: {}".format(repr(SVTestDict)))

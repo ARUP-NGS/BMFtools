@@ -143,12 +143,12 @@ def BarcodeSort(inFastq, outFastq="default"):
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
-        BSstring = ("zcat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
+        BSstring = ("zcat " + inFastq + " | paste - - - - | sed "
                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
     else:
-        BSstring = ("cat " + inFastq + " | paste - - - - | grep 'Pass' | sed "
+        BSstring = ("cat " + inFastq + " | paste - - - - | sed "
                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
@@ -391,7 +391,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
         dtype=np.int64)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
-    quals[quals < 3] = 0
+    quals[quals < 3] = 1
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
@@ -414,7 +414,9 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
     FA = np.array([sum([seq[i] == newSeq[i] for seq in seqs]) for i
                    in range(len(newSeq))], dtype=np.int64)
     ND = np.subtract(lenR * len(seqs[0]), np.sum(FA))
-    phredQuals[phredQuals < 0] = 0
+    if(np.any(np.less(phredQuals, 0))):
+        pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
+        phredQuals = abs(phredQuals)
     if(compressB64 is True):
         if(np.any(np.greater(phredQuals, 93))):
             PVString = operator.add(" #G~PV=",

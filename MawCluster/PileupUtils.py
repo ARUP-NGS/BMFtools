@@ -150,8 +150,13 @@ class PRInfo:
                     raise ValueError("This PV String should only "
                                      "have digits and commas... ???")
                 self.PV = self.PV_Array[self.query_position]
-                self.PVFrac = operator.div(float(self.PV),
-                                           np.max(self.PV_Array))
+                try:
+                    self.PVFrac = operator.div(float(self.PV),
+                                               np.max(self.PV_Array))
+                except ZeroDivisionError:
+                    pl("ZeroDivision error in PRInfo."
+                       "self.PV %s, self.PV_Array" % (self.PV, self.PV_Array))
+                    self.PVFrac = -1.
 
 
 def is_reverse_to_str(boolean):

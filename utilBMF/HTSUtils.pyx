@@ -915,7 +915,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
             except StopIteration:
                 break
     if("LI" in tags):
-        return sorted(RecordsArray, key=abs(attrgetter("insert_size")))
+        return sorted(RecordsArray, key=lambda x: abs(x.insert_size))
     else:
         return RecordsArray
 
@@ -1221,7 +1221,7 @@ def GetGC2NMapForRead(read, cigarOp=-1):
     cigar operation.
     """
     filtCigar = GetQueryIndexForCigarOperation(read, cigarOp=cigarOp)
-    return GetGenomicCoordsToNucleotideMapForFiltCigar(read,
+    return GetGenomicCoordToNucleotideMapForFiltCigar(read,
                                                        filtCigar=filtCigar)
 
 

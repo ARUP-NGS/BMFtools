@@ -31,7 +31,7 @@ compilerList = ["-flto", marchFlag, "-pipe", "-msse2",
                 "-floop-unroll-and-jam",
                 "--mfpmath=sse", "-fomit-frame-pointer"]
 """
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-flto",
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", #  "-flto",
                 "-funroll-loops", "-floop-unroll-and-jam",
                 "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
 
@@ -59,7 +59,7 @@ config = {
     'author_email': 'daniel.baker@aruplab.com',
     'version': '0.0.7.0',
     'install_requires': ['pysam', 'biopython', 'pudb',
-                         'cython', 'numconv', 'cutadapt'],
+                         'cython', 'numconv', 'cutadapt', 'lxml'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SECC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
