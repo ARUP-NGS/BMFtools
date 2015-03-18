@@ -206,7 +206,7 @@ def main(argv=None):
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir
     reviewdir = ""
-    makeReviewDir = (args.review != "default")
+    makeReviewDir = (args.review_dir != "default")
     if(makeReviewDir is True):
         reviewdir = ".".join([args.review_dir, dateStr, "reviewdir"])
         if(os.path.isdir(reviewdir)):

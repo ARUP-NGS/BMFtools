@@ -637,7 +637,8 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
                                maxInsert=100000,
                                tempBAMPrefix="default",
                                FullBam="default",
-                               summary="default"):
+                               summary="default",
+                               writeSVBam=False):
     """
     Requires a name-sorted, paired-end bam file where pairs have been kept
     together. (If a read is to be removed, its mate must also be removed.)
@@ -670,7 +671,10 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    SVOutHandle = pysam.AlignmentFile(SVBam, "wb", template=inHandle)
+    if(writeSVBam is True):
+        SVOutHandle = pysam.AlignmentFile(SVBam, "wb", template=inHandle)
+    else:
+        SVBam ="NotWritten"
     FullOutHandle = pysam.AlignmentFile(FullBam, "wb", template=inHandle)
     FeatureList = sorted(SVTestDict.keys())
     pl("FeatureList: {}".format(FeatureList))
@@ -688,8 +692,9 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
             for key in read1.opt("SV").split(","):
                 SVCountDict[key] = operator.add(SVCountDict[key], 1)
         if(WritePair is True):
-            SVOutHandle.write(read1)
-            SVOutHandle.write(read2)
+            if("SVOutHandle" in locals()):
+                SVOutHandle.write(read1)
+                SVOutHandle.write(read2)
             SVCountDict["SVR"] = operator.add(SVCountDict["SVR"], 1)
         else:
             SVCountDict["NOSVR"] = operator.add(SVCountDict["NOSVR"], 1)
@@ -698,7 +703,8 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         FullOutHandle.write(read1)
         FullOutHandle.write(read2)
     inHandle.close()
-    SVOutHandle.close()
+    if("SVOutHandle" in locals()):
+        SVOutHandle.close()
     FullOutHandle.close()
     SVCountDict["TOTAL"] = operator.add(SVCountDict["SVR"],
                                         SVCountDict["NOSVR"])

@@ -3,7 +3,7 @@
 >BMFTools is a suite of tools for barcoded reads which takes advantage of PCR redundancy for error reduction/elimination.
 
 ###What is BMF?
->BMF is a promiscuous acronym with multiple approriate meanings. Primarily:
+>BMF is a promiscuous acronym with multiple appropriate meanings. Primarily:
 
 |By __Reference__| By __Value__ | 
 |---------------|-----------|
@@ -192,12 +192,14 @@ Most options are available for command-line as well. If an option is set in both
 
 
 #TODO (ish):
-0. Replace the conf.txt file with the new config.py modules.
 1. SNV:
-    0. ROCs for the standards? Hopefully we can figure out perfect specificity and then work on sensitivity.
-        0. Which parameters/filters at which places?
+    0. Filters and Preprocessing
         1. SV Filter (not implemented - was debugging)
-        2. FracAlignFilter?
+        2. FracAlignFilter
+        3. Check and make sure that the GATK IndelRealignment works.
+    1. SNV confidence model
+        1. Probability of finding a mutation with a given frequency with enough samples.
+        2. Probability of correctly sequencing if correct.
     1. Error Characterization Code
         1. Write sliding window + database writes.
         2. Add tile/x pos/y pos information to error characterization code (or at least an SVM for making calls), along with cluster count. (Parse from the Stats xml from bcl2fastq2)
@@ -219,4 +221,7 @@ Most options are available for command-line as well. If an option is set in both
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
+
+#BACKLOG:
+0. Replace the conf.txt file with the new config.py modules.
 

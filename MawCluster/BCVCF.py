@@ -4,6 +4,7 @@
 import subprocess
 import decimal
 from itertools import tee
+import operator
 
 import numpy as np
 import cython
@@ -179,7 +180,7 @@ class VCFRecord:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
         if(len(self.Samples) == 0):
-            recordStr = '\t'.join([str(i) for i in [self.CHROM,
+            recordStr = '\t'.join(np.array([self.CHROM,
                                    self.POS,
                                    self.ID,
                                    self.REF,
@@ -188,10 +189,10 @@ class VCFRecord:
                                    self.FILTER,
                                    self.INFO,
                                    self.FORMAT,
-                                   self.GENOTYPE]])
+                                   self.GENOTYPE]).astype(str))
         else:
             sampleStr = "\t".join(self.Samples)
-            recordStr = '\t'.join([str(i) for i in [self.CHROM,
+            recordStr = '\t'.join(np.array([self.CHROM,
                                    self.POS,
                                    self.ID,
                                    self.REF,
@@ -201,7 +202,7 @@ class VCFRecord:
                                    self.INFO,
                                    self.FORMAT,
                                    self.GENOTYPE,
-                                   sampleStr]])
+                                   sampleStr]).astype(str))
         self.str = recordStr.strip()
 
     def update(self):
@@ -632,6 +633,46 @@ def ISplitMultipleAlts(inVCF, outVCF="default"):
     outHandle.close()
     print("Output VCF: {}".format(outVCF))
     print("Number of lines split: {}".format(count))
+    return outVCF
+
+
+@cython.locals(maxAF=cython.float,
+               recFreq=cython.float, recordsPerWrite=cython.long)
+def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
+                recordsPerWrite=50000):
+    """
+    A simple function for splitting VCF lines with multiple
+    ALTs into several valid lines.
+    """
+    print("Beginning SplitMultipleAlts")
+    if(outVCF == "default"):
+        print("OutputVCF is default - changing!")
+        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.AltSplit.vcf'
+    print("Output VCF: {}".format(outVCF))
+    inVCF = IterativeVCFFile(inVCF)
+    outHandle = open(outVCF, "w")
+    outHandle.write("\n".join(inVCF.header) + "\n")
+    outLines = []
+    numK = 0
+    count = 0
+    for rec in inVCF:
+        if operator.ge(len(outLines), recordsPerWrite):
+           outHandle.write("\n".join(outLines) + "\n")
+           outLines = []
+        try:
+            recFreq = float(rec.InfoDict["AF"])
+        except ValueError:
+            pl("Looks like this record might have multiple AFs. Just keep it "
+               "if at least one record is under that maxAF")
+            recFreq = np.min([float(i) for i in
+                              rec.InfoDict["AF"].split(",")],
+                             dtype=np.float64)
+        if(operator.le(recFreq, maxAF)):
+            outLines.append(rec.ToString())
+    if len(outLines) != 0:
+        outHandle.write("\n".join(outLines))
+    outHandle.flush()
+    outHandle.close()
     return outVCF
 
 

@@ -89,13 +89,16 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                                  bedfile=bed,
                                  tempBAMPrefix=tempBAMPrefix,
                                  summary=summary)
-    pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
-        "to structural variants."))
-
+    if(SVBam != "NotWritten"):
+        pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
+            "to structural variants."))
+    else:
+        pl("Structural variant bam not written. Ask for it next time!")
+    pl("All records BAM: %s" % MarkedFamilies)
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to the differing alignment needs.")
-    coorSorted = HTSUtils.CoorSortAndIndexBam(SVBam)
+    coorSorted = HTSUtils.CoorSortAndIndexBam(MarkedFamilies)
     return coorSorted
 
 
