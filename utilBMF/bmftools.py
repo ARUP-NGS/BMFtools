@@ -28,6 +28,8 @@ def main():
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
                                            "ansitions.")
+    VCFAFFilterParser = subparsers.add_parser("faf",
+                                              description="Filter a VCF by AF")
     VCFHetParser = subparsers.add_parser("findhets",
                                          description="Split VCF lines with mul"
                                          "tiple ALTs, then writes to files onl"
@@ -201,6 +203,15 @@ def main():
         "allele frequency, depending on dataset.",
         type=float,
         default=0.025)
+    VCFAFFilterParser.add_argument(
+        "inVCF", help="Path to input VCF")
+    VCFAFFilterParser.add_argument(
+        "--maxAF", help="Max allele frequency to keep",
+        type=float, default=0.1)
+    VCFAFFilterParser.add_argument(
+        "--outVCF", help="output VCF. 'default' will pick a modified form of"
+        " the inVCF name.",
+        type=str, default="default")
     # set_trace()
 
     args = parser.parse_args()
@@ -268,6 +279,9 @@ def main():
             hetOut = BCVCF.GetPotentialHetsVCFUK10K(args.inVCF)
         print("Potential Hets VCF: {}".format(hetOut))
         return hetOut
+    if(args.bmfsuites == "faf"):
+        Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
+                                   outVCF=args.outVCF)
     return 0
 
 

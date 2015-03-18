@@ -647,7 +647,8 @@ def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
     print("Beginning SplitMultipleAlts")
     if(outVCF == "default"):
         print("OutputVCF is default - changing!")
-        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.AltSplit.vcf'
+        outVCF = '.'.join(inVCF.split('.')[0:-1] + ["AFFilt", str(maxAF),
+                                                    "vcf"])
     print("Output VCF: {}".format(outVCF))
     inVCF = IterativeVCFFile(inVCF)
     outHandle = open(outVCF, "w")
