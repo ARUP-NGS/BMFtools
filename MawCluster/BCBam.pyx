@@ -94,9 +94,11 @@ def AbraCadabra(inBAM,
     command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
                " --out {} --ref {} --targets".format(outBAM, ref) +
                " {} --threads {} ".format(bed, threads) +
-               "--working {}".format(working))
+               "--working {} --mbq 200".format(working))
     pl("Command: {}.".format(command))
     subprocess.check_call(shlex.split(command), shell=False)
+    pl("Deleting abra's intermediate directory.")
+    subprocess.check_call(["rm", "-rf", working])
     return outBAM
 
 

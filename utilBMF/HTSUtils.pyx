@@ -348,7 +348,8 @@ def ReadPairIsDuplex(readPair, minShare="default"):
                ) >= minLen
 
 
-def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
+def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default",
+                  makeRG=False):
     """
     Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
     """
@@ -358,6 +359,9 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
         opts = "-n 3 -t 4"
     if(outBAM == "default"):
         outBAM = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
+    RGString = ""
+    if(makeRG):
+        RGString = " -r '@RG\tID:foo\tSM:bar'"
     str(uuid.uuid4().get_hex().upper()[0:8])
     R1Sai = R1 + ".tmp.sai"
     R2Sai = R2 + ".tmp.sai"
@@ -367,7 +371,7 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
                " > " + R2Sai)
     PipedShellCall(alnStr2)
-    sampeStr = ("bwa sampe -r '@RG\tID:foo\tSM:bar' " +
+    sampeStr = ("bwa sampe %s " % RGString +
                 " ".join([ref, R1Sai, R2Sai, R1, R2]) +
                 " | samtools view -h - > " + outBAM)
     printlog("bwa aln string: {}".format(sampeStr))
@@ -378,7 +382,7 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
 
 
 def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
-                  path="default"):
+                  path="default", makeRG=False):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -395,13 +399,16 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     if(ref == "default"):
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
+    RGText = ""
+    if(makeRG):
+        RGText = " -R '@RG\tID:foo\tSM:bar'"
     if(path == "default"):
-        command_str = ("bwa mem %s %s %s %s -R " %(opt_concat, ref, R1, R2) +
-                       "'@RG\tID:foo\tSM:bar'"
+        command_str = ("bwa mem %s %s %s %s " %(opt_concat, ref, R1, R2) +
+                       RGText +
                        " | samtools view -Sbh - > {}".format(outBAM))
     else:
         command_str = (path + " mem %s %s %s " %(opt_concat, ref, R1) +
-                       " -R '@RG\tID:foo\tSM:bar'"
+                       RGText +
                        "{} | samtools view -Sbh - > {}".format(R2, outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
