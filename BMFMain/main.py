@@ -203,20 +203,19 @@ def main(argv=None):
         pl("captureSize: {}".format(captureSize))
         if(captureSize is None):
             raise ThisIsMadness("required captureSize variable not set!")
-    dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m")
+    dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir
     reviewdir = ""
-    if(args.review_dir != "default"):
+    makeReviewDir = (args.review != "default")
+    if(makeReviewDir is True):
         reviewdir = ".".join([args.review_dir, dateStr, "reviewdir"])
-    else:
-        reviewdir = ".".join([args.fq[0].split(".")[0], dateStr, "reviewdir"])
-    if(os.path.isdir(reviewdir)):
-        raise ThisIsMadness("Review directory exists - even with "
-                            "the time stamp. Abort!")
-    if(os.path.isfile(reviewdir)):
-        raise ThisIsMadness("Not only is the review directory name"
-                            " taken, but it's not even a folder?")
-    os.mkdir(reviewdir)
+        if(os.path.isdir(reviewdir)):
+            raise ThisIsMadness("Review directory exists - even with "
+                                "the time stamp. Abort!")
+        if(os.path.isfile(reviewdir)):
+            raise ThisIsMadness("Not only is the review directory name"
+                                " taken, but it's not even a folder?")
+        os.mkdir(reviewdir)
     pl("Review directory: {}")
     # Begin logging
     if(args.logfile != "default"):
@@ -316,7 +315,8 @@ def main(argv=None):
                     args.fq[0], args.fq[1], indexfq=args.idxFastq,
                     lighter=lighter, kmer=kmer, captureSize=captureSize,
                     p3Seq=p3Seq, p5Seq=p5Seq)
-            subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
+            if(makeReviewDir):
+                subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
             if("bwapath" in locals()):
                 procSortedBam = ps.pairedBamProc(
                     trimfq1,
@@ -333,7 +333,8 @@ def main(argv=None):
                     aligner=aligner, ref=ref,
                     bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath)
-            subprocess.check_call(["cp", procSortedBam, reviewdir])
+            if(makeReviewDir):
+                subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(
                 procSortedBam,
                 ref=ref,
@@ -344,7 +345,8 @@ def main(argv=None):
                 commandStr=" ".join(sys.argv),
                 minFA=minFA, minFracAgreed=minFracAgreed)
             for key in VCFOutDict.keys():
-                subprocess.check_call(["cp", VCFOutDict[key], reviewdir])
+                if(makeReviewDir):
+                    subprocess.check_call(["cp", VCFOutDict[key], reviewdir])
             pl("Last stop! Watch your step.")
         elif(args.initialStep == 2):
             pl("Beginning BAM processing.")
@@ -392,7 +394,8 @@ def main(argv=None):
                 commandStr=" ".join(sys.argv),
                 minFA=minFA, minFracAgreed=minFracAgreed)
             pl("Last stop! Watch your step.")
-    subprocess.check_call(["cp", logfile, reviewdir])
+    if(makeReviewDir):
+        subprocess.check_call(["cp", logfile, reviewdir])
     return
 
 global __version__

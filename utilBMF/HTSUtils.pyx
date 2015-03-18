@@ -367,7 +367,7 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
                " > " + R2Sai)
     PipedShellCall(alnStr2)
-    sampeStr = ("bwa sampe " " " +
+    sampeStr = ("bwa sampe -r '@RG\tID:foo\tSM:bar' " +
                 " ".join([ref, R1Sai, R2Sai, R1, R2]) +
                 " | samtools view -h - > " + outBAM)
     printlog("bwa aln string: {}".format(sampeStr))
@@ -396,11 +396,13 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
     if(path == "default"):
-        command_str = ('bwa mem {} {} {} {}'.format(opt_concat, ref, R1, R2) +
+        command_str = ("bwa mem %s %s %s %s -R " %(opt_concat, ref, R1, R2) +
+                       "'@RG\tID:foo\tSM:bar'"
                        " | samtools view -Sbh - > {}".format(outBAM))
     else:
-        command_str = (path + ' mem {} {} {}'.format(opt_concat, ref, R1, R2) +
-                       " {} | samtools view -Sbh - > {}".format(R2, outBAM))
+        command_str = (path + " mem %s %s %s " %(opt_concat, ref, R1) +
+                       " -R '@RG\tID:foo\tSM:bar'"
+                       "{} | samtools view -Sbh - > {}".format(R2, outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
     PipedShellCall(command_str, delete=True)

@@ -21,9 +21,7 @@ cimport cython
 from MawCluster.BCFastq import letterNumDict
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
-from utilBMF.HTSUtils import printlog as pl
-from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import ThisIsMadness
+from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
 from utilBMF import HTSUtils
 from SECC import BuildRunDict
 
@@ -153,6 +151,45 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
     return outfile
 
 
+def GATKIndelRealignment(inBAM, gatk="default", ref="default",
+                         bed="default", dbsnp="default"):
+    if(ref == "default"):
+        raise ThisIsMadness("Reference file required for Indel Realignment")
+    if(bed == "default"):
+        raise ThisIsMadness("Bed file required for Indel Realignment")
+    if(gatk == "default"):
+        raise ThisIsMadness("Path to GATK Jar required for Indel Realignment")
+    print dbsnp
+    if(dbsnp == "default"):
+        dbsnpStr = ""
+        pl("Running GATK Indel Realignment without dbSNP for known indels.")
+    else:
+        dbsnpStr = "--known %s " % dbsnp
+    out = ".".join(inBAM.split(".")[0:-1] + ["realignment", "targets"])
+    outBAM = ".".join(inBAM.split(".")[0:-1] + ["gatkIndelRealign", "bam"])
+    RTCString = "".join([
+        "java -jar %s -T RealignerTargetCreator" % gatk,
+        " -R %s -o %s " % (ref, out), dbsnpStr])
+    try:
+        subprocess.check_call(shlex.split(RTCString))
+    except subprocess.CalledProcessError:
+        pl("GATK RealignerTargetCreator failed. Still finish the "
+           "analysis pipeline...")
+        return inBAM
+    IRCString = "".join(["java -jar %s -T IndelRealigner -targetInt" % gatk,
+                        "ervals %s -R %s -I %s --known %s -o " % (out, ref,
+                                                                  inBAM,
+                                                                  outBAM),
+                        dbsnpStr])
+    try:
+        subprocess.check_call(shlex.split(IRCString))
+    except subprocess.CalledProcessError:
+        pl("GATK IndelRealignment failed. Still finish the analysis pipeline.")
+        return inBAM
+    pl("Successful GATK indel realignment. Output: %s" % outBAM)
+    return outBAM
+
+
 @cython.locals(FM=cython.int)
 def pairedBarcodeTagging(
         fq1,
@@ -186,8 +223,6 @@ def pairedBarcodeTagging(
         if(entry.is_secondary or entry.flag >= 2048):
             suppBAM.write(entry)
             continue
-        if(not entry.is_paired):
-            continue
         if(entry.is_read1):
             read1bam = entry
             read1fq = read1Handle.next()
@@ -195,62 +230,47 @@ def pairedBarcodeTagging(
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             read2bam = entry
-        descDict = BCFastq.GetDescriptionTagDict(read1fq.description)
-        FM = int(descDict["FM"])
-        read1bam.setTag("FM", FM, "i")
-        read2bam.setTag("FM", FM, "i")
+            read2fq = read2Handle.next()
+        descDict1 = BCFastq.GetDescriptionTagDict(read1fq.description)
+        descDict2 = BCFastq.GetDescriptionTagDict(read2fq.description)
+        FM = int(descDict1["FM"])
+        try:
+            ND1 = int(descDict1["ND"])
+            ND2 = int(descDict2["ND"])
+        except KeyError:
+            raise ThisIsMadness("Number of Differences tag required for "
+                                "BMFTools >= v0.0.7")
+        except ValueError:
+            raise ValueError("ND tag value is invalid: "
+                             "%s %s" % (descDict1["ND"], descDict2["ND"]))
         coorString = ",".join(sorted([":".join([PysamToChrDict[
             read1bam.reference_id], str(read1bam.pos)]), ":".join([
                 PysamToChrDict[read2bam.reference_id], str(read2bam.pos)])]))
         contigSetStr = ",".join(sorted(
             [PysamToChrDict[read1bam.reference_id],
              PysamToChrDict[read2bam.reference_id]]))
-        read1bam.setTag("RP", coorString, "Z")
-        read2bam.setTag("RP", coorString, "Z")
-        read1bam.setTag("CS", contigSetStr, "Z")
-        read2bam.setTag("CS", contigSetStr, "Z")
-        try:
-            read1bam.setTag("BS", descDict["BS"], "Z")
-            read2bam.setTag("BS", descDict["BS"], "Z")
-        except KeyError:
-            pl(("Dict: {}".format(descDict)))
-            pl("Read: {}".format(entry))
-            raise KeyError("Your fastq record is missing a BS tag.")
-        try:
-            if("Pass" in descDict["FP"]):
-                read1bam.setTag("FP", 1, "i")
-                read2bam.setTag("FP", 1, "i")
-            else:
-                read1bam.setTag("FP", 0, "i")
-                read2bam.setTag("FP", 0, "i")
-        except KeyError:
-            pl(("Dict: {}".format(descDict)))
-            pl("Read: {}".format(entry))
-            raise KeyError("Your fastq record is missing an FP tag.")
-        try:
-            read1bam.setTag("PV", descDict["PV"], "Z")
-            read2bam.setTag("PV", descDict["PV"], "Z")
-        except KeyError:
-            # print("Phred Values > 93 not set. Oh well.)
-            pass
-        try:
-            ND = int(descDict["ND"])
-            read1bam.setTag("ND", ND, "i")
-            read2bam.setTag("ND", ND, "i")
-            read1bam.setTag("NF", operator.div(ND, FM), "f")
-            read2bam.setTag("NF", operator.div(ND, FM), "f")
-        except KeyError:
-            raise ThisIsMadness("Number of Differences tag required for "
-                                "BMFTools >= v0.0.7")
-        except ValueError:
-            raise ValueError("ND tag value is invalid: %s" % descDict["ND"])
-
-        try:
-            read1bam.setTag("FA", descDict["FA"], "Z")
-            read2bam.setTag("FA", descDict["FA"], "Z")
-        except KeyError:
-            raise ThisIsMadness("Currently, FA tags are required.")
-            # print("Number of reads agreeing per position mssing. Oh well.")
+        read1bam.set_tags([("RP", coorString, "Z"),
+                           ("CS", contigSetStr, "Z"),
+                           ("FM", FM, "i"),
+                           ("BS", descDict1["BS"], "Z"),
+                           ("FP", int("Pass" in descDict1["FP"]), "i"),
+                           ("PV", descDict1["PV"], "Z"),
+                           ("FA", descDict1["FA"], "Z"),
+                           ("ND", ND1, "i"),
+                           ("NF", operator.div(ND1, float(FM)), "f")
+                           ])
+        read2bam.set_tags([("RP", coorString, "Z"),
+                           ("CS", contigSetStr, "Z"),
+                           ("FM", FM, "i"),
+                           ("BS", descDict1["BS"], "Z"),
+                           ("FP", int("Pass" in descDict1["FP"]), "i"),
+                           ("PV", descDict1["PV"], "Z"),
+                           ("FA", descDict1["FA"], "Z"),
+                           ("ND", ND2, "i"),
+                           ("NF", operator.div(ND2, float(FM)), "f")
+                           ])
+        # I used to mark the BAMs at this stage, but it's not appropriate to
+        # do so until after indel realignment.
         """
         read1bam, read2bam = MarkSVTags(read1bam, read2bam, bedfile=bedfile,
                                         testDict=SVTestDict,

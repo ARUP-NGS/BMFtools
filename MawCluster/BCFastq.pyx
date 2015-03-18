@@ -86,30 +86,37 @@ class pFastqProxy:
                          "+", self.quality, ""])
 
 
-@cython.locals(checks=cython.int)
-def BarcodeSortBoth(inFq1, inFq2):
+@cython.locals(checks=cython.int, highMem=cython.bint,
+               parallel=cython.bint)
+def BarcodeSortBoth(inFq1, inFq2, highMem=True, parallel=False):
+    if(parallel is False):
+        pl("Parallel barcode sorting is set to false. Performing serially.")
+        return BarcodeSort(inFq1), BarcodeSort(inFq2)
     outFq1 = '.'.join(inFq1.split('.')[0:-1] + ["BS", "fastq"])
     outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
     pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
+    highMemStr = ""
+    if(highMem is True):
+        highMemStr = "-S 6G "
     if(inFq1.endswith(".gz")):
-        BSstring1 = ("zcat " + inFq1 + " | paste - - - - | grep 'Pass' | sed "
+        BSstring1 = ("zcat " + inFq1 + " | paste - - - - | sed "
                      "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
                      "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
     else:
-        BSstring1 = ("cat " + inFq1 + " | paste - - - - | grep 'Pass' | sed "
+        BSstring1 = ("cat " + inFq1 + " | paste - - - -  | sed "
                      "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
                      "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq1)
     if(inFq2.endswith(".gz")):
-        BSstring2 = ("zcat " + inFq2 + " | paste - - - - | grep 'Pass' | sed "
+        BSstring2 = ("zcat " + inFq2 + " | paste - - - - | sed "
                      "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
                      "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
     else:
-        BSstring2 = ("cat " + inFq2 + " | paste - - - - | grep 'Pass' | sed "
+        BSstring2 = ("cat " + inFq2 + " | paste - - - - | sed "
                      "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                     " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                     " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
                      "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFq2)
     pl("Background calling barcode sorting "
        "for read 1. Command: {}".format(BSstring1))
@@ -138,19 +145,23 @@ def BarcodeSortBoth(inFq1, inFq2):
                                             "de sort.")
 
 
-def BarcodeSort(inFastq, outFastq="default"):
+@cython.locals(highMem=cython.bint)
+def BarcodeSort(inFastq, outFastq="default", highMem=True):
     pl("Sorting {} by barcode sequence.".format(inFastq))
+    highMemStr = ""
+    if(highMem is True):
+        highMemStr = " -S 6G "
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
         BSstring = ("zcat " + inFastq + " | paste - - - - | sed "
                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
     else:
         BSstring = ("cat " + inFastq + " | paste - - - - | sed "
                     "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 | cut -f2- | "
+                    " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
                     "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
     PipedShellCall(BSstring)
     pl("Barcode Sort shell call: {}".format(BSstring))

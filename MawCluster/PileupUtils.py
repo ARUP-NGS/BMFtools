@@ -155,7 +155,7 @@ class PRInfo:
                                                np.max(self.PV_Array))
                 except ZeroDivisionError:
                     pl("ZeroDivision error in PRInfo."
-                       "self.PV %s, self.PV_Array" % (self.PV, self.PV_Array))
+                       "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
                     self.PVFrac = -1.
 
 
