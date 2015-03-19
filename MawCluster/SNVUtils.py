@@ -879,7 +879,8 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
         HeaderLinesStr += HeaderReferenceLine(
             reference=reference, isfile=reference_is_path).ToString() + "\n"
     # contig lines
-    HeaderLinesStr += GetContigHeaderLines(header) + "\n"
+    if(header != "default"):
+        HeaderLinesStr += GetContigHeaderLines(header) + "\n"
     HeaderLinesStr += "\t".join(["#CHROM", "POS",
                                  "ID", "REF",
                                  "ALT", "QUAL",

@@ -1,6 +1,7 @@
 import re
 import subprocess
 import time
+import logging
 
 import cython
 
@@ -13,6 +14,8 @@ from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from MawCluster.BCVCF import VCFStats
 
 
+@cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
+               addRG=cython.bint, mincov=cython.long)
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bamPrefix="default", ref="default", aligner="default",
                   barIndex="default",
@@ -21,7 +24,12 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   abrapath="default",
                   coverageForAllRegions=False,
                   calcCoverage=True,
-                  bwapath="default"):
+                  bwapath="default",
+                  picardPath="default",
+                  addRG=True, PL="ILLUMINA",
+                  SM="default", CN="default",
+                  RG="default", ID="default",
+                  realigner="gatk", gatkpath="default", dbsnp="default"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -34,27 +42,49 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         pl("No aligner set, defaulting to bwa mem.")
         aligner = "mem"
     if(aligner == "mem"):
-        outBAMProperPair = HTSUtils.align_bwa_mem(
-            consfq1, consfq2, ref=ref, opts=opts, path=bwapath)
+        if(addRG is False):
+            outBAMProperPair = HTSUtils.align_bwa_mem(
+                consfq1, consfq2, ref=ref, opts=opts, path=bwapath)
+        else:
+            outBAMProperPair = HTSUtils.align_bwa_mem_addRG(
+                consfq1, consfq2, ref=ref, opts=opts, path=bwapath,
+                RG=RG, ID=ID, CN=CN, PL=PL, SM=SM)
         if(consfqSingle != "default"):
-            HTSUtils.FacePalm("This step is not required "
-                              "or important for shades.")
+            HTSUtils.FacePalm("This step is not relevant to shades.")
     elif(aligner == "aln"):
-        outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2, ref=ref,
-                                                  opts=opts)
+        if(addRG is False):
+            outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,
+                                                      ref=ref, opts=opts)
+        else:
+            outBAMProperPair = HTSUtils.align_bwa_aln_addRG(
+                consfq1, consfq2, ref=ref, opts=opts, RG=RG, SM=SM,
+                CN=CN, PL=PL, picardPath=picardPath, ID=ID)
         if(consfqSingle != "default"):
             HTSUtils.FacePalm("This step is not required "
                               "or important for shades.")
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
+    if(picardPath == "default"):
+        pl("Warning: path to picard jar not set. This isn't required for much"
+           ", but in case something dies later, this could be responsible",
+           level=logging.DEBUG)
     pl("Now tagging BAM with custom SAM tags.")
     taggedBAM = BCBam.pairedBarcodeTagging(
         consfq1, consfq2, outBAMProperPair, bedfile=bed)
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
-    if(abrapath != "default"):
-        realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed,
+    if(realigner == "abra"):
+        if(abrapath == "default"):
+            raise ThisIsMadness("abrapath must be set for abra to be the "
+                                "realigner")
+        coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
+        realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
                                           jar=abrapath)
+    elif(realigner == "gatk"):
+        coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
+        realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,
+                                                   bed=bed, gatk=gatkpath,
+                                                   dbsnp=dbsnp)
     else:
         pl("ABRA path not provided. Skipping realignment.")
         realignedFull = taggedBAM
@@ -181,7 +211,7 @@ def pairedVCFProc(consMergeSortBAM,
                   minBQ=20,
                   MakePileupTsv=False,
                   MakeVCF=True,
-                  MakeCoverageBed=True,
+                  MakeCoverageBed=False,
                   commandStr="default",
                   minFA=2, minFracAgreed=0.667):
     if(bed == "default"):

@@ -166,12 +166,14 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
         dbsnpStr = ""
         pl("Running GATK Indel Realignment without dbSNP for known indels.")
     else:
-        dbsnpStr = "--known %s " % dbsnp
+        dbsnpStr = " --known %s " % dbsnp
     out = ".".join(inBAM.split(".")[0:-1] + ["realignment", "targets"])
     outBAM = ".".join(inBAM.split(".")[0:-1] + ["gatkIndelRealign", "bam"])
     RTCString = "".join([
         "java -jar %s -T RealignerTargetCreator" % gatk,
-        " -R %s -o %s " % (ref, out), dbsnpStr])
+        " -R %s -o %s -I %s " % (ref, out, inBAM),
+        dbsnpStr])
+    pl("RealignerTargetCreator string: %s" % RTCString)
     try:
         subprocess.check_call(shlex.split(RTCString))
     except subprocess.CalledProcessError:
@@ -179,10 +181,10 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
            "analysis pipeline...")
         return inBAM
     IRCString = "".join(["java -jar %s -T IndelRealigner -targetInt" % gatk,
-                        "ervals %s -R %s -I %s --known %s -o " % (out, ref,
-                                                                  inBAM,
-                                                                  outBAM),
+                        "ervals %s -R %s -I %s -o %s " % (out, ref,
+                                                          inBAM, outBAM),
                         dbsnpStr])
+    pl("IndelRealignerCall string: %s" % IRCString)
     try:
         subprocess.check_call(shlex.split(IRCString))
     except subprocess.CalledProcessError:
@@ -259,7 +261,8 @@ def pairedBarcodeTagging(
                            ("PV", descDict1["PV"], "Z"),
                            ("FA", descDict1["FA"], "Z"),
                            ("ND", ND1, "i"),
-                           ("NF", operator.div(ND1, float(FM)), "f")
+                           ("NF", operator.div(ND1, float(FM)), "f"),
+                           ("RG", "default", "Z")
                            ])
         read2bam.set_tags([("RP", coorString, "Z"),
                            ("CS", contigSetStr, "Z"),
@@ -269,7 +272,8 @@ def pairedBarcodeTagging(
                            ("PV", descDict1["PV"], "Z"),
                            ("FA", descDict1["FA"], "Z"),
                            ("ND", ND2, "i"),
-                           ("NF", operator.div(ND2, float(FM)), "f")
+                           ("NF", operator.div(ND2, float(FM)), "f"),
+                           ("RG", "default", "Z")
                            ])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.

@@ -66,15 +66,26 @@ def SNVCrawler(inBAM,
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(OutVCF, "w+")
     if(writeHeader is True):
-        outHandle.write(GetVCFHeader(fileFormat=fileFormat,
-                                     FILTERTags=FILTERTags,
-                                     commandStr=commandStr,
-                                     reference=reference,
-                                     reference_is_path=False,
-                                     header=inHandle.header,
-                                     INFOTags=INFOTags,
-                                     FORMATTags=FORMATTags))
-
+        try:
+            outHandle.write(GetVCFHeader(fileFormat=fileFormat,
+                                         FILTERTags=FILTERTags,
+                                         commandStr=commandStr,
+                                         reference=reference,
+                                         reference_is_path=False,
+                                         header=inHandle.header,
+                                         INFOTags=INFOTags,
+                                         FORMATTags=FORMATTags))
+        except ValueError:
+            pl("Looks like the RG header wasn't parseable by pysam - that's u"
+               "sually an artefact of the clash between pysam and GATK's ways"
+               "of working with RG fields.", level=logging.DEBUG)
+            outHandle.write(GetVCFHeader(fileFormat=fileFormat,
+                                         FILTERTags=FILTERTags,
+                                         commandStr=commandStr,
+                                         reference=reference,
+                                         reference_is_path=False,
+                                         INFOTags=INFOTags,
+                                         FORMATTags=FORMATTags))
     if(bed != "default"):
         for line in bed:
             pl("Combing through bed region {}".format(line),

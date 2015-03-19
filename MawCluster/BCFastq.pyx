@@ -40,8 +40,6 @@ from utilBMF.HTSUtils import PipedShellCall
 from utilBMF.HTSUtils import ph2chr
 from utilBMF.HTSUtils import ph2chrDict
 from utilBMF.HTSUtils import chr2ph
-from utilBMF.HTSUtils import Base64ToInt
-from utilBMF.HTSUtils import Int2Base64
 from utilBMF.HTSUtils import ToStr
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
@@ -58,7 +56,6 @@ letterNumDict[1] = 'C'
 letterNumDict[2] = 'G'
 letterNumDict[3] = 'T'
 
-# Int2Base64 = np.vectorize(Int2Base64)
 
 
 def chr2phFunc(x):
@@ -288,7 +285,7 @@ def compareFastqRecordsInexactNumpy(R):
                compressB64=cython.bint, lenR=cython.int,
                numEq=cython.int, maxScore=cython.int, ND=cython.int)
 def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
-                       famLimit=1000, keepFails=True, compressB64=True,
+                       famLimit=1000, keepFails=True,
                        makeFA=True, makePV=True):
     """
     Compares the fastq records to create a consensus sequence (if it
@@ -332,20 +329,12 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     phredQuals = np.multiply(lenR, phredQuals, dtype=np.int64)
     if(np.any(np.greater(phredQuals, 93))):
         QualString = "".join(map(ph2chr, phredQuals))
-        if(compressB64 is True):
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(map(Int2Base64, phredQuals)))
-        else:
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(phredQuals.astype(str).tolist()))
+        PVString = operator.add(" #G~PV=",
+                                ",".join(phredQuals.astype(str).tolist()))
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-        if(compressB64 is True):
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(map(Int2Base64, phredQuals)))
-        else:
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(phredQuals.astype(str).tolist()))
+        PVString = operator.add(" #G~PV=",
+                                ",".join(phredQuals.astype(str).tolist()))
     TagString = "".join([" #G~FM=", lenRStr, " #G~FA=",
                          ",".join(np.array(FA).astype(str)),
                          " #G~ND=", str(np.subtract(lenR * len(seqs[0]),
@@ -371,7 +360,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
 
 
 @cython.locals(Success=cython.bint, ND=cython.int, lenR=cython.int)
-def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
+def compareFqRecsFast(R, makePV=True, makeFA=True):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
@@ -428,28 +417,15 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, compressB64=True):
     if(np.any(np.less(phredQuals, 0))):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
         phredQuals = abs(phredQuals)
-    if(compressB64 is True):
-        if(np.any(np.greater(phredQuals, 93))):
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(map(Int2Base64,
-                                                 phredQuals)))
-            phredQuals[phredQuals > 93] = 93
-            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-        else:
-            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(map(Int2Base64,
-                                                 phredQuals)))
+    if(np.any(np.greater(phredQuals, 93))):
+        PVString = operator.add(" #G~PV=",
+                                ",".join(phredQuals.astype(str)))
+        phredQuals[phredQuals > 93] = 93
+        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     else:
-        if(np.any(np.greater(phredQuals, 93))):
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(phredQuals.astype(str)))
-            phredQuals[phredQuals > 93] = 93
-            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-        else:
-            phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-            PVString = operator.add(" #G~PV=",
-                                    ",".join(phredQuals.astype(str)))
+        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+        PVString = operator.add(" #G~PV=",
+                                ",".join(phredQuals.astype(str)))
     TagString = "".join([" #G~FM=", str(lenR), " #G~ND=",
                          str(ND), " #G~FA=", FA.astype(str), PVString])
     consolidatedFqStr = "\n".join([
@@ -471,10 +447,10 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
         HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
-        commandStr = "cutadapt --mask-adapter -a {} -o {} -O {} {}".format(
-            p3Seq, outfq, overlapLen, fq)
+        commandStr = "cutadapt --mask-adapter {} -a {} -o {} -O {} {}".format(
+            "--match-read-wildcards", p3Seq, outfq, overlapLen, fq)
     else:
-        commandStr = ("cutadapt --mask-adapter -a "
+        commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
                       "{} -g {} -o {} -O {} {}".format(p3Seq, p5Seq, outfq,
                                                        overlapLen, fq))
     pl("Cutadapt command string: {}".format(commandStr))

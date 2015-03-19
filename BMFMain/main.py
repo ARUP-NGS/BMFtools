@@ -133,20 +133,6 @@ def main(argv=None):
         help="If starting with the BAM step, provide the "
              "path to your barcode index as created.")
     parser.add_argument(
-        "--lighter",
-        help="Whether or not to use Lighter for error correction.",
-        default="default")
-    parser.add_argument(
-        "--kmer",
-        help="Kmer for error correction.",
-        type=int)
-    parser.add_argument(
-        "--captureSize",
-        help="Size of capture in base pairs. Required for Lighter.",
-        type=int)
-    parser.add_argument(
-        "--alpha", help="Alpha parameter for Lighter.", type=float)
-    parser.add_argument(
         "--p3Seq", help="3' primer sequence for cutadapt.", default="default")
     parser.add_argument(
         "--p5Seq", help="5' primer sequence for cutadapt.", default="default")
@@ -155,8 +141,17 @@ def main(argv=None):
         "sults files will be moved at the end of analysis.", default="default")
     parser.add_argument("--minFA", help="Minimum family members agreed on bas"
                         "e for inclusion in variant call", default=2, type=int)
+    parser.add_argument("--picardPath", help="Path to picard jar. Required fo"
+                        "r calling PicardTools.", default="default")
+    parser.add_argument("--indelRealigner", help="Select which indel realigne"
+                        "r you wish to use. Supported: abra, GATK",
+                        default="gatk")
+    parser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)",
+                        default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
+    if(args.indelRealigner.lower() not in ["abra", "gatk"]):
+        raise ThisIsMadness("Supported indel realigners are abra and gatk.")
     if("minMQ" in confDict.keys()):
         minMQ = int(confDict['minMQ'])
     else:
@@ -169,6 +164,10 @@ def main(argv=None):
         abrapath = confDict['abrapath']
     else:
         abrapath = args.abrapath
+    if("dbsnp" in confDict.keys()):
+        dbsnp = confDict["dbsnp"]
+    else:
+        dbsnp = "default"
     if("minFA" in confDict.keys()):
         minFA = int(confDict['minFA'])
     else:
@@ -178,31 +177,18 @@ def main(argv=None):
     else:
         minFracAgreed = args.minFracAgreed
     global gatkpath
-    if("gatkpath" in confDict.keys()):
+    gatkpath = args.gatkpath
+    if("gatkpath" in confDict.keys() and gatkpath == "default"):
         gatkpath = confDict['gatkpath']
-    captureSize = None
-    kmer = None
-    alpha = None
-    if("lighter" in confDict.keys()):
-        lighter = (confDict['lighter'].lower() == "true")
-    if "lighter" in args and args.lighter != "default":
-        lighter = (args.lighter.lower() == "true")
-    if("lighter" in locals()):
-        if("kmer" in confDict.keys()):
-            kmer = int(confDict["kmer"])
-        if(args.kmer is not None):
-            kmer = args.kmer
-        if("captureSize" in confDict.keys()):
-            captureSize = confDict['captureSize']
-        if(args.captureSize is not None):
-            captureSize = int(args.captureSize)
-        if("alpha" in confDict.keys()):
-            alpha = confDict['alpha']
-        if(args.alpha is not None):
-            alpha = args.alpha
-        pl("captureSize: {}".format(captureSize))
-        if(captureSize is None):
-            raise ThisIsMadness("required captureSize variable not set!")
+    if("picardPath" in confDict.keys()):
+        picardPath = confDict["picardPath"]
+    if(args.picardPath != "default" and isinstance(args.picardPath, str)):
+        picardPath = args.picardPath
+    if(picardPath == "default"):
+        pl("picardPath set to default. If you wanted to call PicardTools, it "
+           "won't happen...", level=logging.DEBUG)
+    else:
+        pl("picardPath set to %s" %picardPath)
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir
     reviewdir = ""
@@ -305,16 +291,9 @@ def main(argv=None):
         pl("Paired-end analysis chosen.")
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
-            if kmer is None and alpha is not None:
-                trimfq1, trimfq2 = ps.pairedFastqShades(
-                    args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                    lighter=lighter, captureSize=captureSize, alpha=alpha,
-                    p3Seq=p3Seq, p5Seq=p5Seq)
-            else:
-                trimfq1, trimfq2 = ps.pairedFastqShades(
-                    args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                    lighter=lighter, kmer=kmer, captureSize=captureSize,
-                    p3Seq=p3Seq, p5Seq=p5Seq)
+            trimfq1, trimfq2 = ps.pairedFastqShades(
+                args.fq[0], args.fq[1], indexfq=args.idxFastq,
+                p3Seq=p3Seq, p5Seq=p5Seq)
             if(makeReviewDir):
                 subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
             if("bwapath" in locals()):
@@ -326,13 +305,15 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
-                    bwapath=bwapath)
+                    bwapath=bwapath,
+                    picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath)
             else:
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,
                     aligner=aligner, ref=ref,
                     bed=bed,
-                    mincov=int(args.minCov), abrapath=abrapath)
+                    mincov=int(args.minCov), abrapath=abrapath,
+                    picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(
@@ -359,7 +340,8 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
-                    bwapath=bwapath, barIndex=args.barcodeIndex)
+                    bwapath=bwapath, barIndex=args.barcodeIndex,
+                    picardPath=picardPath)
             else:
                 procSortedBam = ps.pairedBamProc(
                     args.fq[0],
@@ -369,7 +351,8 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
-                    barIndex=args.barcodeIndex)
+                    barIndex=args.barcodeIndex,
+                    picardPath=picardPath)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,

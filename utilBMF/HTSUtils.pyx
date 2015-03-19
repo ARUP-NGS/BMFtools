@@ -348,20 +348,27 @@ def ReadPairIsDuplex(readPair, minShare="default"):
                ) >= minLen
 
 
-def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default",
-                  makeRG=False):
+def align_bwa_aln_addRG(R1, R2, ref="default", opts="", outBAM="default",
+                        picardPath="default", RG="default",
+                        PL="ILLUMINA", SM="default", ID="default",
+                        CN="default"):
     """
     Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
+    In order to make BAMs compatible with both GATK and pysam,
+
     """
     if(ref == "default"):
         FacePalm("Reference file index required for alignment!")
+    if(picardPath == "default"):
+        FacePalm("Picard jar path required for adding read groups!")
     if(opts == ""):
         opts = "-n 3 -t 4"
     if(outBAM == "default"):
         outBAM = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
-    RGString = ""
-    if(makeRG):
-        RGString = " -r '@RG\tID:foo\tSM:bar'"
+    outSAM = outBAM.replace("bam", "sam")
+    # Note: ID has to be "bwa" so that it passes the SAM validation that
+    # the hsdjdk has, which is required for either GATK realignment or
+    # ABRA realignment.
     str(uuid.uuid4().get_hex().upper()[0:8])
     R1Sai = R1 + ".tmp.sai"
     R2Sai = R2 + ".tmp.sai"
@@ -371,8 +378,43 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default",
     alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
                " > " + R2Sai)
     PipedShellCall(alnStr2)
-    sampeStr = ("bwa sampe %s " % RGString +
-                " ".join([ref, R1Sai, R2Sai, R1, R2]) +
+    sampeStr = ("bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2]) +
+                "  > " + outSAM)
+    printlog("bwa aln string: {}".format(sampeStr))
+    PipedShellCall(sampeStr)
+    AddReadGroupsPicard(outSAM, outBAM=outBAM, SM=SM, ID=ID, PL=PL,
+                        CN=CN, picardPath=picardPath)
+    os.remove(R1Sai)
+    os.remove(R2Sai)
+    return outBAM
+
+
+def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
+    """
+    Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
+    In order to make BAMs compatible with both GATK and pysam,
+
+    """
+    if(ref == "default"):
+        FacePalm("Reference file index required for alignment!")
+    if(opts == ""):
+        opts = "-n 3 -t 4"
+    if(outBAM == "default"):
+        outBAM = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
+    outSAM = outBAM.replace("bam", "sam")
+    # Note: ID has to be "bwa" so that it passes the SAM validation that
+    # the hsdjdk has, which is required for either GATK realignment or
+    # ABRA realignment.
+    str(uuid.uuid4().get_hex().upper()[0:8])
+    R1Sai = R1 + ".tmp.sai"
+    R2Sai = R2 + ".tmp.sai"
+    alnStr1 = ("bwa aln " + opts + " " + " ".join([ref, R1]) +
+               " > " + R1Sai)
+    PipedShellCall(alnStr1)
+    alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
+               " > " + R2Sai)
+    PipedShellCall(alnStr2)
+    sampeStr = ("bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2]) +
                 " | samtools view -h - > " + outBAM)
     printlog("bwa aln string: {}".format(sampeStr))
     PipedShellCall(sampeStr)
@@ -381,8 +423,46 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default",
     return outBAM
 
 
+def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
+                        path="default", picardPath="default",
+                        PL="ILLUMINA", SM="default", ID="default",
+                        CN="default"):
+    """
+    Aligns a set of paired-end
+    reads to a reference
+    with provided options using bwa mem.
+    Defaults to 4 threads, silent alignment, listing
+    supplementary alignments, and
+    writing each reads' alignment,
+    regardless of mapping quality.
+    """
+    if(opts == ""):
+        opts = '-t 4 -v 1 -Y -M -T 0'
+    if(outBAM == "default"):
+        outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
+    outSAM = outBAM.replace(".bam", ".sam")
+    if(ref == "default"):
+        FacePalm("Reference file index required for alignment!")
+    if(picardPath == "default"):
+        FacePalm("Path to picard jar required for adding RG!")
+    opt_concat = ' '.join(opts.split())
+    RGString = "@RG\tID:bwa SM:%s" %SM
+    if(path == "default"):
+        command_str = ("bwa mem %s %s %s %s " %(opt_concat, ref, R1, R2) +
+                       " > {}".format(outSAM))
+    else:
+        command_str = (path + " mem %s %s %s " %(opt_concat, ref, R1) +
+                       "{} > {}".format(R2, outSAM))
+    # command_list = command_str.split(' ')
+    printlog(command_str)
+    PipedShellCall(command_str)
+    AddReadGroupsPicard(outSAM, outBAM=outBAM, SM=SM, ID=ID, PL=PL,
+                        CN=CN, picardPath=picardPath)
+    return outBAM
+
+
 def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
-                  path="default", makeRG=False):
+                  path="default"):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -399,16 +479,11 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     if(ref == "default"):
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
-    RGText = ""
-    if(makeRG):
-        RGText = " -R '@RG\tID:foo\tSM:bar'"
     if(path == "default"):
         command_str = ("bwa mem %s %s %s %s " %(opt_concat, ref, R1, R2) +
-                       RGText +
                        " | samtools view -Sbh - > {}".format(outBAM))
     else:
         command_str = (path + " mem %s %s %s " %(opt_concat, ref, R1) +
-                       RGText +
                        "{} | samtools view -Sbh - > {}".format(R2, outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
@@ -1280,3 +1355,21 @@ def GetDeletedCoordinates(read):
             break
     apList = apList[0:k + 1]
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])
+
+
+def AddReadGroupsPicard(inBAM, RG="default", SM="default",
+                        PL="ILLUMINA", CN="default", picardPath="default",
+                        outBAM="default", ID="default", LB="default",
+                        PU="default"):
+    if(picardPath == "default"):
+        raise ThisIsMadness("picardPath required to call PicardTools!")
+    if(outBAM == "default"):
+        outBAM = ".".join(inBAM.split(".")[:-1] + ["addRG", "bam"])
+    commandStr = ("java -jar %s AddOrReplaceReadGroups " % picardPath +
+                  "I=%s O=%s" % (inBAM, outBAM) +
+                  " CN=%s PL=%s SM=%s ID=%s LB=%s PU=%s"%(CN, PL,
+                                                          SM, ID, LB,
+                                                          PU))
+    printlog("AddReadGroupsPicard commandStr: %s" % commandStr)
+    subprocess.check_call(shlex.split(commandStr))
+    return outBAM

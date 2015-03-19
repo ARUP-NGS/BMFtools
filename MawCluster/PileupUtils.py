@@ -106,57 +106,25 @@ class PRInfo:
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
-        if("PV" in dict(PileupRead.alignment.tags).keys()):
+        if("PV" in map(operator.itemgetter(0), PileupRead.alignment.tags)):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = PileupRead.alignment.opt("PV")
-            if(p.search(PVString) is not None):
-                try:
-                    self.PV_Array = map(Base64ToInt, PVString.split(','))
-                    try:
-                        assert len(self.PV_Array) == self.read.query_length
-                    except AssertionError:
-                        print(repr(self.PV_Array))
-                        print(repr(self.read.qual))
-                        print(repr(self.read.seq))
-                        print(repr(self.read.qname))
-                        raise AssertionError("What is this?")
-                        pl("Assertion error failed... Fail read!")
-                        self.Pass = False
-                    try:
-                        self.PV = self.PV_Array[self.query_position]
-                    except IndexError:
-                        pl("PVString: {}".format(PVString),
-                           level=logging.DEBUG)
-                        pl("Len PV Array: {}".format(len(self.PV_Array)),
-                           level=logging.DEBUG)
-                        pl("QueryPos: {}".format(self.query_position),
-                           level=logging.DEBUG)
-                        pl("read.name {}.".format(self.read.qname),
-                           level=logging.DEBUG)
-                        pl("NOTE! Check the debug log for information"
-                           " regarding potential corruption.")
-                except ValueError:
-                    self.PV_Array = None
-                    self.PV = None
-                    self.PVFrac = None
-                    # Don't sweat it.
-            else:
-                try:
-                    self.PV_Array = np.array(PVString.split(','),
-                                             dtype=np.int64)
-                except ValueError:
-                    print("PVString = %s" % PVString)
-                    raise ValueError("This PV String should only "
-                                     "have digits and commas... ???")
-                self.PV = self.PV_Array[self.query_position]
-                try:
-                    self.PVFrac = operator.div(float(self.PV),
-                                               np.max(self.PV_Array))
-                except ZeroDivisionError:
-                    pl("ZeroDivision error in PRInfo."
-                       "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
-                    self.PVFrac = -1.
+            try:
+                self.PV_Array = np.array(PVString.split(','),
+                                         dtype=np.int64)
+            except ValueError:
+                print("PVString = %s" % PVString)
+                raise ValueError("This PV String should only "
+                                 "have digits and commas... ???")
+            self.PV = self.PV_Array[self.query_position]
+            try:
+                self.PVFrac = operator.div(float(self.PV),
+                                           np.max(self.PV_Array))
+            except ZeroDivisionError:
+                pl("ZeroDivision error in PRInfo."
+                   "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
+                self.PVFrac = -1.
 
 
 def is_reverse_to_str(boolean):
@@ -251,8 +219,11 @@ class AlleleAggregateInfo:
             [rec for rec in recList if rec.is_reverse]))
         self.ForwardTotalReads = operator.sub(self.TotalReads,
                                               self.ReverseTotalReads)
-        self.AveFamSize = operator.div(float(self.TotalReads),
-                                       self.MergedReads)
+        try:
+            self.AveFamSize = operator.div(float(self.TotalReads),
+                                           self.MergedReads)
+        except ZeroDivisionError:
+            self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum(map(operator.attrgetter("BQ"), recList))
         self.SumMQScore = sum(map(operator.attrgetter("MQ"), recList))
@@ -319,7 +290,6 @@ class AlleleAggregateInfo:
 
         # Check to see if a read pair supports a variant with both ends
         from collections import Counter
-        ReadNameCounter = Counter([r.read.query_name for r in recList])
         ReadNameCounter = Counter(map(operator.attrgetter("query_name"),
                                       [r.read for r in recList]))
         self.NumberDuplexReads = sum([
@@ -713,7 +683,7 @@ def CustomPileupFullGenome(inputBAM,
     TransHandle = open(TransitionTable, "w")
     StrandedTransHandle = open(StrandedTTable, "w")
     FirstLine = True
-    pileupIterator = bamHandle.pileup(max_depth=30000, multiple_iterators=True)
+    pileupIterator = bamHandle.pileup(max_depth=100000, multiple_iterators=True)
     p = pPileupColumn(next(pileupIterator))
     for pileupColumn in p.pileups:
         NumProcessed = operator.add(NumProcessed, 1)
@@ -857,7 +827,7 @@ def CustomPileupToTsv(inputBAM,
     FirstLine = True
     for line in bedlines:
         pileupIterator = bamHandle.pileup(line[0], line[1], line[2],
-                                          max_depth=30000)
+                                          max_depth=100000)
         p = pPileupColumn(next(pileupIterator))
         for pileupColumn in p.pileups:
             NumProcessed += 1
@@ -1014,7 +984,7 @@ def AlleleFrequenciesByBase(inputBAM,
                                "Total Reverse fraction: T",
                                ]) + "\n")
     if(bedfile == "default"):
-        pileupIterator = inHandle.pileup(max_depth=30000)
+        pileupIterator = inHandle.pileup(max_depth=100000)
         p = pPileupColumn(next(pileupIterator))
         for pileup in p.pileups:
             NumProcessed += 1
@@ -1029,7 +999,7 @@ def AlleleFrequenciesByBase(inputBAM,
             # print("Now running through the bedLine: {}".format(line))
             puIterator = inHandle.pileup(reference=line[0], start=line[1],
                                          end=line[2],
-                                         max_depth=30000)
+                                         max_depth=100000)
             p = pPileupColumn(next(puIterator))
             for pileup in p.pileups:
                 NumProcessed += 1
@@ -1072,7 +1042,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
                                "Avg Merged Coverage",
                                "Avg Total Coverage"]) + "\n")
     pl("Beginning PileupToBed.")
-    pileupIterator = inHandle.pileup(max_depth=30000)
+    pileupIterator = inHandle.pileup(max_depth=100000)
     ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
     while True:
         try:
@@ -1134,6 +1104,8 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
     pass
 
 
+@cython.locals(MergeDOC=cython.float, TotalDOC=cython.float,
+               minMQ=cython.long, minBQ=cython.long)
 def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                           outbed="default"):
     """
@@ -1143,10 +1115,10 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
     """
     if(outbed == "default"):
         outbed = inBAM[0:-4] + ".doc.bed"
-    pl(("Command required to reproduce this call: "
-        "CalcWithinBedCoverage(\"{}\", bed=".format(inBAM) +
-        "\"{}\", minMQ=\"{}\", minBQ=".format(bed, minMQ) +
-        "\"{}\", outbed=\"{}\")".format(minBQ, outbed)))
+    pl(('Command required to reproduce this call: '
+        'CalcWithinBedCoverage("{}", bed='.format(inBAM) +
+        '"{}", minMQ="{}", minBQ='.format(bed, minMQ) +
+        '"{}", outbed="{}")'.format(minBQ, outbed)))
     if(bed == "default"):
         pl("Bed file required for CalcWithinBedCoverage")
         raise ThisIsMadness("Bedfile required for calculating coverage.")
@@ -1163,14 +1135,17 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                                "Number Of Merged Mapped Bases",
                                "Number of Unmerged Mapped Bases",
                                "Avg Merged Coverage",
-                               "Avg Total Coverage"]) + "\n")
+                               "Avg Total Coverage",
+                               "Mean Family Size",
+                               "SD of Family Size"]) + "\n")
     for line in bedLines:
         TotalReads = 0
         MergedReads = 0
         pileupIterator = inHandle.pileup(line[0],
                                          line[1],
                                          line[2],
-                                         max_depth=30000)
+                                         max_depth=100000,
+                                         multiple_iterators=True)
         while True:
             try:
                 PC = PCInfo(pPileupColumn(next(pileupIterator)))
@@ -1180,16 +1155,19 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                 break
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
+        length = float(operator.sub(line[2], line[1]))
+        MergeDOC = operator.div(MergedReads, length)
+        TotalDOC = operator.div(TotalReads, length)
+        MeanFamSize = operator.div(TotalReads, MergedReads)
         outHandle.write(
             "\t".join(
-                [str(i)
-                 for i in
-                 [line[0],
+                  np.array([line[0],
                   line[1],
                   line[2],
-                  MergedReads, TotalReads, MergedReads /
-                  float(operator.sub(line[2], line[1])),
-                  TotalReads / float(operator.sub(line[2], line[1]))]]) + "\n")
+                  MergedReads, TotalReads, MergeDOC,
+                  TotalDOC, 
+                            ]).astype(str))
+                        + "\n")
         outHandle.flush()
     inHandle.close()
     outHandle.close()
@@ -1224,7 +1202,7 @@ def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
     outHandle.write("\t".join(["#Chr", "Start", "End",
                                "Number Of Merged Mapped Bases",
                                "Number of Unmerged Mapped Bases"]) + "\n")
-    pileupIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
+    pileupIterator = inHandle.pileup(max_depth=100000, multiple_iterators=True)
     while True:
         try:
             p = pPileupColumn(next(pileupIterator))
