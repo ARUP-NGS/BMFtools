@@ -154,7 +154,8 @@ class AlleleAggregateInfo:
 
     @cython.locals(minFracAgreed=cython.float, minMQ=cython.long,
                    minBQ=cython.long, minFA=cython.long,
-                   minPVFrac=cython.float, FSR=cython.long)
+                   minPVFrac=cython.float, FSR=cython.long,
+                   lenR=cython.long)
     def __init__(self, recList, consensus="default",
                  mergedSize="default",
                  totalSize="default",
@@ -207,12 +208,19 @@ class AlleleAggregateInfo:
         self.recList = [rec for rec in self.recList if rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
+        self.len = lenR
         # Total Number of Differences
         self.TND = sum(map(operator.attrgetter("ND"), self.recList))
         NFList = map(operator.attrgetter("NF"), self.recList)
-        self.MNF = np.mean(NFList)
-        self.maxND = np.max(NFList)
-        self.NFSD = np.std(NFList)
+        try:
+            self.MNF = np.mean(NFList)
+            self.maxND = np.max(NFList)
+            self.NFSD = np.std(NFList)
+        except ValueError:
+            #  This list must have length zero...
+            self.MNF = 0.
+            self.maxND = 0.
+            self.NFSD = 0.
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -263,7 +271,7 @@ class AlleleAggregateInfo:
         self.FSR = FSR
 
         # Dealing with transitions (e.g., A-T) and their strandedness
-        self.transition = "->".join([consensus, self.ALT])
+        self.transition = ">".join([consensus, self.ALT])
         self.strandedTransitions = {}
         self.strandedTransitionDict = collections.Counter(
             ["&&".join([self.transition, is_reverse_to_str(
@@ -311,13 +319,11 @@ class AlleleAggregateInfo:
         self.minPVFrac = minPVFrac
         PVFArray = [i.PVFrac for i in self.recList if i.PVFrac is not None]
         if(len(PVFArray) == 0):
-            self.MPF = -1
-            self.PFSD = -1
+            self.MPF = -1.
+            self.PFSD = -1.
         else:
             self.MPF = np.mean(PVFArray)
             self.PFSD = np.std(PVFArray)
-
-
 
 
 class PCInfo:
@@ -387,6 +393,11 @@ class PCInfo:
                 pileupRead.query_position] >= self.minBQ)]
         self.Records = filter(operator.attrgetter("Pass"), self.Records)
         lenR = len(self.Records)
+        rsn = sum(map(operator.attrgetter("is_reverse"), self.Records))
+        if(rsn != lenR and rsn != 0):
+            self.BothStrandAlignment = True
+        else:
+            self.BothStrandAlignment = False
         try:
             self.reverseStrandFraction = operator.div(len(
                 [i for i in self.Records if i.read.is_reverse is
@@ -411,7 +422,8 @@ class PCInfo:
         for alt in list(set([rec.BaseCall for rec in self.Records])):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
-        query_positions = [float(i.query_position) for i in self.Records]
+        query_positions = map(operator.attrgetter("query_position"),
+                              self.Records)
         self.AAMBP = np.mean(query_positions)
         self.AABPSD = np.std(query_positions)
 
@@ -426,25 +438,27 @@ class PCInfo:
                               pos=self.pos,
                               DOC=self.MergedReads,
                               DOCTotal=self.TotalReads,
-                              NUMALT=len(self.VariantDict.keys()),
+                              NUMALT=len(self.VariantDict),
                               AAMBP=self.AAMBP, AABPSD=self.AABPSD,
                               minFracAgreed=minFracAgreed, minFA=minFA,
                               minPVFrac=minPVFrac, FSR=self.FailedSVReads)
                               for key in self.VariantDict.keys()]
+        self.AltAlleleData = [i for i in self.AltAlleleData if
+                              operator.attrgetter("len")(i) != 0]
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.TotalFracDict[
                 alt.ALT] = operator.div(float(alt.TotalReads),
                                         self.TotalReads)
         self.TotalFracStr = ",".join(
-            ["->".join([key, str(self.TotalFracDict[key])])
+            [">".join([key, str(self.TotalFracDict[key])])
              for key in self.TotalFracDict.keys()])
         self.TotalCountDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
             self.TotalCountDict[
                 alt.ALT] = alt.TotalReads
         self.TotalCountStr = ",".join(
-            ["->".join([key, str(self.TotalCountDict[key])])
+            [">".join([key, str(self.TotalCountDict[key])])
              for key in self.TotalCountDict.keys()])
         self.MergedFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
@@ -452,16 +466,16 @@ class PCInfo:
                 alt.ALT] = operator.div(float(alt.MergedReads),
                                         self.MergedReads)
         self.MergedFracStr = ",".join(
-            ["->".join([key, str(self.MergedFracDict[key])])
+            [">".join([key, str(self.MergedFracDict[key])])
              for key in self.MergedFracDict.keys()])
         self.MergedCountDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
             self.MergedCountDict[
                 alt.ALT] = alt.MergedReads
         self.MergedCountStr = ",".join(
-            ["->".join([key, str(self.MergedCountDict[key])])
+            [">".join([key, str(self.MergedCountDict[key])])
              for key in self.MergedCountDict.keys()])
-        # Generates statistics based on transitions, e.g. ref-->alt
+        # Generates statistics based on transitions, e.g. ref->alt
         TransMergedCounts = {}
         for alt in self.AltAlleleData:
             try:
@@ -660,7 +674,7 @@ def CustomPileupFullGenome(inputBAM,
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
     Also creates several tables:
-    1. Counts for all consensus-->alt transitions (By Total and Merged reads)
+    1. Counts for all consensus->alt transitions (By Total and Merged reads)
     2. Counts for the above, specifying strandedness
     3. Number of Merged Reads supporting each allele
     """
@@ -793,7 +807,7 @@ def CustomPileupToTsv(inputBAM,
     A pileup tool for creating a tsv for each position in the bed file.
     Used for calling SNPs with high confidence.
     Also creates several tables:
-    1. Counts for all consensus-->alt transitions (By Total and Merged reads)
+    1. Counts for all consensus->alt transitions (By Total and Merged reads)
     2. Counts for the above, specifying strandedness
     3. Number of Merged Reads supporting each allele
     """
@@ -907,8 +921,8 @@ def CustomPileupToTsv(inputBAM,
                                "Fraction Of Total (Unflattened) Transitions"
                                "\tFraction of Merged Transitions\n"))
     for key in StrandedTransTotalDict.keys():
-        if(key.split("&&")[0].split("->")[0] != key.split(
-                "&&")[0].split("->")[1]):
+        if(key.split("&&")[0].split(">")[0] != key.split(
+                "&&")[0].split(">")[1]):
             StrandedTransHandle.write(
                 "{}\t{}\t{}\t{}\t{}\n".format(
                     key,

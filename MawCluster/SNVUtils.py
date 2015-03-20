@@ -37,7 +37,9 @@ class SNVCFLine:
     @cython.locals(minNumSS=cython.long, minNumFam=cython.long,
                    MaxPValue=cython.float,
                    reverseStrandFraction=cython.float,
-                   minPVFrac=cython.float)
+                   minPVFrac=cython.float, minNumFam=cython.long,
+                   minNumSS=cython.long, minFA=cython.long,
+                   minDuplexPairs=cython.long)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
@@ -56,9 +58,14 @@ class SNVCFLine:
                  reverseStrandFraction=-1.0,
                  requireDuplex=True, minDuplexPairs=2,
                  minFracAgreedForFilter=0.666,
-                 minFA=0):
-        if(REF != "default"):
-            self.REF = REF
+                 minFA=0, BothStrandAlignment=-1):
+        if(operator.le(BothStrandAlignment, 0)):
+            raise ThisIsMadness("AABothStrandSupport required for SNVCFLine,"
+                                " as it is used in determining whether or no"
+                                "t to remove a call for a variant mapping to"
+                                " only one strand.")
+        assert REF != "default"
+        self.REF = REF
         if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
@@ -66,18 +73,16 @@ class SNVCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal == "default"):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
-        self.NumStartStops = len(list(set([PR.ssString for PR in
-                                           AlleleAggregateObject.recList])))
+        self.NumStartStops = len(list(set(map(operator.attrgetter("ssString"),
+                                              AlleleAggregateObject.recList))))
         self.CHROM = AlleleAggregateObject.contig
         self.POS = AlleleAggregateObject.pos
         self.CONS = AlleleAggregateObject.consensus
         self.ALT = AlleleAggregateObject.ALT
         self.QUAL = AlleleAggregateObject.SumBQScore
-        if(AlleleAggregateObject.BothStrandSupport is False):
-            self.QUAL *= 0.1
-            # This is entirely arbitrary...
+        self.BothStrandSupport = AlleleAggregateObject.BothStrandSupport
         self.reverseStrandFraction = reverseStrandFraction
-        self.RRFSet = (reverseStrandFraction >= 0)
+        self.AABothStrandAlignment = BothStrandAlignment
         self.ID = ID
         try:
             if(float(MaxPValue) < 10 ** (self.QUAL / -10)):
@@ -85,13 +90,17 @@ class SNVCFLine:
                     self.FILTER = operator.add(self.FILTER, ",LowQual")
                 else:
                     self.FILTER = "LowQual"
-            if(AlleleAggregateObject.BothStrandSupport is False):
+                self.QUAL *= 0.1
+                # This is entirely arbitrary...
+            if(AlleleAggregateObject.BothStrandSupport is False and
+               BothStrandAlignment is True):
                 if("FILTER" in dir(self)):
                     self.FILTER = operator.add(
                         self.FILTER, ",OneStrandSupport")
                 else:
                     self.FILTER = "OneStrandSupport"
-            if(operator.le(self.NumStartStops, minNumSS)):
+            if(operator.le(self.NumStartStops, minNumSS) and
+               operator.le(AlleleAggregateObject.MergedReads, minNumSS)):
                 if("FILTER" in dir(self)):
                     self.FILTER = operator.add(
                         self.FILTER, ",InsufficientCoordinateSetsSupport")
@@ -117,6 +126,8 @@ class SNVCFLine:
         self.InfoFields = {"AC": AlleleAggregateObject.MergedReads,
                            "AF": AlleleAggregateObject.MergedReads
                            / float(AlleleAggregateObject.DOC),
+                           "BS": AlleleAggregateObject.BothStrandSupport,
+                           "BSA": BothStrandAlignment,
                            "TF": AlleleAggregateObject.TotalReads
                            / float(AlleleAggregateObject.DOCTotal),
                            "NSS": self.NumStartStops,
@@ -241,6 +252,7 @@ class VCFPos:
         self.REF = pysam.FastaFile(reference).fetch(
             PCInfoObject.contig, self.pos - 1, self.pos)
         self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
+        self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
         self.VCFLines = [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
@@ -256,7 +268,7 @@ class VCFPos:
             reverseStrandFraction=self.reverseStrandFraction,
             minDuplexPairs=minDuplexPairs,
             minFracAgreedForFilter=minFracAgreed,
-            minFA=minFA)
+            minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus is True):
@@ -585,14 +597,14 @@ HeaderFilterDict["InsufficientCoordinateSetSupport"] = HeaderFilterLine(
                  "reads with too few unique starts and stops."))
 HeaderFilterDict["OneStrandSupport"] = HeaderFilterLine(
     ID="OneStrandSupport",
-    Description="High quality but only supported by reads on one strand")
+    Description="High quality but only supported by reads on one strand. Fil"
+    "ter not added if all alleles only map to one strand.")
 HeaderFilterDict["LowQual"] = HeaderFilterLine(
     ID="LowQual", Description="Low Quality, below P-Value Cutoff")
 HeaderFilterDict["CONSENSUS"] = HeaderFilterLine(
     ID="CONSENSUS",
     Description="Not printed due to being the "
-    "consensus sequence, not somatic. (Unless the consensus is cancerous, "
-    "in which case the patient is dead in the water.)")
+    "consensus sequence, not somatic.")
 HeaderFilterDict["DiscordantReadFamilies"] = HeaderFilterLine(
     ID="DiscordantReadFamilies",
     Description="Minimum read agreement fraction not met.")
