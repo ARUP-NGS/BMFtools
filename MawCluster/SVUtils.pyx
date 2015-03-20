@@ -559,7 +559,7 @@ def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
             return True
     return False
 
-# SVTestDict['DSD'] = DSD_SV_Tag_Condition
+SVTestDict['DSD'] = DSD_SV_Tag_Condition
 
 
 @cython.returns(cython.bint)
@@ -598,9 +598,9 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
     bed = ParseBed(bedfile)
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
-    FeatureList = sorted([i for i in SVTestDict.keys() if
-                          i != "DSI" and i != "DSD"])
+    FeatureList = sorted([i for i in SVTestDict.keys()])
     SVR = False
+    assert read1.query_name == read2.query_name
     # print("SVParamDict: {}".format(repr(SVParamDict)))
     # print("SVTestDict: {}".format(repr(SVTestDict)))
     svGet = SVParamDict.get

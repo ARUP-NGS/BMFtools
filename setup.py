@@ -6,6 +6,10 @@ import os
 import os.path
 import sys
 
+#BMFTools tries to install two binaries into your bin folder.
+#If you want to change it, copy 
+installDir = "/usr/local/bin"
+
 # Find the ideal -march argument for the system.
 try:
     print("Retrieving optimal -march flag.")
@@ -37,6 +41,7 @@ compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse",  # "-flto",
                 "-funroll-loops", "-floop-unroll-and-jam",
                 "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
 # compilerList = ["-O3", "-pipe", marchFlag]
+
 
 try:
     from setuptools import setup, Extension
@@ -99,4 +104,10 @@ except Exception:
         'package_data': {'': ['README.md']}
     }
     setup(**config)
-    
+
+try:
+    subprocess.check_call(["cp", "BMFMain/main.py", installDir + "/BMFMain"])
+    subprocess.check_call(["cp", "utilBMF/bmftools.py", installDir + "/bmftools"])
+except CalledProcessError:
+    raise ValueError("You don't seem to have permissions to install BMFTools"
+                     " executables. You'll have to do that manually.")

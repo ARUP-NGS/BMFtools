@@ -193,23 +193,27 @@ Most options are available for command-line as well. If an option is set in both
 
 #TODO (ish):
 1. SNV:
+    0. Throw a dog a bone
+        1. % "On-Target" reads
+        2. Average Non-Zero Insert Size
+        3. Coverage Bedfile
+        4. # unique reads
+        5. Fraction of FamSize =1 for all FamSizes
+        6. Mean # Reads Per Family.
     0. Filters and Preprocessing
         1. SV Filter (not implemented - was debugging)
         2. FracAlignFilter
-        3. Check and make sure that the GATK IndelRealignment works.
     1. SNV confidence model
         1. Probability of finding a mutation with a given frequency with enough samples.
         2. Probability of correctly sequencing if correct.
     1. Error Characterization Code
-        1. Write sliding window + database writes.
+        1. Write database reading and processing.
         2. Add tile/x pos/y pos information to error characterization code (or at least an SVM for making calls), along with cluster count. (Parse from the Stats xml from bcl2fastq2)
     2. VQS model (start, paper and pencil?)
     2. Consider haplotyping by leveraging reads covering multiple SNPs.
     3. Info Fields
-        1. Add INFO fields for the new NF/ND tags (mean, max, SD)
+        1. Add INFO fields for the new NF/ND tags to the VCF header (added to the VCF already)
         1. Remove BS INFO field, change how the FILTER requiring both strands.
-        2. Add "strand bias exact test" [Cf. http://sourceforge.net/p/samtools/mailman/samtools-help/thread/4E177430.7030802]
-        4. GC Content
 
 2. Indels:
     0. Debugging DSD/DSI

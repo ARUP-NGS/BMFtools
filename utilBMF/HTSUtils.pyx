@@ -1365,8 +1365,8 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
         raise ThisIsMadness("picardPath required to call PicardTools!")
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[:-1] + ["addRG", "bam"])
-    commandStr = ("java -jar %s AddOrReplaceReadGroups " % picardPath +
-                  "I=%s O=%s" % (inBAM, outBAM) +
+    commandStr = ("java -jar %s AddOrReplaceReadGroups I=" % picardPath +
+                  "%s O=%s VALIDATION_STRINGENCY=SILENT " % (inBAM, outBAM) +
                   " CN=%s PL=%s SM=%s ID=%s LB=%s PU=%s"%(CN, PL,
                                                           SM, ID, LB,
                                                           PU))

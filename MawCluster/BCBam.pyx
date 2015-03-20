@@ -23,7 +23,7 @@ from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
 from utilBMF import HTSUtils
-from SECC import BuildRunDict
+from SECC.SECC import BuildRunDict
 
 
 def AbraCadabra(inBAM,
@@ -166,12 +166,12 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
         dbsnpStr = ""
         pl("Running GATK Indel Realignment without dbSNP for known indels.")
     else:
-        dbsnpStr = " --known %s " % dbsnp
-    out = ".".join(inBAM.split(".")[0:-1] + ["realignment", "targets"])
+        dbsnpStr = " -known %s " % dbsnp
+    out = ".".join(inBAM.split(".")[0:-1] + ["realignment", "intervals"])
     outBAM = ".".join(inBAM.split(".")[0:-1] + ["gatkIndelRealign", "bam"])
     RTCString = "".join([
         "java -jar %s -T RealignerTargetCreator" % gatk,
-        " -R %s -o %s -I %s " % (ref, out, inBAM),
+        " -R %s -o %s -I %s -L:intervals,BED %s" % (ref, out, inBAM, bed),
         dbsnpStr])
     pl("RealignerTargetCreator string: %s" % RTCString)
     try:

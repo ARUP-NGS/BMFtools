@@ -7,6 +7,7 @@ import shlex
 import logging
 import re
 import operator
+from collections import Counter
 
 import numpy as np
 import pysam
@@ -125,6 +126,10 @@ class PRInfo:
                 pl("ZeroDivision error in PRInfo."
                    "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
                 self.PVFrac = -1.
+        if("ND" in map(operator.itemgetter(0), PileupRead.alignment.tags)):
+            self.ND = PileupRead.alignment.opt("ND")
+        if("NF" in map(operator.itemgetter(0), PileupRead.alignment.tags)):
+            self.NF = PileupRead.alignment.opt("NF")
 
 
 def is_reverse_to_str(boolean):
@@ -202,6 +207,12 @@ class AlleleAggregateInfo:
         self.recList = [rec for rec in self.recList if rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
+        # Total Number of Differences
+        self.TND = sum(map(operator.attrgetter("ND"), self.recList))
+        NFList = map(operator.attrgetter("NF"), self.recList)
+        self.MNF = np.mean(NFList)
+        self.maxND = np.max(NFList)
+        self.NFSD = np.std(NFList)
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))
@@ -289,7 +300,6 @@ class AlleleAggregateInfo:
             self.AAMBP = AAMBP
 
         # Check to see if a read pair supports a variant with both ends
-        from collections import Counter
         ReadNameCounter = Counter(map(operator.attrgetter("query_name"),
                                       [r.read for r in recList]))
         self.NumberDuplexReads = sum([
@@ -306,14 +316,8 @@ class AlleleAggregateInfo:
         else:
             self.MPF = np.mean(PVFArray)
             self.PFSD = np.std(PVFArray)
-            """
-            try:
-                self.MPF = np.mean(PVFArray)
-                self.PFSD = np.std(PVFArray)
-            except Exception:
-                print(repr(PVFArray))
-                print("recList %s" % repr(self.recList))
-            """
+
+
 
 
 class PCInfo:
@@ -335,7 +339,8 @@ class PCInfo:
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
-                 exclusionSVTags=""):
+                 exclusionSVTags="MDC,LI,ORB",
+                 FracAlignFilter=False):
         assert isinstance(PileupColumn, pPileupColumn)
         self.minMQ = int(minMQ)
         #  pl("minMQ: %s" % minMQ)

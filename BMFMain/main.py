@@ -144,13 +144,14 @@ def main(argv=None):
     parser.add_argument("--picardPath", help="Path to picard jar. Required fo"
                         "r calling PicardTools.", default="default")
     parser.add_argument("--indelRealigner", help="Select which indel realigne"
-                        "r you wish to use. Supported: abra, GATK",
+                        "r you wish to use. Supported: abra, GATK. Set to "
+                        "None to avoid realignment.",
                         default="gatk")
     parser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)",
                         default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
-    if(args.indelRealigner.lower() not in ["abra", "gatk"]):
+    if(args.indelRealigner.lower() not in ["abra", "gatk", "none"]):
         raise ThisIsMadness("Supported indel realigners are abra and gatk.")
     if("minMQ" in confDict.keys()):
         minMQ = int(confDict['minMQ'])

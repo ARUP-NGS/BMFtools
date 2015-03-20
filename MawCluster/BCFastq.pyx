@@ -85,7 +85,7 @@ class pFastqProxy:
 
 @cython.locals(checks=cython.int, highMem=cython.bint,
                parallel=cython.bint)
-def BarcodeSortBoth(inFq1, inFq2, highMem=True, parallel=False):
+def BarcodeSortBoth(inFq1, inFq2, highMem=True, parallel=True):
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)
