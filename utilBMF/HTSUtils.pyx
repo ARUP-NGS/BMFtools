@@ -530,7 +530,7 @@ def PipedShellCall(commandStr, delete=True, silent=False):
         printlog("Command string: {}".format(commandStr), level=logging.DEBUG)
     open(PipedShellCallFilename, "w").write(commandStr)
     subprocess.check_call(['bash', PipedShellCallFilename])
-    if(delete is True):
+    if(delete):
         try:
             os.remove(PipedShellCallFilename)
         except OSError:
@@ -634,7 +634,7 @@ def ReadOverlapsBed(samRecord, bedRef="default"):
     bedRef must be a tab-delimited list of lists, where
     line[1] and line[2] are integers. ParseBed returns such an object.
     """
-    # if(isinstance(bedRef, str) is True):
+    # if(isinstance(bedRef, str)):
     #     bedRef = ParseBed(bedRef)
     for line in bedRef:
         """
@@ -694,7 +694,7 @@ def PosContainedInBed(contig, pos, bedRef="default"):
     Checks to see if a position is contained in a bedfile.
     0-based
     """
-    if(isinstance(bedRef, str) is True):
+    if(isinstance(bedRef, str)):
         bedRef = ParseBed(bedRef)
     for line in bedRef:
         if(contig == line[0]):
@@ -826,7 +826,7 @@ class ReadPair:
             self.read1_soft_clipped = True
         else:
             self.read1_is_unmapped = False
-            if("S" in read1.cigarstring is True):
+            if("S" in read1.cigarstring):
                 self.read1_soft_clipped = True
             else:
                 self.read1_soft_clipped = False
@@ -835,19 +835,19 @@ class ReadPair:
             self.read2_soft_clipped = True
         else:
             self.read2_is_unmapped = False
-            if("S" in read2.cigarstring is True):
+            if("S" in read2.cigarstring):
                 self.read2_soft_clipped = True
             else:
                 self.read2_soft_clipped = False
-        if(self.read1_soft_clipped is True):
+        if(self.read1_soft_clipped):
             self.read1_softclip_seqs = []
-        if(self.read2_soft_clipped is True):
+        if(self.read2_soft_clipped):
             self.read2_softclip_seqs = []
-        if(self.read1_is_unmapped is True):
+        if(self.read1_is_unmapped):
             self.read1_contig = "*"
         else:
             self.read1_contig = PysamToChrDict[read1.reference_id]
-        if(self.read2_is_unmapped is True):
+        if(self.read2_is_unmapped):
             self.read2_contig = "*"
         else:
             self.read2_contig = PysamToChrDict[read2.reference_id]

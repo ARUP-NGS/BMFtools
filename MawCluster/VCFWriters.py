@@ -65,7 +65,7 @@ def SNVCrawler(inBAM,
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(OutVCF, "w+")
-    if(writeHeader is True):
+    if(writeHeader):
         try:
             outHandle.write(GetVCFHeader(fileFormat=fileFormat,
                                          FILTERTags=FILTERTags,
@@ -247,7 +247,7 @@ def SNVMaster(inBAM,
                                  header=inHandle.header,
                                  INFOTags=INFOTags,
                                  FORMATTags=FORMATTags))
-    if(ByContig is True):
+    if(ByContig):
         contigList = list(set([line[0] for line in bed]))
         jobList = []
         for thread in range(int(children)):

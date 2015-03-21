@@ -93,7 +93,7 @@ class SNVCFLine:
                 self.QUAL *= 0.1
                 # This is entirely arbitrary...
             if(AlleleAggregateObject.BothStrandSupport is False and
-               BothStrandAlignment is True):
+               BothStrandAlignment):
                 if("FILTER" in dir(self)):
                     self.FILTER = operator.add(
                         self.FILTER, ",OneStrandSupport")
@@ -271,7 +271,7 @@ class VCFPos:
             minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
-        if(self.keepConsensus is True):
+        if(self.keepConsensus):
             self.str = "\n".join([line.ToString()
                                   for line in
                                   self.VCFLines])
@@ -285,7 +285,7 @@ class VCFPos:
 
     def ToString(self):
         [line.update() for line in self.VCFLines]
-        if(self.keepConsensus is True):
+        if(self.keepConsensus):
             self.str = "\n".join([line.ToString()
                                   for line in
                                   self.VCFLines])
@@ -540,9 +540,9 @@ class HeaderReferenceLine:
 
     def __init__(self, reference="default", isfile=False):
         self.reference = reference
-        if(isinstance(isfile, bool) is True):
+        if(isinstance(isfile, bool)):
             self.isfile = isfile
-        elif(isinstance(isfile, str) is True):
+        elif(isinstance(isfile, str)):
             if("true" in isfile.lower()):
                 self.isfile = True
             elif("false" in isfile.lower()):

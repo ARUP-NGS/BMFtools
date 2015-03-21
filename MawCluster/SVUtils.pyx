@@ -671,7 +671,7 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(writeSVBam is True):
+    if(writeSVBam):
         SVOutHandle = pysam.AlignmentFile(SVBam, "wb", template=inHandle)
     else:
         SVBam ="NotWritten"
@@ -680,10 +680,10 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     pl("FeatureList: {}".format(FeatureList))
     for read in inHandle:
         WritePair = False
-        if(read.is_read1 is True):
+        if(read.is_read1):
             read1 = read
             continue
-        if(read.is_read2 is True):
+        if(read.is_read2):
             read2 = read
         assert read1.query_name == read2.query_name
         read1, read2 = MarkSVTags(read1, read2, bedfile=bedfile)
@@ -691,7 +691,7 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
             WritePair = True
             for key in read1.opt("SV").split(","):
                 SVCountDict[key] = operator.add(SVCountDict[key], 1)
-        if(WritePair is True):
+        if(WritePair):
             if("SVOutHandle" in locals()):
                 SVOutHandle.write(read1)
                 SVOutHandle.write(read2)
@@ -824,7 +824,7 @@ def BkptSequenceFromRPSet(ReadPairs, intra=True):
     except AssertionError:
         FacePalm("Input for Breakpoint sequence construction must be a "
                  "list of ReadPair objects!")
-    if(intra is True):
+    if(intra):
         return BkptSequenceIntraRP(ReadPairs)
     elif(intra is False):
         return BkptSequenceInterRP(ReadPairs)

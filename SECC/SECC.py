@@ -61,7 +61,7 @@ def BuildRunDict(xmlPath, makeGlobal=True):
     ConvXmlDict["laneNum:tileNum:readNum"] with appropriate substitutions
     """
     xmlObj = ConversionStatsToLaneSuperelement(xmlPath)
-    if makeGlobal is True:
+    if makeGlobal:
         global ConvXmlDict
     ConvXmlDict = {}
     for lane in xmlObj:

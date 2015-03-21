@@ -15,7 +15,6 @@ from MawCluster import SNVUtils
 
 """
 Contains tools for working with VCF Files - writing, reading, processing.
-
 """
 
 
@@ -35,8 +34,7 @@ class VCFFile:
         self.numSamples = len(self.sampleNamesArray)
 
     def cleanRecords(self):
-        NewRecordList = [entry for entry in self.Records if entry.ALT != "X"]
-        self.Records = NewRecordList
+        self.Records = [entry for entry in self.Records if entry.ALT != "<X>"]
 
     def filter(self, filterOpt="default", param="default"):
         if(filterOpt == "default"):
@@ -48,7 +46,7 @@ class VCFFile:
                 return
         NewVCFEntries = []
         for entry in self.Records:
-            if(VCFRecordTest(entry, filterOpt, param=param) is True):
+            if(VCFRecordTest(entry, filterOpt, param=param)):
                 NewVCFEntries.append(entry)
         if(filterOpt == "bed"):
             if(param == "default"):
@@ -90,7 +88,7 @@ class VCFFile:
         NewVCF = VCFFile(NewVCFEntries,
                          self.header,
                          self.sampleName.replace(".vcf", "") + ".lofreq.vcf")
-        if(replace is True):
+        if(replace):
             self = NewVCF
         if(outVCF == "default"):
             pl("outVCF not set, not writing to file.")
@@ -282,7 +280,7 @@ class IterativeVCFFile:
 
 
 def is_reverse_to_str(boolean):
-    if(boolean is True):
+    if(boolean):
         return "reverse"
     elif(boolean is False):
         return "forward"
@@ -325,7 +323,7 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
         try:
             posMatches = [match for match in chrMatches if match[
                           2] + 1 >= pos and match[1] + 1 <= pos]
-            if len(posMatches) >= 1 and passRecord is True:
+            if len(posMatches) >= 1 and passRecord:
                 passRecord = True
             else:
                 passRecord = False
@@ -341,7 +339,7 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
         I16Array = np.array(inputVCFRec.InfoArrayDict['I16']).astype("int")
         if(np.sum(I16Array[0:2]) < np.sum(I16Array[2:4])):
             ConsensusIsRef = False
-        if(ConsensusIsRef is True):
+        if(ConsensusIsRef):
             if(np.sum(I16Array[2:4]) > param):
                 return True
             else:
@@ -385,7 +383,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
                 rec for rec
                 in inVCF.Records
                 if (rec.InfoArrayDict['CONS'] == RefCons
-                    or rec.REF == RefCons) is True and (rec.FILTER == "PASS"
+                    or rec.REF == RefCons) and (rec.FILTER == "PASS"
                                                         and rec.ALT == Var)]
             TransitionCountsDict[RefCons + "-->" + Var] = len(
                 TransitionDict[RefCons + "-->" + Var])
@@ -502,9 +500,9 @@ def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
     passRecord = [False] * len(inVCF.Records)
     for pf, line in zip(passRecord, inVCF.Records):
         pf = (Type(line.InfoArrayDict[INFOTag]) > referenceValue)
-        if(negation is True):
+        if(negation):
             pf = not pf
-        if(pf is True):
+        if(pf):
             outHandle.write(line.ToString() + "\n")
     outHandle.close()
     return outVCF
@@ -544,9 +542,9 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
     passRecord = [False] * len(inVCF.Records)
     for pf, line in zip(passRecord, inVCF.Records):
         pf = (Type(line.InfoArrayDict[INFOTag]) == referenceValue)
-        if(negation is True):
+        if(negation):
             pf = not pf
-        if(pf is True):
+        if(pf):
             outHandle.write(line.ToString() + "\n")
     outHandle.close()
     return outVCF
@@ -704,7 +702,7 @@ def GetPotentialHetsVCF(inVCF, minHetFrac=0.025,
             hetFreq = sum([int(i) for i in VCFRec.InfoDict[
                 "AC_Het"].split(',')]) / float(VCFRec.InfoDict["AN"])
         if(hetFreq >= minHetFrac and hetFreq <= maxHetFrac):
-            if(replaceIDWithHetFreq is True):
+            if(replaceIDWithHetFreq):
                 VCFRec.ID = str(hetFreq)[0:6]
             outHandle.write(VCFRec.ToString() + "\n")
     outHandle.close()
@@ -733,7 +731,7 @@ def GetPotentialHetsVCFUK10K(inVCF, minAlFrac=0.2,
             # print("This record has no AC_Het field. Continue!")
             continue
         if(alleleFreq >= minAlFrac and alleleFreq <= maxAlFrac):
-            if(replaceIDWithAlFreq is True):
+            if(replaceIDWithAlFreq):
                 VCFRec.ID = str(alleleFreq)[0:6]
             outHandle.write(VCFRec.ToString() + "\n")
     outHandle.close()

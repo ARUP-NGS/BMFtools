@@ -133,7 +133,7 @@ class PRInfo:
 
 
 def is_reverse_to_str(boolean):
-    if(boolean is True):
+    if(boolean):
         return "reverse"
     elif(boolean is False):
         return "forward"
@@ -210,8 +210,12 @@ class AlleleAggregateInfo:
         lenR = len(self.recList)
         self.len = lenR
         # Total Number of Differences
-        self.TND = sum(map(operator.attrgetter("ND"), self.recList))
-        NFList = map(operator.attrgetter("NF"), self.recList)
+        if(lenR != 0):
+            self.TND = sum(map(operator.attrgetter("ND"), self.recList))
+            NFList = map(operator.attrgetter("NF"), self.recList)
+        else:
+            self.TND = -1
+            NFList = []
         try:
             self.MNF = np.mean(NFList)
             self.maxND = np.max(NFList)
@@ -289,7 +293,7 @@ class AlleleAggregateInfo:
             rec.is_reverse is False for rec in self.recList])
         self.StrandCountsTotalDict = {}
         self.StrandCountsTotalDict["reverse"] = sum(
-            [rec.FM for rec in self.recList if rec.is_reverse is True])
+            [rec.FM for rec in self.recList if rec.is_reverse])
         self.StrandCountsTotalDict["forward"] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is False])
         try:
@@ -584,7 +588,7 @@ class PCInfo:
 
     def ToString(self, header=False):
         outStr = ""
-        if(header is True):
+        if(header):
             outStr = ("#Chr\tPos (0-based)\tRef (Consensus)\tAlt\tTotal "
                       "Reads\tMerged Reads\tTotal Allele Frequency\tMerged "
                       "Allele Frequency\tReverse Total Reads\tForward Total"
@@ -716,7 +720,7 @@ def CustomPileupFullGenome(inputBAM,
                                             PColSum.MergedReads)
         TotalReadsProcessed = operator.add(TotalReadsProcessed,
                                            PColSum.TotalReads)
-        if(FirstLine is True):
+        if(FirstLine):
             PileupHandle.write(PColSum.ToString(header=True))
             FirstLine = False
         else:
@@ -860,7 +864,7 @@ def CustomPileupToTsv(inputBAM,
             PColSum = PCInfo(pileupColumn, minMQ=minMQ, minBQ=minBQ)
             MergedReadsProcessed += PColSum.MergedReads
             TotalReadsProcessed += PColSum.TotalReads
-            if(FirstLine is True):
+            if(FirstLine):
                 PileupHandle.write(PColSum.ToString(header=True))
                 FirstLine = False
             else:
@@ -937,7 +941,7 @@ def CustomPileupToTsv(inputBAM,
     pl("Stranded Transition Table: {}".format(StrandedTTable))
     TransHandle.close()
     PileupHandle.close()
-    if(CalcAlleleFreq is True):
+    if(CalcAlleleFreq):
         AlleleFreqTsv = AlleleFrequenciesByBase(inputBAM,
                                                 bedfile=bedfile,
                                                 minMQ=minMQ,

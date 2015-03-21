@@ -194,7 +194,7 @@ def main(argv=None):
     global reviewdir
     reviewdir = ""
     makeReviewDir = (args.review_dir != "default")
-    if(makeReviewDir is True):
+    if(makeReviewDir):
         reviewdir = ".".join([args.review_dir, dateStr, "reviewdir"])
         if(os.path.isdir(reviewdir)):
             raise ThisIsMadness("Review directory exists - even with "
@@ -284,7 +284,7 @@ def main(argv=None):
         p5Seq = args.p5Seq
     if("bwapath" in confDict.keys()):
         bwapath = confDict["bwapath"]
-    if(single_end is True):
+    if(single_end):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
                                "supported. Soon!")

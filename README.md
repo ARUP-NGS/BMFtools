@@ -205,6 +205,7 @@ Most options are available for command-line as well. If an option is set in both
     0. Filters and Preprocessing/Postprocessing
         1. FracAlignFilter? Minimum # of bases aligned (len - S - D - I) ?
         2. FFPE option
+            1. Deamination sampling model to make this rigorous.
     1. SNV confidence model
         1. Probability of finding a mutation with a given frequency with enough samples.
         2. Probability of correctly sequencing if correct.

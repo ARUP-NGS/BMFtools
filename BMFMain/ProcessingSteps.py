@@ -132,77 +132,28 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return coorSorted
 
 
-@cython.locals(lighter=cython.bint, overlapLen=cython.long,
+@cython.locals(overlapLen=cython.long,
                stringency=cython.float)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
-                      lighter=False, kmer="default", alpha="default",
-                      captureSize="default", p3Seq="default", p5Seq="default",
-                      overlapLen=6, bgIndex=True):
-    if(lighter is True and captureSize == "default"):
-        HTSUtils.FacePalm("Capture size must be set if lighter is true!")
-    if isinstance(captureSize, str):
-        try:
-            captureSize = int(captureSize)
-        except ValueError:
-            captureSize = 58370
-            pl("Capture Size not set - default of 58370 set.")
-    """
-    I'm seeing if I can get away with not making the index and just counting
-    as read families are demultiplexed.
-    if(bgIndex is False):
-        barcodeIndex = BCFastq.GenerateShadesIndex(indexfq)
-    else:
-        barcodePopen, barcodeIndex = BCFastq.GenerateShadesIndexBG(indexfq)
-    """
+                      p3Seq="default", p5Seq="default",
+                      overlapLen=6):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq)
-    """
-    Same as previous blocked commment
-    if(indexfq == "default"):
-        HTSUtils.FacePalm("pairedFastqShades requires an index fastq.")
-    if("barcodePopen" in locals()):
-        countPolls = 0
-        while countPolls < 300:
-            pl("Waiting for barcodePopen to close. Seconds elapsed, roughly"
-               ": {}".format(countPolls))
-            countPolls += 1
-            if(barcodePopen.poll() is None):
-                time.sleep(1)
-                continue
-            elif(barcodePopen.returncode == 0):
-                break
-            else:
-                raise subprocess.CalledProcessError(
-                    "Index generation in the background failed! ... or at "
-                    "least took more than 5 minutes")
-    """
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
         BSortFq1, BSortFq2, stringency=0.9)
-    if(lighter is True):
-        pl("About to run lighter for error correction.")
-        try:
-            BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
-                BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
-                alpha=alpha)
-        except ThisIsMadness:
-            pl("captureSize repr: {}".format(repr(captureSize)))
-            pl("captureSize variable was somehow lost.")
-            captureSize = 58370
-            BConsFastq1, BConsFastq2 = BCFastq.LighterCallPaired(
-                BConsFastq1, BConsFastq2, kmer=kmer, captureSize=captureSize,
-                alpha=alpha)
     if(p3Seq != "default"):
-        BConsFastq1, BConsFastq2 = BCFastq.CallCutadaptBoth(
+        BConsFastq1, BConsFastq2 = BCFastq.CutadaptPaired(
             BConsFastq1, BConsFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq)
     return BConsFastq1, BConsFastq2
 
 
 @cython.locals(minMQ=cython.long, minBQ=cython.long, MakeVCF=cython.bint,
-               MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint)
+               MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint,
+               minFA=cython.long, minFracAgreed=cython.float)
 def pairedVCFProc(consMergeSortBAM,
                   ref="default",
                   opts="",
@@ -222,20 +173,20 @@ def pairedVCFProc(consMergeSortBAM,
     # Variant Calling Step using MPileup
     # print("Now filtering for reads with NM > 0 only if you want to.")
     Results = {}
-    if(MakeCoverageBed is True):
+    if(MakeCoverageBed):
         OutBed = PileupUtils.CalcWithinBedCoverage(consMergeSortBAM,
                                                    bed=bed,
                                                    minMQ=minMQ,
                                                    minBQ=minBQ)
         Results["bed"] = OutBed
-    if(MakePileupTsv is True):
+    if(MakePileupTsv):
         PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
                                                   bedfile=bed,
                                                   minMQ=minMQ,
                                                   minBQ=minBQ)
         pl("PileupTSV: {}".format(PileupTSV))
         Results["tsv"] = PileupTSV
-    if(MakeVCF is True):
+    if(MakeVCF):
         SNP_VCF = VCFWriters.SNVCrawler(consMergeSortBAM,
                                         minMQ=minMQ,
                                         minBQ=minBQ,

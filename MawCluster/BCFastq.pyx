@@ -93,7 +93,7 @@ def BarcodeSortBoth(inFq1, inFq2, highMem=True, parallel=True):
     outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
     pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
     highMemStr = ""
-    if(highMem is True):
+    if(highMem):
         highMemStr = "-S 6G "
     if(inFq1.endswith(".gz")):
         BSstring1 = ("zcat " + inFq1 + " | paste - - - - | sed "
@@ -146,7 +146,7 @@ def BarcodeSortBoth(inFq1, inFq2, highMem=True, parallel=True):
 def BarcodeSort(inFastq, outFastq="default", highMem=True):
     pl("Sorting {} by barcode sequence.".format(inFastq))
     highMemStr = ""
-    if(highMem is True):
+    if(highMem):
         highMemStr = " -S 6G "
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
@@ -319,7 +319,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
         Success = True
     elif(operator.le(frac, 0.5)):
         Success = False
-    elif(hybrid is True):
+    elif(hybrid):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
     FA = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for i
                    in range(len(finalSeq))], dtype=np.int64)
@@ -438,6 +438,37 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     return consolidatedFqStr
 
 
+@cython.locals(makeCall=cython.bint)
+def CutadaptPaired(fq1, fq2, p3Seq="default", p5Seq="default",
+                         overlapLen=6, makeCall=True):
+    """
+    Returns a string which can be called for running cutadapt v.1.7.1
+    for paired-end reads in a single call.
+    """
+    outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
+    outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
+    if(p3Seq == "default"):
+        HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
+    if(p5Seq == "default"):
+        pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
+        commandStr = ("cutadapt --mask-adapter --match-read-wildcards"
+                      "-a {} -o {} -p {} -O {} {} {}".format(p3Seq,
+                                                             outfq1,
+                                                             outfq2,
+                                                             overlapLen,
+                                                             fq1, fq2))
+    else:
+        commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
+                      "{} -g {} -o {} ".format(p3Seq, p5Seq, outfq1) +
+                      "-p {} -O {} {}".format(outfq2, overlapLen, fq1, fq2))
+    pl("Cutadapt command string: {}".format(commandStr))
+    if(makeCall):
+        subprocess.check_call(shlex.split(commandStr))
+        return outfq1, outfq2
+    return commandStr
+
+
+@cython.locals(overlapLen=cython.long)
 def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Returns a string which can be called for running cutadapt v.1.7.1.
@@ -461,7 +492,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
 def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Calls cutadapt to remove adapter sequence at either end of the reads.
-    Written for v1.7.1
+    Written for v1.7.1 and single-end calls.
     """
     commandStr, outfq = CutadaptString(fq, p3Seq=p3Seq, p5Seq=p5Seq,
                                        overlapLen=overlapLen)
@@ -518,7 +549,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     outfq2 = ('.'.join(
         [i for i in fq2.split('.')[0:-1] if i != "fastq"] +
         ['shaded', 'fastq'])).split('/')[-1]
-    if(useGzip is True):
+    if(useGzip):
         outfq1 += ".gz"
         outfq2 += ".gz"
     pl("Output fastqs: {}, {}.".format(outfq1, outfq2))
@@ -633,7 +664,7 @@ def FastqSingleShading(fq,
             read1.description += " #G~FP=IndexPass #G~BS=" + indexRead.seq
             SeqIO.write(read1, outFqHandle1, "fastq")
     outFqHandle1.close()
-    if(gzip is True):
+    if(gzip):
         check_call(['gzip', fq], shell=False)
     return
 
@@ -773,7 +804,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
                            readPairsPerWrite=100, UsecProfile=False,
                            onlyNumpy=False, skipSingles=False,
                            skipFails=False):
-    if(UsecProfile is True):
+    if(UsecProfile):
         import cProfile
         import pstats
         pr = cProfile.Profile()
@@ -841,7 +872,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
             ws2a(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            if(skipSingles is True and len(workingSet1) == 1):
+            if(skipSingles and len(workingSet1) == 1):
                 workingBarcode = ""
                 workingSet1 = []
                 workingSet2 = []
@@ -854,7 +885,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
             tStr1 = operator.add(compareFastqRecords(workingSet1), "\n")
             tStr2 = operator.add(compareFastqRecords(workingSet2), "\n")
-            if(skipFails is True and ("Fail" in tStr1 or "Fail" in tStr2)):
+            if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             sl1a(tStr1)
             sl2a(tStr2)
@@ -863,7 +894,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
             workingBarcode = bc4fq1
             numProc = operator.add(numProc, 1)
             continue
-    if(UsecProfile is True):
+    if(UsecProfile):
         s = cStringIO.StringIO()
         pr.disable()
         sortby = "cumulative"
@@ -891,7 +922,7 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                                  readPairsPerWrite=100, UsecProfile=False,
                                  onlyNumpy=False, skipSingles=False,
                                  skipFails=False):
-    if(UsecProfile is True):
+    if(UsecProfile):
         import cProfile
         import pstats
         pr = cProfile.Profile()
@@ -953,7 +984,7 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            if(skipSingles is True and len(workingSet1) == 1):
+            if(skipSingles and len(workingSet1) == 1):
                 workingBarcode = ""
                 workingSet1 = []
                 workingSet2 = []
@@ -964,7 +995,7 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
             tStr1 = operator.add(compareFqRecsFqPrx(workingSet1), "\n")
             tStr2 = operator.add(compareFqRecsFqPrx(workingSet2), "\n")
-            if(skipFails is True and ("Fail" in tStr1 or "Fail" in tStr2)):
+            if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             sl1a(tStr1)
             sl2a(tStr2)
@@ -973,7 +1004,7 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             workingBarcode = bc4fq1
             numProc = operator.add(numProc, 1)
             continue
-    if(UsecProfile is True):
+    if(UsecProfile):
         s = cStringIO.StringIO()
         pr.disable()
         sortby = "cumulative"

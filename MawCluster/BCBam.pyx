@@ -501,7 +501,7 @@ def pairedFilterBam(inputBAM, passBAM="default",
                 failFilter.write(read1)
                 failFilter.write(read2)
                 continue
-            if(failed is True):
+            if(failed):
                 continue
             passFilter.write(read1)
             passFilter.write(read2)
@@ -638,7 +638,7 @@ def SingleConsolidate(inBAM, outBAM="default"):
             continue
         elif(workBC != barcodeRecord):
             mergeRec, success = compareRecs(Set)
-            if(success is True):
+            if(success):
                 outputHandle.write(mergeRec)
             Set = []
             Set.append(record)
@@ -736,7 +736,7 @@ def singleFilterBam(inputBAM, passBAM="default",
                 break
             else:
                 continue
-        if(failed is True):
+        if(failed):
             continue
         passFilter.write(read)
     passFilter.close()
