@@ -453,6 +453,20 @@ class HeaderCommandLine:
         return self.str
 
 
+class HeaderFunctionCallLine:
+
+    """
+    This class holds a VCF Function Call Line.
+    """
+
+    def __init__(self, callStr="default"):
+        self.callStr = callStr
+
+    def ToString(self):
+        self.str = "##FunctionCall={}".format(self.callStr)
+        return self.str
+
+
 class HeaderFilterINFOGtLine:
 
     """
@@ -801,6 +815,12 @@ HeaderInfoDict["MPF"] = HeaderInfoLine(
 HeaderInfoDict["EST"] = HeaderInfoLine(ID="EST",
                                        Description="Excluded SV Tags",
                                        Number=1, Type="String")
+HeaderInfoDict["MFDN"] = HeaderInfoLine(
+    ID="MFDN", Description="Maximum frequency expected for deamination noise",
+                                       Number=1, Type="Float")
+HeaderInfoDict["MFDNP"] = HeaderInfoLine(
+    ID="MFDNP", Description="Phred probability for MFDN bounds",
+                                       Number=1, Type="Float")
 
 
 """

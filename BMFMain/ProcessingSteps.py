@@ -12,6 +12,7 @@ from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from MawCluster.BCVCF import VCFStats
+from MawCluster.FFPE import GetDeaminationFrequencies, FilterByDeaminationFreq
 
 
 @cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
@@ -153,7 +154,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
 
 @cython.locals(minMQ=cython.long, minBQ=cython.long, MakeVCF=cython.bint,
                MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint,
-               minFA=cython.long, minFracAgreed=cython.float)
+               minFA=cython.long, minFracAgreed=cython.float,
+               deaminationPVal=cython.float)
 def pairedVCFProc(consMergeSortBAM,
                   ref="default",
                   opts="",
@@ -164,7 +166,14 @@ def pairedVCFProc(consMergeSortBAM,
                   MakeVCF=True,
                   MakeCoverageBed=False,
                   commandStr="default",
-                  minFA=2, minFracAgreed=0.667):
+                  minFA=2, minFracAgreed=0.667,
+                  exp="", deaminationPVal=0.001):
+    """
+    Lumps together VCF processing.
+    exp is a string from a comma-joined list of strings.
+    If "ffpe" is in exp.lower(), then an FFPE deamination step will
+    be run to filter out those artefacts.
+    """
     if(bed == "default"):
         raise ValueError("Bed file location must be set!")
     if(ref == "default"):
@@ -196,9 +205,17 @@ def pairedVCFProc(consMergeSortBAM,
                                         bed=bed, minFA=minFA,
                                         minFracAgreed=minFracAgreed)
         CleanedVCF = BCVCF.FilterVCFFileByBed(SNP_VCF, bed)
-        pl("SNP VCF: {}".format(SNP_VCF))
-        Results["vcf"] = SNP_VCF
-        VCFStatsFile = VCFStats(SNP_VCF)
+        if("ffpe" in exp.lower()):
+            deaminationFrequency = GetDeaminationFrequencies(CleanedVCF)
+            FFPEFilteredVCF = FilterByDeaminationFreq(
+                CleanedVCF, ctfreq=deaminationFrequency,
+                pVal=deaminationPVal)
+            finalVCF = FFPEFilteredVCF
+        else:
+            finalVCF = CleanedVCF
+        pl("SNP VCF: {}".format(finalVCF))
+        Results["vcf"] = finalVCF
+        VCFStatsFile = VCFStats(finalVCF)
         Results["vcfstats"] = VCFStatsFile
     # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,
     #                                                     bedfile=bed)

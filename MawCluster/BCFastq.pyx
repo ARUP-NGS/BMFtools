@@ -459,8 +459,8 @@ def CutadaptPaired(fq1, fq2, p3Seq="default", p5Seq="default",
                                                              fq1, fq2))
     else:
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
-                      "{} -g {} -o {} ".format(p3Seq, p5Seq, outfq1) +
-                      "-p {} -O {} {}".format(outfq2, overlapLen, fq1, fq2))
+                      "{} -g {} -o {} -p".format(p3Seq, p5Seq, outfq1) +
+                      " {} -O {} {} {}".format(outfq2, overlapLen, fq1, fq2))
     pl("Cutadapt command string: {}".format(commandStr))
     if(makeCall):
         subprocess.check_call(shlex.split(commandStr))

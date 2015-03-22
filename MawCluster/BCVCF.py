@@ -204,6 +204,8 @@ class VCFRecord:
         self.str = recordStr.strip()
 
     def update(self):
+        self.InfoKeys = self.InfoDict.keys()
+        self.InfoValues = self.InfoDict.values()
         self.InfoValues = [','.join(
             InfoValArray) for InfoValArray in self.InfoValArrays]
         infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
@@ -211,17 +213,9 @@ class VCFRecord:
         self.INFO = ';'.join(infoEntryArray + self.InfoUnpaired)
         self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')
                          if len(entry.split("=")) >= 2]
-        self.InfoValues = [
-            entry.split('=')[1] for entry in self.INFO.split(';') if
-            len(entry.split("=")) >= 2]
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
-        try:
-            self.InfoValArrays = [
-                [entry for entry in array] for array in tempValArrays]
-        except ValueError:
-            self.InfoValArrays = [
-                [entry for entry in array] for array in tempValArrays]
-        self.InfoDict = dict(zip(self.InfoKeys, self.InfoValues))
+        self.InfoValArrays = [
+            [entry for entry in array] for array in tempValArrays]
         self.InfoArrayDict = dict(zip(self.InfoKeys, self.InfoValArrays))
         if('I16' in self.InfoArrayDict.keys()):
             try:
@@ -232,12 +226,10 @@ class VCFRecord:
                     self.InfoArrayDict['I16'] = [
                         int(decimal.Decimal(
                             i)) for i in self.InfoArrayDict['I16']]
-        self.GenotypeKeys = self.FORMAT.split(':')
-        self.GenotypeValues = self.GENOTYPE.split(':')
+        self.GenotypeKeys = self.GenotypeDict.keys()
+        self.GenotypeValues = self.GenotypeDict.values()
         self.FORMAT = ":".join(self.GenotypeKeys)
         self.GENOTYPE = ":".join(self.GenotypeValues)
-        self.GenotypeDict = dict(
-            zip(self.FORMAT.split(':'), self.GENOTYPE.split(':')))
         if(len(self.Samples) == 0):
             recordStr = '\t'.join([str(i) for i in [self.CHROM, self.POS,
                                    self.ID, self.REF, self.ALT, self.QUAL,

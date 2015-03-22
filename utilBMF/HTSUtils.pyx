@@ -22,6 +22,8 @@ import numconv
 import MawCluster
 from utilBMF.ErrorHandling import *
 
+ctypedef np.longdouble_t dtype128_t
+
 
 def printlog(string, level=logging.INFO):
     Logger = logging.getLogger("Primarylogger")
@@ -1373,3 +1375,39 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
     printlog("AddReadGroupsPicard commandStr: %s" % commandStr)
     subprocess.check_call(shlex.split(commandStr))
     return outBAM
+
+
+
+@cython.locals(outliers_fraction=dtype128_t, contamination=dtype128_t,
+               window=cython.long)
+def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
+                   window=20):
+    cdef np.ndarray[dtype128_t, ndim = 1] GAFreqNP = f1
+    cdef np.ndarray[dtype128_t, ndim = 1] CTFreqNP = f2
+    cdef np.ndarray[dtype128_t, ndim = 1] FreqArray = np.concatenate(GAFreqNP,
+                                                                  CTFreqNP)
+    ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
+    ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
+    GAClassifier = ee1.fit(GAFreqNP)
+    CTClassifier = ee2.fit(CTFreqNP)
+    pass
+
+
+def PlotNormalFit(array, outfile="default", maxFreq=0.2):
+    import matplotlib as mpl
+    mpl.use('Agg')      # With this line = figure disappears
+    import matplotlib.pyplot as plt
+    import matplotlib.mlab as mlab
+    array = array.reshape(-1, 1)
+    mu, sigma = np.mean(array), np.std(array)
+    n, bins, patches = plt.hist(array, 50, normed=1, facecolor='green',
+                                alpha=0.75)
+    y = mlab.normpdf( bins, mu, sigma)
+    l = plt.plot(bins, y, 'r--', linewidth=1)
+    plt.xlabel('A->C/G->/T frequency')
+    plt.ylabel('Proportion of sites')
+    plt.title(r'$\mathrm{Histogram\ of\ deamination substitutions:}\ \mu=%s,\ \sigma=%s$' %(mu, sigma))
+    plt.axis([np.min(array), np.max(array), 0., np.max(n)])
+    plt.grid(True)
+    plt.savefig(outfile + ".png")
+    return outfile
