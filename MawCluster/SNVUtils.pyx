@@ -3,13 +3,19 @@ import operator
 
 import pysam
 import cython
+cimport cython
 import numpy as np
+cimport numpy as np
+from math import log10 as mlog10
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
+from MawCluster.Probability import ConfidenceIntervalAAF
+
+ctypedef np.longdouble_t dtype128_t
 
 """
 This module contains a variety of tools for calling variants.
@@ -39,7 +45,8 @@ class SNVCFLine:
                    reverseStrandFraction=cython.float,
                    minPVFrac=cython.float, minNumFam=cython.long,
                    minNumSS=cython.long, minFA=cython.long,
-                   minDuplexPairs=cython.long)
+                   minDuplexPairs=cython.long, minAAF=dtype128_t,
+                   maxAAF=dtype128_t)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
@@ -58,9 +65,10 @@ class SNVCFLine:
                  reverseStrandFraction=-1.0,
                  requireDuplex=True, minDuplexPairs=2,
                  minFracAgreedForFilter=0.666,
-                 minFA=0, BothStrandAlignment=-1):
-        if(operator.le(BothStrandAlignment, 0)):
-            raise ThisIsMadness("AABothStrandSupport required for SNVCFLine,"
+                 minFA=0, BothStrandAlignment=-1,
+                 pValBinom=0.001):
+        if(BothStrandAlignment < 0):
+            raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
                                 "t to remove a call for a variant mapping to"
                                 " only one strand.")
@@ -84,6 +92,9 @@ class SNVCFLine:
         self.reverseStrandFraction = reverseStrandFraction
         self.AABothStrandAlignment = BothStrandAlignment
         self.ID = ID
+        AC = AlleleAggregateObject.MergedReads
+        DOC = AlleleAggregateObject.DOC
+        minAAF, maxAAF = ConfidenceIntervalAAF(AC, DOCMerged, pVal=pValBinom)
         try:
             if(float(MaxPValue) < 10 ** (self.QUAL / -10)):
                 if("FILTER" in dir(self)):
@@ -100,7 +111,7 @@ class SNVCFLine:
                 else:
                     self.FILTER = "OneStrandSupport"
             if(operator.le(self.NumStartStops, minNumSS) and
-               operator.le(AlleleAggregateObject.MergedReads, minNumSS)):
+               operator.le(AC, minNumSS)):
                 if("FILTER" in dir(self)):
                     self.FILTER = operator.add(
                         self.FILTER, ",InsufficientCoordinateSetsSupport")
@@ -123,9 +134,9 @@ class SNVCFLine:
             raise TypeError("MaxPValue not properly parsed.")
         if(self.ALT == AlleleAggregateObject.consensus):
             self.FILTER = "CONSENSUS"
-        self.InfoFields = {"AC": AlleleAggregateObject.MergedReads,
-                           "AF": AlleleAggregateObject.MergedReads
-                           / float(AlleleAggregateObject.DOC),
+
+        self.InfoFields = {"AC": AC,
+                           "AF": AC / (DOC * 1.),
                            "BS": AlleleAggregateObject.BothStrandSupport,
                            "BSA": BothStrandAlignment,
                            "TF": AlleleAggregateObject.TotalReads
@@ -140,6 +151,8 @@ class SNVCFLine:
                            "MINFRACFILTER": minFracAgreedForFilter,
                            "MFA": AlleleAggregateObject.MFA,
                            "MINFA": AlleleAggregateObject.minFA,
+                           "MINAAF": minAAF, "MAXAAF": maxAAF,
+                           "BNP": int(-10 * mlog10(pValBinom)),
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
                            "MMQ": AlleleAggregateObject.minMQ,
@@ -177,8 +190,8 @@ class SNVCFLine:
         self.InfoStr = ";".join(
             ["=".join([key, str(self.InfoFields[key])])
              for key in sorted(self.InfoFields.keys())])
-        self.FormatFields = {"DP": DOCMerged,
-                             "DPA": AlleleAggregateObject.MergedReads,
+        self.FormatFields = {"DP": DOC,
+                             "DPA": AC,
                              "DPT": DOCTotal}
         self.FormatStr = (
             ":".join(sorted(self.FormatFields.keys())) +
@@ -821,6 +834,18 @@ HeaderInfoDict["MFDN"] = HeaderInfoLine(
 HeaderInfoDict["MFDNP"] = HeaderInfoLine(
     ID="MFDNP", Description="Phred probability for MFDN bounds",
                                        Number=1, Type="Float")
+HeaderInfoDict["MINAAF"] = HeaderInfoLine(
+    ID="MINAAF", Description="Lower bound for AAF given observed frequency a"
+    "nd sampling error with confidence described by BINOMP (phred-encoded)",
+    Number=1, Type="Float")
+HeaderInfoDict["MAXAAF"] = HeaderInfoLine(
+    ID="MAXAAF", Description="Upper bound for AAF given observed frequency a"
+    "nd sampling error with confidence described by BINOMP (phred-encoded)",
+    Number=1, Type="Float")
+HeaderInfoDict["BNP"] = HeaderInfoLine(
+    ID="BNP", Description="Phred-encoded confidence chosen for calculating "
+    "MAXAAF and MINAAF",
+    Number=1, Type="Float")
 
 
 """

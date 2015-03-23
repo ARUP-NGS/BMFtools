@@ -755,7 +755,7 @@ def BedtoolsBamToBed(inBAM, outbed="default", ref="default"):
 
 def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
                         outBAM="default",
-                        uuid="true",
+                        uuid="true", memStr="4G",
                         threads="4"):
     '''
     Uses samtools >= 1.0.0 to coordinate sort and index a bam file.
@@ -768,7 +768,7 @@ def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.CoorSort.bam'
     CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outBAM) +
-                  " -@ {} {}".format(threads, inBAM))
+                  " -@ {} {} -m {}".format(threads, inBAM, memStr))
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Now indexing.")

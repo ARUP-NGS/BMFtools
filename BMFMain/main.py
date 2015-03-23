@@ -146,13 +146,14 @@ def main(argv=None):
     parser.add_argument("--indelRealigner", help="Select which indel realigne"
                         "r you wish to use. Supported: abra, GATK. Set to "
                         "None to avoid realignment.",
-                        default="gatk")
+                        default="abra")
     parser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)",
                         default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     if(args.indelRealigner.lower() not in ["abra", "gatk", "none"]):
         raise ThisIsMadness("Supported indel realigners are abra and gatk.")
+    realigner = args.indelRealigner
     if("minMQ" in confDict.keys()):
         minMQ = int(confDict['minMQ'])
     else:
@@ -307,14 +308,16 @@ def main(argv=None):
                     mincov=int(args.minCov),
                     abrapath=abrapath,
                     bwapath=bwapath,
-                    picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath)
+                    picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
+                    realigner=realigner)
             else:
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,
                     aligner=aligner, ref=ref,
                     bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath,
-                    picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath)
+                    picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
+                    realigner=realigner)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(
@@ -384,7 +387,7 @@ def main(argv=None):
 
 global __version__
 
-__version__ = "0.0.7.0"
+__version__ = "0.0.7.2"
 
 if(__name__ == "__main__"):
     sys.exit(main())

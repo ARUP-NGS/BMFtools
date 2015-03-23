@@ -10,15 +10,12 @@ import cython
 cimport cython
 import numpy as np
 cimport numpy as np
-from sklearn.covariance import EllipticEnvelope
-from sklearn import svm
-from scipy.misc import comb
 
 from MawCluster.BCVCF import IterativeVCFFile
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF.ErrorHandling import IllegalArgumentError
 from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
-from MawCluster.Probability import ConfidenceInterval_, defaultPValue
+from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
 from MawCluster.BCVCF import IterativeVCFFile
 from BMFMain.main import __version__ as BMFVersion
 
@@ -26,37 +23,8 @@ ctypedef np.longdouble_t dtype128_t
 
 
 """
-Contains utilities relating to FFPE 
+Contains utilities relating to FFPE
 """
-
-
-@cython.locals(p=dtype128_t, pVal=dtype128_t,
-               n=cython.long)
-@cython.returns(dtype128_t)
-def GetMax_CT_AG(doc, p=0.0, pVal=defaultPValue):
-    """
-    Given a depth of coverage, an estimated fixation cytosine deamination
-    frequency, and a p value, computes the minimum C-T/G-A frequency
-    to not be considered an FFPE artefact.
-    p: frequency of deamination
-    doc: depth of coverage at position
-    """
-    return ConfidenceInterval_(doc, p=p, pVal=pVal)[1]
-
-
-@cython.locals(observedFreq=dtype128_t, pVal=dtype128_t,
-               doc=cython.long)
-@cython.returns(np.ndarray)
-def GetAAFBounds_(doc, observedFreq=0.0, pVal=0.05):
-    """
-    Given a depth of coverage, an observed frequency, and a p value,
-    returns a list containing the minimum and maximum AA frequencies,
-    respectively, for the actual AAF, within the given p value.
-    doc: depth of coverage at position
-    default pVal: 0.05
-    """
-    return np.array(ConfidenceInterval_(doc, p=observedFreq, pVal=pVal)[:2],
-                    dtype=np.longdouble)
 
 
 @cython.locals(numSD=cython.long, pVal=dtype128_t, DOC=cython.long,
@@ -96,17 +64,17 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
             continue
         AAF = float(line.InfoDict["AF"])
         DOC = int(line.GenotypeDict["DP"])
-        maxFreqNoise = ConfidenceInterval_(DOC, p=ctfreq, pVal=pVal)[1]
+        maxFreqNoise = GetCeiling(DOC, p=ctfreq, pVal=pVal) / (DOC * 1.)
         if AAF < maxFreqNoise:
             if(line.FILTER == "PASS"):
                 line.FILTER = "DeaminationNoise"
             else:
                 line.FILTER += ",DeaminationNoise"
         line.InfoDict["MFDN"] = maxFreqNoise
-        line.InfoDict["MFDNP"] = mfdnp
+        line.InfoDict["MFDNP"] = int(-10 * mlog10(mfdnp))
         recordsArray.append(line)
     outHandle.write("\n".join([line.ToString() for line in recordsArray]) + "\n")
-    
+
 
 
 @cython.locals(FSD=dtype128_t, maxFreq=dtype128_t,

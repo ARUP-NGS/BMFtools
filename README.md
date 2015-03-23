@@ -173,6 +173,11 @@ Most options are available for command-line as well. If an option is set in both
     3. MQM and MQB are now working.
     4. PV tags used for all reads now, making compatibility a little easier.
 
+8. Changes in BMFTools v0.0.7.2
+    
+    1. Probabilistic quantitation of AAF given observations.
+    2. Optional filter for FFPE data for removing deamination frequencies due to formalin fixation.
+
 1. Settings Recommendations
 
     1. The "readPairsPerWrite" parameter can provide great speed improvements.
@@ -204,15 +209,11 @@ Most options are available for command-line as well. If an option is set in both
         6. Mean # Reads Per Family.
     0. Filters and Preprocessing/Postprocessing
         1. FracAlignFilter? Minimum # of bases aligned (len - S - D - I) ?
-        2. FFPE option
-            1. Deamination sampling model to make this rigorous.
     1. SNV confidence model
-        1. Probability of finding a mutation with a given frequency with enough samples.
         2. Probability of correctly sequencing if correct.
         3. VQS model (start, paper and pencil?)
     1. Error Characterization Code
         1. Write database reading and processing.
-        2. Add tile/x pos/y pos information to error characterization code (or at least an SVM for making calls), along with cluster count. (Parse from the Stats xml from bcl2fastq2)
     2. Consider haplotyping by leveraging reads covering multiple SNPs.
     3. Info Fields
         1. Add INFO fields for the new NF/ND tags to the VCF header (added to the VCF already)
@@ -226,7 +227,4 @@ Most options are available for command-line as well. If an option is set in both
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
-
-#BACKLOG:
-0. Replace the conf.txt file with the new config.py modules.
 

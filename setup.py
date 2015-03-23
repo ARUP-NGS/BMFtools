@@ -63,9 +63,9 @@ config = {
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.0.7.0',
-    'install_requires': ['pysam', 'biopython', 'pudb',
-                         'cython', 'numconv', 'cutadapt', 'lxml'],
+    'version': '0.0.7.2',
+    'install_requires': ['pysam', 'biopython',
+                         'cython', 'cutadapt', 'lxml', 'scipy'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SECC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
@@ -78,32 +78,7 @@ config = {
 }
 
 
-try:
-    setup(**config)
-except Exception:
-    ext = cythonize('*/*.pyx') + cythonize("*/*.py")
-    compilerList = ["-O3", "-pipe", marchFlag]
-    for x in map(operator.attrgetter("extra_compile_args"), ext):
-        x += compilerList
-    config = {
-        'description': '',
-        'author': 'Daniel Baker',
-        'url': 'https://github.com/ARUP-NGS/BMFTools',
-        'author_email': 'daniel.baker@aruplab.com',
-        'version': '0.0.7.0',
-        'install_requires': ['pysam', 'biopython', 'pudb',
-                             'cython', 'numconv', 'cutadapt', 'lxml'],
-        'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SECC'],
-        'ext_modules': ext,
-        'include_dirs': [np.get_include()] + pysam.get_include(),
-        'scripts': [],
-        'name': 'BMFTools',
-        'license': 'GNU Affero General Public License, '
-                   'pending institutional approval',
-        'include': 'README.md',
-        'package_data': {'': ['README.md']}
-    }
-    setup(**config)
+setup(**config)
 
 try:
     subprocess.check_call(["cp", "BMFMain/main.py", installDir + "/BMFMain"])

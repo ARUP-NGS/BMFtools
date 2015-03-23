@@ -12,7 +12,6 @@ from collections import Counter
 import numpy as np
 import pysam
 import cython
-import numconv
 
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import printlog as pl
@@ -345,7 +344,8 @@ class PCInfo:
     of the pileup.
     """
 
-    @cython.locals(reverseStrandFraction=cython.float)
+    @cython.locals(reverseStrandFraction=cython.float,
+                   BothStrandAlignment=cython.bint)
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
@@ -1188,7 +1188,7 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                   line[1],
                   line[2],
                   MergedReads, TotalReads, MergeDOC,
-                  TotalDOC, 
+                  TotalDOC,
                             ]).astype(str))
                         + "\n")
         outHandle.flush()
