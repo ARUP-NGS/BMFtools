@@ -5,6 +5,7 @@ import logging
 import operator
 import math
 from math import log10 as mlog10
+from operator import methodcaller as mc
 
 import cython
 cimport cython
@@ -17,7 +18,6 @@ from utilBMF.ErrorHandling import IllegalArgumentError
 from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
 from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
 from MawCluster.BCVCF import IterativeVCFFile
-from BMFMain.main import __version__ as BMFVersion
 
 ctypedef np.longdouble_t dtype128_t
 
@@ -25,6 +25,8 @@ ctypedef np.longdouble_t dtype128_t
 """
 Contains utilities relating to FFPE
 """
+
+BMFVersion = "0.0.7.2"
 
 
 @cython.locals(pVal=dtype128_t, DOC=cython.long,
@@ -47,14 +49,15 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
     mfdnpStr = str(int(-10 * mlog10(pVal)))
     functionCall = ("FilterByDeaminationFreq(%s, pVal=%s, " % (inVCF, pVal) +
                     "ctfreq=%s, recordsPerWrite=" % ctfreq +
-                    "%s). BMFTools version: %s" (recordsPerWrite, BMFVersion))
-    IVCFObj.header = IVCFObj.header.insert(len(IVCFObj.header) - 1,
-        HeaderFunctionCallLine(functionCall))
+                    "%s). BMFTools version: %s" % (recordsPerWrite,
+                                                   BMFVersion))
+    IVCFObj.header.insert(-1, HeaderFunctionCallLine(functionCall).ToString())
     outHandle.write("\n".join(IVCFObj.header) + "\n")
     recordsArray = []
     for line in IVCFObj:
         if(len(recordsArray) >= recordsPerWrite):
-            outHandle.write("\n".join([line.ToString() for line in recordsArray]) + "\n")
+            outHandle.write("\n".join(map(mc("ToString"), recordsArray)) +
+                            "\n")
             recordsArray = []
         if(line.REF != "C" or line.REF != "G"):
             recordsArray.append(line)
@@ -65,8 +68,8 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
         if(line.REF == "G" and line.ALT != "A"):
             recordsArray.append(line)
             continue
-        AAF = float(line.InfoDict["AF"])
         DOC = int(line.GenotypeDict["DP"])
+        AAF = float(line.InfoDict["AC"]) / DOC
         maxFreqNoise = GetCeiling(DOC, p=ctfreq, pVal=pVal) / (DOC * 1.)
         if AAF < maxFreqNoise:
             if(line.FILTER == "PASS"):
@@ -75,17 +78,16 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                 line.FILTER += ",DeaminationNoise"
         line.InfoDict["MFDN"] = maxFreqNoise
         line.InfoDict["MFDNP"] = mfdnpStr
-        recordsArray.append(line.ToString())
-    outHandle.write("\n".join([line for line in recordsArray]) + "\n")
+        recordsArray.append(line)
+    outHandle.write("\n".join(map(mc("ToString"), recordsArray)) + "\n")
     outHandle.flush()
     outHandle.close()
     return outVCF
 
 
-@cython.locals(FSD=dtype128_t, maxFreq=dtype128_t,
-               concatenate=cython.bint)
-def GetDeaminationFrequencies(inVCF, maxFreq=0.05, FILTER="LowQual",
-                              concatenate=True):
+@cython.locals(maxFreq=dtype128_t)
+def GetDeaminationFrequencies(inVCF, maxFreq=0.2,
+                              FILTER=""):
 
     """
     Returns a list of raw base frequencies for G->A and C->T.
@@ -93,45 +95,55 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.05, FILTER="LowQual",
     FILTER must be a comma-separated list of FILTER strings as defined
     in the VCF header.
     """
-    validFilters = [i.lower() for i in HeaderFilterDict.keys()]
+    cdef cython.long TotalCG
+    cdef cython.long TotalCG_TA
+    cdef cython.long DP
+    cdef cython.long GC
+    validFilters = map(mc("lower"), HeaderFilterDict.keys())
     FILTER = FILTER.lower()
     filters = FILTER.split(",")
-    for filter in filters:
-        if filter not in validFilters:
-            raise IllegalArgumentError("Filter must be a valid VCF Filter. "
-                                       "%s" % validFilters)
-    cdef np.ndarray[dtype128_t, ndim = 1] GAFreqNP
-    cdef np.ndarray[dtype128_t, ndim = 1] CTFreqNP
-    IVCFObj = IterativeVCFFile(inVCF)
-    GAFreqArray = []
-    CTFreqArray = []
-    for line in IVCFObj:
+    pl("Filters: %s" % filters)
+    pl("maxFreq: %s" % maxFreq)
+    if(FILTER != ""):
         for filter in filters:
-            if filter in line.FILTER.lower():
-                print("Failing line for filter %s" % filter)
-                continue
+            if filter not in validFilters:
+                raise IllegalArgumentError("Filter must be a valid VCF Filter. "
+                                           "%s" % validFilters)
+    IVCFObj = IterativeVCFFile(inVCF)
+    TotalCG = 0
+    TotalCG_TA = 0
+    for line in IVCFObj:
+        if(FILTER != ""):
+            for filter in filters:
+                if filter in line.FILTER.lower():
+                    pl("Failing line for filter %s" % filter, level=logging.DEBUG)
+                    continue
         if(line.REF == "C"):
-            CTFreqArray.append(float(
-                line.InfoDict["MAFS"].split(",")[2].split(">")[1]))
+            if(line.ALT != "T"):
+                continue
+            GC = int(line.InfoDict["MACS"].split(",")[1].split(">")[1])
+            TA = int(line.InfoDict["MACS"].split(",")[2].split(">")[1])
+            if(GC == 0):
+                continue
+            if(TA * 1.0 / GC <= maxFreq):
+                TotalCG_TA += TA
+                TotalCG += GC
         elif(line.REF == "G"):
-            GAFreqArray.append(
-                line.InfoDict["MAFS"].split(",")[0].split(">")[1])
-    pl("Length of C->T array: %s" % len(CTFreqArray), level=logging.DEBUG)
-    pl("Length of G->A array: %s" % len(GAFreqArray), level=logging.DEBUG)
-    GAFreqNP = np.array(GAFreqArray, dtype=np.longdouble)
-    GAFreqNP = GAFreqNP[GAFreqNP < maxFreq]
-    CTFreqNP = np.array(CTFreqArray, dtype=np.longdouble)
-    CTFreqNP = CTFreqNP[CTFreqNP < maxFreq]
-    GAFreqNP = GAFreqNP.reshape(-1, 1)
-    CTFreqNP = CTFreqNP.reshape(-1, 1)
-    if(concatenate):
-        return np.concatenate([GAFreqNP, CTFreqNP])
-    return GAFreqNP, CTFreqNP
+            if(line.ALT != "A"):
+                continue
+            GC = int(line.InfoDict["MACS"].split(",")[3].split(">")[1])
+            TA = int(line.InfoDict["MACS"].split(",")[0].split(">")[1])
+            if(GC == 0):
+                continue
+            if(TA * 1.0 / GC <= maxFreq):
+                TotalCG_TA += TA
+                TotalCG += GC
+    return 1. * TotalCG_TA / TotalCG
 
 
 
 @cython.locals(maxFreq=dtype128_t, pVal=dtype128_t)
-def TrainAndFilter(inVCF, maxFreq=0.05, FILTER="LowQual",
+def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
                    pVal=0.001):
     """
     Calls both GetDeaminationFrequencies and FilterByDeaminationFreq.

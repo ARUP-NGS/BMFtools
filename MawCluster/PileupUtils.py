@@ -452,8 +452,7 @@ class PCInfo:
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.TotalFracDict[
-                alt.ALT] = operator.div(float(alt.TotalReads),
-                                        self.TotalReads)
+                alt.ALT] = 1. * alt.TotalReads / self.TotalReads
         self.TotalFracStr = ",".join(
             [">".join([key, str(self.TotalFracDict[key])])
              for key in self.TotalFracDict.keys()])

@@ -4,6 +4,7 @@ import time
 import logging
 
 import cython
+import numpy as np
 
 from MawCluster import BCBam, VCFWriters, BCVCF
 from MawCluster import BCFastq
@@ -206,7 +207,8 @@ def pairedVCFProc(consMergeSortBAM,
                                         minFracAgreed=minFracAgreed)
         CleanedVCF = BCVCF.FilterVCFFileByBed(SNP_VCF, bed)
         if("ffpe" in exp.lower()):
-            deaminationFrequency = GetDeaminationFrequencies(CleanedVCF)
+            deaminationFrequency = np.mean(
+                GetDeaminationFrequencies(CleanedVCF), dtype=np.longdouble)
             FFPEFilteredVCF = FilterByDeaminationFreq(
                 CleanedVCF, ctfreq=deaminationFrequency,
                 pVal=deaminationPVal)

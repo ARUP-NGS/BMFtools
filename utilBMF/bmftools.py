@@ -19,7 +19,7 @@ somatic variant calling. Written to be in similar form to bcftools
 and samtools.
 """
 
-warnings.filterwarnings('error')
+#  warnings.filterwarnings('error')
 
 
 def main():
@@ -224,7 +224,7 @@ def main():
         default=0.05, type=float)
     FFPEParser.add_argument(
         "--maxFreq", help="Maximum frequency for a C-[TU]/G-A event to be as"
-        "sumed to be deamination due to formalin fixation.", default=0.05,
+        "sumed to be deamination due to formalin fixation.", default=0.1,
         type=float)
     # set_trace()
 
