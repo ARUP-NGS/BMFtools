@@ -31,7 +31,7 @@ Contains utilities relating to FFPE
                maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
                mfdnp=cython.long, recordsPerWrite=cython.long)
 def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
-                            recordsPerWrite=5000):
+                            recordsPerWrite=5000, outVCF="default"):
     """
     If observed AAF is greater than the upper limit of the confidence window
     with a given P-Value, the variant is permitted to stay.
@@ -39,7 +39,10 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
     """
     pl("C-T/G-A frequency set to %s" % ctfreq)
     IVCFObj = IterativeVCFFile(inVCF)
-    outVCF = ".".join(inVCF.split(".")[0:-1] + ["ctfilt", "vcf"])
+    if(outVCF == "default"):
+        outVCF = ".".join(inVCF.split(".")[0:-1] + ["ctfilt", "vcf"])
+    pl("FilterByDeaminationFreq called. inVCF: %s. outVCF: %s." % (inVCF,
+                                                                   outVCF))
     outHandle = open(outVCF, "w")
     mfdnp = int(-10 * mlog10(pVal))
     functionCall = ("FilterByDeaminationFreq(%s, pVal=%s, " % (inVCF, pVal) +
@@ -74,7 +77,9 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
         line.InfoDict["MFDNP"] = int(-10 * mlog10(mfdnp))
         recordsArray.append(line)
     outHandle.write("\n".join([line.ToString() for line in recordsArray]) + "\n")
-
+    outHandle.flush()
+    outHandle.close()
+    return outVCF
 
 
 @cython.locals(FSD=dtype128_t, maxFreq=dtype128_t,
@@ -123,3 +128,21 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.05, FILTER="LowQual",
         return np.concatenate([GAFreqNP, CTFreqNP])
     return GAFreqNP, CTFreqNP
 
+
+
+@cython.locals(maxFreq=dtype128_t, pVal=dtype128_t)
+def TrainAndFilter(inVCF, maxFreq=0.05, FILTER="LowQual",
+                   pVal=0.001):
+    """
+    Calls both GetDeaminationFrequencies and FilterByDeaminationFreq.
+    """
+    cdef np.ndarray[dtype128_t, ndim = 1] DeamFreqs
+    cdef dtype128_t DeamFreq
+    DeamFreqs = GetDeaminationFrequencies(inVCF, maxFreq=maxFreq,
+                                         FILTER=FILTER)
+    DeamFreq = np.mean(DeamFreqs, dtype=np.longdouble)
+    pl("Estimated deamination frequency: %s" % DeamFreq)
+    OutVCF = FilterByDeaminationFreq(inVCF, pVal=pVal,
+                                     ctfreq=DeamFreq)
+    pl("Output VCF: %s" %OutVCF)
+    return OutVCF

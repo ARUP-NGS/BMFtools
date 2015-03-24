@@ -66,7 +66,7 @@ class SNVCFLine:
                  requireDuplex=True, minDuplexPairs=2,
                  minFracAgreedForFilter=0.666,
                  minFA=0, BothStrandAlignment=-1,
-                 pValBinom=0.001):
+                 pValBinom=0.05):
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"

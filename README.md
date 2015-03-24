@@ -205,7 +205,7 @@ Most options are available for command-line as well. If an option is set in both
         2. Average Non-Zero Insert Size
         3. Coverage Bedfile
         4. # unique reads
-        5. Fraction of FamSize =1 for all FamSizes
+        5. Fraction of FamSize==1 for all FamSizes
         6. Mean # Reads Per Family.
     0. Filters and Preprocessing/Postprocessing
         1. FracAlignFilter? Minimum # of bases aligned (len - S - D - I) ?

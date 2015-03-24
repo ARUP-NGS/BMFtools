@@ -10,6 +10,7 @@ from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
 from MawCluster.TLC import BMFXLC as CallIntraTrans
+from MawCluster.FFPE import TrainAndFilter
 #  from pudb import set_trace
 
 """
@@ -24,6 +25,10 @@ warnings.filterwarnings('error')
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    FFPEParser = subparsers.add_parser(
+        "ffpe", description="Estimates cytosine deamination frequencies in a "
+        "VCF outputs a VCF with appropriate variants filtered. FILTER: Deamin"
+        "ationNoise")
     VCFStatsParser = subparsers.add_parser("vcfstats",
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
@@ -212,6 +217,15 @@ def main():
         "--outVCF", help="output VCF. 'default' will pick a modified form of"
         " the inVCF name.",
         type=str, default="default")
+    FFPEParser.add_argument(
+        "inVCF", help="Path to the input VCF.", type=str)
+    FFPEParser.add_argument(
+        "--pVal", help="P value for confidence interval. Default: 0.05",
+        default=0.05, type=float)
+    FFPEParser.add_argument(
+        "--maxFreq", help="Maximum frequency for a C-[TU]/G-A event to be as"
+        "sumed to be deamination due to formalin fixation.", default=0.05,
+        type=float)
     # set_trace()
 
     args = parser.parse_args()
@@ -282,6 +296,9 @@ def main():
     if(args.bmfsuites == "faf"):
         Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
                                    outVCF=args.outVCF)
+    if(args.bmfsuites == "ffpe"):
+        Output = TrainAndFilter(args.inVCF, maxFreq=args.maxFreq,
+                                pVal=args.pVal)
     return 0
 
 

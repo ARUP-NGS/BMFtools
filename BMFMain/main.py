@@ -149,40 +149,49 @@ def main(argv=None):
                         default="abra")
     parser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)",
                         default="default")
+    parser.add_argument("--experiment", "-e",
+                        help="A comma-joined list of strings with extra infor"
+                        "mation for informing analysis. Currently in beta sup"
+                        "port: ffpe, amplicon.", default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     if(args.indelRealigner.lower() not in ["abra", "gatk", "none"]):
         raise ThisIsMadness("Supported indel realigners are abra and gatk.")
     realigner = args.indelRealigner
-    if("minMQ" in confDict.keys()):
+    cdk = confDict.keys()
+    experiment = ""
+    if("experiment" in cdk):
+        experiment = confDict["experiment"]
+    if args.experiment != "default":
+        experiment = args.experiment
+    if("minMQ" in cdk):
         minMQ = int(confDict['minMQ'])
     else:
         minMQ = args.minMQ
-    if("minBQ" in confDict.keys()):
+    if("minBQ" in cdk):
         minBQ = int(confDict['minBQ'])
     else:
         minBQ = args.minBQ
-    if("abrapath" in confDict.keys()):
+    if("abrapath" in cdk):
         abrapath = confDict['abrapath']
     else:
         abrapath = args.abrapath
-    if("dbsnp" in confDict.keys()):
+    if("dbsnp" in cdk):
         dbsnp = confDict["dbsnp"]
     else:
         dbsnp = "default"
-    if("minFA" in confDict.keys()):
+    if("minFA" in cdk):
         minFA = int(confDict['minFA'])
     else:
         minFA = args.minFA
-    if("minFracAgreed" in confDict.keys()):
+    if("minFracAgreed" in cdk):
         minFracAgreed = float(confDict['minFracAgreed'])
     else:
         minFracAgreed = args.minFracAgreed
-    global gatkpath
     gatkpath = args.gatkpath
-    if("gatkpath" in confDict.keys() and gatkpath == "default"):
+    if("gatkpath" in cdk and gatkpath == "default"):
         gatkpath = confDict['gatkpath']
-    if("picardPath" in confDict.keys()):
+    if("picardPath" in cdk):
         picardPath = confDict["picardPath"]
     if(args.picardPath != "default" and isinstance(args.picardPath, str)):
         picardPath = args.picardPath
@@ -245,12 +254,12 @@ def main(argv=None):
     pl("Log file is {}".format(logfile))
     pl("Command string to call BMFTools: python {}".format(" ".join(sys.argv)))
     pl("Note: You may need to add quotes for more complicated options.")
-    if("aligner" in confDict.keys()):
+    if("aligner" in cdk):
         aligner = confDict['aligner']
     else:
         aligner = args.aligner
     homing = args.homing
-    if("ref" in confDict.keys()):
+    if("ref" in cdk):
         ref = confDict['ref']
     else:
         if(args.ref != "default"):
@@ -259,31 +268,31 @@ def main(argv=None):
             HTSUtils.FacePalm("Reference fasta required either in "
                               "config file or by command-line options.!")
     opts = args.opts
-    if("opts" in confDict.keys()):
+    if("opts" in cdk):
         opts = args.opts
-    if("bed" in confDict.keys()):
+    if("bed" in cdk):
         bed = confDict['bed']
     else:
         if(args.bed != "default"):
             bed = args.bed
         else:
             FacePalm("Bed file required for analysis.")
-    if("single_end" in confDict.keys()):
+    if("single_end" in cdk):
         if(confDict['single_end'].lower() == "true"):
             single_end = True
         else:
             single_end = False
     else:
         single_end = args.single_end
-    if("p3Seq" in confDict.keys()):
+    if("p3Seq" in cdk):
         p3Seq = confDict['p3Seq']
     if(args.p3Seq != "default"):
         p3Seq = args.p3Seq
-    if("p5Seq" in confDict.keys()):
+    if("p5Seq" in cdk):
         p5Seq = confDict['p5Seq']
     if(args.p5Seq != "default"):
         p5Seq = args.p5Seq
-    if("bwapath" in confDict.keys()):
+    if("bwapath" in cdk):
         bwapath = confDict["bwapath"]
     if(single_end):
         pl("Single-end analysis chosen.")
@@ -328,7 +337,8 @@ def main(argv=None):
                 minMQ=minMQ,
                 minBQ=minBQ,
                 commandStr=" ".join(sys.argv),
-                minFA=minFA, minFracAgreed=minFracAgreed)
+                minFA=minFA, minFracAgreed=minFracAgreed,
+                exp=experiment)
             for key in VCFOutDict.keys():
                 if(makeReviewDir):
                     subprocess.check_call(["cp", VCFOutDict[key], reviewdir])
@@ -366,7 +376,8 @@ def main(argv=None):
                 minMQ=minMQ,
                 minBQ=minBQ,
                 commandStr=" ".join(sys.argv),
-                minFA=minFA, minFracAgreed=minFracAgreed)
+                minFA=minFA, minFracAgreed=minFracAgreed,
+                exp=experiment)
             pl("Last stop! Watch your step")
         elif(args.initialStep == 3):
             pl("Beginning VCF processing.")
@@ -379,7 +390,8 @@ def main(argv=None):
                 minBQ=args.minBQ,
                 reference=args.ref,
                 commandStr=" ".join(sys.argv),
-                minFA=minFA, minFracAgreed=minFracAgreed)
+                minFA=minFA, minFracAgreed=minFracAgreed,
+                exp=experiment)
             pl("Last stop! Watch your step.")
     if(makeReviewDir):
         subprocess.check_call(["cp", logfile, reviewdir])

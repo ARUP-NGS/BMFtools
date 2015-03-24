@@ -801,9 +801,9 @@ def LighterCallPaired(fq1, fq2, kmer="default",
                numProc=cython.int, skipSingles=cython.bint,
                skipFails=cython.int)
 def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
-                           readPairsPerWrite=100, UsecProfile=False,
-                           onlyNumpy=False, skipSingles=False,
-                           skipFails=False):
+                           readPairsPerWrite=100,
+                           UsecProfile=False, onlyNumpy=True,
+                           skipSingles=False, skipFails=False):
     if(UsecProfile):
         import cProfile
         import pstats

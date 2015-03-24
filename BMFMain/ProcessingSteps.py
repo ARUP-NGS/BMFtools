@@ -167,7 +167,7 @@ def pairedVCFProc(consMergeSortBAM,
                   MakeCoverageBed=False,
                   commandStr="default",
                   minFA=2, minFracAgreed=0.667,
-                  exp="", deaminationPVal=0.001):
+                  exp="", deaminationPVal=0.05):
     """
     Lumps together VCF processing.
     exp is a string from a comma-joined list of strings.
