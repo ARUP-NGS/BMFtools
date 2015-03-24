@@ -27,9 +27,9 @@ Contains utilities relating to FFPE
 """
 
 
-@cython.locals(numSD=cython.long, pVal=dtype128_t, DOC=cython.long,
+@cython.locals(pVal=dtype128_t, DOC=cython.long,
                maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
-               mfdnp=cython.long, recordsPerWrite=cython.long)
+               recordsPerWrite=cython.long)
 def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                             recordsPerWrite=5000, outVCF="default"):
     """
@@ -44,7 +44,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
     pl("FilterByDeaminationFreq called. inVCF: %s. outVCF: %s." % (inVCF,
                                                                    outVCF))
     outHandle = open(outVCF, "w")
-    mfdnp = int(-10 * mlog10(pVal))
+    mfdnpStr = str(int(-10 * mlog10(pVal)))
     functionCall = ("FilterByDeaminationFreq(%s, pVal=%s, " % (inVCF, pVal) +
                     "ctfreq=%s, recordsPerWrite=" % ctfreq +
                     "%s). BMFTools version: %s" (recordsPerWrite, BMFVersion))
@@ -74,9 +74,9 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
             else:
                 line.FILTER += ",DeaminationNoise"
         line.InfoDict["MFDN"] = maxFreqNoise
-        line.InfoDict["MFDNP"] = int(-10 * mlog10(mfdnp))
-        recordsArray.append(line)
-    outHandle.write("\n".join([line.ToString() for line in recordsArray]) + "\n")
+        line.InfoDict["MFDNP"] = mfdnpStr
+        recordsArray.append(line.ToString())
+    outHandle.write("\n".join([line for line in recordsArray]) + "\n")
     outHandle.flush()
     outHandle.close()
     return outVCF
