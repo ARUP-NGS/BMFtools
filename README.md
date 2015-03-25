@@ -217,6 +217,8 @@ Most options are available for command-line as well. If an option is set in both
     2. Consider haplotyping by leveraging reads covering multiple SNPs.
     3. Info Fields
         1. Add INFO fields for the new NF/ND tags to the VCF header (added to the VCF already)
+    4. For abra call, run abra.KmerSizeEvaluator
+
 
 2. Indels:
     0. Debugging DSI

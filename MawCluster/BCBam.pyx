@@ -12,6 +12,7 @@ import copy
 from os import path
 import operator
 import string
+import uuid
 
 from Bio import SeqIO
 import pysam
@@ -26,6 +27,7 @@ from utilBMF import HTSUtils
 from SECC.SECC import BuildRunDict
 
 
+@cython.locals(fixMate=cython.bint)
 def AbraCadabra(inBAM,
                 outBAM="default",
                 jar="default",
@@ -34,7 +36,7 @@ def AbraCadabra(inBAM,
                 threads="4",
                 bed="default",
                 working="default",
-                log="default"):
+                log="default", fixMate=True, tempPrefix="tmpPref"):
     """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
@@ -99,6 +101,15 @@ def AbraCadabra(inBAM,
     subprocess.check_call(shlex.split(command), shell=False)
     pl("Deleting abra's intermediate directory.")
     subprocess.check_call(["rm", "-rf", working])
+    if(fixMate):
+        pl("Now fixing mates after abra's realignment.")
+        tempFilename = tempPrefix + str(
+            uuid.uuid4().get_hex()[0:8]) + ".working.tmp"
+        nameSorted = HTSUtils.NameSort(outBAM)
+        commandStrFM = "samtools fixmate %s %s" % (nameSorted, tempFilename)
+        subprocess.check_call(shlex.split(commandStrFM))
+        subprocess.check_call(["rm", "-rf", nameSorted])
+        subprocess.check_call(["mv", tempFilename, outBAM])
     return outBAM
 
 

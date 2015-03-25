@@ -777,7 +777,7 @@ def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
 
 
 def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
-             uuid="true", threads="4"):
+             uuid="true", threads="4", memStr="4G"):
     # If uuid is either a boolean true or is a string containing true,
     # then a random string is generated for the output
     if(str(uuid).lower() == "true"):
@@ -786,7 +786,7 @@ def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.NameSort.bam'
     CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outBAM) +
-                  " -@ {} -n {}".format(threads, inBAM))
+                  " -@ {} -m {} -n {}".format(threads, memStr, inBAM))
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Namesort successful, sorted bam available at: {}".format(outBAM))

@@ -86,8 +86,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
 
 
 @cython.locals(maxFreq=dtype128_t)
-def GetDeaminationFrequencies(inVCF, maxFreq=0.2,
-                              FILTER=""):
+def GetDeaminationFrequencies(inVCF, maxFreq=0.1, FILTER=""):
 
     """
     Returns a list of raw base frequencies for G->A and C->T.
@@ -116,11 +115,11 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.2,
         if(FILTER != ""):
             for filter in filters:
                 if filter in line.FILTER.lower():
-                    pl("Failing line for filter %s" % filter, level=logging.DEBUG)
+                    pl("Failing line for filter %s" % filter,
+                       level=logging.DEBUG)
                     continue
-        if(line.REF == "C"):
-            if(line.ALT != "T"):
-                continue
+        cons = line.InfoDict["CONS"]
+        if(cons == "C"):
             GC = int(line.InfoDict["MACS"].split(",")[1].split(">")[1])
             TA = int(line.InfoDict["MACS"].split(",")[2].split(">")[1])
             if(GC == 0):
@@ -128,9 +127,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.2,
             if(TA * 1.0 / GC <= maxFreq):
                 TotalCG_TA += TA
                 TotalCG += GC
-        elif(line.REF == "G"):
-            if(line.ALT != "A"):
-                continue
+        elif(cons == "G"):
             GC = int(line.InfoDict["MACS"].split(",")[3].split(">")[1])
             TA = int(line.InfoDict["MACS"].split(",")[0].split(">")[1])
             if(GC == 0):
