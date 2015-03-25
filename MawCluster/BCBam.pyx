@@ -23,26 +23,27 @@ from MawCluster.BCFastq import letterNumDict
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
+from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 from SECC.SECC import BuildRunDict
 
 
 @cython.locals(fixMate=cython.bint)
-def AbraCadabra(inBAM,
-                outBAM="default",
-                jar="default",
-                memStr="default",
-                ref="default",
-                threads="4",
-                bed="default",
-                working="default",
-                log="default", fixMate=True, tempPrefix="tmpPref"):
+def AbraCadabra(inBAM, outBAM="default",
+                jar="default", memStr="default", ref="default",
+                threads="4", bed="default", working="default",
+                log="default", fixMate=True, tempPrefix="tmpPref",
+                rLen=-1):
     """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
     Note: bed file must be first 3 columns only and
     coordinate sorted. You will likely need an additional bed file for this.
     """
+    if(rLen < 0):
+        raise IllegalArgumentError("Read length must be set to call abra due"
+                                   " to the benefits of inferring ideal para"
+                                   "meters from the !")
     if(jar == "default"):
         HTSUtils.FacePalm("Required: Path to abra jar!")
     else:
@@ -80,14 +81,8 @@ def AbraCadabra(inBAM,
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    bedLines = map(string.strip, open(bed, "r").readlines())
-    if(len(bedLines[0]) > 3):
-        newbed = '.'.join(bed.split('.')[0:-1]) + '.abra.bed'
-        pl("Bed file provided not in form abra accepts.")
-        subprocess.check_call("cut -f1-3 {} | sort -k1,1 -k2,2n > {}".format(
-                              bed, newbed),
-                              shell=True)
-        bed = newbed
+    bed = AbraKmerBedfile(inbed, readLength=readLength, ref=ref, abra=jar,
+                          rLen=rLen)
     if(path.isfile(inBAM + ".bai") is False):
         pl("No bam index found for input bam - attempting to create.")
         subprocess.check_call(['samtools', 'index', inBAM])
@@ -111,6 +106,25 @@ def AbraCadabra(inBAM,
         subprocess.check_call(["rm", "-rf", nameSorted])
         subprocess.check_call(["mv", tempFilename, outBAM])
     return outBAM
+
+
+@cython.locals(rLen=cython.long)
+def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
+                    nt=4, abra="default"):
+    if(abra == "default"):
+        raise ThisIsMadness("Path to abra jar required for running KmerSizeCalculator.")
+    if(ref == "default"):
+        raise ThisIsMadness("Path to reference required for running KmerSizeCalculator.")
+    if(inbed == "default"):
+        raise ThisIsMadness("Path to input bed required for running KmerSizeCalculator.")
+    if(rLen < 0):
+        raise ThisIsMadness("Read length required for running KmerSizeCalculator.")
+    if(outbed == "default"):
+        outbed = ".".join(inbed.split(".")[0:-1] + ["abra", "kmer"])
+    commandStr = ("java -jar %s abra.KmerSizeEvaluator %s " (abra, rLen) +
+                  "%s %s %s" % outbed, nt, inbed)
+    subprocess.check_call(commandStr)
+    return outbed
 
 
 def Bam2Sam(inBAM, outsam):

@@ -28,10 +28,11 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   calcCoverage=True,
                   bwapath="default",
                   picardPath="default",
-                  addRG=True, PL="ILLUMINA",
+                  addRG=False, PL="ILLUMINA",
                   SM="default", CN="default",
                   RG="default", ID="default",
-                  realigner="gatk", gatkpath="default", dbsnp="default"):
+                  realigner="gatk", gatkpath="default", dbsnp="default",
+                  rLen=-1):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -81,7 +82,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                                 "realigner")
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
-                                          jar=abrapath)
+                                          jar=abrapath, rLen=rLen)
     elif(realigner == "gatk"):
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,

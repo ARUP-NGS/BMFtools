@@ -203,18 +203,15 @@ Most options are available for command-line as well. If an option is set in both
     0. QC Metrics
         1. % "On-Target" reads
         2. Average Non-Zero Insert Size
-        3. Coverage Bedfile
         4. # unique reads
         5. Fraction of FamSize==1 for all FamSizes
         6. Mean # Reads Per Family.
     0. Filters and Preprocessing/Postprocessing
         1. FracAlignFilter? Minimum # of bases aligned (len - S - D - I) ?
     1. SNV confidence model
-        2. Probability of correctly sequencing if correct.
         3. VQS model (start, paper and pencil?)
     1. Error Characterization Code
         1. Write database reading and processing.
-    2. Consider haplotyping by leveraging reads covering multiple SNPs.
     3. Info Fields
         1. Add INFO fields for the new NF/ND tags to the VCF header (added to the VCF already)
     4. For abra call, run abra.KmerSizeEvaluator
@@ -222,7 +219,6 @@ Most options are available for command-line as well. If an option is set in both
 
 2. Indels:
     0. Debugging DSI
-    2. Indel realignment might perform better if the "normal" reads are removed, IE, properly-mapped reads without I, D, or S in it.
     3. FreeBayes with a longer --haplotype-length, demultiplexing first, and a high ploidy + pre-filtering should get us what we want.
     4. And, perhaps we need something like Scalpel for larger indels.
 3. SV:

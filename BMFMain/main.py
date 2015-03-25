@@ -149,6 +149,8 @@ def main(argv=None):
                         default="abra")
     parser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)",
                         default="default")
+    parser.add_argument("--readLength", help="Read length",
+                        default=-1, type=int)
     parser.add_argument("--experiment", "-e",
                         help="A comma-joined list of strings with extra infor"
                         "mation for informing analysis. Currently in beta sup"
@@ -259,6 +261,11 @@ def main(argv=None):
     else:
         aligner = args.aligner
     homing = args.homing
+    readLength = -1
+    if("readLength" in cdk):
+        readLength = int(readLength)
+    if(args.readLength > 0):
+        readLength = args.readLength
     if("ref" in cdk):
         ref = confDict['ref']
     else:
@@ -318,7 +325,7 @@ def main(argv=None):
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner)
+                    realigner=realigner, rLen=readLength)
             else:
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,
@@ -326,7 +333,7 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner)
+                    realigner=realigner, rLen=readLength)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(
@@ -354,8 +361,8 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
-                    bwapath=bwapath, barIndex=args.barcodeIndex,
-                    picardPath=picardPath)
+                    bwapath=bwapath,
+                    picardPath=picardPath, rLen=readLength)
             else:
                 procSortedBam = ps.pairedBamProc(
                     args.fq[0],
@@ -365,8 +372,7 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
-                    barIndex=args.barcodeIndex,
-                    picardPath=picardPath)
+                    picardPath=picardPath, rLen=readLength)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,
