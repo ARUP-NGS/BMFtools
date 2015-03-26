@@ -17,7 +17,7 @@ from MawCluster.FFPE import GetDeaminationFrequencies, FilterByDeaminationFreq
 
 
 @cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
-               addRG=cython.bint, mincov=cython.long)
+               addRG=cython.bint, mincov=cython.long, rLen=cython.long)
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bamPrefix="default", ref="default", aligner="default",
                   barIndex="default",
@@ -32,7 +32,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   SM="default", CN="default",
                   RG="default", ID="default",
                   realigner="gatk", gatkpath="default", dbsnp="default",
-                  rLen=-1):
+                  rLen=-1, intelDeflator="default"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
     Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
@@ -67,6 +67,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                               "or important for shades.")
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
+    if(rLen < 0):
+        pl("rLen < 0 in pairedBamproc. This typically means that this "
+           "is not set.")
     if(picardPath == "default"):
         pl("Warning: path to picard jar not set. This isn't required for much"
            ", but in case something dies later, this could be responsible",
@@ -82,7 +85,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                                 "realigner")
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
-                                          jar=abrapath, rLen=rLen)
+                                          jar=abrapath, rLen=rLen,
+                                          intelPath=intelDeflator)
     elif(realigner == "gatk"):
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,
@@ -205,7 +209,8 @@ def pairedVCFProc(consMergeSortBAM,
                                         commandStr=commandStr,
                                         reference_is_path=True,
                                         bed=bed, minFA=minFA,
-                                        minFracAgreed=minFracAgreed)
+                                        minFracAgreed=minFracAgreed,
+                                        experiment=exp)
         CleanedVCF = BCVCF.FilterVCFFileByBed(SNP_VCF, bed)
         if("ffpe" in exp.lower()):
             deaminationFrequency = np.mean(

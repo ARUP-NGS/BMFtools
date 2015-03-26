@@ -5,8 +5,13 @@ import subprocess
 import decimal
 from itertools import tee
 import operator
+from operator import methodcaller as mc
 
 import numpy as np
+from numpy import array as nparray
+from numpy import sum as nsum
+from numpy import mean as nmean
+from numpy import min as nmin
 import cython
 
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
@@ -178,7 +183,7 @@ class VCFRecord:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
         if(len(self.Samples) == 0):
-            recordStr = '\t'.join(np.array([self.CHROM,
+            recordStr = '\t'.join(nparray([self.CHROM,
                                    self.POS,
                                    self.ID,
                                    self.REF,
@@ -190,7 +195,7 @@ class VCFRecord:
                                    self.GENOTYPE]).astype(str))
         else:
             sampleStr = "\t".join(self.Samples)
-            recordStr = '\t'.join(np.array([self.CHROM,
+            recordStr = '\t'.join(nparray([self.CHROM,
                                    self.POS,
                                    self.ID,
                                    self.REF,
@@ -293,7 +298,7 @@ def ParseVCF(inputVCFName):
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    lst = [i.lower() for i in "bed,I16".split(',')]
+    lst = map(mc("lower"), "bed,I16".split(","))
     # print("lst = {}".format(lst))
     if(filterOpt.lower() not in lst):
         raise ValueError(("Filter option not supported. Available options: " +
@@ -324,16 +329,16 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
             raise ValueError("Minimum # dissenting reads must be set.")
         param = int(param)
         ConsensusIsRef = True
-        I16Array = np.array(inputVCFRec.InfoArrayDict['I16']).astype("int")
-        if(np.sum(I16Array[0:2]) < np.sum(I16Array[2:4])):
+        I16Array = nparray(inputVCFRec.InfoArrayDict['I16']).astype("int")
+        if(nsum(I16Array[0:2]) < nsum(I16Array[2:4])):
             ConsensusIsRef = False
         if(ConsensusIsRef):
-            if(np.sum(I16Array[2:4]) > param):
+            if(nsum(I16Array[2:4]) > param):
                 return True
             else:
                 return False
         else:
-            if(np.sum(I16Array[0:2]) > param):
+            if(nsum(I16Array[0:2]) > param):
                 return True
             else:
                 return False
@@ -394,11 +399,11 @@ def VCFStats(inVCF, TransCountsTable="default"):
     MeanAlleleFractionDict = {}
     MeanAlleleFractionPASSDict = {}
     for key in TransitionCountsDict.keys():
-        MeanAlleleFractionDict[key] = np.mean([float(rec.InfoDict['AF']) for
+        MeanAlleleFractionDict[key] = nmean([float(rec.InfoDict['AF']) for
                                                rec in TransitionDict[key] if
                                                float(
                                                    rec.InfoDict['AF']) < 0.1])
-        MeanAlleleFractionPASSDict[key] = np.mean(
+        MeanAlleleFractionPASSDict[key] = nmean(
             [float(rec.InfoDict['AF'])for rec in
              TransitionPASSDict[key] if float(rec.InfoDict['AF']) < 0.1])
     TransitionFractionForRefConsDict = {}

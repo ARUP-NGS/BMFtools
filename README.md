@@ -215,7 +215,9 @@ Most options are available for command-line as well. If an option is set in both
         1. Write database reading and processing.
     3. Info Fields
         1. Add INFO fields for the new NF/ND tags to the VCF header (added to the VCF already)
+        2. Add read length to the INFO field (both full read length and read length without Ns)
     4. For abra call, run abra.KmerSizeEvaluator
+    5. Figure out why the VCF being written is off by one. (It shouldn't be, as I'm telling it to increment from the pysam position - after lunch today, I'll look at that.)
 
 
 2. Indels:

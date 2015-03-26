@@ -155,6 +155,10 @@ def main(argv=None):
                         help="A comma-joined list of strings with extra infor"
                         "mation for informing analysis. Currently in beta sup"
                         "port: ffpe, amplicon.", default="default")
+    parser.add_argument(
+        "--intelDeflator",
+        help="Path to intel deflator. Speeds up abra calls.",
+        default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     if(args.indelRealigner.lower() not in ["abra", "gatk", "none"]):
@@ -263,9 +267,13 @@ def main(argv=None):
     homing = args.homing
     readLength = -1
     if("readLength" in cdk):
-        readLength = int(readLength)
+        readLength = int(confDict["readLength"])
     if(args.readLength > 0):
         readLength = args.readLength
+    pl("readLength: %s" % readLength)
+    if(readLength < 0):
+        pl("FYI: readLength < 0. This usually means that readLength "
+           "was not set.")
     if("ref" in cdk):
         ref = confDict['ref']
     else:
@@ -301,6 +309,10 @@ def main(argv=None):
         p5Seq = args.p5Seq
     if("bwapath" in cdk):
         bwapath = confDict["bwapath"]
+    if('intelDeflator' in cdk):
+        intelDeflator = confDict['intelDeflator']
+    if(args.intelDeflator != "default"):
+        intelDeflator = args.intelDeflator
     if(single_end):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "

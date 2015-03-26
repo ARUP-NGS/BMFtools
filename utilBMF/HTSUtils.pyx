@@ -15,6 +15,13 @@ import operator
 import pysam
 import numpy as np
 cimport numpy as np
+from numpy import mean as nmean
+from numpy import less as nless
+from numpy import concatenate as nconcatenate
+from numpy import std as nstd
+from numpy import max as nmax
+from numpy import min as nmin
+from numpy import any as npany
 from Bio.Seq import Seq
 import cython
 import numconv
@@ -934,8 +941,8 @@ def ReadPairPassesMinQ(Pair, minMQ=0, minBQ=0):
     assert isinstance(Pair, ReadPair)
     if(Pair.read1.mapq < minMQ or Pair.read2.mapq < minMQ):
         return False
-    if(np.any(np.less(Pair.read1.query_qualities, minBQ)) or
-       np.any(np.less(Pair.read2.query_qualities, minBQ))):
+    if(npany(nless(Pair.read1.query_qualities, minBQ)) or
+       npany(nless(Pair.read2.query_qualities, minBQ))):
         return False
     else:
         return True
@@ -1175,7 +1182,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
                                                           - interval[1]))
             continue
         IntervalList.append(interval)
-        MeanCovList.append(np.mean([CounterObj[key] for key in posList if
+        MeanCovList.append(nmean([CounterObj[key] for key in posList if
                                     len(posList) >= minPileupLen]))
     # Now merge, in case some are entirely adjacent
     if(len(IntervalList) == 0):
@@ -1384,7 +1391,7 @@ def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                    window=20):
     cdef np.ndarray[dtype128_t, ndim = 1] GAFreqNP = f1
     cdef np.ndarray[dtype128_t, ndim = 1] CTFreqNP = f2
-    cdef np.ndarray[dtype128_t, ndim = 1] FreqArray = np.concatenate(GAFreqNP,
+    cdef np.ndarray[dtype128_t, ndim = 1] FreqArray = nconcatenate(GAFreqNP,
                                                                   CTFreqNP)
     ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
@@ -1399,7 +1406,7 @@ def PlotNormalFit(array, outfile="default", maxFreq=0.2):
     import matplotlib.pyplot as plt
     import matplotlib.mlab as mlab
     array = array.reshape(-1, 1)
-    mu, sigma = np.mean(array), np.std(array)
+    mu, sigma = nmean(array), nstd(array)
     n, bins, patches = plt.hist(array, 50, normed=1, facecolor='green',
                                 alpha=0.75)
     y = mlab.normpdf( bins, mu, sigma)
@@ -1407,7 +1414,7 @@ def PlotNormalFit(array, outfile="default", maxFreq=0.2):
     plt.xlabel('A->C/G->/T frequency')
     plt.ylabel('Proportion of sites')
     plt.title(r'$\mathrm{Histogram\ of\ deamination substitutions:}\ \mu=%s,\ \sigma=%s$' %(mu, sigma))
-    plt.axis([np.min(array), np.max(array), 0., np.max(n)])
+    plt.axis([nmin(array), nmax(array), 0., nmax(n)])
     plt.grid(True)
     plt.savefig(outfile + ".png")
     return outfile

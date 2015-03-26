@@ -8,9 +8,16 @@ import logging
 import re
 import operator
 from operator import attrgetter as oag
+from operator import itemgetter as oig
+from itertools import ifilterfalse as iff
 from collections import Counter
 
 import numpy as np
+from numpy import mean as nmean
+from numpy import std as nstd
+from numpy import max as nmax
+from numpy import sum as nsum
+from numpy import array as nparray
 import pysam
 import cython
 
@@ -90,12 +97,12 @@ class PRInfo:
         self.is_proper_pair = PileupRead.alignment.is_proper_pair
         self.read = PileupRead.alignment
         self.ssString = "#".join(
-            np.array(sorted(
+            nparray(sorted(
                 [self.read.reference_start,
                  self.read.reference_end])).astype(str))
         self.query_position = PileupRead.query_position
         if("FA" in dict(PileupRead.alignment.tags).keys()):
-            self.FA_Array = np.array(
+            self.FA_Array = nparray(
                 PileupRead.alignment.opt("FA").split(",")).astype(int)
             self.FA = self.FA_Array[self.query_position]
             self.FractionAgreed = operator.div(self.FA, float(self.FM))
@@ -107,12 +114,12 @@ class PRInfo:
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
-        if("PV" in map(operator.itemgetter(0), PileupRead.alignment.tags)):
+        if("PV" in map(oig(0), PileupRead.alignment.tags)):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = PileupRead.alignment.opt("PV")
             try:
-                self.PV_Array = np.array(PVString.split(','),
+                self.PV_Array = nparray(PVString.split(','),
                                          dtype=np.int64)
             except ValueError:
                 print("PVString = %s" % PVString)
@@ -121,14 +128,14 @@ class PRInfo:
             self.PV = self.PV_Array[self.query_position]
             try:
                 self.PVFrac = operator.div(float(self.PV),
-                                           np.max(self.PV_Array))
+                                           nmax(self.PV_Array))
             except ZeroDivisionError:
                 pl("ZeroDivision error in PRInfo."
                    "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
                 self.PVFrac = -1.
-        if("ND" in map(operator.itemgetter(0), PileupRead.alignment.tags)):
+        if("ND" in map(oig(0), PileupRead.alignment.tags)):
             self.ND = PileupRead.alignment.opt("ND")
-        if("NF" in map(operator.itemgetter(0), PileupRead.alignment.tags)):
+        if("NF" in map(oig(0), PileupRead.alignment.tags)):
             self.NF = PileupRead.alignment.opt("NF")
 
 
@@ -217,9 +224,9 @@ class AlleleAggregateInfo:
             self.TND = -1
             NFList = []
         try:
-            self.MNF = np.mean(NFList)
-            self.maxND = np.max(NFList)
-            self.NFSD = np.std(NFList)
+            self.MNF = nmean(NFList)
+            self.maxND = nmax(NFList)
+            self.NFSD = nstd(NFList)
         except ValueError:
             #  This list must have length zero...
             self.MNF = 0.
@@ -232,14 +239,13 @@ class AlleleAggregateInfo:
             # print("recList repr: {}".format(repr(recList)))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
-        self.TotalReads = np.sum(map(oag("FM"), recList))
+        self.TotalReads = nsum(map(oag("FM"), recList))
         self.MergedReads = lenR
-        self.ReverseMergedReads = np.sum(map(
+        self.ReverseMergedReads = nsum(map(
             oag("is_reverse"), recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = np.sum(map(
-            oag("FM"),
-            [rec for rec in recList if rec.is_reverse]))
+        self.ReverseTotalReads = nsum(map(
+            oag("FM"), filter(oag("is_reverse"), recList)))
         self.ForwardTotalReads = operator.sub(self.TotalReads,
                                               self.ReverseTotalReads)
         try:
@@ -267,11 +273,11 @@ class AlleleAggregateInfo:
                 float(self.ReverseMergedReads), self.MergedReads)
         except ZeroDivisionError:
             self.reverseStrandFraction = -1
-        self.MFractionAgreed = np.mean(map(
+        self.MFractionAgreed = nmean(map(
             oag("FractionAgreed"),  recList))
         self.minFrac = minFracAgreed
         self.minFA = minFA
-        self.MFA = np.mean(map(oag("FA"), recList))
+        self.MFA = nmean(map(oag("FA"), recList))
         self.FSR = FSR
 
         # Dealing with transitions (e.g., A-T) and their strandedness
@@ -314,21 +320,21 @@ class AlleleAggregateInfo:
         # Check to see if a read pair supports a variant with both ends
         ReadNameCounter = Counter(map(
             oag("query_name"),
-            map(oag("read", recList))))
+            map(oag("read"), recList)))
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
-        query_positions = np.array(map(
+        query_positions = nparray(map(
             oag("query_position"), recList)).astype(float)
-        self.MBP = np.mean(query_positions)
-        self.BPSD = np.std(query_positions)
+        self.MBP = nmean(query_positions)
+        self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
         PVFArray = [i.PVFrac for i in self.recList if i.PVFrac is not None]
         if(len(PVFArray) == 0):
             self.MPF = -1.
             self.PFSD = -1.
         else:
-            self.MPF = np.mean(PVFArray)
-            self.PFSD = np.std(PVFArray)
+            self.MPF = nmean(PVFArray)
+            self.PFSD = nstd(PVFArray)
 
 
 class PCInfo:
@@ -347,13 +353,21 @@ class PCInfo:
     """
 
     @cython.locals(reverseStrandFraction=cython.float,
-                   BothStrandAlignment=cython.bint)
+                   BothStrandAlignment=cython.bint,
+                   primerLen=cython.long)
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
                  exclusionSVTags="MDC,LI,ORB",
-                 FracAlignFilter=False):
+                 FracAlignFilter=False, primerLen=20,
+                 experiment=""):
         assert isinstance(PileupColumn, pPileupColumn)
+        if("amplicon" in experiment):
+            self.ampliconFailed = sum([r for r in PileupColumn.pileups
+                                       if r.query_position <= primerLen])
+            PileupColumn.pileups = [r for r in PileupColumn.pileups
+                                    if r.query_position > primerLen]
+        self.experiment = experiment
         self.minMQ = int(minMQ)
         #  pl("minMQ: %s" % minMQ)
         self.minBQ = int(minBQ)
@@ -405,14 +419,14 @@ class PCInfo:
         else:
             self.BothStrandAlignment = False
         try:
-            self.reverseStrandFraction = operator.div(len(
-                [i for i in self.Records if i.read.is_reverse is
-                 True]), float(lenR))
+            self.reverseStrandFraction = sum(map(
+                oag("is_reverse"), map(oag("read"),
+                                       self.Records))) / float(lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
         try:
-            self.TotalReads = sum(oag("FM", self.Records))
+            self.TotalReads = sum(map(oag("FM"), self.Records))
         except KeyError:
             self.TotalReads = self.MergedReads
         try:
@@ -429,8 +443,8 @@ class PCInfo:
                 rec for rec in self.Records if rec.BaseCall == alt]
         query_positions = map(oag("query_position"),
                               self.Records)
-        self.AAMBP = np.mean(query_positions)
-        self.AABPSD = np.std(query_positions)
+        self.AAMBP = nmean(query_positions)
+        self.AABPSD = nstd(query_positions)
 
         self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],
@@ -1184,7 +1198,7 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
         MeanFamSize = operator.div(TotalReads, MergedReads)
         outHandle.write(
             "\t".join(
-                  np.array([line[0],
+                  nparray([line[0],
                   line[1],
                   line[2],
                   MergedReads, TotalReads, MergeDOC,

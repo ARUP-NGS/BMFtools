@@ -15,6 +15,7 @@ from Bio.Seq import Seq
 import pysam
 import numpy as np
 cimport numpy as np
+from numpy import argmax as nargmax
 import cython
 cimport cython
 
@@ -353,9 +354,9 @@ class TranslocationVCFLine:
                                segment in segmentsInBed]
         if(len(segmentsInBed) == 0):
             self.VCFRecSegment = PutativeXLocObj.segments[
-                np.argmax(segmentLengths)]
+                nargmax(segmentLengths)]
         else:
-            self.VCFRecSegment = segmentsInBed[np.argmax(segmentLengthsInBed)]
+            self.VCFRecSegment = segmentsInBed[nargmax(segmentLengthsInBed)]
         self.partnerSegments = [segment for segment in
                                 PutativeXLocObj.segments if
                                 segment != self.VCFRecSegment]

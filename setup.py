@@ -8,7 +8,7 @@ import sys
 
 #BMFTools tries to install two binaries into your bin folder.
 #If you want to change it, copy 
-installDir = "/usr/local/bin"
+installDir = "/mounts/bin"
 
 # Find the ideal -march argument for the system.
 try:
@@ -37,10 +37,10 @@ compilerList = ["-flto", marchFlag, "-pipe", "-msse2",
                 "-floop-unroll-and-jam",
                 "--mfpmath=sse", "-fomit-frame-pointer"]
 """
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse",
-                "-funroll-loops", "-floop-unroll-and-jam",
-                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
-# compilerList = ["-O3", "-pipe", marchFlag]
+#compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse",
+#                "-funroll-loops", "-floop-unroll-and-jam",
+#                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
+compilerList = ["-O3", "-pipe", marchFlag]
 
 
 try:

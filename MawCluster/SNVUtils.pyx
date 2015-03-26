@@ -1,11 +1,13 @@
 from collections import defaultdict
 import operator
+from operator import methodcaller as mc
 
 import pysam
 import cython
 cimport cython
 import numpy as np
 cimport numpy as np
+from numpy import array as nparray
 from math import log10 as mlog10
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
@@ -66,7 +68,7 @@ class SNVCFLine:
                  requireDuplex=True, minDuplexPairs=2,
                  minFracAgreedForFilter=0.666,
                  minFA=0, BothStrandAlignment=-1,
-                 pValBinom=0.05):
+                 pValBinom=0.05, ampliconFailed=-1):
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
@@ -182,6 +184,8 @@ class SNVCFLine:
         if(self.reverseStrandFraction >= 0):
             self.InfoFields["AARSF"] = self.reverseStrandFraction
             # All Alleles Reverse Read Fraction
+        if(ampliconFailed >= 0):
+            self.InfoFields["NAF"] = ampliconFailed
         self.InfoFields["RSF"] = AlleleAggregateObject.reverseStrandFraction
         if("AABPSD" in dir(AlleleAggregateObject)):
             self.InfoFields["AABPSD"] = AlleleAggregateObject.AABPSD
@@ -198,7 +202,7 @@ class SNVCFLine:
             "\t" + ":".join(str(
                 self.FormatFields[key]) for key in sorted(
                     self.FormatFields.keys())))
-        self.str = "\t".join(np.array([self.CHROM,
+        self.str = "\t".join(nparray([self.CHROM,
                                        self.POS,
                                        self.ID,
                                        self.CONS,
@@ -222,7 +226,7 @@ class SNVCFLine:
 
     def ToString(self):
         self.update()
-        self.str = "\t".join(np.array([self.CHROM,
+        self.str = "\t".join(nparray([self.CHROM,
                                        self.POS,
                                        self.ID,
                                        self.REF,
@@ -248,12 +252,14 @@ class VCFPos:
                  requireDuplex=True,
                  minDuplexPairs=2,
                  reverseStrandFraction="default",
-                 minFracAgreed=0.0, minFA=0):
+                 minFracAgreed=0.0, minFA=0, experiment=""):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
         if(reference == "default"):
             HTSUtils.FacePalm("VCFPos requires a reference fasta.")
+        if("amplicon" in PCInfoObject.experiment):
+            ampliconFailed = PCInfoObject.ampliconFailed
         # Because bamtools is 0-based but vcfs are 1-based
         self.pos = PCInfoObject.pos + 1
         self.minMQ = PCInfoObject.minMQ
@@ -297,16 +303,8 @@ class VCFPos:
         self.minDuplexPairs = minDuplexPairs
 
     def ToString(self):
-        [line.update() for line in self.VCFLines]
-        if(self.keepConsensus):
-            self.str = "\n".join([line.ToString()
-                                  for line in
-                                  self.VCFLines])
-        else:
-            self.str = "\n".join([line.ToString()
-                                  for line in
-                                  self.VCFLines
-                                  if line.FILTER != "CONSENSUS"])
+        map(mc("update"), self.VCFLines)
+        self.str = "\n".join(map(mc("ToString"), self.VCFLines))
         return self.str
 
 
@@ -846,6 +844,10 @@ HeaderInfoDict["BNP"] = HeaderInfoLine(
     ID="BNP", Description="Phred-encoded confidence chosen for calculating "
     "MAXAAF and MINAAF",
     Number=1, Type="Float")
+HeaderInfoDict["NAF"] = HeaderInfoLine(
+    ID="NAF", Description="Number of amplicon-specific failed reads for "
+    "pileup in case of mispriming. ",
+    Number=1, Type="Integer")
 
 
 """

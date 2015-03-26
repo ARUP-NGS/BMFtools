@@ -46,7 +46,8 @@ def SNVCrawler(inBAM,
                INFOTags="default",
                FORMATTags="default",
                writeHeader=True,
-               minFracAgreed=0.0, minFA=2):
+               minFracAgreed=0.0, minFA=2,
+               experiment=""):
     pl("Command to reproduce function call: "
        "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
@@ -106,7 +107,8 @@ def SNVCrawler(inBAM,
                        level=logging.DEBUG)
                     continue
                 '''
-                PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
+                PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
+                            experiment=experiment)
                 #  pl("Position for pileup (0-based): {}".format(PC.pos),
                 #     level=logging.DEBUG)
                 if(line[2] <= PC.pos):
@@ -125,7 +127,8 @@ def SNVCrawler(inBAM,
                 # Last command - 0 means iterator was where it crashed.
                 PCpysam = pPileupColumn(puIterator.next())
                 # Last command - 0 means the PCInfo call was where it crashed
-                PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ)
+                PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ,
+                            experiment=experiment)
             except ValueError:
                 raise ThisIsMadness("Trying to figure out what's going on in "
                                     "pysam's iterations.")

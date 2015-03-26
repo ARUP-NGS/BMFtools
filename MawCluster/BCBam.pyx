@@ -8,6 +8,8 @@ import shutil
 import logging
 from collections import Counter
 import numpy as np
+from numpy import array as nparray
+from numpy import sum as nsum
 import copy
 from os import path
 import operator
@@ -19,7 +21,7 @@ import pysam
 import cython
 cimport cython
 
-from MawCluster.BCFastq import letterNumDict
+from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
@@ -33,7 +35,7 @@ def AbraCadabra(inBAM, outBAM="default",
                 jar="default", memStr="default", ref="default",
                 threads="4", bed="default", working="default",
                 log="default", fixMate=True, tempPrefix="tmpPref",
-                rLen=-1):
+                rLen=-1, intelPath="default"):
     """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
@@ -101,7 +103,8 @@ def AbraCadabra(inBAM, outBAM="default",
         tempFilename = tempPrefix + str(
             uuid.uuid4().get_hex()[0:8]) + ".working.tmp"
         nameSorted = HTSUtils.NameSort(outBAM)
-        commandStrFM = "samtools fixmate %s %s" % (nameSorted, tempFilename)
+        commandStrFM = "samtools fixmate %s %s -O bam" % (nameSorted,
+                                                          tempFilename)
         subprocess.check_call(shlex.split(commandStrFM))
         subprocess.check_call(["rm", "-rf", nameSorted])
         subprocess.check_call(["mv", tempFilename, outBAM])
@@ -121,9 +124,10 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
         raise ThisIsMadness("Read length required for running KmerSizeCalculator.")
     if(outbed == "default"):
         outbed = ".".join(inbed.split(".")[0:-1] + ["abra", "kmer"])
-    commandStr = ("java -jar %s abra.KmerSizeEvaluator %s " (abra, rLen) +
-                  "%s %s %s" % outbed, nt, inbed)
-    subprocess.check_call(commandStr)
+    commandStr = ("java -cp %s abra.KmerSizeEvaluator " % abra +
+                  "%s %s %s %s %s" % (rLen, ref, outbed, nt, inbed) )
+    pl("AbraKmerSizeEvaluator call string: %s" % commandStr)
+    subprocess.check_call(shlex.split(commandStr))
     return outbed
 
 
@@ -260,8 +264,8 @@ def pairedBarcodeTagging(
         elif(entry.is_read2):
             read2bam = entry
             read2fq = read2Handle.next()
-        descDict1 = BCFastq.GetDescriptionTagDict(read1fq.description)
-        descDict2 = BCFastq.GetDescriptionTagDict(read2fq.description)
+        descDict1 = getdesc(read1fq.description)
+        descDict2 = getdesc(read2fq.description)
         FM = int(descDict1["FM"])
         try:
             ND1 = int(descDict1["ND"])
@@ -323,25 +327,25 @@ def compareRecs(RecordList):
     seqArray = np.vstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = np.array(map(operator.attrgetter("query_qualities"),
+    quals = nparray(map(operator.attrgetter("query_qualities"),
                          RecordList))
     qualA = copy.copy(quals)
     qualC = copy.copy(quals)
     qualG = copy.copy(quals)
     qualT = copy.copy(quals)
     qualA[seqArray != "A"] = 0
-    qualASum = np.sum(qualA, 0)
+    qualASum = nsum(qualA, 0)
     qualC[seqArray != "C"] = 0
-    qualCSum = np.sum(qualC, 0)
+    qualCSum = nsum(qualC, 0)
     qualG[seqArray != "G"] = 0
-    qualGSum = np.sum(qualG, 0)
+    qualGSum = nsum(qualG, 0)
     qualT[seqArray != "T"] = 0
-    qualTSum = np.sum(qualT, 0)
+    qualTSum = nsum(qualT, 0)
     qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
     newSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
-                             np.sum(qualAllSum, 0))
+                             nsum(qualAllSum, 0))
     phredQuals[phredQuals < 0] = 0
     outRec = RecordList[0]
     outRec.seq = newSeq
@@ -606,7 +610,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
                 tempRead = reads.next()
             except StopIteration:
                 break
-        descDict = BCFastq.GetDescriptionTagDict(tempRead.description)
+        descDict = getdesc(tempRead.description)
         for key in descDict.keys():
             entry.setTag(key, descDict[key])
         if("Pass" not in descDict["FP"]):

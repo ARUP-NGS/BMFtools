@@ -3,12 +3,14 @@
 
 
 import pysam
+import cython
 
 """
 Contains utilities for working with indels for HTS data.
 """
 
-def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="default"):
+def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="default",
+                           minFamSize=3):
     """
     Writes reads potentially relevant to an indel to indelOutputBAM and
     other reads to the otherOutputBAM.
@@ -16,12 +18,12 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
     idIrl stands for indel irrelevant.
     """
     if(indelOutputBAM == "default"):
-        indelOutputBAM = ".".join([inBAM.split(".") + ["idRel", "bam"]])
+        indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["idRel", "bam"])
     if(otherOutputBAM == "default"):
-        otherOutputBAM = ".".join([inBAM.split(".") + ["idIrl", "bam"]])
+        otherOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["idIrl", "bam"])
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    indelHandle = pysam.AlignmentFile(indelOutputBAM, "wb")
-    otherHandle = pysam.AlignmentFile(otherOutputBAM, "wb")
+    indelHandle = pysam.AlignmentFile(indelOutputBAM, "wb", template=inHandle)
+    otherHandle = pysam.AlignmentFile(otherOutputBAM, "wb", template=inHandle)
     for entry in inHandle:
         if entry.is_read1:
             read1 = entry
@@ -29,7 +31,8 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
         else:
             read2 = entry
         assert read1.query_name == read2.query_name
-        if(IsIndelRelevant(read1) or IsIndelRelevant(read2)):
+        if(IsIndelRelevant(read1, minFam=minFamSize) or
+           IsIndelRelevant(read2, minFam=minFamSize)):
             indelHandle.write(read1)
             indelHandle.write(read2)
         else:
@@ -41,16 +44,25 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
     return indelOutputBAM, otherOutputBAM
 
 
-def IsIndelRelevant(read):
+@cython.locals(keepSoft=cython.bint, keepUnmapped=cython.bint,
+               minFam=cython.long)
+def IsIndelRelevant(read, minFam=1, keepSoft=False,
+                    keepUnmapped=False):
     """
     True if considered relevant to indels.
     False otherwise.
     """
+    if(minFam != 1):
+        if(read.opt("FM") < minFam):
+            return False
     if(read.cigarstring is None):
         # This read is simply unmapped. Let's give it a chance!
+        if(keepUnmapped):
+            return True
+        return False
+    if("I" in read.cigarstring or "D" in read.cigarstring):
         return True
-    if("I" in read.cigarstring or "D" in read.cigarstring
-       or "S" in read.cigarstring):
+    if(keepSoft is True and "S" in read.cigarstring):
         return True
     try:
         if(read.opt("SV") != "NF"):
