@@ -7,6 +7,7 @@ import shlex
 import logging
 import re
 import operator
+from operator import attrgetter as oag
 from collections import Counter
 
 import numpy as np
@@ -42,7 +43,7 @@ class pPileupColumn:
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
-        self.pileups = [pPileupRead(i) for i in PileupColumn.pileups]
+        self.pileups = map(pPileupRead, PileupColumn.pileups)
 
 
 """
@@ -210,8 +211,8 @@ class AlleleAggregateInfo:
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
-            self.TND = sum(map(operator.attrgetter("ND"), self.recList))
-            NFList = map(operator.attrgetter("NF"), self.recList)
+            self.TND = sum(map(oag("ND"), self.recList))
+            NFList = map(oag("NF"), self.recList)
         else:
             self.TND = -1
             NFList = []
@@ -231,13 +232,13 @@ class AlleleAggregateInfo:
             # print("recList repr: {}".format(repr(recList)))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
-        self.TotalReads = np.sum(map(operator.attrgetter("FM"), recList))
+        self.TotalReads = np.sum(map(oag("FM"), recList))
         self.MergedReads = lenR
         self.ReverseMergedReads = np.sum(map(
-            operator.attrgetter("is_reverse"), recList))
+            oag("is_reverse"), recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
         self.ReverseTotalReads = np.sum(map(
-            operator.attrgetter("FM"),
+            oag("FM"),
             [rec for rec in recList if rec.is_reverse]))
         self.ForwardTotalReads = operator.sub(self.TotalReads,
                                               self.ReverseTotalReads)
@@ -247,8 +248,8 @@ class AlleleAggregateInfo:
         except ZeroDivisionError:
             self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        self.SumBQScore = sum(map(operator.attrgetter("BQ"), recList))
-        self.SumMQScore = sum(map(operator.attrgetter("MQ"), recList))
+        self.SumBQScore = sum(map(oag("BQ"), recList))
+        self.SumMQScore = sum(map(oag("MQ"), recList))
         try:
             self.AveMQ = operator.div(float(self.SumMQScore), lenR)
         except ZeroDivisionError:
@@ -267,10 +268,10 @@ class AlleleAggregateInfo:
         except ZeroDivisionError:
             self.reverseStrandFraction = -1
         self.MFractionAgreed = np.mean(map(
-            operator.attrgetter("FractionAgreed"),  recList))
+            oag("FractionAgreed"),  recList))
         self.minFrac = minFracAgreed
         self.minFA = minFA
-        self.MFA = np.mean(map(operator.attrgetter("FA"), recList))
+        self.MFA = np.mean(map(oag("FA"), recList))
         self.FSR = FSR
 
         # Dealing with transitions (e.g., A-T) and their strandedness
@@ -286,8 +287,8 @@ class AlleleAggregateInfo:
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
-        self.StrandCountsDict["reverse"] = sum([
-            rec.is_reverse for rec in self.recList])
+        self.StrandCountsDict["reverse"] = sum(map(
+            oag("is_reverse"), self.recList))
         self.StrandCountsDict["forward"] = sum([
             rec.is_reverse is False for rec in self.recList])
         self.StrandCountsTotalDict = {}
@@ -311,12 +312,13 @@ class AlleleAggregateInfo:
             self.AAMBP = AAMBP
 
         # Check to see if a read pair supports a variant with both ends
-        ReadNameCounter = Counter(map(operator.attrgetter("query_name"),
-                                      [r.read for r in recList]))
+        ReadNameCounter = Counter(map(
+            oag("query_name"),
+            map(oag("read", recList))))
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
         query_positions = np.array(map(
-            operator.attrgetter("query_position"), recList)).astype(float)
+            oag("query_position"), recList)).astype(float)
         self.MBP = np.mean(query_positions)
         self.BPSD = np.std(query_positions)
         self.minPVFrac = minPVFrac
@@ -395,9 +397,9 @@ class PCInfo:
             if(pileupRead.alignment.mapq >= self.minMQ) and
             (pileupRead.alignment.query_qualities[
                 pileupRead.query_position] >= self.minBQ)]
-        self.Records = filter(operator.attrgetter("Pass"), self.Records)
+        self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
-        rsn = sum(map(operator.attrgetter("is_reverse"), self.Records))
+        rsn = sum(map(oag("is_reverse"), self.Records))
         if(rsn != lenR and rsn != 0):
             self.BothStrandAlignment = True
         else:
@@ -410,23 +412,22 @@ class PCInfo:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
         try:
-            self.TotalReads = sum([rec.FM for rec in self.Records])
+            self.TotalReads = sum(oag("FM", self.Records))
         except KeyError:
             self.TotalReads = self.MergedReads
         try:
             self.consensus = Counter(
-                [rec.BaseCall for rec in self.Records]).most_common(1)[0][0]
+                map(oag("BaseCall"), self.Records)).most_common(1)[0][0]
         except IndexError:
-            self.consensus = Counter([rec.BaseCall
-                                      for rec in
-                                      [PRInfo(pileupRead) for pileupRead in
-                                       PileupColumn.pileups]]).most_common(
-                1)[0][0]
+            self.consensus = Counter(map(
+                oag("BaseCall"),
+                map(PRInfo,
+                    PileupColumn.pileups))).most_common(1)[0][0]
         self.VariantDict = {}
-        for alt in list(set([rec.BaseCall for rec in self.Records])):
+        for alt in list(set(map(oag("BaseCall"), self.Records))):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
-        query_positions = map(operator.attrgetter("query_position"),
+        query_positions = map(oag("query_position"),
                               self.Records)
         self.AAMBP = np.mean(query_positions)
         self.AABPSD = np.std(query_positions)
@@ -448,7 +449,7 @@ class PCInfo:
                               minPVFrac=minPVFrac, FSR=self.FailedSVReads)
                               for key in self.VariantDict.keys()]
         self.AltAlleleData = [i for i in self.AltAlleleData if
-                              operator.attrgetter("len")(i) != 0]
+                              oag("len")(i) != 0]
         self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.TotalFracDict[

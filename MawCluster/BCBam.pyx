@@ -81,7 +81,7 @@ def AbraCadabra(inBAM, outBAM="default",
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    bed = AbraKmerBedfile(inbed, readLength=readLength, ref=ref, abra=jar,
+    bed = AbraKmerBedfile(bed, ref=ref, abra=jar,
                           rLen=rLen)
     if(path.isfile(inBAM + ".bai") is False):
         pl("No bam index found for input bam - attempting to create.")

@@ -204,15 +204,11 @@ class VCFRecord:
         self.str = recordStr.strip()
 
     def update(self):
-        self.InfoKeys = self.InfoDict.keys()
-        self.InfoValues = self.InfoDict.values()
-        self.InfoValues = [','.join(
-            InfoValArray) for InfoValArray in self.InfoValArrays]
+        self.InfoKeys = sorted(self.InfoDict.keys())
+        self.InfoValues = [self.InfoDict[key] for key in self.InfoKeys]
         infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
                           InfoValue in zip(self.InfoKeys, self.InfoValues)]
         self.INFO = ';'.join(infoEntryArray + self.InfoUnpaired)
-        self.InfoKeys = [entry.split('=')[0] for entry in self.INFO.split(';')
-                         if len(entry.split("=")) >= 2]
         tempValArrays = [entry.split(',') for entry in self.InfoValues]
         self.InfoValArrays = [
             [entry for entry in array] for array in tempValArrays]
@@ -226,8 +222,8 @@ class VCFRecord:
                     self.InfoArrayDict['I16'] = [
                         int(decimal.Decimal(
                             i)) for i in self.InfoArrayDict['I16']]
-        self.GenotypeKeys = self.GenotypeDict.keys()
-        self.GenotypeValues = self.GenotypeDict.values()
+        self.GenotypeKeys = sorted(self.GenotypeDict.keys())
+        self.GenotypeValues = [self.GenotypeDict[key] for key in self.GenotypeKeys]
         self.FORMAT = ":".join(self.GenotypeKeys)
         self.GENOTYPE = ":".join(self.GenotypeValues)
         if(len(self.Samples) == 0):

@@ -10,7 +10,7 @@ from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
 from MawCluster.TLC import BMFXLC as CallIntraTrans
-from MawCluster.FFPE import TrainAndFilter
+from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 #  from pudb import set_trace
 
 """
@@ -223,6 +223,9 @@ def main():
         "--pVal", help="P value for confidence interval. Default: 0.05",
         default=0.05, type=float)
     FFPEParser.add_argument(
+        "--ctfreq", help="Estimated deamination frequency for the sample.",
+        type=float, default=-1.)
+    FFPEParser.add_argument(
         "--maxFreq", help="Maximum frequency for a C-[TU]/G-A event to be as"
         "sumed to be deamination due to formalin fixation.", default=0.1,
         type=float)
@@ -297,8 +300,12 @@ def main():
         Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
                                    outVCF=args.outVCF)
     if(args.bmfsuites == "ffpe"):
-        Output = TrainAndFilter(args.inVCF, maxFreq=args.maxFreq,
-                                pVal=args.pVal)
+        if(args.ctfreq < 0):
+            Output = TrainAndFilter(args.inVCF, maxFreq=args.maxFreq,
+                                    pVal=args.pVal)
+        else:
+            Output = FilterByDeaminationFreq(args.inVCF, pVal=args.pVal,
+                                             ctfreq=args.ctfreq)
     return 0
 
 

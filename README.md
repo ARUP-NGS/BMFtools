@@ -208,6 +208,7 @@ Most options are available for command-line as well. If an option is set in both
         6. Mean # Reads Per Family.
     0. Filters and Preprocessing/Postprocessing
         1. FracAlignFilter? Minimum # of bases aligned (len - S - D - I) ?
+        2. Double-check that the FFPE FILTER field is being appropriately added...
     1. SNV confidence model
         3. VQS model (start, paper and pencil?)
     1. Error Characterization Code

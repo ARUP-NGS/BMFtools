@@ -86,7 +86,9 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
 
 
 @cython.locals(maxFreq=dtype128_t)
-def GetDeaminationFrequencies(inVCF, maxFreq=0.1, FILTER=""):
+@cython.returns(dtype128_t)
+def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
+                              minGCcount=50):
 
     """
     Returns a list of raw base frequencies for G->A and C->T.
@@ -98,6 +100,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.1, FILTER=""):
     cdef cython.long TotalCG_TA
     cdef cython.long DP
     cdef cython.long GC
+    cdef dtype128_t freq
     validFilters = map(mc("lower"), HeaderFilterDict.keys())
     FILTER = FILTER.lower()
     filters = FILTER.split(",")
@@ -118,24 +121,38 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.1, FILTER=""):
                     pl("Failing line for filter %s" % filter,
                        level=logging.DEBUG)
                     continue
-        cons = line.InfoDict["CONS"]
-        if(cons == "C"):
-            GC = int(line.InfoDict["MACS"].split(",")[1].split(">")[1])
-            TA = int(line.InfoDict["MACS"].split(",")[2].split(">")[1])
+        lid = line.InfoDict
+        cons = lid["CONS"]
+        MACSStr = lid["MACS"]
+        macsDict = dict(map(operator.methodcaller(
+            "split", ">"), MACSStr.split(",")))
+        if(cons == "C" and line.REF == "C"):
+            if(GC < minGCcount):
+                continue
+            GC = int(macsDict["C"])
+            TA = int(macsDict["T"])
             if(GC == 0):
                 continue
             if(TA * 1.0 / GC <= maxFreq):
                 TotalCG_TA += TA
                 TotalCG += GC
-        elif(cons == "G"):
-            GC = int(line.InfoDict["MACS"].split(",")[3].split(">")[1])
-            TA = int(line.InfoDict["MACS"].split(",")[0].split(">")[1])
+        elif(cons == "G" or line.REF == "G"):
+            GC = int(macsDict["G"])
+            if(GC < minGCcount):
+                continue
+            TA = int(macsDict["A"])
             if(GC == 0):
                 continue
             if(TA * 1.0 / GC <= maxFreq):
                 TotalCG_TA += TA
                 TotalCG += GC
-    return 1. * TotalCG_TA / TotalCG
+    freq = 1. * TotalCG_TA / TotalCG
+    pl("TotalCG_TA: %s. TotalCG: %s." % (TotalCG_TA, TotalCG))
+    pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be %s" % (GetCeiling(
+        100, p=freq, pVal=0.001) / 100.))
+    pl("Whereas, a 0.001 pValue ceiling at 1000 DOC would be %s" % (GetCeiling(
+        1000, p=freq, pVal=0.001) / 1000.))
+    return freq
 
 
 
@@ -145,11 +162,9 @@ def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
     """
     Calls both GetDeaminationFrequencies and FilterByDeaminationFreq.
     """
-    cdef np.ndarray[dtype128_t, ndim = 1] DeamFreqs
     cdef dtype128_t DeamFreq
-    DeamFreqs = GetDeaminationFrequencies(inVCF, maxFreq=maxFreq,
+    DeamFreq = GetDeaminationFrequencies(inVCF, maxFreq=maxFreq,
                                          FILTER=FILTER)
-    DeamFreq = np.mean(DeamFreqs, dtype=np.longdouble)
     pl("Estimated deamination frequency: %s" % DeamFreq)
     OutVCF = FilterByDeaminationFreq(inVCF, pVal=pVal,
                                      ctfreq=DeamFreq)

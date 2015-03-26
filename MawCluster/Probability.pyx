@@ -17,8 +17,10 @@ import numpy as np
 cimport numpy as np
 from scipy.stats import binom
 from scipy.misc import comb
+from statsmodels.stats import proportion
+pconfint = proportion.proportion_confint
 
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl, ThisIsMadness, FacePalm
 
 ctypedef np.longdouble_t dtype128_t
 
@@ -33,13 +35,19 @@ PROTOCOLS = ["ffpe", "amplicon", "cf", "other"]
 
 @cython.locals(DOC=cython.long, pVal=dtype128_t,
                AC=cython.long)
-def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue):
+def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
+                          method="agresti_coull"):
     """
     Returns the confidence interval for an AAF given an observed AC
     and DOC.
     """
-    return (np.array(binom.interval(1 - pVal, DOC,
-                                    AC * 1. / DOC)) / DOC).tolist()
+    if(method == "scipy"):
+        return (np.array(binom.interval(1 - pVal, DOC,
+                                        AC * 1. / DOC)) / DOC).tolist()
+    try:
+        return pconfint(AC, DOC, alpha=pVal, method=method)
+    except NotImplementedError:
+        FacePalm("Confidence interval method `%s` not implemented!" % method)
 
 
 @cython.locals(n=cython.long, p=dtype128_t,
@@ -51,7 +59,6 @@ def GetCeiling(n, p=0.0, pVal=defaultPValue):
     n samplings, and an assumed probability of p per sampling.
     """
     return binom.interval(1 - pVal, n, p)[1]
-
 
 
 @cython.locals(n=dtype128_t)

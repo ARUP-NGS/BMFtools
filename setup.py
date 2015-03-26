@@ -83,6 +83,6 @@ setup(**config)
 try:
     subprocess.check_call(["cp", "BMFMain/main.py", installDir + "/BMFMain"])
     subprocess.check_call(["cp", "utilBMF/bmftools.py", installDir + "/bmftools"])
-except CalledProcessError:
+except subprocess.CalledProcessError:
     raise ValueError("You don't seem to have permissions to install BMFTools"
                      " executables. You'll have to do that manually.")
