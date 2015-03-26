@@ -15,6 +15,9 @@ from math import sqrt as msqrt
 import cython
 import numpy as np
 cimport numpy as np
+from numpy import array as nparray
+from numpy import mean as nmean
+from numpy import sum as nsum
 from scipy.stats import binom
 from scipy.misc import comb
 from statsmodels.stats import proportion
@@ -42,12 +45,56 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
     and DOC.
     """
     if(method == "scipy"):
-        return (np.array(binom.interval(1 - pVal, DOC,
+        return (nparray(binom.interval(1 - pVal, DOC,
                                         AC * 1. / DOC)) / DOC).tolist()
     try:
         return pconfint(AC, DOC, alpha=pVal, method=method)
     except NotImplementedError:
-        FacePalm("Confidence interval method `%s` not implemented!" % method)
+        FacePalm("Confidence interval method `%s` not implemented!" % method +
+                 "Check the docs for statsmodels.stats.proportion.")
+
+
+@cython.returns(np.ndarray)
+def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
+                         method="agresti_coull"):
+    """
+    Returns the confidence interval for an allelic imbalance
+    given counts for Allele1 and Allele2, where those are the most common
+    alleles at a given position.
+    """
+    cdef dtype128_t ratio
+    if(Allele1 < Allele2):
+        ratio = Allele1 / Allele2
+    else:
+        ratio = Allele2 / Allele1
+    if(method == "scipy"):
+        return nparray(binom.interval(1 - pVal,
+                                      Allele1 + Allele2, ratio),
+                       dtype=np.longdouble)
+    try:
+        return nparray(pconfint(Allele1, Allele1 + Allele2,
+                                alpha=pVal, method=method),
+                       dtype=np.longdouble)
+    except NotImplementedError:
+        FacePalm("Confidence interval method `%s` not implemented!" % method +
+                 "Check the docs for statsmodels.stats.proportion.")
+
+
+def MakeAICall(Allele1, Allele2, pVal=defaultPValue, method="agresti_coull"):
+    """
+    Gets confidence bounds, returns a call, a "minor" allele frequency,
+    an observed allelic imbalance ratio (as defined by more common allele
+    over less common allele), and a confidence interval
+    """
+    cdef dtype128_t minorAF
+    cdef cython.bint call
+    cdef dtype128_t allelicImbalanceRatio
+    confInt = ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
+                                   method=method)
+    minorAF = nmean(confInt, dtype=np.longdouble)
+    allelicImbalanceRatio = minorAF / (1 - minorAF)
+    call = (minorAF < confInt[0] or minorAF > confInt[1])
+    return call, allelicImbalanceRatio, confInt
 
 
 @cython.locals(n=cython.long, p=dtype128_t,
@@ -119,7 +166,7 @@ def GetUnscaledProbs(n, p=0.):
     This uses a factorial, primarily for
     speed, but it's also definitely good enough.
     """
-    return np.array([SamplingFrac(n, p=p, k=k) for k in range(n + 1)],
+    return nparray([SamplingFrac(n, p=p, k=k) for k in range(n + 1)],
                     dtype=np.longdouble)
 
 
@@ -131,20 +178,20 @@ def GetUnscaledProbs_(n, p=0.):
     This uses Stirling's approximation instead of factorial, primarily for
     speed, but it's also definitely good enough.
     """
-    return np.array([SamplingFrac_(n, p=p, k=k) for k in range(n + 1)],
+    return nparray([SamplingFrac_(n, p=p, k=k) for k in range(n + 1)],
                      dtype=np.longdouble)
 
 
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(dtype128_t)
 def PartitionFunction(n, p=0.1):
-    return np.sum(GetUnscaledProbs(n, p=p), 0)
+    return nsum(GetUnscaledProbs(n, p=p), 0)
 
 
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(dtype128_t)
 def PartitionFunction_(n, p=0.1):
-    return np.sum(GetUnscaledProbs_(n, p=p), 0)
+    return nsum(GetUnscaledProbs_(n, p=p), 0)
 
 
 @cython.locals(p=dtype128_t, n=cython.long, k=cython.long)
@@ -158,7 +205,7 @@ def SamplingProbDist(n, p=0.):
     cdef np.ndarray[dtype128_t, ndim = 1] ProbDist
     cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
-    PartitionFn = np.sum(UnscaledProbs, 0)
+    PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
     return ProbDist
 
@@ -174,7 +221,7 @@ def SamplingProbDist_(n, p=0.):
     cdef np.ndarray[dtype128_t, ndim = 1] ProbDist
     cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
-    PartitionFn = np.sum(UnscaledProbs, 0)
+    PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
     return ProbDist
 
@@ -189,7 +236,7 @@ def SamplingProbMoments(n, p=0.):
     assert 0. < p < 1.
     cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
-    PartitionFn = np.sum(UnscaledProbs, 0, dtype=np.longdouble)
+    PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn
 
 
@@ -203,5 +250,5 @@ def SamplingProbMoments_(n, p=0.):
     assert 0. < p < 1.
     cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
-    PartitionFn = np.sum(UnscaledProbs, 0, dtype=np.longdouble)
+    PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn
