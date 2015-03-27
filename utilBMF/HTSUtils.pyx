@@ -763,7 +763,7 @@ def BedtoolsBamToBed(inBAM, outbed="default", ref="default"):
 def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
                         outBAM="default",
                         uuid="true", memStr="4G",
-                        threads="4"):
+                        threads="4", delete=False):
     '''
     Uses samtools >= 1.0.0 to coordinate sort and index a bam file.
     If uuid is either a boolean true or is a string containing true,
@@ -780,6 +780,8 @@ def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Now indexing.")
     subprocess.check_call(shlex.split("samtools index {}".format(outBAM)))
+    if(delete):
+        subprocess.check_call(["rm", inBAM])
     return outBAM
 
 
@@ -797,6 +799,25 @@ def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Namesort successful, sorted bam available at: {}".format(outBAM))
+    return outBAM
+
+
+@cython.locals(sortAndIndex=cython.bint)
+def NameSortAndFixMate(inBAM, outBAM="default", prefix="MetasyntacticVar",
+                       uuid="true", threads="4", memStr="4G",
+                       sortAndIndex=False, deleteIntermediate=True):
+    """
+    If uuid is either a boolean true or is a string containing true,
+    then a random string is generated for the output
+    """
+    tempOutBam = NameSort(inBAM)
+    if(outBAM == "default"):
+        outBAM = ".".join(inBAM.split(".")[0:-1] + ["ns", "fxm", "bam"])
+    subprocess.check_call(shlex.split(
+        "samtools fixmate %s %s -O bam" % (tempOutBam, outBAM)))
+    if(sortAndIndex):
+        return CoorSortAndIndexBam(inBAM, prefix="NSFxM8CS",
+                                   delete=deleteIntermediate)
     return outBAM
 
 

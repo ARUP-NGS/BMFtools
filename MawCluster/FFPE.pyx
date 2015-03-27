@@ -6,14 +6,18 @@ import operator
 import math
 from math import log10 as mlog10
 from operator import methodcaller as mc
+import uuid
+import shlex
+import subprocess
 
 import cython
 cimport cython
 import numpy as np
 cimport numpy as np
+import pysam
 
 from MawCluster.BCVCF import IterativeVCFFile
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl, ThisIsMadness, NameSortAndFixMate
 from utilBMF.ErrorHandling import IllegalArgumentError
 from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
 from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
@@ -170,3 +174,36 @@ def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
                                      ctfreq=DeamFreq)
     pl("Output VCF: %s" %OutVCF)
     return OutVCF
+
+
+@cython.locals(primerLen=cython.long, index=cython.bint)
+def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
+                                fixmate=True):
+    """
+    This program outputs a BAM file which eliminates potential mispriming
+    events from the input BAM file.
+    """
+    if(outBAM == "default"):
+        outBAM = ".".join(inBAM.split(".")[0:-1] + ["amplicon",
+                                                    "filt", "bam"])
+    pl("Primer length set to %s for prefiltering." % primerLen )
+    pl("OutBAM: %s" % outBAM)
+    pl("fixmate: %s" % fixmate)
+    tempFile = str(uuid.uuid4().get_hex().upper()[0:8]) + ".bam"
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    outHandle = pysam.AlignmentFile(tempFile, "wb", template=inHandle)
+    for rec in inHandle:
+        tempQual = rec.qual[primerLen:]
+        rec.seq = rec.seq[primerLen:]
+        rec.qual = tempQual
+        if(rec.is_reverse):
+            rec.pos -= primerLen
+        else:
+            rec.pos += primerLen
+        outHandle.write(rec)
+    inHandle.close()
+    outHandle.close()
+    if(fixmate):
+        newTemp = NameSortAndFixMate(tempFile, sortAndIndex=True)
+        subprocess.check_call(["mv", newTemp, outBAM])
+    return outBAM

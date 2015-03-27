@@ -272,12 +272,22 @@ class AlleleAggregateInfo:
             self.reverseStrandFraction = operator.div(
                 float(self.ReverseMergedReads), self.MergedReads)
         except ZeroDivisionError:
-            self.reverseStrandFraction = -1
-        self.MFractionAgreed = nmean(map(
-            oag("FractionAgreed"),  recList))
+            self.reverseStrandFraction = -1.
+        try:
+            self.MFractionAgreed = nmean(map(
+                oag("FractionAgreed"),  recList))
+        except TypeError:
+            pl("Looks like these records have no FractionAgreed attribute. "
+               "No worries.", level=logging.DEBUG)
+            self.MFractionAgreed = -1.
         self.minFrac = minFracAgreed
         self.minFA = minFA
-        self.MFA = nmean(map(oag("FA"), recList))
+        try:
+            self.MFA = nmean(map(oag("FA"), recList))
+        except TypeError:
+            pl("Looks like these records have no FA attribute. "
+               "No worries.", level=logging.DEBUG)
+            self.MFA = -1.
         self.FSR = FSR
 
         # Dealing with transitions (e.g., A-T) and their strandedness
