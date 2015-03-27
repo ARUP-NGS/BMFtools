@@ -7,15 +7,23 @@ import os
 import shutil
 import logging
 from collections import Counter
-import numpy as np
-from numpy import array as nparray
-from numpy import sum as nsum
-import copy
+from copy import copy as ccopy
 from os import path
 import operator
+from operator import attrgetter as oag
+from operator import div as odiv
 import string
 import uuid
 
+import numpy as np
+from numpy import array as nparray
+from numpy import sum as nsum
+from numpy import multiply as nmultiply
+from numpy import subtract as nsubtract
+from numpy import argmax as nargmax
+from numpy import vstack as nvstack
+from numpy import char
+npchararray = char.array
 from Bio import SeqIO
 import pysam
 import cython
@@ -290,7 +298,7 @@ def pairedBarcodeTagging(
                            ("PV", descDict1["PV"], "Z"),
                            ("FA", descDict1["FA"], "Z"),
                            ("ND", ND1, "i"),
-                           ("NF", operator.div(ND1, float(FM)), "f"),
+                           ("NF", odiv(ND1, float(FM)), "f"),
                            ("RG", "default", "Z")
                            ])
         read2bam.set_tags([("RP", coorString, "Z"),
@@ -301,7 +309,7 @@ def pairedBarcodeTagging(
                            ("PV", descDict1["PV"], "Z"),
                            ("FA", descDict1["FA"], "Z"),
                            ("ND", ND2, "i"),
-                           ("NF", operator.div(ND2, float(FM)), "f"),
+                           ("NF", odiv(ND2, float(FM)), "f"),
                            ("RG", "default", "Z")
                            ])
         # I used to mark the BAMs at this stage, but it's not appropriate to
@@ -321,18 +329,18 @@ def pairedBarcodeTagging(
 
 def compareRecs(RecordList):
     Success = True
-    seqs = map(operator.attrgetter("seq"), RecordList)
+    seqs = map(oag("seq"), RecordList)
     seqs = [str(record.seq) for record in RecordList]
-    stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
-    seqArray = np.vstack(stackArrays)
+    stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
+    seqArray = nvstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = nparray(map(operator.attrgetter("query_qualities"),
+    quals = nparray(map(oag("query_qualities"),
                          RecordList))
-    qualA = copy.copy(quals)
-    qualC = copy.copy(quals)
-    qualG = copy.copy(quals)
-    qualT = copy.copy(quals)
+    qualA = ccopy(quals)
+    qualC = ccopy(quals)
+    qualG = ccopy(quals)
+    qualT = ccopy(quals)
     qualA[seqArray != "A"] = 0
     qualASum = nsum(qualA, 0)
     qualC[seqArray != "C"] = 0
@@ -341,10 +349,10 @@ def compareRecs(RecordList):
     qualGSum = nsum(qualG, 0)
     qualT[seqArray != "T"] = 0
     qualTSum = nsum(qualT, 0)
-    qualAllSum = np.vstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join([letterNumDict[i] for i in np.argmax(qualAllSum, 0)])
+    qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
+    newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = np.subtract(np.multiply(2, MaxPhredSum),
+    phredQuals = nsubtract(nmultiply(2, MaxPhredSum),
                              nsum(qualAllSum, 0))
     phredQuals[phredQuals < 0] = 0
     outRec = RecordList[0]

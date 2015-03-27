@@ -60,6 +60,7 @@ def SNVCrawler(inBAM,
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(OutVCF, "w+")
+    pileupCall = inHandle.pileup
     if(writeHeader):
         try:
             outHandle.write(GetVCFHeader(fileFormat=fileFormat,
@@ -85,7 +86,7 @@ def SNVCrawler(inBAM,
         for line in bed:
             pl("Combing through bed region {}".format(line),
                level=logging.DEBUG)
-            puIterator = inHandle.pileup(line[0], line[1],
+            puIterator = pileupCall(line[0], line[1],
                                          max_depth=30000,
                                          multiple_iterators=True)
             while True:
@@ -115,7 +116,7 @@ def SNVCrawler(inBAM,
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
-        puIterator = inHandle.pileup(max_depth=30000, multiple_iterators=True)
+        puIterator = pileupCall(max_depth=30000, multiple_iterators=True)
         while True:
             try:
                 # Last command - 0 means iterator was where it crashed.
@@ -166,7 +167,7 @@ def SNVMinion(inBAM,
     outHandle = open(VCFLines, "w+")
     if(bed != "default"):
         for line in bed:
-            puIterator = inHandle.pileup(line[0], line[1],
+            puIterator = pileupCall(line[0], line[1],
                                          max_depth=30000,
                                          multiple_iterators=True)
             while True:
@@ -190,7 +191,7 @@ def SNVMinion(inBAM,
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
-        puIterator = inHandle.pileup(max_depth=30000)
+        puIterator = pileupCall(max_depth=30000)
         while True:
             try:
                 PC = PCInfo(puIterator.next(), minMQ=minMQ, minBQ=minBQ)

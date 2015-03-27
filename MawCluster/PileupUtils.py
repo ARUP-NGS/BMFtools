@@ -90,6 +90,8 @@ class PRInfo:
             # print("Warning: SV Tags unset.")
         self.BaseCall = PileupRead.alignment.query_sequence[
             PileupRead.query_position]
+        if(self.BaseCall == "N"):
+            self.Pass = False
         self.BQ = PileupRead.alignment.query_qualities[
             PileupRead.query_position]
         self.MQ = PileupRead.alignment.mapq
@@ -225,13 +227,13 @@ class AlleleAggregateInfo:
             NFList = []
         try:
             self.MNF = nmean(NFList)
-            self.maxND = nmax(NFList)
+            self.maxNF = nmax(NFList)
             self.NFSD = nstd(NFList)
         except ValueError:
             #  This list must have length zero...
-            self.MNF = 0.
-            self.maxND = 0.
-            self.NFSD = 0.
+            self.MNF = -1.
+            self.maxNF = -1.
+            self.NFSD = -1.
         try:
             assert(sum([rec.BaseCall == recList[
                 0].BaseCall for rec in recList]) == len(recList))

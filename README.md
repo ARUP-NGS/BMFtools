@@ -177,6 +177,9 @@ Most options are available for command-line as well. If an option is set in both
     
     1. Probabilistic quantitation of AAF given observations.
     2. Optional filter for FFPE data for removing deamination frequencies due to formalin fixation.
+    3. Added amplicon filtering for mispriming, both in variant caller and in a pre-processing step.
+    4. Added a test for allelic imbalance.
+    5. Removed "N"s from variant calls.
 
 1. Settings Recommendations
 
@@ -197,6 +200,10 @@ Most options are available for command-line as well. If an option is set in both
 
 
 #TODO (ish):
+0. Pressing
+    1. Figure out why the VCF being written is off by one. (It shouldn't be, as I'm telling it to increment from the pysam position - after lunch today, I'll look at that.)
+
+## Backlog
 0. Paper/Presentations
     1. slides of qc, slide explaining why m.a.p., slide stating our advantages vs others
 1. SNV:
@@ -214,10 +221,7 @@ Most options are available for command-line as well. If an option is set in both
     1. Error Characterization Code
         1. Write database reading and processing.
     3. Info Fields
-        1. Add INFO fields for the new NF/ND tags to the VCF header (added to the VCF already)
         2. Add read length to the INFO field (both full read length and read length without Ns)
-    4. For abra call, run abra.KmerSizeEvaluator
-    5. Figure out why the VCF being written is off by one. (It shouldn't be, as I'm telling it to increment from the pysam position - after lunch today, I'll look at that.)
 
 
 2. Indels:

@@ -39,10 +39,20 @@ compilerList = ["marchFlag, "-pipe", "-msse2",
 #compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse",
 #                "-funroll-loops", "-floop-unroll-and-jam",
 #                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
-compilerList = ["-O3", "-pipe", marchFlag]
 
+compilerList = [marchFlag, "-pipe", "-msse2",
+                "-funroll-loops", "-floop-block",
+                "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
+                "-fbranch-target-load-optimize2",
+                "-ftree-loop-distribution", "-ftree-loop-im", "-fivopts",
+                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
+                "-funswitch-loops",
+                "-fprefetch-loop-arrays", "-fmodulo-sched",
+                "-fmodulo-sched-allow-regmoves", "-fgcse",
+                "-floop-unroll-and-jam",
+                "-fomit-frame-pointer", "-Ofast"]
 """
-compilerList = [marchFlag, "-pipe", "-O3"]
+compilerList = ["-O3", "-pipe", marchFlag]
 
 try:
     from setuptools import setup, Extension

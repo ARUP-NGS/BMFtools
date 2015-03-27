@@ -169,7 +169,7 @@ class SNVCFLine:
                            "TYPE": "snp",
                            "TND": AlleleAggregateObject.TND,
                            "MNF": AlleleAggregateObject.MNF,
-                           "MAXND": AlleleAggregateObject.maxND,
+                           "MAXNF": AlleleAggregateObject.maxNF,
                            "PVC": MaxPValue,
                            "CONS": self.CONS,
                            "NDPS": AlleleAggregateObject.NumberDuplexReads}
@@ -848,6 +848,21 @@ HeaderInfoDict["NAF"] = HeaderInfoLine(
     ID="NAF", Description="Number of amplicon-specific failed reads for "
     "pileup in case of mispriming. ",
     Number=1, Type="Integer")
+HeaderInfoDict["TND"] = HeaderInfoLine(
+    ID="TND", Description="Total number of differences between all reads in a"
+    "ll families and the families' respective consensus sequences.",
+    Number="A", Type="Integer")
+HeaderInfoDict["MNF"] = HeaderInfoLine(
+    ID="MNF", Description="Mean number of differences from consensus per read "
+    "for all reads supporting allele.",
+    Number="A", Type="Float")
+HeaderInfoDict["MAXNF"] = HeaderInfoLine(
+    ID="MAXNF", Description="Maximum 'NF' tag for a read supporting allele.",
+    Number="A", Type="Float")
+HeaderInfoDict["NFSD"] = HeaderInfoLine(
+    ID="NFSD", Description="Standard deviation for NF tags for a read suppo"
+    "rting allele.",
+    Number="A", Type="Float")
 
 
 """
