@@ -1,6 +1,7 @@
 import logging
 
 import pysam
+import cython
 
 from MawCluster.SNVUtils import *
 from MawCluster.PileupUtils import pPileupColumn
@@ -133,6 +134,13 @@ def SNVCrawler(inBAM,
             except StopIteration:
                 break
             # TODO: Check to see if it speeds up to not assign and only write.
+            if(checkDiscPairs):
+                DiscRPs = GetDiscordantReadPairs(PC)
+                for RP in DiscRPs:
+                    reads = RP.RP.getReads()
+                    for read in reads:
+                        read.set_tag("DP", RP.discordanceString, "Z")
+                        discPairHandle.write(read)
             VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                    keepConsensus=keepConsensus,
                                    reference=reference,

@@ -1,6 +1,7 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 
+from __future__ import division
 import subprocess
 import os.path
 import shlex
@@ -12,7 +13,6 @@ from operator import itemgetter as oig
 from operator import div as odiv
 from itertools import ifilterfalse as iff
 from collections import Counter
-from __future__ import division
 
 import numpy as np
 from numpy import mean as nmean
@@ -21,13 +21,12 @@ from numpy import max as nmax
 from numpy import sum as nsum
 from numpy import array as nparray
 import pysam
+from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
 
-from utilBMF.HTSUtils import ThisIsMadness
-from utilBMF.HTSUtils import printlog as pl
+from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import Base64ToInt
-from utilBMF.HTSUtils import ToStr
+from utilBMF.HTSUtils import ToStr, ReadPair, printlog as pl
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -44,6 +43,35 @@ class pPileupRead:
         self.query_position = PileupRead.query_position
         self.name = self.alignment.name
         self.BaseCall = self.alignment.seq[self.query_position]
+
+
+class PileupReadPair:
+
+    """
+    Holds both bam record objects in a pair of pileup reads.
+    Currently, one read unmapped and one read soft-clipped are
+    both marked as soft-clipped reads.
+    """
+
+    def __init__(self, read1, read2):
+        try:
+            assert isinstance(read1, cPileupRead)
+        except AssertionError:
+            raise ThisIsMadness("PileupReadPair must be initiated with "
+                                "pysam.calignmentfile.PileupRead objects!")
+        self.RP = ReadPair(read1.alignment, read2.alignment)
+        self.read1 = pPileupRead(read1)
+        self.read2 = pPileupRead(read2)
+        self.discordant = (read1.BaseCall != read2.BaseCall)
+        if(self.discordant):
+            if(read1.is_reverse):
+                self.discordanceString = (self.RP.read1_contig + "," +
+                                          str(self.read1.alignment.pos -
+                                              self.read1.query_position))
+            else:
+                self.discordanceString = (self.RP.read1_contig + "," +
+                                          str(self.read1.alignment.pos +
+                                              self.read1.query_position))
 
 
 class pPileupColumn:
@@ -66,11 +94,12 @@ and preparing for variant calls.
 class PRInfo:
 
     """
-    Created from a pysam.PileupRead object.
+    Created from a pysam.PileupRead object or its python equivalent,
+    a pPileupRead.
     Holds family size, SV tags, base quality, mapping quality, and base.
-    If you want to query the FA attribute or the FractionAgreed Attribute,
-    it is recommended that you run dir() on the PRInfo object for "FA" and
-    "FractionAgreed".
+    If any of the "finicky" fields aren't filled (e.g., if BAMs are not
+    produced using BMFTools), they are set to None. Check to see if an attribute
+    is None first if you'd like to save yourself some headaches.
     """
 
     def __init__(self, PileupRead):
@@ -182,7 +211,6 @@ class AlleleAggregateInfo:
                  AABPSD="default", AAMBP="default",
                  minFracAgreed=0.0, minFA=0,
                  minPVFrac=0.5, FSR=-1):
-        from __future__ import division
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
         if(NUMALT == "default"):

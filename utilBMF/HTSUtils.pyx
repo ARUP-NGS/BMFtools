@@ -29,7 +29,6 @@ import cython
 import numconv
 
 import MawCluster
-from MawCluster.PileupUtils import pPileupRead
 from utilBMF.ErrorHandling import *
 
 ctypedef np.longdouble_t dtype128_t
@@ -226,7 +225,7 @@ def GetPysamToChrDictFromAlignmentFile(alignmentfileObj):
     Returns a dictionary of pysam reference numbers to contig names.
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
-    return dict(list(enumerate(alignmentfileObj.references))
+    return dict(list(enumerate(alignmentfileObj.references)))
 
 
 def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
@@ -244,7 +243,7 @@ def GetBidirectionalPysamChrDict(alignmentfileObj):
     and vice versa - bi-directional.
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
-    refList = list(enumerate(alignmentfileObj.references)
+    refList = list(enumerate(alignmentfileObj.references))
     return dict(map(lambda x: (x[1], x[0]),refList) + refList)
 
 
@@ -794,35 +793,6 @@ def mergeBam(samList, memoryStr="-XmX16",
     printlog("About to merge bams. Command string: " + cStr)
     subprocess.check_call(shlex.split(cStr))
     return outBAM
-
-
-class PileupReadPair:
-
-    """
-    Holds both bam record objects in a pair of pileup reads.
-    Currently, one read unmapped and one read soft-clipped are
-    both marked as soft-clipped reads.
-    """
-
-    def __init__(self, read1, read2):
-        try:
-            assert isinstance(read1, cPileupRead)
-        except AssertionError:
-            raise ThisIsMadness("PileupReadPair must be initiated with "
-                                "pysam.calignmentfile.PileupRead objects!")
-        self.RP = ReadPair(read1.alignment, read2.alignment)
-        self.read1 = pPileupRead(read1)
-        self.read2 = pPileupRead(read2)
-        self.discordant = (read1.BaseCall != read2.BaseCall)
-        if(self.discordant):
-            if(read1.is_reverse):
-                self.discordanceString = (self.RP.read1_contig + "," +
-                                          str(self.read1.alignment.pos -
-                                              self.read1.query_position))
-            else:
-                self.discordanceString = (self.RP.read1_contig + "," +
-                                          str(self.read1.alignment.pos +
-                                              self.read1.query_position))
 
 
 class ReadPair:

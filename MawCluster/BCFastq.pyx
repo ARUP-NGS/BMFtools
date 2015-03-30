@@ -48,7 +48,7 @@ from numpy import vstack as npvstack
 from numpy import greater as ngreater
 import pysam
 cimport pysam.cfaidx
-from pysam.cfaidx import cFastqProxy
+from pysam.cfaidx import FastqProxy as cFastqProxy
 import numconv
 
 ctypedef np.int64_t dtypei_t

@@ -1,14 +1,7 @@
-from utilBMF.HTSUtils import printlog as pl
-from utilBMF.HTSUtils import ThisIsMadness
-from utilBMF.HTSUtils import FacePalm
-from utilBMF.HTSUtils import ParseBed
-from utilBMF.HTSUtils import SplitSCRead
-from utilBMF.HTSUtils import is_read_softclipped
-from utilBMF.HTSUtils import ReadPairIsDuplex
-from utilBMF.HTSUtils import ReadPair
-from utilBMF.HTSUtils import GetDeletedCoordinates
-from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import GetGC2NMapForRead
+from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm, ReadPair,
+                              ParseBed, SplitSCRead, ReadPairIsDuplex,
+                              PysamToChrDict, GetDeletedCoordinates,
+                              is_read_softclipped, GetGC2NMapForRead)
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -22,10 +15,12 @@ cimport cython
 import uuid
 import copy
 from itertools import chain
+cfi = chain.from_iterable
 from collections import defaultdict
 import operator
-from operator import attrgetter
-from operator import itemgetter
+from operator import attrgetter as oag
+from operator import itemgetter as oig
+from operator import add as oadd
 
 
 class XLocSegment:
@@ -133,7 +128,7 @@ def ClusterByInsertSize(ReadPairs,
         pl("No insert size distance provided - default of "
            " read length set: {}".format(insDistance))
     ClusterList = []
-    ReadPairs = sorted(ReadPairs, key=operator.attrgetter("insert_size"))
+    ReadPairs = sorted(ReadPairs, key=oag("insert_size"))
     workingSet = []
     workingInsertSize = 0
     for pair in ReadPairs:
@@ -249,7 +244,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
                          " in bed should have been filtered out already.")
                 """
         PotTransIntervals += RegionsToPull
-    PotTransIntervals = sorted(PotTransIntervals, key=operator.itemgetter(1))
+    PotTransIntervals = sorted(PotTransIntervals, key=oig(1))
     MergedPTIs = []
     for pti in PotTransIntervals:
         if("workingPTI" not in locals()):
@@ -307,7 +302,7 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
            "ly: {}".format(len(intervalList)))
         pl("intervalList repr: {}".format(repr(intervalList)))
         PotTransIntervals += intervalList
-    PotTransIntervals = sorted(PotTransIntervals, key=operator.itemgetter(1))
+    PotTransIntervals = sorted(PotTransIntervals, key=oig(1))
     pl("Number of intervals outside of bed for investigation: {}".format(
         len(PotTransIntervals)))
     pl("PotTransIntervals repr: {}".format(PotTransIntervals))
@@ -581,10 +576,10 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
 # SVTestDict['DSI'] = DSI_SV_Tag_Condition
 
 
-SVTestDict = dict(operator.add(SVTestDict.items(), SNVTestDict.items()))
+SVTestDict = dict(oadd(SVTestDict.items(), SNVTestDict.items()))
 SVParamDict = defaultdict(returnDefault,
-                          operator.add(SVParamDict.items(),
-                                       SNVParamDict.items()))
+                          oadd(SVParamDict.items(),
+                               SNVParamDict.items()))
 
 
 @cython.locals(SVR=cython.bint, maxInsert=cython.long)
@@ -691,14 +686,14 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         if(read1.opt("SV") != "NF"):
             WritePair = True
             for key in read1.opt("SV").split(","):
-                SVCountDict[key] = operator.add(SVCountDict[key], 1)
+                SVCountDict[key] = oadd(SVCountDict[key], 1)
         if(WritePair):
             if("SVOutHandle" in locals()):
                 SVOutHandle.write(read1)
                 SVOutHandle.write(read2)
-            SVCountDict["SVR"] = operator.add(SVCountDict["SVR"], 1)
+            SVCountDict["SVR"] = oadd(SVCountDict["SVR"], 1)
         else:
-            SVCountDict["NOSVR"] = operator.add(SVCountDict["NOSVR"], 1)
+            SVCountDict["NOSVR"] = oadd(SVCountDict["NOSVR"], 1)
             read1.setTag("SV", "NF", "Z")
             read2.setTag("SV", "NF", "Z")
         FullOutHandle.write(read1)
@@ -707,8 +702,8 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     if("SVOutHandle" in locals()):
         SVOutHandle.close()
     FullOutHandle.close()
-    SVCountDict["TOTAL"] = operator.add(SVCountDict["SVR"],
-                                        SVCountDict["NOSVR"])
+    SVCountDict["TOTAL"] = oadd(SVCountDict["SVR"],
+                                SVCountDict["NOSVR"])
     for key in SVCountDict.keys():
         pl("Number of reads marked with key {}: {}".format(
             key, SVCountDict[key]))
@@ -787,9 +782,9 @@ def BkptSequenceIntraReads(reads):
                  "on the same contig.")
     # Separate reads based on which end of the translocation they're part of.
     negReads = sorted([read for read in reads if read.tlen < 0],
-                      key=operator.attrgetter("pos"))
+                      key=oag("pos"))
     posReads = sorted([read for read in reads
-                      if read.tlen > 0], key=operator.attrgetter("pos"))
+                      if read.tlen > 0], key=oag("pos"))
     negSeqs = [read.seq if read.is_reverse else
                Seq(read.seq).reverse_complement().seq for read in negReads]
     posSeqs = [read.seq if read.is_reverse else
@@ -804,7 +799,7 @@ def BkptSequenceIntraRP(ReadPairs):
     Calls converts a list of read pairs to a list of reads and
     calls BkptSequenceIntraReads
     """
-    return BkptSequenceIntraReads(list(chain.from_iterable([i.getReads()
+    return BkptSequenceIntraReads(list(cfi([i.getReads()
                                                             for i in
                                                             ReadPairs])))
 
@@ -814,9 +809,8 @@ def BkptSequenceInterRP(ReadPairs):
     Calls converts a list of read pairs to a list of reads and
     calls BkptSequenceInterReads
     """
-    return BkptSequenceInterReads(list(chain.from_iterable([i.getReads()
-                                                            for i in
-                                                            ReadPairs])))
+    return BkptSequenceInterReads(list(cfi([i.getReads() for i in
+                                            ReadPairs])))
 
 
 def BkptSequenceFromRPSet(ReadPairs, intra=True):

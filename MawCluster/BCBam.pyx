@@ -35,7 +35,7 @@ from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
-from SecC.SecC import BuildRunDict
+import SecC
 
 
 @cython.locals(fixMate=cython.bint)
@@ -258,7 +258,7 @@ def pairedBarcodeTagging(
     outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     if(conversionXml != "default"):
-        convData = BuildRunDict(conversionXml)
+        convData = SecC.SecC.BuildRunDict(conversionXml)
     obw = outBAM.write
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag >= 2048):

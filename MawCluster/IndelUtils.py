@@ -18,9 +18,9 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
     idIrl stands for indel irrelevant.
     """
     if(indelOutputBAM == "default"):
-        indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["idRel", "bam"])
+        indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["indRel", "bam"])
     if(otherOutputBAM == "default"):
-        otherOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["idIrl", "bam"])
+        otherOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["indIrl", "bam"])
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     indelHandle = pysam.AlignmentFile(indelOutputBAM, "wb", template=inHandle)
     otherHandle = pysam.AlignmentFile(otherOutputBAM, "wb", template=inHandle)
