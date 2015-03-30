@@ -77,7 +77,7 @@ config = {
     'version': '0.0.7.2',
     'install_requires': ['pysam', 'biopython',
                          'cython', 'cutadapt', 'lxml', 'scipy'],
-    'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SECC'],
+    'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': [],

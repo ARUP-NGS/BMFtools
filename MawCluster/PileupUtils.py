@@ -9,8 +9,10 @@ import re
 import operator
 from operator import attrgetter as oag
 from operator import itemgetter as oig
+from operator import div as odiv
 from itertools import ifilterfalse as iff
 from collections import Counter
+from __future__ import division
 
 import numpy as np
 from numpy import mean as nmean
@@ -32,7 +34,7 @@ import utilBMF
 
 class pPileupRead:
     """
-    Python container for the PileupRead proxy in pysam.
+    Python container for the PileupRead proxy in pysam
     """
     def __init__(self, PileupRead):
         self.alignment = PileupRead.alignment
@@ -40,6 +42,8 @@ class pPileupRead:
         self.is_del = PileupRead.is_del
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
+        self.name = self.alignment.name
+        self.BaseCall = self.alignment.seq[self.query_position]
 
 
 class pPileupColumn:
@@ -107,7 +111,7 @@ class PRInfo:
             self.FA_Array = nparray(
                 PileupRead.alignment.opt("FA").split(",")).astype(int)
             self.FA = self.FA_Array[self.query_position]
-            self.FractionAgreed = operator.div(self.FA, float(self.FM))
+            self.FractionAgreed = odiv(self.FA, float(self.FM))
         else:
             self.FA = None
             self.FractionAgreed = None
@@ -129,7 +133,7 @@ class PRInfo:
                                  "have digits and commas... ???")
             self.PV = self.PV_Array[self.query_position]
             try:
-                self.PVFrac = operator.div(float(self.PV),
+                self.PVFrac = odiv(float(self.PV),
                                            nmax(self.PV_Array))
             except ZeroDivisionError:
                 pl("ZeroDivision error in PRInfo."
@@ -178,7 +182,7 @@ class AlleleAggregateInfo:
                  AABPSD="default", AAMBP="default",
                  minFracAgreed=0.0, minFA=0,
                  minPVFrac=0.5, FSR=-1):
-        import collections
+        from __future__ import division
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
         if(NUMALT == "default"):
@@ -251,7 +255,7 @@ class AlleleAggregateInfo:
         self.ForwardTotalReads = operator.sub(self.TotalReads,
                                               self.ReverseTotalReads)
         try:
-            self.AveFamSize = operator.div(float(self.TotalReads),
+            self.AveFamSize = odiv(float(self.TotalReads),
                                            self.MergedReads)
         except ZeroDivisionError:
             self.AveFamSize = -1.
@@ -259,11 +263,11 @@ class AlleleAggregateInfo:
         self.SumBQScore = sum(map(oag("BQ"), recList))
         self.SumMQScore = sum(map(oag("MQ"), recList))
         try:
-            self.AveMQ = operator.div(float(self.SumMQScore), lenR)
+            self.AveMQ = odiv(float(self.SumMQScore), lenR)
         except ZeroDivisionError:
             self.AveMQ = 0
         try:
-            self.AveBQ = operator.div(float(self.SumBQScore), lenR)
+            self.AveBQ = odiv(float(self.SumBQScore), lenR)
         except ZeroDivisionError:
             self.AveBQ = 0
         self.ALT = recList[0].BaseCall
@@ -271,7 +275,7 @@ class AlleleAggregateInfo:
         self.minMQ = minMQ
         self.minBQ = minBQ
         try:
-            self.reverseStrandFraction = operator.div(
+            self.reverseStrandFraction = odiv(
                 float(self.ReverseMergedReads), self.MergedReads)
         except ZeroDivisionError:
             self.reverseStrandFraction = -1.
@@ -295,13 +299,13 @@ class AlleleAggregateInfo:
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = ">".join([consensus, self.ALT])
         self.strandedTransitions = {}
-        self.strandedTransitionDict = collections.Counter(
+        self.strandedTransitionDict = Counter(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
-        self.strandedTotalTransitionDict = collections.Counter(
+        self.strandedTotalTransitionDict = Counter(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList] * rec.FM)
-        self.strandedMergedTransitionDict = collections.Counter(
+        self.strandedMergedTransitionDict = Counter(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
@@ -315,8 +319,8 @@ class AlleleAggregateInfo:
         self.StrandCountsTotalDict["forward"] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is False])
         try:
-            self.TotalAlleleFrequency = self.TotalReads / float(totalSize)
-            self.MergedAlleleFrequency = self.MergedReads / float(mergedSize)
+            self.TotalAlleleFrequency = self.TotalReads / totalSize
+            self.MergedAlleleFrequency = self.MergedReads / mergedSize
         except ZeroDivisionError:
             self.TotalAlleleFrequency = -1.0
             self.MergedAlleleFrequency = -1.0
@@ -493,7 +497,7 @@ class PCInfo:
         self.MergedFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedFracDict[
-                alt.ALT] = operator.div(float(alt.MergedReads),
+                alt.ALT] = odiv(float(alt.MergedReads),
                                         self.MergedReads)
         self.MergedFracStr = ",".join(
             [">".join([key, str(self.MergedFracDict[key])])
@@ -550,10 +554,10 @@ class PCInfo:
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         try:
             for key in self.MergedAlleleDict:
-                self.MergedAlleleFreqDict[key] = operator.div(
+                self.MergedAlleleFreqDict[key] = odiv(
                     self.MergedAlleleDict[key],
                     float(self.MergedReads))
-                self.TotalAlleleFreqDict[key] = operator.div(
+                self.TotalAlleleFreqDict[key] = odiv(
                     self.TotalAlleleDict[key],
                     float(self.TotalReads))
         except ZeroDivisionError:
@@ -588,10 +592,10 @@ class PCInfo:
         self.TotalStrandednessRatioDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedStrandednessRatioDict[
-                alt.ALT] = operator.div(alt.ReverseMergedReads,
+                alt.ALT] = odiv(alt.ReverseMergedReads,
                                         float(alt.MergedReads))
             self.TotalStrandednessRatioDict[
-                alt.ALT] = operator.div(alt.ReverseTotalReads,
+                alt.ALT] = odiv(alt.ReverseTotalReads,
                                         float(alt.TotalReads))
         self.MergedStrandednessStr = "\t".join([
             str(self.MergedStrandednessRatioDict[
@@ -677,9 +681,9 @@ class PileupInterval:
         except KeyError:
             self.TotalCoverage = PileupColumn.nsegments
         self.UniqueCoverage += PileupColumn.nsegments
-        self.AvgTotalCoverage = operator.div(self.TotalCoverage, float(
+        self.AvgTotalCoverage = odiv(self.TotalCoverage, float(
             operator.sub(self.end, self.start)))
-        self.AvgUniqueCoverage = operator.div(self.UniqueCoverage, float(
+        self.AvgUniqueCoverage = odiv(self.UniqueCoverage, float(
             operator.sub(self.end, self.start)))
 
     def ToString(self):
@@ -794,11 +798,11 @@ def CustomPileupFullGenome(inputBAM,
         TransHandle.write("{}\t{}\t{}\n".format(key,
                                                 TransTotalDict[key],
                                                 TransMergedDict[key],
-                                                operator.div(
+                                                odiv(
                                                     TransTotalDict[key],
                                                     float(
                                                         NumTransitionsTotal)),
-                                                operator.div(
+                                                odiv(
                                                     TransMergedDict[key],
                                                     float(
                                                         NTransMerged))))
@@ -812,9 +816,9 @@ def CustomPileupFullGenome(inputBAM,
                 key,
                 StrandedTransTotalDict[key],
                 StrandedTransMergedDict[key],
-                operator.div(StrandedTransTotalDict[key],
+                odiv(StrandedTransTotalDict[key],
                              float(NumTransitionsTotal)),
-                operator.div(StrandedTransMergedDict[key],
+                odiv(StrandedTransMergedDict[key],
                              float(NTransMerged)),
             ))
     pl("Transition Table: {}".format(TransitionTable))
@@ -942,9 +946,9 @@ def CustomPileupToTsv(inputBAM,
                     key,
                     TransTotalDict[key],
                     TransMergedDict[key],
-                    operator.div(TransTotalDict[key],
+                    odiv(TransTotalDict[key],
                                  float(NumTransitionsTotal)),
-                    operator.div(TransMergedDict[key],
+                    odiv(TransMergedDict[key],
                                  float(NTransMerged))))
     StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
                                "(Unflattened)\tMergedReads With Transition\t"
@@ -1205,9 +1209,9 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
             TotalReads += PC.TotalReads
             MergedReads += PC.MergedReads
         length = float(operator.sub(line[2], line[1]))
-        MergeDOC = operator.div(MergedReads, length)
-        TotalDOC = operator.div(TotalReads, length)
-        MeanFamSize = operator.div(TotalReads, MergedReads)
+        MergeDOC = odiv(MergedReads, length)
+        TotalDOC = odiv(TotalReads, length)
+        MeanFamSize = odiv(TotalReads, MergedReads)
         outHandle.write(
             "\t".join(
                   nparray([line[0],

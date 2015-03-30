@@ -1,20 +1,44 @@
 #!/usr/bin/env python
 
+import logging
+from collections import Counter
+
 import cython
+cimport cython
+import pysam
+cimport pysam
 from lxml import etree
 
-from utilBMF.HTSUtils import ThisIsMadness
+from utilBMF.HTSUtils import ThisIsMadness, printlog as pl, PileupReadPair
+from MawCluster.PileupUtils import pPileupColumn
 
 """
-Sequencer Error Characterization & Correction (SECC) Utilities.
+Sequencer Error Characterization & Correction (SecC) Tools
 """
+
+
+@cython.locals(paired=cython.bint)
+def GetDiscordantReadPairs(pPileupColObj):
+    """
+    Takes a pPileupColumn object (python PileupColumn) as input
+    and returns a list of PileupReadPair objects.
+    """
+    assert isinstance(pPileupColObj, pPileupColumn)
+    pileups = pPileupColObj.pileups
+    ReadNameCounter = Counter(map(oag("query_name"),
+        map(oag("read"), pileups)))
+    readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
+    reads = sorted([read for read in pileups if read.name in readnames],
+                   key=lambda x: x.name))
+    readpairs = map(PileupReadPair, [reads[2*i:2*i + 2] for i in range(len(reads) // 2))
+    return [pair for pair in readpairs if pair.discordant]
 
 
 def ConversionStatsToLaneSuperelement(xmlPath):
     """
     Returns a list of lxml Element objects,
     one for each lane, for all samples.
-    Used for error characterization
+    To be used for error characterization
     and building an SVM, hopefully.
     """
     return [b for b in etree.parse(xmlPath).getroot()[0].getchildren()

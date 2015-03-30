@@ -33,6 +33,15 @@ python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --
 BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
+If using a config file, this is greatly simplified. I recommend having multiple config files, one for each analysis type. (e.g., one for FFPE, one for amplicon, one for each bed file, etc.)
+A sample configuration file can be found in conf/config.txt. Over time, the number of command-line options has exploded, and a config file is an easy way to keep things consistent.
+
+In that case, one would call thus:
+
+```python
+BMFMain R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
+```
+
 To use bmftools subcommands, check instructions by executing the following:
 
 ```python
@@ -74,8 +83,8 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 Tag | Content | Format |
 ----|-----|-----|
 BS | Barcode Sequence | String. Regex: [ATGCN]+ |
-CS | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 CC | Cluster Count | Integer |
+DP | Discordant Read Pair information. | String |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
@@ -83,6 +92,7 @@ ND | Number of Differences in a family of reads from the consensus read. | Integ
 NF | ND fraction (mean ND per read in family) | Float |
 PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers in base 85 encoding. Regex: ASCII|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
+SC | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 SN | Tags relevant to SNV calling assigned to BAM records. Currently lumped in with SV due to the fact that many are relevant to both.| Comma-separated list of tags. Regex: [A-Z,]+ |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 

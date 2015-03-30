@@ -10,7 +10,7 @@ Contains utilities relating to working with a kvp databases.
 """
 
 
-def StartCassandra(keyspace="SECC", IP="127.0.0.1"):
+def StartCassandra(keyspace="SecC", IP="127.0.0.1"):
     """
     Starts a Cassandra session for a given database.
     """

@@ -4,6 +4,7 @@ import pysam
 
 from MawCluster.SNVUtils import *
 from MawCluster.PileupUtils import pPileupColumn
+from SecC.SecC import GetDiscordantReadPairs
 
 
 """
@@ -17,14 +18,13 @@ Note/TODO: Use two main filters for SNVs (after a min Q30):
    too big a family...)
 2. Min Fraction Agreement Within Family [float=0.6667]
 
-Other possible, but less critical options.
-1. Min PVFrac (Tosses out a read for up to a significant fraction
-of its positions if certain parts of the read have a lower PV)
-
 More thoughts?
 """
 
 
+@cython.locals(MaxPValue=cython.float, reference_is_path=cython.bint,
+               writeHeader=cython.bint, checkDiscPairs=cython.bint,
+               minFA=cython.long)
 def SNVCrawler(inBAM,
                bed="default",
                minMQ=0,
@@ -41,7 +41,7 @@ def SNVCrawler(inBAM,
                FORMATTags="default",
                writeHeader=True,
                minFracAgreed=0.0, minFA=2,
-               experiment=""):
+               experiment="", checkDiscPairs=True):
     pl("Command to reproduce function call: "
        "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
@@ -61,6 +61,9 @@ def SNVCrawler(inBAM,
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(OutVCF, "w+")
     pileupCall = inHandle.pileup
+    if(checkDiscPairs):
+        discPairHandle = pysam.AlignmentFile(
+            inBAM[0:-4] + ".discReadPairs.bam", "wb", template=inHandle)
     if(writeHeader):
         try:
             outHandle.write(GetVCFHeader(fileFormat=fileFormat,
@@ -87,7 +90,7 @@ def SNVCrawler(inBAM,
             pl("Combing through bed region {}".format(line),
                level=logging.DEBUG)
             puIterator = pileupCall(line[0], line[1],
-                                         max_depth=30000,
+                                         max_depth=200000,
                                          multiple_iterators=True)
             while True:
                 try:
@@ -95,13 +98,13 @@ def SNVCrawler(inBAM,
                 except StopIteration:
                     pl("Finished iterations.")
                     break
-                '''
-                except ValueError:
-                    pl(("Pysam sometimes runs into errors during iteration w"
-                        "hich aren't handled elegantly. Continuing!"),
-                       level=logging.DEBUG)
-                    continue
-                '''
+                if(checkDiscPairs):
+                    DiscRPs = GetDiscordantReadPairs(PileupColumn)
+                    for RP in DiscRPs:
+                        reads = RP.RP.getReads()
+                        for read in reads:
+                            read.set_tag("DP", RP.discordanceString, "Z")
+                            discPairHandle.write(read)
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
                             experiment=experiment)
                 #  pl("Position for pileup (0-based): {}".format(PC.pos),
@@ -116,7 +119,7 @@ def SNVCrawler(inBAM,
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
-        puIterator = pileupCall(max_depth=30000, multiple_iterators=True)
+        puIterator = pileupCall(max_depth=200000, multiple_iterators=True)
         while True:
             try:
                 # Last command - 0 means iterator was where it crashed.
@@ -137,6 +140,8 @@ def SNVCrawler(inBAM,
                                    minFA=minFA).ToString()
             if(len(VCFLineString) != 0):
                 outHandle.write(VCFLineString + "\n")
+    if(checkDiscPairs):
+        discPairHandle.close()
     return OutVCF
 
 

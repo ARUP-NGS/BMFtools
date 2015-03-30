@@ -11,6 +11,7 @@ import pudb
 import sys
 import datetime
 import subprocess
+from __future__ import division
 
 import BMFMain.ProcessingSteps as ps
 from utilBMF.HTSUtils import printlog as pl, FacePalm, ThisIsMadness

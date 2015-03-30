@@ -48,6 +48,7 @@ from numpy import vstack as npvstack
 from numpy import greater as ngreater
 import pysam
 cimport pysam.cfaidx
+from pysam.cfaidx import cFastqProxy
 import numconv
 
 ctypedef np.int64_t dtypei_t
@@ -85,7 +86,7 @@ class pFastqProxy:
     """
     def __init__(self, FastqProxy):
         try:
-            assert isinstance(FastqProxy, pysam.cfaidx.FastqProxy)
+            assert isinstance(FastqProxy, cFastqProxy)
         except AssertionError:
             FacePalm("pFastqProxy requires a pysam.cfaidx.FastqProxy "
                      "object for initialization!")

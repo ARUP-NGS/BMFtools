@@ -35,7 +35,7 @@ from MawCluster.SVUtils import MarkSVTags
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
-from SECC.SECC import BuildRunDict
+from SecC.SecC import BuildRunDict
 
 
 @cython.locals(fixMate=cython.bint)
@@ -291,7 +291,7 @@ def pairedBarcodeTagging(
             [PysamToChrDict[read1bam.reference_id],
              PysamToChrDict[read2bam.reference_id]]))
         read1bam.set_tags([("RP", coorString, "Z"),
-                           ("CS", contigSetStr, "Z"),
+                           ("SC", contigSetStr, "Z"),
                            ("FM", FM, "i"),
                            ("BS", descDict1["BS"], "Z"),
                            ("FP", int("Pass" in descDict1["FP"]), "i"),
@@ -302,7 +302,7 @@ def pairedBarcodeTagging(
                            ("RG", "default", "Z")
                            ])
         read2bam.set_tags([("RP", coorString, "Z"),
-                           ("CS", contigSetStr, "Z"),
+                           ("SC", contigSetStr, "Z"),
                            ("FM", FM, "i"),
                            ("BS", descDict1["BS"], "Z"),
                            ("FP", int("Pass" in descDict1["FP"]), "i"),

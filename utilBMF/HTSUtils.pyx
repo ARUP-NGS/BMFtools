@@ -13,6 +13,8 @@ import os
 import operator
 
 import pysam
+from pysam.calignmentfile import AlignedSegment as cAlignedSegment
+from pysam.calignmentfile import PileupRead as cPileupRead
 import numpy as np
 cimport numpy as np
 from numpy import mean as nmean
@@ -27,6 +29,7 @@ import cython
 import numconv
 
 import MawCluster
+from MawCluster.PileupUtils import pPileupRead
 from utilBMF.ErrorHandling import *
 
 ctypedef np.longdouble_t dtype128_t
@@ -202,75 +205,6 @@ ChrToPysamDict["GL000194.1"] = 81
 ChrToPysamDict["GL000225.1"] = 82
 ChrToPysamDict["GL000192.1"] = 83
 
-"""
-This dictionary is required by some tools in the package to deal with the fact
-that pysam doesn't store contig names, only which contig number it is,
-based on the order found in the sam header.
-"""
-
-
-DefaultSamHeader = repr("{'SQ': [{'LN': 249250621, 'SN': '1'}, {'LN': 2431"
-                        "99373, 'SN': '2'}, {'LN': 198022430, 'SN': '3'}, "
-                        "{'LN': 191154276, 'SN': '4'}, {'LN': 180915260, '"
-                        "SN': '5'}, {'LN': 171115067, 'SN': '6'}, {'LN': 1"
-                        "59138663, 'SN': '7'}, {'LN': 146364022, 'SN': '8'"
-                        "}, {'LN': 141213431, 'SN': '9'}, {'LN': 135534747"
-                        ", 'SN': '10'}, {'LN': 135006516, 'SN': '11'}, {'L"
-                        "N': 133851895, 'SN': '12'}, {'LN': 115169878, 'SN"
-                        "': '13'}, {'LN': 107349540, 'SN': '14'}, {'LN': 1"
-                        "02531392, 'SN': '15'}, {'LN': 90354753, 'SN': '16"
-                        "'}, {'LN': 81195210, 'SN': '17'}, {'LN': 78077248"
-                        ", 'SN': '18'}, {'LN': 59128983, 'SN': '19'}, {'LN"
-                        "': 63025520, 'SN': '20'}, {'LN': 48129895, 'SN': "
-                        "'21'}, {'LN': 51304566, 'SN': '22'}, {'LN': 15527"
-                        "0560, 'SN': 'X'}, {'LN': 59373566, 'SN': 'Y'}, {'"
-                        "LN': 16569, 'SN': 'MT'}, {'LN': 4262, 'SN': 'GL00"
-                        "0207.1'}, {'LN': 15008, 'SN': 'GL000226.1'}, {'LN"
-                        "': 19913, 'SN': 'GL000229.1'}, {'LN': 27386, 'SN'"
-                        ": 'GL000231.1'}, {'LN': 27682, 'SN': 'GL000210.1'"
-                        "}, {'LN': 33824, 'SN': 'GL000239.1'}, {'LN': 3447"
-                        "4, 'SN': 'GL000235.1'}, {'LN': 36148, 'SN': 'GL00"
-                        "0201.1'}, {'LN': 36422, 'SN': 'GL000247.1'}, {'LN"
-                        "': 36651, 'SN': 'GL000245.1'}, {'LN': 37175, 'SN'"
-                        ": 'GL000197.1'}, {'LN': 37498, 'SN': 'GL000203.1'"
-                        "}, {'LN': 38154, 'SN': 'GL000246.1'}, {'LN': 3850"
-                        "2, 'SN': 'GL000249.1'}, {'LN': 38914, 'SN': 'GL00"
-                        "0196.1'}, {'LN': 39786, 'SN': 'GL000248.1'}, {'LN"
-                        "': 39929, 'SN': 'GL000244.1'}, {'LN': 39939, 'SN'"
-                        ": 'GL000238.1'}, {'LN': 40103, 'SN': 'GL000202.1'"
-                        "}, {'LN': 40531, 'SN': 'GL000234.1'}, {'LN': 4065"
-                        "2, 'SN': 'GL000232.1'}, {'LN': 41001, 'SN': 'GL00"
-                        "0206.1'}, {'LN': 41933, 'SN': 'GL000240.1'}, {'LN"
-                        "': 41934, 'SN': 'GL000236.1'}, {'LN': 42152, 'SN'"
-                        ": 'GL000241.1'}, {'LN': 43341, 'SN': 'GL000243.1'"
-                        "}, {'LN': 43523, 'SN': 'GL000242.1'}, {'LN': 4369"
-                        "1, 'SN': 'GL000230.1'}, {'LN': 45867, 'SN': 'GL00"
-                        "0237.1'}, {'LN': 45941, 'SN': 'GL000233.1'}, {'LN"
-                        "': 81310, 'SN': 'GL000204.1'}, {'LN': 90085, 'SN'"
-                        ": 'GL000198.1'}, {'LN': 92689, 'SN': 'GL000208.1'"
-                        "}, {'LN': 106433, 'SN': 'GL000191.1'}, {'LN': 128"
-                        "374, 'SN': 'GL000227.1'}, {'LN': 129120, 'SN': 'G"
-                        "L000228.1'}, {'LN': 137718, 'SN': 'GL000214.1'}, "
-                        "{'LN': 155397, 'SN': 'GL000221.1'}, {'LN': 159169"
-                        ", 'SN': 'GL000209.1'}, {'LN': 161147, 'SN': 'GL00"
-                        "0218.1'}, {'LN': 161802, 'SN': 'GL000220.1'}, {'L"
-                        "N': 164239, 'SN': 'GL000213.1'}, {'LN': 166566, '"
-                        "SN': 'GL000211.1'}, {'LN': 169874, 'SN': 'GL00019"
-                        "9.1'}, {'LN': 172149, 'SN': 'GL000217.1'}, {'LN':"
-                        " 172294, 'SN': 'GL000216.1'}, {'LN': 172545, 'SN'"
-                        ": 'GL000215.1'}, {'LN': 174588, 'SN': 'GL000205.1"
-                        "'}, {'LN': 179198, 'SN': 'GL000219.1'}, {'LN': 17"
-                        "9693, 'SN': 'GL000224.1'}, {'LN': 180455, 'SN': '"
-                        "GL000223.1'}, {'LN': 182896, 'SN': 'GL000195.1'},"
-                        " {'LN': 186858, 'SN': 'GL000212.1'}, {'LN': 18686"
-                        "1, 'SN': 'GL000222.1'}, {'LN': 187035, 'SN': 'GL0"
-                        "00200.1'}, {'LN': 189789, 'SN': 'GL000193.1'}, {'"
-                        "LN': 191469, 'SN': 'GL000194.1'}, {'LN': 211173, "
-                        "'SN': 'GL000225.1'}, {'LN': 547496, 'SN': 'GL0001"
-                        "92.1'}], 'PG': [{'PN': 'bwa', 'ID': 'bwa', 'VN': "
-                        "'0.7.10-r789', 'CL': 'bwa mem -t 4 -v 1 -Y -M -T "
-                        "0'}], 'HD': {'SO': 'queryname', 'VN': '1.4'}}")
-
 
 def GetPysamToChrDict(alignmentFileText):
     """
@@ -285,6 +219,33 @@ def GetPysamToChrDict(alignmentFileText):
     ChrToPysamDict = {PysamToChrDict[key]: key for key in
                       PysamToChrDict.keys()}
     return
+
+
+def GetPysamToChrDictFromAlignmentFile(alignmentfileObj):
+    """
+    Returns a dictionary of pysam reference numbers to contig names.
+    """
+    assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
+    return dict(list(enumerate(alignmentfileObj.references))
+
+
+def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
+    """
+    Returns a dictionary of contig names to pysam reference numbers.
+    """
+    assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
+    return dict(map(lambda x: (x[1], x[0]),
+                    list(enumerate(alignmentfileObj.references))))
+
+
+def GetBidirectionalPysamChrDict(alignmentfileObj):
+    """
+    Returns a dictionary of contig names to pysam reference numbers
+    and vice versa - bi-directional.
+    """
+    assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
+    refList = list(enumerate(alignmentfileObj.references)
+    return dict(map(lambda x: (x[1], x[0]),refList) + refList)
 
 
 def FacePalm(string):
@@ -835,6 +796,35 @@ def mergeBam(samList, memoryStr="-XmX16",
     return outBAM
 
 
+class PileupReadPair:
+
+    """
+    Holds both bam record objects in a pair of pileup reads.
+    Currently, one read unmapped and one read soft-clipped are
+    both marked as soft-clipped reads.
+    """
+
+    def __init__(self, read1, read2):
+        try:
+            assert isinstance(read1, cPileupRead)
+        except AssertionError:
+            raise ThisIsMadness("PileupReadPair must be initiated with "
+                                "pysam.calignmentfile.PileupRead objects!")
+        self.RP = ReadPair(read1.alignment, read2.alignment)
+        self.read1 = pPileupRead(read1)
+        self.read2 = pPileupRead(read2)
+        self.discordant = (read1.BaseCall != read2.BaseCall)
+        if(self.discordant):
+            if(read1.is_reverse):
+                self.discordanceString = (self.RP.read1_contig + "," +
+                                          str(self.read1.alignment.pos -
+                                              self.read1.query_position))
+            else:
+                self.discordanceString = (self.RP.read1_contig + "," +
+                                          str(self.read1.alignment.pos +
+                                              self.read1.query_position))
+
+
 class ReadPair:
 
     """
@@ -844,6 +834,12 @@ class ReadPair:
     """
 
     def __init__(self, read1, read2):
+        try:
+            assert isinstance(read1, cAlignedSegment)
+        except AssertionError:
+            pl("ReadPair only accepts pysam.calignment"
+               ".AlignedSegment objects!")
+            raise ThisIsMadness("Be careful next time!")
         self.read1 = read1
         self.read2 = read2
         try:
