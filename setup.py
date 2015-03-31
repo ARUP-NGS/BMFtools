@@ -1,9 +1,10 @@
 import numpy as np
-import pysam
-import subprocess
 import operator
 import os
 import os.path
+import pysam
+import shlex
+import subprocess
 import sys
 
 #BMFTools tries to install two binaries into your bin folder.
@@ -23,6 +24,9 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
+print("Removing all .c files - this is "
+      "important for making sure things get rebuilt.")
+subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
 """
 compilerList = ["marchFlag, "-pipe", "-msse2",
@@ -39,9 +43,7 @@ compilerList = ["marchFlag, "-pipe", "-msse2",
 #compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse",
 #                "-funroll-loops", "-floop-unroll-and-jam",
 #                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
-compilerList = ["-O3", "-pipe", marchFlag]
 
-"""
 compilerList = [marchFlag, "-pipe", "-msse2",
                 "-funroll-loops", "-floop-block",
                 "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
@@ -53,6 +55,8 @@ compilerList = [marchFlag, "-pipe", "-msse2",
                 "-fmodulo-sched-allow-regmoves", "-fgcse",
                 "-floop-unroll-and-jam",
                 "-fomit-frame-pointer", "-Ofast"]
+"""
+compilerList = ["-O3", "-pipe", marchFlag]
 
 try:
     from setuptools import setup, Extension

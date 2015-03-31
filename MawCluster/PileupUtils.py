@@ -31,6 +31,23 @@ from utilBMF import HTSUtils
 import utilBMF
 
 
+@cython.locals(paired=cython.bint)
+def GetDiscordantReadPairs(pPileupColObj):
+    """
+    Takes a pPileupColumn object (python PileupColumn) as input
+    and returns a list of PileupReadPair objects.
+    """
+    assert isinstance(pPileupColObj, pPileupColumn)
+    pileups = pPileupColObj.pileups
+    ReadNameCounter = Counter(map(oag("query_name"),
+        map(oag("alignment"), pileups)))
+    readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
+    reads = sorted([read for read in pileups if read.name in readnames],
+                   key=lambda x: x.name)
+    readpairs = map(PileupReadPair, [reads[2*i:2*i + 2] for i in range(len(reads) // 2)])
+    return [pair for pair in readpairs if pair.discordant]
+
+
 class pPileupRead:
     """
     Python container for the PileupRead proxy in pysam
@@ -113,41 +130,44 @@ class PRInfo:
 
     def __init__(self, PileupRead):
         self.Pass = True
+        alignment = PileupRead.alignment
         try:
-            self.FM = int(PileupRead.alignment.opt("FM"))
+            self.FM = alignment.opt("FM")
         except KeyError:
             self.FM = 1
+        """
         except ValueError:
             p = re.compile("\D")
             try:
-                self.FM = int(p.sub("", PileupRead.alignment.opt("FM")))
+                self.FM = int(p.sub("", alignment.opt("FM")))
             except ValueError:
                 pl("Ain't nothing I can do. Something's wrong"
                    " with your FM tag: {}".format(p.sub(
-                       "", PileupRead.alignment.opt("FM"))))
+                       "", alignment.opt("FM"))))
+        """
         try:
-            self.SVTags = PileupRead.alignment.opt("SV").split(",")
+            self.SVTags = alignment.opt("SV").split(",")
         except KeyError:
             self.SVTags = "NF"
             # print("Warning: SV Tags unset.")
-        self.BaseCall = PileupRead.alignment.query_sequence[
+        self.BaseCall = alignment.query_sequence[
             PileupRead.query_position]
         if(self.BaseCall == "N"):
             self.Pass = False
-        self.BQ = PileupRead.alignment.query_qualities[
+        self.BQ = alignment.query_qualities[
             PileupRead.query_position]
-        self.MQ = PileupRead.alignment.mapq
-        self.is_reverse = PileupRead.alignment.is_reverse
-        self.is_proper_pair = PileupRead.alignment.is_proper_pair
-        self.read = PileupRead.alignment
+        self.MQ = alignment.mapq
+        self.is_reverse = alignment.is_reverse
+        self.is_proper_pair = alignment.is_proper_pair
+        self.read = alignment
         self.ssString = "#".join(
             nparray(sorted(
                 [self.read.reference_start,
                  self.read.reference_end])).astype(str))
         self.query_position = PileupRead.query_position
-        if("FA" in dict(PileupRead.alignment.tags).keys()):
+        if("FA" in dict(alignment.tags).keys()):
             self.FA_Array = nparray(
-                PileupRead.alignment.opt("FA").split(",")).astype(int)
+                alignment.opt("FA").split(",")).astype(int)
             self.FA = self.FA_Array[self.query_position]
             self.FractionAgreed = odiv(self.FA, float(self.FM))
         else:
@@ -158,10 +178,10 @@ class PRInfo:
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
-        if("PV" in map(oig(0), PileupRead.alignment.tags)):
+        if("PV" in map(oig(0), alignment.tags)):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
-            PVString = PileupRead.alignment.opt("PV")
+            PVString = alignment.opt("PV")
             try:
                 self.PV_Array = nparray(PVString.split(','),
                                          dtype=np.int64)
@@ -177,10 +197,10 @@ class PRInfo:
                 pl("ZeroDivision error in PRInfo."
                    "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
                 self.PVFrac = -1.
-        if("ND" in map(oig(0), PileupRead.alignment.tags)):
-            self.ND = PileupRead.alignment.opt("ND")
-        if("NF" in map(oig(0), PileupRead.alignment.tags)):
-            self.NF = PileupRead.alignment.opt("NF")
+        if("ND" in map(oig(0), alignment.tags)):
+            self.ND = alignment.opt("ND")
+        if("NF" in map(oig(0), alignment.tags)):
+            self.NF = alignment.opt("NF")
 
 
 def is_reverse_to_str(boolean):
@@ -445,11 +465,14 @@ class PCInfo:
         self.PCol = PileupColumn
         self.excludedSVTags = exclusionSVTags.split(",")
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
+        self.FailedSVReadDict = {tag: sum([p.alignment.has_tag("SV") and tag not in p.alignment.opt("SV") for p in pileups]) for tag in self.excludedSVTags}
+        """
         self.FailedSVReadDict = {}
         for tag in self.excludedSVTags:
             self.FailedSVReadDict[tag] = sum([p.alignment.has_tag("SV") and tag
                                               not in p.alignment.opt("SV")
                                               for p in pileups])
+        """
         self.FailedSVReads = sum([self.FailedSVReadDict[key] for key
                                   in self.FailedSVReadDict.keys()])
         #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)

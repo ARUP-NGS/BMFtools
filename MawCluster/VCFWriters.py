@@ -4,8 +4,7 @@ import pysam
 import cython
 
 from MawCluster.SNVUtils import *
-from MawCluster.PileupUtils import pPileupColumn
-from SecC.SecC import GetDiscordantReadPairs
+from MawCluster.PileupUtils import pPileupColumn, GetDiscordantReadPairs
 
 
 """

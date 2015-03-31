@@ -17,23 +17,6 @@ Sequencer Error Characterization & Correction (SecC) Tools
 """
 
 
-@cython.locals(paired=cython.bint)
-def GetDiscordantReadPairs(pPileupColObj):
-    """
-    Takes a pPileupColumn object (python PileupColumn) as input
-    and returns a list of PileupReadPair objects.
-    """
-    assert isinstance(pPileupColObj, pPileupColumn)
-    pileups = pPileupColObj.pileups
-    ReadNameCounter = Counter(map(oag("query_name"),
-        map(oag("alignment"), pileups)))
-    readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
-    reads = sorted([read for read in pileups if read.name in readnames],
-                   key=lambda x: x.name)
-    readpairs = map(PileupReadPair, [reads[2*i:2*i + 2] for i in range(len(reads) // 2)])
-    return [pair for pair in readpairs if pair.discordant]
-
-
 def ConversionStatsToLaneSuperelement(xmlPath):
     """
     Returns a list of lxml Element objects,
