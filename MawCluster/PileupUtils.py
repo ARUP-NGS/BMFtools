@@ -89,6 +89,7 @@ class PileupReadPair:
         self.read1 = pPileupRead(read1)
         self.read2 = pPileupRead(read2)
         self.discordant = (read1.BaseCall != read2.BaseCall)
+        self.name = read1.alignment.query_name
         if(self.discordant):
             if(read1.alignment.is_reverse):
                 self.discordanceString = (self.RP.read1_contig + "," +
@@ -131,8 +132,10 @@ class PRInfo:
     def __init__(self, PileupRead):
         self.Pass = True
         alignment = PileupRead.alignment
+        tags = alignment.tags
+        aopt = alignment.opt
         try:
-            self.FM = alignment.opt("FM")
+            self.FM = aopt("FM")
         except KeyError:
             self.FM = 1
         """
@@ -146,7 +149,7 @@ class PRInfo:
                        "", alignment.opt("FM"))))
         """
         try:
-            self.SVTags = alignment.opt("SV").split(",")
+            self.SVTags = aopt("SV").split(",")
         except KeyError:
             self.SVTags = "NF"
             # print("Warning: SV Tags unset.")
@@ -165,9 +168,9 @@ class PRInfo:
                 [self.read.reference_start,
                  self.read.reference_end])).astype(str))
         self.query_position = PileupRead.query_position
-        if("FA" in dict(alignment.tags).keys()):
+        if("FA" in dict(tags).keys()):
             self.FA_Array = nparray(
-                alignment.opt("FA").split(",")).astype(int)
+                aopt("FA").split(",")).astype(int)
             self.FA = self.FA_Array[self.query_position]
             self.FractionAgreed = odiv(self.FA, float(self.FM))
         else:
@@ -178,10 +181,10 @@ class PRInfo:
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
-        if("PV" in map(oig(0), alignment.tags)):
+        if("PV" in map(oig(0), tags)):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
-            PVString = alignment.opt("PV")
+            PVString = aopt("PV")
             try:
                 self.PV_Array = nparray(PVString.split(','),
                                          dtype=np.int64)
@@ -197,10 +200,10 @@ class PRInfo:
                 pl("ZeroDivision error in PRInfo."
                    "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
                 self.PVFrac = -1.
-        if("ND" in map(oig(0), alignment.tags)):
-            self.ND = alignment.opt("ND")
-        if("NF" in map(oig(0), alignment.tags)):
-            self.NF = alignment.opt("NF")
+        if("ND" in map(oig(0), tags)):
+            self.ND = aopt("ND")
+        if("NF" in map(oig(0), tags)):
+            self.NF = aopt("NF")
 
 
 def is_reverse_to_str(boolean):
@@ -427,7 +430,8 @@ class PCInfo:
 
     @cython.locals(reverseStrandFraction=cython.float,
                    BothStrandAlignment=cython.bint,
-                   primerLen=cython.long)
+                   primerLen=cython.long, minBQ=cython.long,
+                   minMQ=cython.long, minPVFrac=cython.float)
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
@@ -442,9 +446,9 @@ class PCInfo:
             pileups = [r for r in pileups
                        if r.query_position > primerLen]
         self.experiment = experiment
-        self.minMQ = int(minMQ)
+        self.minMQ = minMQ
         #  pl("minMQ: %s" % minMQ)
-        self.minBQ = int(minBQ)
+        self.minBQ = minBQ
         #  pl("minBQ: %s" % minBQ)
         from collections import Counter
         self.contig = PysamToChrDict[PileupColumn.reference_id]
@@ -463,9 +467,12 @@ class PCInfo:
             [pileupRead.alignment.mapping_quality < self.minMQ
              for pileupRead in pileups])
         self.PCol = PileupColumn
-        self.excludedSVTags = exclusionSVTags.split(",")
+        self.excludedSVTags = exclusionSVTags
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
-        self.FailedSVReadDict = {tag: sum([p.alignment.has_tag("SV") and tag not in p.alignment.opt("SV") for p in pileups]) for tag in self.excludedSVTags}
+        self.FailedSVReadDict = {tag: sum([p.alignment.has_tag("SV") and tag
+                                           not in p.alignment.opt("SV") for
+                                           p in pileups])
+                                 for tag in exclusionSVTags.split(",")}
         """
         self.FailedSVReadDict = {}
         for tag in self.excludedSVTags:

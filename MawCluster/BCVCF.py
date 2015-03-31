@@ -268,7 +268,7 @@ class IterativeVCFFile:
         return self
 
     def next(self):
-        return VCFRecord(self.handle.next().split('\t'),
+        return VCFRecord(self.handle.next().strip().split('\t'),
                          self.Filename)
 
 

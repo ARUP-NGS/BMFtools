@@ -176,7 +176,7 @@ def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
     return OutVCF
 
 
-@cython.locals(primerLen=cython.long, index=cython.bint)
+@cython.locals(primerLen=cython.long, fixmate=cython.bint)
 def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
                                 fixmate=True):
     """

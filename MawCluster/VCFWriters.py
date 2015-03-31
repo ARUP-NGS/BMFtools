@@ -1,4 +1,5 @@
 import logging
+from operator import attrgetter as oag
 
 import pysam
 import cython
@@ -99,13 +100,18 @@ def SNVCrawler(inBAM,
                 except StopIteration:
                     pl("Finished iterations.")
                     break
+                NumDiscordantPairs = -1
                 if(checkDiscPairs):
                     DiscRPs = GetDiscordantReadPairs(PileupColumn)
+                    DiscRPNames = map(oag("name"), DiscRPs)
                     for RP in DiscRPs:
                         reads = RP.RP.getReads()
                         for read in reads:
                             read.set_tag("DP", RP.discordanceString, "Z")
                             discPairHandle.write(read)
+                    PileupColumn.pileups = [i for i in PileupColumn.pileups if
+                                       i.alignment.query_name not in DiscRPNames]
+                    NumDiscordantPairs = len(DiscRPNames)
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
                             experiment=experiment)
                 #  pl("Position for pileup (0-based): {}".format(PC.pos),
@@ -125,9 +131,9 @@ def SNVCrawler(inBAM,
         while True:
             try:
                 # Last command - 0 means iterator was where it crashed.
-                PCpysam = pPileupColumn(PileupIt())
+                PileupColumn = pPileupColumn(PileupIt())
                 # Last command - 0 means the PCInfo call was where it crashed
-                PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ,
+                PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
                             experiment=experiment)
             except ValueError:
                 raise ThisIsMadness("Trying to figure out what's going on in "
@@ -135,18 +141,25 @@ def SNVCrawler(inBAM,
             except StopIteration:
                 break
             # TODO: Check to see if it speeds up to not assign and only write.
+            NumDiscordantPairs = -1
             if(checkDiscPairs):
                 DiscRPs = GetDiscordantReadPairs(PC)
+                DiscRPNames = map(oag("name"), DiscRPs)
                 for RP in DiscRPs:
                     reads = RP.RP.getReads()
                     for read in reads:
                         read.set_tag("DP", RP.discordanceString, "Z")
                         discPairHandle.write(read)
+                PileupColumn.pileups = [i for i in PileupColumn.pileups if
+                                        i.alignment.query_name
+                                        not in DiscRPNames]
+                NumDiscordantPairs = len(DiscRPNames)
             VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                    keepConsensus=keepConsensus,
                                    reference=reference,
                                    minFracAgreed=minFracAgreed,
-                                   minFA=minFA).ToString()
+                                   minFA=minFA,
+                                   NDP=NumDiscordantPairs).ToString()
             if(len(VCFLineString) != 0):
                 outHandle.write(VCFLineString + "\n")
     if(checkDiscPairs):

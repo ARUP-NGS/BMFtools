@@ -50,10 +50,11 @@ class SNVCFLine:
                    minDuplexPairs=cython.long, minAAF=dtype128_t,
                    maxAAF=dtype128_t, FailedFMReads=cython.long,
                    FailedQCReads=cython.long, FailedBQReads=cython.long,
-                   FailedMQReads=cython.long)
+                   FailedMQReads=cython.long, NDP=cython.long,
+                   ampliconFailed=cython.long)
     def __init__(self,
                  AlleleAggregateObject,
-                 MaxPValue=float("1e-30"),
+                 MaxPValue=1e-30,
                  ID=".",
                  DOCMerged="default",
                  DOCTotal="default",
@@ -70,7 +71,8 @@ class SNVCFLine:
                  requireDuplex=True, minDuplexPairs=2,
                  minFracAgreedForFilter=0.666,
                  minFA=0, BothStrandAlignment=-1,
-                 pValBinom=0.05, ampliconFailed=-1):
+                 pValBinom=0.05, ampliconFailed=-1, NDP=-1,
+                 EST="none"):
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
@@ -141,6 +143,8 @@ class SNVCFLine:
 
         self.InfoFields = {"AC": AC,
                            "AF": AC / (DOC * 1.),
+                           "BNP": int(-10 * mlog10(pValBinom)),
+                           "BQF": FailedBQReads,
                            "BS": AlleleAggregateObject.BothStrandSupport,
                            "BSA": BothStrandAlignment,
                            "TF": AlleleAggregateObject.TotalReads
@@ -157,22 +161,20 @@ class SNVCFLine:
                            "MFA": AlleleAggregateObject.MFA,
                            "MINFA": AlleleAggregateObject.minFA,
                            "MINAAF": minAAF, "MAXAAF": maxAAF,
-                           "BNP": int(-10 * mlog10(pValBinom)),
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
                            "MMQ": AlleleAggregateObject.minMQ,
                            "MBQ": AlleleAggregateObject.minBQ,
-                           "QA": AlleleAggregateObject.SumBQScore,
+                           "NDP": NDP, "QA": AlleleAggregateObject.SumBQScore,
                            "PFSD": AlleleAggregateObject.PFSD,
                            "NFSD": AlleleAggregateObject.NFSD,
                            "MPF": AlleleAggregateObject.MPF,
                            "NUMALL": AlleleAggregateObject.NUMALT,
-                           "BQF": FailedBQReads,
                            "MQF": FailedMQReads,
-                           "TYPE": "snp",
                            "TND": AlleleAggregateObject.TND,
-                           "MNF": AlleleAggregateObject.MNF,
+                           "TYPE": "snp",
                            "MAXNF": AlleleAggregateObject.maxNF,
+                           "MNF": AlleleAggregateObject.MNF,
                            "PVC": MaxPValue,
                            "CONS": self.CONS,
                            "NDPS": AlleleAggregateObject.NumberDuplexReads}
@@ -206,7 +208,7 @@ class SNVCFLine:
                 self.FormatFields[key]) for key in sorted(
                     self.FormatFields.keys())))
         self.str = "\t".join(nparray([self.CHROM,
-                                       self.POS,
+                                       self.POS + 1,
                                        self.ID,
                                        self.CONS,
                                        self.ALT,
@@ -230,13 +232,8 @@ class SNVCFLine:
     def ToString(self):
         self.update()
         self.str = "\t".join(nparray([self.CHROM,
-                                       self.POS,
-                                       self.ID,
-                                       self.REF,
-                                       self.ALT,
-                                       self.QUAL,
-                                       self.FILTER,
-                                       self.InfoStr,
+                                       self.POS, self.ID, self.REF, self.ALT,
+                                       self.QUAL, self.FILTER, self.InfoStr,
                                        self.FormatStr]).astype(str).tolist())
         return self.str
 
@@ -247,7 +244,8 @@ class VCFPos:
     for writing VCF lines for each alt at a given position.
     """
     @cython.locals(requireDuplex=cython.bint, keepConsensus=cython.bint,
-                   minDuplexPairs=cython.long, MaxPValue=cython.float)
+                   minDuplexPairs=cython.long, MaxPValue=cython.float,
+                   NDP=cython.long)
     def __init__(self, PCInfoObject,
                  MaxPValue=1e-18,
                  keepConsensus=True,
@@ -255,7 +253,8 @@ class VCFPos:
                  requireDuplex=True,
                  minDuplexPairs=2,
                  reverseStrandFraction="default",
-                 minFracAgreed=0.0, minFA=0, experiment=""):
+                 minFracAgreed=0.0, minFA=0, experiment="",
+                 NDP=-1):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
@@ -276,6 +275,7 @@ class VCFPos:
         self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
+        self.EST = PCInfoObject.excludedSVTagStr
         self.VCFLines = [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
@@ -291,7 +291,8 @@ class VCFPos:
             reverseStrandFraction=self.reverseStrandFraction,
             minDuplexPairs=minDuplexPairs,
             minFracAgreedForFilter=minFracAgreed,
-            minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment)
+            minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment,
+            NDP=NDP, EST=self.EST)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus):
@@ -873,6 +874,10 @@ HeaderInfoDict["NFSD"] = HeaderInfoLine(
     ID="NFSD", Description="Standard deviation for NF tags for a read suppo"
     "rting allele.",
     Number="A", Type="Float")
+HeaderInfoDict["NDP"] = HeaderInfoLine(
+    ID="NDP", Description="Number of read pairs not included in pileup due to"
+    "disagreement on the base call. Large numbers suggest context-specific er"
+    "ror modes.", Type="Integer", Number=1)
 
 
 """
