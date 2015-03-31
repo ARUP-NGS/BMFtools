@@ -467,7 +467,7 @@ class PCInfo:
             [pileupRead.alignment.mapping_quality < self.minMQ
              for pileupRead in pileups])
         self.PCol = PileupColumn
-        self.excludedSVTags = exclusionSVTags
+        self.excludedSVTagStr = exclusionSVTags
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
         self.FailedSVReadDict = {tag: sum([p.alignment.has_tag("SV") and tag
                                            not in p.alignment.opt("SV") for

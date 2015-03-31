@@ -1,3 +1,4 @@
+from __future__ import division
 from collections import defaultdict
 import operator
 from operator import methodcaller as mc
@@ -90,7 +91,7 @@ class SNVCFLine:
         self.NumStartStops = len(list(set(map(operator.attrgetter("ssString"),
                                               AlleleAggregateObject.recList))))
         self.CHROM = AlleleAggregateObject.contig
-        self.POS = AlleleAggregateObject.pos
+        self.POS = AlleleAggregateObject.pos + 1
         self.CONS = AlleleAggregateObject.consensus
         self.ALT = AlleleAggregateObject.ALT
         self.QUAL = AlleleAggregateObject.SumBQScore
@@ -102,7 +103,7 @@ class SNVCFLine:
         DOC = AlleleAggregateObject.DOC
         minAAF, maxAAF = ConfidenceIntervalAAF(AC, DOCMerged, pVal=pValBinom)
         try:
-            if(float(MaxPValue) < 10 ** (self.QUAL / -10)):
+            if(float(MaxPValue) < 10 ** (self.QUAL // -10)):
                 if("FILTER" in dir(self)):
                     self.FILTER = operator.add(self.FILTER, ",LowQual")
                 else:
@@ -142,13 +143,13 @@ class SNVCFLine:
             self.FILTER = "CONSENSUS"
 
         self.InfoFields = {"AC": AC,
-                           "AF": AC / (DOC * 1.),
+                           "AF": AC / DOC,
                            "BNP": int(-10 * mlog10(pValBinom)),
                            "BQF": FailedBQReads,
                            "BS": AlleleAggregateObject.BothStrandSupport,
                            "BSA": BothStrandAlignment,
                            "TF": AlleleAggregateObject.TotalReads
-                           / float(AlleleAggregateObject.DOCTotal),
+                           / AlleleAggregateObject.DOCTotal,
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,
                            "BPSD": AlleleAggregateObject.BPSD,
@@ -208,7 +209,7 @@ class SNVCFLine:
                 self.FormatFields[key]) for key in sorted(
                     self.FormatFields.keys())))
         self.str = "\t".join(nparray([self.CHROM,
-                                       self.POS + 1,
+                                       self.POS,
                                        self.ID,
                                        self.CONS,
                                        self.ALT,
@@ -231,10 +232,10 @@ class SNVCFLine:
 
     def ToString(self):
         self.update()
-        self.str = "\t".join(nparray([self.CHROM,
-                                       self.POS, self.ID, self.REF, self.ALT,
-                                       self.QUAL, self.FILTER, self.InfoStr,
-                                       self.FormatStr]).astype(str).tolist())
+        self.str = "\t".join(nparray([self.CHROM, self.POS,
+                                      self.ID, self.REF, self.ALT,
+                                      self.QUAL, self.FILTER, self.InfoStr,
+                                      self.FormatStr]).astype(str).tolist())
         return self.str
 
 
