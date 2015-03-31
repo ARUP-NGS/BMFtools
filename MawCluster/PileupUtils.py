@@ -41,7 +41,7 @@ class pPileupRead:
         self.is_del = PileupRead.is_del
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
-        self.name = self.alignment.name
+        self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
 
 
@@ -51,20 +51,29 @@ class PileupReadPair:
     Holds both bam record objects in a pair of pileup reads.
     Currently, one read unmapped and one read soft-clipped are
     both marked as soft-clipped reads.
+    Accepts a list of length two as input.
     """
 
-    def __init__(self, read1, read2):
+    def __init__(self, readlist):
+        read1, read2 = readlist[0], readlist[1]
         try:
-            assert isinstance(read1, cPileupRead)
+            assert isinstance(read1, cPileupRead) or isinstance(read1, pPileupRead)
         except AssertionError:
+            pl("repr(read1): %s" % repr(read1))
             raise ThisIsMadness("PileupReadPair must be initiated with "
-                                "pysam.calignmentfile.PileupRead objects!")
+                                "pysam.calignmentfile.PileupRead objects or "
+                                "pPileup read objects!!")
+        try:
+            assert len(readlist) == 2
+        except AssertionError:
+            pl("repr(readlist): %s" % repr(readlist))
+            raise ThisIsMadness("readlist must be of length two to make a PileupReadPair!")
         self.RP = ReadPair(read1.alignment, read2.alignment)
         self.read1 = pPileupRead(read1)
         self.read2 = pPileupRead(read2)
         self.discordant = (read1.BaseCall != read2.BaseCall)
         if(self.discordant):
-            if(read1.is_reverse):
+            if(read1.alignment.is_reverse):
                 self.discordanceString = (self.RP.read1_contig + "," +
                                           str(self.read1.alignment.pos -
                                               self.read1.query_position))
@@ -406,11 +415,12 @@ class PCInfo:
                  FracAlignFilter=False, primerLen=20,
                  experiment=""):
         assert isinstance(PileupColumn, pPileupColumn)
+        pileups = PileupColumn.pileups
         if("amplicon" in experiment):
-            self.ampliconFailed = sum([r for r in PileupColumn.pileups
+            self.ampliconFailed = sum([r for r in pileups
                                        if r.query_position <= primerLen])
-            PileupColumn.pileups = [r for r in PileupColumn.pileups
-                                    if r.query_position > primerLen]
+            pileups = [r for r in pileups
+                       if r.query_position > primerLen]
         self.experiment = experiment
         self.minMQ = int(minMQ)
         #  pl("minMQ: %s" % minMQ)
@@ -421,13 +431,17 @@ class PCInfo:
         #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
         #  pl("pos: %s" % self.pos)
+        self.FailedQCReads = sum([pileupRead.alignment.opt("FP") == 0
+                                  for pileupRead in pileups])
+        self.FailedFMReads = sum([pileupRead.alignment.opt("FM") < minFA
+                                  for pileupRead in pileups])
         self.FailedBQReads = sum(
             [pileupRead.alignment.query_qualities
              [pileupRead.query_position] < self.minBQ
-             for pileupRead in PileupColumn.pileups])
+             for pileupRead in pileups])
         self.FailedMQReads = sum(
             [pileupRead.alignment.mapping_quality < self.minMQ
-             for pileupRead in PileupColumn.pileups])
+             for pileupRead in pileups])
         self.PCol = PileupColumn
         self.excludedSVTags = exclusionSVTags.split(",")
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
@@ -435,7 +449,7 @@ class PCInfo:
         for tag in self.excludedSVTags:
             self.FailedSVReadDict[tag] = sum([p.alignment.has_tag("SV") and tag
                                               not in p.alignment.opt("SV")
-                                              for p in PileupColumn.pileups])
+                                              for p in pileups])
         self.FailedSVReads = sum([self.FailedSVReadDict[key] for key
                                   in self.FailedSVReadDict.keys()])
         #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
@@ -443,18 +457,19 @@ class PCInfo:
         if(self.FailedMQReads != 0):
             print("Mapping qualities of reads which failed: {}".format(
                   str([pu.alignment.mapping_quality
-                      for pu in PileupColumn.pileups
+                      for pu in pileups
                       if pu.alignment.mapping_quality >= self.minMQ])))
         print("Number of reads failed for BQ < {}: {}".format(self.minBQ,
               self.FailedBQReads))
         print("Number of reads failed for MQ < {}: {}".format(self.minMQ,
               self.FailedMQReads))
         """
-        self.Records = [
-            PRInfo(pileupRead) for pileupRead in PileupColumn.pileups
-            if(pileupRead.alignment.mapq >= self.minMQ) and
-            (pileupRead.alignment.query_qualities[
-                pileupRead.query_position] >= self.minBQ)]
+        self.Records = [PRInfo(pileupRead) for pileupRead in pileups
+                        if(pileupRead.alignment.mapq >= self.minMQ) and
+                        (pileupRead.alignment.query_qualities[
+                            pileupRead.query_position] >= self.minBQ) and
+                        pileupRead.alignment.opt("FP") == 1 and
+                        pileupRead.alignment.opt("FM") >= minFA]
         self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
         rsn = sum(map(oag("is_reverse"), self.Records))
@@ -479,8 +494,7 @@ class PCInfo:
         except IndexError:
             self.consensus = Counter(map(
                 oag("BaseCall"),
-                map(PRInfo,
-                    PileupColumn.pileups))).most_common(1)[0][0]
+                map(PRInfo, pileups))).most_common(1)[0][0]
         self.VariantDict = {}
         for alt in list(set(map(oag("BaseCall"), self.Records))):
             self.VariantDict[alt] = [

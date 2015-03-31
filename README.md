@@ -16,7 +16,7 @@
 ## Installation
 
 Run:
-```python
+```bash
 python setup.py install
 ```
 You might have an error claiming that README.md is not in dist/. If necessary, copy that file from the distribution base to dist.
@@ -25,11 +25,11 @@ You might have an error claiming that README.md is not in dist/. If necessary, c
 
 To run the main program, call the main.py function after installation, or, if installed, run the executable BMFMain.
 
-```python
+```bash
 python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
-```python
+```bash
 BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
@@ -38,17 +38,17 @@ A sample configuration file can be found in conf/config.txt. Over time, the numb
 
 In that case, one would call thus:
 
-```python
+```bash
 BMFMain R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
 ```
 
 To use bmftools subcommands, check instructions by executing the following:
 
-```python
+```bash
 bmftools --help
 ```
 
-```python
+```bash
 bmftools <subcommand> --help
 ```
 

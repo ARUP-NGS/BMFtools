@@ -26,7 +26,7 @@ def GetDiscordantReadPairs(pPileupColObj):
     assert isinstance(pPileupColObj, pPileupColumn)
     pileups = pPileupColObj.pileups
     ReadNameCounter = Counter(map(oag("query_name"),
-        map(oag("read"), pileups)))
+        map(oag("alignment"), pileups)))
     readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
                    key=lambda x: x.name)

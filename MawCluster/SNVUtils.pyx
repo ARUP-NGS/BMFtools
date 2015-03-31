@@ -48,7 +48,9 @@ class SNVCFLine:
                    minPVFrac=cython.float, minNumFam=cython.long,
                    minNumSS=cython.long, minFA=cython.long,
                    minDuplexPairs=cython.long, minAAF=dtype128_t,
-                   maxAAF=dtype128_t)
+                   maxAAF=dtype128_t, FailedFMReads=cython.long,
+                   FailedQCReads=cython.long, FailedBQReads=cython.long,
+                   FailedMQReads=cython.long)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=float("1e-30"),
@@ -59,8 +61,8 @@ class SNVCFLine:
                  MergedFracStr="default",
                  TotalCountStr="default",
                  MergedCountStr="default",
-                 FailedBQReads="default",
-                 FailedMQReads="default",
+                 FailedBQReads=-1, FailedMQReads=-1,
+                 FailedQCReads=-1, FailedFMReads=-1,
                  minNumFam=2,
                  minNumSS=2,
                  REF="default",
@@ -146,6 +148,7 @@ class SNVCFLine:
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,
                            "BPSD": AlleleAggregateObject.BPSD,
+                           "FQC": FailedQCReads, "FFM": FailedFMReads,
                            "FSR": AlleleAggregateObject.FSR,
                            "MNCS": minNumSS, "MDP": minDuplexPairs,
                            "MFRAC": AlleleAggregateObject.MFractionAgreed,
@@ -283,6 +286,7 @@ class VCFPos:
             MaxPValue=MaxPValue,
             FailedBQReads=PCInfoObject.FailedBQReads,
             FailedMQReads=PCInfoObject.FailedMQReads,
+            FailedQCReads=PCInfoObject.FailedQCReads,
             REF=self.REF, requireDuplex=self.requireDuplex,
             reverseStrandFraction=self.reverseStrandFraction,
             minDuplexPairs=minDuplexPairs,
@@ -844,6 +848,12 @@ HeaderInfoDict["BNP"] = HeaderInfoLine(
     ID="BNP", Description="Phred-encoded confidence chosen for calculating "
     "MAXAAF and MINAAF",
     Number=1, Type="Float")
+HeaderInfoDict["FFM"] = HeaderInfoLine(
+    ID="NAF", Description="Number of reads failed for too few reads in a fami"
+    "ly", Number=1, Type="Integer")
+HeaderInfoDict["FQC"] = HeaderInfoLine(
+    ID="NAF", Description="Number of reads failed for not passing QC ",
+    Number=1, Type="Integer")
 HeaderInfoDict["NAF"] = HeaderInfoLine(
     ID="NAF", Description="Number of amplicon-specific failed reads for "
     "pileup in case of mispriming. ",

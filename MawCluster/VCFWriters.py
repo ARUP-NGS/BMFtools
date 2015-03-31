@@ -93,9 +93,10 @@ def SNVCrawler(inBAM,
             puIterator = pileupCall(line[0], line[1],
                                          max_depth=200000,
                                          multiple_iterators=True)
+            PileupIt = puIterator.next
             while True:
                 try:
-                    PileupColumn = pPileupColumn(puIterator.next())
+                    PileupColumn = pPileupColumn(PileupIt())
                 except StopIteration:
                     pl("Finished iterations.")
                     break
@@ -121,10 +122,11 @@ def SNVCrawler(inBAM,
                     outHandle.write(VCFLineString + "\n")
     else:
         puIterator = pileupCall(max_depth=200000, multiple_iterators=True)
+        PileupIt = puIterator.next
         while True:
             try:
                 # Last command - 0 means iterator was where it crashed.
-                PCpysam = pPileupColumn(puIterator.next())
+                PCpysam = pPileupColumn(PileupIt())
                 # Last command - 0 means the PCInfo call was where it crashed
                 PC = PCInfo(PCpysam, minMQ=minMQ, minBQ=minBQ,
                             experiment=experiment)
