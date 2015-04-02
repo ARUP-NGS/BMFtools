@@ -323,7 +323,7 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND1, "i"),
-                               ("NF", ND1 / FM), "f")])
+                               ("NF", ND1 / FM, "f")])
             read2bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
@@ -332,7 +332,7 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND2, "i"),
-                               ("NF", ND2 / FM), "f")])
+                               ("NF", ND2 / FM, "f")])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
         """
