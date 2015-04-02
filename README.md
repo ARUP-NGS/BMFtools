@@ -210,9 +210,6 @@ Most options are available for command-line as well. If an option is set in both
 
 
 #TODO (ish):
-0. Pressing
-    1. Figure out why the VCF being written is off by one. (It shouldn't be, as I'm telling it to increment from the pysam position - after lunch today, I'll look at that.)
-
 ## Backlog
 0. Paper/Presentations
     1. slides of qc, slide explaining why m.a.p., slide stating our advantages vs others

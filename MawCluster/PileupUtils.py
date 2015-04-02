@@ -37,7 +37,12 @@ def GetDiscordantReadPairs(pPileupColObj):
     Takes a pPileupColumn object (python PileupColumn) as input
     and returns a list of PileupReadPair objects.
     """
-    assert isinstance(pPileupColObj, pPileupColumn)
+    try:
+        assert isinstance(pPileupColObj, pPileupColumn)
+    except AssertionError:
+        pl("Not a pPileupColumn? Check this... repr of pPileupColObj:"
+           "%s." % repr(pPileupColObj))
+        raise AssertionError("")
     pileups = pPileupColObj.pileups
     ReadNameCounter = Counter(map(oag("query_name"),
         map(oag("alignment"), pileups)))

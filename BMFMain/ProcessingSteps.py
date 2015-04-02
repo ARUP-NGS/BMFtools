@@ -31,7 +31,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   addRG=False, PL="ILLUMINA",
                   SM="default", CN="default",
                   RG="default", ID="default",
-                  realigner="gatk", gatkpath="default", dbsnp="default",
+                  realigner="abra", gatkpath="default", dbsnp="default",
                   rLen=-1, intelDeflator="default"):
     """
     Performs alignment and sam tagging of consolidated fastq files.
@@ -76,7 +76,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
            level=logging.DEBUG)
     pl("Now tagging BAM with custom SAM tags.")
     taggedBAM = BCBam.pairedBarcodeTagging(
-        consfq1, consfq2, outBAMProperPair, bedfile=bed)
+        consfq1, consfq2, outBAMProperPair, bedfile=bed, realigner=realigner)
     pl("Now splitting the BAM into read 1 and read 2 files.")
     pl("Now generating double barcode index.")
     if(realigner == "abra"):

@@ -239,7 +239,9 @@ def pairedBarcodeTagging(
         outBAMFile="default",
         suppBam="default",
         bedfile="default",
-        conversionXml="default"):
+        conversionXml="default", realigner="default"):
+    if(realigner == "default"):
+        raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
     from MawCluster.SVUtils import SVParamDict
     from MawCluster.SVUtils import SVTestDict
     if(outBAMFile == "default"):
@@ -260,6 +262,7 @@ def pairedBarcodeTagging(
     if(conversionXml != "default"):
         convData = SecC.SecC.BuildRunDict(conversionXml)
     obw = outBAM.write
+    addDefault = (realigner == "gatk")
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag >= 2048):
             suppBAM.write(entry)
@@ -290,28 +293,46 @@ def pairedBarcodeTagging(
         contigSetStr = ",".join(sorted(
             [PysamToChrDict[read1bam.reference_id],
              PysamToChrDict[read2bam.reference_id]]))
-        read1bam.set_tags([("RP", coorString, "Z"),
-                           ("SC", contigSetStr, "Z"),
-                           ("FM", FM, "i"),
-                           ("BS", descDict1["BS"], "Z"),
-                           ("FP", int("Pass" in descDict1["FP"]), "i"),
-                           ("PV", descDict1["PV"], "Z"),
-                           ("FA", descDict1["FA"], "Z"),
-                           ("ND", ND1, "i"),
-                           ("NF", odiv(ND1, float(FM)), "f"),
-                           ("RG", "default", "Z")
-                           ])
-        read2bam.set_tags([("RP", coorString, "Z"),
-                           ("SC", contigSetStr, "Z"),
-                           ("FM", FM, "i"),
-                           ("BS", descDict1["BS"], "Z"),
-                           ("FP", int("Pass" in descDict1["FP"]), "i"),
-                           ("PV", descDict1["PV"], "Z"),
-                           ("FA", descDict1["FA"], "Z"),
-                           ("ND", ND2, "i"),
-                           ("NF", odiv(ND2, float(FM)), "f"),
-                           ("RG", "default", "Z")
-                           ])
+        if(addDefault):
+            read1bam.set_tags([("RP", coorString, "Z"),
+                               ("SC", contigSetStr, "Z"),
+                               ("FM", FM, "i"),
+                               ("BS", descDict1["BS"], "Z"),
+                               ("FP", int("Pass" in descDict1["FP"]), "i"),
+                               ("PV", descDict1["PV"], "Z"),
+                               ("FA", descDict1["FA"], "Z"),
+                               ("ND", ND1, "i"),
+                               ("NF", odiv(ND1, float(FM)), "f"),
+                               ("RG", "default", "Z")])
+            read2bam.set_tags([("RP", coorString, "Z"),
+                               ("SC", contigSetStr, "Z"),
+                               ("FM", FM, "i"),
+                               ("BS", descDict1["BS"], "Z"),
+                               ("FP", int("Pass" in descDict1["FP"]), "i"),
+                               ("PV", descDict1["PV"], "Z"),
+                               ("FA", descDict1["FA"], "Z"),
+                               ("ND", ND2, "i"),
+                               ("NF", odiv(ND2, float(FM)), "f"),
+                               ("RG", "default", "Z")])
+        else:
+            read1bam.set_tags([("RP", coorString, "Z"),
+                               ("SC", contigSetStr, "Z"),
+                               ("FM", FM, "i"),
+                               ("BS", descDict1["BS"], "Z"),
+                               ("FP", int("Pass" in descDict1["FP"]), "i"),
+                               ("PV", descDict1["PV"], "Z"),
+                               ("FA", descDict1["FA"], "Z"),
+                               ("ND", ND1, "i"),
+                               ("NF", ND1 / FM), "f")])
+            read2bam.set_tags([("RP", coorString, "Z"),
+                               ("SC", contigSetStr, "Z"),
+                               ("FM", FM, "i"),
+                               ("BS", descDict1["BS"], "Z"),
+                               ("FP", int("Pass" in descDict1["FP"]), "i"),
+                               ("PV", descDict1["PV"], "Z"),
+                               ("FA", descDict1["FA"], "Z"),
+                               ("ND", ND2, "i"),
+                               ("NF", ND2 / FM), "f")])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
         """
