@@ -143,7 +143,7 @@ def SNVCrawler(inBAM,
             # TODO: Check to see if it speeds up to not assign and only write.
             NumDiscordantPairs = -1
             if(checkDiscPairs):
-                DiscRPs = GetDiscordantReadPairs(PC)
+                DiscRPs = GetDiscordantReadPairs(PileupColumn)
                 DiscRPNames = map(oag("name"), DiscRPs)
                 for RP in DiscRPs:
                     reads = RP.RP.getReads()
