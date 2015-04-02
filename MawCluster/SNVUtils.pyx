@@ -230,7 +230,7 @@ class SNVCFLine:
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
                                  for key in sorted(self.InfoFields.keys())])
 
-    def ToString(self):
+    def __str__(self):
         self.update()
         self.str = "\t".join(nparray([self.CHROM, self.POS,
                                       self.ID, self.REF, self.ALT,
@@ -297,20 +297,20 @@ class VCFPos:
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus):
-            self.str = "\n".join([line.ToString()
+            self.str = "\n".join([line.__str__()
                                   for line in
                                   self.VCFLines])
         else:
-            self.str = "\n".join([line.ToString()
+            self.str = "\n".join([line.__str__()
                                   for line in
                                   self.VCFLines
                                   if line.FILTER != "CONSENSUS"])
         self.DuplexRequired = requireDuplex
         self.minDuplexPairs = minDuplexPairs
 
-    def ToString(self):
+    def __str__(self):
         map(mc("update"), self.VCFLines)
-        self.str = "\n".join(map(mc("ToString"), self.VCFLines))
+        self.str = "\n".join(map(mc("__str__"), self.VCFLines))
         return self.str
 
 
@@ -327,7 +327,7 @@ class HeaderFileFormatLine:
         else:
             self.fileformat = fileformat
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##fileformat={}".format(self.fileformat)
         return self.str
 
@@ -361,7 +361,7 @@ class HeaderInfoLine:
         else:
             raise ThisIsMadness("A description is required.")
 
-    def ToString(self):
+    def __str__(self):
         self.str = ("##INFO=<ID="
                     "{},Number={},Type=".format(self.ID, self.Number) +
                     "{},Description={}>".format(self.Type, self.Description))
@@ -397,7 +397,7 @@ class HeaderFormatLine:
         else:
             raise ThisIsMadness("A description is required.")
 
-    def ToString(self):
+    def __str__(self):
         self.str = ("##FORMAT=<ID="
                     "{},Number={},Type=".format(self.ID, self.Number) +
                     "{},Description={}>".format(self.Type, self.Description))
@@ -420,7 +420,7 @@ class HeaderAltLine:
                                 " {}".format(Types.replace(",", ", ")))
         self.Description = Description
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##ALT=<ID={},Description={}>".format(self.ID,
                                                          self.Description)
         return self.str
@@ -436,7 +436,7 @@ class HeaderFilterLine:
         self.ID = ID
         self.Description = Description
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##FILTER=<ID={},Description={}>".format(
             self.ID, self.Description)
         return self.str
@@ -451,7 +451,7 @@ class HeaderAssemblyLine:
     def __init__(self, assembly="default"):
         self.assembly = assembly
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##assembly={}".format(self.assembly)
         return self.str
 
@@ -465,7 +465,7 @@ class HeaderCommandLine:
     def __init__(self, commandStr="default"):
         self.commandStr = commandStr
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##commandline={}".format(self.commandStr)
         return self.str
 
@@ -479,7 +479,7 @@ class HeaderFunctionCallLine:
     def __init__(self, callStr="default"):
         self.callStr = callStr
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##FunctionCall={}".format(self.callStr)
         return self.str
 
@@ -507,7 +507,7 @@ class HeaderFilterINFOGtLine:
         if(referenceType == "default"):
             referenceType = str  # Default behavior sets the type to string.
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##FILTER=<ID={},Description={},".format(
                    self.ID, self.Description)
         self.str += "Type={},Negated={},RVal={},INFOTag={}>".format(
@@ -539,7 +539,7 @@ class HeaderFilterINFOEqLine:
         if(referenceType == "default"):
             referenceType = str  # Default behavior sets the type to string.
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##FILTER=<ID={},Description={},".format(
                    self.ID, self.Description)
         self.str += "Type={},Negated={},RVal={},INFOTag={}>".format(
@@ -558,7 +558,7 @@ class HeaderCustomLine:
         self.customValue = customValue
         self.customKey = customKey
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##{}={}".format(self.customKey, self.customValue)
         return self.str
 
@@ -585,7 +585,7 @@ class HeaderReferenceLine:
             raise ValueError(
                 "isfile kwarg provided was not true or false!")
 
-    def ToString(self):
+    def __str__(self):
         if(self.isfile is False):
             self.str = "##reference={}".format(self.reference)
         else:
@@ -606,7 +606,7 @@ class HeaderContigLine:
         except ValueError:
             raise ThisIsMadness("Length must be an integer!")
 
-    def ToString(self):
+    def __str__(self):
         self.str = "##contig=<ID={},length={}>".format(
             self.contig, self.length)
         return self.str
@@ -916,7 +916,7 @@ def GetContigHeaderLines(header):
     for contigDict in header['SQ']:
         contigLineList.append(
             HeaderContigLine(contig=contigDict["SN"],
-                             length=contigDict["LN"]).ToString())
+                             length=contigDict["LN"]).__str__())
     return "\n".join(contigLineList)
 
 
@@ -930,48 +930,48 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
     HeaderLinesStr = ""
     # fileformat line
     HeaderLinesStr += HeaderFileFormatLine(
-        fileformat=fileFormat).ToString() + "\n"
+        fileformat=fileFormat).__str__() + "\n"
     # FILTER lines
     if(FILTERTags == "default"):
         for key in sorted(HeaderFilterDict.keys()):
-            HeaderLinesStr += HeaderFilterDict[key].ToString() + "\n"
+            HeaderLinesStr += HeaderFilterDict[key].__str__() + "\n"
     else:
         for filter in FILTERTags.split(","):
             try:
                 HeaderLinesStr += HeaderFilterDict[
-                    filter.upper()].ToString() + "\n"
+                    filter.upper()].__str__() + "\n"
             except KeyError:
                 pl("Filter {} not found - continuing.".format(filter))
     # INFO lines
     if(INFOTags == "default"):
         for key in sorted(HeaderInfoDict.keys()):
-            HeaderLinesStr += HeaderInfoDict[key].ToString() + "\n"
+            HeaderLinesStr += HeaderInfoDict[key].__str__() + "\n"
     else:
         for info in INFOTags.split(","):
             try:
                 HeaderLinesStr += HeaderInfoDict[
-                    info.upper()].ToString() + "\n"
+                    info.upper()].__str__() + "\n"
             except KeyError:
                 pl("Info {} not found - continuing.".format(info))
     # FORMAT lines
     if(FORMATTags == "default"):
         for key in sorted(HeaderFormatDict.keys()):
-            HeaderLinesStr += HeaderFormatDict[key].ToString() + "\n"
+            HeaderLinesStr += HeaderFormatDict[key].__str__() + "\n"
     else:
         for format in FORMATTags.split(","):
             try:
                 HeaderLinesStr += HeaderFormatDict[
-                    format.upper()].ToString() + "\n"
+                    format.upper()].__str__() + "\n"
             except KeyError:
                 pl("Format {} not found - continuing.".format(format))
     # commandline line
     if(commandStr != "default"):
         HeaderLinesStr += HeaderCommandLine(
-            commandStr=commandStr).ToString() + "\n"
+            commandStr=commandStr).__str__() + "\n"
     # reference line
     if(reference != "default"):
         HeaderLinesStr += HeaderReferenceLine(
-            reference=reference, isfile=reference_is_path).ToString() + "\n"
+            reference=reference, isfile=reference_is_path).__str__() + "\n"
     # contig lines
     if(header != "default"):
         HeaderLinesStr += GetContigHeaderLines(header) + "\n"

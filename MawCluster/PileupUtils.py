@@ -26,7 +26,7 @@ import cython
 
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import ToStr, ReadPair, printlog as pl
+from utilBMF.HTSUtils import ReadPair, printlog as pl
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -274,6 +274,7 @@ class AlleleAggregateInfo:
         if(totalSize == "default"):
             raise ThisIsMadness(("mergedSize must be provided: number of "
                                  "PRInfo at given position."))
+        del recList
         self.recList = [rec for rec in recList
                         if rec.MQ >= minMQ and rec.BQ >= minBQ]
         if("PVFrac" in dir(self.recList[0])):
@@ -304,49 +305,46 @@ class AlleleAggregateInfo:
             self.maxNF = -1.
             self.NFSD = -1.
         try:
-            assert(sum([rec.BaseCall == recList[
-                0].BaseCall for rec in recList]) == len(recList))
+            assert(sum([rec.BaseCall == self.recList[
+                0].BaseCall for rec in self.recList]) == len(self.recList))
         except AssertionError:
-            # print("recList repr: {}".format(repr(recList)))
+            # print("self.recList repr: {}".format(repr(self.recList)))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
-        self.TotalReads = nsum(map(oag("FM"), recList))
+        self.TotalReads = nsum(map(oag("FM"), self.recList))
         self.MergedReads = lenR
         self.ReverseMergedReads = nsum(map(
-            oag("is_reverse"), recList))
+            oag("is_reverse"), self.recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
         self.ReverseTotalReads = nsum(map(
-            oag("FM"), filter(oag("is_reverse"), recList)))
-        self.ForwardTotalReads = operator.sub(self.TotalReads,
-                                              self.ReverseTotalReads)
+            oag("FM"), filter(oag("is_reverse"), self.recList)))
+        self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
-            self.AveFamSize = odiv(float(self.TotalReads),
-                                           self.MergedReads)
+            self.AveFamSize = self.TotalReads / self.MergedReads
         except ZeroDivisionError:
             self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        self.SumBQScore = sum(map(oag("BQ"), recList))
-        self.SumMQScore = sum(map(oag("MQ"), recList))
+        self.SumBQScore = sum(map(oag("BQ"), self.recList))
+        self.SumMQScore = sum(map(oag("MQ"), self.recList))
         try:
-            self.AveMQ = odiv(float(self.SumMQScore), lenR)
+            self.AveMQ = self.SumMQScore / lenR
         except ZeroDivisionError:
             self.AveMQ = 0
         try:
-            self.AveBQ = odiv(float(self.SumBQScore), lenR)
+            self.AveBQ = self.SumBQScore / lenR
         except ZeroDivisionError:
             self.AveBQ = 0
-        self.ALT = recList[0].BaseCall
+        self.ALT = self.recList[0].BaseCall
         self.consensus = consensus
         self.minMQ = minMQ
         self.minBQ = minBQ
         try:
-            self.reverseStrandFraction = odiv(
-                float(self.ReverseMergedReads), self.MergedReads)
+            self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
         except ZeroDivisionError:
             self.reverseStrandFraction = -1.
         try:
             self.MFractionAgreed = nmean(map(
-                oag("FractionAgreed"),  recList))
+                oag("FractionAgreed"),  self.recList))
         except TypeError:
             pl("Looks like these records have no FractionAgreed attribute. "
                "No worries.", level=logging.DEBUG)
@@ -354,7 +352,7 @@ class AlleleAggregateInfo:
         self.minFrac = minFracAgreed
         self.minFA = minFA
         try:
-            self.MFA = nmean(map(oag("FA"), recList))
+            self.MFA = nmean(map(oag("FA"), self.recList))
         except TypeError:
             pl("Looks like these records have no FA attribute. "
                "No worries.", level=logging.DEBUG)
@@ -401,11 +399,11 @@ class AlleleAggregateInfo:
         # Check to see if a read pair supports a variant with both ends
         ReadNameCounter = Counter(map(
             oag("query_name"),
-            map(oag("read"), recList)))
+            map(oag("read"), self.recList)))
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
         query_positions = nparray(map(
-            oag("query_position"), recList)).astype(float)
+            oag("query_position"), self.recList)).astype(float)
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
@@ -574,8 +572,7 @@ class PCInfo:
         self.MergedFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedFracDict[
-                alt.ALT] = odiv(float(alt.MergedReads),
-                                        self.MergedReads)
+                alt.ALT] = alt.MergedReads / self.MergedReads
         self.MergedFracStr = ",".join(
             [">".join([key, str(self.MergedFracDict[key])])
              for key in self.MergedFracDict.keys()])
@@ -642,22 +639,22 @@ class PCInfo:
                 self.MergedAlleleFreqDict[key] = 0.
                 self.TotalAlleleFreqDict[key] = 0.
         self.MergedAlleleCountStr = "\t".join(
-            map(ToStr, [self.MergedAlleleDict["A"],
+            map(__str__, [self.MergedAlleleDict["A"],
                         self.MergedAlleleDict["C"],
                         self.MergedAlleleDict["G"],
                         self.MergedAlleleDict["T"]]))
         self.TotalAlleleCountStr = "\t".join(
-            map(ToStr, [self.TotalAlleleDict["A"],
+            map(__str__, [self.TotalAlleleDict["A"],
                         self.TotalAlleleDict["C"],
                         self.TotalAlleleDict["G"],
                         self.TotalAlleleDict["T"]]))
         self.MergedAlleleFreqStr = "\t".join(
-            map(ToStr, [self.MergedAlleleFreqDict["A"],
+            map(__str__, [self.MergedAlleleFreqDict["A"],
                         self.MergedAlleleFreqDict["C"],
                         self.MergedAlleleFreqDict["G"],
                         self.MergedAlleleFreqDict["T"]]))
         self.TotalAlleleFreqStr = "\t".join(
-            map(ToStr, [self.TotalAlleleFreqDict["A"],
+            map(__str__, [self.TotalAlleleFreqDict["A"],
                         self.TotalAlleleFreqDict["C"],
                         self.TotalAlleleFreqDict["G"],
                         self.TotalAlleleFreqDict["T"]]))
@@ -669,11 +666,9 @@ class PCInfo:
         self.TotalStrandednessRatioDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         for alt in self.AltAlleleData:
             self.MergedStrandednessRatioDict[
-                alt.ALT] = odiv(alt.ReverseMergedReads,
-                                        float(alt.MergedReads))
+                alt.ALT] = alt.ReverseMergedReads / alt.MergedReads
             self.TotalStrandednessRatioDict[
-                alt.ALT] = odiv(alt.ReverseTotalReads,
-                                        float(alt.TotalReads))
+                alt.ALT] = alt.ReverseTotalReads / alt.TotalReads
         self.MergedStrandednessStr = "\t".join([
             str(self.MergedStrandednessRatioDict[
                 key]) for key in self.MergedStrandednessRatioDict.keys()])
@@ -693,7 +688,7 @@ class PCInfo:
                               self.MergedStrandednessStr,
                               self.TotalStrandednessStr]])
 
-    def ToString(self, header=False):
+    def __str__(self, header=False):
         outStr = ""
         if(header):
             outStr = ("#Chr\tPos (0-based)\tRef (Consensus)\tAlt\tTotal "
@@ -706,7 +701,7 @@ class PCInfo:
                       "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
             outStr += "\t".join(
-                map(ToStr, [self.contig,
+                map(__str__, [self.contig,
                             self.pos,
                             self.consensus,
                             alt.ALT,
@@ -747,7 +742,7 @@ class PileupInterval:
         self.UniqueCoverage = 0
         self.AvgTotalCoverage = 0
         self.AvgUniqueCoverage = 0
-        self.str = self.ToString()
+        self.str = self.__str__()
 
     def updateWithPileupColumn(self, PileupColumn):
         self.end = operator.add(self.end, 1)
@@ -763,7 +758,7 @@ class PileupInterval:
         self.AvgUniqueCoverage = odiv(self.UniqueCoverage, float(
             operator.sub(self.end, self.start)))
 
-    def ToString(self):
+    def __str__(self):
         self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
                                                self.start,
                                                self.end,
@@ -828,10 +823,10 @@ def CustomPileupFullGenome(inputBAM,
         TotalReadsProcessed = operator.add(TotalReadsProcessed,
                                            PColSum.TotalReads)
         if(FirstLine):
-            PileupHandle.write(PColSum.ToString(header=True))
+            PileupHandle.write(PColSum.__str__(header=True))
             FirstLine = False
         else:
-            PileupHandle.write(PColSum.ToString())
+            PileupHandle.write(PColSum.__str__())
         for key in PColSum.TransMergedCounts.keys():
             try:
                 TransMergedDict[
@@ -972,10 +967,10 @@ def CustomPileupToTsv(inputBAM,
             MergedReadsProcessed += PColSum.MergedReads
             TotalReadsProcessed += PColSum.TotalReads
             if(FirstLine):
-                PileupHandle.write(PColSum.ToString(header=True))
+                PileupHandle.write(PColSum.__str__(header=True))
                 FirstLine = False
             else:
-                PileupHandle.write(PColSum.ToString())
+                PileupHandle.write(PColSum.__str__())
             for key in PColSum.TransMergedCounts.keys():
                 try:
                     TransMergedDict[
@@ -1203,7 +1198,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
                     except AssertionError:
                         del Interval
                 else:
-                    outHandle.write(operator.add(Interval.ToString(), "\n"))
+                    outHandle.write(operator.add(Interval.__str__(), "\n"))
                     if(operator.ge(PC.PCol.nsegments, mincov)):
                         Interval = PileupInterval(
                             contig=PC.PCol.reference_id,
@@ -1217,7 +1212,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
             else:
                 try:
                     Interval.updateWithPileupColumn(PC.PCol)
-                    outHandle.write(Interval.ToString() + "\n")
+                    outHandle.write(Interval.__str__() + "\n")
                 except AssertionError:
                     del Interval
                 if(PC.PCol.nsegments >= mincov):

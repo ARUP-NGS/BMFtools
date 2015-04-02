@@ -83,7 +83,7 @@ class VCFFile:
         for headerLine in self.header:
             FileHandle.write("{}\n".format(headerLine))
         for VCFEntry in self.Records:
-            FileHandle.write("{}\n".format(VCFEntry.ToString()))
+            FileHandle.write("{}\n".format(VCFEntry.__str__()))
         FileHandle.close()
         return
 
@@ -246,7 +246,7 @@ class VCFRecord:
                                    self.GENOTYPE, sampleStr]])
         self.str = recordStr.strip().replace("\n", "")
 
-    def ToString(self):
+    def __str__(self):
         self.update()
         return self.str
 
@@ -447,12 +447,12 @@ def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
         if(count == 1):
                 outHandle.write(SNVUtils.HeaderCustomLine(
                     customKey="FilterVCFFileByBed",
-                    customValue=bedfile).ToString() + "\n")
+                    customValue=bedfile).__str__() + "\n")
         outHandle.write(line + "\n")
         count += 1
     for line in inVCF.Records:
         if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
-            outHandle.write(line.ToString() + "\n")
+            outHandle.write(line.__str__() + "\n")
         else:
             pass
     outHandle.close()
@@ -496,7 +496,7 @@ def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
         if(negation):
             pf = not pf
         if(pf):
-            outHandle.write(line.ToString() + "\n")
+            outHandle.write(line.__str__() + "\n")
     outHandle.close()
     return outVCF
 
@@ -538,7 +538,7 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
         if(negation):
             pf = not pf
         if(pf):
-            outHandle.write(line.ToString() + "\n")
+            outHandle.write(line.__str__() + "\n")
     outHandle.close()
     return outVCF
 
@@ -611,7 +611,7 @@ def ISplitMultipleAlts(inVCF, outVCF="default"):
     count = 0
     for line in inVCF:
         if(len(outLines) >= 10000):
-            outHandle.write("\n".join([line.ToString() for line in outLines]))
+            outHandle.write("\n".join([line.__str__() for line in outLines]))
             outLines = []
             numK += 1
             print("Number of processed lines: {}".format(10000 * numK))
@@ -660,7 +660,7 @@ def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
                               rec.InfoDict["AF"].split(",")],
                              dtype=np.float64)
         if(operator.le(recFreq, maxAF)):
-            outLines.append(rec.ToString())
+            outLines.append(rec.__str__())
     if len(outLines) != 0:
         outHandle.write("\n".join(outLines))
     outHandle.flush()
@@ -697,7 +697,7 @@ def GetPotentialHetsVCF(inVCF, minHetFrac=0.025,
         if(hetFreq >= minHetFrac and hetFreq <= maxHetFrac):
             if(replaceIDWithHetFreq):
                 VCFRec.ID = str(hetFreq)[0:6]
-            outHandle.write(VCFRec.ToString() + "\n")
+            outHandle.write(VCFRec.__str__() + "\n")
     outHandle.close()
 
 
@@ -726,5 +726,5 @@ def GetPotentialHetsVCFUK10K(inVCF, minAlFrac=0.2,
         if(alleleFreq >= minAlFrac and alleleFreq <= maxAlFrac):
             if(replaceIDWithAlFreq):
                 VCFRec.ID = str(alleleFreq)[0:6]
-            outHandle.write(VCFRec.ToString() + "\n")
+            outHandle.write(VCFRec.__str__() + "\n")
     outHandle.close()

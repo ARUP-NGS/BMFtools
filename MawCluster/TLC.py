@@ -101,14 +101,14 @@ def BMFXLC(inBAM,
             # lastEvent = event # This is here to just make it easier to work
             #  with the variables produced here for interactive work.
         # return lastEvent
-        print("PutativeXLocs: {}".format("\n".join([i.ToString() for i in
+        print("PutativeXLocs: {}".format("\n".join([i.__str__() for i in
                                                     PutativeIntraXLocs])))
         del WorkingPairSet
     XLocVCFLinesIntra = list(set([TranslocationVCFLine(
         xLoc, inBAM=xLoc.inBAM, TransType="IntrachromosomalRearrangement",
         ref=ref)
         for xLoc in PutativeIntraXLocs if xLoc.nsegments != 0]))
-    print("XLocVCFLinesIntra: {}".format(",".join([i.ToString() for i in
+    print("XLocVCFLinesIntra: {}".format(",".join([i.__str__() for i in
                                                    XLocVCFLinesIntra])))
     """
     # Now preparing for interchromosomal translocation detection
@@ -169,10 +169,10 @@ def BMFXLC(inBAM,
     for line in XLocVCFLines:
         if(line.TransType == "IntrachromosomalRearrangement"):
             if(line.NumPartners != 0 and line.TDIST >= 10000):
-                outHandle.write(line.ToString() + "\n")
+                outHandle.write(line.__str__() + "\n")
         if(line.TransType == "InterchromosomalRearrangement"):
             if(line.NumPartners != 0):
-                outHandle.write(line.ToString() + "\n")
+                outHandle.write(line.__str__() + "\n")
     outHandle.close()
     """
     Step 4: Try to create the consensus sequence using soft-clipped reads

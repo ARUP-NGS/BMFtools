@@ -60,15 +60,6 @@ def printlog(string, level=logging.INFO):
     return
 
 
-def ToStr(x):
-    """
-    Needed to use map for str conversion
-    """
-    return str(x)
-
-
-# TODO: Write something to create these dictionaries from a SAM header
-
 
 PysamToChrDict = {}
 for i in range(22):

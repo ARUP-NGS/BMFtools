@@ -122,7 +122,7 @@ def SNVCrawler(inBAM,
                                        keepConsensus=keepConsensus,
                                        reference=reference,
                                        minFracAgreed=minFracAgreed,
-                                       minFA=minFA).ToString()
+                                       minFA=minFA).__str__()
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
@@ -159,7 +159,7 @@ def SNVCrawler(inBAM,
                                    reference=reference,
                                    minFracAgreed=minFracAgreed,
                                    minFA=minFA,
-                                   NDP=NumDiscordantPairs).ToString()
+                                   NDP=NumDiscordantPairs).__str__()
             if(len(VCFLineString) != 0):
                 outHandle.write(VCFLineString + "\n")
     if(checkDiscPairs):
@@ -201,7 +201,7 @@ def SNVMinion(inBAM,
                 try:
                     PileupColumn = puIterator.next()
                     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ)
-                    # print(PC.ToString())
+                    # print(PC.__str__())
                 except ValueError:
                     pl(("Pysam sometimes runs into errors during iteration w"
                         "hich are not handled with any elegance. Continuing!"))
@@ -214,7 +214,7 @@ def SNVMinion(inBAM,
                 VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                        keepConsensus=keepConsensus,
                                        reference=reference
-                                       ).ToString()
+                                       ).__str__()
                 if(len(VCFLineString) != 0):
                     outHandle.write(VCFLineString + "\n")
     else:
@@ -231,7 +231,7 @@ def SNVMinion(inBAM,
             # TODO: Check to see if it speeds up to not assign and only write.
             VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                    keepConsensus=keepConsensus,
-                                   reference=reference).ToString()
+                                   reference=reference).__str__()
             if(len(VCFLineString) != 0):
                 outHandle.write(VCFLineString + "\n")
     return VCFLines

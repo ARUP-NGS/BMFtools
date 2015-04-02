@@ -58,7 +58,6 @@ from utilBMF.HTSUtils import PipedShellCall
 from utilBMF.HTSUtils import ph2chr
 from utilBMF.HTSUtils import ph2chrDict
 from utilBMF.HTSUtils import chr2ph
-from utilBMF.HTSUtils import ToStr
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import FacePalm
@@ -95,7 +94,7 @@ class pFastqProxy:
         self.sequence = FastqProxy.sequence
         self.name = FastqProxy.name
 
-    def ToString(self):
+    def __str__(self):
         return "\n".join(["".join(["@", self.name, " ", self.comment]),
                          self.sequence,
                          "+", self.quality, ""])

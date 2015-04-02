@@ -46,7 +46,7 @@ class XLocSegment:
         self.bedIntervals = bedIntervals
         self.ID = str(uuid.uuid4().get_hex().upper()[0:8])
 
-    def ToString(self):
+    def __str__(self):
         return "\t".join([str(i) for i in [["SegmentID=" + self.ID] +
                                            self.interval + [self.DOR] +
                                            ["InBed={}".format(
@@ -56,7 +56,7 @@ class XLocSegment:
 class PutativeXLoc:
 
     """
-    Contains a list of XLocSegment objects and has a ToString method which
+    Contains a list of XLocSegment objects and has a __str__ method which
     produces a line with all regions (most likely only two) involved in the
     rearrangement, along with a randomly generated uuid. This uuid is the
     basename for the bam file containing the supporting reads.
@@ -94,12 +94,12 @@ class PutativeXLoc:
         self.inBAM = inBAM
         self.nsegments = len(self.segments)
 
-    def ToString(self):
+    def __str__(self):
         string = ("@PutativeTranslocationID={}\tContig\tStart "
                   "[0-based]\tStop\tMean DOR\n".format(self.ID))
         for segment in self.segments:
-            if(isinstance(segment.ToString(), str)):
-                string += segment.ToString() + "\n"
+            if(isinstance(segment.__str__(), str)):
+                string += segment.__str__() + "\n"
         return string
 
     def WriteReads(self, outBAM="default", header="default"):
@@ -417,7 +417,7 @@ class TranslocationVCFLine:
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
                                  for key in sorted(self.InfoFields.keys())])
 
-    def ToString(self):
+    def __str__(self):
         self.update()
         self.str = "\t".join([str(i) for i in [self.CHROM,
                                                self.POS,

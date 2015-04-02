@@ -55,12 +55,12 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                     "ctfreq=%s, recordsPerWrite=" % ctfreq +
                     "%s). BMFTools version: %s" % (recordsPerWrite,
                                                    BMFVersion))
-    IVCFObj.header.insert(-1, HeaderFunctionCallLine(functionCall).ToString())
+    IVCFObj.header.insert(-1, HeaderFunctionCallLine(functionCall).__str__())
     outHandle.write("\n".join(IVCFObj.header) + "\n")
     recordsArray = []
     for line in IVCFObj:
         if(len(recordsArray) >= recordsPerWrite):
-            outHandle.write("\n".join(map(mc("ToString"), recordsArray)) +
+            outHandle.write("\n".join(map(mc("__str__"), recordsArray)) +
                             "\n")
             recordsArray = []
         if(line.REF != "C" or line.REF != "G"):
@@ -83,7 +83,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
         line.InfoDict["MFDN"] = maxFreqNoise
         line.InfoDict["MFDNP"] = mfdnpStr
         recordsArray.append(line)
-    outHandle.write("\n".join(map(mc("ToString"), recordsArray)) + "\n")
+    outHandle.write("\n".join(map(mc("__str__"), recordsArray)) + "\n")
     outHandle.flush()
     outHandle.close()
     return outVCF
