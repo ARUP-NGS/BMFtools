@@ -274,13 +274,15 @@ class AlleleAggregateInfo:
         if(totalSize == "default"):
             raise ThisIsMadness(("mergedSize must be provided: number of "
                                  "PRInfo at given position."))
-        del recList
         self.recList = [rec for rec in recList
                         if rec.MQ >= minMQ and rec.BQ >= minBQ]
+        del recList
+        """
         if("PVFrac" in dir(self.recList[0])):
             self.recList = [rec for rec in self.recList
                             if rec.PVFrac >= minPVFrac
                             or rec.PVFrac is None]
+        """
         self.recList = [rec for rec in self.recList
                         if rec.FractionAgreed >= minFracAgreed]
 
