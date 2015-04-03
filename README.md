@@ -82,6 +82,7 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 
 Tag | Content | Format |
 ----|-----|-----|
+AF | Aligned Fraction | Float |
 BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 CC | Cluster Count | Integer |
 DP | Discordant Read Pair information. | String |
@@ -227,7 +228,6 @@ Most options are available for command-line as well. If an option is set in both
         3. VQS model (start, paper and pencil?)
     1. Error Characterization Code
         1. Write database reading and processing.
-        2. Check for read pairs that disagree in a pileup - the advantage of this is that we wouldn't need to run a separate, all-context experiment just yet to get what we need for <0.1% observed AAF.
     3. Info Fields
         2. Add read length to the INFO field (both full read length and read length without Ns)
 

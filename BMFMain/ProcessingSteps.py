@@ -143,12 +143,13 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                stringency=cython.float)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       p3Seq="default", p5Seq="default",
-                      overlapLen=6):
+                      overlapLen=6, sortMem="6G"):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                     inFastq2,
                                                     indexfq=indexfq)
-    BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2)
+    BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
+                                                 sortMem=sortMem)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
         BSortFq1, BSortFq2, stringency=0.9)
     if(p3Seq != "default"):

@@ -102,16 +102,14 @@ class pFastqProxy:
 
 @cython.locals(checks=cython.int, highMem=cython.bint,
                parallel=cython.bint)
-def BarcodeSortBoth(inFq1, inFq2, highMem=True, parallel=True):
+def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=True):
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)
     outFq1 = '.'.join(inFq1.split('.')[0:-1] + ["BS", "fastq"])
     outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
     pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
-    highMemStr = ""
-    if(highMem):
-        highMemStr = "-S 6G "
+    highMemStr = "-S " + sortMem
     if(inFq1.endswith(".gz")):
         BSstring1 = ("zcat " + inFq1 + " | paste - - - - | sed "
                      "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
@@ -1238,3 +1236,16 @@ def compareConsSpeed(fq1, fq2, stringency=0.666, readPairsPerWrite=100):
     print("Time after CyCons (only Numpy): {}".format(
         strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())))
     return
+
+
+def CalcFamUtils(inFq):
+    """
+    Uses bioawk to get summary statistics on a fastq file blazingly quickly.
+    """
+    bioawk -c fastx '{realFams += 1; readFmSum += array[2]}};END {print "MFS="sum /len";NumRealFams="realFams";ReadFamSum="readFmSum/realFams";NumSingletons="singletons}' cfDNA06-6862_A1_ACAGTG_L001_R1_001.Tiny.shaded.BS.cons.fastq
+    commandStr = ("bioawk -c fastx {{n=split($comment,array," ");k=array[4];n="
+                  "split(k,array,\"=\"); len += 1; sum += array[2]; if(array[2"
+                  "] == 1) {{singletons += 1}};if(array[2] >= 2) {{realFams +="
+                  " 1; readFmSum += array[2]}}}};END {{print \"MFS=\"sum /len"
+                  "\";NumRealFams=\"realFams\";ReadFamSum=\"readFmSum/realFams"
+                  "\";NumSingletons=\"singletons}}' %s" % inFq)

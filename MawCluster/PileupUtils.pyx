@@ -641,25 +641,25 @@ class PCInfo:
                 self.MergedAlleleFreqDict[key] = 0.
                 self.TotalAlleleFreqDict[key] = 0.
         self.MergedAlleleCountStr = "\t".join(
-            map(__str__, [self.MergedAlleleDict["A"],
-                        self.MergedAlleleDict["C"],
-                        self.MergedAlleleDict["G"],
-                        self.MergedAlleleDict["T"]]))
+            nparray([self.MergedAlleleDict["A"],
+                     self.MergedAlleleDict["C"],
+                     self.MergedAlleleDict["G"],
+                     self.MergedAlleleDict["T"]]).astype(str))
         self.TotalAlleleCountStr = "\t".join(
-            map(__str__, [self.TotalAlleleDict["A"],
-                        self.TotalAlleleDict["C"],
-                        self.TotalAlleleDict["G"],
-                        self.TotalAlleleDict["T"]]))
+            nparray([self.TotalAlleleDict["A"],
+                     self.TotalAlleleDict["C"],
+                     self.TotalAlleleDict["G"],
+                     self.TotalAlleleDict["T"]]).astype(str))
         self.MergedAlleleFreqStr = "\t".join(
-            map(__str__, [self.MergedAlleleFreqDict["A"],
-                        self.MergedAlleleFreqDict["C"],
-                        self.MergedAlleleFreqDict["G"],
-                        self.MergedAlleleFreqDict["T"]]))
+            nparray([self.MergedAlleleFreqDict["A"],
+                     self.MergedAlleleFreqDict["C"],
+                     self.MergedAlleleFreqDict["G"],
+                     self.MergedAlleleFreqDict["T"]]).astype(str))
         self.TotalAlleleFreqStr = "\t".join(
-            map(__str__, [self.TotalAlleleFreqDict["A"],
-                        self.TotalAlleleFreqDict["C"],
-                        self.TotalAlleleFreqDict["G"],
-                        self.TotalAlleleFreqDict["T"]]))
+            nparray([self.TotalAlleleFreqDict["A"],
+                     self.TotalAlleleFreqDict["C"],
+                     self.TotalAlleleFreqDict["G"],
+                     self.TotalAlleleFreqDict["T"]]).astype(str))
         # MergedStrandednessRatioDict is the fraction of reverse reads
         # supporting an alternate allele.
         # E.g., if 5 support the alt, but 2 are mapped to the reverse
@@ -703,25 +703,25 @@ class PCInfo:
                       "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
             outStr += "\t".join(
-                map(__str__, [self.contig,
-                            self.pos,
-                            self.consensus,
-                            alt.ALT,
-                            alt.TotalReads,
-                            alt.MergedReads,
-                            alt.TotalAlleleFrequency,
-                            alt.MergedAlleleFrequency,
-                            alt.StrandCountsTotalDict["reverse"],
-                            alt.StrandCountsTotalDict["forward"],
-                            alt.StrandCountsDict["reverse"],
-                            alt.StrandCountsDict["forward"],
-                            self.TotalFracDict[alt.ALT],
-                            self.MergedFracDict[alt.ALT],
-                            alt.AveFamSize,
-                            alt.SumBQScore,
-                            alt.AveBQ,
-                            alt.SumMQScore,
-                            alt.AveMQ])) + "\n"
+                nparray([self.contig,
+                         self.pos,
+                         self.consensus,
+                         alt.ALT,
+                         alt.TotalReads,
+                         alt.MergedReads,
+                         alt.TotalAlleleFrequency,
+                         alt.MergedAlleleFrequency,
+                         alt.StrandCountsTotalDict["reverse"],
+                         alt.StrandCountsTotalDict["forward"],
+                         alt.StrandCountsDict["reverse"],
+                         alt.StrandCountsDict["forward"],
+                         self.TotalFracDict[alt.ALT],
+                         self.MergedFracDict[alt.ALT],
+                         alt.AveFamSize,
+                         alt.SumBQScore,
+                         alt.AveBQ,
+                         alt.SumMQScore,
+                         alt.AveMQ]).astype(str)) + "\n"
         self.str = outStr
         return self.str
 
@@ -744,7 +744,6 @@ class PileupInterval:
         self.UniqueCoverage = 0
         self.AvgTotalCoverage = 0
         self.AvgUniqueCoverage = 0
-        self.str = self.__str__()
 
     def updateWithPileupColumn(self, PileupColumn):
         self.end = operator.add(self.end, 1)

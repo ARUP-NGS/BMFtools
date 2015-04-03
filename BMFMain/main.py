@@ -160,6 +160,10 @@ def main(argv=None):
         "--intelDeflator",
         help="Path to intel deflator. Speeds up abra calls.",
         default="default")
+    parser.add_argument(
+        "--sortMem",
+        help="Memory to use for sorting fastq files. Default: 6G",
+        default="default")
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     if(args.indelRealigner.lower() not in ["abra", "gatk", "none"]):
@@ -200,6 +204,10 @@ def main(argv=None):
         gatkpath = confDict['gatkpath']
     if("picardPath" in cdk):
         picardPath = confDict["picardPath"]
+    if("sortMem" in cdk):
+        sortMem = confDict["sortMem"]
+    if(args.sortMem != "default"):
+        sortMem = args.sortMem
     if(args.picardPath != "default" and isinstance(args.picardPath, str)):
         picardPath = args.picardPath
     if(picardPath == "default"):
@@ -324,7 +332,7 @@ def main(argv=None):
             pl("Beginning fastq processing.")
             trimfq1, trimfq2 = ps.pairedFastqShades(
                 args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                p3Seq=p3Seq, p5Seq=p5Seq)
+                p3Seq=p3Seq, p5Seq=p5Seq, sortMem=sortMem)
             if(makeReviewDir):
                 subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
             if("bwapath" in locals()):

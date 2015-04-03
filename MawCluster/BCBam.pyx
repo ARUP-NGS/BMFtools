@@ -1,6 +1,7 @@
 #!python
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
+from __future__ import division
 import shlex
 import subprocess
 import os
@@ -16,6 +17,7 @@ import string
 import uuid
 
 import numpy as np
+cimport numpy as np
 from numpy import array as nparray
 from numpy import sum as nsum
 from numpy import multiply as nmultiply
@@ -26,17 +28,21 @@ from numpy import char
 npchararray = char.array
 from Bio import SeqIO
 import pysam
+cimport pysam.calignmentfile
+ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 import cython
 cimport cython
 
 from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
+from MawCluster.PileupUtils import pPileupRead
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC
 
+ctypedef np.longdouble_t dtype128_t
 
 @cython.locals(fixMate=cython.bint)
 def AbraCadabra(inBAM, outBAM="default",
@@ -240,6 +246,11 @@ def pairedBarcodeTagging(
         suppBam="default",
         bedfile="default",
         conversionXml="default", realigner="default"):
+    cdef cAlignedSegment entry
+    cdef cAlignedSegment read1bam
+    cdef cAlignedSegment read2bam
+    cdef dtype128_t r1FracAlign
+    cdef dtype128_t r2FracAlign
     if(realigner == "default"):
         raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
     from MawCluster.SVUtils import SVParamDict
@@ -256,25 +267,27 @@ def pairedBarcodeTagging(
     read1Handle = SeqIO.parse(fq1, "fastq")
     read2Handle = SeqIO.parse(fq2, "fastq")
     # read2Handle = SeqIO.parse(fq2, "fastq")
-    postFilterBAM = pysam.Samfile(bam, "rb")
-    outBAM = pysam.Samfile(outBAMFile, "wb", template=postFilterBAM)
-    suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
+    postFilterBAM = pysam.AlignmentFile(bam, "rb")
+    outBAM = pysam.AlignmentFile(outBAMFile, "wb", template=postFilterBAM)
+    suppBAM = pysam.AlignmentFile(suppBam, "wb", template=postFilterBAM)
     if(conversionXml != "default"):
         convData = SecC.SecC.BuildRunDict(conversionXml)
     obw = outBAM.write
     addDefault = (realigner == "gatk")
+    r1hn = read1Handle.next
+    r2hn = read2Handle.next
     for entry in postFilterBAM:
         if(entry.is_secondary or entry.flag >= 2048):
             suppBAM.write(entry)
             continue
         if(entry.is_read1):
             read1bam = entry
-            read1fq = read1Handle.next()
+            read1fq = r1hn()
             continue
             # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             read2bam = entry
-            read2fq = read2Handle.next()
+            read2fq = r2hn()
         descDict1 = getdesc(read1fq.description)
         descDict2 = getdesc(read2fq.description)
         FM = int(descDict1["FM"])
@@ -293,6 +306,8 @@ def pairedBarcodeTagging(
         contigSetStr = ",".join(sorted(
             [PysamToChrDict[read1bam.reference_id],
              PysamToChrDict[read2bam.reference_id]]))
+        r1FracAlign = FractionAligned(read1bam)
+        r2FracAlign = FractionAligned(read2bam)
         if(addDefault):
             read1bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
@@ -303,7 +318,8 @@ def pairedBarcodeTagging(
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND1, "i"),
                                ("NF", odiv(ND1, float(FM)), "f"),
-                               ("RG", "default", "Z")])
+                               ("RG", "default", "Z"),
+                               ("AF", r1FracAlign, "f")])
             read2bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
@@ -313,7 +329,8 @@ def pairedBarcodeTagging(
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND2, "i"),
                                ("NF", odiv(ND2, float(FM)), "f"),
-                               ("RG", "default", "Z")])
+                               ("RG", "default", "Z"),
+                               ("AF", r2FracAlign, "f")])
         else:
             read1bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
@@ -323,7 +340,8 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND1, "i"),
-                               ("NF", ND1 / FM, "f")])
+                               ("NF", ND1 / FM, "f"),
+                               ("AF", r1FracAlign, "f")])
             read2bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
@@ -332,7 +350,8 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND2, "i"),
-                               ("NF", ND2 / FM, "f")])
+                               ("NF", ND2 / FM, "f"),
+                               ("AF", r2FracAlign, "f")])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
         """
@@ -801,3 +820,13 @@ def singleFilterBam(inputBAM, passBAM="default",
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
+
+
+@cython.returns(dtype128_t)
+def FractionAligned(cAlignedSegment read):
+    """
+    Returns the fraction of a read aligned.
+    """
+    if(read.cigarstring is None):
+        return 0.
+    return sum([i[1] for i in read.cigar if i[0] == 0]) / read.query_alignment_length
