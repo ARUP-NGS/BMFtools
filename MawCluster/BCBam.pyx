@@ -340,7 +340,7 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND1, "i"),
-                               ("NF", ND1 / FM, "f"),
+                               ("NF", 1. * ND1 / FM, "f"),
                                ("AF", r1FracAlign, "f")])
             read2bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
@@ -350,7 +350,7 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND2, "i"),
-                               ("NF", ND2 / FM, "f"),
+                               ("NF", 1. * ND2 / FM, "f"),
                                ("AF", r2FracAlign, "f")])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
@@ -829,4 +829,4 @@ def FractionAligned(cAlignedSegment read):
     """
     if(read.cigarstring is None):
         return 0.
-    return sum([i[1] for i in read.cigar if i[0] == 0]) / read.query_alignment_length
+    return 1. * sum([i[1] for i in read.cigar if i[0] == 0]) / read.query_alignment_length

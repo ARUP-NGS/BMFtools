@@ -1,5 +1,6 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
+from __future__ import division
 
 import subprocess
 import decimal
@@ -411,14 +412,14 @@ def VCFStats(inVCF, TransCountsTable="default"):
     for key in TransitionCountsDict.keys():
         try:
             TransitionFractionForRefConsDict[
-                key] = TransitionCountsDict[key] / float(
-                    RefConsCallsCountsDict[key[0]])
+                key] = (1. * TransitionCountsDict[key] /
+                        RefConsCallsCountsDict[key[0]])
         except ZeroDivisionError:
             TransitionFractionForRefConsDict[key] = 0
         try:
             TransitionFractionForRefConsPASSDict[
-                key] = TransitionCountsPASSDict[key] / float(
-                    RefConsCallsCountsPASSDict[key[0]])
+                key] = (1. * TransitionCountsPASSDict[key] /
+                        RefConsCallsCountsPASSDict[key[0]])
         except ZeroDivisionError:
             TransitionFractionForRefConsPASSDict[key] = 0
     for key in TransitionCountsDict.keys():

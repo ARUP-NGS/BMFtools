@@ -1,5 +1,6 @@
 # cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
 # cython: cdivision=True, cdivision_warnings=True, profile=True
+from __future__ import division
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -60,7 +61,7 @@ from utilBMF.HTSUtils import ph2chrDict
 from utilBMF.HTSUtils import chr2ph
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
-from utilBMF.HTSUtils import FacePalm
+from utilBMF.HTSUtils import FacePalm, pFastqProxy
 
 
 letterNumDict = {}
@@ -77,28 +78,6 @@ letterNumDict[3] = 'T'
 
 def chr2phFunc(x):
     return chr2ph[x]
-
-
-class pFastqProxy:
-    """
-    Python container for pysam.cfaidx.FastqProxy with persistence.
-    """
-    def __init__(self, FastqProxy):
-        try:
-            assert isinstance(FastqProxy, cFastqProxy)
-        except AssertionError:
-            FacePalm("pFastqProxy requires a pysam.cfaidx.FastqProxy "
-                     "object for initialization!")
-        self.comment = FastqProxy.comment
-        self.quality = FastqProxy.quality
-        self.sequence = FastqProxy.sequence
-        self.name = FastqProxy.name
-
-    def __str__(self):
-        return "\n".join(["".join(["@", self.name, " ", self.comment]),
-                         self.sequence,
-                         "+", self.quality, ""])
-
 
 @cython.locals(checks=cython.int, highMem=cython.bint,
                parallel=cython.bint)
@@ -212,7 +191,7 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
         if(numEq > maxScore):
             maxScore = numEq
             finalSeq = seq
-    frac = numEq * 1.0 / lenR
+    frac = 1. * numEq / lenR
     if(ole(frac, 0.5)):
         R[0].description = R[0].description.replace("Pass", "Fail")
     else:
@@ -615,7 +594,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
         read2 = ifn2()
         indexRead = ifin()
         tempBar = indexRead.sequence
-        bLen = len(indexRead.sequence) * 5 / 6
+        bLen = len(indexRead.sequence) * 5 // 6
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
         # print("bLen is {}".format(bLen))
@@ -935,7 +914,7 @@ def pairedFastqConsolidate(fq1, fq2, stringency=0.9,
                UsecProfile=cython.bint, onlyNumpy=cython.bint)
 def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
                                  readPairsPerWrite=100, UsecProfile=False,
-                                 onlyNumpy=False, skipSingles=False,
+                                 onlyNumpy=True, skipSingles=False,
                                  skipFails=False):
     if(UsecProfile):
         import cProfile
@@ -1125,7 +1104,7 @@ def singleFastqConsolidate(fq, outFq="default", stringency=0.9):
         #   workingBarcode,barcodeRecord))
         # print("name of read with this barcode: {}".format(record.qname))
         # print("Working set: {}".format(workingSet))
-        bLen = len(bc4fq) * 5 / 6
+        bLen = len(bc4fq) * 5 // 6
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
         if(("N" in bc4fq or "A" * bLen in bc4fq
@@ -1238,14 +1217,18 @@ def compareConsSpeed(fq1, fq2, stringency=0.666, readPairsPerWrite=100):
     return
 
 
-def CalcFamUtils(inFq):
+@cython.locals(asDict=cython.bint)
+def CalcFamUtils(inFq, asDict=False):
     """
-    Uses bioawk to get summary statistics on a fastq file blazingly quickly.
+    Uses bioawk to get summary statistics on a fastq file quickly.
     """
-    bioawk -c fastx '{realFams += 1; readFmSum += array[2]}};END {print "MFS="sum /len";NumRealFams="realFams";ReadFamSum="readFmSum/realFams";NumSingletons="singletons}' cfDNA06-6862_A1_ACAGTG_L001_R1_001.Tiny.shaded.BS.cons.fastq
     commandStr = ("bioawk -c fastx {{n=split($comment,array," ");k=array[4];n="
                   "split(k,array,\"=\"); len += 1; sum += array[2]; if(array[2"
                   "] == 1) {{singletons += 1}};if(array[2] >= 2) {{realFams +="
                   " 1; readFmSum += array[2]}}}};END {{print \"MFS=\"sum /len"
                   "\";NumRealFams=\"realFams\";ReadFamSum=\"readFmSum/realFams"
                   "\";NumSingletons=\"singletons}}' %s" % inFq)
+    strOut = subprocess.check_output(shlex.split(commandStr)).strip()
+    if(asDict):
+        return dict([i.split("=") for i in strOut.split(";")])
+    return strOut

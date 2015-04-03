@@ -322,18 +322,18 @@ class AlleleAggregateInfo:
             oag("FM"), filter(oag("is_reverse"), self.recList)))
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
-            self.AveFamSize = self.TotalReads / self.MergedReads
+            self.AveFamSize = 1. * self.TotalReads / self.MergedReads
         except ZeroDivisionError:
             self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.SumBQScore = sum(map(oag("BQ"), self.recList))
         self.SumMQScore = sum(map(oag("MQ"), self.recList))
         try:
-            self.AveMQ = self.SumMQScore / lenR
+            self.AveMQ = 1. * self.SumMQScore / lenR
         except ZeroDivisionError:
             self.AveMQ = 0
         try:
-            self.AveBQ = self.SumBQScore / lenR
+            self.AveBQ = 1. * self.SumBQScore / lenR
         except ZeroDivisionError:
             self.AveBQ = 0
         self.ALT = self.recList[0].BaseCall
@@ -341,7 +341,8 @@ class AlleleAggregateInfo:
         self.minMQ = minMQ
         self.minBQ = minBQ
         try:
-            self.reverseStrandFraction = self.ReverseMergedReads / self.MergedReads
+            self.reverseStrandFraction = (1. * self.ReverseMergedReads /
+                                          self.MergedReads)
         except ZeroDivisionError:
             self.reverseStrandFraction = -1.
         try:
@@ -384,8 +385,8 @@ class AlleleAggregateInfo:
         self.StrandCountsTotalDict["forward"] = sum(
             [rec.FM for rec in self.recList if rec.is_reverse is False])
         try:
-            self.TotalAlleleFrequency = self.TotalReads / totalSize
-            self.MergedAlleleFrequency = self.MergedReads / mergedSize
+            self.TotalAlleleFrequency = 1. * self.TotalReads / totalSize
+            self.MergedAlleleFrequency = 1. * self.MergedReads / mergedSize
         except ZeroDivisionError:
             self.TotalAlleleFrequency = -1.0
             self.MergedAlleleFrequency = -1.0

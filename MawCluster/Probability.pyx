@@ -64,9 +64,9 @@ def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
     """
     cdef dtype128_t ratio
     if(Allele1 < Allele2):
-        ratio = Allele1 / Allele2
+        ratio = 1. * Allele1 / Allele2
     else:
-        ratio = Allele2 / Allele1
+        ratio = 1. * Allele2 / Allele1
     if(method == "scipy"):
         return nparray(binom.interval(1 - pVal,
                                       Allele1 + Allele2, ratio),
@@ -92,7 +92,7 @@ def MakeAICall(Allele1, Allele2, pVal=defaultPValue, method="agresti_coull"):
     confInt = ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                                    method=method)
     minorAF = nmean(confInt, dtype=np.longdouble)
-    allelicImbalanceRatio = minorAF / (1 - minorAF)
+    allelicImbalanceRatio = 1. * minorAF / (1 - minorAF)
     call = (minorAF < confInt[0] or minorAF > confInt[1])
     return call, allelicImbalanceRatio, confInt
 

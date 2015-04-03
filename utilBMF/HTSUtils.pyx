@@ -1,5 +1,6 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
+from __future__ import division
 import logging
 import shlex
 import subprocess
@@ -15,6 +16,8 @@ import operator
 import pysam
 from pysam.calignmentfile import AlignedSegment as cAlignedSegment
 from pysam.calignmentfile import PileupRead as cPileupRead
+cimport pysam.cfaidx
+cimport pysam.calignmentfile
 import numpy as np
 cimport numpy as np
 from numpy import mean as nmean
@@ -238,6 +241,27 @@ def GetBidirectionalPysamChrDict(alignmentfileObj):
     return dict(map(lambda x: (x[1], x[0]),refList) + refList)
 
 
+class pFastqProxy:
+    """
+    Python container for pysam.cfaidx.FastqProxy with persistence.
+    """
+    def __init__(self, FastqProxy):
+        try:
+            assert isinstance(FastqProxy, cFastqProxy)
+        except AssertionError:
+            FacePalm("pFastqProxy requires a pysam.cfaidx.FastqProxy "
+                     "object for initialization!")
+        self.comment = FastqProxy.comment
+        self.quality = FastqProxy.quality
+        self.sequence = FastqProxy.sequence
+        self.name = FastqProxy.name
+
+    def __str__(self):
+        return "\n".join(["".join(["@", self.name, " ", self.comment]),
+                         self.sequence,
+                         "+", self.quality, ""])
+
+
 def FacePalm(string):
     Str = ("............................................________ "
            "\n....................................,.-'\"...................`"
@@ -297,7 +321,7 @@ def ReadPairIsDuplex(readPair, minShare="default"):
     elif(isinstance(minShare, float)):
         minLen = int(minShare * readPair.read1.query_length)
     elif(minShare == "default"):
-        minLen = readPair.read1.query_length / 2
+        minLen = readPair.read1.query_length // 2
     else:
         raise ThisIsMadness("minShare parameter required. Integer for "
                             "an absolute number of bases overlapped re"
@@ -1396,3 +1420,59 @@ def PlotNormalFit(array, outfile="default", maxFreq=0.2):
     plt.grid(True)
     plt.savefig(outfile + ".png")
     return outfile
+
+
+def CalculateFamStats(inFq):
+    """
+    Calculates mean family size, families of size 1, mean family size for
+    families of size > 1, and number of singletons.
+    """
+    inHandle = pysam.FastqFile(inFq)
+    cdef pysam.cfaidx.FastqProxy read
+    cdef cython.long famS
+    cdef cython.long sumFam
+    cdef cython.long numFam
+    cdef cython.long numSing
+    cdef cython.long sumAll
+    cdef dtype128_t meanFamAll
+    cdef dtype128_t meanRealFam
+    numSing = 0
+    sumFam = 0
+    numFam = 0
+    sumSing = 0
+    sumAll = 0
+
+    for read in inHandle:
+        famS = int(read.comment.split(" ")[3].split("=")[1])
+        if(famS > 1):
+            numFam += 1
+            sumFam += famS
+        else:
+            numSing += 1
+        sumAll += famS
+    meanFamAll = sumAll / (1. * numFam + numSing)
+    meanRealFam = sumFam / (1. * numFam)
+    printlog("Number of reads in familes size >=2 %s" % sumFam)
+    printlog("Number of reads in familes, all: %s" % sumAll)
+    printlog("Numbers of singleton families: %s." % (numSing))
+    printlog("Numbers of families of size >= 2: %s." % (numFam))
+    printlog("Mean families size, all: %s." % (meanFamAll))
+    printlog("Mean families size, FM >= 2: %s." % (meanRealFam))
+    return numSing, numFam, meanFamAll, meanRealFam
+
+
+@cython.locals(read=pysam.calignmentfile.AlignedSegment)
+def AlnRealignAS(read, extraOpts="", mismatchLimit="0.04"):
+    """
+    Passes the sequence and qualities of the provided read to bwa aln with
+    an AlignedSegment as input. Updates the AlignedSegment's fields in-place
+    if the result is good.
+    """
+    pass
+    ### First, make a fake fastq record.
+    # fqStr =
+    ### Second, make the call.
+    # str = "echo %s | bwa aln idxBase /dev/stdin"
+    # subprocess.check_output(str)
+    #read.basldfalsdkfjalkdsfj
+

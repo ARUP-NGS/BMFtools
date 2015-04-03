@@ -143,12 +143,12 @@ class SNVCFLine:
             self.FILTER = "CONSENSUS"
 
         self.InfoFields = {"AC": AC,
-                           "AF": AC / DOC,
+                           "AF": 1. * AC / DOC,
                            "BNP": int(-10 * mlog10(pValBinom)),
                            "BQF": FailedBQReads,
                            "BS": AlleleAggregateObject.BothStrandSupport,
                            "BSA": BothStrandAlignment,
-                           "TF": AlleleAggregateObject.TotalReads
+                           "TF": 1. * AlleleAggregateObject.TotalReads
                            / AlleleAggregateObject.DOCTotal,
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,

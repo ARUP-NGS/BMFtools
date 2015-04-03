@@ -74,7 +74,7 @@ def dupDistribution(size):
     dupHist[0] = 1
     while(sum(dupHist) < size + 1):
         '''
-        for count, i in enumerate(dupHist):
+        for count, i in enumerate(dupHist)1. * :
             cdf.append(np.sum(dupHist[0:count]))
         '''
         bins = [np.sum(dupHist[0:i]) for i in range(size)] / np.max()
