@@ -245,21 +245,20 @@ class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
-    def __init__(self, FastqProxy):
+    def __init__(self, FastqProxyObj):
         try:
-            assert isinstance(FastqProxy, cFastqProxy)
+            assert isinstance(FastqProxyObj, pysam.cfaidx.FastqProxy)
         except AssertionError:
             FacePalm("pFastqProxy requires a pysam.cfaidx.FastqProxy "
                      "object for initialization!")
-        self.comment = FastqProxy.comment
-        self.quality = FastqProxy.quality
-        self.sequence = FastqProxy.sequence
-        self.name = FastqProxy.name
+        self.comment = FastqProxyObj.comment
+        self.quality = FastqProxyObj.quality
+        self.sequence = FastqProxyObj.sequence
+        self.name = FastqProxyObj.name
 
     def __str__(self):
-        return "\n".join(["".join(["@", self.name, " ", self.comment]),
-                         self.sequence,
-                         "+", self.quality, ""])
+        return ("@" + self.name + " " + self.comment +
+                "\n" + self.sequence + "\n+\n" + self.quality + "\n")
 
 
 def FacePalm(string):
