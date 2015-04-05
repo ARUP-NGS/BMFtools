@@ -37,7 +37,8 @@ from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from MawCluster.PileupUtils import pPileupRead
-from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness)
+from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
+                              FractionAligned)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC
@@ -820,13 +821,3 @@ def singleFilterBam(inputBAM, passBAM="default",
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
-
-
-@cython.returns(dtype128_t)
-def FractionAligned(cAlignedSegment read):
-    """
-    Returns the fraction of a read aligned.
-    """
-    if(read.cigarstring is None):
-        return 0.
-    return 1. * sum([i[1] for i in read.cigar if i[0] == 0]) / read.query_alignment_length

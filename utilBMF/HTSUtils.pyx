@@ -9,15 +9,20 @@ from itertools import groupby
 from operator import itemgetter
 from operator import attrgetter
 import copy
+from copy import copy as ccopy
 import uuid
 import os
 import operator
+from subprocess import check_output
+import cStringIO
 
 import pysam
-from pysam.calignmentfile import AlignedSegment as cAlignedSegment
-from pysam.calignmentfile import PileupRead as cPileupRead
+from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
+ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef pysam.calignmentfile.PileupRead cPileupRead
+
 import numpy as np
 cimport numpy as np
 from numpy import mean as nmean
@@ -819,7 +824,7 @@ class ReadPair:
 
     def __init__(self, read1, read2):
         try:
-            assert isinstance(read1, cAlignedSegment)
+            assert isinstance(read1, pAlignedSegment)
         except AssertionError:
             pl("ReadPair only accepts pysam.calignment"
                ".AlignedSegment objects!")
@@ -1367,6 +1372,16 @@ def GetDeletedCoordinates(read):
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])
 
 
+@cython.returns(dtype128_t)
+def FractionAligned(cAlignedSegment read):
+    """
+    Returns the fraction of a read aligned.
+    """
+    if(read.cigarstring is None):
+        return 0.
+    return 1. * sum([i[1] for i in read.cigar if i[0] == 0]) / read.query_alignment_length
+
+
 def AddReadGroupsPicard(inBAM, RG="default", SM="default",
                         PL="ILLUMINA", CN="default", picardPath="default",
                         outBAM="default", ID="default", LB="default",
@@ -1460,13 +1475,90 @@ def CalculateFamStats(inFq):
     return numSing, numFam, meanFamAll, meanRealFam
 
 
+def bitfield(n):
+    """
+    Parses a bitwise flag into an array of 0s and 1s.
+    """
+    return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
+
+
 @cython.locals(read=pysam.calignmentfile.AlignedSegment)
-def AlnRealignAS(read, extraOpts="", mismatchLimit="0.04"):
+def ASToFastqSingle(read):
+    """
+    Makes a string containing a single fastq record from
+    one read.
+    """
+    if read.is_read1:
+        return ("@" + read.query_name + " 1\n" + read.seq
+                + "\n+\n" + read.quality)
+    if read.is_read2:
+        return ("@" + read.query_name + " 2\n" + read.seq
+                + "\n+\n" + read.quality)
+    else:
+        return ("@" + read.query_name + "\n" + read.seq
+                + "\n+\n" + read.quality)
+
+
+@cython.locals(read=pysam.calignmentfile.AlignedSegment,
+               alignmentfileObj=pysam.calignmentfile.AlignmentFile)
+def ASToFastqPaired(read, alignmentfileObj):
+    """
+    Works for coordinate-sorted and indexed BAM files, but throws
+    an error if the mate is unmapped.
+    """
+    FastqStr1 = ASToFastqSingle(read)
+    FastqStr2 = ASToFastqSingle(alignmentfileObj.mate(read))
+    if(read.is_read1):
+        return FastqStr1 + "\n" + FastqStr2
+    return FastqStr2 + "\n" + FastqStr1
+
+
+@cython.locals(read1=pysam.calignmentfile.AlignedSegment,
+               read2=pysam.calignmentfile.AlignedSegment,
+               alignmentfileObj=pysam.calignmentfile.AlignmentFile,
+               mismatchLimit=cython.float, is_read1=cython.bint)
+def SWRealignAS(read1, read2, alignmentfileObj, extraOpts="", mismatchLimit="0.04",
+                 ref="default", filter="af,isunmapped"):
     """
     Passes the sequence and qualities of the provided read to bwa aln with
     an AlignedSegment as input. Updates the AlignedSegment's fields in-place
     if the result is good.
+    Ideally, these records are accessed through a name-sorted AlignmentFile,
+    as it throws an index error.
+    Might fix this later, but I don't like it very much. If there were cython
+    bindings to bwa, that would be the perfect use of it. Ehhh..
     """
+    try:
+        assert ref != "default"
+    except AssertionError:
+        raise ThisIsMadness("Reference required for AlnRealignAS!")
+    try:
+        assert read1.is_read1
+    except AssertionError:
+        FacePalm("AlnRealignAS takes as positional arguments read1"
+                 ", read2, and alignmentfileObj. 'read1' is not read1??")
+    afFilter = False
+    ismappedFilter = False
+    if("af" in filter):
+        afFilter = True
+    if("isunmapped" in filter):
+        ismappedFilter = True
+    FastqStr = ASToFastqSingle(read1) + "\n" + ASToFastqSingle(read2)
+    commandStr = "echo %s | bwa bwasw -M -n %s %s -" % (FastqStr, ref,
+                                                   mismatchLimit)
+    alignedArr = [i for i in check_output(commandStr, shell=True).split("\n")
+                  if i[0] != "@"]
+    alignedArr = [line for line in alignedArr if len(bitfield(int(line[1]))) < 9 or bitfield(int(line[1]))[-9] or bitfield(int(line[1]))[-11]]
+    bitflags = [int(i[1]) for i in alignedArr]
+    newArr = []
+    r1Aligned = not read1.is_unmapped
+    r2Aligned = not read2.is_unmapped
+    r1, r2 = alignedArr[0], alignedArr[1]
+    bfr1 = bitfield(int(r1.split("\t")[1]))
+    bfr2 = bitfield(int(r2.split("\t")[1]))
+    read1.cigar, read2.cigar = r1[5], r2[5]
+    read1.flag, read2.flag = r1[1], r1[2]
+
     pass
     ### First, make a fake fastq record.
     # fqStr =
@@ -1474,4 +1566,3 @@ def AlnRealignAS(read, extraOpts="", mismatchLimit="0.04"):
     # str = "echo %s | bwa aln idxBase /dev/stdin"
     # subprocess.check_output(str)
     #read.basldfalsdkfjalkdsfj
-
