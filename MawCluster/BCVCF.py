@@ -14,6 +14,7 @@ from numpy import sum as nsum
 from numpy import mean as nmean
 from numpy import min as nmin
 import cython
+import pysam
 
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
@@ -436,7 +437,9 @@ def VCFStats(inVCF, TransCountsTable="default"):
     return TransCountsTable
 
 
-def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
+@cython.locals(fast=cython.bint)
+def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default",
+                       fast=True):
     if(outVCF == "default"):
         outVCF = inVCF[0:-4] + ".bedfilter.vcf"
     inVCF = ParseVCF(inVCF)
@@ -729,3 +732,15 @@ def GetPotentialHetsVCFUK10K(inVCF, minAlFrac=0.2,
                 VCFRec.ID = str(alleleFreq)[0:6]
             outHandle.write(VCFRec.__str__() + "\n")
     outHandle.close()
+
+
+def CompareVCFToStandardSpecs(inVCF, std="default"):
+    """
+    Loads a standard file into memory and then scans a query VCF with tabix
+    to see how well it did.
+    """
+    if(std == "default"):
+        raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
+                            "able name 'std', must be set to CompareVCFToStan"
+                            "dardSpecs")
+    pass

@@ -152,6 +152,12 @@ def main(argv=None):
                         default="default")
     parser.add_argument("--readLength", help="Read length",
                         default=-1, type=int)
+    parser.add_argument(
+        "--minAF",
+        help=("Min aligned fraction for permitting use in variant call or, if "
+              "bwasw rescue is being used, the maximum aligned fraction that wi"
+              "ll prompt a re-alignment."),
+        default=-1., type=float)
     parser.add_argument("--experiment", "-e",
                         help="A comma-joined list of strings with extra infor"
                         "mation for informing analysis. Currently in beta sup"
@@ -322,6 +328,12 @@ def main(argv=None):
         intelDeflator = confDict['intelDeflator']
     if(args.intelDeflator != "default"):
         intelDeflator = args.intelDeflator
+    minAF = 0.0
+    if("minAF" in cdk):
+        minAF = float(cdk[minAF])
+    else:
+        if(args.minAF != 0.0):
+            minAF = args.minAF
     if(single_end):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
@@ -346,7 +358,7 @@ def main(argv=None):
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner, rLen=readLength)
+                    realigner=realigner, rLen=readLength, minAF=minAF)
             else:
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,
@@ -354,7 +366,7 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner, rLen=readLength)
+                    realigner=realigner, rLen=readLength, minAF=minAF)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(
@@ -383,7 +395,8 @@ def main(argv=None):
                     mincov=int(args.minCov),
                     abrapath=abrapath,
                     bwapath=bwapath,
-                    picardPath=picardPath, rLen=readLength)
+                    picardPath=picardPath, rLen=readLength,
+                    minAF=minAF, realigner=realigner, dbsnp=dbsnp)
             else:
                 procSortedBam = ps.pairedBamProc(
                     args.fq[0],

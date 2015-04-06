@@ -38,7 +38,7 @@ from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from MawCluster.PileupUtils import pPileupRead
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
-                              FractionAligned)
+                              FractionAligned, SWRealignAS)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC
@@ -238,7 +238,8 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
     return outBAM
 
 
-@cython.locals(FM=cython.int)
+@cython.locals(FM=cython.int, bwaswRescue=cython.bint,
+               minAF=cython.float)
 def pairedBarcodeTagging(
         fq1,
         fq2,
@@ -246,7 +247,8 @@ def pairedBarcodeTagging(
         outBAMFile="default",
         suppBam="default",
         bedfile="default",
-        conversionXml="default", realigner="default"):
+        conversionXml="default", realigner="default",
+        minAF=0.4, ref="default"):
     cdef cAlignedSegment entry
     cdef cAlignedSegment read1bam
     cdef cAlignedSegment read2bam
@@ -301,14 +303,20 @@ def pairedBarcodeTagging(
         except ValueError:
             raise ValueError("ND tag value is invalid: "
                              "%s %s" % (descDict1["ND"], descDict2["ND"]))
+        r1FracAlign = FractionAligned(read1bam)
+        if(r1FracAlign < minAF and not read1bam.is_unmapped):
+            read1bam = SWRealignAS(read1bam, postFilterBAM, ref=ref)
+            r1FracAlign = FractionAligned(read1bam)
+        r2FracAlign = FractionAligned(read2bam)
+        if(r2FracAlign < minAF and not read2bam.is_unmapped):
+            read2bam = SWRealignAS(read2bam, postFilterBAM, ref=ref)
+            r2FracAlign = FractionAligned(read2bam)
         coorString = ",".join(sorted([":".join([PysamToChrDict[
             read1bam.reference_id], str(read1bam.pos)]), ":".join([
                 PysamToChrDict[read2bam.reference_id], str(read2bam.pos)])]))
         contigSetStr = ",".join(sorted(
             [PysamToChrDict[read1bam.reference_id],
              PysamToChrDict[read2bam.reference_id]]))
-        r1FracAlign = FractionAligned(read1bam)
-        r2FracAlign = FractionAligned(read2bam)
         if(addDefault):
             read1bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),

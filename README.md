@@ -91,7 +91,8 @@ FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 ND | Number of Differences in a family of reads from the consensus read. | Integer from Z+ |
 NF | ND fraction (mean ND per read in family) | Float |
-PV | Phred Values for a read which has saturated the phred scoring system| String, in the form of repr() on a list of integers in base 85 encoding. Regex: ASCII|
+PV | Phred Values for a read which has saturated the phred scoring system | String, in the form of a comma-joined list of integers. Regex: ASCII|
+RA | Realigned due to a failure to map appropriately, either as too small a fraction aligned or a mapping quality of 0. | String: aligned. Current Regex: [a-z]|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
 SC | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 SN | Tags relevant to SNV calling assigned to BAM records. Currently lumped in with SV due to the fact that many are relevant to both.| Comma-separated list of tags. Regex: [A-Z,]+ |

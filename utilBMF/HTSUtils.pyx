@@ -1,20 +1,21 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
+from collections import Counter
+from copy import copy as ccopy
+from itertools import groupby
+from operator import itemgetter as oig
+from operator import iadd as oia
+from subprocess import check_output
+from re import compile as regexcompile
+import copy
+import cStringIO
 import logging
+import operator
+import os
 import shlex
 import subprocess
-from collections import Counter
-from itertools import groupby
-from operator import itemgetter
-from operator import attrgetter
-import copy
-from copy import copy as ccopy
 import uuid
-import os
-import operator
-from subprocess import check_output
-import cStringIO
 
 import pysam
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
@@ -67,6 +68,7 @@ def printlog(string, level=logging.INFO):
           "'", "\'").replace('"', '\\"'))
     return
 
+pl = printlog
 
 
 PysamToChrDict = {}
@@ -1055,10 +1057,7 @@ def parseConfig(string):
     parsedLines = [l.strip().split("#")[0] for l in
                    open(string, "r").readlines()
                    if l[0] != "#"]
-    ConfigDict = {}
-    for line in parsedLines:
-        ConfigDict[line.split("=")[0].strip()] = line.split("=")[1].strip()
-    return ConfigDict
+    return {line.split("=")[0].strip() : line.split("=")[1].strip() for line in parsedLines}
 
 
 def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
@@ -1082,9 +1081,9 @@ def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
     for pair in ReadPairList:
         R1Pos = pair.read1.get_reference_positions()
         R2Pos = pair.read2.get_reference_positions()
-        operator.iadd(posList, R1Pos)
-        operator.iadd(posList, R2Pos)
-        operator.iadd(posListDuplex, [pos for pos in R1Pos if pos in R2Pos])
+        oia(posList, R1Pos)
+        oia(posList, R2Pos)
+        oia(posListDuplex, [pos for pos in R1Pos if pos in R2Pos])
     PosCounts = Counter(posList)
     PosDuplexCounts = Counter(posListDuplex)
     # decrement the counts for each position to account for
@@ -1178,7 +1177,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     for k, g in groupby(
             enumerate(sorted(CounterObj.keys())),
             lambda i_x: i_x[0] - i_x[1]):
-        posList = map(itemgetter(1), g)
+        posList = map(oig(1), g)
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
         else:
@@ -1195,7 +1194,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
         return []
     print("Now attempting to merge any adjacent intervals. Number: {}".format(
         len(IntervalList)))
-    IntervalList = sorted(IntervalList, key=itemgetter(1))
+    IntervalList = sorted(IntervalList, key=oig(1))
     workingIntval = copy.copy(IntervalList[0])
     MergedInts = []
     for intval in IntervalList:
@@ -1252,7 +1251,7 @@ def CigarToQueryIndices(cigar):
         pl("Invalid argument - cigars are lists of tuples, but the first item"
            " in this list is not a tuple!")
     tuples = []
-    c = map(operator.itemgetter(1), cigar)
+    c = map(oig(1), cigar)
     cumSum = [sum(c[:i + 1]) for i in range(len(c))]
     for n, entry in enumerate(cigar):
         if n == 0:
@@ -1343,7 +1342,6 @@ def GetReadSequenceForCigarOp(read, cigarOp=-1):
         else:
             pass
     raise ThisIsMadness("I haven't finished writing this function. Oops!")
-    return
 
 
 @cython.locals(k=cython.long)
@@ -1379,7 +1377,9 @@ def FractionAligned(cAlignedSegment read):
     """
     if(read.cigarstring is None):
         return 0.
-    return 1. * sum([i[1] for i in read.cigar if i[0] == 0]) / read.query_alignment_length
+    return 1. * sum([i[1] for i in
+                     read.cigar if
+                     i[0] == 0]) / read.query_alignment_length
 
 
 def AddReadGroupsPicard(inBAM, RG="default", SM="default",
@@ -1475,9 +1475,11 @@ def CalculateFamStats(inFq):
     return numSing, numFam, meanFamAll, meanRealFam
 
 
+@cython.locals(n=cython.long)
 def bitfield(n):
     """
     Parses a bitwise flag into an array of 0s and 1s.
+    No need - use the & or | tools for working with bitwise flags.
     """
     return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
 
@@ -1490,13 +1492,16 @@ def ASToFastqSingle(read):
     """
     if read.is_read1:
         return ("@" + read.query_name + " 1\n" + read.seq
-                + "\n+\n" + read.quality)
+                + "\n+\n" +
+                "".join([ph2chrDict[i] for i in read.query_qualities]))
     if read.is_read2:
         return ("@" + read.query_name + " 2\n" + read.seq
-                + "\n+\n" + read.quality)
+                + "\n+\n" +
+                "".join([ph2chrDict[i] for i in read.query_qualities]))
     else:
         return ("@" + read.query_name + "\n" + read.seq
-                + "\n+\n" + read.quality)
+                + "\n+\n" +
+                "".join([ph2chrDict[i] for i in read.query_qualities]))
 
 
 @cython.locals(read=pysam.calignmentfile.AlignedSegment,
@@ -1514,11 +1519,11 @@ def ASToFastqPaired(read, alignmentfileObj):
 
 
 @cython.locals(read1=pysam.calignmentfile.AlignedSegment,
-               read2=pysam.calignmentfile.AlignedSegment,
                alignmentfileObj=pysam.calignmentfile.AlignmentFile,
-               mismatchLimit=cython.float, is_read1=cython.bint)
-def SWRealignAS(read1, read2, alignmentfileObj, extraOpts="", mismatchLimit="0.04",
-                 ref="default", filter="af,isunmapped"):
+               lAlignedArr=cython.long, lbf=cython.long, minAF=cython.float,
+               af=cython.float)
+def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
+                minAF=0.5):
     """
     Passes the sequence and qualities of the provided read to bwa aln with
     an AlignedSegment as input. Updates the AlignedSegment's fields in-place
@@ -1532,37 +1537,60 @@ def SWRealignAS(read1, read2, alignmentfileObj, extraOpts="", mismatchLimit="0.0
         assert ref != "default"
     except AssertionError:
         raise ThisIsMadness("Reference required for AlnRealignAS!")
-    try:
-        assert read1.is_read1
-    except AssertionError:
-        FacePalm("AlnRealignAS takes as positional arguments read1"
-                 ", read2, and alignmentfileObj. 'read1' is not read1??")
-    afFilter = False
-    ismappedFilter = False
-    if("af" in filter):
-        afFilter = True
-    if("isunmapped" in filter):
-        ismappedFilter = True
-    FastqStr = ASToFastqSingle(read1) + "\n" + ASToFastqSingle(read2)
-    commandStr = "echo %s | bwa bwasw -M -n %s %s -" % (FastqStr, ref,
-                                                   mismatchLimit)
-    alignedArr = [i for i in check_output(commandStr, shell=True).split("\n")
-                  if i[0] != "@"]
-    alignedArr = [line for line in alignedArr if len(bitfield(int(line[1]))) < 9 or bitfield(int(line[1]))[-9] or bitfield(int(line[1]))[-11]]
-    bitflags = [int(i[1]) for i in alignedArr]
-    newArr = []
-    r1Aligned = not read1.is_unmapped
-    r2Aligned = not read2.is_unmapped
-    r1, r2 = alignedArr[0], alignedArr[1]
-    bfr1 = bitfield(int(r1.split("\t")[1]))
-    bfr2 = bitfield(int(r2.split("\t")[1]))
-    read1.cigar, read2.cigar = r1[5], r2[5]
-    read1.flag, read2.flag = r1[1], r1[2]
-
-    pass
-    ### First, make a fake fastq record.
-    # fqStr =
-    ### Second, make the call.
-    # str = "echo %s | bwa aln idxBase /dev/stdin"
-    # subprocess.check_output(str)
-    #read.basldfalsdkfjalkdsfj
+    FastqStr = ASToFastqSingle(read)
+    commandStr = "echo \"%s\" | bwa bwasw -M %s -" % (FastqStr, ref)
+    printlog("Command String: %s" % commandStr)
+    alignedArr = [i.split("\t") for i in
+                  check_output(commandStr, shell=True).split("\n")
+                  if not(i == "" or i[0] == "@")]
+    alignedArr = [i for i in alignedArr if
+                  not (int(i[1]) & 256 or int(i[1]) & 2048)]
+    lAlignedArr = len(alignedArr)
+    if(lAlignedArr == 0):
+        printlog("Could not find a suitable alignment with bwasw",
+           level=logging.DEBUG)
+        return read
+    if(lAlignedArr > 1):
+        printlog("Somehow there are multiple primary alignments. I don't know what"
+           " to do, so just returning the original read.", level=logging.DEBUG)
+        return read
+    else:
+        alignedArr = alignedArr[0]
+    if(alignedArr[4] == "0"):
+        printlog("bwasw could not assign a non-0 MQ alignment. Returning original "
+            "read.", level=logging.DEBUG)
+        return read
+    # Now check the cigar string.
+    ra = regexcompile("[A-Z]")
+    rn = regexcompile("[0-9]")
+    letters = [i for i in rn.split(alignedArr[5]) if i != ""]
+    numbers = [int(i) for i in ra.split(alignedArr[5])[:-1]]
+    # Calculate aligned fraction. Fail realignment if minAF not met.
+    af = sum([i[1] for i in zip(letters, numbers)
+              if i[0] == "M"]) / (1. * sum(numbers))
+    if(af < minAF):
+        printlog("bwasw could not align more than %s. (aligned: " % minAF +
+           "%s) Returning original read." % af, level=logging.DEBUG)
+        return read
+    # Get the realignment tags and overwrite original tags with them.
+    tags = [i.split(":")[::2] for i in alignedArr[11:]] #  Gets tags
+    for tag in tags:
+        try:
+            tag[1] = int(tag[1])
+            read.set_tag(tag[0], tag[1], "i")
+            continue
+        except ValueError:
+            pass
+        try:
+            tag[1] = float(tag[1])
+            read.set_tag(tag[0], tag[1], "f")
+            continue
+        except ValueError:
+            pass
+        read.set_tag(tag[0], tag[1])
+    read.cigarstring = alignedArr[5]
+    read.reference_id = alignmentfileObj.gettid(alignedArr[2])
+    read.pos = int(alignedArr[3])
+    read.mapq = int(alignedArr[4])
+    read.set_tag("RA", "bwasw", "Z")
+    return read
