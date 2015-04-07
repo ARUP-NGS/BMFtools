@@ -759,9 +759,10 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
                    "ObservedAF", "NumVariantsCalledAtPos", "DOC",
                    "refVCFLine", "queryVCFLine"]))
+    qhf = queryHandle.fetch
     for rec in refIterator:
         # Load all records with precisely our ref record's position
-        queryRecs = list(queryHandle(rec.contig, rec.pos - 1, rec.pos))
+        queryRecs = list(qhf(rec.contig, rec.pos - 1, rec.pos))
         nAllelesAtPos = len(queryRecs)
         queryRecs = [i for i in queryRecs if i.alt == rec.alt]
         # Get just the record (or no record) that has that alt.
@@ -775,12 +776,12 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
             pl("Looks like the rec: "
                "%s wasn't called at all." % (str(rec)),
                level=logging.DEBUG)
-            ohw("\t".join([":".join([rec.contig, rec.pos, rec.ref, rec.alt]),
+            ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
         qRec = queryRecs[0]
-        ohw("\t".join([":".join([rec.contig, rec.pos, rec.ref, rec.alt]),
+        ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
                        "True", rec.filter,
                        dict([f.split("=") for f in
                              rec.info.split(";")])["AF"],
@@ -814,29 +815,31 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile="default",
     refHandle = pysam.TabixFile(std, parser=pysam.asVCF())
     ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
                    "ObservedAF", "DOC", "refVCFLine", "queryVCFLine"]))
+    rhf = refHandle.fetch
     for qRec in vcfIterator:
-        for filt in acceptableFilters.split(","):
-            if(filt not in acceptableFilters):
-                continue
-        refRecs = [i for i in list(refHandle(qRec.contig,
-                                             qRec.pos - 1, qRec.pos))
+        filtlist = qRec.filter.split(",")
+        if(sum([filt for filt in filtlist if filt
+                not in acceptableFilters]) != 0):
+            continue
+        refRecs = [i for i in list(rhf(qRec.contig,
+                                       qRec.pos - 1, qRec.pos))
                    if i.alt == qRec.alt]
         lRefRecs = len(refRecs)
         if(lRefRecs == 0):
             ohw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
                            "False", qRec.filter, dict([f.split("=") for f in
-                             rec.info.split(";")])["AF"],
-                           dict(zip(rec.format.split(":"),
-                                    rec[0].split(":")))["DP"], "N/A",
+                             qRec.info.split(";")])["AF"],
+                           dict(zip(qRec.format.split(":"),
+                                    qRec[0].split(":")))["DP"], "N/A",
                            str(qRec).replace("\t", "&")]))
             continue
         if(lRefRecs == 1):
             rec = refRecs[0]
             ohw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
                            "True", qRec.filter, dict([f.split("=") for f in
-                             rec.info.split(";")])["AF"],
-                           dict(zip(rec.format.split(":"),
-                                    rec[0].split(":")))["DP"],
+                             qRec.info.split(";")])["AF"],
+                           dict(zip(qRec.format.split(":"),
+                                    qRec[0].split(":")))["DP"],
                            str(rec).replace("\t", "&"),
                            str(qRec).replace("\t", "&")]))
             continue

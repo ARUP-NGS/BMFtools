@@ -16,6 +16,7 @@ import os
 import shlex
 import subprocess
 import uuid
+import sys
 
 import pysam
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
@@ -63,9 +64,9 @@ def printlog(string, level=logging.INFO):
         Logger.critical(string.replace(
             "\t", "\\t").replace("\n", "\\n").replace(
             "'", "\'").replace('"', '\\"'))
-    print(string.replace(
-          "\t", "\\t").replace("\n", "\\n").replace(
-          "'", "\'").replace('"', '\\"'))
+    sys.stderr.write(string.replace(
+        "\t", "\\t").replace("\n", "\\n").replace(
+        "'", "\'").replace('"', '\\"'))
     return
 
 pl = printlog

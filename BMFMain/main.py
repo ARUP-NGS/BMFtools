@@ -251,7 +251,7 @@ def main(argv=None):
     # Logger which holds both console and file loggers
     Logger.setLevel(logging.DEBUG)
 
-    # Console handler - outputs to console.
+    # Console handler - outputs to console as stderr
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
 
