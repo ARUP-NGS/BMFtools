@@ -252,12 +252,8 @@ class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
+    @cython.locals(FastqProxyObj=pysam.cfaidx.FastqProxy)
     def __init__(self, FastqProxyObj):
-        try:
-            assert isinstance(FastqProxyObj, pysam.cfaidx.FastqProxy)
-        except AssertionError:
-            FacePalm("pFastqProxy requires a pysam.cfaidx.FastqProxy "
-                     "object for initialization!")
         self.comment = FastqProxyObj.comment
         self.quality = FastqProxyObj.quality
         self.sequence = FastqProxyObj.sequence

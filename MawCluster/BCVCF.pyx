@@ -2,11 +2,13 @@
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
 
-import subprocess
-import decimal
 from itertools import tee
-import operator
 from operator import methodcaller as mc
+import decimal
+import logging
+import operator
+import subprocess
+import sys
 
 import numpy as np
 from numpy import array as nparray
@@ -15,6 +17,8 @@ from numpy import mean as nmean
 from numpy import min as nmin
 import cython
 import pysam
+
+cimport pysam.TabProxies
 
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
 from utilBMF import HTSUtils
@@ -730,17 +734,113 @@ def GetPotentialHetsVCFUK10K(inVCF, minAlFrac=0.2,
         if(alleleFreq >= minAlFrac and alleleFreq <= maxAlFrac):
             if(replaceIDWithAlFreq):
                 VCFRec.ID = str(alleleFreq)[0:6]
-            outHandle.write(VCFRec.__str__() + "\n")
+            outHandle.write(str(VCFRec) + "\n")
     outHandle.close()
 
 
-def CompareVCFToStandardSpecs(inVCF, std="default"):
+@cython.locals(nAllelesAtPos=cython.long)
+def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     """
-    Loads a standard file into memory and then scans a query VCF with tabix
-    to see how well it did.
+    Verifies the absence or presence of variants that should be in a VCF.
     """
+    cdef pysam.TabProxies.VCFProxy rec
+    cdef pysam.TabProxies.VCFProxy qRec
     if(std == "default"):
         raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
                             "able name 'std', must be set to CompareVCFToStan"
                             "dardSpecs")
-    pass
+    if(outfile == "default"):
+        outHandle = sys.stdout
+    else:
+        outHandle = open(outfile, "w")
+    ohw = outHandle.write
+    refIterator = pysam.tabix_iterator(open(std, "rb"), pysam.asVCF())
+    queryHandle = pysam.TabixFile(inVCF, parser=pysam.asVCF())
+    ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
+                   "ObservedAF", "NumVariantsCalledAtPos", "DOC",
+                   "refVCFLine", "queryVCFLine"]))
+    for rec in refIterator:
+        # Load all records with precisely our ref record's position
+        queryRecs = list(queryHandle(rec.contig, rec.pos - 1, rec.pos))
+        nAllelesAtPos = len(queryRecs)
+        queryRecs = [i for i in queryRecs if i.alt == rec.alt]
+        # Get just the record (or no record) that has that alt.
+        if(nAllelesAtPos == 0):
+            pl("No variants called at position. %s " %str(rec),
+               level=logging.DEBUG)
+            ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
+                           "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
+                           str(rec).replace("\t", "&"), "N/A"]) + "\n")
+        if(len(queryRecs) == 0):
+            pl("Looks like the rec: "
+               "%s wasn't called at all." % (str(rec)),
+               level=logging.DEBUG)
+            ohw("\t".join([":".join([rec.contig, rec.pos, rec.ref, rec.alt]),
+                           "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
+                           str(rec).replace("\t", "&"), "N/A"]) + "\n")
+            continue
+        qRec = queryRecs[0]
+        ohw("\t".join([":".join([rec.contig, rec.pos, rec.ref, rec.alt]),
+                       "True", rec.filter,
+                       dict([f.split("=") for f in
+                             rec.info.split(";")])["AF"],
+                       str(nAllelesAtPos),
+                       dict(zip(rec.format.split(":"),
+                                rec[0].split(":")))["DP"],
+                       str(rec).replace("\t", "&"),
+                       str(qRec).replace("\t", "&")]) + "\n")
+    return outfile
+
+
+def CheckStdCallsForVCFCalls(inVCF, std="default", outfile="default",
+                             acceptableFilters="PASS"):
+    """
+    Iterates through an input VCF to find variants without any filters outside
+    of "acceptableFilters". (which should be a comma-separated list of strings)
+    """
+    cdef pysam.TabProxies.VCFProxy rec
+    cdef pysam.TabProxies.VCFProxy qRec
+    cdef cython.long lRefRecs
+    if(std == "default"):
+        raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
+                            "able name 'std', must be set to CheckStdCallsFor"
+                            "VCFCalls")
+    if(outfile == "default"):
+        outHandle = sys.stdout
+    else:
+        outHandle = open(outfile, "w")
+    ohw = outHandle.write
+    vcfIterator = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
+    refHandle = pysam.TabixFile(std, parser=pysam.asVCF())
+    ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
+                   "ObservedAF", "DOC", "refVCFLine", "queryVCFLine"]))
+    for qRec in vcfIterator:
+        for filt in acceptableFilters.split(","):
+            if(filt not in acceptableFilters):
+                continue
+        refRecs = [i for i in list(refHandle(qRec.contig,
+                                             qRec.pos - 1, qRec.pos))
+                   if i.alt == qRec.alt]
+        lRefRecs = len(refRecs)
+        if(lRefRecs == 0):
+            ohw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
+                           "False", qRec.filter, dict([f.split("=") for f in
+                             rec.info.split(";")])["AF"],
+                           dict(zip(rec.format.split(":"),
+                                    rec[0].split(":")))["DP"], "N/A",
+                           str(qRec).replace("\t", "&")]))
+            continue
+        if(lRefRecs == 1):
+            rec = refRecs[0]
+            ohw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
+                           "True", qRec.filter, dict([f.split("=") for f in
+                             rec.info.split(";")])["AF"],
+                           dict(zip(rec.format.split(":"),
+                                    rec[0].split(":")))["DP"],
+                           str(rec).replace("\t", "&"),
+                           str(qRec).replace("\t", "&")]))
+            continue
+        raise ThisIsMadness("Unexpected behavior - reference VCF shouldn't ha"
+                            "ve more than one line with the same alt, should "
+                            "it?")
+    return outfile
