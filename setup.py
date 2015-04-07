@@ -28,6 +28,11 @@ print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
+
+compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
+                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
+                "-fivopts", "-ftree-loop-im"]
+
 """
 compilerList = ["marchFlag, "-pipe", "-msse2",
                 "-funroll-loops", "-floop-block",
@@ -44,8 +49,6 @@ compilerList = ["marchFlag, "-pipe", "-msse2",
 #                "-funroll-loops", "-floop-unroll-and-jam",
 #                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
 
-compilerList = ["-O3", "-pipe", marchFlag]
-"""
 
 compilerList = [marchFlag, "-pipe", "-msse2",
                 "-funroll-loops", "-floop-block",
@@ -58,6 +61,7 @@ compilerList = [marchFlag, "-pipe", "-msse2",
                 "-fmodulo-sched-allow-regmoves", "-fgcse",
                 "-floop-unroll-and-jam",
                 "-fomit-frame-pointer", "-Ofast"]
+"""
 try:
     from setuptools import setup, Extension
 except ImportError:

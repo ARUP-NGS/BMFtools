@@ -437,13 +437,14 @@ class PCInfo:
     @cython.locals(reverseStrandFraction=cython.float,
                    BothStrandAlignment=cython.bint,
                    primerLen=cython.long, minBQ=cython.long,
-                   minMQ=cython.long, minPVFrac=cython.float)
+                   minMQ=cython.long, minPVFrac=cython.float,
+                   minAF=cython.float)
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
                  exclusionSVTags="MDC,LI,ORB",
                  FracAlignFilter=False, primerLen=20,
-                 experiment=""):
+                 experiment="", minAF=0.25):
         assert isinstance(PileupColumn, pPileupColumn)
         pileups = PileupColumn.pileups
         if("amplicon" in experiment):
@@ -458,12 +459,15 @@ class PCInfo:
         #  pl("minBQ: %s" % minBQ)
         from collections import Counter
         self.contig = PysamToChrDict[PileupColumn.reference_id]
+        self.minAF = minAF
         #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
         #  pl("pos: %s" % self.pos)
         self.FailedQCReads = sum([pileupRead.alignment.opt("FP") == 0
                                   for pileupRead in pileups])
         self.FailedFMReads = sum([pileupRead.alignment.opt("FM") < minFA
+                                  for pileupRead in pileups])
+        self.FailedAFReads = sum([pileupRead.alignment.opt("AF") < minAF
                                   for pileupRead in pileups])
         self.FailedBQReads = sum(
             [pileupRead.alignment.query_qualities
@@ -505,7 +509,8 @@ class PCInfo:
                         (pileupRead.alignment.query_qualities[
                             pileupRead.query_position] >= self.minBQ) and
                         pileupRead.alignment.opt("FP") == 1 and
-                        pileupRead.alignment.opt("FM") >= minFA]
+                        pileupRead.alignment.opt("FM") >= minFA and
+                        pileupRead.alignment.opt("AF") >= minAF]
         self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
         rsn = sum(map(oag("is_reverse"), self.Records))

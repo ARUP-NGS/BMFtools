@@ -762,7 +762,16 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     qhf = queryHandle.fetch
     for rec in refIterator:
         # Load all records with precisely our ref record's position
-        queryRecs = list(qhf(rec.contig, rec.pos - 1, rec.pos))
+        try:
+            queryRecs = list(qhf(rec.contig + ":" + str(rec.pos - 1)
+                                 + "-" + str(rec.pos)))
+        except ValueError:
+            pl("Looks like contig %s just isn't in the tabix'd" % rec.contig +
+               "file. Give up - continuing!", level=logging.DEBUG)
+            ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
+                           "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
+                           str(rec).replace("\t", "&"), "N/A"]) + "\n")
+            continue
         nAllelesAtPos = len(queryRecs)
         queryRecs = [i for i in queryRecs if i.alt == rec.alt]
         # Get just the record (or no record) that has that alt.
@@ -772,6 +781,7 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
             ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
+            continue
         if(len(queryRecs) == 0):
             pl("Looks like the rec: "
                "%s wasn't called at all." % (str(rec)),
@@ -784,16 +794,16 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
         ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
                        "True", rec.filter,
                        dict([f.split("=") for f in
-                             rec.info.split(";")])["AF"],
+                             qRec.info.split(";")])["AF"],
                        str(nAllelesAtPos),
-                       dict(zip(rec.format.split(":"),
-                                rec[0].split(":")))["DP"],
+                       dict(zip(qRec.format.split(":"),
+                                qRec[0].split(":")))["DP"],
                        str(rec).replace("\t", "&"),
                        str(qRec).replace("\t", "&")]) + "\n")
     return outfile
 
 
-def CheckStdCallsForVCFCalls(inVCF, std="default", outfile="default",
+def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
                              acceptableFilters="PASS"):
     """
     Iterates through an input VCF to find variants without any filters outside
@@ -806,14 +816,16 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile="default",
         raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
                             "able name 'std', must be set to CheckStdCallsFor"
                             "VCFCalls")
-    if(outfile == "default"):
-        outHandle = sys.stdout
-    else:
-        outHandle = open(outfile, "w")
-    ohw = outHandle.write
+    if(not isinstance(outfile, file)):
+        if(not isinstance(outfile, str)):
+            raise ThisIsMadness("outfile variable is neither a file nor a "
+                                "string. I don't know what to do with this - "
+                                "check your kwargs!")
+        outfile = open(outfile, "w")
+    ofw = outfile.write
     vcfIterator = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
     refHandle = pysam.TabixFile(std, parser=pysam.asVCF())
-    ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
+    ofw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
                    "ObservedAF", "DOC", "refVCFLine", "queryVCFLine"]))
     rhf = refHandle.fetch
     for qRec in vcfIterator:
@@ -826,7 +838,7 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile="default",
                    if i.alt == qRec.alt]
         lRefRecs = len(refRecs)
         if(lRefRecs == 0):
-            ohw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
+            ofw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
                            "False", qRec.filter, dict([f.split("=") for f in
                              qRec.info.split(";")])["AF"],
                            dict(zip(qRec.format.split(":"),
@@ -835,7 +847,7 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile="default",
             continue
         if(lRefRecs == 1):
             rec = refRecs[0]
-            ohw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
+            ofw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
                            "True", qRec.filter, dict([f.split("=") for f in
                              qRec.info.split(";")])["AF"],
                            dict(zip(qRec.format.split(":"),

@@ -52,7 +52,8 @@ class SNVCFLine:
                    maxAAF=dtype128_t, FailedFMReads=cython.long,
                    FailedQCReads=cython.long, FailedBQReads=cython.long,
                    FailedMQReads=cython.long, NDP=cython.long,
-                   ampliconFailed=cython.long)
+                   ampliconFailed=cython.long, FailedAFReads=cython.long,
+                   minAF=cython.float)
     def __init__(self,
                  AlleleAggregateObject,
                  MaxPValue=1e-30,
@@ -64,7 +65,7 @@ class SNVCFLine:
                  TotalCountStr="default",
                  MergedCountStr="default",
                  FailedBQReads=-1, FailedMQReads=-1,
-                 FailedQCReads=-1, FailedFMReads=-1,
+                 FailedQCReads=-1, FailedFMReads=-1, FailedAFReads=-1,
                  minNumFam=2,
                  minNumSS=2,
                  REF="default",
@@ -73,7 +74,7 @@ class SNVCFLine:
                  minFracAgreedForFilter=0.666,
                  minFA=0, BothStrandAlignment=-1,
                  pValBinom=0.05, ampliconFailed=-1, NDP=-1,
-                 EST="none"):
+                 EST="none", minAF=-1.):
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
@@ -153,6 +154,7 @@ class SNVCFLine:
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,
                            "BPSD": AlleleAggregateObject.BPSD,
+                           "FAF": FailedAFReads,
                            "FQC": FailedQCReads, "FFM": FailedFMReads,
                            "FSR": AlleleAggregateObject.FSR,
                            "MNCS": minNumSS, "MDP": minDuplexPairs,
@@ -160,6 +162,7 @@ class SNVCFLine:
                            "MINFRACCALL": AlleleAggregateObject.minFrac,
                            "MINFRACFILTER": minFracAgreedForFilter,
                            "MFA": AlleleAggregateObject.MFA,
+                           "MINAF": minAF,
                            "MINFA": AlleleAggregateObject.minFA,
                            "MINAAF": minAAF, "MAXAAF": maxAAF,
                            "MQM": AlleleAggregateObject.AveMQ,
@@ -264,6 +267,7 @@ class VCFPos:
         if("amplicon" in PCInfoObject.experiment):
             ampliconFailed = PCInfoObject.ampliconFailed
         # Because bamtools is 0-based but vcfs are 1-based
+        self.minAF = PCInfoObject.minAF
         self.pos = PCInfoObject.pos + 1
         self.minMQ = PCInfoObject.minMQ
         self.consensus = PCInfoObject.consensus
@@ -273,6 +277,7 @@ class VCFPos:
         self.MergedCountStr = PCInfoObject.MergedCountStr
         self.REF = pysam.FastaFile(reference).fetch(
             PCInfoObject.contig, self.pos - 1, self.pos)
+        self.FailedAFReads = PCInfoObject.FailedAFReads
         self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
@@ -293,7 +298,8 @@ class VCFPos:
             minDuplexPairs=minDuplexPairs,
             minFracAgreedForFilter=minFracAgreed,
             minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment,
-            NDP=NDP, EST=self.EST)
+            NDP=NDP, EST=self.EST, FailedAFReads=PCInfoObject.FailedAFReads,
+            minAF=self.minAF)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(self.keepConsensus):
@@ -851,10 +857,14 @@ HeaderInfoDict["BNP"] = HeaderInfoLine(
     "MAXAAF and MINAAF",
     Number=1, Type="Float")
 HeaderInfoDict["FFM"] = HeaderInfoLine(
-    ID="NAF", Description="Number of reads failed for too few reads in a fami"
+    ID="FFM", Description="Number of reads failed for too few reads in a fami"
     "ly", Number=1, Type="Integer")
 HeaderInfoDict["FQC"] = HeaderInfoLine(
-    ID="NAF", Description="Number of reads failed for not passing QC ",
+    ID="FQC", Description="Number of reads failed for not passing QC ",
+    Number=1, Type="Integer")
+HeaderInfoDict["FAF"] = HeaderInfoLine(
+    ID="FAF", Description=("Number of reads failed for not passing "
+                           "Aligned Fraction filter."),
     Number=1, Type="Integer")
 HeaderInfoDict["NAF"] = HeaderInfoLine(
     ID="NAF", Description="Number of amplicon-specific failed reads for "
@@ -879,6 +889,9 @@ HeaderInfoDict["NDP"] = HeaderInfoLine(
     ID="NDP", Description="Number of read pairs not included in pileup due to"
     "disagreement on the base call. Large numbers suggest context-specific er"
     "ror modes.", Type="Integer", Number=1)
+HeaderInfoDict["MINAF"] = HeaderInfoLine(
+    ID="MINAF", Description="Minimum aligned fraction to be included in call."
+    Number=1, Type="Float")
 
 
 """
