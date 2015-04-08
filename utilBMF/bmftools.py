@@ -15,7 +15,7 @@ from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 
 """
 bmftools contains various utilities for barcoded reads and for
-somatic variant calling. Written to be in similar form to bcftools
+somatic variant calling. Written to be similar in form to bcftools
 and samtools.
 """
 
@@ -29,6 +29,8 @@ def main():
         "ffpe", description="Estimates cytosine deamination frequencies in a "
         "VCF outputs a VCF with appropriate variants filtered. FILTER: Deamin"
         "ationNoise")
+    VCFCmpParser = subparsers.add_parser(
+        "vcfcmp", description="Compares VCF files.")
     VCFStatsParser = subparsers.add_parser("vcfstats",
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
@@ -229,6 +231,12 @@ def main():
         "--maxFreq", help="Maximum frequency for a C-[TU]/G-A event to be as"
         "sumed to be deamination due to formalin fixation.", default=0.1,
         type=float)
+    VCFCmpParser.add_argument(
+        "queryVCF", help="Query VCF to compare to reference VCF.",
+        type=str)
+    VCFCmpParser.add_argument(
+        "--std", help="Reference VCF for comparing to query VCF.",
+        type=str, required=True)
     # set_trace()
 
     args = parser.parse_args()

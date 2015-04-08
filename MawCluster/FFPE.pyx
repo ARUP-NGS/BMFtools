@@ -15,6 +15,7 @@ cimport cython
 import numpy as np
 cimport numpy as np
 import pysam
+cimport pysam.TabProxies
 
 from MawCluster.BCVCF import IterativeVCFFile
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness, NameSortAndFixMate
@@ -60,7 +61,15 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
     recordsArray = []
     for line in IVCFObj:
         if(len(recordsArray) >= recordsPerWrite):
-            outHandle.write("\n".join(map(mc("__str__"), recordsArray)) +
+            strArray = map(str, recordsArray)
+            zipped = zip(recordsArray, strArray)
+            for pair in zipped:
+                if(pair[1] == ""):
+                    pl("Empty string for VCF record %s" % repr(pair[0]) +
+                        "%s:%s:%s:%s" % (pair[0].CHROM, pair[0].POS,
+                                         pair[0].REF, pair[0].ALT),
+                       level=logging.DEBUG)
+            outHandle.write("\n".join(map(str, recordsArray)) +
                             "\n")
             recordsArray = []
         if(line.REF != "C" or line.REF != "G"):
@@ -83,7 +92,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
         line.InfoDict["MFDN"] = maxFreqNoise
         line.InfoDict["MFDNP"] = mfdnpStr
         recordsArray.append(line)
-    outHandle.write("\n".join(map(mc("__str__"), recordsArray)) + "\n")
+    outHandle.write("\n".join(map(str, recordsArray)) + "\n")
     outHandle.flush()
     outHandle.close()
     return outVCF
@@ -99,6 +108,8 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     Only accepts SNVCrawler's VCF output as it requires those INFO fields.
     FILTER must be a comma-separated list of FILTER strings as defined
     in the VCF header.
+    This is slower than the Py version, so I will be working with it to
+    get some speed soon.
     """
     cdef cython.long TotalCG
     cdef cython.long TotalCG_TA
@@ -128,13 +139,13 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
         lid = line.InfoDict
         cons = lid["CONS"]
         MACSStr = lid["MACS"]
-        macsDict = dict(map(operator.methodcaller(
+        macsDict = dict(map(mc(
             "split", ">"), MACSStr.split(",")))
         if(cons == "C" and line.REF == "C"):
-            if(GC < minGCcount):
-                continue
             GC = int(macsDict["C"])
             TA = int(macsDict["T"])
+            if(GC < minGCcount):
+                continue
             if(GC == 0):
                 continue
             if(TA * 1.0 / GC <= maxFreq):
@@ -152,6 +163,71 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
                 TotalCG += GC
     freq = 1. * TotalCG_TA / TotalCG
     pl("TotalCG_TA: %s. TotalCG: %s." % (TotalCG_TA, TotalCG))
+    pl("Estimated frequency: %s" % freq)
+    pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be %s" % (GetCeiling(
+        100, p=freq, pVal=0.001) / 100.))
+    pl("Whereas, a 0.001 pValue ceiling at 1000 DOC would be %s" % (GetCeiling(
+        1000, p=freq, pVal=0.001) / 1000.))
+    return freq
+
+
+def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
+                  minGCcount=50):
+
+    """
+    Trying to see if the C compilation is throwing anything off.
+    Returns a list of raw base frequencies for G->A and C->T.
+    Only accepts SNVCrawler's VCF output as it requires those INFO fields.
+    FILTER must be a comma-separated list of FILTER strings as defined
+    in the VCF header.
+    """
+    validFilters = map(mc("lower"), HeaderFilterDict.keys())
+    filters = FILTER.lower().split(",")
+    pl("Filters: %s" % filters)
+    pl("maxFreq: %s" % maxFreq)
+    if(FILTER != ""):
+        for filter in filters:
+            if filter not in validFilters:
+                raise IllegalArgumentError("Filter must be a valid VCF Filter. "
+                                           "%s" % validFilters)
+    IVCFObj = IterativeVCFFile(inVCF)
+    TotalCG = 0
+    TotalCG_TA = 0
+    for line in IVCFObj:
+        if(FILTER != ""):
+            for filter in filters:
+                if filter in line.FILTER.lower():
+                    pl("Failing line for filter %s" % filter,
+                       level=logging.DEBUG)
+                    continue
+        lid = line.InfoDict
+        cons = lid["CONS"]
+        MACSStr = lid["MACS"]
+        macsDict = dict(map(mc(
+            "split", ">"), MACSStr.split(",")))
+        if((cons == "C" or line.REF == "C") and line.ALT == "C"):
+            GC = int(macsDict["C"])
+            TA = int(macsDict["T"])
+            if(GC < minGCcount):
+                continue
+            if(GC == 0):
+                continue
+            if(TA * 1.0 / GC <= maxFreq):
+                TotalCG_TA += TA
+                TotalCG += GC
+        elif((cons == "G" or line.REF == "G") and line.ALT == "A"):
+            GC = int(macsDict["G"])
+            if(GC < minGCcount):
+                continue
+            TA = int(macsDict["A"])
+            if(GC == 0):
+                continue
+            if(TA * 1.0 / GC <= maxFreq):
+                TotalCG_TA += TA
+                TotalCG += GC
+    freq = 1. * TotalCG_TA / TotalCG
+    pl("TotalCG_TA: %s. TotalCG: %s." % (TotalCG_TA, TotalCG))
+    pl("Estimated frequency: %s" % freq)
     pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be %s" % (GetCeiling(
         100, p=freq, pVal=0.001) / 100.))
     pl("Whereas, a 0.001 pValue ceiling at 1000 DOC would be %s" % (GetCeiling(
@@ -207,3 +283,59 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
         newTemp = NameSortAndFixMate(tempFile, sortAndIndex=True)
         subprocess.check_call(["mv", newTemp, outBAM])
     return outBAM
+
+
+def makeinfodict(rec):
+    """
+    Returns a dictionary of info fields for a tabix VCF Proxy
+    """
+    return dict([i.split("=") for i in rec.info.split(";")])
+
+
+@cython.returns(cython.float)
+def getFreq(rec, l="d"):
+    """
+    Returns allele frequency for a tabix VCF Proxy made from SNVCrawler.
+    """
+    return float(dict([i.split(">") for i in
+                       makeinfodict(rec)["MAFS"].split(",")])[l])
+
+
+@cython.returns(cython.float)
+def GetTabixDeamFreq(inVCF):
+    """
+    Gets deamination frequency for a tabixed VCF file, under the assumption
+    that the majority of C-T/G-A calls at low frequencies which are not
+    ablated by family demultiplexing are due to formalin fixation.
+    """
+    cdef cython.long atCounts
+    cdef cython.long gcCounts
+    cdef pysam.TabProxies.VCFProxy rec
+    cdef cython.float freq
+    atCounts = 0
+    gcCounts = 0
+    import sys
+    import pysam
+    a = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
+    for rec in a:
+        mid = makeinfodict(rec)
+        if(mid["CONS"] == "C" and getFreq(rec, "T") / getFreq(rec, "C") < 0.15 and rec.alt == "T"):
+            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["T"])
+            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["C"])
+        if(mid["CONS"] == "G" and getFreq(rec, "A") / getFreq(rec, "G") < 0.15  and rec.alt == "A"):
+            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["A"])
+            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["G"])
+        if(rec.ref == "C" and getFreq(rec, "T") < 0.25 and
+           getFreq(rec, "C") >= 0.3 and rec.alt == "T"):
+            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["T"])
+            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["C"])
+        if(rec.ref == "G" and getFreq(rec, "A") < 0.25 and
+           getFreq(rec, "G") >= 0.3 and rec.alt == "A"):
+            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["A"])
+            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["G"])
+    freq = (1. * atCounts) / gcCounts
+    print("Final atCounts: %s" % atCounts)
+    print("Final gcCounts: %s" % gcCounts)
+    print("Est deam freq: %s" % (freq))
+    return freq
+
