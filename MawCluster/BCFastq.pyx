@@ -572,7 +572,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     ofh2w = outFqHandle2.write
     while True:
         if(numWritten >= readPairsPerWrite):
-            if(useGzip is False):
+            if(not useGzip):
                 ofh1w(f1.getvalue())
                 ofh2w(f2.getvalue())
                 f1 = cStringIO.StringIO()

@@ -890,7 +890,8 @@ HeaderInfoDict["NDP"] = HeaderInfoLine(
     "disagreement on the base call. Large numbers suggest context-specific er"
     "ror modes.", Type="Integer", Number=1)
 HeaderInfoDict["MINAF"] = HeaderInfoLine(
-    ID="MINAF", Description="Minimum aligned fraction to be included in call."
+    ID="MINAF",
+    Description="Minimum aligned fraction to be included in call.",
     Number=1, Type="Float")
 
 

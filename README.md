@@ -223,6 +223,7 @@ Most options are available for command-line as well. If an option is set in both
         5. Fraction of FamSize==1 for all FamSizes
         6. Mean # Reads Per Family.
     0. Filters and Preprocessing/Postprocessing
+        1. Add command-line and config file support for selecting minAF for variant caller.
         2. Double-check that the FFPE FILTER field is being appropriately added...
     1. SNV confidence model
         3. VQS model (start, paper and pencil?)
