@@ -833,7 +833,7 @@ def CustomPileupFullGenome(inputBAM,
             PileupHandle.write(PColSum.__str__(header=True))
             FirstLine = False
         else:
-            PileupHandle.write(PColSum.__str__())
+            PileupHandle.write(str(PColSum))
         for key in PColSum.TransMergedCounts.keys():
             try:
                 TransMergedDict[
@@ -977,7 +977,7 @@ def CustomPileupToTsv(inputBAM,
                 PileupHandle.write(PColSum.__str__(header=True))
                 FirstLine = False
             else:
-                PileupHandle.write(PColSum.__str__())
+                PileupHandle.write(str(PColSum))
             for key in PColSum.TransMergedCounts.keys():
                 try:
                     TransMergedDict[

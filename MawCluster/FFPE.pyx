@@ -285,6 +285,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
     return outBAM
 
 
+@cython.locals(rec=pysam.TabProxies.VCFProxy)
 def makeinfodict(rec):
     """
     Returns a dictionary of info fields for a tabix VCF Proxy
@@ -293,7 +294,7 @@ def makeinfodict(rec):
 
 
 @cython.returns(cython.float)
-def getFreq(rec, l="d"):
+def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
     """
     Returns allele frequency for a tabix VCF Proxy made from SNVCrawler.
     """
