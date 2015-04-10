@@ -83,7 +83,7 @@ def main():
     SNVParser.add_argument(
         "--minBQ",
         help="Minimum Base Quality to consider",
-        default=30,
+        default=80,
         type=int)
     SNVParser.add_argument(
         "--minMQ",
@@ -111,9 +111,9 @@ def main():
         required=True)
     SNVParser.add_argument("-m", "--min-frac-agreed",
                            help="Minimum fraction of family agreed on base.",
-                           default=0.667, type=float)
+                           default=0.75, type=float)
     SNVParser.add_argument("--minFA", help="Minimum family agreed on base.",
-                           default=2, type=int)
+                           default=3, type=int)
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")

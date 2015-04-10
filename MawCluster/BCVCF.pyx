@@ -754,8 +754,9 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     else:
         outHandle = open(outfile, "w")
     ohw = outHandle.write
-    refIterator = pysam.tabix_iterator(open(std, "rb"), pysam.asVCF())
-    queryHandle = pysam.TabixFile(inVCF, parser=pysam.asVCF())
+    asVCF = pysam.asVCF()
+    refIterator = pysam.tabix_iterator(open(std, "rb"), asVCF)
+    queryHandle = pysam.TabixFile(inVCF, parser=asVCF)
     ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
                    "ObservedAF", "NumVariantsCalledAtPos", "DOC",
                    "refVCFLine", "queryVCFLine"]))
@@ -823,8 +824,9 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
                                 "check your kwargs!")
         outfile = open(outfile, "w")
     ofw = outfile.write
-    vcfIterator = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
-    refHandle = pysam.TabixFile(std, parser=pysam.asVCF())
+    asVCF = pysam.asVCF()
+    vcfIterator = pysam.tabix_iterator(open(inVCF, "rb"), asVCF)
+    refHandle = pysam.TabixFile(std, parser=asVCF)
     ofw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
                    "ObservedAF", "DOC", "refVCFLine", "queryVCFLine"]))
     rhf = refHandle.fetch

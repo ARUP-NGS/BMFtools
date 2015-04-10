@@ -3,7 +3,10 @@
 
 
 import pysam
+cimport pysam.calignmentfile
 import cython
+
+from utilBMF.HTSUtils import FractionAligned, FractionSoftClipped
 
 """
 Contains utilities for working with indels for HTS data.
@@ -16,6 +19,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
     other reads to the otherOutputBAM.
     idRel stands for indel relevant.
     idIrl stands for indel irrelevant.
+    Input BAM must be name sorted: coordinate sorted is not supported!
     """
     if(indelOutputBAM == "default"):
         indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["indRel", "bam"])
@@ -24,6 +28,8 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     indelHandle = pysam.AlignmentFile(indelOutputBAM, "wb", template=inHandle)
     otherHandle = pysam.AlignmentFile(otherOutputBAM, "wb", template=inHandle)
+    ohw = otherHandle.write
+    ihw = indelHandle.write
     for entry in inHandle:
         if entry.is_read1:
             read1 = entry
@@ -33,11 +39,11 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="defa
         assert read1.query_name == read2.query_name
         if(IsIndelRelevant(read1, minFam=minFamSize) or
            IsIndelRelevant(read2, minFam=minFamSize)):
-            indelHandle.write(read1)
-            indelHandle.write(read2)
+            ihw(read1)
+            ihw(read2)
         else:
-            otherHandle.write(read1)
-            otherHandle.write(read2)
+            ohw(read1)
+            ohw(read2)
     inHandle.close()
     otherHandle.close()
     indelHandle.close()
@@ -71,3 +77,9 @@ def IsIndelRelevant(read, minFam=1, keepSoft=False,
         # No SV tag was found, not much we can do.
         pass
     return False
+
+
+def GetSCFractionArray(inBAM):
+    cdef pysam.calignmentfile.AlignedSegment i
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    return [FractionSoftClipped(i) for i in inHandle]

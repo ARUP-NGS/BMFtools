@@ -1368,6 +1368,18 @@ def GetDeletedCoordinates(read):
 
 
 @cython.returns(dtype128_t)
+def FractionSoftClipped(cAlignedSegment read):
+    """
+    Returns the fraction of a read aligned.
+    """
+    if(read.cigarstring is None):
+        return 0.
+    return 1. * sum([i[1] for i in
+                     read.cigar if
+                     i[0] == 4]) / read.query_alignment_length
+
+
+@cython.returns(dtype128_t)
 def FractionAligned(cAlignedSegment read):
     """
     Returns the fraction of a read aligned.

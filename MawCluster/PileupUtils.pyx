@@ -179,7 +179,7 @@ class PRInfo:
         self.query_position = PileupRead.query_position
         tagsdictkeys = dict(tags).keys()
         if("FA" in tagsdictkeys):
-            self.FA = int(aopt("FA").split(","))[self.query_position]
+            self.FA = int(aopt("FA").split(",")[self.query_position])
             self.FractionAgreed = self.FA / (1. * self.FM)
         else:
             self.FA = None

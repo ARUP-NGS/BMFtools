@@ -8,11 +8,14 @@ import shlex
 import operator
 from operator import attrgetter as oag
 from operator import methodcaller as mc
+from subprocess import check_output, check_call
+import sys
 
 import cython
 cimport cython
 import pysam
 cimport pysam.cfaidx
+cimport pysam.calignmentfile
 import numpy as np
 cimport numpy as np
 from numpy import array as nparray
@@ -31,7 +34,7 @@ ctypedef np.int64_t dtypei64_t
 Contains functions and miscellania for QC metrics.
 """
 
-
+@cython.locals(buffer=cython.long)
 def ExtendBed(bedfile, buffer=100, outbed="default"):
     """
     """
@@ -43,12 +46,9 @@ def ExtendBed(bedfile, buffer=100, outbed="default"):
                   "$10, $11, $12}} > %s'" % outbed)
     PipedShellCall(outbed)
     return outbed
-    
 
 
-@cython.locals(Popen=cython.bint)
-def coverageBed(inBAM, bed="default", outbed="default",
-                Popen=False):
+def coverageBed(inBAM, bed="default", outbed="default"):
     """
     Uses samtool bedcov tool.
     Requires samtools >= 1.0
@@ -64,24 +64,10 @@ def coverageBed(inBAM, bed="default", outbed="default",
         outbed = ".".join(bed.split(".")[0:-1] + ["cov", "bed"])
     pl("Calculating coverage bed. bed: %s. inBAM: %s. " (bed, inBAM) +
        "outbed: %s" % outbed)
-    commandStr = "samtools bedcov %s %s > %s" % (bed, inBAM)
-    if(Popen is False):
-        PipedShellCall(commandStr)
-        return outbed
-    else:
-        outHandle = open(outbed, "w")
-        return subprocess.Popen(shlex.split(
-            "samtools bedcov %s %s" % (bed, inBAM)),
-                                stdout=outHandle), outbed
-
-
-@cython.locals(min=cython.long)
-def meanFamSize(inBAM, min=2):
-    """
-    Calculates the mean family size for reads with a family size greater
-    than or equal to the minimum. Default: 2
-    """
-    pass
+    commandStr = ("samtools bedcov %s %s | awk -t '{print " % (bed, inBAM) +
+                  "$1, $2, $3, $4, $5, $6, $7 / ($3 - $2)} > %s" % ( outbed))
+    PipedShellCall(commandStr)
+    return outbed
 
 
 @cython.locals(buffer=cython.long)
@@ -92,33 +78,46 @@ def FracOnTarget(inBAM, bed="default", buffer=100):
     buffer option which counts reads just outside of the regions targeted
     as being "on target."
     """
-    pass
+    cdef cython.long numReadsTotal
+    cdef cython.long numReadsOnTarget
+    cdef cython.float fracOnTarget
+    covBed = coverageBed(inBAM, bed=ExtendBed(bed, buffer=buffer))
+    numReadsTotal = int(check_output(["samtools", "view", "-L", covBed,
+                                      "-c", inBAM]).strip())
+    numReadsOnTarget = int(check_output(
+        "awk {print $NF} %s | paste -sd+ | bc" % covBed,
+        shell=True).strip())
+    fracOnTarget = numReadsOnTarget / (1. * numReadsTotal)
+    return covBed, fracOnTarget
 
 
 @cython.returns(cython.long)
-def NumUniqueReads(inBAM):
+def CountNumReads(inBAM):
     """
-    returns the number of reads with family size of 1
+    Simply counts the number of reads in a BAM file.
     """
-    pass
+    return int(check_output(["samtools", "view", "-c", inBAM]).strip())
 
 
-def MeanInsertSize(inBAM):
+def InsertSizeArray(inBAM):
     """
-    Returns the mean insert size for the sample.
+    Returns an array of insert sizes for the sample.
     """
-    pass
-
+    cdef pysam.calignmentfile.AlignedSegment i
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    return [abs(i.tlen) for i in inHandle]
 
 
 @cython.locals(min=cython.long, onTargetBuffer=cython.long)
 def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=100,
-                    min=2):
+                    minFM=2):
     cdef cython.long TotalReads
-    cdef cython.long MergedReads
     cdef cython.long MappedReads
-    cdef cython.long ReadsOnTarget
-    cdef cython.long ReadsOffTarget
+    cdef cython.long UnmappedReads
+    cdef cython.float fracOnTarget
+    cdef cython.float meanInsert
+    cdef cython.long MappedFamReads
+    cdef cython.long MappedSingletonReads
     cdef np.ndarray[dtypei64_t, ndim = 1] allInserts
     outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
     outHandle = open(outfile, "w")
@@ -126,66 +125,81 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=100,
     if(bedfile == "default"):
         raise ThisIsMadness("bedfile must be set of QC metrics!")
     if(onTargetBuffer > 0):
-        extendedBed = ExtendBed(bedfile)
+        extendedBed = ExtendBed(bedfile, buffer=onTargetBuffer)
     else:
         extendedBed = bedfile
     bed = ParseBed(extendedBed)
+    resultsDict = {}
     outHandle.write("##Parameters\n")
     outHandle.write("#" +": ".join(["BAM", inBAM]) + "\n")
     outHandle.write("#" +": ".join(["bed", bedfile]) + "\n")
     outHandle.write("#" +": ".join(["Expanded bed", extendedBed]) + "\n")
-    outHandle.write("#" +": ".join(["Bed expansion",
-                                    str(onTargetBuffer)]) + "\n")
     outHandle.write("#" +": ".join(["Target Coverage Buffer",
                                     str(onTargetBuffer)]) + "\n")
-    outHandle.write("#" +": ".join(["Minimum Family Coverage", str(min)]) + "\n")
+    outHandle.write("#" +": ".join(["Minimum Family Coverage", str(minFM)]) + "\n")
     popenInstance = coverageBed(inBAM, bed=bedfile, )
-    outHandle.write("#" + ": ".join(["Output coverage bed", ]))
-    TotalReads = 0
+    outHandle.write("#" + ": ".join(["Output coverage bed", bedfile]))
+    TotalReads = CountNumReads(inBAM)
+    resultsDict["TotalReads"] = TotalReads
     MappedReads = 0
     ReadsOnTarget = 0
     ReadsOffTarget = 0
+    MappedFamReads = 0
     if(os.path.isfile(inBAM + ".bai") is False):
-        subprocess.check_call(["samtools", "index", inBAM])
+        check_call(["samtools", "index", inBAM])
         if(os.path.isfile(inBAM + ".bai") is False):
+            pl("Input BAM was not coordinate sorted - doing so now.")
             inBAM = CoorSortAndIndexBam(inBAM)
-    coverageBedHandle, covBed = coverageBed(inBAM,
-                                            bed=extendedBed, Popen=True)
+    covBed, fracOnTarget = coverageBed(inBAM, bed=extendedBed)
+    resultsDict["covbed"] = covBed
+    resultsDict["fracOnTarget"] = fracOnTarget
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     pileupIterator = inHandle.pileup(max_depth=200000, multiple_iterators=True)
-    firstIter = True
+    puIt = pileupIterator.next
+    allInserts = nparray([], dtype=np.int64)
+    allFMs = nparray([], dtype=np.int64)
     while True:
         try:
-            p = pPileupColumn(next(pileupIterator))
+            p = pPileupColumn(puIt())
             pileups = p.pileups
-            if(firstIter is True):
-                allInserts = nparray(map(oag(
-                    "template_length", map(
-                        oag("alignment"), pileups))),
-                               dtype=np.int64)
-            else:
-                allInserts = npappend(allInserts, map(
-                    oag("template_length", map(
-                        oag("alignment"), pileups))))
-            if(firstIter is True):
-                allFMs = nparray(map(mc("opt", "FM"), map(
-                        oag("alignment"), pileups)), dtype=np.int64)
-            else:
-                allFMs = npappend(allFMs, map(
-                    mc("opt", "FM"), map(oag("alignment"), pileups)))
-            firstIter = False
-            
+            MappedReads += p.n
+            allInserts = npappend(allInserts, map(
+                oag("alignment.template_length", pileups)))
+            allFMs = npappend(allFMs, map(
+                mc("opt", "FM"), map(oag("alignment"), pileups)))
+            MappedFamReads += len([i for i in pileups if
+                                   i.alignment.opt("FM") >= minFM])
         except StopIteration:
-            pl("Finished iterations. (CalcWithoutBedCoverage)")
+            pl("Finished iterating through the BAM file. Exiting loop.")
+            break
+    UnmappedReads = TotalReads - MappedReads
+    resultsDict["MappedFamReads"] = MappedFamReads
+    resultsDict["UnmappedReads"] = UnmappedReads
+    MappedSingletonReads = MappedReads - MappedFamReads
     allInserts = allInserts[allInserts > 0]  # Remove tlen's of 0 from mean.
-    outHandle.write("mean insert size=%s\n" % (nmean(allInserts)))
+    meanInsert = nmean(allInserts)
+    resultsDict["MeanInsert"] = meanInsert
+    resultsDict["MappedSingletonReads"] = MappedSingletonReads
+    outHandle.write("Mean Insert Size=%s\n" % meanInsert + "\n")
+    outHandle.write("Unmapped Reads=%s\n" % UnmappedReads + "\n")
+    outHandle.write("Mapped Reads=%s\n" % MappedReads + "\n")
+    outHandle.write("Fraction On Target=%s\n" % fracOnTarget)
+    outHandle.write(
+        "Mapped Reads With Family Size g/e %s=%s\n" % (minFM, MappedReads))
+    outHandle.write(
+        "Mapped Reads With Family Size less than "
+        "%s=%s\n" % (minFM, MappedSingletonReads))
+    outHandle.close()
+    return resultsDict
 
 
-def GetFamSizeStats(inFq):
+def GetFamSizeStats(inFq, outfile=sys.stdout):
     """
     Calculates family size and library diversity from a consolidated
     fastq file.
     """
+    if(isinstance(outfile, str)):
+        outfile = open(outfile, "w")
     cdef pysam.cfaidx.FastqProxy read
     cdef cython.long numFam
     cdef cython.long numSing
@@ -210,9 +224,8 @@ def GetFamSizeStats(inFq):
         sumAll += famS
     MeanFamAll = sumAll / (1. * (numFam + numSing))
     MeanRealFam = sumFam / (1. * numFam)
-    print("numFam:%s. NumSing:%s. MeanFamAll:%s. MeanRealFam: %s" % (
-        numFam, numSing,
-        MeanFamAll,
-        MeanRealFam))
-    return {name: eval(name) for name in ["numFam", "numSing", "MeanFamAll",
-                                          "MeanRealFam"]}
+    string = ("numFam:%s. NumSing:%s. " % (numFam, numSing) +
+              "MeanFamAll:%s. MeanRealFam: %s" % (MeanFamAll, MeanRealFam))
+    outfile.write(string + "\n")
+    outfile.close()
+    return numFam, numSing, MeanFamAll, MeanRealFam
