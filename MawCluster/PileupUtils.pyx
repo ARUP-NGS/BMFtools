@@ -53,6 +53,11 @@ def GetDiscordantReadPairs(pPileupColObj):
     return [pair for pair in readpairs if pair.discordant]
 
 
+# Let's avoid typing this so many times and avoid calling the keys method
+# on dictionaries which have only these 4 nucleotides as keys.
+nucList = ["A", "C", "G", "T"]
+
+
 class pPileupRead:
     """
     Python container for the PileupRead proxy in pysam
@@ -169,19 +174,16 @@ class PRInfo:
         self.is_proper_pair = alignment.is_proper_pair
         self.read = alignment
         self.ssString = "#".join(
-            nparray(sorted(
-                [self.read.reference_start,
-                 self.read.reference_end])).astype(str))
+            map(str, sorted([self.read.reference_start,
+                             self.read.reference_end])))
         self.query_position = PileupRead.query_position
-        if("FA" in dict(tags).keys()):
-            self.FA_Array = nparray(
-                aopt("FA").split(",")).astype(int)
-            self.FA = self.FA_Array[self.query_position]
-            self.FractionAgreed = odiv(self.FA, float(self.FM))
+        tagsdictkeys = dict(tags).keys()
+        if("FA" in tagsdictkeys):
+            self.FA = int(aopt("FA").split(","))[self.query_position]
+            self.FractionAgreed = self.FA / (1. * self.FM)
         else:
             self.FA = None
             self.FractionAgreed = None
-            self.FA_Array = None
         p = re.compile("[^0-9,]+")
         self.PV = None
         self.PV_Array = None
@@ -199,15 +201,15 @@ class PRInfo:
                                  "have digits and commas... ???")
             self.PV = self.PV_Array[self.query_position]
             try:
-                self.PVFrac = odiv(float(self.PV),
-                                           nmax(self.PV_Array))
+                self.PVFrac = (1. * self.PV) / nmax(self.PV_Array)
             except ZeroDivisionError:
                 pl("ZeroDivision error in PRInfo."
-                   "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array))
+                   "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array),
+                   level=logging.DEBUG)
                 self.PVFrac = -1.
-        if("ND" in map(oig(0), tags)):
+        if("ND" in tagsdictkeys):
             self.ND = aopt("ND")
-        if("NF" in map(oig(0), tags)):
+        if("NF" in tagsdictkeys):
             self.NF = aopt("NF")
 
 
@@ -445,7 +447,7 @@ class PCInfo:
                  exclusionSVTags="MDC,LI,ORB",
                  FracAlignFilter=False, primerLen=20,
                  experiment="", minAF=0.25):
-        assert isinstance(PileupColumn, pPileupColumn)
+        assert isinstance(PileupColumn, pPileupColumn) or isinstance(PileupColumn, pysam.calignmentfile.PileupColumn)
         pileups = PileupColumn.pileups
         if("amplicon" in experiment):
             self.ampliconFailed = sum([r for r in pileups
@@ -490,8 +492,7 @@ class PCInfo:
                                               not in p.alignment.opt("SV")
                                               for p in pileups])
         """
-        self.FailedSVReads = sum([self.FailedSVReadDict[key] for key
-                                  in self.FailedSVReadDict.keys()])
+        self.FailedSVReads = sum(self.FailedSVReadDict.values())
         #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
         """
         if(self.FailedMQReads != 0):
@@ -519,9 +520,10 @@ class PCInfo:
         else:
             self.BothStrandAlignment = False
         try:
-            self.reverseStrandFraction = sum(map(
-                oag("is_reverse"), map(oag("read"),
-                                       self.Records))) / float(lenR)
+            self.reverseStrandFraction = sum(
+                map(oag("is_reverse"),
+                    map(oag("read"),
+                        self.Records))) / (1. * lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
@@ -563,34 +565,40 @@ class PCInfo:
                               for key in self.VariantDict.keys()]
         self.AltAlleleData = [i for i in self.AltAlleleData if
                               oag("len")(i) != 0]
-        self.TotalFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
-        for alt in self.AltAlleleData:
-            self.TotalFracDict[
-                alt.ALT] = 1. * alt.TotalReads / self.TotalReads
+        self.TotalFracDict = {alt.ALT : 1. * alt.TotalReads / self.TotalReads
+                              for alt in self.AltAlleleData}
+        fks = self.TotalFracDict.keys()
+        for l in nucList:
+            if(l not in fks):
+                self.TotalFracDict[l] = 0.0
         self.TotalFracStr = ",".join(
-            [">".join([key, str(self.TotalFracDict[key])])
+            [key + ">" + str(self.TotalFracDict[key])
              for key in self.TotalFracDict.keys()])
-        self.TotalCountDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        for alt in self.AltAlleleData:
-            self.TotalCountDict[
-                alt.ALT] = alt.TotalReads
+        self.TotalCountDict = {alt.ALT : alt.TotalReads for
+                               alt in self.AltAlleleData}
+        fks = self.TotalCountDict.keys()
+        for l in nucList:
+            if(l not in fks):
+                self.TotalCountDict[l] = 0
         self.TotalCountStr = ",".join(
-            [">".join([key, str(self.TotalCountDict[key])])
-             for key in self.TotalCountDict.keys()])
-        self.MergedFracDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
-        for alt in self.AltAlleleData:
-            self.MergedFracDict[
-                alt.ALT] = alt.MergedReads / self.MergedReads
+            [key + ">" + str(self.TotalCountDict[key])
+             for key in nucList])
+        self.MergedFracDict = {alt.ALT : alt.MergedReads / (1. * self.MergedReads) for alt in self.AltAlleleData}
+        fks = self.MergedFracDict.keys()
+        for l in nucList:
+            if(l not in fks):
+                self.MergedFracDict[l] = 0.0
         self.MergedFracStr = ",".join(
-            [">".join([key, str(self.MergedFracDict[key])])
-             for key in self.MergedFracDict.keys()])
-        self.MergedCountDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        for alt in self.AltAlleleData:
-            self.MergedCountDict[
-                alt.ALT] = alt.MergedReads
+            [key + ">" + str(self.MergedFracDict[key])
+             for key in nucList])
+        self.MergedCountDict = {alt.ALT: alt.MergedReads for alt in self.AltAlleleData}
+        fks = self.MergedCountDict.keys()
+        for l in nucList:
+            if(l not in fks):
+                self.MergedCountDict[l] = 0
         self.MergedCountStr = ",".join(
-            [">".join([key, str(self.MergedCountDict[key])])
-             for key in self.MergedCountDict.keys()])
+            [key + ">" + str(self.MergedCountDict[key])
+             for key in nucList])
         # Generates statistics based on transitions, e.g. ref->alt
         TransMergedCounts = {}
         for alt in self.AltAlleleData:

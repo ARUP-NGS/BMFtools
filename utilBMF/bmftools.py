@@ -4,7 +4,8 @@ import sys
 import warnings
 
 from MawCluster.VCFWriters import SNVCrawler
-from MawCluster.BCVCF import VCFStats
+from MawCluster.BCVCF import (VCFStats, CheckStdCallsForVCFCalls,
+                              CheckVCFForStdCalls)
 from MawCluster import BCVCF
 from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
@@ -237,6 +238,15 @@ def main():
     VCFCmpParser.add_argument(
         "--std", help="Reference VCF for comparing to query VCF.",
         type=str, required=True)
+    VCFCmpParser.add_argument(
+        "-o", "--outfile", help="Set output file path instead of stdout.",
+        default=None)
+    VCFCmpParser.add_argument(
+        "--check-std",
+        help=("If set, check standard VCF for calls in the query VCF rather "
+              "than default behavior, which is checking the query VCF for "
+              "calls that should be in the standard."),
+        action="store_true", default=False)
     # set_trace()
 
     args = parser.parse_args()
@@ -269,13 +279,16 @@ def main():
                                 reference_is_path=True,
                                 OutVCF=args.outVCF)
             OutTable = VCFStats(OutVCF)
+        sys.exit(0)
     if(args.bmfsuites == "vcfstats"):
         OutTable = VCFStats(args.inVCF)
+        sys.exit(0)
     if(args.bmfsuites == "dmp"):
         OutFastq1, OutFastq2 = pairedFastqShades(
             args.inFqs[0],
             args.inFqs[1],
             indexfq=args.indexFq)
+        sys.exit(0)
     if(args.bmfsuites == "sv"):
         if(args.bed == "default"):
             HTSUtils.FacePalm("Bed file required!")
@@ -293,6 +306,7 @@ def main():
         return Output
     if(args.bmfsuites == "sma"):
         Output = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
+        sys.exit(0)
     if(args.bmfsuites == "findhets"):
         smaOut = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
         print("Multiple alts split: {}".format(smaOut))
@@ -307,14 +321,32 @@ def main():
     if(args.bmfsuites == "faf"):
         Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
                                    outVCF=args.outVCF)
+        sys.exit(0)
     if(args.bmfsuites == "ffpe"):
+        # ctfreq defaults to -1. This conditional checks to see if it's set.
         if(args.ctfreq < 0):
             Output = TrainAndFilter(args.inVCF, maxFreq=args.maxFreq,
                                     pVal=args.pVal)
         else:
             Output = FilterByDeaminationFreq(args.inVCF, pVal=args.pVal,
                                              ctfreq=args.ctfreq)
-    return 0
+        sys.exit(0)
+    if(args.bmfsuites == "vcfcmp"):
+        if(args.check_std):
+            if(args.outfile != None):
+                CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
+                                         outfile=args.outfile)
+            else:
+                CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
+                                         outfile=sys.stdout)
+            sys.exit(0)
+        if(args.outfile != None):
+            CheckVCFForStdCalls(args.queryVCF, std=args.std,
+                                outfile=args.outfile)
+        else:
+            CheckVCFForStdCalls(args.queryVCF, std=args.std,
+                                outfile=sys.stdout)
+    sys.exit(0)
 
 
 if(__name__ == "__main__"):
