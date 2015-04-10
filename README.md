@@ -216,29 +216,18 @@ Most options are available for command-line as well. If an option is set in both
 0. Paper/Presentations
     1. slides of qc, slide explaining why m.a.p., slide stating our advantages vs others
 1. SNV:
-    0. QC Metrics
-        1. % "On-Target" reads
-        2. Average Non-Zero Insert Size
-        4. # unique reads
-        5. Fraction of FamSize==1 for all FamSizes
-        6. Mean # Reads Per Family.
     0. Filters and Preprocessing/Postprocessing
         1. Add command-line and config file support for selecting minAF for variant caller.
-        2. Double-check that the FFPE FILTER field is being appropriately added...
-    1. SNV confidence model
-        3. VQS model (start, paper and pencil?)
+        2. Change it so that the FFPE FILTER field is being appropriately added...
     1. Error Characterization Code
         1. Write database reading and processing.
     3. Info Fields
         2. Add read length to the INFO field (both full read length and read length without Ns)
-
-
 2. Indels:
     0. Debugging DSI
-    3. FreeBayes with a longer --haplotype-length, demultiplexing first, and a high ploidy + pre-filtering should get us what we want.
-    4. And, perhaps we need something like Scalpel for larger indels.
+    1. Assembly work
 3. SV:
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format
     3. Work on interchromosomal translocations
-
+4. Make sure that the AF filter is being triggered - required 1.0 AF didn't produce expected behavior.

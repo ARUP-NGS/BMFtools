@@ -294,7 +294,10 @@ def FacePalm(string):
            "\n........................................_..........._,-%.......`"
            " \n...................................,")
     print(Str)
-    raise ThisIsMadness(string)
+    if(isinstance(string, str)):
+        raise ThisIsMadness(string)
+    raise ThisIsMadness("WHAT YOU SAY")
+
 
 
 @cython.returns(cython.bint)
@@ -1603,3 +1606,34 @@ def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
     read.mapq = int(alignedArr[4])
     read.set_tag("RA", "bwasw", "Z")
     return read
+
+
+class AbstractVCFProxyFilter(object):
+    """
+    Abstract class which serves as a template for VCF record post-filtering.
+    """
+    def __init__(self, func=FacePalm, filterStr="default"):
+        if(func == FacePalm):
+            FacePalm("func must be overridden for "
+                     "AbstractVCFProxyFilter to work!")
+        if(filterStr == "default"):
+            FacePalm("filterStr must be set to append or replace the "
+                     "filter field.")
+        if(hasattr(func, "__call__")):
+            self.func = func
+        else:
+            raise AttributeError("func must be callable!")
+        self.filterStr = filterStr
+
+
+def ConditionallyFilterVCFProxy(pysam.TabProxies.VCFProxy rec,
+                                VCFProxyFilterObj):
+    """
+    Tests a VCFProxy record for a given condition. If it fails, this filterStr
+    is appended to its filter string (or it replaces PASS, if it was already
+    passing). If this func option is left as default, it will throw a
+    ThisIsMadness error.
+    This hasn't been finished.
+    """
+    assert isinstance(VCFProxyFilterObj, AbstractVCFProxyFilter)
+    pass
