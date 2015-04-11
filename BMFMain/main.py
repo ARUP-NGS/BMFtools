@@ -439,7 +439,7 @@ def main(argv=None):
 
 global __version__
 
-__version__ = "0.0.7.2"
+__version__ = "0.0.7.3"
 
 if(__name__ == "__main__"):
     sys.exit(main())
