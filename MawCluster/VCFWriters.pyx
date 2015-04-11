@@ -8,6 +8,7 @@ cimport cython
 
 from MawCluster.SNVUtils import *
 from MawCluster.PileupUtils import pPileupColumn, GetDiscordantReadPairs
+from utilBMF.HTSUtils import PysamToChrDict
 
 
 """
@@ -96,8 +97,8 @@ def SNVCrawler(inBAM,
             pl("Combing through bed region {}".format(line),
                level=logging.DEBUG)
             puIterator = pileupCall(line[0], line[1],
-                                         max_depth=200000,
-                                         multiple_iterators=True)
+                                    max_depth=200000,
+                                    multiple_iterators=True)
             PileupIt = puIterator.next
             while True:
                 try:
@@ -130,7 +131,18 @@ def SNVCrawler(inBAM,
                 if(len(VCFLineString) != 0):
                     ohw(VCFLineString + "\n")
                 else:
-                    pl(repr(dir(pos)), level=logging.DEBUG)
+                    logStr = ("Failed to write line!" + repr(dir(pos)) +
+                              ("bed line: %s" % line) +
+                              "\tref id: %s" % PileupColumn.reference_id +
+                              "\tref pos: %s" % PileupColumn.reference_pos)
+                    logStr += "AC: %s" % PC.MergedFracDict
+                    logStr += "PC Str: %s" % str(PC)
+                    pl(logStr, level=logging.DEBUG)
+                    pl("VCF line not written at position" +
+                       PysamToChrDict[PileupColumn.reference_id] + ":" +
+                       str(PileupColumn.reference_pos + 1) +
+                       " - usually because all reads failed filters.",
+                       level=logging.INFO)
     else:
         puIterator = pileupCall(max_depth=200000, multiple_iterators=True)
         PileupIt = puIterator.next
