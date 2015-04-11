@@ -1,8 +1,10 @@
 import logging
 from operator import attrgetter as oag
+import sys
 
 import pysam
 import cython
+cimport cython
 
 from MawCluster.SNVUtils import *
 from MawCluster.PileupUtils import pPileupColumn, GetDiscordantReadPairs
@@ -14,7 +16,7 @@ Currently: SNVCrawler.
 
 In development: SV
 
-Note/TODO: Use two main filters for SNVs (after a min Q30):
+Settled on two major filters for inclusion in a pileup
 1. Min FA (number of family members agreeing) [int=2] (I just can't get
    too big a family...)
 2. Min Fraction Agreement Within Family [float=0.6667]
@@ -24,8 +26,7 @@ More thoughts?
 
 
 @cython.locals(MaxPValue=cython.float, reference_is_path=cython.bint,
-               writeHeader=cython.bint, checkDiscPairs=cython.bint,
-               minFA=cython.long)
+               writeHeader=cython.bint, minFA=cython.long)
 def SNVCrawler(inBAM,
                bed="default",
                minMQ=0,
@@ -42,7 +43,7 @@ def SNVCrawler(inBAM,
                FORMATTags="default",
                writeHeader=True,
                minFracAgreed=0.0, minFA=2,
-               experiment="", checkDiscPairs=True):
+               experiment=""):
     pl("Command to reproduce function call: "
        "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
@@ -53,40 +54,43 @@ def SNVCrawler(inBAM,
        ", FILTERTags=\"{}\", INFOTags=\"{}\"".format(FILTERTags, INFOTags) +
        ", FORMATTags=\"{}\", writeHeader={}".format(FORMATTags, writeHeader) +
        ", minFracAgreed={}, minFA={})".format(minFracAgreed, minFA))
+    cdef cython.long NumDiscordantPairs = 0
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
+        bedSet = True
+    else:
+        bedSet = False
     if(isinstance(bed, str) and bed != "default"):
         bed = HTSUtils.ParseBed(bed)
     if(OutVCF == "default"):
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    outHandle = open(OutVCF, "w+")
+    if(OutVCF == "stdout"):
+        outHandle = sys.stdout
+    else:
+        outHandle = open(OutVCF, "w")
     pileupCall = inHandle.pileup
-    if(checkDiscPairs):
-        discPairHandle = pysam.AlignmentFile(
-            inBAM[0:-4] + ".discReadPairs.bam", "wb", template=inHandle)
+    discPairHandle = pysam.AlignmentFile(
+        inBAM[0:-4] + ".discReadPairs.bam", "wb", template=inHandle)
+    ohw = outHandle.write
     if(writeHeader):
         try:
-            outHandle.write(GetVCFHeader(fileFormat=fileFormat,
-                                         FILTERTags=FILTERTags,
-                                         commandStr=commandStr,
-                                         reference=reference,
-                                         reference_is_path=False,
-                                         header=inHandle.header,
-                                         INFOTags=INFOTags,
-                                         FORMATTags=FORMATTags))
+            ohw(GetVCFHeader(fileFormat=fileFormat, FILTERTags=FILTERTags,
+                             commandStr=commandStr, reference=reference,
+                             reference_is_path=False, header=inHandle.header,
+                             INFOTags=INFOTags, FORMATTags=FORMATTags))
         except ValueError:
             pl("Looks like the RG header wasn't parseable by pysam - that's u"
                "sually an artefact of the clash between pysam and GATK's ways"
                "of working with RG fields.", level=logging.DEBUG)
-            outHandle.write(GetVCFHeader(fileFormat=fileFormat,
-                                         FILTERTags=FILTERTags,
-                                         commandStr=commandStr,
-                                         reference=reference,
-                                         reference_is_path=False,
-                                         INFOTags=INFOTags,
-                                         FORMATTags=FORMATTags))
-    if(bed != "default"):
+            ohw(GetVCFHeader(fileFormat=fileFormat,
+                             FILTERTags=FILTERTags,
+                             commandStr=commandStr,
+                             reference=reference,
+                             reference_is_path=False,
+                             INFOTags=INFOTags,
+                             FORMATTags=FORMATTags))
+    if(bedSet):
         for line in bed:
             pl("Combing through bed region {}".format(line),
                level=logging.DEBUG)
@@ -100,31 +104,30 @@ def SNVCrawler(inBAM,
                 except StopIteration:
                     pl("Finished iterations.")
                     break
-                NumDiscordantPairs = -1
-                if(checkDiscPairs):
-                    DiscRPs = GetDiscordantReadPairs(PileupColumn)
-                    DiscRPNames = map(oag("name"), DiscRPs)
-                    for RP in DiscRPs:
-                        reads = RP.RP.getReads()
-                        for read in reads:
-                            read.set_tag("DP", RP.discordanceString, "Z")
-                            discPairHandle.write(read)
-                    PileupColumn.pileups = [i for i in PileupColumn.pileups if
-                                       i.alignment.query_name not in DiscRPNames]
-                    NumDiscordantPairs = len(DiscRPNames)
+                DiscRPs = GetDiscordantReadPairs(PileupColumn)
+                DiscRPNames = list(set(map(oag("name"), DiscRPs)))
+                PileupColumn.pileups = [i for i in PileupColumn.pileups if
+                                        i.alignment.query_name not in DiscRPNames]
+                for RP in DiscRPs:
+                    reads = RP.RP.getReads()
+                    for read in reads:
+                        read.set_tag("DP", RP.discordanceString, "Z")
+                        discPairHandle.write(read)
+                NumDiscordantPairs = len(DiscRPNames)
                 PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
                             experiment=experiment)
                 #  pl("Position for pileup (0-based): {}".format(PC.pos),
                 #     level=logging.DEBUG)
                 if(line[2] <= PC.pos):
                     break
-                VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
-                                       keepConsensus=keepConsensus,
-                                       reference=reference,
-                                       minFracAgreed=minFracAgreed,
-                                       minFA=minFA).__str__()
+                VCFLineString = str(VCFPos(PC, MaxPValue=MaxPValue,
+                                           keepConsensus=keepConsensus,
+                                           reference=reference,
+                                           minFracAgreed=minFracAgreed,
+                                           minFA=minFA,
+                                           NDP=NumDiscordantPairs))
                 if(len(VCFLineString) != 0):
-                    outHandle.write(VCFLineString + "\n")
+                    ohw(VCFLineString + "\n")
     else:
         puIterator = pileupCall(max_depth=200000, multiple_iterators=True)
         PileupIt = puIterator.next
@@ -141,19 +144,16 @@ def SNVCrawler(inBAM,
             except StopIteration:
                 break
             # TODO: Check to see if it speeds up to not assign and only write.
-            NumDiscordantPairs = -1
-            if(checkDiscPairs):
-                DiscRPs = GetDiscordantReadPairs(PileupColumn)
-                DiscRPNames = map(oag("name"), DiscRPs)
-                for RP in DiscRPs:
-                    reads = RP.RP.getReads()
-                    for read in reads:
-                        read.set_tag("DP", RP.discordanceString, "Z")
-                        discPairHandle.write(read)
-                PileupColumn.pileups = [i for i in PileupColumn.pileups if
-                                        i.alignment.query_name
-                                        not in DiscRPNames]
-                NumDiscordantPairs = len(DiscRPNames)
+            DiscRPs = GetDiscordantReadPairs(PileupColumn)
+            DiscRPNames = list(set(map(oag("name"), DiscRPs)))
+            PileupColumn.pileups = [i for i in PileupColumn.pileups if
+                                    i.alignment.query_name not in DiscRPNames]
+            for RP in DiscRPs:
+                reads = RP.RP.getReads()
+                for read in reads:
+                    read.set_tag("DP", RP.discordanceString, "Z")
+                    discPairHandle.write(read)
+            NumDiscordantPairs = len(DiscRPNames)
             VCFLineString = VCFPos(PC, MaxPValue=MaxPValue,
                                    keepConsensus=keepConsensus,
                                    reference=reference,
@@ -161,9 +161,8 @@ def SNVCrawler(inBAM,
                                    minFA=minFA,
                                    NDP=NumDiscordantPairs).__str__()
             if(len(VCFLineString) != 0):
-                outHandle.write(VCFLineString + "\n")
-    if(checkDiscPairs):
-        discPairHandle.close()
+                ohw(VCFLineString + "\n")
+    discPairHandle.close()
     return OutVCF
 
 
@@ -216,7 +215,7 @@ def SNVMinion(inBAM,
                                        reference=reference
                                        ).__str__()
                 if(len(VCFLineString) != 0):
-                    outHandle.write(VCFLineString + "\n")
+                    ohw(VCFLineString + "\n")
     else:
         puIterator = pileupCall(max_depth=30000)
         while True:
@@ -233,7 +232,7 @@ def SNVMinion(inBAM,
                                    keepConsensus=keepConsensus,
                                    reference=reference).__str__()
             if(len(VCFLineString) != 0):
-                outHandle.write(VCFLineString + "\n")
+                ohw(VCFLineString + "\n")
     return VCFLines
 
 
@@ -264,7 +263,7 @@ def SNVMaster(inBAM,
         VCFLines = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = open(VCFLines, "w")
-    outHandle.write(GetVCFHeader(fileFormat=fileFormat,
+    ohw(GetVCFHeader(fileFormat=fileFormat,
                                  FILTERTags=FILTERTags,
                                  commandStr=commandStr,
                                  reference=reference,

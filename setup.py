@@ -24,16 +24,21 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
+"""
 print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
+"""
 
+
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse"]
+
+"""
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
                 "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
                 "-fprefetch-loop-arrays", "-floop-strip-mine"]
 
-"""
 compilerList = ["marchFlag, "-pipe", "-msse2",
                 "-funroll-loops", "-floop-block",
                 "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
@@ -45,9 +50,6 @@ compilerList = ["marchFlag, "-pipe", "-msse2",
                 "-fmodulo-sched-allow-regmoves", "-fgcse",
                 "-floop-unroll-and-jam",
                 "--mfpmath=sse", "-fomit-frame-pointer"]
-#compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse",
-#                "-funroll-loops", "-floop-unroll-and-jam",
-#                "-floop-nest-optimize", "-fvariable-expansion-in-unroller"]
 
 
 compilerList = [marchFlag, "-pipe", "-msse2",

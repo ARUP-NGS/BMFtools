@@ -53,6 +53,9 @@ def main():
         "--reference-fasta",
         help="Provide reference fasta.",
         required=True)
+    parser.add_argument(
+        "--outfile", "-o", help="output file to override default",
+        default="default")
     parser.add_argument("-m", "--min-frac-agreed",
                         help="Minimum fraction of family agreed on base.",
                         default=0.667, type=float)
@@ -113,7 +116,8 @@ def main():
                             reference=args.reference_fasta,
                             reference_is_path=True,
                             minFracAgreed=args.min_frac_agreed,
-                            minFA=args.minFA)
+                            minFA=args.minFA,
+                            OutVCF=args.outfile)
     else:
         OutVCF = SNVCrawler(args.inBAM,
                             minMQ=args.minMQ,
@@ -124,7 +128,7 @@ def main():
                             reference=args.reference_fasta,
                             reference_is_path=True,
                             minFracAgreed=args.min_frac_agreed,
-                            minFA=args.minFA)
+                            minFA=args.minFA, OutVCF=args.outfile)
 
     return OutVCF
 

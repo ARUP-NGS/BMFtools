@@ -22,6 +22,7 @@ import pysam
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
+cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
 

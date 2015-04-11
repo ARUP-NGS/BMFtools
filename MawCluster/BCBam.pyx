@@ -263,7 +263,8 @@ def pairedBarcodeTagging(
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
-    cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2, bam)
+    cStr = "pairedBarcodeTagging({}, {}, {}, minAF={})".format(fq1, fq2,
+                                                               bam, minAF)
     pl("Command string to reproduce call: {}".format(cStr))
     # read1Handle = pysam.FastqFile(fq1)
     # read2Handle = pysam.FastqFile(fq2)
