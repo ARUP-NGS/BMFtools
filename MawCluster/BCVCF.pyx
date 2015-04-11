@@ -444,6 +444,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
 @cython.locals(fast=cython.bint)
 def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default",
                        fast=True):
+    cdef cython.long count
     if(outVCF == "default"):
         outVCF = inVCF[0:-4] + ".bedfilter.vcf"
     inVCF = ParseVCF(inVCF)

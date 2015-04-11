@@ -202,16 +202,17 @@ class SNVCFLine:
         if("AAMBP" in dir(AlleleAggregateObject)):
             self.InfoFields["AAMBP"] = AlleleAggregateObject.AAMBP
         self.InfoStr = ";".join(
-            ["=".join([key, str(self.InfoFields[key])])
+            [key + "=" + str(self.InfoFields[key])
              for key in sorted(self.InfoFields.keys())])
         self.FormatFields = {"DP": DOC,
                              "DPA": AC,
                              "DPT": DOCTotal}
+        ffkeys = self.FormatFields.keys()
         self.FormatStr = (
-            ":".join(sorted(self.FormatFields.keys())) +
+            ":".join(sorted(ffkeys)) +
             "\t" + ":".join(str(
                 self.FormatFields[key]) for key in sorted(
-                    self.FormatFields.keys())))
+                    ffkeys)))
         self.str = "\t".join(nparray([self.CHROM,
                                        self.POS,
                                        self.ID,
@@ -223,14 +224,15 @@ class SNVCFLine:
                                        self.FormatStr]).astype(str).tolist())
 
     def update(self):
-        self.FormatKey = ":".join(sorted(self.FormatFields.keys()))
+        ffkeys = self.FormatFields.keys()
+        self.FormatKey = ":".join(sorted(ffkeys))
         self.FormatValue = ":".join([str(self.FormatFields[key])
                                      for key in
-                                     sorted(self.FormatFields.keys())])
-        self.FormatStr = (":".join(sorted(self.FormatFields.keys())) + "\t" +
+                                     sorted(ffkeys)])
+        self.FormatStr = (":".join(sorted(ffkeys)) + "\t" +
                           ":".join(
                               str(self.FormatFields[key])
-                              for key in sorted(self.FormatFields.keys())))
+                              for key in sorted(ffkeys)))
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
                                  for key in sorted(self.InfoFields.keys())])
 

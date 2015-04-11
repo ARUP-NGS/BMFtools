@@ -38,7 +38,7 @@ from MawCluster import BCFastq
 from MawCluster.SVUtils import MarkSVTags
 from MawCluster.PileupUtils import pPileupRead
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
-                              FractionAligned, SWRealignAS)
+                              FractionAligned, SWRealignAS, FractionSoftClipped)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC
@@ -254,6 +254,8 @@ def pairedBarcodeTagging(
     cdef cAlignedSegment read2bam
     cdef dtype128_t r1FracAlign
     cdef dtype128_t r2FracAlign
+    cdef dtype128_t r1FracSC
+    cdef dtype128_t r2FracSC
     if(realigner == "default"):
         raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
     from MawCluster.SVUtils import SVParamDict
@@ -305,10 +307,12 @@ def pairedBarcodeTagging(
             raise ValueError("ND tag value is invalid: "
                              "%s %s" % (descDict1["ND"], descDict2["ND"]))
         r1FracAlign = FractionAligned(read1bam)
+        r1FracSC = FractionSoftClipped(read1bam)
         if(r1FracAlign < minAF and not read1bam.is_unmapped):
             read1bam = SWRealignAS(read1bam, postFilterBAM, ref=ref)
             r1FracAlign = FractionAligned(read1bam)
         r2FracAlign = FractionAligned(read2bam)
+        r2FracSC = FractionSoftClipped(read2bam)
         if(r2FracAlign < minAF and not read2bam.is_unmapped):
             read2bam = SWRealignAS(read2bam, postFilterBAM, ref=ref)
             r2FracAlign = FractionAligned(read2bam)
@@ -329,7 +333,8 @@ def pairedBarcodeTagging(
                                ("ND", ND1, "i"),
                                ("NF", odiv(ND1, float(FM)), "f"),
                                ("RG", "default", "Z"),
-                               ("AF", r1FracAlign, "f")])
+                               ("AF", r1FracAlign, "f"),
+                               ("SF", r1FracSC, "f")])
             read2bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
@@ -340,7 +345,8 @@ def pairedBarcodeTagging(
                                ("ND", ND2, "i"),
                                ("NF", odiv(ND2, float(FM)), "f"),
                                ("RG", "default", "Z"),
-                               ("AF", r2FracAlign, "f")])
+                               ("AF", r2FracAlign, "f"),
+                               ("SF", r2FracSC, "f")])
         else:
             read1bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
@@ -351,7 +357,8 @@ def pairedBarcodeTagging(
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND1, "i"),
                                ("NF", 1. * ND1 / FM, "f"),
-                               ("AF", r1FracAlign, "f")])
+                               ("AF", r1FracAlign, "f"),
+                               ("SF", r1FracSC, "f")])
             read2bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
@@ -361,7 +368,8 @@ def pairedBarcodeTagging(
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND2, "i"),
                                ("NF", 1. * ND2 / FM, "f"),
-                               ("AF", r2FracAlign, "f")])
+                               ("AF", r2FracAlign, "f"),
+                               ("SF", r2FracSC, "f")])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
         """

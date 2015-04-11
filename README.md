@@ -95,6 +95,7 @@ PV | Phred Values for a read which has saturated the phred scoring system | Stri
 RA | Realigned due to a failure to map appropriately, either as too small a fraction aligned or a mapping quality of 0. | String: aligned. Current Regex: [a-z]|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
 SC | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
+SF | Soft-Clipped Fraction | Float |
 SN | Tags relevant to SNV calling assigned to BAM records. Currently lumped in with SV due to the fact that many are relevant to both.| Comma-separated list of tags. Regex: [A-Z,]+ |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 
@@ -192,6 +193,18 @@ Most options are available for command-line as well. If an option is set in both
     3. Added amplicon filtering for mispriming, both in variant caller and in a pre-processing step.
     4. Added a test for allelic imbalance.
     5. Removed "N"s from variant calls.
+
+9. Changes in BMFTools v0.0.7.3
+
+    1. Removing discordant read pairs from pileups for SNV calls.
+    2. Added sort memory options.
+    3. minAF filter (Aligned Fraction)
+    4. Added bwasw realignment for reads failing a given filter.
+    5. Added QC measurements and steps.
+    6. Additional info fields, BAM tags
+    7. Overrode __str__ for objects which had a ToString function.
+    8. Performance enhancements.
+    9. Further work on indel calls.
 
 1. Settings Recommendations
 
