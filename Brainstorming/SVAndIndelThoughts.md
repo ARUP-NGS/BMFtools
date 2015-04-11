@@ -18,3 +18,12 @@
     2. It would be an (almost) reference-agnostic local assembly-based indel caller. Bigger windows --> detecting bigger indels.
 3. Broader applicability
     1. This could also be used for translocation detection and breakpoint reconstruction.
+
+#SV Calls
+1. We'd have to use mapping to some extent to find the reads aligning to both places. An N30, N35, or N40 would work. We just need to run our own mappability tool.
+    1. Don't forget to include potential dbSNP variants in determining mappability. (Maybe it matters?)
+
+
+#For both
+1. Remove reads from assembly if they have no I or D in cigar string or have >= some fraction aligned for assembly
+    1. Should help with somatic assembly.

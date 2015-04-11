@@ -10,6 +10,7 @@ import numpy as np
 cimport numpy as np
 from numpy import array as nparray
 from math import log10 as mlog10
+pyFastaFile = pysam.FastaFile
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
@@ -258,14 +259,24 @@ class VCFPos:
                  minDuplexPairs=2,
                  reverseStrandFraction="default",
                  minFracAgreed=0.0, minFA=0, experiment="",
-                 NDP=-1):
+                 NDP=-1, refHandle=None):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
-        if(reference == "default"):
-            HTSUtils.FacePalm("VCFPos requires a reference fasta.")
+        if(refHandle is None):
+            if(reference == "default"):
+                HTSUtils.FacePalm("VCFPos requires a reference fasta.")
+            refHandle = pyFastaFile(reference)
+        else:
+            assert isinstance(refHandle, pysam.cfaidx.FastaFile)
         if("amplicon" in PCInfoObject.experiment):
             ampliconFailed = PCInfoObject.ampliconFailed
+        try:
+            assert NDP >= 0
+        except AssertionError:
+            raise ThisIsMadness(
+                "VCFPos requires the number of discordant pairs for initializ"
+                "ation. Important QC step!")
         # Because bamtools is 0-based but vcfs are 1-based
         self.minAF = PCInfoObject.minAF
         self.pos = PCInfoObject.pos + 1
@@ -275,8 +286,7 @@ class VCFPos:
         self.MergedFracStr = PCInfoObject.MergedFracStr
         self.TotalCountStr = PCInfoObject.TotalCountStr
         self.MergedCountStr = PCInfoObject.MergedCountStr
-        self.REF = pysam.FastaFile(reference).fetch(
-            PCInfoObject.contig, self.pos - 1, self.pos)
+        self.REF = refHandle.fetch(PCInfoObject.contig, self.pos - 1, self.pos)
         self.FailedAFReads = PCInfoObject.FailedAFReads
         self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
