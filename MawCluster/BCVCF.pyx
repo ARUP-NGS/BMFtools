@@ -9,6 +9,7 @@ import logging
 import operator
 import subprocess
 import sys
+from cStringIO import InputType, OutputType
 
 import numpy as np
 from numpy import array as nparray
@@ -130,12 +131,6 @@ class VCFRecord:
             self.ALT = VCFEntry[4].replace(",<X>", "")
         else:
             self.ALT = VCFEntry[4]
-        """
-        if("<X>" != VCFEntry[4]):
-            self.ALT = ','.join(VCFEntry[4].split(',').remove("<X>"))
-        else:
-            self.ALT = "<X>"
-        """
         self.QUAL = VCFEntry[5]
         self.FILTER = VCFEntry[6]
         self.INFO = VCFEntry[7]
@@ -261,9 +256,16 @@ class VCFRecord:
 class IterativeVCFFile:
 
     def __init__(self, VCFFilename):
-        self.handle = open(VCFFilename, "r")
+        if(not isinstance(VCFFilename, file) and not
+           isinstance(VCFFilename, InputType) and not
+           isinstance(VCFFilename, OutputType)):
+            self.handle = open(VCFFilename, "r")
+            self.Filename = VCFFilename
+            #  If the file is a cStringIO object, it will still work.
+        else:
+            self.handle = VCFFilename
+            self.Filename = str(VCFFilename)
         self.header = []
-        self.Filename = VCFFilename
         realIterator, checker = tee(self.handle)
         while True:
             if(checker.next()[0] == "#"):

@@ -9,6 +9,8 @@ from operator import methodcaller as mc
 import uuid
 import shlex
 import subprocess
+from subprocess import check_output
+import cStringIO
 
 import cython
 cimport cython
@@ -19,7 +21,9 @@ cimport pysam.TabProxies
 from cytoolz import map as cmap
 
 from MawCluster.BCVCF import IterativeVCFFile
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness, NameSortAndFixMate
+from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness,
+                              NameSortAndFixMate, makeinfodict,
+                              MakeVCFProxyDeaminationFilter)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
 from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
@@ -33,70 +37,6 @@ Contains utilities relating to FFPE
 """
 
 BMFVersion = "0.0.7.3"
-
-
-@cython.locals(pVal=dtype128_t, DOC=cython.long,
-               maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
-               recordsPerWrite=cython.long)
-def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
-                            recordsPerWrite=5000, outVCF="default"):
-    """
-    If observed AAF is greater than the upper limit of the confidence window
-    with a given P-Value, the variant is permitted to stay.
-    Otherwise, DeaminationNoise replaces PASS or is appended to other filters.
-    """
-    pl("C-T/G-A frequency set to %s" % ctfreq)
-    IVCFObj = IterativeVCFFile(inVCF)
-    if(outVCF == "default"):
-        outVCF = ".".join(inVCF.split(".")[0:-1] + ["ctfilt", "vcf"])
-    pl("FilterByDeaminationFreq called. inVCF: %s. outVCF: %s." % (inVCF,
-                                                                   outVCF))
-    outHandle = open(outVCF, "w")
-    mfdnpStr = str(int(-10 * mlog10(pVal)))
-    functionCall = ("FilterByDeaminationFreq(%s, pVal=%s, " % (inVCF, pVal) +
-                    "ctfreq=%s, recordsPerWrite=" % ctfreq +
-                    "%s). BMFTools version: %s" % (recordsPerWrite,
-                                                   BMFVersion))
-    IVCFObj.header.insert(-1, HeaderFunctionCallLine(functionCall).__str__())
-    outHandle.write("\n".join(IVCFObj.header) + "\n")
-    recordsArray = []
-    for line in IVCFObj:
-        if(len(recordsArray) >= recordsPerWrite):
-            strArray = list(cmap(str, recordsArray))
-            zipped = zip(recordsArray, strArray)
-            for pair in zipped:
-                if(pair[1] == ""):
-                    pl("Empty string for VCF record %s" % repr(pair[0]) +
-                        "%s:%s:%s:%s" % (pair[0].CHROM, pair[0].POS,
-                                         pair[0].REF, pair[0].ALT),
-                       level=logging.DEBUG)
-            outHandle.write("\n".join(list(cmap(str, recordsArray))) +
-                            "\n")
-            recordsArray = []
-        if(line.REF != "C" or line.REF != "G"):
-            recordsArray.append(line)
-            continue
-        if(line.REF == "C" and line.ALT != "T"):
-            recordsArray.append(line)
-            continue
-        if(line.REF == "G" and line.ALT != "A"):
-            recordsArray.append(line)
-            continue
-        DOC = int(line.GenotypeDict["DP"])
-        AAF = float(line.InfoDict["AC"]) / DOC
-        maxFreqNoise = GetCeiling(DOC, p=ctfreq, pVal=pVal) / (DOC * 1.)
-        if AAF < maxFreqNoise:
-            if(line.FILTER == "PASS"):
-                line.FILTER = "DeaminationNoise"
-            else:
-                line.FILTER += ",DeaminationNoise"
-        line.InfoDict["MFDN"] = maxFreqNoise
-        line.InfoDict["MFDNP"] = mfdnpStr
-        recordsArray.append(line)
-    outHandle.write("\n".join(list(cmap(str, recordsArray))) + "\n")
-    outHandle.flush()
-    outHandle.close()
-    return outVCF
 
 
 @cython.locals(maxFreq=dtype128_t)
@@ -286,14 +226,6 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
     return outBAM
 
 
-@cython.locals(rec=pysam.TabProxies.VCFProxy)
-def makeinfodict(rec):
-    """
-    Returns a dictionary of info fields for a tabix VCF Proxy
-    """
-    return dict([i.split("=") for i in rec.info.split(";")])
-
-
 @cython.returns(cython.float)
 def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
     """
@@ -341,3 +273,51 @@ def GetTabixDeamFreq(inVCF):
     print("Est deam freq: %s" % (freq))
     return freq
 
+
+@cython.locals(pVal=dtype128_t, DOC=cython.long,
+               maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
+               recordsPerWrite=cython.long)
+def TabixDeamFilter(inVCF, pVal=0.001, ctfreq=0.006,
+                    recordsPerWrite=5000, outVCF="default"):
+    """
+    If observed AAF is greater than the upper limit of the confidence window
+    with a given P-Value, the variant is permitted to stay.
+    Otherwise, DeaminationNoise replaces PASS or is appended to other filters.
+    """
+    pl("C-T/G-A frequency set to %s" % ctfreq)
+    inHandle = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
+    if(outVCF == "default"):
+        outVCF = ".".join(inVCF.split(".")[0:-2] + ["ctfilt", "vcf"])
+    headerStringIO = cStringIO.StringIO()
+    headerStringIO.write(check_output("zcat %s | head -n 2000" % inVCF,
+                                      shell=True))
+    headerStringIO.reset()
+    headerLines = IterativeVCFFile(headerStringIO).header
+    del headerStringIO
+    pl("TabixDeamFilter called. inVCF: %s. outVCF: %s." % (inVCF,
+                                                           outVCF))
+    if(not isinstance(outVCF, file)):
+        outHandle = open(outVCF, "w")
+    else:
+        outHandle = outVCF
+    ohw = outHandle.write
+    mfdnpStr = str(int(-10 * mlog10(pVal)))
+    functionCall = ("FilterByDeaminationFreq(%s, pVal=%s, " % (inVCF, pVal) +
+                    "ctfreq=%s, recordsPerWrite=" % ctfreq +
+                    "%s). BMFTools version: %s" % (recordsPerWrite,
+                                                   BMFVersion))
+    headerLines.insert(-1, str(HeaderFunctionCallLine(functionCall)))
+    ohw("\n".join(headerLines) + "\n")
+    FilterFn = MakeVCFProxyDeaminationFilter(ctfreq, conf=pVal,
+                                             key="MFDNP",
+                                             value=mfdnpStr).filter
+    recordsArray = []
+    for rec in inHandle:
+        recordsArray.append(FilterFn(rec))
+        if(len(recordsArray) >= recordsPerWrite):
+            outHandle.write("\n".join(list(cmap(str, recordsArray))) + "\n")
+            recordsArray = []
+    outHandle.write("\n".join(list(cmap(str, recordsArray))) + "\n")
+    outHandle.flush()
+    outHandle.close()
+    return outVCF

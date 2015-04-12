@@ -6,7 +6,7 @@ from copy import copy as ccopy
 from itertools import groupby
 from operator import itemgetter as oig
 from operator import iadd as oia
-from subprocess import check_output
+from subprocess import check_output, check_call
 from re import compile as regexcompile
 import copy
 import cStringIO
@@ -17,6 +17,7 @@ import shlex
 import subprocess
 import uuid
 import sys
+from functools import partial
 
 import pysam
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
@@ -1611,75 +1612,63 @@ def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
     return read
 
 
+@cython.locals(rec=pysam.TabProxies.VCFProxy)
+def makeinfodict(rec):
+    """
+    Returns a dictionary of info fields for a tabix VCF Proxy
+    """
+    return dict([i.split("=") for i in rec.info.split(";")])
+
+
 @cython.returns(cython.bint)
-def DeaminationConfTest(pysam.TabProxies.VCFProxy rec, dtype128_t ctfreq,
-                        dtype128_t conf=1e-3):
+def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
+                        dtype128_t ctfreq=-1., dtype128_t conf=1e-3):
     """
-    Tests whether or not a given record should pass
+    Tests whether or not a given record should pass.
     """
-    cdef cython.long DOC
-    cdef dtype128_t ceiling
-    cdef cython.float AF
-    GenotypeDict = dict(zip(qRec.format.split(":"),
-                            qRec[0].split(":")))
-    DOC = int(GenotypeDict["DP"])
-    ceiling = GetCeiling(DOC, p=ctfreq, pVal=pVal) / (DOC * 1.)
-    AF = float(dict([f.split("=") for f in qRec.info.split(";")])["AF"])
-    if(AF > ceiling):
+    cdef cython.long ACR
+    cdef cython.long ceiling
+    cdef cython.long AC
+    InfoDict = makeinfodict(rec)
+    Counts = dict([i.split(">") for i in
+                  InfoDict["MACS"].split(",")])
+    cons = InfoDict["CONS"]
+    if(cons == "T" or cons == "A" or rec.alt == "C" or rec.alt == "G"):
+        return True
+    if(rec.alt == "T"):
+        if(rec.ref != "C" and InfoDict["CONS"] != "C"):
+            return True
+        ACR = int(Counts["C"])
+        AC = int(Counts["T"])
+    elif(rec.alt == "A"):
+        if(rec.ref != "G" and InfoDict["CONS"] != "G"):
+            return True
+        ACR = int(Counts["G"])
+        AC = int(Counts["A"])
+    if(ACR == 0):
+        return True
+
+    try:
+        assert ctfreq >= 0
+    except AssertionError:
+        raise ThisIsMadness("kwarg ctfreq required for DeaminationConfTest!")
+    ceiling = GetCeiling(ACR, p=ctfreq, pVal=conf)
+    if(AC > ceiling):
         return True
     return False
 
 
-class KwargsFuncCall(object):
+def PartialDeaminationConfTest(dtype128_t ctfreq, dtype128_t conf=1e-3):
     """
-    Abstract class which makes a function which can be used in AbstractVCF
-    ProxyFilter. Point of this is to be able to provide keyword arguments
-    without needing to supply all of them to the final function.
-
-    Should be in format:
-    "keyword,argument,type"
-    If the value of the keyword needs to be anything besides a string,
-    you can do that by setting the "type" field by having a 3rd entry
-    in the string.
-    kwarg2 is not checked if kwarg1 is not set.
+    Returns a function that can be easily used by AbstractVCFProxyFilter.
     """
-    def __init__(self, func, kwarg1="default", kwarg2="default"):
-        if("," in kwarg1):
-            kwarg1pair = kwarg1.split(",")
-            if(len(kwarg1pair) == 3):
-                kwarg1pair[1] = eval(kwarg1pair[2])(kwarg1pair[1])
-            if("," in kwarg2):
-                kwarg2pair = kwarg2.split(",")
-                if(len(kwarg2pair) == 3):
-                    kwarg2pair[1] = eval(kwarg2pair[2])(kwarg2pair[1])
-                key1 = eval(kwarg1pair[0])
-                key2 = eval(kwarg2pair[0])
-                self.func = lambda x : func(x, key1=kwarg1pair[1],
-                                            key2=kwarg2pair[1])
-            else:
-                key1 = eval(kwarg1pair[0])
-                self.func = lambda x : func(x, key1=kwarg1pair[1])
-        else:
-            self.func = func
-        self.kwarg1 = kwarg1
-        self.kwarg2 = kwarg2
-
-    def __str__(self):
-        return "func: %s kwarg1: %s. kwarg2: %s" % (self.func, self.kwarg1,
-                                                    self.kwarg2)
-
-
-def DeaminationConfTestKFC(cython.float ctfreq, cython.float conf=1e-3):
-    return KwargsFuncCall(DeaminationConfTest,
-                          kwarg1="ctfreq,%s,float" % ctfreq,
-                          kwarg2="conf,%s,float" % conf)
+    return partial(DeaminationConfTest, ctfreq=ctfreq, conf=conf)
 
 
 class AbstractVCFProxyFilter(object):
     """
     Abstract class which serves as a template for VCF record post-filtering.
     """
-    @cython.locals(conf=cython.float)
     def __init__(self, filterStr, func=FacePalm,
                  key="default", value="*"):
         if(func == FacePalm):
@@ -1698,16 +1687,46 @@ class AbstractVCFProxyFilter(object):
 
     @cython.returns(pysam.TabProxies.VCFProxy)
     def filter(self, pysam.TabProxies.VCFProxy rec):
-        if(not func(rec)):
+        """
+        You can specify multiple info tags with their values
+        so long as you have comma-separated fields of equal length
+        between "key" and "value".
+        """
+        if(not self.func(rec)):
             if(rec.filter == "PASS"):
                 rec.filter = self.filterStr
             else:
-                rec.filter += self.filterStr
-        if(key != "default"):
-            rec.info += ";" + self.key + "=" + self.value
+                rec.filter += "," + self.filterStr
+        if(self.key != "default"):
+            if("," not in self.key):
+                rec.info += ";" + self.key + "=" + self.value
+            else:
+                for subkey, subvalue in zip(
+                        self.key.split(","),
+                        self.value.split(",")):
+                    rec.info += ";" + subkey + "=" + subvalue
         return rec
 
 
-def MakeVCFProxyDeaminationFilter(cython.float ctfreq, cython.float conf=1e-3):
+def MakeVCFProxyDeaminationFilter(dtype128_t ctfreq, dtype128_t conf=1e-3,
+                                  key="default", value="*"):
+    """
+    Returns the VCFProxyFilter object I wanted.
+    """
     return AbstractVCFProxyFilter("DeaminationNoise",
-                                  func=DeaminationConfTestKFC(ctfreq, conf=conf))
+                                  func=PartialDeaminationConfTest(ctfreq,
+                                                                  conf=conf),
+                                  key=key, value=value)
+
+
+def SortBgzipAndTabixVCF(inVCF, outVCF="default"):
+    """
+    Sorts and tabix indexes a VCF.
+    """
+    if(outVCF == "default"):
+        outVCF = ".".join([inVCF.split(".")[-1]]) + "sort.vcf"
+    check_call("zcat %s | head -n 1000 | grep '^#' > %s" % (inVCF, outVCF), shell=True)
+    check_call("zcat %s | grep -v '^#' >> %s" % (inVCF, outVCF), shell=True)
+    check_call(["bgzip", outVCF])
+    check_call(["tabix", outVCF + ".gz"])
+    return outVCF + ".gz"
