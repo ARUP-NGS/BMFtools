@@ -50,7 +50,7 @@ from numpy import greater as ngreater
 import pysam
 cimport pysam.cfaidx
 from pysam.cfaidx import FastqProxy as cFastqProxy
-import numconv
+from cytoolz import map as cmap
 
 ctypedef np.int64_t dtypei_t
 
@@ -295,7 +295,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], lenR, famLimit))
         R = R[:famLimit]
-    seqs = map(oag("sequence"), R)
+    seqs = cmap(oag("sequence"), R)
     maxScore = 0
     Success = False
     numEq = 0
@@ -322,7 +322,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     phredQuals[phredQuals < 3] = 0
     phredQuals = nmultiply(lenR, phredQuals, dtype=np.int64)
     if(npany(ngreater(phredQuals, 93))):
-        QualString = "".join(map(ph2chr, phredQuals))
+        QualString = "".join(cmap(ph2chr, phredQuals))
         PVString = oadd(" #G~PV=",
                                 ",".join(phredQuals.astype(str).tolist()))
     else:
@@ -381,7 +381,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
 
     # print(repr(seqArray))
     quals = nparray(
-        [map(chr2phFunc, list(record.quality)) for record in R],
+        [cmap(chr2phFunc, list(record.quality)) for record in R],
         dtype=np.int64)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.

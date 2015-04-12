@@ -38,6 +38,7 @@ from numpy import any as npany
 from Bio.Seq import Seq
 import cython
 import numconv
+from cytoolz import map as cmap
 
 import MawCluster
 from utilBMF.ErrorHandling import *
@@ -236,7 +237,7 @@ def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
     Returns a dictionary of contig names to pysam reference numbers.
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
-    return dict(map(lambda x: (x[1], x[0]),
+    return dict(cmap(lambda x: (x[1], x[0]),
                     list(enumerate(alignmentfileObj.references))))
 
 
@@ -247,7 +248,7 @@ def GetBidirectionalPysamChrDict(alignmentfileObj):
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
     refList = list(enumerate(alignmentfileObj.references))
-    return dict(map(lambda x: (x[1], x[0]),refList) + refList)
+    return dict(cmap(lambda x: (x[1], x[0]),refList) + refList)
 
 
 class pFastqProxy:
@@ -1178,7 +1179,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     for k, g in groupby(
             enumerate(sorted(CounterObj.keys())),
             lambda i_x: i_x[0] - i_x[1]):
-        posList = map(oig(1), g)
+        posList = cmap(oig(1), g)
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
         else:
@@ -1252,7 +1253,7 @@ def CigarToQueryIndices(cigar):
         pl("Invalid argument - cigars are lists of tuples, but the first item"
            " in this list is not a tuple!")
     tuples = []
-    c = map(oig(1), cigar)
+    c = cmap(oig(1), cigar)
     cumSum = [sum(c[:i + 1]) for i in range(len(c))]
     for n, entry in enumerate(cigar):
         if n == 0:

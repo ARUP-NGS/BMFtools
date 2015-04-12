@@ -17,6 +17,7 @@ from numpy import mean as nmean
 from numpy import min as nmin
 import cython
 import pysam
+from cytoolz import map as cmap
 
 cimport pysam.TabProxies
 
@@ -304,7 +305,7 @@ def ParseVCF(inputVCFName):
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    lst = map(mc("lower"), "bed,I16".split(","))
+    lst = cmap(mc("lower"), "bed,I16".split(","))
     # print("lst = {}".format(lst))
     if(filterOpt.lower() not in lst):
         raise ValueError(("Filter option not supported. Available options: " +

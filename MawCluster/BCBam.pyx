@@ -32,6 +32,7 @@ cimport pysam.calignmentfile
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 import cython
 cimport cython
+from cytoolz import map as cmap
 
 from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
@@ -387,13 +388,13 @@ def pairedBarcodeTagging(
 
 def compareRecs(RecordList):
     Success = True
-    seqs = map(oag("seq"), RecordList)
+    seqs = cmap(oag("seq"), RecordList)
     seqs = [str(record.seq) for record in RecordList]
     stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
     seqArray = nvstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = nparray(map(oag("query_qualities"),
+    quals = nparray(cmap(oag("query_qualities"),
                          RecordList))
     qualA = ccopy(quals)
     qualC = ccopy(quals)

@@ -10,6 +10,7 @@ import numpy as np
 cimport numpy as np
 from numpy import array as nparray
 from math import log10 as mlog10
+from cytoolz import map as cmap
 pyFastaFile = pysam.FastaFile
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
@@ -90,7 +91,7 @@ class SNVCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal == "default"):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
-        self.NumStartStops = len(list(set(map(operator.attrgetter("ssString"),
+        self.NumStartStops = len(list(set(cmap(operator.attrgetter("ssString"),
                                               AlleleAggregateObject.recList))))
         self.CHROM = AlleleAggregateObject.contig
         self.POS = AlleleAggregateObject.pos + 1
@@ -327,8 +328,8 @@ class VCFPos:
         self.minDuplexPairs = minDuplexPairs
 
     def __str__(self):
-        map(mc("update"), self.VCFLines)
-        self.str = "\n".join(map(mc("__str__"), self.VCFLines))
+        cmap(mc("update"), self.VCFLines)
+        self.str = "\n".join(cmap(mc("__str__"), self.VCFLines))
         return self.str
 
 

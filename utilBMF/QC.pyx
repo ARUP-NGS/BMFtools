@@ -21,6 +21,7 @@ cimport numpy as np
 from numpy import array as nparray
 from numpy import append as npappend
 from numpy import mean as nmean
+from cytoolz import map as cmap
 
 from utilBMF.HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
                               ThisIsMadness, PipedShellCall)
@@ -163,10 +164,10 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=100,
             p = pPileupColumn(puIt())
             pileups = p.pileups
             MappedReads += p.n
-            allInserts = npappend(allInserts, map(
+            allInserts = npappend(allInserts, cmap(
                 oag("alignment.template_length", pileups)))
-            allFMs = npappend(allFMs, map(
-                mc("opt", "FM"), map(oag("alignment"), pileups)))
+            allFMs = npappend(allFMs, cmap(
+                mc("opt", "FM"), cmap(oag("alignment"), pileups)))
             MappedFamReads += len([i for i in pileups if
                                    i.alignment.opt("FM") >= minFM])
         except StopIteration:

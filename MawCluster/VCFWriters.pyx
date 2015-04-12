@@ -5,6 +5,7 @@ import sys
 import pysam
 import cython
 cimport cython
+from cytoolz import map as cmap
 
 from MawCluster.SNVUtils import *
 from MawCluster.PileupUtils import pPileupColumn, GetDiscordantReadPairs
@@ -107,7 +108,7 @@ def SNVCrawler(inBAM,
                     pl("Finished iterations.")
                     break
                 DiscRPs = GetDiscordantReadPairs(PileupColumn)
-                DiscRPNames = list(set(map(oag("name"), DiscRPs)))
+                DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
                 PileupColumn.pileups = [i for i in PileupColumn.pileups if
                                         i.alignment.query_name not in DiscRPNames]
                 for RP in DiscRPs:
@@ -160,7 +161,7 @@ def SNVCrawler(inBAM,
                 break
             # TODO: Check to see if it speeds up to not assign and only write.
             DiscRPs = GetDiscordantReadPairs(PileupColumn)
-            DiscRPNames = list(set(map(oag("name"), DiscRPs)))
+            DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
             PileupColumn.pileups = [i for i in PileupColumn.pileups if
                                     i.alignment.query_name not in DiscRPNames]
             for RP in DiscRPs:

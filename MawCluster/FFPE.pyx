@@ -16,6 +16,7 @@ import numpy as np
 cimport numpy as np
 import pysam
 cimport pysam.TabProxies
+from cytoolz import map as cmap
 
 from MawCluster.BCVCF import IterativeVCFFile
 from utilBMF.HTSUtils import printlog as pl, ThisIsMadness, NameSortAndFixMate
@@ -61,7 +62,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
     recordsArray = []
     for line in IVCFObj:
         if(len(recordsArray) >= recordsPerWrite):
-            strArray = map(str, recordsArray)
+            strArray = cmap(str, recordsArray)
             zipped = zip(recordsArray, strArray)
             for pair in zipped:
                 if(pair[1] == ""):
@@ -69,7 +70,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                         "%s:%s:%s:%s" % (pair[0].CHROM, pair[0].POS,
                                          pair[0].REF, pair[0].ALT),
                        level=logging.DEBUG)
-            outHandle.write("\n".join(map(str, recordsArray)) +
+            outHandle.write("\n".join(cmap(str, recordsArray)) +
                             "\n")
             recordsArray = []
         if(line.REF != "C" or line.REF != "G"):
@@ -92,7 +93,7 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
         line.InfoDict["MFDN"] = maxFreqNoise
         line.InfoDict["MFDNP"] = mfdnpStr
         recordsArray.append(line)
-    outHandle.write("\n".join(map(str, recordsArray)) + "\n")
+    outHandle.write("\n".join(cmap(str, recordsArray)) + "\n")
     outHandle.flush()
     outHandle.close()
     return outVCF
@@ -116,7 +117,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     cdef cython.long DP
     cdef cython.long GC
     cdef dtype128_t freq
-    validFilters = map(mc("lower"), HeaderFilterDict.keys())
+    validFilters = cmap(mc("lower"), HeaderFilterDict.keys())
     FILTER = FILTER.lower()
     filters = FILTER.split(",")
     pl("Filters: %s" % filters)
@@ -139,7 +140,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
         lid = line.InfoDict
         cons = lid["CONS"]
         MACSStr = lid["MACS"]
-        macsDict = dict(map(mc(
+        macsDict = dict(cmap(mc(
             "split", ">"), MACSStr.split(",")))
         if(cons == "C" and line.REF == "C"):
             GC = int(macsDict["C"])
@@ -181,7 +182,7 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     FILTER must be a comma-separated list of FILTER strings as defined
     in the VCF header.
     """
-    validFilters = map(mc("lower"), HeaderFilterDict.keys())
+    validFilters = cmap(mc("lower"), HeaderFilterDict.keys())
     filters = FILTER.lower().split(",")
     pl("Filters: %s" % filters)
     pl("maxFreq: %s" % maxFreq)
@@ -203,7 +204,7 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
         lid = line.InfoDict
         cons = lid["CONS"]
         MACSStr = lid["MACS"]
-        macsDict = dict(map(mc(
+        macsDict = dict(cmap(mc(
             "split", ">"), MACSStr.split(",")))
         if((cons == "C" or line.REF == "C") and line.ALT == "C"):
             GC = int(macsDict["C"])
