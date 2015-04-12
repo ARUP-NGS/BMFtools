@@ -388,14 +388,14 @@ def pairedBarcodeTagging(
 
 def compareRecs(RecordList):
     Success = True
-    seqs = cmap(oag("seq"), RecordList)
+    seqs = list(cmap(oag("seq"), RecordList))
     seqs = [str(record.seq) for record in RecordList]
     stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
     seqArray = nvstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = nparray(cmap(oag("query_qualities"),
-                         RecordList))
+    quals = nparray(list(cmap(oag("query_qualities"),
+                         RecordList)))
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)

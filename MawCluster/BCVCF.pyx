@@ -305,7 +305,7 @@ def ParseVCF(inputVCFName):
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    lst = cmap(mc("lower"), "bed,I16".split(","))
+    lst = list(cmap(mc("lower"), "bed,I16".split(",")))
     # print("lst = {}".format(lst))
     if(filterOpt.lower() not in lst):
         raise ValueError(("Filter option not supported. Available options: " +

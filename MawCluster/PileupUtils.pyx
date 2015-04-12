@@ -45,12 +45,12 @@ def GetDiscordantReadPairs(pPileupColObj):
            "%s." % repr(pPileupColObj))
         raise AssertionError("")
     pileups = pPileupColObj.pileups
-    ReadNameCounter = Counter(cmap(oag("query_name"),
-        cmap(oag("alignment"), pileups)))
+    ReadNameCounter = Counter(list(cmap(oag("query_name"),
+        list(cmap(oag("alignment"), pileups)))))
     readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
                    key=lambda x: x.name)
-    readpairs = cmap(PileupReadPair, [reads[2*i:2*i + 2] for i in range(len(reads) // 2)])
+    readpairs = list(cmap(PileupReadPair, [reads[2*i:2*i + 2] for i in range(len(reads) // 2)]))
     return [pair for pair in readpairs if pair.discordant]
 
 
@@ -120,7 +120,7 @@ class pPileupColumn:
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
-        self.pileups = cmap(pPileupRead, PileupColumn.pileups)
+        self.pileups = list(cmap(pPileupRead, PileupColumn.pileups))
 
 
 """
@@ -175,8 +175,8 @@ class PRInfo:
         self.is_proper_pair = alignment.is_proper_pair
         self.read = alignment
         self.ssString = "#".join(
-            cmap(str, sorted([self.read.reference_start,
-                             self.read.reference_end])))
+            list(cmap(str, sorted([self.read.reference_start,
+                             self.read.reference_end]))))
         self.query_position = PileupRead.query_position
         tagsdictkeys = dict(tags).keys()
         if("FA" in tagsdictkeys):
@@ -189,7 +189,7 @@ class PRInfo:
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
-        if("PV" in cmap(oig(0), tags)):
+        if("PV" in list(cmap(oig(0), tags))):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = aopt("PV")
@@ -295,8 +295,8 @@ class AlleleAggregateInfo:
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
-            self.TND = sum(cmap(oag("ND"), self.recList))
-            NFList = cmap(oag("NF"), self.recList)
+            self.TND = sum(list(cmap(oag("ND"), self.recList)))
+            NFList = list(cmap(oag("NF"), self.recList))
         else:
             self.TND = -1
             NFList = []
@@ -316,21 +316,21 @@ class AlleleAggregateInfo:
             # print("self.recList repr: {}".format(repr(self.recList)))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
-        self.TotalReads = nsum(cmap(oag("FM"), self.recList))
+        self.TotalReads = nsum(list(cmap(oag("FM"), self.recList)))
         self.MergedReads = lenR
-        self.ReverseMergedReads = nsum(cmap(
-            oag("is_reverse"), self.recList))
+        self.ReverseMergedReads = nsum(list(cmap(
+            oag("is_reverse"), self.recList)))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = nsum(cmap(
-            oag("FM"), filter(oag("is_reverse"), self.recList)))
+        self.ReverseTotalReads = nsum(list(cmap(
+            oag("FM"), filter(oag("is_reverse"), self.recList))))
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
             self.AveFamSize = 1. * self.TotalReads / self.MergedReads
         except ZeroDivisionError:
             self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        self.SumBQScore = sum(cmap(oag("BQ"), self.recList))
-        self.SumMQScore = sum(cmap(oag("MQ"), self.recList))
+        self.SumBQScore = sum(list(cmap(oag("BQ"), self.recList)))
+        self.SumMQScore = sum(list(cmap(oag("MQ"), self.recList)))
         try:
             self.AveMQ = 1. * self.SumMQScore / lenR
         except ZeroDivisionError:
@@ -349,8 +349,8 @@ class AlleleAggregateInfo:
         except ZeroDivisionError:
             self.reverseStrandFraction = -1.
         try:
-            self.MFractionAgreed = nmean(cmap(
-                oag("FractionAgreed"),  self.recList))
+            self.MFractionAgreed = nmean(list(cmap(
+                oag("FractionAgreed"),  self.recList)))
         except TypeError:
             pl("Looks like these records have no FractionAgreed attribute. "
                "No worries.", level=logging.DEBUG)
@@ -358,7 +358,7 @@ class AlleleAggregateInfo:
         self.minFrac = minFracAgreed
         self.minFA = minFA
         try:
-            self.MFA = nmean(cmap(oag("FA"), self.recList))
+            self.MFA = nmean(list(cmap(oag("FA"), self.recList)))
         except TypeError:
             pl("Looks like these records have no FA attribute. "
                "No worries.", level=logging.DEBUG)
@@ -378,8 +378,8 @@ class AlleleAggregateInfo:
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
-        self.StrandCountsDict["reverse"] = sum(cmap(
-            oag("is_reverse"), self.recList))
+        self.StrandCountsDict["reverse"] = sum(list(cmap(
+            oag("is_reverse"), self.recList)))
         self.StrandCountsDict["forward"] = sum([
             rec.is_reverse is False for rec in self.recList])
         self.StrandCountsTotalDict = {}
@@ -403,13 +403,13 @@ class AlleleAggregateInfo:
             self.AAMBP = AAMBP
 
         # Check to see if a read pair supports a variant with both ends
-        ReadNameCounter = Counter(cmap(
+        ReadNameCounter = Counter(list(cmap(
             oag("query_name"),
-            cmap(oag("read"), self.recList)))
+            list(cmap(oag("read"), self.recList)))))
         self.NumberDuplexReads = sum([
             ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
-        query_positions = nparray(cmap(
-            oag("query_position"), self.recList)).astype(float)
+        query_positions = nparray(list(cmap(
+            oag("query_position"), self.recList))).astype(float)
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
@@ -515,36 +515,36 @@ class PCInfo:
                         pileupRead.alignment.opt("AF") >= minAF]
         self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
-        rsn = sum(cmap(oag("is_reverse"), self.Records))
+        rsn = sum(list(cmap(oag("is_reverse"), self.Records)))
         if(rsn != lenR and rsn != 0):
             self.BothStrandAlignment = True
         else:
             self.BothStrandAlignment = False
         try:
             self.reverseStrandFraction = sum(
-                cmap(oag("is_reverse"),
-                    cmap(oag("read"),
-                        self.Records))) / (1. * lenR)
+                list(cmap(oag("is_reverse"),
+                    list(cmap(oag("read"),
+                        self.Records))))) / (1. * lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
         try:
-            self.TotalReads = sum(cmap(oag("FM"), self.Records))
+            self.TotalReads = sum(list(cmap(oag("FM"), self.Records)))
         except KeyError:
             self.TotalReads = self.MergedReads
         try:
             self.consensus = Counter(
-                cmap(oag("BaseCall"), self.Records)).most_common(1)[0][0]
+                list(cmap(oag("BaseCall"), self.Records))).most_common(1)[0][0]
         except IndexError:
-            self.consensus = Counter(cmap(
+            self.consensus = Counter(list(cmap(
                 oag("BaseCall"),
-                cmap(PRInfo, pileups))).most_common(1)[0][0]
+                list(cmap(PRInfo, pileups))))).most_common(1)[0][0]
         self.VariantDict = {}
-        for alt in list(set(cmap(oag("BaseCall"), self.Records))):
+        for alt in list(set(list(cmap(oag("BaseCall"), self.Records)))):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
-        query_positions = cmap(oag("query_position"),
-                              self.Records)
+        query_positions = list(cmap(oag("query_position"),
+                              self.Records))
         self.AAMBP = nmean(query_positions)
         self.AABPSD = nstd(query_positions)
 

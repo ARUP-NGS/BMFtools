@@ -164,10 +164,10 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=100,
             p = pPileupColumn(puIt())
             pileups = p.pileups
             MappedReads += p.n
-            allInserts = npappend(allInserts, cmap(
-                oag("alignment.template_length", pileups)))
-            allFMs = npappend(allFMs, cmap(
-                mc("opt", "FM"), cmap(oag("alignment"), pileups)))
+            allInserts = npappend(allInserts, list(cmap(
+                oag("alignment.template_length", pileups))))
+            allFMs = npappend(allFMs, list(cmap(
+                mc("opt", "FM"), list(cmap(oag("alignment"), pileups)))))
             MappedFamReads += len([i for i in pileups if
                                    i.alignment.opt("FM") >= minFM])
         except StopIteration:

@@ -91,8 +91,8 @@ class SNVCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal == "default"):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
-        self.NumStartStops = len(list(set(cmap(operator.attrgetter("ssString"),
-                                              AlleleAggregateObject.recList))))
+        self.NumStartStops = len(set(list(cmap(operator.attrgetter("ssString"),
+                                               AlleleAggregateObject.recList))))
         self.CHROM = AlleleAggregateObject.contig
         self.POS = AlleleAggregateObject.pos + 1
         self.CONS = AlleleAggregateObject.consensus
@@ -328,8 +328,8 @@ class VCFPos:
         self.minDuplexPairs = minDuplexPairs
 
     def __str__(self):
-        cmap(mc("update"), self.VCFLines)
-        self.str = "\n".join(cmap(mc("__str__"), self.VCFLines))
+        list(cmap(mc("update"), self.VCFLines))
+        self.str = "\n".join(list(cmap(mc("__str__"), self.VCFLines)))
         return self.str
 
 

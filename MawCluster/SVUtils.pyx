@@ -11,6 +11,7 @@ cimport numpy as np
 from numpy import argmax as nargmax
 import cython
 cimport cython
+import cytoolz
 
 import uuid
 import copy
@@ -577,6 +578,7 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
 
 
 SVTestDict = dict(oadd(SVTestDict.items(), SNVTestDict.items()))
+SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = defaultdict(returnDefault,
                           oadd(SVParamDict.items(),
                                SNVParamDict.items()))
@@ -742,8 +744,8 @@ def BkptSequenceInterReads(reads):
         FacePalm("BkptSequenceInterReads requires a list of "
                  "pysam AlignedSegment objects as input!")
     try:
-        assert len(list(set([read.reference_id for read in reads if
-                             read.is_unmapped is False]))) == 2
+        assert len(set([read.reference_id for read in reads if
+                        read.is_unmapped is False])) == 2
     except AssertionError:
         FacePalm("Interchromosomal translocations should be between 2"
                  "contigs.")
@@ -760,6 +762,7 @@ def SplitSCReadSet(reads):
     return scReads, clippedSeqs
 
 
+@cython.locals(Success=cython.bint)
 def BkptSequenceIntraReads(reads):
     """
     Attempts to create a consensus sequence out of the reads for
@@ -775,8 +778,8 @@ def BkptSequenceIntraReads(reads):
         FacePalm("BkptSequenceIntraReads requires a list of "
                  "pysam AlignedSegment objects as input!")
     try:
-        assert len(list(set([read.reference_id for read in reads if
-                             read.is_unmapped is False]))) == 1
+        assert len(set([read.reference_id for read in reads if
+                        read.is_unmapped is False])) == 1
     except AssertionError:
         FacePalm("Intrachromosomal translocations should all be"
                  "on the same contig.")
@@ -799,9 +802,8 @@ def BkptSequenceIntraRP(ReadPairs):
     Calls converts a list of read pairs to a list of reads and
     calls BkptSequenceIntraReads
     """
-    return BkptSequenceIntraReads(list(cfi([i.getReads()
-                                                            for i in
-                                                            ReadPairs])))
+    return BkptSequenceIntraReads(list(cfi([i.getReads() for i in
+                                            ReadPairs])))
 
 
 def BkptSequenceInterRP(ReadPairs):

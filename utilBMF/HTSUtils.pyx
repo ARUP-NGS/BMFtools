@@ -41,6 +41,7 @@ import numconv
 from cytoolz import map as cmap
 
 import MawCluster
+from MawCluster.Probability import GetCeiling
 from utilBMF.ErrorHandling import *
 
 ctypedef np.longdouble_t dtype128_t
@@ -237,8 +238,8 @@ def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
     Returns a dictionary of contig names to pysam reference numbers.
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
-    return dict(cmap(lambda x: (x[1], x[0]),
-                    list(enumerate(alignmentfileObj.references))))
+    return dict(list(cmap(lambda x: (x[1], x[0]),
+                    list(enumerate(alignmentfileObj.references)))))
 
 
 def GetBidirectionalPysamChrDict(alignmentfileObj):
@@ -248,7 +249,7 @@ def GetBidirectionalPysamChrDict(alignmentfileObj):
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
     refList = list(enumerate(alignmentfileObj.references))
-    return dict(cmap(lambda x: (x[1], x[0]),refList) + refList)
+    return dict(list(cmap(lambda x: (x[1], x[0]),refList) + refList))
 
 
 class pFastqProxy:
@@ -1179,7 +1180,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     for k, g in groupby(
             enumerate(sorted(CounterObj.keys())),
             lambda i_x: i_x[0] - i_x[1]):
-        posList = cmap(oig(1), g)
+        posList = list(cmap(oig(1), g))
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
         else:
@@ -1253,7 +1254,7 @@ def CigarToQueryIndices(cigar):
         pl("Invalid argument - cigars are lists of tuples, but the first item"
            " in this list is not a tuple!")
     tuples = []
-    c = cmap(oig(1), cigar)
+    c = list(cmap(oig(1), cigar))
     cumSum = [sum(c[:i + 1]) for i in range(len(c))]
     for n, entry in enumerate(cigar):
         if n == 0:
@@ -1610,14 +1611,80 @@ def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
     return read
 
 
+@cython.returns(cython.bint)
+def DeaminationConfTest(pysam.TabProxies.VCFProxy rec, dtype128_t ctfreq,
+                        dtype128_t conf=1e-3):
+    """
+    Tests whether or not a given record should pass
+    """
+    cdef cython.long DOC
+    cdef dtype128_t ceiling
+    cdef cython.float AF
+    GenotypeDict = dict(zip(qRec.format.split(":"),
+                            qRec[0].split(":")))
+    DOC = int(GenotypeDict["DP"])
+    ceiling = GetCeiling(DOC, p=ctfreq, pVal=pVal) / (DOC * 1.)
+    AF = float(dict([f.split("=") for f in qRec.info.split(";")])["AF"])
+    if(AF > ceiling):
+        return True
+    return False
+
+
+class KwargsFuncCall(object):
+    """
+    Abstract class which makes a function which can be used in AbstractVCF
+    ProxyFilter. Point of this is to be able to provide keyword arguments
+    without needing to supply all of them to the final function.
+
+    Should be in format:
+    "keyword,argument,type"
+    If the value of the keyword needs to be anything besides a string,
+    you can do that by setting the "type" field by having a 3rd entry
+    in the string.
+    kwarg2 is not checked if kwarg1 is not set.
+    """
+    def __init__(self, func, kwarg1="default", kwarg2="default"):
+        if("," in kwarg1):
+            kwarg1pair = kwarg1.split(",")
+            if(len(kwarg1pair) == 3):
+                kwarg1pair[1] = eval(kwarg1pair[2])(kwarg1pair[1])
+            if("," in kwarg2):
+                kwarg2pair = kwarg2.split(",")
+                if(len(kwarg2pair) == 3):
+                    kwarg2pair[1] = eval(kwarg2pair[2])(kwarg2pair[1])
+                key1 = eval(kwarg1pair[0])
+                key2 = eval(kwarg2pair[0])
+                self.func = lambda x : func(x, key1=kwarg1pair[1],
+                                            key2=kwarg2pair[1])
+            else:
+                key1 = eval(kwarg1pair[0])
+                self.func = lambda x : func(x, key1=kwarg1pair[1])
+        else:
+            self.func = func
+        self.kwarg1 = kwarg1
+        self.kwarg2 = kwarg2
+
+    def __str__(self):
+        return "func: %s kwarg1: %s. kwarg2: %s" % (self.func, self.kwarg1,
+                                                    self.kwarg2)
+
+
+def DeaminationConfTestKFC(cython.float ctfreq, cython.float conf=1e-3):
+    return KwargsFuncCall(DeaminationConfTest,
+                          kwarg1="ctfreq,%s,float" % ctfreq,
+                          kwarg2="conf,%s,float" % conf)
+
+
 class AbstractVCFProxyFilter(object):
     """
     Abstract class which serves as a template for VCF record post-filtering.
     """
-    def __init__(self, func=FacePalm, filterStr="default"):
+    @cython.locals(conf=cython.float)
+    def __init__(self, filterStr, func=FacePalm,
+                 key="default", value="*"):
         if(func == FacePalm):
-            FacePalm("func must be overridden for "
-                     "AbstractVCFProxyFilter to work!")
+            func("func must be overridden for "
+                 "AbstractVCFProxyFilter to work!")
         if(filterStr == "default"):
             FacePalm("filterStr must be set to append or replace the "
                      "filter field.")
@@ -1626,16 +1693,21 @@ class AbstractVCFProxyFilter(object):
         else:
             raise AttributeError("func must be callable!")
         self.filterStr = filterStr
+        self.key = key
+        self.value = value
+
+    @cython.returns(pysam.TabProxies.VCFProxy)
+    def filter(self, pysam.TabProxies.VCFProxy rec):
+        if(not func(rec)):
+            if(rec.filter == "PASS"):
+                rec.filter = self.filterStr
+            else:
+                rec.filter += self.filterStr
+        if(key != "default"):
+            rec.info += ";" + self.key + "=" + self.value
+        return rec
 
 
-def ConditionallyFilterVCFProxy(pysam.TabProxies.VCFProxy rec,
-                                VCFProxyFilterObj):
-    """
-    Tests a VCFProxy record for a given condition. If it fails, this filterStr
-    is appended to its filter string (or it replaces PASS, if it was already
-    passing). If this func option is left as default, it will throw a
-    ThisIsMadness error.
-    This hasn't been finished.
-    """
-    assert isinstance(VCFProxyFilterObj, AbstractVCFProxyFilter)
-    pass
+def MakeVCFProxyDeaminationFilter(cython.float ctfreq, cython.float conf=1e-3):
+    return AbstractVCFProxyFilter("DeaminationNoise",
+                                  func=DeaminationConfTestKFC(ctfreq, conf=conf))

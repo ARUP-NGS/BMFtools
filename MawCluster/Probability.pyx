@@ -23,7 +23,7 @@ from scipy.misc import comb
 from statsmodels.stats import proportion
 pconfint = proportion.proportion_confint
 
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness, FacePalm
+from utilBMF.ErrorHandling import ThisIsMadness
 
 ctypedef np.longdouble_t dtype128_t
 
@@ -50,8 +50,9 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
     try:
         return pconfint(AC, DOC, alpha=pVal, method=method)
     except NotImplementedError:
-        FacePalm("Confidence interval method `%s` not implemented!" % method +
-                 "Check the docs for statsmodels.stats.proportion.")
+        raise ThisIsMadness("Confidence interval method `%s` not " % method +
+                            "implemented! Check the docs for statsmodels."
+                            "stats.proportion.")
 
 
 @cython.returns(np.ndarray)
@@ -76,8 +77,9 @@ def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                                 alpha=pVal, method=method),
                        dtype=np.longdouble)
     except NotImplementedError:
-        FacePalm("Confidence interval method `%s` not implemented!" % method +
-                 "Check the docs for statsmodels.stats.proportion.")
+        raise ThisIsMadness("Confidence interval method `%s` not" % method +
+                            " implemented! Check the docs for statsmodels."
+                            "stats.proportion.")
 
 
 def MakeAICall(Allele1, Allele2, pVal=defaultPValue, method="agresti_coull"):
