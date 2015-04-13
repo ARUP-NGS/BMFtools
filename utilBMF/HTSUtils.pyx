@@ -1,7 +1,6 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
-from collections import Counter
 from copy import copy as ccopy
 from itertools import groupby
 from operator import itemgetter as oig
@@ -39,7 +38,7 @@ from numpy import any as npany
 from Bio.Seq import Seq
 import cython
 import numconv
-from cytoolz import map as cmap
+from cytoolz import map as cmap, memoize, frequencies as cyfreq
 
 import MawCluster
 from MawCluster.Probability import GetCeiling
@@ -337,8 +336,8 @@ def ReadPairIsDuplex(readPair, minShare="default"):
                             "an absolute number of bases overlapped re"
                             "quired, float for a fraction of read length.")
     return sum([x == 2 for x in
-                Counter(readPair.read1.get_reference_positions() +
-                        readPair.read2.get_reference_positions()).values()]
+                cyfreq(readPair.read1.get_reference_positions() +
+                       readPair.read2.get_reference_positions()).values()]
                ) >= minLen
 
 
@@ -689,6 +688,8 @@ def PosContainedInBed(contig, pos, bedRef="default"):
     0-based
     """
     if(isinstance(bedRef, str)):
+        pl("Bed file being parsed for each call of PosContainedInBed: "
+           "WARNING!")
         bedRef = ParseBed(bedRef)
     for line in bedRef:
         if(contig == line[0]):
@@ -1035,6 +1036,7 @@ def WritePairToHandle(ReadPair, handle="default"):
     return True
 
 
+@memoize
 def ParseBed(bedfile):
     """
     Parses a bedfile in, leaving a list of length 3.
@@ -1069,8 +1071,8 @@ def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
     Makes a Counter object of positions covered by a set of reads.
     Only safe at this point for intrachromosomal rearrangements!
     """
-    return Counter(reduce(lambda x, y: x + y,
-                          [r.get_reference_positions() for r in reads]))
+    return cyfreq(reduce(lambda x, y: x + y,
+                        [r.get_reference_positions() for r in reads]))
 
 
 def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
@@ -1088,8 +1090,8 @@ def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
         oia(posList, R1Pos)
         oia(posList, R2Pos)
         oia(posListDuplex, [pos for pos in R1Pos if pos in R2Pos])
-    PosCounts = Counter(posList)
-    PosDuplexCounts = Counter(posListDuplex)
+    PosCounts = cyfreq(posList)
+    PosDuplexCounts = cyfreq(posListDuplex)
     # decrement the counts for each position to account for
     # both reads in a pair mapping to the same location.
     for key in PosDuplexCounts.keys():
@@ -1164,7 +1166,7 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
                                bedIntervals="default",
                                mergeDist=0, minClustDepth=5):
     """
-    From a Counter object containing the sum of the output of
+    From a dictionary object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
     list of continuous intervals, calculates the mean coverage for each, and
     returns two lists, the first containing the 0-based open intervals and
@@ -1374,6 +1376,7 @@ def GetDeletedCoordinates(read):
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])
 
 
+@memoize
 @cython.returns(dtype128_t)
 def FractionSoftClipped(cAlignedSegment read):
     """
@@ -1386,6 +1389,7 @@ def FractionSoftClipped(cAlignedSegment read):
                      i[0] == 4]) / read.query_alignment_length
 
 
+@memoize
 @cython.returns(dtype128_t)
 def FractionAligned(cAlignedSegment read):
     """
@@ -1491,6 +1495,7 @@ def CalculateFamStats(inFq):
     return numSing, numFam, meanFamAll, meanRealFam
 
 
+@memoize
 @cython.locals(n=cython.long)
 def bitfield(n):
     """

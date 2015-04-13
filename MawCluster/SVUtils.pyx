@@ -279,7 +279,6 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
     except IndexError:
         print(repr(ClusterList))
         raise ThisIsMadness("Something is wrong!!!")
-    from collections import Counter
     for cluster in ClusterList:
         print("Length of cluster: {}".format(len(cluster)))
     PotTransIntervals = []

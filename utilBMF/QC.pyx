@@ -202,19 +202,15 @@ def GetFamSizeStats(inFq, outfile=sys.stdout):
     if(isinstance(outfile, str)):
         outfile = open(outfile, "w")
     cdef pysam.cfaidx.FastqProxy read
-    cdef cython.long numFam
-    cdef cython.long numSing
-    cdef cython.long sumFam
-    cdef cython.long sumAll
+    cdef cython.long numFam = 0
+    cdef cython.long numSing = 0
+    cdef cython.long sumFam = 0
+    cdef cython.long sumAll = 0
     cdef cython.long famS
     cdef cython.float MeanFamAll
     cdef cython.float MeanRealFam
     cdef pysam.cfaidx.FastqFile FqHandle
     FqHandle = pysam.FastqFile(inFq)
-    numFam = 0
-    numSing = 0
-    sumFam = 0
-    sumAll = 0
     for read in FqHandle:
         famS = int(read.comment.split(" ")[3].split("=")[1])
         if(famS > 1):

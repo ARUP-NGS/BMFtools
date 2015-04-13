@@ -18,7 +18,7 @@ import numpy as np
 cimport numpy as np
 import pysam
 cimport pysam.TabProxies
-from cytoolz import map as cmap
+from cytoolz import map as cmap, memoize
 
 from MawCluster.BCVCF import IterativeVCFFile
 from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness,
@@ -176,6 +176,61 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     return freq
 
 
+@cython.locals(pVal=dtype128_t, DOC=cython.long,
+               maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
+               recordsPerWrite=cython.long)
+def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
+                            recordsPerWrite=5000, outVCF="default"):
+    """
+    If observed AAF is greater than the upper limit of the confidence window
+    with a given P-Value, the variant is permitted to stay.
+    Otherwise, DeaminationNoise replaces PASS or is appended to other filters.
+    """
+    pl("C-T/G-A frequency set to %s" % ctfreq)
+    IVCFObj = IterativeVCFFile(inVCF)
+    if(outVCF == "default"):
+        outVCF = ".".join(inVCF.split(".")[0:-1] + ["ctfilt", "vcf"])
+    pl("FilterByDeaminationFreq called. inVCF: %s. outVCF: %s." % (inVCF,
+                                                                   outVCF))
+    outHandle = open(outVCF, "w")
+    mfdnpStr = str(int(-10 * mlog10(pVal)))
+    functionCall = ("FilterByDeaminationFreq(%s, pVal=%s, " % (inVCF, pVal) +
+                    "ctfreq=%s, recordsPerWrite=" % ctfreq +
+                    "%s). BMFTools version: %s" % (recordsPerWrite,
+                                                   BMFVersion))
+    IVCFObj.header.insert(-1, str(HeaderFunctionCallLine(functionCall)))
+    outHandle.write("\n".join(IVCFObj.header) + "\n")
+    recordsArray = []
+    for line in IVCFObj:
+        if(len(recordsArray) >= recordsPerWrite):
+            outHandle.write("\n".join(map(str, recordsArray)) +
+                            "\n")
+            recordsArray = []
+        if(line.REF != "C" or line.REF != "G"):
+            recordsArray.append(line)
+            continue
+        if(line.REF == "C" and line.ALT != "T"):
+            recordsArray.append(line)
+            continue
+        if(line.REF == "G" and line.ALT != "A"):
+            recordsArray.append(line)
+            continue
+        DOC = int(line.GenotypeDict["DP"])
+        AAF = float(line.InfoDict["AC"]) / DOC
+        maxFreqNoise = GetCeiling(DOC, p=ctfreq, pVal=pVal) / (DOC * 1.)
+        if AAF < maxFreqNoise:
+            if(line.FILTER == "PASS"):
+                line.FILTER = "DeaminationNoise"
+            else:
+                line.FILTER += ",DeaminationNoise"
+        line.InfoDict["MFDN"] = maxFreqNoise
+        line.InfoDict["MFDNP"] = mfdnpStr
+        recordsArray.append(line)
+    outHandle.write("\n".join(map(str, recordsArray)) + "\n")
+    outHandle.flush()
+    outHandle.close()
+    return outVCF
+
 
 @cython.locals(maxFreq=dtype128_t, pVal=dtype128_t)
 def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
@@ -226,6 +281,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
     return outBAM
 
 
+@memoize
 @cython.returns(cython.float)
 def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
     """

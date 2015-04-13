@@ -10,9 +10,11 @@ import re
 import operator
 from operator import attrgetter as oag
 from operator import itemgetter as oig
+oig1 = oig(1)
+oig0 = oig(0)
+oagbc = operator.attrgetter("BaseCall")
 from operator import div as odiv
 from itertools import ifilterfalse as iff
-from collections import Counter
 
 import numpy as np
 from numpy import mean as nmean
@@ -23,7 +25,7 @@ from numpy import array as nparray
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
-from cytoolz import map as cmap
+from cytoolz import map as cmap, frequencies as cyfreq, partition as ctpartition
 
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
@@ -45,12 +47,12 @@ def GetDiscordantReadPairs(pPileupColObj):
            "%s." % repr(pPileupColObj))
         raise AssertionError("")
     pileups = pPileupColObj.pileups
-    ReadNameCounter = Counter(list(cmap(oag("query_name"),
+    ReadNameCounter = cyfreq(list(cmap(oag("query_name"),
         list(cmap(oag("alignment"), pileups)))))
     readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
                    key=lambda x: x.name)
-    readpairs = list(cmap(PileupReadPair, [reads[2*i:2*i + 2] for i in range(len(reads) // 2)]))
+    readpairs = list(cmap(PileupReadPair, ctpartition(2, reads)))
     return [pair for pair in readpairs if pair.discordant]
 
 
@@ -176,7 +178,7 @@ class PRInfo:
         self.read = alignment
         self.ssString = "#".join(
             list(cmap(str, sorted([self.read.reference_start,
-                             self.read.reference_end]))))
+                                   self.read.reference_end]))))
         self.query_position = PileupRead.query_position
         tagsdictkeys = dict(tags).keys()
         if("FA" in tagsdictkeys):
@@ -189,7 +191,7 @@ class PRInfo:
         self.PV = None
         self.PV_Array = None
         self.PVFrac = None
-        if("PV" in list(cmap(oig(0), tags))):
+        if("PV" in list(cmap(oig0, tags))):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = aopt("PV")
@@ -366,15 +368,15 @@ class AlleleAggregateInfo:
         self.FSR = FSR
 
         # Dealing with transitions (e.g., A-T) and their strandedness
-        self.transition = ">".join([consensus, self.ALT])
+        self.transition = consensus + ">" + self.ALT
         self.strandedTransitions = {}
-        self.strandedTransitionDict = Counter(
+        self.strandedTransitionDict = cyfreq(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
-        self.strandedTotalTransitionDict = Counter(
+        self.strandedTotalTransitionDict = cyfreq(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList] * rec.FM)
-        self.strandedMergedTransitionDict = Counter(
+        self.strandedMergedTransitionDict = cyfreq(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
@@ -403,7 +405,7 @@ class AlleleAggregateInfo:
             self.AAMBP = AAMBP
 
         # Check to see if a read pair supports a variant with both ends
-        ReadNameCounter = Counter(list(cmap(
+        ReadNameCounter = cyfreq(list(cmap(
             oag("query_name"),
             list(cmap(oag("read"), self.recList)))))
         self.NumberDuplexReads = sum([
@@ -460,7 +462,6 @@ class PCInfo:
         #  pl("minMQ: %s" % minMQ)
         self.minBQ = minBQ
         #  pl("minBQ: %s" % minBQ)
-        from collections import Counter
         self.contig = PysamToChrDict[PileupColumn.reference_id]
         self.minAF = minAF
         #  pl("Pileup contig: {}".format(self.contig))
@@ -533,14 +534,15 @@ class PCInfo:
         except KeyError:
             self.TotalReads = self.MergedReads
         try:
-            self.consensus = Counter(
-                list(cmap(oag("BaseCall"), self.Records))).most_common(1)[0][0]
+            self.consensus = sorted(cyfreq(
+                list(cmap(oagbc, self.Records))).items(),
+                                    key=oig1)[-1][0]
         except IndexError:
-            self.consensus = Counter(list(cmap(
-                oag("BaseCall"),
-                list(cmap(PRInfo, pileups))))).most_common(1)[0][0]
+            self.consensus = sorted(cyfreq(
+                list(cmap(oagbc, list(cmap(PRInfo, pileups))))).items(),
+                                    key=oig1)[-1][0]
         self.VariantDict = {}
-        for alt in list(set(list(cmap(oag("BaseCall"), self.Records)))):
+        for alt in list(set(list(cmap(oagbc, self.Records)))):
             self.VariantDict[alt] = [
                 rec for rec in self.Records if rec.BaseCall == alt]
         query_positions = list(cmap(oag("query_position"),
@@ -656,25 +658,25 @@ class PCInfo:
                 self.MergedAlleleFreqDict[key] = 0.
                 self.TotalAlleleFreqDict[key] = 0.
         self.MergedAlleleCountStr = "\t".join(
-            nparray([self.MergedAlleleDict["A"],
-                     self.MergedAlleleDict["C"],
-                     self.MergedAlleleDict["G"],
-                     self.MergedAlleleDict["T"]]).astype(str))
+            list(cmap(str, [self.MergedAlleleDict["A"],
+                            self.MergedAlleleDict["C"],
+                            self.MergedAlleleDict["G"],
+                            self.MergedAlleleDict["T"]])))
         self.TotalAlleleCountStr = "\t".join(
-            nparray([self.TotalAlleleDict["A"],
-                     self.TotalAlleleDict["C"],
-                     self.TotalAlleleDict["G"],
-                     self.TotalAlleleDict["T"]]).astype(str))
+            list(cmap(str, [self.TotalAlleleDict["A"],
+                            self.TotalAlleleDict["C"],
+                            self.TotalAlleleDict["G"],
+                            self.TotalAlleleDict["T"]])))
         self.MergedAlleleFreqStr = "\t".join(
-            nparray([self.MergedAlleleFreqDict["A"],
-                     self.MergedAlleleFreqDict["C"],
-                     self.MergedAlleleFreqDict["G"],
-                     self.MergedAlleleFreqDict["T"]]).astype(str))
+            list(cmap(str, [self.MergedAlleleFreqDict["A"],
+                            self.MergedAlleleFreqDict["C"],
+                            self.MergedAlleleFreqDict["G"],
+                            self.MergedAlleleFreqDict["T"]])))
         self.TotalAlleleFreqStr = "\t".join(
-            nparray([self.TotalAlleleFreqDict["A"],
-                     self.TotalAlleleFreqDict["C"],
-                     self.TotalAlleleFreqDict["G"],
-                     self.TotalAlleleFreqDict["T"]]).astype(str))
+            list(cmap(str, [self.TotalAlleleFreqDict["A"],
+                            self.TotalAlleleFreqDict["C"],
+                            self.TotalAlleleFreqDict["G"],
+                            self.TotalAlleleFreqDict["T"]])))
         # MergedStrandednessRatioDict is the fraction of reverse reads
         # supporting an alternate allele.
         # E.g., if 5 support the alt, but 2 are mapped to the reverse
@@ -693,17 +695,17 @@ class PCInfo:
             str(self.TotalStrandednessRatioDict[
                 key]) for key in self.TotalStrandednessRatioDict.keys()])
         self.AlleleFreqStr = "\t".join(
-            [str(i) for i in [self.contig,
-                              self.pos,
-                              self.consensus,
-                              self.MergedReads,
-                              self.TotalReads,
-                              self.MergedAlleleCountStr,
-                              self.TotalAlleleCountStr,
-                              self.MergedAlleleFreqStr,
-                              self.TotalAlleleFreqStr,
-                              self.MergedStrandednessStr,
-                              self.TotalStrandednessStr]])
+            list(cmap(str, [self.contig,
+                            self.pos,
+                            self.consensus,
+                            self.MergedReads,
+                            self.TotalReads,
+                            self.MergedAlleleCountStr,
+                            self.TotalAlleleCountStr,
+                            self.MergedAlleleFreqStr,
+                            self.TotalAlleleFreqStr,
+                            self.MergedStrandednessStr,
+                            self.TotalStrandednessStr])))
 
     def __str__(self, header=False):
         outStr = ""

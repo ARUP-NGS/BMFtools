@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import logging
-from collections import Counter
 from operator import attrgetter as oag
 
 import cython

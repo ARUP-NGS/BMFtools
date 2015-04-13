@@ -13,7 +13,7 @@ import logging
 import os
 import shlex
 import subprocess
-import copy
+from copy import copy as ccopy
 import gzip
 import sys
 import collections
@@ -50,7 +50,7 @@ from numpy import greater as ngreater
 import pysam
 cimport pysam.cfaidx
 from pysam.cfaidx import FastqProxy as cFastqProxy
-from cytoolz import map as cmap
+from cytoolz import map as cmap, memoize
 
 ctypedef np.int64_t dtypei_t
 
@@ -75,9 +75,10 @@ letterNumDict[2] = 'G'
 letterNumDict[3] = 'T'
 
 
-
+@memoize
 def chr2phFunc(x):
     return chr2ph[x]
+
 
 @cython.locals(checks=cython.int, highMem=cython.bint,
                parallel=cython.bint)
@@ -238,10 +239,10 @@ def compareFastqRecordsInexactNumpy(R):
     quals = nparray([
         record.letter_annotations['phred_quality']
         for record in R], dtype=np.int64)
-    qualA = copy.copy(quals)
-    qualC = copy.copy(quals)
-    qualG = copy.copy(quals)
-    qualT = copy.copy(quals)
+    qualA = ccopy(quals)
+    qualC = ccopy(quals)
+    qualG = ccopy(quals)
+    qualT = ccopy(quals)
     qualA[seqArray != "A"] = 0
     qualAFlat = nsum(qualA, 0)
     qualC[seqArray != "C"] = 0
@@ -386,10 +387,10 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
     quals[quals < 3] = 1
-    qualA = copy.copy(quals)
-    qualC = copy.copy(quals)
-    qualG = copy.copy(quals)
-    qualT = copy.copy(quals)
+    qualA = ccopy(quals)
+    qualC = ccopy(quals)
+    qualG = ccopy(quals)
+    qualT = ccopy(quals)
     qualA[seqArray != "A"] = 0
     qualAFlat = nsum(qualA, 0, dtype=np.int64)
     qualC[seqArray != "C"] = 0
@@ -407,7 +408,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
                              dtype=np.int64)
     FA = nparray([sum([seq[i] == newSeq[i] for seq in seqs]) for i
                    in range(len(newSeq))], dtype=np.int64)
-    ND = nsubtract(lenR * len(seqs[0]), nsum(FA))
+    ND = lenR * len(seqs[0]) - nsum(FA)
     if(npany(nless(phredQuals, 0))):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
         phredQuals = abs(phredQuals)

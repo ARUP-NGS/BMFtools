@@ -7,7 +7,6 @@ import subprocess
 import os
 import shutil
 import logging
-from collections import Counter
 from copy import copy as ccopy
 from os import path
 import operator

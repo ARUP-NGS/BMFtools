@@ -4,7 +4,7 @@ from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PysamToChrDict, FacePalm
 
 import pysam
-from collections import Counter
+from cytoolz import frequencies as cyfreq
 
 
 def MarkReadPairPositions(inBAM, outBAM="default"):
@@ -53,7 +53,7 @@ def MarkReadPairPositions(inBAM, outBAM="default"):
             break
         except AssertionError:
             FacePalm("Input BAM is not name-sorted!")
-    RPSetCounts = Counter(RPSetList)
+    RPSetCounts = cyfreq(RPSetList)
     RPSCHandle = open(inBAM[0:-3] + "rpsc.table", "w")
     for key in RPSetCounts.keys():
         RPSCHandle.write("\t".join([str(RPSetCounts[key]), str(key)]) + "\n")

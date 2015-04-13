@@ -21,6 +21,7 @@ from numpy import sum as nsum
 from scipy.stats import binom
 from scipy.misc import comb
 from statsmodels.stats import proportion
+from cytoolz import memoize
 pconfint = proportion.proportion_confint
 
 from utilBMF.ErrorHandling import ThisIsMadness
@@ -36,6 +37,8 @@ defaultPValue = 0.001
 # PROTOCOLS is a list of lowered strings.
 PROTOCOLS = ["ffpe", "amplicon", "cf", "other"]
 
+
+@memoize
 @cython.locals(DOC=cython.long, pVal=dtype128_t,
                AC=cython.long)
 def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
@@ -55,6 +58,7 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
                             "stats.proportion.")
 
 
+@memoize
 @cython.returns(np.ndarray)
 def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                          method="agresti_coull"):
@@ -82,6 +86,7 @@ def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                             "stats.proportion.")
 
 
+@memoize
 def MakeAICall(Allele1, Allele2, pVal=defaultPValue, method="agresti_coull"):
     """
     Gets confidence bounds, returns a call, a "minor" allele frequency,
@@ -99,6 +104,7 @@ def MakeAICall(Allele1, Allele2, pVal=defaultPValue, method="agresti_coull"):
     return call, allelicImbalanceRatio, confInt
 
 
+@memoize
 @cython.locals(n=cython.long, p=dtype128_t,
                pVal=dtype128_t)
 @cython.returns(cython.long)
@@ -110,6 +116,7 @@ def GetCeiling(n, p=0.0, pVal=defaultPValue):
     return binom.interval(1 - pVal, n, p)[1]
 
 
+@memoize
 @cython.locals(n=dtype128_t)
 @cython.returns(dtype128_t)
 def StirlingsApprox(n):
@@ -121,6 +128,7 @@ def StirlingsApprox(n):
     return omul(mpow(odiv(n, np.e), n), msqrt(reduce(omul, [2, np.pi, n], 1)))
 
 
+@memoize
 @cython.locals(n=dtype128_t, k=dtype128_t)
 @cython.returns(dtype128_t)
 def StirlingsFact(n, k):
@@ -133,6 +141,7 @@ def StirlingsFact(n, k):
         osub(n, k))
 
 
+@memoize
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(dtype128_t)
 def SamplingFrac(n, p=0., k=1):
@@ -147,6 +156,7 @@ def SamplingFrac(n, p=0., k=1):
         mpow(p, k), comb(n + 1, k)], 1)
 
 
+@memoize
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(dtype128_t)
 def SamplingFrac_(n, p=0., k=1):
@@ -160,6 +170,7 @@ def SamplingFrac_(n, p=0., k=1):
         StirlingsFact(n + 1, k)], 1)
 
 
+@memoize
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(np.ndarray)
 def GetUnscaledProbs(n, p=0.):
@@ -172,6 +183,7 @@ def GetUnscaledProbs(n, p=0.):
                     dtype=np.longdouble)
 
 
+@memoize
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(np.ndarray)
 def GetUnscaledProbs_(n, p=0.):
@@ -184,18 +196,21 @@ def GetUnscaledProbs_(n, p=0.):
                      dtype=np.longdouble)
 
 
+@memoize
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(dtype128_t)
 def PartitionFunction(n, p=0.1):
     return nsum(GetUnscaledProbs(n, p=p), 0)
 
 
+@memoize
 @cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
 @cython.returns(dtype128_t)
 def PartitionFunction_(n, p=0.1):
     return nsum(GetUnscaledProbs_(n, p=p), 0)
 
 
+@memoize
 @cython.locals(p=dtype128_t, n=cython.long, k=cython.long)
 @cython.returns(np.ndarray)
 def SamplingProbDist(n, p=0.):
@@ -212,6 +227,7 @@ def SamplingProbDist(n, p=0.):
     return ProbDist
 
 
+@memoize
 @cython.locals(p=dtype128_t, n=cython.long, k=cython.long)
 @cython.returns(np.ndarray)
 def SamplingProbDist_(n, p=0.):
@@ -228,6 +244,7 @@ def SamplingProbDist_(n, p=0.):
     return ProbDist
 
 
+@memoize
 @cython.locals(p=dtype128_t, n=cython.long, k=cython.long,
                PartitionFn=dtype128_t)
 def SamplingProbMoments(n, p=0.):
@@ -242,6 +259,7 @@ def SamplingProbMoments(n, p=0.):
     return UnscaledProbs, PartitionFn
 
 
+@memoize
 @cython.locals(p=dtype128_t, n=cython.long, k=cython.long,
                PartitionFn=dtype128_t)
 def SamplingProbMoments_(n, p=0.):

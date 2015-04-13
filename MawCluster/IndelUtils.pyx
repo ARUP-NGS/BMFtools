@@ -5,6 +5,7 @@
 import pysam
 cimport pysam.calignmentfile
 import cython
+from cytoolz import map as cmap
 
 from utilBMF.HTSUtils import FractionAligned, FractionSoftClipped
 
