@@ -210,7 +210,8 @@ ChrToPysamDict["GL000225.1"] = 82
 ChrToPysamDict["GL000192.1"] = 83
 
 
-def GetPysamToChrDict(alignmentFileText):
+@cython.returns(dict)
+def GetPysamToChrDict(cython.str alignmentFileText):
     """
     Input variable contains the "text" attribute from a pysam.AlignmentFile
     object.
@@ -225,6 +226,7 @@ def GetPysamToChrDict(alignmentFileText):
     return
 
 
+@cython.returns(dict)
 def GetPysamToChrDictFromAlignmentFile(alignmentfileObj):
     """
     Returns a dictionary of pysam reference numbers to contig names.
@@ -233,15 +235,18 @@ def GetPysamToChrDictFromAlignmentFile(alignmentfileObj):
     return dict(list(enumerate(alignmentfileObj.references)))
 
 
+@cython.returns(dict)
 def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
     """
     Returns a dictionary of contig names to pysam reference numbers.
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
-    return dict(list(cmap(lambda x: (x[1], x[0]),
+    f = lambda x: (x[1], x[0])
+    return dict(list(cmap(f,
                     list(enumerate(alignmentfileObj.references)))))
 
 
+@cython.returns(dict)
 def GetBidirectionalPysamChrDict(alignmentfileObj):
     """
     Returns a dictionary of contig names to pysam reference numbers
@@ -629,6 +634,7 @@ def ReadOverlapsBed(samRecord, bedRef="default"):
     """
     # if(isinstance(bedRef, str)):
     #     bedRef = ParseBed(bedRef)
+    assert isinstance(bedRef[0][0], str) and isinstance(bedRef[0][1], int)
     for line in bedRef:
         """
         try:
@@ -994,6 +1000,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
     then check that all entries in SVTag.split(",") are in
     the tags
     """
+    LIlambda = lambda x: abs(x.insert_size)
     RecordsArray = []
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tags = SVTag.split(',')
@@ -1021,7 +1028,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
             except StopIteration:
                 break
     if("LI" in tags):
-        return sorted(RecordsArray, key=lambda x: abs(x.insert_size))
+        return sorted(RecordsArray, key=LIlambda)
     else:
         return RecordsArray
 
@@ -1036,8 +1043,7 @@ def WritePairToHandle(ReadPair, handle="default"):
     return True
 
 
-@memoize
-def ParseBed(bedfile):
+def ParseBed(cython.str bedfile):
     """
     Parses a bedfile in, leaving a list of length 3.
     bed[0] is a string (contig), and bed[1:] are all
@@ -1052,7 +1058,7 @@ def ParseBed(bedfile):
     return bed
 
 
-def parseConfig(string):
+def parseConfig(cython.str string):
     """
     Parses in a file into a dictionary of key value pairs.
     Key is line.strip().split("=")[0].
@@ -1066,7 +1072,8 @@ def parseConfig(string):
     return {line.split("=")[0].strip() : line.split("=")[1].strip() for line in parsedLines}
 
 
-def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
+def ReadListToCovCounter(reads, cython.long minClustDepth=3,
+                         cython.long minPileupLen=10):
     """
     Makes a Counter object of positions covered by a set of reads.
     Only safe at this point for intrachromosomal rearrangements!
@@ -1075,13 +1082,15 @@ def ReadListToCovCounter(reads, minClustDepth=3, minPileupLen=10):
                         [r.get_reference_positions() for r in reads]))
 
 
-def ReadPairListToCovCounter(ReadPairList, minClustDepth=5, minPileupLen=10):
+def ReadPairListToCovCounter(ReadPairList, cython.long minClustDepth=5,
+                             cython.long minPileupLen=10):
     """
     Makes a Counter object of positions covered by a set of read pairs.
     Only safe at this point for intrachromosomal rearrangements!
     We discount the "duplex" positions because we want to look for pileups of
     read pairs (ultimately, for supporting a structural variant).
     """
+    cdef dict PosCounts
     posList = []
     posListDuplex = []
     for pair in ReadPairList:
@@ -1119,11 +1128,7 @@ class SoftClippedSeq:
         self.is_reverse = not self.is_reverse
 
 
-def SplitSCRead(read):
-    try:
-        assert isinstance(read, pysam.calignmentfile.AlignedSegment)
-    except AssertionError:
-        FacePalm("You can't split a read by soft-clipping if it's not a read!")
+def SplitSCRead(pysam.calignmentfile.AlignedSegment read):
     try:
         assert "S" in read.cigarstring
     except AssertionError:
@@ -1162,7 +1167,7 @@ class Interval:
         self.end = self.interval[2]
 
 
-def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
+def CreateIntervalsFromCounter(dict CounterObj, minPileupLen=0, contig="default",
                                bedIntervals="default",
                                mergeDist=0, minClustDepth=5):
     """
@@ -1173,9 +1178,6 @@ def CreateIntervalsFromCounter(CounterObj, minPileupLen=0, contig="default",
     second containing the mean coverage of that interval.
     bedIntervals must be in ParseBed output format.
     """
-    assert isinstance(CounterObj, dict)
-    CounterObj = dict([i for i in CounterObj.items()
-                      if i[1] >= minClustDepth])
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):
@@ -1235,6 +1237,7 @@ def chr2ph(x):
 """
 
 
+@memoize
 def ph2chr(x):
     """
     Converts a phred score to a fastq-encodable character.
@@ -1267,8 +1270,8 @@ def CigarToQueryIndices(cigar):
     return tuples
 
 
-@cython.locals(cigarOp=cython.int)
-def GetQueryIndexForCigarOperation(read, cigarOp=-1):
+def GetQueryIndexForCigarOperation(pysam.calignmentfile.AlignedSegment read,
+                                   cython.long cigarOp=-1):
     """
     Returns a list of lists of positions within each read
     which match the given cigarOp. The cigarOp must be an integer.
@@ -1289,7 +1292,8 @@ def GetQueryIndexForCigarOperation(read, cigarOp=-1):
     return filtCigar
 
 
-def GetReadNucsForFiltCigar(filtCigar, read):
+def GetReadNucsForFiltCigar(filtCigar,
+                            pysam.calignmentfile.AlignedSegment read):
     """
     Returns a list of strings for nucleotides matching a filtCigar.
     """
@@ -1297,15 +1301,18 @@ def GetReadNucsForFiltCigar(filtCigar, read):
     return ["".join([seq[i] for i in g[1]]) for g in filtCigar]
 
 
-def GetGenomicCoordsForFiltCigar(filtCigar, read):
+def GetGenomicCoordsForFiltCigar(filtCigar,
+                                 pysam.calignmentfile.AlignedSegment read):
     """
     Returns a list of lists for genomic coordinates matching a filtCigar.
     """
+    cdef dgap
     dgap = dict(read.get_aligned_pairs())
     return [[dgap[i] for i in g[1]] for g in filtCigar]
 
 
-def GetGenomicCoordToNucleotideMapForFiltCigar(read, filtCigar="default"):
+def GetGenomicCoordToNucleotideMapForFiltCigar(pysam.calignmentfile.AlignedSegment read,
+                                               filtCigar="default"):
     """
     Returns a dictionary of genomic positions: nucleotides for a "filtered"
     cigar and a read. This is used to compare whether or not two reads with
@@ -1314,12 +1321,26 @@ def GetGenomicCoordToNucleotideMapForFiltCigar(read, filtCigar="default"):
     assert not isinstance(filtCigar, str)
     seq = read.seq
     dgap = dict(read.get_aligned_pairs())
-    return {k: l for k, l in zip([[dgap[i] for i in g[1]] for g in filtCigar],
-                                 [[seq[i] for i in g[1]] for g in filtCigar])}
+    try:
+        dgapList = [[dgap[i] for i in g[1]] for g in filtCigar]
+        seqList = [[seq[i] for i in g[1]] for g in filtCigar]
+        return {k: l for k, l in zip([[dgap[i] for i in g[1]] for g in filtCigar],
+                                     [[seq[i] for i in g[1]] for g in filtCigar])}
+    except TypeError:
+        print(repr(dgap))
+        print(repr(filtCigar))
+        print(repr(seq))
+        if("dgapList" in locals()):
+            print(repr(dgapList))
+        if("seqList" in locals()):
+            print(repr(seqList))
+        print(read.cigarstring)
+        raise TypeError
 
 
 @cython.locals(cigarOp=cython.long)
-def GetGC2NMapForRead(read, cigarOp=-1):
+def GetGC2NMapForRead(pysam.calignmentfile.AlignedSegment read,
+                      cigarOp=-1):
     """
     Returns a dictionary of genomic positions: nucleotides for a provided
     cigar operation.
@@ -1331,7 +1352,8 @@ def GetGC2NMapForRead(read, cigarOp=-1):
 
 
 @cython.locals(cigarOp=cython.long)
-def GetReadSequenceForCigarOp(read, cigarOp=-1):
+def GetReadSequenceForCigarOp(pysam.calignmentfile.AlignedSegment read,
+                              cigarOp=-1):
     if(read.cigar is None):
         raise ThisIsMadness("Cigar must not be None to get "
                             "sequence for an operation!")
@@ -1350,11 +1372,12 @@ def GetReadSequenceForCigarOp(read, cigarOp=-1):
     raise ThisIsMadness("I haven't finished writing this function. Oops!")
 
 
-@cython.locals(k=cython.long)
-def GetDeletedCoordinates(read):
+@cython.returns(list)
+def GetDeletedCoordinates(pysam.calignmentfile.AlignedSegment read):
     """
     Returns a list of integers of genomic coordinates for deleted bases.
     """
+    cdef cython.long k
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
     apList = read.get_aligned_pairs()
     k = 0
@@ -1374,6 +1397,14 @@ def GetDeletedCoordinates(read):
             break
     apList = apList[0:k + 1]
     return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])
+
+
+def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
+    """
+    TODO: Use the GetDeletedCoordinates function as a basis for getting
+    the coordinate boundaries of inserted bases.
+    """
+    pass
 
 
 @memoize
@@ -1456,6 +1487,7 @@ def PlotNormalFit(array, outfile="default", maxFreq=0.2):
     return outfile
 
 
+@cython.returns(tuple)
 def CalculateFamStats(inFq):
     """
     Calculates mean family size, families of size 1, mean family size for
@@ -1497,6 +1529,7 @@ def CalculateFamStats(inFq):
 
 @memoize
 @cython.locals(n=cython.long)
+@cython.returns(list)
 def bitfield(n):
     """
     Parses a bitwise flag into an array of 0s and 1s.
@@ -1506,6 +1539,7 @@ def bitfield(n):
 
 
 @cython.locals(read=pysam.calignmentfile.AlignedSegment)
+@cython.returns(cython.str)
 def ASToFastqSingle(read):
     """
     Makes a string containing a single fastq record from
@@ -1525,9 +1559,9 @@ def ASToFastqSingle(read):
                 "".join([ph2chrDict[i] for i in read.query_qualities]))
 
 
-@cython.locals(read=pysam.calignmentfile.AlignedSegment,
-               alignmentfileObj=pysam.calignmentfile.AlignmentFile)
-def ASToFastqPaired(read, alignmentfileObj):
+@cython.locals(alignmentfileObj=pysam.calignmentfile.AlignmentFile)
+@cython.returns(cython.str)
+def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read, alignmentfileObj):
     """
     Works for coordinate-sorted and indexed BAM files, but throws
     an error if the mate is unmapped.
@@ -1618,6 +1652,7 @@ def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
 
 
 @cython.locals(rec=pysam.TabProxies.VCFProxy)
+@cython.returns(dict)
 def makeinfodict(rec):
     """
     Returns a dictionary of info fields for a tabix VCF Proxy
@@ -1631,6 +1666,8 @@ def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
     """
     Tests whether or not a given record should pass.
     """
+    cdef dict InfoDict
+    cdef dict Counts
     cdef cython.long ACR
     cdef cython.long ceiling
     cdef cython.long AC

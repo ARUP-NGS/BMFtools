@@ -28,6 +28,7 @@ from operator import div as odiv
 from operator import mul as omul
 from operator import add as oadd
 from subprocess import check_call
+oagseq = oag("seq")
 
 import Bio
 from Bio import SeqIO
@@ -81,7 +82,8 @@ def chr2phFunc(x):
 
 
 @cython.locals(checks=cython.int, highMem=cython.bint,
-               parallel=cython.bint)
+               parallel=cython.bint, inFq1=cython.str,
+               inFq2=cython.str, sortMem=cython.str)
 def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=True):
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
@@ -184,7 +186,7 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], len(R), famLimit))
         R = R[:famLimit]
-    seqs = [str(r.seq) for r in R]
+    seqs = map(str, map(oagseq, R))
     maxScore = 0
     for seq in seqs:
         # print("Seq: {}".format(str(seq)))
@@ -213,6 +215,7 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
 
 
 @cython.locals(Success=cython.bint)
+@cython.returns(cython.str)
 def compareFastqRecordsInexactNumpy(R):
     """
     Calculates the most likely nucleotide
@@ -279,7 +282,8 @@ def compareFastqRecordsInexactNumpy(R):
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB64=cython.bint, lenR=cython.int,
                numEq=cython.int, maxScore=cython.int, ND=cython.int)
-def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
+@cython.returns(cython.str)
+def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
                        famLimit=1000, keepFails=True,
                        makeFA=True, makePV=True):
     """
@@ -288,6 +292,15 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
     """
     cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
     cdef np.ndarray[dtypei_t, ndim = 1] FA
+    cdef cython.str lenRStr
+    cdef list seqs
+    cdef cython.str seq
+    cdef cython.str seqItem
+    cdef cython.str finalSeq
+    cdef cython.str PVString
+    cdef cython.str QualString
+    cdef cython.str TagString
+    cdef cython.str consFqString
     compress85 = True
     lenR = len(R)
     lenRStr = str(lenR)
@@ -355,6 +368,7 @@ def compareFqRecsFqPrx(R, stringency=0.9, hybrid=False,
 
 
 @cython.locals(Success=cython.bint, ND=cython.int, lenR=cython.int)
+@cython.returns(cython.str)
 def compareFqRecsFast(R, makePV=True, makeFA=True):
     """
     Calculates the most likely nucleotide
@@ -386,7 +400,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
         dtype=np.int64)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
-    quals[quals < 3] = 1
+    quals[quals < 3] = 0
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)
@@ -413,14 +427,12 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
         phredQuals = abs(phredQuals)
     if(npany(ngreater(phredQuals, 93))):
-        PVString = oadd(" #G~PV=",
-                                ",".join(phredQuals.astype(str)))
+        PVString = " #G~PV=" +  ",".join(phredQuals.astype(str))
         phredQuals[phredQuals > 93] = 93
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     else:
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = oadd(" #G~PV=",
-                                ",".join(phredQuals.astype(str)))
+        PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
     TagString = "".join([" #G~FM=", str(lenR), " #G~ND=",
                          str(ND), " #G~FA=", FA.astype(str), PVString])
     consolidatedFqStr = "\n".join([
@@ -434,12 +446,16 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
 
 
 @cython.locals(makeCall=cython.bint)
+@cython.returns(cython.str)
 def CutadaptPaired(fq1, fq2, p3Seq="default", p5Seq="default",
                          overlapLen=6, makeCall=True):
     """
     Returns a string which can be called for running cutadapt v.1.7.1
     for paired-end reads in a single call.
     """
+    cdef cython.str outfq1
+    cdef cython.str outfq2
+    cdef cython.str commandStr
     outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
     outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
     if(p3Seq == "default"):
@@ -464,6 +480,7 @@ def CutadaptPaired(fq1, fq2, p3Seq="default", p5Seq="default",
 
 
 @cython.locals(overlapLen=cython.long)
+@cython.returns(cython.str)
 def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Returns a string which can be called for running cutadapt v.1.7.1.
@@ -535,6 +552,8 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     cdef pysam.cfaidx.FastqProxy read1
     cdef pysam.cfaidx.FastqProxy read2
     cdef pysam.cfaidx.FastqProxy indexRead
+    cdef cython.str outfq1
+    cdef cython.str outfq2
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
@@ -730,6 +749,7 @@ def fastx_trim(infq, outfq, n):
     return(command_str)
 
 
+@cython.returns(cython.str)
 def GetDescTagValue(readDesc, tag="default"):
     """
     Gets the value associated with a given tag.
@@ -1219,6 +1239,7 @@ def compareConsSpeed(fq1, fq2, stringency=0.666, readPairsPerWrite=100):
 
 
 @cython.locals(asDict=cython.bint)
+@cython.returns(cython.str)
 def CalcFamUtils(inFq, asDict=False):
     """
     Uses bioawk to get summary statistics on a fastq file quickly.

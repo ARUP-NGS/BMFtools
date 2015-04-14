@@ -91,7 +91,7 @@ class VCFFile:
         for headerLine in self.header:
             FileHandle.write("{}\n".format(headerLine))
         for VCFEntry in self.Records:
-            FileHandle.write("{}\n".format(VCFEntry.__str__()))
+            FileHandle.write("{}\n".format(str(VCFEntry)))
         FileHandle.close()
         return
 
@@ -281,7 +281,8 @@ class IterativeVCFFile:
                          self.Filename)
 
 
-def is_reverse_to_str(boolean):
+@cython.returns(cython.str)
+def is_reverse_to_str(cython.bint boolean):
     if(boolean):
         return "reverse"
     elif(boolean is False):

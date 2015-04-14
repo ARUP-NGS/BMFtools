@@ -45,6 +45,7 @@ def ExtendBed(bedfile, buffer=100, outbed="default"):
     commandStr = ("cat %s | awk 'FS=OFS=\"\t\" {{print $1, $2 - " % bedfile +
                   "{0}, $3 + {0}, $4, $5, $6, $7, $8, $9, ".format(buffer) +
                   "$10, $11, $12}} > %s'" % outbed)
+    pl("ExtendBed command string: " % commandStr)
     PipedShellCall(outbed)
     return outbed
 

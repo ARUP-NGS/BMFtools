@@ -35,6 +35,7 @@ import utilBMF
 
 
 @cython.locals(paired=cython.bint)
+@cython.returns(list)
 def GetDiscordantReadPairs(pPileupColObj):
     """
     Takes a pPileupColumn object (python PileupColumn) as input
@@ -216,7 +217,8 @@ class PRInfo:
             self.NF = aopt("NF")
 
 
-def is_reverse_to_str(boolean):
+@cython.returns(cython.str)
+def is_reverse_to_str(cython.bint boolean):
     if(boolean):
         return "reverse"
     elif(boolean is False):

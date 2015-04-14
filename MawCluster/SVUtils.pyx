@@ -12,6 +12,7 @@ from numpy import argmax as nargmax
 import cython
 cimport cython
 import cytoolz
+cimport pysam.calignmentfile
 
 import uuid
 import copy
@@ -22,6 +23,18 @@ import operator
 from operator import attrgetter as oag
 from operator import itemgetter as oig
 from operator import add as oadd
+from utilBMF.HTSUtils import ReadOverlapsBed as RIB
+
+
+cdef class TestClass:
+    """
+    Testing some of cython's abilities.
+    """
+    cdef public cython.str text
+    cdef public cython.long length
+    def __init__(self, inStr):
+        self.length = len(inStr)
+        self.text = inStr
 
 
 class XLocSegment:
@@ -31,8 +44,8 @@ class XLocSegment:
     depth of supporting reads, the regions involved, and a list of those reads.
     TODO: Eventually remove the assertions for speed.
     """
-
-    def __init__(self, interval="default", DOR="default",
+    @cython.locals(DOR=cython.long)
+    def __init__(self, interval="default", DOR=0,
                  bedIntervals="default"):
         try:
             assert isinstance(bedIntervals[0][0], str) and isinstance(
@@ -447,86 +460,48 @@ SVParamDict['DRP'] = 0.5
 #  such that cycling through the list will be easier.
 #  Extra field provided for each.
 
-
-SVTestDict = {}
-
-
-@cython.returns(cython.bint)
-def LI_SV_Tag_Condition(read1, read2, extraField=100000):
-    maxInsert = int(extraField)
-    return (abs(read1.tlen) >= maxInsert or abs(read2.tlen) >= maxInsert)
-
-SVTestDict['LI'] = LI_SV_Tag_Condition
-
-
-@cython.returns(cython.bint)
-def MDC_SV_Tag_Condition(read1, read2, extraField="default"):
-    return (read1.reference_id != read2.reference_id)
-
-SVTestDict['MDC'] = MDC_SV_Tag_Condition
-
-
-@cython.returns(cython.bint)
-def ORU_SV_Tag_Condition(read1, read2, extraField="default"):
-    return (sum([read1.is_unmapped, read2.is_unmapped]) == 1)
-
-SVTestDict['ORU'] = ORU_SV_Tag_Condition
-
-
-@cython.returns(cython.bint)
-def MSS_SV_Tag_Condition(read1, read2, extraField="default"):
-    if(read1.reference_id == read2.reference_id):
-        return ((sum([read1.is_reverse, read2.is_reverse]) != 1 and
-                 read1.reference_id == read2.reference_id))
-    else:
-        return False
-
-SVTestDict['MSS'] = MSS_SV_Tag_Condition
-
-
-@cython.returns(cython.bint)
-def ORB_SV_Tag_Condition(read1, read2, extraField="default"):
+class SVTagFn(object):
     """
-    Returns true iff precisely one read is in the bed file region.
+    Base class for SV tag testers.
     """
-    bedRef = extraField
-    if(bedRef == "default"):
-        raise ThisIsMadness("bedRef must be provded to run this test!")
-    from utilBMF.HTSUtils import ReadOverlapsBed as ORIB
-    return (sum([ORIB(read1, bedRef=bedRef), ORIB(read2, bedRef=bedRef)]) == 1)
+    def __init__(self, func=FacePalm, extraField="default",
+                 tag="default"):
+        self.extraField = extraField
+        self.func = func
+        if(func == FacePalm):
+            FacePalm("func must be set for SVTag condition!")
+        if(tag == "default"):
+            raise FacePalm("tag must be set for SVTagTest!")
+        self.tag = tag
 
-SVTestDict['ORB'] = ORB_SV_Tag_Condition
+    def test(self, pysam.calignmentfile.AlignedSegment read1,
+             pysam.calignmentfile.AlignedSegment read2,
+             extraField="default"):
+        if(extraField != "default"):
+            if self.func(read1, read2, extraField=extraField):
+                try:
+                    SVTag = read1.opt("SV")
+                    read1.set_tag("SV", SVTag + "," + self.tag, "Z")
+                    read2.set_tag("SV", SVTag + "," + self.tag, "Z")
+                except KeyError:
+                    read1.set_tag("SV", self.tag, "Z")
+                    read2.set_tag("SV", self.tag, "Z")
+        else:
+            if self.func(read1, read2, extraField=self.extraField):
+                try:
+                    SVTag = read1.opt("SV")
+                    read1.set_tag("SV", SVTag + "," + self.tag, "Z")
+                    read2.set_tag("SV", SVTag + "," + self.tag, "Z")
+                except KeyError:
+                    read1.set_tag("SV", self.tag, "Z")
+                    read2.set_tag("SV", self.tag, "Z")
+        return read1, read2
 
 
 @cython.returns(cython.bint)
-def ORS_SV_Tag_Condition(read1, read2, extraField="default"):
-    """
-    Returns true iff precisely one read is soft-clipped and the reads are
-    considered properly mapped.
-    """
-    return (sum([is_read_softclipped(read1),
-                 is_read_softclipped(read2)]) == 1
-            and read1.is_proper_pair)
-
-SVTestDict['ORS'] = ORS_SV_Tag_Condition
-
-
-@cython.returns(cython.bint)
-def MI_SV_Tag_Condition(read1, read2, extraField=SVParamDict['MI']):
-    """
-    Returns true if TLEN >= minimum length && TLEN =< LI requirements.
-    (Defaults to 500 and 100000)
-    Hoping to have it help with bigger indels.
-    """
-    return (abs(read1.tlen) >= extraField[0] and
-            abs(read1.tlen) <= extraField[1])
-
-SNVParamDict = defaultdict(returnDefault)
-SNVTestDict = {}
-
-
-@cython.returns(cython.bint)
-def DRP_SNV_Tag_Condition(read1, read2, extraField=SVParamDict['DRP']):
+def DRP_SNV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                          pysam.calignmentfile.AlignedSegment read2,
+                          extraField=SVParamDict['DRP']):
     """
     Duplex Read Pair
     Whether or not a read pair shares some minimum fraction of aligned
@@ -536,34 +511,145 @@ def DRP_SNV_Tag_Condition(read1, read2, extraField=SVParamDict['DRP']):
         return ReadPairIsDuplex(ReadPair(read1, read2), minShare=extraField)
     else:
         return ReadPairIsDuplex(ReadPair(read1, read2))
-
+SNVTestDict = {}
 SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
+SVTestList = [SVTagFn(func=DRP_SNV_Tag_Condition, extraField=100000, tag="DRP")]
 
 
 @cython.returns(cython.bint)
-def DSD_SV_Tag_Condition(read1, read2, extraField="default"):
+def LI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                        pysam.calignmentfile.AlignedSegment read2,
+                        cython.long extraField=100000):
+    maxInsert = extraField
+    return abs(read1.tlen) >= maxInsert
+
+
+SVTestList.append(SVTagFn(func=LI_SV_Tag_Condition, extraField=100000, tag="LI"))
+SVTestDict = {"LI": LI_SV_Tag_Condition}
+
+
+@cython.returns(cython.bint)
+def MDC_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
+    return (read1.reference_id != read2.reference_id)
+
+SVTestDict['MDC'] = MDC_SV_Tag_Condition
+SVTestList.append(SVTagFn(func=MDC_SV_Tag_Condition, tag="MDC"))
+
+@cython.returns(cython.bint)
+def ORU_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
+    return (sum([read1.is_unmapped, read2.is_unmapped]) == 1)
+
+SVTestDict['ORU'] = ORU_SV_Tag_Condition
+SVTestList.append(SVTagFn(func=ORU_SV_Tag_Condition, tag="ORU"))
+
+
+@cython.returns(cython.bint)
+def MSS_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
+    if(read1.reference_id == read2.reference_id):
+        return ((sum([read1.is_reverse, read2.is_reverse]) != 1 and
+                 read1.reference_id == read2.reference_id))
+    else:
+        return False
+
+SVTestDict['MSS'] = MSS_SV_Tag_Condition
+SVTestList.append(SVTagFn(func=MSS_SV_Tag_Condition, tag="MSS"))
+
+
+@cython.returns(cython.bint)
+def ORB_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
+    """
+    Returns true iff precisely one read is in the bed file region.
+    """
+    bedRef = extraField
+    if(bedRef == "default"):
+        raise ThisIsMadness("bedRef must be provded to run this test!")
+    return not (sum([RIB(read1, bedRef=bedRef), RIB(read2, bedRef=bedRef)]) - 1)
+
+SVTestDict['ORB'] = ORB_SV_Tag_Condition
+SVTestList.append(SVTagFn(func=ORB_SV_Tag_Condition, tag="ORB"))
+
+
+@cython.returns(cython.bint)
+def ORS_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
+    """
+    Returns true iff precisely one read is soft-clipped and the reads are
+    considered properly mapped.
+    """
+    return read1.is_proper_pair and not (sum([is_read_softclipped(read1),
+                                              is_read_softclipped(read2)]) - 1)
+
+"""
+SVTestDict['ORS'] = ORS_SV_Tag_Condition
+SVTestList.append(SVTagFn(func=ORS_SV_Tag_Condition, tag="ORS"))
+I kind of hate the ORS tag. Getting rid of it for now!
+"""
+
+
+@cython.returns(cython.bint)
+def MI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                        pysam.calignmentfile.AlignedSegment read2,
+                        extraField=SVParamDict['MI']):
+    """
+    Returns true if TLEN >= minimum length && TLEN =< LI requirements.
+    (Defaults to 500 and 100000)
+    Hoping to have it help with bigger indels.
+    """
+    return (abs(read1.tlen) >= extraField[0] and
+            abs(read1.tlen) <= extraField[1])
+
+SVTestList.append(SVTagFn(func=MI_SV_Tag_Condition, tag="MI",
+                          extraField=SVParamDict["MI"]))
+
+SNVParamDict = defaultdict(returnDefault)
+
+
+@cython.returns(cython.bint)
+def DSD_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
     """
     Duplex Shared Deletion - if read1 and read2 share a deletion
     at the same genomic coordinates.
     """
-    if(read1.cigarstring is None or read2.cigarstring is None):
+    try:
+        if("DRP" not in read1.opt("SV")):
+            return False
+    except KeyError:
+        pass #  Don't sweat it.
+    if(read1.cigarstring is None or read2.cigarstring is None
+       or read1.reference_id != read2.reference_id):
         return False
-    if(read1.reference_id != read2.reference_id):
-        return False
-    if("D" in read1.cigarstring and "D" in read2.cigarstring):
-        if(GetDeletedCoordinates(read1) == GetDeletedCoordinates(read2)):
-            return True
+    if("D" in read1.cigarstring and "D" in read2.cigarstring and
+       GetDeletedCoordinates(read1) == GetDeletedCoordinates(read2)):
+        return True
     return False
 
-SVTestDict['DSD'] = DSD_SV_Tag_Condition
+SVTestList.append(SVTagFn(func=DSD_SV_Tag_Condition, tag="DSD"))
 
 
 @cython.returns(cython.bint)
-def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
+def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extraField="default"):
     """
     Duplex Shared Insertion - if read1 and read2 share an insertion
     at the same genomic coordinates.
     """
+    try:
+        if("DRP" not in read1.opt("SV")):
+            return False
+    except KeyError:
+        pass #  Don't sweat it.
     if(read1.cigarstring is None or read2.cigarstring is None):
         return False
     if("I" not in read1.cigarstring or "I" not in read2.cigarstring):
@@ -573,10 +659,9 @@ def DSI_SV_Tag_Condition(read1, read2, extraField="default"):
     if(GetGC2NMapForRead(read1, cigarOp=1) == GetGC2NMapForRead(read2, cigarOp=1)):
         return True
     return False
-# SVTestDict['DSI'] = DSI_SV_Tag_Condition
 
+# SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition, tag="DSI")) # Not until fixed.
 
-SVTestDict = dict(oadd(SVTestDict.items(), SNVTestDict.items()))
 SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = defaultdict(returnDefault,
                           oadd(SVParamDict.items(),
@@ -584,25 +669,26 @@ SVParamDict = defaultdict(returnDefault,
 
 
 @cython.locals(SVR=cython.bint, maxInsert=cython.long)
-def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
+@cython.returns(tuple)
+def MarkSVTags(pysam.calignmentfile.AlignedSegment read1,
+               pysam.calignmentfile.AlignedSegment read2,
+               bedObj="default", maxInsert=100000,
                testDict=SVTestDict, paramDict=SVParamDict):
     """
     Marks all SV tags on a pair of reads.
     """
     from utilBMF.HTSUtils import ParseBed
-    if bedfile == "default":
+    if bedObj == "default":
         raise ThisIsMadness("Bed file required for marking SV tags.")
-    bed = ParseBed(bedfile)
-    SVParamDict['ORB'] = bed
+    SVParamDict['ORB'] = bedObj
     SVParamDict['LI'] = maxInsert
     FeatureList = sorted([i for i in SVTestDict.keys()])
     SVR = False
     assert read1.query_name == read2.query_name
     # print("SVParamDict: {}".format(repr(SVParamDict)))
     # print("SVTestDict: {}".format(repr(SVTestDict)))
-    svGet = SVParamDict.get
     for key in FeatureList:
-        if(SVTestDict[key](read1, read2, extraField=svGet(key))):
+        if(SVTestDict[key](read1, read2, extraField=SVParamDict[key])):
             SVR = True
             try:
                 read1.setTag("SV", read1.opt("SV") + "," + key)
@@ -628,14 +714,46 @@ def MarkSVTags(read1, read2, bedfile="default", maxInsert=100000,
     return read1, read2
 
 
+@cython.locals(SVR=cython.bint, maxInsert=cython.long)
+@cython.returns(tuple)
+def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
+                 pysam.calignmentfile.AlignedSegment read2,
+                 bedObj="default", maxInsert=100000,
+                 testDict=SVTestDict, paramDict=SVParamDict):
+    """
+    Marks all SV tags on a pair of reads.
+    """
+    if bedObj == "default":
+        raise ThisIsMadness("Bed file required for marking SV tags.")
+    SVParamDict['ORB'] = bedObj
+    SVParamDict['LI'] = maxInsert
+    SVPKeys = SVParamDict.keys()
+    SVR = False
+    assert read1.query_name == read2.query_name
+    # print("SVParamDict: {}".format(repr(SVParamDict)))
+    # print("SVTestDict: {}".format(repr(SVTestDict)))
+    for test in SVTestList:
+        if(test.tag in SVPKeys):
+            read1, read2 = test.test(read1, read2,
+                                     extraField=SVParamDict[test.tag])
+        else:
+            read1, read2 = test.test(read1, read2)
+    try:
+        read1.opt("SV")
+    except KeyError:
+        read1.setTag("SV", "NF")
+        read2.setTag("SV", "NF")
+    return read1, read2
+
+
+
 def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
                                bedfile="default",
                                supplementary="default",
-                               maxInsert=100000,
+                               cython.long maxInsert=100000,
                                tempBAMPrefix="default",
                                FullBam="default",
-                               summary="default",
-                               writeSVBam=False):
+                               summary="default"):
     """
     Requires a name-sorted, paired-end bam file where pairs have been kept
     together. (If a read is to be removed, its mate must also be removed.)
@@ -654,6 +772,9 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     (Spanning Bed with Improper pair)
     NF for None Found
     """
+    cdef pysam.calignmentfile.AlignedSegment read
+    cdef pysam.calignmentfile.AlignedSegment read1
+    cdef pysam.calignmentfile.AlignedSegment read2
     if(SVBam == "default"):
         SVBam = '.'.join(inBAM.split('.')[0:-1]) + '.sv.bam'
     if(FullBam == "default"):
@@ -668,13 +789,8 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(writeSVBam):
-        SVOutHandle = pysam.AlignmentFile(SVBam, "wb", template=inHandle)
-    else:
-        SVBam ="NotWritten"
     FullOutHandle = pysam.AlignmentFile(FullBam, "wb", template=inHandle)
-    FeatureList = sorted(SVTestDict.keys())
-    pl("FeatureList: {}".format(FeatureList))
+    fhw = FullOutHandle.write
     for read in inHandle:
         WritePair = False
         if(read.is_read1):
@@ -683,28 +799,12 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
         if(read.is_read2):
             read2 = read
         assert read1.query_name == read2.query_name
-        read1, read2 = MarkSVTags(read1, read2, bedfile=bedfile)
-        if(read1.opt("SV") != "NF"):
-            WritePair = True
-            for key in read1.opt("SV").split(","):
-                SVCountDict[key] = oadd(SVCountDict[key], 1)
-        if(WritePair):
-            if("SVOutHandle" in locals()):
-                SVOutHandle.write(read1)
-                SVOutHandle.write(read2)
-            SVCountDict["SVR"] = oadd(SVCountDict["SVR"], 1)
-        else:
-            SVCountDict["NOSVR"] = oadd(SVCountDict["NOSVR"], 1)
-            read1.setTag("SV", "NF", "Z")
-            read2.setTag("SV", "NF", "Z")
-        FullOutHandle.write(read1)
-        FullOutHandle.write(read2)
+        read1, read2 = MarkSVTagsFn(read1, read2, bedObj=bed)
+        fhw(read1)
+        fhw(read2)
     inHandle.close()
-    if("SVOutHandle" in locals()):
-        SVOutHandle.close()
     FullOutHandle.close()
-    SVCountDict["TOTAL"] = oadd(SVCountDict["SVR"],
-                                SVCountDict["NOSVR"])
+    SVCountDict["TOTAL"] = SVCountDict["SVR"] + SVCountDict["NOSVR"]
     for key in SVCountDict.keys():
         pl("Number of reads marked with key {}: {}".format(
             key, SVCountDict[key]))
@@ -731,17 +831,13 @@ def MakeConsensus(seqs):
     pass
 
 
-def BkptSequenceInterReads(reads):
+def BkptSequenceInterReads(list reads):
     """
     Not written yet.
     """
+    cdef pysam.calignmentfile.AlignedSegment read
     raise ThisIsMadness("Unfinished function.")
     newSeq = ""
-    try:
-        assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
-    except AssertionError:
-        FacePalm("BkptSequenceInterReads requires a list of "
-                 "pysam AlignedSegment objects as input!")
     try:
         assert len(set([read.reference_id for read in reads if
                         read.is_unmapped is False])) == 2
@@ -751,7 +847,9 @@ def BkptSequenceInterReads(reads):
     return newSeq
 
 
+@cython.returns(tuple)
 def SplitSCReadSet(reads):
+    cdef pysam.calignmentfile.AlignedSegment read
     scReads = []
     clippedSeqs = []
     for read in reads:
@@ -769,6 +867,7 @@ def BkptSequenceIntraReads(reads):
     """
     # reads, clippedSeqs = SplitSCReadSet(reads)
 
+    cdef pysam.calignmentfile.AlignedSegment read
     Success = False
     newSeq = ""
     try:
@@ -803,7 +902,6 @@ def BkptSequenceIntraRP(ReadPairs):
     """
     return BkptSequenceIntraReads(list(cfi([i.getReads() for i in
                                             ReadPairs])))
-
 
 def BkptSequenceInterRP(ReadPairs):
     """

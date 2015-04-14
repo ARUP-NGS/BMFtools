@@ -231,7 +231,6 @@ Most options are available for command-line as well. If an option is set in both
 1. SNV:
     0. Filters and Preprocessing/Postprocessing
         1. Add command-line and config file support for selecting minAF for variant caller.
-        2. Change it so that the FFPE FILTER field is being appropriately added...
     1. Error Characterization Code
         1. Write database reading and processing.
     3. Info Fields

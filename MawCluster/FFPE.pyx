@@ -112,6 +112,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     return freq
 
 
+@cython.returns(dtype128_t)
 def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
                   minGCcount=50):
 
@@ -282,6 +283,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
 
 
 @memoize
+@cython.locals(l=cython.str)
 @cython.returns(cython.float)
 def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
     """
@@ -292,7 +294,7 @@ def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
 
 
 @cython.returns(cython.float)
-def GetTabixDeamFreq(inVCF):
+def GetTabixDeamFreq(cython.str inVCF):
     """
     Gets deamination frequency for a tabixed VCF file, under the assumption
     that the majority of C-T/G-A calls at low frequencies which are not

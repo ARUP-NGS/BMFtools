@@ -14,6 +14,7 @@ from operator import attrgetter as oag
 from operator import div as odiv
 import string
 import uuid
+import sys
 
 import numpy as np
 cimport numpy as np
@@ -35,7 +36,6 @@ from cytoolz import map as cmap
 
 from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
-from MawCluster.SVUtils import MarkSVTags
 from MawCluster.PileupUtils import pPileupRead
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
                               FractionAligned, SWRealignAS, FractionSoftClipped)
@@ -256,10 +256,13 @@ def pairedBarcodeTagging(
     cdef dtype128_t r2FracAlign
     cdef dtype128_t r1FracSC
     cdef dtype128_t r2FracSC
+    cdef cython.bint addDefault
+    cdef cython.str coorString
+    cdef cython.str contigSetStr
+    cdef dict descDict1
+    cdef dict descDict2
     if(realigner == "default"):
         raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
-    from MawCluster.SVUtils import SVParamDict
-    from MawCluster.SVUtils import SVTestDict
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -372,11 +375,6 @@ def pairedBarcodeTagging(
                                ("SF", r2FracSC, "f")])
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
-        """
-        read1bam, read2bam = MarkSVTags(read1bam, read2bam, bedfile=bedfile,
-                                        testDict=SVTestDict,
-                                        paramDict=SVParamDict)
-        """
         obw(read1bam)
         obw(read2bam)
     suppBAM.close()
@@ -806,6 +804,7 @@ def singleFilterBam(inputBAM, passBAM="default",
     Required: [SB]AM file, coordinate-sorted,
     supplementary and secondary alignments removed,unmapped reads retained.
     """
+    cdef pysam.calignmentfile.AlignedSegment read
     if(criteria == "default"):
         raise NameError("Filter Failed: Criterion Not Set.")
     if(passBAM == "default"):
@@ -838,3 +837,37 @@ def singleFilterBam(inputBAM, passBAM="default",
     failFilter.close()
     inBAM.close()
     return passBAM, failBAM
+
+
+def GetRPsWithI(inBAM, outBAM="default"):
+    """
+    Gets read pairs with an I in both R1 and R2's cigar strings.
+    Must be namesorted!
+    If outBAM is left as default, it chooses to write to a filename based
+    on the inBAM name.
+    """
+    cdef pysam.calignmentfile.AlignedSegment read1
+    cdef pysam.calignmentfile.AlignedSegment read2
+    cdef pysam.calignmentfile.AlignedSegment entry
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    if(outBAM == "default"):
+        outBAM = ".".join(inBAM.split(".")[0:-1]) + ".InsertedReadPairs.bam"
+    outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
+    ohw = outHandle.write
+    for entry in inHandle:
+        if(entry.is_read1):
+            read1 = entry
+            continue
+        if(entry.is_read2):
+            read2 = entry
+        try:
+            assert read1.query_name == read2.query_name
+        except AssertionError:
+            HTSUtils.FacePalm("Input fastq is not name sorted or is off in "
+                              "some other way! Abort!")
+        if(read2.cigarstring is None or read1.cigarstring is None or "I" not in read1.cigarstring or "I" not in read2.cigarstring):
+            continue
+        ohw(read1)
+        ohw(read2)
+    outHandle.close()
+    return outBAM
