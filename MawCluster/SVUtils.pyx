@@ -452,7 +452,7 @@ def returnDefault():
     return "default"
 
 SVParamDict = defaultdict(returnDefault)
-SVParamDict['LI'] = 100000
+SVParamDict['LI'] = 1
 SVParamDict['MI'] = [500, 100000]
 SVParamDict['DRP'] = 0.5
 

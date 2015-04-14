@@ -2,6 +2,7 @@
 import argparse
 import sys
 import warnings
+import cStringIO
 
 from MawCluster.VCFWriters import SNVCrawler
 from MawCluster.BCVCF import (VCFStats, CheckStdCallsForVCFCalls,
@@ -252,6 +253,10 @@ def main():
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
     if(args.bmfsuites == "snv"):
+        import cProfile
+        import pstats
+        pr = cProfile.Profile()
+        pr.enable()
         # Beckon the Kraken
         if(args.bed != "default"):
             OutVCF = SNVCrawler(args.inBAM,
@@ -279,6 +284,12 @@ def main():
                                 reference_is_path=True,
                                 OutVCF=args.outVCF)
             OutTable = VCFStats(OutVCF)
+        s = cStringIO.StringIO()
+        pr.disable()
+        sortby = "cumulative"
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        open("cProfile.stats.txt", "w").write(s.getvalue())
         sys.exit(0)
     if(args.bmfsuites == "vcfstats"):
         OutTable = VCFStats(args.inVCF)

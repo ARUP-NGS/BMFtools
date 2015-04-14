@@ -12,7 +12,7 @@ def main():
                       TransitionTable="default",
                       StrandedTTable="default",
                       bedfile="default",
-                      progRepInterval=1000
+                      progRepInterval=1
     '''
     parser.add_argument(
         '--bam',
@@ -44,13 +44,11 @@ def main():
         "-p",
         "--progRepInterval",
         help="Number of positions between progress reports.",
-        default=10000
-        )
+        default=10000, type=int)
     parser.add_argument(
         "--minMQ",
         help="Minimum mapping quality.",
-        default=10
-        )
+        default=10, type=int)
     parser.add_argument(
         "--minBQ",
         help="Minimum base quality.",

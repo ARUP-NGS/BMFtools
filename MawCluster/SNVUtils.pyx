@@ -252,8 +252,7 @@ class VCFPos:
     for writing VCF lines for each alt at a given position.
     """
     @cython.locals(requireDuplex=cython.bint, keepConsensus=cython.bint,
-                   minDuplexPairs=cython.long, MaxPValue=cython.float,
-                   NDP=cython.long)
+                   minDuplexPairs=cython.long, MaxPValue=cython.float)
     def __init__(self, PCInfoObject,
                  MaxPValue=1e-18,
                  keepConsensus=True,
@@ -262,7 +261,7 @@ class VCFPos:
                  minDuplexPairs=2,
                  reverseStrandFraction="default",
                  minFracAgreed=0.0, minFA=0, experiment="",
-                 NDP=-1, refHandle=None):
+                 cython.long NDP=-1, refHandle=None):
         if(isinstance(PCInfoObject, PCInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFPos requires an "
                                          "PCInfo for initialization")
@@ -351,39 +350,34 @@ class HeaderFileFormatLine:
         return self.str
 
 
-class HeaderInfoLine:
+cdef class HeaderInfoLine(object):
 
     """
     This class holds a VCF INFO header line.
     """
 
-    def __init__(self, ID="default", Number="default", Type="default",
-                 Description="default"):
-        Types = "integer,float,string,flag,character,string"
-        if(Type.lower() not in Types.lower().split(",")):
-            raise ThisIsMadness("Invalid Type provided!")
-        self.Type = Type
+    cdef public cython.str cType, cID, cDescription, str, cNumber
 
-        Numbers = "A,G"
-        try:
-            self.Number = int(Number)
-        except ValueError:
-            if(Number) in Numbers.split(','):
-                self.Number = Number
-            else:
-                raise ThisIsMadness("Invalid \"Number\" provided.")
-
-        self.ID = ID.upper()
+    def __init__(self, cython.str ID="default", cython.str Number="default",
+                 cython.str Type="default", cython.str Description="default"):
+        self.cType = Type
+        self.cNumber = Number
+        self.cID = ID.upper()
+        self.str = ("##INFO=<ID="
+                    "{},Number={},Type=".format(self.cID, self.cNumber) +
+                    "{},Description={}>".format(self.cType,
+                                                self.cDescription))
 
         if(Description != "default"):
-            self.Description = Description
+            self.cDescription = Description
         else:
             raise ThisIsMadness("A description is required.")
 
+    @cython.returns(cython.str)
     def __str__(self):
         self.str = ("##INFO=<ID="
-                    "{},Number={},Type=".format(self.ID, self.Number) +
-                    "{},Description={}>".format(self.Type, self.Description))
+                    "{},Number={},Type=".format(self.cID, self.cNumber) +
+                    "{},Description={}>".format(self.cType, self.cDescription))
         return self.str
 
 
@@ -699,7 +693,7 @@ HeaderInfoDict["FSR"] = HeaderInfoLine(
     ID="FSR",
     Type="Integer",
     Description="Number of reads left out of pileup due to SV tags.",
-    Number=1)
+    Number="1")
 HeaderInfoDict["RSF"] = HeaderInfoLine(
     ID="RSF",
     Type="Float",
@@ -733,17 +727,17 @@ HeaderInfoDict["QA"] = HeaderInfoLine(
 HeaderInfoDict["NUMALL"] = HeaderInfoLine(
     ID="NUMALL",
     Description="Number of unique alleles at position.",
-    Number=1,
+    Number="1",
     Type="Integer")
 HeaderInfoDict["BQF"] = HeaderInfoLine(
     ID="BQF",
     Description="Number of (merged) reads failed for low BQ.",
-    Number=1,
+    Number="1",
     Type="Integer")
 HeaderInfoDict["MQF"] = HeaderInfoLine(
     ID="MQF",
     Description="Number of (merged) reads failed for low MQ.",
-    Number=1,
+    Number="1",
     Type="Integer")
 HeaderInfoDict["TYPE"] = HeaderInfoLine(
     ID="TYPE",
@@ -753,27 +747,27 @@ HeaderInfoDict["TYPE"] = HeaderInfoLine(
 HeaderInfoDict["PVC"] = HeaderInfoLine(
     ID="PVC",
     Description="P-value cutoff used.",
-    Number=1,
+    Number="1",
     Type="Float")
 HeaderInfoDict["TACS"] = HeaderInfoLine(
     ID="TACS",
     Description="Total (Unmerged) Allele Count String.",
-    Number=1,
+    Number="1",
     Type="String")
 HeaderInfoDict["TAFS"] = HeaderInfoLine(
     ID="TAFS",
     Description="Total (Unmerged) Allele Frequency String.",
-    Number=1,
+    Number="1",
     Type="String")
 HeaderInfoDict["MACS"] = HeaderInfoLine(
     ID="MACS",
     Description="Merged Allele Count String.",
-    Number=1,
+    Number="1",
     Type="String")
 HeaderInfoDict["MAFS"] = HeaderInfoLine(
     ID="MAFS",
     Description="Merged Allele Frequency String.",
-    Number=1,
+    Number="1",
     Type="String")
 HeaderInfoDict["NDPS"] = HeaderInfoLine(
     ID="NDPS",
@@ -785,7 +779,7 @@ HeaderInfoDict["AARSF"] = HeaderInfoLine(ID="AARSF",
                                          "t position supporting any allele pa"
                                          "ssing all filters mapped to the rev"
                                          "erse strand",
-                                         Number=1,
+                                         Number="1",
                                          Type="Float")
 HeaderInfoDict["RSF"] = HeaderInfoLine(ID="RSF", Description="Fraction of r"
                                        "eads for given allele passing all f"
@@ -795,11 +789,11 @@ HeaderInfoDict["MNCS"] = HeaderInfoLine(ID="MNCS",
                                         Description="Minimum number of coordi"
                                         "nate sets for read pairs supporting "
                                         "variant to pass filter.",
-                                        Number=1, Type="Integer")
+                                        Number="1", Type="Integer")
 HeaderInfoDict["MDP"] = HeaderInfoLine("MDP",
                                        Description="Minimum duplex pairs supp"
                                        "orting variant to pass filter.",
-                                       Number=1,
+                                       Number="1",
                                        Type="Integer")
 HeaderInfoDict["MBP"] = HeaderInfoLine(ID="MBP",
                                        Description="Mean base position in rea"
@@ -820,22 +814,22 @@ HeaderInfoDict["AABPSD"] = HeaderInfoLine(ID="AABPSD",
                                           Description="Standard deviation of"
                                           " base position in read for all re"
                                           "ads at position passing filters.",
-                                          Number=1, Type="Float")
+                                          Number="1", Type="Float")
 HeaderInfoDict["MFRAC"] = HeaderInfoLine(
     ID="MFRAC", Description="Mean fraction of reads in a family supporting a "
     "nucleotide at this position", Number="A", Type="Float")
 HeaderInfoDict["MINFRACFILTER"] = HeaderInfoLine(
     ID="MINFRACFILTER", Description="Minimum fraction of reads in a family in"
-    "order to not be filtered out for discordance.", Number=1, Type="Float")
+    "order to not be filtered out for discordance.", Number="1", Type="Float")
 HeaderInfoDict["MINFRACCALL"] = HeaderInfoLine(
     ID="MINFRACCALL", Description="Minimum fraction of reads in a family "
-    "to be included in variant call", Number=1, Type="Float")
+    "to be included in variant call", Number="1", Type="Float")
 HeaderInfoDict["MFA"] = HeaderInfoLine(
     ID="MFA", Description="Mean number of reads in a family agreeing on allel"
     "e.", Number="A", Type="Float")
 HeaderInfoDict["MINFA"] = HeaderInfoLine(
     ID="MINFA", Description="Minimum number of agreeing reads in a family for"
-    "that family to be included in variant call", Number=1, Type="Integer")
+    "that family to be included in variant call", Number="1", Type="Integer")
 HeaderInfoDict["PFSD"] = HeaderInfoLine(
     ID="PFSD",
     Description="Standard deviation of Phred Fraction (summed phre"
@@ -850,39 +844,39 @@ HeaderInfoDict["MPF"] = HeaderInfoLine(
     Number="A", Type="Float")
 HeaderInfoDict["EST"] = HeaderInfoLine(ID="EST",
                                        Description="Excluded SV Tags",
-                                       Number=1, Type="String")
+                                       Number="1", Type="String")
 HeaderInfoDict["MFDN"] = HeaderInfoLine(
     ID="MFDN", Description="Maximum frequency expected for deamination noise",
-                                       Number=1, Type="Float")
+                                       Number="1", Type="Float")
 HeaderInfoDict["MFDNP"] = HeaderInfoLine(
     ID="MFDNP", Description="Phred probability for MFDN bounds",
-                                       Number=1, Type="Float")
+                                       Number="1", Type="Float")
 HeaderInfoDict["MINAAF"] = HeaderInfoLine(
     ID="MINAAF", Description="Lower bound for AAF given observed frequency a"
     "nd sampling error with confidence described by BINOMP (phred-encoded)",
-    Number=1, Type="Float")
+    Number="1", Type="Float")
 HeaderInfoDict["MAXAAF"] = HeaderInfoLine(
     ID="MAXAAF", Description="Upper bound for AAF given observed frequency a"
     "nd sampling error with confidence described by BINOMP (phred-encoded)",
-    Number=1, Type="Float")
+    Number="1", Type="Float")
 HeaderInfoDict["BNP"] = HeaderInfoLine(
     ID="BNP", Description="Phred-encoded confidence chosen for calculating "
     "MAXAAF and MINAAF",
-    Number=1, Type="Float")
+    Number="1", Type="Float")
 HeaderInfoDict["FFM"] = HeaderInfoLine(
     ID="FFM", Description="Number of reads failed for too few reads in a fami"
-    "ly", Number=1, Type="Integer")
+    "ly", Number="1", Type="Integer")
 HeaderInfoDict["FQC"] = HeaderInfoLine(
     ID="FQC", Description="Number of reads failed for not passing QC ",
-    Number=1, Type="Integer")
+    Number="1", Type="Integer")
 HeaderInfoDict["FAF"] = HeaderInfoLine(
     ID="FAF", Description=("Number of reads failed for not passing "
                            "Aligned Fraction filter."),
-    Number=1, Type="Integer")
+    Number="1", Type="Integer")
 HeaderInfoDict["NAF"] = HeaderInfoLine(
     ID="NAF", Description="Number of amplicon-specific failed reads for "
     "pileup in case of mispriming. ",
-    Number=1, Type="Integer")
+    Number="1", Type="Integer")
 HeaderInfoDict["TND"] = HeaderInfoLine(
     ID="TND", Description="Total number of differences between all reads in a"
     "ll families and the families' respective consensus sequences.",
@@ -901,11 +895,11 @@ HeaderInfoDict["NFSD"] = HeaderInfoLine(
 HeaderInfoDict["NDP"] = HeaderInfoLine(
     ID="NDP", Description="Number of read pairs not included in pileup due to"
     "disagreement on the base call. Large numbers suggest context-specific er"
-    "ror modes.", Type="Integer", Number=1)
+    "ror modes.", Type="Integer", Number="1")
 HeaderInfoDict["MINAF"] = HeaderInfoLine(
     ID="MINAF",
     Description="Minimum aligned fraction to be included in call.",
-    Number=1, Type="Float")
+    Number="1", Type="Float")
 
 
 """
@@ -919,7 +913,7 @@ HeaderFormatDict["DP"] = HeaderFormatLine(
     ID="DP",
     Type="Integer",
     Description=("Merged Read Depth."),
-    Number=1)
+    Number="1")
 HeaderFormatDict["DPA"] = HeaderFormatLine(
     ID="DPA",
     Type="Integer",

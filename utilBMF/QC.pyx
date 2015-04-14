@@ -53,7 +53,7 @@ def ExtendBed(bedfile, buffer=100, outbed="default"):
 def coverageBed(inBAM, bed="default", outbed="default"):
     """
     Uses samtool bedcov tool.
-    Requires samtools >= 1.0
+    Requires samtools >= 1.
     If Popen is true, instead of calling and waiting for the
     call to finish successfully, it opens a Popen instance which can be
     queried and returns a tuple of the Popen and the outbed. Use if you

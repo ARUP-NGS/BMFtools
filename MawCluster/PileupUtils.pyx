@@ -24,14 +24,16 @@ from numpy import sum as nsum
 from numpy import array as nparray
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
+cimport pysam.calignmentfile
 import cython
 from cytoolz import map as cmap, frequencies as cyfreq, partition as ctpartition
 
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import ReadPair, printlog as pl
+from utilBMF.HTSUtils import ReadPair, printlog as pl, pPileupRead, PileupReadPair
 from utilBMF import HTSUtils
 import utilBMF
+import utilBMF.HTSUtils
 
 
 @cython.locals(paired=cython.bint)
@@ -62,64 +64,15 @@ def GetDiscordantReadPairs(pPileupColObj):
 nucList = ["A", "C", "G", "T"]
 
 
-class pPileupRead:
-    """
-    Python container for the PileupRead proxy in pysam
-    """
-    def __init__(self, PileupRead):
-        self.alignment = PileupRead.alignment
-        self.indel = PileupRead.indel
-        self.is_del = PileupRead.is_del
-        self.level = PileupRead.level
-        self.query_position = PileupRead.query_position
-        self.name = self.alignment.qname
-        self.BaseCall = self.alignment.seq[self.query_position]
-
-
-class PileupReadPair:
-
-    """
-    Holds both bam record objects in a pair of pileup reads.
-    Currently, one read unmapped and one read soft-clipped are
-    both marked as soft-clipped reads.
-    Accepts a list of length two as input.
-    """
-
-    def __init__(self, readlist):
-        read1, read2 = readlist[0], readlist[1]
-        try:
-            assert isinstance(read1, cPileupRead) or isinstance(read1, pPileupRead)
-        except AssertionError:
-            pl("repr(read1): %s" % repr(read1))
-            raise ThisIsMadness("PileupReadPair must be initiated with "
-                                "pysam.calignmentfile.PileupRead objects or "
-                                "pPileup read objects!!")
-        try:
-            assert len(readlist) == 2
-        except AssertionError:
-            pl("repr(readlist): %s" % repr(readlist))
-            raise ThisIsMadness("readlist must be of length two to make a PileupReadPair!")
-        self.RP = ReadPair(read1.alignment, read2.alignment)
-        self.read1 = pPileupRead(read1)
-        self.read2 = pPileupRead(read2)
-        self.discordant = (read1.BaseCall != read2.BaseCall)
-        self.name = read1.alignment.query_name
-        if(self.discordant):
-            if(read1.alignment.is_reverse):
-                self.discordanceString = (self.RP.read1_contig + "," +
-                                          str(self.read1.alignment.pos -
-                                              self.read1.query_position))
-            else:
-                self.discordanceString = (self.RP.read1_contig + "," +
-                                          str(self.read1.alignment.pos +
-                                              self.read1.query_position))
-
-
-class pPileupColumn:
+cdef class pPileupColumn:
     """
     Python container for the PileupColumn proxy in pysam.
     """
-    def __init__(self, PileupColumn):
+    cdef public cython.long nsegments
+    cdef public cython.long reference_id
+    cdef public cython.long reference_pos
+    cdef public list pileups
+    def __init__(self, pysam.calignmentfile.PileupColumn PileupColumn):
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
@@ -395,8 +348,8 @@ class AlleleAggregateInfo:
             self.TotalAlleleFrequency = 1. * self.TotalReads / totalSize
             self.MergedAlleleFrequency = 1. * self.MergedReads / mergedSize
         except ZeroDivisionError:
-            self.TotalAlleleFrequency = -1.0
-            self.MergedAlleleFrequency = -1.0
+            self.TotalAlleleFrequency = -1.
+            self.MergedAlleleFrequency = -1.
         if(self.ReverseMergedReads != 0 and self.ForwardMergedReads != 0):
             self.BothStrandSupport = True
         else:
@@ -449,7 +402,7 @@ class PCInfo:
     def __init__(self, PileupColumn, minBQ=0, minMQ=0,
                  requireDuplex=True,
                  minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
-                 exclusionSVTags="MDC,LI,ORB",
+                 exclusionSVTags="MDC,LI",
                  FracAlignFilter=False, primerLen=20,
                  experiment="", minAF=0.25):
         assert isinstance(PileupColumn, pPileupColumn) or isinstance(PileupColumn, pysam.calignmentfile.PileupColumn)
@@ -575,7 +528,7 @@ class PCInfo:
         fks = self.TotalFracDict.keys()
         for l in nucList:
             if(l not in fks):
-                self.TotalFracDict[l] = 0.0
+                self.TotalFracDict[l] = 0.
         self.TotalFracStr = ",".join(
             [key + ">" + str(self.TotalFracDict[key])
              for key in self.TotalFracDict.keys()])
@@ -592,7 +545,7 @@ class PCInfo:
         fks = self.MergedFracDict.keys()
         for l in nucList:
             if(l not in fks):
-                self.MergedFracDict[l] = 0.0
+                self.MergedFracDict[l] = 0.
         self.MergedFracStr = ",".join(
             [key + ">" + str(self.MergedFracDict[key])
              for key in nucList])

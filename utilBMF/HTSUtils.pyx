@@ -45,6 +45,8 @@ from MawCluster.Probability import GetCeiling
 from utilBMF.ErrorHandling import *
 
 ctypedef np.longdouble_t dtype128_t
+ctypedef ReadPair ReadPair_t
+ctypedef pPileupRead pPileupRead_t
 
 
 def printlog(string, level=logging.INFO):
@@ -827,21 +829,30 @@ def mergeBam(samList, memoryStr="-XmX16",
     return outBAM
 
 
-class ReadPair:
+cdef class ReadPair:
 
     """
     Holds both bam record objects in a pair.
     Currently, one read unmapped and one read soft-clipped are
     both marked as soft-clipped reads.
     """
+    cdef public pysam.calignmentfile.AlignedSegment read1
+    cdef public pysam.calignmentfile.AlignedSegment read2
+    cdef public list SVTags
+    cdef public cython.bint read1_is_unmapped
+    cdef public cython.bint read1_soft_clipped
+    cdef public cython.bint read2_is_unmapped
+    cdef public cython.bint read2_soft_clipped
+    cdef public cython.bint SameContig
+    cdef public cython.str read1_contig
+    cdef public cython.str read2_contig
+    cdef public cython.str ContigString
+    cdef public cython.long insert_size
+    cdef public cython.bint read1_in_bed
+    cdef public cython.bint read2_in_bed
 
-    def __init__(self, read1, read2):
-        try:
-            assert isinstance(read1, pAlignedSegment)
-        except AssertionError:
-            pl("ReadPair only accepts pysam.calignment"
-               ".AlignedSegment objects!")
-            raise ThisIsMadness("Be careful next time!")
+    def __init__(self, pysam.calignmentfile.AlignedSegment read1,
+                 pysam.calignmentfile.AlignedSegment read2):
         self.read1 = read1
         self.read2 = read2
         try:
@@ -867,10 +878,6 @@ class ReadPair:
                 self.read2_soft_clipped = True
             else:
                 self.read2_soft_clipped = False
-        if(self.read1_soft_clipped):
-            self.read1_softclip_seqs = []
-        if(self.read2_soft_clipped):
-            self.read2_softclip_seqs = []
         if(self.read1_is_unmapped):
             self.read1_contig = "*"
         else:
@@ -885,7 +892,8 @@ class ReadPair:
         # TODO: write a script to create an array of soft-clipped sequences
         # from each read
 
-    def NumOverlappingBed(self, bedLines="default"):
+    @cython.returns(cython.long)
+    def NumOverlappingBed(self, list bedLines=[]):
         try:
             assert isinstance(bedLines[0], str) and isinstance(
                 bedLines[1], int)
@@ -901,8 +909,73 @@ class ReadPair:
             self.read2_in_bed = False
         return sum([self.read2_in_bed, self.read1_in_bed])
 
+    @cython.returns(list)
     def getReads(self):
         return [self.read1, self.read2]
+
+
+cdef class pPileupRead:
+    """
+    Python container for the PileupRead proxy in pysam
+    """
+    cdef public cython.str BaseCall
+    cdef public cython.bint is_del
+    cdef public cython.long level
+    cdef public cython.long indel
+    cdef public cython.long query_position
+    cdef public cython.str name
+    cdef public pysam.calignmentfile.AlignedSegment alignment
+
+    def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
+        self.alignment = PileupRead.alignment
+        self.indel = PileupRead.indel
+        self.is_del = PileupRead.is_del
+        self.level = PileupRead.level
+        self.query_position = PileupRead.query_position
+        self.name = self.alignment.qname
+        self.BaseCall = self.alignment.seq[self.query_position]
+
+cdef class PileupReadPair:
+
+    """
+    Holds both bam record objects in a pair of pileup reads.
+    Currently, one read unmapped and one read soft-clipped are
+    both marked as soft-clipped reads.
+    Accepts a list of length two as input.
+    """
+
+    cdef public pPileupRead_t read1
+    cdef public pPileupRead_t read2
+    cdef public ReadPair_t RP
+    cdef public cython.bint discordant
+    cdef public cython.str discordanceString
+    cdef public cython.str name
+
+    def __init__(self, tuple readlist):
+        cdef pPileupRead_t read1
+        cdef pPileupRead_t read2
+        read1, read2 = readlist[0], readlist[1]
+        try:
+            assert len(readlist) == 2
+        except AssertionError:
+            pl("repr(readlist): %s" % repr(readlist))
+            raise ThisIsMadness("readlist must be of length two to make a PileupReadPair!")
+        self.RP = ReadPair(read1.alignment, read2.alignment)
+        self.read1 = read1
+        self.read2 = read2
+        self.discordant = (read1.BaseCall != read2.BaseCall)
+        self.name = read1.alignment.query_name
+        if(self.discordant):
+            if(read1.alignment.is_reverse):
+                self.discordanceString = (self.RP.read1_contig + "," +
+                                          str(self.read1.alignment.pos -
+                                              self.read1.query_position))
+            else:
+                self.discordanceString = (self.RP.read1_contig + "," +
+                                          str(self.read1.alignment.pos +
+                                              self.read1.query_position))
+
+
 
 
 def GetReadPair(inHandle):
@@ -1058,6 +1131,7 @@ def ParseBed(cython.str bedfile):
     return bed
 
 
+@cython.returns(dict)
 def parseConfig(cython.str string):
     """
     Parses in a file into a dictionary of key value pairs.
@@ -1082,7 +1156,8 @@ def ReadListToCovCounter(reads, cython.long minClustDepth=3,
                         [r.get_reference_positions() for r in reads]))
 
 
-def ReadPairListToCovCounter(ReadPairList, cython.long minClustDepth=5,
+@cython.returns(dict)
+def ReadPairListToCovCounter(list ReadPairList, cython.long minClustDepth=5,
                              cython.long minPileupLen=10):
     """
     Makes a Counter object of positions covered by a set of read pairs.
@@ -1167,9 +1242,11 @@ class Interval:
         self.end = self.interval[2]
 
 
-def CreateIntervalsFromCounter(dict CounterObj, minPileupLen=0, contig="default",
+@cython.returns(list)
+def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
+                               cython.str contig="default",
                                bedIntervals="default",
-                               mergeDist=0, minClustDepth=5):
+                               cython.long mergeDist=0, cython.long minClustDepth=5):
     """
     From a dictionary object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -1178,6 +1255,11 @@ def CreateIntervalsFromCounter(dict CounterObj, minPileupLen=0, contig="default"
     second containing the mean coverage of that interval.
     bedIntervals must be in ParseBed output format.
     """
+    cdef list IntervalList
+    cdef list MergedInts
+    cdef list MeanCovList
+    cdef list posList
+    cdef list interval
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):

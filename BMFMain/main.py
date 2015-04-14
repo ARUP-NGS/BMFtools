@@ -328,7 +328,7 @@ def main(argv=None):
         intelDeflator = confDict['intelDeflator']
     if(args.intelDeflator != "default"):
         intelDeflator = args.intelDeflator
-    minAF = 0.0
+    minAF = 0.
     if("minAF" in cdk):
         minAF = float(cdk[minAF])
     else:
