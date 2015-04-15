@@ -13,6 +13,7 @@ cimport numpy as np
 from numpy import array as nparray
 from math import log10 as mlog10
 from cytoolz import map as cmap
+cimport pysam.cfaidx
 pyFastaFile = pysam.FastaFile
 
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
@@ -21,11 +22,12 @@ from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from MawCluster.Probability import ConfidenceIntervalAAF
-from MawCluster.PileupUtils cimport AlleleAggregateInfo
-
-
-ctypedef np.longdouble_t dtype128_t
+from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
+ctypedef PCInfo PCInfo_t
+ctypedef SNVCFLine SNVCFLine_t
+
+# ctypedef np.longdouble_t dtype128_t
 
 """
 This module contains a variety of tools for calling variants.
@@ -40,7 +42,7 @@ DP - Depth (Merged)
 """
 
 
-class SNVCFLine:
+cdef class SNVCFLine:
 
     """
     Contains data for writing to a VCF Line, where each ALT has its own line.
@@ -50,10 +52,6 @@ class SNVCFLine:
     minNumSS is the minumum number of start/stop combinations required to
     support a variant call.
     """
-    @cython.locals(minDuplexPairs=cython.long, minAAF=dtype128_t,
-                   maxAAF=dtype128_t, FailedFMReads=cython.long,
-                   NDP=cython.long,  ampliconFailed=cython.long,
-                   minAF=cython.float)
     def __init__(self,
                  AlleleAggregateInfo_t AlleleAggregateObject,
                  dtype128_t MaxPValue=1e-30,
@@ -78,6 +76,8 @@ class SNVCFLine:
                  dtype128_t pValBinom=0.05, cython.long ampliconFailed=-1,
                  cython.long NDP=-1, cython.str EST="none",
                  cython.float minAF=-1.):
+        cdef dtype128_t maxAAF, minAAF
+        cdef cython.long AC, DOC
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
@@ -98,7 +98,7 @@ class SNVCFLine:
         self.POS = AlleleAggregateObject.pos + 1
         self.CONS = AlleleAggregateObject.consensus
         self.ALT = AlleleAggregateObject.ALT
-        self.QUAL = AlleleAggregateObject.SumBQScore
+        self.QUAL = 1. * AlleleAggregateObject.SumBQScore
         self.BothStrandSupport = AlleleAggregateObject.BothStrandSupport
         self.reverseStrandFraction = reverseStrandFraction
         self.AABothStrandAlignment = BothStrandAlignment
@@ -107,44 +107,45 @@ class SNVCFLine:
         DOC = AlleleAggregateObject.DOC
         minAAF, maxAAF = ConfidenceIntervalAAF(AC, DOCMerged, pVal=pValBinom)
         try:
-            if(float(MaxPValue) < 10 ** (self.QUAL // -10)):
-                if("FILTER" in dir(self)):
-                    self.FILTER = operator.add(self.FILTER, ",LowQual")
+            if(float(MaxPValue) < 10 ** (self.QUAL / -10.)):
+                if(self.FILTER is not None):
+                    self.FILTER += ",LowQual"
                 else:
                     self.FILTER = "LowQual"
                 self.QUAL *= 0.1
                 # This is entirely arbitrary...
-            if(AlleleAggregateObject.BothStrandSupport is False and
-               BothStrandAlignment):
-                if("FILTER" in dir(self)):
-                    self.FILTER = operator.add(
-                        self.FILTER, ",OneStrandSupport")
-                else:
-                    self.FILTER = "OneStrandSupport"
-            if(operator.le(self.NumStartStops, minNumSS) and
-               operator.le(AC, minNumSS)):
-                if("FILTER" in dir(self)):
-                    self.FILTER = operator.add(
-                        self.FILTER, ",InsufficientCoordinateSetsSupport")
-                else:
-                    self.FILTER = "InsufficientCoordinateSetsSupport"
-            if(AlleleAggregateObject.NumberDuplexReads < minDuplexPairs):
-                if("FILTER" in dir(self)):
-                    self.FILTER += ",InsufficientDuplexSupport"
-                else:
-                    self.FILTER = "InsufficientDuplexSupport"
-            if(AlleleAggregateObject.MFractionAgreed < minFracAgreedForFilter):
-                if("FILTER" in dir(self)):
-                    self.FILTER += ",DiscordantReadFamilies"
-                else:
-                    self.FILTER = "DiscordantReadFamilies"
-            if("FILTER" not in dir(self)):
-                self.FILTER = "PASS"
         except TypeError:
             print("TypeError! MaxPValue is: {}".format(MaxPValue))
             raise TypeError("MaxPValue not properly parsed.")
+        if(AlleleAggregateObject.BothStrandSupport is False and
+           BothStrandAlignment):
+            if(self.FILTER is not None):
+                self.FILTER +=  ",OneStrandSupport"
+            else:
+                self.FILTER = "OneStrandSupport"
+        if(self.NumStartStops < minNumSS and
+           AC < minNumSS):
+            if(self.FILTER is not None):
+                self.FILTER += ",InsufficientCoordinateSetsSupport"
+            else:
+                self.FILTER = "InsufficientCoordinateSetsSupport"
+        if(AlleleAggregateObject.NumberDuplexReads < minDuplexPairs):
+            if(self.FILTER is not None):
+                self.FILTER += ",InsufficientDuplexSupport"
+            else:
+                self.FILTER = "InsufficientDuplexSupport"
+        if(AlleleAggregateObject.MFractionAgreed < minFracAgreedForFilter):
+            if(self.FILTER is not None):
+                self.FILTER += ",DiscordantReadFamilies"
+            else:
+                self.FILTER = "DiscordantReadFamilies"
+        if(self.FILTER is None):
+            self.FILTER = "PASS"
         if(self.ALT == AlleleAggregateObject.consensus):
-            self.FILTER = "CONSENSUS"
+            if(self.FILTER is None):
+                self.FILTER = "CONSENSUS"
+            else:
+                self.FILTER += ",CONSENSUS"
 
         self.InfoFields = {"AC": AC,
                            "AF": 1. * AC / DOC,
@@ -226,46 +227,45 @@ class SNVCFLine:
                                        self.FormatStr]).astype(str).tolist())
 
     def update(self):
-        ffkeys = self.FormatFields.keys()
-        self.FormatKey = ":".join(sorted(ffkeys))
+        ffkeys = sorted(self.FormatFields.keys())
+        self.FormatKey = ":".join(ffkeys)
         self.FormatValue = ":".join([str(self.FormatFields[key])
                                      for key in
-                                     sorted(ffkeys)])
-        self.FormatStr = (":".join(sorted(ffkeys)) + "\t" +
-                          ":".join(
-                              str(self.FormatFields[key])
-                              for key in sorted(ffkeys)))
+                                     ffkeys])
+        self.FormatStr = self.FormatKey + "\t" + self.FormatValue
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
                                  for key in sorted(self.InfoFields.keys())])
 
     def __str__(self):
         self.update()
-        self.str = "\t".join(nparray([self.CHROM, self.POS,
-                                      self.ID, self.REF, self.ALT,
-                                      self.QUAL, self.FILTER, self.InfoStr,
-                                      self.FormatStr]).astype(str).tolist())
+        self.str = "\t".join(map(str, [self.CHROM, self.POS,
+                                       self.ID, self.REF, self.ALT,
+                                       self.QUAL, self.FILTER, self.InfoStr,
+                                       self.FormatStr]))
         return self.str
 
 
-class VCFPos:
+cdef class VCFPos:
     """
     Holds the multiple SNVCFLine Objects and other information
     for writing VCF lines for each alt at a given position.
     """
-    @cython.locals(requireDuplex=cython.bint, keepConsensus=cython.bint,
-                   minDuplexPairs=cython.long, MaxPValue=cython.float)
-    def __init__(self, PCInfoObject,
-                 MaxPValue=1e-18,
-                 keepConsensus=True,
-                 reference="default",
-                 requireDuplex=True,
-                 minDuplexPairs=2,
-                 reverseStrandFraction="default",
-                 minFracAgreed=0.0, minFA=0, experiment="",
-                 cython.long NDP=-1, refHandle=None):
-        if(isinstance(PCInfoObject, PCInfo) is False):
-            raise HTSUtils.ThisIsMadness("VCFPos requires an "
-                                         "PCInfo for initialization")
+
+    def __init__(self,
+                 PCInfo_t PCInfoObject,
+                 cython.float MaxPValue=1e-18,
+                 cython.bint keepConsensus=True,
+                 cython.str reference="default",
+                 cython.bint requireDuplex=True,
+                 cython.long minDuplexPairs=2,
+                 cython.float reverseStrandFraction=-1.,
+                 cython.float minFracAgreed=0.0,
+                 cython.long minFA=0,
+                 cython.str experiment="",
+                 cython.long NDP=-1,
+                 pysam.cfaidx.FastaFile refHandle=None):
+        cdef SNVCFLine_t line
+        cdef AlleleAggregateInfo_t alt
         if(refHandle is None):
             if(reference == "default"):
                 HTSUtils.FacePalm("VCFPos requires a reference fasta.")
@@ -315,8 +315,8 @@ class VCFPos:
             minAF=self.minAF)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
-        if(self.keepConsensus):
-            self.str = "\n".join([line.__str__()
+        if(keepConsensus):
+            self.str = "\n".join([str(line)
                                   for line in
                                   self.VCFLines])
         else:
@@ -927,13 +927,14 @@ HeaderFormatDict["DPT"] = HeaderFormatLine(
     Number="A")
 
 
-def GetContigHeaderLines(header):
+@cython.returns(cython.str)
+def GetContigHeaderLines(dict header):
     """
     This program creates the string for the contig lines
     in a VCF from the pysam.AlignmentFile attribute "header".
     """
-    if(isinstance(header, dict) is False):
-        raise ThisIsMadness("Requires pysam.AlignmentFile header dictionary")
+    cdef list contigListList
+    cdef dict contigDict
     contigLineList = []
     for contigDict in header['SQ']:
         contigLineList.append(

@@ -561,7 +561,7 @@ cdef class PCInfo:
                             self.TotalFracStr,
                             self.MergedStrandednessStr,
                             self.TotalStrandednessStr])))
-    
+
     @cython.returns(str)
     def __str__(self):
         cdef cython.str outStr

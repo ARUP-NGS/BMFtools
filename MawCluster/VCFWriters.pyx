@@ -8,10 +8,19 @@ import pysam
 import cython
 cimport cython
 from cytoolz import map as cmap
+cimport pysam.calignmentfile
+cimport pysam.cfaidx
 
 from MawCluster.SNVUtils import *
 from MawCluster.PileupUtils import pPileupColumn, GetDiscordantReadPairs
+cimport MawCluster.PileupUtils as PileupUtils
+from MawCluster.SNVUtils cimport VCFPos
 from utilBMF.HTSUtils import PysamToChrDict
+from utilBMF.HTSUtils cimport pPileupRead
+ctypedef PileupUtils.PCInfo PCInfo_t
+ctypedef PileupUtils.pPileupColumn pPileupColumn_t
+ctypedef pPileupRead pPileupRead_t
+ctypedef VCFPos VCFPos_t
 
 
 """
@@ -58,8 +67,17 @@ def SNVCrawler(inBAM,
        ", FILTERTags=\"{}\", INFOTags=\"{}\"".format(FILTERTags, INFOTags) +
        ", FORMATTags=\"{}\", writeHeader={}".format(FORMATTags, writeHeader) +
        ", minFracAgreed={}, minFA={})".format(minFracAgreed, minFA))
-    refHandle = pysam.FastaFile(reference)
     cdef cython.long NumDiscordantPairs = 0
+    cdef PCInfo_t PC
+    cdef pPileupColumn_t PileupColumn
+    cdef pysam.calignmentfile.IteratorColumnRegion puIterator
+    cdef pysam.calignmentfile.AlignmentFile discPairHandle
+    cdef pysam.cfaidx.FastaFile refHandle
+    cdef VCFPos_t pos
+    cdef list line, DiscRPs, reads
+    cdef pPileupRead_t i, read
+
+    refHandle = pysam.FastaFile(reference)
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
         bedSet = True
@@ -172,12 +190,13 @@ def SNVCrawler(inBAM,
                     read.set_tag("DP", RP.discordanceString, "Z")
                     discPairHandle.write(read)
             NumDiscordantPairs = len(DiscRPNames)
-            VCFLineString = str(VCFPos(PC, MaxPValue=MaxPValue,
-                                       keepConsensus=keepConsensus,
-                                       reference=reference,
-                                       minFracAgreed=minFracAgreed,
-                                       minFA=minFA, refHandle=refHandle,
-                                       NDP=NumDiscordantPairs))
+            pos = VCFPos(PC, MaxPValue=MaxPValue,
+                         keepConsensus=keepConsensus,
+                         reference=reference,
+                         minFracAgreed=minFracAgreed,
+                         minFA=minFA, refHandle=refHandle,
+                         NDP=NumDiscordantPairs)
+            VCFLineString = str(pos)
             if(len(VCFLineString) != 0):
                 ohw(VCFLineString + "\n")
     discPairHandle.close()

@@ -1482,7 +1482,6 @@ def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
     pass
 
 
-@memoize
 @cython.returns(dtype128_t)
 def FractionSoftClipped(cAlignedSegment read):
     """
@@ -1490,12 +1489,31 @@ def FractionSoftClipped(cAlignedSegment read):
     """
     if(read.cigarstring is None):
         return 0.
-    return 1. * sum([i[1] for i in
-                     read.cigar if
-                     i[0] == 4]) / read.query_alignment_length
+    return FractionSoftClippedCigar(read.cigar)
 
 
+@cython.returns(dtype128_t)
 @memoize
+def FractionSoftClippedCigar(tuple cigar):
+    """
+    Returns the fraction softclipped directly from tuple
+    """
+    cdef tuple i
+    return 1. * sum(i[1] for i in cigar if i[0] == 4) / sum([i[1] for i
+                                                             in read.cigar])
+
+
+@cython.returns(dtype128_t)
+@memoize
+def FractionAlignedCigar(tuple cigar):
+    """
+    Returns the fraction aligned directly from tuple
+    """
+    cdef tuple i
+    return 1. * sum(i[1] for i in cigar if i[0] == 0) / sum([i[1] for i
+                                                             in read.cigar])
+
+
 @cython.returns(dtype128_t)
 def FractionAligned(cAlignedSegment read):
     """
@@ -1503,9 +1521,7 @@ def FractionAligned(cAlignedSegment read):
     """
     if(read.cigarstring is None):
         return 0.
-    return 1. * sum([i[1] for i in
-                     read.cigar if
-                     i[0] == 0]) / read.query_alignment_length
+    return FractionAlignedCigar(read.cigar)
 
 
 def AddReadGroupsPicard(inBAM, RG="default", SM="default",
@@ -1613,9 +1629,8 @@ def bitfield(n):
     return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
 
 
-@cython.locals(read=pysam.calignmentfile.AlignedSegment)
 @cython.returns(cython.str)
-def ASToFastqSingle(read):
+def ASToFastqSingle(pysam.calignmentfile.AlignedSegment read):
     """
     Makes a string containing a single fastq record from
     one read.
