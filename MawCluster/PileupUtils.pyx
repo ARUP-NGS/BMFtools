@@ -17,6 +17,7 @@ from operator import div as odiv
 from itertools import ifilterfalse as iff
 
 import numpy as np
+cimport numpy as np
 from numpy import mean as nmean
 from numpy import std as nstd
 from numpy import max as nmax
@@ -26,29 +27,34 @@ import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
 cimport pysam.calignmentfile
 import cython
-from cytoolz import map as cmap, frequencies as cyfreq, partition as ctpartition
+from cytoolz import (map as cmap, frequencies as cyfreq,
+                     partition as ctpartition)
 
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
-from utilBMF.HTSUtils import ReadPair, printlog as pl, pPileupRead, PileupReadPair
+from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
+                              PileupReadPair)
 from utilBMF import HTSUtils
 import utilBMF
 import utilBMF.HTSUtils
+from utilBMF.HTSUtils cimport pPileupRead
+ctypedef pPileupRead pPileupRead_t
+ctypedef PRInfo PRInfo_t
+ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 
 
 @cython.locals(paired=cython.bint)
 @cython.returns(list)
-def GetDiscordantReadPairs(pPileupColObj):
+def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
     """
     Takes a pPileupColumn object (python PileupColumn) as input
     and returns a list of PileupReadPair objects.
     """
-    try:
-        assert isinstance(pPileupColObj, pPileupColumn)
-    except AssertionError:
-        pl("Not a pPileupColumn? Check this... repr of pPileupColObj:"
-           "%s." % repr(pPileupColObj))
-        raise AssertionError("")
+    cdef list pileups
+    cdef dict ReadNameCounter
+    cdef list readnames
+    cdef list reads
+    cdef list readpairs
     pileups = pPileupColObj.pileups
     ReadNameCounter = cyfreq(list(cmap(oag("query_name"),
         list(cmap(oag("alignment"), pileups)))))
@@ -68,11 +74,7 @@ cdef class pPileupColumn:
     """
     Python container for the PileupColumn proxy in pysam.
     """
-    cdef public cython.long nsegments
-    cdef public cython.long reference_id
-    cdef public cython.long reference_pos
-    cdef public list pileups
-    def __init__(self, pysam.calignmentfile.PileupColumn PileupColumn):
+    def __cinit__(self, pysam.calignmentfile.PileupColumn PileupColumn):
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
@@ -85,7 +87,7 @@ and preparing for variant calls.
 """
 
 
-class PRInfo:
+cdef class PRInfo:
 
     """
     Created from a pysam.PileupRead object or its python equivalent,
@@ -96,7 +98,9 @@ class PRInfo:
     is None first if you'd like to save yourself some headaches.
     """
 
-    def __init__(self, PileupRead):
+    def __init__(self, pPileupRead_t PileupRead):
+        cdef pysam.calignmentfile.AlignedSegment alignment
+        cdef cython.str PVSTring
         self.Pass = True
         alignment = PileupRead.alignment
         tags = alignment.tags
@@ -116,9 +120,9 @@ class PRInfo:
                        "", alignment.opt("FM"))))
         """
         try:
-            self.SVTags = aopt("SV").split(",")
+            self.SVTagString = aopt("SV")
         except KeyError:
-            self.SVTags = "NF"
+            self.SVTagString = "NF"
             # print("Warning: SV Tags unset.")
         self.BaseCall = alignment.query_sequence[
             PileupRead.query_position]
@@ -141,21 +145,15 @@ class PRInfo:
         else:
             self.FA = None
             self.FractionAgreed = None
-        p = re.compile("[^0-9,]+")
-        self.PV = None
-        self.PV_Array = None
-        self.PVFrac = None
+        self.PV = -1
+        self.PV_Array = np.array([])
+        self.PVFrac = -1.
         if("PV" in list(cmap(oig0, tags))):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = aopt("PV")
-            try:
-                self.PV_Array = nparray(PVString.split(','),
-                                         dtype=np.int64)
-            except ValueError:
-                print("PVString = %s" % PVString)
-                raise ValueError("This PV String should only "
-                                 "have digits and commas... ???")
+            self.PV_Array = nparray(PVString.split(','),
+                                    dtype=np.int64)
             self.PV = self.PV_Array[self.query_position]
             try:
                 self.PVFrac = (1. * self.PV) / nmax(self.PV_Array)
@@ -180,7 +178,7 @@ def is_reverse_to_str(cython.bint boolean):
         return "unmapped"
 
 
-class AlleleAggregateInfo:
+cdef class AlleleAggregateInfo:
 
     """
     Class which holds summary information for a given alt allele
@@ -190,63 +188,46 @@ class AlleleAggregateInfo:
     recList must be a list of PRInfo objects.
 
     """
-
-    @cython.locals(minFracAgreed=cython.float, minMQ=cython.long,
-                   minBQ=cython.long, minFA=cython.long,
-                   minPVFrac=cython.float, FSR=cython.long,
-                   lenR=cython.long)
-    def __init__(self, recList, consensus="default",
-                 mergedSize="default",
-                 totalSize="default",
-                 minMQ=0,
-                 minBQ=0,
-                 contig="default",
-                 pos="default",
-                 DOC="default",
-                 DOCTotal="default",
-                 NUMALT="default",
-                 AABPSD="default", AAMBP="default",
-                 minFracAgreed=0.0, minFA=0,
-                 minPVFrac=0.5, FSR=-1):
+    def __init__(self, list recList, cython.str consensus="default",
+                 cython.long mergedSize=-1, cython.long totalSize=-1,
+                 cython.long minMQ=0,
+                 cython.long minBQ=0,
+                 cython.str contig="default",
+                 cython.long pos=-1,
+                 cython.long DOC=-1,
+                 cython.long DOCTotal=-1,
+                 cython.long NUMALT=-1,
+                 cython.float AABPSD=-1., cython.float AAMBP=-1.,
+                 cython.float minFracAgreed=0.0, cython.long minFA=0,
+                 cython.float minPVFrac=0.5, cython.long FSR=-1):
+        cdef list NFList
+        cdef cython.long lenR
+        cdef PRInfo_t rec
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
-        if(NUMALT == "default"):
+        if(NUMALT < 0):
             raise ThisIsMadness("Number of alternate alleles required.")
-        else:
-            self.NUMALT = NUMALT
-        if(DOC == "default"):
+        if(DOC < 0):
             raise ThisIsMadness("Full depth of coverage must be provided.")
-        else:
-            self.DOC = int(DOC)
-        if(DOCTotal != "default"):
-            self.DOCTotal = int(DOCTotal)
         if(contig == "default"):
             raise ThisIsMadness("A contig must be provided (string).")
-        else:
-            self.contig = contig
-        if(pos == "default"):
+        if(pos < 0):
             raise ThisIsMadness("A position (0-based) must be provided (int).")
-        else:
-            self.pos = int(pos)
-        if(mergedSize == "default"):
+        if(mergedSize < 0):
             raise ThisIsMadness(("mergedSize must be provided: number of "
                                  "PRInfo at given position."))
-        if(totalSize == "default"):
-            raise ThisIsMadness(("mergedSize must be provided: number of "
-                                 "PRInfo at given position."))
+        if(totalSize < 0):
+            raise ThisIsMadness(("totalSize must be provided: number of "
+                                 "PRInfo (pre-dmp) at given position."))
+        self.NUMALT = NUMALT
+        self.DOC = DOC
+        self.DOCTotal = DOCTotal
+        self.contig = contig
+        self.pos = pos
         self.recList = [rec for rec in recList
-                        if rec.MQ >= minMQ and rec.BQ >= minBQ]
-        del recList
-        """
-        if("PVFrac" in dir(self.recList[0])):
-            self.recList = [rec for rec in self.recList
-                            if rec.PVFrac >= minPVFrac
-                            or rec.PVFrac is None]
-        """
-        self.recList = [rec for rec in self.recList
-                        if rec.FractionAgreed >= minFracAgreed]
-
-        self.recList = [rec for rec in self.recList if rec.FA >= minFA]
+                        if rec.MQ >= minMQ and rec.BQ >= minBQ
+                        and rec.FractionAgreed >= minFracAgreed
+                        and rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
         self.len = lenR
@@ -266,6 +247,8 @@ class AlleleAggregateInfo:
             self.MNF = -1.
             self.maxNF = -1.
             self.NFSD = -1.
+        """
+        Let's get rid of the assert here.
         try:
             assert(sum([rec.BaseCall == self.recList[
                 0].BaseCall for rec in self.recList]) == len(self.recList))
@@ -273,6 +256,7 @@ class AlleleAggregateInfo:
             # print("self.recList repr: {}".format(repr(self.recList)))
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
+        """
         self.TotalReads = nsum(list(cmap(oag("FM"), self.recList)))
         self.MergedReads = lenR
         self.ReverseMergedReads = nsum(list(cmap(
@@ -324,14 +308,7 @@ class AlleleAggregateInfo:
 
         # Dealing with transitions (e.g., A-T) and their strandedness
         self.transition = consensus + ">" + self.ALT
-        self.strandedTransitions = {}
         self.strandedTransitionDict = cyfreq(
-            ["&&".join([self.transition, is_reverse_to_str(
-                rec.is_reverse)]) for rec in self.recList])
-        self.strandedTotalTransitionDict = cyfreq(
-            ["&&".join([self.transition, is_reverse_to_str(
-                rec.is_reverse)]) for rec in self.recList] * rec.FM)
-        self.strandedMergedTransitionDict = cyfreq(
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
@@ -379,7 +356,7 @@ class AlleleAggregateInfo:
             self.PFSD = nstd(PVFArray)
 
 
-class PCInfo:
+cdef class PCInfo:
 
     """
     Takes a pysam.PileupColumn covering one base in the reference
@@ -394,18 +371,18 @@ class PCInfo:
     of the pileup.
     """
 
-    @cython.locals(reverseStrandFraction=cython.float,
-                   BothStrandAlignment=cython.bint,
-                   primerLen=cython.long, minBQ=cython.long,
-                   minMQ=cython.long, minPVFrac=cython.float,
-                   minAF=cython.float)
-    def __init__(self, PileupColumn, minBQ=0, minMQ=0,
-                 requireDuplex=True,
-                 minFracAgreed=0.0, minFA=0, minPVFrac=0.66,
-                 exclusionSVTags="MDC,LI",
-                 FracAlignFilter=False, primerLen=20,
-                 experiment="", minAF=0.25):
-        assert isinstance(PileupColumn, pPileupColumn) or isinstance(PileupColumn, pysam.calignmentfile.PileupColumn)
+    def __init__(self, pPileupColumn_t PileupColumn, cython.long minBQ=0,
+                 cython.long minMQ=0, cython.bint requireDuplex=True,
+                 cython.float minFracAgreed=0.0, cython.long minFA=0,
+                 cython.float minPVFrac=0.66,
+                 cython.str exclusionSVTags="MDC,LI",
+                 cython.bint FracAlignFilter=False, cython.long primerLen=20,
+                 cython.str experiment="", cython.float minAF=0.25):
+        cdef PRInfo_t rec
+        cdef list pileups, fks
+        cdef pPileupRead_t r
+        cdef cython.long lenR, rsn
+        cdef query_positions
         pileups = PileupColumn.pileups
         if("amplicon" in experiment):
             self.ampliconFailed = sum([r for r in pileups
@@ -496,10 +473,9 @@ class PCInfo:
             self.consensus = sorted(cyfreq(
                 list(cmap(oagbc, list(cmap(PRInfo, pileups))))).items(),
                                     key=oig1)[-1][0]
-        self.VariantDict = {}
-        for alt in list(set(list(cmap(oagbc, self.Records)))):
-            self.VariantDict[alt] = [
-                rec for rec in self.Records if rec.BaseCall == alt]
+        self.VariantDict = {alt: [rec for rec in self.Records
+                             if rec.BaseCall == alt]
+                            for alt in set(cmap(oagbc, self.Records))}
         query_positions = list(cmap(oag("query_position"),
                               self.Records))
         self.AAMBP = nmean(query_positions)
@@ -523,80 +499,18 @@ class PCInfo:
                               for key in self.VariantDict.keys()]
         self.AltAlleleData = [i for i in self.AltAlleleData if
                               oag("len")(i) != 0]
-        self.TotalFracDict = {alt.ALT : 1. * alt.TotalReads / self.TotalReads
-                              for alt in self.AltAlleleData}
-        fks = self.TotalFracDict.keys()
-        for l in nucList:
-            if(l not in fks):
-                self.TotalFracDict[l] = 0.
-        self.TotalFracStr = ",".join(
-            [key + ">" + str(self.TotalFracDict[key])
-             for key in self.TotalFracDict.keys()])
-        self.TotalCountDict = {alt.ALT : alt.TotalReads for
-                               alt in self.AltAlleleData}
-        fks = self.TotalCountDict.keys()
-        for l in nucList:
-            if(l not in fks):
-                self.TotalCountDict[l] = 0
-        self.TotalCountStr = ",".join(
-            [key + ">" + str(self.TotalCountDict[key])
-             for key in nucList])
-        self.MergedFracDict = {alt.ALT : alt.MergedReads / (1. * self.MergedReads) for alt in self.AltAlleleData}
-        fks = self.MergedFracDict.keys()
-        for l in nucList:
-            if(l not in fks):
-                self.MergedFracDict[l] = 0.
-        self.MergedFracStr = ",".join(
-            [key + ">" + str(self.MergedFracDict[key])
-             for key in nucList])
-        self.MergedCountDict = {alt.ALT: alt.MergedReads for alt in self.AltAlleleData}
-        fks = self.MergedCountDict.keys()
-        for l in nucList:
-            if(l not in fks):
-                self.MergedCountDict[l] = 0
-        self.MergedCountStr = ",".join(
-            [key + ">" + str(self.MergedCountDict[key])
-             for key in nucList])
         # Generates statistics based on transitions, e.g. ref->alt
-        TransMergedCounts = {}
-        for alt in self.AltAlleleData:
-            try:
-                TransMergedCounts[alt.transition] = operator.add(
-                    TransMergedCounts[alt.transition], alt.MergedReads)
-            except KeyError:
-                TransMergedCounts[alt.transition] = alt.MergedReads
-        self.TransMergedCounts = TransMergedCounts
-        TransTotalCounts = {}
-        for alt in self.AltAlleleData:
-            try:
-                TransTotalCounts[alt.transition] = operator.add(
-                    alt.TotalReads, TransTotalCounts[alt.transition])
-            except KeyError:
-                TransTotalCounts[alt.transition] = alt.TotalReads
-        self.TransTotalCounts = TransTotalCounts
-        self.StrandedTransTotalCounts = {}
-        for alt in self.AltAlleleData:
-            for trans in alt.strandedTotalTransitionDict.keys():
-                try:
-                    self.StrandedTransTotalCounts[
-                        trans] += alt.strandedTotalTransitionDict[trans]
-                except KeyError:
-                    self.StrandedTransTotalCounts[
-                        trans] = alt.strandedTotalTransitionDict[trans]
-        self.StrandedTransMergedCounts = {}
-        for alt in self.AltAlleleData:
-            for trans in alt.strandedMergedTransitionDict.keys():
-                try:
-                    self.StrandedTransMergedCounts[
-                        trans] += alt.strandedMergedTransitionDict[trans]
-                except KeyError:
-                    self.StrandedTransMergedCounts[
-                        trans] = alt.strandedMergedTransitionDict[trans]
         self.MergedAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         for alt in self.AltAlleleData:
             self.MergedAlleleDict[alt.ALT] = alt.MergedReads
             self.TotalAlleleDict[alt.ALT] = alt.TotalReads
+        self.TotalCountStr = ",".join(
+            [key + ">" + str(self.TotalAlleleDict[key])
+             for key in nucList])
+        self.MergedCountStr = ",".join(
+            [key + ">" + str(self.MergedAlleleDict[key])
+             for key in nucList])
         # Process allele frequencies, both by unique and unmerged reads
         self.MergedAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
@@ -612,26 +526,12 @@ class PCInfo:
             for key in self.MergedAlleleDict:
                 self.MergedAlleleFreqDict[key] = 0.
                 self.TotalAlleleFreqDict[key] = 0.
-        self.MergedAlleleCountStr = "\t".join(
-            list(cmap(str, [self.MergedAlleleDict["A"],
-                            self.MergedAlleleDict["C"],
-                            self.MergedAlleleDict["G"],
-                            self.MergedAlleleDict["T"]])))
-        self.TotalAlleleCountStr = "\t".join(
-            list(cmap(str, [self.TotalAlleleDict["A"],
-                            self.TotalAlleleDict["C"],
-                            self.TotalAlleleDict["G"],
-                            self.TotalAlleleDict["T"]])))
-        self.MergedAlleleFreqStr = "\t".join(
-            list(cmap(str, [self.MergedAlleleFreqDict["A"],
-                            self.MergedAlleleFreqDict["C"],
-                            self.MergedAlleleFreqDict["G"],
-                            self.MergedAlleleFreqDict["T"]])))
-        self.TotalAlleleFreqStr = "\t".join(
-            list(cmap(str, [self.TotalAlleleFreqDict["A"],
-                            self.TotalAlleleFreqDict["C"],
-                            self.TotalAlleleFreqDict["G"],
-                            self.TotalAlleleFreqDict["T"]])))
+        self.TotalFracStr = ",".join(
+            [key + ">" + str(self.TotalAlleleFreqDict[key])
+             for key in nucList])
+        self.MergedFracStr = ",".join(
+            [key + ">" + str(self.MergedAlleleFreqDict[key])
+             for key in nucList])
         # MergedStrandednessRatioDict is the fraction of reverse reads
         # supporting an alternate allele.
         # E.g., if 5 support the alt, but 2 are mapped to the reverse
@@ -655,24 +555,17 @@ class PCInfo:
                             self.consensus,
                             self.MergedReads,
                             self.TotalReads,
-                            self.MergedAlleleCountStr,
-                            self.TotalAlleleCountStr,
-                            self.MergedAlleleFreqStr,
-                            self.TotalAlleleFreqStr,
+                            self.MergedCountStr,
+                            self.TotalCountStr,
+                            self.MergedFracStr,
+                            self.TotalFracStr,
                             self.MergedStrandednessStr,
                             self.TotalStrandednessStr])))
-
-    def __str__(self, header=False):
+    
+    @cython.returns(str)
+    def __str__(self):
+        cdef cython.str outStr
         outStr = ""
-        if(header):
-            outStr = ("#Chr\tPos (0-based)\tRef (Consensus)\tAlt\tTotal "
-                      "Reads\tMerged Reads\tTotal Allele Frequency\tMerged "
-                      "Allele Frequency\tReverse Total Reads\tForward Total"
-                      " Reads\tReverse Merged Reads\tForward Merged Reads"
-                      "\tFraction Of Total Reads\t"
-                      "Fraction Of Merged Reads\tAverage "
-                      "Family Size\t"
-                      "BQ Sum\tBQ Mean\tMQ Sum\tMQ Mean\n")
         for alt in self.AltAlleleData:
             outStr += "\t".join(
                 nparray([self.contig,
@@ -740,376 +633,6 @@ class PileupInterval:
                                                self.AvgUniqueCoverage,
                                                self.AvgTotalCoverage]])
         return self.str
-
-
-def CustomPileupFullGenome(inputBAM,
-                           PileupTsv="default",
-                           TransitionTable="default",
-                           StrandedTTable="default",
-                           progRepInterval=10000,
-                           minBQ=0,
-                           minMQ=0):
-    """
-    A pileup tool for creating a tsv for each position in the bed file.
-    Used for calling SNPs with high confidence.
-    Also creates several tables:
-    1. Counts for all consensus->alt transitions (By Total and Merged reads)
-    2. Counts for the above, specifying strandedness
-    3. Number of Merged Reads supporting each allele
-    """
-    TransTotalDict = {}
-    TransMergedDict = {}
-    StrandedTransTotalDict = {}
-    StrandedTransMergedDict = {}
-    NumTransitionsTotal = 0
-    NTransMerged = 0
-    MergedReadsProcessed = 0
-    TotalReadsProcessed = 0
-    if(PileupTsv == "default"):
-        PileupTsv = inputBAM[0:-4] + ".Pileup.tsv"
-    if(TransitionTable == "default"):
-        TransitionTable = inputBAM[0:-4] + ".Trans.tsv"
-    if(StrandedTTable == "default"):
-        StrandedTTable = inputBAM[0:-4] + ".StrandedTrans.tsv"
-    subprocess.check_call(["samtools", "index", inputBAM])
-    if(os.path.isfile(inputBAM + ".bai") is False):
-        pl("Couldn\'t index BAM - coor sorting, then indexing!")
-        inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
-    NumProcessed = 0  # Number of processed positions in pileup
-    bamHandle = pysam.AlignmentFile(inputBAM, "rb")
-    PileupHandle = open(PileupTsv, "w")
-    TransHandle = open(TransitionTable, "w")
-    StrandedTransHandle = open(StrandedTTable, "w")
-    FirstLine = True
-    pileupIterator = bamHandle.pileup(max_depth=100000, multiple_iterators=True)
-    p = pPileupColumn(next(pileupIterator))
-    for pileupColumn in p.pileups:
-        NumProcessed = operator.add(NumProcessed, 1)
-        if((NumProcessed) % progRepInterval == 0):
-            pl("Number of positions processed: {}".format(
-                NumProcessed))
-            pl("Total reads processed: {}".format(TotalReadsProcessed))
-            pl("Merged reads processed: {}".format(MergedReadsProcessed))
-        PColSum = PCInfo(pileupColumn, minBQ=minBQ, minMQ=minMQ)
-        MergedReadsProcessed = operator.add(MergedReadsProcessed,
-                                            PColSum.MergedReads)
-        TotalReadsProcessed = operator.add(TotalReadsProcessed,
-                                           PColSum.TotalReads)
-        if(FirstLine):
-            PileupHandle.write(PColSum.__str__(header=True))
-            FirstLine = False
-        else:
-            PileupHandle.write(str(PColSum))
-        for key in PColSum.TransMergedCounts.keys():
-            try:
-                TransMergedDict[
-                    key] += PColSum.TransMergedCounts[key]
-            except KeyError:
-                TransMergedDict[
-                    key] = PColSum.TransMergedCounts[key]
-            NTransMerged += PColSum.TransMergedCounts[
-                key]
-        for key in PColSum.TransTotalCounts.keys():
-            try:
-                TransTotalDict[
-                    key] += PColSum.TransTotalCounts[key]
-            except KeyError:
-                TransTotalDict[
-                    key] = PColSum.TransTotalCounts[key]
-            NumTransitionsTotal += PColSum.TransTotalCounts[
-                key]
-        for key in PColSum.StrandedTransMergedCounts.keys():
-            try:
-                StrandedTransMergedDict[
-                    key] += PColSum.StrandedTransMergedCounts[
-                        key]
-            except KeyError:
-                StrandedTransMergedDict[
-                    key] = PColSum.StrandedTransMergedCounts[
-                        key]
-        for key in PColSum.StrandedTransTotalCounts.keys():
-            try:
-                StrandedTransTotalDict[
-                    key] += PColSum.StrandedTransTotalCounts[
-                        key]
-            except KeyError:
-                StrandedTransTotalDict[
-                    key] = PColSum.StrandedTransTotalCounts[
-                        key]
-    TransHandle.write(("Transition\tTotal Reads With Transition (Unflattened)"
-                       "\tMerged Reads With Transition\tFraction Of Total "
-                       "Transitions\tFraction Of Merged Transitions\n"))
-    for key in TransTotalDict.keys():
-        TransHandle.write("{}\t{}\t{}\n".format(key,
-                                                TransTotalDict[key],
-                                                TransMergedDict[key],
-                                                odiv(
-                                                    TransTotalDict[key],
-                                                    float(
-                                                        NumTransitionsTotal)),
-                                                odiv(
-                                                    TransMergedDict[key],
-                                                    float(
-                                                        NTransMerged))))
-    StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
-                               "(Unflattened)\tMergedReads With Transition\t"
-                               "Fraction Of Total (Unflattened) Transitions"
-                               "\tFraction of Merged Transitions\n"))
-    for key in StrandedTransTotalDict.keys():
-        StrandedTransHandle.write(
-            "{}\t{}\t{}\n".format(
-                key,
-                StrandedTransTotalDict[key],
-                StrandedTransMergedDict[key],
-                odiv(StrandedTransTotalDict[key],
-                             float(NumTransitionsTotal)),
-                odiv(StrandedTransMergedDict[key],
-                             float(NTransMerged)),
-            ))
-    pl("Transition Table: {}".format(TransitionTable))
-    pl("Stranded Transition Table: {}".format(StrandedTTable))
-    TransHandle.close()
-    PileupHandle.close()
-    return PileupTsv
-
-
-def CustomPileupToTsv(inputBAM,
-                      PileupTsv="default",
-                      TransitionTable="default",
-                      StrandedTTable="default",
-                      bedfile="default",
-                      progRepInterval=1000,
-                      CalcAlleleFreq=True,
-                      minMQ=0,
-                      minBQ=0):
-    """
-    A pileup tool for creating a tsv for each position in the bed file.
-    Used for calling SNPs with high confidence.
-    Also creates several tables:
-    1. Counts for all consensus->alt transitions (By Total and Merged reads)
-    2. Counts for the above, specifying strandedness
-    3. Number of Merged Reads supporting each allele
-    """
-    TransTotalDict = {}
-    TransMergedDict = {}
-    StrandedTransTotalDict = {}
-    StrandedTransMergedDict = {}
-    NumTransitionsTotal = 0
-    NTransMerged = 0
-    MergedReadsProcessed = 0
-    TotalReadsProcessed = 0
-    if(PileupTsv == "default"):
-        PileupTsv = inputBAM[0:-4] + ".Pileup.tsv"
-    if(TransitionTable == "default"):
-        TransitionTable = inputBAM[0:-4] + ".Trans.tsv"
-    if(StrandedTTable == "default"):
-        StrandedTTable = inputBAM[0:-4] + ".StrandedTrans.tsv"
-    if(bedfile == "default"):
-        return CustomPileupFullGenome(inputBAM, PileupTsv=PileupTsv,
-                                      TransitionTable=TransitionTable,
-                                      StrandedTTable=StrandedTTable,
-                                      progRepInterval=progRepInterval)
-    bedlines = HTSUtils.ParseBed(bedfile)
-    try:
-        subprocess.check_call(["samtools", "index", inputBAM])
-    except subprocess.CalledProcessError:
-        pl("Couldn't index BAM - coor sorting, then indexing!")
-        inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
-    NumPos = sum([operator.sub(line[2], line[1]) for line in bedlines])
-    NumProcessed = 0  # Number of processed positions in pileup
-    pl("Number of positions in bed file: {}".format(NumPos))
-    bamHandle = pysam.AlignmentFile(inputBAM, "rb")
-    PileupHandle = open(PileupTsv, "w")
-    TransHandle = open(TransitionTable, "w")
-    StrandedTransHandle = open(StrandedTTable, "w")
-    FirstLine = True
-    for line in bedlines:
-        pileupIterator = bamHandle.pileup(line[0], line[1], line[2],
-                                          max_depth=100000)
-        p = pPileupColumn(next(pileupIterator))
-        for pileupColumn in p.pileups:
-            NumProcessed += 1
-            if((NumProcessed) % progRepInterval == 0):
-                pl("Number of positions processed: {}".format(
-                    NumProcessed + 1))
-                pl("{:.1%} complete".format(NumProcessed / float(NumPos)))
-                pl("Total reads processed: {}".format(TotalReadsProcessed))
-                pl("Merged reads processed: {}".format(
-                    MergedReadsProcessed))
-            PColSum = PCInfo(pileupColumn, minMQ=minMQ, minBQ=minBQ)
-            MergedReadsProcessed += PColSum.MergedReads
-            TotalReadsProcessed += PColSum.TotalReads
-            if(FirstLine):
-                PileupHandle.write(PColSum.__str__(header=True))
-                FirstLine = False
-            else:
-                PileupHandle.write(str(PColSum))
-            for key in PColSum.TransMergedCounts.keys():
-                try:
-                    TransMergedDict[
-                        key] += PColSum.TransMergedCounts[key]
-                except KeyError:
-                    TransMergedDict[
-                        key] = PColSum.TransMergedCounts[key]
-                NTransMerged += PColSum.TransMergedCounts[
-                    key]
-            for key in PColSum.TransTotalCounts.keys():
-                try:
-                    TransTotalDict[
-                        key] += PColSum.TransTotalCounts[key]
-                except KeyError:
-                    TransTotalDict[
-                        key] = PColSum.TransTotalCounts[key]
-                NumTransitionsTotal += PColSum.TransTotalCounts[
-                    key]
-            for key in PColSum.StrandedTransMergedCounts.keys():
-                try:
-                    StrandedTransMergedDict[
-                        key] += PColSum.StrandedTransMergedCounts[
-                            key]
-                except KeyError:
-                    StrandedTransMergedDict[
-                        key] = PColSum.StrandedTransMergedCounts[
-                            key]
-            for key in PColSum.StrandedTransTotalCounts.keys():
-                try:
-                    StrandedTransTotalDict[
-                        key] += PColSum.StrandedTransTotalCounts[
-                            key]
-                except KeyError:
-                    StrandedTransTotalDict[
-                        key] = PColSum.StrandedTransTotalCounts[
-                            key]
-    TransHandle.write((
-        "Transition\tTotal Reads With Transition (Unflatt"
-        "ened)\tMerged Reads With Transition\tFraction Of Total "
-        "Transitions\tFraction Of Merged Transitions\n"))
-    for key in TransTotalDict.keys():
-        if(key[0] != key[3]):
-            TransHandle.write(
-                "{}\t{}\t{}\n".format(
-                    key,
-                    TransTotalDict[key],
-                    TransMergedDict[key],
-                    odiv(TransTotalDict[key],
-                                 float(NumTransitionsTotal)),
-                    odiv(TransMergedDict[key],
-                                 float(NTransMerged))))
-    StrandedTransHandle.write(("Transition+Strandedness\tTotal Reads "
-                               "(Unflattened)\tMergedReads With Transition\t"
-                               "Fraction Of Total (Unflattened) Transitions"
-                               "\tFraction of Merged Transitions\n"))
-    for key in StrandedTransTotalDict.keys():
-        if(key.split("&&")[0].split(">")[0] != key.split(
-                "&&")[0].split(">")[1]):
-            StrandedTransHandle.write(
-                "{}\t{}\t{}\t{}\t{}\n".format(
-                    key,
-                    StrandedTransTotalDict[key],
-                    StrandedTransMergedDict[key],
-                    StrandedTransTotalDict[key] /
-                    float(NumTransitionsTotal),
-                    StrandedTransMergedDict[key] /
-                    float(NTransMerged),
-                ))
-    pl("Transition Table: {}".format(TransitionTable))
-    pl("Stranded Transition Table: {}".format(StrandedTTable))
-    TransHandle.close()
-    PileupHandle.close()
-    if(CalcAlleleFreq):
-        AlleleFreqTsv = AlleleFrequenciesByBase(inputBAM,
-                                                bedfile=bedfile,
-                                                minMQ=minMQ,
-                                                minBQ=minBQ)
-        pl("Optional allele frequency table generated. Path: {}".format(
-            AlleleFreqTsv))
-    return PileupTsv
-
-
-def AlleleFrequenciesByBase(inputBAM,
-                            outputTsv="default",
-                            progRepInterval=10000,
-                            minMQ=0,
-                            minBQ=0,
-                            bedfile="default"):
-    """
-    Creates a tsv file with counts and frequencies for each allele at
-    each position. I should expand this to include strandedness information.
-    """
-    pl(("Command required to reproduce results: "
-        "AlleleFrequenciesByBase(inputBAM=\"{}\",".format(inputBAM) +
-        " outputTsv=\"{}\", progRepInterval=".format(outputTsv) +
-        "\"{}\", minMQ=\"{}\", )".format(progRepInterval, minMQ) +
-        "minBQ=\"{}\"".format(minBQ)))
-    if(outputTsv == "default"):
-        outputTsv = inputBAM[0:-4] + ".allele.freq.tsv"
-    try:
-        subprocess.check_call(["samtools", "index", inputBAM])
-    except subprocess.CalledProcessError:
-        pl("Couldn't index BAM - coor sorting, then indexing!")
-        inputBAM = HTSUtils.CoorSortAndIndexBam(inputBAM, uuid=True)
-    NumProcessed = 0  # Number of processed positions in pileup
-    inHandle = pysam.AlignmentFile(inputBAM, "rb")
-    outHandle = open(outputTsv, "w")
-    outHandle.write("\t".join(["#Contig",
-                               "Position (0-based)",
-                               "Consensus Base",
-                               "Merged DOC",
-                               "Total DOC",
-                               "Merged Count: A",
-                               "Merged Count: C",
-                               "Merged Count: G",
-                               "Merged Count: T",
-                               "Total Count: A",
-                               "Total Count: C",
-                               "Total Count: G",
-                               "Total Count: T",
-                               "Merged Freq: A",
-                               "Merged Freq: C",
-                               "Merged Freq: G",
-                               "Merged Freq: T",
-                               "Total Freq: A",
-                               "Total Freq: C",
-                               "Total Freq: G",
-                               "Total Freq: T",
-                               "Merged Reverse fraction: A",
-                               "Merged Reverse fraction: C",
-                               "Merged Reverse fraction: G",
-                               "Merged Reverse fraction: T",
-                               "Total Reverse fraction: A",
-                               "Total Reverse fraction: C",
-                               "Total Reverse fraction: G",
-                               "Total Reverse fraction: T",
-                               ]) + "\n")
-    if(bedfile == "default"):
-        pileupIterator = inHandle.pileup(max_depth=100000)
-        p = pPileupColumn(next(pileupIterator))
-        for pileup in p.pileups:
-            NumProcessed += 1
-            if(NumProcessed % progRepInterval == 0):
-                pl("Number of base positions processed: {}".format(
-                    NumProcessed))
-            PColInfo = PCInfo(pileup, minMQ=minMQ, minBQ=minBQ)
-            outHandle.write(PColInfo.AlleleFreqStr + "\n")
-    else:
-        bedLines = HTSUtils.ParseBed(bedfile)
-        for line in bedLines:
-            # print("Now running through the bedLine: {}".format(line))
-            puIterator = inHandle.pileup(reference=line[0], start=line[1],
-                                         end=line[2],
-                                         max_depth=100000)
-            p = pPileupColumn(next(puIterator))
-            for pileup in p.pileups:
-                NumProcessed += 1
-                if(NumProcessed % progRepInterval == 0):
-                    pl("Number of base positions processed: {}".format(
-                        NumProcessed))
-                outHandle.write(PCInfo(pileup,
-                                       minMQ=minMQ,
-                                       minBQ=minBQ).AlleleFreqStr + "\n")
-    inHandle.close()
-    outHandle.close()
-    return outputTsv
 
 
 def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):

@@ -1,3 +1,5 @@
+# cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True, cdivision_warnings=True, profile=True
 from __future__ import division
 from collections import defaultdict
 import operator
@@ -19,8 +21,11 @@ from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from MawCluster.Probability import ConfidenceIntervalAAF
+from MawCluster.PileupUtils cimport AlleleAggregateInfo
+
 
 ctypedef np.longdouble_t dtype128_t
+ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 
 """
 This module contains a variety of tools for calling variants.
@@ -45,38 +50,34 @@ class SNVCFLine:
     minNumSS is the minumum number of start/stop combinations required to
     support a variant call.
     """
-    @cython.locals(minNumSS=cython.long, minNumFam=cython.long,
-                   MaxPValue=cython.float,
-                   reverseStrandFraction=cython.float,
-                   minPVFrac=cython.float, minNumFam=cython.long,
-                   minNumSS=cython.long, minFA=cython.long,
-                   minDuplexPairs=cython.long, minAAF=dtype128_t,
+    @cython.locals(minDuplexPairs=cython.long, minAAF=dtype128_t,
                    maxAAF=dtype128_t, FailedFMReads=cython.long,
-                   FailedQCReads=cython.long, FailedBQReads=cython.long,
-                   FailedMQReads=cython.long, NDP=cython.long,
-                   ampliconFailed=cython.long, FailedAFReads=cython.long,
+                   NDP=cython.long,  ampliconFailed=cython.long,
                    minAF=cython.float)
     def __init__(self,
-                 AlleleAggregateObject,
-                 MaxPValue=1e-30,
-                 ID=".",
-                 DOCMerged="default",
-                 DOCTotal="default",
-                 TotalFracStr="default",
-                 MergedFracStr="default",
-                 TotalCountStr="default",
-                 MergedCountStr="default",
-                 FailedBQReads=-1, FailedMQReads=-1,
-                 FailedQCReads=-1, FailedFMReads=-1, FailedAFReads=-1,
-                 minNumFam=2,
-                 minNumSS=2,
-                 REF="default",
-                 reverseStrandFraction=-1.0,
-                 requireDuplex=True, minDuplexPairs=2,
-                 minFracAgreedForFilter=0.666,
-                 minFA=0, BothStrandAlignment=-1,
-                 pValBinom=0.05, ampliconFailed=-1, NDP=-1,
-                 EST="none", minAF=-1.):
+                 AlleleAggregateInfo_t AlleleAggregateObject,
+                 dtype128_t MaxPValue=1e-30,
+                 cython.str ID=".",
+                 cython.long DOCMerged=-1,
+                 cython.long DOCTotal=-1,
+                 cython.str TotalFracStr="default",
+                 cython.str MergedFracStr="default",
+                 cython.str TotalCountStr="default",
+                 cython.str MergedCountStr="default",
+                 cython.long FailedBQReads=-1, cython.long FailedMQReads=-1,
+                 cython.long FailedQCReads=-1, cython.long FailedFMReads=-1,
+                 cython.long FailedAFReads=-1,
+                 cython.long minNumFam=2,
+                 cython.long minNumSS=2,
+                 cython.str REF="default",
+                 dtype128_t reverseStrandFraction=-1.0,
+                 cython.bint requireDuplex=True,
+                 cython.long minDuplexPairs=2,
+                 dtype128_t minFracAgreedForFilter=0.666,
+                 cython.long minFA=0, cython.long BothStrandAlignment=-1,
+                 dtype128_t pValBinom=0.05, cython.long ampliconFailed=-1,
+                 cython.long NDP=-1, cython.str EST="none",
+                 cython.float minAF=-1.):
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
@@ -87,9 +88,9 @@ class SNVCFLine:
         if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
                                          "regateInfo for initialization")
-        if(DOCMerged == "default"):
+        if(DOCMerged < 0):
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
-        if(DOCTotal == "default"):
+        if(DOCTotal < 0):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
         self.NumStartStops = len(set(list(cmap(operator.attrgetter("ssString"),
                                                AlleleAggregateObject.recList))))

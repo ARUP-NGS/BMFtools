@@ -36,9 +36,9 @@ from cytoolz import map as cmap
 
 from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
-from MawCluster.PileupUtils import pPileupRead
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
-                              FractionAligned, SWRealignAS, FractionSoftClipped)
+                              FractionAligned, SWRealignAS, FractionSoftClipped,
+                              pPileupRead)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC

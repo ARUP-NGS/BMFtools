@@ -1,3 +1,5 @@
+# cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True, cdivision_warnings=True, profile=True
 import logging
 from operator import attrgetter as oag
 import sys
@@ -136,7 +138,7 @@ def SNVCrawler(inBAM,
                               ("bed line: %s" % line) +
                               "\tref id: %s" % PileupColumn.reference_id +
                               "\tref pos: %s" % PileupColumn.reference_pos)
-                    logStr += "AC: %s" % PC.MergedFracDict
+                    logStr += "AC: %s" % PC.MergedAlleleFreqDict
                     logStr += "PC Str: %s" % str(PC)
                     pl(logStr, level=logging.DEBUG)
                     pl("VCF line not written at position" +

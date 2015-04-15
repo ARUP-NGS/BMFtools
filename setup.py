@@ -30,13 +30,13 @@ print("Removing all .c files - this is "
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 """
 
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
+"""
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
                 "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
                 "-fprefetch-loop-arrays", "-floop-strip-mine"]
 
-"""
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse"]
 
 
 compilerList = ["marchFlag, "-pipe", "-msse2",
