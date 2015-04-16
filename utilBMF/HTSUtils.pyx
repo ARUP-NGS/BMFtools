@@ -1494,24 +1494,23 @@ def FractionSoftClipped(cAlignedSegment read):
 
 @cython.returns(dtype128_t)
 @memoize
-def FractionSoftClippedCigar(tuple cigar):
+def FractionSoftClippedCigar(list cigar):
     """
     Returns the fraction softclipped directly from tuple
     """
     cdef tuple i
     return 1. * sum(i[1] for i in cigar if i[0] == 4) / sum([i[1] for i
-                                                             in read.cigar])
+                                                             in cigar])
 
 
 @cython.returns(dtype128_t)
-@memoize
-def FractionAlignedCigar(tuple cigar):
+def FractionAlignedCigar(list cigar):
     """
     Returns the fraction aligned directly from tuple
     """
     cdef tuple i
     return 1. * sum(i[1] for i in cigar if i[0] == 0) / sum([i[1] for i
-                                                             in read.cigar])
+                                                             in cigar])
 
 
 @cython.returns(dtype128_t)
@@ -1828,7 +1827,7 @@ class AbstractVCFProxyFilter(object):
             if(rec.filter == "PASS"):
                 rec.filter = self.filterStr
             else:
-                rec.filter += "," + self.filterStr
+                rec.filter += ";" + self.filterStr
         if(self.key != "default"):
             if("," not in self.key):
                 rec.info += ";" + self.key + "=" + self.value

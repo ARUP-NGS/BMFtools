@@ -27,11 +27,12 @@ cdef class VCFPos:
     Holds the multiple SNVCFLine Objects and other information
     for writing VCF lines for each alt at a given position.
     """
-    cdef cython.long pos, minMQ, FailedAFReads, minDuplexPairs
-    cdef cython.str consensus, TotalFracStr, MergedFracStr, TotalCountStr
-    cdef cython.str MergedCountStr, REF, EST, str
-    cdef cython.float reverseStrandFraction, minAF
-    cdef cython.bint AABothStrandAlignment, requireDuplex, keepConsensus
-    cdef list VCFLines
+    cdef public cython.long pos, minMQ, FailedAFReads, minDuplexPairs
+    cdef public cython.str consensus, TotalFracStr, MergedFracStr, TotalCountStr
+    cdef public cython.str MergedCountStr, REF, EST, str
+    cdef public cython.float reverseStrandFraction, minAF
+    cdef public cython.bint AABothStrandAlignment, requireDuplex, keepConsensus
+    cdef public cython.bint DuplexRequired
+    cdef public list VCFLines
 
 

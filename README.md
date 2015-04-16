@@ -206,6 +206,16 @@ Most options are available for command-line as well. If an option is set in both
     8. Performance enhancements.
     9. Further work on indel calls.
 
+10. Changes in BMFTools v0.0.7.4
+
+    1. Fixed NDP calculation.
+    2. Fixed AF calculation.
+    3. Heavily cythonized
+    4. Memoization
+    5. Fixed some indel work
+    6. Fixed some VCF comparison issues.
+
+
 1. Settings Recommendations
 
     1. The "readPairsPerWrite" parameter can provide great speed improvements.
@@ -225,12 +235,11 @@ Most options are available for command-line as well. If an option is set in both
 
 
 #TODO (ish):
+1. Check and make sure that the bwasw realignment can and does work.
+2. Fix the SV tagging - it seems that it broke when I switched to the function call.
+
 ## Backlog
-0. Paper/Presentations
-    1. slides of qc, slide explaining why m.a.p., slide stating our advantages vs others
 1. SNV:
-    0. Filters and Preprocessing/Postprocessing
-        1. Add command-line and config file support for selecting minAF for variant caller.
     1. Error Characterization Code
         1. Write database reading and processing.
     3. Info Fields

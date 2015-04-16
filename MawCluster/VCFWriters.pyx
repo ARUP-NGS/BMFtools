@@ -11,12 +11,15 @@ from cytoolz import map as cmap
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 
-from MawCluster.SNVUtils import *
-from MawCluster.PileupUtils import pPileupColumn, GetDiscordantReadPairs
+from MawCluster.SNVUtils import GetVCFHeader
+from MawCluster.PileupUtils import (pPileupColumn,
+                                    GetDiscordantReadPairs, PCInfo)
 cimport MawCluster.PileupUtils as PileupUtils
 from MawCluster.SNVUtils cimport VCFPos
-from utilBMF.HTSUtils import PysamToChrDict
+from utilBMF.HTSUtils import PysamToChrDict, printlog as pl
 from utilBMF.HTSUtils cimport pPileupRead
+from utilBMF import HTSUtils
+from utilBMF.ErrorHandling import ThisIsMadness
 ctypedef PileupUtils.PCInfo PCInfo_t
 ctypedef PileupUtils.pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
@@ -75,7 +78,8 @@ def SNVCrawler(inBAM,
     cdef pysam.cfaidx.FastaFile refHandle
     cdef VCFPos_t pos
     cdef list line, DiscRPs, reads
-    cdef pPileupRead_t i, read
+    cdef pPileupRead_t i
+    cdef pysam.calignmentfile.AlignedSegment read
 
     refHandle = pysam.FastaFile(reference)
     if(bed != "default"):

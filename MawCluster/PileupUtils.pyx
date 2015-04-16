@@ -337,13 +337,12 @@ cdef class AlleleAggregateInfo:
             self.AAMBP = AAMBP
 
         # Check to see if a read pair supports a variant with both ends
-        ReadNameCounter = cyfreq(list(cmap(
-            oag("query_name"),
-            list(cmap(oag("read"), self.recList)))))
-        self.NumberDuplexReads = sum([
-            ReadNameCounter[key] > 1 for key in ReadNameCounter.keys()])
-        query_positions = nparray(list(cmap(
-            oag("query_position"), self.recList))).astype(float)
+        ReadNameCounter = cyfreq(map(oag("query_name"),
+                                     map(oag("read"), self.recList)))
+        self.NumberDuplexReads = len([i[0]  for i in ReadNameCounter.items()
+                                      if i[1] > 1])
+        query_positions = nparray(map(
+            oag("query_position"), self.recList), dtype=np.float64)
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
@@ -379,7 +378,7 @@ cdef class PCInfo:
                  cython.bint FracAlignFilter=False, cython.long primerLen=20,
                  cython.str experiment="", cython.float minAF=0.25):
         cdef PRInfo_t rec
-        cdef list pileups, fks
+        cdef list pileups, fks, svTags, exclusionTagList
         cdef pPileupRead_t r
         cdef cython.long lenR, rsn
         cdef query_positions
@@ -415,18 +414,14 @@ cdef class PCInfo:
         self.PCol = PileupColumn
         self.excludedSVTagStr = exclusionSVTags
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
-        self.FailedSVReadDict = {tag: sum([p.alignment.has_tag("SV") and tag
-                                           not in p.alignment.opt("SV") for
-                                           p in pileups])
-                                 for tag in exclusionSVTags.split(",")}
-        """
-        self.FailedSVReadDict = {}
-        for tag in self.excludedSVTags:
-            self.FailedSVReadDict[tag] = sum([p.alignment.has_tag("SV") and tag
-                                              not in p.alignment.opt("SV")
-                                              for p in pileups])
-        """
-        self.FailedSVReads = sum(self.FailedSVReadDict.values())
+        svTags = [p.alignment.opt("SV") for p in pileups
+                  if p.alignment.has_tag("SV")]
+        exclusionTagList = exclusionSVTags.split(",")
+        svTags = [t for t in svTags if t != "NF" and
+                  sum([exTag in t for exTag in exclusionTagList]) != 0]
+        self.FailedSVReadDict = {tag: sum([tag in svTag for svTag in svTags])
+                                 for tag in exclusionTagList}
+        self.FailedSVReads = len(svTags)
         #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
         """
         if(self.FailedMQReads != 0):
@@ -561,6 +556,14 @@ cdef class PCInfo:
                             self.TotalFracStr,
                             self.MergedStrandednessStr,
                             self.TotalStrandednessStr])))
+
+    @cython.returns(AlleleAggregateInfo_t)
+    def __getitem__(self, cython.long index):
+        return self.AltAlleleData[index]
+
+    @cython.returns(cython.long)
+    def __len__(self):
+        return len(self.AltAlleleData)
 
     @cython.returns(str)
     def __str__(self):

@@ -109,7 +109,7 @@ cdef class SNVCFLine:
         try:
             if(float(MaxPValue) < 10 ** (self.QUAL / -10.)):
                 if(self.FILTER is not None):
-                    self.FILTER += ",LowQual"
+                    self.FILTER += ";LowQual"
                 else:
                     self.FILTER = "LowQual"
                 self.QUAL *= 0.1
@@ -120,23 +120,23 @@ cdef class SNVCFLine:
         if(AlleleAggregateObject.BothStrandSupport is False and
            BothStrandAlignment):
             if(self.FILTER is not None):
-                self.FILTER +=  ",OneStrandSupport"
+                self.FILTER +=  ";OneStrandSupport"
             else:
                 self.FILTER = "OneStrandSupport"
         if(self.NumStartStops < minNumSS and
            AC < minNumSS):
             if(self.FILTER is not None):
-                self.FILTER += ",InsufficientCoordinateSetsSupport"
+                self.FILTER += ";InsufficientCoordinateSetsSupport"
             else:
                 self.FILTER = "InsufficientCoordinateSetsSupport"
         if(AlleleAggregateObject.NumberDuplexReads < minDuplexPairs):
             if(self.FILTER is not None):
-                self.FILTER += ",InsufficientDuplexSupport"
+                self.FILTER += ";InsufficientDuplexSupport"
             else:
                 self.FILTER = "InsufficientDuplexSupport"
         if(AlleleAggregateObject.MFractionAgreed < minFracAgreedForFilter):
             if(self.FILTER is not None):
-                self.FILTER += ",DiscordantReadFamilies"
+                self.FILTER += ";DiscordantReadFamilies"
             else:
                 self.FILTER = "DiscordantReadFamilies"
         if(self.FILTER is None):
@@ -145,7 +145,7 @@ cdef class SNVCFLine:
             if(self.FILTER is None):
                 self.FILTER = "CONSENSUS"
             else:
-                self.FILTER += ",CONSENSUS"
+                self.FILTER += ";CONSENSUS"
 
         self.InfoFields = {"AC": AC,
                            "AF": 1. * AC / DOC,
@@ -257,7 +257,7 @@ cdef class VCFPos:
                  cython.bint keepConsensus=True,
                  cython.str reference="default",
                  cython.bint requireDuplex=True,
-                 cython.long minDuplexPairs=2,
+                 cython.long minDuplexPairs=1,
                  cython.float reverseStrandFraction=-1.,
                  cython.float minFracAgreed=0.0,
                  cython.long minFA=0,
@@ -414,7 +414,7 @@ class HeaderFormatLine:
     def __str__(self):
         self.str = ("##FORMAT=<ID="
                     "{},Number={},Type=".format(self.ID, self.Number) +
-                    "{},Description={}>".format(self.Type, self.Description))
+                    "{},Description=\"{}\">".format(self.Type, self.Description))
         return self.str
 
 
@@ -435,7 +435,7 @@ class HeaderAltLine:
         self.Description = Description
 
     def __str__(self):
-        self.str = "##ALT=<ID={},Description={}>".format(self.ID,
+        self.str = "##ALT=<ID={},Description=\"{}\">".format(self.ID,
                                                          self.Description)
         return self.str
 
@@ -451,7 +451,7 @@ class HeaderFilterLine:
         self.Description = Description
 
     def __str__(self):
-        self.str = "##FILTER=<ID={},Description={}>".format(
+        self.str = "##FILTER=<ID={},Description=\"{}\">".format(
             self.ID, self.Description)
         return self.str
 
@@ -522,7 +522,7 @@ class HeaderFilterINFOGtLine:
             referenceType = str  # Default behavior sets the type to string.
 
     def __str__(self):
-        self.str = "##FILTER=<ID={},Description={},".format(
+        self.str = "##FILTER=<ID={},Description=\"{}\",".format(
                    self.ID, self.Description)
         self.str += "Type={},Negated={},RVal={},INFOTag={}>".format(
                     self.referenceType, self.negation, self.referenceValue,
@@ -554,7 +554,7 @@ class HeaderFilterINFOEqLine:
             referenceType = str  # Default behavior sets the type to string.
 
     def __str__(self):
-        self.str = "##FILTER=<ID={},Description={},".format(
+        self.str = "##FILTER=<ID={},Description=\"{}\",".format(
                    self.ID, self.Description)
         self.str += "Type={},Negated={},RVal={},INFOTag={}>".format(
                     self.referenceType, self.negation, self.referenceValue,

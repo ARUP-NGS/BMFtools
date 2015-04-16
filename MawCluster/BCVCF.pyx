@@ -748,8 +748,7 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     """
     Verifies the absence or presence of variants that should be in a VCF.
     """
-    cdef pysam.TabProxies.VCFProxy rec
-    cdef pysam.TabProxies.VCFProxy qRec
+    cdef pysam.TabProxies.VCFProxy rec, qRec, i
     if(std == "default"):
         raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
                             "able name 'std', must be set to CompareVCFToStan"
@@ -764,13 +763,13 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     queryHandle = pysam.TabixFile(inVCF, parser=asVCF)
     ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
                    "ObservedAF", "NumVariantsCalledAtPos", "DOC",
-                   "refVCFLine", "queryVCFLine"]))
+                   "refVCFLine", "queryVCFLine"]) + "\n")
     qhf = queryHandle.fetch
     for rec in refIterator:
         # Load all records with precisely our ref record's position
         try:
-            queryRecs = list(qhf(rec.contig + ":" + str(rec.pos - 1)
-                                 + "-" + str(rec.pos)))
+            queryRecs = list(qhf(rec.contig + ":" + str(rec.pos - 10)
+                                 + "-" + str(rec.pos + 10)))
         except ValueError:
             pl("Looks like contig %s just isn't in the tabix'd" % rec.contig +
                "file. Give up - continuing!", level=logging.DEBUG)
@@ -778,27 +777,26 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
+        queryRecs = [i for i in queryRecs if i.ref == rec.ref and i.pos == rec.pos]
         nAllelesAtPos = len(queryRecs)
         queryRecs = [i for i in queryRecs if i.alt == rec.alt]
         # Get just the record (or no record) that has that alt.
         if(nAllelesAtPos == 0):
-            pl("No variants called at position. %s " %str(rec),
-               level=logging.DEBUG)
+            pl("No variants called at position. %s " %str(rec))
             ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
         if(len(queryRecs) == 0):
             pl("Looks like the rec: "
-               "%s wasn't called at all." % (str(rec)),
-               level=logging.DEBUG)
+               "%s wasn't called at all." % (str(rec)))
             ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
         qRec = queryRecs[0]
         ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
-                       "True", rec.filter,
+                       "True", qRec.filter,
                        dict([f.split("=") for f in
                              qRec.info.split(";")])["AF"],
                        str(nAllelesAtPos),
