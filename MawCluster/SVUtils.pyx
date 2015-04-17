@@ -1,7 +1,9 @@
-from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm, ReadPair,
-                              ParseBed, SplitSCRead, ReadPairIsDuplex,
+from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm,
+                              ReadPair,ParseBed, SplitSCRead,
+                              ReadPairIsDuplex,
                               PysamToChrDict, GetDeletedCoordinates,
-                              is_read_softclipped, GetGC2NMapForRead)
+                              is_read_softclipped, GetGC2NMapForRead,
+                              GetInsertedStrs)
 from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
@@ -645,6 +647,8 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
     Duplex Shared Insertion - if read1 and read2 share an insertion
     at the same genomic coordinates.
     """
+    cdef list read1list, read2list
+    cdef tuple tup
     try:
         if("DRP" not in read1.opt("SV")):
             return False
@@ -656,8 +660,11 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
         return False
     if(sum([read1.is_reverse, read2.is_reverse]) != 1):
         return False  # Reads aligned to same strand. Not a good sign.
-    if(GetGC2NMapForRead(read1, cigarOp=1) == GetGC2NMapForRead(read2, cigarOp=1)):
-        return True
+    read1list = GetInsertedStrs(read1)
+    read2list = GetInsertedStrs(read2)
+    for tup in read1list:
+        if tup in read2list:
+            return True
     return False
 
 # SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition, tag="DSI")) # Not until fixed.
@@ -714,15 +721,17 @@ def MarkSVTags(pysam.calignmentfile.AlignedSegment read1,
     return read1, read2
 
 
-@cython.locals(SVR=cython.bint, maxInsert=cython.long)
 @cython.returns(tuple)
 def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
                  pysam.calignmentfile.AlignedSegment read2,
-                 bedObj="default", maxInsert=100000,
-                 testDict=SVTestDict, paramDict=SVParamDict):
+                 bedObj="default", cython.long maxInsert=100000,
+                 list testList=SVTestList,
+                 paramDict=SVParamDict):
     """
     Marks all SV tags on a pair of reads.
     """
+    cdef list SVPKeys
+    cdef cython.bint SVR
     if bedObj == "default":
         raise ThisIsMadness("Bed file required for marking SV tags.")
     SVParamDict['ORB'] = bedObj
@@ -732,7 +741,7 @@ def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
     assert read1.query_name == read2.query_name
     # print("SVParamDict: {}".format(repr(SVParamDict)))
     # print("SVTestDict: {}".format(repr(SVTestDict)))
-    for test in SVTestList:
+    for test in testList:
         if(test.tag in SVPKeys):
             read1, read2 = test.test(read1, read2,
                                      extraField=SVParamDict[test.tag])

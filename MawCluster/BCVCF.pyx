@@ -7,9 +7,9 @@ from operator import methodcaller as mc
 import decimal
 import logging
 import operator
-import subprocess
 import sys
 from cStringIO import InputType, OutputType
+from subprocess import check_call, check_output
 
 import numpy as np
 from numpy import array as nparray
@@ -22,7 +22,8 @@ from cytoolz import map as cmap
 
 cimport pysam.TabProxies
 
-from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
+from utilBMF.HTSUtils import (ThisIsMadness, printlog as pl,
+                              SortBgzipAndTabixVCF)
 from utilBMF import HTSUtils
 from MawCluster import SNVUtils
 
@@ -445,10 +446,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
     return TransCountsTable
 
 
-@cython.locals(fast=cython.bint)
-def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default",
-                       fast=True):
-    cdef cython.long count
+def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
     if(outVCF == "default"):
         outVCF = inVCF[0:-4] + ".bedfilter.vcf"
     inVCF = ParseVCF(inVCF)
@@ -456,19 +454,30 @@ def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default",
     bed = HTSUtils.ParseBed(bedfile)
     outHandle = open(outVCF, "w")
     count = 0
-    for line in inVCF.header:
-        if(count == 1):
-                outHandle.write(SNVUtils.HeaderCustomLine(
-                    customKey="FilterVCFFileByBed",
-                    customValue=bedfile).__str__() + "\n")
-        outHandle.write(line + "\n")
-        count += 1
+    header = check_output("zcat inVCF | head -n 1000 | grep '^#' > %s" %outVCF,
+                          shell=True).split("\n")
+    header.insert(-1, str(SNVUtils.HeaderCustomLine(customKey="FilterVCFFileByBed", customValue=bedfile)))
+    outHandle.write("\n".join(header) + "\n")
     for line in inVCF.Records:
         if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
-            outHandle.write(line.__str__() + "\n")
+            outHandle.write(str(line) + "\n")
         else:
             pass
     outHandle.close()
+    return outVCF
+
+
+def FilterGZVCFByBed(inVCF, bedfile="default", outVCF="default"):
+    if(inVCF[:-3] == "vcf"):
+        pl("vcf file not bgzipped - sorting, bgzipping and tabixing.")
+        inVCF = SortBgzipAndTabixVCF(inVCF)
+    elif(inVCF[:-3] == ".gz"):
+        raise ThisIsMadness("Unrecognized file extension - either "
+                            "accepts bgzipped or unzipped vcf files.")
+    if(outVCF == "default"):
+        outVCF = inVCF[0:-7] + ".bedfilter.vcf.gz"
+    print("bedfile used: {}".format(bedfile))
+    check_call("bcftools -R %s %s -O z > %s" % (bedfile, inVCF, outVCF))
     return outVCF
 
 

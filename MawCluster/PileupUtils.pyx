@@ -34,13 +34,17 @@ from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair)
+cimport utilBMF.HTSUtils
 from utilBMF import HTSUtils
 import utilBMF
-import utilBMF.HTSUtils
-from utilBMF.HTSUtils cimport pPileupRead
-ctypedef pPileupRead pPileupRead_t
+cimport utilBMF.HTSUtils
+from utilBMF.HTSUtils cimport PileupReadPair
 ctypedef PRInfo PRInfo_t
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
+ctypedef PileupReadPair PileupReadPair_t
+
+
+lname = lambda x: x.name
 
 
 @cython.locals(paired=cython.bint)
@@ -50,17 +54,17 @@ def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
     Takes a pPileupColumn object (python PileupColumn) as input
     and returns a list of PileupReadPair objects.
     """
-    cdef list pileups
     cdef dict ReadNameCounter
-    cdef list readnames
-    cdef list reads
-    cdef list readpairs
+    cdef list reads, readnames, readpairs, pileups
+    cdef pPileupRead_t read
+    cdef tuple i
+    cdef PileupReadPair_t pair
     pileups = pPileupColObj.pileups
     ReadNameCounter = cyfreq(list(cmap(oag("query_name"),
         list(cmap(oag("alignment"), pileups)))))
     readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
-                   key=lambda x: x.name)
+                   key=lname)
     readpairs = list(cmap(PileupReadPair, ctpartition(2, reads)))
     return [pair for pair in readpairs if pair.discordant]
 

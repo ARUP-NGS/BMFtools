@@ -44,9 +44,8 @@ import MawCluster
 from MawCluster.Probability import GetCeiling
 from utilBMF.ErrorHandling import *
 
-ctypedef np.longdouble_t dtype128_t
-ctypedef ReadPair ReadPair_t
-ctypedef pPileupRead pPileupRead_t
+l1 = lambda x: x[1]
+lisnone = lambda x: x[1] is None
 
 
 def printlog(string, level=logging.INFO):
@@ -75,6 +74,13 @@ def printlog(string, level=logging.INFO):
     return
 
 pl = printlog
+
+CmpDict = {"A": "T", "C": "G", "G": "C", "T": "A"}
+
+
+@cython.returns(cython.str)
+def RevCmp(cython.str seq):
+    return "".join([CmpDict[i] for i in list(seq)][::-1])
 
 
 PysamToChrDict = {}
@@ -836,20 +842,6 @@ cdef class ReadPair:
     Currently, one read unmapped and one read soft-clipped are
     both marked as soft-clipped reads.
     """
-    cdef public pysam.calignmentfile.AlignedSegment read1
-    cdef public pysam.calignmentfile.AlignedSegment read2
-    cdef public list SVTags
-    cdef public cython.bint read1_is_unmapped
-    cdef public cython.bint read1_soft_clipped
-    cdef public cython.bint read2_is_unmapped
-    cdef public cython.bint read2_soft_clipped
-    cdef public cython.bint SameContig
-    cdef public cython.str read1_contig
-    cdef public cython.str read2_contig
-    cdef public cython.str ContigString
-    cdef public cython.long insert_size
-    cdef public cython.bint read1_in_bed
-    cdef public cython.bint read2_in_bed
 
     def __init__(self, pysam.calignmentfile.AlignedSegment read1,
                  pysam.calignmentfile.AlignedSegment read2):
@@ -937,14 +929,7 @@ cdef class PileupReadPair:
     Accepts a list of length two as input.
     """
 
-    cdef public pPileupRead_t read1
-    cdef public pPileupRead_t read2
-    cdef public ReadPair_t RP
-    cdef public cython.bint discordant
-    cdef public cython.str discordanceString
-    cdef public cython.str name
-
-    def __init__(self, tuple readlist):
+    def __cinit__(self, tuple readlist):
         cdef pPileupRead_t read1
         cdef pPileupRead_t read2
         read1, read2 = readlist[0], readlist[1]
@@ -967,6 +952,8 @@ cdef class PileupReadPair:
                 self.discordanceString = (self.RP.read1_contig + "," +
                                           str(self.read1.alignment.pos +
                                               self.read1.query_position))
+        else:
+            self.discordanceString = ""
 
 
 
@@ -1258,8 +1245,7 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
     if(contig == "default"):
         FacePalm("contig required for this function!")
     for k, g in groupby(
-            enumerate(sorted(CounterObj.keys())),
-            lambda i_x: i_x[0] - i_x[1]):
+            enumerate(sorted(CounterObj.keys())), lix):
         posList = list(cmap(oig(1), g))
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
@@ -1471,15 +1457,54 @@ def GetDeletedCoordinates(pysam.calignmentfile.AlignedSegment read):
         else:
             break
     apList = apList[0:k + 1]
-    return sorted([i[1] for i in read.get_aligned_pairs() if i[0] is None])
+    return sorted([i[1] for i in apList if i[0] is None])
 
 
+@cython.returns(list)
 def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
     """
-    TODO: Use the GetDeletedCoordinates function as a basis for getting
-    the coordinate boundaries of inserted bases.
     """
-    pass
+    cdef cython.long start, end
+    cdef list apList
+    cdef tuple i
+    apList = read.get_aligned_pairs()
+    # Remove any soft-clipped bases at the front.
+    genPos = []
+    readPos = []
+    start = 0
+    end = len(apList)
+    for k, g in groupby(apList, l1):
+        genPos.append(list(g))
+        readPos.append(k)
+    if(readPos[0] is None):
+        start = len(genPos[0])
+    if(readPos[-1] is None):
+        end = len(asList) - len(genPos[-1])
+    apList = apList[start:end]
+    return sorted([i[0] for i in apList if i[1] is None])
+
+
+@cython.returns(list)
+def GetInsertedStrs(pysam.calignmentfile.AlignedSegment read):
+    cdef dict readPosToAlignedPosDict
+    cdef cython.long l
+    cdef list PrecedingBase, SuccessiveBase, stringList, set
+    positions = GetInsertedNucleotides(read)
+    stringList = []
+    PrecedingBase = []
+    SuccessiveBase = []
+    readPosToAlignedPosDict = dict(read.get_aligned_pairs())
+
+    for k, g in groupby(enumerate(positions), lisnone):
+            set = map(oig(1), g)
+            if(set[0] > set[-1]):
+                PrecedingBase.append(readPosToAlignedPosDict[set[-1] - 1])
+                SuccessiveBase.append(readPosToAlignedPosDict[set[0] + 1])
+            else:
+                PrecedingBase.append(readPosToAlignedPosDict[set[0] - 1])
+                SuccessiveBase.append(readPosToAlignedPosDict[set[-1] + 1])
+            stringList.append("".join([read.seq[l] for l in set]))
+    return zip(stringList, PrecedingBase, SuccessiveBase)
 
 
 @cython.returns(dtype128_t)
@@ -1493,7 +1518,6 @@ def FractionSoftClipped(cAlignedSegment read):
 
 
 @cython.returns(dtype128_t)
-@memoize
 def FractionSoftClippedCigar(list cigar):
     """
     Returns the fraction softclipped directly from tuple
@@ -1661,13 +1685,11 @@ def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read, alignmentfileObj):
         return FastqStr1 + "\n" + FastqStr2
     return FastqStr2 + "\n" + FastqStr1
 
-
-@cython.locals(read1=pysam.calignmentfile.AlignedSegment,
-               alignmentfileObj=pysam.calignmentfile.AlignmentFile,
-               lAlignedArr=cython.long, lbf=cython.long, minAF=cython.float,
-               af=cython.float)
-def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
-                minAF=0.5):
+@cython.returns(pysam.calignmentfile.AlignmentFile)
+def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
+                pysam.calignmentfile.AlignmentFile alignmentfileObj,
+                cython.str extraOpts="",
+                cython.str ref="default", cython.float minAF=0.5):
     """
     Passes the sequence and qualities of the provided read to bwa aln with
     an AlignedSegment as input. Updates the AlignedSegment's fields in-place
@@ -1677,32 +1699,45 @@ def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
     Might fix this later, but I don't like it very much. If there were cython
     bindings to bwa, that would be the perfect use of it. Ehhh..
     """
+    cdef cython.long lAlignedArr, lbf
+    cdef cython.float af
+    cdef cython.str FastqStr, commandStr
+    cdef list alignedArr, letters, numbers, tags, tag
+    if(read.opt("AF") == 1.):
+        # Nothing wrong a fully-aligned read.
+        return read
     try:
         assert ref != "default"
     except AssertionError:
         raise ThisIsMadness("Reference required for AlnRealignAS!")
     FastqStr = ASToFastqSingle(read)
-    commandStr = "echo \"%s\" | bwa bwasw -M %s -" % (FastqStr, ref)
+    commandStr = "echo \'%s\' | bwa bwasw -M %s -" % (FastqStr, ref)
     printlog("Command String: %s" % commandStr)
-    alignedArr = [i.split("\t") for i in
-                  check_output(commandStr, shell=True).split("\n")
-                  if not(i == "" or i[0] == "@")]
+    try:
+        alignedArr = [i.split("\t") for i in
+                      check_output(commandStr, shell=True).split("\n")
+                      if not(i == "" or i[0] == "@")]
+    except subprocess.CalledProcessError:
+        pl("Problem with read - usually the quality scores have a "
+           "quotation mark therein, which can make a realignment infeasible."
+           " Returning original read.", level=logging.INFO)
+        return read
     alignedArr = [i for i in alignedArr if
                   not (int(i[1]) & 256 or int(i[1]) & 2048)]
     lAlignedArr = len(alignedArr)
     if(lAlignedArr == 0):
         printlog("Could not find a suitable alignment with bwasw",
-           level=logging.DEBUG)
+           level=logging.INFO)
         return read
     if(lAlignedArr > 1):
         printlog("Somehow there are multiple primary alignments. I don't know what"
-           " to do, so just returning the original read.", level=logging.DEBUG)
+           " to do, so just returning the original read.", level=logging.INFO)
         return read
     else:
         alignedArr = alignedArr[0]
     if(alignedArr[4] == "0"):
         printlog("bwasw could not assign a non-0 MQ alignment. Returning original "
-            "read.", level=logging.DEBUG)
+            "read.", level=logging.INFO)
         return read
     # Now check the cigar string.
     ra = regexcompile("[A-Z]")
@@ -1714,7 +1749,7 @@ def SWRealignAS(read, alignmentfileObj, extraOpts="", ref="default",
               if i[0] == "M"]) / (1. * sum(numbers))
     if(af < minAF):
         printlog("bwasw could not align more than %s. (aligned: " % minAF +
-           "%s) Returning original read." % af, level=logging.DEBUG)
+           "%s) Returning original read." % af, level=logging.INFO)
         return read
     # Get the realignment tags and overwrite original tags with them.
     tags = [i.split(":")[::2] for i in alignedArr[11:]] #  Gets tags

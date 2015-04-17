@@ -167,7 +167,7 @@ def SNVCrawler(inBAM,
                        PysamToChrDict[PileupColumn.reference_id] + ":" +
                        str(PileupColumn.reference_pos + 1) +
                        " - usually because all reads failed filters.",
-                       level=logging.INFO)
+                       level=logging.DEBUG)
     else:
         puIterator = pileupCall(max_depth=200000, multiple_iterators=True)
         PileupIt = puIterator.next

@@ -1,7 +1,9 @@
 cimport cython
 cimport numpy as np
 cimport pysam.calignmentfile
+from utilBMF.HTSUtils cimport pPileupRead
 ctypedef pPileupColumn pPileupColumn_t
+ctypedef pPileupRead pPileupRead_t
 
 
 cdef class AlleleAggregateInfo:

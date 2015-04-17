@@ -43,7 +43,6 @@ from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC
 
-ctypedef np.longdouble_t dtype128_t
 
 @cython.locals(fixMate=cython.bint)
 def AbraCadabra(inBAM, outBAM="default",
@@ -238,29 +237,22 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
     return outBAM
 
 
-@cython.locals(FM=cython.int, bwaswRescue=cython.bint,
-               minAF=cython.float)
 def pairedBarcodeTagging(
-        fq1,
-        fq2,
-        bam,
-        outBAMFile="default",
-        suppBam="default",
-        bedfile="default",
-        conversionXml="default", realigner="default",
-        minAF=0.4, ref="default"):
-    cdef cAlignedSegment entry
-    cdef cAlignedSegment read1bam
-    cdef cAlignedSegment read2bam
-    cdef dtype128_t r1FracAlign
-    cdef dtype128_t r2FracAlign
-    cdef dtype128_t r1FracSC
-    cdef dtype128_t r2FracSC
-    cdef cython.bint addDefault
-    cdef cython.str coorString
-    cdef cython.str contigSetStr
-    cdef dict descDict1
-    cdef dict descDict2
+        cython.str fq1,
+        cython.str fq2,
+        cython.str bam,
+        cython.str outBAMFile="default",
+        cython.str suppBam="default",
+        cython.str bedfile="default",
+        cython.str conversionXml="default", cython.str realigner="default",
+        cython.float minAF=0.4, cython.str ref="default"):
+    cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
+    cdef cython.float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
+    cdef cython.long FM, ND1, ND2
+    cdef cython.bint addDefault, bwaswRescue
+    cdef cython.str coorString, cStr, contigSetStr
+    cdef dict descDict1, descDict2
+    # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
     if(realigner == "default"):
         raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
     if(outBAMFile == "default"):
@@ -316,9 +308,11 @@ def pairedBarcodeTagging(
             r1FracAlign = FractionAligned(read1bam)
         r2FracAlign = FractionAligned(read2bam)
         r2FracSC = FractionSoftClipped(read2bam)
+        """
         if(r2FracAlign < minAF and not read2bam.is_unmapped):
             read2bam = SWRealignAS(read2bam, postFilterBAM, ref=ref)
             r2FracAlign = FractionAligned(read2bam)
+        """
         coorString = ",".join(sorted([":".join([PysamToChrDict[
             read1bam.reference_id], str(read1bam.pos)]), ":".join([
                 PysamToChrDict[read2bam.reference_id], str(read2bam.pos)])]))
