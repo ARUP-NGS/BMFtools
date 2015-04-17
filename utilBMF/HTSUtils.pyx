@@ -44,7 +44,18 @@ import MawCluster
 from MawCluster.Probability import GetCeiling
 from utilBMF.ErrorHandling import *
 
-l1 = lambda x: x[1]
+def l1(x):
+    """
+    function to return the 2nd element in list or tuple.
+    """
+    return x[1]
+
+
+@cython.returns(cython.bint)
+def lisnone(x):
+    """
+    """
+    return x[1] is None
 lisnone = lambda x: x[1] is None
 
 
