@@ -56,7 +56,6 @@ def lisnone(x):
     """
     """
     return x[1] is None
-lisnone = lambda x: x[1] is None
 
 
 def printlog(string, level=logging.INFO):
