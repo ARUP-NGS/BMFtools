@@ -8,8 +8,8 @@ cimport cython
 import pysam
 from lxml import etree
 
-from utilBMF.HTSUtils import ThisIsMadness, printlog as pl
-from MawCluster.PileupUtils import pPileupColumn, PileupReadPair
+from utilBMF.HTSUtils import ThisIsMadness, printlog as pl, PileupReadPair
+from MawCluster.PileupUtils import pPileupColumn
 
 """
 Sequencer Error Characterization & Correction (SecC) Tools

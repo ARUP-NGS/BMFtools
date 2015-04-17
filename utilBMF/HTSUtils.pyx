@@ -43,6 +43,7 @@ from cytoolz import map as cmap, memoize, frequencies as cyfreq
 import MawCluster
 from MawCluster.Probability import GetCeiling
 from utilBMF.ErrorHandling import *
+oig1 = oig(1)
 
 def l1(x):
     """
@@ -90,7 +91,7 @@ CmpDict = {"A": "T", "C": "G", "G": "C", "T": "A"}
 
 @cython.returns(cython.str)
 def RevCmp(cython.str seq):
-    return "".join([CmpDict[i] for i in list(seq)][::-1])
+    return "".join([CmpDict[i] for i in list(seq)])[::-1]
 
 
 PysamToChrDict = {}
@@ -245,11 +246,11 @@ def GetPysamToChrDict(cython.str alignmentFileText):
 
 
 @cython.returns(dict)
-def GetPysamToChrDictFromAlignmentFile(alignmentfileObj):
+def GetPysamToChrDictFromAlignmentFile(
+        pysam.calignmentfile.AlignmentFile alignmentfileObj):
     """
     Returns a dictionary of pysam reference numbers to contig names.
     """
-    assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
     return dict(list(enumerate(alignmentfileObj.references)))
 
 
@@ -1105,7 +1106,7 @@ def WritePairToHandle(ReadPair, handle="default"):
     handle.write(ReadPair.read2)
     return True
 
-
+@cython.returns(list)
 def ParseBed(cython.str bedfile):
     """
     Parses a bedfile in, leaving a list of length 3.
@@ -1136,6 +1137,7 @@ def parseConfig(cython.str string):
     return {line.split("=")[0].strip() : line.split("=")[1].strip() for line in parsedLines}
 
 
+@cython.returns(dict)
 def ReadListToCovCounter(reads, cython.long minClustDepth=3,
                          cython.long minPileupLen=10):
     """
@@ -1256,7 +1258,7 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
         FacePalm("contig required for this function!")
     for k, g in groupby(
             enumerate(sorted(CounterObj.keys())), lix):
-        posList = list(cmap(oig(1), g))
+        posList = list(cmap(oig1, g))
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
         else:
@@ -1273,7 +1275,7 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
         return []
     print("Now attempting to merge any adjacent intervals. Number: {}".format(
         len(IntervalList)))
-    IntervalList = sorted(IntervalList, key=oig(1))
+    IntervalList = sorted(IntervalList, key=oig1)
     workingIntval = copy.copy(IntervalList[0])
     MergedInts = []
     for intval in IntervalList:
@@ -1331,7 +1333,7 @@ def CigarToQueryIndices(cigar):
         pl("Invalid argument - cigars are lists of tuples, but the first item"
            " in this list is not a tuple!")
     tuples = []
-    c = list(cmap(oig(1), cigar))
+    c = list(cmap(oig1, cigar))
     cumSum = [sum(c[:i + 1]) for i in range(len(c))]
     for n, entry in enumerate(cigar):
         if n == 0:
@@ -1496,6 +1498,12 @@ def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
 
 @cython.returns(list)
 def GetInsertedStrs(pysam.calignmentfile.AlignedSegment read):
+    """
+    Returns a list of tuples for strings, along with preceding reference base
+    and successive reference base position. We can then directly compare these
+    tuples between read 1 and read 2 if they cover the same positions.
+    Used to determine whether or not DSI is appropriate.
+    """
     cdef dict readPosToAlignedPosDict
     cdef cython.long l
     cdef list PrecedingBase, SuccessiveBase, stringList, set
@@ -1506,7 +1514,7 @@ def GetInsertedStrs(pysam.calignmentfile.AlignedSegment read):
     readPosToAlignedPosDict = dict(read.get_aligned_pairs())
 
     for k, g in groupby(enumerate(positions), lisnone):
-            set = map(oig(1), g)
+            set = map(oig1, g)
             if(set[0] > set[-1]):
                 PrecedingBase.append(readPosToAlignedPosDict[set[-1] - 1])
                 SuccessiveBase.append(readPosToAlignedPosDict[set[0] + 1])
@@ -1651,7 +1659,6 @@ def CalculateFamStats(inFq):
     return numSing, numFam, meanFamAll, meanRealFam
 
 
-@memoize
 @cython.locals(n=cython.long)
 @cython.returns(list)
 def bitfield(n):
@@ -1669,10 +1676,20 @@ def ASToFastqSingle(pysam.calignmentfile.AlignedSegment read):
     one read.
     """
     if read.is_read1:
+        if(read.is_reverse):
+            return ("@" + read.query_name + " 1\n" + read.seq
+                    + "\n+\n" +
+                    RevCmp("".join([ph2chrDict[i] for
+                                    i in read.query_qualities])))
         return ("@" + read.query_name + " 1\n" + read.seq
                 + "\n+\n" +
                 "".join([ph2chrDict[i] for i in read.query_qualities]))
     if read.is_read2:
+        if(read.is_reverse):
+            return ("@" + read.query_name + " 2\n" + read.seq
+                    + "\n+\n" +
+                    RevCmp("".join([ph2chrDict[i] for
+                                    i in read.query_qualities])))
         return ("@" + read.query_name + " 2\n" + read.seq
                 + "\n+\n" +
                 "".join([ph2chrDict[i] for i in read.query_qualities]))

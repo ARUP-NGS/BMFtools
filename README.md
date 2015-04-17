@@ -54,7 +54,7 @@ bmftools <subcommand> --help
 
 ## Dependencies
 
-Required python packages: Biopython, pysam, pudb
+Required python packages: Biopython, pysam, pudb, cytoolz, matplotlib, scipy, statsmodels
 
 cutadapt is required for adapter trimming.
 
@@ -65,6 +65,7 @@ bwa (mem or aln, depending on needs.)
 
 #### Compiler
 gcc >= gccv5.0
+(Not essential, but gcc5 does offer -floop-unroll-and-jam and a few other neat compiler optimizations.)
 
 #### Adapter Trimming
 Cutadapt
@@ -164,7 +165,7 @@ Most options are available for command-line as well. If an option is set in both
 
 4. Changes in BMFTools v0.0.6.0:
 
-    1. The most import thing is that all of the new features I've been adding finally are debugged and workable.
+    1. The most important thing is that all of the new features I've been adding finally are debugged and workable.
     1. Performance improvements throughout, but perhaps not entirely relevant.
 
 5. Changes in BMFTools v0.0.6.1:

@@ -34,5 +34,3 @@ cdef class VCFPos:
     cdef public cython.bint AABothStrandAlignment, requireDuplex, keepConsensus
     cdef public cython.bint DuplexRequired
     cdef public list VCFLines
-
-

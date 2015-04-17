@@ -34,11 +34,6 @@ This module contains a variety of tools for calling variants.
 Currently, it primarily works with SNPs primarily with experimental
 features present for structural variants
 TODO: INFO field: discrepancy between a given allele's RSF and the average
-Reverse Strand Fraction - RSF
-Both Strands Support Variant - BS
-Fraction of unmerged reads supporting variant - TF
-Allele Fraction - AF
-DP - Depth (Merged)
 """
 
 
@@ -320,16 +315,15 @@ cdef class VCFPos:
                                   for line in
                                   self.VCFLines])
         else:
-            self.str = "\n".join([line.__str__()
-                                  for line in
-                                  self.VCFLines
-                                  if line.FILTER != "CONSENSUS"])
+            self.str = "\n".join([str(line)
+                                  for line in self.VCFLines
+                                  if "CONSENSUS" not in line.FILTER])
         self.DuplexRequired = requireDuplex
         self.minDuplexPairs = minDuplexPairs
 
     def __str__(self):
         list(cmap(mc("update"), self.VCFLines))
-        self.str = "\n".join(list(cmap(mc("__str__"), self.VCFLines)))
+        self.str = "\n".join(list(cmap(str, self.VCFLines)))
         return self.str
 
 
@@ -938,8 +932,8 @@ def GetContigHeaderLines(dict header):
     contigLineList = []
     for contigDict in header['SQ']:
         contigLineList.append(
-            HeaderContigLine(contig=contigDict["SN"],
-                             length=contigDict["LN"]).__str__())
+            str(HeaderContigLine(contig=contigDict["SN"],
+                             length=contigDict["LN"])))
     return "\n".join(contigLineList)
 
 
@@ -952,49 +946,49 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
                  ):
     HeaderLinesStr = ""
     # fileformat line
-    HeaderLinesStr += HeaderFileFormatLine(
-        fileformat=fileFormat).__str__() + "\n"
+    HeaderLinesStr += str(HeaderFileFormatLine(
+        fileformat=fileFormat)) + "\n"
     # FILTER lines
     if(FILTERTags == "default"):
         for key in sorted(HeaderFilterDict.keys()):
-            HeaderLinesStr += HeaderFilterDict[key].__str__() + "\n"
+            HeaderLinesStr += str(HeaderFilterDict[key]) + "\n"
     else:
         for filter in FILTERTags.split(","):
             try:
-                HeaderLinesStr += HeaderFilterDict[
-                    filter.upper()].__str__() + "\n"
+                HeaderLinesStr += str(HeaderFilterDict[
+                    filter.upper()]) + "\n"
             except KeyError:
                 pl("Filter {} not found - continuing.".format(filter))
     # INFO lines
     if(INFOTags == "default"):
         for key in sorted(HeaderInfoDict.keys()):
-            HeaderLinesStr += HeaderInfoDict[key].__str__() + "\n"
+            HeaderLinesStr += str(HeaderInfoDict[key]) + "\n"
     else:
         for info in INFOTags.split(","):
             try:
-                HeaderLinesStr += HeaderInfoDict[
-                    info.upper()].__str__() + "\n"
+                HeaderLinesStr += str(HeaderInfoDict[
+                    info.upper()]) + "\n"
             except KeyError:
                 pl("Info {} not found - continuing.".format(info))
     # FORMAT lines
     if(FORMATTags == "default"):
         for key in sorted(HeaderFormatDict.keys()):
-            HeaderLinesStr += HeaderFormatDict[key].__str__() + "\n"
+            HeaderLinesStr += str(HeaderFormatDict[key]) + "\n"
     else:
         for format in FORMATTags.split(","):
             try:
-                HeaderLinesStr += HeaderFormatDict[
-                    format.upper()].__str__() + "\n"
+                HeaderLinesStr += str(HeaderFormatDict[
+                    format.upper()]) + "\n"
             except KeyError:
                 pl("Format {} not found - continuing.".format(format))
     # commandline line
     if(commandStr != "default"):
-        HeaderLinesStr += HeaderCommandLine(
-            commandStr=commandStr).__str__() + "\n"
+        HeaderLinesStr += str(HeaderCommandLine(
+            commandStr=commandStr)) + "\n"
     # reference line
     if(reference != "default"):
-        HeaderLinesStr += HeaderReferenceLine(
-            reference=reference, isfile=reference_is_path).__str__() + "\n"
+        HeaderLinesStr += str(HeaderReferenceLine(
+            reference=reference, isfile=reference_is_path)) + "\n"
     # contig lines
     if(header != "default"):
         HeaderLinesStr += GetContigHeaderLines(header) + "\n"

@@ -440,7 +440,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
         newSeq,
         "+",
         phredQualsStr])
-    if(Success is False):
+    if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
 

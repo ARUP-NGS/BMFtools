@@ -8,7 +8,8 @@ import subprocess
 import sys
 
 #BMFTools tries to install two binaries into your bin folder.
-#If you want to change it, copy 
+#If you want to change the install directory, edit this variable
+#or copy it manually.
 installDir = "/mounts/bin"
 
 # Find the ideal -march argument for the system.
@@ -86,7 +87,7 @@ config = {
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
     'version': '0.0.7.4',
-    'install_requires': ['pysam', 'biopython',
+    'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
                          'cython', 'cutadapt', 'lxml', 'scipy'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
