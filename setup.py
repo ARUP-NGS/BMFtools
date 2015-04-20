@@ -6,13 +6,14 @@ import pysam
 import shlex
 import subprocess
 import sys
+from Cython.Build import cythonize
 
-#BMFTools tries to install two binaries into your bin folder.
-#If you want to change the install directory, edit this variable
-#or copy it manually.
+#  BMFTools tries to install two binaries into your bin folder.
+#  If you want to change the install directory, edit this variable
+#  or copy it manually.
 installDir = "/mounts/bin"
 
-# Find the ideal -march argument for the system.
+#  Find the ideal -march argument for the system.
 try:
     print("Retrieving optimal -march flag.")
     marchValue = subprocess.Popen("gcc -c -Q -march=native --help=target | "
@@ -25,11 +26,9 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
-"""
 print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
-"""
 
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine"]
@@ -71,7 +70,6 @@ try:
 except ImportError:
     print("setuptools not available. Trying distutils.")
     from distutils.core import setup, Extension
-from Cython.Build import cythonize
 
 ext = cythonize('*/*.pyx') + cythonize("*/*.py")
 # Insist on -O3 optimization
@@ -105,7 +103,8 @@ setup(**config)
 
 try:
     subprocess.check_call(["cp", "BMFMain/main.py", installDir + "/BMFMain"])
-    subprocess.check_call(["cp", "utilBMF/bmftools.py", installDir + "/bmftools"])
+    subprocess.check_call(["cp", "utilBMF/bmftools.py",
+                           installDir + "/bmftools"])
 except subprocess.CalledProcessError:
     raise ValueError("You don't seem to have permissions to install BMFTools"
                      " executables. You'll have to do that manually.")

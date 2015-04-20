@@ -1,31 +1,28 @@
 #!/usr/bin/env python
 from __future__ import division
-
-import logging
-import os.path
-import subprocess
-import shlex
-import operator
 from operator import attrgetter as oag
 from operator import methodcaller as mc
 from subprocess import check_output, check_call
-import sys
-
-import cython
-cimport cython
-import pysam
-cimport pysam.cfaidx
-cimport pysam.calignmentfile
-import numpy as np
-cimport numpy as np
 from numpy import array as nparray
 from numpy import append as npappend
 from numpy import mean as nmean
 from cytoolz import map as cmap
-
 from utilBMF.HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
                               ThisIsMadness, PipedShellCall)
 from MawCluster.PileupUtils import pPileupColumn
+import cython
+import logging
+import numpy as np
+import operator
+import os.path
+import pysam
+import shlex
+import subprocess
+import sys
+cimport cython
+cimport numpy as np
+cimport pysam.calignmentfile
+cimport pysam.cfaidx
 
 ctypedef np.longdouble_t dtype128_t
 ctypedef np.int64_t dtypei64_t
@@ -34,6 +31,7 @@ ctypedef np.int64_t dtypei64_t
 """
 Contains functions and miscellania for QC metrics.
 """
+
 
 @cython.locals(buffer=cython.long)
 def ExtendBed(bedfile, buffer=100, outbed="default"):
@@ -67,7 +65,7 @@ def coverageBed(inBAM, bed="default", outbed="default"):
     pl("Calculating coverage bed. bed: %s. inBAM: %s. " (bed, inBAM) +
        "outbed: %s" % outbed)
     commandStr = ("samtools bedcov %s %s | awk -t '{print " % (bed, inBAM) +
-                  "$1, $2, $3, $4, $5, $6, $7 / ($3 - $2)} > %s" % ( outbed))
+                  "$1, $2, $3, $4, $5, $6, $7 / ($3 - $2)} > %s" % (outbed))
     PipedShellCall(commandStr)
     return outbed
 
@@ -133,12 +131,13 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=100,
     bed = ParseBed(extendedBed)
     resultsDict = {}
     outHandle.write("##Parameters\n")
-    outHandle.write("#" +": ".join(["BAM", inBAM]) + "\n")
-    outHandle.write("#" +": ".join(["bed", bedfile]) + "\n")
-    outHandle.write("#" +": ".join(["Expanded bed", extendedBed]) + "\n")
-    outHandle.write("#" +": ".join(["Target Coverage Buffer",
+    outHandle.write("#" + ": ".join(["BAM", inBAM]) + "\n")
+    outHandle.write("#" + ": ".join(["bed", bedfile]) + "\n")
+    outHandle.write("#" + ": ".join(["Expanded bed", extendedBed]) + "\n")
+    outHandle.write("#" + ": ".join(["Target Coverage Buffer",
                                     str(onTargetBuffer)]) + "\n")
-    outHandle.write("#" +": ".join(["Minimum Family Coverage", str(minFM)]) + "\n")
+    outHandle.write("#" + ": ".join(["Minimum Family Coverage",
+                                     str(minFM)]) + "\n")
     popenInstance = coverageBed(inBAM, bed=bedfile, )
     outHandle.write("#" + ": ".join(["Output coverage bed", bedfile]))
     TotalReads = CountNumReads(inBAM)

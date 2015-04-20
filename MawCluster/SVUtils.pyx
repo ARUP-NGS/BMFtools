@@ -1,31 +1,30 @@
 from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm,
-                              ReadPair,ParseBed, SplitSCRead,
+                              ReadPair, ParseBed, SplitSCRead,
                               ReadPairIsDuplex,
                               PysamToChrDict, GetDeletedCoordinates,
                               is_read_softclipped, GetGC2NMapForRead,
                               GetInsertedStrs)
-from utilBMF import HTSUtils
 
 from Bio.Seq import Seq
-import pysam
-import numpy as np
-cimport numpy as np
-from numpy import argmax as nargmax
-import cython
-cimport cython
-import cytoolz
-cimport pysam.calignmentfile
-
-import uuid
-import copy
-from itertools import chain
-cfi = chain.from_iterable
 from collections import defaultdict
-import operator
+from itertools import chain
+from numpy import argmax as nargmax
+from operator import add as oadd
 from operator import attrgetter as oag
 from operator import itemgetter as oig
-from operator import add as oadd
 from utilBMF.HTSUtils import ReadOverlapsBed as RIB
+from utilBMF import HTSUtils
+import copy
+import cython
+import cytoolz
+import numpy as np
+import operator
+import pysam
+import uuid
+cimport numpy as np
+cimport cython
+cimport pysam.calignmentfile
+cfi = chain.from_iterable
 
 
 cdef class TestClass:
@@ -34,6 +33,7 @@ cdef class TestClass:
     """
     cdef public cython.str text
     cdef public cython.long length
+
     def __init__(self, inStr):
         self.length = len(inStr)
         self.text = inStr
@@ -101,8 +101,8 @@ class PutativeXLoc:
             DORList = [0] * len(self.intervals)
         try:
             assert (isinstance(bedIntervals[0], list) and
-                    isinstance(bedIntervals[0][0], str)
-                    and isinstance(bedIntervals[0][1], int))
+                    isinstance(bedIntervals[0][0], str) and
+                    isinstance(bedIntervals[0][1], int))
         except AssertionError:
             print(repr(bedIntervals))
             FacePalm("bedIntervals should be in ParseBed format!")
@@ -188,8 +188,8 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     ReadOutBedList = [rec for rec in recList if
                       HTSUtils.ReadWithinDistOfBedInterval(rec,
                                                            bedLine=bedInterval,
-                                                           dist=dist)
-                      and rec.mapq >= minMQ]
+                                                           dist=dist) and
+                      rec.mapq >= minMQ]
     ReadMateInBed = []
     for read in ReadOutBedList:
         try:
@@ -462,6 +462,7 @@ SVParamDict['DRP'] = 0.5
 #  such that cycling through the list will be easier.
 #  Extra field provided for each.
 
+
 class SVTagFn(object):
     """
     Base class for SV tag testers.
@@ -515,7 +516,8 @@ def DRP_SNV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
         return ReadPairIsDuplex(ReadPair(read1, read2))
 SNVTestDict = {}
 SNVTestDict['DRP'] = DRP_SNV_Tag_Condition
-SVTestList = [SVTagFn(func=DRP_SNV_Tag_Condition, extraField=100000, tag="DRP")]
+SVTestList = [SVTagFn(func=DRP_SNV_Tag_Condition, extraField=100000,
+                      tag="DRP")]
 
 
 @cython.returns(cython.bint)
@@ -526,7 +528,8 @@ def LI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
     return abs(read1.tlen) >= maxInsert
 
 
-SVTestList.append(SVTagFn(func=LI_SV_Tag_Condition, extraField=100000, tag="LI"))
+SVTestList.append(SVTagFn(func=LI_SV_Tag_Condition, extraField=100000,
+                          tag="LI"))
 SVTestDict = {"LI": LI_SV_Tag_Condition}
 
 
@@ -538,6 +541,7 @@ def MDC_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
 
 SVTestDict['MDC'] = MDC_SV_Tag_Condition
 SVTestList.append(SVTagFn(func=MDC_SV_Tag_Condition, tag="MDC"))
+
 
 @cython.returns(cython.bint)
 def ORU_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
@@ -573,7 +577,8 @@ def ORB_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
     bedRef = extraField
     if(bedRef == "default"):
         raise ThisIsMadness("bedRef must be provded to run this test!")
-    return not (sum([RIB(read1, bedRef=bedRef), RIB(read2, bedRef=bedRef)]) - 1)
+    return not (sum([RIB(read1, bedRef=bedRef),
+                     RIB(read2, bedRef=bedRef)]) - 1)
 
 SVTestDict['ORB'] = ORB_SV_Tag_Condition
 SVTestList.append(SVTagFn(func=ORB_SV_Tag_Condition, tag="ORB"))
@@ -627,9 +632,9 @@ def DSD_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
         if("DRP" not in read1.opt("SV")):
             return False
     except KeyError:
-        pass #  Don't sweat it.
-    if(read1.cigarstring is None or read2.cigarstring is None
-       or read1.reference_id != read2.reference_id):
+        pass  # Don't sweat it.
+    if(read1.cigarstring is None or read2.cigarstring is None or
+       read1.reference_id != read2.reference_id):
         return False
     if("D" in read1.cigarstring and "D" in read2.cigarstring and
        GetDeletedCoordinates(read1) == GetDeletedCoordinates(read2)):
@@ -653,7 +658,7 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
         if("DRP" not in read1.opt("SV")):
             return False
     except KeyError:
-        pass #  Don't sweat it.
+        pass  # Don't sweat it.
     if(read1.cigarstring is None or read2.cigarstring is None):
         return False
     if("I" not in read1.cigarstring or "I" not in read2.cigarstring):
@@ -667,7 +672,8 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
             return True
     return False
 
-# SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition, tag="DSI")) # Not until fixed.
+# SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition,
+# tag="DSI")) # Not until fixed.
 
 SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = defaultdict(returnDefault,
@@ -753,7 +759,6 @@ def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
         read1.setTag("SV", "NF")
         read2.setTag("SV", "NF")
     return read1, read2
-
 
 
 def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
@@ -911,6 +916,7 @@ def BkptSequenceIntraRP(ReadPairs):
     """
     return BkptSequenceIntraReads(list(cfi([i.getReads() for i in
                                             ReadPairs])))
+
 
 def BkptSequenceInterRP(ReadPairs):
     """

@@ -484,7 +484,7 @@ class HeaderFunctionCallLine:
     This class holds a VCF Function Call Line.
     """
 
-    def __init__(self, callStr="default"):
+    def __init__(self, cython.str callStr="default"):
         self.callStr = callStr
 
     def __str__(self):

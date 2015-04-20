@@ -1,7 +1,6 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
-
 from itertools import tee
 from operator import methodcaller as mc
 import decimal
@@ -10,7 +9,6 @@ import operator
 import sys
 from cStringIO import InputType, OutputType
 from subprocess import check_call, check_output
-
 import numpy as np
 from numpy import array as nparray
 from numpy import sum as nsum
@@ -19,13 +17,13 @@ from numpy import min as nmin
 import cython
 import pysam
 from cytoolz import map as cmap
-
-cimport pysam.TabProxies
-
 from utilBMF.HTSUtils import (ThisIsMadness, printlog as pl,
                               SortBgzipAndTabixVCF)
 from utilBMF import HTSUtils
 from MawCluster import SNVUtils
+
+
+cimport pysam.TabProxies
 
 """
 Contains tools for working with VCF Files - writing, reading, processing.
@@ -69,8 +67,8 @@ class VCFFile:
                 except ValueError:
                     print("Returning nothing.")
             filterOpt = filterOpt + "&" + param
-        NewVCFFile = VCFFile(NewVCFEntries, self.header, self.sampleName
-                             + "FilteredBy{}".format(filterOpt))
+        NewVCFFile = VCFFile(NewVCFEntries, self.header, self.sampleName +
+                             "FilteredBy{}".format(filterOpt))
         return NewVCFFile
 
     def update(self):
@@ -187,28 +185,22 @@ class VCFRecord:
         self.VCFFilename = VCFFilename
         if(len(self.Samples) == 0):
             recordStr = '\t'.join(nparray([self.CHROM,
-                                   self.POS,
-                                   self.ID,
-                                   self.REF,
-                                   self.ALT,
-                                   self.QUAL,
-                                   self.FILTER,
-                                   self.INFO,
-                                   self.FORMAT,
-                                   self.GENOTYPE]).astype(str))
+                                           self.POS,
+                                           self.ID,
+                                           self.REF,
+                                           self.ALT,
+                                           self.QUAL, self.FILTER,
+                                           self.INFO, self.FORMAT,
+                                           self.GENOTYPE]).astype(str))
         else:
             sampleStr = "\t".join(self.Samples)
             recordStr = '\t'.join(nparray([self.CHROM,
-                                   self.POS,
-                                   self.ID,
-                                   self.REF,
-                                   self.ALT,
-                                   self.QUAL,
-                                   self.FILTER,
-                                   self.INFO,
-                                   self.FORMAT,
-                                   self.GENOTYPE,
-                                   sampleStr]).astype(str))
+                                           self.POS, self.ID,
+                                           self.REF, self.ALT,
+                                           self.QUAL, self.FILTER, self.INFO,
+                                           self.FORMAT,
+                                           self.GENOTYPE,
+                                           sampleStr]).astype(str))
         self.str = recordStr.strip()
 
     def update(self):
@@ -231,7 +223,8 @@ class VCFRecord:
                         int(decimal.Decimal(
                             i)) for i in self.InfoArrayDict['I16']]
         self.GenotypeKeys = sorted(self.GenotypeDict.keys())
-        self.GenotypeValues = [self.GenotypeDict[key] for key in self.GenotypeKeys]
+        self.GenotypeValues = [self.GenotypeDict[key] for key
+                               in self.GenotypeKeys]
         self.FORMAT = ":".join(self.GenotypeKeys)
         self.GENOTYPE = ":".join(self.GenotypeValues)
         if(len(self.Samples) == 0):
@@ -381,14 +374,14 @@ def VCFStats(inVCF, TransCountsTable="default"):
             TransitionDict[RefCons + "-->" + Var] = [
                 rec for rec
                 in inVCF.Records
-                if rec.InfoArrayDict['CONS'] == RefCons
-                or rec.REF == RefCons and rec.ALT == Var]
+                if rec.InfoArrayDict['CONS'] == RefCons or
+                rec.REF == RefCons and rec.ALT == Var]
             TransitionPASSDict[RefCons + "-->" + Var] = [
                 rec for rec
                 in inVCF.Records
-                if (rec.InfoArrayDict['CONS'] == RefCons
-                    or rec.REF == RefCons) and (rec.FILTER == "PASS"
-                                                        and rec.ALT == Var)]
+                if (rec.InfoArrayDict['CONS'] == RefCons or
+                    rec.REF == RefCons) and (rec.FILTER == "PASS" and
+                                             rec.ALT == Var)]
             TransitionCountsDict[RefCons + "-->" + Var] = len(
                 TransitionDict[RefCons + "-->" + Var])
             TransitionCountsPASSDict[RefCons + "-->" + Var] = len(
@@ -410,10 +403,9 @@ def VCFStats(inVCF, TransCountsTable="default"):
     MeanAlleleFractionDict = {}
     MeanAlleleFractionPASSDict = {}
     for key in TransitionCountsDict.keys():
-        MeanAlleleFractionDict[key] = nmean([float(rec.InfoDict['AF']) for
-                                               rec in TransitionDict[key] if
-                                               float(
-                                                   rec.InfoDict['AF']) < 0.1])
+        MeanAlleleFractionDict[key] = nmean(
+            [float(rec.InfoDict['AF']) for rec in
+                TransitionDict[key] if float(rec.InfoDict['AF']) < 0.1])
         MeanAlleleFractionPASSDict[key] = nmean(
             [float(rec.InfoDict['AF'])for rec in
              TransitionPASSDict[key] if float(rec.InfoDict['AF']) < 0.1])
@@ -454,9 +446,10 @@ def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
     bed = HTSUtils.ParseBed(bedfile)
     outHandle = open(outVCF, "w")
     count = 0
-    header = check_output("zcat inVCF | head -n 1000 | grep '^#' > %s" %outVCF,
-                          shell=True).split("\n")
-    header.insert(-1, str(SNVUtils.HeaderCustomLine(customKey="FilterVCFFileByBed", customValue=bedfile)))
+    header = check_output("zcat inVCF | head -n 1000 | grep '^#' "
+                          "> %s" % outVCF, shell=True).split("\n")
+    header.insert(-1, str(SNVUtils.HeaderCustomLine(
+        customKey="FilterVCFFileByBed", customValue=bedfile)))
     outHandle.write("\n".join(header) + "\n")
     for line in inVCF.Records:
         if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
@@ -671,8 +664,8 @@ def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
     count = 0
     for rec in inVCF:
         if operator.ge(len(outLines), recordsPerWrite):
-           outHandle.write("\n".join(outLines) + "\n")
-           outLines = []
+            outHandle.write("\n".join(outLines) + "\n")
+            outLines = []
         try:
             recFreq = float(rec.InfoDict["AF"])
         except ValueError:
@@ -777,29 +770,33 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     for rec in refIterator:
         # Load all records with precisely our ref record's position
         try:
-            queryRecs = list(qhf(rec.contig + ":" + str(rec.pos - 10)
-                                 + "-" + str(rec.pos + 10)))
+            queryRecs = list(qhf(rec.contig + ":" + str(rec.pos - 10) +
+                                 "-" + str(rec.pos + 10)))
         except ValueError:
             pl("Looks like contig %s just isn't in the tabix'd" % rec.contig +
                "file. Give up - continuing!", level=logging.DEBUG)
-            ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
+            ohw("\t".join([":".join([rec.contig, str(rec.pos),
+                                     rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
-        queryRecs = [i for i in queryRecs if i.ref == rec.ref and i.pos == rec.pos]
+        queryRecs = [i for i in queryRecs if i.ref == rec.ref and
+                     i.pos == rec.pos]
         nAllelesAtPos = len(queryRecs)
         queryRecs = [i for i in queryRecs if i.alt == rec.alt]
         # Get just the record (or no record) that has that alt.
         if(nAllelesAtPos == 0):
-            pl("No variants called at position. %s " %str(rec))
-            ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
+            pl("No variants called at position. %s " % str(rec))
+            ohw("\t".join([":".join([rec.contig, str(rec.pos),
+                                     rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
         if(len(queryRecs) == 0):
             pl("Looks like the rec: "
                "%s wasn't called at all." % (str(rec)))
-            ohw("\t".join([":".join([rec.contig, str(rec.pos), rec.ref, rec.alt]),
+            ohw("\t".join([":".join([rec.contig, str(rec.pos),
+                                     rec.ref, rec.alt]),
                            "False", "N/A", "N/A", str(nAllelesAtPos), "-1",
                            str(rec).replace("\t", "&"), "N/A"]) + "\n")
             continue
@@ -852,18 +849,22 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
                    if i.alt == qRec.alt]
         lRefRecs = len(refRecs)
         if(lRefRecs == 0):
-            ofw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
-                           "False", qRec.filter, dict([f.split("=") for f in
-                             qRec.info.split(";")])["AF"],
+            ofw("\t".join([":".join([qRec.contig, str(qRec.pos),
+                                     qRec.ref, qRec.alt]),
+                           "False", qRec.filter,
+                           dict([f.split("=") for f in
+                                 qRec.info.split(";")])["AF"],
                            dict(zip(qRec.format.split(":"),
                                     qRec[0].split(":")))["DP"], "N/A",
                            str(qRec).replace("\t", "&")]))
             continue
         if(lRefRecs == 1):
             rec = refRecs[0]
-            ofw("\t".join([":".join([qRec.contig, str(qRec.pos), qRec.ref, qRec.alt]),
-                           "True", qRec.filter, dict([f.split("=") for f in
-                             qRec.info.split(";")])["AF"],
+            ofw("\t".join([":".join([qRec.contig, str(qRec.pos),
+                                     qRec.ref, qRec.alt]),
+                           "True", qRec.filter,
+                           dict([f.split("=") for f in
+                                 qRec.info.split(";")])["AF"],
                            dict(zip(qRec.format.split(":"),
                                     qRec[0].split(":")))["DP"],
                            str(rec).replace("\t", "&"),

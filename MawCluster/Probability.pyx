@@ -11,10 +11,10 @@ from operator import mul as omul
 import math
 from math import pow as mpow
 from math import sqrt as msqrt
+from utilBMF.ErrorHandling import ThisIsMadness
 
 import cython
 import numpy as np
-cimport numpy as np
 from numpy import array as nparray
 from numpy import mean as nmean
 from numpy import sum as nsum
@@ -24,8 +24,8 @@ from statsmodels.stats import proportion
 from cytoolz import memoize
 pconfint = proportion.proportion_confint
 
-from utilBMF.ErrorHandling import ThisIsMadness
 
+cimport numpy as np
 ctypedef np.longdouble_t dtype128_t
 
 """
@@ -49,7 +49,7 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
     """
     if(method == "scipy"):
         return (nparray(binom.interval(1 - pVal, DOC,
-                                        AC * 1. / DOC)) / DOC).tolist()
+                                       AC * 1. / DOC)) / DOC).tolist()
     try:
         return pconfint(AC, DOC, alpha=pVal, method=method)
     except NotImplementedError:
@@ -153,7 +153,7 @@ def SamplingFrac(n, p=0., k=1):
     """
     assert 0. < p < 1.
     return reduce(omul, [mpow(osub(1, p), osub(n, k)),
-        mpow(p, k), comb(n + 1, k)], 1)
+                  mpow(p, k), comb(n + 1, k)], 1)
 
 
 @memoize
@@ -167,7 +167,7 @@ def SamplingFrac_(n, p=0., k=1):
     """
     assert 0. < p < 1.
     return reduce(omul, [mpow(osub(1, p), osub(n, k)), mpow(p, k),
-        StirlingsFact(n + 1, k)], 1)
+                  StirlingsFact(n + 1, k)], 1)
 
 
 @memoize
@@ -180,7 +180,7 @@ def GetUnscaledProbs(n, p=0.):
     speed, but it's also definitely good enough.
     """
     return nparray([SamplingFrac(n, p=p, k=k) for k in range(n + 1)],
-                    dtype=np.longdouble)
+                   dtype=np.longdouble)
 
 
 @memoize
@@ -193,7 +193,7 @@ def GetUnscaledProbs_(n, p=0.):
     speed, but it's also definitely good enough.
     """
     return nparray([SamplingFrac_(n, p=p, k=k) for k in range(n + 1)],
-                     dtype=np.longdouble)
+                   dtype=np.longdouble)
 
 
 @memoize

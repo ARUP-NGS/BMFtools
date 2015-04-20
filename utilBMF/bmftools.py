@@ -347,14 +347,14 @@ def main():
         sys.exit(0)
     if(args.bmfsuites == "vcfcmp"):
         if(args.check_std):
-            if(args.outfile != None):
+            if(args.outfile is not None):
                 CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
                                          outfile=args.outfile)
             else:
                 CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
                                          outfile=sys.stdout)
             sys.exit(0)
-        if(args.outfile != None):
+        if(args.outfile is not None):
             CheckVCFForStdCalls(args.queryVCF, std=args.std,
                                 outfile=args.outfile)
         else:

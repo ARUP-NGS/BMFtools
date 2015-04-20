@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 import argparse
-
 import cython
-cimport cython
 import numpy as np
 cimport numpy as np
+cimport cython
 DTYPE = np.ndarray
 ctypedef np.ndarray DTYPE_t
 

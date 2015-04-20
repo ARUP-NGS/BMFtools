@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-
-import logging
-from operator import attrgetter as oag
-
-import cython
-cimport cython
-import pysam
 from lxml import etree
-
+from operator import attrgetter as oag
 from utilBMF.HTSUtils import ThisIsMadness, printlog as pl, PileupReadPair
 from MawCluster.PileupUtils import pPileupColumn
+import logging
+import pysam
+import cython
+cimport cython
+
 
 """
 Sequencer Error Characterization & Correction (SecC) Tools

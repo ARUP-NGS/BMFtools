@@ -1,34 +1,33 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 
-import logging
-import operator
-import math
+from cytoolz import map as cmap, memoize
 from math import log10 as mlog10
+from MawCluster.BCVCF import IterativeVCFFile
+from MawCluster.BCVCF import IterativeVCFFile
+from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
+from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
 from operator import methodcaller as mc
-import uuid
+from subprocess import check_output
+from utilBMF.ErrorHandling import IllegalArgumentError
+import cStringIO
+import cython
+import logging
+import math
+import numpy as np
+import operator
+import pysam
 import shlex
 import subprocess
-from subprocess import check_output
-import cStringIO
-
-import cython
-cimport cython
-import numpy as np
-cimport numpy as np
-import pysam
-cimport pysam.TabProxies
-from cytoolz import map as cmap, memoize
-
-from MawCluster.BCVCF import IterativeVCFFile
+import uuid
 from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness,
                               NameSortAndFixMate, makeinfodict,
                               MakeVCFProxyDeaminationFilter)
-from utilBMF.ErrorHandling import IllegalArgumentError
-from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
-from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
-from MawCluster.BCVCF import IterativeVCFFile
 
+
+cimport pysam.TabProxies
+cimport numpy as np
+cimport cython
 ctypedef np.longdouble_t dtype128_t
 
 
@@ -65,8 +64,9 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     if(FILTER != ""):
         for filter in filters:
             if filter not in validFilters:
-                raise IllegalArgumentError("Filter must be a valid VCF Filter. "
-                                           "%s" % validFilters)
+                raise IllegalArgumentError(
+                    "Filter must be a valid VCF Filter."
+                    "Valid filters: %s" % validFilters)
     IVCFObj = IterativeVCFFile(inVCF)
     TotalCG = 0
     TotalCG_TA = 0
@@ -105,8 +105,8 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     freq = 1. * TotalCG_TA / TotalCG
     pl("TotalCG_TA: %s. TotalCG: %s." % (TotalCG_TA, TotalCG))
     pl("Estimated frequency: %s" % freq)
-    pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be %s" % (GetCeiling(
-        100, p=freq, pVal=0.001) / 100.))
+    pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be "
+       "%s" % (GetCeiling(100, p=freq, pVal=0.001) / 100.))
     pl("Whereas, a 0.001 pValue ceiling at 1000 DOC would be %s" % (GetCeiling(
         1000, p=freq, pVal=0.001) / 1000.))
     return freq
@@ -130,8 +130,9 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     if(FILTER != ""):
         for filter in filters:
             if filter not in validFilters:
-                raise IllegalArgumentError("Filter must be a valid VCF Filter. "
-                                           "%s" % validFilters)
+                raise IllegalArgumentError(
+                    "Filter must be a valid VCF Filter."
+                    " %s" % validFilters)
     IVCFObj = IterativeVCFFile(inVCF)
     TotalCG = 0
     TotalCG_TA = 0
@@ -170,8 +171,8 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     freq = 1. * TotalCG_TA / TotalCG
     pl("TotalCG_TA: %s. TotalCG: %s." % (TotalCG_TA, TotalCG))
     pl("Estimated frequency: %s" % freq)
-    pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be %s" % (GetCeiling(
-        100, p=freq, pVal=0.001) / 100.))
+    pl("For perspective, a 0.001 pValue ceiling at 100 DOC would be "
+       "%s" % (GetCeiling(100, p=freq, pVal=0.001) / 100.))
     pl("Whereas, a 0.001 pValue ceiling at 1000 DOC would be %s" % (GetCeiling(
         1000, p=freq, pVal=0.001) / 1000.))
     return freq
@@ -245,7 +246,7 @@ def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
     pl("Estimated deamination frequency: %s" % DeamFreq)
     OutVCF = FilterByDeaminationFreq(inVCF, pVal=pVal,
                                      ctfreq=DeamFreq)
-    pl("Output VCF: %s" %OutVCF)
+    pl("Output VCF: %s" % OutVCF)
     return OutVCF
 
 
@@ -259,7 +260,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[0:-1] + ["amplicon",
                                                     "filt", "bam"])
-    pl("Primer length set to %s for prefiltering." % primerLen )
+    pl("Primer length set to %s for prefiltering." % primerLen)
     pl("OutBAM: %s" % outBAM)
     pl("fixmate: %s" % fixmate)
     tempFile = str(uuid.uuid4().get_hex().upper()[0:8]) + ".bam"
@@ -311,20 +312,32 @@ def GetTabixDeamFreq(cython.str inVCF):
     a = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
     for rec in a:
         mid = makeinfodict(rec)
-        if(mid["CONS"] == "C" and getFreq(rec, "T") / getFreq(rec, "C") < 0.15 and rec.alt == "T"):
-            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["T"])
-            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["C"])
-        if(mid["CONS"] == "G" and getFreq(rec, "A") / getFreq(rec, "G") < 0.15  and rec.alt == "A"):
-            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["A"])
-            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["G"])
+        if(mid["CONS"] == "C" and
+           getFreq(rec, "T") / getFreq(rec, "C") < 0.15 and
+           rec.alt == "T"):
+            atCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["T"])
+            gcCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["C"])
+        if(mid["CONS"] == "G" and
+           getFreq(rec, "A") / getFreq(rec, "G") < 0.15 and
+           rec.alt == "A"):
+            atCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["A"])
+            gcCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["G"])
         if(rec.ref == "C" and getFreq(rec, "T") < 0.25 and
            getFreq(rec, "C") >= 0.3 and rec.alt == "T"):
-            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["T"])
-            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["C"])
+            atCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["T"])
+            gcCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["C"])
         if(rec.ref == "G" and getFreq(rec, "A") < 0.25 and
            getFreq(rec, "G") >= 0.3 and rec.alt == "A"):
-            atCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["A"])
-            gcCounts += int(dict([i.split(">") for i in mid["MACS"].split(",")])["G"])
+            atCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["A"])
+            gcCounts += int(dict([i.split(">") for
+                                  i in mid["MACS"].split(",")])["G"])
     freq = (1. * atCounts) / gcCounts
     print("Final atCounts: %s" % atCounts)
     print("Final gcCounts: %s" % gcCounts)

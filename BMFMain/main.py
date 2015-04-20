@@ -155,8 +155,8 @@ def main(argv=None):
     parser.add_argument(
         "--minAF",
         help=("Min aligned fraction for permitting use in variant call or, if "
-              "bwasw rescue is being used, the maximum aligned fraction that wi"
-              "ll prompt a re-alignment."),
+              "bwasw rescue is being used, the maximum aligned fraction that "
+              "will prompt a re-alignment."),
         default=-1., type=float)
     parser.add_argument("--experiment", "-e",
                         help="A comma-joined list of strings with extra infor"
@@ -220,7 +220,7 @@ def main(argv=None):
         pl("picardPath set to default. If you wanted to call PicardTools, it "
            "won't happen...", level=logging.DEBUG)
     else:
-        pl("picardPath set to %s" %picardPath)
+        pl("picardPath set to %s" % picardPath)
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir
     reviewdir = ""

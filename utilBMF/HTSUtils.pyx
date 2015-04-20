@@ -1,62 +1,63 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
+from Bio.Seq import Seq
 from copy import copy as ccopy
+from cytoolz import map as cmap, memoize, frequencies as cyfreq
+from functools import partial
 from itertools import groupby
-from operator import itemgetter as oig
+from MawCluster.Probability import GetCeiling
+from numpy import any as npany
+from numpy import concatenate as nconcatenate
+from numpy import less as nless
+from numpy import max as nmax
+from numpy import mean as nmean
+from numpy import min as nmin
+from numpy import std as nstd
 from operator import iadd as oia
-from subprocess import check_output, check_call
+from operator import itemgetter as oig
+from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from re import compile as regexcompile
+from subprocess import check_output, check_call
+from utilBMF.ErrorHandling import *
 import copy
 import cStringIO
+import cython
 import logging
+import MawCluster
+import numconv
+import numpy as np
 import operator
 import os
+import pysam
 import shlex
 import subprocess
-import uuid
 import sys
-from functools import partial
+import uuid
 
-import pysam
-from pysam.calignmentfile import AlignedSegment as pAlignedSegment
+cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
 cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
-
-import numpy as np
-cimport numpy as np
-from numpy import mean as nmean
-from numpy import less as nless
-from numpy import concatenate as nconcatenate
-from numpy import std as nstd
-from numpy import max as nmax
-from numpy import min as nmin
-from numpy import any as npany
-from Bio.Seq import Seq
-import cython
-import numconv
-from cytoolz import map as cmap, memoize, frequencies as cyfreq
-
-import MawCluster
-from MawCluster.Probability import GetCeiling
-from utilBMF.ErrorHandling import *
 oig1 = oig(1)
 
+
 def l1(x):
-    """
-    function to return the 2nd element in list or tuple.
-    """
     return x[1]
 
 
-@cython.returns(cython.bint)
 def lisnone(x):
-    """
-    """
     return x[1] is None
+
+
+def lreverse(x):
+    return (x[1], x[0])
+
+
+def linsertsize(x):
+    return x.insert_size
 
 
 def printlog(string, level=logging.INFO):
@@ -260,9 +261,8 @@ def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
     Returns a dictionary of contig names to pysam reference numbers.
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
-    f = lambda x: (x[1], x[0])
-    return dict(list(cmap(f,
-                    list(enumerate(alignmentfileObj.references)))))
+    return dict(list(cmap(lreverse,
+                     list(enumerate(alignmentfileObj.references)))))
 
 
 @cython.returns(dict)
@@ -273,7 +273,7 @@ def GetBidirectionalPysamChrDict(alignmentfileObj):
     """
     assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
     refList = list(enumerate(alignmentfileObj.references))
-    return dict(list(cmap(lambda x: (x[1], x[0]),refList) + refList))
+    return dict(list(cmap(lreverse, refList) + refList))
 
 
 class pFastqProxy:
@@ -324,7 +324,6 @@ def FacePalm(string):
     if(isinstance(string, str)):
         raise ThisIsMadness(string)
     raise ThisIsMadness("WHAT YOU SAY")
-
 
 
 @cython.returns(cython.bint)
@@ -463,12 +462,12 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
     if(picardPath == "default"):
         FacePalm("Path to picard jar required for adding RG!")
     opt_concat = ' '.join(opts.split())
-    RGString = "@RG\tID:bwa SM:%s" %SM
+    RGString = "@RG\tID:bwa SM:%s" % SM
     if(path == "default"):
-        command_str = ("bwa mem %s %s %s %s " %(opt_concat, ref, R1, R2) +
+        command_str = ("bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2) +
                        " > {}".format(outSAM))
     else:
-        command_str = (path + " mem %s %s %s " %(opt_concat, ref, R1) +
+        command_str = (path + " mem %s %s %s " % (opt_concat, ref, R1) +
                        "{} > {}".format(R2, outSAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
@@ -497,10 +496,10 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
         FacePalm("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
     if(path == "default"):
-        command_str = ("bwa mem %s %s %s %s " %(opt_concat, ref, R1, R2) +
+        command_str = ("bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2) +
                        " | samtools view -Sbh - > {}".format(outBAM))
     else:
-        command_str = (path + " mem %s %s %s " %(opt_concat, ref, R1) +
+        command_str = (path + " mem %s %s %s " % (opt_concat, ref, R1) +
                        "{} | samtools view -Sbh - > {}".format(R2, outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
@@ -948,7 +947,8 @@ cdef class PileupReadPair:
             assert len(readlist) == 2
         except AssertionError:
             pl("repr(readlist): %s" % repr(readlist))
-            raise ThisIsMadness("readlist must be of length two to make a PileupReadPair!")
+            raise ThisIsMadness(
+                "readlist must be of length two to make a PileupReadPair!")
         self.RP = ReadPair(read1.alignment, read2.alignment)
         self.read1 = read1
         self.read2 = read2
@@ -965,8 +965,6 @@ cdef class PileupReadPair:
                                               self.read1.query_position))
         else:
             self.discordanceString = ""
-
-
 
 
 def GetReadPair(inHandle):
@@ -1064,7 +1062,6 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
     then check that all entries in SVTag.split(",") are in
     the tags
     """
-    LIlambda = lambda x: abs(x.insert_size)
     RecordsArray = []
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tags = SVTag.split(',')
@@ -1092,7 +1089,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
             except StopIteration:
                 break
     if("LI" in tags):
-        return sorted(RecordsArray, key=LIlambda)
+        return sorted(RecordsArray, key=linsertize)
     else:
         return RecordsArray
 
@@ -1105,6 +1102,7 @@ def WritePairToHandle(ReadPair, handle="default"):
     handle.write(ReadPair.read1)
     handle.write(ReadPair.read2)
     return True
+
 
 @cython.returns(list)
 def ParseBed(cython.str bedfile):
@@ -1134,7 +1132,8 @@ def parseConfig(cython.str string):
     parsedLines = [l.strip().split("#")[0] for l in
                    open(string, "r").readlines()
                    if l[0] != "#"]
-    return {line.split("=")[0].strip() : line.split("=")[1].strip() for line in parsedLines}
+    return {line.split("=")[0].strip(): line.split("=")[1].strip() for
+            line in parsedLines}
 
 
 @cython.returns(dict)
@@ -1145,7 +1144,7 @@ def ReadListToCovCounter(reads, cython.long minClustDepth=3,
     Only safe at this point for intrachromosomal rearrangements!
     """
     return cyfreq(reduce(lambda x, y: x + y,
-                        [r.get_reference_positions() for r in reads]))
+                         [r.get_reference_positions() for r in reads]))
 
 
 @cython.returns(dict)
@@ -1238,7 +1237,8 @@ class Interval:
 def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
                                cython.str contig="default",
                                bedIntervals="default",
-                               cython.long mergeDist=0, cython.long minClustDepth=5):
+                               cython.long mergeDist=0,
+                               cython.long minClustDepth=5):
     """
     From a dictionary object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -1264,12 +1264,12 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
         else:
             interval = [contig, posList[-1], posList[0] + 1]
         if(interval[2] - interval[1] < minPileupLen):
-            print("Interval too short. Length: {}".format(interval[2]
-                                                          - interval[1]))
+            print("Interval too short. Length: {}".format(interval[2] -
+                                                          interval[1]))
             continue
         IntervalList.append(interval)
         MeanCovList.append(nmean([CounterObj[key] for key in posList if
-                                    len(posList) >= minPileupLen]))
+                                 len(posList) >= minPileupLen]))
     # Now merge, in case some are entirely adjacent
     if(len(IntervalList) == 0):
         return []
@@ -1384,8 +1384,9 @@ def GetGenomicCoordsForFiltCigar(filtCigar,
     return [[dgap[i] for i in g[1]] for g in filtCigar]
 
 
-def GetGenomicCoordToNucleotideMapForFiltCigar(pysam.calignmentfile.AlignedSegment read,
-                                               filtCigar="default"):
+def GetGenomicCoordToNucleotideMapForFiltCigar(
+        pysam.calignmentfile.AlignedSegment read,
+        filtCigar="default"):
     """
     Returns a dictionary of genomic positions: nucleotides for a "filtered"
     cigar and a read. This is used to compare whether or not two reads with
@@ -1397,8 +1398,9 @@ def GetGenomicCoordToNucleotideMapForFiltCigar(pysam.calignmentfile.AlignedSegme
     try:
         dgapList = [[dgap[i] for i in g[1]] for g in filtCigar]
         seqList = [[seq[i] for i in g[1]] for g in filtCigar]
-        return {k: l for k, l in zip([[dgap[i] for i in g[1]] for g in filtCigar],
-                                     [[seq[i] for i in g[1]] for g in filtCigar])}
+        return {k: l for k, l in zip(
+            [[dgap[i] for i in g[1]] for g in filtCigar],
+            [[seq[i] for i in g[1]] for g in filtCigar])}
     except TypeError:
         print(repr(dgap))
         print(repr(filtCigar))
@@ -1420,8 +1422,7 @@ def GetGC2NMapForRead(pysam.calignmentfile.AlignedSegment read,
     """
     filtCigar = GetQueryIndexForCigarOperation(read, cigarOp=cigarOp)
     return GetGenomicCoordToNucleotideMapForFiltCigar(read,
-                                                       filtCigar=filtCigar)
-
+                                                      filtCigar=filtCigar)
 
 
 @cython.locals(cigarOp=cython.long)
@@ -1575,23 +1576,22 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
         outBAM = ".".join(inBAM.split(".")[:-1] + ["addRG", "bam"])
     commandStr = ("java -jar %s AddOrReplaceReadGroups I=" % picardPath +
                   "%s O=%s VALIDATION_STRINGENCY=SILENT " % (inBAM, outBAM) +
-                  " CN=%s PL=%s SM=%s ID=%s LB=%s PU=%s"%(CN, PL,
-                                                          SM, ID, LB,
-                                                          PU))
+                  " CN=%s PL=%s SM=%s ID=%s LB=%s PU=%s" % (CN, PL,
+                                                            SM, ID, LB,
+                                                            PU))
     printlog("AddReadGroupsPicard commandStr: %s" % commandStr)
     subprocess.check_call(shlex.split(commandStr))
     return outBAM
 
 
-
 @cython.locals(outliers_fraction=dtype128_t, contamination=dtype128_t,
                window=cython.long)
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
-                   window=20):
+                  window=20):
     cdef np.ndarray[dtype128_t, ndim = 1] GAFreqNP = f1
     cdef np.ndarray[dtype128_t, ndim = 1] CTFreqNP = f2
     cdef np.ndarray[dtype128_t, ndim = 1] FreqArray = nconcatenate(GAFreqNP,
-                                                                  CTFreqNP)
+                                                                   CTFreqNP)
     ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     GAClassifier = ee1.fit(GAFreqNP)
@@ -1608,11 +1608,12 @@ def PlotNormalFit(array, outfile="default", maxFreq=0.2):
     mu, sigma = nmean(array), nstd(array)
     n, bins, patches = plt.hist(array, 50, normed=1, facecolor='green',
                                 alpha=0.75)
-    y = mlab.normpdf( bins, mu, sigma)
+    y = mlab.normpdf(bins, mu, sigma)
     l = plt.plot(bins, y, 'r--', linewidth=1)
     plt.xlabel('A->C/G->/T frequency')
     plt.ylabel('Proportion of sites')
-    plt.title(r'$\mathrm{Histogram\ of\ deamination substitutions:}\ \mu=%s,\ \sigma=%s$' %(mu, sigma))
+    plt.title(r'$\mathrm{Histogram\ of\ deamination substitutions:}\ '
+              r'\mu=%s,\ \sigma=%s$' % (mu, sigma))
     plt.axis([nmin(array), nmax(array), 0., nmax(n)])
     plt.grid(True)
     plt.savefig(outfile + ".png")
@@ -1666,7 +1667,7 @@ def bitfield(n):
     Parses a bitwise flag into an array of 0s and 1s.
     No need - use the & or | tools for working with bitwise flags.
     """
-    return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
+    return [1 if digit == '1' else 0 for digit in bin(n)[2:]]
 
 
 @cython.returns(cython.str)
@@ -1677,31 +1678,32 @@ def ASToFastqSingle(pysam.calignmentfile.AlignedSegment read):
     """
     if read.is_read1:
         if(read.is_reverse):
-            return ("@" + read.query_name + " 1\n" + read.seq
-                    + "\n+\n" +
+            return ("@" + read.query_name + " 1\n" + read.seq +
+                    "\n+\n" +
                     RevCmp("".join([ph2chrDict[i] for
                                     i in read.query_qualities])))
-        return ("@" + read.query_name + " 1\n" + read.seq
-                + "\n+\n" +
+        return ("@" + read.query_name + " 1\n" + read.seq +
+                "\n+\n" +
                 "".join([ph2chrDict[i] for i in read.query_qualities]))
     if read.is_read2:
         if(read.is_reverse):
-            return ("@" + read.query_name + " 2\n" + read.seq
-                    + "\n+\n" +
+            return ("@" + read.query_name + " 2\n" + read.seq +
+                    "\n+\n" +
                     RevCmp("".join([ph2chrDict[i] for
                                     i in read.query_qualities])))
-        return ("@" + read.query_name + " 2\n" + read.seq
-                + "\n+\n" +
+        return ("@" + read.query_name + " 2\n" + read.seq +
+                "\n+\n" +
                 "".join([ph2chrDict[i] for i in read.query_qualities]))
     else:
-        return ("@" + read.query_name + "\n" + read.seq
-                + "\n+\n" +
+        return ("@" + read.query_name + "\n" + read.seq +
+                "\n+\n" +
                 "".join([ph2chrDict[i] for i in read.query_qualities]))
 
 
 @cython.locals(alignmentfileObj=pysam.calignmentfile.AlignmentFile)
 @cython.returns(cython.str)
-def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read, alignmentfileObj):
+def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read,
+                    alignmentfileObj):
     """
     Works for coordinate-sorted and indexed BAM files, but throws
     an error if the mate is unmapped.
@@ -1711,6 +1713,7 @@ def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read, alignmentfileObj):
     if(read.is_read1):
         return FastqStr1 + "\n" + FastqStr2
     return FastqStr2 + "\n" + FastqStr1
+
 
 @cython.returns(pysam.calignmentfile.AlignmentFile)
 def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
@@ -1754,17 +1757,18 @@ def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
     lAlignedArr = len(alignedArr)
     if(lAlignedArr == 0):
         printlog("Could not find a suitable alignment with bwasw",
-           level=logging.INFO)
+                 level=logging.INFO)
         return read
     if(lAlignedArr > 1):
-        printlog("Somehow there are multiple primary alignments. I don't know what"
-           " to do, so just returning the original read.", level=logging.INFO)
+        printlog("Somehow there are multiple primary alignments. I don't "
+                 "know what to do, so just returning the original "
+                 "read.", level=logging.INFO)
         return read
     else:
         alignedArr = alignedArr[0]
     if(alignedArr[4] == "0"):
-        printlog("bwasw could not assign a non-0 MQ alignment. Returning original "
-            "read.", level=logging.INFO)
+        printlog("bwasw could not assign a non-0 MQ alignment. "
+                 "Returning original read.", level=logging.INFO)
         return read
     # Now check the cigar string.
     ra = regexcompile("[A-Z]")
@@ -1776,10 +1780,10 @@ def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
               if i[0] == "M"]) / (1. * sum(numbers))
     if(af < minAF):
         printlog("bwasw could not align more than %s. (aligned: " % minAF +
-           "%s) Returning original read." % af, level=logging.INFO)
+                 "%s) Returning original read." % af, level=logging.INFO)
         return read
     # Get the realignment tags and overwrite original tags with them.
-    tags = [i.split(":")[::2] for i in alignedArr[11:]] #  Gets tags
+    tags = [i.split(":")[::2] for i in alignedArr[11:]]  # Gets tags
     for tag in tags:
         try:
             tag[1] = int(tag[1])
@@ -1918,7 +1922,8 @@ def SortBgzipAndTabixVCF(inVCF, outVCF="default"):
     """
     if(outVCF == "default"):
         outVCF = ".".join([inVCF.split(".")[-1]]) + "sort.vcf"
-    check_call("zcat %s | head -n 1000 | grep '^#' > %s" % (inVCF, outVCF), shell=True)
+    check_call("zcat %s | head -n 1000 | grep '^#' > %s" % (inVCF, outVCF),
+               shell=True)
     check_call("zcat %s | grep -v '^#' >> %s" % (inVCF, outVCF), shell=True)
     check_call(["bgzip", outVCF])
     check_call(["tabix", outVCF + ".gz"])
