@@ -82,7 +82,7 @@ cdef class pPileupColumn:
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
-        self.pileups = list(cmap(pPileupRead, PileupColumn.pileups))
+        self.pileups = map(pPileupRead, PileupColumn.pileups)
 
 
 """

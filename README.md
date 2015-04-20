@@ -246,8 +246,8 @@ Most options are available for command-line as well. If an option is set in both
     3. Info Fields
         2. Add read length to the INFO field (both full read length and read length without Ns)
 2. Indels:
-    0. Debugging DSI
     1. Assembly work
+    2. Figure out the indel relevance piece.
 3. SV:
     1. Finish consensus sequence for intrachromosomal.
     2. Finish writing structural variants to a VCF format

@@ -7,6 +7,8 @@ import shlex
 import subprocess
 import sys
 from Cython.Build import cythonize
+# from setuptools import setup
+from distutils.core import setup
 
 #  BMFTools tries to install two binaries into your bin folder.
 #  If you want to change the install directory, edit this variable
@@ -26,12 +28,14 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
+"""
 print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
+"""
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine"]
+                "-floop-strip-mine", "-flto"]
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
@@ -65,19 +69,12 @@ compilerList = [marchFlag, "-pipe", "-msse2",
                 "-floop-unroll-and-jam",
                 "-fomit-frame-pointer", "-Ofast"]
 """
-try:
-    from setuptools import setup, Extension
-except ImportError:
-    print("setuptools not available. Trying distutils.")
-    from distutils.core import setup, Extension
-
-ext = cythonize('*/*.pyx') + cythonize("*/*.py")
+ext = cythonize('*/*.pyx') + cythonize("*/*.py") + cythonize("*/*.pxd")
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back from line 31 to line 30.
-for x in map(operator.attrgetter("extra_compile_args"), ext):
-    # x += ["-Ofast", "-flto", marchFlag, "-pipe",
-    x += compilerList
-
+for x in ext:
+    x.extra_compile_args += compilerList
+    print(repr(x))
 
 config = {
     'description': '',
