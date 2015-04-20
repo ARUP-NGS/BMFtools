@@ -82,7 +82,7 @@ def printlog(string, level=logging.INFO):
             "'", "\'").replace('"', '\\"'))
     sys.stderr.write(string.replace(
         "\t", "\\t").replace("\n", "\\n").replace(
-        "'", "\'").replace('"', '\\"'))
+        "'", "\'").replace('"', '\\"') + "\n")
     return
 
 pl = printlog

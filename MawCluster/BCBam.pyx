@@ -17,7 +17,6 @@ import uuid
 import sys
 
 import numpy as np
-cimport numpy as np
 from numpy import array as nparray
 from numpy import sum as nsum
 from numpy import multiply as nmultiply
@@ -25,23 +24,24 @@ from numpy import subtract as nsubtract
 from numpy import argmax as nargmax
 from numpy import vstack as nvstack
 from numpy import char
-npchararray = char.array
 from Bio import SeqIO
 import pysam
-cimport pysam.calignmentfile
-ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 import cython
-cimport cython
 from cytoolz import map as cmap
 
 from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
-                              FractionAligned, SWRealignAS, FractionSoftClipped,
-                              pPileupRead)
+                              FractionAligned, FractionSoftClipped,
+                              SWRealignAS, pPileupRead)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from utilBMF import HTSUtils
 import SecC
+cimport numpy as np
+cimport cython
+cimport pysam.calignmentfile
+ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+npchararray = char.array
 
 
 @cython.locals(fixMate=cython.bint)
@@ -129,17 +129,21 @@ def AbraCadabra(inBAM, outBAM="default",
 def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
                     nt=4, abra="default"):
     if(abra == "default"):
-        raise ThisIsMadness("Path to abra jar required for running KmerSizeCalculator.")
+        raise ThisIsMadness(
+            "Path to abra jar required for running KmerSizeCalculator.")
     if(ref == "default"):
-        raise ThisIsMadness("Path to reference required for running KmerSizeCalculator.")
+        raise ThisIsMadness(
+            "Path to reference required for running KmerSizeCalculator.")
     if(inbed == "default"):
-        raise ThisIsMadness("Path to input bed required for running KmerSizeCalculator.")
+        raise ThisIsMadness(
+            "Path to input bed required for running KmerSizeCalculator.")
     if(rLen < 0):
-        raise ThisIsMadness("Read length required for running KmerSizeCalculator.")
+        raise ThisIsMadness(
+            "Read length required for running KmerSizeCalculator.")
     if(outbed == "default"):
         outbed = ".".join(inbed.split(".")[0:-1] + ["abra", "kmer"])
     commandStr = ("java -cp %s abra.KmerSizeEvaluator " % abra +
-                  "%s %s %s %s %s" % (rLen, ref, outbed, nt, inbed) )
+                  "%s %s %s %s %s" % (rLen, ref, outbed, nt, inbed))
     pl("AbraKmerSizeEvaluator call string: %s" % commandStr)
     subprocess.check_call(shlex.split(commandStr))
     return outbed
@@ -224,9 +228,9 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
            "analysis pipeline...")
         return inBAM
     IRCString = "".join(["java -jar %s -T IndelRealigner -targetInt" % gatk,
-                        "ervals %s -R %s -I %s -o %s " % (out, ref,
-                                                          inBAM, outBAM),
-                        dbsnpStr])
+                         "ervals %s -R %s -I %s -o %s " % (out, ref,
+                                                           inBAM, outBAM),
+                         dbsnpStr])
     pl("IndelRealignerCall string: %s" % IRCString)
     try:
         subprocess.check_call(shlex.split(IRCString))
@@ -403,7 +407,7 @@ def compareRecs(RecordList):
     newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsubtract(nmultiply(2, MaxPhredSum),
-                             nsum(qualAllSum, 0))
+                           nsum(qualAllSum, 0))
     phredQuals[phredQuals < 0] = 0
     outRec = RecordList[0]
     outRec.seq = newSeq
@@ -859,7 +863,8 @@ def GetRPsWithI(inBAM, outBAM="default"):
         except AssertionError:
             HTSUtils.FacePalm("Input fastq is not name sorted or is off in "
                               "some other way! Abort!")
-        if(read2.cigarstring is None or read1.cigarstring is None or "I" not in read1.cigarstring or "I" not in read2.cigarstring):
+        if(read2.cigarstring is None or read1.cigarstring is None or
+           "I" not in read1.cigarstring or "I" not in read2.cigarstring):
             continue
         ohw(read1)
         ohw(read2)

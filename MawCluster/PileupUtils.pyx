@@ -10,14 +10,10 @@ import re
 import operator
 from operator import attrgetter as oag
 from operator import itemgetter as oig
-oig1 = oig(1)
-oig0 = oig(0)
-oagbc = operator.attrgetter("BaseCall")
 from operator import div as odiv
 from itertools import ifilterfalse as iff
 
 import numpy as np
-cimport numpy as np
 from numpy import mean as nmean
 from numpy import std as nstd
 from numpy import max as nmax
@@ -25,7 +21,6 @@ from numpy import sum as nsum
 from numpy import array as nparray
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
-cimport pysam.calignmentfile
 import cython
 from cytoolz import (map as cmap, frequencies as cyfreq,
                      partition as ctpartition)
@@ -34,17 +29,28 @@ from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair)
-cimport utilBMF.HTSUtils
 from utilBMF import HTSUtils
 import utilBMF
-cimport utilBMF.HTSUtils
+
 from utilBMF.HTSUtils cimport PileupReadPair
+cimport numpy as np
+cimport pysam.calignmentfile
+cimport utilBMF.HTSUtils
 ctypedef PRInfo PRInfo_t
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PileupReadPair PileupReadPair_t
 
+#  Pre-defining some itemgetters and attrgetters
+oig1 = oig(1)
+oig0 = oig(0)
+oagbc = operator.attrgetter("BaseCall")
 
-lname = lambda x: x.name
+
+def lname(x):
+    """
+    Tiny function for call.
+    """
+    return x.name
 
 
 @cython.locals(paired=cython.bint)
@@ -60,8 +66,8 @@ def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
     cdef tuple i
     cdef PileupReadPair_t pair
     pileups = pPileupColObj.pileups
-    ReadNameCounter = cyfreq(list(cmap(oag("query_name"),
-        list(cmap(oag("alignment"), pileups)))))
+    ReadNameCounter = cyfreq(map(oag("query_name"),
+                                 list(cmap(oag("alignment"), pileups))))
     readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
                    key=lname)
@@ -98,8 +104,9 @@ cdef class PRInfo:
     a pPileupRead.
     Holds family size, SV tags, base quality, mapping quality, and base.
     If any of the "finicky" fields aren't filled (e.g., if BAMs are not
-    produced using BMFTools), they are set to None. Check to see if an attribute
-    is None first if you'd like to save yourself some headaches.
+    produced using BMFTools), they are set to None.
+    Check to see if an attribute is None first if you'd like
+    to save yourself some headaches.
     """
 
     def __init__(self, pPileupRead_t PileupRead):
@@ -228,10 +235,10 @@ cdef class AlleleAggregateInfo:
         self.DOCTotal = DOCTotal
         self.contig = contig
         self.pos = pos
-        self.recList = [rec for rec in recList
-                        if rec.MQ >= minMQ and rec.BQ >= minBQ
-                        and rec.FractionAgreed >= minFracAgreed
-                        and rec.FA >= minFA]
+        self.recList = [rec for rec in recList if
+                        rec.MQ >= minMQ and rec.BQ >= minBQ and
+                        rec.FractionAgreed >= minFracAgreed and
+                        rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
         self.len = lenR
@@ -343,7 +350,7 @@ cdef class AlleleAggregateInfo:
         # Check to see if a read pair supports a variant with both ends
         ReadNameCounter = cyfreq(map(oag("query_name"),
                                      map(oag("read"), self.recList)))
-        self.NumberDuplexReads = len([i[0]  for i in ReadNameCounter.items()
+        self.NumberDuplexReads = len([i[0] for i in ReadNameCounter.items()
                                       if i[1] > 1])
         query_positions = nparray(map(
             oag("query_position"), self.recList), dtype=np.float64)
@@ -454,9 +461,8 @@ cdef class PCInfo:
             self.BothStrandAlignment = False
         try:
             self.reverseStrandFraction = sum(
-                list(cmap(oag("is_reverse"),
-                    list(cmap(oag("read"),
-                        self.Records))))) / (1. * lenR)
+                map(oag("is_reverse"),
+                    map(oag("read"), self.Records))) / (1. * lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
@@ -472,11 +478,11 @@ cdef class PCInfo:
             self.consensus = sorted(cyfreq(
                 list(cmap(oagbc, list(cmap(PRInfo, pileups))))).items(),
                                     key=oig1)[-1][0]
-        self.VariantDict = {alt: [rec for rec in self.Records
-                             if rec.BaseCall == alt]
+        self.VariantDict = {alt: [rec for rec in self.Records if
+                                  rec.BaseCall == alt]
                             for alt in set(cmap(oagbc, self.Records))}
-        query_positions = list(cmap(oag("query_position"),
-                              self.Records))
+        query_positions = map(oag("query_position"),
+                              self.Records)
         self.AAMBP = nmean(query_positions)
         self.AABPSD = nstd(query_positions)
 
@@ -787,15 +793,11 @@ def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
         MergeDOC = odiv(MergedReads, length)
         TotalDOC = odiv(TotalReads, length)
         MeanFamSize = odiv(TotalReads, MergedReads)
-        outHandle.write(
-            "\t".join(
-                  nparray([line[0],
-                  line[1],
-                  line[2],
-                  MergedReads, TotalReads, MergeDOC,
-                  TotalDOC,
-                            ]).astype(str))
-                        + "\n")
+        outHandle.write("\t".join(nparray([
+            line[0], line[1], line[2],
+            MergedReads, TotalReads, MergeDOC,
+            TotalDOC]).astype(str)) +
+            "\n")
         outHandle.flush()
     inHandle.close()
     outHandle.close()

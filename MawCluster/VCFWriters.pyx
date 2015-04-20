@@ -6,20 +6,20 @@ import sys
 
 import pysam
 import cython
-cimport cython
 from cytoolz import map as cmap
-cimport pysam.calignmentfile
-cimport pysam.cfaidx
 
 from MawCluster.SNVUtils import GetVCFHeader
 from MawCluster.PileupUtils import (pPileupColumn,
                                     GetDiscordantReadPairs, PCInfo)
-cimport MawCluster.PileupUtils as PileupUtils
 from MawCluster.SNVUtils cimport VCFPos
 from utilBMF.HTSUtils import PysamToChrDict, printlog as pl
 from utilBMF.HTSUtils cimport pPileupRead
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
+cimport cython
+cimport pysam.calignmentfile
+cimport pysam.cfaidx
+cimport MawCluster.PileupUtils as PileupUtils
 ctypedef PileupUtils.PCInfo PCInfo_t
 ctypedef PileupUtils.pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
@@ -134,7 +134,8 @@ def SNVCrawler(inBAM,
                 DiscRPs = GetDiscordantReadPairs(PileupColumn)
                 DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
                 PileupColumn.pileups = [i for i in PileupColumn.pileups if
-                                        i.alignment.query_name not in DiscRPNames]
+                                        i.alignment.query_name not in
+                                        DiscRPNames]
                 for RP in DiscRPs:
                     reads = RP.RP.getReads()
                     for read in reads:

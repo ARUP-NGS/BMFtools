@@ -4,18 +4,12 @@ from __future__ import division
 from collections import defaultdict
 import operator
 from operator import methodcaller as mc
-
 import pysam
 import cython
-cimport cython
 import numpy as np
-cimport numpy as np
 from numpy import array as nparray
 from math import log10 as mlog10
 from cytoolz import map as cmap
-cimport pysam.cfaidx
-pyFastaFile = pysam.FastaFile
-
 from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl
@@ -23,9 +17,14 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from MawCluster.Probability import ConfidenceIntervalAAF
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
+
+cimport cython
+cimport pysam.cfaidx
+cimport numpy as np
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PCInfo PCInfo_t
 ctypedef SNVCFLine SNVCFLine_t
+pyFastaFile = pysam.FastaFile
 
 # ctypedef np.longdouble_t dtype128_t
 
@@ -87,8 +86,8 @@ cdef class SNVCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal < 0):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
-        self.NumStartStops = len(set(list(cmap(operator.attrgetter("ssString"),
-                                               AlleleAggregateObject.recList))))
+        self.NumStartStops = len(set(map(operator.attrgetter("ssString"),
+                                         AlleleAggregateObject.recList)))
         self.CHROM = AlleleAggregateObject.contig
         self.POS = AlleleAggregateObject.pos + 1
         self.CONS = AlleleAggregateObject.consensus
@@ -115,7 +114,7 @@ cdef class SNVCFLine:
         if(AlleleAggregateObject.BothStrandSupport is False and
            BothStrandAlignment):
             if(self.FILTER is not None):
-                self.FILTER +=  ";OneStrandSupport"
+                self.FILTER += ";OneStrandSupport"
             else:
                 self.FILTER = "OneStrandSupport"
         if(self.NumStartStops < minNumSS and
@@ -148,8 +147,8 @@ cdef class SNVCFLine:
                            "BQF": FailedBQReads,
                            "BS": AlleleAggregateObject.BothStrandSupport,
                            "BSA": BothStrandAlignment,
-                           "TF": 1. * AlleleAggregateObject.TotalReads
-                           / AlleleAggregateObject.DOCTotal,
+                           "TF": 1. * AlleleAggregateObject.TotalReads /
+                           AlleleAggregateObject.DOCTotal,
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,
                            "BPSD": AlleleAggregateObject.BPSD,
@@ -205,21 +204,16 @@ cdef class SNVCFLine:
         self.FormatFields = {"DP": DOC,
                              "DPA": AC,
                              "DPT": DOCTotal}
-        ffkeys = self.FormatFields.keys()
+        ffkeys = sorted(self.FormatFields.keys())
         self.FormatStr = (
-            ":".join(sorted(ffkeys)) +
+            ":".join(ffkeys) +
             "\t" + ":".join(str(
-                self.FormatFields[key]) for key in sorted(
-                    ffkeys)))
-        self.str = "\t".join(nparray([self.CHROM,
-                                       self.POS,
-                                       self.ID,
-                                       self.CONS,
-                                       self.ALT,
-                                       self.QUAL,
-                                       self.FILTER,
-                                       self.InfoStr,
-                                       self.FormatStr]).astype(str).tolist())
+                self.FormatFields[key]) for key in ffkeys))
+        self.str = "\t".join(map(str, [self.CHROM,
+                                       self.POS, self.ID,
+                                       self.CONS, self.ALT,
+                                       self.QUAL, self.FILTER,
+                                       self.InfoStr, self.FormatStr]))
 
     def update(self):
         ffkeys = sorted(self.FormatFields.keys())
@@ -408,7 +402,8 @@ class HeaderFormatLine:
     def __str__(self):
         self.str = ("##FORMAT=<ID="
                     "{},Number={},Type=".format(self.ID, self.Number) +
-                    "{},Description=\"{}\">".format(self.Type, self.Description))
+                    "{},Description=\"{}\">".format(self.Type,
+                                                    self.Description))
         return self.str
 
 
@@ -430,7 +425,7 @@ class HeaderAltLine:
 
     def __str__(self):
         self.str = "##ALT=<ID={},Description=\"{}\">".format(self.ID,
-                                                         self.Description)
+                                                             self.Description)
         return self.str
 
 
@@ -842,10 +837,10 @@ HeaderInfoDict["EST"] = HeaderInfoLine(ID="EST",
                                        Number="1", Type="String")
 HeaderInfoDict["MFDN"] = HeaderInfoLine(
     ID="MFDN", Description="Maximum frequency expected for deamination noise",
-                                       Number="1", Type="Float")
+    Number="1", Type="Float")
 HeaderInfoDict["MFDNP"] = HeaderInfoLine(
     ID="MFDNP", Description="Phred probability for MFDN bounds",
-                                       Number="1", Type="Float")
+    Number="1", Type="Float")
 HeaderInfoDict["MINAAF"] = HeaderInfoLine(
     ID="MINAAF", Description="Lower bound for AAF given observed frequency a"
     "nd sampling error with confidence described by BINOMP (phred-encoded)",
@@ -933,7 +928,7 @@ def GetContigHeaderLines(dict header):
     for contigDict in header['SQ']:
         contigLineList.append(
             str(HeaderContigLine(contig=contigDict["SN"],
-                             length=contigDict["LN"])))
+                                 length=contigDict["LN"])))
     return "\n".join(contigLineList)
 
 

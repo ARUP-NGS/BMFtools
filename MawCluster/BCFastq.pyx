@@ -28,16 +28,13 @@ from operator import div as odiv
 from operator import mul as omul
 from operator import add as oadd
 from subprocess import check_call
-oagseq = oag("seq")
 
 import Bio
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq as BioSeq
 import cython
-cimport cython
 import numpy as np
-cimport numpy as np
 from numpy import array as nparray
 from numpy import less as nless
 from numpy import sum as nsum
@@ -49,11 +46,8 @@ from numpy import any as npany
 from numpy import vstack as npvstack
 from numpy import greater as ngreater
 import pysam
-cimport pysam.cfaidx
 from pysam.cfaidx import FastqProxy as cFastqProxy
 from cytoolz import map as cmap, memoize
-
-ctypedef np.int64_t dtypei_t
 
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PipedShellCall
@@ -63,6 +57,12 @@ from utilBMF.HTSUtils import chr2ph
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import FacePalm, pFastqProxy
+
+oagseq = oag("seq")
+cimport cython
+cimport numpy as np
+cimport pysam.cfaidx
+ctypedef np.int64_t dtypei_t
 
 
 letterNumDict = {}
@@ -200,9 +200,9 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
     else:
         return compareFastqRecordsInexactNumpy(R)
     probs = nmultiply(lenR, R[0].letter_annotations['phred_quality'],
-                        dtype=np.int64)
+                      dtype=np.int64)
     numAgreed = nparray([sum([seq[i] == finalSeq[i] for seq in seqs])
-                          for i in range(len(finalSeq))], dtype=np.int64)
+                         for i in range(len(finalSeq))], dtype=np.int64)
     TagString = "".join([" #G~FA=", ",".join(numAgreed.astype(str)),
                          " #G~FM=", str(lenR),
                          " #G~PV=", ",".join(probs.astype(str))])
@@ -264,7 +264,7 @@ def compareFastqRecordsInexactNumpy(R):
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
     numFamAgreed = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for
-                             i in range(len(seqs[0]))], dtype=np.int64)
+                            i in range(len(seqs[0]))], dtype=np.int64)
     TagString = "".join([" #G~FA=",
                          ",".join(numFamAgreed.astype(str)),
                          " #G~FM=", str(len(R)),
@@ -329,24 +329,23 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
         Success = False
     elif(hybrid):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
-    FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i
-                   in range(len(finalSeq))], dtype=np.int64)
+    FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
+                  range(len(finalSeq))], dtype=np.int64)
     phredQuals = nparray([chr2ph[i] for i in list(R[0].quality)],
-                          dtype=np.int64)
+                         dtype=np.int64)
     phredQuals[phredQuals < 3] = 0
     phredQuals = nmultiply(lenR, phredQuals, dtype=np.int64)
     if(npany(ngreater(phredQuals, 93))):
         QualString = "".join(list(cmap(ph2chr, phredQuals)))
-        PVString = oadd(" #G~PV=",
-                                ",".join(phredQuals.astype(str).tolist()))
+        PVString = " #G~PV=" + ",".join(phredQuals.astype(str).tolist())
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
         PVString = oadd(" #G~PV=",
-                                ",".join(phredQuals.astype(str).tolist()))
+                        ",".join(phredQuals.astype(str).tolist()))
     TagString = "".join([" #G~FM=", lenRStr, " #G~FA=",
                          ",".join(nparray(FA).astype(str)),
                          " #G~ND=", str(nsubtract(lenR * len(seqs[0]),
-                                                    nsum(FA))),
+                                                  nsum(FA))),
                          PVString])
     try:
         consFqString = "\n".join(
@@ -418,16 +417,16 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     newSeq = "".join([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsubtract(nmultiply(2, MaxPhredSum, dtype=np.int64),
-                             nsum(qualAllSum, 0, dtype=np.int64),
-                             dtype=np.int64)
-    FA = nparray([sum([seq[i] == newSeq[i] for seq in seqs]) for i
-                   in range(len(newSeq))], dtype=np.int64)
+                           nsum(qualAllSum, 0, dtype=np.int64),
+                           dtype=np.int64)
+    FA = nparray([sum([seq[i] == newSeq[i] for seq in seqs]) for i in
+                  range(len(newSeq))], dtype=np.int64)
     ND = lenR * len(seqs[0]) - nsum(FA)
     if(npany(nless(phredQuals, 0))):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
         phredQuals = abs(phredQuals)
     if(npany(ngreater(phredQuals, 93))):
-        PVString = " #G~PV=" +  ",".join(phredQuals.astype(str))
+        PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
         phredQuals[phredQuals > 93] = 93
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     else:
@@ -445,10 +444,10 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     return consolidatedFqStr
 
 
-@cython.locals(makeCall=cython.bint)
 @cython.returns(cython.str)
-def CutadaptPaired(fq1, fq2, p3Seq="default", p5Seq="default",
-                         overlapLen=6, makeCall=True):
+def CutadaptPaired(cython.str fq1, cython.str fq2,
+                   p3Seq="default", p5Seq="default",
+                   cython.long overlapLen=6, cython.bint makeCall=True):
     """
     Returns a string which can be called for running cutadapt v.1.7.1
     for paired-end reads in a single call.
@@ -618,9 +617,9 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
         # print("bLen is {}".format(bLen))
-        if(("N" in tempBar or "A" * bLen in tempBar
-                or "C" * bLen in tempBar or "G" * bLen in tempBar
-                or "T" * bLen in tempBar)):
+        if(("N" in tempBar or "A" * bLen in tempBar or
+                "C" * bLen in tempBar or "G" * bLen in tempBar or
+                "T" * bLen in tempBar)):
             '''
             pl("Failing barcode for read {} is {} ".format(indexRead,
                                                            tempBar),
@@ -1128,8 +1127,8 @@ def singleFastqConsolidate(fq, outFq="default", stringency=0.9):
         bLen = len(bc4fq) * 5 // 6
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
-        if(("N" in bc4fq or "A" * bLen in bc4fq
-                or "C" * bLen in bc4fq or "G" * bLen in bc4fq or "T" * bLen)):
+        if(("N" in bc4fq or "A" * bLen in bc4fq or
+                "C" * bLen in bc4fq or "G" * bLen in bc4fq or "T" * bLen)):
             continue
         if(ole(int(GetDescTagValue(fqRec.description, "FM")), 2)):
             continue

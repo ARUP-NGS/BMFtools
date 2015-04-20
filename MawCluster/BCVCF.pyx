@@ -116,6 +116,13 @@ class VCFRecord:
 
     def __init__(self, VCFEntry, VCFFilename):
         self.CHROM = VCFEntry[0]
+        if(VCFEntry[0] == ""):
+            self.ALT = "."
+            self.POS = "."
+            self.ID = "."
+            self.REF = "REF"
+            self.QUAL = "NoCall"
+            return None
         try:
             self.POS = int(VCFEntry[1])
         except IndexError:
@@ -291,12 +298,12 @@ def ParseVCF(inputVCFName):
     except TypeError:
         raise TypeError("Argument provided: {}".format(inputVCFName))
     VCFLines = [entry.strip().split('\t') for entry in infile.readlines(
-    ) if entry[0] != "#"]
+    ) if entry[0] != "#" and entry != ""]
     infile.seek(0)
     VCFHeader = [entry.strip(
-    ) for entry in infile.readlines() if entry[0] == "#"]
+    ) for entry in infile.readlines() if entry[0] == "#" and entry[0] != ""]
     VCFEntries = [VCFRecord(
-        line, inputVCFName) for line in VCFLines]
+        line, inputVCFName) for line in VCFLines if len(line) >= 7]
     ParsedVCF = VCFFile(VCFEntries, VCFHeader, inputVCFName)
     return ParsedVCF
 
@@ -441,16 +448,16 @@ def VCFStats(inVCF, TransCountsTable="default"):
 def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
     if(outVCF == "default"):
         outVCF = inVCF[0:-4] + ".bedfilter.vcf"
-    inVCF = ParseVCF(inVCF)
     print("bedfile used: {}".format(bedfile))
     bed = HTSUtils.ParseBed(bedfile)
     outHandle = open(outVCF, "w")
     count = 0
-    header = check_output("zcat inVCF | head -n 1000 | grep '^#' "
-                          "> %s" % outVCF, shell=True).split("\n")
+    header = check_output(
+        "cat %s | head -n 1000 | grep '^#'" % inVCF, shell=True).split("\n")
     header.insert(-1, str(SNVUtils.HeaderCustomLine(
         customKey="FilterVCFFileByBed", customValue=bedfile)))
     outHandle.write("\n".join(header) + "\n")
+    inVCF = ParseVCF(inVCF)
     for line in inVCF.Records:
         if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
             outHandle.write(str(line) + "\n")

@@ -1,19 +1,18 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
-
-
 import pysam
-cimport pysam.calignmentfile
 import cython
 from cytoolz import map as cmap
-
 from utilBMF.HTSUtils import FractionAligned, FractionSoftClipped
+cimport pysam.calignmentfile
 
 """
 Contains utilities for working with indels for HTS data.
 """
 
-def FilterByIndelRelevance(inBAM, indelOutputBAM="default", otherOutputBAM="default",
+
+def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
+                           otherOutputBAM="default",
                            minFamSize=3):
     """
     Writes reads potentially relevant to an indel to indelOutputBAM and
