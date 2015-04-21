@@ -31,10 +31,13 @@ except ImportError:
 print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
-
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine", "-flto"]
+
 """
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
+                "-floop-strip-mine"]
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
                 "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",

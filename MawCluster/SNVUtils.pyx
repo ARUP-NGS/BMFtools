@@ -146,43 +146,25 @@ cdef class SNVCFLine:
         self.InfoFields = {"AC": AC,
                            "AF": 1. * AC / DOC,
                            "BNP": int(-10 * mlog10(pValBinom)),
-                           "BQF": FailedBQReads,
-                           "BS": AlleleAggregateObject.BothStrandSupport,
-                           "BSA": BothStrandAlignment,
+                           "BSS": AlleleAggregateObject.BothStrandSupport,
                            "TF": 1. * AlleleAggregateObject.TotalReads /
                            AlleleAggregateObject.DOCTotal,
                            "NSS": self.NumStartStops,
                            "MBP": AlleleAggregateObject.MBP,
                            "BPSD": AlleleAggregateObject.BPSD,
-                           "FAF": FailedAFReads,
-                           "FQC": FailedQCReads, "FFM": FailedFMReads,
-                           "FSR": AlleleAggregateObject.FSR,
-                           "MNCS": minNumSS, "MDP": minDuplexPairs,
                            "MFRAC": AlleleAggregateObject.MFractionAgreed,
                            "MINFRACCALL": AlleleAggregateObject.minFrac,
                            "MINFRACFILTER": minFracAgreedForFilter,
                            "MFA": AlleleAggregateObject.MFA,
-                           "MINAF": minAF,
-                           "MINFA": AlleleAggregateObject.minFA,
                            "MINAAF": minAAF, "MAXAAF": maxAAF,
-                           "MAXND": AlleleAggregateObject.maxND,
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
-                           "MMQ": AlleleAggregateObject.minMQ,
-                           "MBQ": AlleleAggregateObject.minBQ,
-                           "NDF": FailedNDReads,
                            "NDP": NDP, "QA": AlleleAggregateObject.SumBQScore,
                            "PFSD": AlleleAggregateObject.PFSD,
                            "NFSD": AlleleAggregateObject.NFSD,
                            "MPF": AlleleAggregateObject.MPF,
-                           "NUMALL": AlleleAggregateObject.NUMALT,
-                           "MQF": FailedMQReads,
                            "TND": AlleleAggregateObject.TND,
-                           "TYPE": "snp",
-                           "MAXNF": AlleleAggregateObject.maxNF,
                            "MNF": AlleleAggregateObject.MNF,
-                           "PVC": MaxPValue,
-                           "CONS": self.CONS,
                            "NDPS": AlleleAggregateObject.NumberDuplexReads}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
@@ -198,16 +180,31 @@ cdef class SNVCFLine:
         if(ampliconFailed >= 0):
             self.InfoFields["NAF"] = ampliconFailed
         self.InfoFields["RSF"] = AlleleAggregateObject.reverseStrandFraction
-        if("AABPSD" in dir(AlleleAggregateObject)):
-            self.InfoFields["AABPSD"] = AlleleAggregateObject.AABPSD
-        if("AAMBP" in dir(AlleleAggregateObject)):
-            self.InfoFields["AAMBP"] = AlleleAggregateObject.AAMBP
         self.InfoStr = ";".join(
             [key + "=" + str(self.InfoFields[key])
              for key in sorted(self.InfoFields.keys())])
         self.FormatFields = {"DP": DOC,
                              "DPA": AC,
-                             "DPT": DOCTotal}
+                             "DPT": DOCTotal,
+                             "BQF": FailedBQReads,
+                             "AABS": BothStrandAlignment,
+                             "MQF": FailedMQReads,
+                             "FAF": FailedAFReads,
+                             "FQC": FailedQCReads, "FFM": FailedFMReads,
+                             "FSR": AlleleAggregateObject.FSR,
+                             "AABPSD": AlleleAggregateObject.AABPSD,
+                             "AAMBP": AlleleAggregateObject.AAMBP,
+                             "MNCS": minNumSS, "MDP": minDuplexPairs,
+                             "NDF": FailedNDReads, "MINAF": minAF,
+                             "MINFA": AlleleAggregateObject.minFA,
+                             "MAXND": AlleleAggregateObject.maxND,
+                             "MMQ": AlleleAggregateObject.minMQ,
+                             "MBQ": AlleleAggregateObject.minBQ,
+                             "MAXNF": AlleleAggregateObject.maxNF,
+                             "PVC": MaxPValue,
+                             "CONS": self.CONS,
+                             "TYPE": "snp",
+                             "NUMALL": AlleleAggregateObject.NUMALT}
         ffkeys = sorted(self.FormatFields.keys())
         self.FormatStr = (
             ":".join(ffkeys) +
@@ -305,7 +302,7 @@ cdef class VCFPos:
             minFracAgreedForFilter=minFracAgreed,
             minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment,
             NDP=NDP, EST=self.EST, FailedAFReads=PCInfoObject.FailedAFReads,
-            minAF=self.minAF, FailedNDReads=PCInfo.FailedNDReads)
+            minAF=self.minAF, FailedNDReads=PCInfoObject.FailedNDReads)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(keepConsensus):
@@ -683,11 +680,7 @@ HeaderInfoDict["TF"] = HeaderInfoLine(
                  "in the same order as listed for unmerged read families,"
                  "IE, without having removed the duplicates."),
     Number="A")
-HeaderInfoDict["FSR"] = HeaderInfoLine(
-    ID="FSR",
-    Type="Integer",
-    Description="Number of reads left out of pileup due to SV tags.",
-    Number="1")
+
 HeaderInfoDict["RSF"] = HeaderInfoLine(
     ID="RSF",
     Type="Float",
@@ -703,46 +696,12 @@ HeaderInfoDict["MQB"] = HeaderInfoLine(ID="MQB",
                                        Description="Mean Base Quality",
                                        Number="A",
                                        Type="Float")
-HeaderInfoDict["MMQ"] = HeaderInfoLine(
-    ID="MMQ",
-    Description="Min Mapping Quality for reads used in variant calling.",
-    Number="A",
-    Type="Integer")
-HeaderInfoDict["MBQ"] = HeaderInfoLine(
-    ID="MBQ",
-    Description="Min Base Quality for reads used in variant calling.",
-    Number="A",
-    Type="Integer")
+
 HeaderInfoDict["QA"] = HeaderInfoLine(
     ID="QA",
     Description="Alternate allele quality sum in phred",
     Number="A",
     Type="Integer")
-HeaderInfoDict["NUMALL"] = HeaderInfoLine(
-    ID="NUMALL",
-    Description="Number of unique alleles at position.",
-    Number="1",
-    Type="Integer")
-HeaderInfoDict["BQF"] = HeaderInfoLine(
-    ID="BQF",
-    Description="Number of (merged) reads failed for low BQ.",
-    Number="1",
-    Type="Integer")
-HeaderInfoDict["MQF"] = HeaderInfoLine(
-    ID="MQF",
-    Description="Number of (merged) reads failed for low MQ.",
-    Number="1",
-    Type="Integer")
-HeaderInfoDict["TYPE"] = HeaderInfoLine(
-    ID="TYPE",
-    Description="The type of allele, either snp, mnp, ins, del, or complex.",
-    Number="A",
-    Type="String")
-HeaderInfoDict["PVC"] = HeaderInfoLine(
-    ID="PVC",
-    Description="P-value cutoff used.",
-    Number="1",
-    Type="Float")
 HeaderInfoDict["TACS"] = HeaderInfoLine(
     ID="TACS",
     Description="Total (Unmerged) Allele Count String.",
@@ -779,36 +738,17 @@ HeaderInfoDict["RSF"] = HeaderInfoLine(ID="RSF", Description="Fraction of r"
                                        "eads for given allele passing all f"
                                        "ilters mapped to the reverse strand.",
                                        Number="A", Type="Float")
-HeaderInfoDict["MNCS"] = HeaderInfoLine(ID="MNCS",
-                                        Description="Minimum number of coordi"
-                                        "nate sets for read pairs supporting "
-                                        "variant to pass filter.",
-                                        Number="1", Type="Integer")
-HeaderInfoDict["MDP"] = HeaderInfoLine("MDP",
-                                       Description="Minimum duplex pairs supp"
-                                       "orting variant to pass filter.",
-                                       Number="1",
-                                       Type="Integer")
+
 HeaderInfoDict["MBP"] = HeaderInfoLine(ID="MBP",
                                        Description="Mean base position in rea"
                                        "d for reads supporting variant passin"
                                        "g all filters. 0-based.",
                                        Number="A", Type="Float")
-HeaderInfoDict["AAMBP"] = HeaderInfoLine(ID="AAMBP",
-                                         Description="Mean base position in re"
-                                         "ad for all reads at position passin"
-                                         "g all filters. 0-based.",
-                                         Number="A", Type="Float")
 HeaderInfoDict["BPSD"] = HeaderInfoLine(ID="BPSD", Description="Standard dev"
                                         "iation of base position in read fo"
                                         "r reads supporting variant passing"
                                         " all filters.", Number="A",
                                         Type="Float")
-HeaderInfoDict["AABPSD"] = HeaderInfoLine(ID="AABPSD",
-                                          Description="Standard deviation of"
-                                          " base position in read for all re"
-                                          "ads at position passing filters.",
-                                          Number="1", Type="Float")
 HeaderInfoDict["MFRAC"] = HeaderInfoLine(
     ID="MFRAC", Description="Mean fraction of reads in a family supporting a "
     "nucleotide at this position", Number="A", Type="Float")
@@ -821,9 +761,6 @@ HeaderInfoDict["MINFRACCALL"] = HeaderInfoLine(
 HeaderInfoDict["MFA"] = HeaderInfoLine(
     ID="MFA", Description="Mean number of reads in a family agreeing on allel"
     "e.", Number="A", Type="Float")
-HeaderInfoDict["MINFA"] = HeaderInfoLine(
-    ID="MINFA", Description="Minimum number of agreeing reads in a family for"
-    "that family to be included in variant call", Number="1", Type="Integer")
 HeaderInfoDict["PFSD"] = HeaderInfoLine(
     ID="PFSD",
     Description="Standard deviation of Phred Fraction (summed phre"
@@ -857,16 +794,6 @@ HeaderInfoDict["BNP"] = HeaderInfoLine(
     ID="BNP", Description="Phred-encoded confidence chosen for calculating "
     "MAXAAF and MINAAF",
     Number="1", Type="Float")
-HeaderInfoDict["FFM"] = HeaderInfoLine(
-    ID="FFM", Description="Number of reads failed for too few reads in a fami"
-    "ly", Number="1", Type="Integer")
-HeaderInfoDict["FQC"] = HeaderInfoLine(
-    ID="FQC", Description="Number of reads failed for not passing QC ",
-    Number="1", Type="Integer")
-HeaderInfoDict["FAF"] = HeaderInfoLine(
-    ID="FAF", Description=("Number of reads failed for not passing "
-                           "Aligned Fraction filter."),
-    Number="1", Type="Integer")
 HeaderInfoDict["NAF"] = HeaderInfoLine(
     ID="NAF", Description="Number of amplicon-specific failed reads for "
     "pileup in case of mispriming. ",
@@ -879,9 +806,7 @@ HeaderInfoDict["MNF"] = HeaderInfoLine(
     ID="MNF", Description="Mean number of differences from consensus per read "
     "for all reads supporting allele.",
     Number="A", Type="Float")
-HeaderInfoDict["MAXNF"] = HeaderInfoLine(
-    ID="MAXNF", Description="Maximum 'NF' tag for a read supporting allele.",
-    Number="A", Type="Float")
+
 HeaderInfoDict["NFSD"] = HeaderInfoLine(
     ID="NFSD", Description="Standard deviation for NF tags for a read suppo"
     "rting allele.",
@@ -890,18 +815,14 @@ HeaderInfoDict["NDP"] = HeaderInfoLine(
     ID="NDP", Description="Number of read pairs not included in pileup due to"
     "disagreement on the base call. Large numbers suggest context-specific er"
     "ror modes.", Type="Integer", Number="1")
-HeaderInfoDict["MINAF"] = HeaderInfoLine(
-    ID="MINAF",
-    Description="Minimum aligned fraction to be included in call.",
-    Number="1", Type="Float")
-HeaderInfoDict["MAXND"] = HeaderInfoLine(
-    ID="MAXND",
-    Description="Maximum ND for all reads included in call.",
-    Number="A", Type="Integer")
-HeaderInfoDict["NDF"] = HeaderInfoLine(
-    ID="NDF",
-    Description="Number of reads failed for ND > maxND.",
-    Number="1", Type="Integer")
+HeaderInfoDict["BSS"] = HeaderInfoLine(
+    ID="BSS",
+    Description=("Variant supported by "
+                 "reads on both strands. True or False."),
+    Number="1",
+    Type="Integer")
+
+
 
 
 """
@@ -926,7 +847,104 @@ HeaderFormatDict["DPT"] = HeaderFormatLine(
     Type="Integer",
     Description=("Unmerged Read Depth for Allele."),
     Number="A")
+HeaderFormatDict["BQF"] = HeaderFormatLine(
+    ID="BQF",
+    Description="Number of (merged) reads failed for low BQ.",
+    Number="1",
+    Type="Integer")
+HeaderFormatDict["AABS"] = HeaderFormatLine(
+    ID="AABS",
+    Description=("Reads at position aligned to both strands. "
+                 "True:1, False:0, Unset:-1."),
+    Number="1",
+    Type="Integer")
+HeaderFormatDict["MQF"] = HeaderFormatLine(
+    ID="MQF",
+    Description="Number of (merged) reads failed for low MQ.",
+    Number="1",
+    Type="Integer")
+HeaderFormatDict["FFM"] = HeaderFormatLine(
+    ID="FFM", Description="Number of reads failed for too few reads in a fami"
+    "ly", Number="1", Type="Integer")
+HeaderFormatDict["FQC"] = HeaderFormatLine(
+    ID="FQC", Description="Number of reads failed for not passing QC ",
+    Number="1", Type="Integer")
+HeaderFormatDict["FAF"] = HeaderFormatLine(
+    ID="FAF", Description=("Number of reads failed for not passing "
+                           "Aligned Fraction filter."),
+    Number="1", Type="Integer")
+HeaderFormatDict["FSR"] = HeaderFormatLine(
+    ID="FSR",
+    Type="Integer",
+    Description="Number of reads left out of pileup due to SV tags.",
+    Number="1")
+HeaderFormatDict["AABPSD"] = HeaderFormatLine(
+    ID="AABPSD", Description=("Standard deviation of base position in read for"
+                              " all reads at position passing filters."),
+    Number="1", Type="Float")
+HeaderFormatDict["AAMBP"] = HeaderFormatLine(
+    ID="AAMBP", Description=("Mean base position in read for all reads at"
+                             " position passing all filters. 0-based."),
+    Number="A", Type="Float")
 
+HeaderFormatDict["MNCS"] = HeaderFormatLine(ID="MNCS",
+                                        Description="Minimum number of coordi"
+                                        "nate sets for read pairs supporting "
+                                        "variant to pass filter.",
+                                        Number="1", Type="Integer")
+HeaderFormatDict["MDP"] = HeaderFormatLine("MDP",
+                                       Description="Minimum duplex pairs supp"
+                                       "orting variant to pass filter.",
+                                       Number="1",
+                                       Type="Integer")
+HeaderFormatDict["NDF"] = HeaderFormatLine(
+    ID="NDF",
+    Description="Number of reads failed for ND > maxND.",
+    Number="1", Type="Integer")
+HeaderFormatDict["MINFA"] = HeaderFormatLine(
+    ID="MINFA", Description="Minimum number of agreeing reads in a family for"
+    "that family to be included in variant call", Number="1", Type="Integer")
+HeaderFormatDict["MINAF"] = HeaderFormatLine(
+    ID="MINAF",
+    Description="Minimum aligned fraction to be included in call.",
+    Number="1", Type="Float")
+HeaderFormatDict["MAXND"] = HeaderFormatLine(
+    ID="MAXND",
+    Description="Maximum ND for all reads included in call.",
+    Number="A", Type="Integer")
+HeaderFormatDict["MMQ"] = HeaderFormatLine(
+    ID="MMQ",
+    Description="Min Mapping Quality for reads used in variant calling.",
+    Number="A",
+    Type="Integer")
+HeaderFormatDict["MBQ"] = HeaderFormatLine(
+    ID="MBQ",
+    Description="Min Base Quality for reads used in variant calling.",
+    Number="A",
+    Type="Integer")
+HeaderFormatDict["MAXNF"] = HeaderFormatLine(
+    ID="MAXNF", Description="Maximum 'NF' tag for a read supporting allele.",
+    Number="A", Type="Float")
+HeaderFormatDict["PVC"] = HeaderFormatLine(
+    ID="PVC",
+    Description="P-value cutoff used.",
+    Number="1",
+    Type="Float")
+HeaderFormatDict["CONS"] = HeaderFormatLine(
+    ID="CONS",
+    Description="Consensus Base",
+    Number="1",
+    Type="String")
+HeaderFormatDict["NUMALL"] = HeaderFormatLine(
+    ID="NUMALL",
+    Description="Number of unique alleles at position.",
+    Number="1",
+    Type="Integer")
+HeaderFormatDict["TYPE"] = HeaderFormatLine(
+    ID="TYPE",
+    Description="The type of allele, either snp, mnp, ins, del, or complex.",
+    Number="A",
+    Type="String")
 
 @cython.returns(cython.str)
 def GetContigHeaderLines(dict header):

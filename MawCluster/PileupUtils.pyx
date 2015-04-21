@@ -187,10 +187,9 @@ cdef class PRInfo:
 def is_reverse_to_str(cython.bint boolean):
     if(boolean):
         return "reverse"
-    elif(boolean is False):
+    if(boolean is False):
         return "forward"
-    else:
-        return "unmapped"
+    return "unmapped"
 
 
 cdef class AlleleAggregateInfo:
@@ -362,7 +361,8 @@ cdef class AlleleAggregateInfo:
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = [rec.PVFrac for rec in self.recList if i.PVFrac is not None]
+        PVFArray = [rec.PVFrac for rec in self.recList if rec.PVFrac >= minPVFrac]
+
         if(len(PVFArray) == 0):
             self.MPF = -1.
             self.PFSD = -1.

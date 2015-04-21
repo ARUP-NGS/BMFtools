@@ -15,7 +15,7 @@ cdef class pPileupRead:
     cdef public cython.long level
     cdef public cython.long indel
     cdef public cython.long query_position
-    cdef public cython.str name
+    cdef public cython.str name, str
     cdef public pysam.calignmentfile.AlignedSegment alignment
 
 cdef class PileupReadPair:

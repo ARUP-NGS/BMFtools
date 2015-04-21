@@ -381,12 +381,12 @@ def VCFStats(inVCF, TransCountsTable="default"):
             TransitionDict[RefCons + "-->" + Var] = [
                 rec for rec
                 in inVCF.Records
-                if rec.InfoArrayDict['CONS'] == RefCons or
+                if rec.GenotypeDict['CONS'] == RefCons or
                 rec.REF == RefCons and rec.ALT == Var]
             TransitionPASSDict[RefCons + "-->" + Var] = [
                 rec for rec
                 in inVCF.Records
-                if (rec.InfoArrayDict['CONS'] == RefCons or
+                if (rec.GenotypeDict['CONS'] == RefCons or
                     rec.REF == RefCons) and (rec.FILTER == "PASS" and
                                              rec.ALT == Var)]
             TransitionCountsDict[RefCons + "-->" + Var] = len(
@@ -719,7 +719,7 @@ def GetPotentialHetsVCF(inVCF, minHetFrac=0.025,
         if(hetFreq >= minHetFrac and hetFreq <= maxHetFrac):
             if(replaceIDWithHetFreq):
                 VCFRec.ID = str(hetFreq)[0:6]
-            outHandle.write(VCFRec.__str__() + "\n")
+            outHandle.write(str(VCFRec) + "\n")
     outHandle.close()
 
 
