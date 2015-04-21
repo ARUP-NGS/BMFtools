@@ -332,7 +332,7 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND1, "i"),
-                               ("NF", odiv(ND1, float(FM)), "f"),
+                               ("NF", ND1 * 1. / FM, "f"),
                                ("RG", "default", "Z"),
                                ("AF", r1FracAlign, "f"),
                                ("SF", r1FracSC, "f")])
@@ -344,7 +344,7 @@ def pairedBarcodeTagging(
                                ("PV", descDict1["PV"], "Z"),
                                ("FA", descDict1["FA"], "Z"),
                                ("ND", ND2, "i"),
-                               ("NF", odiv(ND2, float(FM)), "f"),
+                               ("NF", ND2 * 1. / float(FM), "f"),
                                ("RG", "default", "Z"),
                                ("AF", r2FracAlign, "f"),
                                ("SF", r2FracSC, "f")])

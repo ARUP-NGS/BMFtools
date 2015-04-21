@@ -31,7 +31,7 @@ cdef class AlleleAggregateInfo:
     cdef public cython.long SumBQScore
     cdef public cython.long SumMQScore
     cdef public cython.long FSR
-    cdef public cython.long NumberDuplexReads
+    cdef public cython.long NumberDuplexReads, maxND
     cdef public cython.float MNF, maxNF, NFSD, AveFamSize, AveMQ, AveBQ, minMQ, minBQ
     cdef public cython.float minFA, MFractionAgreed, reverseStrandFraction, MFA
     cdef public cython.float minFrac, TotalAlleleFrequency, MergedAlleleFrequency
@@ -101,3 +101,4 @@ cdef class PCInfo:
     cdef public dict MergedStrandednessRatioDict, TotalStrandednessRatioDict
     cdef public list Records, AltAlleleData
     cdef public cython.bint BothStrandAlignment
+    cdef public cython.long maxND, FailedNDReads

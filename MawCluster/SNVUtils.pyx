@@ -69,7 +69,7 @@ cdef class SNVCFLine:
                  cython.long minFA=0, cython.long BothStrandAlignment=-1,
                  dtype128_t pValBinom=0.05, cython.long ampliconFailed=-1,
                  cython.long NDP=-1, cython.str EST="none",
-                 cython.float minAF=-1.):
+                 cython.float minAF=-1., cython.long FailedNDReads=-1):
         cdef dtype128_t maxAAF, minAAF
         cdef cython.long AC, DOC
         if(BothStrandAlignment < 0):
@@ -86,6 +86,8 @@ cdef class SNVCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Merged) required!")
         if(DOCTotal < 0):
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
+        if(FailedNDReads < 0):
+            raise HTSUtils.ThisIsMadness("FailedNDReads required!")
         self.NumStartStops = len(set(map(operator.attrgetter("ssString"),
                                          AlleleAggregateObject.recList)))
         self.CHROM = AlleleAggregateObject.contig
@@ -163,10 +165,12 @@ cdef class SNVCFLine:
                            "MINAF": minAF,
                            "MINFA": AlleleAggregateObject.minFA,
                            "MINAAF": minAAF, "MAXAAF": maxAAF,
+                           "MAXND": AlleleAggregateObject.maxND,
                            "MQM": AlleleAggregateObject.AveMQ,
                            "MQB": AlleleAggregateObject.AveBQ,
                            "MMQ": AlleleAggregateObject.minMQ,
                            "MBQ": AlleleAggregateObject.minBQ,
+                           "NDF": FailedNDReads,
                            "NDP": NDP, "QA": AlleleAggregateObject.SumBQScore,
                            "PFSD": AlleleAggregateObject.PFSD,
                            "NFSD": AlleleAggregateObject.NFSD,
@@ -301,7 +305,7 @@ cdef class VCFPos:
             minFracAgreedForFilter=minFracAgreed,
             minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment,
             NDP=NDP, EST=self.EST, FailedAFReads=PCInfoObject.FailedAFReads,
-            minAF=self.minAF)
+            minAF=self.minAF, FailedNDReads=PCInfo.FailedNDReads)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(keepConsensus):
@@ -890,6 +894,14 @@ HeaderInfoDict["MINAF"] = HeaderInfoLine(
     ID="MINAF",
     Description="Minimum aligned fraction to be included in call.",
     Number="1", Type="Float")
+HeaderInfoDict["MAXND"] = HeaderInfoLine(
+    ID="MAXND",
+    Description="Maximum ND for all reads included in call.",
+    Number="A", Type="Integer")
+HeaderInfoDict["NDF"] = HeaderInfoLine(
+    ID="NDF",
+    Description="Number of reads failed for ND > maxND.",
+    Number="1", Type="Integer")
 
 
 """

@@ -173,10 +173,14 @@ cdef class PRInfo:
                    "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array),
                    level=logging.DEBUG)
                 self.PVFrac = -1.
-        if("ND" in tagsdictkeys):
+        try:
             self.ND = aopt("ND")
-        if("NF" in tagsdictkeys):
+        except KeyError:
+            pass
+        try:
             self.NF = aopt("NF")
+        except KeyError:
+            pass
 
 
 @cython.returns(cython.str)
@@ -214,6 +218,7 @@ cdef class AlleleAggregateInfo:
         cdef list NFList
         cdef cython.long lenR
         cdef PRInfo_t rec
+        cdef tuple i
         if(consensus == "default"):
             raise ThisIsMadness("A consensus nucleotide must be provided.")
         if(NUMALT < 0):
@@ -357,13 +362,14 @@ cdef class AlleleAggregateInfo:
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = [i.PVFrac for i in self.recList if i.PVFrac is not None]
+        PVFArray = [rec.PVFrac for rec in self.recList if i.PVFrac is not None]
         if(len(PVFArray) == 0):
             self.MPF = -1.
             self.PFSD = -1.
         else:
             self.MPF = nmean(PVFArray)
             self.PFSD = nstd(PVFArray)
+        self.maxND = nmax([rec.read.opt("ND") for rec in self.recList])
 
 
 cdef class PCInfo:
@@ -387,7 +393,8 @@ cdef class PCInfo:
                  cython.float minPVFrac=0.66,
                  cython.str exclusionSVTags="MDC,LI",
                  cython.bint FracAlignFilter=False, cython.long primerLen=20,
-                 cython.str experiment="", cython.float minAF=0.25):
+                 cython.str experiment="", cython.float minAF=0.25,
+                 cython.long maxND=10):
         cdef PRInfo_t rec
         cdef list pileups, fks, svTags, exclusionTagList
         cdef pPileupRead_t r
@@ -414,6 +421,8 @@ cdef class PCInfo:
         self.FailedFMReads = sum([pileupRead.alignment.opt("FM") < minFA
                                   for pileupRead in pileups])
         self.FailedAFReads = sum([pileupRead.alignment.opt("AF") < minAF
+                                  for pileupRead in pileups])
+        self.FailedNDReads = sum([pileupRead.alignment.opt("ND") > maxND
                                   for pileupRead in pileups])
         self.FailedBQReads = sum(
             [pileupRead.alignment.query_qualities
@@ -451,7 +460,8 @@ cdef class PCInfo:
                             pileupRead.query_position] >= self.minBQ) and
                         pileupRead.alignment.opt("FP") == 1 and
                         pileupRead.alignment.opt("FM") >= minFA and
-                        pileupRead.alignment.opt("AF") >= minAF]
+                        pileupRead.alignment.opt("AF") >= minAF and
+                        pileupRead.alignment.opt("ND") <= maxND]
         self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
         rsn = sum(list(cmap(oag("is_reverse"), self.Records)))
@@ -502,8 +512,8 @@ cdef class PCInfo:
                               minFracAgreed=minFracAgreed, minFA=minFA,
                               minPVFrac=minPVFrac, FSR=self.FailedSVReads)
                               for key in self.VariantDict.keys()]
-        self.AltAlleleData = [i for i in self.AltAlleleData if
-                              oag("len")(i) != 0]
+        self.AltAlleleData = [alt for alt in self.AltAlleleData if
+                              oag("len")(alt) != 0]
         # Generates statistics based on transitions, e.g. ref->alt
         self.MergedAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
@@ -566,6 +576,8 @@ cdef class PCInfo:
                             self.TotalFracStr,
                             self.MergedStrandednessStr,
                             self.TotalStrandednessStr])))
+        self.maxND = nmax([pileupRead.alignment.opt("ND") for
+                           pileupRead in pileups])
 
     @cython.returns(AlleleAggregateInfo_t)
     def __getitem__(self, cython.long index):
