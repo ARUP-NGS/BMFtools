@@ -3,7 +3,7 @@
 import logging
 from operator import attrgetter as oag
 import sys
-import subprocess
+from subprocess import CalledProcessError
 
 import pysam
 import cython
@@ -129,6 +129,11 @@ def SNVCrawler(inBAM,
                 ref=reference, keepConsensus=keepConsensus, threads=4)
             if dispatcher.daemon() == 0:
                 ohw("\n".join(dispatcher.outstrs.values()) + "\n")
+            else:
+                raise CalledProcessError(sum(
+                    [d.poll() for d in dispatcher.dispatches],
+                    "\n".join([d.commandString for
+                               d in dispatcher.dispatches])))
         else:
             for line in bedlines:
                 ICR = pileupCall(line[0], line[1],

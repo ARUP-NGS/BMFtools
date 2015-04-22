@@ -1974,14 +1974,20 @@ class PopenCall(object):
     """
     Contains a Popen call and the command string used.
     """
-    def __init__(self, string):
+    def __init__(self, string, maxresubs=10):
         self.commandString = string
         self.popen = StdPopen(string)
         self.poll = self.popen.poll
         self.communicate = self.popen.communicate
+        self.resubmissions = 0
+        self.maxresubs = maxresubs
 
     def resubmit(self):
+        if(self.resubmissions >= self.maxresubs):
+            raise ThisIsMadness(
+                "Resubmission limit %s reached!" % self.maxresubs)
         self.popen = StdPopen(self.commandString)
+        self.resubmissions += 1
 
 
 class PopenDispatcher(object):
@@ -1989,7 +1995,8 @@ class PopenDispatcher(object):
     Contains a list of strings for Popen to use and a set of Popen options,
     and a list of threads it should have going at once.
     """
-    def __init__(self, stringlist, threads=4, MaxResubmissions=5):
+    def __init__(self, stringlist, threads=4, MaxResubmissions=50):
+        print("Initializing PopenDispatcher!")
         assert len(stringlist) > 0
         self.queue = deque(stringlist)
         self.dispatches = []
@@ -2000,7 +2007,7 @@ class PopenDispatcher(object):
         self.alljobssubmitted = False
         self.alljobscompleted = False
         self.resubmittedjobcounts = 0
-        self.MaximumResubmissions = MaxResubmissions
+        self.MaxResubmissions = MaxResubmissions
 
 
     def submit(self):
@@ -2027,8 +2034,9 @@ class PopenDispatcher(object):
                     if(self.resubmittedjobcounts > self.MaxResubmissions):
                         raise CalledProcessError(
                             dispatch.poll(), dispatch.commandString,
-                            "So we resubmitted jobs until we passing the "
-                            "limit (%s). Oops!" % self.MaxResubmissions)
+                            "So we resubmitted jobs until we passed the "
+                            "limit for failed jobs. "
+                            "(%s). Oops!" % self.MaxResubmissions)
                     continue
                 self.completed += 1
                 self.outstrs[
@@ -2038,8 +2046,9 @@ class PopenDispatcher(object):
         return len(self.dispatches)
 
     def daemon(self):
-        self.submit()
         while len(self.queue) != 0:
+            print("Submitting set of jobs for daemon.")
+            self.submit()
             fgCStr = self.queue.popleft()
             self.submitted += 1
             print("Foreground submitting job #%s" % str(
@@ -2047,6 +2056,7 @@ class PopenDispatcher(object):
             fgOutStr = subprocess.check_output(fgCStr, shell=True)
             print("Foreground job finished")
             self.outstrs[fgCStr] = fgOutStr
+            self.check()
         print("All jobs submitted! Yay.")
         while(self.check() > 0):
             time.sleep(5)
@@ -2060,6 +2070,10 @@ class PopenDispatcher(object):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def cythonjoin(cython.str string, list lst):
+    """
+    Trying to see if I can make this happen faster than the built-in
+    join method.
+    """
     cdef cython.str returnStr = ""
     cdef cython.long llist
     llist = len(lst) - 1
