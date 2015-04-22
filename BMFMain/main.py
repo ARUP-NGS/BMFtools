@@ -252,7 +252,7 @@ def main(argv=None):
     Logger.setLevel(logging.DEBUG)
 
     # Console handler - outputs to console as stderr
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(stream=sys.stderr)
     ch.setLevel(logging.DEBUG)
 
     # create formatter

@@ -213,7 +213,7 @@ cdef class AlleleAggregateInfo:
                  cython.long NUMALT=-1,
                  cython.float AABPSD=-1., cython.float AAMBP=-1.,
                  cython.float minFracAgreed=0.0, cython.long minFA=0,
-                 cython.float minPVFrac=0.5, cython.long FSR=-1):
+                 cython.float minPVFrac=0.0, cython.long FSR=-1):
         cdef list NFList
         cdef cython.long lenR
         cdef PRInfo_t rec
@@ -361,7 +361,8 @@ cdef class AlleleAggregateInfo:
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = [rec.PVFrac for rec in self.recList if rec.PVFrac >= minPVFrac]
+        PVFArray = map(oag("PVFrac"), self.recList)
+        #  PVFArray = [rec.PVFrac for rec in self.recList]
 
         if(len(PVFArray) == 0):
             self.MPF = -1.

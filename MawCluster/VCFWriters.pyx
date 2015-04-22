@@ -3,6 +3,7 @@
 import logging
 from operator import attrgetter as oag
 import sys
+import subprocess
 
 import pysam
 import cython
@@ -12,7 +13,8 @@ from MawCluster.SNVUtils import GetVCFHeader
 from MawCluster.PileupUtils import (pPileupColumn,
                                     GetDiscordantReadPairs, PCInfo)
 from MawCluster.SNVUtils cimport VCFPos
-from utilBMF.HTSUtils import PysamToChrDict, printlog as pl
+from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
+                              ParseBed, PopenDispatcher, PopenCall)
 from utilBMF.HTSUtils cimport pPileupRead
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
@@ -58,7 +60,8 @@ def SNVCrawler(inBAM,
                cython.str FORMATTags="default",
                cython.bint writeHeader=True,
                cython.float minFracAgreed=0.0, cython.long minFA=2,
-               cython.str experiment=""):
+               cython.str experiment="",
+               cython.bint parallel=True):
     pl("Command to reproduce function call: "
        "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
@@ -70,12 +73,12 @@ def SNVCrawler(inBAM,
        ", FORMATTags=\"{}\", writeHeader={}".format(FORMATTags, writeHeader) +
        ", minFracAgreed={}, minFA={})".format(minFracAgreed, minFA))
     cdef cython.long NumDiscordantPairs = 0
-    cdef cython.str VCFLineString
+    cdef cython.str VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR
-    cdef pysam.calignmentfile.IteratorColumnAllRefs ICAR 
-    cdef pysam.calignmentfile.AlignmentFile discPairHandle, inHandle
+    cdef pysam.calignmentfile.IteratorColumnAllRefs ICAR
+#   cdef pysam.calignmentfile.AlignmentFile discPairHandle, inHandle
     cdef pysam.cfaidx.FastaFile refHandle
-    cdef list line, discReads, VCFLines
+    cdef list line, discReads, VCFLines, bedlines
     cdef pPileupRead_t i
     cdef pysam.calignmentfile.AlignedSegment read
 
@@ -83,10 +86,11 @@ def SNVCrawler(inBAM,
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
         bedSet = True
+        bedlines = ParseBed(bed)
     else:
         bedSet = False
-    if(isinstance(bed, str) and bed != "default"):
-        bed = HTSUtils.ParseBed(bed)
+    if(isinstance(bed, list)):
+        bedlines = bed
     if(OutVCF == "default"):
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
@@ -117,32 +121,42 @@ def SNVCrawler(inBAM,
                              INFOTags=INFOTags,
                              FORMATTags=FORMATTags))
     if(bedSet):
-        for line in bed:
-            ICR = pileupCall(line[0], line[1],
-                             max_depth=200000,
-                             multiple_iterators=True)
-            VCFLines, discReads = IteratorColumnRegionToVCFLines(
-                ICR, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
-                minFracAgreed=minFracAgreed, experiment=experiment,
-                MaxPValue=MaxPValue, puEnd=line[2])
-            for read in discReads:
-                dpw(read)
-            ohw("\n".join(VCFLines) + "\n")
+        if(parallel):
+            dispatcher = GetPopenDispatcherICRs(
+                bedlines, inBAM, minMQ=minMQ, minFA=minFA, minBQ=minBQ,
+                experiment=experiment, minFracAgreed=minFracAgreed,
+                MaxPValue=MaxPValue,
+                ref=reference, keepConsensus=keepConsensus, threads=4)
+            if dispatcher.daemon() == 0:
+                ohw("\n".join(dispatcher.outstrs.values()) + "\n")
+        else:
+            for line in bedlines:
+                ICR = pileupCall(line[0], line[1],
+                                 max_depth=200000,
+                                 multiple_iterators=True)
+                VCFLines, discReads = IteratorColumnRegionToTuple(
+                    ICR, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
+                    minFracAgreed=minFracAgreed, experiment=experiment,
+                    MaxPValue=MaxPValue, puEnd=line[2], refHandle=refHandle,
+                    keepConsensus=keepConsensus, reference=reference)
+                ohw("\n".join(VCFLines) + "\n")
     else:
         ICAR = pileupCall(max_depth=200000, multiple_iterators=True)
-        PileupIt = puIterator.next
+        PileupIt = ICAR.next
         while True:
             try:
-                VCFLineString, discReads = PileupItToVCFLines(
-                    PileupIt(), minMQ=minMQ, minBQ=minBQ, minFA=minFA, minFracAgreed=minFracAgreed,
-                    MaxPValue=MaxPValue, experiment=experiment)
+                VCFString, discReads = PileupItToVCFLines(
+                    PileupIt(), minMQ=minMQ, minBQ=minBQ, minFA=minFA,
+                    minFracAgreed=minFracAgreed, MaxPValue=MaxPValue,
+                    experiment=experiment, reference=reference,
+                    refHandle=refHandle, keepConsensus=keepConsensus)
                 for read in discReads:
                     dpw(read)
             except StopIteration:
-                    pl("Finished iterations.")
+                pl("Finished iterations.")
                 break
-            if(len(VCFLineString) != 0):
-                ohw(VCFLineString + "\n")
+            if(len(VCFString) != 0):
+                ohw(VCFString + "\n")
     discPairHandle.close()
     return OutVCF
 
@@ -152,18 +166,25 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
                        cython.long minMQ=-1, cython.long minBQ=-1,
                        cython.str experiment="",
                        cython.long minFA=-1, cython.float minFracAgreed=-1.,
-                       cython.float MaxPValue=-1.):
+                       cython.float MaxPValue=-1.,
+                       cython.bint keepConsensus=False,
+                       cython.str reference="default",
+                       pysam.cfaidx.FastaFile refHandle=None):
     cdef pPileupColumn_t PileupColumn
     cdef PCInfo_t PC
-    cdef list DiscRPs, reads, discReads
+    cdef list DiscRPs, reads, discReads, DiscRPNames
     cdef pysam.calignmentfile.AlignedSegment read
     cdef pPileupRead_t i
     cdef VCFPos_t pos
+    cdef cython.long NumDiscordantPairs
+    if(refHandle is None):
+        raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
                 minFracAgreed=0.0, minFA=2,
                 experiment=experiment)
     DiscRPs = GetDiscordantReadPairs(PileupColumn)
+    DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
     PileupColumn.pileups = [i for i in PileupColumn.pileups if
                             i.alignment.query_name not in DiscRPNames]
     discReads = []
@@ -183,11 +204,14 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
 
 
 @cython.returns(tuple)
-def IteratorColumnRegionToVCFLines(pysam.calignmentfile.IteratorColumnRegion ICR,
-                                   cython.long minMQ=-1, cython.long minBQ=-1,
-                                   cython.str experiment="",
-                                   cython.long minFA=-1, cython.float minFracAgreed=-1.,
-                                   cython.float MaxPValue=-1., puEnd=-1):
+def IteratorColumnRegionToTuple(
+        pysam.calignmentfile.IteratorColumnRegion ICR,
+        cython.long minMQ=-1, cython.long minBQ=-1, cython.str experiment="",
+        cython.long minFA=-1, cython.float minFracAgreed=-1.,
+        cython.float MaxPValue=-1., puEnd=-1,
+        pysam.cfaidx.FastaFile refHandle=None,
+        cython.bint keepConsensus=True,
+        cython.str reference="default"):
     cdef pysam.calignmentfile.PileupColumn psPileupColumn
     cdef list VCFLines, discReads, allDiscReads
     if(puEnd < 0):
@@ -195,12 +219,92 @@ def IteratorColumnRegionToVCFLines(pysam.calignmentfile.IteratorColumnRegion ICR
     VCFLines = []
     allDiscReads = []
     for psPileupColumn in ICR:
-        posStr, discReads = PileupItToVCFLines(psPileupColumn, minMQ=minMQ, minBQ=minBQ,
-                                               minFA=minFA, minFracAgreed=minFracAgreed,
-                                               experiment=experiment, MaxPValue=MaxPValue)
-        if(len(posStr) != 0)
-            VCFLines.append(posStr):
+        posStr, discReads = PileupItToVCFLines(
+            psPileupColumn, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
+            minFracAgreed=minFracAgreed, experiment=experiment,
+            MaxPValue=MaxPValue, refHandle=refHandle,
+            keepConsensus=keepConsensus, reference=reference)
+        if(len(posStr) != 0):
+            VCFLines.append(posStr)
         allDiscReads = list(set(allDiscReads + discReads))
-        if(psPileupColumn.pos < puEnd):
+        if(psPileupColumn.pos > puEnd):
             break
     return VCFLines, allDiscReads
+
+
+@cython.returns(cython.str)
+def IteratorColumnRegionToStr(
+        pysam.calignmentfile.IteratorColumnRegion ICR,
+        cython.long minMQ=-1, cython.long minBQ=-1, cython.str experiment="",
+        cython.long minFA=-1, cython.float minFracAgreed=-1.,
+        cython.float MaxPValue=-1., puEnd=-1,
+        pysam.cfaidx.FastaFile refHandle=None,
+        cython.bint keepConsensus=True,
+        cython.str reference="default"):
+    cdef pysam.calignmentfile.PileupColumn psPileupColumn
+    cdef list VCFLines, discReads, allDiscReads
+    if(puEnd < 0):
+        raise ThisIsMadness("Need final entry in bed line to do ICR->VCF")
+    VCFLines = []
+    allDiscReads = []
+    for psPileupColumn in ICR:
+        posStr, discReads = PileupItToVCFLines(
+            psPileupColumn, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
+            minFracAgreed=minFracAgreed, experiment=experiment,
+            MaxPValue=MaxPValue, refHandle=refHandle,
+            keepConsensus=keepConsensus, reference=reference)
+        if(len(posStr) != 0):
+            VCFLines.append(posStr)
+        allDiscReads = list(set(allDiscReads + discReads))
+        if(psPileupColumn.pos > puEnd):
+            break
+    return "\n".join(VCFLines)
+
+
+@cython.returns(pysam.calignmentfile.IteratorColumnRegion)
+def GetICR(line, pysam.calignmentfile.AlignmentFile inHandle=None):
+    """
+    Gets an ICR from an alignment file and a bed line.
+    """
+    try:
+        return inHandle.pileup(line[0], line[1], line[2])
+    except IndexError:
+        try:
+            return inHandle.pileup(line[0], line[1])
+        except IndexError:
+            raise ThisIsMadness("bed line has only one field?")
+
+
+def GetICRString(bedline, bampath, minMQ=-1, minFA=-1, minBQ=-1,
+                 experiment="", minFracAgreed=-1., MaxPValue=-1.,
+                 ref="default", keepConsensus=True):
+    if(ref == "default"):
+        raise ThisIsMadness("Hey, I need a path to an faidx'd "
+                            "fasta reference to variant-call.")
+    puEnd = bedline[2]
+    string = ("python -c 'import pysam; af = pysam.AlignmentFile("
+              "\"%s\");  b = af.pileup" % bampath +
+              "(\"%s\", %s, max_depth=200000," % (bedline[0], bedline[1]) +
+              " multiple_iterators=True);"
+              "from MawCluster.VCFWriters import IteratorColumnRegionToStr;" +
+              "c = IteratorColumnRegionToStr(b, minMQ=%s, minBQ=" % (minMQ) +
+              "%s, minFA=%s, experiment=\"%s\", minFr" % (minBQ, minFA,
+                                                          experiment) +
+              "acAgreed=%s, MaxPValue=%s, puEn" % (minFracAgreed, MaxPValue) +
+              "d=%s, refHandle=pysam.FastaFile(\"%s\"), " % (puEnd, ref) +
+              "keepConsensus=%s, reference=\"%s\"" % (keepConsensus, ref) +
+              "); import sys; sys.stdout.write(c)'")
+    return string
+
+
+def GetPopenDispatcherICRs(bed, bampath, minMQ=-1, minFA=-1, minBQ=-1,
+                           experiment="", minFracAgreed=-1., MaxPValue=-1.,
+                           ref="default", keepConsensus=True, threads=2):
+    if isinstance(bed, str):
+        bed = ParseBed(bed)
+    return PopenDispatcher([GetICRString(bedline, bampath, minMQ=minMQ,
+                                         minFA=minFA, minBQ=minBQ,
+                                         MaxPValue=MaxPValue, ref=ref,
+                                         keepConsensus=keepConsensus,
+                                         minFracAgreed=minFracAgreed) for
+                            bedline in bed], threads=threads)

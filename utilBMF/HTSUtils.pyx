@@ -18,8 +18,9 @@ from operator import iadd as oia
 from operator import itemgetter as oig
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from re import compile as regexcompile
-from subprocess import check_output, check_call
+from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import *
+from collections import deque
 import copy
 import cStringIO
 import cython
@@ -33,6 +34,7 @@ import pysam
 import shlex
 import subprocess
 import sys
+import time
 import uuid
 
 cimport numpy as np
@@ -42,6 +44,7 @@ cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
 oig1 = oig(1)
+oig0 = oig(0)
 
 
 def l1(x):
@@ -1929,3 +1932,138 @@ def SortBgzipAndTabixVCF(inVCF, outVCF="default"):
     check_call(["bgzip", outVCF])
     check_call(["tabix", outVCF + ".gz"])
     return outVCF + ".gz"
+
+
+@cython.returns(cython.str)
+def SplitBed(cython.str bedpath):
+    bedbase = ".".join(bedpath.split(".")[0:-1])
+    bedlines = ParseBed(bedpath)
+    contigs = list(set(map(oig0, bedlines)))
+    contigListSets = [[line for line in bedlines if line[0] == contig]
+                      for contig in contigs]
+    for contig, lset in zip(contigs, contigListSets):
+        open(bedbase + ".split." + contig + ".bed", "w").writelines(
+            "\n".join(["\t".join(map(str, arr)) for arr in lset]))
+    return ":".join([bedbase + ".split." + contig + ".bed" for
+                     contig in contigs])
+
+
+@cython.returns(cython.str)
+def MergeBamList(bamlist, picardPath="default", memStr="-Xmx6G",
+                 outbam="default"):
+    """
+    Merges a list of BAMs. Used for merging discordant read bams for
+    parallelized VCF calls.
+    """
+    if(isinstance(bamlist, str)):
+        bamlist = bamlist.split(":")
+    if(outbam == "default"):
+        outbam = bamlist[0].split(".")[0:-1] + ".merged.bam"
+    commandStr = "java %s -jar %s AS=true" % (memStr, picardPath)
+    commandStr += " I=" + " I=".join(bamlist)
+    commandStr += " O=%s" % outbam
+    check_call(shlex.split(commandStr))
+    return outbam
+
+
+def StdPopen(string):
+    return subprocess.Popen(string, shell=True, stdout=subprocess.PIPE)
+
+
+class PopenCall(object):
+    """
+    Contains a Popen call and the command string used.
+    """
+    def __init__(self, string):
+        self.commandString = string
+        self.popen = StdPopen(string)
+        self.poll = self.popen.poll
+        self.communicate = self.popen.communicate
+
+    def resubmit(self):
+        self.popen = StdPopen(self.commandString)
+
+
+class PopenDispatcher(object):
+    """
+    Contains a list of strings for Popen to use and a set of Popen options,
+    and a list of threads it should have going at once.
+    """
+    def __init__(self, stringlist, threads=4, MaxResubmissions=5):
+        assert len(stringlist) > 0
+        self.queue = deque(stringlist)
+        self.dispatches = []
+        self.threadcount = threads - 1 #  Main thread counts as one, too.
+        self.outstrs = {cStr: None for cStr in self.queue}
+        self.completed = 0
+        self.submitted = 0
+        self.alljobssubmitted = False
+        self.alljobscompleted = False
+        self.resubmittedjobcounts = 0
+        self.MaximumResubmissions = MaxResubmissions
+
+
+    def submit(self):
+        if(len(self.queue) == 0):
+            print("All jobs already submitted. :)")
+            return
+        while(len(self.dispatches) < self.threadcount):
+            if(len(self.queue) != 0):
+                self.dispatches.append(PopenCall(self.queue.popleft()))
+                self.submitted += 1
+                print("Submitted job #%s" % str(self.submitted + 1))
+            else:
+                pass
+
+    def check(self):
+        for dispatch in self.dispatches:
+            if(dispatch.poll() is not None):
+                count = 0
+                if(dispatch.poll() != 0):
+                    # See if calling it again solves the problem
+                    print("Had a non-zero return status. Trying again!")
+                    dispatch.resubmit()
+                    self.resubmittedjobcounts += 1
+                    if(self.resubmittedjobcounts > self.MaxResubmissions):
+                        raise CalledProcessError(
+                            dispatch.poll(), dispatch.commandString,
+                            "So we resubmitted jobs until we passing the "
+                            "limit (%s). Oops!" % self.MaxResubmissions)
+                    continue
+                self.completed += 1
+                self.outstrs[
+                    dispatch.commandString] = dispatch.communicate()[0]
+                self.dispatches.remove(dispatch)
+
+        return len(self.dispatches)
+
+    def daemon(self):
+        self.submit()
+        while len(self.queue) != 0:
+            fgCStr = self.queue.popleft()
+            self.submitted += 1
+            print("Foreground submitting job #%s" % str(
+                self.submitted + 1))
+            fgOutStr = subprocess.check_output(fgCStr, shell=True)
+            print("Foreground job finished")
+            self.outstrs[fgCStr] = fgOutStr
+        print("All jobs submitted! Yay.")
+        while(self.check() > 0):
+            time.sleep(5)
+            threadcount = self.check()
+            if(threadcount < self.threadcount and len(self.queue) != 0):
+                self.submit()
+        return 0
+
+
+@cython.returns(cython.str)
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def cythonjoin(cython.str string, list lst):
+    cdef cython.str returnStr = ""
+    cdef cython.long llist
+    llist = len(lst) - 1
+    for l in range(llist):
+        returnStr += lst[l] + string
+    returnStr += lst[llist]
+    return lst

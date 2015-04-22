@@ -28,14 +28,14 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
+"""
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
+                "-floop-strip-mine", "-flto"]
 print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine", "-flto"]
 
-"""
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine"]
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
@@ -75,7 +75,6 @@ ext = cythonize('*/*.pyx') + cythonize("*/*.py") + cythonize("*/*.pxd")
 # If more complex optimizations fail, fall back from line 31 to line 30.
 for x in ext:
     x.extra_compile_args += compilerList
-    print(repr(x))
 
 config = {
     'description': '',

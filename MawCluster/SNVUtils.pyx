@@ -648,9 +648,6 @@ HeaderFilterDict["DiscordantReadFamilies"] = HeaderFilterLine(
 """
 This next section contains the dictionaries which hold the
 INFO Header entries
-Valid tags: AF,TF,BS,RSF,MQM,MQB,MMQ,MBQ,QA,NUMALL,BQF,MQF,
-TYPE,PVC,TACS,TAFS,MACS,MAFS,NSS,AC,NDPS,AARSF,RSF,MNCS,MDP,MBP,AAMBP,
-BPSD,AABPSD,MFRAC,MINFRACCALL,MINFRACFILTER,MFA,MINFA
 """
 
 HeaderInfoDict = {}
@@ -823,12 +820,9 @@ HeaderInfoDict["BSS"] = HeaderInfoLine(
     Type="Integer")
 
 
-
-
 """
 This next section contains the dictionaries which hold the
 FORMAT Header entries
-Valid tags: DP, DPA, DPT
 """
 
 HeaderFormatDict = {}
@@ -887,16 +881,15 @@ HeaderFormatDict["AAMBP"] = HeaderFormatLine(
                              " position passing all filters. 0-based."),
     Number="A", Type="Float")
 
-HeaderFormatDict["MNCS"] = HeaderFormatLine(ID="MNCS",
-                                        Description="Minimum number of coordi"
-                                        "nate sets for read pairs supporting "
-                                        "variant to pass filter.",
-                                        Number="1", Type="Integer")
-HeaderFormatDict["MDP"] = HeaderFormatLine("MDP",
-                                       Description="Minimum duplex pairs supp"
-                                       "orting variant to pass filter.",
-                                       Number="1",
-                                       Type="Integer")
+HeaderFormatDict["MNCS"] = HeaderFormatLine(
+    ID="MNCS", Description=("Minimum number of coordinate sets for read pairs"
+                            " supporting variant to pass filter."),
+    Number="1", Type="Integer")
+HeaderFormatDict["MDP"] = HeaderFormatLine(
+    "MDP", Description=("Minimum duplex pairs supp"
+                        "orting variant to pass filter."),
+    Number="1",
+    Type="Integer")
 HeaderFormatDict["NDF"] = HeaderFormatLine(
     ID="NDF",
     Description="Number of reads failed for ND > maxND.",
@@ -945,6 +938,7 @@ HeaderFormatDict["TYPE"] = HeaderFormatLine(
     Description="The type of allele, either snp, mnp, ins, del, or complex.",
     Number="A",
     Type="String")
+
 
 @cython.returns(cython.str)
 def GetContigHeaderLines(dict header):
