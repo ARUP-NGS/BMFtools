@@ -81,16 +81,17 @@ def SNVCrawler(inBAM,
     cdef list line, discReads, VCFLines, bedlines
     cdef pPileupRead_t i
     cdef pysam.calignmentfile.AlignedSegment read
-
-    refHandle = pysam.FastaFile(reference)
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
         bedSet = True
         bedlines = ParseBed(bed)
     else:
+        print("no bed file provided...")
         bedSet = False
     if(isinstance(bed, list)):
         bedlines = bed
+
+    refHandle = pysam.FastaFile(reference)
     if(OutVCF == "default"):
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")

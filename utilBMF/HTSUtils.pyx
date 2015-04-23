@@ -2070,18 +2070,41 @@ class PopenDispatcher(object):
         return 0
 
 
+def SplitBamByBed(bampath, bedpath):
+    bedlist = SplitBed(bedpath).split(":")
+    bamlist = [".".join(bampath.split(".")[0:-1]) + "." +
+               i.split(".")[-2] + ".bam" for i in bedlist]
+    ziplist = zip(bedlist, bamlist)
+    for bed, bam in ziplist:
+        # Get the reads that overlap region of interest.
+        check_call(["samtools", "view", "-L", bed, "-o", bam, bampath])
+        # Index it so that variant-calling can happen.
+        check_call(["samtools", "index", bam])
+    return ziplist
+
+
 @cython.returns(cython.str)
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def cythonjoin(cython.str string, list lst):
+def BMFsnvCommandString(bampath, conf="default"):
     """
-    Trying to see if I can make this happen faster than the built-in
-    join method.
+    Returns a command string for calling bmftools snv
     """
-    cdef cython.str returnStr = ""
-    cdef cython.long llist
-    llist = len(lst) - 1
-    for l in range(llist):
-        returnStr += lst[l] + string
-    returnStr += lst[llist]
-    return lst
+    if(conf == "default"):
+        raise ThisIsMadness("conf must be set for BMFsnvCommandString.")
+    return "bmftools snv --conf %s %s" % (conf, bampath)
+
+
+@cython.returns(cython.str)
+def BMFCommandStringToOutVCF(cython.str cStr):
+    return ".".join(cStr.split(" ")[-1].split(".")[:-1] + ["bmf", "vcf"])
+
+
+def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
+    """
+    Makes a PopenDispatcher object for calling these variant callers.
+    """
+    if conf == "default":
+        raise ThisIsMadness("conf file but be set for GetBMFsnvPopen")
+    ziplist = SplitBamByBed(bampath, bedpath)
+    return PopenDispatcher([BMFsnvCommandString(tup[1], conf=conf) for
+                            tup in ziplist],
+                           threads=threads)

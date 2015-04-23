@@ -109,12 +109,16 @@ def main():
         "-r",
         "--reference-fasta",
         help="Provide reference fasta.",
-        required=True)
+        default="default")
     SNVParser.add_argument("-m", "--min-frac-agreed",
                            help="Minimum fraction of family agreed on base.",
                            default=0.75, type=float)
     SNVParser.add_argument("--minFA", help="Minimum family agreed on base.",
                            default=3, type=int)
+    SNVParser.add_argument(
+        "--conf",
+        help="Config file to hold this so we don't have to specify.",
+        type=str, default="default")
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
@@ -253,25 +257,63 @@ def main():
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
     if(args.bmfsuites == "snv"):
+                runconf = {}
+    if(args.conf != "default"):
+        config = HTSUtils.parseConfig(args.conf)
+        if("minMQ" in config.keys()):
+            runconf["minMQ"] = int(config["minMQ"])
+        if(args.minMQ != 0):
+            runconf["minMQ"] = args.minMQ
+        if("minBQ" in config.keys()):
+            runconf["minBQ"] = int(config["minBQ"])
+        if(args.minBQ != 0):
+            runconf["minBQ"] = args.minBQ
+        if("MaxPValue" in config.keys()):
+            runconf["MaxPValue"] = float(config["MaxPValue"])
+        if(args.MaxPValue != 1e-15):
+            runconf["MaxPValue"] = args.MaxPValue
+        if("minFracAgreed" in config.keys()):
+            runconf["minFracAgreed"] = float(config["minFracAgreed"])
+        if(args.min_frac_agreed != 0):
+            runconf["minFracAgreed"] = args.min_frac_agreed
+        if("ref" in config.keys()):
+            runconf["reference"] = config["ref"]
+        if(args.reference_fasta != "default"):
+            runconf["reference"] = args.reference_fasta
+        if("bed" in config.keys()):
+            runconf["bed"] = config["bed"]
+        if(args.bed != "default"):
+            runconf["bed"] = args.bed
+        if("minFA" in config.keys()):
+            runconf["minFA"] = int(config["minFA"])
+        if(args.minFA != 0):
+            runconf["minFA"] = args.minFA
+        if("MaxPValue" not in runconf.keys()):
+            runconf["MaxPValue"] = args.MaxPValue
+        runconf["commandStr"] = commandStr
+        for pair in runconf.items():
+            print("runconf entry! key: %s. Value: %s." % (pair[0], pair[1]))
         """
         import cProfile
         import pstats
         pr = cProfile.Profile()
         pr.enable()
         """
-        if(args.bed != "default"):
+
+        if("bed" in runconf.keys()):
+            print("Reference: %s" % runconf["reference"])
+            # OutVCF = SNVCrawler(args.inBAM, **runconf)
             OutVCF = SNVCrawler(args.inBAM,
-                                bed=args.bed,
-                                minMQ=args.minMQ,
-                                minBQ=args.minBQ,
-                                MaxPValue=args.MaxPValue,
+                                bed=runconf["bed"],
+                                minMQ=runconf["minMQ"],
+                                minBQ=runconf["minBQ"],
+                                MaxPValue=runconf["MaxPValue"],
                                 keepConsensus=args.keepConsensus,
                                 commandStr=commandStr,
-                                reference=args.reference_fasta,
+                                reference=runconf["reference"],
                                 reference_is_path=True,
-                                OutVCF=args.outVCF,
-                                minFracAgreed=args.min_frac_agreed,
-                                minFA=args.minFA)
+                                minFracAgreed=runconf["minFracAgreed"],
+                                minFA=runconf["minFA"])
             bedFilteredVCF = BCVCF.FilterVCFFileByBed(OutVCF, bedfile=args.bed)
             OutTable = VCFStats(OutVCF)
         else:
