@@ -61,9 +61,9 @@ def SNVCrawler(inBAM,
                cython.bint writeHeader=True,
                cython.float minFracAgreed=0.0, cython.long minFA=2,
                cython.str experiment="",
-               cython.bint parallel=True):
+               cython.bint parallel=False):
     pl("Command to reproduce function call: "
-       "SNVCrawler({}, bed=\"{}\"".format(inBAM, bed) +
+       "SNVCrawler('{}', bed=\"{}\"".format(inBAM, bed) +
        ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
        "=\"{}\", MaxPValue={}".format(OutVCF, MaxPValue) +
        ",keepConsensus={}, reference=".format(keepConsensus) +
@@ -121,12 +121,15 @@ def SNVCrawler(inBAM,
                              INFOTags=INFOTags,
                              FORMATTags=FORMATTags))
     if(bedSet):
+        pl("Bed file provided - iterating through bed columns")
         if(parallel):
+            pl("About to make parallel call. WHOO!")
             dispatcher = GetPopenDispatcherICRs(
                 bedlines, inBAM, minMQ=minMQ, minFA=minFA, minBQ=minBQ,
                 experiment=experiment, minFracAgreed=minFracAgreed,
                 MaxPValue=MaxPValue,
-                ref=reference, keepConsensus=keepConsensus, threads=4)
+                ref=reference, keepConsensus=keepConsensus, threads=2)
+            dispatcher.submit()
             if dispatcher.daemon() == 0:
                 ohw("\n".join(dispatcher.outstrs.values()) + "\n")
             else:

@@ -2000,15 +2000,19 @@ class PopenDispatcher(object):
         assert len(stringlist) > 0
         self.queue = deque(stringlist)
         self.dispatches = []
-        self.threadcount = threads - 1 #  Main thread counts as one, too.
+        self.threadcount = threads - 1  # Main thread counts as one, too.
         self.outstrs = {cStr: None for cStr in self.queue}
         self.completed = 0
+        self.jobnumber = 1
         self.submitted = 0
         self.alljobssubmitted = False
         self.alljobscompleted = False
         self.resubmittedjobcounts = 0
         self.MaxResubmissions = MaxResubmissions
 
+    @cython.returns(cython.long)
+    def getJobNumber(self):
+        return self.submitted + 1
 
     def submit(self):
         if(len(self.queue) == 0):
@@ -2016,10 +2020,11 @@ class PopenDispatcher(object):
             return
         while(len(self.dispatches) < self.threadcount):
             if(len(self.queue) != 0):
-                self.dispatches.append(PopenCall(self.queue.popleft()))
+                print("Submitting job number %s." % str(self.getJobNumber()))
                 self.submitted += 1
-                print("Submitted job #%s" % str(self.submitted + 1))
+                self.dispatches.append(PopenCall(self.queue.popleft()))
             else:
+                print("All jobs submitted - check in later.")
                 pass
 
     def check(self):
@@ -2049,10 +2054,9 @@ class PopenDispatcher(object):
         while len(self.queue) != 0:
             print("Submitting set of jobs for daemon.")
             self.submit()
-            fgCStr = self.queue.popleft()
             self.submitted += 1
-            print("Foreground submitting job #%s" % str(
-                self.submitted + 1))
+            fgCStr = self.queue.popleft()
+            print("Foreground submitting job #%s" % self.getJobNumber())
             fgOutStr = subprocess.check_output(fgCStr, shell=True)
             print("Foreground job finished")
             self.outstrs[fgCStr] = fgOutStr
