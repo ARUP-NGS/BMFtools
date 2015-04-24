@@ -3,18 +3,20 @@
 import logging
 from operator import attrgetter as oag
 import sys
-from subprocess import CalledProcessError
+from subprocess import CalledProcessError, check_call
 
 import pysam
 import cython
 from cytoolz import map as cmap
 
+from MawCluster import BCVCF
 from MawCluster.SNVUtils import GetVCFHeader
 from MawCluster.PileupUtils import (pPileupColumn,
                                     GetDiscordantReadPairs, PCInfo)
 from MawCluster.SNVUtils cimport VCFPos
 from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
-                              ParseBed, PopenDispatcher, PopenCall)
+                              ParseBed, PopenDispatcher, PopenCall,
+                              parseConfig)
 from utilBMF.HTSUtils cimport pPileupRead
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
@@ -152,6 +154,10 @@ def SNVCrawler(inBAM,
                         MaxPValue=MaxPValue, refHandle=refHandle,
                         keepConsensus=keepConsensus, reference=reference)
                     ohw(posStr + "\n")
+                    if(pPC.reference_pos > line[2]):
+                        pl("Whoops - looks like I'm calling outside of "
+                           "the bed region. Continue!")
+                        break
     else:
         ICAR = pileupCall(max_depth=200000, multiple_iterators=False)
         PileupIt = ICAR.next
@@ -361,3 +367,30 @@ def GetPopenDispatcherICRs(bed, bampath, minMQ=-1, minFA=-1, minBQ=-1,
                                          keepConsensus=keepConsensus,
                                          minFracAgreed=minFracAgreed) for
                             bedline in bed], threads=threads)
+
+
+def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
+        config = parseConfig(conf)
+        if("threads" in config.keys() and threads < 0):
+            threads = int(config["threads"])
+        elif(threads < 0):
+            threads = 4  # If threads is set in kwargs, keep it.
+        if(outVCF == "default"):
+            outVCF = ".".join(outVCF.split(".")[0:-1]) + ".psnv.bmf.vcf"
+        outHandle = open(outVCF, "w")
+        outHandle.write(GetVCFHeader(reference=config["ref"],
+                        header=pysam.AlignmentFile(inBAM, "rb").header))
+        pl("Splitting BAM file by contig.")
+        Dispatcher = HTSUtils.GetBMFsnvPopen(inBAM, config['bed'],
+                                             conf=conf,
+                                             threads=threads)
+        if(Dispatcher.daemon() != 0):
+            raise ThisIsMadness("Dispatcher failed somehow.")
+        pl("Shell calls completed without errors.")
+        for vcffile in Dispatcher.outstrs.values():
+            check_call("cat %s >> %s" % (vcffile, outVCF), shell=True)
+        pl("Filtering VCF by bed file. Pre-filter path: %s" % outVCF)
+        bedFilteredVCF = BCVCF.FilterVCFFileByBed(
+                    outVCF, bedfile=config["bed"])
+        pl("Filtered VCF: %s" % bedFilteredVCF)
+        return bedFilteredVCF

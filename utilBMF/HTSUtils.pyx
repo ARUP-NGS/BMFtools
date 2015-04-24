@@ -2086,27 +2086,22 @@ class PopenDispatcher(object):
         while len(self.queue) != 0:
             print("Submitting set of jobs for daemon.")
             self.submit()
-            self.submitted += 1
+            if(len(self.queue) == 0):
+                time.sleep(5)
+                continue
             fgCStr = self.queue.popleft()
             if("#" in fgCStr):
                 print("Foreground submitting job #%s" % self.getJobNumber())
                 try:
-                    eval(fgCStr.split("#")[1])
+                    exec(fgCStr.split("#")[1])
                 except Exception:
                     print("Failed function call: %s" % fgCStr.split("#")[1])
                     raise FunctionCallException(
                         fgCStr, "Foreground eval call failed.",
                         False)
             else:
-                print("Background submitting job #%s" % self.getJobNumber())
-                try:
-                    check_call(fgCStr, shell=True)
-                except OSError:
-                    raise FunctionCallException(
-                        fgCStr, "Background Fn call failed.", True)
+                time.sleep(5)
             evalOut = self.getEval(fgCStr)
-            print("Foreground job finished")
-            self.outstrs[fgCStr] = evalOut
             self.check()
         print("All jobs submitted! Yay.")
         while(self.check() > 0):
@@ -2172,7 +2167,7 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
     if(bed == "default"):
         raise ThisIsMadness("bed must be set for BMFsnvCommandString.")
     outVCF = ".".join(bampath.split(".")[:-1] +
-                      [bed.split(".")[-2], "bmf", "vcf"])
+                      ["bmf", "vcf"])
     config = parseConfig(conf)
     minMQ, minBQ, minFA = config["minMQ"], config["minBQ"], config["minFA"]
     minFracAgreed, MaxPValue = config["minFracAgreed"], config["MaxPValue"]
@@ -2181,7 +2176,7 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
               "SNVCrawler('%s', bed='%s', minMQ=" % (bampath, bed) +
               "%s, minBQ=%s, minFA=%s, " % (minMQ, minBQ, minFA) +
               "minFracAgreed=%s, MaxPValue=" % (minFracAgreed) +
-              "%s, reference='%s')" % (MaxPValue, ref))
+              "%s, reference='%s', OutVCF=%s)" % (MaxPValue, ref, outVCF))
     return ("bmftools snv --conf %s %s " % (conf, bampath) +
             "--bed %s --is-slave --outVCF %s #%s" % (bed, outVCF, FnCall))
 
@@ -2210,4 +2205,4 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
                             tup in ziplist],
                            threads=threads,
                            func=GetOutVCFFromBMFsnvCall,
-                           evalfunc=lambda x: x.split(" ")[9])
+                           evalfunc=lambda x: x.split("#")[0].split(" ")[-1])

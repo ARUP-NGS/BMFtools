@@ -50,17 +50,15 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
     return indelOutputBAM, otherOutputBAM
 
 
-@cython.locals(keepSoft=cython.bint, keepUnmapped=cython.bint,
-               minFam=cython.long)
-def IsIndelRelevant(read, minFam=1, keepSoft=False,
-                    keepUnmapped=False):
+def IsIndelRelevant(
+        pysam.calignmentfile.AlignedSegment read, cython.long minFam=2,
+        cython.float minSF=0.2, cython.bint keepUnmapped=False):
     """
     True if considered relevant to indels.
     False otherwise.
     """
-    if(minFam != 1):
-        if(read.opt("FM") < minFam):
-            return False
+    if(read.opt("FM") < minFam):
+        return False
     if(read.cigarstring is None):
         # This read is simply unmapped. Let's give it a chance!
         if(keepUnmapped):
@@ -68,7 +66,7 @@ def IsIndelRelevant(read, minFam=1, keepSoft=False,
         return False
     if("I" in read.cigarstring or "D" in read.cigarstring):
         return True
-    if(keepSoft is True and "S" in read.cigarstring):
+    if(FractionSoftClipped(read) >= minSF):
         return True
     try:
         if(read.opt("SV") != "NF"):
