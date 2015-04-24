@@ -2084,18 +2084,32 @@ def SplitBamByBed(bampath, bedpath):
 
 
 @cython.returns(cython.str)
-def BMFsnvCommandString(bampath, conf="default"):
+def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
+                        cython.str bed="default"):
     """
     Returns a command string for calling bmftools snv
     """
     if(conf == "default"):
         raise ThisIsMadness("conf must be set for BMFsnvCommandString.")
-    return "bmftools snv --conf %s %s" % (conf, bampath)
+    tag = "#G~" + str(uuid.uuid4().get_hex().upper()[0:8]) + "#G~"
+    if(bed == "default"):
+        raise ThisIsMadness("bed must be set for BMFsnvCommandString.")
+    return ("bmftools snv --conf %s %s --analysisTag " % (conf, bampath) +
+            "%s --bed %s" (tag, bed))
 
 
 @cython.returns(cython.str)
 def BMFCommandStringToOutVCF(cython.str cStr):
     return ".".join(cStr.split(" ")[-1].split(".")[:-1] + ["bmf", "vcf"])
+
+
+@cython.returns(cython.str)
+def GetUUIDFromCommandString(cython.str cStr):
+    """
+    Gets the UUID tag from slave jobs. Used for concatenating VCFs from
+    parallel calls.
+    """
+    return cStr.split("#G~")[1]
 
 
 def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
@@ -2105,6 +2119,8 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
     if conf == "default":
         raise ThisIsMadness("conf file but be set for GetBMFsnvPopen")
     ziplist = SplitBamByBed(bampath, bedpath)
-    return PopenDispatcher([BMFsnvCommandString(tup[1], conf=conf) for
+    return PopenDispatcher([BMFsnvCommandString(tup[1],
+                                                conf=conf,
+                                                bed=tup[0]) for
                             tup in ziplist],
                            threads=threads)

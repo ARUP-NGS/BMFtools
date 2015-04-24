@@ -3,14 +3,19 @@ import argparse
 import sys
 import warnings
 import cStringIO
+from subprocess import check_call
+import cython
+import pysam
 
 from MawCluster.VCFWriters import SNVCrawler
 from MawCluster.BCVCF import (VCFStats, CheckStdCallsForVCFCalls,
                               CheckVCFForStdCalls)
+from MawCluster.SNVUtils import GetVCFHeader
 from MawCluster import BCVCF
 from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
+from utilBMF.HTSUtils import parseConfig, ThisIsMadness
 from MawCluster.TLC import BMFXLC as CallIntraTrans
 from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 #  from pudb import set_trace
@@ -27,6 +32,22 @@ and samtools.
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    PSNVParser = subparsers.add_parser(
+        "psnv", description="Parallel SNV calls.")
+    PSNVParser.add_argument(
+        "--conf",
+        help="Config file to hold this so we don't have to specify.",
+        type=str, default="default")
+    PSNVParser.add_argument(
+        "--threads",
+        help="Number of threads.",
+        type=int, default=4)
+    PSNVParser.add_argument("inBAM",
+                            help="Input BAM, Coordinate-sorted and indexed, "
+                            "with BMF Tags included. bmftools runs on unflat"
+                            "tened BAMs, but the results are not reliable be"
+                            "cause this program assumes as much.",
+                            type=str)
     FFPEParser = subparsers.add_parser(
         "ffpe", description="Estimates cytosine deamination frequencies in a "
         "VCF outputs a VCF with appropriate variants filtered. FILTER: Deamin"
@@ -119,6 +140,12 @@ def main():
         "--conf",
         help="Config file to hold this so we don't have to specify.",
         type=str, default="default")
+    SNVParser.add_argument(
+        "--analysisTag", type=str, default="default",
+        help=("Tag to append to the output VCF before the file extension."
+              "Used to delineate analysis pipelines."))
+    SNVParser.add_argument("--is-slave", help="If SNVCrawler call is a slave.",
+                           default=None, type=bool)
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
@@ -256,86 +283,131 @@ def main():
 
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
-    if(args.bmfsuites == "snv"):
-                runconf = {}
-    if(args.conf != "default"):
-        config = HTSUtils.parseConfig(args.conf)
-        if("minMQ" in config.keys()):
-            runconf["minMQ"] = int(config["minMQ"])
-        if(args.minMQ != 0):
-            runconf["minMQ"] = args.minMQ
-        if("minBQ" in config.keys()):
-            runconf["minBQ"] = int(config["minBQ"])
-        if(args.minBQ != 0):
-            runconf["minBQ"] = args.minBQ
-        if("MaxPValue" in config.keys()):
-            runconf["MaxPValue"] = float(config["MaxPValue"])
-        if(args.MaxPValue != 1e-15):
-            runconf["MaxPValue"] = args.MaxPValue
-        if("minFracAgreed" in config.keys()):
-            runconf["minFracAgreed"] = float(config["minFracAgreed"])
-        if(args.min_frac_agreed != 0):
-            runconf["minFracAgreed"] = args.min_frac_agreed
-        if("ref" in config.keys()):
-            runconf["reference"] = config["ref"]
-        if(args.reference_fasta != "default"):
-            runconf["reference"] = args.reference_fasta
-        if("bed" in config.keys()):
-            runconf["bed"] = config["bed"]
-        if(args.bed != "default"):
-            runconf["bed"] = args.bed
-        if("minFA" in config.keys()):
-            runconf["minFA"] = int(config["minFA"])
-        if(args.minFA != 0):
-            runconf["minFA"] = args.minFA
-        if("MaxPValue" not in runconf.keys()):
-            runconf["MaxPValue"] = args.MaxPValue
-        runconf["commandStr"] = commandStr
-        for pair in runconf.items():
-            print("runconf entry! key: %s. Value: %s." % (pair[0], pair[1]))
-        """
-        import cProfile
-        import pstats
-        pr = cProfile.Profile()
-        pr.enable()
-        """
-
-        if("bed" in runconf.keys()):
-            print("Reference: %s" % runconf["reference"])
-            # OutVCF = SNVCrawler(args.inBAM, **runconf)
-            OutVCF = SNVCrawler(args.inBAM,
-                                bed=runconf["bed"],
-                                minMQ=runconf["minMQ"],
-                                minBQ=runconf["minBQ"],
-                                MaxPValue=runconf["MaxPValue"],
-                                keepConsensus=args.keepConsensus,
-                                commandStr=commandStr,
-                                reference=runconf["reference"],
-                                reference_is_path=True,
-                                minFracAgreed=runconf["minFracAgreed"],
-                                minFA=runconf["minFA"])
-            bedFilteredVCF = BCVCF.FilterVCFFileByBed(OutVCF, bedfile=args.bed)
-            OutTable = VCFStats(OutVCF)
-        else:
-            OutVCF = SNVCrawler(args.inBAM,
-                                minMQ=args.minMQ,
-                                minBQ=args.minBQ,
-                                MaxPValue=args.MaxPValue,
-                                keepConsensus=args.keepConsensus,
-                                commandStr=commandStr,
-                                reference=args.reference_fasta,
-                                reference_is_path=True,
-                                OutVCF=args.outVCF)
-            OutTable = VCFStats(OutVCF)
-        """
-        s = cStringIO.StringIO()
-        pr.disable()
-        sortby = "cumulative"
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        open("cProfile.stats.txt", "w").write(s.getvalue())
-        """
+    if(args.bmfsuites == "psnv"):
+        outVCF = ".".join(args.inBAM.split(".")[0:-1] + ["FULL", "bmf", "vcf"])
+        config = parseConfig(args.conf)
+        outHandle = open(outVCF, "w")
+        outHandle.write(GetVCFHeader(
+                        commandStr=commandStr, reference=config["ref"],
+                        header=pysam.AlignmentFile("inBAM", "rb").header))
+        Dispatcher = HTSUtils.GetBMFsnvPopen(args.inBAM, bed=config['bed'],
+                                             conf=args.conf,
+                                             threads=args.threads)
+        if(Dispatcher.daemon() != 0):
+            raise ThisIsMadness("Dispatcher failed somehow.")
+        for vcffile in Dispatcher.outstrs.values():
+            check_call("cat %s >> %s" % (vcffile, outVCF))
         sys.exit(0)
+    if(args.bmfsuites == "snv"):
+        runconf = {}
+        if(args.conf != "default"):
+            config = HTSUtils.parseConfig(args.conf)
+            if("minMQ" in config.keys()):
+                runconf["minMQ"] = int(config["minMQ"])
+            if(args.minMQ != 0):
+                runconf["minMQ"] = args.minMQ
+            if("minBQ" in config.keys()):
+                runconf["minBQ"] = int(config["minBQ"])
+            if(args.minBQ != 0):
+                runconf["minBQ"] = args.minBQ
+            if("MaxPValue" in config.keys()):
+                runconf["MaxPValue"] = float(config["MaxPValue"])
+            if(args.MaxPValue != 1e-15):
+                runconf["MaxPValue"] = args.MaxPValue
+            if("minFracAgreed" in config.keys()):
+                runconf["minFracAgreed"] = float(config["minFracAgreed"])
+            if(args.min_frac_agreed != 0):
+                runconf["minFracAgreed"] = args.min_frac_agreed
+            if("ref" in config.keys()):
+                runconf["reference"] = config["ref"]
+            if(args.reference_fasta != "default"):
+                runconf["reference"] = args.reference_fasta
+            if("bed" in config.keys()):
+                runconf["bed"] = config["bed"]
+            if(args.bed != "default"):
+                runconf["bed"] = args.bed
+            if("minFA" in config.keys()):
+                runconf["minFA"] = int(config["minFA"])
+            if(args.minFA != 0):
+                runconf["minFA"] = args.minFA
+            if("MaxPValue" not in runconf.keys()):
+                runconf["MaxPValue"] = args.MaxPValue
+            if(args.is_slave is True):
+                is_slave = True
+            if("is_slave" in config.keys()):
+                if(config["is_slave"].lower() == "true"):
+                    is_slave = True
+            if("is_slave" not in locals()):
+                is_slave = False
+            runconf["commandStr"] = commandStr
+            if(args.analysisTag != "default"):
+                analysisTag = (args.analysisTag + "-" +
+                               "-".join([str(runconf[i]) for i in
+                                         ["minMQ", "minBQ", "minFA",
+                                          "MaxPValue",
+                                          "minFracAgreed"]] +
+                                        [boolToSlaveStr(
+                                            runconf["is_slave"])]))
+            else:
+                analysisTag = "-".join([str(runconf[i]) for i in
+                                        ["minMQ", "minBQ", "minFA",
+                                         "MaxPValue", "minFracAgreed"]] +
+                                       [boolToSlaveStr(
+                                            runconf["is_slave"])])
+            OutVCF = ".".join(args.inBAM.split(".")[0:-1] +
+                              [analysisTag, "bmf", "vcf"])
+            for pair in runconf.items():
+                print("runconf entry. Key: %s. Value: %s." % (pair[0],
+                                                              pair[1]))
+            """
+            import cProfile
+            import pstats
+            pr = cProfile.Profile()
+            pr.enable()
+            """
+
+            if("bed" in runconf.keys()):
+                print("Reference: %s" % runconf["reference"])
+                # OutVCF = SNVCrawler(args.inBAM, **runconf)
+                OutVCF = SNVCrawler(args.inBAM,
+                                    bed=runconf["bed"],
+                                    minMQ=runconf["minMQ"],
+                                    minBQ=runconf["minBQ"],
+                                    MaxPValue=runconf["MaxPValue"],
+                                    keepConsensus=args.keepConsensus,
+                                    commandStr=commandStr,
+                                    reference=runconf["reference"],
+                                    reference_is_path=True,
+                                    minFracAgreed=runconf["minFracAgreed"],
+                                    minFA=runconf["minFA"],
+                                    OutVCF=OutVCF,
+                                    writeHeader=(not args.is_slave))
+                bedFilteredVCF = BCVCF.FilterVCFFileByBed(
+                    OutVCF, bedfile=args.bed)
+                OutTable = VCFStats(OutVCF)
+            else:
+                OutVCF = SNVCrawler(args.inBAM,
+                                    minMQ=runconf["minMQ"],
+                                    minBQ=runconf["minBQ"],
+                                    MaxPValue=runconf["MaxPValue"],
+                                    keepConsensus=args.keepConsensus,
+                                    commandStr=commandStr,
+                                    reference=runconf["reference"],
+                                    reference_is_path=True,
+                                    minFracAgreed=runconf["minFracAgreed"],
+                                    OutVCF=OutVCF,
+                                    minFA=runconf["minFA"],
+                                    writeHeader=(not args.is_slave))
+                OutTable = VCFStats(OutVCF)
+            """
+            s = cStringIO.StringIO()
+            pr.disable()
+            sortby = "cumulative"
+            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            ps.print_stats()
+            open("cProfile.stats.txt", "w").write(s.getvalue())
+            """
+            sys.exit(0)
     if(args.bmfsuites == "vcfstats"):
         OutTable = VCFStats(args.inVCF)
         sys.exit(0)
@@ -407,3 +479,10 @@ def main():
 
 if(__name__ == "__main__"):
     main()
+
+
+@cython.returns(cython.str)
+def boolToSlaveStr(cython.bint is_slave):
+    if(is_slave):
+        return "slave.proc"
+    return "notslave"

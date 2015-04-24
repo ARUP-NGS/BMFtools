@@ -30,9 +30,6 @@ except ImportError:
     marchFlag = ""
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine", "-flto"]
-print("Removing all .c files - this is "
-      "important for making sure things get rebuilt.")
-subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine", "-flto"]
