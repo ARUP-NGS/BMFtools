@@ -376,7 +376,7 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
         elif(threads < 0):
             threads = 4  # If threads is set in kwargs, keep it.
         if(outVCF == "default"):
-            outVCF = ".".join(outVCF.split(".")[0:-1]) + ".psnv.bmf.vcf"
+            outVCF = ".".join(inBAM.split(".")[0:-1]) + ".psnv.bmf.vcf"
         outHandle = open(outVCF, "w")
         outHandle.write(GetVCFHeader(reference=config["ref"],
                         header=pysam.AlignmentFile(inBAM, "rb").header))
