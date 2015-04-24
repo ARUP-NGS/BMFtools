@@ -5,7 +5,7 @@ from Bio.Seq import Seq
 from copy import copy as ccopy
 from cytoolz import map as cmap, memoize, frequencies as cyfreq
 from functools import partial
-from itertools import groupby
+from itertools import groupby, tee
 from MawCluster.Probability import GetCeiling
 from numpy import any as npany
 from numpy import concatenate as nconcatenate
@@ -2089,19 +2089,21 @@ class PopenDispatcher(object):
             if(len(self.queue) == 0):
                 time.sleep(5)
                 continue
-            fgCStr = self.queue.popleft()
-            if("#" in fgCStr):
+            newqueue = tee(self.queue, 1)[0]
+            if("#" in newqueue.next()):
+                fgCStr = self.queue.popleft()
                 print("Foreground submitting job #%s" % self.getJobNumber())
                 try:
                     exec(fgCStr.split("#")[1])
+                    self.submitted += 1
                 except Exception:
                     print("Failed function call: %s" % fgCStr.split("#")[1])
                     raise FunctionCallException(
                         fgCStr, "Foreground eval call failed.",
                         False)
+                self.outstrs[fgCStr] = self.getEval(fgCStr)
             else:
                 time.sleep(5)
-            evalOut = self.getEval(fgCStr)
             self.check()
         print("All jobs submitted! Yay.")
         while(self.check() > 0):
