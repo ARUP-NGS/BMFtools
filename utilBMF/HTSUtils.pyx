@@ -2005,7 +2005,7 @@ def GetOutVCFFromBMFsnvCall(d):
 
 
 def GetOutBAMForSamtoolsViewCall(d):
-    return d.commandString.split(" ")[-2]
+    return d.commandString.split(";")[0].split(" ")[-2]
 
 
 def ReturnDefault(x):
@@ -2125,8 +2125,8 @@ def GetBamBedList(bampath, bedpath):
     
 
 def GetSplitBAMCStrs(bampath, ziplist):
-    return ["samtools view -bh -L %s -o %s %s" % (bed, bam,
-                                                  bampath)
+    return ["samtools view -bh -L "
+            "%s -o %s %s;samtools index %s" % (bed, bam, bampath, bam)
             for bed, bam in ziplist]
 
 
