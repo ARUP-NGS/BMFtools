@@ -85,10 +85,10 @@ cdef class pPileupColumn:
     Python container for the PileupColumn proxy in pysam.
     """
     def __cinit__(self, pysam.calignmentfile.PileupColumn PileupColumn):
+        self.pileups = map(pPileupRead, PileupColumn.pileups)
         self.nsegments = PileupColumn.nsegments
         self.reference_id = PileupColumn.reference_id
         self.reference_pos = PileupColumn.reference_pos
-        self.pileups = map(pPileupRead, PileupColumn.pileups)
 
 
 """

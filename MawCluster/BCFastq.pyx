@@ -394,9 +394,12 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     cdef np.ndarray[dtypei_t, ndim = 1] FA
 
     # print(repr(seqArray))
+    quals = nparray([pysam.fromQualityString(record.quality) for record in R])
+    """
     quals = nparray(
         [list(cmap(chr2phFunc, list(record.quality))) for record in R],
         dtype=np.int64)
+    """
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
     quals[quals < 3] = 0

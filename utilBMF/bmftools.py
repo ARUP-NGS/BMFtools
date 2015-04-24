@@ -14,7 +14,7 @@ from MawCluster import BCVCF
 from MawCluster import BCFastq
 from BMFMain.ProcessingSteps import pairedFastqShades
 from utilBMF import HTSUtils
-from utilBMF.HTSUtils import parseConfig, ThisIsMadness
+from utilBMF.HTSUtils import parseConfig, ThisIsMadness, printlog as pl
 from MawCluster.TLC import BMFXLC as CallIntraTrans
 from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 #  from pudb import set_trace
@@ -26,12 +26,6 @@ and samtools.
 """
 
 #  warnings.filterwarnings('error')
-
-
-def boolToSlaveStr(is_slave):
-    if(is_slave):
-        return "slave.proc"
-    return "notslave"
 
 
 def main():
@@ -149,8 +143,10 @@ def main():
         "--analysisTag", type=str, default="default",
         help=("Tag to append to the output VCF before the file extension."
               "Used to delineate analysis pipelines."))
-    SNVParser.add_argument("--is-slave", help="If SNVCrawler call is a slave.",
-                           default=None, type=bool)
+    SNVParser.add_argument(
+        "--is-slave",
+        help="Whether or not SNVCrawler is slave instance.",
+        action="store_true", default=False)
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
@@ -296,13 +292,19 @@ def main():
         outHandle.write(GetVCFHeader(
                         commandStr=commandStr, reference=config["ref"],
                         header=pysam.AlignmentFile(args.inBAM, "rb").header))
+        pl("Splitting BAM file by contig.")
         Dispatcher = HTSUtils.GetBMFsnvPopen(args.inBAM, config['bed'],
                                              conf=args.conf,
                                              threads=args.threads)
         if(Dispatcher.daemon() != 0):
             raise ThisIsMadness("Dispatcher failed somehow.")
+        pl("Shell calls completed without errors.")
         for vcffile in Dispatcher.outstrs.values():
-            check_call("cat %s >> %s" % (vcffile, outVCF))
+            check_call("cat %s >> %s" % (vcffile, outVCF), shell=True)
+        pl("Filtering VCF by bed file. Pre-filter path: %s" % outVCF)
+        bedFilteredVCF = BCVCF.FilterVCFFileByBed(
+                    outVCF, bedfile=args.bed)
+        pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
     if(args.bmfsuites == "snv"):
         runconf = {}
@@ -338,30 +340,29 @@ def main():
                 runconf["minFA"] = args.minFA
             if("MaxPValue" not in runconf.keys()):
                 runconf["MaxPValue"] = args.MaxPValue
-            if(args.is_slave is True):
-                is_slave = True
             if("is_slave" in config.keys()):
                 if(config["is_slave"].lower() == "true"):
                     runconf["is_slave"] = True
-            if("is_slave" not in locals()):
-                runconf["is_slave"]  = False
+            if(args.is_slave is True):
+                is_slave = True
+            runconf["is_slave"]  = is_slave
             runconf["commandStr"] = commandStr
+            print(repr(runconf))
             if(args.analysisTag != "default"):
                 analysisTag = (args.analysisTag + "-" +
                                "-".join([str(runconf[i]) for i in
                                          ["minMQ", "minBQ", "minFA",
                                           "MaxPValue",
-                                          "minFracAgreed"]] +
-                                        [boolToSlaveStr(
-                                            runconf["is_slave"])]))
+                                          "minFracAgreed"]]))
             else:
                 analysisTag = "-".join([str(runconf[i]) for i in
                                         ["minMQ", "minBQ", "minFA",
-                                         "MaxPValue", "minFracAgreed"]] +
-                                       [boolToSlaveStr(
-                                            runconf["is_slave"])])
-            OutVCF = ".".join(args.inBAM.split(".")[0:-1] +
-                              [analysisTag, "bmf", "vcf"])
+                                         "MaxPValue", "minFracAgreed"]])
+            if(args.outVCF == "default"):
+                OutVCF = ".".join(args.inBAM.split(".")[0:-1] +
+                                  [analysisTag, "bmf", "vcf"])
+            else:
+                OutVCF = args.outVCF
             for pair in runconf.items():
                 print("runconf entry. Key: %s. Value: %s." % (pair[0],
                                                               pair[1]))
@@ -388,8 +389,6 @@ def main():
                                     minFA=runconf["minFA"],
                                     OutVCF=OutVCF,
                                     writeHeader=(not args.is_slave))
-                bedFilteredVCF = BCVCF.FilterVCFFileByBed(
-                    OutVCF, bedfile=args.bed)
                 OutTable = VCFStats(OutVCF)
             else:
                 OutVCF = SNVCrawler(args.inBAM,

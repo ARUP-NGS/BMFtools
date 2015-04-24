@@ -62,16 +62,6 @@ def SNVCrawler(inBAM,
                cython.float minFracAgreed=0.0, cython.long minFA=2,
                cython.str experiment="",
                cython.bint parallel=False):
-    pl("Command to reproduce function call: "
-       "SNVCrawler('{}', bed=\"{}\"".format(inBAM, bed) +
-       ", minMQ={}, minBQ={}, OutVCF".format(minMQ, minBQ) +
-       "=\"{}\", MaxPValue={}".format(OutVCF, MaxPValue) +
-       ",keepConsensus={}, reference=".format(keepConsensus) +
-       "\"{}\", reference_is_path={}".format(reference, reference_is_path) +
-       "commandStr=\"{}\", fileFormat=\"{}\"".format(commandStr, fileFormat) +
-       ", FILTERTags=\"{}\", INFOTags=\"{}\"".format(FILTERTags, INFOTags) +
-       ", FORMATTags=\"{}\", writeHeader={}".format(FORMATTags, writeHeader) +
-       ", minFracAgreed={}, minFA={})".format(minFracAgreed, minFA))
     cdef cython.long NumDiscordantPairs = 0
     cdef cython.str VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR
@@ -140,17 +130,30 @@ def SNVCrawler(inBAM,
                                d in dispatcher.dispatches])))
         else:
             for line in bedlines:
+                pl("Making pileup call.")
                 ICR = pileupCall(line[0], line[1],
                                  max_depth=200000,
-                                 multiple_iterators=True)
-                VCFLines, discReads = IteratorColumnRegionToTuple(
-                    ICR, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
-                    minFracAgreed=minFracAgreed, experiment=experiment,
-                    MaxPValue=MaxPValue, puEnd=line[2], refHandle=refHandle,
-                    keepConsensus=keepConsensus, reference=reference)
-                ohw("\n".join(VCFLines) + "\n")
+                                 multiple_iterators=False)
+                PileupIt = ICR.next
+                while True:
+                    try:
+                        pPC = pPileupColumn(PileupIt())
+                    except StopIteration:
+                        pl("Finishing iterations for bed line: %s" % repr(
+                            line))
+                        break
+                    except ValueError:
+                        pl("Pysam's heinous errors in iteratio.")
+                        pl("Region: %s" % repr(line))
+                        raise ValueError(repr(line))
+                    posStr, discReads = pPileupColToVCFLines(
+                        pPC, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
+                        minFracAgreed=minFracAgreed, experiment=experiment,
+                        MaxPValue=MaxPValue, refHandle=refHandle,
+                        keepConsensus=keepConsensus, reference=reference)
+                    ohw(posStr + "\n")
     else:
-        ICAR = pileupCall(max_depth=200000, multiple_iterators=True)
+        ICAR = pileupCall(max_depth=200000, multiple_iterators=False)
         PileupIt = ICAR.next
         while True:
             try:
@@ -189,6 +192,47 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
+    PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
+                minFracAgreed=0.0, minFA=2,
+                experiment=experiment)
+    DiscRPs = GetDiscordantReadPairs(PileupColumn)
+    DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
+    PileupColumn.pileups = [i for i in PileupColumn.pileups if
+                            i.alignment.query_name not in DiscRPNames]
+    discReads = []
+    for RP in DiscRPs:
+        reads = RP.RP.getReads()
+        for read in reads:
+            read.set_tag("DP", RP.discordanceString, "Z")
+            discReads.append(read)
+    NumDiscordantPairs = len(DiscRPNames)
+    pos = VCFPos(PC, MaxPValue=MaxPValue,
+                 keepConsensus=keepConsensus,
+                 reference=reference,
+                 minFracAgreed=minFracAgreed,
+                 minFA=minFA, refHandle=refHandle,
+                 NDP=NumDiscordantPairs)
+    return str(pos), discReads
+
+
+
+@cython.returns(tuple)
+def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
+                         cython.long minMQ=-1, cython.long minBQ=-1,
+                         cython.str experiment="",
+                         cython.long minFA=-1, cython.float minFracAgreed=-1.,
+                         cython.float MaxPValue=-1.,
+                         cython.bint keepConsensus=False,
+                         cython.str reference="default",
+                         pysam.cfaidx.FastaFile refHandle=None):
+    cdef PCInfo_t PC
+    cdef list DiscRPs, reads, discReads, DiscRPNames
+    cdef pysam.calignmentfile.AlignedSegment read
+    cdef pPileupRead_t i
+    cdef VCFPos_t pos
+    cdef cython.long NumDiscordantPairs
+    if(refHandle is None):
+        raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
                 minFracAgreed=0.0, minFA=2,
                 experiment=experiment)
@@ -294,7 +338,7 @@ def GetICRString(bedline, bampath, minMQ=-1, minFA=-1, minBQ=-1,
     string = ("python -c 'import pysam; af = pysam.AlignmentFile("
               "\"%s\");  b = af.pileup" % bampath +
               "(\"%s\", %s, max_depth=200000," % (bedline[0], bedline[1]) +
-              " multiple_iterators=True);"
+              " multiple_iterators=False);"
               "from MawCluster.VCFWriters import IteratorColumnRegionToStr;" +
               "c = IteratorColumnRegionToStr(b, minMQ=%s, minBQ=" % (minMQ) +
               "%s, minFA=%s, experiment=\"%s\", minFr" % (minBQ, minFA,

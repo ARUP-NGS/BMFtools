@@ -927,7 +927,13 @@ cdef class pPileupRead:
     def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
-        self.is_del = PileupRead.is_del
+        try:
+            self.is_del = PileupRead.is_del
+        except TypeError:
+            print "is_del repr: %s" % repr(PileupRead.is_del)
+            print "is_del type: %s" % type(PileupRead.is_del)
+            raise ThisIsMadness(
+                "Not sure what variable type this is_del thing is.")
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
@@ -1942,6 +1948,9 @@ def SplitBed(cython.str bedpath):
     contigListSets = [[line for line in bedlines if line[0] == contig]
                       for contig in contigs]
     for contig, lset in zip(contigs, contigListSets):
+        for line in lset:
+            line[1] -= 20
+            line[2] += 20
         open(bedbase + ".split." + contig + ".bed", "w").writelines(
             "\n".join(["\t".join(map(str, arr)) for arr in lset]))
     return ":".join([bedbase + ".split." + contig + ".bed" for
@@ -1966,8 +1975,8 @@ def MergeBamList(bamlist, picardPath="default", memStr="-Xmx6G",
     return outbam
 
 
-def StdPopen(string):
-    return subprocess.Popen(string, shell=True, stdout=subprocess.PIPE)
+def DevNullPopen(string):
+    return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
 
 
 class PopenCall(object):
@@ -1976,7 +1985,7 @@ class PopenCall(object):
     """
     def __init__(self, string, maxresubs=10):
         self.commandString = string
-        self.popen = StdPopen(string)
+        self.popen = DevNullPopen(string)
         self.poll = self.popen.poll
         self.communicate = self.popen.communicate
         self.resubmissions = 0
@@ -1986,8 +1995,21 @@ class PopenCall(object):
         if(self.resubmissions >= self.maxresubs):
             raise ThisIsMadness(
                 "Resubmission limit %s reached!" % self.maxresubs)
-        self.popen = StdPopen(self.commandString)
+        self.popen = DevNullPopen(self.commandString)
         self.resubmissions += 1
+
+
+@cython.returns(cython.str)
+def GetOutVCFFromBMFsnvCall(d):
+    return d.commandString.split(" ")[9]
+
+
+def GetOutBAMForSamtoolsViewCall(d):
+    return d.commandString.split(" ")[-2]
+
+
+def ReturnDefault(x):
+    return "default"
 
 
 class PopenDispatcher(object):
@@ -1995,7 +2017,8 @@ class PopenDispatcher(object):
     Contains a list of strings for Popen to use and a set of Popen options,
     and a list of threads it should have going at once.
     """
-    def __init__(self, stringlist, threads=4, MaxResubmissions=50):
+    def __init__(self, stringlist, threads=4, MaxResubmissions=50,
+                 func=None, evalfunc=None):
         print("Initializing PopenDispatcher!")
         assert len(stringlist) > 0
         self.queue = deque(stringlist)
@@ -2009,6 +2032,12 @@ class PopenDispatcher(object):
         self.alljobscompleted = False
         self.resubmittedjobcounts = 0
         self.MaxResubmissions = MaxResubmissions
+        if(hasattr(func, "__call__") is False):
+            raise ThisIsMadness("func must be callable!")
+        self.getReturnValue = func
+        if(hasattr(evalfunc, "__call__") is False):
+            raise ThisIsMadness("evalfunc must be callable!")
+        self.getEval = evalfunc
 
     @cython.returns(cython.long)
     def getJobNumber(self):
@@ -2022,44 +2051,62 @@ class PopenDispatcher(object):
             if(len(self.queue) != 0):
                 print("Submitting job number %s." % str(self.getJobNumber()))
                 self.submitted += 1
-                self.dispatches.append(PopenCall(self.queue.popleft()))
+                submitted = PopenCall(self.queue.popleft())
+                print("Command String: %s" % submitted.commandString)
+                self.dispatches.append(submitted)
             else:
                 print("All jobs submitted - check in later.")
                 pass
 
     def check(self):
-        for dispatch in self.dispatches:
-            if(dispatch.poll() is not None):
+        for d in self.dispatches:
+            if(d.poll() is not None):
                 count = 0
-                if(dispatch.poll() != 0):
+                if(d.poll() != 0):
                     # See if calling it again solves the problem
                     print("Had a non-zero return status. Trying again!")
-                    dispatch.resubmit()
+                    d.resubmit()
                     self.resubmittedjobcounts += 1
                     if(self.resubmittedjobcounts > self.MaxResubmissions):
                         raise CalledProcessError(
-                            dispatch.poll(), dispatch.commandString,
+                            d.poll(), d.commandString,
                             "So we resubmitted jobs until we passed the "
                             "limit for failed jobs. "
                             "(%s). Oops!" % self.MaxResubmissions)
                     continue
                 self.completed += 1
                 self.outstrs[
-                    dispatch.commandString] = dispatch.communicate()[0]
-                self.dispatches.remove(dispatch)
+                    d.commandString] = self.getReturnValue(d)
+                self.dispatches.remove(d)
 
         return len(self.dispatches)
 
     def daemon(self):
+        self.submit()
         while len(self.queue) != 0:
             print("Submitting set of jobs for daemon.")
             self.submit()
             self.submitted += 1
             fgCStr = self.queue.popleft()
-            print("Foreground submitting job #%s" % self.getJobNumber())
-            fgOutStr = subprocess.check_output(fgCStr, shell=True)
+            if("#" in fgCStr):
+                print("Foreground submitting job #%s" % self.getJobNumber())
+                try:
+                    eval(fgCStr.split("#")[1])
+                except Exception:
+                    print("Failed function call: %s" % fgCStr.split("#")[1])
+                    raise FunctionCallException(
+                        fgCStr, "Foreground eval call failed.",
+                        False)
+            else:
+                print("Background submitting job #%s" % self.getJobNumber())
+                try:
+                    check_call(fgCStr, shell=True)
+                except OSError:
+                    raise FunctionCallException(
+                        fgCStr, "Background Fn call failed.", True)
+            evalOut = self.getEval(fgCStr)
             print("Foreground job finished")
-            self.outstrs[fgCStr] = fgOutStr
+            self.outstrs[fgCStr] = evalOut
             self.check()
         print("All jobs submitted! Yay.")
         while(self.check() > 0):
@@ -2070,17 +2117,46 @@ class PopenDispatcher(object):
         return 0
 
 
-def SplitBamByBed(bampath, bedpath):
+def GetBamBedList(bampath, bedpath):
     bedlist = SplitBed(bedpath).split(":")
     bamlist = [".".join(bampath.split(".")[0:-1]) + "." +
                i.split(".")[-2] + ".bam" for i in bedlist]
-    ziplist = zip(bedlist, bamlist)
+    return zip(bedlist, bamlist)
+    
+
+def GetSplitBAMCStrs(bampath, ziplist):
+    return ["samtools view -bh -L %s -o %s %s" % (bed, bam,
+                                                  bampath)
+            for bed, bam in ziplist]
+
+
+def GetSplitBamPopen(bampath, bedpath, threads=4):
+    ziplist = GetBamBedList(bampath, bedpath)
+    cStrs = GetSplitBAMCStrs(bampath, ziplist)
+    return PopenDispatcher(cStrs, threads=threads,
+                           func=GetOutBAMForSamtoolsViewCall,
+                           evalfunc=ReturnDefault)
+
+
+def SplitBamParallel(bampath, bedpath, threads=4):
+    """
+    Creates a PopenDispatcher object and calls them all in parallel.
+    """
+    pl("Splitting BAM %s by BED %s" % (bampath, bedpath))
+    PD = GetSplitBamPopen(bampath, bedpath, threads=threads)
+    return PD.daemon()
+
+
+def SplitBamByBed(bampath, bedpath):
+    ziplist = GetBamBedList(bampath, bedpath)
     for bed, bam in ziplist:
         # Get the reads that overlap region of interest.
         check_call(["samtools", "view", "-ubh", "-L", bed,
                     "-o", bam, bampath])
         # Index it so that variant-calling can happen.
         check_call(["samtools", "index", bam])
+        if(not os.path.isfile(bam + ".bai")):
+            raise ThisIsMadness("Index for bam not created!")
     return ziplist
 
 
@@ -2095,13 +2171,19 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
     tag = str(uuid.uuid4().get_hex().upper()[0:8])
     if(bed == "default"):
         raise ThisIsMadness("bed must be set for BMFsnvCommandString.")
-    return ("bmftools snv --conf %s %s --analysisTag " % (conf, bampath) +
-            "%s --bed %s" % (tag, bed))
-
-
-@cython.returns(cython.str)
-def BMFCommandStringToOutVCF(cython.str cStr):
-    return ".".join(cStr.split(" ")[-1].split(".")[:-1] + ["bmf", "vcf"])
+    outVCF = ".".join(bampath.split(".")[:-1] +
+                      [bed.split(".")[-2], "bmf", "vcf"])
+    config = parseConfig(conf)
+    minMQ, minBQ, minFA = config["minMQ"], config["minBQ"], config["minFA"]
+    minFracAgreed, MaxPValue = config["minFracAgreed"], config["MaxPValue"]
+    ref = config["ref"]
+    FnCall = ("from MawCluster.VCFWriters import SNVCrawler;"
+              "SNVCrawler('%s', bed='%s', minMQ=" % (bampath, bed) +
+              "%s, minBQ=%s, minFA=%s, " % (minMQ, minBQ, minFA) +
+              "minFracAgreed=%s, MaxPValue=" % (minFracAgreed) +
+              "%s, reference='%s')" % (MaxPValue, ref))
+    return ("bmftools snv --conf %s %s " % (conf, bampath) +
+            "--bed %s --is-slave --outVCF %s #%s" % (bed, outVCF, FnCall))
 
 
 @cython.returns(cython.str)
@@ -2119,9 +2201,13 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
     """
     if conf == "default":
         raise ThisIsMadness("conf file but be set for GetBMFsnvPopen")
-    ziplist = SplitBamByBed(bampath, bedpath)
+    ziplist = GetBamBedList(bampath, bedpath)
+    SplitBamParallel(bampath, bedpath)
+    pl("Dispatching BMF jobs")
     return PopenDispatcher([BMFsnvCommandString(tup[1],
                                                 conf=conf,
                                                 bed=tup[0]) for
                             tup in ziplist],
-                           threads=threads)
+                           threads=threads,
+                           func=GetOutVCFFromBMFsnvCall,
+                           evalfunc=lambda x: x.split(" ")[9])
