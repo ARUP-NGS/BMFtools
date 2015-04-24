@@ -927,18 +927,11 @@ cdef class pPileupRead:
     def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
-        try:
-            self.is_del = PileupRead.is_del
-        except TypeError:
-            print "is_del repr: %s" % repr(PileupRead.is_del)
-            print "is_del type: %s" % type(PileupRead.is_del)
-            raise ThisIsMadness(
-                "Not sure what variable type this is_del thing is.")
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
-        self.str = str(PileupRead)
+
 
 cdef class PileupReadPair:
 

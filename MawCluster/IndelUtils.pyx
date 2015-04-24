@@ -81,3 +81,21 @@ def GetSCFractionArray(inBAM):
     cdef pysam.calignmentfile.AlignedSegment i
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     return [FractionSoftClipped(i) for i in inHandle]
+
+
+def GetFreebayesCallStr(inBAM, ref="default", bed="default",
+                        outVCF="default", ploidy=-1, K=True,
+                        minMQ=1, minBQ=3, haplotypeLength=50,
+                        rdf=1.0):
+    """
+    Used to call freebayes for indel calling.
+    """
+    if(K)
+        cStr = ("freebayes -K -v %s -t %s -f %s -p " % (outVCF, bed, ref) +
+               "%s -q %s -m %s --haplotype-length" % (ploidy, minBQ, minMQ) +
+               "%s -D %s" % (haplotypeLength, rdf))
+    else:
+        cStr = ("freebayes -v %s -t %s -f %s -p " % (outVCF, bed, ref) +
+               "%s -q %s -m %s --haplotype-length" % (ploidy, minBQ, minMQ) +
+               " %s -D %s" % (haplotypeLength, rdf))
+    return
