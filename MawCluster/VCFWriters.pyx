@@ -221,7 +221,6 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     return str(pos), discReads
 
 
-
 @cython.returns(tuple)
 def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                          cython.long minMQ=-1, cython.long minBQ=-1,

@@ -76,7 +76,7 @@ def coverageBed(inBAM, bed="default", outbed="default"):
 
 
 @cython.locals(buffer=cython.long)
-def FracOnTarget(inBAM, bed="default", buffer=100):
+def FracOnTarget(inBAM, bed="default", buffer=20):
     """
     Calculates the fraction of mapped reads aligned to a target region.
     Do to "bleeding out" of regions of capture, there is an optional
@@ -86,7 +86,8 @@ def FracOnTarget(inBAM, bed="default", buffer=100):
     cdef cython.long numReadsTotal
     cdef cython.long numReadsOnTarget
     cdef cython.float fracOnTarget
-    covBed, fracOnTarget = coverageBed(inBAM, bed=ExtendBed(bed, buffer=buffer))
+    covBed, fracOnTarget = coverageBed(inBAM,
+                                       bed=ExtendBed(bed, buffer=buffer))
     numReadsTotal = int(check_output(["samtools", "view", "-L", covBed,
                                       "-c", inBAM]).strip())
     numReadsOnTarget = int(check_output(

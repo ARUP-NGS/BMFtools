@@ -354,7 +354,7 @@ def main():
                     runconf["is_slave"] = True
             if(args.is_slave is True):
                 is_slave = True
-            runconf["is_slave"]  = is_slave
+            runconf["is_slave"] = is_slave
             runconf["commandStr"] = commandStr
             print(repr(runconf))
             if(args.analysisTag != "default"):

@@ -2117,7 +2117,7 @@ def GetBamBedList(bampath, bedpath):
     bamlist = [".".join(bampath.split(".")[0:-1]) + "." +
                i.split(".")[-2] + ".bam" for i in bedlist]
     return zip(bedlist, bamlist)
-    
+
 
 def GetSplitBAMCStrs(bampath, ziplist):
     return ["samtools view -bh -L "
