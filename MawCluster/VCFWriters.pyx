@@ -153,7 +153,8 @@ def SNVCrawler(inBAM,
                         minFracAgreed=minFracAgreed, experiment=experiment,
                         MaxPValue=MaxPValue, refHandle=refHandle,
                         keepConsensus=keepConsensus, reference=reference)
-                    ohw(posStr + "\n")
+                    if(len(posStr) != 0):
+                        ohw(posStr + "\n")
                     if(pPC.reference_pos > line[2]):
                         pl("Whoops - looks like I'm calling outside of "
                            "the bed region. Continue!")

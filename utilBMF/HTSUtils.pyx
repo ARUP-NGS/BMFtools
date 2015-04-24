@@ -2176,7 +2176,7 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
               "SNVCrawler('%s', bed='%s', minMQ=" % (bampath, bed) +
               "%s, minBQ=%s, minFA=%s, " % (minMQ, minBQ, minFA) +
               "minFracAgreed=%s, MaxPValue=" % (minFracAgreed) +
-              "%s, reference='%s', OutVCF=%s)" % (MaxPValue, ref, outVCF))
+              "%s, reference='%s', OutVCF='%s')" % (MaxPValue, ref, outVCF))
     return ("bmftools snv --conf %s %s " % (conf, bampath) +
             "--bed %s --is-slave --outVCF %s #%s" % (bed, outVCF, FnCall))
 
