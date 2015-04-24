@@ -4,7 +4,6 @@ import sys
 import warnings
 import cStringIO
 from subprocess import check_call
-import cython
 import pysam
 
 from MawCluster.VCFWriters import SNVCrawler
@@ -27,6 +26,12 @@ and samtools.
 """
 
 #  warnings.filterwarnings('error')
+
+
+def boolToSlaveStr(is_slave):
+    if(is_slave):
+        return "slave.proc"
+    return "notslave"
 
 
 def main():
@@ -284,13 +289,14 @@ def main():
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
     if(args.bmfsuites == "psnv"):
-        outVCF = ".".join(args.inBAM.split(".")[0:-1] + ["FULL", "bmf", "vcf"])
+        outVCF = ".".join(args.inBAM.split(".")[0:-1] +
+                          ["FULL", "bmf", "vcf"])
         config = parseConfig(args.conf)
         outHandle = open(outVCF, "w")
         outHandle.write(GetVCFHeader(
                         commandStr=commandStr, reference=config["ref"],
-                        header=pysam.AlignmentFile("inBAM", "rb").header))
-        Dispatcher = HTSUtils.GetBMFsnvPopen(args.inBAM, bed=config['bed'],
+                        header=pysam.AlignmentFile(args.inBAM, "rb").header))
+        Dispatcher = HTSUtils.GetBMFsnvPopen(args.inBAM, config['bed'],
                                              conf=args.conf,
                                              threads=args.threads)
         if(Dispatcher.daemon() != 0):
@@ -336,9 +342,9 @@ def main():
                 is_slave = True
             if("is_slave" in config.keys()):
                 if(config["is_slave"].lower() == "true"):
-                    is_slave = True
+                    runconf["is_slave"] = True
             if("is_slave" not in locals()):
-                is_slave = False
+                runconf["is_slave"]  = False
             runconf["commandStr"] = commandStr
             if(args.analysisTag != "default"):
                 analysisTag = (args.analysisTag + "-" +
@@ -479,10 +485,3 @@ def main():
 
 if(__name__ == "__main__"):
     main()
-
-
-@cython.returns(cython.str)
-def boolToSlaveStr(cython.bint is_slave):
-    if(is_slave):
-        return "slave.proc"
-    return "notslave"

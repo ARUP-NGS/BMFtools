@@ -2077,7 +2077,8 @@ def SplitBamByBed(bampath, bedpath):
     ziplist = zip(bedlist, bamlist)
     for bed, bam in ziplist:
         # Get the reads that overlap region of interest.
-        check_call(["samtools", "view", "-L", bed, "-o", bam, bampath])
+        check_call(["samtools", "view", "-ubh", "-L", bed,
+                    "-o", bam, bampath])
         # Index it so that variant-calling can happen.
         check_call(["samtools", "index", bam])
     return ziplist
@@ -2091,11 +2092,11 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
     """
     if(conf == "default"):
         raise ThisIsMadness("conf must be set for BMFsnvCommandString.")
-    tag = "#G~" + str(uuid.uuid4().get_hex().upper()[0:8]) + "#G~"
+    tag = str(uuid.uuid4().get_hex().upper()[0:8])
     if(bed == "default"):
         raise ThisIsMadness("bed must be set for BMFsnvCommandString.")
     return ("bmftools snv --conf %s %s --analysisTag " % (conf, bampath) +
-            "%s --bed %s" (tag, bed))
+            "%s --bed %s" % (tag, bed))
 
 
 @cython.returns(cython.str)
