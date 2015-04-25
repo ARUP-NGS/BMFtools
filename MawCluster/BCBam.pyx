@@ -33,8 +33,10 @@ from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from MawCluster import BCFastq
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
                               FractionAligned, FractionSoftClipped,
-                              SWRealignAS, pPileupRead)
+                              SWRealignAS, pPileupRead, BedtoolsBam2Fq,
+                              BwaswCall, samtoolsMergeBam)
 from utilBMF.ErrorHandling import IllegalArgumentError
+from MawCluster.SVUtils import returnDefault
 from utilBMF import HTSUtils
 import SecC
 cimport numpy as np
@@ -869,4 +871,71 @@ def GetRPsWithI(inBAM, outBAM="default"):
         ohw(read1)
         ohw(read2)
     outHandle.close()
+    return outBAM
+
+
+@cython.returns(cython.bint)
+def FracSoftclippedTest(pysam.calignmentfile.AlignedSegment rec,
+                        cython.float maxFracSoftClipped=0.25):
+    if(FractionSoftClipped(rec) >= maxFracSoftClipped):
+        return False
+    return True
+
+
+def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
+                      func=returnDefault):
+    if(func == returnDefault):
+        raise ThisIsMadness("Need a function which returns a boolean "
+                            "for AbstractBamFilter")
+    cdef pysam.calignmentfile.AlignmentFile inHandle, raHandle, nrHandle
+    cdef pysam.calignmentfile.AlignedSegment rec, r1, r2
+    if(failBAM == "default"):
+        failBAM = ".".join(inBAM.split(".")[:-1] + ["Fail", "bam"])
+    if(passBAM == "default"):
+        passBAM = ".".join(inBAM.split(".")[:-1] + ["Pass", "bam"])
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    raHandle = pysam.AlignmentFile(failBAM, "wb", header=inBAM)
+    nrHandle = pysam.AlignmentFile(passBAM, "wb", header=inBAM)
+    for rec in inHandle:
+        if(rec.is_read1):
+            r1 = rec
+            continue
+        elif(rec.is_read2):
+            r2 = rec
+        if(func(r1) or func(r2)):
+            raHandle.write(r1)
+            raHandle.write(r2)
+        else:
+            nrHandle.write(r1)
+            nrHandle.write(r2)
+    return passBAM, failBAM
+
+
+def GetSoftClips(inBAM, failBAM="default", passBAM="default",
+                 cython.float maxFracSoftClipped=0.25):
+    """
+    Uses the AbstractBamFilter to get reads with Softclipped Fraction >= 0.25
+    """
+    return AbstractBamFilter(inBAM, failBAM=failBAM, passBAM=passBAM,
+                             maxFracSoftClipped=maxFracSoftClipped)
+
+
+def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.25,
+                   ref="default", outBAM="default"):
+    """
+    Realigns reads which have a Softclipped Fraction that is above
+    maxFracSoftClipped
+    """
+    if(outBAM == "default"):
+        outBAM = ".".join(inBAM.split()[:-1]) + ".SWRealigned.ban"
+    if(ref == "default"):
+        raise ThisIsMadness("ref required for bwasw alignment.")
+    NoRealign, Realign = GetSoftClips(
+        inBAM, maxFracSoftClipped=maxFracSoftClipped)
+    ReadFastq1, ReadFastq2 = BedtoolsBam2Fq(Realign)
+    RealignedBAM = BwaswCall(ReadFastq1, ReadFastq2, ref=ref)
+    SortNoRealign = HTSUtils.CoorSortAndIndexBam(NoRealign, delete=True)
+    SortRealign = HTSUtils.CoorSortAndIndexBam(Realign, delete=True)
+    samtoolsMergeBam([SortNoRealign, SortRealign],
+                     outBAM=outBAM)
     return outBAM

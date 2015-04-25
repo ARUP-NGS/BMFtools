@@ -14,7 +14,7 @@ Contains utilities for working with indels for HTS data.
 
 def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
                            otherOutputBAM="default",
-                           minFamSize=3):
+                           minFamSize=2):
     """
     Writes reads potentially relevant to an indel to indelOutputBAM and
     other reads to the otherOutputBAM.

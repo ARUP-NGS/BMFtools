@@ -211,7 +211,7 @@ def pairedVCFProc(consMergeSortBAM,
         Results["tsv"] = PileupTSV
     if(MakeVCF):
         CleanedVCF = VCFWriters.PSNVCall(consMergeSortBAM,
-                                      conf=conf)
+                                         conf=conf)
         if("ffpe" in exp.lower()):
             deaminationFrequency = np.mean(
                 GetDeaminationFrequencies(CleanedVCF), dtype=np.longdouble)

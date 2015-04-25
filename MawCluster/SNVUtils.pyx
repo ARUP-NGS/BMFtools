@@ -643,6 +643,10 @@ HeaderFilterDict["CONSENSUS"] = HeaderFilterLine(
 HeaderFilterDict["DiscordantReadFamilies"] = HeaderFilterLine(
     ID="DiscordantReadFamilies",
     Description="Minimum read agreement fraction not met.")
+HeaderFilterDict["TumorNormalIndistinguishable"] = HeaderFilterLine(
+    ID="TumorNormalIndistinguishable",
+    Description=("Allele present in tumor and normal, but not in sufficiently"
+                 "-high quantity to distinguish it from noise in tumor."))
 
 
 """

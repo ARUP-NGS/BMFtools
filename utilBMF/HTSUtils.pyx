@@ -367,6 +367,30 @@ def ReadPairIsDuplex(readPair, minShare="default"):
                ) >= minLen
 
 
+def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
+    if(ref == "default"):
+        raise ThisIsMadness("ref required to call bwasw.")
+    if(outBAM == "default"):
+        outBAM = ".".join(fq.split(".")[:-1]) + ".bam"
+    cStr = "bwa bwasw %s %s %s -f %s" % (ref, fq1, fq2, outBAM)
+    pl("About to call bwasw. Command string: %s" % cStr)
+    check_output(cStr)
+
+
+def BedtoolsBam2Fq(BAM, outfq1="default", outfq2="default"):
+    """
+    Converts a BAM to 2 fastq files.
+    """
+    if(outfq1 == "default"):
+        outfq1 = ".".join(BAM.split(".")[:-1] + ["bam2fq.R1.fastq"])
+    if(outfq2 == "default"):
+        outfq2 = ".".join(BAM.split(".")[:-1] + ["bam2fq.R2.fastq"])
+    commandString = "bedtools bamtofastq -i %s -fq %s -fq2 %s" % (
+        BAM, outfq1, outfq2)
+    check_call(shlex.split(commandString))
+    return outfq1, outfq2
+
+
 def align_bwa_aln_addRG(R1, R2, ref="default", opts="", outBAM="default",
                         picardPath="default", RG="default",
                         PL="ILLUMINA", SM="default", ID="default",
@@ -834,9 +858,10 @@ def NameSortAndFixMate(inBAM, outBAM="default", prefix="MetasyntacticVar",
     return outBAM
 
 
-def mergeBam(samList, memoryStr="-XmX16",
-             MergeJar="/mounts/bin/picard-tools/MergeSamFiles.jar",
-             outBAM="default"):
+def mergeBamPicardOld(
+        samList, memoryStr="-XmX16",
+        MergeJar="/mounts/bin/picard-tools/MergeSamFiles.jar",
+        outBAM="default"):
     if(outBAM == "default"):
         outBAM = '.'.join(samList[0].split('.')[0:-1]) + '.merged.bam'
     cStr = ("java -jar " + MergeJar + " " + memoryStr + " I=" +
@@ -845,6 +870,18 @@ def mergeBam(samList, memoryStr="-XmX16",
             )
     printlog("About to merge bams. Command string: " + cStr)
     subprocess.check_call(shlex.split(cStr))
+    return outBAM
+
+
+def samtoolsMergeBam(bamlist, outBAM="default", NameSort=True):
+    if(outBAM == "default"):
+        outBAM = ".".join(bamlist[0].split(".")[-1]) + ".merged.bam"
+    if(NameSort):
+        cStr = "samtools merge -n %s %s" (outBAM, " ".join(bamlist))
+    else:
+        cStr = "samtools merge %s %s" (outBAM, " ".join(bamlist))
+    pl("Merge bams command: %s" % (cStr))
+    check_output(cStr)
     return outBAM
 
 

@@ -34,9 +34,8 @@ def TestTumorVsNormal(cython.long tAC, cython.long tDOC,
     cdef dtype128_t nMaxAAF, tumorMaxNoise
     nMaxAAF = GetObservedAAFCeiling(nAC, nDOC, pVal=pVal)
     tumorMaxNoise = GetCeiling(tDOC, p=nMaxAAF, pVal=pVal)
-    if(tAC /(1. * tDOC) > (tumorMaxNoise)):
+    if(tAC / (1. * tDOC) > (tumorMaxNoise)):
         return True
-
 
 
 @cython.returns(cython.bint)
@@ -62,7 +61,6 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     If not, best practice is calling freebayes with
     "--min-alternate-fraction 0" and --pooled-continuous.
     (Will require a different function, actually.)
-    
     """
     cdef pysam.TabProxies.VCFProxy rec, nRec, i
     cdef cython.long nDOC, nAC
@@ -83,13 +81,13 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
         # Load all records with precisely our ref record's position
         try:
             normalRecs = list(nhf(rec.contig + ":" + str(rec.pos - 5) +
-                                 "-" + str(rec.pos + 5)))
+                                  "-" + str(rec.pos + 5)))
         except ValueError:
             pl("Looks like contig %s just isn't in the tabix'd" % rec.contig +
                "file. Give up - continuing!", level=logging.DEBUG)
             continue
         normalRecs = [i for i in normalRecs if i.ref == rec.ref and
-                     i.pos == rec.pos]
+                      i.pos == rec.pos]
         nAllelesAtPos = len(normalRecs)
         normalRecs = [i for i in normalRecs if i.alt == rec.alt]
         # Get just the record (or no record) that has that alt.
@@ -108,6 +106,6 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
             if("PASS" in rFilterList):
                 rec.filter = ";".join(sorted([f for f in rFilterList if
                                               f != "PASS"] +
-                                             ["NormalPairComparison"]))
+                                             ["TumorNormalIndistinguishable"]))
         outVCF.write(str(rec) + "\n")
     return outVCF

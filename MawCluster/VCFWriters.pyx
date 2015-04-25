@@ -388,7 +388,7 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
             raise ThisIsMadness("Dispatcher failed somehow.")
         pl("Shell calls completed without errors.")
         for commandString, vcffile in Dispatcher.outstrs.items():
-            if(vcffile == None):
+            if(vcffile is None):
                 raise FunctionCallException(
                     commandString,
                     "Attempt to cat this vcf to final file failed.", -1)
