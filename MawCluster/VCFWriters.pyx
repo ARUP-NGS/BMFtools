@@ -19,7 +19,7 @@ from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
                               parseConfig)
 from utilBMF.HTSUtils cimport pPileupRead
 from utilBMF import HTSUtils
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness, FunctionCallException
 cimport cython
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
@@ -387,7 +387,11 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
         if(Dispatcher.daemon() != 0):
             raise ThisIsMadness("Dispatcher failed somehow.")
         pl("Shell calls completed without errors.")
-        for vcffile in Dispatcher.outstrs.values():
+        for commandString, vcffile in Dispatcher.outstrs.items():
+            if(vcffile == None):
+                raise FunctionCallException(
+                    commandString,
+                    "Attempt to cat this vcf to final file failed.", -1)
             check_call("cat %s >> %s" % (vcffile, outVCF), shell=True)
         pl("Filtering VCF by bed file. Pre-filter path: %s" % outVCF)
         bedFilteredVCF = BCVCF.FilterVCFFileByBed(

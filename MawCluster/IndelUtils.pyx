@@ -3,7 +3,8 @@
 import pysam
 import cython
 from cytoolz import map as cmap
-from utilBMF.HTSUtils import FractionAligned, FractionSoftClipped
+from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
+                              printlog as pl)
 cimport pysam.calignmentfile
 
 """
@@ -85,17 +86,22 @@ def GetSCFractionArray(inBAM):
 
 def GetFreebayesCallStr(inBAM, ref="default", bed="default",
                         outVCF="default", ploidy=-1, K=True,
-                        minMQ=1, minBQ=3, haplotypeLength=50,
-                        rdf=1.0):
+                        minMQ=1, minBQ=3, haplotypeLength=80,
+                        rdf=1.0, bestNAlleles=10):
     """
     Used to call freebayes for indel calling.
     """
-    if(K)
-        cStr = ("freebayes -K -v %s -t %s -f %s -p " % (outVCF, bed, ref) +
-               "%s -q %s -m %s --haplotype-length" % (ploidy, minBQ, minMQ) +
-               "%s -D %s" % (haplotypeLength, rdf))
+    if(ploidy < 0):
+        pl("Ploidy less than 0. Defaulting to report best N alleles.")
+        cStr = ("freebayes -v %s -t %s -f %s " % (outVCF, bed, ref) +
+                "-q %s -m %s --haplotype-length" % (minBQ, minMQ) +
+                "%s -D %s " % (haplotypeLength, rdf) +
+                "--min-alternate-fraction 0 --pooled-continuous")
     else:
-        cStr = ("freebayes -v %s -t %s -f %s -p " % (outVCF, bed, ref) +
-               "%s -q %s -m %s --haplotype-length" % (ploidy, minBQ, minMQ) +
-               " %s -D %s" % (haplotypeLength, rdf))
-    return
+        pl("Ploidy set: %s" % ploidy)
+        cStr = ("freebayes -v %s -t %s -f %s " % (outVCF, bed, ref) +
+                "-q %s -m %s --haplotype-length" % (minBQ, minMQ) +
+                "%s -D %s " % (haplotypeLength, rdf) +
+                "--min-alternate-fraction 0 --pooled-continuous" +
+                " -p %s --use-best-n-alleles %s" % (ploidy, bestNAlleles))
+    return cStr

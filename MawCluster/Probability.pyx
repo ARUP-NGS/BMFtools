@@ -32,7 +32,7 @@ ctypedef np.longdouble_t dtype128_t
 Contains probabilistic tools for accurately identifying somatic mutations.
 """
 
-defaultPValue = 0.001
+defaultPValue = 0.05
 
 # PROTOCOLS is a list of lowered strings.
 PROTOCOLS = ["ffpe", "amplicon", "cf", "other"]
@@ -58,10 +58,10 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
                             "stats.proportion.")
 
 
-@memoize
 @cython.returns(np.ndarray)
-def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
-                         method="agresti_coull"):
+def ConfidenceIntervalAI(cython.long Allele1,
+                         cython.long Allele2, dtype128_t pVal=defaultPValue,
+                         cython.str method="agresti_coull"):
     """
     Returns the confidence interval for an allelic imbalance
     given counts for Allele1 and Allele2, where those are the most common
@@ -86,8 +86,11 @@ def ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                             "stats.proportion.")
 
 
-@memoize
-def MakeAICall(Allele1, Allele2, pVal=defaultPValue, method="agresti_coull"):
+@cython.returns(tuple)
+def MakeAICall(cython.long Allele1,
+               cython.long Allele2,
+               dtype128_t pVal=defaultPValue,
+               cython.str method="agresti_coull"):
     """
     Gets confidence bounds, returns a call, a "minor" allele frequency,
     an observed allelic imbalance ratio (as defined by more common allele

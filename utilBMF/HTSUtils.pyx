@@ -1809,13 +1809,20 @@ def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
     return read
 
 
-@cython.locals(rec=pysam.TabProxies.VCFProxy)
 @cython.returns(dict)
-def makeinfodict(rec):
+def makeinfodict(pysam.TabProxies.VCFProxy rec):
     """
     Returns a dictionary of info fields for a tabix VCF Proxy
     """
     return dict([i.split("=") for i in rec.info.split(";")])
+
+
+@cython.returns(dict)
+def makeformatdict(pysam.TabProxies.VCFProxy rec):
+    """
+    Returns a dictionary of format fields for a tabix VCF Proxy
+    """
+    return dict(zip(rec.format.split(":"), rec[0].split(":")))
 
 
 @cython.returns(cython.bint)
@@ -2011,7 +2018,7 @@ class PopenDispatcher(object):
     and a list of threads it should have going at once.
     """
     def __init__(self, stringlist, threads=4, MaxResubmissions=50,
-                 func=None, evalfunc=None):
+                 func=None):
         print("Initializing PopenDispatcher!")
         assert len(stringlist) > 0
         self.queue = deque(stringlist)
@@ -2028,9 +2035,6 @@ class PopenDispatcher(object):
         if(hasattr(func, "__call__") is False):
             raise ThisIsMadness("func must be callable!")
         self.getReturnValue = func
-        if(hasattr(evalfunc, "__call__") is False):
-            raise ThisIsMadness("evalfunc must be callable!")
-        self.getEval = evalfunc
 
     @cython.returns(cython.long)
     def getJobNumber(self):
@@ -2094,7 +2098,7 @@ class PopenDispatcher(object):
                     raise FunctionCallException(
                         fgCStr, "Foreground eval call failed.",
                         False)
-                self.outstrs[fgCStr] = self.getEval(fgCStr)
+                self.outstrs[fgCStr] = self.getReturnValue(fgCStr)
             else:
                 time.sleep(5)
             self.check()
@@ -2200,4 +2204,4 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
                             tup in ziplist],
                            threads=threads,
                            func=GetOutVCFFromBMFsnvCall,
-                           evalfunc=lambda x: x.split("#")[0].split(" ")[-1])
+                           evalfunc=lambda x: x.split("#")[0].split(" ")[-2])
