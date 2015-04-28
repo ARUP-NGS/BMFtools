@@ -149,7 +149,7 @@ Most options are available for command-line as well. If an option is set in both
 2. Changes in BMFTools v0.0.5.2:
 
     1. VCF Info fields for fractions of reads mapped to reverse strand for both alt allele and all reads.
-    2. VCF Info fields for the mean and standard deviation of base position in read for bases supporting variant call. 
+    2. VCF Info fields for the mean and standard deviation of base position in read for bases supporting variant call.
     2. Require duplex sequencing an option for variant calling.
     3. Adding extra BAM tags for the number of reads in a family supporting the merged read's nucleotide position by position (FA tag).
     4. Moved exceptions to an ErrorHandling file, added PermissionException.
@@ -188,7 +188,7 @@ Most options are available for command-line as well. If an option is set in both
     4. PV tags used for all reads now, making compatibility a little easier.
 
 8. Changes in BMFTools v0.0.7.2
-    
+
     1. Probabilistic quantitation of AAF given observations.
     2. Optional filter for FFPE data for removing deamination frequencies due to formalin fixation.
     3. Added amplicon filtering for mispriming, both in variant caller and in a pre-processing step.
@@ -216,6 +216,12 @@ Most options are available for command-line as well. If an option is set in both
     5. Fixed some indel work
     6. Fixed some VCF comparison issues.
 
+11. Changes in BMFTools v0.0.7.5
+    1. Parallelized variant-calling
+    2. General Popen Dispatcher framework.
+    3. Cursory work on tumor/normal pairs for SNVs.
+    4. Further indel work.
+    5. Optional bwasw realignment for all reads with AF <= minAF
 
 1. Settings Recommendations
 
@@ -224,32 +230,44 @@ Most options are available for command-line as well. If an option is set in both
         2. For my cert server (192GB RAM, 24 threads), it looks like 10 might give me peak performance, but more rigorous tests are underway.
     2. For optimal compilation, use the -march flag. BMFTools' setup.py automatically attempts to find that appropriate value for you.
 
-|readPairsPerWrite | time | 
+|readPairsPerWrite | time |
 |------|--------------|
 | 10 | 867 msec per loop |
 | 50 | 851 msec per loop |
 | 100 | 850 msec per loop |
 | 150 | 853 msec per loop |
-|250| 898 msec per loop | 
+|250| 898 msec per loop |
 |500 | 1830 msec per loop |
 
 
 
 #TODO (ish):
-1. Check and make sure that the bwasw realignment can and does work.
-2. Fix the SV tagging - it seems that it broke when I switched to the function call.
-
-## Backlog
 1. SNV:
-    1. Error Characterization Code
+    @backlog
+    1. Check and make sure that the bwasw realignment can and does work.
+
+    @backlog
+    2. Error Characterization Code
         1. Write database reading and processing.
-    3. Info Fields
-        2. Add read length to the INFO field (both full read length and read length without Ns)
+    @backlog
+    3. Add read length to the INFO field (both full read length and read length without Ns)
 2. Indels:
-    1. Assembly work
-    2. Figure out the indel relevance piece.
+    1. Figure out the indel relevance piece.
+
+    @backlog
+    2. Assembly work (kmer-based selection and unitig-based assembly)
 3. SV:
+    @backlog
     1. Finish consensus sequence for intrachromosomal.
+    @backlog
     2. Finish writing structural variants to a VCF format
+    @backlog
     3. Work on interchromosomal translocations
-4. Make sure that the AF filter is being triggered - required 1.0 AF didn't produce expected behavior.
+
+1. Week of 4/27:
+    2. Re-run both PNorm and HDx 1Pct
+        1. Try out the new tumor/normal pair work. :)
+    3. Run Wally's samples.
+    4. Do work on small indels. (Small indels: Use DSI/DSD)
+        1. Looked at sample #7. None of the DSD's looked promising - primarily around highly repetitive regions. :( (I bet that freebayes will just handle that correctly. Eh)
+        2. I don't trust myself to handle the variant-calling for these. I'll let freebayes handle this.

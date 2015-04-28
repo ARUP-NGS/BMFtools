@@ -2037,12 +2037,17 @@ class PopenCall(object):
 
 
 @cython.returns(cython.str)
-def GetOutVCFFromBMFsnvCall(d):
+def GetOutVCFFromBMFsnvPopen(d):
     return d.commandString.split(" ")[9]
 
 
-def GetOutBAMForSamtoolsViewCall(d):
-    return d.commandString.split(";")[0].split(" ")[-2]
+@cython.returns(cython.str)
+def GetOutVCFFromBMFsnvCStr(d):
+    return d.split(" ")[9]
+
+
+def GetOutBAMForSamtoolsViewCStr(d):
+    return d.split(";")[0].split(" ")[-2]
 
 
 def ReturnDefault(x):
@@ -2053,15 +2058,16 @@ class PopenDispatcher(object):
     """
     Contains a list of strings for Popen to use and a set of Popen options,
     and a list of threads it should have going at once.
+    Cleanup must be a function to call at the end of daemon's execution.
     """
     def __init__(self, stringlist, threads=4, MaxResubmissions=50,
-                 func=None):
+                 func=None, cleanup=None):
         print("Initializing PopenDispatcher!")
         assert len(stringlist) > 0
         self.queue = deque(stringlist)
         self.dispatches = []
         self.threadcount = threads - 1  # Main thread counts as one, too.
-        self.outstrs = {cStr: None for cStr in self.queue}
+        self.outstrs = {cStr: None for cStr in stringlist}
         self.completed = 0
         self.jobnumber = 1
         self.submitted = 0
@@ -2072,12 +2078,19 @@ class PopenDispatcher(object):
         if(hasattr(func, "__call__") is False):
             raise ThisIsMadness("func must be callable!")
         self.getReturnValue = func
+        self.bgStrs = []
+        self.fgStrs = []
+        if(cleanup is not None):
+            self.cleanup = cleanup
 
     @cython.returns(cython.long)
     def getJobNumber(self):
         return self.submitted + 1
 
     def submit(self):
+        """
+        Function for submitting bg (background) jobs.
+        """
         if(len(self.queue) == 0):
             print("All jobs already submitted. :)")
             return
@@ -2085,7 +2098,9 @@ class PopenDispatcher(object):
             if(len(self.queue) != 0):
                 print("Submitting job number %s." % str(self.getJobNumber()))
                 self.submitted += 1
-                submitted = PopenCall(self.queue.popleft())
+                cStr = self.queue.popleft()
+                self.bgStrs.append(cStr)
+                submitted = PopenCall(cStr)
                 print("Command String: %s" % submitted.commandString)
                 self.dispatches.append(submitted)
             else:
@@ -2093,9 +2108,11 @@ class PopenDispatcher(object):
                 pass
 
     def check(self):
+        """
+        Checks for finished processes. If they are, knock them off the list.
+        """
         for d in self.dispatches:
             if(d.poll() is not None):
-                count = 0
                 if(d.poll() != 0):
                     # See if calling it again solves the problem
                     print("Had a non-zero return status. Trying again!")
@@ -2110,12 +2127,21 @@ class PopenDispatcher(object):
                     continue
                 self.completed += 1
                 self.outstrs[
-                    d.commandString] = self.getReturnValue(d)
+                    d.commandString] = self.getReturnValue(d.commandString)
+                d.popen.terminate()
                 self.dispatches.remove(d)
-
         return len(self.dispatches)
 
     def daemon(self):
+        """
+        Little daemon hides beyond sight of the world, looking for mischief
+        and maintaining order. We don't have to watch, but he's always
+        lurking, always working, in the night never shirking.
+        He hasn't slept since the dawn of time - unweary, inhuman, lost in the
+        world that was wild and waste.
+        
+        It also submits foreground jobs.
+        """
         self.submit()
         while len(self.queue) != 0:
             print("Submitting set of jobs for daemon.")
@@ -2126,6 +2152,7 @@ class PopenDispatcher(object):
             newqueue = tee(self.queue, 1)[0]
             if("#" in newqueue.next()):
                 fgCStr = self.queue.popleft()
+                self.fgStrs.append(fgCStr)
                 print("Foreground submitting job #%s" % self.getJobNumber())
                 try:
                     exec(fgCStr.split("#")[1])
@@ -2145,6 +2172,14 @@ class PopenDispatcher(object):
             threadcount = self.check()
             if(threadcount < self.threadcount and len(self.queue) != 0):
                 self.submit()
+        for key in self.outstrs.keys():
+            if(self.outstrs[key] is None):
+                print("fgStrs: %s" % ":".join(self.fgStrs))
+                print("bgStrs: %s" % ":".join(self.bgStrs))
+                raise ThisIsMadness(
+                    "Command string %s has a key value of None!" % key)
+        if("cleanup" in dir(self)):
+            self.cleanup()
         return 0
 
 
@@ -2165,8 +2200,7 @@ def GetSplitBamPopen(bampath, bedpath, threads=4):
     ziplist = GetBamBedList(bampath, bedpath)
     cStrs = GetSplitBAMCStrs(bampath, ziplist)
     return PopenDispatcher(cStrs, threads=threads,
-                           func=GetOutBAMForSamtoolsViewCall,
-                           evalfunc=ReturnDefault)
+                           func=GetOutBAMForSamtoolsViewCStr)
 
 
 def SplitBamParallel(bampath, bedpath, threads=4):
@@ -2182,13 +2216,37 @@ def SplitBamByBed(bampath, bedpath):
     ziplist = GetBamBedList(bampath, bedpath)
     for bed, bam in ziplist:
         # Get the reads that overlap region of interest.
-        check_call(["samtools", "view", "-ubh", "-L", bed,
+        check_call(["samtools", "view", "-bh", "-L", bed,
                     "-o", bam, bampath])
         # Index it so that variant-calling can happen.
         check_call(["samtools", "index", bam])
         if(not os.path.isfile(bam + ".bai")):
             raise ThisIsMadness("Index for bam not created!")
     return ziplist
+
+
+def SplitBamByBedPysam(bampath, bedpath):
+    bamlist = oig0(GetBamBedList(bampath, bedpath))
+    refContigStrList = [i[1].split(".")[-2] for i in bamlist]
+    inHandle = pysam.AlignmentFile(bampath, "rb")
+    refHandleMap = dict([(ChrToPysamDict[bam.split(".")[-2]],
+                          pysam.AlignmentFile(bam, "wb",
+                                              template=inHandle)) for
+                       bam in bamlist])
+    for rec in inHandle:
+        if(rec.is_unmapped):
+            continue
+        try:
+            refHandleMap[rec.reference_id].write(rec)
+        except KeyError:
+            continue
+    for bam in bamlist:
+        check_call(["samtools", "index", bam])
+        if(os.path.isfile(bam + ".bai") is False):
+            raise ThisIsMadness("samtools couldn't index this bam. "
+                                "It should already be sorted. Abort!")
+    return bamlist
+    
 
 
 @cython.returns(cython.str)
@@ -2240,5 +2298,4 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
                                                 bed=tup[0]) for
                             tup in ziplist],
                            threads=threads,
-                           func=GetOutVCFFromBMFsnvCall,
-                           evalfunc=lambda x: x.split("#")[0].split(" ")[-2])
+                           func=GetOutVCFFromBMFsnvCStr)

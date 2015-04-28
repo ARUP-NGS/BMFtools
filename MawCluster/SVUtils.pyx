@@ -672,8 +672,7 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
             return True
     return False
 
-# SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition,
-# tag="DSI")) # Not until fixed.
+SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition, tag="DSI"))
 
 SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = defaultdict(returnDefault,

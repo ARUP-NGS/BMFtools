@@ -5,6 +5,7 @@ import cython
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl)
+from utilBMF.ErrorHandling import ThisIsMadness
 cimport pysam.calignmentfile
 
 """
@@ -91,17 +92,33 @@ def GetFreebayesCallStr(inBAM, ref="default", bed="default",
     """
     Used to call freebayes for indel calling.
     """
+    if(outVCF == "default"):
+        outVCF = ".".join(inBAM.split(".")[:-1]) + ".fb.vcf"
+    if(ref == "default"):
+        raise ThisIsMadness("Reference required for freebayes call.")
+    if(bed == "default"):
+        raise ThisIsMadness("Bed file require for freebayes call currently. "
+                            "If there is sufficient demand for an all-regions"
+                            " call, I can add that option.")
     if(ploidy < 0):
         pl("Ploidy less than 0. Defaulting to report best N alleles.")
         cStr = ("freebayes -v %s -t %s -f %s " % (outVCF, bed, ref) +
                 "-q %s -m %s --haplotype-length" % (minBQ, minMQ) +
-                "%s -D %s " % (haplotypeLength, rdf) +
+                " %s -D %s " % (haplotypeLength, rdf) +
                 "--min-alternate-fraction 0 --pooled-continuous")
     else:
         pl("Ploidy set: %s" % ploidy)
         cStr = ("freebayes -v %s -t %s -f %s " % (outVCF, bed, ref) +
                 "-q %s -m %s --haplotype-length" % (minBQ, minMQ) +
-                "%s -D %s " % (haplotypeLength, rdf) +
+                " %s -D %s " % (haplotypeLength, rdf) +
                 "--min-alternate-fraction 0 --pooled-continuous" +
                 " -p %s --use-best-n-alleles %s" % (ploidy, bestNAlleles))
     return cStr
+
+
+@cython.returns(cython.str)
+def GetFBOutVCFFromStr(cython.str cStr):
+    """
+    Gets out vcf from freebayes call. Used for parallelization.
+    """
+    return cStr.split(" ")[2]

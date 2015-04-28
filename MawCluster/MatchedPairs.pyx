@@ -11,6 +11,7 @@ from utilBMF.HTSUtils import makeinfodict, makeformatdict, pl, ThisIsMadness
 from subprocess import check_output
 import sys
 import logging
+from math import sqrt as msqrt
 asVCF = pysam.asVCF()
 cimport pysam.TabProxies
 cimport numpy as np
@@ -31,11 +32,21 @@ def GetObservedAAFCeiling(cython.long AC, cython.long DOC,
 def TestTumorVsNormal(cython.long tAC, cython.long tDOC,
                       cython.long nAC, cython.long nDOC,
                       dtype128_t pVal=defaultPValue):
+    """
+    Tests whether the quantity of a variant in a tumor sample analyzed for
+    somatic variants is significantly different from the corresponding
+    variant in the matched normal.
+    PartialPVal takes the 1 / (sqrt(1-p)) so that when it is squared, it
+    becomes the pVal of TestTumorVsNormal.
+    Handles the numeric
+    """
     cdef dtype128_t nMaxAAF, tumorMaxNoise
-    nMaxAAF = GetObservedAAFCeiling(nAC, nDOC, pVal=pVal)
-    tumorMaxNoise = GetCeiling(tDOC, p=nMaxAAF, pVal=pVal)
+    PartialPVal = 1 - msqrt(1 - pVal)
+    nMaxAAF = GetObservedAAFCeiling(nAC, nDOC, pVal=PartialPVal)
+    tumorMaxNoise = GetCeiling(tDOC, p=nMaxAAF, pVal=PartialPVal)
     if(tAC / (1. * tDOC) > (tumorMaxNoise)):
         return True
+    return False
 
 
 @cython.returns(cython.bint)
@@ -45,6 +56,9 @@ def TumorVNormalVCFProxy(pysam.TabProxies.VCFProxy tumor,
     Tests if a variant in a tumor should be filtered out or not given
     evidence from a paired normal.
     """
+    if normal is None:
+        raise ThisIsMadness("normal for TumorVNormalVCFProxy must be a "
+                            "VCF Proxy Object, not None!")
     tInfoDict = makeinfodict(tumor)
     tFormatDict = makeformatdict(tumor)
     nInfoDict = makeinfodict(normal)
@@ -65,6 +79,7 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     cdef pysam.TabProxies.VCFProxy rec, nRec, i
     cdef cython.long nDOC, nAC
     cdef dtype128_t nMaxAAF
+    cdef cython.str f
     if(normal == "default"):
         raise ThisIsMadness("Noraml VCF required for T/N filtering.")
     if(outVCF == "default"):
@@ -80,11 +95,12 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     for rec in tumorIterator:
         # Load all records with precisely our ref record's position
         try:
-            normalRecs = list(nhf(rec.contig + ":" + str(rec.pos - 5) +
-                                  "-" + str(rec.pos + 5)))
+            normalRecs = list(nhf(rec.contig + ":" + str(rec.pos - 3) +
+                                  "-" + str(rec.pos + 3)))
         except ValueError:
             pl("Looks like contig %s just isn't in the tabix'd" % rec.contig +
                "file. Give up - continuing!", level=logging.DEBUG)
+            outVCF.write(str(rec) + "\n")
             continue
         normalRecs = [i for i in normalRecs if i.ref == rec.ref and
                       i.pos == rec.pos]
@@ -94,15 +110,18 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
         if(nAllelesAtPos == 0):
             pl("No variants called at normal position. %s" % str(rec),
                level=logging.DEBUG)
+            outVCF.write(str(rec) + "\n")
             continue
         if(len(normalRecs) == 0):
             pl("Looks like this variant: "
-               "%s wasn't called at all." % (str(rec)))
+               "%s wasn't called at all in the normal." % (str(rec)),
+               level=logging.DEBUG)
+            outVCF.write(str(rec) + "\n")
             continue
         nRec = normalRecs[0]
         VariantPasses = TestTumorVsNormal(rec, normal=nRec)
         if(not VariantPasses):
-            rFilterList = rec.filter.split(":")
+            rFilterList = rec.filter.split(";")
             if("PASS" in rFilterList):
                 rec.filter = ";".join(sorted([f for f in rFilterList if
                                               f != "PASS"] +

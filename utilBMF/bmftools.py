@@ -312,7 +312,7 @@ def main():
             check_call("cat %s >> %s" % (vcffile, outVCF), shell=True)
         pl("Filtering VCF by bed file. Pre-filter path: %s" % outVCF)
         bedFilteredVCF = BCVCF.FilterVCFFileByBed(
-                    outVCF, bedfile=args.bed)
+                    outVCF, bedfile=config['bed'])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
     if(args.bmfsuites == "snv"):

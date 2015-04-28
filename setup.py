@@ -32,7 +32,7 @@ print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine", "-flto", "-fprefetch-loop-arrays"]
+                "-floop-strip-mine", "-fprefetch-loop-arrays", "-flto"]
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine", "-flto"]
