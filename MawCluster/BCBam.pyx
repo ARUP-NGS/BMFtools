@@ -934,9 +934,10 @@ def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
         if(outBAM == "default"):
             outBAM = ".".join(outBAM.split("."))[:-1] + "."
     pl("Adding RA:z:bwasw tag.")
-    cStr = ("samtools view -h %s | awk 'FS=OFS=\"\t\" {{if(! $1 ~ \"^@\") " % inBAM +
-            "{{print $0, \"RA:z:bwasw\"}} else {{print $0}}}}' | samtools "
-            "view -Sbh > %s" % (tag, tmpfile))
+    cStr = ("samtools view -h %s | " % inBAM +
+            "awk 'FS=OFS=\"\t\" {{if($1 !~ \"^@\") {{print $0, "
+            "\"RA:Z:bwasw\"}} else {{print $0}}}}'"
+            " | samtools view -Sbh - > %s" % (tag, tmpfile))
 
     check_call(cStr, shell=True)
     if(inplace):
