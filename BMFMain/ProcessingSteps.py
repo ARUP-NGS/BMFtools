@@ -157,9 +157,12 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
         BConsFastq1, BConsFastq2 = BCFastq.CutadaptPaired(
             BConsFastq1, BConsFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq)
-    famStats = GetFamSizeStats(
-        BConsFastq1,
-        outfile=".".join(inFastq1.split(".")[0:-1]) + ".famstats.txt")
+    try:
+        famStats = GetFamSizeStats(
+            BConsFastq1,
+            outfile=".".join(inFastq1.split(".")[0:-1]) + ".famstats.txt")
+    except Exception:
+        pl("Exception in calling GetFamSizeStats - don't sweat it, move on.")
     return BConsFastq1, BConsFastq2
 
 

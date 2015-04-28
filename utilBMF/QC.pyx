@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# cython: c_string_type=str, c_string_encoding=ascii
+# cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
 from operator import attrgetter as oag
 from operator import methodcaller as mc
@@ -124,7 +125,6 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     cdef cython.float meanInsert
     cdef cython.long MappedFamReads
     cdef cython.long MappedSingletonReads
-    cdef np.ndarray[dtypei64_t, ndim = 1] allInserts
     outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
     outHandle = open(outfile, "w")
     pl("GetAllQCMetrics running")
@@ -162,19 +162,18 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     print("About to iterate through alignment file to get more QC metrics.")
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     ihIterator = inHandle.next
-    allInserts = nparray([], dtype=np.int64)
-    allFMs = nparray([], dtype=np.int64)
+    allInserts = []
     while True:
         try:
             p = ihIterator()
             MappedReads += 1
-            allInserts = npappend(allInserts, p.template_length)
+            allInserts.append(p.template_length)
             FM = p.opt("FM")
-            allFMs = npappend(allFMs, p.opt("FM"))
             MappedFamReads += FM
         except StopIteration:
             pl("Finished iterating through the BAM file. Exiting loop.")
             break
+    allInserts = np.array(allInserts, dtype=np.int64)
     UnmappedReads = TotalReads - MappedReads
     resultsDict["MappedFamReads"] = MappedFamReads
     resultsDict["UnmappedReads"] = UnmappedReads
