@@ -2139,7 +2139,7 @@ class PopenDispatcher(object):
         lurking, always working, in the night never shirking.
         He hasn't slept since the dawn of time - unweary, inhuman, lost in the
         world that was wild and waste.
-        
+
         It also submits foreground jobs.
         """
         self.submit()
@@ -2226,13 +2226,19 @@ def SplitBamByBed(bampath, bedpath):
 
 
 def SplitBamByBedPysam(bampath, bedpath):
-    bamlist = oig0(GetBamBedList(bampath, bedpath))
+    """
+    Rather than standard split by bed which uses parallel shell calls,
+    instead this does it manually via pysam. Not sure if it's faster or not.
+    """
+    cdef pysam.calignmentfile.AlignedSegment rec
+    cdef pysam.calignmentfile.AlignmentFile inHandle
+    bamlist = map(oig0, GetBamBedList(bampath, bedpath))
     refContigStrList = [i[1].split(".")[-2] for i in bamlist]
     inHandle = pysam.AlignmentFile(bampath, "rb")
     refHandleMap = dict([(ChrToPysamDict[bam.split(".")[-2]],
                           pysam.AlignmentFile(bam, "wb",
                                               template=inHandle)) for
-                       bam in bamlist])
+                         bam in bamlist])
     for rec in inHandle:
         if(rec.is_unmapped):
             continue
@@ -2246,7 +2252,6 @@ def SplitBamByBedPysam(bampath, bedpath):
             raise ThisIsMadness("samtools couldn't index this bam. "
                                 "It should already be sorted. Abort!")
     return bamlist
-    
 
 
 @cython.returns(cython.str)
