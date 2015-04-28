@@ -2128,8 +2128,7 @@ class PopenDispatcher(object):
                 self.completed += 1
                 self.outstrs[
                     d.commandString] = self.getReturnValue(d.commandString)
-                d.popen.terminate()
-                self.dispatches.remove(d)
+                del d
         return len(self.dispatches)
 
     def daemon(self):
@@ -2232,13 +2231,16 @@ def SplitBamByBedPysam(bampath, bedpath):
     """
     cdef pysam.calignmentfile.AlignedSegment rec
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    bamlist = map(oig0, GetBamBedList(bampath, bedpath))
-    refContigStrList = [i[1].split(".")[-2] for i in bamlist]
+    cdef cython.str bam
+    pl("Getting bamlist.")
+    bamlist = map(oig1, GetBamBedList(bampath, bedpath))
+    refContigNumList = [ChrToPysamDict[bam.split(".")[-2]] for bam in bamlist]
     inHandle = pysam.AlignmentFile(bampath, "rb")
-    refHandleMap = dict([(ChrToPysamDict[bam.split(".")[-2]],
-                          pysam.AlignmentFile(bam, "wb",
-                                              template=inHandle)) for
-                         bam in bamlist])
+    handles = [pysam.AlignmentFile(bam, "wb", template=inHandle) for
+               bam in bamlist]
+    refHandleMap = dict(zip(refContigNumList, handles))
+    # print(repr(refHandleMap))
+    pl("Now splitting bam into one bam per contig.")
     for rec in inHandle:
         if(rec.is_unmapped):
             continue

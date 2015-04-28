@@ -7,6 +7,7 @@ from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl)
 from utilBMF.ErrorHandling import ThisIsMadness
 cimport pysam.calignmentfile
+cimport cython
 
 """
 Contains utilities for working with indels for HTS data.
@@ -23,6 +24,9 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
     idIrl stands for indel irrelevant.
     Input BAM must be name sorted: coordinate sorted is not supported!
     """
+    cdef cython.long idrel
+    cdef cython.long idirl
+    cdef pysam.calignmentfile.AlignedSegment read1, read2, entry
     if(indelOutputBAM == "default"):
         indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["indRel", "bam"])
     if(otherOutputBAM == "default"):
@@ -32,6 +36,8 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
     otherHandle = pysam.AlignmentFile(otherOutputBAM, "wb", template=inHandle)
     ohw = otherHandle.write
     ihw = indelHandle.write
+    idrel = 0
+    idirl = 0
     for entry in inHandle:
         if entry.is_read1:
             read1 = entry
@@ -43,12 +49,16 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
            IsIndelRelevant(read2, minFam=minFamSize)):
             ihw(read1)
             ihw(read2)
+            idrel += 1
         else:
             ohw(read1)
             ohw(read2)
+            idirl += 1
     inHandle.close()
     otherHandle.close()
     indelHandle.close()
+    pl("Finished filtering by indel relevance. Relevant pairs: %s" % idrel +
+       ". Irrelevant pairs: %s" % idirl)
     return indelOutputBAM, otherOutputBAM
 
 
@@ -70,12 +80,6 @@ def IsIndelRelevant(
         return True
     if(FractionSoftClipped(read) >= minSF):
         return True
-    try:
-        if(read.opt("SV") != "NF"):
-            return True
-    except KeyError:
-        # No SV tag was found, not much we can do.
-        pass
     return False
 
 
