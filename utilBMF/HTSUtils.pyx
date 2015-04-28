@@ -1211,7 +1211,7 @@ def ReadPairListToCovCounter(list ReadPairList, cython.long minClustDepth=5,
     # both reads in a pair mapping to the same location.
     for key in PosDuplexCounts.keys():
         PosCounts[key] -= PosDuplexCounts[key]
-    PosCounts = dict([i for i in PosCounts.items()
+    PosCounts = dict([i for i in PosCounts.iteritems()
                       if i[1] >= minClustDepth])
     return PosCounts
 

@@ -68,7 +68,7 @@ def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
     pileups = pPileupColObj.pileups
     ReadNameCounter = cyfreq(map(oag("query_name"),
                                  list(cmap(oag("alignment"), pileups))))
-    readnames = [i[0] for i in ReadNameCounter.items() if i[1] == 2]
+    readnames = [i[0] for i in ReadNameCounter.iteritems() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
                    key=lname)
     readpairs = list(cmap(PileupReadPair, ctpartition(2, reads)))
@@ -355,7 +355,8 @@ cdef class AlleleAggregateInfo:
         # Check to see if a read pair supports a variant with both ends
         ReadNameCounter = cyfreq(map(oag("query_name"),
                                      map(oag("read"), self.recList)))
-        self.NumberDuplexReads = len([i[0] for i in ReadNameCounter.items()
+        self.NumberDuplexReads = len([i[0] for i in
+                                      ReadNameCounter.iteritems()
                                       if i[1] > 1])
         query_positions = nparray(map(
             oag("query_position"), self.recList), dtype=np.float64)
@@ -484,11 +485,11 @@ cdef class PCInfo:
             self.TotalReads = self.MergedReads
         try:
             self.consensus = sorted(cyfreq(
-                list(cmap(oagbc, self.Records))).items(),
+                list(cmap(oagbc, self.Records))).iteritems(),
                                     key=oig1)[-1][0]
         except IndexError:
             self.consensus = sorted(cyfreq(
-                list(cmap(oagbc, list(cmap(PRInfo, pileups))))).items(),
+                list(cmap(oagbc, list(cmap(PRInfo, pileups))))).iteritems(),
                                     key=oig1)[-1][0]
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
