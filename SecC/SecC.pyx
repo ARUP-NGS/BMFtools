@@ -74,7 +74,7 @@ def BuildRunDict(xmlPath, makeGlobal=True):
             tileNum = tile.values()[0]
             Raw = tile.getchildren()[0]
             ClusterCount = Raw.getchildren()[0].text
-            for i in range(1, len(Raw)):
+            for i in xrange(1, len(Raw)):
                 tmpDict = {}
                 tmpDict["Yield"] = Raw[i].getchildren()[0].text
                 tmpDict["YieldQ30"] = Raw[i].getchildren()[1].text

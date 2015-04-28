@@ -514,7 +514,7 @@ cdef class PCInfo:
                               AAMBP=self.AAMBP, AABPSD=self.AABPSD,
                               minFracAgreed=minFracAgreed, minFA=minFA,
                               minPVFrac=minPVFrac, FSR=self.FailedSVReads)
-                              for key in self.VariantDict.keys()]
+                              for key in self.VariantDict.iterkeys()]
         self.AltAlleleData = [alt for alt in self.AltAlleleData if
                               oag("len")(alt) != 0]
         # Generates statistics based on transitions, e.g. ref->alt
@@ -563,10 +563,10 @@ cdef class PCInfo:
                 alt.ALT] = alt.ReverseTotalReads / alt.TotalReads
         self.MergedStrandednessStr = "\t".join([
             str(self.MergedStrandednessRatioDict[
-                key]) for key in self.MergedStrandednessRatioDict.keys()])
+                key]) for key in self.MergedStrandednessRatioDict.iterkeys()])
         self.TotalStrandednessStr = "\t".join([
             str(self.TotalStrandednessRatioDict[
-                key]) for key in self.TotalStrandednessRatioDict.keys()])
+                key]) for key in self.TotalStrandednessRatioDict.iterkeys()])
         self.AlleleFreqStr = "\t".join(
             list(cmap(str, [self.contig,
                             self.pos,

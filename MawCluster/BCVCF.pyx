@@ -211,7 +211,7 @@ class VCFRecord:
         self.str = recordStr.strip()
 
     def update(self):
-        self.InfoKeys = sorted(self.InfoDict.keys())
+        self.InfoKeys = sorted(self.InfoDict.iterkeys())
         self.InfoValues = [self.InfoDict[key] for key in self.InfoKeys]
         infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
                           InfoValue in zip(self.InfoKeys, self.InfoValues)]
@@ -229,7 +229,7 @@ class VCFRecord:
                     self.InfoArrayDict['I16'] = [
                         int(decimal.Decimal(
                             i)) for i in self.InfoArrayDict['I16']]
-        self.GenotypeKeys = sorted(self.GenotypeDict.keys())
+        self.GenotypeKeys = sorted(self.GenotypeDict.iterkeys())
         self.GenotypeValues = [self.GenotypeDict[key] for key
                                in self.GenotypeKeys]
         self.FORMAT = ":".join(self.GenotypeKeys)
@@ -394,7 +394,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
             TransitionCountsPASSDict[RefCons + "-->" + Var] = len(
                 TransitionPASSDict[RefCons + "-->" + Var])
     for RefCons in ["A", "C", "G", "T"]:
-        for key in TransitionCountsDict.keys():
+        for key in TransitionCountsDict.iterkeys():
             if key[0] == RefCons:
                 try:
                     RefConsCallsCountsDict[
@@ -409,7 +409,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
                         RefCons] = TransitionCountsPASSDict[key]
     MeanAlleleFractionDict = {}
     MeanAlleleFractionPASSDict = {}
-    for key in TransitionCountsDict.keys():
+    for key in TransitionCountsDict.iterkeys():
         MeanAlleleFractionDict[key] = nmean(
             [float(rec.InfoDict['AF']) for rec in
                 TransitionDict[key] if float(rec.InfoDict['AF']) < 0.1])
@@ -418,7 +418,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
              TransitionPASSDict[key] if float(rec.InfoDict['AF']) < 0.1])
     TransitionFractionForRefConsDict = {}
     TransitionFractionForRefConsPASSDict = {}
-    for key in TransitionCountsDict.keys():
+    for key in TransitionCountsDict.iterkeys():
         try:
             TransitionFractionForRefConsDict[
                 key] = (1. * TransitionCountsDict[key] /
@@ -431,7 +431,7 @@ def VCFStats(inVCF, TransCountsTable="default"):
                         RefConsCallsCountsPASSDict[key[0]])
         except ZeroDivisionError:
             TransitionFractionForRefConsPASSDict[key] = 0
-    for key in TransitionCountsDict.keys():
+    for key in TransitionCountsDict.iterkeys():
         TransCountsTableHandle.write("\t".join(
             [str(i)[0:8] for i in [key,
                                    TransitionCountsDict[key],
@@ -583,8 +583,8 @@ def SplitVCFRecMultipleAlts(inVCFRecord):
                 else:
                     NewInfoDict[key] = inVCFRecord.InfoDict[key]
                 infoEntryArray = [InfoKey + "=" + InfoValue for InfoKey,
-                                  InfoValue in zip(NewInfoDict.keys(),
-                                                   NewInfoDict.values())]
+                                  InfoValue in zip(NewInfoDict.iterkeys(),
+                                                   NewInfoDict.itervalues())]
                 INFO = (';'.join(infoEntryArray +
                                  inVCFRecord.InfoUnpaired)).replace("\n", "")
             FORMAT = ":".join(inVCFRecord.GenotypeKeys)

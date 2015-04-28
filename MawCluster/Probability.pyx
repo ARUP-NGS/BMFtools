@@ -178,11 +178,11 @@ def SamplingFrac_(n, p=0., k=1):
 @cython.returns(np.ndarray)
 def GetUnscaledProbs(n, p=0.):
     """
-    Calculates the probability moments for k in range(n + 1).
+    Calculates the probability moments for k in xrange(n + 1).
     This uses a factorial, primarily for
     speed, but it's also definitely good enough.
     """
-    return nparray([SamplingFrac(n, p=p, k=k) for k in range(n + 1)],
+    return nparray([SamplingFrac(n, p=p, k=k) for k in xrange(n + 1)],
                    dtype=np.longdouble)
 
 
@@ -191,11 +191,11 @@ def GetUnscaledProbs(n, p=0.):
 @cython.returns(np.ndarray)
 def GetUnscaledProbs_(n, p=0.):
     """
-    Calculates the probability moments for k in range(n + 1).
+    Calculates the probability moments for k in xrange(n + 1).
     This uses Stirling's approximation instead of factorial, primarily for
     speed, but it's also definitely good enough.
     """
-    return nparray([SamplingFrac_(n, p=p, k=k) for k in range(n + 1)],
+    return nparray([SamplingFrac_(n, p=p, k=k) for k in xrange(n + 1)],
                    dtype=np.longdouble)
 
 

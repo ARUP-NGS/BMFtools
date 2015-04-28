@@ -202,7 +202,7 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
     probs = nmultiply(lenR, R[0].letter_annotations['phred_quality'],
                       dtype=np.int64)
     numAgreed = nparray([sum([seq[i] == finalSeq[i] for seq in seqs])
-                         for i in range(len(finalSeq))], dtype=np.int64)
+                         for i in xrange(len(finalSeq))], dtype=np.int64)
     TagString = "".join([" #G~FA=", ",".join(numAgreed.astype(str)),
                          " #G~FM=", str(lenR),
                          " #G~PV=", ",".join(probs.astype(str))])
@@ -264,7 +264,7 @@ def compareFastqRecordsInexactNumpy(R):
     phredQuals[phredQuals == 0] = 93
     phredQuals[phredQuals < 0] = 0
     numFamAgreed = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for
-                            i in range(len(seqs[0]))], dtype=np.int64)
+                            i in xrange(len(seqs[0]))], dtype=np.int64)
     TagString = "".join([" #G~FA=",
                          ",".join(numFamAgreed.astype(str)),
                          " #G~FM=", str(len(R)),
@@ -330,7 +330,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     elif(hybrid):
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
-                  range(len(finalSeq))], dtype=np.int64)
+                  xrange(len(finalSeq))], dtype=np.int64)
     phredQuals = nparray([chr2ph[i] for i in list(R[0].quality)],
                          dtype=np.int64)
     phredQuals[phredQuals < 3] = 0
@@ -423,7 +423,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
                            nsum(qualAllSum, 0, dtype=np.int64),
                            dtype=np.int64)
     FA = nparray([sum([seq[i] == newSeq[i] for seq in seqs]) for i in
-                  range(len(newSeq))], dtype=np.int64)
+                  xrange(len(newSeq))], dtype=np.int64)
     ND = lenR * len(seqs[0]) - nsum(FA)
     if(npany(nless(phredQuals, 0))):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)

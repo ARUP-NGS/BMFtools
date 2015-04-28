@@ -115,50 +115,34 @@ def SNVCrawler(inBAM,
                              FORMATTags=FORMATTags))
     if(bedSet):
         pl("Bed file provided - iterating through bed columns")
-        if(parallel):
-            pl("About to make parallel call. WHOO!")
-            dispatcher = GetPopenDispatcherICRs(
-                bedlines, inBAM, minMQ=minMQ, minFA=minFA, minBQ=minBQ,
-                experiment=experiment, minFracAgreed=minFracAgreed,
-                MaxPValue=MaxPValue,
-                ref=reference, keepConsensus=keepConsensus, threads=2)
-            dispatcher.submit()
-            if dispatcher.daemon() == 0:
-                ohw("\n".join(dispatcher.outstrs.values()) + "\n")
-            else:
-                raise CalledProcessError(sum(
-                    [d.poll() for d in dispatcher.dispatches],
-                    "\n".join([d.commandString for
-                               d in dispatcher.dispatches])))
-        else:
-            for line in bedlines:
-                pl("Making pileup call.")
-                ICR = pileupCall(line[0], line[1],
-                                 max_depth=200000,
-                                 multiple_iterators=False)
-                PileupIt = ICR.next
-                while True:
-                    try:
-                        pPC = pPileupColumn(PileupIt())
-                    except StopIteration:
-                        pl("Finishing iterations for bed line: %s" % repr(
-                            line))
-                        break
-                    except ValueError:
-                        pl("Pysam's heinous errors in iteratio.")
-                        pl("Region: %s" % repr(line))
-                        raise ValueError(repr(line))
-                    posStr, discReads = pPileupColToVCFLines(
-                        pPC, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
-                        minFracAgreed=minFracAgreed, experiment=experiment,
-                        MaxPValue=MaxPValue, refHandle=refHandle,
-                        keepConsensus=keepConsensus, reference=reference)
-                    if(len(posStr) != 0):
-                        ohw(posStr + "\n")
-                    if(pPC.reference_pos > line[2]):
-                        pl("Whoops - looks like I'm calling outside of "
-                           "the bed region. Continue!")
-                        break
+        for line in bedlines:
+            pl("Making pileup call.")
+            ICR = pileupCall(line[0], line[1],
+                             max_depth=200000,
+                             multiple_iterators=False)
+            PileupIt = ICR.next
+            while True:
+                try:
+                    pPC = pPileupColumn(PileupIt())
+                except StopIteration:
+                    pl("Finishing iterations for bed line: %s" % repr(
+                        line))
+                    break
+                except ValueError:
+                    pl("Pysam's heinous errors in iteratio.")
+                    pl("Region: %s" % repr(line))
+                    raise ValueError(repr(line))
+                posStr, discReads = pPileupColToVCFLines(
+                    pPC, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
+                    minFracAgreed=minFracAgreed, experiment=experiment,
+                    MaxPValue=MaxPValue, refHandle=refHandle,
+                    keepConsensus=keepConsensus, reference=reference)
+                if(len(posStr) != 0):
+                    ohw(posStr + "\n")
+                if(pPC.reference_pos > line[2]):
+                    pl("Whoops - looks like I'm calling outside of "
+                       "the bed region. Continue!")
+                    break
     else:
         ICAR = pileupCall(max_depth=200000, multiple_iterators=False)
         PileupIt = ICAR.next

@@ -99,7 +99,7 @@ def RevCmp(cython.str seq):
 
 
 PysamToChrDict = {}
-for i in range(22):
+for i in xrange(22):
     PysamToChrDict[i] = str(i + 1)
 PysamToChrDict[-1] = "*"
 PysamToChrDict[22] = "X"
@@ -166,7 +166,7 @@ PysamToChrDict[82] = "GL000225.1"
 PysamToChrDict[83] = "GL000192.1"
 
 ChrToPysamDict = {}
-for i in range(22):
+for i in xrange(22):
     ChrToPysamDict[str(i + 1)] = i
 ChrToPysamDict["*"] = -1
 ChrToPysamDict["X"] = 22
@@ -245,7 +245,7 @@ def GetPysamToChrDict(cython.str alignmentFileText):
          alignmentFileText.split('\n') if i[0:3] == "@SQ"])))
     global ChrToPysamDict
     ChrToPysamDict = {PysamToChrDict[key]: key for key in
-                      PysamToChrDict.keys()}
+                      PysamToChrDict.iterkeys()}
     return
 
 
@@ -1209,7 +1209,7 @@ def ReadPairListToCovCounter(list ReadPairList, cython.long minClustDepth=5,
     PosDuplexCounts = cyfreq(posListDuplex)
     # decrement the counts for each position to account for
     # both reads in a pair mapping to the same location.
-    for key in PosDuplexCounts.keys():
+    for key in PosDuplexCounts.iterkeys():
         PosCounts[key] -= PosDuplexCounts[key]
     PosCounts = dict([i for i in PosCounts.iteritems()
                       if i[1] >= minClustDepth])
@@ -1297,7 +1297,7 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.long minPileupLen=0,
     if(contig == "default"):
         FacePalm("contig required for this function!")
     for k, g in groupby(
-            enumerate(sorted(CounterObj.keys())), lix):
+            enumerate(sorted(CounterObj.iterkeys())), lix):
         posList = list(cmap(oig1, g))
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
@@ -1335,10 +1335,10 @@ Base64ToInt = numconv.NumConv(64).str2int
 Int2Base64 = numconv.NumConv(64).int2str
 
 ph2chrDict = {}
-for i in range(100):
+for i in xrange(100):
     ph2chrDict[i] = chr(i + 33)
 chr2ph = {ph2chrDict[key]: key for key in
-          ph2chrDict.keys()}
+          ph2chrDict.iterkeys()}
 
 """
 @cython.returns(np.int64_t)
@@ -1374,7 +1374,7 @@ def CigarToQueryIndices(cigar):
            " in this list is not a tuple!")
     tuples = []
     c = list(cmap(oig1, cigar))
-    cumSum = [sum(c[:i + 1]) for i in range(len(c))]
+    cumSum = [sum(c[:i + 1]) for i in xrange(len(c))]
     for n, entry in enumerate(cigar):
         if n == 0:
             tuples.append((entry[0], range(entry[1])))
@@ -2172,7 +2172,7 @@ class PopenDispatcher(object):
             threadcount = self.check()
             if(threadcount < self.threadcount and len(self.queue) != 0):
                 self.submit()
-        for key in self.outstrs.keys():
+        for key in self.outstrs.iterkeys():
             if(self.outstrs[key] is None):
                 print("fgStrs: %s" % ":".join(self.fgStrs))
                 print("bgStrs: %s" % ":".join(self.bgStrs))

@@ -76,7 +76,7 @@ def dupDistribution(size):
         for count, i in enumerate(dupHist)1. * :
             cdf.append(np.sum(dupHist[0:count]))
         '''
-        bins = [np.sum(dupHist[0:i]) for i in range(size)] / np.max()
+        bins = [np.sum(dupHist[0:i]) for i in xrange(size)] / np.max(dupHist)
         try:
             dupHist[np.nonzero(bins > np.random.random())[0][0] + 1] += 1
             # Increases the number of molecules duplicated as many times as

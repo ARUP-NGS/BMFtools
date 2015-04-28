@@ -401,15 +401,15 @@ class TranslocationVCFLine:
         self.FormatFields = {}
         self.InfoStr = ";".join(
             ["=".join([key, str(self.InfoFields[key])])
-             for key in sorted(self.InfoFields.keys())])
+             for key in sorted(self.InfoFields.iterkeys())])
         if(len(self.FormatFields.keys()) == 0):
             self.FormatStr = "\t"
         else:
             self.FormatStr = (
-                ":".join(sorted(self.FormatFields.keys())) +
+                ":".join(sorted(self.FormatFields.iterkeys())) +
                 "\t" + ":".join(str(
                     self.FormatFields[key]) for key in sorted(
-                        self.FormatFields.keys())))
+                        self.FormatFields.iterkeys())))
         self.str = "\t".join([str(i) for i in [self.CHROM,
                                                self.POS,
                                                self.ID,
@@ -421,16 +421,16 @@ class TranslocationVCFLine:
                                                self.FormatStr]])
 
     def update(self):
-        self.FormatKey = ":".join(sorted(self.FormatFields.keys()))
+        self.FormatKey = ":".join(sorted(self.FormatFields.iterkeys()))
         self.FormatValue = ":".join([str(self.FormatFields[key])
                                      for key in
-                                     sorted(self.FormatFields.keys())])
-        self.FormatStr = (":".join(sorted(self.FormatFields.keys())) + "\t" +
+                                     sorted(self.FormatFields.iterkeys())])
+        self.FormatStr = (":".join(sorted(self.FormatFields.iterkeys())) + "\t" +
                           ":".join(
                               str(self.FormatFields[key])
-                              for key in sorted(self.FormatFields.keys())))
+                              for key in sorted(self.FormatFields.iterkeys())))
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
-                                 for key in sorted(self.InfoFields.keys())])
+                                 for key in sorted(self.InfoFields.iterkeys())])
 
     def __str__(self):
         self.update()
@@ -694,7 +694,7 @@ def MarkSVTags(pysam.calignmentfile.AlignedSegment read1,
         raise ThisIsMadness("Bed file required for marking SV tags.")
     SVParamDict['ORB'] = bedObj
     SVParamDict['LI'] = maxInsert
-    FeatureList = sorted([i for i in SVTestDict.keys()])
+    FeatureList = sorted([i for i in SVTestDict.iterkeys()])
     SVR = False
     assert read1.query_name == read2.query_name
     # print("SVParamDict: {}".format(repr(SVParamDict)))
@@ -796,9 +796,7 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     bed = ParseBed(bedfile)
     SVParamDict['ORB'] = bed
     SVParamDict['LI'] = maxInsert
-    SVCountDict = {}
-    for key in SVTestDict.keys():
-        SVCountDict[key] = 0
+    SVCountDict = {key: 0 for key in SVTestDict.iterkeys()}
     SVCountDict['NOSVR'] = 0  # "No Structural Variant Relevance"
     SVCountDict['SVR'] = 0  # "Structural Variant-Relevant"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
@@ -818,13 +816,13 @@ def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
     inHandle.close()
     FullOutHandle.close()
     SVCountDict["TOTAL"] = SVCountDict["SVR"] + SVCountDict["NOSVR"]
-    for key in SVCountDict.keys():
+    for key in SVCountDict.iterkeys():
         pl("Number of reads marked with key {}: {}".format(
             key, SVCountDict[key]))
     if(summary != "default"):
         writeSum = open(summary, "w")
         writeSum.write("#Category\tCount\tFraction\n")
-        for key in SVCountDict.keys():
+        for key in SVCountDict.iterkeys():
             if(SVCountDict['TOTAL'] == 0):
                 pl("No reads marked with SV tag - something has gone wrong.")
                 pl("WARNING!!!!!! SV analysis failed!")

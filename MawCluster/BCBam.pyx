@@ -675,7 +675,7 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
             except StopIteration:
                 break
         descDict = getdesc(tempRead.description)
-        for key in descDict.keys():
+        for key in descDict.iterkeys():
             entry.setTag(key, descDict[key])
         if("Pass" not in descDict["FP"]):
             pl(("Standard filter for barcode failed! Val: {}".format(
