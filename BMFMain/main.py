@@ -365,7 +365,8 @@ def main(argv=None):
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner, rLen=readLength, minAF=minAF)
+                    realigner=realigner, rLen=readLength, minAF=minAF,
+                    opts=opts)
             else:
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,
@@ -373,7 +374,8 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov), abrapath=abrapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner, rLen=readLength, minAF=minAF)
+                    realigner=realigner, rLen=readLength, minAF=minAF,
+                    opts=opts)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(
@@ -404,7 +406,8 @@ def main(argv=None):
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, rLen=readLength,
-                    minAF=minAF, realigner=realigner, dbsnp=dbsnp)
+                    minAF=minAF, realigner=realigner, dbsnp=dbsnp,
+                    opts=opts)
             else:
                 procSortedBam = ps.pairedBamProc(
                     args.fq[0],
@@ -414,7 +417,8 @@ def main(argv=None):
                     bed=bed,
                     mincov=int(args.minCov),
                     abrapath=abrapath,
-                    picardPath=picardPath, rLen=readLength)
+                    picardPath=picardPath, rLen=readLength,
+                    opts=opts)
             pl("Beginning VCF processing.")
             CleanParsedVCF = ps.pairedVCFProc(
                 procSortedBam,

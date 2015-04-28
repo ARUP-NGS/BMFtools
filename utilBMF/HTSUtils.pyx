@@ -2167,7 +2167,7 @@ class PopenDispatcher(object):
                 time.sleep(5)
             self.check()
         print("All jobs submitted! Yay.")
-        while(self.check() > 0):
+        while(self.check() > 0 and len(self.queue != 0)):
             time.sleep(5)
             threadcount = self.check()
             if(threadcount < self.threadcount and len(self.queue) != 0):
@@ -2275,7 +2275,8 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
               "SNVCrawler('%s', bed='%s', minMQ=" % (bampath, bed) +
               "%s, minBQ=%s, minFA=%s, " % (minMQ, minBQ, minFA) +
               "minFracAgreed=%s, MaxPValue=" % (minFracAgreed) +
-              "%s, reference='%s', OutVCF='%s')" % (MaxPValue, ref, outVCF))
+              "%s, reference='%s', OutVCF='%s'," % (MaxPValue, ref, outVCF) +
+              "writeHeader=False)")
     return ("bmftools snv --conf %s %s " % (conf, bampath) +
             "--bed %s --is-slave --outVCF %s #%s" % (bed, outVCF, FnCall))
 

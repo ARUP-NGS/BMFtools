@@ -425,12 +425,15 @@ class TranslocationVCFLine:
         self.FormatValue = ":".join([str(self.FormatFields[key])
                                      for key in
                                      sorted(self.FormatFields.iterkeys())])
-        self.FormatStr = (":".join(sorted(self.FormatFields.iterkeys())) + "\t" +
+        self.FormatStr = (":".join(sorted(self.FormatFields.iterkeys())) +
+                          "\t" +
                           ":".join(
                               str(self.FormatFields[key])
-                              for key in sorted(self.FormatFields.iterkeys())))
+                              for key in
+                              sorted(self.FormatFields.iterkeys())))
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
-                                 for key in sorted(self.InfoFields.iterkeys())])
+                                 for key in
+                                 sorted(self.InfoFields.iterkeys())])
 
     def __str__(self):
         self.update()

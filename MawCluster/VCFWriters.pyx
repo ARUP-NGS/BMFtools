@@ -376,7 +376,10 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
                 raise FunctionCallException(
                     commandString,
                     "Attempt to cat this vcf to final file failed.", -1)
-            check_call("cat %s >> %s" % (vcffile, outVCF), shell=True)
+            check_call("cat %s | grep -v '^#' >> %s" % (vcffile, outVCF),
+                       shell=True)
+             # grep just in case something went wrong.
+             # No need for extra header lines.
         pl("Filtering VCF by bed file. Pre-filter path: %s" % outVCF)
         bedFilteredVCF = BCVCF.FilterVCFFileByBed(
                     outVCF, bedfile=config["bed"])
