@@ -29,8 +29,7 @@ except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine", "-fprefetch-loop-arrays", "-flto",
-                "-floop-nest-optimize", "-fivopts"]
+                "-floop-strip-mine"]
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine", "-flto"]

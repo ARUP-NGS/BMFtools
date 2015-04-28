@@ -2128,7 +2128,7 @@ class PopenDispatcher(object):
                 self.completed += 1
                 self.outstrs[
                     d.commandString] = self.getReturnValue(d.commandString)
-                del d
+                self.dispatches.remove(d)
         return len(self.dispatches)
 
     def daemon(self):
@@ -2145,11 +2145,13 @@ class PopenDispatcher(object):
         while len(self.queue) != 0:
             print("Submitting set of jobs for daemon.")
             self.submit()
-            if(len(self.queue) == 0):
+            newqueue = tee(self.queue, 1)[0]
+            try:
+                nextStr = newqueue.next()
+            except StopIteration:
                 time.sleep(5)
                 continue
-            newqueue = tee(self.queue, 1)[0]
-            if("#" in newqueue.next()):
+            if("#" in nextStr):
                 fgCStr = self.queue.popleft()
                 self.fgStrs.append(fgCStr)
                 print("Foreground submitting job #%s" % self.getJobNumber())
@@ -2166,15 +2168,25 @@ class PopenDispatcher(object):
                 time.sleep(5)
             self.check()
         print("All jobs submitted! Yay.")
-        while(self.check() > 0 and len(self.queue != 0)):
+        while(self.check() > 0 and len(self.queue) != 0):
             time.sleep(5)
             threadcount = self.check()
             if(threadcount < self.threadcount and len(self.queue) != 0):
                 self.submit()
+        while(self.check() != 0):
+            """
+            while(sum([d.popen.poll() is not None for d in
+                       self.dispatches]) < len(self.dispatches)):
+                pl("Sleeping because some jobs haven't returned yet.")
+                time.sleep(5)
+            """
+            pl("Sleeping because some jobs haven't returned yet.")
+            time.sleep(5)
         for key in self.outstrs.iterkeys():
             if(self.outstrs[key] is None):
                 print("fgStrs: %s" % ":".join(self.fgStrs))
                 print("bgStrs: %s" % ":".join(self.bgStrs))
+                print(repr(self.outstrs))
                 raise ThisIsMadness(
                     "Command string %s has a key value of None!" % key)
         if("cleanup" in dir(self)):
@@ -2292,14 +2304,18 @@ def GetUUIDFromCommandString(cython.str cStr):
     return cStr.split("#G~")[1]
 
 
-def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4):
+def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
+                   parallel=False):
     """
     Makes a PopenDispatcher object for calling these variant callers.
     """
     if conf == "default":
         raise ThisIsMadness("conf file but be set for GetBMFsnvPopen")
     ziplist = GetBamBedList(bampath, bedpath)
-    SplitBamParallel(bampath, bedpath)
+    if(parallel is True):
+        SplitBamParallel(bampath, bedpath)
+    else:
+        SplitBamByBedPysam(bampath, bedpath)
     pl("Dispatching BMF jobs")
     return PopenDispatcher([BMFsnvCommandString(tup[1],
                                                 conf=conf,
