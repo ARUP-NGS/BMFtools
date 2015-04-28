@@ -266,7 +266,7 @@ Most options are available for command-line as well. If an option is set in both
 
 1. Week of 4/27:
     2. Re-run both PNorm and HDx 1Pct
-        1. Try out the new tumor/normal pair work. :)
+        1. Try out the new tumor/normal pair work. :) {Started the runs.}
     3. Run Wally's samples.
     4. Do work on small indels. (Small indels: Use DSI/DSD)
         1. Looked at sample #7. None of the DSD's looked promising - primarily around highly repetitive regions. :( (I bet that freebayes will just handle that correctly. Eh)

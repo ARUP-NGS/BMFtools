@@ -182,6 +182,8 @@ def main(argv=None):
         experiment = confDict["experiment"]
     if args.experiment != "default":
         experiment = args.experiment
+    if("indelRealigner" in cdk):
+        indelRealigner = confDict["indelRealigner"]
     if("minMQ" in cdk):
         minMQ = int(confDict['minMQ'])
     else:
