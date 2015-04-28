@@ -15,6 +15,7 @@ from operator import div as odiv
 import string
 import uuid
 import sys
+from subprocess import check_call
 
 import numpy as np
 from numpy import array as nparray
@@ -103,7 +104,7 @@ def AbraCadabra(inBAM, outBAM="default",
                           rLen=rLen)
     if(path.isfile(inBAM + ".bai") is False):
         pl("No bam index found for input bam - attempting to create.")
-        subprocess.check_call(['samtools', 'index', inBAM])
+        check_call(['samtools', 'index', inBAM])
         if(path.isfile(inBAM + ".bai") is False):
             inBAM = HTSUtils.CoorSortAndIndexBam(inBAM, outBAM, uuid=True)
     command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
@@ -111,9 +112,9 @@ def AbraCadabra(inBAM, outBAM="default",
                " {} --threads {} ".format(bed, threads) +
                "--working {} --mbq 200".format(working))
     pl("Command: {}.".format(command))
-    subprocess.check_call(shlex.split(command), shell=False)
+    check_call(shlex.split(command), shell=False)
     pl("Deleting abra's intermediate directory.")
-    subprocess.check_call(["rm", "-rf", working])
+    check_call(["rm", "-rf", working])
     if(fixMate):
         pl("Now fixing mates after abra's realignment.")
         tempFilename = tempPrefix + str(
@@ -121,9 +122,9 @@ def AbraCadabra(inBAM, outBAM="default",
         nameSorted = HTSUtils.NameSort(outBAM)
         commandStrFM = "samtools fixmate %s %s -O bam" % (nameSorted,
                                                           tempFilename)
-        subprocess.check_call(shlex.split(commandStrFM))
-        subprocess.check_call(["rm", "-rf", nameSorted])
-        subprocess.check_call(["mv", tempFilename, outBAM])
+        check_call(shlex.split(commandStrFM))
+        check_call(["rm", "-rf", nameSorted])
+        check_call(["mv", tempFilename, outBAM])
     return outBAM
 
 
@@ -147,7 +148,7 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     commandStr = ("java -cp %s abra.KmerSizeEvaluator " % abra +
                   "%s %s %s %s %s" % (rLen, ref, outbed, nt, inbed))
     pl("AbraKmerSizeEvaluator call string: %s" % commandStr)
-    subprocess.check_call(shlex.split(commandStr))
+    check_call(shlex.split(commandStr))
     return outbed
 
 
@@ -156,7 +157,7 @@ def Bam2Sam(inBAM, outsam):
     output = open(outsam, 'w', 0)
     command_str = 'samtools view -h {}'.format(inBAM)
     pl(command_str)
-    subprocess.check_call(shlex.split(command_str), stdout=output, shell=False)
+    check_call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outsam)
 
 
@@ -167,7 +168,7 @@ def BarcodeSort(inBAM, outBAM="default", paired=True):
     outsam = '.'.join(outBAM.split('.')[0:-1]) + ".sam"
     headerCommand = "samtools view -H {}".format(inBAM)
     pl(headerCommand)
-    subprocess.check_call(shlex.split(headerCommand),
+    check_call(shlex.split(headerCommand),
                           shell=False, stdout=outsam)
     pl("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
@@ -224,7 +225,7 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
         dbsnpStr])
     pl("RealignerTargetCreator string: %s" % RTCString)
     try:
-        subprocess.check_call(shlex.split(RTCString))
+        check_call(shlex.split(RTCString))
     except subprocess.CalledProcessError:
         pl("GATK RealignerTargetCreator failed. Still finish the "
            "analysis pipeline...")
@@ -235,7 +236,7 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          dbsnpStr])
     pl("IndelRealignerCall string: %s" % IRCString)
     try:
-        subprocess.check_call(shlex.split(IRCString))
+        check_call(shlex.split(IRCString))
     except subprocess.CalledProcessError:
         pl("GATK IndelRealignment failed. Still finish the analysis pipeline.")
         return inBAM
@@ -625,7 +626,7 @@ def Sam2Bam(insam, outBAM):
     output = open(outBAM, 'w', 0)
     command_str = 'samtools view -Sbh {}'.format(insam)
     pl((command_str))
-    subprocess.check_call(shlex.split(command_str), stdout=output, shell=False)
+    check_call(shlex.split(command_str), stdout=output, shell=False)
     return(command_str, outBAM)
 
 
