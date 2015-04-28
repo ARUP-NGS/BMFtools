@@ -4,8 +4,9 @@ import pysam
 import cython
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
-                              printlog as pl)
+                              printlog as pl, CoorSortAndIndexBam)
 from utilBMF.ErrorHandling import ThisIsMadness
+import os.path
 cimport pysam.calignmentfile
 cimport cython
 
@@ -90,12 +91,16 @@ def GetSCFractionArray(inBAM):
 
 
 def GetFreebayesCallStr(inBAM, ref="default", bed="default",
-                        outVCF="default", ploidy=-1, K=True,
+                        outVCF="default", ploidy=-1,
                         minMQ=1, minBQ=3, haplotypeLength=80,
-                        rdf=1.0, bestNAlleles=10):
+                        rdf=1.0, bestNAlleles=100):
     """
     Used to call freebayes for indel calling.
     """
+    if(os.path.isfile(inBAM + ".bai") is False):
+        pl("BAM must be coordinate-sorted and "
+           "indexed for freebayes to call variants. Doing so!")
+        inBAM = CoorSortAndIndexBam(inBAM)
     if(outVCF == "default"):
         outVCF = ".".join(inBAM.split(".")[:-1]) + ".fb.vcf"
     if(ref == "default"):
@@ -109,14 +114,16 @@ def GetFreebayesCallStr(inBAM, ref="default", bed="default",
         cStr = ("freebayes -v %s -t %s -f %s " % (outVCF, bed, ref) +
                 "-q %s -m %s --haplotype-length" % (minBQ, minMQ) +
                 " %s -D %s " % (haplotypeLength, rdf) +
-                "--min-alternate-fraction 0 --pooled-continuous")
+                "--min-alternate-fraction 0 --pooled-continuous" +
+                " %s" % inBAM)
     else:
         pl("Ploidy set: %s" % ploidy)
         cStr = ("freebayes -v %s -t %s -f %s " % (outVCF, bed, ref) +
                 "-q %s -m %s --haplotype-length" % (minBQ, minMQ) +
                 " %s -D %s " % (haplotypeLength, rdf) +
                 "--min-alternate-fraction 0 --pooled-continuous" +
-                " -p %s --use-best-n-alleles %s" % (ploidy, bestNAlleles))
+                " -p %s --use-best-n-alleles %s" % (ploidy, bestNAlleles) +
+                " %s" % inBAM)
     return cStr
 
 

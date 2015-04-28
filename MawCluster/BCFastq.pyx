@@ -84,7 +84,7 @@ def chr2phFunc(x):
 @cython.locals(checks=cython.int, highMem=cython.bint,
                parallel=cython.bint, inFq1=cython.str,
                inFq2=cython.str, sortMem=cython.str)
-def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=True):
+def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)

@@ -920,6 +920,30 @@ def GetSoftClips(inBAM, failBAM="default", passBAM="default",
                              maxFracSoftClipped=maxFracSoftClipped)
 
 
+def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
+    """
+    Uses sed and samtools view to append a tag to each line of the file
+    not in the header.
+    """
+    tmpfile = str(uuid.uuid4().get_hex()[0:8]) + '.bam'
+    tag = "RA:z:" + RATag
+    if(inplace):
+        pl("Adding RA Tag 'in-place'.")
+    else:
+        if(outBAM == "default"):
+            outBAM = ".".join(outBAM.split("."))[:-1] + "."
+    pl("Adding RA:z:bwasw tag.")
+    cStr = ("samtools view -h %s | sed '/^@/! " % inBAM +
+            "s/$/\t%s/' | samtools view -Sbh > %s" % (tag, tmpfile))
+    check_call(cStr, shell=True)
+    if(inplace):
+        check_call(["mv", tmpfile, inBAM])
+        return inBAM
+    else:
+        check_call(["mv", tmpfile, outBAM])
+        return outBAM
+
+
 def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.25,
                    ref="default", outBAM="default"):
     """
@@ -938,4 +962,5 @@ def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.25,
     SortRealign = HTSUtils.CoorSortAndIndexBam(Realign, delete=True)
     samtoolsMergeBam([SortNoRealign, SortRealign],
                      outBAM=outBAM)
+    AddRATag(outBAM, inplace=True, RATag="bwasw")
     return outBAM
