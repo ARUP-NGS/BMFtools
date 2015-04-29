@@ -28,8 +28,12 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
-compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block"]
+compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
+                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
+                "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
+                "-fprefetch-loop-arrays", "-floop-strip-mine"]
 """
+compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block"]
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine", "-flto"]
 print("Removing all .c files - this is "
@@ -40,10 +44,6 @@ compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine"]
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
                 "-floop-strip-mine"]
-compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
-                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
-                "-fprefetch-loop-arrays", "-floop-strip-mine"]
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
                 "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",

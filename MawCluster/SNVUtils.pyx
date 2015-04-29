@@ -965,7 +965,7 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
                  reference="default", reference_is_path=False,
                  header="default",
                  INFOTags="default",
-                 FORMATTags="default"
+                 FORMATTags="default", sampleName="DefaultSampleName"
                  ):
     HeaderLinesStr = ""
     # fileformat line
@@ -1018,5 +1018,5 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
     HeaderLinesStr += "\t".join(["#CHROM", "POS",
                                  "ID", "REF",
                                  "ALT", "QUAL",
-                                 "FILTER", "INFO"]) + "\n"
+                                 "FILTER", "INFO", sampleName]) + "\n"
     return HeaderLinesStr

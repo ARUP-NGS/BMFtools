@@ -63,7 +63,8 @@ def SNVCrawler(inBAM,
                cython.bint writeHeader=True,
                cython.float minFracAgreed=0.0, cython.long minFA=2,
                cython.str experiment="",
-               cython.bint parallel=False):
+               cython.bint parallel=False,
+               sampleName="DefaultSampleName"):
     cdef cython.long NumDiscordantPairs = 0
     cdef cython.str VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR

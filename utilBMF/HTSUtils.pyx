@@ -1532,7 +1532,7 @@ def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
     if(readPos[0] is None):
         start = len(genPos[0])
     if(readPos[-1] is None):
-        end = len(asList) - len(genPos[-1])
+        end = len(apList) - len(genPos[-1])
     apList = apList[start:end]
     return sorted([i[0] for i in apList if i[1] is None])
 
@@ -1963,15 +1963,21 @@ def MakeVCFProxyDeaminationFilter(dtype128_t ctfreq, dtype128_t conf=1e-3,
                                   key=key, value=value)
 
 
-def SortBgzipAndTabixVCF(inVCF, outVCF="default"):
+def SortBgzipAndTabixVCF(inVCF, outVCF="default",
+                         vcflib=True):
     """
     Sorts and tabix indexes a VCF.
+    If vcflib is True, use vcfstreamsort from ekg's excellent vcf API.
     """
     if(outVCF == "default"):
-        outVCF = ".".join([inVCF.split(".")[-1]]) + "sort.vcf"
-    check_call("zcat %s | head -n 1000 | grep '^#' > %s" % (inVCF, outVCF),
-               shell=True)
-    check_call("zcat %s | grep -v '^#' >> %s" % (inVCF, outVCF), shell=True)
+        outVCF = ".".join([inVCF.split(".")[-1]]) + ".sort.vcf"
+    if(vcflib is False):
+        check_call("zcat %s | head -n 1000 | grep '^#' > %s" % (inVCF, outVCF),
+                   shell=True)
+        check_call("zcat %s | grep -v '^#' >> %s" % (inVCF, outVCF),
+                   shell=True)
+    else:
+        check_call("vcfstreamsort -w 100000 %s > %s" % (inVCF, outVCF))
     check_call(["bgzip", outVCF])
     check_call(["tabix", outVCF + ".gz"])
     return outVCF + ".gz"

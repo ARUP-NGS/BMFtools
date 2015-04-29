@@ -894,19 +894,17 @@ def GetFracSCPartial(cython.float maxFracSoftClipped):
 
 
 def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
-                      func=returnDefault):
+                      func=returnDefault, appendStr=""):
     cdef pysam.calignmentfile.AlignedSegment rec, r1, r2
     cdef pysam.calignmentfile.AlignmentFile inHandle, raHandle, nrHandle
     if(failBAM == "default"):
-        failBAM = ".".join(inBAM.split(".")[:-1] + ["Fail", "bam"])
+        failBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Fail", "bam"])
     if(passBAM == "default"):
-        passBAM = ".".join(inBAM.split(".")[:-1] + ["Pass", "bam"])
-    pl("Now getting inHandle")
+        passBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Pass", "bam"])
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    pl("Now getting outhandles")
     raHandle = pysam.AlignmentFile(failBAM, "wb", template=inHandle)
     nrHandle = pysam.AlignmentFile(passBAM, "wb", template=inHandle)
-    pl("Got outhandles!")
+    pl("Got all handles. Now filtering!")
     for rec in inHandle:
         if(rec.is_read1):
             r1 = rec
@@ -923,12 +921,13 @@ def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
 
 
 def GetSoftClips(inBAM, failBAM="default", passBAM="default",
-                 cython.float maxFracSoftClipped=0.25):
+                 cython.float maxFracSoftClipped=0.5):
     """
     Uses the AbstractBamFilter to get reads with Softclipped Fraction >= 0.25
     """
     return AbstractBamFilter(inBAM, failBAM=failBAM, passBAM=passBAM,
-                             func=GetFracSCPartial(maxFracSoftClipped))
+                             func=GetFracSCPartial(maxFracSoftClipped),
+                             appendStr="SFlt%s" % maxFracSoftClipped)
 
 
 def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
@@ -958,7 +957,7 @@ def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
         return outBAM
 
 
-def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.25,
+def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.5,
                    ref="default", outBAM="default"):
     """
     Realigns reads which have a Softclipped Fraction that is above
