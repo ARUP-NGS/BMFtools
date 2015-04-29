@@ -371,10 +371,11 @@ def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
     if(ref == "default"):
         raise ThisIsMadness("ref required to call bwasw.")
     if(outBAM == "default"):
-        outBAM = ".".join(fq.split(".")[:-1]) + ".bam"
+        outBAM = ".".join(fq1.split(".")[:-1]) + ".bam"
     cStr = "bwa bwasw %s %s %s -f %s" % (ref, fq1, fq2, outBAM)
     pl("About to call bwasw. Command string: %s" % cStr)
-    check_output(cStr)
+    check_call(cStr)
+    return outBAM
 
 
 def BedtoolsBam2Fq(BAM, outfq1="default", outfq2="default"):
@@ -2329,3 +2330,11 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
                             tup in ziplist],
                            threads=threads,
                            func=GetOutVCFFromBMFsnvCStr)
+
+@cython.returns(cython.str)
+def TrimExt(cython.str fname):
+    """
+    Trims the extension from the filename so that I don't have to type this
+    every single time.
+    """
+    return ".".join(fname.split(".")[:-1])

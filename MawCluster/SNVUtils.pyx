@@ -822,6 +822,8 @@ HeaderInfoDict["BSS"] = HeaderInfoLine(
                  "reads on both strands. True or False."),
     Number="1",
     Type="Integer")
+HeaderInfoDict["NS"] = HeaderInfoLine(
+    ID="NS", Description="Number of samples.", Number="1", Type="Integer")
 
 
 """
@@ -1018,5 +1020,6 @@ def GetVCFHeader(fileFormat="default", FILTERTags="default",
     HeaderLinesStr += "\t".join(["#CHROM", "POS",
                                  "ID", "REF",
                                  "ALT", "QUAL",
-                                 "FILTER", "INFO", sampleName]) + "\n"
+                                 "FILTER", "INFO", "FORMAT",
+                                 sampleName]) + "\n"
     return HeaderLinesStr

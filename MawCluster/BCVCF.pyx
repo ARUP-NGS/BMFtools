@@ -452,11 +452,12 @@ def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
     bed = HTSUtils.ParseBed(bedfile)
     outHandle = open(outVCF, "w")
     count = 0
-    header = check_output(
-        "cat %s | head -n 1000 | grep '^#'" % inVCF, shell=True).split("\n")
+    cStr = "cat %s | head -n 1000 | grep '^#'" % inVCF
+    print("Get header string: %s" % (cStr))
+    header = check_output(cStr, shell=True).split("\n")
     header.insert(-1, str(SNVUtils.HeaderCustomLine(
         customKey="FilterVCFFileByBed", customValue=bedfile)))
-    outHandle.write("\n".join(header) + "\n")
+    outHandle.write("\n".join(header))
     inVCF = ParseVCF(inVCF)
     for line in inVCF.Records:
         if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
