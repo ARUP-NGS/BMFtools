@@ -16,6 +16,7 @@ import string
 import uuid
 import sys
 from subprocess import check_call
+from functools import partial
 
 import numpy as np
 from numpy import array as nparray
@@ -883,20 +884,29 @@ def FracSoftclippedTest(pysam.calignmentfile.AlignedSegment rec,
     return True
 
 
+def GetFracSCPartial(cython.float maxFracSoftClipped):
+    """
+    Returns a partial for FracSoftclippedTest so that it can
+    be passed into AbstractBamFilter.
+    """
+    return partial(FracSoftclippedTest,
+                   maxFracSoftClipped=maxFracSoftClipped)
+
+
 def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
                       func=returnDefault):
-    if(func == returnDefault):
-        raise ThisIsMadness("Need a function which returns a boolean "
-                            "for AbstractBamFilter")
-    cdef pysam.calignmentfile.AlignmentFile inHandle, raHandle, nrHandle
     cdef pysam.calignmentfile.AlignedSegment rec, r1, r2
+    cdef pysam.calignmentfile.AlignmentFile inHandle, raHandle, nrHandle
     if(failBAM == "default"):
         failBAM = ".".join(inBAM.split(".")[:-1] + ["Fail", "bam"])
     if(passBAM == "default"):
         passBAM = ".".join(inBAM.split(".")[:-1] + ["Pass", "bam"])
+    pl("Now getting inHandle")
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    raHandle = pysam.AlignmentFile(failBAM, "wb", header=inBAM)
-    nrHandle = pysam.AlignmentFile(passBAM, "wb", header=inBAM)
+    pl("Now getting outhandles")
+    raHandle = pysam.AlignmentFile(failBAM, "wb", template=inHandle)
+    nrHandle = pysam.AlignmentFile(passBAM, "wb", template=inHandle)
+    pl("Got outhandles!")
     for rec in inHandle:
         if(rec.is_read1):
             r1 = rec
@@ -918,7 +928,7 @@ def GetSoftClips(inBAM, failBAM="default", passBAM="default",
     Uses the AbstractBamFilter to get reads with Softclipped Fraction >= 0.25
     """
     return AbstractBamFilter(inBAM, failBAM=failBAM, passBAM=passBAM,
-                             maxFracSoftClipped=maxFracSoftClipped)
+                             func=GetFracSCPartial(maxFracSoftClipped))
 
 
 def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
@@ -958,13 +968,20 @@ def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.25,
         outBAM = ".".join(inBAM.split()[:-1]) + ".SWRealigned.ban"
     if(ref == "default"):
         raise ThisIsMadness("ref required for bwasw alignment.")
+    print("Getting soft-clipped reads for bwasw realignment")
     NoRealign, Realign = GetSoftClips(
         inBAM, maxFracSoftClipped=maxFracSoftClipped)
+    pl("Now converting bam to fastq")
     ReadFastq1, ReadFastq2 = BedtoolsBam2Fq(Realign)
+    pl("bwasw call!")
     RealignedBAM = BwaswCall(ReadFastq1, ReadFastq2, ref=ref)
+    pl("Sorting the unrealigned bam!")
     SortNoRealign = HTSUtils.CoorSortAndIndexBam(NoRealign, delete=True)
+    pl("Sorting the realigned bam!")
     SortRealign = HTSUtils.CoorSortAndIndexBam(Realign, delete=True)
+    pl("Merging the bams!")
     samtoolsMergeBam([SortNoRealign, SortRealign],
                      outBAM=outBAM)
+    pl("Adding the RA tag")
     AddRATag(outBAM, inplace=True, RATag="bwasw")
     return outBAM
