@@ -265,9 +265,12 @@ Most options are available for command-line as well. If an option is set in both
     3. Work on interchromosomal translocations
 
 1. Week of 4/27:
-    2. Re-run both PNorm and HDx 1Pct
+    2. Re-run both PNorm and HDx 1Pct (In Progress)
         1. Try out the new tumor/normal pair work. :) {Started the runs.}
-    3. Run Wally's samples.
+    3. Run Wally's samples. (In progress)
     4. Do work on small indels. (Small indels: Use DSI/DSD)
         1. Looked at sample #7. None of the DSD's looked promising - primarily around highly repetitive regions. :( (I bet that freebayes will just handle that correctly. Eh)
         2. I don't trust myself to handle the variant-calling for these. I'll let freebayes handle this.
+    5. Follow-up on 4. Freebayes couldn't find the bigger indel. Building the kmer idea.
+    6. Add a variant annotation for shannon entropy of surrounding sequence. **
+    7. Start working on the kmer uniquely-mappability (does that make grammatical sense?) problem.

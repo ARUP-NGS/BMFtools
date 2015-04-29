@@ -4,9 +4,13 @@ import pysam
 import cython
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
-                              printlog as pl, CoorSortAndIndexBam)
+                              printlog as pl, CoorSortAndIndexBam,
+                              GetKmersToCheck, FastqStrFromKmerList,
+                              BowtieFqToStr, GetMQPassReads)
 from utilBMF.ErrorHandling import ThisIsMadness
 import os.path
+import uuid
+from cytoolz.itertoolz import frequencies as cyfreq
 cimport pysam.calignmentfile
 cimport cython
 
@@ -133,3 +137,16 @@ def GetFBOutVCFFromStr(cython.str cStr):
     Gets out vcf from freebayes call. Used for parallelization.
     """
     return cStr.split(" ")[2]
+
+
+def GetUniquelyMappableKmers():
+    """
+    GetKmersToCheck
+    FastqStrFromKmerList
+    BowtieFqToStr
+    GetMQPassReads
+    Uses the above 4 functions from HTSUtils to get a list of kmers which can
+    be considered unique identifiers for
+    reads belonging to this region of the genome.
+    """
+    pass

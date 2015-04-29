@@ -372,9 +372,10 @@ def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
         raise ThisIsMadness("ref required to call bwasw.")
     if(outBAM == "default"):
         outBAM = ".".join(fq1.split(".")[:-1]) + ".bam"
-    cStr = "bwa bwasw %s %s %s -f %s" % (ref, fq1, fq2, outBAM)
+    cStr = "bwa bwasw %s %s %s | samtools view -Sbh -s > %s" % (ref, fq1, fq2,
+                                                                outBAM)
     pl("About to call bwasw. Command string: %s" % cStr)
-    check_call(cStr)
+    check_call(cStr, shell=True)
     return outBAM
 
 
@@ -2338,3 +2339,81 @@ def TrimExt(cython.str fname):
     every single time.
     """
     return ".".join(fname.split(".")[:-1])
+
+
+@cython.returns(cython.str)
+def NPadSequence(cython.str seq, cython.long n=300):
+    """
+    Pads a sequence with "n" Ns.
+    """
+    return "N" * n + seq + "N" * n
+
+
+@cython.returns(cython.str)
+def FastaStyleSequence(cython.str seq):
+    return ">" + seq + "\n" + seq
+
+
+@cython.returns(cython.str)
+def SequenceToFakeFq(cython.str seq):
+    return ("@" + seq + "\n" + seq +
+            "\n+\n" + "G" * len(seq))
+
+
+
+@cython.returns(list)
+def GetKmersToCheck(cython.str ref, cython.long k=30, list bedline=[],
+                    cython.long padding=-1):
+    """
+    Gets a list of kmers which provide unique mappability
+    to the region of interest.
+    bedline should be the first 3 columns from a line in a bed file.
+    """
+    cdef cython.long i, start, end
+    cdef list kmerList, candidateKmers
+    if(padding < 0):
+        pl("Padding not set - defaults to kmer size.")
+        padding = k
+    kmerList = []
+    refHandle = pysam.FastaFile(ref)
+    contig, start = bedline[0], bedline[1] - padding
+    end = bedline[2] + padding
+    regionStr = refHandle.fetch(contig, start, end)
+    return [regionStr[i:i + k] for i in xrange(end - start - k)]
+
+
+@cython.returns(cython.str)
+def FastqStrFromKmerList(list kmerList):
+    """
+    Creates a dummy fastq string from a list of kmers.
+    """
+    return "\n".join(map(SequenceToFakeFq, kmerList))
+
+
+@cython.returns(cython.str)
+def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
+                 cython.long mismatches=None, cython.long seed=None):
+    """
+    Returns the string output of a bowtie call.
+    """
+    cStr = ("echo %s | bowtie -a -n %s -l %s %s" % (fqStr, mismatches,
+                                                 seed, ref) + " -1 -")
+    return check_output(cStr, shell=True)
+
+
+@cython.returns(list)
+def GetMQPassReads(cython.str bwtStr, cython.long minMQ=1):
+    """
+    Takes a string output from bowtie and gets the names of the reads
+    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
+    """
+    cdef list readnames
+    cdef cython.str line
+    cdef tuple nameCount
+    readnames = [line.split("\t")[0] for line in bwtStr.split("\n") if
+                 line[0] != "@" and int(line.split("\t")[4]) >= minMQ]
+    uniquereadnames = [nameCount[0] for nameCount in
+                       cyfreq(readnames).iteritems() if
+                       nameCount[1] == 1]
+    pl("# of passing read names: %s" % len(uniquereadnames))
+    return uniquereadnames
