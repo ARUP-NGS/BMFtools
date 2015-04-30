@@ -2478,15 +2478,10 @@ class AbstractIndelContainer(object):
     @cython.returns(cython.long)
     def __len__(self):
         """
-        Since this is the abstract method, its use of the method makes no sense.
+        Returns the number of reads supporting it which have been queried
+        against this object since its creation.
         """
-        if(self.type == -1):
-            return self.end - self.start
-        if(self.type == 1):
-            return len(self.seq)
-        pl("Length is a confusing concept for a complex variant "
-           "- I'm returning -1.")
-        return -1
+        return len(self.readnames)
 
     @cython.returns(cython.bint)
     def compare(self, indelObj):
@@ -2515,7 +2510,9 @@ class AbstractIndelContainer(object):
                 newIndelObj = ccopy(indelObj)
                 newIndelObj.readnames += self.readnames
                 return newIndelObj
-
+    ""asdfhasfaskjdf
+    def Get
+    """
 
 
 class Insertion(AbstractIndelContainer):
