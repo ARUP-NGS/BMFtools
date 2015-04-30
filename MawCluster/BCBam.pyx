@@ -169,8 +169,7 @@ def BarcodeSort(inBAM, outBAM="default", paired=True):
     outsam = '.'.join(outBAM.split('.')[0:-1]) + ".sam"
     headerCommand = "samtools view -H {}".format(inBAM)
     pl(headerCommand)
-    check_call(shlex.split(headerCommand),
-                          shell=False, stdout=outsam)
+    check_call(shlex.split(headerCommand), shell=False, stdout=outsam)
     pl("Now converting bam to sam for sorting by barcode.")
     if(paired is False):
         cmd = ("samtools view {} | ".format(inBAM) +

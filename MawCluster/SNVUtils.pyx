@@ -291,7 +291,7 @@ cdef class VCFPos:
         flankingBefore = refHandle.fetch(PCInfoObject.contig,
                                          self.pos - shenRange - 1)
         flankingAfter = refHandle.fetch(PCInfoObject.contig, self.pos,
-                                         self.pos + shenRange)
+                                        self.pos + shenRange)
         self.FailedAFReads = PCInfoObject.FailedAFReads
         self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
@@ -972,7 +972,6 @@ HeaderFormatDict["SHENRANGE"] = HeaderFormatLine(
     Description=("Distance before and after variant to extend "
                  "Shannon entropy calculation."),
     Type="Integer", Number="1")
-
 
 
 @cython.returns(cython.str)

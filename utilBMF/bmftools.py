@@ -287,7 +287,7 @@ def main():
     GetKmerParser.add_argument(
         "--minMQ", "-m",
         help=("Minimum mapping quality to consider a kmer a "
-                       "sufficiently unique identifier."),
+              "sufficiently unique identifier."),
         type=int, default=1)
     GetKmerParser.add_argument(
         "--mismatch-limit", "-l",
@@ -307,7 +307,8 @@ def main():
         type=str, default="default")
     GetKmerParser.add_argument(
         "--padding-distance", "-d",
-        help=("Distance around the kmer to pad the fasta reference for pulling down relevant reads."),
+        help=("Distance around the kmer to pad the fasta reference for "
+              "pulling down relevant reads."),
         type=int, default=120)
     # set_trace()
 

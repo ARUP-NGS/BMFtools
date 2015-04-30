@@ -1,6 +1,7 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
+import abc
 from Bio.Seq import Seq
 from copy import copy as ccopy
 from cytoolz import map as cmap, memoize, frequencies as cyfreq
@@ -373,7 +374,7 @@ def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
     if(outBAM == "default"):
         outBAM = ".".join(fq1.split(".")[:-1]) + ".bam"
     cStr = "bwa bwasw %s %s %s | samtools view -Sbh - > %s" % (ref, fq1, fq2,
-                                                                outBAM)
+                                                               outBAM)
     pl("About to call bwasw. Command string: %s" % cStr)
     check_call(cStr, shell=True)
     return outBAM
@@ -2332,6 +2333,7 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
                            threads=threads,
                            func=GetOutVCFFromBMFsnvCStr)
 
+
 @cython.returns(cython.str)
 def TrimExt(cython.str fname):
     """
@@ -2363,7 +2365,6 @@ def PadAndMakeFasta(cython.str seq, cython.long n=300):
 def SequenceToFakeFq(cython.str seq):
     return ("@" + seq + "\n" + seq +
             "\n+\n" + "G" * len(seq))
-
 
 
 @cython.returns(list)
@@ -2405,8 +2406,8 @@ def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
         raise ThisIsMadness("mismatches must be set for BowtieFqToStr.")
     if(seed < 0):
         raise ThisIsMadness("seed length must be set for BowtieFqToStr.")
-    cStr = ("echo %s | bowtie -a -n %s -l %s %s" % (fqStr, mismatches,
-                                                 seed, ref) + " -1 -")
+    cStr = ("echo %s | bowtie %s -a -n %s -l %s %s -" % (ref, mismatches,
+                                                         seed, fqStr))
     return check_output(cStr, shell=True)
 
 
@@ -2426,3 +2427,157 @@ def GetMQPassReads(cython.str bwtStr, cython.long minMQ=1):
                        nameCount[1] == 1]
     pl("# of passing read names: %s" % len(uniquereadnames))
     return uniquereadnames
+
+
+def GetDSIndels(inBAM, outBAM):
+    """
+    Gets read pairs tagged with DS[ID], sorts by coordinate (to facilitate
+    piling up the deletions)
+
+    Note: It is faster to do samtools sort -O... then grep, then samtools view
+    than to do samtools view -Sbh | grep, then samtools sort.
+    And, of course, it's faster to get a conversion while sorting.
+    """
+    randPref = str(uuid.uuid4().get_hex().upper()[0:8]) + ".hey.i.am.a.prefix"
+    cStr = ("samtools sort -O sam -T %s %s| grep 'DS[ID]\|^@' | " % (randPref,
+                                                                    inBAM) +
+            "samtools view -Sbh - > %s" % outBAM)
+    pl("About to get DSIndels with command string: %s" % cStr)
+    check_call(cStr)
+    return outBAM
+
+
+class AbstractIndelContainer(object):
+    __metaclass__ = abc.ABCMeta
+    """
+    Base class for insertion and deletion container objects.
+
+    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and just insertion)
+    Start and end refer to different things for insertions and deletions.
+    For a deletion, start is the first missing base and end is the last missing
+    reference base position.
+    seq should be None for a deletion
+    """
+    @abc.abstractmethod
+    def __init__(self, cython.str contig, cython.long start=-666,
+                 cython.long end=-1, cython.long type=-137,
+                 cython.str seq=None):
+        self.contig = contig
+        self.start = start
+        self.end = end
+        self.type = type
+        self.seq = seq
+        self.readnames = []
+        self.uniqStr = None
+
+    @abc.abstractmethod
+    @cython.returns(cython.str)
+    def __str__(self):
+        return "AbstractIndelContainer String! :)"
+
+    @cython.returns(cython.long)
+    def __len__(self):
+        """
+        Since this is the abstract method, its use of the method makes no sense.
+        """
+        if(self.type == -1):
+            return self.end - self.start
+        if(self.type == 1):
+            return len(self.seq)
+        pl("Length is a confusing concept for a complex variant "
+           "- I'm returning -1.")
+        return -1
+
+    @cython.returns(cython.bint)
+    def compare(self, indelObj):
+        """
+        Used for comparing two insertion or deletion objects.
+        This just makes it a little cleaner and more flexible.
+        That way, if they have the same unique identifier string
+        but a different number of readnames.
+        """
+        assert isinstance(indelObj, AbstractIndelContainer)
+        return self.uniqStr == indelObj.uniqStr
+
+    def add(self, indelObj, inplace=True):
+        """
+        If the uniqStr attributes are identical, merge the families.
+        I imagine that this would be useful when comparing lots of sets
+        of indels across different samples or doing multiple passes.
+        (e.g., duplex-supported indels and otherwise)
+        """
+        assert isinstance(indelObj, AbstractIndelContainer)
+        if self.compare(indelObj):
+            if(inplace):
+                self.readnames += indelObj.readnames
+                return self
+            else:
+                newIndelObj = ccopy(indelObj)
+                newIndelObj.readnames += self.readnames
+                return newIndelObj
+
+
+
+class Insertion(AbstractIndelContainer):
+    """
+    Expansion of the AbstractIndelContainer object.
+    "Start" is actually the preceding base to the insertion (counting up),
+    "End" is the following. end should always be greater than start.
+    The important thing is to be able to hold read names and have a unique
+    string representing each indel so that we can make calls.
+    """
+
+    def __init__(self, cython.str contig, cython.long start=-1,
+                 cython.str seq=None):
+        if(start < 0):
+            raise ThisIsMadness("start required for InsertionContainer.")
+        self.contig = contig
+        self.start = start
+        self.end = start + 1
+        self.type = 1
+        self.seq = seq
+        self.readnames = []
+        self.uniqStr = "Insertion|%s:%s,%s|%s" % (self.contig, self.start,
+                                                  self.end, self.seq)
+
+    @cython.returns(cython.str)
+    def __str__(self):
+        assert end > start
+        return "Insertion|%s:%s,%s|%s|%s" % (self.contig, self.start,
+                                             self.end, self.seq,
+                                             len(self.readnames))
+
+AbstractIndelContainer.register(Insertion)
+
+
+class Deletion(AbstractIndelContainer):
+    """
+    Expansion of the AbstractIndelContainer object.
+    "Start" is the first missing base.
+    "End" is the last missing base.
+    If the deletion is of length one, start and end should be the same.
+    """
+
+    def __init__(self, cython.str contig, cython.long start=-1,
+                 cython.long end=-1):
+        self.contig = contig
+        self.start = start
+        self.end = end
+        self.type = -1
+        self.readnames = []
+        self.uniqStr = "Deletion|%s:%s,%s" % (self.contig, self.start,
+                                              self.end)
+
+    @cython.returns(cython.str)
+    def __str__(self):
+        return "Deletion|%s:%s,%s|%s" % (self.contig, self.start,
+                                         self.end, len(self.readnames))
+
+AbstractIndelContainer.register(Deletion)
+
+
+def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read):
+    """
+    Creates a deletion object
+    """
+    raise ThisIsMadness("This function isn't finished yet.")

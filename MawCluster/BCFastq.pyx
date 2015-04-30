@@ -62,7 +62,9 @@ oagseq = oag("seq")
 cimport cython
 cimport numpy as np
 cimport pysam.cfaidx
+cimport pysam.calignmentfile
 ctypedef np.int64_t dtypei_t
+ctypedef pysam.calignmentfile.AlignedSegment dtype_as
 
 
 letterNumDict = {}
