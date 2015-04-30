@@ -11,6 +11,7 @@ from utilBMF.ErrorHandling import ThisIsMadness
 import os.path
 import uuid
 from cytoolz.itertoolz import frequencies as cyfreq
+import sys
 cimport pysam.calignmentfile
 cimport cython
 
@@ -139,14 +140,25 @@ def GetFBOutVCFFromStr(cython.str cStr):
     return cStr.split(" ")[2]
 
 
-def GetUniquelyMappableKmers():
+@cython.returns(list)
+def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
+                             list bedline=[], cython.long minMQ=1,
+                             cython.long padding=-1, cython.long mismatches=2):
     """
-    GetKmersToCheck
-    FastqStrFromKmerList
-    BowtieFqToStr
-    GetMQPassReads
-    Uses the above 4 functions from HTSUtils to get a list of kmers which can
-    be considered unique identifiers for
-    reads belonging to this region of the genome.
+    Uses a set of HTSUtils methods to find kmers from a region
+    which are uniquely mappable. This makes it possible to do alignment-free
+    variant-calling. (Well, except for the bwasw step).
+    If no outfile is specified, defaults to stdout
     """
-    pass
+    cdef list kmerList, PassingReadNames
+    cdef cython.str fqStr, bowtieStr
+    pl("Getting potential kmers")
+    kmerList = GetKmersToCheck(ref, k=k, bedline=bedline, padding=padding)
+    pl("Making dummy fastq records for each kmer")
+    fqStr = FastqStrFromKmerList(kmerList)
+    pl("Aligning these kmers to the genome to test for unique mappability"
+       " with a given number of mismatches %s and minMQ %s." % (mismatches,
+                                                                minMQ))
+    bowtieStr = BowtieFqToStr(fqStr, ref=ref, mismatches=mismatches)
+    PassingReadNames = GetMQPassReads(bowtieStr, minMQ=minMQ)
+    return PassingReadNames

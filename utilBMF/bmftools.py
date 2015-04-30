@@ -1,21 +1,7 @@
 #!/usr/bin/env python
-import argparse
 import sys
-import warnings
-import cStringIO
-from subprocess import check_call
-import pysam
-
-from MawCluster.VCFWriters import SNVCrawler
-from MawCluster.BCVCF import (VCFStats, CheckStdCallsForVCFCalls,
-                              CheckVCFForStdCalls)
-from MawCluster.SNVUtils import GetVCFHeader
-from MawCluster import BCVCF
-from MawCluster import BCFastq
-from BMFMain.ProcessingSteps import pairedFastqShades
-from utilBMF import HTSUtils
-from utilBMF.HTSUtils import parseConfig, ThisIsMadness, printlog as pl
-from MawCluster.TLC import BMFXLC as CallIntraTrans
+#  import warnings # Uncomment this if you want to treat warnings as errors.
+from utilBMF.HTSUtils import printlog as pl
 from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 #  from pudb import set_trace
 
@@ -29,6 +15,7 @@ and samtools.
 
 
 def main():
+    import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
     PSNVParser = subparsers.add_parser(
@@ -90,6 +77,10 @@ def main():
         "sma",
         description="Tool for splitting a VCF File with multiple alts per"
         " line into a VCF where each line has a unique alt.")
+    GetKmerParser = subparsers.add_parser(
+        "getkmers",
+        description=("Tool for selecting kmers which are unique identifiers "
+                     "for a region of interest for assembly."))
     SNVParser.add_argument("inBAM",
                            help="Input BAM, Coordinate-sorted and indexed, "
                            "with BMF Tags included. bmftools runs on unflat"
@@ -286,11 +277,49 @@ def main():
               "than default behavior, which is checking the query VCF for "
               "calls that should be in the standard."),
         action="store_true", default=False)
+    GetKmerParser.add_argument(
+        "--ref", "-r",
+        help="Path to reference file. (Must be faidx'd)",
+        type=str)
+    GetKmerParser.add_argument(
+        "-k", help="Length of kmer",
+        type=int, default=32)
+    GetKmerParser.add_argument(
+        "--minMQ", "-m",
+        help=("Minimum mapping quality to consider a kmer a "
+                       "sufficiently unique identifier."),
+        type=int, default=1)
+    GetKmerParser.add_argument(
+        "--mismatch-limit", "-l",
+        help="Limit in number of mismatches for alignment.",
+        type=int, default=2)
+    GetKmerParser.add_argument(
+        "--padding", "-p",
+        help="Distance around the region of interest to pad.",
+        type=int, default=0)
+    GetKmerParser.add_argument(
+        "region",
+        help="Region string in samtools formatting. e.g., 1:4000-50000.",
+        type=str)
+    GetKmerParser.add_argument(
+        "-o", "--outfile",
+        help="Path to outfile. If outfile is not set, defaults to stdout.",
+        type=str, default="default")
+    GetKmerParser.add_argument(
+        "--padding-distance", "-d",
+        help=("Distance around the kmer to pad the fasta reference for pulling down relevant reads."),
+        type=int, default=120)
     # set_trace()
 
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
     if(args.bmfsuites == "psnv"):
+        from utilBMF.HTSUtils import GetBMFsnvPopen
+        from utilBMF.ErrorHandling import ThisIsMadness
+        from subprocess import check_call
+        import pysam
+        from MawCluster import BCVCF
+        from MawCluster.SNVUtils import GetVCFHeader
         if(args.outVCF == "default"):
             outVCF = ".".join(args.inBAM.split(".")[0:-1] +
                               ["FULL", "bmf", "vcf"])
@@ -302,9 +331,9 @@ def main():
                         commandStr=commandStr, reference=config["ref"],
                         header=pysam.AlignmentFile(args.inBAM, "rb").header))
         pl("Splitting BAM file by contig.")
-        Dispatcher = HTSUtils.GetBMFsnvPopen(args.inBAM, config['bed'],
-                                             conf=args.conf,
-                                             threads=args.threads)
+        Dispatcher = GetBMFsnvPopen(args.inBAM, config['bed'],
+                                    conf=args.conf,
+                                    threads=args.threads)
         if(Dispatcher.daemon() != 0):
             raise ThisIsMadness("Dispatcher failed somehow.")
         pl("Shell calls completed without errors.")
@@ -316,9 +345,12 @@ def main():
         pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
     if(args.bmfsuites == "snv"):
+        from MawCluster.VCFWriters import SNVCrawler
+        from utilBMF.HTSUtils import parseConfig
+        from MawCluster.BCVCF import VCFStats
         runconf = {}
         if(args.conf != "default"):
-            config = HTSUtils.parseConfig(args.conf)
+            config = parseConfig(args.conf)
             if("minMQ" in config.keys()):
                 runconf["minMQ"] = int(config["minMQ"])
             if(args.minMQ != 0):
@@ -414,6 +446,7 @@ def main():
                                     writeHeader=(not args.is_slave))
                 OutTable = VCFStats(OutVCF)
             """
+            import cStringIO
             s = cStringIO.StringIO()
             pr.disable()
             sortby = "cumulative"
@@ -423,17 +456,21 @@ def main():
             """
             sys.exit(0)
     if(args.bmfsuites == "vcfstats"):
+        from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(args.inVCF)
         sys.exit(0)
     if(args.bmfsuites == "dmp"):
+        from BMFMain.ProcessingSteps import pairedFastqShades
         OutFastq1, OutFastq2 = pairedFastqShades(
             args.inFqs[0],
             args.inFqs[1],
             indexfq=args.indexFq)
         sys.exit(0)
     if(args.bmfsuites == "sv"):
+        from utilBMF.HTSUtils import FacePalm
+        from MawCluster.TLC import BMFXLC as CallIntraTrans
         if(args.bed == "default"):
-            HTSUtils.FacePalm("Bed file required!")
+            FacePalm("Bed file required!")
         else:
             Output = CallIntraTrans(
                 args.bam,
@@ -447,9 +484,11 @@ def main():
                 insDistance=args.insert_distance)
         return Output
     if(args.bmfsuites == "sma"):
+        from MawCluster import BCVCF
         Output = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
         sys.exit(0)
     if(args.bmfsuites == "findhets"):
+        from MawCluster import BCVCF
         smaOut = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
         print("Multiple alts split: {}".format(smaOut))
         if(args.vcf_format.lower() == "exac"):
@@ -461,6 +500,7 @@ def main():
         print("Potential Hets VCF: {}".format(hetOut))
         return hetOut
     if(args.bmfsuites == "faf"):
+        from MawCluster import BCVCF
         Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
                                    outVCF=args.outVCF)
         sys.exit(0)
@@ -474,6 +514,8 @@ def main():
                                              ctfreq=args.ctfreq)
         sys.exit(0)
     if(args.bmfsuites == "vcfcmp"):
+        from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
+                                      CheckVCFForStdCalls)
         if(args.check_std):
             if(args.outfile is not None):
                 CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
@@ -488,6 +530,28 @@ def main():
         else:
             CheckVCFForStdCalls(args.queryVCF, std=args.std,
                                 outfile=sys.stdout)
+    if(args.bmfsuites == "getkmers"):
+        import re
+        from MawCluster.IndelUtils import GetUniquelyMappableKmers
+        from utilBMF.HTSUtils import PadAndMakeFasta
+        from functools import partial
+        b = re.compile("\W")
+        bedline = b.split(args.region)
+        bedline[1] = int(bedline[1])
+        bedline[2] = int(bedline[2])
+        kmerList = GetUniquelyMappableKmers(args.ref, k=args.k,
+                                            minMQ=args.minMQ,
+                                            padding=args.padding,
+                                            mismatches=args.mismatches,
+                                            bedline=bedline)
+        if(args.outfile == "default"):
+            outHandle = sys.stdout
+        else:
+            outHandle = open(args.outfile, "w")
+        FastaCreation = partial(PadAndMakeFasta, n=args.padding_distance)
+        FastaString = "\n".join(map(FastaCreation, kmerlist))
+        outHandle.write(FastaString)
+        sys.exit(0)
     sys.exit(0)
 
 

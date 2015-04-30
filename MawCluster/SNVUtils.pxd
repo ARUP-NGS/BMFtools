@@ -15,6 +15,7 @@ cdef class SNVCFLine:
     """
     cdef public cython.str REF, CHROM, CONS, ALT, ID, FILTER, InfoStr, FormatStr, str
     cdef public cython.str FormatKey, FormatValue
+    cdef public cython.str flankingBefore, flankingAfter
     cdef public cython.long NumStartStops, POS
     cdef public cython.bint BothStrandSupport, AABothStrandAlignment
     cdef public dtype128_t reverseStrandFraction, QUAL

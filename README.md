@@ -61,7 +61,10 @@ cutadapt is required for adapter trimming.
 numconv is required for conversion to base 64 for PV tags, but that compression is optional.
 
 ### Required external tools:
+#### Aligners
 bwa (mem or aln, depending on needs.)
+
+bowtie (for "alignment-free" local assembly) [Not bowtie2! bowtie2 is better in biological applications, for controlling inexact string matching, bowtie is ideal.]
 
 #### Compiler
 gcc >= gccv5.0

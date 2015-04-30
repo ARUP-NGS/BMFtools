@@ -17,6 +17,7 @@ from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from MawCluster.Probability import ConfidenceIntervalAAF
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
+from entropy import shannon_entropy as shen
 
 cimport cython
 cimport pysam.cfaidx
@@ -61,7 +62,7 @@ cdef class SNVCFLine:
                  cython.long FailedAFReads=-1,
                  cython.long minNumFam=2,
                  cython.long minNumSS=2,
-                 cython.str REF="default",
+                 cython.str REF=None,
                  dtype128_t reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
                  cython.long minDuplexPairs=2,
@@ -69,7 +70,9 @@ cdef class SNVCFLine:
                  cython.long minFA=0, cython.long BothStrandAlignment=-1,
                  dtype128_t pValBinom=0.05, cython.long ampliconFailed=-1,
                  cython.long NDP=-1, cython.str EST="none",
-                 cython.float minAF=-1., cython.long FailedNDReads=-1):
+                 cython.float minAF=-1., cython.long FailedNDReads=-1,
+                 cython.str flankingBefore=None,
+                 cython.str flankingAfter=None):
         cdef dtype128_t maxAAF, minAAF
         cdef cython.long AC, DOC
         if(BothStrandAlignment < 0):
@@ -77,7 +80,6 @@ cdef class SNVCFLine:
                                 " as it is used in determining whether or no"
                                 "t to remove a call for a variant mapping to"
                                 " only one strand.")
-        assert REF != "default"
         self.REF = REF
         if(isinstance(AlleleAggregateObject, AlleleAggregateInfo) is False):
             raise HTSUtils.ThisIsMadness("VCFLine requires an AlleleAgg"
@@ -142,7 +144,6 @@ cdef class SNVCFLine:
                 self.FILTER = "CONSENSUS"
             else:
                 self.FILTER += ";CONSENSUS"
-
         self.InfoFields = {"AC": AC,
                            "AF": 1. * AC / DOC,
                            "BNP": int(-10 * mlog10(pValBinom)),
@@ -165,7 +166,12 @@ cdef class SNVCFLine:
                            "MPF": AlleleAggregateObject.MPF,
                            "TND": AlleleAggregateObject.TND,
                            "MNF": AlleleAggregateObject.MNF,
-                           "NDPS": AlleleAggregateObject.NumberDuplexReads}
+                           "NDPS": AlleleAggregateObject.NumberDuplexReads,
+                           "SHENRANGE": len(flankingBefore),
+                           "SHENREF": shen(flankingBefore + REF +
+                                           flankingAfter),
+                           "SHENVAR": shen(flankingBefore + self.ALT +
+                                           flankingAfter)}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
         if(TotalFracStr != "default"):
@@ -253,7 +259,8 @@ cdef class VCFPos:
                  cython.long minFA=0,
                  cython.str experiment="",
                  cython.long NDP=-1,
-                 pysam.cfaidx.FastaFile refHandle=None):
+                 pysam.cfaidx.FastaFile refHandle=None,
+                 shenRange=10):
         cdef SNVCFLine_t line
         cdef AlleleAggregateInfo_t alt
         if(refHandle is None):
@@ -279,7 +286,12 @@ cdef class VCFPos:
         self.MergedFracStr = PCInfoObject.MergedFracStr
         self.TotalCountStr = PCInfoObject.TotalCountStr
         self.MergedCountStr = PCInfoObject.MergedCountStr
-        self.REF = refHandle.fetch(PCInfoObject.contig, self.pos - 1, self.pos)
+        self.REF = refHandle.fetch(PCInfoObject.contig, self.pos - 1,
+                                   self.pos)
+        flankingBefore = refHandle.fetch(PCInfoObject.contig,
+                                         self.pos - shenRange - 1)
+        flankingAfter = refHandle.fetch(PCInfoObject.contig, self.pos,
+                                         self.pos + shenRange)
         self.FailedAFReads = PCInfoObject.FailedAFReads
         self.reverseStrandFraction = PCInfoObject.reverseStrandFraction
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
@@ -302,7 +314,8 @@ cdef class VCFPos:
             minFracAgreedForFilter=minFracAgreed,
             minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment,
             NDP=NDP, EST=self.EST, FailedAFReads=PCInfoObject.FailedAFReads,
-            minAF=self.minAF, FailedNDReads=PCInfoObject.FailedNDReads)
+            minAF=self.minAF, FailedNDReads=PCInfoObject.FailedNDReads,
+            flankingBefore=flankingBefore, flankingAfter=flankingAfter)
             for alt in PCInfoObject.AltAlleleData]
         self.keepConsensus = keepConsensus
         if(keepConsensus):
@@ -944,6 +957,22 @@ HeaderFormatDict["TYPE"] = HeaderFormatLine(
     Description="The type of allele, either snp, mnp, ins, del, or complex.",
     Number="A",
     Type="String")
+HeaderFormatDict["SHENREF"] = HeaderFormatLine(
+    ID="SHENREF",
+    Description=("Shannon entropy of flanking sequence"
+                 " with reference at variant site"),
+    Type="Float", Number="1")
+HeaderFormatDict["SHENVAR"] = HeaderFormatLine(
+    ID="SHENVAR",
+    Description=("Shannon entropy of flanking sequence"
+                 " with variant at variant site"),
+    Type="Float", Number="A")
+HeaderFormatDict["SHENRANGE"] = HeaderFormatLine(
+    ID="SHENRANGE",
+    Description=("Distance before and after variant to extend "
+                 "Shannon entropy calculation."),
+    Type="Integer", Number="1")
+
 
 
 @cython.returns(cython.str)

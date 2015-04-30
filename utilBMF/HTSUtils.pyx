@@ -372,7 +372,7 @@ def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
         raise ThisIsMadness("ref required to call bwasw.")
     if(outBAM == "default"):
         outBAM = ".".join(fq1.split(".")[:-1]) + ".bam"
-    cStr = "bwa bwasw %s %s %s | samtools view -Sbh -s > %s" % (ref, fq1, fq2,
+    cStr = "bwa bwasw %s %s %s | samtools view -Sbh - > %s" % (ref, fq1, fq2,
                                                                 outBAM)
     pl("About to call bwasw. Command string: %s" % cStr)
     check_call(cStr, shell=True)
@@ -2355,6 +2355,11 @@ def FastaStyleSequence(cython.str seq):
 
 
 @cython.returns(cython.str)
+def PadAndMakeFasta(cython.str seq, cython.long n=300):
+    return FastaStyleSequence(NPadSequence(seq, n=n))
+
+
+@cython.returns(cython.str)
 def SequenceToFakeFq(cython.str seq):
     return ("@" + seq + "\n" + seq +
             "\n+\n" + "G" * len(seq))
@@ -2392,10 +2397,14 @@ def FastqStrFromKmerList(list kmerList):
 
 @cython.returns(cython.str)
 def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
-                 cython.long mismatches=None, cython.long seed=None):
+                  cython.long mismatches=-1, cython.long seed=-1):
     """
     Returns the string output of a bowtie call.
     """
+    if(mismatches < 0):
+        raise ThisIsMadness("mismatches must be set for BowtieFqToStr.")
+    if(seed < 0):
+        raise ThisIsMadness("seed length must be set for BowtieFqToStr.")
     cStr = ("echo %s | bowtie -a -n %s -l %s %s" % (fqStr, mismatches,
                                                  seed, ref) + " -1 -")
     return check_output(cStr, shell=True)

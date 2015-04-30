@@ -91,7 +91,7 @@ config = {
     'author_email': 'daniel.baker@aruplab.com',
     'version': '0.0.7.4',
     'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
-                         'cython', 'cutadapt', 'lxml', 'scipy'],
+                         'cython', 'cutadapt', 'lxml', 'scipy', 'entropy'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
