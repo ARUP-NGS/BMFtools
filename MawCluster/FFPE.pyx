@@ -35,7 +35,7 @@ ctypedef np.longdouble_t dtype128_t
 Contains utilities relating to FFPE
 """
 
-BMFVersion = "0.0.7.4"
+BMFVersion = "0.1.0.0beta"
 
 
 @cython.locals(maxFreq=dtype128_t)

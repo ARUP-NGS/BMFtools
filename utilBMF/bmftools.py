@@ -314,7 +314,7 @@ def main():
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
     if(args.bmfsuites == "psnv"):
-        from utilBMF.HTSUtils import GetBMFsnvPopen
+        from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
         from subprocess import check_call
         import pysam
@@ -542,14 +542,14 @@ def main():
         kmerList = GetUniquelyMappableKmers(args.ref, k=args.k,
                                             minMQ=args.minMQ,
                                             padding=args.padding,
-                                            mismatches=args.mismatches,
+                                            mismatches=args.mismatch_limit,
                                             bedline=bedline)
         if(args.outfile == "default"):
             outHandle = sys.stdout
         else:
             outHandle = open(args.outfile, "w")
         FastaCreation = partial(PadAndMakeFasta, n=args.padding_distance)
-        FastaString = "\n".join(map(FastaCreation, kmerlist))
+        FastaString = "\n".join(map(FastaCreation, kmerList))
         outHandle.write(FastaString)
         sys.exit(0)
     sys.exit(0)

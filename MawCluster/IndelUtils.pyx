@@ -159,6 +159,6 @@ def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
     pl("Aligning these kmers to the genome to test for unique mappability"
        " with a given number of mismatches %s and minMQ %s." % (mismatches,
                                                                 minMQ))
-    bowtieStr = BowtieFqToStr(fqStr, ref=ref, mismatches=mismatches)
+    bowtieStr = BowtieFqToStr(fqStr, ref=ref, mismatches=mismatches, seed=k)
     PassingReadNames = GetMQPassReads(bowtieStr, minMQ=minMQ)
     return PassingReadNames
