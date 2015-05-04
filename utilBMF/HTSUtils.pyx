@@ -2510,9 +2510,19 @@ class AbstractIndelContainer(object):
                 newIndelObj = ccopy(indelObj)
                 newIndelObj.readnames += self.readnames
                 return newIndelObj
-    ""asdfhasfaskjdf
-    def Get
-    """
+
+    @cython.returns(dict)
+    def GetNameCounter(self):
+        return cyfreq(self.readnames)
+
+    @cython.returns(cython.str)
+    def __getitem__(self, cython.long index):
+        return self.readnames[index]
+
+    @cython.returns(list)
+    def sort(self):
+        self.readnames = sorted(self.readnames)
+
 
 
 class Insertion(AbstractIndelContainer):
