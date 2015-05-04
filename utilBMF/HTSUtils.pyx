@@ -22,6 +22,7 @@ from re import compile as regexcompile
 from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import *
 from collections import deque
+from entropy import shannon_entropy as shen
 import copy
 import cStringIO
 import cython
@@ -44,6 +45,9 @@ cimport pysam.calignmentfile
 cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
+ctypedef Insertion Insertion_t
+ctypedef Deletion Deletion_t
+ctypedef AbstractIndelContainer AbstractIndelContainer_t
 oig1 = oig(1)
 oig0 = oig(0)
 
@@ -880,9 +884,9 @@ def samtoolsMergeBam(bamlist, outBAM="default", NameSort=True):
     if(outBAM == "default"):
         outBAM = ".".join(bamlist[0].split(".")[-1]) + ".merged.bam"
     if(NameSort):
-        cStr = "samtools merge -n %s %s" (outBAM, " ".join(bamlist))
+        cStr = "samtools merge -n %s %s" % (outBAM, " ".join(bamlist))
     else:
-        cStr = "samtools merge %s %s" (outBAM, " ".join(bamlist))
+        cStr = "samtools merge %s %s" % (outBAM, " ".join(bamlist))
     pl("Merge bams command: %s" % (cStr))
     check_output(cStr)
     return outBAM
@@ -2447,7 +2451,7 @@ def GetDSIndels(inBAM, outBAM):
     return outBAM
 
 
-class AbstractIndelContainer(object):
+cdef class AbstractIndelContainer(object):
     __metaclass__ = abc.ABCMeta
     """
     Base class for insertion and deletion container objects.
@@ -2525,7 +2529,7 @@ class AbstractIndelContainer(object):
 
 
 
-class Insertion(AbstractIndelContainer):
+cdef class Insertion(AbstractIndelContainer):
     """
     Expansion of the AbstractIndelContainer object.
     "Start" is actually the preceding base to the insertion (counting up),
@@ -2535,7 +2539,7 @@ class Insertion(AbstractIndelContainer):
     """
 
     def __init__(self, cython.str contig, cython.long start=-1,
-                 cython.str seq=None):
+                 cython.str seq=None, cython.str readname=None):
         if(start < 0):
             raise ThisIsMadness("start required for InsertionContainer.")
         self.contig = contig
@@ -2543,21 +2547,19 @@ class Insertion(AbstractIndelContainer):
         self.end = start + 1
         self.type = 1
         self.seq = seq
-        self.readnames = []
+        self.readnames = [readname]
         self.uniqStr = "Insertion|%s:%s,%s|%s" % (self.contig, self.start,
                                                   self.end, self.seq)
+        self.shen = -1.
 
     @cython.returns(cython.str)
     def __str__(self):
-        assert end > start
-        return "Insertion|%s:%s,%s|%s|%s" % (self.contig, self.start,
-                                             self.end, self.seq,
-                                             len(self.readnames))
+        return self.uniqStr + "|%s" % len(self.readnames))
 
 AbstractIndelContainer.register(Insertion)
 
 
-class Deletion(AbstractIndelContainer):
+cdef class Deletion(AbstractIndelContainer):
     """
     Expansion of the AbstractIndelContainer object.
     "Start" is the first missing base.
@@ -2566,21 +2568,86 @@ class Deletion(AbstractIndelContainer):
     """
 
     def __init__(self, cython.str contig, cython.long start=-1,
-                 cython.long end=-1):
+                 cython.long end=-1, cython.str readname=None):
         self.contig = contig
         self.start = start
         self.end = end
         self.type = -1
-        self.readnames = []
+        self.readnames = [readname]
         self.uniqStr = "Deletion|%s:%s,%s" % (self.contig, self.start,
                                               self.end)
+        self.shen = -1.
 
     @cython.returns(cython.str)
     def __str__(self):
-        return "Deletion|%s:%s,%s|%s" % (self.contig, self.start,
-                                         self.end, len(self.readnames))
+        return self.uniqStr + "|%s" % len(self.readnames))
 
 AbstractIndelContainer.register(Deletion)
+
+
+class IndelQuiver(object):
+    """
+    Class for holding on to the
+    """
+    def __init__(self, cython.str ref=None, cython.long window=10):
+        self.data = {}
+        self.indels = []
+        self.fastaRef = pysam.FastaFile(ref)
+
+    @cython.returns(cython.long)
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def setIndelShen(self, indelObj):
+        indelObj.shen = shen(self.fastaRef(indelObj.contig,
+                                           indelObj.start - self.window,
+                                           indelObj.start) +
+                             self.fastaRef(indelObj.contig, indelObj.end,
+                                           indelObj.end + self.window))
+
+    def addIndel(self, indelObj):
+        try:
+            self[indelObj.uniqStr] += indelObj.readnames
+        except KeyError:
+            self[indelObj.uniqStr] = indelObj.readnames
+        self.setIndelShen(indelObj)
+        self.indels.append(indelObj)
+
+
+@cython.returns(list)
+def PermuteMotifOnce(cython.str motif, set alphabet={"A", "C", "G", "T"}):
+    """
+    Gets all strings within hamming distance 1 of motif and returns it as a
+    list.
+    """
+    return list(set(cfi([[motif[:pos] + alpha + motif[pos + 1:] for
+                          alpha in alphabet] for
+                         pos in range(len(motif))])))
+
+
+@cython.returns(list)
+def PermuteMotifN(cython.str motif, cython.long n=-1):
+    assert n > 0
+    cdef list workingSet
+    cdef cython.long i
+    workingSet = [motif]
+    for i in range(n):
+        workingSet = set(cfi([PermuteMotifOnce(workingMotif) for
+                              workingMotif in workingSet]))
+    return list(workingSet)
+
+
+def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read):
+    """
+    Creates a deletion object
+    """
+    raise ThisIsMadness("This function isn't finished yet.")
 
 
 def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read):

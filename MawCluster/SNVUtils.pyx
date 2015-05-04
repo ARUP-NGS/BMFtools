@@ -73,7 +73,7 @@ cdef class SNVCFLine:
                  cython.float minAF=-1., cython.long FailedNDReads=-1,
                  cython.str flankingBefore=None,
                  cython.str flankingAfter=None):
-        cdef dtype128_t maxAAF, minAAF
+        cdef dtype128_t maxAAF, minAAF, shenRef, shenVar
         cdef cython.long AC, DOC
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
@@ -144,6 +144,9 @@ cdef class SNVCFLine:
                 self.FILTER = "CONSENSUS"
             else:
                 self.FILTER += ";CONSENSUS"
+        shenRef = min([shen(flankingBefore + REF), shen(REF + flankingAfter)])
+        shenVar = min([shen(flankingBefore + self.ALT),
+                       shen(self.ALT + flankingAfter)])
         self.InfoFields = {"AC": AC,
                            "AF": 1. * AC / DOC,
                            "BNP": int(-10 * mlog10(pValBinom)),
@@ -168,10 +171,8 @@ cdef class SNVCFLine:
                            "MNF": AlleleAggregateObject.MNF,
                            "NDPS": AlleleAggregateObject.NumberDuplexReads,
                            "SHENRANGE": len(flankingBefore),
-                           "SHENREF": shen(flankingBefore + REF +
-                                           flankingAfter),
-                           "SHENVAR": shen(flankingBefore + self.ALT +
-                                           flankingAfter)}
+                           "SHENREF": shenRef,
+                           "SHENVAR": shenVar}
         if(TotalCountStr != "default"):
             self.InfoFields["TACS"] = TotalCountStr
         if(TotalFracStr != "default"):
@@ -960,12 +961,14 @@ HeaderFormatDict["TYPE"] = HeaderFormatLine(
 HeaderFormatDict["SHENREF"] = HeaderFormatLine(
     ID="SHENREF",
     Description=("Shannon entropy of flanking sequence"
-                 " with reference at variant site"),
+                 " with reference at variant site in the direction with "
+                 "the least entropy."),
     Type="Float", Number="1")
 HeaderFormatDict["SHENVAR"] = HeaderFormatLine(
     ID="SHENVAR",
     Description=("Shannon entropy of flanking sequence"
-                 " with variant at variant site"),
+                 " with variant at variant site in the direction with "
+                 "the least entropy."),
     Type="Float", Number="A")
 HeaderFormatDict["SHENRANGE"] = HeaderFormatLine(
     ID="SHENRANGE",

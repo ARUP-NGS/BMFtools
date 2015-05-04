@@ -56,3 +56,51 @@ cdef class ReadPair:
     cdef public cython.long insert_size
     cdef public cython.bint read1_in_bed
     cdef public cython.bint read2_in_bed
+
+
+cdef class AbstractIndelContainer:
+    """
+    Base class for insertion and deletion container objects.
+
+    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and just insertion)
+    Start and end refer to different things for insertions and deletions.
+    For a deletion, start is the first missing base and end is the last missing
+    reference base position.
+    seq should be None for a deletion
+    """
+    cdef public cython.str contig
+    cdef public cython.long start
+    cdef public cython.long end
+    cdef public cython.long type
+    cdef public cython.str seq
+    cdef public cython.float shen
+    cdef public list readnames
+    cdef public cython.str uniqStr
+
+
+cdef class Deletion:
+    """
+    See HTSUtils.pyx for doc string.
+    """
+    cdef public cython.str contig
+    cdef public cython.long start
+    cdef public cython.long end
+    cdef public cython.long type
+    cdef public cython.str seq
+    cdef public cython.float shen
+    cdef public list readnames
+    cdef public cython.str uniqStr
+
+
+cdef class Insertion:
+    """
+    See HTSUtils.pyx for doc string.
+    """
+    cdef public cython.str contig
+    cdef public cython.long start
+    cdef public cython.long end
+    cdef public cython.long type
+    cdef public cython.str seq
+    cdef public cython.float shen
+    cdef public list readnames
+    cdef public cython.str uniqStr
