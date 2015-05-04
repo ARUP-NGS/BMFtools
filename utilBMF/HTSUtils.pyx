@@ -2610,8 +2610,11 @@ class IndelQuiver(object):
     """
     def __init__(self, cython.str ref=None, cython.long window=10):
         self.data = {}
-        self.indels = []
+        self.deletions = []
+        self.insertions = []
+        self.complexindels = []
         self.fastaRef = pysam.FastaFile(ref)
+        self.window = window
 
     @cython.returns(cython.long)
     def __len__(self):
@@ -2623,7 +2626,7 @@ class IndelQuiver(object):
     def __setitem__(self, key, value):
         self.data[key] = value
 
-    def setIndelShen(self, indelObj, window=20):
+    def setIndelShen(self, indelObj):
         indelObj.shen = min([shen(self.fastaRef(indelObj.contig,
                                                 indelObj.start - self.window,
                                                 indelObj.start)),
@@ -2637,7 +2640,12 @@ class IndelQuiver(object):
         except KeyError:
             self[indelObj.uniqStr] = indelObj.readnames
         self.setIndelShen(indelObj)
-        self.indels.append(indelObj)
+        if(isinstance(indelObj, Deletion)):
+            self.deletions.append(indelObj)
+        elif(isinstance(indelObj, Insertion)):
+            self.insertions.append(indelObj)
+        else:
+            self.complexindels.append(indelObj)
 
 
 @cython.returns(list)
@@ -2662,22 +2670,29 @@ def PermuteMotifN(cython.str motif, cython.long n=-1):
     return list(workingSet)
 
 
+@cython.returns(Insertion_t)
 def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
                                    pysam.cfaidx.FastaFile handle=None):
     """
-    Creates a deletion object
+    Creates an Insertion object under the assumption that there is
+    only one set of inserted bases in the read. I should come back and
+    generalize it...
     """
-    InsInf = GetInsertedStrs(read)
+    cdef tuple InsInf
+    InsInf = GetInsertedStrs(read)[0]
     return Insertion(PysamToChrDict[read.reference_id], start=InsInf[1],
                      seq=InsInf[0], readname=read.query_name,
                      handle=handle)
 
 
+@cython.returns(Deletion_t)
 def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
                                   pysam.cfaidx.FastaFile handle=None):
     """
-    Creates a deletion object
+    Creates a Deletion object from a read.
     """
+    cdef cython.long start, end
+    cdef list coords
     coords = GetDeletedCoordinates(read)
     start = coords[0]
     end = coords[-1]

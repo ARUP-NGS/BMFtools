@@ -6,7 +6,9 @@ from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl, CoorSortAndIndexBam,
                               GetKmersToCheck, FastqStrFromKmerList,
-                              BowtieFqToStr, GetMQPassReads)
+                              BowtieFqToStr, GetMQPassReads,
+                              GetInsertionFromAlignedSegment,
+                              GetDeletionFromAlignedSegment, IndelQuiver)
 from utilBMF.ErrorHandling import ThisIsMadness
 import os.path
 import uuid
@@ -162,3 +164,26 @@ def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
     bowtieStr = BowtieFqToStr(fqStr, ref=ref, mismatches=mismatches, seed=k)
     PassingReadNames = GetMQPassReads(bowtieStr, minMQ=minMQ)
     return PassingReadNames
+
+
+def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2, cython.float minShen=0.2,
+                     cython.long window=16, cython.str ref=None):
+    """
+    To PileupTaggedIndels, the bam must have the DSI and DSD tags set
+    for reads, and it is strongly recommended that you parse out
+    only those reads for this tool.
+    """
+    Quiver = IndelQuiver(ref=ref, window=window)
+    cdef pysam.calignmentfile.AlignedSegment rec
+    refHandle = pysam.FastaFile(ref)
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    for rec in inHandle:
+        try:
+            svtags = rec.opt("SV")
+        except KeyError:
+            FacePalm("SV tags must be marked to call tagged indels!")
+        if("DSI" in svtags):
+            Quiver.addIndel(GetInsertionFromAlignedSegment(rec, handle=refHandle))
+        if("DSD" in svtags):
+            Quiver.addIndel(GetDeletionFromAlignedSegment(rec, handle=refHandle))
+    return Quiver
