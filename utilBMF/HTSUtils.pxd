@@ -1,5 +1,6 @@
 cimport cython
 cimport pysam.calignmentfile
+cimport pysam.cfaidx
 cimport numpy as np
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t

@@ -2628,7 +2628,7 @@ class IndelQuiver(object):
                                                 indelObj.start - self.window,
                                                 indelObj.start)),
                              shen(self.fastaRef(indelObj.contig, indelObj.end,
-                                                indelObj.end + self.window)])
+                                                indelObj.end + self.window))])
         indelObj.shenwindow = window
 
     def addIndel(self, indelObj):
