@@ -68,14 +68,11 @@ cdef class AbstractIndelContainer:
     reference base position.
     seq should be None for a deletion
     """
-    cdef public cython.str contig
-    cdef public cython.long start
-    cdef public cython.long end
-    cdef public cython.long type
-    cdef public cython.str seq
+    cdef public cython.str contig, seq, uniqStr
+    cdef public cython.long type, shenwindow, end, start
     cdef public cython.float shen
     cdef public list readnames
-    cdef public cython.str uniqStr
+    cdef public pysam.cfaidx.FastaFile handle
 
 cdef class Deletion(AbstractIndelContainer):
     """

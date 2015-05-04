@@ -2444,7 +2444,7 @@ def GetDSIndels(inBAM, outBAM):
     """
     randPref = str(uuid.uuid4().get_hex().upper()[0:8]) + ".hey.i.am.a.prefix"
     cStr = ("samtools sort -O sam -T %s %s| grep 'DS[ID]\|^@' | " % (randPref,
-                                                                    inBAM) +
+                                                                     inBAM) +
             "samtools view -Sbh - > %s" % outBAM)
     pl("About to get DSIndels with command string: %s" % cStr)
     check_call(cStr)
@@ -2452,11 +2452,11 @@ def GetDSIndels(inBAM, outBAM):
 
 
 cdef class AbstractIndelContainer(object):
-    __metaclass__ = abc.ABCMeta
     """
     Base class for insertion and deletion container objects.
 
-    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and just insertion)
+    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and
+    just insertion)
     Start and end refer to different things for insertions and deletions.
     For a deletion, start is the first missing base and end is the last missing
     reference base position.
@@ -2528,7 +2528,6 @@ cdef class AbstractIndelContainer(object):
         self.readnames = sorted(self.readnames)
 
 
-
 cdef class Insertion(AbstractIndelContainer):
     """
     Expansion of the AbstractIndelContainer object.
@@ -2536,10 +2535,14 @@ cdef class Insertion(AbstractIndelContainer):
     "End" is the following. end should always be greater than start.
     The important thing is to be able to hold read names and have a unique
     string representing each indel so that we can make calls.
+
+    If no handle is provided, shen (Shannon Entropy) is set to -1.
     """
 
     def __init__(self, cython.str contig, cython.long start=-1,
-                 cython.str seq=None, cython.str readname=None):
+                 cython.str seq=None, cython.str readname=None,
+                 pysam.cfaidx.FastaFile handle=None,
+                 cython.long window=20):
         if(start < 0):
             raise ThisIsMadness("start required for InsertionContainer.")
         self.contig = contig
@@ -2550,13 +2553,21 @@ cdef class Insertion(AbstractIndelContainer):
         self.readnames = [readname]
         self.uniqStr = "Insertion|%s:%s,%s|%s" % (self.contig, self.start,
                                                   self.end, self.seq)
-        self.shen = -1.
+        try:
+            self.shen = min([shen(handle.fetch(read.reference_id,
+                                               start=start - window,
+                                               end=start)),
+                             shen(handle.fetch(read.reference_id,
+                                               start=end, end=end + window))])
+        except AttributeError:
+            self.shen = -1.
+        self.handle = handle
+        self.shenwindow = window
 
     @cython.returns(cython.str)
     def __str__(self):
         return self.uniqStr + "|%s" % len(self.readnames)
 
-AbstractIndelContainer.register(Insertion)
 
 
 cdef class Deletion(AbstractIndelContainer):
@@ -2568,7 +2579,8 @@ cdef class Deletion(AbstractIndelContainer):
     """
 
     def __init__(self, cython.str contig, cython.long start=-1,
-                 cython.long end=-1, cython.str readname=None):
+                 cython.long end=-1, cython.str readname=None,
+                 pysam.cfaidx.FastaFile handle=None, cython.long window=20):
         self.contig = contig
         self.start = start
         self.end = end
@@ -2576,13 +2588,20 @@ cdef class Deletion(AbstractIndelContainer):
         self.readnames = [readname]
         self.uniqStr = "Deletion|%s:%s,%s" % (self.contig, self.start,
                                               self.end)
-        self.shen = -1.
+        try:
+            self.shen = min([shen(handle.fetch(read.reference_id,
+                                               start=start - window,
+                                               end=start)),
+                             shen(handle.fetch(read.reference_id,
+                                               start=end, end=end + window))])
+        except AttributeError:
+            self.shen = -1.
+        self.handle = handle
+        self.shenwindow = window
 
     @cython.returns(cython.str)
     def __str__(self):
         return self.uniqStr + "|%s" % len(self.readnames)
-
-AbstractIndelContainer.register(Deletion)
 
 
 class IndelQuiver(object):
@@ -2604,12 +2623,13 @@ class IndelQuiver(object):
     def __setitem__(self, key, value):
         self.data[key] = value
 
-    def setIndelShen(self, indelObj):
-        indelObj.shen = shen(self.fastaRef(indelObj.contig,
-                                           indelObj.start - self.window,
-                                           indelObj.start) +
-                             self.fastaRef(indelObj.contig, indelObj.end,
-                                           indelObj.end + self.window))
+    def setIndelShen(self, indelObj, window=20):
+        indelObj.shen = min([shen(self.fastaRef(indelObj.contig,
+                                                indelObj.start - self.window,
+                                                indelObj.start)),
+                             shen(self.fastaRef(indelObj.contig, indelObj.end,
+                                                indelObj.end + self.window)])
+        indelObj.shenwindow = window
 
     def addIndel(self, indelObj):
         try:
@@ -2638,20 +2658,28 @@ def PermuteMotifN(cython.str motif, cython.long n=-1):
     cdef cython.long i
     workingSet = [motif]
     for i in range(n):
-        workingSet = set(cfi([PermuteMotifOnce(workingMotif) for
-                              workingMotif in workingSet]))
+        workingSet = set(cfi(map(PermuteMotifOnce, workingSet)))
     return list(workingSet)
 
 
-def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read):
+def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
+                                   pysam.cfaidx.FastaFile handle=None):
     """
     Creates a deletion object
     """
-    raise ThisIsMadness("This function isn't finished yet.")
+    InsInf = GetInsertedStrs(read)
+    return Insertion(PysamToChrDict[read.reference_id], start=InsInf[1],
+                     seq=InsInf[0], readname=read.query_name,
+                     handle=handle)
 
 
-def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read):
+def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
+                                  pysam.cfaidx.FastaFile handle=None):
     """
     Creates a deletion object
     """
-    raise ThisIsMadness("This function isn't finished yet.")
+    coords = GetDeletedCoordinates(read)
+    start = coords[0]
+    end = coords[-1]
+    return Deletion(PysamToChrDict[read.reference_id], start=start,
+                    end=end, readname=read.query_name, handle=handle)
