@@ -2462,7 +2462,7 @@ cdef class AbstractIndelContainer(object):
     reference base position.
     seq should be None for a deletion
     """
-    @abc.abstractmethod
+
     def __init__(self, cython.str contig, cython.long start=-666,
                  cython.long end=-1, cython.long type=-137,
                  cython.str seq=None):
@@ -2474,10 +2474,10 @@ cdef class AbstractIndelContainer(object):
         self.readnames = []
         self.uniqStr = None
 
-    @abc.abstractmethod
-    @cython.returns(cython.str)
     def __str__(self):
-        return "AbstractIndelContainer String! :)"
+        raise ThisIsMadness("Abstract method must be inherited. Sorry, cdef w"
+                            "on't let me actually make this an abstract "
+                            "class.")
 
     @cython.returns(cython.long)
     def __len__(self):
@@ -2554,7 +2554,7 @@ cdef class Insertion(AbstractIndelContainer):
 
     @cython.returns(cython.str)
     def __str__(self):
-        return self.uniqStr + "|%s" % len(self.readnames))
+        return self.uniqStr + "|%s" % len(self.readnames)
 
 AbstractIndelContainer.register(Insertion)
 
@@ -2580,7 +2580,7 @@ cdef class Deletion(AbstractIndelContainer):
 
     @cython.returns(cython.str)
     def __str__(self):
-        return self.uniqStr + "|%s" % len(self.readnames))
+        return self.uniqStr + "|%s" % len(self.readnames)
 
 AbstractIndelContainer.register(Deletion)
 

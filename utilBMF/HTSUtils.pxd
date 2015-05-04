@@ -77,30 +77,13 @@ cdef class AbstractIndelContainer:
     cdef public list readnames
     cdef public cython.str uniqStr
 
-
-cdef class Deletion:
+cdef class Deletion(AbstractIndelContainer):
     """
     See HTSUtils.pyx for doc string.
     """
-    cdef public cython.str contig
-    cdef public cython.long start
-    cdef public cython.long end
-    cdef public cython.long type
-    cdef public cython.str seq
-    cdef public cython.float shen
-    cdef public list readnames
-    cdef public cython.str uniqStr
 
 
-cdef class Insertion:
+cdef class Insertion(AbstractIndelContainer):
     """
     See HTSUtils.pyx for doc string.
     """
-    cdef public cython.str contig
-    cdef public cython.long start
-    cdef public cython.long end
-    cdef public cython.long type
-    cdef public cython.str seq
-    cdef public cython.float shen
-    cdef public list readnames
-    cdef public cython.str uniqStr
