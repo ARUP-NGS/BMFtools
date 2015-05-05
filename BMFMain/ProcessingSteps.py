@@ -182,7 +182,7 @@ def pairedVCFProc(consMergeSortBAM,
                   commandStr="default",
                   minFA=2, minFracAgreed=0.667,
                   exp="", deaminationPVal=0.05,
-                  conf="default"):
+                  conf="default", parallel=False):
     """
     Lumps together VCF processing.
     exp is a string from a comma-joined list of strings.
@@ -213,8 +213,11 @@ def pairedVCFProc(consMergeSortBAM,
         pl("PileupTSV: {}".format(PileupTSV))
         Results["tsv"] = PileupTSV
     if(MakeVCF):
-        CleanedVCF = VCFWriters.PSNVCall(consMergeSortBAM,
-                                         conf=conf)
+        if(parallel):
+            CleanedVCF = VCFWriters.PSNVCall(consMergeSortBAM,
+                                             conf=conf)
+        else:
+            CleanedVCF = VCFWriters.SNVCrawler(consMergeSortBAM, conf=conf)
         if("ffpe" in exp.lower()):
             deaminationFrequency = np.mean(
                 GetDeaminationFrequencies(CleanedVCF), dtype=np.longdouble)

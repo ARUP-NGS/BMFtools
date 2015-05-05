@@ -6,7 +6,7 @@ from Bio.Seq import Seq
 from copy import copy as ccopy
 from cytoolz import map as cmap, memoize, frequencies as cyfreq
 from functools import partial
-from itertools import groupby, tee
+from itertools import groupby, tee, chain
 from MawCluster.Probability import GetCeiling
 from numpy import any as npany
 from numpy import concatenate as nconcatenate
@@ -51,6 +51,7 @@ ctypedef AbstractIndelContainer AbstractIndelContainer_t
 ctypedef IndelQuiver IndelQuiver_t
 oig1 = oig(1)
 oig0 = oig(0)
+cfi = chain.from_iterable
 
 
 def l1(x):
@@ -2712,17 +2713,36 @@ def PermuteMotifOnce(cython.str motif, set alphabet={"A", "C", "G", "T"}):
     Gets all strings within hamming distance 1 of motif and returns it as a
     list.
     """
-    return list(set(chain.from_iterable([[
+    return list(set(cfi([[
         motif[:pos] + alpha + motif[pos + 1:] for
         alpha in alphabet] for
-                                         pos in range(len(motif))])))
+                         pos in range(len(motif))])))
+
+
+def PyPermuteMotifOnce(motif, set alphabet={"A", "C", "G", "T"}):
+    """
+    Gets all strings within hamming distance 1 of motif and returns it as a
+    list.
+    """
+    return list(set(cfi([[
+        motif[:pos] + alpha + motif[pos + 1:] for
+        alpha in alphabet] for
+                         pos in range(len(motif))])))
 
 
 @cython.returns(list)
 def PermuteMotifN(cython.str motif, cython.long n=-1):
     assert n > 0
-    cdef list workingSet
+    cdef set workingSet
     cdef cython.long i
+    workingSet = {motif}
+    for i in range(n):
+        workingSet = set(cfi(map(PermuteMotifOnce, workingSet)))
+    return list(workingSet)
+
+
+def PyPermuteMotifN(motif, n=-1):
+    assert n > 0
     workingSet = [motif]
     for i in range(n):
         workingSet = set(cfi(map(PermuteMotifOnce, workingSet)))

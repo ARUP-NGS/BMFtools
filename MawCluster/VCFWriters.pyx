@@ -64,7 +64,8 @@ def SNVCrawler(inBAM,
                cython.float minFracAgreed=0.0, cython.long minFA=2,
                cython.str experiment="",
                cython.bint parallel=False,
-               sampleName="DefaultSampleName"):
+               sampleName="DefaultSampleName",
+               conf="default"):
     cdef cython.long NumDiscordantPairs = 0
     cdef cython.str VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR
@@ -74,16 +75,45 @@ def SNVCrawler(inBAM,
     cdef list line, discReads, VCFLines, bedlines
     cdef pPileupRead_t i
     cdef pysam.calignmentfile.AlignedSegment read
+    if(conf != "default"):
+        confDict = parseConfig(conf)
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
         bedSet = True
         bedlines = ParseBed(bed)
     else:
-        print("no bed file provided...")
-        bedSet = False
+        if("bed" not in confDict.iterkeys()):
+            print("no bed file provided...")
+            bedSet = False
+        else:
+            bedlines = ParseBed(confDict[bed])
     if(isinstance(bed, list)):
         bedlines = bed
-
+    if("confDict" in locals()):
+        try:
+            minMQ = int(confDict['minMQ'])
+        except KeyError:
+            pass
+        try:
+            minBQ = int(confDict['minBQ'])
+        except KeyError:
+            pass
+        try:
+            MaxPValue = float(confDict['MaxPValue'])
+        except KeyError:
+            pass
+        try:
+            minFA = int(confDict['minFA'])
+        except KeyError:
+            pass
+        try:
+            reference = confDict['ref']
+        except KeyError:
+            pass
+        try:
+            minFracAgreed = float(confDict['minFracAgreed'])
+        except KeyError:
+            pass
     refHandle = pysam.FastaFile(reference)
     if(OutVCF == "default"):
         OutVCF = inBAM[0:-4] + ".bmf.vcf"
