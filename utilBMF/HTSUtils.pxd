@@ -85,3 +85,9 @@ cdef class Insertion(AbstractIndelContainer):
     """
     See HTSUtils.pyx for doc string.
     """
+
+cdef class IndelQuiver(object):
+    cdef public dict data, counts
+    cdef public list deletions, insertions, complexindels
+    cdef public cython.long window
+    cdef public pysam.cfaidx.FastaFile fastaRef

@@ -48,6 +48,7 @@ ctypedef pysam.calignmentfile.PileupRead cPileupRead
 ctypedef Insertion Insertion_t
 ctypedef Deletion Deletion_t
 ctypedef AbstractIndelContainer AbstractIndelContainer_t
+ctypedef IndelQuiver IndelQuiver_t
 oig1 = oig(1)
 oig0 = oig(0)
 
@@ -2604,12 +2605,19 @@ cdef class Deletion(AbstractIndelContainer):
         return self.uniqStr + "|%s" % len(self.readnames)
 
 
-class IndelQuiver(object):
+cdef class IndelQuiver(object):
+
     """
-    Class for holding on to the
+    Class for holding on to the indel objects. Holds a list for each
+    type of indel, as well as a dictionary where the keys are unique
+    string descriptors for the mutation and the values are lists
+    of read names for reads supporting that mutation.
+    Counts is a similar object, but with the length of the data
+    field as a value instead of the list itself.
     """
     def __init__(self, cython.str ref=None, cython.long window=10):
         self.data = {}
+        self.counts = {}
         self.deletions = []
         self.insertions = []
         self.complexindels = []
@@ -2620,13 +2628,14 @@ class IndelQuiver(object):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, key):
+    @cython.returns(list)
+    def __getitem__(self, cython.str key):
         return self.data[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, cython.str key, list value):
         self.data[key] = value
 
-    def setIndelShen(self, indelObj):
+    def setIndelShen(self, AbstractIndelContainer_t indelObj):
         indelObj.shen = min([shen(self.fastaRef(indelObj.contig,
                                                 indelObj.start - self.window,
                                                 indelObj.start)),
@@ -2634,7 +2643,29 @@ class IndelQuiver(object):
                                                 indelObj.end + self.window))])
         indelObj.shenwindow = window
 
-    def addIndel(self, indelObj):
+    def iterkeys(self):
+        return self.data.iterkeys()
+
+    @cython.returns(list)
+    def keys(self):
+        return self.data.keys()
+
+    def iteritems(self):
+        return self.data.iteritems()
+
+    @cython.returns(list)
+    def items(self):
+        return self.data.items()
+
+    def itervalues(self):
+        return self.data.itervalues()
+
+    @cython.returns(list)
+    def values(self):
+        return self.data.values()
+
+    def addIndel(self, AbstractIndelContainer_t indelObj,
+                 cython.bint newWindowSize=False):
         try:
             self[indelObj.uniqStr] += indelObj.readnames
         except KeyError:
@@ -2646,6 +2677,33 @@ class IndelQuiver(object):
             self.insertions.append(indelObj)
         else:
             self.complexindels.append(indelObj)
+        self.counts = {key: len(values) for key, values in
+                       self.data.itervalues()}
+
+
+    def mergeQuiver(self, IndelQuiver_t quiverObj):
+        for key in quiverObj:
+            try:
+                self[key] += quiverObj[key]
+            except KeyError:
+                self[key] = quiverObj[key]
+        self.counts = {key: len(values) for key, values in
+                       self.data.itervalues()}
+        self.deletions += quiverObj.deletions
+        self.insertions += quiverObj.insertions
+        self.complexindels += quiverObj.complexindels
+        if(newWindowSize):
+            self.window = quiverObj.window
+        # Recalculate the Shannon entropy for each indel with new window
+        for indel in self.deletions + self.insertions + self.complexindels:
+            self.setIndelShen(indel)
+
+    @cython.returns(dict)
+    def getIndelCounter(self, cython.str uniqStr):
+        try:
+            return cyfreq(self[uniqStr])
+        except KeyError:
+            return {}
 
 
 @cython.returns(list)
@@ -2654,9 +2712,10 @@ def PermuteMotifOnce(cython.str motif, set alphabet={"A", "C", "G", "T"}):
     Gets all strings within hamming distance 1 of motif and returns it as a
     list.
     """
-    return list(set(cfi([[motif[:pos] + alpha + motif[pos + 1:] for
-                          alpha in alphabet] for
-                         pos in range(len(motif))])))
+    return list(set(chain.from_iterable([[
+        motif[:pos] + alpha + motif[pos + 1:] for
+        alpha in alphabet] for
+                                         pos in range(len(motif))])))
 
 
 @cython.returns(list)

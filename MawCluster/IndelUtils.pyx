@@ -8,7 +8,11 @@ from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               GetKmersToCheck, FastqStrFromKmerList,
                               BowtieFqToStr, GetMQPassReads,
                               GetInsertionFromAlignedSegment,
-                              GetDeletionFromAlignedSegment, IndelQuiver)
+                              GetDeletionFromAlignedSegment, IndelQuiver,
+                              FacePalm)
+from .SNVUtils import (HeaderInfoLine, HeaderFormatLine,
+                       HeaderContigLine, HeaderCommandLine,
+                       HeaderReferenceLine)
 from utilBMF.ErrorHandling import ThisIsMadness
 import os.path
 import uuid
@@ -16,6 +20,8 @@ from cytoolz.itertoolz import frequencies as cyfreq
 import sys
 cimport pysam.calignmentfile
 cimport cython
+cimport utilBMF.HTSUtils
+ctypedef utilBMF.HTSUtils.IndelQuiver IndelQuiver_t
 
 """
 Contains utilities for working with indels for HTS data.
@@ -72,7 +78,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
 
 def IsIndelRelevant(
         pysam.calignmentfile.AlignedSegment read, cython.long minFam=2,
-        cython.float minSF=0.2, cython.bint keepUnmapped=False):
+        cython.float minSF=0.5, cython.bint keepUnmapped=False):
     """
     True if considered relevant to indels.
     False otherwise.
@@ -166,8 +172,11 @@ def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
     return PassingReadNames
 
 
-def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2, cython.float minShen=0.2,
-                     cython.long window=16, cython.str ref=None):
+@cython.returns(IndelQuiver_t)
+def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2,
+                          cython.float minShen=0.2,
+                          cython.long window=16, cython.str ref=None,
+                          bedRegion=[]):
     """
     To PileupTaggedIndels, the bam must have the DSI and DSD tags set
     for reads, and it is strongly recommended that you parse out
@@ -177,7 +186,8 @@ def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2, cython.float minShen=0.
     cdef pysam.calignmentfile.AlignedSegment rec
     refHandle = pysam.FastaFile(ref)
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    for rec in inHandle:
+    inFetch = inHandle.fetch(bedRegion[0], bedRegion[1])
+    for rec in inFetch:
         try:
             svtags = rec.opt("SV")
         except KeyError:
@@ -186,4 +196,7 @@ def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2, cython.float minShen=0.
             Quiver.addIndel(GetInsertionFromAlignedSegment(rec, handle=refHandle))
         if("DSD" in svtags):
             Quiver.addIndel(GetDeletionFromAlignedSegment(rec, handle=refHandle))
+        if(rec.reference_pos >= bedRegion[2]):
+            pl("Finished bed region %s." % bedRegion)
+            break
     return Quiver
