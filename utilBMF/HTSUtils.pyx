@@ -2719,31 +2719,11 @@ def PermuteMotifOnce(cython.str motif, set alphabet={"A", "C", "G", "T"}):
                          pos in range(len(motif))])))
 
 
-def PyPermuteMotifOnce(motif, set alphabet={"A", "C", "G", "T"}):
-    """
-    Gets all strings within hamming distance 1 of motif and returns it as a
-    list.
-    """
-    return list(set(cfi([[
-        motif[:pos] + alpha + motif[pos + 1:] for
-        alpha in alphabet] for
-                         pos in range(len(motif))])))
-
-
 @cython.returns(list)
 def PermuteMotifN(cython.str motif, cython.long n=-1):
-    assert n > 0
     cdef set workingSet
     cdef cython.long i
     workingSet = {motif}
-    for i in range(n):
-        workingSet = set(cfi(map(PermuteMotifOnce, workingSet)))
-    return list(workingSet)
-
-
-def PyPermuteMotifN(motif, n=-1):
-    assert n > 0
-    workingSet = [motif]
     for i in range(n):
         workingSet = set(cfi(map(PermuteMotifOnce, workingSet)))
     return list(workingSet)
