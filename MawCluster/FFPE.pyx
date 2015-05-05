@@ -3,10 +3,9 @@
 
 from cytoolz import map as cmap, memoize
 from math import log10 as mlog10
-from MawCluster.BCVCF import IterativeVCFFile
-from MawCluster.BCVCF import IterativeVCFFile
-from MawCluster.Probability import ConfidenceIntervalAAF, GetCeiling
-from MawCluster.SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
+from .BCVCF import IterativeVCFFile
+from .Probability import ConfidenceIntervalAAF, GetCeiling
+from .SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
 from operator import methodcaller as mc
 from subprocess import check_output
 from utilBMF.ErrorHandling import IllegalArgumentError

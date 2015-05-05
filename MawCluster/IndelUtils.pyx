@@ -12,7 +12,8 @@ from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               FacePalm)
 from .SNVUtils import (HeaderInfoLine, HeaderFormatLine,
                        HeaderContigLine, HeaderCommandLine,
-                       HeaderReferenceLine)
+                       HeaderReferenceLine, HeaderFileFormatLine,
+                       GetContigHeaderLines, HeaderFilterLine)
 from utilBMF.ErrorHandling import ThisIsMadness
 import os.path
 import uuid
@@ -200,3 +201,63 @@ def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2,
             pl("Finished bed region %s." % bedRegion)
             break
     return Quiver
+
+IDInfoDict = {}
+IDInfoDict["LEN"] = HeaderInfoLine(
+    ID="LEN", Description="Length of allele (deletion or insertion)",
+    Type="Integer", Number="A")
+
+
+IDFilterDict = {}
+IDFilterDict["PASS"] = HeaderFilterLine(ID="PASS",
+                                            Description="All filters passed")
+IDFilterDict["LowComplexity"] = HeaderFilterLine(
+    ID="LowComplexity",
+    Description=("Variant's flanking regions have Shannon entropy "
+                 "below a required threshold."))
+IDFilterDict["InsufficientReadPairs"] = HeaderFilterLine(
+    ID="InsufficientReadPairs",
+    Description=("Variant not supported by sufficient "
+                 "concordant pairs of duplex reads"))
+IDFormatDict = {}
+IDFormatDict["TYPE"] = HeaderInfoLine(
+    Type="String", ID="TYPE",
+    Description=("The type of allele, either snp, mnp, "
+                 "ins, del, tra, or complex."),
+    Number="A")
+
+
+def GetIDVCFHeader(fileFormat="default", commandStr="default",
+                   reference="default",
+                   header="default", sampleName="DefaultSampleName"):
+    reference = reference.split("/")[-1]
+    HeaderLinesStr = ""
+    # fileformat line
+    HeaderLinesStr += str(HeaderFileFormatLine(
+        fileformat=fileFormat)) + "\n"
+    # FILTER lines
+    for key in sorted(IDFilterDict.keys()):
+        HeaderLinesStr += str(IDFilterDict[key]) + "\n"
+    # INFO lines
+    HeaderLinesStr += "\n".join([str(IDInfoDict[key]) for
+                       key in sorted(IDInfoDict.keys())]) + "\n"
+    # FORMAT lines
+    HeaderLinesStr += "\n".join([str(IDFormatDict[key]) for
+                       key in IDFormatDict.keys()]) + "n"
+    # commandline line
+    if(commandStr != "default"):
+        HeaderLinesStr += str(HeaderCommandLine(
+            commandStr=commandStr)) + "\n"
+    # reference line
+    if(reference != "default"):
+        HeaderLinesStr += str(HeaderReferenceLine(
+            reference=reference)) + "\n"
+    # contig lines
+    if(header != "default"):
+        HeaderLinesStr += GetContigHeaderLines(header) + "\n"
+    HeaderLinesStr += "\t".join(["#CHROM", "POS",
+                                 "ID", "REF",
+                                 "ALT", "QUAL",
+                                 "FILTER", "INFO", "FORMAT",
+                                 sampleName]) + "\n"
+    return HeaderLinesStr

@@ -6,7 +6,7 @@ from Bio.Seq import Seq
 from copy import copy as ccopy
 from cytoolz import map as cmap, memoize, frequencies as cyfreq
 from functools import partial
-from itertools import groupby, tee, chain
+from itertools import groupby, tee, chain, combinations, product
 from MawCluster.Probability import GetCeiling
 from numpy import any as npany
 from numpy import concatenate as nconcatenate
@@ -20,7 +20,7 @@ from operator import itemgetter as oig
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from re import compile as regexcompile
 from subprocess import check_output, check_call, CalledProcessError
-from utilBMF.ErrorHandling import *
+from .ErrorHandling import *
 from collections import deque
 from entropy import shannon_entropy as shen
 import copy
@@ -2707,26 +2707,46 @@ cdef class IndelQuiver(object):
             return {}
 
 
-@cython.returns(list)
-def PermuteMotifOnce(cython.str motif, set alphabet={"A", "C", "G", "T"}):
+def hamming_cousins_exact(cython.str s, cython.long n,
+                          set alphabet={"A", "C", "G", "T"}):
+    """Generate strings over alphabet whose Hamming distance from s is
+    exactly n.
+
+    >>> sorted(hamming_cousins_exact('abc', 0, 'abc'))
+    ['abc']
+    >>> sorted(hamming_cousins_exact('abc', 1, 'abc'))
+    ['aac', 'aba', 'abb', 'acc', 'bbc', 'cbc']
+    >>> sorted(hamming_cousins_exact('aaa', 2, 'ab'))
+    ['abb', 'bab', 'bba']
+
     """
-    Gets all strings within hamming distance 1 of motif and returns it as a
-    list.
-    """
-    return list(set(cfi([[
-        motif[:pos] + alpha + motif[pos + 1:] for
-        alpha in alphabet] for
-                         pos in range(len(motif))])))
+    cdef cython.long lalphabetSub1
+    lalphabetSub1 = len(alphabet) - 1
+    for positions in combinations(xrange(len(s)), n):
+        for replacements in product(range(lalphabetSub1), repeat=n):
+            cousin = list(s)
+            for p, r in zip(positions, replacements):
+                if cousin[p] == alphabet[r]:
+                    cousin[p] = alphabet[-1]
+                else:
+                    cousin[p] = alphabet[r]
+            yield ''.join(cousin)
 
 
-@cython.returns(list)
-def PermuteMotifN(cython.str motif, cython.long n=-1):
-    cdef set workingSet
-    cdef cython.long i
-    workingSet = {motif}
-    for i in range(n):
-        workingSet = set(cfi(map(PermuteMotifOnce, workingSet)))
-    return list(workingSet)
+def hamming_cousins(cython.str s, cython.long n,
+                    set alphabet={"A", "C", "G", "T"}):
+    """Generate strings over alphabet whose Hamming distance from s is
+    less than or equal to n.
+
+    >>> sorted(hamming_cousins('abc', 0, 'abc'))
+    ['abc']
+    >>> sorted(hamming_cousins('abc', 1, 'abc'))
+    ['aac', 'aba', 'abb', 'abc', 'acc', 'bbc', 'cbc']
+    >>> sorted(hamming_cousins('aaa', 2, 'ab'))
+    ['aaa', 'aab', 'aba', 'abb', 'baa', 'bab', 'bba']
+
+    """
+    return chain(*(hamming_cousins_exact(s, i, alphabet) for i in range(n + 1)))
 
 
 @cython.returns(Insertion_t)

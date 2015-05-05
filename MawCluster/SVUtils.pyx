@@ -3,7 +3,7 @@ from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm,
                               ReadPairIsDuplex,
                               PysamToChrDict, GetDeletedCoordinates,
                               is_read_softclipped, GetGC2NMapForRead,
-                              GetInsertedStrs)
+                              GetInsertedStrs, ReadOverlapsBed as RIB)
 
 from Bio.Seq import Seq
 from collections import defaultdict
@@ -12,7 +12,6 @@ from numpy import argmax as nargmax
 from operator import add as oadd
 from operator import attrgetter as oag
 from operator import itemgetter as oig
-from utilBMF.HTSUtils import ReadOverlapsBed as RIB
 from utilBMF import HTSUtils
 import copy
 import cython

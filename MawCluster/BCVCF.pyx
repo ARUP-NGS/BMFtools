@@ -20,7 +20,7 @@ from cytoolz import map as cmap
 from utilBMF.HTSUtils import (ThisIsMadness, printlog as pl,
                               SortBgzipAndTabixVCF)
 from utilBMF import HTSUtils
-from MawCluster import SNVUtils
+from . import SNVUtils
 
 
 cimport pysam.TabProxies

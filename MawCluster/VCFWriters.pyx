@@ -9,17 +9,17 @@ import pysam
 import cython
 from cytoolz import map as cmap
 
-from MawCluster import BCVCF
-from MawCluster.SNVUtils import GetVCFHeader
-from MawCluster.PileupUtils import (pPileupColumn,
+from . import BCVCF
+from .SNVUtils import GetVCFHeader
+from .PileupUtils import (pPileupColumn,
                                     GetDiscordantReadPairs, PCInfo)
-from MawCluster.SNVUtils cimport VCFPos
 from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
                               ParseBed, PopenDispatcher, PopenCall,
                               parseConfig)
-from utilBMF.HTSUtils cimport pPileupRead
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness, FunctionCallException
+from MawCluster.SNVUtils cimport VCFPos
+from utilBMF.HTSUtils cimport pPileupRead
 cimport cython
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
@@ -41,7 +41,6 @@ Settled on two major filters for inclusion in a pileup
    too big a family...)
 2. Min Fraction Agreement Within Family [float=0.6667]
 
-More thoughts?
 """
 
 
@@ -61,7 +60,8 @@ def SNVCrawler(inBAM,
                cython.str INFOTags="default",
                cython.str FORMATTags="default",
                cython.bint writeHeader=True,
-               cython.float minFracAgreed=0.0, cython.long minFA=2,
+               cython.float minFracAgreed=0.0,
+               cython.long minFA=2,
                cython.str experiment="",
                cython.bint parallel=False,
                sampleName="DefaultSampleName",
@@ -86,7 +86,7 @@ def SNVCrawler(inBAM,
             print("no bed file provided...")
             bedSet = False
         else:
-            bedlines = ParseBed(confDict[bed])
+            bedlines = ParseBed(confDict["bed"])
     if(isinstance(bed, list)):
         bedlines = bed
     if("confDict" in locals()):
@@ -147,7 +147,7 @@ def SNVCrawler(inBAM,
     if(bedSet):
         pl("Bed file provided - iterating through bed columns")
         for line in bedlines:
-            pl("Making pileup call.")
+            pl("Making pileup call for region %s" % line)
             ICR = pileupCall(line[0], line[1],
                              max_depth=200000,
                              multiple_iterators=False)

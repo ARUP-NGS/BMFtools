@@ -5,8 +5,8 @@
 Contains tools related to analyzing tumor/normal pairs.
 """
 import pysam
-from MawCluster.Probability import (ConfidenceIntervalAAF, defaultPValue,
-                                    GetCeiling)
+from .Probability import (ConfidenceIntervalAAF, defaultPValue,
+                          GetCeiling)
 from utilBMF.HTSUtils import makeinfodict, makeformatdict, pl, ThisIsMadness
 from subprocess import check_output
 import sys

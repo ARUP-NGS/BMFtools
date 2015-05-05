@@ -268,7 +268,5 @@ Most options are available for command-line as well. If an option is set in both
     3. Work on interchromosomal translocations
 
 1. Week of 5/4:
-    4. Do work on small indels. (Small indels: Use DSI/DSD)
-        1. IndelContainerDict
-    5. Follow-up on 4. Freebayes couldn't find the bigger indel. Building the kmer idea with nested hashmaps.
-    7. Start working on the kmer uniquely-mappability (does that make grammatical sense?) problem.
+    4. Write actual indel caller for those which the aligner was able tof find.
+    5. Double hashmaps.

@@ -11,7 +11,6 @@ from copy import copy as ccopy
 from os import path
 import operator
 from operator import attrgetter as oag
-from operator import div as odiv
 import string
 import uuid
 import sys
@@ -19,26 +18,22 @@ from subprocess import check_call
 from functools import partial
 
 import numpy as np
-from numpy import array as nparray
-from numpy import sum as nsum
-from numpy import multiply as nmultiply
-from numpy import subtract as nsubtract
-from numpy import argmax as nargmax
-from numpy import vstack as nvstack
-from numpy import char
+from numpy import (array as nparray, sum as nsum, multiply as nmultiply,
+                   subtract as nsubtract, argmax as nargmax,
+                   vstack as nvstack, char)
 from Bio import SeqIO
 import pysam
 import cython
 from cytoolz import map as cmap
 
-from MawCluster.BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
-from MawCluster import BCFastq
+from .BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
+from . import BCFastq
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
                               BwaswCall, samtoolsMergeBam)
 from utilBMF.ErrorHandling import IllegalArgumentError
-from MawCluster.SVUtils import returnDefault
+from .SVUtils import returnDefault
 from utilBMF import HTSUtils
 import SecC
 cimport numpy as np

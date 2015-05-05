@@ -4,12 +4,10 @@ from __future__ import division
 from operator import attrgetter as oag
 from operator import methodcaller as mc
 from subprocess import check_output, check_call
-from numpy import array as nparray
-from numpy import append as npappend
-from numpy import mean as nmean
+from numpy import array as nparray, append as npappend, mean as nmean
 from cytoolz import map as cmap
-from utilBMF.HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
-                              ThisIsMadness, PipedShellCall)
+from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
+                       ThisIsMadness, PipedShellCall)
 from MawCluster.PileupUtils import pPileupColumn
 import cython
 import logging

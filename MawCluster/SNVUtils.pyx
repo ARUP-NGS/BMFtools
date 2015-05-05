@@ -10,12 +10,12 @@ import numpy as np
 from numpy import array as nparray
 from math import log10 as mlog10
 from cytoolz import map as cmap
-from MawCluster.PileupUtils import PCInfo, AlleleAggregateInfo
+from .PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
-from MawCluster.Probability import ConfidenceIntervalAAF
+from .Probability import ConfidenceIntervalAAF
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
 from entropy import shannon_entropy as shen
 
