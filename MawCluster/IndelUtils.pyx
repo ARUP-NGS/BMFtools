@@ -449,7 +449,7 @@ cdef class IndelQuiver(object):
     def __init__(self, cython.str ref=None, cython.long window=10,
                  cython.long minMQ=0, cython.long minFM=0,
                  cython.str bam=None, cython.long minNumSS=0,
-                 cython.float minShen=minShen, cython.long minPairs=minPairs):
+                 cython.float minShen=0.2, cython.long minPairs=1):
         self.data = {}
         self.readnames = {}
         self.counts = {}
