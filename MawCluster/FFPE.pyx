@@ -27,7 +27,6 @@ from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness,
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
-ctypedef np.longdouble_t dtype128_t
 
 
 """
@@ -37,8 +36,8 @@ Contains utilities relating to FFPE
 BMFVersion = "0.1.0.0beta"
 
 
-@cython.locals(maxFreq=dtype128_t)
-@cython.returns(dtype128_t)
+@cython.locals(maxFreq=np.longdouble_t)
+@cython.returns(np.longdouble_t)
 def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
                               minGCcount=50):
 
@@ -54,7 +53,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     cdef cython.long TotalCG_TA
     cdef cython.long DP
     cdef cython.long GC
-    cdef dtype128_t freq
+    cdef np.longdouble_t freq
     validFilters = list(cmap(mc("lower"), HeaderFilterDict.keys()))
     FILTER = FILTER.lower()
     filters = FILTER.split(",")
@@ -111,7 +110,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     return freq
 
 
-@cython.returns(dtype128_t)
+@cython.returns(np.longdouble_t)
 def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
                   minGCcount=50):
 
@@ -177,8 +176,8 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     return freq
 
 
-@cython.locals(pVal=dtype128_t, DOC=cython.long,
-               maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
+@cython.locals(pVal=np.longdouble_t, DOC=cython.long,
+               maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t, AAF=np.longdouble_t,
                recordsPerWrite=cython.long)
 def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                             recordsPerWrite=5000, outVCF="default"):
@@ -233,13 +232,13 @@ def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
     return outVCF
 
 
-@cython.locals(maxFreq=dtype128_t, pVal=dtype128_t)
+@cython.locals(maxFreq=np.longdouble_t, pVal=np.longdouble_t)
 def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
                    pVal=0.001):
     """
     Calls both GetDeaminationFrequencies and FilterByDeaminationFreq.
     """
-    cdef dtype128_t DeamFreq
+    cdef np.longdouble_t DeamFreq
     DeamFreq = GetDeaminationFrequencies(inVCF, maxFreq=maxFreq,
                                          FILTER=FILTER)
     pl("Estimated deamination frequency: %s" % DeamFreq)
@@ -344,8 +343,8 @@ def GetTabixDeamFreq(cython.str inVCF):
     return freq
 
 
-@cython.locals(pVal=dtype128_t, DOC=cython.long,
-               maxFreqNoise=dtype128_t, ctfreq=dtype128_t, AAF=dtype128_t,
+@cython.locals(pVal=np.longdouble_t, DOC=cython.long,
+               maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t, AAF=np.longdouble_t,
                recordsPerWrite=cython.long)
 def TabixDeamFilter(inVCF, pVal=0.001, ctfreq=0.006,
                     recordsPerWrite=5000, outVCF="default"):

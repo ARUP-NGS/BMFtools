@@ -1575,7 +1575,7 @@ def GetInsertedStrs(pysam.calignmentfile.AlignedSegment read):
     return zip(stringList, PrecedingBase, SuccessiveBase)
 
 
-@cython.returns(dtype128_t)
+@cython.returns(np.longdouble_t)
 def FractionSoftClipped(cAlignedSegment read):
     """
     Returns the fraction of a read aligned.
@@ -1585,7 +1585,7 @@ def FractionSoftClipped(cAlignedSegment read):
     return FractionSoftClippedCigar(read.cigar)
 
 
-@cython.returns(dtype128_t)
+@cython.returns(np.longdouble_t)
 def FractionSoftClippedCigar(list cigar):
     """
     Returns the fraction softclipped directly from tuple
@@ -1595,7 +1595,7 @@ def FractionSoftClippedCigar(list cigar):
                                                              in cigar])
 
 
-@cython.returns(dtype128_t)
+@cython.returns(np.longdouble_t)
 def FractionAlignedCigar(list cigar):
     """
     Returns the fraction aligned directly from tuple
@@ -1605,7 +1605,7 @@ def FractionAlignedCigar(list cigar):
                                                              in cigar])
 
 
-@cython.returns(dtype128_t)
+@cython.returns(np.longdouble_t)
 def FractionAligned(cAlignedSegment read):
     """
     Returns the fraction of a read aligned.
@@ -1633,13 +1633,13 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
     return outBAM
 
 
-@cython.locals(outliers_fraction=dtype128_t, contamination=dtype128_t,
+@cython.locals(outliers_fraction=np.longdouble_t, contamination=np.longdouble_t,
                window=cython.long)
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                   window=20):
-    cdef np.ndarray[dtype128_t, ndim = 1] GAFreqNP = f1
-    cdef np.ndarray[dtype128_t, ndim = 1] CTFreqNP = f2
-    cdef np.ndarray[dtype128_t, ndim = 1] FreqArray = nconcatenate(GAFreqNP,
+    cdef np.ndarray[np.longdouble_t, ndim = 1] GAFreqNP = f1
+    cdef np.ndarray[np.longdouble_t, ndim = 1] CTFreqNP = f2
+    cdef np.ndarray[np.longdouble_t, ndim = 1] FreqArray = nconcatenate(GAFreqNP,
                                                                    CTFreqNP)
     ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
@@ -1682,8 +1682,8 @@ def CalculateFamStats(inFq):
     cdef cython.long numFam
     cdef cython.long numSing
     cdef cython.long sumAll
-    cdef dtype128_t meanFamAll
-    cdef dtype128_t meanRealFam
+    cdef np.longdouble_t meanFamAll
+    cdef np.longdouble_t meanRealFam
     numSing = 0
     sumFam = 0
     numFam = 0
@@ -1873,7 +1873,7 @@ def makeformatdict(pysam.TabProxies.VCFProxy rec):
 
 @cython.returns(cython.bint)
 def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
-                        dtype128_t ctfreq=-1., dtype128_t conf=1e-3):
+                        np.longdouble_t ctfreq=-1., np.longdouble_t conf=1e-3):
     """
     Tests whether or not a given record should pass.
     """
@@ -1911,7 +1911,7 @@ def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
     return False
 
 
-def PartialDeaminationConfTest(dtype128_t ctfreq, dtype128_t conf=1e-3):
+def PartialDeaminationConfTest(np.longdouble_t ctfreq, np.longdouble_t conf=1e-3):
     """
     Returns a function that can be easily used by AbstractVCFProxyFilter.
     """
@@ -1961,7 +1961,7 @@ class AbstractVCFProxyFilter(object):
         return rec
 
 
-def MakeVCFProxyDeaminationFilter(dtype128_t ctfreq, dtype128_t conf=1e-3,
+def MakeVCFProxyDeaminationFilter(np.longdouble_t ctfreq, np.longdouble_t conf=1e-3,
                                   key="default", value="*"):
     """
     Returns the VCFProxyFilter object I wanted.

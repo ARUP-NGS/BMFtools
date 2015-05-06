@@ -23,9 +23,6 @@ cimport numpy as np
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 
-ctypedef np.longdouble_t dtype128_t
-ctypedef np.int64_t dtypei64_t
-
 
 """
 Contains functions and miscellania for QC metrics.

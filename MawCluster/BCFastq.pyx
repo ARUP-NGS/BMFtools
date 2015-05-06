@@ -63,7 +63,6 @@ cimport cython
 cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
-ctypedef np.int64_t dtypei_t
 ctypedef pysam.calignmentfile.AlignedSegment dtype_as
 
 
@@ -168,8 +167,8 @@ def compareFastqRecords(R, stringency=0.9, famLimit=200,
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
-    cdef np.ndarray[dtypei_t, ndim = 1] numAgreed
-    cdef np.ndarray[dtypei_t, ndim = 1] probs
+    cdef np.ndarray[np.int64_t, ndim = 1] numAgreed
+    cdef np.ndarray[np.int64_t, ndim = 1] probs
     lenR = len(R)
     try:
         famLimit = int(famLimit)
@@ -219,19 +218,19 @@ def compareFastqRecordsInexactNumpy(R):
     seqs = nparray([str(record.seq) for record in R], dtype=np.str_)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = npvstack(stackArrays)
-    cdef np.ndarray[dtypei_t, ndim = 2] quals
-    cdef np.ndarray[dtypei_t, ndim = 2] qualA
-    cdef np.ndarray[dtypei_t, ndim = 2] qualC
-    cdef np.ndarray[dtypei_t, ndim = 2] qualG
-    cdef np.ndarray[dtypei_t, ndim = 2] qualT
-    cdef np.ndarray[dtypei_t, ndim = 1] qualAFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualCFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualGFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualTFlat
-    cdef np.ndarray[dtypei_t, ndim = 2] qualAllSum
-    cdef np.ndarray[dtypei_t, ndim = 1] MaxPhredSum
-    cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
-    cdef np.ndarray[dtypei_t, ndim = 1] numFamAgreed
+    cdef np.ndarray[np.int64_t, ndim = 2] quals
+    cdef np.ndarray[np.int64_t, ndim = 2] qualA
+    cdef np.ndarray[np.int64_t, ndim = 2] qualC
+    cdef np.ndarray[np.int64_t, ndim = 2] qualG
+    cdef np.ndarray[np.int64_t, ndim = 2] qualT
+    cdef np.ndarray[np.int64_t, ndim = 1] qualAFlat
+    cdef np.ndarray[np.int64_t, ndim = 1] qualCFlat
+    cdef np.ndarray[np.int64_t, ndim = 1] qualGFlat
+    cdef np.ndarray[np.int64_t, ndim = 1] qualTFlat
+    cdef np.ndarray[np.int64_t, ndim = 2] qualAllSum
+    cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum
+    cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
+    cdef np.ndarray[np.int64_t, ndim = 1] numFamAgreed
     # print(repr(seqArray))
     quals = nparray([
         record.letter_annotations['phred_quality']
@@ -284,8 +283,8 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
-    cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
-    cdef np.ndarray[dtypei_t, ndim = 1] FA
+    cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
+    cdef np.ndarray[np.int64_t, ndim = 1] FA
     cdef cython.str lenRStr
     cdef list seqs
     cdef cython.str seq
@@ -373,19 +372,19 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = npvstack(stackArrays)
 
-    cdef np.ndarray[dtypei_t, ndim = 2] quals
-    cdef np.ndarray[dtypei_t, ndim = 2] qualA
-    cdef np.ndarray[dtypei_t, ndim = 2] qualC
-    cdef np.ndarray[dtypei_t, ndim = 2] qualG
-    cdef np.ndarray[dtypei_t, ndim = 2] qualT
-    cdef np.ndarray[dtypei_t, ndim = 1] qualAFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualCFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualGFlat
-    cdef np.ndarray[dtypei_t, ndim = 1] qualTFlat
-    cdef np.ndarray[dtypei_t, ndim = 2] qualAllSum
-    cdef np.ndarray[dtypei_t, ndim = 1] MaxPhredSum
-    cdef np.ndarray[dtypei_t, ndim = 1] phredQuals
-    cdef np.ndarray[dtypei_t, ndim = 1] FA
+    cdef np.ndarray[np.int64_t, ndim = 2] quals
+    cdef np.ndarray[np.int64_t, ndim = 2] qualA
+    cdef np.ndarray[np.int64_t, ndim = 2] qualC
+    cdef np.ndarray[np.int64_t, ndim = 2] qualG
+    cdef np.ndarray[np.int64_t, ndim = 2] qualT
+    cdef np.ndarray[np.int64_t, ndim = 1] qualAFlat
+    cdef np.ndarray[np.int64_t, ndim = 1] qualCFlat
+    cdef np.ndarray[np.int64_t, ndim = 1] qualGFlat
+    cdef np.ndarray[np.int64_t, ndim = 1] qualTFlat
+    cdef np.ndarray[np.int64_t, ndim = 2] qualAllSum
+    cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum
+    cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
+    cdef np.ndarray[np.int64_t, ndim = 1] FA
 
     # print(repr(seqArray))
     quals = nparray([pysam.fromQualityString(record.quality) for record in R])

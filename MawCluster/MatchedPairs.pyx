@@ -16,12 +16,11 @@ asVCF = pysam.asVCF()
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
-ctypedef np.longdouble_t dtype128_t
 
 
-@cython.returns(dtype128_t)
+@cython.returns(np.longdouble_t)
 def GetObservedAAFCeiling(cython.long AC, cython.long DOC,
-                          dtype128_t pVal=defaultPValue):
+                          np.longdouble_t pVal=defaultPValue):
     """
     Returns the maximum AAF given observed AC and DOC.
     """
@@ -31,7 +30,7 @@ def GetObservedAAFCeiling(cython.long AC, cython.long DOC,
 @cython.returns(cython.bint)
 def TestTumorVsNormal(cython.long tAC, cython.long tDOC,
                       cython.long nAC, cython.long nDOC,
-                      dtype128_t pVal=defaultPValue):
+                      np.longdouble_t pVal=defaultPValue):
     """
     Tests whether the quantity of a variant in a tumor sample analyzed for
     somatic variants is significantly different from the corresponding
@@ -40,7 +39,7 @@ def TestTumorVsNormal(cython.long tAC, cython.long tDOC,
     becomes the pVal of TestTumorVsNormal.
     Handles the numeric
     """
-    cdef dtype128_t nMaxAAF, tumorMaxNoise
+    cdef np.longdouble_t nMaxAAF, tumorMaxNoise
     PartialPVal = 1 - msqrt(1 - pVal)
     nMaxAAF = GetObservedAAFCeiling(nAC, nDOC, pVal=PartialPVal)
     tumorMaxNoise = GetCeiling(tDOC, p=nMaxAAF, pVal=PartialPVal)
@@ -68,7 +67,7 @@ def TumorVNormalVCFProxy(pysam.TabProxies.VCFProxy tumor,
 
 
 def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
-                                dtype128_t pVal=defaultPValue):
+                                np.longdouble_t pVal=defaultPValue):
     """
     Adds a filter to each record in a tumor VCF with a matched normal.
     If the normal is barcoded, use this pipeline with the same parameters.
@@ -78,7 +77,7 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     """
     cdef pysam.TabProxies.VCFProxy rec, nRec, i
     cdef cython.long nDOC, nAC
-    cdef dtype128_t nMaxAAF
+    cdef np.longdouble_t nMaxAAF
     cdef cython.str f
     if(normal == "default"):
         raise ThisIsMadness("Noraml VCF required for T/N filtering.")

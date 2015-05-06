@@ -26,7 +26,6 @@ pconfint = proportion.proportion_confint
 
 
 cimport numpy as np
-ctypedef np.longdouble_t dtype128_t
 
 """
 Contains probabilistic tools for accurately identifying somatic mutations.
@@ -39,7 +38,7 @@ PROTOCOLS = ["ffpe", "amplicon", "cf", "other"]
 
 
 @memoize
-@cython.locals(DOC=cython.long, pVal=dtype128_t,
+@cython.locals(DOC=cython.long, pVal=np.longdouble_t,
                AC=cython.long)
 def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
                           method="agresti_coull"):
@@ -60,14 +59,14 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
 
 @cython.returns(np.ndarray)
 def ConfidenceIntervalAI(cython.long Allele1,
-                         cython.long Allele2, dtype128_t pVal=defaultPValue,
+                         cython.long Allele2, np.longdouble_t pVal=defaultPValue,
                          cython.str method="agresti_coull"):
     """
     Returns the confidence interval for an allelic imbalance
     given counts for Allele1 and Allele2, where those are the most common
     alleles at a given position.
     """
-    cdef dtype128_t ratio
+    cdef np.longdouble_t ratio
     if(Allele1 < Allele2):
         ratio = 1. * Allele1 / Allele2
     else:
@@ -89,16 +88,16 @@ def ConfidenceIntervalAI(cython.long Allele1,
 @cython.returns(tuple)
 def MakeAICall(cython.long Allele1,
                cython.long Allele2,
-               dtype128_t pVal=defaultPValue,
+               np.longdouble_t pVal=defaultPValue,
                cython.str method="agresti_coull"):
     """
     Gets confidence bounds, returns a call, a "minor" allele frequency,
     an observed allelic imbalance ratio (as defined by more common allele
     over less common allele), and a confidence interval
     """
-    cdef dtype128_t minorAF
+    cdef np.longdouble_t minorAF
     cdef cython.bint call
-    cdef dtype128_t allelicImbalanceRatio
+    cdef np.longdouble_t allelicImbalanceRatio
     confInt = ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                                    method=method)
     minorAF = nmean(confInt, dtype=np.longdouble)
@@ -108,8 +107,8 @@ def MakeAICall(cython.long Allele1,
 
 
 @memoize
-@cython.locals(n=cython.long, p=dtype128_t,
-               pVal=dtype128_t)
+@cython.locals(n=cython.long, p=np.longdouble_t,
+               pVal=np.longdouble_t)
 @cython.returns(cython.long)
 def GetCeiling(n, p=0.0, pVal=defaultPValue):
     """
@@ -120,8 +119,8 @@ def GetCeiling(n, p=0.0, pVal=defaultPValue):
 
 
 @memoize
-@cython.locals(n=dtype128_t)
-@cython.returns(dtype128_t)
+@cython.locals(n=np.longdouble_t)
+@cython.returns(np.longdouble_t)
 def StirlingsApprox(n):
     """
     Stirling's Approximation is a continuous function which approximates
@@ -132,8 +131,8 @@ def StirlingsApprox(n):
 
 
 @memoize
-@cython.locals(n=dtype128_t, k=dtype128_t)
-@cython.returns(dtype128_t)
+@cython.locals(n=np.longdouble_t, k=np.longdouble_t)
+@cython.returns(np.longdouble_t)
 def StirlingsFact(n, k):
     """
     Stirling's Approximation is a continuous function which approximates
@@ -145,8 +144,8 @@ def StirlingsFact(n, k):
 
 
 @memoize
-@cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
-@cython.returns(dtype128_t)
+@cython.locals(p=np.longdouble_t, k=cython.long, n=cython.long)
+@cython.returns(np.longdouble_t)
 def SamplingFrac(n, p=0., k=1):
     """
     Given a fixed probability of an event with n samplings, returns
@@ -160,8 +159,8 @@ def SamplingFrac(n, p=0., k=1):
 
 
 @memoize
-@cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
-@cython.returns(dtype128_t)
+@cython.locals(p=np.longdouble_t, k=cython.long, n=cython.long)
+@cython.returns(np.longdouble_t)
 def SamplingFrac_(n, p=0., k=1):
     """
     Given a fixed probability of an event with n samplings, returns
@@ -174,7 +173,7 @@ def SamplingFrac_(n, p=0., k=1):
 
 
 @memoize
-@cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
+@cython.locals(p=np.longdouble_t, k=cython.long, n=cython.long)
 @cython.returns(np.ndarray)
 def GetUnscaledProbs(n, p=0.):
     """
@@ -187,7 +186,7 @@ def GetUnscaledProbs(n, p=0.):
 
 
 @memoize
-@cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
+@cython.locals(p=np.longdouble_t, k=cython.long, n=cython.long)
 @cython.returns(np.ndarray)
 def GetUnscaledProbs_(n, p=0.):
     """
@@ -200,21 +199,21 @@ def GetUnscaledProbs_(n, p=0.):
 
 
 @memoize
-@cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
-@cython.returns(dtype128_t)
+@cython.locals(p=np.longdouble_t, k=cython.long, n=cython.long)
+@cython.returns(np.longdouble_t)
 def PartitionFunction(n, p=0.1):
     return nsum(GetUnscaledProbs(n, p=p), 0)
 
 
 @memoize
-@cython.locals(p=dtype128_t, k=cython.long, n=cython.long)
-@cython.returns(dtype128_t)
+@cython.locals(p=np.longdouble_t, k=cython.long, n=cython.long)
+@cython.returns(np.longdouble_t)
 def PartitionFunction_(n, p=0.1):
     return nsum(GetUnscaledProbs_(n, p=p), 0)
 
 
 @memoize
-@cython.locals(p=dtype128_t, n=cython.long, k=cython.long)
+@cython.locals(p=np.longdouble_t, n=cython.long, k=cython.long)
 @cython.returns(np.ndarray)
 def SamplingProbDist(n, p=0.):
     """
@@ -222,8 +221,8 @@ def SamplingProbDist(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[dtype128_t, ndim = 1] ProbDist
-    cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
+    cdef np.ndarray[np.longdouble_t, ndim = 1] ProbDist
+    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
@@ -231,7 +230,7 @@ def SamplingProbDist(n, p=0.):
 
 
 @memoize
-@cython.locals(p=dtype128_t, n=cython.long, k=cython.long)
+@cython.locals(p=np.longdouble_t, n=cython.long, k=cython.long)
 @cython.returns(np.ndarray)
 def SamplingProbDist_(n, p=0.):
     """
@@ -239,8 +238,8 @@ def SamplingProbDist_(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[dtype128_t, ndim = 1] ProbDist
-    cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
+    cdef np.ndarray[np.longdouble_t, ndim = 1] ProbDist
+    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
@@ -248,30 +247,30 @@ def SamplingProbDist_(n, p=0.):
 
 
 @memoize
-@cython.locals(p=dtype128_t, n=cython.long, k=cython.long,
-               PartitionFn=dtype128_t)
+@cython.locals(p=np.longdouble_t, n=cython.long, k=cython.long,
+               PartitionFn=np.longdouble_t)
 def SamplingProbMoments(n, p=0.):
     """
     Given a fixed probability of an event with n samplings, returns
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
+    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn
 
 
 @memoize
-@cython.locals(p=dtype128_t, n=cython.long, k=cython.long,
-               PartitionFn=dtype128_t)
+@cython.locals(p=np.longdouble_t, n=cython.long, k=cython.long,
+               PartitionFn=np.longdouble_t)
 def SamplingProbMoments_(n, p=0.):
     """
     Given a fixed probability of an event with n samplings, returns
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[dtype128_t, ndim = 1] UnscaledProbs
+    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn

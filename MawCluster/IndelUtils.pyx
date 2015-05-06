@@ -26,7 +26,6 @@ cimport numpy as np
 cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.IndelQuiver IndelQuiver_t
 ctypedef utilBMF.HTSUtils.AbstractIndelContainer AbstractIndelContainer_t
-ctypedef np.longdouble_t dtype128_t
 
 """
 Contains utilities for working with indels for HTS data.
@@ -178,12 +177,12 @@ def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
 
 
 @cython.returns(IndelQuiver_t)
-def GetTaggedIndelsQuiver(inBAM, cython.long minPairs=2,
-                          cython.float minShen=0.2,
-                          cython.long window=16, cython.str ref=None,
-                          list bedRegion=[], cython.long minMQ=1):
+def FillIndelQuiver(inBAM, cython.long minPairs=2,
+                    cython.float minShen=0.2,
+                    cython.long window=16, cython.str ref=None,
+                    list bedRegion=[], cython.long minMQ=1):
     """
-    To PileupTaggedIndels, the bam must have the DSI and DSD tags set
+    To fill an IndelQuiver, the bam must have the DSI and DSD tags set
     for reads, and it is strongly recommended that you parse out
     only those reads for this tool.
     """
@@ -226,12 +225,12 @@ class IDVCFLine:
                  cython.str ID=".",
                  cython.long minNumSS=2,
                  cython.str REF=None,
-                 dtype128_t reverseStrandFraction=-1.0,
+                 np.longdouble_t reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
                  cython.long minDuplexPairs=2,
-                 dtype128_t minFracAgreedForFilter=0.666,
+                 np.longdouble_t minFracAgreedForFilter=0.666,
                  cython.long minFA=0, cython.long BothStrandAlignment=-1,
-                 dtype128_t pValBinom=0.05,
+                 np.longdouble_t pValBinom=0.05,
                  cython.float minAF=-1.,
                  cython.long maxND=10):
         if(BothStrandAlignment < 0):

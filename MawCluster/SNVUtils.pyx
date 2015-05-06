@@ -27,8 +27,6 @@ ctypedef PCInfo PCInfo_t
 ctypedef SNVCFLine SNVCFLine_t
 pyFastaFile = pysam.FastaFile
 
-# ctypedef np.longdouble_t dtype128_t
-
 """
 This module contains a variety of tools for calling variants.
 Currently, it primarily works with SNPs primarily with experimental
@@ -49,7 +47,7 @@ cdef class SNVCFLine:
     """
     def __init__(self,
                  AlleleAggregateInfo_t AlleleAggregateObject,
-                 dtype128_t MaxPValue=1e-30,
+                 np.longdouble_t MaxPValue=1e-30,
                  cython.str ID=".",
                  cython.long DOCMerged=-1,
                  cython.long DOCTotal=-1,
@@ -63,17 +61,17 @@ cdef class SNVCFLine:
                  cython.long minNumFam=2,
                  cython.long minNumSS=2,
                  cython.str REF=None,
-                 dtype128_t reverseStrandFraction=-1.0,
+                 np.longdouble_t reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
                  cython.long minDuplexPairs=2,
-                 dtype128_t minFracAgreedForFilter=0.666,
+                 np.longdouble_t minFracAgreedForFilter=0.666,
                  cython.long minFA=0, cython.long BothStrandAlignment=-1,
-                 dtype128_t pValBinom=0.05, cython.long ampliconFailed=-1,
+                 np.longdouble_t pValBinom=0.05, cython.long ampliconFailed=-1,
                  cython.long NDP=-1, cython.str EST="none",
                  cython.float minAF=-1., cython.long FailedNDReads=-1,
                  cython.str flankingBefore=None,
                  cython.str flankingAfter=None):
-        cdef dtype128_t maxAAF, minAAF, shenRef, shenVar
+        cdef np.longdouble_t maxAAF, minAAF, shenRef, shenVar
         cdef cython.long AC, DOC
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
