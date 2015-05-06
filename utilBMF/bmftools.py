@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 #  import warnings # Uncomment this if you want to treat warnings as errors.
-from .HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl
 from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 #  from pudb import set_trace
 

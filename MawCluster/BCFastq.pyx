@@ -130,7 +130,7 @@ def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
             if(BSCall1.returncode == 0):
                 return outFq1, outFq2
             else:
-                checks = oadd(checks, 1)
+                checks += 1
         raise subprocess.CalledProcessError("Barcode first sort didn't work, "
                                             "it seems - took more than 5 minu"
                                             "tes longer than the second barco"
@@ -146,15 +146,11 @@ def BarcodeSort(inFastq, outFastq="default", highMem=True):
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
-        BSstring = ("zcat " + inFastq + " | paste - - - - | sed "
-                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
-                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
+        BSstring = ("zcat " + inFastq + " | paste - - - - | sort "
+                    "-k4,4 %s | tr '\t' '\n' > %s" % (highMemStr, outFastq))
     else:
-        BSstring = ("cat " + inFastq + " | paste - - - - | sed "
-                    "'s: #G~:\t#G~:g' |  awk 'BEGIN {{FS=OFS=\"\t\"}};{{print"
-                    " $3,$0}}' | sort -k1,1 %s | cut -f2- | " % highMemStr +
-                    "sed 's:\t#G~: #G~:g' | tr '\t' '\n' > " + outFastq)
+        BSstring = ("cat " + inFastq + " | paste - - - - | sort "
+                    "-k4,4 %s | tr '\t' '\n' > %s" % (highMemStr, outFastq))
     PipedShellCall(BSstring)
     pl("Barcode Sort shell call: {}".format(BSstring))
     # pl("Command: {}".format(BSstring.replace(

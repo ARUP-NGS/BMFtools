@@ -1,7 +1,7 @@
 gatkpath=/mounts/bin/GenomeAnalysisTK.jar
 abrapath=/mounts/bin/abra.jar
 bowtie=/mounts/bin/bowtie
-ref=/mounts/genome/human_g1k_v37.fasta
+ref=/mounts/genome/PhiXSpiked_human_g1k_v37.fasta
 picardDir=/mounts/bin/picard-tools
 USeqDir=/yggdrasil/codeRepository/Packages/USeq_8.8.0/Apps
 aligner=mem

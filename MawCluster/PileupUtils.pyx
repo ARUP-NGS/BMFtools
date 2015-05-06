@@ -26,9 +26,9 @@ from cytoolz import (map as cmap, frequencies as cyfreq,
                      partition as ctpartition)
 
 from utilBMF.ErrorHandling import ThisIsMadness
-from utilBMF.HTSUtils import PysamToChrDict
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
-                              PileupReadPair)
+                              PileupReadPair, ssStringFromRead,
+                              PysamToChrDict)
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -146,9 +146,7 @@ cdef class PRInfo:
         self.is_reverse = alignment.is_reverse
         self.is_proper_pair = alignment.is_proper_pair
         self.read = alignment
-        self.ssString = "#".join(
-            list(cmap(str, sorted([self.read.reference_start,
-                                   self.read.reference_end]))))
+        self.ssString = ssStringFromRead(alignment)
         self.query_position = PileupRead.query_position
         tagsdictkeys = dict(tags).keys()
         if("FA" in tagsdictkeys):

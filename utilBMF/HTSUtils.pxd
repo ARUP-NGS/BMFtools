@@ -72,7 +72,7 @@ cdef class AbstractIndelContainer:
     cdef public cython.str contig, seq, uniqStr
     cdef public cython.long type, shenwindow, end, start
     cdef public cython.float shen
-    cdef public list readnames
+    cdef public list readnames, StartStops
     cdef public pysam.cfaidx.FastaFile handle
 
 cdef class Deletion(AbstractIndelContainer):
@@ -87,7 +87,6 @@ cdef class Insertion(AbstractIndelContainer):
     """
 
 cdef class IndelQuiver(object):
-    cdef public dict data, counts
-    cdef public list deletions, insertions, complexindels
+    cdef public dict data, counts, readnames
     cdef public cython.long window
     cdef public pysam.cfaidx.FastaFile fastaRef

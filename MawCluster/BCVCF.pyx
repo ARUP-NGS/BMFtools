@@ -18,7 +18,7 @@ import cython
 import pysam
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (ThisIsMadness, printlog as pl,
-                              SortBgzipAndTabixVCF)
+                              SortBgzipAndTabixVCF, is_reverse_to_str)
 from utilBMF import HTSUtils
 from . import SNVUtils
 
@@ -280,16 +280,6 @@ class IterativeVCFFile:
     def next(self):
         return VCFRecord(self.handle.next().strip().split('\t'),
                          self.Filename)
-
-
-@cython.returns(cython.str)
-def is_reverse_to_str(cython.bint boolean):
-    if(boolean):
-        return "reverse"
-    elif(boolean is False):
-        return "forward"
-    else:
-        return "unmapped"
 
 
 def ParseVCF(inputVCFName):

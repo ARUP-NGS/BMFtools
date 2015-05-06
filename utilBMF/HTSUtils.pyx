@@ -2475,6 +2475,7 @@ cdef class AbstractIndelContainer(object):
         self.seq = seq
         self.readnames = []
         self.uniqStr = None
+        self.StartStops = []
 
     def __str__(self):
         raise ThisIsMadness("Abstract method must be inherited. Sorry, cdef w"
@@ -2529,6 +2530,23 @@ cdef class AbstractIndelContainer(object):
     def sort(self):
         self.readnames = sorted(self.readnames)
 
+    @cython.returns(cython.long)
+    def getNumSS(self):
+        return(len(set(self.StartStops)))
+
+    def register(self, pysam.calignmentfile.AlignedSegment read):
+        self.readnames.append(read.query_name)
+        self.StartStops.append(ssStringFromRead(read))
+
+    def merge(self, AbstractIndelContainer_t AIC):
+        try:
+            assert AIC.uniqStr == self.uniqStr
+        except AssertionError:
+            raise ThisIsMadness("To merge two IndelContainer objects, "
+                                "their unique string description must match.")
+        self.readnames += AIC.readnames
+        self.StartStops += AIC.StartStops
+
 
 cdef class Insertion(AbstractIndelContainer):
     """
@@ -2541,9 +2559,9 @@ cdef class Insertion(AbstractIndelContainer):
     If no handle is provided, shen (Shannon Entropy) is set to -1.
     """
 
-    def __init__(self, cython.str contig, cython.long start=-1,
-                 cython.str seq=None, cython.str readname=None,
-                 pysam.cfaidx.FastaFile handle=None,
+    def __init__(self, pysam.calignmentfile.AlignedSegment read,
+                 cython.str contig, cython.long start=-1,
+                 cython.str seq=None, pysam.cfaidx.FastaFile handle=None,
                  cython.long window=20):
         if(start < 0):
             raise ThisIsMadness("start required for InsertionContainer.")
@@ -2552,7 +2570,7 @@ cdef class Insertion(AbstractIndelContainer):
         self.end = start + 1
         self.type = 1
         self.seq = seq
-        self.readnames = [readname]
+        self.readnames = [read.query_name]
         self.uniqStr = "Insertion|%s:%s,%s|%s" % (self.contig, self.start,
                                                   self.end, self.seq)
         try:
@@ -2565,6 +2583,7 @@ cdef class Insertion(AbstractIndelContainer):
             self.shen = -1.
         self.handle = handle
         self.shenwindow = window
+        self.StartStops = [ssStringFromRead(read)]
 
     @cython.returns(cython.str)
     def __str__(self):
@@ -2580,26 +2599,28 @@ cdef class Deletion(AbstractIndelContainer):
     If the deletion is of length one, start and end should be the same.
     """
 
-    def __init__(self, cython.str contig, cython.long start=-1,
-                 cython.long end=-1, cython.str readname=None,
+    def __init__(self, pysam.calignmentfile.AlignedSegment read,
+                 cython.str contig=None, cython.long start=-1,
+                 cython.long end=-1,
                  pysam.cfaidx.FastaFile handle=None, cython.long window=20):
         self.contig = contig
         self.start = start
         self.end = end
         self.type = -1
-        self.readnames = [readname]
+        self.readnames = [read.query_name]
         self.uniqStr = "Deletion|%s:%s,%s" % (self.contig, self.start,
                                               self.end)
         try:
-            self.shen = min([shen(handle.fetch(read.reference_id,
+            self.shen = min([shen(handle.fetch(contig,
                                                start=start - window,
                                                end=start)),
-                             shen(handle.fetch(read.reference_id,
+                             shen(handle.fetch(contig,
                                                start=end, end=end + window))])
         except AttributeError:
             self.shen = -1.
         self.handle = handle
         self.shenwindow = window
+        self.StartStops = [ssStringFromRead(read)]
 
     @cython.returns(cython.str)
     def __str__(self):
@@ -2618,12 +2639,11 @@ cdef class IndelQuiver(object):
     """
     def __init__(self, cython.str ref=None, cython.long window=10):
         self.data = {}
+        self.readnames = {}
         self.counts = {}
-        self.deletions = []
-        self.insertions = []
-        self.complexindels = []
         self.fastaRef = pysam.FastaFile(ref)
         self.window = window
+
 
     @cython.returns(cython.long)
     def __len__(self):
@@ -2665,44 +2685,50 @@ cdef class IndelQuiver(object):
     def values(self):
         return self.data.values()
 
-    def addIndel(self, AbstractIndelContainer_t indelObj,
-                 cython.bint newWindowSize=False):
+    def addRead(self, pysam.calignmentfile.AlignedSegment read):
+        cdef cython.str SVTag
+        cdef AbstractIndelContainer_t Indel
         try:
-            self[indelObj.uniqStr] += indelObj.readnames
+            SVTag = read.opt("SV")
         except KeyError:
-            self[indelObj.uniqStr] = indelObj.readnames
-        self.setIndelShen(indelObj)
-        if(isinstance(indelObj, Deletion)):
-            self.deletions.append(indelObj)
-        elif(isinstance(indelObj, Insertion)):
-            self.insertions.append(indelObj)
-        else:
-            self.complexindels.append(indelObj)
+            raise ThisIsMadness("read must have an SV tag for IndelQuiver!")
+        if("DSI" in SVTag):
+            Indel = GetInsertionFromAlignedSegment(read, handle=self.fastaRef)
+            try:
+                self[Indel.uniqStr].register(read)
+            except KeyError:
+                self.setIndelShen(Indel)
+                self[Indel.uniqStr] = Indel
+        if("DSD" in SVTag):
+            Indel = GetDeletionFromAlignedSegment(read, handle=self.fastaRef)
+            try:
+                self[Indel.uniqStr].register(read)
+            except KeyError:
+                self.setIndelShen(Indel)
+                self[Indel.uniqStr] = Indel
         self.counts = {key: len(values) for key, values in
-                       self.data.itervalues()}
+                       self.readnames.itervalues()}
 
 
     def mergeQuiver(self, IndelQuiver_t quiverObj):
-        for key in quiverObj:
+        cdef cython.str key
+        for key in quiverObj.readnames.keys():
             try:
-                self[key] += quiverObj[key]
+                self.readnames[key] += quiverObj[key]
+            except KeyError:
+                self.readnames[key] = quiverObj[key]
+        self.counts = {key: len(values) for key, values in
+                       self.readnames.itervalues()}
+        for key in quiverObj.keys():
+            try:
+                self[key].merge(quiverObj[key])
             except KeyError:
                 self[key] = quiverObj[key]
-        self.counts = {key: len(values) for key, values in
-                       self.data.itervalues()}
-        self.deletions += quiverObj.deletions
-        self.insertions += quiverObj.insertions
-        self.complexindels += quiverObj.complexindels
-        if(newWindowSize):
-            self.window = quiverObj.window
-        # Recalculate the Shannon entropy for each indel with new window
-        for indel in self.deletions + self.insertions + self.complexindels:
-            self.setIndelShen(indel)
 
     @cython.returns(dict)
     def getIndelCounter(self, cython.str uniqStr):
         try:
-            return cyfreq(self[uniqStr])
+            return cyfreq(self.readnames[uniqStr])
         except KeyError:
             return {}
 
@@ -2759,9 +2785,8 @@ def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
     """
     cdef tuple InsInf
     InsInf = GetInsertedStrs(read)[0]
-    return Insertion(PysamToChrDict[read.reference_id], start=InsInf[1],
-                     seq=InsInf[0], readname=read.query_name,
-                     handle=handle)
+    return Insertion(read, contig=PysamToChrDict[read.reference_id],
+                     start=InsInf[1], seq=InsInf[0], handle=handle)
 
 
 @cython.returns(Deletion_t)
@@ -2775,5 +2800,22 @@ def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
     coords = GetDeletedCoordinates(read)
     start = coords[0]
     end = coords[-1]
-    return Deletion(PysamToChrDict[read.reference_id], start=start,
-                    end=end, readname=read.query_name, handle=handle)
+    return Deletion(read, contig=PysamToChrDict[read.reference_id],
+                    start=start, end=end, handle=handle)
+
+
+@cython.returns(cython.str)
+def is_reverse_to_str(cython.bint boolean):
+    if(boolean):
+        return "reverse"
+    elif(boolean is False):
+        return "forward"
+    else:
+        return "unmapped"
+
+
+@cython.returns(cython.str)
+def ssStringFromRead(pysam.calignmentfile.AlignedSegment read):
+    return ("#".join(list(cmap(str, sorted([self.read.reference_start,
+                                            self.read.reference_end])))) +
+            "#%s" % (is_reverse_to_str(read)))
