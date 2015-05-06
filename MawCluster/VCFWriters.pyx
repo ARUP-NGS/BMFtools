@@ -63,7 +63,7 @@ def SNVCrawler(inBAM,
                cython.float minFracAgreed=0.0,
                cython.long minFA=2,
                cython.str experiment="",
-               cython.bint parallel=False,
+               cython.bint parallel=True,
                sampleName="DefaultSampleName",
                conf="default"):
     cdef cython.long NumDiscordantPairs = 0

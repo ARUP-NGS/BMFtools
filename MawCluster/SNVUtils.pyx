@@ -47,7 +47,7 @@ cdef class SNVCFLine:
     """
     def __init__(self,
                  AlleleAggregateInfo_t AlleleAggregateObject,
-                 np.longdouble_t MaxPValue=1e-30,
+                 cython.float MaxPValue=1e-30,
                  cython.str ID=".",
                  cython.long DOCMerged=-1,
                  cython.long DOCTotal=-1,
@@ -61,17 +61,18 @@ cdef class SNVCFLine:
                  cython.long minNumFam=2,
                  cython.long minNumSS=2,
                  cython.str REF=None,
-                 np.longdouble_t reverseStrandFraction=-1.0,
+                 cython.float reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
                  cython.long minDuplexPairs=2,
-                 np.longdouble_t minFracAgreedForFilter=0.666,
+                 cython.float minFracAgreedForFilter=0.666,
                  cython.long minFA=0, cython.long BothStrandAlignment=-1,
-                 np.longdouble_t pValBinom=0.05, cython.long ampliconFailed=-1,
+                 cython.float pValBinom=0.05, cython.long ampliconFailed=-1,
                  cython.long NDP=-1, cython.str EST="none",
                  cython.float minAF=-1., cython.long FailedNDReads=-1,
                  cython.str flankingBefore=None,
                  cython.str flankingAfter=None):
-        cdef np.longdouble_t maxAAF, minAAF, shenRef, shenVar
+        cdef np.longdouble_t maxAAF, minAAF
+        cdef cython.float shenRef, shenVar
         cdef cython.long AC, DOC
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
@@ -103,7 +104,7 @@ cdef class SNVCFLine:
         DOC = AlleleAggregateObject.DOC
         minAAF, maxAAF = ConfidenceIntervalAAF(AC, DOCMerged, pVal=pValBinom)
         try:
-            if(float(MaxPValue) < 10 ** (self.QUAL / -10.)):
+            if(MaxPValue < 10 ** (self.QUAL / -10.)):
                 if(self.FILTER is not None):
                     self.FILTER += ";LowQual"
                 else:

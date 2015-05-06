@@ -48,6 +48,7 @@ from numpy import greater as ngreater
 import pysam
 from pysam.cfaidx import FastqProxy as cFastqProxy
 from cytoolz import map as cmap, memoize
+from pysam import fromQualityString
 
 from utilBMF.HTSUtils import printlog as pl
 from utilBMF.HTSUtils import PipedShellCall
@@ -387,7 +388,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     cdef np.ndarray[np.int64_t, ndim = 1] FA
 
     # print(repr(seqArray))
-    quals = nparray([pysam.fromQualityString(record.quality) for record in R])
+    quals = nparray(map(fromQualityString, map(oag("quality"), R)))
     """
     quals = nparray(
         [list(cmap(chr2phFunc, list(record.quality))) for record in R],

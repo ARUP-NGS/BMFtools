@@ -2,6 +2,7 @@ import re
 import subprocess
 import time
 import logging
+from subprocess import check_call
 
 import cython
 import numpy as np
@@ -79,6 +80,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     taggedBAM = BCBam.pairedBarcodeTagging(
         consfq1, consfq2, outBAMProperPair, bedfile=bed, realigner=realigner,
         ref=ref, minAF=minAF)
+    check_call(["rm", outBAMProperPair])
     pl("Now realigning with: %s" % realigner)
     if(realigner == "abra"):
         if(abrapath == "default"):
@@ -98,6 +100,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         realignedFull = taggedBAM
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
+    check_call(["rm", realignedFull])
     if(barIndex != "default"):
         p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
         out, err = p.communicate()
@@ -136,7 +139,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
     pl("Change of plans - now, the SV-marked BAM is not used for "
        "SNP calling due to the differing alignment needs.")
+    check_call(["rm", namesortedRealignedFull])
     coorSorted = HTSUtils.CoorSortAndIndexBam(MarkedFamilies)
+    check_call(["rm", MarkedFamilies])
     return coorSorted
 
 
@@ -157,6 +162,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
         BConsFastq1, BConsFastq2 = BCFastq.CutadaptPaired(
             BConsFastq1, BConsFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq)
+    check_call(["rm", bcFastq1, bcFastq2, BSortFq1, BSortFq2])
     try:
         famStats = GetFamSizeStats(
             BConsFastq1,
