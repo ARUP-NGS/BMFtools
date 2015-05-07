@@ -11,7 +11,9 @@ from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               GetInsertionFromAlignedSegment,
                               GetDeletionFromAlignedSegment,
                               FacePalm, ParseBed,
-                              shen, ssStringFromRead, ccopy)
+                              shen, ssStringFromRead, ccopy,
+                              Insertion, Deletion, IndelQuiver,
+                              AbstractIndelContainer)
 from .SNVUtils import (HeaderInfoLine, HeaderFormatLine,
                        HeaderContigLine, HeaderCommandLine,
                        HeaderReferenceLine, HeaderFileFormatLine,
@@ -26,10 +28,10 @@ cimport pysam.calignmentfile
 cimport cython
 cimport numpy as np
 cimport utilBMF.HTSUtils
-ctypedef IndelQuiver IndelQuiver_t
-ctypedef AbstractIndelContainer AbstractIndelContainer_t
-ctypedef Insertion Insertion_t
-ctypedef Deletion Deletion_t
+ctypedef utilBMF.HTSUtils.IndelQuiver IndelQuiver_t
+ctypedef utilBMF.HTSUtils.AbstractIndelContainer AbstractIndelContainer_t
+ctypedef utilBMF.HTSUtils.Insertion Insertion_t
+ctypedef utilBMF.HTSUtils.Deletion Deletion_t
 
 """
 Contains utilities for working with indels for HTS data.
@@ -261,303 +263,6 @@ def FillEntireQuiver(inBAM, cython.long minPairs=2, cython.float minShen=0.2,
     return Quiver
 
 
-cdef class AbstractIndelContainer(object):
-    """
-    Base class for insertion and deletion container objects.
-
-    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and
-    just insertion)
-    Start and end refer to different things for insertions and deletions.
-    For a deletion, start is the first missing base and end is the last missing
-    reference base position.
-    seq should be None for a deletion
-    """
-
-    def __init__(self, cython.str contig, cython.long start=-666,
-                 cython.long end=-1, cython.long type=-137,
-                 cython.str seq=None):
-        self.contig = contig
-        self.start = start
-        self.end = end
-        self.type = type
-        self.seq = seq
-        self.readnames = []
-        self.uniqStr = None
-        self.StartStops = []
-
-    def __str__(self):
-        raise ThisIsMadness("Abstract method must be inherited. Sorry, cdef w"
-                            "on't let me actually make this an abstract "
-                            "class.")
-
-    @cython.returns(cython.long)
-    def __len__(self):
-        """
-        Returns the number of reads supporting it which have been queried
-        against this object since its creation.
-        """
-        return len(self.readnames)
-
-    @cython.returns(cython.bint)
-    def compare(self, indelObj):
-        """
-        Used for comparing two insertion or deletion objects.
-        This just makes it a little cleaner and more flexible.
-        That way, if they have the same unique identifier string
-        but a different number of readnames.
-        """
-        assert isinstance(indelObj, AbstractIndelContainer)
-        return self.uniqStr == indelObj.uniqStr
-
-    def add(self, indelObj, inplace=True):
-        """
-        If the uniqStr attributes are identical, merge the families.
-        I imagine that this would be useful when comparing lots of sets
-        of indels across different samples or doing multiple passes.
-        (e.g., duplex-supported indels and otherwise)
-        """
-        assert isinstance(indelObj, AbstractIndelContainer)
-        if self.compare(indelObj):
-            if(inplace):
-                self.readnames += indelObj.readnames
-                return self
-            else:
-                newIndelObj = ccopy(indelObj)
-                newIndelObj.readnames += self.readnames
-                return newIndelObj
-
-    @cython.returns(dict)
-    def GetNameCounter(self):
-        return cyfreq(self.readnames)
-
-    @cython.returns(cython.str)
-    def __getitem__(self, cython.long index):
-        return self.readnames[index]
-
-    @cython.returns(list)
-    def sort(self):
-        self.readnames = sorted(self.readnames)
-
-    @cython.returns(cython.long)
-    def getNumSS(self):
-        return(len(set(self.StartStops)))
-
-    def register(self, pysam.calignmentfile.AlignedSegment read):
-        self.readnames.append(read.query_name)
-        self.StartStops.append(ssStringFromRead(read))
-
-    def merge(self, AbstractIndelContainer_t AIC):
-        try:
-            assert AIC.uniqStr == self.uniqStr
-        except AssertionError:
-            raise ThisIsMadness("To merge two IndelContainer objects, "
-                                "their unique string description must match.")
-        self.readnames += AIC.readnames
-        self.StartStops += AIC.StartStops
-
-
-cdef class Insertion(AbstractIndelContainer):
-    """
-    Expansion of the AbstractIndelContainer object.
-    "Start" is actually the preceding base to the insertion (counting up),
-    "End" is the following. end should always be greater than start.
-    The important thing is to be able to hold read names and have a unique
-    string representing each indel so that we can make calls.
-
-    If no handle is provided, shen (Shannon Entropy) is set to -1.
-    """
-
-    def __init__(self, pysam.calignmentfile.AlignedSegment read,
-                 cython.str contig, cython.long start=-1,
-                 cython.str seq=None, pysam.cfaidx.FastaFile handle=None,
-                 cython.long window=20):
-        if(start < 0):
-            raise ThisIsMadness("start required for InsertionContainer.")
-        self.contig = contig
-        self.start = start
-        self.end = start + 1
-        self.type = 1
-        self.seq = seq
-        self.readnames = [read.query_name]
-        self.uniqStr = "Insertion|%s:%s,%s|%s" % (self.contig, self.start,
-                                                  self.end, self.seq)
-        try:
-            self.shen = min([shen(handle.fetch(read.reference_id,
-                                               start=start - window,
-                                               end=start)),
-                             shen(handle.fetch(read.reference_id,
-                                               start=self.end,
-                                               end=self.end + window))])
-        except AttributeError:
-            self.shen = -1.
-        self.handle = handle
-        self.shenwindow = window
-        self.StartStops = [ssStringFromRead(read)]
-
-    @cython.returns(cython.str)
-    def __str__(self):
-        return self.uniqStr + "|%s" % len(self.readnames)
-
-
-
-cdef class Deletion(AbstractIndelContainer):
-    """
-    Expansion of the AbstractIndelContainer object.
-    "Start" is the first missing base.
-    "End" is the last missing base.
-    If the deletion is of length one, start and end should be the same.
-    """
-
-    def __init__(self, pysam.calignmentfile.AlignedSegment read,
-                 cython.str contig=None, cython.long start=-1,
-                 cython.long end=-1,
-                 pysam.cfaidx.FastaFile handle=None, cython.long window=20):
-        self.contig = contig
-        self.start = start
-        self.end = end
-        self.type = -1
-        self.readnames = [read.query_name]
-        self.uniqStr = "Deletion|%s:%s,%s" % (self.contig, self.start,
-                                              self.end)
-        try:
-            self.shen = min([shen(handle.fetch(contig,
-                                               start=start - window,
-                                               end=start)),
-                             shen(handle.fetch(contig,
-                                               start=end, end=end + window))])
-        except AttributeError:
-            self.shen = -1.
-        self.handle = handle
-        self.shenwindow = window
-        self.StartStops = [ssStringFromRead(read)]
-
-    @cython.returns(cython.str)
-    def __str__(self):
-        return self.uniqStr + "|%s" % len(self.readnames)
-
-
-cdef class IndelQuiver(object):
-
-    """
-    Class for holding on to the indel objects. Holds a list for each
-    type of indel, as well as a dictionary where the keys are unique
-    string descriptors for the mutation and the values are lists
-    of read names for reads supporting that mutation.
-    Counts is a similar object, but with the length of the data
-    field as a value instead of the list itself.
-    """
-    def __init__(self, cython.str ref=None, cython.long window=10,
-                 cython.long minMQ=0, cython.long minFM=0,
-                 cython.str bam=None, cython.long minNumSS=0,
-                 cython.float minShen=0.2, cython.long minPairs=1):
-        self.data = {}
-        self.readnames = {}
-        self.counts = {}
-        self.fastaRef = pysam.FastaFile(ref)
-        self.bam = pysam.AlignmentFile(bam, "rb")
-        self.window = window
-        self.minMQ = minMQ
-        self.minFM = minFM
-        self.minPairs = minPairs
-        self.minShen = minShen
-        self.minNumSS = minNumSS
-
-
-    @cython.returns(cython.long)
-    def __len__(self):
-        return len(self.data)
-
-    @cython.returns(list)
-    def __getitem__(self, cython.str key):
-        return self.data[key]
-
-    def __setitem__(self, cython.str key, list value):
-        self.data[key] = value
-
-    def setIndelShen(self, AbstractIndelContainer_t indelObj):
-        indelObj.shen = min([shen(self.fastaRef(indelObj.contig,
-                                                indelObj.start - self.window,
-                                                indelObj.start)),
-                             shen(self.fastaRef(indelObj.contig, indelObj.end,
-                                                indelObj.end + self.window))])
-        indelObj.shenwindow = self.window
-
-    def iterkeys(self):
-        return self.data.iterkeys()
-
-    @cython.returns(list)
-    def keys(self):
-        return self.data.keys()
-
-    def iteritems(self):
-        return self.data.iteritems()
-
-    @cython.returns(list)
-    def items(self):
-        return self.data.items()
-
-    def itervalues(self):
-        return self.data.itervalues()
-
-    @cython.returns(list)
-    def values(self):
-        return self.data.values()
-
-    def addRead(self, pysam.calignmentfile.AlignedSegment read):
-        cdef cython.str SVTag
-        cdef AbstractIndelContainer_t Indel
-        if(read.opt("FM") < self.minFM):
-            return
-        if(read.mapping_quality < self.minMQ):
-            return
-        try:
-            SVTag = read.opt("SV")
-        except KeyError:
-            raise ThisIsMadness("read must have an SV tag for IndelQuiver!")
-        if("DSI" in SVTag):
-            Indel = GetInsertionFromAlignedSegment(read, handle=self.fastaRef)
-            try:
-                self[Indel.uniqStr].register(read)
-            except KeyError:
-                self.setIndelShen(Indel)
-                self[Indel.uniqStr] = Indel
-        if("DSD" in SVTag):
-            Indel = GetDeletionFromAlignedSegment(read, handle=self.fastaRef)
-            try:
-                self[Indel.uniqStr].register(read)
-            except KeyError:
-                self.setIndelShen(Indel)
-                self[Indel.uniqStr] = Indel
-        self.counts = {key: len(values) for key, values in
-                       self.readnames.itervalues()}
-
-
-    def mergeQuiver(self, IndelQuiver_t quiverObj):
-        cdef cython.str key
-        for key in quiverObj.readnames.keys():
-            try:
-                self.readnames[key] += quiverObj[key]
-            except KeyError:
-                self.readnames[key] = quiverObj[key]
-        self.counts = {key: len(values) for key, values in
-                       self.readnames.itervalues()}
-        for key in quiverObj.keys():
-            try:
-                self[key].merge(quiverObj[key])
-            except KeyError:
-                self[key] = quiverObj[key]
-
-    @cython.returns(dict)
-    def getIndelCounter(self, cython.str uniqStr):
-        try:
-            return cyfreq(self.readnames[uniqStr])
-        except KeyError:
-            return {}
-
-    def makeVCFLine(self, AbstractIndelContainer_t IC):
-        return IDVCFLine(IC, self)
-
-
 class IDVCFLine:
 
     """
@@ -572,9 +277,9 @@ class IDVCFLine:
         cdef cython.long tmpCov
         cdef cython.float MDP
         cdef tuple i
+        cdef list ffkeys
         self.CHROM = IC.contig
         self.NumStartStops = len(set(IC.StartStops))
-        NDP = len(set(IC.readnames))
         if(isinstance(IC, Insertion)):
             """
             I would subtract one to get the start, but I would also
@@ -612,7 +317,7 @@ class IDVCFLine:
              IC.StartStops]) / len(IC.StartStops)
         self.BothStrandSupport = (self.reverseStrandFraction > 0.001 and
                                   self.reverseStrandFraction < 0.999)
-        self.QUAL = 20 * len(IC)  # 20 for each supporting read. Will change!
+        self.QUAL = 20. * len(IC)  # 20 for each supporting read. Will change!
         pileupIt = quiver.bam.pileup(self.CHROM, self.POS, max_depth=200000)
         PileupCol = pileupIt.next()
         while PileupCol.pos < self.POS - 5:
@@ -626,7 +331,7 @@ class IDVCFLine:
         self.NDPS = len([i for i in cyfreq(IC.readnames).iteritems() if
                          i[1] > 1])
         self.DPA = len(IC.readnames)
-        if(NDP < quiver.minPairs):
+        if(len(set(IC.readnames)) < quiver.minPairs):
             try:
                 self.FILTER.append(";InsufficientReadPairs")
             except AttributeError:
@@ -645,6 +350,8 @@ class IDVCFLine:
             self.FILTER = "PASS"
         self.InfoFields = {"SHENWINDOW": quiver.window,
                            "MINSHEN": quiver.minShen}
+        self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
+                                 for key in sorted(self.InfoFields.keys())])
         self.FormatFields = {"SHEN": IC.shen, "TYPE": self.TYPE,
                              "NDPS": self.NDPS, "DPA": self.DPA,
                              "MDP": self.MDP, "LEN": self.LEN}
@@ -660,12 +367,11 @@ class IDVCFLine:
                                        self.InfoStr, self.FormatStr]))
 
     def update(self):
+        cdef list ffkeys
         ffkeys = sorted(self.FormatFields.keys())
-        self.FormatKey = ":".join(ffkeys)
-        self.FormatValue = ":".join([str(self.FormatFields[key])
-                                     for key in
-                                     ffkeys])
-        self.FormatStr = self.FormatKey + "\t" + self.FormatValue
+        self.FormatStr = (":".join(ffkeys) + "\t" +
+                          ":".join([str(self.FormatFields[key]) for
+                                    key in ffkeys]))
         self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
                                  for key in sorted(self.InfoFields.keys())])
 
