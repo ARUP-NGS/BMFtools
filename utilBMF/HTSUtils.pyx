@@ -49,6 +49,7 @@ ctypedef Insertion Insertion_t
 ctypedef Deletion Deletion_t
 ctypedef AbstractIndelContainer AbstractIndelContainer_t
 ctypedef IndelQuiver IndelQuiver_t
+ctypedef IDVCFLine IDVCFLine_t
 oig1 = oig(1)
 oig0 = oig(0)
 cfi = chain.from_iterable
@@ -2834,5 +2835,127 @@ cdef class IndelQuiver(object):
         except KeyError:
             return {}
 
+    @cython.returns(IDVCFLine_t)
     def makeVCFLine(self, AbstractIndelContainer_t IC):
         return IDVCFLine(IC, self)
+
+
+class IDVCFLine:
+
+    """
+    Contains data for writing to a VCF Line, where each ALT has its own line.
+
+    minNumSS is the minumum number of start/stop combinations required to
+    support a variant call.
+    """
+    def __init__(self, AbstractIndelContainer_t IC, IndelQuiver_t quiver=None):
+        cdef pysam.calignmentfile.PileupColumn PileupCol
+        cdef pysam.calignmentfile.IteratorColumnRegion pileupIt
+        cdef cython.long tmpCov
+        cdef cython.float MDP
+        cdef tuple i
+        cdef list ffkeys
+        self.CHROM = IC.contig
+        self.NumStartStops = len(set(IC.StartStops))
+        if(isinstance(IC, Insertion)):
+            """
+            I would subtract one to get the start, but I would also
+            add one to correct for 0 vs 1-based.
+            One is subtracted from the fetch.
+            """
+            self.TYPE = "ins"
+            self.POS = IC.start
+            self.REF = quiver.fastaRef.fetch(IC.contig,
+                                             self.POS - 1,
+                                             self.POS)
+            self.ALT = self.REF + IC.seq
+            self.LEN = len(IC.seq)
+        elif(isinstance(IC, Deletion)):
+            """
+            Because the start of a Deletion object is the first deleted
+            base, the start of the variant is that minus one.
+            Then, we're incrementing for 0 vs 1
+            The end of the fetch is incremented by one for 0 vs 1 and
+            once more to get the base after the last deleted base.
+            """
+            self.TYPE = "del"
+            self.POS = IC.start
+            self.REF = quiver.fastaRef.fetch(IC.contig,
+                                             self.POS - 1,
+                                             IC.end + 1)
+            self.ALT = self.REF[0]
+            self.LEN = IC.end - IC.start
+        else:
+            raise ThisIsMadness("Sorry, I haven't finished this "
+                                "VCF writer for complex indels.")
+        self.ID = IC.uniqStr
+        self.reverseStrandFraction = sum(
+            ["reverse" in ssString for ssString in
+             IC.StartStops]) / len(IC.StartStops)
+        self.BothStrandSupport = (self.reverseStrandFraction > 0.001 and
+                                  self.reverseStrandFraction < 0.999)
+        self.QUAL = 20. * len(IC)  # 20 for each supporting read. Will change!
+        pileupIt = quiver.bam.pileup(self.CHROM, self.POS, max_depth=200000)
+        PileupCol = pileupIt.next()
+        while PileupCol.pos < self.POS - 5:
+            PileupCol = pileupIt.next()
+        tmpCov = 0
+        while PileupCol.pos < self.POS + 5:
+            tmpCov += PileupCol.n
+            PileupCol = pileupIt.next()
+        self.MDP = tmpCov * 1. / 10
+        self.FILTER = None
+        self.NDPS = len([i for i in cyfreq(IC.readnames).iteritems() if
+                         i[1] > 1])
+        self.DPA = len(IC.readnames)
+        if(len(set(IC.readnames)) < quiver.minPairs):
+            try:
+                self.FILTER.append(";InsufficientReadPairs")
+            except AttributeError:
+                self.FILTER = "InsufficientReadPairs"
+        if(self.NumStartStops < quiver.minNumSS):
+            try:
+                self.FILTER.append(";InsufficientStopStarts")
+            except:
+                self.FILTER = "InsufficientStopStarts"
+        if(IC.shen < quiver.minShen):
+            try:
+                self.FILTER.append(";LowComplexity")
+            except:
+                self.FILTER = "LowComplexity"
+        if(self.FILTER is None):
+            self.FILTER = "PASS"
+        self.InfoFields = {"SHENWINDOW": quiver.window,
+                           "MINSHEN": quiver.minShen}
+        self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
+                                 for key in sorted(self.InfoFields.keys())])
+        self.FormatFields = {"SHEN": IC.shen, "TYPE": self.TYPE,
+                             "NDPS": self.NDPS, "DPA": self.DPA,
+                             "MDP": self.MDP, "LEN": self.LEN}
+        ffkeys = sorted(self.FormatFields.keys())
+        self.FormatStr = (
+            ":".join(ffkeys) +
+            "\t" + ":".join(str(
+                self.FormatFields[key]) for key in ffkeys))
+        self.str = "\t".join(map(str, [self.CHROM,
+                                       self.POS, self.ID,
+                                       self.CONS, self.ALT,
+                                       self.QUAL, self.FILTER,
+                                       self.InfoStr, self.FormatStr]))
+
+    def update(self):
+        cdef list ffkeys
+        ffkeys = sorted(self.FormatFields.keys())
+        self.FormatStr = (":".join(ffkeys) + "\t" +
+                          ":".join([str(self.FormatFields[key]) for
+                                    key in ffkeys]))
+        self.InfoStr = ";".join([key + "=" + str(self.InfoFields[key])
+                                 for key in sorted(self.InfoFields.keys())])
+
+    def __str__(self):
+        self.update()
+        self.str = "\t".join(map(str, [self.CHROM, self.POS,
+                                       self.ID, self.REF, self.ALT,
+                                       self.QUAL, self.FILTER, self.InfoStr,
+                                       self.FormatStr]))
+        return self.str
