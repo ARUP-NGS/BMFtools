@@ -86,6 +86,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
     return indelOutputBAM, otherOutputBAM
 
 
+@cython.returns(cython.bint)
 def IsIndelRelevant(
         pysam.calignmentfile.AlignedSegment read, cython.long minFam=2,
         cython.float minSF=0.6, cython.bint keepUnmapped=False):
@@ -105,12 +106,6 @@ def IsIndelRelevant(
     if(FractionSoftClipped(read) >= minSF):
         return True
     return False
-
-
-def GetSCFractionArray(inBAM):
-    cdef pysam.calignmentfile.AlignedSegment i
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    return [FractionSoftClipped(i) for i in inHandle]
 
 
 def GetFreebayesCallStr(inBAM, ref="default", bed="default",

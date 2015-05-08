@@ -2964,3 +2964,19 @@ cdef class IDVCFLine(object):
                                        self.QUAL, self.FILTER, self.InfoStr,
                                        self.FormatStr]))
         return self.str
+
+
+@cython.returns(list)
+def GetSCFractionArray(inBAM):
+    cdef pysam.calignmentfile.AlignmentFile inHandle
+    cdef pysam.calignmentfile.AlignedSegment i
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    return [FractionSoftClipped(i) for i in inHandle]
+
+
+@cython.returns(list)
+def GetTlenArray(inBAM):
+    cdef pysam.calignmentfile.AlignmentFile inHandle
+    cdef pysam.calignmentfile.AlignedSegment i
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    return [i.tlen for i in inHandle if i != 0]
