@@ -13,7 +13,7 @@ from distutils.core import setup
 #  BMFTools tries to install two binaries into your bin folder.
 #  If you want to change the install directory, edit this variable
 #  or copy it manually.
-installDir = "/mounts/bin"
+installDir = "/mnt/research2/Daniel/bin"
 
 #  Find the ideal -march argument for the system.
 try:
@@ -28,25 +28,19 @@ try:
 except ImportError:
     print("Error retrieving optimal -march flag. Give up!")
     marchFlag = ""
-compilerList = ["-O2", "-pipe", marchFlag]
-"""
-compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block"]
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine", "-flto"]
 print("Removing all .c files - this is "
-      "important for making sure things get rebuilt.")
+      "important for making sure things get rebuilt."
+      "Especially if you're using -flto")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine"]
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine"]
+
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
-                "-fprefetch-loop-arrays", "-floop-strip-mine", "-flto"]
+                "-fivopts", "-ftree-loop-im",
+                "-fprefetch-loop-arrays", "-floop-strip-mine"]
+"""
 
-
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
 
 compilerList = ["marchFlag, "-pipe", "-msse2",
                 "-funroll-loops", "-floop-block",
@@ -78,16 +72,16 @@ ext = cythonize('*/*.pyx') + cythonize("*/*.py") + cythonize("*/*.pxd")
 # If more complex optimizations fail, fall back from line 31 to line 30.
 for x in ext:
     x.extra_compile_args += compilerList
+    print(repr(x))
 
 config = {
     'description': '',
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.1.0.0beta',
+    'version': '0.0.1.0beta',
     'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
-                         'cython', 'cutadapt', 'lxml', 'scipy', 'entropy',
-                         'statsmodels'],
+                         'cython', 'cutadapt', 'lxml', 'scipy', 'entropy'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
