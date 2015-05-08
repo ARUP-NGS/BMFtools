@@ -48,7 +48,7 @@ def AbraCadabra(inBAM, outBAM="default",
                 jar="default", memStr="default", ref="default",
                 threads="4", bed="default", working="default",
                 log="default", fixMate=True, tempPrefix="tmpPref",
-                rLen=-1, intelPath="default"):
+                rLen=-1, intelPath="default", cython.bint leftAlign=True):
     """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
@@ -121,6 +121,12 @@ def AbraCadabra(inBAM, outBAM="default",
         check_call(shlex.split(commandStrFM))
         check_call(["rm", "-rf", nameSorted])
         check_call(["mv", tempFilename, outBAM])
+    if(leftAlign):
+        # Calls bamleft align to make sure things are fixed up.
+        tmpfile = str(uuid.uuid4().get_hex()[0:8]) + '.bam'
+        cStr = ("samtools view -ubh %s | bamleftalign -f " % (outBAM) +
+                "%s -c > %s && mv %s %s" % (ref, tmpfile, tmpfile, outBAM))
+        check_call(cStr, shell=True)
     return outBAM
 
 

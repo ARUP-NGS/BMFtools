@@ -502,6 +502,9 @@ class SVTagFn(object):
                     read2.set_tag("SV", self.tag, "Z")
         return read1, read2
 
+    def __call__(self, *args, **kwargs):
+        return self.test(*args, **kwargs)
+
 
 @cython.returns(cython.bint)
 def DRP_SNV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
@@ -674,7 +677,59 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
             return True
     return False
 
+@cython.returns(cython.bint)
+def DDI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extrField="default"):
+    """
+    Duplex Discordant Insertion - if one read has an insertion that the
+    other read doesn't, even if the other read covers the same region of
+    the genome. This assumes that indels have already been left-aligned.
+    """
+    cdef list read1list, read2list
+    cdef cython.bint NoneCigar1, NoneCigar2, iInCigar1, iInCigar2
+    if("DRP" not in read1.opt("SV")):
+        return False  # Reads gotta overlap pretty far for this to work.
+    if(sum([read1.is_reverse, read2.is_reverse]) != 1):
+        return False  # Reads aligned to same strand. Not informative...
+    NoneCigar1 = (read1.cigarstring is None)
+    NoneCigar2 = (read2.cigarstring is None)
+    iInCigar1 = ("I" in read1.cigarstring)
+    iInCigar2 = ("I" in read2.cigarstring)
+    if(NoneCigar1):
+        if(NoneCigar2):
+            return False
+        if(iInCigar2):
+            return True
+        return False
+    if(NoneCigar2):
+        if(NoneCigar1):
+            return False
+        if(iInCigar1):
+            return True
+        return False
+    if(iInCigar1):
+        if(not iInCigar2):
+            return False
+        read1list = GetInsertedStrs(read1)
+        read2list = GetInsertedStrs(read2)
+        for tup in read1list:
+            if tup not in read2list:
+                return True
+        for tup in read2list:
+            if tup not in read1list:
+                return True
+    return False
+
+
+@cython.returns(cython.bint)
+def DDD_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
+                         pysam.calignmentfile.AlignedSegment read2,
+                         extrField="default"):
+    pass
+
 SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition, tag="DSI"))
+SVTestList.append(SVTagFn(func=DDI_SV_Tag_Condition, tag="DDI"))
 
 SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = defaultdict(returnDefault,

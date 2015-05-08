@@ -2100,10 +2100,10 @@ class PopenDispatcher(object):
             self.cleanup = cleanup
 
     @cython.returns(cython.long)
-    def getJobNumber(self):
+    def _getJobNumber(self):
         return self.submitted + 1
 
-    def submit(self):
+    def _submit(self):
         """
         Function for submitting bg (background) jobs.
         """
@@ -2112,7 +2112,7 @@ class PopenDispatcher(object):
             return
         while(len(self.dispatches) < self.threadcount):
             if(len(self.queue) != 0):
-                print("Submitting job number %s." % str(self.getJobNumber()))
+                print("Submitting job number %s." % str(self._getJobNumber()))
                 self.submitted += 1
                 cStr = self.queue.popleft()
                 self.bgStrs.append(cStr)
@@ -2123,7 +2123,7 @@ class PopenDispatcher(object):
                 print("All jobs submitted - check in later.")
                 pass
 
-    def check(self):
+    def _check(self):
         """
         Checks for finished processes. If they are, knock them off the list.
         """
@@ -2157,10 +2157,10 @@ class PopenDispatcher(object):
 
         It also submits foreground jobs.
         """
-        self.submit()
+        self._submit()
         while len(self.queue) != 0:
             print("Submitting set of jobs for daemon.")
-            self.submit()
+            self._submit()
             newqueue = tee(self.queue, 1)[0]
             try:
                 nextStr = newqueue.next()
@@ -2170,7 +2170,7 @@ class PopenDispatcher(object):
             if("#" in nextStr):
                 fgCStr = self.queue.popleft()
                 self.fgStrs.append(fgCStr)
-                print("Foreground submitting job #%s" % self.getJobNumber())
+                print("Foreground submitting job #%s" % self._getJobNumber())
                 try:
                     exec(fgCStr.split("#")[1])
                     self.submitted += 1
@@ -2182,14 +2182,14 @@ class PopenDispatcher(object):
                 self.outstrs[fgCStr] = self.getReturnValue(fgCStr)
             else:
                 time.sleep(5)
-            self.check()
+            self._check()
         print("All jobs submitted! Yay.")
-        while(self.check() > 0 and len(self.queue) != 0):
+        while(self._check() > 0 and len(self.queue) != 0):
             time.sleep(5)
-            threadcount = self.check()
+            threadcount = self._check()
             if(threadcount < self.threadcount and len(self.queue) != 0):
-                self.submit()
-        while(self.check() != 0):
+                self._submit()
+        while(self._check() != 0):
             """
             while(sum([d.popen.poll() is not None for d in
                        self.dispatches]) < len(self.dispatches)):
@@ -2840,7 +2840,7 @@ cdef class IndelQuiver(object):
         return IDVCFLine(IC, self)
 
 
-class IDVCFLine:
+cdef class IDVCFLine(object):
 
     """
     Contains data for writing to a VCF Line, where each ALT has its own line.
