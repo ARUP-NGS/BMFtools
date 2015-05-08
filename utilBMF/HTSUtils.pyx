@@ -172,6 +172,7 @@ PysamToChrDict[80] = "GL000193.1"
 PysamToChrDict[81] = "GL000194.1"
 PysamToChrDict[82] = "GL000225.1"
 PysamToChrDict[83] = "GL000192.1"
+# PysamToChrDict[84] = "gi|9626372|ref|NC_001422.1|"
 
 ChrToPysamDict = {}
 for i in xrange(22):
@@ -239,6 +240,7 @@ ChrToPysamDict["GL000193.1"] = 80
 ChrToPysamDict["GL000194.1"] = 81
 ChrToPysamDict["GL000225.1"] = 82
 ChrToPysamDict["GL000192.1"] = 83
+# ChrToPysamDict["gi|9626372|ref|NC_001422.1|"] = 84
 
 
 @cython.returns(dict)
@@ -885,7 +887,10 @@ def mergeBamPicardOld(
 
 def samtoolsMergeBam(bamlist, outBAM="default", NameSort=True):
     if(outBAM == "default"):
-        outBAM = ".".join(bamlist[0].split(".")[-1]) + ".merged.bam"
+        outBAM = ".".join(bamlist[0].split(".")[:-1]) + ".merged.bam"
+        if(len(outBAM) > 100):
+            outBAM = bamlist[0].split(".")[0] + ".merged.bam"
+            pl("Shortened output bam name.", level=logging.DEBUG)
     if(NameSort):
         cStr = "samtools merge -n %s %s" % (outBAM, " ".join(bamlist))
     else:
@@ -2537,8 +2542,8 @@ def is_reverse_to_str(cython.bint boolean):
 
 @cython.returns(cython.str)
 def ssStringFromRead(pysam.calignmentfile.AlignedSegment read):
-    return ("#".join(list(cmap(str, sorted([self.read.reference_start,
-                                            self.read.reference_end])))) +
+    return ("#".join(list(cmap(str, sorted([read.reference_start,
+                                            read.reference_end])))) +
             "#%s" % (is_reverse_to_str(read)))
 
 

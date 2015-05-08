@@ -88,7 +88,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
 
 def IsIndelRelevant(
         pysam.calignmentfile.AlignedSegment read, cython.long minFam=2,
-        cython.float minSF=0.5, cython.bint keepUnmapped=False):
+        cython.float minSF=0.6, cython.bint keepUnmapped=False):
     """
     True if considered relevant to indels.
     False otherwise.

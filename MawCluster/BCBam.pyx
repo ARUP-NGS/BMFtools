@@ -964,7 +964,7 @@ def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.5,
     maxFracSoftClipped
     """
     if(outBAM == "default"):
-        outBAM = ".".join(inBAM.split()[:-1]) + ".SWRealigned.ban"
+        outBAM = ".".join(inBAM.split()[:-1]) + ".SWRealigned.bam"
     if(ref == "default"):
         raise ThisIsMadness("ref required for bwasw alignment.")
     print("Getting soft-clipped reads for bwasw realignment")

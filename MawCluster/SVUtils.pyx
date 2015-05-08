@@ -680,7 +680,7 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
 @cython.returns(cython.bint)
 def DDI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
                          pysam.calignmentfile.AlignedSegment read2,
-                         extrField="default"):
+                         extraField="default"):
     """
     Duplex Discordant Insertion - if one read has an insertion that the
     other read doesn't, even if the other read covers the same region of
@@ -726,10 +726,9 @@ def DDI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
 def DDD_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
                          pysam.calignmentfile.AlignedSegment read2,
                          extrField="default"):
-    pass
+    return False
 
 SVTestList.append(SVTagFn(func=DSI_SV_Tag_Condition, tag="DSI"))
-SVTestList.append(SVTagFn(func=DDI_SV_Tag_Condition, tag="DDI"))
 
 SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = defaultdict(returnDefault,
@@ -805,10 +804,10 @@ def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
     # print("SVTestDict: {}".format(repr(SVTestDict)))
     for test in testList:
         if(test.tag in SVPKeys):
-            read1, read2 = test.test(read1, read2,
-                                     extraField=SVParamDict[test.tag])
+            read1, read2 = test(read1, read2,
+                                extraField=SVParamDict[test.tag])
         else:
-            read1, read2 = test.test(read1, read2)
+            read1, read2 = test(read1, read2)
     try:
         read1.opt("SV")
     except KeyError:
