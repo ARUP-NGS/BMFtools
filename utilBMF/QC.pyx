@@ -4,7 +4,8 @@ from __future__ import division
 from operator import attrgetter as oag
 from operator import methodcaller as mc
 from subprocess import check_output, check_call
-from numpy import array as nparray, append as npappend, mean as nmean
+from numpy import (array as nparray, append as npappend,
+                   mean as nmean, max as nmax, std as nstd)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
                        ThisIsMadness, PipedShellCall)
@@ -113,12 +114,9 @@ def InsertSizeArray(inBAM):
 @cython.locals(min=cython.long, onTargetBuffer=cython.long)
 def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
                     minFM=2):
-    cdef cython.long TotalReads, FM
-    cdef cython.long MappedReads
-    cdef cython.long UnmappedReads
-    cdef cython.float fracOnTarget
-    cdef cython.float meanInsert
-    cdef cython.long MappedFamReads
+    cdef cython.long TotalReads, FM, MappedReads, UnmappedReads
+    cdef cython.float fracOnTarget, stdInsert, meanInsert
+    cdef cython.long MappedFamReads, maxInsert
     cdef cython.long MappedSingletonReads
     outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
     outHandle = open(outfile, "w")
@@ -164,7 +162,8 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
             MappedReads += 1
             allInserts.append(p.template_length)
             FM = p.opt("FM")
-            MappedFamReads += FM
+            if(FM >= 2):
+                MappedFamReads += 1
         except StopIteration:
             pl("Finished iterating through the BAM file. Exiting loop.")
             break
@@ -174,12 +173,18 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     resultsDict["UnmappedReads"] = UnmappedReads
     MappedSingletonReads = MappedReads - MappedFamReads
     allInserts = allInserts[allInserts > 0]  # Remove tlen's of 0 from mean.
-    meanInsert = nmean(allInserts)
+    meanInsert = nmean(allInserts[allInserts < 5000])
+    stdInsert = nstd(allInserts[allInserts < 5000])
+    maxInsert = nmax(allInserts)
+    # Don't include huge inserts in mean calculation.
     resultsDict["MeanInsert"] = meanInsert
+    resultsDict["MaxInsert"] = maxInsert
     resultsDict["MappedSingletonReads"] = MappedSingletonReads
-    outHandle.write("Mean Insert Size=%s\n" % meanInsert + "\n")
-    outHandle.write("Unmapped Reads=%s\n" % UnmappedReads + "\n")
-    outHandle.write("Mapped Reads=%s\n" % MappedReads + "\n")
+    outHandle.write("Mean Insert Size=%s\n" % meanInsert)
+    outHandle.write("Max Insert Size=%s\n" % maxInsert)
+    outHandle.write("Std Dev of Insert Size (< 5000): %s" % stdInsert)
+    outHandle.write("Unmapped Reads=%s\n" % UnmappedReads)
+    outHandle.write("Mapped Reads=%s\n" % MappedReads)
     outHandle.write("Fraction On Target=%s\n" % fracOnTarget)
     outHandle.write(
         "Mapped Reads With Family Size g/e %s=%s\n" % (minFM, MappedReads))

@@ -1654,7 +1654,7 @@ def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
     pass
 
 
-def PlotNormalFit(array, outfile="default", maxFreq=0.2):
+def PlotNormalFit(array, outfile="default"):
     import matplotlib as mpl
     mpl.use('Agg')      # With this line = figure disappears
     import matplotlib.pyplot as plt
@@ -1978,21 +1978,36 @@ def MakeVCFProxyDeaminationFilter(np.longdouble_t ctfreq, np.longdouble_t conf=1
                                   key=key, value=value)
 
 
-def SortBgzipAndTabixVCF(inVCF, outVCF="default",
-                         vcflib=True):
+def SortBgzipAndTabixVCF(inVCF, outVCF="default", vcflib=True):
     """
     Sorts and tabix indexes a VCF.
     If vcflib is True, use vcfstreamsort from ekg's excellent vcf API.
+    If not, hack it together with simple shell calls.
     """
     if(outVCF == "default"):
-        outVCF = ".".join([inVCF.split(".")[-1]]) + ".sort.vcf"
-    if(vcflib is False):
-        check_call("zcat %s | head -n 1000 | grep '^#' > %s" % (inVCF, outVCF),
-                   shell=True)
-        check_call("zcat %s | grep -v '^#' >> %s" % (inVCF, outVCF),
-                   shell=True)
+        outVCF = TrimExt(inVCF) + ".sort.vcf"
+    if(not vcflib):
+        if(outVCF[-3:] == ".gz"):
+            check_call("zcat %s | head -n 2000 | grep '^#' > %s" % (inVCF,
+                                                                    outVCF),
+                       shell=True)
+            check_call("zcat %s | grep -v '^#' | sort " % inVCF +
+                       "-k1,1 -k2,2n >> %s" % outVCF, shell=True)
+        else:
+            check_call("cat %s | head -n 2000 | grep '^#' > %s" % (inVCF,
+                                                                   outVCF),
+                       shell=True)
+            check_call("cat %s | grep -v '^#' | sort " % inVCF +
+                       "-k1,1 -k2,2n >> %s" % outVCF,
+                       shell=True)
     else:
-        check_call("vcfstreamsort -w 100000 %s > %s" % (inVCF, outVCF))
+        if(inVCF[-3:] == ".gz"):
+            check_call("zcat %s | vcfstreamsort -w 100000 - > %s" % (inVCF,
+                                                                     outVCF),
+                       shell=True)
+        else:
+            check_call("vcfstreamsort -w 100000 %s > %s" % (inVCF, outVCF),
+                       shell=True)
     check_call(["bgzip", outVCF])
     check_call(["tabix", outVCF + ".gz"])
     return outVCF + ".gz"
@@ -2974,9 +2989,39 @@ def GetSCFractionArray(inBAM):
     return [FractionSoftClipped(i) for i in inHandle]
 
 
-@cython.returns(list)
+@cython.returns(np.ndarray)
 def GetTlenArray(inBAM):
-    cdef pysam.calignmentfile.AlignmentFile inHandle
     cdef pysam.calignmentfile.AlignedSegment i
+    cdef np.ndarray[np.int64_t, ndim = 2] tlens
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    return [i.tlen for i in inHandle if i != 0]
+    tlens = np.array([i.tlen for i in inHandle if i.is_read1 and i.tlen != 0],
+                     dtype=np.int64, ndmin=2)
+    return np.absolute(tlens)
+
+
+def PlotTlen(inBAM, outfile="default"):
+    cdef np.ndarray[np.int64_t, ndim = 2] tlens
+    pl("About to load tlens")
+    tlens = GetTlenArray(inBAM)
+    pl("Successfully loaded tlens.")
+    import matplotlib as mpl
+    mpl.use('Agg')      # With this line = figure disappears
+    import matplotlib.pyplot as plt
+    import matplotlib.mlab as mlab
+    tlens = tlens.reshape(-1, 1)
+    pl("Looks like I reshaped successfully.")
+    mu, sigma = nmean(tlens[tlens < 5000]), nstd(tlens[tlens < 5000])
+    # Only includes them in that calculation for reasonably possible
+    # insert lengths.
+    n, bins, patches = plt.hist(tlens, 200, normed=1, facecolor='green',
+                                alpha=0.75)
+    y = mlab.normpdf(bins, mu, sigma)
+    l = plt.plot(bins, y, 'r--', linewidth=1)
+    plt.xlabel('Number of read pairs with inferred template length')
+    plt.ylabel('Inferred template length')
+    plt.title(r'$\mathrm{Histogram\ of\ inferred template lengths:}\ '
+              r'\mu=%s,\ \sigma=%s$' % (mu, sigma))
+    plt.axis([nmin(tlens), nmax(tlens[tlens < 5000]), 0., nmax(n)])
+    plt.grid(True)
+    plt.savefig(outfile + ".png")
+    return outfile

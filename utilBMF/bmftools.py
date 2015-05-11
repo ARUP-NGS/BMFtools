@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 #  import warnings # Uncomment this if you want to treat warnings as errors.
-from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl, TrimExt
 from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 #  from pudb import set_trace
 
@@ -277,6 +277,11 @@ def main():
               "than default behavior, which is checking the query VCF for "
               "calls that should be in the standard."),
         action="store_true", default=False)
+    VCFCmpParser.add_argument(
+    "--check-both", action="store_true", default=True,
+    help=("If set, writes both set comparisons (std vs. query and query vs. "
+          "standard) for filenames based on the input file name. Stdout not "
+          "supported."))
     GetKmerParser.add_argument(
         "--ref", "-r",
         help="Path to reference file. (Must be faidx'd)",
@@ -517,6 +522,14 @@ def main():
     if(args.bmfsuites == "vcfcmp"):
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
                                       CheckVCFForStdCalls)
+        if(args.check_both):
+            StdForVCF = TrimExt(args.outfile) + ".VerifyCalls.vcf"
+            VCFVsStd = TrimExt(args.outfile) + ".CheckForStdConcordance.vcf"
+            CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
+                                     outfile=StdForVCF)
+            CheckVCFForStdCalls(args.queryVCF, std=args.std,
+                                outfile=VCFVsStd)
+            sys.exit(0)
         if(args.check_std):
             if(args.outfile is not None):
                 CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
@@ -531,6 +544,7 @@ def main():
         else:
             CheckVCFForStdCalls(args.queryVCF, std=args.std,
                                 outfile=sys.stdout)
+        sys.exit(0)
     if(args.bmfsuites == "getkmers"):
         import re
         from MawCluster.IndelUtils import GetUniquelyMappableKmers

@@ -60,6 +60,8 @@ cutadapt is required for adapter trimming.
 
 numconv is required for conversion to base 64 for PV tags, but that compression is optional.
 
+Some of vcflib's tools are used, although vcflib (key-word argument for these calls) can be set to False to do it manually on the shell.
+
 ### Required external tools:
 #### Aligners
 bwa (mem or aln, depending on needs.)
@@ -233,40 +235,17 @@ Most options are available for command-line as well. If an option is set in both
         2. For my cert server (192GB RAM, 24 threads), it looks like 10 might give me peak performance, but more rigorous tests are underway.
     2. For optimal compilation, use the -march flag. BMFTools' setup.py automatically attempts to find that appropriate value for you.
 
-|readPairsPerWrite | time |
-|------|--------------|
-| 10 | 867 msec per loop |
-| 50 | 851 msec per loop |
-| 100 | 850 msec per loop |
-| 150 | 853 msec per loop |
-|250| 898 msec per loop |
-|500 | 1830 msec per loop |
-
 
 
 #TODO (ish):
 1. SNV:
-    @backlog
-    1. Check and make sure that the bwasw realignment can and does work.
-
-    @backlog
     2. Error Characterization Code
         1. Write database reading and processing.
-    @backlog
     3. Add read length to the INFO field (both full read length and read length without Ns)
 2. Indels:
     1. Figure out the indel relevance piece.
-
-    @backlog
     2. Assembly work (kmer-based selection and unitig-based assembly)
 3. SV:
-    @backlog
     1. Finish consensus sequence for intrachromosomal.
-    @backlog
     2. Finish writing structural variants to a VCF format
-    @backlog
     3. Work on interchromosomal translocations
-
-1. Week of 5/4:
-    4. Write actual indel caller for those which the aligner was able tof find.
-    5. Double hashmaps.

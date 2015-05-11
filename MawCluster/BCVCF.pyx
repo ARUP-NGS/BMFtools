@@ -3,6 +3,7 @@
 from __future__ import division
 from itertools import tee
 from operator import methodcaller as mc
+from subprocess import CalledProcessError
 import decimal
 import logging
 import operator
@@ -16,6 +17,7 @@ from numpy import mean as nmean
 from numpy import min as nmin
 import cython
 import pysam
+import os.path
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (ThisIsMadness, printlog as pl,
                               SortBgzipAndTabixVCF, is_reverse_to_str)
@@ -759,6 +761,14 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
         outHandle = open(outfile, "w")
     ohw = outHandle.write
     asVCF = pysam.asVCF()
+    if(os.path.isfile(std + ".tbi") is False):
+        pl("No tabix index found for standard - sorting, "
+           "bgzipping, and tabixing.")
+        std = SortBgzipAndTabixVCF(std)
+    if(os.path.isfile(inVCF + ".tbi") is False):
+        pl("No tabix index found for query VCF - sorting, "
+           "bgzipping, and tabixing.")
+        inVCF = SortBgzipAndTabixVCF(inVCF)
     refIterator = pysam.tabix_iterator(open(std, "rb"), asVCF)
     queryHandle = pysam.TabixFile(inVCF, parser=asVCF)
     ohw("\t".join(["#VariantPositionAndType", "FoundMatch", "Filter",
@@ -768,8 +778,7 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     for rec in refIterator:
         # Load all records with precisely our ref record's position
         try:
-            queryRecs = list(qhf(rec.contig + ":" + str(rec.pos - 10) +
-                                 "-" + str(rec.pos + 10)))
+            queryRecs = list(qhf(rec.contig, rec.pos - 6, rec.pos + 6))
         except ValueError:
             pl("Looks like contig %s just isn't in the tabix'd" % rec.contig +
                "file. Give up - continuing!", level=logging.DEBUG)
@@ -817,8 +826,7 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
     Iterates through an input VCF to find variants without any filters outside
     of "acceptableFilters". (which should be a comma-separated list of strings)
     """
-    cdef pysam.TabProxies.VCFProxy rec
-    cdef pysam.TabProxies.VCFProxy qRec
+    cdef pysam.TabProxies.VCFProxy rec, qRec, i
     cdef cython.long lRefRecs
     if(std == "default"):
         raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"

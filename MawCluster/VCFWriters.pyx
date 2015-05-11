@@ -15,7 +15,7 @@ from .PileupUtils import (pPileupColumn,
                                     GetDiscordantReadPairs, PCInfo)
 from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
                               ParseBed, PopenDispatcher, PopenCall,
-                              parseConfig)
+                              parseConfig, TrimExt)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness, FunctionCallException
 from MawCluster.SNVUtils cimport VCFPos
@@ -116,7 +116,7 @@ def SNVCrawler(inBAM,
             pass
     refHandle = pysam.FastaFile(reference)
     if(OutVCF == "default"):
-        OutVCF = inBAM[0:-4] + ".bmf.vcf"
+        OutVCF = TrimExt(inBAM) + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(OutVCF == "stdout"):
         outHandle = sys.stdout
@@ -124,7 +124,7 @@ def SNVCrawler(inBAM,
         outHandle = open(OutVCF, "w")
     pileupCall = inHandle.pileup
     discPairHandle = pysam.AlignmentFile(
-        inBAM[0:-4] + ".discReadPairs.bam", "wb", template=inHandle)
+        TrimExt(inBAM) + ".discReadPairs.bam", "wb", template=inHandle)
     ohw = outHandle.write
     dpw = discPairHandle.write
     if(writeHeader):
@@ -391,7 +391,7 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
         elif(threads < 0):
             threads = 4  # If threads is set in kwargs, keep it.
         if(outVCF == "default"):
-            outVCF = ".".join(inBAM.split(".")[0:-1]) + ".psnv.bmf.vcf"
+            outVCF = TrimExt(inBAM) + ".psnv.bmf.vcf"
         outHandle = open(outVCF, "w")
         outHandle.write(GetVCFHeader(reference=config["ref"],
                         header=pysam.AlignmentFile(inBAM, "rb").header))

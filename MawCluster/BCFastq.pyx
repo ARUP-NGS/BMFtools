@@ -173,7 +173,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     """
     cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
     cdef np.ndarray[np.int64_t, ndim = 1] FA
-    cdef np.ndarray[char, ndim = 1, mode="c"] finalSeq 
+    cdef np.ndarray[char, ndim = 1, mode="c"] finalSeq
     cdef cython.str lenRStr
     cdef list seqs
     cdef cython.str seq
