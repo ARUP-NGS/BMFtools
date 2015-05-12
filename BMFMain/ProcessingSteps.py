@@ -9,6 +9,7 @@ import numpy as np
 
 from MawCluster import BCBam, VCFWriters, BCVCF
 from MawCluster import BCFastq
+from MawCluster.BCFastq import TrimHomingPaired
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP

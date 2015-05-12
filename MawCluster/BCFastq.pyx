@@ -40,7 +40,7 @@ from pysam import fromQualityString
 
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               ph2chrDict, chr2ph, printlog as pl, FacePalm,
-                              pFastqProxy)
+                              pFastqProxy, TrimExt)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
 
@@ -843,12 +843,12 @@ def TrimHomingSingle(
         trim_err = TrimExt(fq) + '.err.fastq'
     if(trimfq is None):
         trimfq = TrimExt(fq) + ".trim.fastq"
-    trimOpen = open(trimfq, "w")
+    trimHandle = open(trimfq, "w")
     errHandle = open(trim_err, "w")
     InFastq = pysam.FastqFile(fq)
     HomingLen = len(homing)
     TotalTrim = HomingLen + bcLen + start_trim
-    tw = trimOpen.write
+    tw = trimHandle.write
     ew = errHandle.write
     for read in InFastq:
         homingLoc = read.sequence[bcLen:bcLen + HomingLen]
@@ -859,7 +859,7 @@ def TrimHomingSingle(
             continue
         tw(GetSliceFastqProxy(read, firstBase=TotalTrim,
                               addString=" #G~BS=" + read.sequence[0:bcLen]))
-    trimOpen.close()
+    trimHandle.close()
     errHandle.close()
     return trimfq
 
@@ -869,34 +869,34 @@ def TrimHomingPaired(inFq1, inFq2, cython.long bcLen=12,
                      cython.str trimfq2=None, cython.long start_trim=1):
     cdef pysam.cfaidx.FastqProxy read1, read2
     cdef cython.long HomingLen, TotalTrim
-    pl("TrimHoming: \"{}\" from {}.".format(homing, fq))
+    pl("Getting inline barcodes for files %s, %s with homing %s." % (inFq1,
+                                                                     inFq2,
+                                                                     homing))
     trim_err = TrimExt(inFq1) + '.err.fastq'
     if(trimfq1 is None):
         trimfq1 = TrimExt(inFq1) + ".trim.fastq"
     if(trimfq2 is None):
         trimfq2 = TrimExt(inFq2) + ".trim.fastq"
-    trimOpen1 = open(trimfq1, "w")
-    trimOpen2 = open(trimfq2, "w")
+    trimHandle1 = open(trimfq1, "w")
+    trimHandle2 = open(trimfq2, "w")
     errHandle = open(trim_err, "w")
     InFastq1 = pysam.FastqFile(inFq1)
     InFastq2 = pysam.FastqFile(inFq2)
-    fqNext = inFastq.next
+    fqNext = InFastq1.next
     HomingLen = len(homing)
     TotalTrim = HomingLen + bcLen + start_trim
-    tw1 = trimOpen1.write
-    tw2 = trimOpen2.write
+    pl("Homing length: %s. TotalTrim: %s" % (HomingLen, TotalTrim))
+    tw1 = trimHandle1.write
+    tw2 = trimHandle2.write
     ew = errHandle.write
     for read1 in InFastq1:
         read2 = fqNext()
         if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            pl("Homing sequence not in tag. Writing to error file.",
-               level=logging.DEBUG)
+            # print("Homing: %s. What was there: %s" % (homing, read1.sequence[bcLen:bcLen + HomingLen]))
             ew(str(pFastqProxy(read1)))
             ew(str(pFastqProxy(read2)))
             continue
         if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
-            pl("Homing sequence not in tag. Writing to error file.",
-               level=logging.DEBUG)
             ew(str(pFastqProxy(read1)))
             ew(str(pFastqProxy(read2)))
             continue
@@ -905,8 +905,9 @@ def TrimHomingPaired(inFq1, inFq2, cython.long bcLen=12,
                                addString=" #G~BS=%s" % barcode))
         tw2(GetSliceFastqProxy(read2, firstBase=TotalTrim,
                                addString=" #G~BS=%s" % barcode))
-    trimOpen.close()
-    errOpen.close()
+    trimHandle1.close()
+    trimHandle2.close()
+    errHandle.close()
     return trimfq1, trimfq2
 
 

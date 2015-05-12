@@ -354,8 +354,8 @@ def FacePalm(string):
            "=~-,,.,............................... \n........................"
            "........`:,,...........................`..............__ \n......"
            "...............................`=-,...................,%`>--==`` "
-           "\n........................................_..........._,-%.......`"
-           " \n...................................,")
+           "\n........................................_..........._,-%......."
+           "` \n...................................,")
     print(Str)
     if(isinstance(string, str)):
         raise ThisIsMadness(string)
@@ -2390,7 +2390,7 @@ def TrimExt(cython.str fname):
     Trims the extension from the filename so that I don't have to type this
     every single time.
     """
-    return ".".join(fname.split(".")[:-1]).split("/")[:-1]
+    return ".".join(fname.split(".")[:-1]).split("/")[-1]
 
 
 @cython.returns(cython.str)
