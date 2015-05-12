@@ -76,7 +76,7 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     (Will require a different function, actually.)
     """
     cdef pysam.TabProxies.VCFProxy rec, nRec, i
-    cdef cython.long nDOC, nAC
+    cdef cython.long nDOC, nAC, nAllelesAtPos
     cdef np.longdouble_t nMaxAAF
     cdef cython.str f
     if(normal == "default"):

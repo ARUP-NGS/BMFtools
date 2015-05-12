@@ -229,8 +229,8 @@ def GetFamSizeStats(inFq, outfile=sys.stdout):
         sumAll += famS
     MeanFamAll = sumAll / (1. * (numFam + numSing))
     MeanRealFam = sumFam / (1. * numFam)
-    string = ("numFam:%s. NumSing:%s. " % (numFam, numSing) +
-              "MeanFamAll:%s. MeanRealFam: %s" % (MeanFamAll, MeanRealFam))
+    string = ("numFam:%s\nNumSing:%s\n" % (numFam, numSing) +
+              "MeanFamAll:%s\nMeanRealFam: %s" % (MeanFamAll, MeanRealFam))
     outfile.write(string + "\n")
     outfile.close()
     return numFam, numSing, MeanFamAll, MeanRealFam

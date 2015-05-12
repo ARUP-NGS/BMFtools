@@ -7,7 +7,7 @@ from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl, CoorSortAndIndexBam,
                               GetKmersToCheck, FastqStrFromKmerList,
-                              BowtieFqToStr, GetMQPassReads,
+                              Bowtie2FqToStr, GetMQPassReads,
                               GetInsertionFromAlignedSegment,
                               GetDeletionFromAlignedSegment,
                               FacePalm, ParseBed,
@@ -156,7 +156,8 @@ def GetFBOutVCFFromStr(cython.str cStr):
 @cython.returns(list)
 def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
                              list bedline=[], cython.long minMQ=1,
-                             cython.long padding=-1, cython.long mismatches=2):
+                             cython.long padding=-1,
+                             cython.long mismatches=-1):
     """
     Uses a set of HTSUtils methods to find kmers from a region
     which are uniquely mappable. This makes it possible to do alignment-free
@@ -165,14 +166,13 @@ def GetUniquelyMappableKmers(cython.str ref, cython.long k=30,
     """
     cdef list kmerList, PassingReadNames
     cdef cython.str fqStr, bowtieStr
-    pl("Getting potential kmers")
+    pl("Getting potential kmers for k=%s" % k)
     kmerList = GetKmersToCheck(ref, k=k, bedline=bedline, padding=padding)
     pl("Making dummy fastq records for each kmer")
     fqStr = FastqStrFromKmerList(kmerList)
     pl("Aligning these kmers to the genome to test for unique mappability"
-       " with a given number of mismatches %s and minMQ %s." % (mismatches,
-                                                                minMQ))
-    bowtieStr = BowtieFqToStr(fqStr, ref=ref, mismatches=mismatches, seed=k)
+       " with a given number minMQ %s." % minMQ)
+    bowtieStr = Bowtie2FqToStr(fqStr, ref=ref, seed=k, mismatches=mismatches)
     PassingReadNames = GetMQPassReads(bowtieStr, minMQ=minMQ)
     return PassingReadNames
 

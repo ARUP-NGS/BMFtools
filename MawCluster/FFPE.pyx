@@ -379,7 +379,7 @@ def TabixDeamFilter(inVCF, pVal=0.001, ctfreq=0.006,
     ohw("\n".join(headerLines) + "\n")
     FilterFn = MakeVCFProxyDeaminationFilter(ctfreq, conf=pVal,
                                              key="MFDNP",
-                                             value=mfdnpStr).filter
+                                             value=mfdnpStr)
     recordsArray = []
     for rec in inHandle:
         recordsArray.append(FilterFn(rec))

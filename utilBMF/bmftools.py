@@ -295,10 +295,6 @@ def main():
               "sufficiently unique identifier."),
         type=int, default=1)
     GetKmerParser.add_argument(
-        "--mismatch-limit", "-l",
-        help="Limit in number of mismatches for alignment.",
-        type=int, default=2)
-    GetKmerParser.add_argument(
         "--padding", "-p",
         help="Distance around the region of interest to pad.",
         type=int, default=0)
@@ -315,6 +311,19 @@ def main():
         help=("Distance around the kmer to pad the fasta reference for "
               "pulling down relevant reads."),
         type=int, default=120)
+    GetKmerParser.add_argument(
+        "-l", "--mismatch-limit",
+        help=("Number of mismatches to permit for alignment or "
+              "for the dual hashmap."))
+    FamStatsParser = subparsers.add_parser(
+        "famstats", description=("Generate family size stats for a "
+                                 "flattened fastq file."))
+    FamStatsParser.add_argument(
+        "inFq", help="Path to flattened fastq file.", type=str)
+    FamStatsParser.add_argument(
+        "-o", "--outfile", help="Path to output file. Default: stdout",
+        type=argparse.FileType("w"),
+        default=sys.stdout)
     # set_trace()
 
     args = parser.parse_args()
@@ -557,8 +566,8 @@ def main():
         kmerList = GetUniquelyMappableKmers(args.ref, k=args.k,
                                             minMQ=args.minMQ,
                                             padding=args.padding,
-                                            mismatches=args.mismatch_limit,
-                                            bedline=bedline)
+                                            bedline=bedline,
+                                            mismatches=args.mismatch_limit)
         if(args.outfile == "default"):
             outHandle = sys.stdout
         else:
@@ -567,6 +576,9 @@ def main():
         FastaString = "\n".join(map(FastaCreation, kmerList))
         outHandle.write(FastaString)
         sys.exit(0)
+    if(args.bmfsuites == "famstats"):
+        from utilBMF.QC import GetFamSizeStats
+        Stats = GetFamSizeStats(args.inFq, outfile=args.outfile)
     sys.exit(0)
 
 

@@ -46,6 +46,10 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     if(aligner == "default"):
         pl("No aligner set, defaulting to bwa mem.")
         aligner = "mem"
+    if("gatk" in realigner.lower()):
+        pl("Since realigning with GATK IndelRealigner, "
+           "addRG is being set to True.")
+        addRG = True
     if(aligner == "mem"):
         if(addRG is False):
             outBAMProperPair = HTSUtils.align_bwa_mem(
@@ -80,9 +84,9 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     taggedBAM = BCBam.pairedBarcodeTagging(
         consfq1, consfq2, outBAMProperPair, bedfile=bed, realigner=realigner,
         ref=ref, minAF=minAF)
-    check_call(["rm", outBAMProperPair])
+    # check_call(["rm", outBAMProperPair])
     pl("Now realigning with: %s" % realigner)
-    if(realigner == "abra"):
+    if("abra" in realigner.lower()):
         if(abrapath == "default"):
             raise ThisIsMadness("abrapath must be set for abra to be the "
                                 "realigner")
@@ -90,17 +94,24 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
                                           jar=abrapath, rLen=rLen,
                                           intelPath=intelDeflator)
-    elif(realigner == "gatk"):
+        if("gatk" in realigner.lower()):
+            pl("Realigning around known indels, too. "
+               "Lots of steps, hard to know which ones matter.")
+            coorSortFull = HTSUtils.CoorSortAndIndexBam(realignedFull)
+            realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,
+                                                       bed=bed, gatk=gatkpath,
+                                                       dbsnp=dbsnp)
+    elif("gatk" in realigner.lower().split(",")):
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,
                                                    bed=bed, gatk=gatkpath,
                                                    dbsnp=dbsnp)
     else:
-        pl("ABRA path not provided. Skipping realignment.")
+        pl("Skipping realignment.")
         realignedFull = taggedBAM
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
-    check_call(["rm", realignedFull])
+    # check_call(["rm", realignedFull])
     if(barIndex != "default"):
         p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
         out, err = p.communicate()
@@ -149,11 +160,16 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                stringency=cython.float)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       p3Seq="default", p5Seq="default",
-                      overlapLen=6, sortMem="6G"):
+                      overlapLen=6, sortMem="6G", inline_barcodes=False,
+                      homing=None, bcLen=-1):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
-    bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
-                                                    inFastq2,
-                                                    indexfq=indexfq)
+    if(inline_barcodes is False):
+        bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
+                                                        inFastq2,
+                                                        indexfq=indexfq)
+    else:
+        bcFastq1, bcFastq2 = TrimHomingPaired(inFastq1, inFastq2, homing=homing,
+                                              bcLen=bcLen)
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
                                                  sortMem=sortMem)
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
@@ -188,7 +204,7 @@ def pairedVCFProc(consMergeSortBAM,
                   commandStr="default",
                   minFA=2, minFracAgreed=0.667,
                   exp="", deaminationPVal=0.05,
-                  conf="default", parallel=False):
+                  conf="default", parallel=True):
     """
     Lumps together VCF processing.
     exp is a string from a comma-joined list of strings.

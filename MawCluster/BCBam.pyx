@@ -253,7 +253,7 @@ def pairedBarcodeTagging(
         cython.str suppBam="default",
         cython.str bedfile="default",
         cython.str conversionXml="default", cython.str realigner="default",
-        cython.float minAF=0.4, cython.str ref="default"):
+        cython.float minAF=0.0, cython.str ref="default"):
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef cython.float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef cython.long FM, ND1, ND2
@@ -311,9 +311,11 @@ def pairedBarcodeTagging(
                              "%s %s" % (descDict1["ND"], descDict2["ND"]))
         r1FracAlign = FractionAligned(read1bam)
         r1FracSC = FractionSoftClipped(read1bam)
+        """
         if(r1FracAlign < minAF and not read1bam.is_unmapped):
             read1bam = SWRealignAS(read1bam, postFilterBAM, ref=ref)
             r1FracAlign = FractionAligned(read1bam)
+        """
         r2FracAlign = FractionAligned(read2bam)
         r2FracSC = FractionSoftClipped(read2bam)
         """

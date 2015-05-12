@@ -20,13 +20,8 @@ import collections
 import time
 import cStringIO
 import operator
-from operator import attrgetter as oag
-from operator import add as oadd
-from operator import le as ole
-from operator import ge as oge
-from operator import div as odiv
-from operator import mul as omul
-from operator import add as oadd
+from operator import (add as oadd, le as ole, ge as oge, div as odiv,
+                      mul as omul, add as oadd, attrgetter as oag)
 from subprocess import check_call
 
 import Bio
@@ -35,47 +30,30 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq as BioSeq
 import cython
 import numpy as np
-from numpy import array as nparray
-from numpy import less as nless
-from numpy import sum as nsum
-from numpy import amax as npamax
-from numpy import argmax as npargmax
-from numpy import multiply as nmultiply
-from numpy import subtract as nsubtract
-from numpy import any as npany
-from numpy import vstack as npvstack
-from numpy import greater as ngreater
+from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
+                   multiply as nmultiply, subtract as nsubtract, any as npany,
+                   vstack as npvstack, greater as ngreater, less as nless,
+                   array as nparray)
 import pysam
-from pysam.cfaidx import FastqProxy as cFastqProxy
 from cytoolz import map as cmap, memoize
 from pysam import fromQualityString
 
-from utilBMF.HTSUtils import printlog as pl
-from utilBMF.HTSUtils import PipedShellCall
-from utilBMF.HTSUtils import ph2chr
-from utilBMF.HTSUtils import ph2chrDict
-from utilBMF.HTSUtils import chr2ph
+from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
+                              ph2chrDict, chr2ph, printlog as pl, FacePalm,
+                              pFastqProxy)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
-from utilBMF.HTSUtils import FacePalm, pFastqProxy
 
 oagseq = oag("seq")
+oagsequence = oag("sequence")
 cimport cython
 cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
-ctypedef pysam.calignmentfile.AlignedSegment dtype_as
 
 
-letterNumDict = {}
-letterNumDict['A'] = 0
-letterNumDict['C'] = 1
-letterNumDict['G'] = 2
-letterNumDict['T'] = 3
-letterNumDict[0] = 'A'
-letterNumDict[1] = 'C'
-letterNumDict[2] = 'G'
-letterNumDict[3] = 'T'
+letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
+                 0: 'A', 1: 'C', 2: 'G', 3: 'T'}
 
 
 @memoize
@@ -190,7 +168,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], lenR, famLimit))
         R = R[:famLimit]
-    seqs = list(cmap(oag("sequence"), R))
+    seqs = list(cmap(oagsequence, R))
     maxScore = 0
     Success = False
     numEq = 0
@@ -568,12 +546,12 @@ def FastqSingleShading(fq,
     return
 
 
-def HomingSeqLoc(fq, homing, bar_len=12):
+def HomingSeqLoc(fq, homing, bcLen=12):
     pl("Now beginning HomingSeqLoc.")
     InFastq = SeqIO.parse(fq, "fastq")
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix = Tpref.split('/')[-1]
-    StdFilename = Prefix + '.{}.fastq'.format("homing" + str(bar_len))
+    StdFilename = Prefix + '.{}.fastq'.format("homing" + str(bcLen))
     ElseFilename = Prefix + '.else.fastq'
     ElseLoc = Prefix + '.else.supp'
     StdFastq = open(StdFilename, 'w', 0)  # Homing at expected Location
@@ -584,7 +562,7 @@ def HomingSeqLoc(fq, homing, bar_len=12):
         if(seq.find(homing) == -1):
             read.description += " #G~FP=HomingFail"
             SeqIO.write(read, StdFastq, "fastq")
-        elif(seq[bar_len:bar_len + len(homing)] == homing):
+        elif(seq[bcLen:bcLen + len(homing)] == homing):
             read.description += " #G~FP=HomingPass"
             SeqIO.write(read, StdFastq, "fastq")
         else:
@@ -668,32 +646,6 @@ def GetDescriptionTagDict(readDesc):
         pl("tagSetEntries: {}".format(tagSetEntries))
         raise ThisIsMadness("YOU HAVE NO CHANCE TO SURVIVE MAKE YOUR TIME")
     return tagDict
-
-
-def LighterCallPaired(fq1, fq2, kmer="default",
-                      captureSize="default",
-                      alpha="default"):
-    """
-    Calls Lighter on both sets of fastq files. Default kmer of 20.
-    Capture size is required. If alpha is unset, lighter will infer the value.
-    """
-    if(kmer == "default"):
-        kmer = 20
-        pl("kmer not set - default of 20 used.")
-    outfq1 = ".".join(fq1.split(".")[0:-1] + ["cor", "fq"])
-    outfq2 = ".".join(fq2.split(".")[0:-1] + ["cor", "fq"])
-    if(isinstance(captureSize, str)):
-        raise ThisIsMadness("Capture size must be set for error correction.")
-    if(isinstance(alpha, str)):
-        pl("Alpha constant not provided. Lighter will infer it from captureS"
-           "ize, the number of reads, and the length of each.")
-        commandArray = shlex.split("lighter -r {} -r {} -K {} {}".format(
-            fq1, fq2, kmer, captureSize))
-        subprocess.check_call(commandArray, shell=False)
-    else:
-        commandArray = shlex.split("lighter -r {} -r {} -K {} {} {}".format(
-            fq1, fq2, kmer, captureSize, alpha))
-    return outfq1, outfq2
 
 
 @cython.locals(stringency=cython.float, readPairsPerWrite=cython.long,
@@ -877,53 +829,85 @@ def ShadesRescuePaired(singlefq1,
     raise ThisIsMadness("This rescue function has not been written.")
 
 
-def TrimHoming(
+def TrimHomingSingle(
         fq,
-        homing,
-        trimfq="default",
-        bar_len=12,
-        tags_file="default",
-        trim_err="default",
-        start_trim=1):
-    pl("TrimHoming: \"{}\" from {}".format(homing, fq))
-    if(trim_err == "default"):
-        temp = '.'.join(fq.split('.')[0:-1] + ['err', 'fastq'])
-        trim_err = temp.split('/')[-1]
-    if(trimfq == "default"):
-        temp = '.'.join(fq.split('.')[0:-1] + ['trim', 'fastq'])
-        trimfq = temp.split('/')[-1]
-    if(tags_file == "default"):
-        temp = '.'.join(fq.split('.')[0:-1] + ['tags', 'fastq'])
-        tags_file = temp.split('/')[-1]
-    tagsOpen = open(tags_file, "w", 0)
-    trimOpen = open(trimfq, "w", 0)
-    InFastq = SeqIO.parse(fq, "fastq")
+        cython.str homing=None,
+        cython.str trimfq=None,
+        cython.long bcLen=12,
+        cython.str trim_err=None,
+        cython.long start_trim=1):
+    cdef pysam.cfaidx.FastqProxy read
+    cdef cython.long HomingLen, TotalTrim
+    pl("TrimHoming: \"{}\" from {}.".format(homing, fq))
+    if(trim_err is None):
+        trim_err = TrimExt(fq) + '.err.fastq'
+    if(trimfq is None):
+        trimfq = TrimExt(fq) + ".trim.fastq"
+    trimOpen = open(trimfq, "w")
+    errHandle = open(trim_err, "w")
+    InFastq = pysam.FastqFile(fq)
     HomingLen = len(homing)
-    TotalTrim = HomingLen + bar_len + start_trim
-    pl("Homing Length is {}".format(HomingLen))
-    for rec in InFastq:
-        pre_tag = SeqRecord(
-            BioSeq(str(rec.seq)[0:bar_len], "fastq"),
-            id=rec.id, description=rec.description)
-        pre_tag.letter_annotations['phred_quality'] = rec.letter_annotations[
-            'phred_quality'][0:bar_len]
-        """
-        if homing not in pre_tag.seq:
-            pl("Homing sequence not in tag. Writing to error file.")
-            SeqIO.write(rec,errOpen,"fastq")
+    TotalTrim = HomingLen + bcLen + start_trim
+    tw = trimOpen.write
+    ew = errHandle.write
+    for read in InFastq:
+        homingLoc = read.sequence[bcLen:bcLen + HomingLen]
+        if homing not in homingLoc:
+            pl("Homing sequence not in tag. Writing to error file.",
+               level=logging.DEBUG)
+            ew(str(pFastqProxy(read)))
             continue
-        """
-        SeqIO.write(pre_tag, tagsOpen, "fastq")
-        descString = rec.description + " #G~BS=" + str(rec.seq[0:bar_len])
-        post_tag = SeqRecord(BioSeq(str(rec.seq)[TotalTrim:], "fastq"),
-                             id=rec.id,
-                             description=descString)
-        post_tag.letter_annotations['phred_quality'] = rec.letter_annotations[
-            'phred_quality'][TotalTrim:]
-        SeqIO.write(post_tag, trimOpen, "fastq")
-    tagsOpen.close()
+        tw(GetSliceFastqProxy(read, firstBase=TotalTrim,
+                              addString=" #G~BS=" + read.sequence[0:bcLen]))
     trimOpen.close()
-    return(tags_file, trimfq)
+    errHandle.close()
+    return trimfq
+
+
+def TrimHomingPaired(inFq1, inFq2, cython.long bcLen=12,
+                     cython.str homing=None, cython.str trimfq1=None,
+                     cython.str trimfq2=None, cython.long start_trim=1):
+    cdef pysam.cfaidx.FastqProxy read1, read2
+    cdef cython.long HomingLen, TotalTrim
+    pl("TrimHoming: \"{}\" from {}.".format(homing, fq))
+    trim_err = TrimExt(inFq1) + '.err.fastq'
+    if(trimfq1 is None):
+        trimfq1 = TrimExt(inFq1) + ".trim.fastq"
+    if(trimfq2 is None):
+        trimfq2 = TrimExt(inFq2) + ".trim.fastq"
+    trimOpen1 = open(trimfq1, "w")
+    trimOpen2 = open(trimfq2, "w")
+    errHandle = open(trim_err, "w")
+    InFastq1 = pysam.FastqFile(inFq1)
+    InFastq2 = pysam.FastqFile(inFq2)
+    fqNext = inFastq.next
+    HomingLen = len(homing)
+    TotalTrim = HomingLen + bcLen + start_trim
+    tw1 = trimOpen1.write
+    tw2 = trimOpen2.write
+    ew = errHandle.write
+    for read1 in InFastq1:
+        read2 = fqNext()
+        if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
+            pl("Homing sequence not in tag. Writing to error file.",
+               level=logging.DEBUG)
+            ew(str(pFastqProxy(read1)))
+            ew(str(pFastqProxy(read2)))
+            continue
+        if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
+            pl("Homing sequence not in tag. Writing to error file.",
+               level=logging.DEBUG)
+            ew(str(pFastqProxy(read1)))
+            ew(str(pFastqProxy(read2)))
+            continue
+        barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
+        tw1(GetSliceFastqProxy(read1, firstBase=TotalTrim,
+                               addString=" #G~BS=%s" % barcode))
+        tw2(GetSliceFastqProxy(read2, firstBase=TotalTrim,
+                               addString=" #G~BS=%s" % barcode))
+    trimOpen.close()
+    errOpen.close()
+    return trimfq1, trimfq2
 
 
 @cython.locals(asDict=cython.bint)

@@ -293,16 +293,39 @@ class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
-    @cython.locals(FastqProxyObj=pysam.cfaidx.FastqProxy)
-    def __init__(self, FastqProxyObj):
+    def __init__(self, pysam.cfaidx.FastqProxy FastqProxyObj):
         self.comment = FastqProxyObj.comment
         self.quality = FastqProxyObj.quality
         self.sequence = FastqProxyObj.sequence
         self.name = FastqProxyObj.name
 
     def __str__(self):
-        return ("@" + self.name + " " + self.comment +
-                "\n" + self.sequence + "\n+\n" + self.quality + "\n")
+        return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
+                                        self.sequence, self.quality)
+
+@cython.returns(cython.str)
+def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
+    """
+    Just makes a string from a FastqProxy object.
+    """
+    return "@%s %s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
+                                    fqPrx.sequence, fqPrx.quality)
+
+@cython.returns(cython.str)
+def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
+                       cython.long firstBase=0,
+                       cython.long lastBase=-1337,
+                       cython.str addString=""):
+    if(lastBase == -1337):
+        return "@%s %s%s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
+                                          addString,
+                                          fqPrx.sequence[firstBase:],
+                                          fqPrx.quality[firstBase:])
+    return "@%s %s%s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
+                                      addString,
+                                      fqPrx.sequence[firstBase:lastBase],
+                                      fqPrx.quality[firstBase:lastBase])
+
 
 
 def FacePalm(string):
@@ -481,7 +504,7 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
 def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
                         path="default", picardPath="default",
                         PL="ILLUMINA", SM="default", ID="default",
-                        CN="default"):
+                        CN="default", RG="default"):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -512,7 +535,7 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
     printlog(command_str)
     PipedShellCall(command_str)
     AddReadGroupsPicard(outSAM, outBAM=outBAM, SM=SM, ID=ID, PL=PL,
-                        CN=CN, picardPath=picardPath)
+                        CN=CN, picardPath=picardPath, RG=RG)
     return outBAM
 
 
@@ -1945,7 +1968,7 @@ class AbstractVCFProxyFilter(object):
         self.value = value
 
     @cython.returns(pysam.TabProxies.VCFProxy)
-    def filter(self, pysam.TabProxies.VCFProxy rec):
+    def __call__(self, pysam.TabProxies.VCFProxy rec):
         """
         You can specify multiple info tags with their values
         so long as you have comma-separated fields of equal length
@@ -2367,7 +2390,7 @@ def TrimExt(cython.str fname):
     Trims the extension from the filename so that I don't have to type this
     every single time.
     """
-    return ".".join(fname.split(".")[:-1])
+    return ".".join(fname.split(".")[:-1]).split("/")[:-1]
 
 
 @cython.returns(cython.str)
@@ -2424,18 +2447,27 @@ def FastqStrFromKmerList(list kmerList):
 
 
 @cython.returns(cython.str)
-def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
-                  cython.long mismatches=-1, cython.long seed=-1):
+def Bowtie2FqToStr(cython.str fqStr, cython.str ref=None,
+                   cython.long seed=-1, cython.long mismatches=20):
     """
-    Returns the string output of a bowtie call.
+    Returns the string output of a bowtie2 call.
+    With bowtie, you can specify precisely the number of permitted mismatches
+    in the string, but with bowtie2, you don't need to write any temporary
+    files. I'll play around with the alignment settings as I get along in
+    the getkmers tool.
     """
-    if(mismatches < 0):
-        raise ThisIsMadness("mismatches must be set for BowtieFqToStr.")
     if(seed < 0):
-        raise ThisIsMadness("seed length must be set for BowtieFqToStr.")
-    cStr = ("echo %s | bowtie %s -a -n %s -l %s %s -" % (ref, mismatches,
-                                                         seed, fqStr))
-    return check_output(cStr, shell=True)
+        raise ThisIsMadness("seed length must be set for Bowtie2FqToStr.")
+    if(mismatches > 2 or mismatches < 0):
+        raise ThisIsMadness("0 <= mismatches <= 2!")
+    tmpFile = str(uuid.uuid4().get_hex()[0:8]) + ".hey.i.am.a.prefix.fq"
+    tmpFileHandle = open(tmpFile, "w")
+    tmpFileHandle.write(fqStr)
+    tmpFileHandle.close()
+    cStr = "bowtie %s -n %s -l %s -U %s" % (ref, mismatches, seed, tmpFile)
+    outStr = check_output(cStr, shell=True)
+    check_call(["rm", tmpFile])
+    return outStr
 
 
 @cython.returns(list)

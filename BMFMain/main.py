@@ -58,13 +58,13 @@ def main(argv=None):
         type=bool)
     parser.add_argument(
         '--homing',
-        help="Homing sequence for samples. If not set, defaults to GACGG.",
+        help="Homing sequence for samples.",
         metavar=('HomingSequence'),
-        default="GACGG")
+        default=None)
     parser.add_argument(
-        '--shades',
-        help="Use flag if using the shades barcode method.",
-        default=True,
+        '--inline-barcodes',
+        help="Use flag if using inline barcodes method.",
+        default=None,
         action="store_true")
     parser.add_argument(
         '-a',
@@ -171,10 +171,13 @@ def main(argv=None):
         "--sortMem",
         help="Memory to use for sorting fastq files. Default: 6G",
         default="default")
+    parser.add_argument(
+        "--bcLen",
+        help=("Length of inline barcodes. Ignored for datasets where "
+              "the molecular barcode is on a secondary index."),
+        type=int, default=-1)
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
-    if(args.indelRealigner.lower() not in ["abra", "gatk", "none"]):
-        raise ThisIsMadness("Supported indel realigners are abra and gatk.")
     realigner = args.indelRealigner
     cdk = confDict.keys()
     experiment = ""
@@ -183,7 +186,7 @@ def main(argv=None):
     if args.experiment != "default":
         experiment = args.experiment
     if("indelRealigner" in cdk):
-        indelRealigner = confDict["indelRealigner"]
+        realigner = confDict["indelRealigner"]
     if("minMQ" in cdk):
         minMQ = int(confDict['minMQ'])
     else:
@@ -282,7 +285,10 @@ def main(argv=None):
         aligner = confDict['aligner']
     else:
         aligner = args.aligner
-    homing = args.homing
+    if("homing" in cdk):
+        homing = confDict['homing']
+    if args.homing is not None:
+        homing = args.homing
     readLength = -1
     if("readLength" in cdk):
         readLength = int(confDict["readLength"])
@@ -335,12 +341,21 @@ def main(argv=None):
         threads = int(confDict["threads"])
     else:
         threads = 8
+    if("bcLen" in cdk):
+        bcLen = int(confDict['bcLen'])
+    else:
+        bcLen = args.bcLen
     minAF = 0.
     if("minAF" in cdk):
-        minAF = float(cdk[minAF])
+        minAF = float(confDict[minAF])
     else:
         if(args.minAF != 0.0):
             minAF = args.minAF
+    inline_barcodes = False
+    if("inline_barcodes" in cdk):
+        inline_barcodes = "true" in confDict["inline_barcodes"].lower()
+    if(args.inline_barcodes is not None):
+        inline_barcodes = args.inline_barcodes
     if(single_end):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
@@ -351,7 +366,9 @@ def main(argv=None):
             pl("Beginning fastq processing.")
             trimfq1, trimfq2 = ps.pairedFastqShades(
                 args.fq[0], args.fq[1], indexfq=args.idxFastq,
-                p3Seq=p3Seq, p5Seq=p5Seq, sortMem=sortMem)
+                p3Seq=p3Seq, p5Seq=p5Seq, sortMem=sortMem,
+                inline_barcodes=inline_barcodes, homing=homing,
+                bcLen=bcLen)
             if(makeReviewDir):
                 subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
             if("bwapath" in locals()):
