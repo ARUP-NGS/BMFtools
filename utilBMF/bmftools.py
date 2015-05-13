@@ -18,6 +18,11 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    InputQtyParser = subparsers.add_parser(
+        "qty",
+        description=("Calculates the quantity of input DNA needed to reach "
+                     "a given mean PCR redundancy and a given amount of "
+                     "sequencing power."))
     PSNVParser = subparsers.add_parser(
         "psnv", description="Parallel SNV calls.")
     PSNVParser.add_argument(
@@ -324,10 +329,71 @@ def main():
         "-o", "--outfile", help="Path to output file. Default: stdout",
         type=argparse.FileType("w"),
         default=sys.stdout)
+    InputQtyParser.add_argument(
+        "-n", "--number-of-templates",
+        help="Number of template molecules sequenced. "
+        "(Both reads in a pair count as 1 total)",
+        type=int, required=True)
+    InputQtyParser.add_argument(
+        "-p", "--paired",
+        action="store_true",
+        help="Set this flag if the data is paired-end.")
+    InputQtyParser.add_argument(
+        "-l", "--read-length",
+        help="Length of each read.", type=int,
+        required=True)
+    InputQtyParser.add_argument(
+        "--on-target", "-o",
+        help="Fraction of reads which are on-target. Default: 0.25 (25%).",
+        type=float, default=0.25)
+    InputQtyParser.add_argument(
+        "--region-size", "-s",
+        help="Size of capture region in number of bases.",
+        type=int, required=True)
+    InputQtyParser.add_argument(
+        "--FM", "-f",
+        help="Desired mean family size.",
+        required=True, type=float)
+    InputQtyParser.add_argument(
+        "--genome-size", "-g",
+        help="Genome size for organism. Defaults to human genome length.",
+        default=3.2e9, type=float)
+    InputQtyParser.add_argument(
+        "--strand-correction",
+        help="Whether or not to count copies of the genome by strand rather than by dsDNA.",
+        action="store_true")
+    InputQtyParser.add_argument(
+        "--qc-fail",
+        help="Fraction of reads not usable due to failing QC. Default: 0.1.",
+        default=0.1, type=float)
+    InputQtyParser.add_argument(
+        "--mean-usable-proportion",
+        help="Fraction of average read good enough to use. Default: 0.9",
+        default=0.9, type=float)
+    InputQtyParser.add_argument(
+        "--mapped-fraction",
+        help="Fraction of reads properly mapped with MQ != 0.",
+        default=0.8, type=float)
     # set_trace()
 
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
+    if(args.bmfsuites == "qty"):
+        templatesOnTarget = args.number_of_templates * args.on_target
+        if(args.paired):
+            readsOnTarget = templatesOnTarget * 2
+        else:
+            readsOnTarget = templatesOnTarget
+        basesOnTarget = (readsOnTarget * args.read_length *
+                         (1 - args.qc_fail) * args.mean_usable_proportion *
+                         args.mapped_fraction)
+        genomeEquivalentsPerNg = 6.022e23 / (args.genome_size * 1e9 * 650)
+        meanOnTargetCoverage = basesOnTarget / args.region_size
+        NumCopiesDesired = meanOnTargetCoverage / args.FM
+        DesiredInputQty = NumCopiesDesired / genomeEquivalentsPerNg
+        if(args.strand_correction):
+            DesiredInputQty /= 2
+        print("Desired input qty: %.2fng" % DesiredInputQty)
     if(args.bmfsuites == "psnv"):
         from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
