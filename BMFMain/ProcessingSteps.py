@@ -58,7 +58,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         else:
             outBAMProperPair = HTSUtils.align_bwa_mem_addRG(
                 consfq1, consfq2, ref=ref, opts=opts, path=bwapath,
-                RG=RG, ID=ID, CN=CN, PL=PL, SM=SM)
+                RG=RG, ID=ID, CN=CN, PL=PL, SM=SM, picardPath=picardPath)
         if(consfqSingle != "default"):
             HTSUtils.FacePalm("This step is not relevant to shades.")
     elif(aligner == "aln"):
@@ -162,24 +162,26 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
-                      homing=None, bcLen=-1):
+                      homing=None, bcLen=-1, head=0):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     if(inline_barcodes is False):
         bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                         inFastq2,
-                                                        indexfq=indexfq)
+                                                        indexfq=indexfq,
+                                                        head=head)
     else:
         bcFastq1, bcFastq2 = TrimHomingPaired(inFastq1, inFastq2, homing=homing,
                                               bcLen=bcLen)
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
                                                  sortMem=sortMem)
+    check_call(["rm", bcFastq1, bcFastq2])
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
         BSortFq1, BSortFq2, stringency=0.9)
     if(p3Seq != "default"):
         BConsFastq1, BConsFastq2 = BCFastq.CutadaptPaired(
             BConsFastq1, BConsFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq)
-    check_call(["rm", bcFastq1, bcFastq2, BSortFq1, BSortFq2])
+    check_call(["rm", BSortFq1, BSortFq2])
     try:
         famStats = GetFamSizeStats(
             BConsFastq1,

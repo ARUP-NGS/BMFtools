@@ -407,7 +407,8 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 
 @cython.locals(useGzip=cython.bint, bLen=cython.long)
 def FastqPairedShading(fq1, fq2, indexfq="default",
-                       useGzip=False, readPairsPerWrite=10):
+                       useGzip=False, readPairsPerWrite=10,
+                       cython.long head=2):
     """
     Tags fastqs with barcodes from an index fastq.
     """
@@ -489,6 +490,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                                                            tempBar),
                level=logging.DEBUG)
             '''
+            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
             f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
                                 " #G~FP=IndexFail #G~BS=", tempBar]),
                                 read1.sequence,
@@ -892,7 +894,6 @@ def TrimHomingPaired(inFq1, inFq2, cython.long bcLen=12,
     for read1 in InFastq1:
         read2 = fqNext()
         if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            # print("Homing: %s. What was there: %s" % (homing, read1.sequence[bcLen:bcLen + HomingLen]))
             ew(str(pFastqProxy(read1)))
             ew(str(pFastqProxy(read2)))
             continue

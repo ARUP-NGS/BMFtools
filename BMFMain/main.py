@@ -60,7 +60,7 @@ def main(argv=None):
         '--homing',
         help="Homing sequence for samples.",
         metavar=('HomingSequence'),
-        default=None)
+        default="CAGT")
     parser.add_argument(
         '--inline-barcodes',
         help="Use flag if using inline barcodes method.",
@@ -176,6 +176,10 @@ def main(argv=None):
         help=("Length of inline barcodes. Ignored for datasets where "
               "the molecular barcode is on a secondary index."),
         type=int, default=-1)
+    parser.add_argument(
+        "--head", help=("Number of bases from the start of reads 1"
+                        " and 2 to add to the barcode."),
+        type=int, default=-1)
     args = parser.parse_args()
     confDict = HTSUtils.parseConfig(args.conf)
     realigner = args.indelRealigner
@@ -227,6 +231,13 @@ def main(argv=None):
            "won't happen...", level=logging.DEBUG)
     else:
         pl("picardPath set to %s" % picardPath)
+    if("head" in cdk):
+        head = int(confDict['head'])
+    else:
+        head = 0
+    if(args.head > 0):
+        head = args.head
+    
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir
     reviewdir = ""
@@ -368,7 +379,7 @@ def main(argv=None):
                 args.fq[0], args.fq[1], indexfq=args.idxFastq,
                 p3Seq=p3Seq, p5Seq=p5Seq, sortMem=sortMem,
                 inline_barcodes=inline_barcodes, homing=homing,
-                bcLen=bcLen)
+                bcLen=bcLen, head=head)
             if(makeReviewDir):
                 subprocess.check_call(["cp", trimfq1, trimfq2, reviewdir])
             if("bwapath" in locals()):
