@@ -969,8 +969,8 @@ cdef class ReadPair:
         self.SameContig = (read1.reference_id == read2.reference_id)
         self.ContigString = ",".join(sorted([self.read1_contig,
                                              self.read2_contig]))
-        # TODO: write a script to create an array of soft-clipped sequences
-        # from each read
+        self.SameStrand = (self.SameContig and
+                           (read1.is_reverse == read2.is_reverse))
 
     @cython.returns(cython.long)
     def NumOverlappingBed(self, list bedLines=[]):
@@ -992,6 +992,80 @@ cdef class ReadPair:
     @cython.returns(list)
     def getReads(self):
         return [self.read1, self.read2]
+
+
+@cython.returns(list)
+def GetOverlappingBases(ReadPair_t pair):
+    """
+    Returns the bases of the reference to which both reads in the pair
+    are aligned.
+    """
+    if(pair.SameContig):
+        return [i[0] for i in
+                cyfreq([pair.read1.aligned_pairs +
+                        pair.read2.aligned_pairs]).iteritems() if
+                i[1] == 1 and i[0] != None]
+    return []
+
+
+@cython.returns(dict)
+def AlignPairDict(pysam.calignmentfile.AlignedSegment read):
+    return {x:y for y, x in read.aligned_pairs}
+
+
+@cython.returns(pysam.calignmentfile.AlignedSegment)
+def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
+                     cython.long minQualDiff=3):
+    """
+    minQualDiff is the minimum difference between the quality
+    scores in the case of disagreement.
+    """
+    cdef pysam.calignmentfile.AlignedSegment read1, read2, newread
+    cdef cython.long i
+    if(not pair.SameContig or pair.SameStrand):
+        return None  # Nothing to collapse!
+    read1, read2 = pair.getReads()
+    overlap = GetOverlappingBases(pair)
+    r1matchdict = AlignPairDict(pair.read1)
+    r2matchdict = AlignPairDict(pair.read2)
+    r1positions = [r1matchdict[i] for i in overlap]
+    r2positions = [r2matchdict[i] for i in overlap]
+    r1baseTuples = [(i, read1.seq[i], read1.query_qualities[i]) for
+                    i in r1positions]
+    r2baseTuples = [(i, read2.seq[i], read2.query_qualities[i]) for
+                    i in r2positions]
+    CollapsedSeq = ""
+    CollapsedNewQuals = []
+    newread = pysam.AlignedSegment()
+    newread.qname = read1.qname + "Combined"
+    newread.is_reverse = read1.is_reverse
+    newread.reference_id = read1.reference_id
+    newread.pos = min([r1.pos, r2.pos])
+    newread.mapq = max([r1.mapq, r2.mapq])
+    newread.tlen = r1.tlen
+    newread.set_tags(r1.get_tags())
+    read1First = (read1.pos > read2.pos)
+    if(not BMFTags):
+        for r1tup, r2tup in zip(r1baseTuples, r2baseTuples):
+            if(r1tup[1] == r2tup[1]):
+                CollapsedSeq += r1tup[1]
+            else:
+                if(r2tup[2] - r1tup[2] > minQualDiff):
+                    CollapsedSeq += r2tup[1]
+                    CollapsedNewQuals.append(r2tup[2] - r1tup[2])
+                elif(r1tup[2] - r2tup[2] > minQualDiff):
+                    CollapsedSeq += r1tup[1]
+                    CollapsedNewQuals.append(r1tup[2] - r2tup[2])
+                else:
+                    CollapsedSeq += "N"
+                    CollapedNewQuals.append(0)
+    if(read1First):
+        raise ThisIsMadness("Sorry, I just have other things to finish now.")
+
+
+def CollapseR1R2(pysam.calignmentfile.AlignedSegment R1,
+                 pysam.calignmentfile.AlignedSegment R2):
+    return CollapseReadPair(ReadPair(R1, R2))
 
 
 cdef class pPileupRead:

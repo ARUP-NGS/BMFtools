@@ -20,3 +20,4 @@ readLength=65
 sortMem=12G
 MaxPValue=1e-30
 threads=8
+head=2

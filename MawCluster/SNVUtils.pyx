@@ -146,7 +146,7 @@ cdef class SNVCFLine:
         shenRef = min([shen(flankingBefore + REF), shen(REF + flankingAfter)])
         shenVar = min([shen(flankingBefore + self.ALT),
                        shen(self.ALT + flankingAfter)])
-        self.InfoFields = {"AC": AC,
+        self.InfoFields = {"AC": AC - NDP,  # Correct for counting NDPs twice
                            "AF": 1. * AC / DOC,
                            "BNP": int(-10 * mlog10(pValBinom)),
                            "BSS": AlleleAggregateObject.BothStrandSupport,

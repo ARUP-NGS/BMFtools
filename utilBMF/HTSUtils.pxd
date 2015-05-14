@@ -56,7 +56,7 @@ cdef class ReadPair:
     cdef public cython.str ContigString
     cdef public cython.long insert_size
     cdef public cython.bint read1_in_bed
-    cdef public cython.bint read2_in_bed
+    cdef public cython.bint read2_in_bed, SameStrand
 
 
 cdef class AbstractIndelContainer:
