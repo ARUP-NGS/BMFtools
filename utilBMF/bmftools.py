@@ -359,7 +359,7 @@ def main():
         help="Genome size for organism. Defaults to human genome length.",
         default=3.2e9, type=float)
     InputQtyParser.add_argument(
-        "--strand-correction",
+        "--no-strand-correction",
         help="Whether or not to count copies of the genome by strand rather than by dsDNA.",
         action="store_true")
     InputQtyParser.add_argument(
@@ -368,12 +368,18 @@ def main():
         default=0.1, type=float)
     InputQtyParser.add_argument(
         "--mean-usable-proportion",
-        help="Fraction of average read good enough to use. Default: 0.9",
+        help=("Fraction of average read good enough to use "
+              "(Sufficient BQ). Default: 0.9"),
         default=0.9, type=float)
     InputQtyParser.add_argument(
         "--mapped-fraction",
         help="Fraction of reads properly mapped with MQ != 0.",
-        default=0.8, type=float)
+        default=0.98, type=float)
+    InputQtyParser.add_argument(
+        "--ligation-efficiency",
+        help="Efficiency of ligation of adapters.",
+        type=float, default=0.5)
+    
     # set_trace()
 
     args = parser.parse_args()
@@ -386,12 +392,12 @@ def main():
             readsOnTarget = templatesOnTarget
         basesOnTarget = (readsOnTarget * args.read_length *
                          (1 - args.qc_fail) * args.mean_usable_proportion *
-                         args.mapped_fraction)
+                         args.mapped_fraction * args.ligation_efficiency)
         genomeEquivalentsPerNg = 6.022e23 / (args.genome_size * 1e9 * 650)
         meanOnTargetCoverage = basesOnTarget / args.region_size
         NumCopiesDesired = meanOnTargetCoverage / args.FM
         DesiredInputQty = NumCopiesDesired / genomeEquivalentsPerNg
-        if(args.strand_correction):
+        if(not args.no_strand_correction):
             DesiredInputQty /= 2
         print("Desired input qty: %.2fng" % DesiredInputQty)
     if(args.bmfsuites == "psnv"):
