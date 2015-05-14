@@ -271,6 +271,7 @@ def pairedBarcodeTagging(
     cStr = "pairedBarcodeTagging({}, {}, {}, minAF={})".format(fq1, fq2,
                                                                bam, minAF)
     pl("Command string to reproduce call: {}".format(cStr))
+    pl("realigner: %s" % realigner)
     # read1Handle = pysam.FastqFile(fq1)
     # read2Handle = pysam.FastqFile(fq2)
     read1Handle = SeqIO.parse(fq1, "fastq")
@@ -282,7 +283,7 @@ def pairedBarcodeTagging(
     if(conversionXml != "default"):
         convData = SecC.SecC.BuildRunDict(conversionXml)
     obw = outBAM.write
-    addDefault = (realigner == "gatk")
+    addDefault = ("gatk" in realigner)
     r1hn = read1Handle.next
     r2hn = read2Handle.next
     for entry in postFilterBAM:

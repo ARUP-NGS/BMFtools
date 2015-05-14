@@ -2119,8 +2119,10 @@ class PopenDispatcher(object):
     and a list of threads it should have going at once.
     Cleanup must be a function to call at the end of daemon's execution.
     """
+    defaultSleeptime = 5
+
     def __init__(self, stringlist, threads=4, MaxResubmissions=50,
-                 func=None, cleanup=None):
+                 func=None, cleanup=None, sleeptime=defaultSleeptime):
         print("Initializing PopenDispatcher!")
         assert len(stringlist) > 0
         self.queue = deque(stringlist)
@@ -2141,6 +2143,7 @@ class PopenDispatcher(object):
         self.fgStrs = []
         if(cleanup is not None):
             self.cleanup = cleanup
+        self.sleeptime = sleeptime
 
     @cython.returns(cython.long)
     def _getJobNumber(self):
@@ -2208,7 +2211,7 @@ class PopenDispatcher(object):
             try:
                 nextStr = newqueue.next()
             except StopIteration:
-                time.sleep(5)
+                time.sleep(self.sleeptime)
                 continue
             if("#" in nextStr):
                 fgCStr = self.queue.popleft()
@@ -2224,11 +2227,11 @@ class PopenDispatcher(object):
                         False)
                 self.outstrs[fgCStr] = self.getReturnValue(fgCStr)
             else:
-                time.sleep(5)
+                time.sleep(self.sleeptime)
             self._check()
         print("All jobs submitted! Yay.")
         while(self._check() > 0 and len(self.queue) != 0):
-            time.sleep(5)
+            time.sleep(self.sleeptime)
             threadcount = self._check()
             if(threadcount < self.threadcount and len(self.queue) != 0):
                 self._submit()
@@ -2237,10 +2240,10 @@ class PopenDispatcher(object):
             while(sum([d.popen.poll() is not None for d in
                        self.dispatches]) < len(self.dispatches)):
                 pl("Sleeping because some jobs haven't returned yet.")
-                time.sleep(5)
+                time.sleep(self.sleeptime)
             """
             pl("Sleeping because some jobs haven't returned yet.")
-            time.sleep(5)
+            time.sleep(self.sleeptime)
         for key in self.outstrs.iterkeys():
             if(self.outstrs[key] is None):
                 print("fgStrs: %s" % ":".join(self.fgStrs))

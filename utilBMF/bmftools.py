@@ -367,14 +367,14 @@ def main():
         help="Fraction of reads not usable due to failing QC. Default: 0.1.",
         default=0.1, type=float)
     InputQtyParser.add_argument(
-        "--mean-usable-proportion",
-        help=("Fraction of average read good enough to use "
-              "(Sufficient BQ). Default: 0.9"),
+        "--mean-aligned-fraction",
+        help=("Fraction of average read aligned. Default: 0.9"),
         default=0.9, type=float)
     InputQtyParser.add_argument(
         "--mapped-fraction",
-        help="Fraction of reads properly mapped with MQ != 0.",
-        default=0.98, type=float)
+        help=("Fraction of reads properly mapped with "
+              "MQ != minMQ for variant-calling."),
+        default=0.83, type=float)
     InputQtyParser.add_argument(
         "--ligation-efficiency",
         help="Efficiency of ligation of adapters.",
@@ -391,7 +391,7 @@ def main():
         else:
             readsOnTarget = templatesOnTarget
         basesOnTarget = (readsOnTarget * args.read_length *
-                         (1 - args.qc_fail) * args.mean_usable_proportion *
+                         (1 - args.qc_fail) * args.mean_aligned_fraction *
                          args.mapped_fraction * args.ligation_efficiency)
         genomeEquivalentsPerNg = 6.022e23 / (args.genome_size * 1e9 * 650)
         meanOnTargetCoverage = basesOnTarget / args.region_size

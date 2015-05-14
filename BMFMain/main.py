@@ -237,7 +237,7 @@ def main(argv=None):
         head = 0
     if(args.head > 0):
         head = args.head
-    
+
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir
     reviewdir = ""
