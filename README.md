@@ -102,7 +102,6 @@ RA | Realigned due to a failure to map appropriately, either as too small a frac
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
 SC | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 SF | Soft-Clipped Fraction | Float |
-SN | Tags relevant to SNV calling assigned to BAM records. Currently lumped in with SV due to the fact that many are relevant to both.| Comma-separated list of tags. Regex: [A-Z,]+ |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 
 ## Valid Tags for SV SAM tag

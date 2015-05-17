@@ -2467,7 +2467,10 @@ def TrimExt(cython.str fname):
     Trims the extension from the filename so that I don't have to type this
     every single time.
     """
-    return ".".join(fname.split(".")[:-1]).split("/")[-1]
+    if(fname is not None):
+        return ".".join(fname.split(".")[:-1]).split("/")[-1]
+    else:
+        raise ThisIsMadness("Cannot trim an extension of a None value!")
 
 
 @cython.returns(cython.str)
@@ -2475,6 +2478,7 @@ def NPadSequence(cython.str seq, cython.long n=300):
     """
     Pads a sequence with "n" Ns.
     """
+    return "%(N)s%(seq)s%(N)s" % {"N": "N" * n, "seq": seq}
     return "N" * n + seq + "N" * n
 
 

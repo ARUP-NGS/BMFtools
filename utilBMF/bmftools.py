@@ -393,13 +393,13 @@ def main():
         basesOnTarget = (readsOnTarget * args.read_length *
                          (1 - args.qc_fail) * args.mean_aligned_fraction *
                          args.mapped_fraction * args.ligation_efficiency)
-        genomeEquivalentsPerNg = 6.022e23 / (args.genome_size * 1e9 * 650)
+        genomeEquivalentsPerPg = 6.022e23 / (args.genome_size * 1e15 * 650)
         meanOnTargetCoverage = basesOnTarget / args.region_size
         NumCopiesDesired = meanOnTargetCoverage / args.FM
-        DesiredInputQty = NumCopiesDesired / genomeEquivalentsPerNg
+        DesiredInputQty = NumCopiesDesired / genomeEquivalentsPerPg
         if(not args.no_strand_correction):
             DesiredInputQty /= 2
-        print("Desired input qty: %.2fng" % DesiredInputQty)
+        print("Desired input qty: %.8fpg" % DesiredInputQty)
     if(args.bmfsuites == "psnv"):
         from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
@@ -604,6 +604,8 @@ def main():
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
                                       CheckVCFForStdCalls)
         if(args.check_both):
+            if(args.outfile is None):
+                args.outfile = args.queryVCF
             StdForVCF = TrimExt(args.outfile) + ".VerifyCalls.vcf"
             VCFVsStd = TrimExt(args.outfile) + ".CheckForStdConcordance.vcf"
             CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,

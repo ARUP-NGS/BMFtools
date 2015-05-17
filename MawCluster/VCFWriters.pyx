@@ -171,8 +171,7 @@ def SNVCrawler(inBAM,
                 if(len(posStr) != 0):
                     ohw(posStr + "\n")
                 if(pPC.reference_pos > line[2]):
-                    pl("Whoops - looks like I'm calling outside of "
-                       "the bed region. Continue!")
+                    pl("Bed region complete.")
                     break
     else:
         ICAR = pileupCall(max_depth=200000, multiple_iterators=False)
