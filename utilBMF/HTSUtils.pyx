@@ -18,11 +18,17 @@ from numpy import std as nstd
 from operator import iadd as oia
 from operator import itemgetter as oig
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
-from re import compile as regexcompile
 from subprocess import check_output, check_call, CalledProcessError
 from .ErrorHandling import *
 from collections import deque
 from entropy import shannon_entropy as shen
+try:
+    import re2 as re
+except ImportError:
+    pl("Tried to load re2, a faster version of re. Failed. "
+       "Importing regular re.")
+    import re
+regexcompile = re.compile
 import copy
 import cStringIO
 import cython

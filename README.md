@@ -60,6 +60,8 @@ cutadapt is required for adapter trimming.
 
 numconv is required for conversion to base 64 for PV tags, but that compression is optional.
 
+re2 (Google) is a fast alternative to standard python re. BMFTools will attempt to load the re2 as re. Failing that, it will fall back to the standard library.
+
 Some of vcflib's tools are used, although vcflib (key-word argument for these calls) can be set to False to do it manually on the shell.
 
 ### Required external tools:
