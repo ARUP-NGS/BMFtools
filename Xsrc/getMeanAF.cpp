@@ -12,8 +12,7 @@ int main(int argc, char* argv[])
 {   
     string inputFilename;
     string outputFilename;
-    float meanAF, AF, AFSum;
-    long numReads;
+    BamReader reader;
     if(argc == 2) {
         inputFilename = argv[1];
     }
@@ -26,8 +25,8 @@ int main(int argc, char* argv[])
         printf("Usage: \n");
         printf("First positional argument: input BAM\n");
         printf("That is all.\n");
+        return 1;
     }
-    BamReader reader;
     if(!reader.Open(inputFilename)) {
         cerr << "Could not open input BAM" << endl;
         return 1;

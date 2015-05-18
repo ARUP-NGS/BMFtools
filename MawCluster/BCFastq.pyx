@@ -44,8 +44,6 @@ from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
 
-oagseq = oag("seq")
-oagsequence = oag("sequence")
 cimport cython
 cimport numpy as np
 cimport pysam.cfaidx
@@ -168,7 +166,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], lenR, famLimit))
         R = R[:famLimit]
-    seqs = list(cmap(oagsequence, R))
+    seqs = list(cmap(oag("sequence"), R))
     maxScore = 0
     Success = False
     numEq = 0
@@ -421,12 +419,8 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
-    outfq1 = ('.'.join(
-        [i for i in fq1.split('.')[0:-1] if i != "fastq"] +
-        ['shaded', 'fastq'])).split('/')[-1]
-    outfq2 = ('.'.join(
-        [i for i in fq2.split('.')[0:-1] if i != "fastq"] +
-        ['shaded', 'fastq'])).split('/')[-1]
+    outfq1 = TrimExt(fq1).split("/")[-1] + ".shaded.fastq"
+    outfq2 = TrimExt(fq2).split("/")[-1] + ".shaded.fastq"
     if(useGzip):
         outfq1 += ".gz"
         outfq2 += ".gz"
@@ -491,10 +485,6 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                level=logging.DEBUG)
             '''
             tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
-            if(len(tempBar) == 16):
-                print("tempBar is the wrong length! String: %s" % tempBar,
-                      "\n Read 1 sequence head:%s\n" % read1.sequence[:head] +
-                      "Read 2 sequence head:%s\n" % read2.sequence[:head])
             f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
                                 "|FP=IndexFail|BS=", tempBar]),
                                 read1.sequence,
@@ -504,6 +494,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                                 read2.sequence,
                                 "+", read2.quality, ""]))
         else:
+            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
             f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
                                 "|FP=IndexPass|BS=", tempBar]),
                                 read1.sequence,
