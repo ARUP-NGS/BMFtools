@@ -68,7 +68,7 @@ cdef class PRInfo:
     cdef public pysam.calignmentfile.AlignedSegment read
     cdef public cython.str SVTagString
     cdef public cython.str BaseCall
-    cdef public cython.str ssString
+    cdef public cython.str ssString, query_name
     cdef public cython.float FractionAgreed, PVFrac, NF
     cdef public np.ndarray PV_Array
 

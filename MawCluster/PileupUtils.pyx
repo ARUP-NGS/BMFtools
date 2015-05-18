@@ -14,11 +14,8 @@ from operator import div as odiv
 from itertools import ifilterfalse as iff
 
 import numpy as np
-from numpy import mean as nmean
-from numpy import std as nstd
-from numpy import max as nmax
-from numpy import sum as nsum
-from numpy import array as nparray
+from numpy import (mean as nmean, max as nmax, sum as nsum,
+                   std as nstd, array as nparray)
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
@@ -131,6 +128,7 @@ cdef class PRInfo:
                    " with your FM tag: {}".format(p.sub(
                        "", alignment.opt("FM"))))
         """
+        self.query_name = PileupRead.name
         try:
             self.SVTagString = aopt("SV")
         except KeyError:
@@ -247,11 +245,11 @@ cdef class AlleleAggregateInfo:
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
-            self.TND = sum(list(cmap(oag("ND"), self.recList)))
-            NFList = list(cmap(oag("NF"), self.recList))
+            self.TND = sum(cmap(oag("ND"), self.recList))
+            NFList = nparray(list(cmap(oag("NF"), self.recList)))
         else:
             self.TND = -1
-            NFList = []
+            NFList = nparray([])
         try:
             self.MNF = nmean(NFList)
             self.maxNF = nmax(NFList)
@@ -271,21 +269,21 @@ cdef class AlleleAggregateInfo:
             raise ThisIsMadness(
                 "AlleleAggregateInfo requires that all alt alleles agree.")
         """
-        self.TotalReads = nsum(list(cmap(oag("FM"), self.recList)))
+        self.TotalReads = sum(cmap(oag("FM"), self.recList))
         self.MergedReads = lenR
-        self.ReverseMergedReads = nsum(list(cmap(
-            oag("is_reverse"), self.recList)))
+        self.ReverseMergedReads = sum(cmap(
+            oag("is_reverse"), self.recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = nsum(list(cmap(
-            oag("FM"), filter(oag("is_reverse"), self.recList))))
+        self.ReverseTotalReads = sum(cmap(
+            oag("FM"), filter(oag("is_reverse"), self.recList)))
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
             self.AveFamSize = 1. * self.TotalReads / self.MergedReads
         except ZeroDivisionError:
             self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        self.SumBQScore = sum(list(cmap(oag("BQ"), self.recList)))
-        self.SumMQScore = sum(list(cmap(oag("MQ"), self.recList)))
+        self.SumBQScore = sum(cmap(oag("BQ"), self.recList))
+        self.SumMQScore = sum(cmap(oag("MQ"), self.recList))
         try:
             self.AveMQ = 1. * self.SumMQScore / lenR
         except ZeroDivisionError:
@@ -326,15 +324,15 @@ cdef class AlleleAggregateInfo:
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
-        self.StrandCountsDict["reverse"] = sum(list(cmap(
-            oag("is_reverse"), self.recList)))
-        self.StrandCountsDict["forward"] = sum([
-            rec.is_reverse is False for rec in self.recList])
+        self.StrandCountsDict["reverse"] = sum(cmap(
+            oag("is_reverse"), self.recList))
+        self.StrandCountsDict["forward"] = sum(
+            rec.is_reverse is False for rec in self.recList)
         self.StrandCountsTotalDict = {}
         self.StrandCountsTotalDict["reverse"] = sum(
-            [rec.FM for rec in self.recList if rec.is_reverse])
+            rec.FM for rec in self.recList if rec.is_reverse)
         self.StrandCountsTotalDict["forward"] = sum(
-            [rec.FM for rec in self.recList if rec.is_reverse is False])
+            rec.FM for rec in self.recList if rec.is_reverse is False)
         try:
             self.TotalAlleleFrequency = 1. * self.TotalReads / totalSize
             self.MergedAlleleFrequency = 1. * self.MergedReads / mergedSize
@@ -350,11 +348,10 @@ cdef class AlleleAggregateInfo:
         if(AAMBP != "default"):
             self.AAMBP = AAMBP
 
-        # Check to see if a read pair supports a variant with both ends
-        ReadNameCounter = cyfreq(map(oag("query_name"),
-                                     map(oag("read"), self.recList)))
+        # Check to see if a template supports a variant with both ends
         self.NumberDuplexReads = len([i[0] for i in
-                                      ReadNameCounter.iteritems()
+                                      cyfreq(map(oag("query_name"),
+                                                 self.recList)).iteritems()
                                       if i[1] > 1])
         query_positions = nparray(map(
             oag("query_position"), self.recList), dtype=np.float64)
@@ -370,7 +367,7 @@ cdef class AlleleAggregateInfo:
         else:
             self.MPF = nmean(PVFArray)
             self.PFSD = nstd(PVFArray)
-        self.maxND = nmax([rec.read.opt("ND") for rec in self.recList])
+        self.maxND = max(rec.aopt("ND") for rec in self.recList)
 
 
 cdef class PCInfo:
@@ -403,8 +400,8 @@ cdef class PCInfo:
         cdef query_positions
         pileups = PileupColumn.pileups
         if("amplicon" in experiment):
-            self.ampliconFailed = sum([r for r in pileups
-                                       if r.query_position <= primerLen])
+            self.ampliconFailed = sum(r for r in pileups
+                                       if r.query_position <= primerLen)
             pileups = [r for r in pileups
                        if r.query_position > primerLen]
         self.experiment = experiment
@@ -417,18 +414,18 @@ cdef class PCInfo:
         #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
         #  pl("pos: %s" % self.pos)
-        self.FailedQCReads = sum([pileupRead.alignment.opt("FP") == 0
-                                  for pileupRead in pileups])
-        self.FailedFMReads = sum([pileupRead.alignment.opt("FM") < minFA
-                                  for pileupRead in pileups])
-        self.FailedAFReads = sum([pileupRead.alignment.opt("AF") < minAF
-                                  for pileupRead in pileups])
-        self.FailedNDReads = sum([pileupRead.alignment.opt("ND") > maxND
-                                  for pileupRead in pileups])
+        self.FailedQCReads = sum(pileupRead.alignment.opt("FP") == 0
+                                  for pileupRead in pileups)
+        self.FailedFMReads = sum(pileupRead.alignment.opt("FM") < minFA
+                                  for pileupRead in pileups)
+        self.FailedAFReads = sum(pileupRead.alignment.opt("AF") < minAF
+                                  for pileupRead in pileups)
+        self.FailedNDReads = sum(pileupRead.alignment.opt("ND") > maxND
+                                  for pileupRead in pileups)
         self.FailedBQReads = sum(
-            [pileupRead.alignment.query_qualities
+            pileupRead.alignment.query_qualities
              [pileupRead.query_position] < self.minBQ
-             for pileupRead in pileups])
+             for pileupRead in pileups)
         self.FailedMQReads = sum(
             [pileupRead.alignment.mapping_quality < self.minMQ
              for pileupRead in pileups])
@@ -465,7 +462,7 @@ cdef class PCInfo:
                         pileupRead.alignment.opt("ND") <= maxND]
         self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
-        rsn = sum(list(cmap(oag("is_reverse"), self.Records)))
+        rsn = sum(cmap(oag("is_reverse"), self.Records))
         if(rsn != lenR and rsn != 0):
             self.BothStrandAlignment = True
         else:
@@ -478,16 +475,16 @@ cdef class PCInfo:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
         try:
-            self.TotalReads = sum(list(cmap(oag("FM"), self.Records)))
+            self.TotalReads = sum(cmap(oag("FM"), self.Records))
         except KeyError:
             self.TotalReads = self.MergedReads
         try:
             self.consensus = sorted(cyfreq(
-                list(cmap(oagbc, self.Records))).iteritems(),
-                                    key=oig1)[-1][0]
+                cmap(oagbc, self.Records)).iteritems(),
+                key=oig1)[-1][0]
         except IndexError:
             self.consensus = sorted(cyfreq(
-                list(cmap(oagbc, list(cmap(PRInfo, pileups))))).iteritems(),
+                map(oagbc, list(cmap(PRInfo, pileups)))).iteritems(),
                                     key=oig1)[-1][0]
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
@@ -566,19 +563,11 @@ cdef class PCInfo:
             str(self.TotalStrandednessRatioDict[
                 key]) for key in self.TotalStrandednessRatioDict.iterkeys()])
         self.AlleleFreqStr = "\t".join(
-            list(cmap(str, [self.contig,
-                            self.pos,
-                            self.consensus,
-                            self.MergedReads,
-                            self.TotalReads,
-                            self.MergedCountStr,
-                            self.TotalCountStr,
-                            self.MergedFracStr,
-                            self.TotalFracStr,
-                            self.MergedStrandednessStr,
-                            self.TotalStrandednessStr])))
-        self.maxND = nmax([pileupRead.alignment.opt("ND") for
-                           pileupRead in pileups])
+            cmap(str, [self.contig, self.pos, self.consensus,
+                       self.MergedReads, self.TotalReads, self.MergedCountStr,
+                       self.TotalCountStr, self.MergedFracStr, self.TotalFracStr,
+                       self.MergedStrandednessStr, self.TotalStrandednessStr]))
+        self.maxND = max(pileupRead.alignment.opt("ND") for pileupRead in pileups)
 
     @cython.returns(AlleleAggregateInfo_t)
     def __getitem__(self, cython.long index):

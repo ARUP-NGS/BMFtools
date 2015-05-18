@@ -3,7 +3,7 @@
 from __future__ import division
 from collections import defaultdict
 import operator
-from operator import methodcaller as mc
+from operator import methodcaller as mc, attrgetter as oag
 import pysam
 import cython
 import numpy as np
@@ -89,7 +89,7 @@ cdef class SNVCFLine:
             raise HTSUtils.ThisIsMadness("DOC (Total) required!")
         if(FailedNDReads < 0):
             raise HTSUtils.ThisIsMadness("FailedNDReads required!")
-        self.NumStartStops = len(set(map(operator.attrgetter("ssString"),
+        self.NumStartStops = len(set(map(oag("ssString"),
                                          AlleleAggregateObject.recList)))
         self.CHROM = AlleleAggregateObject.contig
         self.POS = AlleleAggregateObject.pos + 1
@@ -223,6 +223,7 @@ cdef class SNVCFLine:
                                        self.InfoStr, self.FormatStr]))
 
     def update(self):
+        cdef list ffkeys
         ffkeys = sorted(self.FormatFields.keys())
         self.FormatKey = ":".join(ffkeys)
         self.FormatValue = ":".join([str(self.FormatFields[key])

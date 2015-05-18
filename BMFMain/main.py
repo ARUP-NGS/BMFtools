@@ -237,6 +237,7 @@ def main(argv=None):
         head = 0
     if(args.head > 0):
         head = args.head
+    pl("Head value is set to: %s" % head)
 
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     global reviewdir

@@ -197,14 +197,14 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     phredQuals = nmultiply(lenR, phredQuals, dtype=np.int64)
     if(npany(ngreater(phredQuals, 93))):
         QualString = "".join(list(cmap(ph2chr, phredQuals)))
-        PVString = " #G~PV=" + ",".join(phredQuals.astype(str).tolist())
+        PVString = "|PV=" + ",".join(phredQuals.astype(str).tolist())
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = oadd(" #G~PV=",
+        PVString = oadd("|PV=",
                         ",".join(phredQuals.astype(str).tolist()))
-    TagString = "".join([" #G~FM=", lenRStr, " #G~FA=",
+    TagString = "".join(["|FM=", lenRStr, "|FA=",
                          ",".join(nparray(FA).astype(str)),
-                         " #G~ND=", str(nsubtract(lenR * len(seqs[0]),
+                         "|ND=", str(nsubtract(lenR * len(seqs[0]),
                                                   nsum(FA))),
                          PVString])
     try:
@@ -290,14 +290,14 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
         phredQuals = abs(phredQuals)
     if(npany(ngreater(phredQuals, 93))):
-        PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
+        PVString = "|PV=" + ",".join(phredQuals.astype(str))
         phredQuals[phredQuals > 93] = 93
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     else:
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = " #G~PV=" + ",".join(phredQuals.astype(str))
-    TagString = "".join([" #G~FM=", str(lenR), " #G~ND=",
-                         str(ND), " #G~FA=", FA.astype(str), PVString])
+        PVString = "|PV=" + ",".join(phredQuals.astype(str))
+    TagString = "".join(["|FM=", str(lenR), "|ND=",
+                         str(ND), "|FA=", FA.astype(str), PVString])
     consolidatedFqStr = "\n".join([
         "".join(["@", R[0].name, " ", R[0].comment, TagString]),
         newSeq.tostring(),
@@ -491,21 +491,25 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                level=logging.DEBUG)
             '''
             tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
+            if(len(tempBar) == 16):
+                print("tempBar is the wrong length! String: %s" % tempBar,
+                      "\n Read 1 sequence head:%s\n" % read1.sequence[:head] +
+                      "Read 2 sequence head:%s\n" % read2.sequence[:head])
             f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
-                                " #G~FP=IndexFail #G~BS=", tempBar]),
+                                "|FP=IndexFail|BS=", tempBar]),
                                 read1.sequence,
                                 "+", read1.quality, ""]))
             f2.write("\n".join(["".join(["@", read2.name, " ", read2.comment,
-                                " #G~FP=IndexFail #G~BS=", tempBar]),
+                                "|FP=IndexFail|BS=", tempBar]),
                                 read2.sequence,
                                 "+", read2.quality, ""]))
         else:
             f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
-                                " #G~FP=IndexPass #G~BS=", tempBar]),
+                                "|FP=IndexPass|BS=", tempBar]),
                                 read1.sequence,
                                 "+", read1.quality, ""]))
             f2.write("\n".join(["".join(["@", read2.name, " ", read2.comment,
-                                " #G~FP=IndexPass #G~BS=", tempBar]),
+                                "|FP=IndexPass|BS=", tempBar]),
                                 read2.sequence,
                                 "+", read2.quality, ""]))
         numWritten += 1
@@ -537,10 +541,10 @@ def FastqSingleShading(fq,
     for read1 in inFq1:
         indexRead = inIndex.next()
         if("N" in indexRead.seq):
-            read1.description += " #G~FP=IndexFail #G~BS=" + indexRead.seq
+            read1.description += "|FP=IndexFail|BS=" + indexRead.seq
             SeqIO.write(read1, outFqHandle1, "fastq")
         else:
-            read1.description += " #G~FP=IndexPass #G~BS=" + indexRead.seq
+            read1.description += "|FP=IndexPass|BS=" + indexRead.seq
             SeqIO.write(read1, outFqHandle1, "fastq")
     outFqHandle1.close()
     if(gzip):
@@ -562,13 +566,13 @@ def HomingSeqLoc(fq, homing, bcLen=12):
     for read in InFastq:
         seq = str(read.seq)
         if(seq.find(homing) == -1):
-            read.description += " #G~FP=HomingFail"
+            read.description += "|FP=HomingFail"
             SeqIO.write(read, StdFastq, "fastq")
         elif(seq[bcLen:bcLen + len(homing)] == homing):
-            read.description += " #G~FP=HomingPass"
+            read.description += "|FP=HomingPass"
             SeqIO.write(read, StdFastq, "fastq")
         else:
-            read.description = " #G~FP=HomingFail"
+            read.description = "|FP=HomingFail"
             SeqIO.write(read, StdFastq, "fastq")
             ElseLocations.write(repr(seq.find(homing)) + "\t" +
                                 read.name + "\n")
@@ -629,18 +633,18 @@ def GetDescTagValue(readDesc, tag="default"):
     except KeyError:
         # pl("Tag {} is not available in the description.".format(tag))
         # pl("Description: {}".format(readDesc))
-        raise KeyError("Invalid tag.")
+        raise KeyError("Invalid tag: %s" % tag)
 
 
 def GetDescriptionTagDict(readDesc):
     """Returns a set of key/value pairs in a dictionary for """
-    tagSetEntries = [i.strip().split("=") for i in readDesc.split("#G~")][1:]
+    tagSetEntries = [i.strip().split("=") for i in readDesc.split("|")][1:]
     tagDict = {}
     try:
         for pair in tagSetEntries:
             tagDict[pair[0]] = pair[1].split(' ')[0]
     except IndexError:
-        pl("A value is stored with the #G~ tag which doesn't contain an =.")
+        pl("A value is stored with the| tag which doesn't contain an =.")
         pl("tagSetEntries: {}".format(tagSetEntries))
         raise IndexError("Check that fastq description meets specifications.")
     # pl("Repr of tagDict is {}".format(tagDict))
@@ -860,7 +864,7 @@ def TrimHomingSingle(
             ew(str(pFastqProxy(read)))
             continue
         tw(GetSliceFastqProxy(read, firstBase=TotalTrim,
-                              addString=" #G~BS=" + read.sequence[0:bcLen]))
+                              addString="|BS=" + read.sequence[0:bcLen]))
     trimHandle.close()
     errHandle.close()
     return trimfq
@@ -903,9 +907,9 @@ def TrimHomingPaired(inFq1, inFq2, cython.long bcLen=12,
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(GetSliceFastqProxy(read1, firstBase=TotalTrim,
-                               addString=" #G~BS=%s" % barcode))
+                               addString="|BS=%s" % barcode))
         tw2(GetSliceFastqProxy(read2, firstBase=TotalTrim,
-                               addString=" #G~BS=%s" % barcode))
+                               addString="|BS=%s" % barcode))
     trimHandle1.close()
     trimHandle2.close()
     errHandle.close()

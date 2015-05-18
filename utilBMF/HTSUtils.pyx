@@ -1086,6 +1086,7 @@ cdef class pPileupRead:
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
+        self.opt = PileupRead.opt
 
 
 cdef class PileupReadPair:
@@ -2443,7 +2444,7 @@ def GetUUIDFromCommandString(cython.str cStr):
     Gets the UUID tag from slave jobs. Used for concatenating VCFs from
     parallel calls.
     """
-    return cStr.split("#G~")[1]
+    return cStr.split("|")[1]
 
 
 def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
