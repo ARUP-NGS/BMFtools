@@ -133,14 +133,15 @@ def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB64=cython.bint, lenR=cython.long,
                numEq=cython.long, maxScore=cython.long, ND=cython.long)
-@cython.returns(cython.str)
 def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
                        famLimit=1000, keepFails=True,
-                       makeFA=True, makePV=True):
+                       makeFA=True, makePV=True, name=None):
     """
     Compares the fastq records to create a consensus sequence (if it
     passes a filter)
     """
+    if name is None:
+        name = R[0].name
     cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
     cdef np.ndarray[np.int64_t, ndim = 1] FA
     cdef np.ndarray[char, ndim = 1, mode="c"] finalSeq
@@ -179,7 +180,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     elif(ole(frac, 0.5)):
         Success = False
     elif(hybrid):
-        return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA)
+        return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA, name=name)
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                   xrange(len(finalSeq))], dtype=np.int64)
     phredQuals = nparray([chr2ph[i] for i in list(R[0].quality)],
@@ -201,7 +202,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
                          PVString])
     try:
         consFqString = "\n".join(
-            ["".join(["@", R[0].name, " ", R[0].comment, TagString]),
+            ["".join(["@", name, " ", R[0].comment, TagString]),
              finalSeq.tostring(),
              "+",
              QualString])
@@ -218,14 +219,13 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     return consFqString
 
 
-@cython.locals(ND=cython.long)
-@cython.returns(cython.str)
-def compareFqRecsFast(R, makePV=True, makeFA=True):
+@cython.returns(tuple)
+def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef cython.long lenR
+    cdef cython.long lenR, ND
     cdef cython.bint Success
     cdef np.ndarray[np.int64_t, ndim = 2] quals
     cdef np.ndarray[np.int64_t, ndim = 2] qualA
@@ -240,10 +240,11 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     cdef np.ndarray[cython.str, ndim = 1] seqs
     lenR = len(R)
     Success = True
-    seqs = nparray([record.sequence for record in R], dtype=np.str_)
+    seqs = nparray(map(oag("sequence"), R), dtype=np.str_)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = npvstack(stackArrays)
-
+    if(name is None):
+        name = R[0]
 
     # print(repr(seqArray))
     quals = nparray(map(fromQualityString, map(oag("quality"), R)))
@@ -291,13 +292,13 @@ def compareFqRecsFast(R, makePV=True, makeFA=True):
     TagString = "".join(["|FM=", str(lenR), "|ND=",
                          str(ND), "|FA=", FA.astype(str), PVString])
     consolidatedFqStr = "\n".join([
-        "".join(["@", R[0].name, " ", R[0].comment, TagString]),
+        "".join(["@", name, " ", R[0].comment, TagString]),
         newSeq.tostring(),
         "+",
         phredQualsStr])
     if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail")
-    return consolidatedFqStr
+    return consolidatedFqStr, name
 
 
 @cython.returns(cython.str)
@@ -710,8 +711,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            tStr1 = oadd(compareFqRecsFqPrx(workingSet1), "\n")
-            tStr2 = oadd(compareFqRecsFqPrx(workingSet2), "\n")
+            tStr1, name = compareFqRecsFqPrx(workingSet1)
+            tStr2, name = compareFqRecsFqPrx(workingSet2, name=name)
             if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             sl1a(tStr1)
@@ -730,8 +731,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
         open("cProfile.stats.txt", "w").write(s.getvalue())
     # outputHandle1.write(cString1.getvalue())
     # outputHandle2.write(cString2.getvalue())
-    outputHandle1.write("".join(StringList1))
-    outputHandle2.write("".join(StringList2))
+    outputHandle1.write("\n".join(StringList1))
+    outputHandle2.write("\n".join(StringList2))
     outputHandle1.flush()
     outputHandle2.flush()
     inFq1.close()
