@@ -12,13 +12,14 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <cstddef>
 
 using namespace BamTools;
 
 std::vector<std::string> splitString(std::string inStr, std::string delimiter) {
     std::vector<std::string> list;
     list.clear();
-    size_t pos, dlen;
+    std::size_t pos, dlen;
     dlen = delimiter.length();
     while( (pos = inStr.find(delimiter)) != std::string::npos) {
         list.push_back(inStr.substr(0, pos));
@@ -285,7 +286,7 @@ int main(int argc, char* argv[])
         rec2.AddTag("FM", "i", FM);
         rec1.AddTag("FP", "i", FP);
         rec2.AddTag("FP", "i", FP);
-        
+
         writer.SaveAlignment(rec1);
         writer.SaveAlignment(rec2);
 

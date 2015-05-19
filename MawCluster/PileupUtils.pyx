@@ -259,16 +259,6 @@ cdef class AlleleAggregateInfo:
             self.MNF = -1.
             self.maxNF = -1.
             self.NFSD = -1.
-        """
-        Let's get rid of the assert here.
-        try:
-            assert(sum([rec.BaseCall == self.recList[
-                0].BaseCall for rec in self.recList]) == len(self.recList))
-        except AssertionError:
-            # print("self.recList repr: {}".format(repr(self.recList)))
-            raise ThisIsMadness(
-                "AlleleAggregateInfo requires that all alt alleles agree.")
-        """
         self.TotalReads = sum(cmap(oag("FM"), self.recList))
         self.MergedReads = lenR
         self.ReverseMergedReads = sum(cmap(

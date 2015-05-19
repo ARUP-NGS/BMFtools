@@ -70,18 +70,10 @@ def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
     outFq2 = '.'.join(inFq2.split('.')[0:-1] + ["BS", "fastq"])
     pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
     highMemStr = "-S " + sortMem
-    if(inFq1.endswith(".gz")):
-        BSstring1 = ("zcat %s | paste - - - - | sort -t'|' -k3,3 " % inFq1 +
-                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq1))
-    else:
-        BSstring1 = ("cat %s | paste - - - - | sort -t'|' -k3,3 " % inFq1 +
-                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq1))
-    if(inFq2.endswith(".gz")):
-        BSstring2 = ("zcat %s | paste - - - - | sort -t'|' -k3,3 " % inFq2 +
-                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq2))
-    else:
-        BSstring2 = ("cat %s | paste - - - - | sort -t'|' -k3,3 " % inFq2 +
-                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq2))
+    BSstring1 = getBarcodeSortStr(inFq1, outFastq=outFq1,
+                                  highMem=("6G" in sortMem))
+    BSstring2 = getBarcodeSortStr(inFq2, outFastq=outFq2,
+                                  highMem=("6G" in sortMem))
     pl("Background calling barcode sorting "
        "for read 1. Command: {}".format(BSstring1))
     BSCall1 = subprocess.Popen(BSstring1, stderr=None, shell=True,
@@ -110,24 +102,30 @@ def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
 
 
 @cython.locals(highMem=cython.bint)
-def BarcodeSort(inFastq, outFastq="default", highMem=True):
+def BarcodeSort(cython.str inFastq, cython.str outFastq="default",
+                cython.bint highMem=True):
+    cdef cython.str BSstring
     pl("Sorting {} by barcode sequence.".format(inFastq))
-    highMemStr = ""
+    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, highMem=highMem)
+    PipedShellCall(BSstring)
+    pl("Barcode Sort shell call: {}".format(BSstring))
+    if(outFastq == "default"):  # Added for compatibility with getBSstr
+        outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
+    return outFastq
+
+
+@cython.returns(cython.str)
+def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
     if(highMem):
-        highMemStr = " -S 6G "
+        memStr = " -S 6G "
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
-        BSstring = ("zcat " + inFastq + " | paste - - - - | sort "
-                    "-k4,4 %s | tr '\t' '\n' > %s" % (highMemStr, outFastq))
+        return ("zcat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
+                " %s | tr '\t' '\n' > %s" % (memStr, outFastq))
     else:
-        BSstring = ("cat " + inFastq + " | paste - - - - | sort "
-                    "-k4,4 %s | tr '\t' '\n' > %s" % (highMemStr, outFastq))
-    PipedShellCall(BSstring)
-    pl("Barcode Sort shell call: {}".format(BSstring))
-    # pl("Command: {}".format(BSstring.replace(
-    #    "\t", "\\t").replace("\n", "\\n")))
-    return outFastq
+        return ("cat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
+                " %s | tr '\t' '\n' > %s" % (memStr, outFastq))
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
@@ -485,13 +483,13 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
             tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
             f1.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read1.comment) +
                      "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence, read1.quality))
-            f2.write("@%s %s|FP=IndexFail|BS=" % (read2.name, read2.comment) +
+            f2.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read2.comment) +
                      "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence, read2.quality))
         else:
             tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
             f1.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read1.comment) +
                      "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence, read1.quality))
-            f2.write("@%s %s|FP=IndexPass|BS=" % (read2.name, read2.comment) +
+            f2.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read2.comment) +
                      "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence, read2.quality))
         numWritten += 1
     if(useGzip is False):
