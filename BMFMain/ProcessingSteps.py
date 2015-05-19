@@ -174,7 +174,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                                               bcLen=bcLen)
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
                                                  sortMem=sortMem)
-    check_call(["rm", bcFastq1, bcFastq2])
+    # check_call(["rm", bcFastq1, bcFastq2])
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidateFaster(
         BSortFq1, BSortFq2, stringency=0.9)
     if(p3Seq != "default"):

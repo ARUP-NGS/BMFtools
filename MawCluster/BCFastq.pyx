@@ -71,21 +71,17 @@ def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
     pl("Sorting {} and {} by barcode sequence.".format(inFq1, inFq2))
     highMemStr = "-S " + sortMem
     if(inFq1.endswith(".gz")):
-        BSstring1 = ("zcat " + inFq1 + " | paste - - - - "
-                     " | sort -k4,4 %s | tr '\t' '\n' > %s" % (highMemStr,
-                                                               outFq1))
+        BSstring1 = ("zcat %s | paste - - - - | sort -t'|' -k3,3 " % inFq1 +
+                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq1))
     else:
-        BSstring1 = ("cat " + inFq1 + " | paste - - - - "
-                     " | sort -k4,4 %s | tr '\t' '\n' > %s" % (highMemStr,
-                                                               outFq1))
+        BSstring1 = ("cat %s | paste - - - - | sort -t'|' -k3,3 " % inFq1 +
+                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq1))
     if(inFq2.endswith(".gz")):
-        BSstring2 = ("zcat " + inFq2 + " | paste - - - - "
-                     " | sort -k4,4 %s | tr '\t' '\n' > %s" % (highMemStr,
-                                                               outFq2))
+        BSstring2 = ("zcat %s | paste - - - - | sort -t'|' -k3,3 " % inFq2 +
+                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq2))
     else:
-        BSstring2 = ("cat " + inFq2 + " | paste - - - - "
-                     " | sort -k4,4 %s | tr '\t' '\n' > %s" % (highMemStr,
-                                                               outFq2))
+        BSstring2 = ("cat %s | paste - - - - | sort -t'|' -k3,3 " % inFq2 +
+                     "%s | tr '\t' '\n' > %s" % (highMemStr, outFq2))
     pl("Background calling barcode sorting "
        "for read 1. Command: {}".format(BSstring1))
     BSCall1 = subprocess.Popen(BSstring1, stderr=None, shell=True,
@@ -419,8 +415,10 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
-    outfq1 = TrimExt(fq1).split("/")[-1] + ".shaded.fastq"
-    outfq2 = TrimExt(fq2).split("/")[-1] + ".shaded.fastq"
+    outfq1 = TrimExt(fq1).replace(".fastq",
+                                  "").split("/")[-1] + ".shaded.fastq"
+    outfq2 = TrimExt(fq2).replace(".fastq",
+                                  "").split("/")[-1] + ".shaded.fastq"
     if(useGzip):
         outfq1 += ".gz"
         outfq2 += ".gz"
@@ -485,24 +483,16 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                level=logging.DEBUG)
             '''
             tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
-            f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
-                                "|FP=IndexFail|BS=", tempBar]),
-                                read1.sequence,
-                                "+", read1.quality, ""]))
-            f2.write("\n".join(["".join(["@", read2.name, " ", read2.comment,
-                                "|FP=IndexFail|BS=", tempBar]),
-                                read2.sequence,
-                                "+", read2.quality, ""]))
+            f1.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read1.comment) +
+                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence, read1.quality))
+            f2.write("@%s %s|FP=IndexFail|BS=" % (read2.name, read2.comment) +
+                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence, read2.quality))
         else:
             tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
-            f1.write("\n".join(["".join(["@", read1.name, " ", read1.comment,
-                                "|FP=IndexPass|BS=", tempBar]),
-                                read1.sequence,
-                                "+", read1.quality, ""]))
-            f2.write("\n".join(["".join(["@", read2.name, " ", read2.comment,
-                                "|FP=IndexPass|BS=", tempBar]),
-                                read2.sequence,
-                                "+", read2.quality, ""]))
+            f1.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read1.comment) +
+                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence, read1.quality))
+            f2.write("@%s %s|FP=IndexPass|BS=" % (read2.name, read2.comment) +
+                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence, read2.quality))
         numWritten += 1
     if(useGzip is False):
         ofh1w(f1.getvalue())

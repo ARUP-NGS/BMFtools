@@ -13,8 +13,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <google/sparse_hash_map>
 
 using namespace BamTools;
+using google::sparse_hash_map;
+
+typedef sparse_hash_map<int64_t, int64_t> hash_t;
+typedef sparse_hash_map<const char *, int64_t> str_hash_t;
 
 const int MaxInsert = 1000;
 class AlignmentLayoutPos {
@@ -37,7 +42,7 @@ class AlignmentLayoutPos {
         std::string getBase() {return base;}
         int getPos() {return Position;}
         int getQuality() {return quality;}
-        // More of this check could be filled out, but let's get this compiling.
+        // More of this check could be filled out, but let's just get this compiling.
         void check() {
             if(Operation == 'D' && base != "D") {
                 throw std::runtime_error("base for AlignmentLayoutPos isn't what it should be...");
@@ -85,9 +90,9 @@ class AlignmentLayoutOp {
         std::vector<AlignmentLayoutPos> layoutPositions;
 
     public:
-        AlignmentLayoutOp(std::string, int, int, int, std::string, char); //Constructor
+        AlignmentLayoutOp(std::string, std::string, char, int, int, int); //Constructor
         AlignmentLayoutOp();
-        void setAttributes(std::string, int, int, int, std::string, char); // For setting values if declared before constructed.
+        void setAttributes(std::string, std::string, char, int, int, int); // For setting values if declared before constructed.
         bool isIns() {return Operation == 'I';}
         bool isDel() {return Operation == 'D';}
         bool isMap() {return Operation == 'M';}
@@ -106,18 +111,16 @@ class AlignmentLayoutOp {
         }
 };
 
-//Constructor meant to be empty
 AlignmentLayoutOp::AlignmentLayoutOp() {
-    //empty on purpose.
+    //Empty constructor
 }
 
-void AlignmentLayoutOp::setAttributes(std::string cigarSeq, int RefIDArg, int startPos, int readStart, std::string cigarQual,
-                                 char cigarOperation) {
+void AlignmentLayoutOp::setAttributes(std::string cigarSeq, std::string cigarQual, char cigarOperation, int RefIDArg, int startPos, int readStart) {
     // Convert the quality string to ints.
     //qualities = std::vector<int>;
     length = cigarQual.size();
     for(int k = 0;k < length; k++) {
-        quality.push_back((int) cigarQual.at(k));
+        quality.push_back((int) cigarQual.at(k) - 33); // Subtract 33 to convert from ASCII value to phred score.
         //qualities.push_back((int) cigarQual.at(k));
     }
     //quality = qualities;
@@ -160,13 +163,13 @@ std::vector<AlignmentLayoutOp> GetAlignmentLayoutOps(BamAlignment rec) {
 } */
 
 // Warning... This constructor should only be used for reads without barcodes.
-AlignmentLayoutOp::AlignmentLayoutOp(std::string cigarSeq, int RefIDArg, int startPos, int readStart, std::string cigarQual,
-                                     char cigarOperation) {
+AlignmentLayoutOp::AlignmentLayoutOp(std::string cigarSeq, std::string cigarQual, char cigarOperation, int RefIDArg, int startPos, int readStart) 
+{
     // Convert the quality string to ints.
     //qualities = std::vector<int>;
     length = cigarQual.size();
     for(int k = 0;k < length; k++) {
-        quality.push_back((int) cigarQual.at(k));
+        quality.push_back((int) cigarQual.at(k) - 33);
         //qualities.push_back((int) cigarQual.at(k));
     }
     //quality = qualities;
@@ -218,11 +221,12 @@ std::vector<AlignmentLayoutOp> GetAlignmentLayoutOps(BamAlignment rec) {
         if(!rec.HasTag("PV")) {
             operations.push_back(
                 AlignmentLayoutOp(rec.QueryBases.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), // Read sequence
+                                  rec.Qualities.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), // Read qualities
+                                  TmpCigarOp.Type, // Cigar operation
                                   rec.RefID, // Reference ID
                                   StartPosition + cumCigarSum, // Genomic coords for start of cigar
-                                  cumCigarSum, // Read coords for start of cigar
-                                  rec.Qualities.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length),
-                                  TmpCigarOp.Type));
+                                  cumCigarSum// Read coords for start of cigar
+                                  ));
         }
         else {
             int PVArray[cigarLen];
