@@ -14,9 +14,11 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <google/sparse_hash_map>
+#include <boost/algorithm/string.hpp>
 
 using namespace BamTools;
 using google::sparse_hash_map;
+using namespace boost::algorithm;
 
 typedef sparse_hash_map<int64_t, int64_t> hash_t;
 typedef sparse_hash_map<const char *, int64_t> str_hash_t;
@@ -34,9 +36,9 @@ class AlignmentLayoutPos {
         int quality; // Set to -1 for a deletion.
 
     public:
-        AlignmentLayoutPos(std::string, char, int, int, int, int); // Base, ref id, Position (ref), Position (read), Quality
+        AlignmentLayoutPos(char, char, int, int, int, int); // Base, ref id, Position (ref), Position (read), Quality
         AlignmentLayoutPos();
-        void setAttributes(std::string, char, int, int, int, int);
+        void setAttributes(char, char, int, int, int, int);
         int getReferenceID() {return RefID;}
         int getReadBasePos() {return ReadPosition;} // Returns which base in a read this tuple is.
         std::string getBase() {return base;}
@@ -53,7 +55,7 @@ class AlignmentLayoutPos {
         }
 };
 
-void AlignmentLayoutPos::setAttributes(std::string baseArg, char opArg, int RefIDArg, int posArg, int readPosArg, int qualArg) {
+void AlignmentLayoutPos::setAttributes(char baseArg, char opArg, int RefIDArg, int posArg, int readPosArg, int qualArg) {
     Operation = opArg;
     base = baseArg;
     RefID = RefIDArg;
@@ -62,13 +64,8 @@ void AlignmentLayoutPos::setAttributes(std::string baseArg, char opArg, int RefI
     quality = qualArg;
 }
 
-AlignmentLayoutPos::AlignmentLayoutPos(std::string baseArg, char opArg, int RefIDArg, int posArg, int readPosArg, int qualArg) {
-    Operation = opArg;
-    base = baseArg;
-    RefID = RefIDArg;
-    Position = posArg;
-    ReadPosition = readPosArg;
-    quality = qualArg;
+AlignmentLayoutPos::AlignmentLayoutPos(char baseArg, char opArg, int RefIDArg, int posArg, int readPosArg, int qualArg) {
+    setAttributes(baseArg, opArg, RefIDArg, posArg, readPosArg, qualArg);
 }
 
 AlignmentLayoutPos::AlignmentLayoutPos() {
@@ -92,7 +89,9 @@ class AlignmentLayoutOp {
     public:
         AlignmentLayoutOp(std::string, std::string, char, int, int, int); //Constructor
         AlignmentLayoutOp();
+        AlignmentLayoutOp(std::string, std::vector<int>, char, int, int, int); //For PV reads.
         void setAttributes(std::string, std::string, char, int, int, int); // For setting values if declared before constructed.
+        void setAttributes(std::string, std::vector<int>, char, int, int, int);
         bool isIns() {return Operation == 'I';}
         bool isDel() {return Operation == 'D';}
         bool isMap() {return Operation == 'M';}
@@ -113,6 +112,47 @@ class AlignmentLayoutOp {
 
 AlignmentLayoutOp::AlignmentLayoutOp() {
     //Empty constructor
+}
+
+void AlignmentLayoutOp::setAttributes(std::string cigarSeq, std::vector<int> qualitySlice, char cigarOperation, int RefIDArg, int startPos, int readStart)
+{
+    // Convert the quality string to ints.
+    //qualities = std::vector<int>;
+    length = qualitySlice.size();
+    quality = qualitySlice;
+    Operation = cigarOperation;
+    pos = startPos;
+    readPos = readStart;
+    seq = cigarSeq;
+    RefID = RefIDArg;
+    //Build AlignmentLayoutPos object vector!
+    std::vector<AlignmentLayoutPos> layoutPosVector;
+    // Create AlignmentLayoutPos objects for each.
+    AlignmentLayoutPos ALP = AlignmentLayoutPos();
+    for(int k = 0; k < length; k++) {
+        switch (Operation){
+        case 'I':
+            ALP.setAttributes(seq.at(k), Operation, RefID, -1, readPos + k, quality[k]);
+            break;
+        case 'S':
+            ALP.setAttributes(seq.at(k), Operation, RefID, -1, readPos + k, quality[k]);
+            break;
+        case 'D':
+            ALP.setAttributes('D', Operation, RefID, pos + k, -1, -1);
+            break;
+        case 'M':
+            ALP.setAttributes(seq.at(k), Operation, RefID, pos + k, readPos + k, quality[k]);
+            break;
+        default:
+            throw std::runtime_error("Sorry, unsupported cigar character. Email me and I'll change this.");
+        }
+        layoutPosVector.push_back(ALP);
+    }
+    layoutPositions = layoutPosVector;
+}
+
+AlignmentLayoutOp::AlignmentLayoutOp(std::string cigarSeq, std::vector<int> qualitySlice, char cigarOperation, int RefIDArg, int startPos, int readStart) {
+    setAttributes(cigarSeq, qualitySlice, cigarOperation, RefIDArg, startPos, readStart);
 }
 
 void AlignmentLayoutOp::setAttributes(std::string cigarSeq, std::string cigarQual, char cigarOperation, int RefIDArg, int startPos, int readStart) {
@@ -136,16 +176,16 @@ void AlignmentLayoutOp::setAttributes(std::string cigarSeq, std::string cigarQua
     for(int k = 0; k < length; k++) {
         switch (Operation){
         case 'I':
-            ALP.setAttributes(seq.substr(k, k + 1), Operation, RefID, -1, readPos + k, quality[k]);
+            ALP.setAttributes(seq.at(k), Operation, RefID, -1, readPos + k, quality[k]);
             break;
         case 'S':
-            ALP.setAttributes(seq.substr(k, k + 1), Operation, RefID, -1, readPos + k, quality[k]);
+            ALP.setAttributes(seq.at(k), Operation, RefID, -1, readPos + k, quality[k]);
             break;
         case 'D':
-            ALP.setAttributes("D", Operation, RefID, pos + k, -1, -1);
+            ALP.setAttributes('D', Operation, RefID, pos + k, -1, -1);
             break;
         case 'M':
-            ALP.setAttributes(seq.substr(k, k + 1), Operation, RefID, pos + k, readPos + k, quality[k]);
+            ALP.setAttributes(seq.at(k), Operation, RefID, pos + k, readPos + k, quality[k]);
             break;
         default:
             throw std::runtime_error("Sorry, unsupported cigar character. Email me and I'll change this.");
@@ -165,43 +205,7 @@ std::vector<AlignmentLayoutOp> GetAlignmentLayoutOps(BamAlignment rec) {
 // Warning... This constructor should only be used for reads without barcodes.
 AlignmentLayoutOp::AlignmentLayoutOp(std::string cigarSeq, std::string cigarQual, char cigarOperation, int RefIDArg, int startPos, int readStart) 
 {
-    // Convert the quality string to ints.
-    //qualities = std::vector<int>;
-    length = cigarQual.size();
-    for(int k = 0;k < length; k++) {
-        quality.push_back((int) cigarQual.at(k) - 33);
-        //qualities.push_back((int) cigarQual.at(k));
-    }
-    //quality = qualities;
-    Operation = cigarOperation;
-    pos = startPos;
-    readPos = readStart;
-    seq = cigarSeq;
-    RefID = RefIDArg;
-    //Build AlignmentLayoutPos object vector!
-    std::vector<AlignmentLayoutPos> layoutPosVector;
-    // Create AlignmentLayoutPos objects for each.
-    AlignmentLayoutPos ALP = AlignmentLayoutPos();
-    for(int k = 0; k < length; k++) {
-        switch (Operation){
-        case 'I':
-            ALP.setAttributes(seq.substr(k, k + 1), Operation, RefID, -1, readPos + k, quality[k]);
-            break;
-        case 'S':
-            ALP.setAttributes(seq.substr(k, k + 1), Operation, RefID, -1, readPos + k, quality[k]);
-            break;
-        case 'D':
-            ALP.setAttributes("D", Operation, RefID, pos + k, -1, -1);
-            break;
-        case 'M':
-            ALP.setAttributes(seq.substr(k, k + 1), Operation, RefID, pos + k, readPos + k, quality[k]);
-            break;
-        default:
-            throw std::runtime_error("Sorry, unsupported cigar character. Email me and I'll change this.");
-        }
-        layoutPosVector.push_back(ALP);
-    }
-    layoutPositions = layoutPosVector;
+    setAttributes(cigarSeq, cigarQual, cigarOperation, RefIDArg, startPos, readStart);
 }
 
 
@@ -227,15 +231,79 @@ std::vector<AlignmentLayoutOp> GetAlignmentLayoutOps(BamAlignment rec) {
                                   StartPosition + cumCigarSum, // Genomic coords for start of cigar
                                   cumCigarSum// Read coords for start of cigar
                                   ));
+            cumCigarSum += TmpCigarOp.Length;
         }
         else {
-            int PVArray[cigarLen];
-            for(int k = 0; k < cigarLen; k++) {
-                
+            std::string PVString;
+            rec.GetTag("PV", PVString);
+            std::vector<int> PhredVector;
+            std::vector<int> PhredSubVector;
+            std::vector<std::string> PhredStrVector;
+            split(PhredStrVector, PVString, is_any_of(","));
+            for(int ii = 0; ii < PhredStrVector.size(); ii++) {
+                PhredVector.push_back(std::atoi(PhredStrVector[ii].c_str()));
             }
+            for(int k = cumCigarSum; k < cigarLen + cumCigarSum; k++)  {
+                PhredSubVector.push_back(PhredVector[k]);
+            }
+            operations.push_back
+            (
+                AlignmentLayoutOp(rec.QueryBases.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), //Read sequence
+                                  PhredSubVector, TmpCigarOp.Type, rec.RefID, StartPosition + cumCigarSum,
+                                  cumCigarSum)
+            );
+            cumCigarSum += TmpCigarOp.Length;
         }
     }
+    return operations;
 }
+
+class AlignmentLayout {
+    private:
+        int length;
+        int pos; // 0-based genomic start position of the cigar operation.
+        int RefID;
+        std::string seq;
+        std::vector<int> quality; // Quality scores as integers. PV tags if available, normal phred-encoded otherwise.
+        std::vector<AlignmentLayoutOp> operations;
+
+    public:
+        int getRef() {return RefID;}
+        int getPos() {return pos;}
+        int getLen() {return length;}
+        std::string getSeq() {return seq;}
+        std::vector<AlignmentLayoutOp> getOps() {return operations;}
+        std::vector<AlignmentLayoutPos> getLayoutPositions(){
+            std::vector<AlignmentLayoutPos> positions;
+            std::vector<AlignmentLayoutPos> tmpPositions;
+            for(int i = 0; i < operations.size(); i++){
+                tmpPositions = operations[i].getLayoutPositions();
+                for(int ii = 0; ii < tmpPositions.size(); ii++) {
+                    positions.push_back(tmpPositions[i]);
+                }
+            }
+            return positions;
+        }
+        int getAlignedLen() {
+            int len = 0;
+            for(int i = 0; i < operations.size(); i++){
+                if(operations[i].getOperation() == 'M') {
+                    len += operations[i].getLength();
+                }
+            }
+            return len;
+        }
+
+/**
+80         char Operation; // Character definition of cigar operation.
+ 81         int length; // Length of cigar operation
+  82         int pos; // 0-based genomic start position of the cigar operation.
+   83         int readPos; // 0-based read start position of the cigar operation.
+    84         int RefID; // Reference ID.
+     85         std::string seq;
+      86         std::vector<int> quality; // Store the information as integers. For this purpose, use the PV tags if available.
+       87         std::vector<AlignmentLayoutPos> layoutPositions; */
+};
 
 std::vector<BamAlignment> MergePairedAlignments(BamAlignment rec1, BamAlignment rec2) {
     // If the two overlap, make one new read that's all perfect for it. :)
@@ -251,6 +319,9 @@ std::vector<BamAlignment> MergePairedAlignments(BamAlignment rec1, BamAlignment 
     }
     if(rec1.Position <= rec2.Position) {
         startpos = rec1.Position;
+    }
+    else {
+        startpos = rec2.Position;
     }
 }
 
