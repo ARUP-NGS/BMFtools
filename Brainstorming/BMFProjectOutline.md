@@ -36,9 +36,13 @@
     2. Structural variants (translocations)
         1. Mapping-based
             2. Subreads (e.g., first 30 bases + full reads)
+            3. Seemed to work well for certain situations.
         2. Assembly-based
             1. Try method in 2:1:2.
             2. Perhaps it would work with very large deletions, as well.
+        3. Planning which translocations to target.
+            1. Where to regions with homology map? Building a general tool for selecting where we can design probes.
+            2. This code will overlap to some extent with the kmer/hash-based local assembly method.
 
     3. Copy Number Aberrations/Alterations
         1. First: What kind of data do we need?

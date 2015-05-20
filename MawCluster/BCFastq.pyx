@@ -205,7 +205,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
             ["".join(["@", name, " ", R[0].comment, TagString]),
              finalSeq.tostring(),
              "+",
-             QualString])
+             QualString, ""])
     except TypeError:
         print("TagString: {}".format(TagString))
         print("finalSeq: {}".format(finalSeq))
@@ -295,7 +295,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
         "".join(["@", name, " ", R[0].comment, TagString]),
         newSeq.tostring(),
         "+",
-        phredQualsStr])
+        phredQualsStr, ""])
     if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail"), name
     return consolidatedFqStr, name
