@@ -215,8 +215,8 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
         print("".join(["@", R[0].name, " ", R[0].comment, TagString]))
         raise ThisIsMadness("I can't figure out what's going on.")
     if(Success is False):
-        return consFqString.replace("Pass", "Fail")
-    return consFqString
+        return consFqString.replace("Pass", "Fail"), name
+    return consFqString, name
 
 
 @cython.returns(tuple)
@@ -297,7 +297,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
         "+",
         phredQualsStr])
     if(not Success):
-        return consolidatedFqStr.replace("Pass", "Fail")
+        return consolidatedFqStr.replace("Pass", "Fail"), name
     return consolidatedFqStr, name
 
 
@@ -645,8 +645,8 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
         import pstats
         pr = cProfile.Profile()
         pr.enable()
-    outFqPair1 = '.'.join(fq1.split('.')[0:-1] + ["cons", "fastq"])
-    outFqPair2 = '.'.join(fq2.split('.')[0:-1] + ["cons", "fastq"])
+    outFqPair1 = TrimExt(fq1) + ".cons.fastq"
+    outFqPair2 = TrimExt(fq2) + '.cons.fastq'
     pl("Now running pairedFastqConsolidateFaster on {} and {}.".format(fq1,
                                                                        fq2))
     pl("Command required to duplicate this action:"

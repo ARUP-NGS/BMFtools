@@ -21,11 +21,20 @@
         1. Barcodes eliminates the issues with PCR duplicates but not optical ones. We should be careful aboutthis.
     2. Substitutions (optical problems)
     3. Indels (optical problems)
-3. Additional variables
+3. Mapping errors
+    1. False negatives/positives due to incorrect mapping location
+        1. SNVs (I'm guessing primarily from a homology issue not properly accounted for?)
+        2. Small indels (similar to SNVs, but aggravated in the context of tandem repeats)
+            1. Shannon entropy filter available, but it is important to call in low complexity regions, too.
+            2. Hopefully realignment (GATK/ABRA/bamleftalign/?) solves that.
+        3. Large indels
+            1. Read simply doesn't go to correct location.
+                1. Mapping subreads should be able to help, but it looks like local assembly is the best way to look for this.
+4. Additional variables
     1. Cluster size
     2. Fraction of clusters passing filters
     3. Number of clusters
-4. Attributes to build SVM or other classifier on
+5. Attributes to build SVM or other classifier on for fastq quality score and base recalibration
     1. "Correct" base at location.
     2. Cycle number of machine.
     3. Number of clusters.
