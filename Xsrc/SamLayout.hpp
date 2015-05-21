@@ -171,3 +171,5 @@ class AlnLayout {
 };
 
 std::string PhredStringFromVector(std::vector<int>);
+std::vector<std::string> getBamTagVector(BamAlignment);
+std::string getBamTagString(BamAlignment);

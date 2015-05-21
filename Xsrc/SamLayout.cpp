@@ -60,22 +60,22 @@ bool LayoutPos::incrementReadPos(){
 }
 
 std::string LayoutPos::__str__(){
-	/*
-	 * String representation of a Layout Position.
-	 * RefID, position, read position, base call, cigar operation,
-	 * and base quality.
-	 */
-	std::stringstream ss;
-	ss.str("");
-	ss.clear();
-	ss << "RefID:" << RefID << ";Position:"<< Position;;
-	ss << ";readPosition:" << ReadPosition << ";base:" << base;
-	ss << ";CigarOperation:" << Operation << ";Quality:" << quality;
-	return ss.str();
+    /*
+     * String representation of a Layout Position.
+     * RefID, position, read position, base call, cigar operation,
+     * and base quality.
+     */
+    std::stringstream ss;
+    ss.str("");
+    ss.clear();
+    ss << "RefID:" << RefID << ";Position:"<< Position;;
+    ss << ";readPosition:" << ReadPosition << ";base:" << base;
+    ss << ";CigarOperation:" << Operation << ";Quality:" << quality;
+    return ss.str();
 }
 
 void LayoutPos::setAttributes(char baseArg, char opArg, int RefIDArg, int posArg,
-							  int readPosArg, int qualArg, int strand, int FA) {
+                              int readPosArg, int qualArg, int strand, int FA) {
     Operation = opArg;
     base = baseArg;
     RefID = RefIDArg;
@@ -159,37 +159,37 @@ void LayoutOp::update(){
 }
 
 std::vector<std::string> LayoutOp::getPositionStrs() {
-	std::vector<std::string> returnVec;
-	for(int i = 0; i < getLength(); i++){
-		returnVec.push_back(layoutPositions[i].__str__());
-	}
-	return returnVec;
+    std::vector<std::string> returnVec;
+    for(int i = 0; i < getLength(); i++){
+        returnVec.push_back(layoutPositions[i].__str__());
+    }
+    return returnVec;
 }
 
 std::vector<char> LayoutOp::getBaseCalls() {
-	std::vector<char> returnVec;
-	for(int i = 0; i < layoutPositions.size(); i++) {
-		returnVec.push_back(layoutPositions[i].getBase());
-	}
-	return returnVec;
+    std::vector<char> returnVec;
+    for(int i = 0; i < layoutPositions.size(); i++) {
+        returnVec.push_back(layoutPositions[i].getBase());
+    }
+    return returnVec;
 }
 
 
 std::vector<int> LayoutOp::getReadPositions() {
-	std::vector<int> returnVec;
-	for(int i = 0; i < layoutPositions.size(); i++) {
-		returnVec.push_back(layoutPositions[i].getReadBasePos());
-	}
-	return returnVec;
+    std::vector<int> returnVec;
+    for(int i = 0; i < layoutPositions.size(); i++) {
+        returnVec.push_back(layoutPositions[i].getReadBasePos());
+    }
+    return returnVec;
 }
 
 
 std::vector<int> LayoutOp::getPositions() {
-	std::vector<int> returnVec;
-	for(int i = 0; i < layoutPositions.size(); i++) {
-		returnVec.push_back(layoutPositions[i].getPos());
-	}
-	return returnVec;
+    std::vector<int> returnVec;
+    for(int i = 0; i < layoutPositions.size(); i++) {
+        returnVec.push_back(layoutPositions[i].getPos());
+    }
+    return returnVec;
 }
 
 /*
@@ -197,13 +197,13 @@ std::vector<int> LayoutOp::getPositions() {
  * Should be useful for debugging and knowing what we're working with.
  */
 std::string LayoutOp::__str__(){
-	std::stringstream ss;
-	ss.str("");
-	ss.clear();
-	ss << "RefID:" << RefID << ";Position:"<< pos;
-	ss << ";readPosition:" << readPos << ";Sequence:" << seq;
-	ss << ";CigarOperation:" << Operation << ";Quality:" << PhredStringFromVector(quality);
-	return ss.str();
+    std::stringstream ss;
+    ss.str("");
+    ss.clear();
+    ss << "RefID:" << RefID << ";Position:"<< pos;
+    ss << ";readPosition:" << readPos << ";Sequence:" << seq;
+    ss << ";CigarOperation:" << Operation << ";Quality:" << PhredStringFromVector(quality);
+    return ss.str();
 }
 
 LayoutOp::LayoutOp(){
@@ -305,6 +305,9 @@ std::vector<int> PhredVectorFromString(std::string PVString){
     std::vector<int> returnVec;
     std::vector<std::string> stringVec;
     boost::split(stringVec, PVString, boost::is_any_of(","));
+    for(int k = 0; k < stringVec.size(); k++){
+    	std::cerr << "String item here is " << stringVec[k] << std::endl;
+    }
     for(int i = 0; i < returnVec.size(); i++){
         returnVec.push_back(std::atoi(stringVec[i].c_str()));
     }
@@ -326,6 +329,7 @@ std::string PhredStringFromVector(std::vector<int> PVArray){
 
 
 std::vector<LayoutOp> GetLayoutOps(BamAlignment rec) {
+	std::cerr << "Starting GetLayoutOps." << std::endl;
     int cigarLen;
     int StartPosition = rec.Position; // Needed to keep read indices in line with reference.
     int cumCigarSum = 0;
@@ -336,9 +340,12 @@ std::vector<LayoutOp> GetLayoutOps(BamAlignment rec) {
     CigarOp TmpCigarOp;
     cigarLen = rec.CigarData.size();
     std::string PVString;
+	std::cerr << "About to start creating cigar operations.." << std::endl;
     for(int i = 0; i < cigarLen; i++) {
+    	std::cerr << "Now working with cigar operation " << i + 1 << " for this record." << std::endl;
         TmpCigarOp = rec.CigarData[i];
         if(!rec.HasTag("PV")) {
+        	std::cerr << "This record has no PV tag" << std::endl;
             // Gets quality scores from ASCII phred scores rather than PV numbers.
             operations.push_back(
                 LayoutOp(rec.QueryBases.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), // Read sequence
@@ -352,21 +359,30 @@ std::vector<LayoutOp> GetLayoutOps(BamAlignment rec) {
             cumCigarSum += TmpCigarOp.Length;
         }
         else {
+        	std::cerr << "This record has a PV tag!" << std::endl;
             std::string PVString;
             rec.GetTag("PV", PVString);
             std::string FAString;
             rec.GetTag("FA", FAString);
             std::vector<int> PhredSubVector;
             std::vector<int> AgreementSubVector;
+        	std::cerr << "About to get Phred/Agreement Vectors" << std::endl;
             std::vector<int> PhredVector = PhredVectorFromString(PVString);
             std::vector<int> AgreementVector = PhredVectorFromString(FAString);
+        	std::cerr << "About to get my slice from  Phred/Agreement Vectors" << std::endl;
+        	for(int i = 0; i < PhredVector.size(); i++){
+        		std::cerr << "Phred value at position " << i + 1 << " is " << PhredVector[i] << std::endl;
+        	}
             for(int k = cumCigarSum; k < cigarLen + cumCigarSum; k++)  {
+            	std::cerr << "Here is the PhredVector string: " << PVString << std::endl;
                 PhredSubVector.push_back(PhredVector[k]);
                 AgreementSubVector.push_back(AgreementVector[k]);
             }
+        	std::cerr << "About to initialize the new LayoutOp object" << std::endl;
             LayoutOp tmpOp = LayoutOp(rec.QueryBases.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), //Read sequence
                     PhredSubVector, AgreementSubVector, TmpCigarOp.Type, rec.RefID, StartPosition + cumCigarSum,
                     cumCigarSum, rec.IsReverseStrand() ? -1 : 1);
+        	std::cerr << "Successfully initialized the new LayoutOp object" << std::endl;
             operations.push_back(tmpOp);
             cumCigarSum += TmpCigarOp.Length;
         }
@@ -455,30 +471,36 @@ std::vector<LayoutPos> AlnLayout::getLayoutPositions(){
 }
 
 std::string CigarDataToString(std::vector<CigarOp> cigarVec){
-	std::string returnStr = "";
-	std::stringstream ss;
-	for(int i = 0; i < cigarVec.size(); i++) {
-		ss << cigarVec[i].Length << cigarVec[i].Type;
-		returnStr += ss.str();
-		ss.str(std::string());
-		ss.clear();
-	}
-	return returnStr;
+    std::string returnStr = "";
+    std::stringstream ss;
+    for(int i = 0; i < cigarVec.size(); i++) {
+        ss << cigarVec[i].Length << cigarVec[i].Type;
+        returnStr += ss.str();
+        ss.str(std::string());
+        ss.clear();
+    }
+    return returnStr;
 }
 
 /*
  * Turns a BAM record into a string.
  */
 std::string BamToString(BamAlignment rec, RefVector vec){
-	std::stringstream ss;
-	ss << rec.Name + "\t" << rec.AlignmentFlag << "\t" + vec[rec.RefID].RefName
-	<< "\t" << rec.Position << "\t" << rec.MapQuality << "\t"
-	<< CigarDataToString(rec.CigarData) << "\t" << vec[rec.MateRefID].RefName
-	<< "\t" << rec.MatePosition << "\t" << rec.InsertSize << "\t"
-	<< rec.QueryBases << "\t" << rec.Qualities << "\t" << rec.TagData;
-	// Gets first 11 fields and the entire tag list string.
-	return ss.str();
+    std::stringstream ss;
+    std::string returnStr;
+    std::string TagData = getBamTagString(rec);
+    ss << rec.Name + "\t" << rec.AlignmentFlag << "\t" + vec[rec.RefID].RefName
+    << "\t" << rec.Position << "\t" << rec.MapQuality << "\t"
+    << CigarDataToString(rec.CigarData) << "\t" << vec[rec.MateRefID].RefName
+    << "\t" << rec.MatePosition << "\t" << rec.InsertSize << "\t"
+    << rec.QueryBases << "\t" << rec.Qualities << "\t" << TagData;
+    // Gets first 11 fields and the entire tag list string.
+    return ss.str();
 }
+
+/*
+ * Turns a TagData object into something human readable.
+ */
 
 /*
  * Returns a vector of all of the reference bases
@@ -489,12 +511,12 @@ std::string BamToString(BamAlignment rec, RefVector vec){
  */
 
 std::vector<int> AlnLayout::getPositions() {
-	std::vector<int> returnVec;
-	std::vector<LayoutPos> layouts = getLayoutPositions();
-	for(int i = 0; i < layouts.size(); i++){
-		returnVec.push_back(layouts[i].getPos());
-	}
-	return returnVec;
+    std::vector<int> returnVec;
+    std::vector<LayoutPos> layouts = getLayoutPositions();
+    for(int i = 0; i < layouts.size(); i++){
+        returnVec.push_back(layouts[i].getPos());
+    }
+    return returnVec;
 }
 
 /*
@@ -511,12 +533,12 @@ int AlnLayout::getAlignedLen() {
 }
 
 std::vector<CigarOp> AlnLayout::makeCigar(){
-	std::vector<CigarOp> returnVec;
-	for(int i = 0; i < operations.size(); i++){
-		returnVec.push_back(CigarOp(operations[i].getOperation(),
-									operations[i].getLength()));
-	}
-	return returnVec;
+    std::vector<CigarOp> returnVec;
+    for(int i = 0; i < operations.size(); i++){
+        returnVec.push_back(CigarOp(operations[i].getOperation(),
+                                    operations[i].getLength()));
+    }
+    return returnVec;
 }
 
 
@@ -564,24 +586,150 @@ BamAlignment AlnLayout::toBam(){
 }
 
 std::string AlnLayout::toBamStr(RefVector references){
-	return BamToString(toBam(), references);
+    return BamToString(toBam(), references);
 }
 
-std::string AlnLayout::__str__(){
-	std::string returnStr;
-	std::vector<LayoutPos> posVec = getLayoutPositions();
-	std::vector<LayoutOp> opVec = getOps();
-	for(int i = 0; i < posVec.size(); i++){
-		returnStr += posVec[i].__str__() + ",";
+template <typename T>
+inline std::vector<std::string> vecToStrVec(T inVec){
+	std::vector<std::string>returnVec;
+	for(int i = 0; i < inVec.size(); i++){
+		returnVec.push_back(inVec[i].__str__());
 	}
-	returnStr.pop_back(); // To trim off the additional delimiter
-	returnStr += "|";
-	for(int i = 0; i < opVec.size(); i++){
-		returnStr += opVec[i].__str__() + ",";
-	}
-	returnStr += "|";
-	return returnStr;
+	return returnVec;
 }
+/**
+std::vector<std::string> PosVecToStr(std::vector<LayoutPos> inVec){
+	std::vector<std::string>returnVec;
+	for(int i = 0; i < inVec.size(); i++){
+		returnVec.push_back(inVec[i].__str__());
+	}
+	return returnVec;
+} */
+
+std::string AlnLayout::__str__(){
+    std::string returnStr;
+    std::vector<std::string> posVecStrs = vecToStrVec(getLayoutPositions());
+    std::vector<std::string> opVecStrs = vecToStrVec(getOps());
+    returnStr = boost::algorithm::join(posVecStrs, ",") + "|" + boost::algorithm::join(opVecStrs, ",");
+    return returnStr;
+}
+
+/*
+ * Creates a vector of tag strings from a BamAlignment object
+ * because the BamAlignment strings aren't actually the strings
+ * that would be created for a SAM file.
+ */
+
+std::vector<std::string> getBamTagVector(BamAlignment rec){
+    std::vector<std::string> TagStrings;
+    int tmpInt;
+    float tmpFloat;
+    std::string tmpString;
+    if(rec.HasTag("AF")){
+        rec.GetTag("AF", tmpFloat);
+        TagStrings.push_back("AF:f:" + std::to_string(tmpFloat));
+    }
+    if(rec.HasTag("BS")){
+        rec.GetTag("BS", tmpString);
+        TagStrings.push_back("BS:Z:" + tmpString);
+    }
+    if(rec.HasTag("FM")){
+        rec.GetTag("FM", tmpInt);
+        TagStrings.push_back("FM:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("FP")){
+        rec.GetTag("FP", tmpInt);
+        TagStrings.push_back("FP:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("MQ")){
+        rec.GetTag("MQ", tmpInt);
+        TagStrings.push_back("MQ:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("ND")){
+        rec.GetTag("ND", tmpInt);
+        TagStrings.push_back("ND:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("NF")){
+        rec.GetTag("NF", tmpFloat);
+        TagStrings.push_back("NF:f:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("NM")){
+        rec.GetTag("NM", tmpInt);
+        TagStrings.push_back("NM:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("PV")){
+        rec.GetTag("PV", tmpString);
+        TagStrings.push_back("PV:Z:" + tmpString);
+    }
+    if(rec.HasTag("FA")){
+        rec.GetTag("FA", tmpString);
+        TagStrings.push_back("FA:Z:" + tmpString);
+    }
+    if(rec.HasTag("SV")){
+        rec.GetTag("SV", tmpString);
+        TagStrings.push_back("SV:Z:" + tmpString);
+    }
+    if(rec.HasTag("RP")){
+        rec.GetTag("RP", tmpString);
+        TagStrings.push_back("RP:Z:" + tmpString);
+    }
+    if(rec.HasTag("SC")){
+        rec.GetTag("SC", tmpString);
+        TagStrings.push_back("SC:Z:" + tmpString);
+    }
+    if(rec.HasTag("YA")){
+        rec.GetTag("YA", tmpString);
+        TagStrings.push_back("YA:Z:" + tmpString);
+    }
+    if(rec.HasTag("YO")){
+        rec.GetTag("YO", tmpString);
+        TagStrings.push_back("YO:Z:" + tmpString);
+    }
+    if(rec.HasTag("SF")){
+        rec.GetTag("SF", tmpFloat);
+        TagStrings.push_back("SF:f:" + std::to_string(tmpFloat));
+    }
+    if(rec.HasTag("X0")){
+        rec.GetTag("X0", tmpInt);
+        TagStrings.push_back("X0:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("X1")){
+        rec.GetTag("X1", tmpInt);
+        TagStrings.push_back("X1:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("XM")){
+        rec.GetTag("XM", tmpInt);
+        TagStrings.push_back("XM:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("YX")){
+        rec.GetTag("YX", tmpInt);
+        TagStrings.push_back("YX:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("YM")){
+        rec.GetTag("YM", tmpInt);
+        TagStrings.push_back("YM:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("YQ")){
+        rec.GetTag("YQ", tmpInt);
+        TagStrings.push_back("YQ:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("YR")){
+        rec.GetTag("YR", tmpInt);
+        TagStrings.push_back("YR:i:" + std::to_string(tmpInt));
+    }
+    if(rec.HasTag("MP")){
+        char op;
+        rec.GetTag("MP", op);
+        TagStrings.push_back("MP:A:" + op);
+    }
+    return TagStrings;
+}
+
+std::string getBamTagString(BamAlignment rec){
+	std::vector<std::string> bamtags = getBamTagVector(rec);
+    return boost::algorithm::join(bamtags, "\t");
+}
+
 
 AlnLayout::AlnLayout(BamAlignment rec) {
     if(rec.HasTag("MP")){
@@ -597,7 +745,7 @@ AlnLayout::AlnLayout(BamAlignment rec) {
     seq = rec.QueryBases;
     RefID = rec.RefID;
     pos = rec.Position;
-    TagData = rec.TagData;
+    TagData = getBamTagString(rec);
     std::string PVString;
     rec.GetTag("PV", PVString);
     std::string FAString;
@@ -638,33 +786,44 @@ int main(int argc, char* argv[]){
         outputBam = argv[2];
     }
     else if(argc == 2){
-    	inputBam = argv[1];
-    	std::vector<std::string> splitOut;
-    	boost::split(splitOut, inputBam, boost::is_any_of("."));
-    	outputBam = "";
-    	for(int i = 0; i < splitOut.size() - 1; i++){
-    		outputBam += "." + splitOut[i];
-    	}
-    	outputBam += ".out.bam";
+        inputBam = argv[1];
+        std::vector<std::string> splitOut;
+        boost::split(splitOut, inputBam, boost::is_any_of("."));
+        outputBam = "";
+        for(int i = 0; i < splitOut.size() - 1; i++){
+            outputBam += splitOut[i] + ".";
+        }
+        outputBam += "out.bam";
     }
     else if(argc == 1){
-    	printf("Usage: I don't know. Position arguments: InputBam, OutputBam.\n");
-    	printf("Output bam optional - replaces .bam with .out.bam in the filename.\n");
+        printf("Usage: I don't know. Position arguments: InputBam, OutputBam.\n");
+        printf("Output bam optional - replaces .bam with .out.bam in the filename.\n");
     }
+    std::cerr << "Output BAM :" << outputBam;
     BamReader reader;
     if(!reader.Open(inputBam)) {
         std::cerr << "Could not open input BAM" << std::endl;
         return 1;
     }
-    std::cout << "Opened bam reader" << std::endl;
+    std::cerr << "Opened bam reader" << std::endl;
     const SamHeader header = reader.GetHeader();
     const RefVector references = reader.GetReferenceData();
-    BamAlignment rec1, rec2, rec;
+    BamAlignment rec;
     BamWriter writer;
     if(!writer.Open(outputBam, header, references) ) {
         std::cerr << "ERROR: could not open " + outputBam + " for writing. Abort mission!" << std::endl;
         throw std::runtime_error("Could not open " + outputBam + " for writing.");
     }
-    std::cout << "Opened bam writer" << std::endl;
+    std::cerr << "Opened bam writer" << std::endl;
+    while (reader.GetNextAlignment(rec)) {
+        //std::cout << BamToString(rec, references) << std::endl; // This checked to see if BAM formats were being parsed and reformatted correctly.
+    	std::cerr << "I'm about to make an AlnLayout object." << std::endl;
+    	AlnLayout newAlnLayout = AlnLayout(rec);
+    	std::cerr << "I'm about to get the first operation from that object." << std::endl;
+    	LayoutOp newOp = newAlnLayout.getOps()[0];
+    	std::cout << AlnLayout(rec).getOps()[0].__str__() << std::endl;
+    }
+    reader.Close();
+    writer.Close();
     return 0;
 }
