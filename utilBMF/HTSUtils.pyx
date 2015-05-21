@@ -1088,8 +1088,8 @@ cdef class pPileupRead:
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
 
-    def opt(*args, **kwargs):
-        return self.alignment.opt(*args, **kwargs)
+    cpdef object opt(self, cython.str arg):
+        return self.alignment.opt(arg)
 
 
 cdef class PileupReadPair:

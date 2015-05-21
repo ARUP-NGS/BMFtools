@@ -71,6 +71,7 @@ cdef class PRInfo:
     cdef public cython.str ssString, query_name
     cdef public cython.float FractionAgreed, PVFrac, NF
     cdef public np.ndarray PV_Array
+    cpdef object opt(self, cython.str arg)
 
 
 cdef class PCInfo:

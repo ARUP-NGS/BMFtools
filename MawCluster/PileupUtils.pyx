@@ -178,6 +178,8 @@ cdef class PRInfo:
             self.NF = aopt("NF")
         except KeyError:
             pass
+    cpdef object opt(self, cython.str arg):
+        return self.read.opt(arg)
 
 
 @cython.returns(cython.str)
@@ -357,7 +359,7 @@ cdef class AlleleAggregateInfo:
         else:
             self.MPF = nmean(PVFArray)
             self.PFSD = nstd(PVFArray)
-        self.maxND = max(rec.read.opt("ND") for rec in self.recList)
+        self.maxND = max(rec.opt("ND") for rec in self.recList)
 
 
 cdef class PCInfo:
@@ -404,13 +406,13 @@ cdef class PCInfo:
         #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
         #  pl("pos: %s" % self.pos)
-        self.FailedQCReads = sum(pileupRead.alignment.opt("FP") == 0
+        self.FailedQCReads = sum(pileupRead.opt("FP") == 0
                                   for pileupRead in pileups)
-        self.FailedFMReads = sum(pileupRead.alignment.opt("FM") < minFA
+        self.FailedFMReads = sum(pileupRead.opt("FM") < minFA
                                   for pileupRead in pileups)
-        self.FailedAFReads = sum(pileupRead.alignment.opt("AF") < minAF
+        self.FailedAFReads = sum(pileupRead.opt("AF") < minAF
                                   for pileupRead in pileups)
-        self.FailedNDReads = sum(pileupRead.alignment.opt("ND") > maxND
+        self.FailedNDReads = sum(pileupRead.opt("ND") > maxND
                                   for pileupRead in pileups)
         self.FailedBQReads = sum(
             pileupRead.alignment.query_qualities
@@ -422,7 +424,7 @@ cdef class PCInfo:
         self.PCol = PileupColumn
         self.excludedSVTagStr = exclusionSVTags
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
-        svTags = [p.alignment.opt("SV") for p in pileups
+        svTags = [p.opt("SV") for p in pileups
                   if p.alignment.has_tag("SV")]
         exclusionTagList = exclusionSVTags.split(",")
         svTags = [t for t in svTags if t != "NF" and

@@ -165,4 +165,9 @@ class AlnLayout {
         std::vector<int> getPositions();
 
         std::string __str__();
+        std::string toBamStr(RefVector);
+
+        std::vector<CigarOp> makeCigar();
 };
+
+std::string PhredStringFromVector(std::vector<int>);

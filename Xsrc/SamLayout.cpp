@@ -167,7 +167,7 @@ std::vector<std::string> LayoutOp::getPositionStrs() {
 }
 
 std::vector<char> LayoutOp::getBaseCalls() {
-	std::vector<int> returnVec;
+	std::vector<char> returnVec;
 	for(int i = 0; i < layoutPositions.size(); i++) {
 		returnVec.push_back(layoutPositions[i].getBase());
 	}
@@ -454,6 +454,32 @@ std::vector<LayoutPos> AlnLayout::getLayoutPositions(){
     return positions;
 }
 
+std::string CigarDataToString(std::vector<CigarOp> cigarVec){
+	std::string returnStr = "";
+	std::stringstream ss;
+	for(int i = 0; i < cigarVec.size(); i++) {
+		ss << cigarVec[i].Length << cigarVec[i].Type;
+		returnStr += ss.str();
+		ss.str(std::string());
+		ss.clear();
+	}
+	return returnStr;
+}
+
+/*
+ * Turns a BAM record into a string.
+ */
+std::string BamToString(BamAlignment rec, RefVector vec){
+	std::stringstream ss;
+	ss << rec.Name + "\t" << rec.AlignmentFlag << "\t" + vec[rec.RefID].RefName
+	<< "\t" << rec.Position << "\t" << rec.MapQuality << "\t"
+	<< CigarDataToString(rec.CigarData) << "\t" << vec[rec.MateRefID].RefName
+	<< "\t" << rec.MatePosition << "\t" << rec.InsertSize << "\t"
+	<< rec.QueryBases << "\t" << rec.Qualities << "\t" << rec.TagData;
+	// Gets first 11 fields and the entire tag list string.
+	return ss.str();
+}
+
 /*
  * Returns a vector of all of the reference bases
  * contained in the LayoutPos objects in the order
@@ -484,15 +510,28 @@ int AlnLayout::getAlignedLen() {
     return len;
 }
 
+std::vector<CigarOp> AlnLayout::makeCigar(){
+	std::vector<CigarOp> returnVec;
+	for(int i = 0; i < operations.size(); i++){
+		returnVec.push_back(CigarOp(operations[i].getOperation(),
+									operations[i].getLength()));
+	}
+	return returnVec;
+}
+
+
 BamAlignment AlnLayout::toBam(){
     BamAlignment returnBam;
     returnBam.Name = Name;
     returnBam.QueryBases = seq;
     returnBam.RefID = RefID;
     returnBam.Position = pos;
-    returnBam.SetIsReverseStrand(strandedness);
+    returnBam.SetIsReverseStrand(strandedness); // Keep the strandedness of the original read 1 for convention's sake.
+    returnBam.CigarData = makeCigar(); // Create a std::Vector<CigarOp> object from the LayoutOperation objects.
     if(pairMerged){
-        returnBam.AddTag("MP", "A", 'T');
+        returnBam.AddTag("MP", "A", 'T'); // Add Merged Pair tag.
+        returnBam.SetIsFirstMate(false); // Set that it is neither first nor second, as it is both mates
+        returnBam.SetIsSecondMate(false);
     }
     returnBam.AddTag("PV", "Z", PhredStringFromVector(quality));
     returnBam.AddTag("FA", "Z", PhredStringFromVector(agreement));
@@ -522,6 +561,26 @@ BamAlignment AlnLayout::toBam(){
         }
     }
     return returnBam;
+}
+
+std::string AlnLayout::toBamStr(RefVector references){
+	return BamToString(toBam(), references);
+}
+
+std::string AlnLayout::__str__(){
+	std::string returnStr;
+	std::vector<LayoutPos> posVec = getLayoutPositions();
+	std::vector<LayoutOp> opVec = getOps();
+	for(int i = 0; i < posVec.size(); i++){
+		returnStr += posVec[i].__str__() + ",";
+	}
+	returnStr.pop_back(); // To trim off the additional delimiter
+	returnStr += "|";
+	for(int i = 0; i < opVec.size(); i++){
+		returnStr += opVec[i].__str__() + ",";
+	}
+	returnStr += "|";
+	return returnStr;
 }
 
 AlnLayout::AlnLayout(BamAlignment rec) {
@@ -572,6 +631,40 @@ std::vector<BamAlignment> MergePairedAlignments(BamAlignment rec1, BamAlignment 
     return returnList;
 }
 
-int main(){
+int main(int argc, char* argv[]){
+    std::string inputBam, outputBam;
+    if(argc == 3) {
+        inputBam = argv[1];
+        outputBam = argv[2];
+    }
+    else if(argc == 2){
+    	inputBam = argv[1];
+    	std::vector<std::string> splitOut;
+    	boost::split(splitOut, inputBam, boost::is_any_of("."));
+    	outputBam = "";
+    	for(int i = 0; i < splitOut.size() - 1; i++){
+    		outputBam += "." + splitOut[i];
+    	}
+    	outputBam += ".out.bam";
+    }
+    else if(argc == 1){
+    	printf("Usage: I don't know. Position arguments: InputBam, OutputBam.\n");
+    	printf("Output bam optional - replaces .bam with .out.bam in the filename.\n");
+    }
+    BamReader reader;
+    if(!reader.Open(inputBam)) {
+        std::cerr << "Could not open input BAM" << std::endl;
+        return 1;
+    }
+    std::cout << "Opened bam reader" << std::endl;
+    const SamHeader header = reader.GetHeader();
+    const RefVector references = reader.GetReferenceData();
+    BamAlignment rec1, rec2, rec;
+    BamWriter writer;
+    if(!writer.Open(outputBam, header, references) ) {
+        std::cerr << "ERROR: could not open " + outputBam + " for writing. Abort mission!" << std::endl;
+        throw std::runtime_error("Could not open " + outputBam + " for writing.");
+    }
+    std::cout << "Opened bam writer" << std::endl;
     return 0;
 }
