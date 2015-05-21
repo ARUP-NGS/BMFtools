@@ -149,6 +149,11 @@ def main():
         "--is-slave",
         help="Whether or not SNVCrawler is slave instance.",
         action="store_true", default=False)
+    SNVParser.add_argument(
+        "--minFracAgreed",
+        help=("Minimum fraction of reads in family to agree on a base call "
+              "for inclusion in variant calling."),
+        type=float, default=0.8)
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
@@ -475,73 +480,82 @@ def main():
                 is_slave = True
             runconf["is_slave"] = is_slave
             runconf["commandStr"] = commandStr
-            print(repr(runconf))
-            if(args.analysisTag != "default"):
-                analysisTag = (args.analysisTag + "-" +
-                               "-".join([str(runconf[i]) for i in
-                                         ["minMQ", "minBQ", "minFA",
-                                          "MaxPValue",
-                                          "minFracAgreed"]]))
-            else:
-                analysisTag = "-".join([str(runconf[i]) for i in
-                                        ["minMQ", "minBQ", "minFA",
-                                         "MaxPValue", "minFracAgreed"]])
-            if(args.outVCF == "default"):
-                OutVCF = ".".join(args.inBAM.split(".")[0:-1] +
-                                  [analysisTag, "bmf", "vcf"])
-            else:
-                OutVCF = args.outVCF
-            for pair in runconf.items():
-                print("runconf entry. Key: %s. Value: %s." % (pair[0],
-                                                              pair[1]))
-            """
-            import cProfile
-            import pstats
-            pr = cProfile.Profile()
-            pr.enable()
-            """
+        else:
+            runconf["bed"] = args.bed
+            runconf["minMQ"] = int(args.minMQ)
+            runconf["minBQ"] = int(args.minBQ)
+            runconf["minFA"] = int(args.minFA)
+            runconf["MaxPValue"] = float(args.MaxPValue)
+            runconf["minFracAgreed"] = float(args.minFracAgreed)
+            runconf["reference"] = args.reference_fasta
+            runconf["is_slave"] = args.is_slave
+        print(repr(runconf))
+        if(args.analysisTag != "default"):
+            analysisTag = (args.analysisTag + "-" +
+                           "-".join([str(runconf[i]) for i in
+                                     ["minMQ", "minBQ", "minFA",
+                                      "MaxPValue",
+                                      "minFracAgreed"]]))
+        else:
+            analysisTag = "-".join([str(runconf[i]) for i in
+                                    ["minMQ", "minBQ", "minFA",
+                                     "MaxPValue", "minFracAgreed"]])
+        if(args.outVCF == "default"):
+            OutVCF = ".".join(args.inBAM.split(".")[0:-1] +
+                              [analysisTag, "bmf", "vcf"])
+        else:
+            OutVCF = args.outVCF
+        for pair in runconf.items():
+            print("runconf entry. Key: %s. Value: %s." % (pair[0],
+                                                          pair[1]))
+        """
+        import cProfile
+        import pstats
+        pr = cProfile.Profile()
+        pr.enable()
+        """
 
-            if("bed" in runconf.keys()):
-                print("Reference: %s" % runconf["reference"])
-                # OutVCF = SNVCrawler(args.inBAM, **runconf)
-                OutVCF = SNVCrawler(args.inBAM,
-                                    bed=runconf["bed"],
-                                    minMQ=runconf["minMQ"],
-                                    minBQ=runconf["minBQ"],
-                                    MaxPValue=runconf["MaxPValue"],
-                                    keepConsensus=args.keepConsensus,
-                                    commandStr=commandStr,
-                                    reference=runconf["reference"],
-                                    reference_is_path=True,
-                                    minFracAgreed=runconf["minFracAgreed"],
-                                    minFA=runconf["minFA"],
-                                    OutVCF=OutVCF,
-                                    writeHeader=(not args.is_slave))
-                OutTable = VCFStats(OutVCF)
-            else:
-                OutVCF = SNVCrawler(args.inBAM,
-                                    minMQ=runconf["minMQ"],
-                                    minBQ=runconf["minBQ"],
-                                    MaxPValue=runconf["MaxPValue"],
-                                    keepConsensus=args.keepConsensus,
-                                    commandStr=commandStr,
-                                    reference=runconf["reference"],
-                                    reference_is_path=True,
-                                    minFracAgreed=runconf["minFracAgreed"],
-                                    OutVCF=OutVCF,
-                                    minFA=runconf["minFA"],
-                                    writeHeader=(not args.is_slave))
-                OutTable = VCFStats(OutVCF)
-            """
-            import cStringIO
-            s = cStringIO.StringIO()
-            pr.disable()
-            sortby = "cumulative"
-            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            ps.print_stats()
-            open("cProfile.stats.txt", "w").write(s.getvalue())
-            """
-            sys.exit(0)
+        if("bed" in runconf.keys()):
+            print("Reference: %s" % runconf["reference"])
+            # OutVCF = SNVCrawler(args.inBAM, **runconf)
+            OutVCF = SNVCrawler(args.inBAM,
+                                bed=runconf["bed"],
+                                minMQ=runconf["minMQ"],
+                                minBQ=runconf["minBQ"],
+                                MaxPValue=runconf["MaxPValue"],
+                                keepConsensus=args.keepConsensus,
+                                commandStr=commandStr,
+                                reference=runconf["reference"],
+                                reference_is_path=True,
+                                minFracAgreed=runconf["minFracAgreed"],
+                                minFA=runconf["minFA"],
+                                OutVCF=OutVCF,
+                                writeHeader=(not args.is_slave))
+            OutTable = VCFStats(OutVCF)
+        else:
+            OutVCF = SNVCrawler(args.inBAM,
+                                minMQ=runconf["minMQ"],
+                                minBQ=runconf["minBQ"],
+                                MaxPValue=runconf["MaxPValue"],
+                                keepConsensus=args.keepConsensus,
+                                commandStr=commandStr,
+                                reference=runconf["reference"],
+                                reference_is_path=True,
+                                minFracAgreed=runconf["minFracAgreed"],
+                                OutVCF=OutVCF,
+                                minFA=runconf["minFA"],
+                                writeHeader=(not args.is_slave))
+            OutTable = VCFStats(OutVCF)
+        """
+        import cStringIO
+        s = cStringIO.StringIO()
+        pr.disable()
+        sortby = "cumulative"
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        open("cProfile.stats.txt", "w").write(s.getvalue())
+        """
+        sys.exit(0)
     if(args.bmfsuites == "vcfstats"):
         from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(args.inVCF)

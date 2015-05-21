@@ -3,6 +3,14 @@
 
 1. Error Characterization/Correction:
     1. BMF Paper
+        0. Exemplar.
+            1. http://nar.oxfordjournals.org/content/43/6/e37.full.pdf
+                1. Key differences between our papers.
+                    1. NextSeq vs. MiSeq (new and messier error profiles)
+                    2. Molecular barcoding to get actual truth sets.
+                    3. Calculating contexts for error rates will include both the base that should have been called and the erroneous base.
+                    4. We aim to look a little farther back in motifs, though it depends a lot on which motifs we have to work with in the Bacteriophage Lambda genome.
+                    5. Instead of investigating the effect of library preparations, we are characterizing our polymerase, which is Kapa HiFi, the best on the planet.
         1. Family collapsing (complete)
             1. Purpose: SNVs and small indels, easing local assembly by correcting errors.
             2. Needed for accurate quantification of observed frequencies.

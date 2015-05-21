@@ -25,7 +25,7 @@ if [[ -z $BarcodeLen ]]
 fi
 if [[ -z $NmerIndexPos ]]
     then
-    echo "NmerIndexPos not set - assuming i5. Variable is i7 if set and treated as i5 if not.\n"
+    echo "NmerIndexPos not set - assuming i7. Variable is i5 if set and treated as i7 if not.\n"
     BarcodeLen=8;
 
     #For an i5 index, switch the middle two numbers. BAM
@@ -37,7 +37,7 @@ if [[ -z $NmerIndexPos ]]
     exit 0
 fi
 
-echo "NmerIndexPos set - assuming i7. Variable is i7 if set and treated as i5 if not.\n"
+echo "NmerIndexPos set - assuming i5. Variable is i5 if set and treated as i7 if not.\n"
 
 # For index size 8 and an i7 index. (Call from the directory containing the Data folder)
 /illumina/software/CASAVA-1.8.0/bin/configureBclToFastq.pl --input-dir ./Data/Intensities/BaseCalls/ --output-dir $SampleName --sample-sheet ${SampleSheet} --fastq-cluster-count 1000000000 --ignore-missing-stats --ignore-missing-bcl --use-bases-mask Y148,N16,I${BarcodeLen},Y* --force

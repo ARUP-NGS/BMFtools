@@ -211,7 +211,7 @@ cdef class AlleleAggregateInfo:
                  cython.float AABPSD=-1., cython.float AAMBP=-1.,
                  cython.float minFracAgreed=0.0, cython.long minFA=0,
                  cython.float minPVFrac=0.0, cython.long FSR=-1):
-        cdef list NFList
+        cdef np.ndarray NFList
         cdef cython.long lenR
         cdef PRInfo_t rec
         cdef tuple i
@@ -357,7 +357,7 @@ cdef class AlleleAggregateInfo:
         else:
             self.MPF = nmean(PVFArray)
             self.PFSD = nstd(PVFArray)
-        self.maxND = max(rec.aopt("ND") for rec in self.recList)
+        self.maxND = max(rec.read.opt("ND") for rec in self.recList)
 
 
 cdef class PCInfo:

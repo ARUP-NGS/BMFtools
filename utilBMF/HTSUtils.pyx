@@ -275,7 +275,8 @@ def GetPysamToChrDictFromAlignmentFile(
 
 
 @cython.returns(dict)
-def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
+def GetChrToPysamDictFromAlignmentFile(
+        pysam.calignmentfile.AlignmentFile alignmentfileObj):
     """
     Returns a dictionary of contig names to pysam reference numbers.
     """
@@ -285,14 +286,14 @@ def GetChrToPysamDictFromAlignmentFile(alignmentfileObj):
 
 
 @cython.returns(dict)
-def GetBidirectionalPysamChrDict(alignmentfileObj):
+def GetBidirectionalPysamChrDict(
+        pysam.calignmentfile.AlignmentFile alignmentfileObj):
     """
     Returns a dictionary of contig names to pysam reference numbers
     and vice versa - bi-directional.
     """
-    assert isinstance(alignmentfileObj, pysam.calignmentfile.AlignmentFile)
     refList = list(enumerate(alignmentfileObj.references))
-    return dict(list(cmap(lreverse, refList) + refList))
+    return dict(map(lreverse, refList) + refList)
 
 
 class pFastqProxy:
@@ -1086,6 +1087,9 @@ cdef class pPileupRead:
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
+
+    def opt(*args, **kwargs):
+        return self.alignment.opt(*args, **kwargs)
 
 
 cdef class PileupReadPair:
