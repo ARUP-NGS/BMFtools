@@ -1086,7 +1086,6 @@ cdef class pPileupRead:
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
-        self.opt = PileupRead.alignment.opt
 
 
 cdef class PileupReadPair:
