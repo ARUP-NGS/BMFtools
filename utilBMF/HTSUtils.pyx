@@ -2,7 +2,6 @@
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
 import abc
-from Bio.Seq import Seq
 from copy import copy as ccopy
 from cytoolz import map as cmap, memoize, frequencies as cyfreq
 from functools import partial
@@ -1352,7 +1351,7 @@ class SoftClippedSeq:
         self.is_reverse = is_reverse
 
     def RCChangeStrand(self):
-        self.seq = str(Seq(self.seq).reverse_complement())
+        self.seq = RevCmp(seq)
         self.is_reverse = not self.is_reverse
 
 

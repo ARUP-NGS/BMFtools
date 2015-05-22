@@ -81,7 +81,7 @@ void LayoutPos::setAttributes(char baseArg, char opArg, int RefIDArg, int posArg
     RefID = RefIDArg;
     Position = posArg;
     ReadPosition = readPosArg;
-    quality = qualArg;
+    quality = (base != 'N') ? qualArg: 0; // Turn all quality scores for N bases to 0
     strandedness = strand;
     agreement = FA;
 }
@@ -213,37 +213,52 @@ LayoutOp::LayoutOp(){
 void LayoutOp::setAttributes(std::string cigarSeq, std::vector<int> qualitySlice, std::vector<int> agreementSlice,
         char cigarOperation, int RefIDArg, int startPos, int readStart, int strand)
 {
-    // Convert the quality string to ints.
-    //qualities = std::vector<int>;
     quality = qualitySlice;
     agreement = agreementSlice;
     Operation = cigarOperation;
     pos = startPos;
     readPos = readStart;
     seq = cigarSeq;
+    assert(seq.size() == agreement.size() && quality.size() == agreement.size());
     RefID = RefIDArg;
     strandedness = strand;
     //Build LayoutPos object vector!
     std::vector<LayoutPos> layoutPosVector;
     // Create LayoutPos objects for each.
-    LayoutPos ALP = LayoutPos();
-    for(int k = 0; k < qualitySlice.size(); k++) {
+    char base;
+    int baseQuality, agreeCount, Pos, tmpRPos;
+    /* char baseArg, char opArg, int RefIDArg, int posArg,
+                              int readPosArg, int qualArg, int strand, int FA*/
+    for(int k = 0; k < quality.size(); k++) {
+        //std::cerr << "Now making ALP # " << k + 1 << std::endl;
+        baseQuality = quality[k];
+        agreeCount = agreement[k];
         switch (Operation){
         case 'I':
-            ALP.setAttributes(seq.at(k), Operation, RefID, -1, readPos + k, quality[k], strandedness, agreement[k]);
+            base = seq.at(k);
+            Pos = -1;
+            tmpRPos = readPos + k;
             break;
         case 'S':
-            ALP.setAttributes(seq.at(k), Operation, RefID, -1, readPos + k, quality[k], strandedness, agreement[k]);
+            base = seq.at(k);
+            Pos = -1;
+            tmpRPos = readPos + k;
             break;
         case 'D':
-            ALP.setAttributes('D', Operation, RefID, pos + k, -1, -1, strandedness, agreement[k]);
+            Pos = pos + k;
+            base = 'D';
+            tmpRPos = -1;
             break;
         case 'M':
-            ALP.setAttributes(seq.at(k), Operation, RefID, pos + k, readPos + k, quality[k], strandedness, agreement[k]);
+            Pos = pos + k;
+            base = seq.at(k);
+            tmpRPos = readPos + k;
             break;
         default:
             throw std::runtime_error("Sorry, unsupported cigar character. Email me and I'll change this.");
         }
+        LayoutPos ALP = LayoutPos(base, Operation, RefID, Pos, tmpRPos, baseQuality, strandedness, agreeCount);
+        //std::cerr << ALP.__str__() << " is ALP string." << std::endl;
         layoutPosVector.push_back(ALP);
     }
     layoutPositions = layoutPosVector;
@@ -301,15 +316,13 @@ LayoutOp::LayoutOp(std::string cigarSeq, std::string cigarQual, char cigarOperat
 }
 
 
-std::vector<int> PhredVectorFromString(std::string PVString){
+std::vector<int> IntVectorFromString(std::string PVString){
     std::vector<int> returnVec;
     std::vector<std::string> stringVec;
     boost::split(stringVec, PVString, boost::is_any_of(","));
-    for(int k = 0; k < stringVec.size(); k++){
-    	std::cerr << "String item here is " << stringVec[k] << std::endl;
-    }
-    for(int i = 0; i < returnVec.size(); i++){
-        returnVec.push_back(std::atoi(stringVec[i].c_str()));
+    int vecSize = stringVec.size();
+    for(int i = 0; i < vecSize; i++){
+        returnVec.push_back(std::stoi(stringVec[i]));
     }
     return returnVec;
 }
@@ -327,12 +340,20 @@ std::string PhredStringFromVector(std::vector<int> PVArray){
     return boost::algorithm::join(IntToStringVec(PVArray), ",");
 }
 
+std::vector<int> sliceVector(std::vector<int> inVec, int start, int end){
+    return std::vector<int>(&inVec[start], &inVec[end]);
+}
+/*
+template <typename T>
+std::vector<T> sliceVector(std::vector<T> inVec, int start, int end){
+    return std::vector<T>(&inVec[start], &inVec[end]);
+} */
+
 
 std::vector<LayoutOp> GetLayoutOps(BamAlignment rec) {
-	std::cerr << "Starting GetLayoutOps." << std::endl;
     int cigarLen;
     int StartPosition = rec.Position; // Needed to keep read indices in line with reference.
-    int cumCigarSum = 0;
+    int cigOffset = 0;
     // These next variables are ones I hope to remove once I figure out what I need
     // to initialize LayoutOp.
     std::vector<LayoutOp> operations;
@@ -340,51 +361,52 @@ std::vector<LayoutOp> GetLayoutOps(BamAlignment rec) {
     CigarOp TmpCigarOp;
     cigarLen = rec.CigarData.size();
     std::string PVString;
-	std::cerr << "About to start creating cigar operations.." << std::endl;
+    int readStart;
     for(int i = 0; i < cigarLen; i++) {
-    	std::cerr << "Now working with cigar operation " << i + 1 << " for this record." << std::endl;
         TmpCigarOp = rec.CigarData[i];
-        if(!rec.HasTag("PV")) {
-        	std::cerr << "This record has no PV tag" << std::endl;
-            // Gets quality scores from ASCII phred scores rather than PV numbers.
-            operations.push_back(
-                LayoutOp(rec.QueryBases.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), // Read sequence
-                                  rec.Qualities.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), // Read qualities
-                                  TmpCigarOp.Type, // Cigar operation
-                                  rec.RefID, // Reference ID
-                                  StartPosition + cumCigarSum, // Genomic coords for start of cigar
-                                  cumCigarSum, // Read coords for start of cigar
-                                  rec.IsReverseStrand() ? -1 : 1
-                                  ));
-            cumCigarSum += TmpCigarOp.Length;
-        }
-        else {
-        	std::cerr << "This record has a PV tag!" << std::endl;
+        if(rec.HasTag("PV")) {
             std::string PVString;
             rec.GetTag("PV", PVString);
             std::string FAString;
             rec.GetTag("FA", FAString);
-            std::vector<int> PhredSubVector;
-            std::vector<int> AgreementSubVector;
-        	std::cerr << "About to get Phred/Agreement Vectors" << std::endl;
-            std::vector<int> PhredVector = PhredVectorFromString(PVString);
-            std::vector<int> AgreementVector = PhredVectorFromString(FAString);
-        	std::cerr << "About to get my slice from  Phred/Agreement Vectors" << std::endl;
-        	for(int i = 0; i < PhredVector.size(); i++){
-        		std::cerr << "Phred value at position " << i + 1 << " is " << PhredVector[i] << std::endl;
-        	}
-            for(int k = cumCigarSum; k < cigarLen + cumCigarSum; k++)  {
-            	std::cerr << "Here is the PhredVector string: " << PVString << std::endl;
-                PhredSubVector.push_back(PhredVector[k]);
-                AgreementSubVector.push_back(AgreementVector[k]);
+            std::vector<int> PhredVector = IntVectorFromString(PVString);
+            std::vector<int> AgreementVector = IntVectorFromString(FAString);
+            std::vector<int> PhredSubVector = sliceVector(PhredVector, cigOffset, cigOffset + TmpCigarOp.Length);
+            std::vector<int> AgreementSubVector = sliceVector(PhredVector, cigOffset, cigOffset + TmpCigarOp.Length);
+            std::string querySub = rec.QueryBases.substr(cigOffset, TmpCigarOp.Length);
+            if(querySub.size() != TmpCigarOp.Length){
+                querySub = rec.QueryBases.substr(cigOffset);
             }
-        	std::cerr << "About to initialize the new LayoutOp object" << std::endl;
-            LayoutOp tmpOp = LayoutOp(rec.QueryBases.substr(cumCigarSum, cumCigarSum + TmpCigarOp.Length), //Read sequence
-                    PhredSubVector, AgreementSubVector, TmpCigarOp.Type, rec.RefID, StartPosition + cumCigarSum,
-                    cumCigarSum, rec.IsReverseStrand() ? -1 : 1);
-        	std::cerr << "Successfully initialized the new LayoutOp object" << std::endl;
+            assert(querySub.size() == TmpCigarOp.Length);
+            if(TmpCigarOp.Type != 'D'){
+            	readStart = cigOffset;
+            }
+            else {
+            	readStart = -1;
+            }
+            LayoutOp tmpOp = LayoutOp(querySub, //Read sequence
+                    PhredSubVector, AgreementSubVector, TmpCigarOp.Type, rec.RefID, StartPosition + cigOffset,
+                    readStart, rec.IsReverseStrand() ? -1 : 1);
             operations.push_back(tmpOp);
-            cumCigarSum += TmpCigarOp.Length;
+            if(tmpOp.getOperation() != 'D'){
+                cigOffset += TmpCigarOp.Length;
+            }
+        }
+        else{
+            std::cerr << "This record has no PV tag" << std::endl;
+            // Gets quality scores from ASCII phred scores rather than PV numbers.
+            LayoutOp tmpOp = LayoutOp(rec.QueryBases.substr(cigOffset, TmpCigarOp.Length), // Read sequence
+                    rec.Qualities.substr(cigOffset, TmpCigarOp.Length), // Read qualities
+                    TmpCigarOp.Type, // Cigar operation
+                    rec.RefID, // Reference ID
+                    StartPosition + cigOffset, // Genomic coords for start of cigar
+                    cigOffset, // Read coords for start of cigar
+                    rec.IsReverseStrand() ? -1 : 1
+                    );
+            operations.push_back(tmpOp);
+            if(tmpOp.getOperation() != 'D'){
+                cigOffset += TmpCigarOp.Length;
+            }
         }
     }
     return operations;
@@ -541,6 +563,19 @@ std::vector<CigarOp> AlnLayout::makeCigar(){
     return returnVec;
 }
 
+std::string IntVecToPhred33(std::vector<int> inVec){
+	std::string returnStr;
+	for(auto &i: inVec){
+		if(i <= 93){
+		returnStr += char(i + 33);
+		}
+		else {
+			returnStr += char(126);
+		}
+	}
+	return returnStr;
+}
+
 
 BamAlignment AlnLayout::toBam(){
     BamAlignment returnBam;
@@ -550,6 +585,7 @@ BamAlignment AlnLayout::toBam(){
     returnBam.Position = pos;
     returnBam.SetIsReverseStrand(strandedness); // Keep the strandedness of the original read 1 for convention's sake.
     returnBam.CigarData = makeCigar(); // Create a std::Vector<CigarOp> object from the LayoutOperation objects.
+    returnBam.Qualities = IntVecToPhred33(quality);
     if(pairMerged){
         returnBam.AddTag("MP", "A", 'T'); // Add Merged Pair tag.
         returnBam.SetIsFirstMate(false); // Set that it is neither first nor second, as it is both mates
@@ -582,6 +618,8 @@ BamAlignment AlnLayout::toBam(){
                         continue; // Don't sweat it.
         }
     }
+    std::cerr << "Hey, I just finished making a BAM record from the AlnLayout." << std::endl;
+    std::cerr << returnBam.Name << "\t" << returnBam.QueryBases << "\tQuals: " << returnBam.Qualities << std::endl;
     return returnBam;
 }
 
@@ -591,19 +629,19 @@ std::string AlnLayout::toBamStr(RefVector references){
 
 template <typename T>
 inline std::vector<std::string> vecToStrVec(T inVec){
-	std::vector<std::string>returnVec;
-	for(int i = 0; i < inVec.size(); i++){
-		returnVec.push_back(inVec[i].__str__());
-	}
-	return returnVec;
+    std::vector<std::string>returnVec;
+    for(int i = 0; i < inVec.size(); i++){
+        returnVec.push_back(inVec[i].__str__());
+    }
+    return returnVec;
 }
 /**
 std::vector<std::string> PosVecToStr(std::vector<LayoutPos> inVec){
-	std::vector<std::string>returnVec;
-	for(int i = 0; i < inVec.size(); i++){
-		returnVec.push_back(inVec[i].__str__());
-	}
-	return returnVec;
+    std::vector<std::string>returnVec;
+    for(int i = 0; i < inVec.size(); i++){
+        returnVec.push_back(inVec[i].__str__());
+    }
+    return returnVec;
 } */
 
 std::string AlnLayout::__str__(){
@@ -726,7 +764,7 @@ std::vector<std::string> getBamTagVector(BamAlignment rec){
 }
 
 std::string getBamTagString(BamAlignment rec){
-	std::vector<std::string> bamtags = getBamTagVector(rec);
+    std::vector<std::string> bamtags = getBamTagVector(rec);
     return boost::algorithm::join(bamtags, "\t");
 }
 
@@ -750,8 +788,8 @@ AlnLayout::AlnLayout(BamAlignment rec) {
     rec.GetTag("PV", PVString);
     std::string FAString;
     rec.GetTag("FA", FAString);
-    quality = PhredVectorFromString(PVString);
-    agreement = PhredVectorFromString(FAString);
+    quality = IntVectorFromString(PVString);
+    agreement = IntVectorFromString(FAString);
     strandedness = rec.IsReverseStrand() ? -1 : 1; // Replace that if/then chain with ternary
     operations = GetLayoutOps(rec);
 }
@@ -779,6 +817,15 @@ std::vector<BamAlignment> MergePairedAlignments(BamAlignment rec1, BamAlignment 
     return returnList;
 }
 
+
+std::string CigarDataToStr(std::vector<CigarOp> CigarData){
+	std::stringstream ss;
+	for(int i = 0; i < CigarData.size(); i++){
+		ss >> CigarData[0].Length >> CigarData[0].Type;
+	}
+	return ss.str();
+}
+
 int main(int argc, char* argv[]){
     std::string inputBam, outputBam;
     if(argc == 3) {
@@ -794,6 +841,8 @@ int main(int argc, char* argv[]){
             outputBam += splitOut[i] + ".";
         }
         outputBam += "out.bam";
+        boost::split(splitOut, outputBam, boost::is_any_of("/"));
+        outputBam = splitOut[splitOut.size() - 1]; // Make it a relative rather than absolute path
     }
     else if(argc == 1){
         printf("Usage: I don't know. Position arguments: InputBam, OutputBam.\n");
@@ -808,7 +857,7 @@ int main(int argc, char* argv[]){
     std::cerr << "Opened bam reader" << std::endl;
     const SamHeader header = reader.GetHeader();
     const RefVector references = reader.GetReferenceData();
-    BamAlignment rec;
+    BamAlignment rec, recFromLayout;
     BamWriter writer;
     if(!writer.Open(outputBam, header, references) ) {
         std::cerr << "ERROR: could not open " + outputBam + " for writing. Abort mission!" << std::endl;
@@ -817,11 +866,19 @@ int main(int argc, char* argv[]){
     std::cerr << "Opened bam writer" << std::endl;
     while (reader.GetNextAlignment(rec)) {
         //std::cout << BamToString(rec, references) << std::endl; // This checked to see if BAM formats were being parsed and reformatted correctly.
-    	std::cerr << "I'm about to make an AlnLayout object." << std::endl;
-    	AlnLayout newAlnLayout = AlnLayout(rec);
-    	std::cerr << "I'm about to get the first operation from that object." << std::endl;
-    	LayoutOp newOp = newAlnLayout.getOps()[0];
-    	std::cout << AlnLayout(rec).getOps()[0].__str__() << std::endl;
+    	if(rec.CigarData.size() == 0){
+    		writer.SaveAlignment(rec);
+    		continue;
+    	}
+        AlnLayout newAlnLayout = AlnLayout(rec);
+        std::vector<LayoutOp> layoutOps = newAlnLayout.getOps();
+        /* This block used for when unmapped reads were causing index errors to be thrown.
+        if(layoutOps.size() == 0){
+        	std::cerr << "Cigar string: " << CigarDataToStr(rec.CigarData) << std::endl;
+        }
+        */
+        std::cerr << newAlnLayout.__str__() << " is the first AlnLayout string representation." << std::endl;
+        //recFromLayout = newAlnLayout.toBam();
     }
     reader.Close();
     writer.Close();

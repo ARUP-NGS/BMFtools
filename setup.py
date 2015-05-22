@@ -44,45 +44,10 @@ print("Removing all .c files - this is "
       "important for making sure things get rebuilt.")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine"]
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine"]
-compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
-                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
-                "-fprefetch-loop-arrays", "-floop-strip-mine", "-flto"]
-
-
-
-compilerList = ["marchFlag, "-pipe", "-msse2",
-                "-funroll-loops", "-floop-block",
-                "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
-                "-fbranch-target-load-optimize2",
-                "-ftree-loop-distribution", "-ftree-loop-im", "-fivopts",
-                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-funswitch-loops", "-funsafe-math-optimizations",
-                "-fprefetch-loop-arrays", "-fmodulo-sched",
-                "-fmodulo-sched-allow-regmoves", "-fgcse",
-                "-floop-unroll-and-jam",
-                "--mfpmath=sse", "-fomit-frame-pointer"]
-
-
-compilerList = [marchFlag, "-pipe", "-msse2",
-                "-funroll-loops", "-floop-block",
-                "-floop-strip-mine", "-floop-nest-optimize", "-ftracer",
-                "-fbranch-target-load-optimize2",
-                "-ftree-loop-distribution", "-ftree-loop-im", "-fivopts",
-                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-funswitch-loops",
-                "-fprefetch-loop-arrays", "-fmodulo-sched",
-                "-fmodulo-sched-allow-regmoves", "-fgcse",
-                "-floop-unroll-and-jam",
-                "-fomit-frame-pointer", "-Ofast"]
 """
 ext = cythonize('*/*.pyx') + cythonize("*/*.py") + cythonize("*/*.pxd")
 # Insist on -O3 optimization
-# If more complex optimizations fail, fall back from line 31 to line 30.
+# If more complex optimizations fail, fall back to -O2
 for x in ext:
     x.extra_compile_args += compilerList
 
@@ -94,7 +59,7 @@ config = {
     'version': '0.1.0.0beta',
     'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
                          'cython', 'cutadapt', 'lxml', 'scipy', 'entropy',
-                         'statsmodels'],
+                         'statsmodels', 'pudb', 'Bio'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
@@ -114,5 +79,6 @@ try:
     subprocess.check_call(["cp", "utilBMF/bmftools.py",
                            installDir + "/bmftools"])
 except subprocess.CalledProcessError:
-    raise ValueError("You don't seem to have permissions to install BMFTools"
-                     " executables. You'll have to do that manually.")
+    print("Could not install the bmftools executables - have you set installDir?")
+    sys.exit(1)
+sys.exit(0)
