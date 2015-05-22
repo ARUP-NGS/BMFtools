@@ -239,9 +239,6 @@ Most options are available for command-line as well. If an option is set in both
 
 
 #TODO (ish):
-1. Fastq
-    2. Single-end support
-    3. nmer plus first n bases of R1/R2
 1. SNV:
     2. Error Characterization Code
         1. Write database reading and processing.

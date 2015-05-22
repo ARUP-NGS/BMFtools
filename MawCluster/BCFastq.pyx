@@ -4,9 +4,6 @@ from __future__ import division
 
 """
 Contains various utilities for working with barcoded fastq files.
-TODO: Mark family sizes not before family consolidation but during.
-
-c_string_type and c_string_encoding should speed up the text processing.
 """
 
 import logging
@@ -641,23 +638,27 @@ def GetDescriptionTagDict(readDesc):
     return tagDict
 
 
-@cython.locals(stringency=cython.float, readPairsPerWrite=cython.long,
-               UsecProfile=cython.bint, onlyNumpy=cython.bint)
-def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
-                                 readPairsPerWrite=100, UsecProfile=False,
-                                 onlyNumpy=True, skipSingles=False,
-                                 skipFails=False):
+def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
+                           cython.long readPairsPerWrite=100,
+                           cython.bint UsecProfile=False,
+                           cython.bint onlyNumpy=True,
+                           cython.bint skipSingles=False,
+                           cython.bint skipFails=False):
     if(UsecProfile):
         import cProfile
         import pstats
         pr = cProfile.Profile()
         pr.enable()
+    cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1
+    cdef pysam.cfaidx.FastqFile inFq1, inFq2
+    cdef pFq fqRec, fqRec2
+    cdef list workingSet1, workingSet2, StringList1, StringList2
+    cdef cython.long numProc
     outFqPair1 = TrimExt(fq1) + ".cons.fastq"
     outFqPair2 = TrimExt(fq2) + '.cons.fastq'
-    pl("Now running pairedFastqConsolidateFaster on {} and {}.".format(fq1,
-                                                                       fq2))
+    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1,fq2))
     pl("Command required to duplicate this action:"
-       " pairedFastqConsolidateFaster('{}', '{}', ".format(fq1, fq2) +
+       " pairedFastqConsolidate('{}', '{}', ".format(fq1, fq2) +
        "stringency={}, readPairsPerWrite={})".format(stringency,
                                                      readPairsPerWrite))
     inFq1 = pysam.FastqFile(fq1)
@@ -727,7 +728,7 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1
-            numProc = oadd(numProc, 1)
+            numProc += 1
             continue
     if(UsecProfile):
         s = cStringIO.StringIO()
