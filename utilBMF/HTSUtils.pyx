@@ -295,7 +295,7 @@ def GetBidirectionalPysamChrDict(
     return dict(map(lreverse, refList) + refList)
 
 
-class pFastqProxy:
+cdef class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """

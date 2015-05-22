@@ -24,10 +24,6 @@ from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       mul as omul, add as oadd, attrgetter as oag)
 from subprocess import check_call
 
-import Bio
-from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq as BioSeq
 import cython
 import numpy as np
 from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
@@ -48,6 +44,8 @@ cimport cython
 cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
+cimport utilBMF.HTSUtils
+ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 
 
 letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
@@ -509,23 +507,30 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
 def FastqSingleShading(fq,
                        indexfq="default",
                        outfq="default",
-                       gzip=False):
+                       cython.bint gzip=False,
+                       cython.long head=0):
+    cdef pysam.cfaidx.FastqProxy read1
+    cdef pFq pRead1, pIndexRead
+    cdef pysam.cfaidx.FastqFile inFq1, inIndex
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
         raise ValueError("For an i5/i7 index ")
     if(outfq == "default"):
         outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
-    inFq1 = SeqIO.parse(fq, "fastq")
+    inFq1 = pysam.FastqFile(fq)
     outFqHandle1 = open(outfq, "w")
-    inIndex = SeqIO.parse(indexfq, "fastq")
+    inIndex = pysam.FastqFile(indexfq)
     for read1 in inFq1:
-        indexRead = inIndex.next()
-        if("N" in indexRead.seq):
-            read1.description += "|FP=IndexFail|BS=" + indexRead.seq
-            SeqIO.write(read1, outFqHandle1, "fastq")
+        pIndexRead = pFastqProxy(inIndex.next())
+        pRead1 = pFastqProxy(read1)
+        if("N" in pRead1.pIndexRead.sequence):
+            read1.comment += "|FP=IndexFail|BS=%" % (read1.sequence[:head] +
+                                                     pIndexRead.sequence)
+            outFqHandle1.write(str(read1))
         else:
-            read1.description += "|FP=IndexPass|BS=" + indexRead.seq
-            SeqIO.write(read1, outFqHandle1, "fastq")
+            read1.comment += "|FP=IndexPass|BS=%s" % (read1.sequence[:head] +
+                                                      pIndexRead.sequence)
+            outFqHandle1.write(str(read1))
     outFqHandle1.close()
     if(gzip):
         check_call(['gzip', fq], shell=False)
@@ -534,7 +539,9 @@ def FastqSingleShading(fq,
 
 def HomingSeqLoc(fq, homing, bcLen=12):
     pl("Now beginning HomingSeqLoc.")
-    InFastq = SeqIO.parse(fq, "fastq")
+    cdef pysam.cfaidx.FastqProxy read
+    cdef utilBMF.HTSUtils.pFastqProxy pRead
+    InFastq = pysam.FastqFile(fq)
     Tpref = '.'.join(fq.split('.')[0:-1])
     Prefix = Tpref.split('/')[-1]
     StdFilename = Prefix + '.{}.fastq'.format("homing" + str(bcLen))
@@ -544,18 +551,19 @@ def HomingSeqLoc(fq, homing, bcLen=12):
     ElseFastq = open(ElseFilename, 'w', 0)
     ElseLocations = open(ElseLoc, 'w', 0)
     for read in InFastq:
-        seq = str(read.seq)
+        pRead = pFastqProxy(read)
+        seq = pRead.sequence
         if(seq.find(homing) == -1):
-            read.description += "|FP=HomingFail"
-            SeqIO.write(read, StdFastq, "fastq")
+            pRead.comment += "|FP=HomingFail"
+            ElseFastq.write(str(pRead))
         elif(seq[bcLen:bcLen + len(homing)] == homing):
-            read.description += "|FP=HomingPass"
-            SeqIO.write(read, StdFastq, "fastq")
+            pRead.comment += "|FP=HomingPass"
+            StdFastq.write(str(pRead))
         else:
-            read.description = "|FP=HomingFail"
-            SeqIO.write(read, StdFastq, "fastq")
+            pRead.comment = "|FP=HomingFail"
+            ElseFastq.write(str(pRead))
             ElseLocations.write(repr(seq.find(homing)) + "\t" +
-                                read.name + "\n")
+                                pRead.name + "\n")
     StdFastq.close()
     ElseFastq.close()
     ElseLocations.close()
@@ -602,7 +610,6 @@ def fastx_trim(infq, outfq, n):
 def GetDescTagValue(readDesc, tag="default"):
     """
     Gets the value associated with a given tag.
-    If a SeqRecord object rather than a string
     of read description (string), then the seq
     attribute is used instead of the description.
     """
@@ -742,77 +749,6 @@ def pairedFastqConsolidateFaster(fq1, fq2, stringency=0.9,
     outputHandle1.close()
     outputHandle2.close()
     return outFqPair1, outFqPair2
-
-
-def renameReads(fq1, fq2, outfq1="default", outfq2="default"):
-    """
-    Requires barcode-sorted, consolidated fastq files,
-    filtered to only the shared barcode families
-    """
-    if(outfq1 == "default"):
-        outfq1 = fq1.split('.')[0] + '.cons.R1.fastq'
-    if(outfq2 == "default"):
-        outfq2 = fq2.split('.')[0] + '.cons.R2.fastq'
-    infq1 = SeqIO.parse(fq1, "fastq")
-    infq2 = SeqIO.parse(fq2, "fastq")
-    outfqhandle1 = open(outfq1, "w")
-    outfqhandle2 = open(outfq2, "w")
-    for read1 in infq1:
-        read2 = infq2.next()
-        read2.id = read1.id
-        read2.description = ' '.join(
-            read1.description.split()[1:]).replace('1:N', '2:N')
-        SeqIO.write(read1, outfqhandle1, "fastq")
-        SeqIO.write(read2, outfqhandle2, "fastq")
-    outfqhandle1.close()
-    outfqhandle2.close()
-    infq1.close()
-    infq2.close()
-    return outfq1, outfq2
-
-
-def ShadesRescuePaired(singlefq1,
-                       singlefq2,
-                       toBeRescuedFq1="default",
-                       toBeRescuedFq2="default",
-                       fqToAlign="default",
-                       appendFq1="default",
-                       appendFq2="default",
-                       index="default",
-                       minFamSize=3,
-                       maxMismatches=2):
-    """
-    This extracts a list of all barcodes which have families
-    from the index file provided.
-    It then creates a custom reference for those barcodes.
-    It then creates a dummy fastq which it then aligns to the custom
-    reference.
-    Finally, these reads have their barcodes changed to match the family's,
-    and a BD:i: tag is added to specify how far removed it was.
-    This function has also not been fully written
-    """
-    if(appendFq1 == "default" or appendFq2 == "default"):
-        raise ValueError("Fastq for appending rescued reads required.")
-    if(index == "default"):
-        raise ValueError("Index for initial family sizes required.")
-    ind = open(index, "r")
-    dictEntries = [line.split() for line in ind]
-    BarDict = {}
-    for entry in dictEntries:
-        if(int(entry[0]) >= minFamSize):
-            BarDict[entry[1]] = entry[0]
-    readFq1 = SeqIO.parse(singlefq1, "fastq")
-    readFq2 = SeqIO.parse(singlefq2, "fastq")
-    readToRescue1 = open(toBeRescuedFq1, "w")
-    readToRescue2 = open(toBeRescuedFq2, "w")
-    for read1 in readFq1:
-        read2 = readFq2.next()
-        try:
-            GetDescTagValue(read1.desc, "FM")
-        except KeyError:
-            SeqIO.write(read1, readToRescue1, "fastq")
-            SeqIO.write(read2, readToRescue2, "fastq")
-    raise ThisIsMadness("This rescue function has not been written.")
 
 
 def TrimHomingSingle(

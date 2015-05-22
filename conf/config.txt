@@ -19,5 +19,5 @@ intelDeflator=/yggdrasil/codeRepository/htsjdk-1.127/lib/jni/libIntelDeflater.so
 readLength=65
 sortMem=12G
 MaxPValue=1e-30
-threads=8
+threads=2
 head=2

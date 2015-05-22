@@ -109,3 +109,9 @@ cdef class IDVCFLine(object):
     cdef public cython.float reverseStrandFraction, QUAL, MDP
     cdef public cython.bint BothStrandSupport
     cdef public dict InfoFields, FormatFields
+
+cdef class pFastqProxy:
+    """
+    Python container for pysam.cfaidx.FastqProxy with persistence.
+    """
+    cdef public cython.str comment, quality, sequence, name

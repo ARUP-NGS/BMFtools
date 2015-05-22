@@ -3,9 +3,8 @@ from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm,
                               ReadPairIsDuplex,
                               PysamToChrDict, GetDeletedCoordinates,
                               is_read_softclipped, GetGC2NMapForRead,
-                              GetInsertedStrs, ReadOverlapsBed as RIB)
+                              GetInsertedStrs, ReadOverlapsBed as RIB, RevCmp)
 
-from Bio.Seq import Seq
 from collections import defaultdict
 from itertools import chain
 from numpy import argmax as nargmax
@@ -954,9 +953,9 @@ def BkptSequenceIntraReads(reads):
     posReads = sorted([read for read in reads
                       if read.tlen > 0], key=oag("pos"))
     negSeqs = [read.seq if read.is_reverse else
-               Seq(read.seq).reverse_complement().seq for read in negReads]
+               RevCmp(read.seq) for read in negReads]
     posSeqs = [read.seq if read.is_reverse else
-               Seq(read.seq).reverse_complement().seq for read in posReads]
+               RevCmp(read.seq) for read in posReads]
     negConsensus = MakeConsensus(negSeqs)
     posConsensus = MakeConsensus(posSeqs)
     return newSeq, Success

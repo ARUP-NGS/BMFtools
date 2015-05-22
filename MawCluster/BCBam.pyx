@@ -21,7 +21,6 @@ import numpy as np
 from numpy import (array as nparray, sum as nsum, multiply as nmultiply,
                    subtract as nsubtract, argmax as nargmax,
                    vstack as nvstack, char)
-from Bio import SeqIO
 import pysam
 import cython
 from cytoolz import map as cmap
@@ -31,7 +30,7 @@ from . import BCFastq
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
-                              BwaswCall, samtoolsMergeBam)
+                              BwaswCall, samtoolsMergeBam, pFastqProxy)
 from utilBMF.ErrorHandling import IllegalArgumentError
 from .SVUtils import returnDefault
 from utilBMF import HTSUtils
@@ -40,6 +39,8 @@ cimport numpy as np
 cimport cython
 cimport pysam.calignmentfile
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+cimport utilBMF.HTSUtils
+ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 npchararray = char.array
 
 
@@ -260,6 +261,7 @@ def pairedBarcodeTagging(
     cdef cython.bint addDefault, bwaswRescue
     cdef cython.str coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2
+    cdef pFq pFq1, pFq2
     # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
     if(realigner == "default"):
         raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
@@ -274,9 +276,8 @@ def pairedBarcodeTagging(
     pl("realigner: %s" % realigner)
     # read1Handle = pysam.FastqFile(fq1)
     # read2Handle = pysam.FastqFile(fq2)
-    read1Handle = SeqIO.parse(fq1, "fastq")
-    read2Handle = SeqIO.parse(fq2, "fastq")
-    # read2Handle = SeqIO.parse(fq2, "fastq")
+    read1Handle = pysam.FastqFile(fq1)
+    read2Handle = pysam.FastqFile(fq2)
     postFilterBAM = pysam.AlignmentFile(bam, "rb")
     outBAM = pysam.AlignmentFile(outBAMFile, "wb", template=postFilterBAM)
     suppBAM = pysam.AlignmentFile(suppBam, "wb", template=postFilterBAM)
@@ -292,14 +293,13 @@ def pairedBarcodeTagging(
             continue
         if(entry.is_read1):
             read1bam = entry
-            read1fq = r1hn()
+            pFq1 = pFastqProxy(r1hn())
             continue
-            # print("Read desc: {}".format(tempRead.description))
         elif(entry.is_read2):
             read2bam = entry
-            read2fq = r2hn()
-        descDict1 = getdesc(read1fq.description)
-        descDict2 = getdesc(read2fq.description)
+            pFq2 = pFastqProxy(r2hn())
+        descDict1 = getdesc(pFq1.comment)
+        descDict2 = getdesc(pFq2.comment)
         FM = int(descDict1["FM"])
         try:
             ND1 = int(descDict1["ND"])
@@ -348,8 +348,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", descDict1["PV"], "Z"),
-                               ("FA", descDict1["FA"], "Z"),
+                               ("PV", descDict2["PV"], "Z"),
+                               ("FA", descDict2["FA"], "Z"),
                                ("ND", ND2, "i"),
                                ("NF", ND2 * 1. / float(FM), "f"),
                                ("RG", "default", "Z"),
@@ -372,8 +372,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", descDict1["PV"], "Z"),
-                               ("FA", descDict1["FA"], "Z"),
+                               ("PV", descDict2["PV"], "Z"),
+                               ("FA", descDict2["FA"], "Z"),
                                ("ND", ND2, "i"),
                                ("NF", 1. * ND2 / FM, "f"),
                                ("AF", r2FracAlign, "f"),
@@ -660,12 +660,17 @@ def SamtoolsBam2fq(bamPath, outFastqPath):
 
 
 def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
+    cdef pFq FqPrx
+    cdef pysam.cfaidx.FastqProxy tempRead
+    cdef pysam.calignmentfile.AlignedSegment entry
+    cdef pysam.cfaidx.FastqFile reads
+    cdef dict descDict
     if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
-    reads = SeqIO.parse(fastq, "fastq")
+    reads = pysam.FastqFile(fastq)
     # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
@@ -677,16 +682,12 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
         else:
             try:
                 tempRead = reads.next()
+                FqPrx = pFastqProxy(tempRead)
             except StopIteration:
                 break
-        descDict = getdesc(tempRead.description)
+        descDict = getdesc(FqPrx.comment)
         for key in descDict.iterkeys():
             entry.setTag(key, descDict[key])
-        if("Pass" not in descDict["FP"]):
-            pl(("Standard filter for barcode failed! Val: {}".format(
-                descDict["FP"])))
-            pl(("Tags dictionary is {}".format(descDict)))
-            raise ValueError("Something has gone wrong!")
         if("Pass" in descDict["FP"]):
             entry.tags = entry.tags + [("FP", 1)]
         else:
