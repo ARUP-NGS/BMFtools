@@ -51,15 +51,16 @@ ext = cythonize('*/*.pyx') + cythonize("*/*.py") + cythonize("*/*.pxd")
 for x in ext:
     x.extra_compile_args += compilerList
 
+install_requires = ['pysam', 'cytoolz', 'matplotlib', 'cython', 'cutadapt',
+                    'lxml', 'scipy', 'entropy', 'statsmodels', 'pudb']
+
 config = {
     'description': '',
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
     'version': '0.1.0.0beta',
-    'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
-                         'cython', 'cutadapt', 'lxml', 'scipy', 'entropy',
-                         'statsmodels', 'pudb'],
+    'install_requires': install_requires,
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
@@ -81,4 +82,12 @@ try:
 except subprocess.CalledProcessError:
     print("Could not install the bmftools executables - have you set installDir?")
     sys.exit(1)
+for requirement in install_requires:
+    if(requirement == "pysam"):
+        continue
+    try:
+        print("Now importing %s" % requirement)
+        exec("import %s" % requirement)
+    except ImportError:
+        raise ImportError("Unable to import requirement %s" % requirement)
 sys.exit(0)
