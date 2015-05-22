@@ -59,7 +59,7 @@ config = {
     'version': '0.1.0.0beta',
     'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
                          'cython', 'cutadapt', 'lxml', 'scipy', 'entropy',
-                         'statsmodels', 'pudb', 'Bio'],
+                         'statsmodels', 'pudb'],
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
