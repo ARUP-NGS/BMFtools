@@ -577,8 +577,8 @@ std::string IntVecToPhred33(std::vector<int> inVec){
 }
 
 
-BamAlignment AlnLayout::toBam(){
-    BamAlignment returnBam;
+BamAlignment AlnLayout::toBam(BamAlignment templateAln){
+    BamAlignment returnBam = BamAlignment(templateAln);
     returnBam.Name = Name;
     returnBam.QueryBases = seq;
     returnBam.RefID = RefID;
@@ -593,8 +593,7 @@ BamAlignment AlnLayout::toBam(){
     }
     returnBam.AddTag("PV", "Z", PhredStringFromVector(quality));
     returnBam.AddTag("FA", "Z", PhredStringFromVector(agreement));
-    std::vector<std::string> Tags;
-    boost::split(Tags, returnBam.TagData, boost::is_any_of("\t"));
+    std::vector<std::string> Tags = getBamTagVector(templateAln);
     for(int i = 0; i < Tags.size(); i++){
         std::vector<std::string> TagElements;
         boost::split(TagElements, Tags[i], boost::is_any_of(":"));
@@ -609,22 +608,22 @@ BamAlignment AlnLayout::toBam(){
                         returnBam.AddTag(TagElements[0], "Z", TagElements[2]);
                         break;
                     case 'i':
-                        returnBam.AddTag(TagElements[0], "i", atoi(TagElements[2].c_str()));
+                        returnBam.AddTag(TagElements[0], "i", std::stoi(TagElements[2]));
                         break;
                     case 'f':
-                        returnBam.AddTag(TagElements[0], "f", atof(TagElements[2].c_str()));
+                        returnBam.AddTag(TagElements[0], "f", std::stof(TagElements[2]));
                         break;
                     default:
-                        continue; // Don't sweat it.
+                        throw std::runtime_error("Hey, what is this format?");
         }
     }
-    std::cerr << "Hey, I just finished making a BAM record from the AlnLayout." << std::endl;
-    std::cerr << returnBam.Name << "\t" << returnBam.QueryBases << "\tQuals: " << returnBam.Qualities << std::endl;
     return returnBam;
 }
 
-std::string AlnLayout::toBamStr(RefVector references){
-    return BamToString(toBam(), references);
+
+std::string AlnLayout::toBamStr(BamAlignment templateBam,
+								RefVector references){
+    return BamToString(toBam(templateBam), references);
 }
 
 template <typename T>
@@ -850,7 +849,8 @@ int main(int argc, char* argv[]){
     }
     std::cerr << "Output BAM :" << outputBam;
     BamReader reader;
-    if(!reader.Open(inputBam)) {
+    bool openSuccess = reader.Open(inputBam);
+    if(!openSuccess) {
         std::cerr << "Could not open input BAM" << std::endl;
         return 1;
     }
@@ -859,7 +859,8 @@ int main(int argc, char* argv[]){
     const RefVector references = reader.GetReferenceData();
     BamAlignment rec, recFromLayout;
     BamWriter writer;
-    if(!writer.Open(outputBam, header, references) ) {
+    bool writerSuccess = writer.Open(outputBam, header, references);
+    if(!writerSuccess) {
         std::cerr << "ERROR: could not open " + outputBam + " for writing. Abort mission!" << std::endl;
         throw std::runtime_error("Could not open " + outputBam + " for writing.");
     }
@@ -877,10 +878,11 @@ int main(int argc, char* argv[]){
         	std::cerr << "Cigar string: " << CigarDataToStr(rec.CigarData) << std::endl;
         }
         */
-        std::cerr << newAlnLayout.__str__() << " is the first AlnLayout string representation." << std::endl;
-        //recFromLayout = newAlnLayout.toBam();
+        std::cout << newAlnLayout.toBamStr(rec, references) << std::endl;
+        recFromLayout = newAlnLayout.toBam(rec);
+        writer.SaveAlignment(recFromLayout);
     }
-    reader.Close();
+    bool closeSuccess = reader.Close();
     writer.Close();
     return 0;
 }

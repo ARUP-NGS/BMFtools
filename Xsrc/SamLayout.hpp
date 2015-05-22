@@ -129,6 +129,7 @@ class AlnLayout {
 
     public:
         AlnLayout(BamAlignment rec);
+        BamAlignment toBam(BamAlignment);
 
         int getRef();
         void setRef(int);
@@ -157,7 +158,6 @@ class AlnLayout {
         std::vector<LayoutPos> getLayoutPositions();
 
         int getAlignedLen();
-        BamAlignment toBam();
 
         std::vector<int> getAgreement();
         void setAgreement(std::vector<int>);
@@ -165,7 +165,7 @@ class AlnLayout {
         std::vector<int> getPositions();
 
         std::string __str__();
-        std::string toBamStr(RefVector);
+        std::string toBamStr(BamAlignment, RefVector);
 
         std::vector<CigarOp> makeCigar();
 };
