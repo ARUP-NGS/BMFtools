@@ -397,8 +397,10 @@ def main():
             readsOnTarget = templatesOnTarget
         basesOnTarget = (readsOnTarget * args.read_length *
                          (1 - args.qc_fail) * args.mean_aligned_fraction *
-                         args.mapped_fraction * args.ligation_efficiency)
-        genomeEquivalentsPerPg = 6.022e23 / (args.genome_size * 1e15 * 650)
+                         args.mapped_fraction / args.ligation_efficiency)
+        # Ligation efficiency decreases diversity. Correct for this.
+        genomeEquivalentsPerPg = 6.022e23 / (args.genome_size * 1e15 *
+                                             650 * args.ligation_efficiency)
         meanOnTargetCoverage = basesOnTarget / args.region_size
         NumCopiesDesired = meanOnTargetCoverage / args.FM
         DesiredInputQty = NumCopiesDesired / genomeEquivalentsPerPg

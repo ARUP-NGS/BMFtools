@@ -174,4 +174,5 @@ std::string PhredStringFromVector(std::vector<int>);
 std::vector<std::string> getBamTagVector(BamAlignment);
 std::string getBamTagString(BamAlignment);
 std::string CigarDataToStr(std::vector<CigarOp>);
+std::string CigarOpToStr(CigarOp);
 std::string IntVecToPhred33(std::vector<int>);

@@ -816,13 +816,19 @@ std::vector<BamAlignment> MergePairedAlignments(BamAlignment rec1, BamAlignment 
     return returnList;
 }
 
+std::string CigarOpToStr(CigarOp CigarData){
+	std::stringstream ss;
+	ss >> CigarData.Length >> CigarData.Type;
+	return ss.str();
+}
+
 
 std::string CigarDataToStr(std::vector<CigarOp> CigarData){
-	std::stringstream ss;
-	for(int i = 0; i < CigarData.size(); i++){
-		ss >> CigarData[0].Length >> CigarData[0].Type;
+	std::string returnStr;
+	for(CigarOp& op: CigarData){
+		returnStr += CigarOpToStr(op);
 	}
-	return ss.str();
+	return returnStr;
 }
 
 int main(int argc, char* argv[]){
