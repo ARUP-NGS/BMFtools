@@ -139,6 +139,7 @@ class AlnLayout {
         bool pairMerged;
         int mateStrandedness;
         int firstAlignedBase; // -1 for unmapped
+        std::vector<int> mergedPositions;
 
     public:
         AlnLayout();
@@ -153,6 +154,11 @@ class AlnLayout {
 
         int getFirstAlignedBase(BamAlignment);
         int getFirstAlignedBase();
+
+
+        std::vector<int> getMergedPositions();
+        void setMergedPositions(std::vector<int>);
+        void addMergedPosition(int);
 
         int getRef();
         void setRef(int);
