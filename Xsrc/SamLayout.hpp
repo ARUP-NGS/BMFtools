@@ -17,6 +17,7 @@ class LayoutPos {
         int quality; // Set to -1 for a deletion.
         int strandedness; // -1 for reverse, 1 for forward, 0 for neither.
         int agreement; // Number of reads agreeing on base call.
+        bool isMerged;
 
     public:
         LayoutPos(char, char, int, int, int, int, int, int); // Base, Op, ref id, Position (ref), Position (read), Quality, Strand, Family Agreed
@@ -32,15 +33,22 @@ class LayoutPos {
         void setOperation(char);
         int getPos();
         void setPos(int);
-        int getQuality();
+
+        bool getIsMerged();
+        void setIsMerged(bool);
+
         void setQuality(int);
+        int getQuality();
         void check(); // More of this check could be filled out, but let's just get this compiling.
         bool incrementRefPos();
         bool incrementReadPos();
         int getAgreement();
         void setAgreement(int);
+        int getStrandedness();
+        void setStrandedness(int);
         std::string __str__();
 };
+
 
 
 class LayoutOp {
@@ -56,10 +64,10 @@ class LayoutOp {
         std::string seq;
         std::vector<int> quality; // Store the information as integers. For this purpose, use the PV tags if available.
         std::vector<int> agreement; // Stores the FA tag array.
-        std::vector<LayoutPos> layoutPositions;
         int strandedness;
 
     public:
+        std::vector<LayoutPos> layoutPositions;
         LayoutOp(std::string, std::string, char, int, int, int, int); //Constructor
         LayoutOp();
         LayoutOp(std::string, std::vector<int>, std::vector<int>, char, int, int, int, int); //For PV/FA reads.
@@ -110,6 +118,9 @@ class LayoutOp {
         std::vector<int> getReadPositions();
         std::vector<char> getBaseCalls();
         std::string __str__();
+        void updateSequence();
+        void updateQuality();
+        void updateAgreement();
 };
 
 
@@ -118,7 +129,7 @@ class AlnLayout {
         int length; // Length of the read.
         int pos; // 0-based genomic start position of the cigar operation.
         int RefID;
-        std::string seq;
+        std::string seq; // Read sequence
         std::string Name; // Read name
         std::string TagData; // Tags for the read, used for finally recreating a Bam record.
         std::vector<int> quality; // Quality scores as integers. PV tags if available, normal phred-encoded otherwise.
@@ -126,10 +137,22 @@ class AlnLayout {
         std::vector<LayoutOp> operations;
         int strandedness; // -1 for reverse, 1 for forward, 0 for a merged read pair.
         bool pairMerged;
+        int mateStrandedness;
+        int firstAlignedBase; // -1 for unmapped
 
     public:
+        AlnLayout();
         AlnLayout(BamAlignment rec);
-        BamAlignment toBam(BamAlignment);
+        AlnLayout(std::vector<LayoutPos>); // Creates an AlnLayout object from a list of LayoutPos objects.
+        BamAlignment toBam(BamAlignment); // Uses a template BamAlignment to make a modified object.
+        AlnLayout MergeLayout(AlnLayout); // Merges the layout with another layout, returns the new layout.
+
+
+        std::string getName();
+        void setName(std::string);
+
+        int getFirstAlignedBase(BamAlignment);
+        int getFirstAlignedBase();
 
         int getRef();
         void setRef(int);
@@ -139,6 +162,9 @@ class AlnLayout {
 
         bool isMerged();
         void setIsMerged(bool); // Used to denote that read 1 and read 2 in a pair have been merged into a single read.
+
+        std::string getTagString();
+        void setTagString(std::string);
 
         int getLen();
         void updateLen();
@@ -168,6 +194,13 @@ class AlnLayout {
         std::string toBamStr(BamAlignment, RefVector);
 
         std::vector<CigarOp> makeCigar();
+
+        void updateSequence();
+        void update();
+
+        int getFirstMatchingRef();
+        int getLastMappedBase();
+        AlnLayout(std::vector<LayoutPos>, bool);
 };
 
 std::string PhredStringFromVector(std::vector<int>);
@@ -176,3 +209,4 @@ std::string getBamTagString(BamAlignment);
 std::string CigarDataToStr(std::vector<CigarOp>);
 std::string CigarOpToStr(CigarOp);
 std::string IntVecToPhred33(std::vector<int>);
+int getastart(BamAlignment);

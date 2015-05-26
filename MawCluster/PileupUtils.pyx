@@ -244,6 +244,9 @@ cdef class AlleleAggregateInfo:
                         rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
+        if(lenR == 0):
+            self = None;
+            return;
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
@@ -503,7 +506,7 @@ cdef class PCInfo:
                               minPVFrac=minPVFrac, FSR=self.FailedSVReads)
                               for key in self.VariantDict.iterkeys()]
         self.AltAlleleData = [alt for alt in self.AltAlleleData if
-                              oag("len")(alt) != 0]
+                              oag("len")(alt) != 0 and alt is not None]
         # Generates statistics based on transitions, e.g. ref->alt
         self.MergedAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}

@@ -24,8 +24,8 @@ from entropy import shannon_entropy as shen
 try:
     import re2 as re
 except ImportError:
-    pl("Tried to load re2, a faster version of re. Failed. "
-       "Importing regular re.")
+    print("Tried to load re2, a faster version of re. Failed. "
+          "Importing regular re.")
     import re
 regexcompile = re.compile
 import copy
