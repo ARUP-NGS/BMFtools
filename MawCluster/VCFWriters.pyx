@@ -47,8 +47,8 @@ Settled on two major filters for inclusion in a pileup
 @cython.returns(cython.str)
 def SNVCrawler(inBAM,
                cython.str bed="default",
-               cython.long minMQ=0,
-               cython.long minBQ=0,
+               cython.int minMQ=0,
+               cython.int minBQ=0,
                cython.str OutVCF="default",
                cython.float MaxPValue=1e-30,
                cython.bint keepConsensus=False,
@@ -61,12 +61,12 @@ def SNVCrawler(inBAM,
                cython.str FORMATTags="default",
                cython.bint writeHeader=True,
                cython.float minFracAgreed=0.0,
-               cython.long minFA=2,
+               cython.int minFA=2,
                cython.str experiment="",
                cython.bint parallel=True,
                sampleName="DefaultSampleName",
                conf="default"):
-    cdef cython.long NumDiscordantPairs = 0
+    cdef cython.int NumDiscordantPairs = 0
     cdef cython.str VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR
     cdef pysam.calignmentfile.IteratorColumnAllRefs ICAR
@@ -196,9 +196,9 @@ def SNVCrawler(inBAM,
 
 @cython.returns(tuple)
 def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
-                       cython.long minMQ=-1, cython.long minBQ=-1,
+                       cython.int minMQ=-1, cython.int minBQ=-1,
                        cython.str experiment="",
-                       cython.long minFA=-1, cython.float minFracAgreed=-1.,
+                       cython.int minFA=-1, cython.float minFracAgreed=-1.,
                        cython.float MaxPValue=-1.,
                        cython.bint keepConsensus=False,
                        cython.str reference="default",
@@ -209,7 +209,7 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     cdef pysam.calignmentfile.AlignedSegment read
     cdef pPileupRead_t i
     cdef VCFPos_t pos
-    cdef cython.long NumDiscordantPairs
+    cdef cython.int NumDiscordantPairs
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
@@ -238,9 +238,9 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
 
 @cython.returns(tuple)
 def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
-                         cython.long minMQ=-1, cython.long minBQ=-1,
+                         cython.int minMQ=-1, cython.int minBQ=-1,
                          cython.str experiment="",
-                         cython.long minFA=-1, cython.float minFracAgreed=-1.,
+                         cython.int minFA=-1, cython.float minFracAgreed=-1.,
                          cython.float MaxPValue=-1.,
                          cython.bint keepConsensus=False,
                          cython.str reference="default",
@@ -250,7 +250,7 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
     cdef pysam.calignmentfile.AlignedSegment read
     cdef pPileupRead_t i
     cdef VCFPos_t pos
-    cdef cython.long NumDiscordantPairs
+    cdef cython.int NumDiscordantPairs
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
@@ -279,8 +279,8 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
 @cython.returns(tuple)
 def IteratorColumnRegionToTuple(
         pysam.calignmentfile.IteratorColumnRegion ICR,
-        cython.long minMQ=-1, cython.long minBQ=-1, cython.str experiment="",
-        cython.long minFA=-1, cython.float minFracAgreed=-1.,
+        cython.int minMQ=-1, cython.int minBQ=-1, cython.str experiment="",
+        cython.int minFA=-1, cython.float minFracAgreed=-1.,
         cython.float MaxPValue=-1., puEnd=-1,
         pysam.cfaidx.FastaFile refHandle=None,
         cython.bint keepConsensus=True,
@@ -308,8 +308,8 @@ def IteratorColumnRegionToTuple(
 @cython.returns(cython.str)
 def IteratorColumnRegionToStr(
         pysam.calignmentfile.IteratorColumnRegion ICR,
-        cython.long minMQ=-1, cython.long minBQ=-1, cython.str experiment="",
-        cython.long minFA=-1, cython.float minFracAgreed=-1.,
+        cython.int minMQ=-1, cython.int minBQ=-1, cython.str experiment="",
+        cython.int minFA=-1, cython.float minFracAgreed=-1.,
         cython.float MaxPValue=-1., puEnd=-1,
         pysam.cfaidx.FastaFile refHandle=None,
         cython.bint keepConsensus=True,

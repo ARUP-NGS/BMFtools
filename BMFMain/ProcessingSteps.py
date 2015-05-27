@@ -20,7 +20,7 @@ from MawCluster.FFPE import GetDeaminationFrequencies, FilterByDeaminationFreq
 
 
 @cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
-               addRG=cython.bint, mincov=cython.long, rLen=cython.long)
+               addRG=cython.bint, mincov=cython.int, rLen=cython.int)
 def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                   bamPrefix="default", ref="default", aligner="default",
                   barIndex="default",
@@ -157,7 +157,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     return coorSorted
 
 
-@cython.locals(overlapLen=cython.long,
+@cython.locals(overlapLen=cython.int,
                stringency=cython.float)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       p3Seq="default", p5Seq="default",
@@ -191,9 +191,9 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
     return BConsFastq1, BConsFastq2
 
 
-@cython.locals(minMQ=cython.long, minBQ=cython.long, MakeVCF=cython.bint,
+@cython.locals(minMQ=cython.int, minBQ=cython.int, MakeVCF=cython.bint,
                MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint,
-               minFA=cython.long, minFracAgreed=cython.float,
+               minFA=cython.int, minFracAgreed=cython.float,
                deaminationPVal=cython.float)
 def pairedVCFProc(consMergeSortBAM,
                   ref="default",

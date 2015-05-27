@@ -49,10 +49,10 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     This is slower than the Py version, so I will be working with it to
     get some speed soon.
     """
-    cdef cython.long TotalCG
-    cdef cython.long TotalCG_TA
-    cdef cython.long DP
-    cdef cython.long GC
+    cdef cython.int TotalCG
+    cdef cython.int TotalCG_TA
+    cdef cython.int DP
+    cdef cython.int GC
     cdef np.longdouble_t freq
     validFilters = list(cmap(mc("lower"), HeaderFilterDict.keys()))
     FILTER = FILTER.lower()
@@ -176,9 +176,9 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     return freq
 
 
-@cython.locals(pVal=np.longdouble_t, DOC=cython.long,
+@cython.locals(pVal=np.longdouble_t, DOC=cython.int,
                maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t, AAF=np.longdouble_t,
-               recordsPerWrite=cython.long)
+               recordsPerWrite=cython.int)
 def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                             recordsPerWrite=5000, outVCF="default"):
     """
@@ -248,7 +248,7 @@ def TrainAndFilter(inVCF, maxFreq=0.1, FILTER="",
     return OutVCF
 
 
-@cython.locals(primerLen=cython.long, fixmate=cython.bint)
+@cython.locals(primerLen=cython.int, fixmate=cython.bint)
 def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
                                 fixmate=True):
     """
@@ -299,8 +299,8 @@ def GetTabixDeamFreq(cython.str inVCF):
     that the majority of C-T/G-A calls at low frequencies which are not
     ablated by family demultiplexing are due to formalin fixation.
     """
-    cdef cython.long atCounts
-    cdef cython.long gcCounts
+    cdef cython.int atCounts
+    cdef cython.int gcCounts
     cdef pysam.TabProxies.VCFProxy rec
     cdef cython.float freq
     atCounts = 0
@@ -343,9 +343,9 @@ def GetTabixDeamFreq(cython.str inVCF):
     return freq
 
 
-@cython.locals(pVal=np.longdouble_t, DOC=cython.long,
+@cython.locals(pVal=np.longdouble_t, DOC=cython.int,
                maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t, AAF=np.longdouble_t,
-               recordsPerWrite=cython.long)
+               recordsPerWrite=cython.int)
 def TabixDeamFilter(inVCF, pVal=0.001, ctfreq=0.006,
                     recordsPerWrite=5000, outVCF="default"):
     """

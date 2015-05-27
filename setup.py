@@ -52,7 +52,7 @@ for x in ext:
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam', 'cytoolz', 'matplotlib', 'cython', 'cutadapt',
-                    'lxml', 'scipy', 'entropy', 'statsmodels', 'pudb']
+                    'lxml', 'scipy', 'entropy', 'statsmodels', 're2']
 
 config = {
     'description': '',
@@ -69,19 +69,13 @@ config = {
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
     'include': 'README.md',
-    'package_data': {'': ['README.md']}
+    'package_data': {'': ['README.md']},
+    'scripts': ['utilBMF/bmftools']
 }
 
 
 setup(**config)
 
-try:
-    subprocess.check_call(["cp", "BMFMain/main.py", installDir + "/BMFMain"])
-    subprocess.check_call(["cp", "utilBMF/bmftools.py",
-                           installDir + "/bmftools"])
-except subprocess.CalledProcessError:
-    print("Could not install the bmftools executables - have you set installDir?")
-    sys.exit(1)
 for requirement in install_requires:
     if(requirement == "pysam"):
         continue

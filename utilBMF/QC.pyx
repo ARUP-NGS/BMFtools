@@ -30,7 +30,7 @@ Contains functions and miscellania for QC metrics.
 """
 
 
-@cython.locals(buffer=cython.long)
+@cython.locals(buffer=cython.int)
 def ExtendBed(bedfile, buffer=100, outbed="default"):
     """
     """
@@ -72,7 +72,7 @@ def coverageBed(inBAM, bed="default", outbed="default"):
     return outbed, fracOnTarget
 
 
-@cython.locals(buffer=cython.long)
+@cython.locals(buffer=cython.int)
 def FracOnTarget(inBAM, bed="default", buffer=20):
     """
     Calculates the fraction of mapped reads aligned to a target region.
@@ -80,8 +80,8 @@ def FracOnTarget(inBAM, bed="default", buffer=20):
     buffer option which counts reads just outside of the regions targeted
     as being "on target."
     """
-    cdef cython.long numReadsTotal
-    cdef cython.long numReadsOnTarget
+    cdef cython.int numReadsTotal
+    cdef cython.int numReadsOnTarget
     cdef cython.float fracOnTarget
     covBed, fracOnTarget = coverageBed(inBAM,
                                        bed=ExtendBed(bed, buffer=buffer))
@@ -94,7 +94,7 @@ def FracOnTarget(inBAM, bed="default", buffer=20):
     return fracOnTarget
 
 
-@cython.returns(cython.long)
+@cython.returns(cython.int)
 def CountNumReads(inBAM):
     """
     Simply counts the number of reads in a BAM file.
@@ -111,13 +111,13 @@ def InsertSizeArray(inBAM):
     return [abs(i.tlen) for i in inHandle]
 
 
-@cython.locals(min=cython.long, onTargetBuffer=cython.long)
+@cython.locals(min=cython.int, onTargetBuffer=cython.int)
 def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
                     minFM=2):
-    cdef cython.long TotalReads, FM, MappedReads, UnmappedReads
+    cdef cython.int TotalReads, FM, MappedReads, UnmappedReads
     cdef cython.float fracOnTarget, stdInsert, meanInsert
-    cdef cython.long MappedFamReads, maxInsert
-    cdef cython.long MappedSingletonReads
+    cdef cython.int MappedFamReads, maxInsert
+    cdef cython.int MappedSingletonReads
     outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
     outHandle = open(outfile, "w")
     pl("GetAllQCMetrics running")
@@ -210,11 +210,11 @@ def GetFamSizeStats(inFq, outfile=sys.stdout):
     if(isinstance(outfile, str)):
         outfile = open(outfile, "w")
     cdef pysam.cfaidx.FastqProxy read
-    cdef cython.long numFam = 0
-    cdef cython.long numSing = 0
-    cdef cython.long sumFam = 0
-    cdef cython.long sumAll = 0
-    cdef cython.long famS
+    cdef cython.int numFam = 0
+    cdef cython.int numSing = 0
+    cdef cython.int sumFam = 0
+    cdef cython.int sumAll = 0
+    cdef cython.int famS
     cdef cython.float MeanFamAll
     cdef cython.float MeanRealFam
     cdef pysam.cfaidx.FastqFile FqHandle

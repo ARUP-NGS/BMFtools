@@ -1079,6 +1079,8 @@ LayoutPos mergePositions(LayoutPos pos1, LayoutPos pos2){
         newBase = 'N';
     }
     newStrandedness = 0;
+    std::cerr << "New positions: " << newBase << "\t" << pos1.getReferenceID() << "\t" << pos1.getOperation() << "\t" << pos1.getPos() << "\t-1\t"
+    		<< newQual << "\t0\t" << newAgreement << std::endl;
     LayoutPos returnLP = LayoutPos(newBase, pos1.getReferenceID(), pos1.getOperation(), pos1.getPos(), -1, newQual, newStrandedness, newAgreement);
     returnLP.setIsMerged(true);
     return returnLP;
@@ -1103,6 +1105,9 @@ std::vector<LayoutPos> MergeLayouts(AlnLayout R1Layout, AlnLayout R2Layout){
     // Go LayoutOp by LayoutOp until there's some overlap
     R1PosV = R1Layout.getLayoutPositions();
     R2PosV = R2Layout.getLayoutPositions();
+    // Spit out contents of both layout objects
+    std::cerr << R1Layout.__str__() << std::endl;
+    std::cerr << R2Layout.__str__() << std::endl;
     for(opOffset = 0; opOffset < R1PosV.size(); opOffset++){
         if(R1PosV[opOffset].getPos() == firstR2Base){
             break;
@@ -1135,7 +1140,7 @@ AlnLayout::AlnLayout(std::vector<LayoutPos> lPositions, bool merged=true){
     std::vector<int> sliceQual, sliceAgreement;
     std::vector<LayoutOp> tmpOperations;
     int cigOffset = 0;
-    char workingOp = lPositions[0].getOperation();
+    char workingOp;
     int workingOpCount = 0;
     Name = "MergedLayoutPositionListsInto an AlnLayoutObject. Change me!";
     seq = "";
@@ -1144,6 +1149,7 @@ AlnLayout::AlnLayout(std::vector<LayoutPos> lPositions, bool merged=true){
     RefID = lPositions[0].getReferenceID();
     cigarOpSeq = "";
     for(int i = 0; i < lPositions.size(); i++){
+    	workingOp = lPositions[i].getOperation();
         if(lPositions[i].getIsMerged()){
             mergedPositions.push_back(i);
         }

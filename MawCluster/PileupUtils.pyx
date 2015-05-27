@@ -202,19 +202,19 @@ cdef class AlleleAggregateInfo:
 
     """
     def __init__(self, list recList, cython.str consensus="default",
-                 cython.long mergedSize=-1, cython.long totalSize=-1,
-                 cython.long minMQ=0,
-                 cython.long minBQ=0,
+                 cython.int mergedSize=-1, cython.int totalSize=-1,
+                 cython.int minMQ=0,
+                 cython.int minBQ=0,
                  cython.str contig="default",
-                 cython.long pos=-1,
-                 cython.long DOC=-1,
-                 cython.long DOCTotal=-1,
-                 cython.long NUMALT=-1,
+                 cython.int pos=-1,
+                 cython.int DOC=-1,
+                 cython.int DOCTotal=-1,
+                 cython.int NUMALT=-1,
                  cython.float AABPSD=-1., cython.float AAMBP=-1.,
-                 cython.float minFracAgreed=0.0, cython.long minFA=0,
-                 cython.float minPVFrac=0.0, cython.long FSR=-1):
+                 cython.float minFracAgreed=0.0, cython.int minFA=0,
+                 cython.float minPVFrac=0.0, cython.int FSR=-1):
         cdef np.ndarray NFList
-        cdef cython.long lenR
+        cdef cython.int lenR
         cdef PRInfo_t rec
         cdef tuple i
         if(consensus == "default"):
@@ -380,18 +380,18 @@ cdef class PCInfo:
     of the pileup.
     """
 
-    def __init__(self, pPileupColumn_t PileupColumn, cython.long minBQ=0,
-                 cython.long minMQ=0, cython.bint requireDuplex=True,
-                 cython.float minFracAgreed=0.0, cython.long minFA=0,
+    def __init__(self, pPileupColumn_t PileupColumn, cython.int minBQ=0,
+                 cython.int minMQ=0, cython.bint requireDuplex=True,
+                 cython.float minFracAgreed=0.0, cython.int minFA=0,
                  cython.float minPVFrac=0.66,
                  cython.str exclusionSVTags="MDC,LI",
-                 cython.bint FracAlignFilter=False, cython.long primerLen=20,
+                 cython.bint FracAlignFilter=False, cython.int primerLen=20,
                  cython.str experiment="", cython.float minAF=0.25,
-                 cython.long maxND=10):
+                 cython.int maxND=10):
         cdef PRInfo_t rec
         cdef list pileups, fks, svTags, exclusionTagList
         cdef pPileupRead_t r
-        cdef cython.long lenR, rsn
+        cdef cython.int lenR, rsn
         cdef query_positions
         pileups = PileupColumn.pileups
         if("amplicon" in experiment):
@@ -565,10 +565,10 @@ cdef class PCInfo:
         self.maxND = max(pileupRead.alignment.opt("ND") for pileupRead in pileups)
 
     @cython.returns(AlleleAggregateInfo_t)
-    def __getitem__(self, cython.long index):
+    def __getitem__(self, cython.int index):
         return self.AltAlleleData[index]
 
-    @cython.returns(cython.long)
+    @cython.returns(cython.int)
     def __len__(self):
         return len(self.AltAlleleData)
 
@@ -674,7 +674,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
                                "Avg Total Coverage"]) + "\n")
     pl("Beginning PileupToBed.")
     pileupIterator = inHandle.pileup(max_depth=100000)
-    ChrToPysamDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
+    PysamToChrDict = utilBMF.HTSUtils.GetRefIdDicts()["chrtoid"]
     while True:
         try:
             p = pPileupColumn(next(pileupIterator))
@@ -736,7 +736,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
 
 
 @cython.locals(MergeDOC=cython.float, TotalDOC=cython.float,
-               minMQ=cython.long, minBQ=cython.long)
+               minMQ=cython.int, minBQ=cython.int)
 def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                           outbed="default"):
     """
