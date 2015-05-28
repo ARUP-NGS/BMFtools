@@ -54,7 +54,7 @@ bmftools <subcommand> --help
 
 ## Dependencies
 
-Required python packages: Biopython, pysam, pudb, cytoolz, matplotlib, scipy, statsmodels
+Required python packages: Biopython, pysam, pudb, cytoolz, matplotlib, scipy, statsmodels, numconv
 
 cutadapt is required for adapter trimming.
 
