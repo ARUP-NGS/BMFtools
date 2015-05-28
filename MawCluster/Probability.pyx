@@ -59,7 +59,8 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
 
 @cython.returns(np.ndarray)
 def ConfidenceIntervalAI(cython.int Allele1,
-                         cython.int Allele2, np.longdouble_t pVal=defaultPValue,
+                         cython.int Allele2,
+                         np.longdouble_t pVal=defaultPValue,
                          cython.str method="agresti_coull"):
     """
     Returns the confidence interval for an allelic imbalance

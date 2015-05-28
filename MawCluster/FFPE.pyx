@@ -177,8 +177,8 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
 
 
 @cython.locals(pVal=np.longdouble_t, DOC=cython.int,
-               maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t, AAF=np.longdouble_t,
-               recordsPerWrite=cython.int)
+               maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t,
+               AAF=np.longdouble_t, recordsPerWrite=cython.int)
 def FilterByDeaminationFreq(inVCF, pVal=0.001, ctfreq=0.018,
                             recordsPerWrite=5000, outVCF="default"):
     """
@@ -344,8 +344,8 @@ def GetTabixDeamFreq(cython.str inVCF):
 
 
 @cython.locals(pVal=np.longdouble_t, DOC=cython.int,
-               maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t, AAF=np.longdouble_t,
-               recordsPerWrite=cython.int)
+               maxFreqNoise=np.longdouble_t, ctfreq=np.longdouble_t,
+               AAF=np.longdouble_t, recordsPerWrite=cython.int)
 def TabixDeamFilter(inVCF, pVal=0.001, ctfreq=0.006,
                     recordsPerWrite=5000, outVCF="default"):
     """

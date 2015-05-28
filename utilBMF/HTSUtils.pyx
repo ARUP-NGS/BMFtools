@@ -15,13 +15,6 @@ from subprocess import check_output, check_call, CalledProcessError
 from .ErrorHandling import *
 from collections import deque
 from entropy import shannon_entropy as shen
-try:
-    import re2 as re
-except ImportError:
-    print("Tried to load re2, a faster version of re. Failed. "
-          "Importing regular re.")
-    import re
-regexcompile = re.compile
 import copy
 import cStringIO
 import cython
@@ -37,6 +30,13 @@ import subprocess
 import sys
 import time
 import uuid
+try:
+    import re2 as re
+except ImportError:
+    print("Tried to load re2, a faster version of re. Failed. "
+          "Importing regular re.")
+    import re
+regexcompile = re.compile
 
 cimport numpy as np
 cimport pysam.cfaidx
@@ -109,7 +109,7 @@ def RevCmp(cython.str seq):
 
 
 CigarDict = {"M": 0, "I": 1, "D": 2, "N": 3, "S": 4, "H": 5, "P": 6, "=": 7,
-             "X": 8, 0: "M", 1: "I", 2: "D", 3: "N", 4: "S", 5: "H",6: "P",
+             "X": 8, 0: "M", 1: "I", 2: "D", 3: "N", 4: "S", 5: "H", 6: "P",
              7: "=", 8: "X"}
 
 
@@ -299,6 +299,7 @@ cdef class pFastqProxy:
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
                                         self.sequence, self.quality)
 
+
 @cython.returns(cython.str)
 def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
     """
@@ -306,6 +307,7 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
     """
     return "@%s %s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
                                     fqPrx.sequence, fqPrx.quality)
+
 
 @cython.returns(cython.str)
 def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
@@ -321,7 +323,6 @@ def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
                                       addString,
                                       fqPrx.sequence[firstBase:lastBase],
                                       fqPrx.quality[firstBase:lastBase])
-
 
 
 def FacePalm(string):
@@ -1006,7 +1007,7 @@ def GetOverlappingBases(ReadPair_t pair):
 
 @cython.returns(dict)
 def AlignPairDict(pysam.calignmentfile.AlignedSegment read):
-    return {x:y for y, x in read.aligned_pairs}
+    return {x: y for y, x in read.aligned_pairs}
 
 
 @cython.returns(pysam.calignmentfile.AlignedSegment)
@@ -1735,14 +1736,15 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
     return outBAM
 
 
-@cython.locals(outliers_fraction=np.longdouble_t, contamination=np.longdouble_t,
+@cython.locals(outliers_fraction=np.longdouble_t,
+               contamination=np.longdouble_t,
                window=cython.int)
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                   window=20):
     cdef np.ndarray[np.longdouble_t, ndim = 1] GAFreqNP = f1
     cdef np.ndarray[np.longdouble_t, ndim = 1] CTFreqNP = f2
-    cdef np.ndarray[np.longdouble_t, ndim = 1] FreqArray = nconcatenate(GAFreqNP,
-                                                                   CTFreqNP)
+    cdef np.ndarray[np.longdouble_t, ndim = 1] FreqArray
+    FreqArray = nconcatenate(GAFreqNP, CTFreqNP)
     ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     GAClassifier = ee1.fit(GAFreqNP)
@@ -2013,7 +2015,8 @@ def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
     return False
 
 
-def PartialDeaminationConfTest(np.longdouble_t ctfreq, np.longdouble_t conf=1e-3):
+def PartialDeaminationConfTest(np.longdouble_t ctfreq,
+                               np.longdouble_t conf=1e-3):
     """
     Returns a function that can be easily used by AbstractVCFProxyFilter.
     """
@@ -2063,7 +2066,8 @@ class AbstractVCFProxyFilter(object):
         return rec
 
 
-def MakeVCFProxyDeaminationFilter(np.longdouble_t ctfreq, np.longdouble_t conf=1e-3,
+def MakeVCFProxyDeaminationFilter(np.longdouble_t ctfreq,
+                                  np.longdouble_t conf=1e-3,
                                   key="default", value="*"):
     """
     Returns the VCFProxyFilter object I wanted.
@@ -2625,7 +2629,8 @@ def hamming_cousins(cython.str s, cython.int n,
     ['aaa', 'aab', 'aba', 'abb', 'baa', 'bab', 'bba']
 
     """
-    return chain(*(hamming_cousins_exact(s, i, alphabet) for i in range(n + 1)))
+    return chain(*(hamming_cousins_exact(s, i, alphabet) for i
+                   in range(n + 1)))
 
 
 @cython.returns(Insertion_t)
@@ -2812,7 +2817,6 @@ cdef class Insertion(AbstractIndelContainer):
         return self.uniqStr + "|%s" % len(self.readnames)
 
 
-
 cdef class Deletion(AbstractIndelContainer):
     """
     Expansion of the AbstractIndelContainer object.
@@ -2874,7 +2878,6 @@ cdef class IndelQuiver(object):
         self.minPairs = minPairs
         self.minShen = minShen
         self.minNumSS = minNumSS
-
 
     @cython.returns(cython.int)
     def __len__(self):
@@ -2943,7 +2946,6 @@ cdef class IndelQuiver(object):
                 self[Indel.uniqStr] = Indel
         self.counts = {key: len(values) for key, values in
                        self.readnames.itervalues()}
-
 
     def mergeQuiver(self, IndelQuiver_t quiverObj):
         cdef cython.str key

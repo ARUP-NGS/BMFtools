@@ -676,6 +676,7 @@ def DSI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
             return True
     return False
 
+
 @cython.returns(cython.bint)
 def DDI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
                          pysam.calignmentfile.AlignedSegment read2,

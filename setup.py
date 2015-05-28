@@ -7,6 +7,7 @@ import pysam
 import shlex
 import subprocess
 import sys
+from itertools import chain
 from Cython.Build import cythonize
 # from setuptools import setup
 from distutils.core import setup
@@ -16,19 +17,8 @@ from distutils.core import setup
 #  or copy it manually.
 installDir = "/mounts/bin"
 
-#  Find the ideal -march argument for the system.
-try:
-    print("Retrieving optimal -march flag.")
-    marchValue = subprocess.Popen("gcc -c -Q -march=native --help=target | "
-                                  "grep 'march' | awk '{print $NF}'",
-                                  shell=True,
-                                  stdout=subprocess.PIPE).stdout.read().strip()
-    marchFlag = "-march=%s" % marchValue
-    if(os.path.isfile("help-dummy.o")):
-        os.remove("help-dummy.o")
-except ImportError:
-    print("Error retrieving optimal -march flag. Give up!")
-    marchFlag = ""
+marchFlag = "-march=native"
+
 compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
@@ -46,8 +36,12 @@ print("Removing all .c files - this is "
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
 """
-ext = (cythonize('*/*.pyx', language='c') +
-       cythonize("*/*.py", language="c")
+ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
+"""
+ext = cythonize('*/*.pyx') + cythonize("*/*.py") # Used for more complex cases,
+when, for example, languages need to be specified.
+"""
+
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
@@ -73,7 +67,6 @@ config = {
     'include': 'README.md',
     'package_data': {'': ['README.md']},
 }
-
 
 
 setup(**config)

@@ -170,8 +170,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                                                         indexfq=indexfq,
                                                         head=head)
     else:
-        bcFastq1, bcFastq2 = TrimHomingPaired(inFastq1, inFastq2, homing=homing,
-                                              bcLen=bcLen)
+        bcFastq1, bcFastq2 = TrimHomingPaired(inFastq1, inFastq2,
+                                              homing=homing, bcLen=bcLen)
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
                                                  sortMem=sortMem)
     # check_call(["rm", bcFastq1, bcFastq2])

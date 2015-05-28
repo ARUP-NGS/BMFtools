@@ -42,23 +42,24 @@ cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
 cimport utilBMF.HTSUtils
-#from utilBMF._re2 cimport cpp_string
+# from utilBMF._re2 cimport cpp_string
 ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 
 
 letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
                  0: 'A', 1: 'C', 2: 'G', 3: 'T'}
 
+
 @memoize
 def chr2phFunc(x):
     return chr2ph[x]
 
 
-@cython.locals(checks=cython.int, highMem=cython.bint,
-               parallel=cython.bint, inFq1=cython.str,
-               inFq2=cython.str, sortMem=cython.str)
-def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
-    cdef cpp_string outFq1, outFq2
+@cython.locals(checks=cython.int,
+               parallel=cython.bint, sortMem=cython.str)
+def BarcodeSortBoth(cython.str inFq1, cython.str inFq2,
+                    cython.str sortMem="6G", cython.bint parallel=False):
+    cdef cython.str outFq1, outFq2, highMemStr
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)
@@ -140,7 +141,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
         name = R[0].name
     cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
     cdef np.ndarray[np.int64_t, ndim = 1] FA
-    cdef np.ndarray[char, ndim = 1, mode="c"] finalSeq
+    cdef np.ndarray[char, ndim = 1, mode = "c"] finalSeq
     cdef cython.str lenRStr
     cdef list seqs
     cdef cython.str seq
@@ -194,7 +195,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     TagString = "".join(["|FM=", lenRStr, "|FA=",
                          ",".join(nparray(FA).astype(str)),
                          "|ND=", str(nsubtract(lenR * len(seqs[0]),
-                                                  nsum(FA))),
+                                               nsum(FA))),
                          PVString])
     try:
         consFqString = "\n".join(
@@ -232,7 +233,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
     cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum
     cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
     cdef np.ndarray[np.int64_t, ndim = 1] FA
-    cdef np.ndarray[char, ndim = 1, mode="c"] newSeq
+    cdef np.ndarray[char, ndim = 1, mode = "c"] newSeq
     cdef np.ndarray[cython.str, ndim = 1] seqs
     lenR = len(R)
     Success = True
@@ -477,17 +478,23 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                                                            tempBar),
                level=logging.DEBUG)
             '''
-            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
+            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar,
+                                  read2.sequence[:head])
             f1.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read1.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence, read1.quality))
+                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence,
+                                          read1.quality))
             f2.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read2.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence, read2.quality))
+                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence,
+                                          read2.quality))
         else:
-            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar, read2.sequence[:head])
+            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar,
+                                  read2.sequence[:head])
             f1.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read1.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence, read1.quality))
+                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence,
+                                          read1.quality))
             f2.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read2.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence, read2.quality))
+                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence,
+                                          read2.quality))
         numWritten += 1
     if(useGzip is False):
         ofh1w(f1.getvalue())
@@ -657,7 +664,7 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
     cdef cython.int numProc
     outFqPair1 = TrimExt(fq1) + ".cons.fastq"
     outFqPair2 = TrimExt(fq2) + '.cons.fastq'
-    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1,fq2))
+    pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     pl("Command required to duplicate this action:"
        " pairedFastqConsolidate('{}', '{}', ".format(fq1, fq2) +
        "stringency={}, readPairsPerWrite={})".format(stringency,
