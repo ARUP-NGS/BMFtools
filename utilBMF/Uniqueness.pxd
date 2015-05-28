@@ -12,9 +12,9 @@ cdef class KmerFetcher(object):
     cdef public cython.int mismatches, minMQ, padding
     cdef public dict HashMap
 
-    cdef cython.int getK(self)
-    cdef setK(self, cython.int)
-    cdef cython.str GetBowtieOutput(self, cython.str)
-    cdef FillMap(self, list)
-    cdef list GetUniqueKmers(self, list)
-    cdef list GetKmerList(self, list)
+    cdef public cython.int getK(self)
+    cdef public setK(self, cython.int)
+    cpdef cython.str GetBowtieOutput(self, cython.str)
+    cpdef public FillMap(self, list)
+    cpdef public list GetUniqueKmers(self, list)
+    cdef public list GetKmerList(self, list)

@@ -52,6 +52,10 @@ cdef class KmerFetcher(object):
     Contains parameters for finding representative kmers.
     I want to permit the mixing of kmers of different sizes, so I have
     set a baseK, which is the K that we start using.
+
+    TODO: I'd like to have it know where dropout regions for these kmers
+    are and have it increase the size of k only as necessary... Not sure
+    how to automate that.
     """
     def __init__(self, cython.str ref=None, cython.int padding=-1,
                  cython.int mismatches=-1, cython.int minMQ=1,
@@ -69,14 +73,14 @@ cdef class KmerFetcher(object):
     cdef cython.int getK(self):
         return self.k
 
-    cdef cython.str GetBowtieOutput(self, cython.str fqStr):
+    cpdef cython.str GetBowtieOutput(self, cython.str fqStr):
         return BowtieFqToStr(fqStr, ref=self.ref,
                              seed=self.k, mismatches=self.mismatches)
 
-    cdef FillMap(self, list bedline):
+    cpdef FillMap(self, list bedline):
         self.HashMap[":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
 
-    cdef list GetUniqueKmers(self, list bedline):
+    cpdef list GetUniqueKmers(self, list bedline):
         return GetUniqueItemsL(self.GetKmerList(bedline))
 
     cdef list GetKmerList(self, list bedline):
@@ -120,8 +124,8 @@ def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
     tmpFileHandle = open(tmpFile, "w")
     tmpFileHandle.write(fqStr)
     tmpFileHandle.close()
-    cStr = "bowtie --mm --all -n %s -l %s %s -S %s" % (mismatches, seed,
-                                                       ref, tmpFile)
+    cStr = "bowtie --mm -k 2 -n %s -l %s %s -S %s" % (mismatches, seed,
+                                                      ref, tmpFile)
     pl("Bowtie command string: %s" % cStr, level=logging.DEBUG)
     print("Bowtie command string: %s" % cStr)
     outStr = check_output(cStr, shell=True) # Capture output to string
