@@ -42,12 +42,12 @@ cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
 cimport utilBMF.HTSUtils
+#from utilBMF._re2 cimport cpp_string
 ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 
 
 letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
                  0: 'A', 1: 'C', 2: 'G', 3: 'T'}
-
 
 @memoize
 def chr2phFunc(x):
@@ -58,6 +58,7 @@ def chr2phFunc(x):
                parallel=cython.bint, inFq1=cython.str,
                inFq2=cython.str, sortMem=cython.str)
 def BarcodeSortBoth(inFq1, inFq2, sortMem="6G", parallel=False):
+    cdef cpp_string outFq1, outFq2
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)

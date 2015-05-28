@@ -1,3 +1,4 @@
+# distutils: language = c++
 import numpy as np
 import operator
 import os
@@ -45,7 +46,8 @@ print("Removing all .c files - this is "
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
 """
-ext = cythonize('*/*.pyx') + cythonize("*/*.py") + cythonize("*/*.pxd")
+ext = (cythonize('*/*.pyx', language='c') +
+       cythonize("*/*.py", language="c")
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
@@ -64,14 +66,14 @@ config = {
     'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
-    'scripts': [],
+    'scripts': ['utilBMF/bmftools', 'BMFMain/BMFMain'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
     'include': 'README.md',
     'package_data': {'': ['README.md']},
-    'scripts': ['utilBMF/bmftools']
 }
+
 
 
 setup(**config)
@@ -80,7 +82,7 @@ for requirement in install_requires:
     if(requirement == "pysam"):
         continue
     try:
-        print("Now importing %s" % requirement)
+        # print("Now importing %s" % requirement)
         exec("import %s" % requirement)
     except ImportError:
         raise ImportError("Unable to import requirement %s" % requirement)

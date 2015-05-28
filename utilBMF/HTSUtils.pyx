@@ -7,15 +7,9 @@ from cytoolz import map as cmap, memoize, frequencies as cyfreq
 from functools import partial
 from itertools import groupby, tee, chain, combinations, product
 from MawCluster.Probability import GetCeiling
-from numpy import any as npany
-from numpy import concatenate as nconcatenate
-from numpy import less as nless
-from numpy import max as nmax
-from numpy import mean as nmean
-from numpy import min as nmin
-from numpy import std as nstd
-from operator import iadd as oia
-from operator import itemgetter as oig
+from numpy import (any as npany, concatenate as nconcatenate, less as nless,
+                   max as nmax, mean as nmean, min as nmin, std as nstd)
+from operator import iadd as oia, itemgetter as oig
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
 from .ErrorHandling import *
@@ -64,14 +58,17 @@ def l1(x):
     return x[1]
 
 
+@cython.returns(cython.bint)
 def lisnone(x):
     return x[1] is None
 
 
+@cython.returns(tuple)
 def lreverse(x):
     return (x[1], x[0])
 
 
+@cython.returns(cython.int)
 def linsertsize(x):
     return x.insert_size
 
@@ -111,9 +108,9 @@ def RevCmp(cython.str seq):
     return "".join([CmpDict[i] for i in list(seq)])[::-1]
 
 
-CigarDict = {"M": 0, "I": 1, "D": 2, "N": 3, "S": 4, "H": 5, "P": 6,
-             "=": 7, "X": 8, 0: "M", 1: "D", 3: "N", 4: "S", 5: "H",
-             6: "P", 7: "=", 8: "X"}
+CigarDict = {"M": 0, "I": 1, "D": 2, "N": 3, "S": 4, "H": 5, "P": 6, "=": 7,
+             "X": 8, 0: "M", 1: "I", 2: "D", 3: "N", 4: "S", 5: "H",6: "P",
+             7: "=", 8: "X"}
 
 
 PysamToChrDict = {}

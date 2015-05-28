@@ -355,7 +355,7 @@ def GetICRString(bedline, bampath, minMQ=-1, minFA=-1, minBQ=-1,
         raise ThisIsMadness("Hey, I need a path to an faidx'd "
                             "fasta reference to variant-call.")
     puEnd = bedline[2]
-    string = ("python -c 'import pysam; af = pysam.AlignmentFile("
+    cString = ("python -c 'import pysam; af = pysam.AlignmentFile("
               "\"%s\");  b = af.pileup" % bampath +
               "(\"%s\", %s, max_depth=200000," % (bedline[0], bedline[1]) +
               " multiple_iterators=False);"
@@ -367,7 +367,7 @@ def GetICRString(bedline, bampath, minMQ=-1, minFA=-1, minBQ=-1,
               "d=%s, refHandle=pysam.FastaFile(\"%s\"), " % (puEnd, ref) +
               "keepConsensus=%s, reference=\"%s\"" % (keepConsensus, ref) +
               "); import sys; sys.stdout.write(c)'")
-    return string
+    return cString
 
 
 def GetPopenDispatcherICRs(bed, bampath, minMQ=-1, minFA=-1, minBQ=-1,
