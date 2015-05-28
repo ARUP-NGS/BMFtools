@@ -37,18 +37,15 @@ subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
 """
 ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
-"""
-ext = cythonize('*/*.pyx') + cythonize("*/*.py") # Used for more complex cases,
-when, for example, languages need to be specified.
-"""
 
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
     x.extra_compile_args += compilerList
 
-install_requires = ['pysam', 'cytoolz', 'matplotlib', 'cython', 'cutadapt',
-                    'lxml', 'scipy', 'entropy', 'statsmodels', 're2']
+install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython',
+                    'cutadapt', 'lxml', 'scipy', 'entropy', 'statsmodels',
+                    're2']
 
 config = {
     'description': '',
@@ -71,12 +68,6 @@ config = {
 
 setup(**config)
 
-for requirement in install_requires:
-    if(requirement == "pysam"):
-        continue
-    try:
-        # print("Now importing %s" % requirement)
-        exec("import %s" % requirement)
-    except ImportError:
-        raise ImportError("Unable to import requirement %s" % requirement)
+print("Installation successful!")
+
 sys.exit(0)

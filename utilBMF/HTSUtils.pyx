@@ -102,6 +102,20 @@ pl = printlog
 
 CmpDict = {"A": "T", "C": "G", "G": "C", "T": "A"}
 
+nucConverter = numconv.NumConv(4, "ACGT")  # Used to do permutations
+nci = nucConverter.int2str
+ncs = nucConverter.str2int
+
+nucList = ["A", "C", "G", "T"]
+
+
+@cython.returns(list)
+def permuteNucleotides(cython.long maxn, object nci=nci):
+    """
+    nci should be set to a numConv object's int2str method call.
+    """
+    return map(nci, xrange(maxn))
+
 
 @cython.returns(cython.str)
 def RevCmp(cython.str seq):
@@ -2481,7 +2495,6 @@ def NPadSequence(cython.str seq, cython.int n=300):
     """
     Pads a sequence with "n" Ns.
     """
-    return "%(N)s%(seq)s%(N)s" % {"N": "N" * n, "seq": seq}
     return "N" * n + seq + "N" * n
 
 
@@ -2530,9 +2543,70 @@ def FastqStrFromKmerList(list kmerList):
     return "\n".join(map(SequenceToFakeFq, kmerList))
 
 
+class KmerFetcher(object):
+    """
+    Contains parameters for finding representative kmers.
+    I want to permit the mixing of kmers of different sizes, so I have
+    set a baseK, which is the K that we start using.
+    """
+    def __init__(self, cython.str ref=None, cython.int padding=-1,
+                 cython.int mismatches=-1, cython.int minMQ=1,
+                 cython.int k=30):
+        self.ref = ref
+        self.mismatches = mismatches
+        self.minMQ = minMQ
+        self.padding = padding
+        self.k = k
+        self.HashMap = {}
+
+    def setK(cython.int newK):
+        self.k = newK
+    
+    @cython.returns(cython.int)
+    def getK(self):
+        return self.k
+
+    @cython.returns(cython.str)
+    def GetBowtieOutput(self, cython.str fqStr):
+        return BowtieFqToStr(fqStr, ref=self.ref,
+                             seed=self.k, mismatches=self.mismatches)
+
+    def FillMap(self, list bedline):
+        self.HashMap[":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
+
+    # Note: k can be overridden here for cases where no smaller kmers are unique
+    @cython.returns(list)
+    def GetUniqueKmers(self, list bedline):
+        return GetUniqueItemsL(self.GetKmerList(bedline))
+
+    # Note: k can be overridden here for cases where no smaller kmers are unique
+    @cython.returns(list)
+    def GetKmerList(self, list bedline):
+        return GetRepresentativeKmerList(self.ref, k=self.k, bedline=bedline,
+                                         mismatches=self.mismatches,
+                                         minMQ=self.minMQ,
+                                         padding=self.padding, seedlen=self.k)
+
+@cython.returns(dict)
+def GetRepresentativeKmerDict(*args, **kwargs):
+    return cyfreq(GetRepresentativeKmerList(*args, **kwargs))
+
+
+@cython.returns(list)
+def GetRepresentativeKmerList(cython.str ref, cython.int k=30,
+                              list bedline=[],
+                              cython.int padding=-1, cython.int seedlen=-1,
+                              cython.int mismatches=-1, cython.int minMQ=1):
+    cdef cython.str fqStr, btOutStr
+    fqStr = FastqStrFromKmerList(GetKmersToCheck(ref, k=k, bedline=bedline,
+                                                 padding=padding))
+    btOutStr = BowtieFqToStr(fqStr, ref=ref, seed=seedlen, mismatches=mismatches)
+    return GetUniqMQs(btOutStr, minMQ=minMQ)
+
+
 @cython.returns(cython.str)
-def Bowtie2FqToStr(cython.str fqStr, cython.str ref=None,
-                   cython.int seed=-1, cython.int mismatches=20):
+def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
+                  cython.int seed=-1, cython.int mismatches=-1):
     """
     Returns the string output of a bowtie2 call.
     With bowtie, you can specify precisely the number of permitted mismatches
@@ -2548,28 +2622,48 @@ def Bowtie2FqToStr(cython.str fqStr, cython.str ref=None,
     tmpFileHandle = open(tmpFile, "w")
     tmpFileHandle.write(fqStr)
     tmpFileHandle.close()
-    cStr = "bowtie %s -n %s -l %s -U %s" % (ref, mismatches, seed, tmpFile)
-    outStr = check_output(cStr, shell=True)
-    check_call(["rm", tmpFile])
+    cStr = "bowtie --mm --all -n %s -l %s %s -S %s" % (mismatches, seed,
+                                                       ref, tmpFile)
+    pl("Bowtie command string: %s" % cStr, level=logging.DEBUG)
+    print("Bowtie command string: %s" % cStr)
+    outStr = check_output(cStr, shell=True) # Capture output to string
+    # check_call(["rm", tmpFile])  # Delete the temporary file.
+    print("Returning bowtieFqToStr output")
     return outStr
 
 
 @cython.returns(list)
-def GetMQPassReads(cython.str bwtStr, cython.int minMQ=1):
+def GetMQPassReadsBowtie1(cython.str bwtStr):
     """
     Takes a string output from bowtie and gets the names of the reads
     with MQ >= minMQ. Defaults to 1 (for a unique alignment)
     """
-    cdef list readnames
-    cdef cython.str line
+    cdef list lines, i
+    cdef cython.str f
     cdef tuple nameCount
-    readnames = [line.split("\t")[0] for line in bwtStr.split("\n") if
-                 line[0] != "@" and int(line.split("\t")[4]) >= minMQ]
-    uniquereadnames = [nameCount[0] for nameCount in
-                       cyfreq(readnames).iteritems() if
-                       nameCount[1] == 1]
-    pl("# of passing read names: %s" % len(uniquereadnames))
-    return uniquereadnames
+    return [i[0] for i in [f.strip().split("\t") for
+                           f in bwtStr.split("\n") if
+                           f != "" and f[0] != "@"]
+            if i[4] == "255"]
+
+
+@cython.returns(list)
+def GetUniqueItemsD(dict inDict):
+    return [i[0] for i in inDict.iteritems() if i[1] == 1]
+
+
+@cython.returns(list)
+def GetUniqueItemsL(list inList):
+    return GetUniqueItemsD(cyfreq(inList))
+
+
+@cython.returns(list)
+def GetUniqMQs(cython.str bwtStr, cython.int minMQ=1):
+    """
+    Takes a string output from bowtie and gets the names of the reads
+    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
+    """
+    return GetUniqueItemsL(GetMQPassReadsBowtie1(bwtStr))
 
 
 def GetDSIndels(inBAM, outBAM):

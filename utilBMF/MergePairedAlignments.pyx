@@ -140,7 +140,7 @@ cdef class Layout(object):
                         i not in ["S", "D"]])
 
 
-def LayoutSortKeySK(x):
+def LayoutSortKeySK(x, oagsk=oagsk):
     """
     Pre-allocating the sort key function is 20% as fast as allocating
     it at each call. Total sort is ~10% faster by preallocating.
@@ -152,6 +152,6 @@ def LayoutSortKeySK(x):
 
 
 @cython.returns(list)
-def MergeLayouts(Layout L1, Layout L2):
+def MergeLayouts(Layout L1, Layout L2, oagsk=oagsk):
     L1, L2 = sorted((L1, L2), key=oagsk)  # First in pair goes first
     pass

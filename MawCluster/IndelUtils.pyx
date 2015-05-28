@@ -327,11 +327,9 @@ def GetIDVCFHeader(fileFormat="default", commandStr="default",
     for key in sorted(IDFilterDict.keys()):
         HeaderLinesStr += str(IDFilterDict[key]) + "\n"
     # INFO lines
-    HeaderLinesStr += "\n".join([str(IDInfoDict[key]) for
-                       key in sorted(IDInfoDict.keys())]) + "\n"
+    HeaderLinesStr += "\n".join(map(str, sorted(IDInfoDict.keys()))) + "\n"
     # FORMAT lines
-    HeaderLinesStr += "\n".join([str(IDFormatDict[key]) for
-                       key in IDFormatDict.keys()]) + "n"
+    HeaderLinesStr += "\n".join(map(str, sorted(IDFormatDict.keys()))) + "\n"
     # commandline line
     if(commandStr != "default"):
         HeaderLinesStr += str(HeaderCommandLine(

@@ -25,7 +25,7 @@ from cytoolz import (map as cmap, frequencies as cyfreq,
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair, ssStringFromRead,
-                              PysamToChrDict)
+                              PysamToChrDict, nucList)
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -74,7 +74,6 @@ def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
 
 # Let's avoid typing this so many times and avoid calling the keys method
 # on dictionaries which have only these 4 nucleotides as keys.
-nucList = ["A", "C", "G", "T"]
 
 
 cdef class pPileupColumn:
@@ -245,8 +244,8 @@ cdef class AlleleAggregateInfo:
         # Check that all alt alleles are identical
         lenR = len(self.recList)
         if(lenR == 0):
-            self = None;
-            return;
+            self = None
+            return
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
@@ -396,7 +395,7 @@ cdef class PCInfo:
         pileups = PileupColumn.pileups
         if("amplicon" in experiment):
             self.ampliconFailed = sum(r for r in pileups
-                                       if r.query_position <= primerLen)
+                                      if r.query_position <= primerLen)
             pileups = [r for r in pileups
                        if r.query_position > primerLen]
         self.experiment = experiment
@@ -410,17 +409,17 @@ cdef class PCInfo:
         self.pos = PileupColumn.reference_pos
         #  pl("pos: %s" % self.pos)
         self.FailedQCReads = sum(pileupRead.opt("FP") == 0
-                                  for pileupRead in pileups)
+                                 for pileupRead in pileups)
         self.FailedFMReads = sum(pileupRead.opt("FM") < minFA
-                                  for pileupRead in pileups)
+                                 for pileupRead in pileups)
         self.FailedAFReads = sum(pileupRead.opt("AF") < minAF
-                                  for pileupRead in pileups)
+                                 for pileupRead in pileups)
         self.FailedNDReads = sum(pileupRead.opt("ND") > maxND
-                                  for pileupRead in pileups)
+                                 for pileupRead in pileups)
         self.FailedBQReads = sum(
-            pileupRead.alignment.query_qualities
-             [pileupRead.query_position] < self.minBQ
-             for pileupRead in pileups)
+            pileupRead.alignment.query_qualities[
+                pileupRead.query_position] < self.minBQ for
+            pileupRead in pileups)
         self.FailedMQReads = sum(
             [pileupRead.alignment.mapping_quality < self.minMQ
              for pileupRead in pileups])
@@ -560,9 +559,12 @@ cdef class PCInfo:
         self.AlleleFreqStr = "\t".join(
             cmap(str, [self.contig, self.pos, self.consensus,
                        self.MergedReads, self.TotalReads, self.MergedCountStr,
-                       self.TotalCountStr, self.MergedFracStr, self.TotalFracStr,
-                       self.MergedStrandednessStr, self.TotalStrandednessStr]))
-        self.maxND = max(pileupRead.alignment.opt("ND") for pileupRead in pileups)
+                       self.TotalCountStr, self.MergedFracStr,
+                       self.TotalFracStr,
+                       self.MergedStrandednessStr,
+                       self.TotalStrandednessStr]))
+        self.maxND = max(pileupRead.alignment.opt("ND") for
+                         pileupRead in pileups)
 
     @cython.returns(AlleleAggregateInfo_t)
     def __getitem__(self, cython.int index):

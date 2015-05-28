@@ -12,7 +12,7 @@ from cytoolz import map as cmap
 from . import BCVCF
 from .SNVUtils import GetVCFHeader
 from .PileupUtils import (pPileupColumn,
-                                    GetDiscordantReadPairs, PCInfo)
+                          GetDiscordantReadPairs, PCInfo)
 from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
                               ParseBed, PopenDispatcher, PopenCall,
                               parseConfig, TrimExt)
@@ -355,19 +355,19 @@ def GetICRString(bedline, bampath, minMQ=-1, minFA=-1, minBQ=-1,
         raise ThisIsMadness("Hey, I need a path to an faidx'd "
                             "fasta reference to variant-call.")
     puEnd = bedline[2]
-    cString = ("python -c 'import pysam; af = pysam.AlignmentFile("
-              "\"%s\");  b = af.pileup" % bampath +
-              "(\"%s\", %s, max_depth=200000," % (bedline[0], bedline[1]) +
-              " multiple_iterators=False);"
-              "from MawCluster.VCFWriters import IteratorColumnRegionToStr;" +
-              "c = IteratorColumnRegionToStr(b, minMQ=%s, minBQ=" % (minMQ) +
-              "%s, minFA=%s, experiment=\"%s\", minFr" % (minBQ, minFA,
-                                                          experiment) +
-              "acAgreed=%s, MaxPValue=%s, puEn" % (minFracAgreed, MaxPValue) +
-              "d=%s, refHandle=pysam.FastaFile(\"%s\"), " % (puEnd, ref) +
-              "keepConsensus=%s, reference=\"%s\"" % (keepConsensus, ref) +
-              "); import sys; sys.stdout.write(c)'")
-    return cString
+    cStr = ("python -c 'import pysam; af = pysam.AlignmentFile("
+            "\"%s\");  b = af.pileup" % bampath +
+            "(\"%s\", %s, max_depth=200000," % (bedline[0], bedline[1]) +
+            " multiple_iterators=False);"
+            "from MawCluster.VCFWriters import IteratorColumnRegionToStr;" +
+            "c = IteratorColumnRegionToStr(b, minMQ=%s, minBQ=" % (minMQ) +
+            "%s, minFA=%s, experiment=\"%s\", minFr" % (minBQ, minFA,
+                                                        experiment) +
+            "acAgreed=%s, MaxPValue=%s, puEn" % (minFracAgreed, MaxPValue) +
+            "d=%s, refHandle=pysam.FastaFile(\"%s\"), " % (puEnd, ref) +
+            "keepConsensus=%s, reference=\"%s\"" % (keepConsensus, ref) +
+            "); import sys; sys.stdout.write(c)'")
+    return cStr
 
 
 def GetPopenDispatcherICRs(bed, bampath, minMQ=-1, minFA=-1, minBQ=-1,
