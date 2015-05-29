@@ -55,6 +55,14 @@ def chr2phFunc(x):
     return chr2ph[x]
 
 
+def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
+    return ("pr -mts <(cat %s | paste - - - -) <(cat %s | " % (Fq1, Fq2) +
+            "paste - - - -) <(cat %s | paste - - - -) | awk" % IndexFq +
+            "'BEGIN {{FS=OFS=\"\t\"}};{{BS=\"|BS=\"$10\"\"substr($2,"
+            "0,2)\"\"substr($6,0,2); print $1\"\"BS, $2, $3, $4, $5\"\"BS, "
+            "$6, $7, $8}}' | sort -t\"|\" -k2,2 -k1,1 | tr '\t' '\n'")
+
+
 @cython.locals(checks=cython.int,
                parallel=cython.bint, sortMem=cython.str)
 def BarcodeSortBoth(cython.str inFq1, cython.str inFq2,

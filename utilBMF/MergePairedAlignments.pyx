@@ -5,10 +5,14 @@ import pysam
 import cython
 import numpy as np
 import logging
-from utilBMF.HTSUtils import CigarDict, printlog as pl
+from utilBMF.HTSUtils import CigarDict, printlog as pl, PysamToChrDict, ph2chr
 from operator import attrgetter as oag
+from itertools import izip, groupby
 oagsk = oag("firstMapped")
 oagbase = oag("base")
+oagop = oag("operation")
+oagqual = oag("quality")
+oagag = oag("agreement")
 
 cimport pysam.calignmentfile
 cimport cython
@@ -120,11 +124,6 @@ cdef class Layout(object):
     """
     Holds a read and its layout information.
     """
-    def __init__(self, pysam.calignmentfile.AlignedSegment rec,
-                 list layoutPositions, cython.int firstMapped):
-        self.read = rec
-        self.positions = layoutPositions
-        self.firstMapped = firstMapped
 
     @classmethod
     def fromread(cls, pysam.calignmentfile.AlignedSegment rec):
@@ -133,11 +132,92 @@ cdef class Layout(object):
     def __getitem__(self, index):
         return self.positions[index]
 
-    @cython.returns(cython.str)
-    def getSeq(self):
+    def __len__(self):
+        return len(self.positions)
+
+    cpdef list get_tags(self):
+        return list(self.tagDict.iteritems())
+
+    cpdef cython.str getSeq(self):
         cdef LayoutPos i
         return "".join([i for i in map(oagbase, self.positions) if
                         i not in ["S", "D"]])
+
+    @cython.returns(cython.int)
+    def getRefPosForFirstPos(self):
+        cdef LayoutPos i
+        cdef cython.int count
+        for count, i in enumerate(self):
+            if(i.operation == "M"):
+                return i.pos - count
+
+    @cython.returns(list)
+    def getAgreement(self, oagag=oagag):
+        cdef cython.int i
+        return [i for i in map(oagag, self.positions) if i >= 0]
+
+    @cython.returns(list)
+    def getQual(self, oagqual=oagqual):
+        cdef cython.int i
+        return [i for i in map(oagqual, self.positions) if i >= 0]
+
+    def getQualString(self):
+        return map(ph2chr, self.getQual())
+
+    @cython.returns(cython.int)
+    def getLastRefPos(self):
+        """
+        Finds the reference position which "matches" the last base in the layout.
+        This counts for any cigar operation.
+        """
+        cdef LayoutPos i
+        cdef cython.int lastMPos, countFromMPos
+        lastMPos = 0
+        for count, i in enumerate(self):
+            countFromMPos += 1
+            if(i.operation == "M"):
+                lastMPos = i.pos
+                countFromMPos = 0
+        return lastMPos + countFromMPos
+
+    def update_tags(self):
+        self.tagDict["PV"] = ",".join(map(str, self.getQual()))
+        self.tagDict["FA"] = ",".join(map(str, self.getAgreement()))
+
+    @cython.returns(list)
+    def getOperations(self, oagop=oagop):
+        return map(oagop, self.positions)
+
+    cpdef cython.str getCigarString(self):
+        cdef list nums = []
+        cdef list ops = []
+        for k, g in groupby(self.getOperations()):
+            nums.append(str(len(list(g))))
+            ops.append(k)
+        return "".join([op + num for op, num in izip(ops, nums)])
+
+    @cython.returns(cython.str)
+    def __str__(self):
+        self.update_tags()
+        return "\t".join(map(
+                str, [self.Name, self.flag, self.contig,
+                      self.getRefPosForFirstPos(), "-137",
+                      self.getCigarString(), "*", "0", "0", self.getSeq(),
+                      self.getQualString()] + self.get_tags()))
+
+    def __init__(self, pysam.calignmentfile.AlignedSegment rec,
+                 list layoutPositions, cython.int firstMapped,
+                 PysamToChrDict=PysamToChrDict):
+        self.read = rec
+        self.positions = layoutPositions
+        self.firstMapped = firstMapped
+        self.InitPos = rec.pos
+        self.Name = rec.query_name
+        self.contig = PysamToChrDict[rec.reference_id]
+        self.flag = rec.flag
+        self.tagDict = {tag[0]: tag[1] for tag in rec.get_tags() if
+                        tag[0] not in ["PV", "FA"]}
+        self.update_tags()
 
 
 def LayoutSortKeySK(x, oagsk=oagsk):

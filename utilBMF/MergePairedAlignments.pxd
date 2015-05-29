@@ -8,4 +8,10 @@ cdef class LayoutPos(object):
 cdef class Layout(object):
     cdef public pysam.calignmentfile.AlignedSegment read
     cdef public list positions
-    cdef public cython.int firstMapped
+    cdef public dict tagDict
+    cdef public cython.int firstMapped, InitPos, flag
+    cdef public cython.str Name, contig
+
+    cpdef cython.str getCigarString(self)
+    cpdef cython.str getSeq(self)
+    cpdef list get_tags(self)
