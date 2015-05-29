@@ -7,10 +7,12 @@ import cython
 import pysam
 import uuid
 import logging
-from subprocess import check_output
-from utilBMF.HTSUtils import GetUniqueItemsL, GetUniqueItemsD, ThisIsMadness, printlog as pl
+from subprocess import check_output, check_call
+from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
+                              ThisIsMadness, printlog as pl, ParseBed)
 from cytoolz import frequencies as cyfreq
 cimport cython
+
 
 @cython.returns(cython.str)
 def SequenceToFakeFq(cython.str seq):
@@ -47,11 +49,34 @@ def FastqStrFromKmerList(list kmerList):
     return "\n".join(map(SequenceToFakeFq, kmerList))
 
 
+cdef class RefKmer(object):
+    """
+    Contains useful information regarding representative kmers selected
+    from reference sequence.
+    """
+
+    def __init__(self, cython.str seq, cython.str contig=None,
+                 cython.int pos=-1):
+        assert pos >= 0  # pos needs to be set
+        self.contig = contig
+        self.seq = seq
+        self.len = len(seq)
+        self.pos = pos
+
+    @cython.returns(cython.str)
+    def __str__(self):
+        return "%s|%s|%s" % (self.contig, self.pos, self.seq)
+
+
 cdef class KmerFetcher(object):
     """
     Contains parameters for finding representative kmers.
     I want to permit the mixing of kmers of different sizes, so I have
     set a baseK, which is the K that we start using.
+
+    minMQ defaults to 1, meaning a unique mapping for most aligners.
+    Bowtie instead uses 255 to refer to unique alignments and (0,3) to mark
+    multiple acceptable alignments.
 
     TODO: I'd like to have it know where dropout regions for these kmers
     are and have it increase the size of k only as necessary... Not sure
@@ -73,37 +98,76 @@ cdef class KmerFetcher(object):
     cdef cython.int getK(self):
         return self.k
 
-    cpdef cython.str GetBowtieOutput(self, cython.str fqStr):
-        return BowtieFqToStr(fqStr, ref=self.ref,
-                             seed=self.k, mismatches=self.mismatches)
+    cpdef cython.str getFastqString(self, list bedline):
+        return FastqStrFromKmerList(GetKmersToCheck(self.ref, k=self.k,
+                                                    bedline=bedline,
+                                                    padding=self.padding))
+
+    cpdef cython.str getOutputString(self, list bedline):
+        return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
 
     cpdef FillMap(self, list bedline):
-        self.HashMap[":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
+        self.HashMap[
+            ":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
 
     cpdef list GetUniqueKmers(self, list bedline):
-        return GetUniqueItemsL(self.GetKmerList(bedline))
+        return GetMQPassRefKmersMem(self.getOutputString(bedline),
+                                    maxNM=self.mismatches)
 
-    cdef list GetKmerList(self, list bedline):
-        return GetRepresentativeKmerList(self.ref, k=self.k, bedline=bedline,
-                                         mismatches=self.mismatches,
-                                         minMQ=self.minMQ,
-                                         padding=self.padding, seedlen=self.k)
+    cpdef FMfrombed(self, cython.str bedfile):
+        cdef list bedline
+        for bedline in ParseBed(bedfile):
+            self.FillMap(bedline)
+
+    def __getitem__(self, key):
+        return self.HashMap[key]
+
+    def __iteritems__(self, *args, **kwargs):
+        return self.HashMap.iteritems(*args, **kwargs)
+
+    def __items__(self, *args, **kwargs):
+        return self.HashMap.items(*args, **kwargs)
+
+    def __itervalues__(self, *args, **kwargs):
+        return self.HashMap.itervalues(*args, **kwargs)
+
+    def __values__(self, *args, **kwargs):
+        return self.HashMap.values(*args, **kwargs)
+
+    def __iterkeys__(self, *args, **kwargs):
+        return self.HashMap.iterkeys(*args, **kwargs)
+
+    def __keys__(self, *args, **kwargs):
+        return self.HashMap.keys(*args, **kwargs)
+
+    def __keys__(self, *args, **kwargs):
+        return self.HashMap.keys(*args, **kwargs)
+
+    def __keys__(self, *args, **kwargs):
+        return self.HashMap.keys(*args, **kwargs)
+
 
 @cython.returns(dict)
 def GetRepresentativeKmerDict(*args, **kwargs):
-    return cyfreq(GetRepresentativeKmerList(*args, **kwargs))
+    return cyfreq(GetRepKmersBwt(*args, **kwargs))
 
 
 @cython.returns(list)
-def GetRepresentativeKmerList(cython.str ref, cython.int k=30,
-                              list bedline=[],
-                              cython.int padding=-1, cython.int seedlen=-1,
-                              cython.int mismatches=-1, cython.int minMQ=1):
-    cdef cython.str fqStr, btOutStr
+def GetRepKmersBwt(cython.str ref, cython.int k=30,
+                   list bedline=[],
+                   cython.int padding=-1, cython.int seedlen=-1,
+                   cython.int mismatches=-1, cython.int minMQ=1,
+                   cython.bint useBowtie=False):
+    cdef cython.str fqStr, output
     fqStr = FastqStrFromKmerList(GetKmersToCheck(ref, k=k, bedline=bedline,
                                                  padding=padding))
-    btOutStr = BowtieFqToStr(fqStr, ref=ref, seed=seedlen, mismatches=mismatches)
-    return GetUniqMQs(btOutStr, minMQ=minMQ)
+    if(useBowtie):
+        output = BowtieFqToStr(fqStr, ref=ref, seed=seedlen,
+                               mismatches=mismatches)
+        return GetUniqMQsBowtie(output, minMQ=minMQ)
+    else:
+        output = BwaFqToStr(fqStr, ref=ref, )
+    return GetUniqMQsBowtie(output, minMQ=minMQ)
 
 
 @cython.returns(cython.str)
@@ -124,18 +188,106 @@ def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
     tmpFileHandle = open(tmpFile, "w")
     tmpFileHandle.write(fqStr)
     tmpFileHandle.close()
-    cStr = "bowtie --mm -k 2 -n %s -l %s %s -S %s" % (mismatches, seed,
-                                                      ref, tmpFile)
+    cStr = "bowtie --mm --all -n %s -l %s %s -S %s" % (mismatches, seed,
+                                                       ref, tmpFile)
     pl("Bowtie command string: %s" % cStr, level=logging.DEBUG)
     print("Bowtie command string: %s" % cStr)
-    outStr = check_output(cStr, shell=True) # Capture output to string
-    # check_call(["rm", tmpFile])  # Delete the temporary file.
+    outStr = check_output(cStr, shell=True)  # Capture output to string
+    check_call(["rm", tmpFile])  # Delete the temporary file.
     print("Returning bowtieFqToStr output")
     return outStr
 
 
+@cython.returns(cython.str)
+def BwaFqToStr(cython.str fqStr, cython.str ref=None,
+               cython.int seed=-1):
+    """
+    Returns the string output of a bwa mem call.
+    """
+    cdef cython.str seedStr, cStr, outStr, tmpFile
+    tmpFile = str(uuid.uuid4().get_hex()[0:8]) + ".hey.i.am.a.prefix.fq"
+    tmpFileHandle = open(tmpFile, "w")
+    tmpFileHandle.write(fqStr)
+    tmpFileHandle.close()
+    if(seed > 0):
+        seedStr = "-k %s" % seed
+    else:
+        seedStr = ""
+    cStr = "bwa mem -a %s %s %s" % (ref, seedStr, tmpFile)
+    pl("Bowtie command string: %s" % cStr, level=logging.DEBUG)
+    print("Bwa command string: %s" % cStr)
+    outStr = check_output(cStr, shell=True)  # Capture output to string
+    # check_call(["rm", tmpFile])  # Delete the temporary file.
+    print("Returning BwaFqToStr output")
+    return outStr
+
+
+@cython.returns(cython.bint)
+def PassesNM(cython.str rStr, cython.int maxNM=2):
+    """
+    Checks a SAM line to see if its edit distance is below the minimum.
+    """
+    cdef cython.list strList
+    cdef cython.str qStr
+    strList = ["NM:i:%s\t" % i for i in range(maxNM + 1)]
+    for qStr in strList:
+        if(qStr in rStr):
+            return True
+    return False
+
+
 @cython.returns(list)
-def GetMQPassReadsBowtie1(cython.str bwtStr):
+def GetMQPassRefKmersMem(cython.str bwaStr, cython.int maxNM=2):
+    """
+    Takes a string output from bowtie and gets the names of the reads
+    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
+    """
+    cdef list lines, i
+    cdef cython.str f
+    cdef tuple nameCount
+    return [RefKmer(i[0], contig=i[2],
+                    pos=int(i[3])) for i in [f.strip().split("\t") for
+                                             f in bwaStr.split("\n") if
+                                             "XA:Z:" not in f and  # Supp aln
+                                             f != "" and  # Empty line
+                                             f[0] != "@" and  # Header
+                                             PassesNM(f, maxNM=maxNM)]  # NM
+            if i[4] != "0"]
+
+
+@cython.returns(list)
+def GetMQPassReadsMem(cython.str bwaStr):
+    """
+    Takes a string output from bowtie and gets the names of the reads
+    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
+    """
+    cdef list lines, i
+    cdef cython.str f
+    cdef tuple nameCount
+    return [i[0] for i in [f.strip().split("\t") for
+                           f in bwaStr.split("\n") if
+                           "XA:Z:" not in f and f[0] != "@" and f != ""]
+            if i[4] != "0"]
+
+
+@cython.returns(list)
+def GetMQPassRefKmersBwt1(cython.str bwtStr):
+    """
+    Takes a string output from bowtie and gets the names of the reads
+    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
+    """
+    cdef list lines, i
+    cdef cython.str f
+    cdef tuple nameCount
+    return [RefKmer(i[0], contig=i[2], pos=int(i[3])) for
+            i in [f.strip().split("\t") for
+                  f in bwtStr.split("\n") if
+                  f != "" and f[0] != "@"]
+            if i[4] == "255"]
+
+
+@cython.returns(list)
+def GetMQPassReadsBwt1(cython.str bwtStr):
     """
     Takes a string output from bowtie and gets the names of the reads
     with MQ >= minMQ. Defaults to 1 (for a unique alignment)
@@ -150,9 +302,9 @@ def GetMQPassReadsBowtie1(cython.str bwtStr):
 
 
 @cython.returns(list)
-def GetUniqMQs(cython.str bwtStr, cython.int minMQ=1):
+def GetUniqMQsBowtie(cython.str bwtStr, cython.int minMQ=1):
     """
     Takes a string output from bowtie and gets the names of the reads
     with MQ >= minMQ. Defaults to 1 (for a unique alignment)
     """
-    return GetUniqueItemsL(GetMQPassReadsBowtie1(bwtStr))
+    return GetUniqueItemsL(GetMQPassRefKmersBwt1(bwtStr))
