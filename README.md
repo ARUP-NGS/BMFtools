@@ -106,6 +106,17 @@ SC | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
 SF | Soft-Clipped Fraction | Float |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 
+## Read Pair Merging Tags
+
+These are only used for merging read pairs.
+
+Tag | Content | Format |
+----|-----|-----|
+mp | Original Mate Position | Integer |
+om | Original Mapping Quality | Integer |
+op | Original Position | Integer |
+ot | Original Template Langth | Integer |
+
 ## Valid Tags for SV SAM tag
 
 ######Note: SNV tags have been lumped in with SV tags for the time being.

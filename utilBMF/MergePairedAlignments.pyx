@@ -108,6 +108,7 @@ cdef class LayoutPos(object):
     """
     Holds one layout position - either part of the reference,
     part of the read, or both.
+
     """
     def __init__(self, cython.int pos=-1, cython.int readPos=-1,
                  cython.str base=None, cython.str operation=None,
@@ -128,6 +129,19 @@ cdef class LayoutPos(object):
 cdef class Layout(object):
     """
     Holds a read and its layout information.
+
+    This doctest was written so that it would load in one read,
+    make the string, and then hash that value. Since it wouldn't
+    match the interpreter's output to have a gigantic line and it would have
+    to violate pep8, I decided to test the value by its hash rather than by
+    string agreement.
+    >>> from sys import maxint
+    >>> from pysam import AlignmentFile as af
+    >>> handle = af("utilBMF/example.bam", "rb")
+    >>> returnStr = str(Layout.fromread(handle.next()))
+    >>> hashreturn = -8225309399721982299
+    >>> hash(returnStr)
+    -8225309399721982299
     """
 
     @classmethod
@@ -297,7 +311,7 @@ def MergePositions(LayoutPos pos1, LayoutPos pos2):
                      pos2.quality - pos1.quality, pos2.agreement)
 
 @cython.returns(tuple)
-def MergeLayouts(Layout L1, Layout L2, omcfp=omcfp):
+def MergeLayoutsToList(Layout L1, Layout L2, omcfp=omcfp):
     """
     Merges two Layouts into a list of layout positions.
 
