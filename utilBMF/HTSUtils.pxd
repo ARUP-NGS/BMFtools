@@ -115,3 +115,11 @@ cdef class pFastqProxy:
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
     cdef public cython.str comment, quality, sequence, name
+
+cdef class BamTag(object):
+    """
+    Contains a tag, a value, and a type, all of which are string objects.
+    """
+    cdef readonly cython.str tag
+    cdef readonly cython.str tagtype
+    cdef readonly object value

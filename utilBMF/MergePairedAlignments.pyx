@@ -7,14 +7,17 @@ import numpy as np
 import logging
 from utilBMF.HTSUtils import (CigarDict, printlog as pl, PysamToChrDict,
                               ph2chr, TagTypeDict, BamTag)
-from operator import attrgetter as oag
+from utilBMF.ErrorHandling import ThisIsMadness
+from operator import attrgetter as oag, methodcaller as mc
 from itertools import izip, groupby
 from sys import maxint
 oagsk = oag("firstMapped")
+omcfp = mc("getRefPosForFirstPos")
 oagbase = oag("base")
 oagop = oag("operation")
 oagqual = oag("quality")
 oagag = oag("agreement")
+oagtag = oag("tag")
 
 cimport pysam.calignmentfile
 cimport cython
@@ -112,8 +115,8 @@ cdef class LayoutPos(object):
         self.pos = pos
         self.readPos = readPos
         self.operation = operation
-        self.base = base
-        self.quality = quality
+        self.base = base if(quality > 2) else "N"
+        self.quality = quality if(base != "N") else 0
         self.agreement = agreement
 
     def __str__(self):
@@ -137,13 +140,10 @@ cdef class Layout(object):
     def __len__(self):
         return len(self.positions)
 
-    cpdef list get_tags(self):
-        return list(self.tagDict.iteritems())
-
     cpdef cython.str getSeq(self):
-        cdef LayoutPos i
+        cdef cython.str i
         return "".join([i for i in map(oagbase, self.positions) if
-                        i not in ["S", "D"]])
+                        i != "S" and i != "D"])
 
     @cython.returns(cython.int)
     def getRefPosForFirstPos(self):
@@ -164,7 +164,7 @@ cdef class Layout(object):
         return [i for i in map(oagqual, self.positions) if i >= 0]
 
     def getQualString(self):
-        return map(ph2chr, self.getQual())
+        return "".join(map(ph2chr, self.getQual()))
 
     @cython.returns(cython.int)
     def getLastRefPos(self):
@@ -183,24 +183,38 @@ cdef class Layout(object):
         return lastMPos + countFromMPos
 
     def update_tags(self):
-        self.tagDict["PV"] = ",".join(map(str, self.getQual()))
-        self.tagDict["FA"] = ",".join(map(str, self.getAgreement()))
+        self.tagDict["PV"] = BamTag("PV", "Z",
+                                    ",".join(map(str, self.getQual())))
+        self.tagDict["FA"] = BamTag("FA", "Z",
+                                    ",".join(map(str, self.getAgreement())))
+
+    def update_flag(self):
+        """
+        TODO: Fill this in!
+        """
+        pass
 
     def update(self):
+        cdef LayoutPos pos
+        cdef cython.int count
         if(self.isMerged):
             # Update it for the merged world!
             # Original template length
-            self.tagDict["ot"] = BamTag(("ot", "i", self.tlen))
+            self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
             # Original mate position
-            self.tagDict["op"] = BamTag(("op", "i", self.pnext))
+            self.tagDict["mp"] = BamTag("mp", "i", self.pnext)
             # Original mapping quality
-            self.tagDict["om"] = BamTag(("om", "i", self.mapq))
+            self.tagDict["om"] = BamTag("om", "i", self.mapq)
+            self.tagDict["op"] = BamTag("op", "i", self.InitPos)
             self.tlen = 0
             self.pnext = 0
             self.mapq = -1 * maxint
-            self.tagDict["MP"] = BamTag(("MP", "A", "T"))
+            self.tagDict["MP"] = BamTag("MP", "A", "T")
             self.rnext = "*"
+            for count, pos in enumerate(self):
+                pos.readPos = count
         self.update_tags()
+        self.update_flag()
 
     @cython.returns(list)
     def getOperations(self, oagop=oagop):
@@ -213,20 +227,27 @@ cdef class Layout(object):
         for k, g in groupby(self.getOperations()):
             nums.append(str(len(list(g))))
             ops.append(k)
-        return "".join([op + num for op, num in izip(ops, nums)])
+        return "".join([num + op for op, num in izip(ops, nums)])
+
+    @cython.returns(list)
+    def get_tags(self, oagtag=oagtag):
+        self.update_tags()
+        return sorted(self.tagDict.itervalues(), key=oagtag)
 
     @cython.returns(cython.str)
     def __str__(self):
         """
         Converts the record into a SAM record.
+        Note: the position is incremented by 1 because SAM positions are
+        1-based instead of 0-based.
         """
         self.update()
         return "\t".join(map(
                 str, [self.Name, self.flag, self.contig,
                       self.getRefPosForFirstPos() + 1, self.mapq,
-                      self.getCigarString(), self.rnext, self.pnext,
+                      self.getCigarString(), self.rnext, self.pnext + 1,
                       self.tlen, self.getSeq(), self.getQualString()] +
-                             map(str, self.get_tags())))
+                             self.get_tags()))
 
     def __init__(self, pysam.calignmentfile.AlignedSegment rec,
                  list layoutPositions, cython.int firstMapped,
@@ -240,13 +261,12 @@ cdef class Layout(object):
         self.Name = rec.query_name
         self.contig = PysamToChrDict[rec.reference_id]
         self.flag = rec.flag
-        self.tagDict = {tag[0]: BamTag(tag) for tag
+        self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
                         in rec.get_tags() if tag[0] not in ["PV", "FA"]}
         self.rnext = PysamToChrDict[rec.mrnm]
         self.pnext = rec.mpos
         self.tlen = rec.tlen
         self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
-        self.update()
 
 
 def LayoutSortKeySK(x, oagsk=oagsk):
@@ -259,8 +279,45 @@ def LayoutSortKeySK(x, oagsk=oagsk):
     """
     return oagsk(x)
 
+@cython.returns(LayoutPos)
+def MergePositions(LayoutPos pos1, LayoutPos pos2):
+    cdef cython.str base, operation
+    cdef cython.int pos, readPos
+    if(pos1.operation != pos2.operation):
+        raise ThisIsMadness("Looks like merging these two "
+                            "positions just doesn't work (discordance).")
+    if(pos1.base == pos2.base):
+        return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
+                         pos1.quality + pos2.quality,
+                         pos1.agreement + pos2.agreement)
+    elif(pos1.quality > pos2.quality):
+        return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
+                         pos1.quality - pos2.quality, pos1.agreement)
+    return LayoutPos(pos1.pos, pos1.readPos, pos2.base, pos1.operation,
+                     pos2.quality - pos1.quality, pos2.agreement)
 
-@cython.returns(list)
-def MergeLayouts(Layout L1, Layout L2, oagsk=oagsk):
-    L1, L2 = sorted((L1, L2), key=oagsk)  # First in pair goes first
-    pass
+@cython.returns(tuple)
+def MergeLayouts(Layout L1, Layout L2, omcfp=omcfp):
+    """
+    Merges two Layouts into a list of layout positions.
+
+    First, it takes the positions before the overlap starts.
+    Then it merges the overlap position by position.
+    Then it takes the positions after the overlap ends.
+    :param Layout L1: One Layout object
+    :param Layout L2: Another Layout object
+    :param oagsk: A method caller function. Locally redefined for speed.
+    
+    :return list Merged Positions
+    :return bool Whether the merge was successful
+    """
+    cdef cython.int offset
+    L1, L2 = sorted((L1, L2), key=omcfp)  # First in pair goes first
+    offset = L2.getRefPosForFirstPos() - L1.getRefPosForFirstPos()
+    try:
+        return (L1[:offset] +
+                [MergePositions(pos1, pos2) for
+                 pos1, pos2 in izip(L1[offset:], L2)] +
+                L2[len(L1) - offset:]), True
+    except ThisIsMadness:
+        return L1[:] + L2[len(L1) - offset:], False

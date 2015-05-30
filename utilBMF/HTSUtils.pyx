@@ -2922,7 +2922,7 @@ cdef class IndelQuiver(object):
         return IDVCFLine(IC, self)
 
 
-class BamTag(object):
+cdef class BamTag(object):
     """
     Contains a tag, a value, and a type, all of which are string objects.
     """
@@ -2931,11 +2931,12 @@ class BamTag(object):
         """The dictionary is a pythonic proxy for a switch statement.
         Initializes and returns a BamTag object.
         """
-        cdef list tagElements
-        tagElements = tagString.split(":")
-        return cls(tagElements[0], tagElements[1], {"Z": tagElements[2], "A": tagElements[2],
-                 "i": int(tagElements[2]), "f": float(tagElements[2]),
-                 "H": tagElements[2], "B": tagElements[2]}[tagElements[1]])
+        cdef list tokens
+        tokens = tagString.split(":")
+        return cls(tokens[0], tokens[1],
+                   {"Z": tokens[2], "A": tokens[2], "i": int(tokens[2]),
+                    "f": float(tokens[2]), "H": tokens[2],
+                    "B":tokens[2]}[tokens[1]])
 
     @classmethod
     def fromtuple(cls, tuple tag):
@@ -2944,16 +2945,16 @@ class BamTag(object):
             tagtype = TagTypeDict[tag[0]]
         except KeyError:
             tagtype = "Z"  # A safer fallback
-        return cls(tag[0], tagtype, tag[2])
+        return cls(tag[0], tagtype, tag[1])
 
-    def __init__(self, tag, tagtype, value):
+    def __init__(self, cython.str tag, cython.str tagtype, value):
         self.tag = tag
         self.tagtype = tagtype
         self.value = value
 
     @cython.returns(cython.str)
     def __str__(self):
-        return "%s:%s:%s" % (self.key, self.type, self.value)
+        return "%s:%s:%s" % (self.tag, self.tagtype, self.value)
 
 
 cdef class IDVCFLine(object):
@@ -2970,6 +2971,7 @@ cdef class IDVCFLine(object):
         cdef cython.int tmpCov
         cdef cython.float MDP
         cdef tuple i
+        cdef cython.str key
         cdef list ffkeys
         self.CHROM = IC.contig
         self.NumStartStops = len(set(IC.StartStops))
