@@ -5,9 +5,11 @@ import pysam
 import cython
 import numpy as np
 import logging
-from utilBMF.HTSUtils import CigarDict, printlog as pl, PysamToChrDict, ph2chr
+from utilBMF.HTSUtils import (CigarDict, printlog as pl, PysamToChrDict,
+                              ph2chr, TagTypeDict, BamTag)
 from operator import attrgetter as oag
 from itertools import izip, groupby
+from sys import maxint
 oagsk = oag("firstMapped")
 oagbase = oag("base")
 oagop = oag("operation")
@@ -167,8 +169,8 @@ cdef class Layout(object):
     @cython.returns(cython.int)
     def getLastRefPos(self):
         """
-        Finds the reference position which "matches" the last base in the layout.
-        This counts for any cigar operation.
+        Finds the reference position which "matches" the last base in the
+        layout. This counts for any cigar operation.
         """
         cdef LayoutPos i
         cdef cython.int lastMPos, countFromMPos
@@ -184,11 +186,28 @@ cdef class Layout(object):
         self.tagDict["PV"] = ",".join(map(str, self.getQual()))
         self.tagDict["FA"] = ",".join(map(str, self.getAgreement()))
 
+    def update(self):
+        if(self.isMerged):
+            # Update it for the merged world!
+            # Original template length
+            self.tagDict["ot"] = BamTag(("ot", "i", self.tlen))
+            # Original mate position
+            self.tagDict["op"] = BamTag(("op", "i", self.pnext))
+            # Original mapping quality
+            self.tagDict["om"] = BamTag(("om", "i", self.mapq))
+            self.tlen = 0
+            self.pnext = 0
+            self.mapq = -1 * maxint
+            self.tagDict["MP"] = BamTag(("MP", "A", "T"))
+            self.rnext = "*"
+        self.update_tags()
+
     @cython.returns(list)
     def getOperations(self, oagop=oagop):
         return map(oagop, self.positions)
 
     cpdef cython.str getCigarString(self):
+        cdef cython.str op, num
         cdef list nums = []
         cdef list ops = []
         for k, g in groupby(self.getOperations()):
@@ -198,16 +217,22 @@ cdef class Layout(object):
 
     @cython.returns(cython.str)
     def __str__(self):
-        self.update_tags()
+        """
+        Converts the record into a SAM record.
+        """
+        self.update()
         return "\t".join(map(
                 str, [self.Name, self.flag, self.contig,
-                      self.getRefPosForFirstPos(), "-137",
-                      self.getCigarString(), "*", "0", "0", self.getSeq(),
-                      self.getQualString()] + self.get_tags()))
+                      self.getRefPosForFirstPos() + 1, self.mapq,
+                      self.getCigarString(), self.rnext, self.pnext,
+                      self.tlen, self.getSeq(), self.getQualString()] +
+                             map(str, self.get_tags())))
 
     def __init__(self, pysam.calignmentfile.AlignedSegment rec,
                  list layoutPositions, cython.int firstMapped,
                  PysamToChrDict=PysamToChrDict):
+        cdef tuple tag
+        self.mapq = rec.mapq
         self.read = rec
         self.positions = layoutPositions
         self.firstMapped = firstMapped
@@ -215,9 +240,13 @@ cdef class Layout(object):
         self.Name = rec.query_name
         self.contig = PysamToChrDict[rec.reference_id]
         self.flag = rec.flag
-        self.tagDict = {tag[0]: tag[1] for tag in rec.get_tags() if
-                        tag[0] not in ["PV", "FA"]}
-        self.update_tags()
+        self.tagDict = {tag[0]: BamTag(tag) for tag
+                        in rec.get_tags() if tag[0] not in ["PV", "FA"]}
+        self.rnext = PysamToChrDict[rec.mrnm]
+        self.pnext = rec.mpos
+        self.tlen = rec.tlen
+        self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
+        self.update()
 
 
 def LayoutSortKeySK(x, oagsk=oagsk):

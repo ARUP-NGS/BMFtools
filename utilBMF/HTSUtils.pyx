@@ -9,7 +9,7 @@ from itertools import groupby, tee, chain, combinations, product
 from MawCluster.Probability import GetCeiling
 from numpy import (any as npany, concatenate as nconcatenate, less as nless,
                    max as nmax, mean as nmean, min as nmin, std as nstd)
-from operator import iadd as oia, itemgetter as oig
+from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
 from .ErrorHandling import *
@@ -32,10 +32,12 @@ import time
 import uuid
 try:
     import re2 as re
+    from re2 import finditer
 except ImportError:
     print("Tried to load re2, a faster version of re. Failed. "
           "Importing regular re.")
     import re
+    from re import finditer
 regexcompile = re.compile
 
 cimport numpy as np
@@ -2920,6 +2922,40 @@ cdef class IndelQuiver(object):
         return IDVCFLine(IC, self)
 
 
+class BamTag(object):
+    """
+    Contains a tag, a value, and a type, all of which are string objects.
+    """
+    @classmethod
+    def fromstring(cls, cython.str tagString):
+        """The dictionary is a pythonic proxy for a switch statement.
+        Initializes and returns a BamTag object.
+        """
+        cdef list tagElements
+        tagElements = tagString.split(":")
+        return cls(tagElements[0], tagElements[1], {"Z": tagElements[2], "A": tagElements[2],
+                 "i": int(tagElements[2]), "f": float(tagElements[2]),
+                 "H": tagElements[2], "B": tagElements[2]}[tagElements[1]])
+
+    @classmethod
+    def fromtuple(cls, tuple tag):
+        cdef cython.str tagtype
+        try:
+            tagtype = TagTypeDict[tag[0]]
+        except KeyError:
+            tagtype = "Z"  # A safer fallback
+        return cls(tag[0], tagtype, tag[2])
+
+    def __init__(self, tag, tagtype, value):
+        self.tag = tag
+        self.tagtype = tagtype
+        self.value = value
+
+    @cython.returns(cython.str)
+    def __str__(self):
+        return "%s:%s:%s" % (self.key, self.type, self.value)
+
+
 cdef class IDVCFLine(object):
 
     """
@@ -3085,3 +3121,37 @@ def PlotTlen(inBAM, outfile="default"):
     plt.grid(True)
     plt.savefig(outfile + ".png")
     return outfile
+
+
+mcgroup = mc("group", 0)
+
+
+def itersplit(inString, regexStr="\w+"):
+    """
+    Returns a split iterator over a string with a given regex.
+    Default regexStr causes it to iterate over words.
+    """
+    return (cmap(mcgroup, finditer(regexStr, inString)))
+
+
+@cython.returns(set)
+def GetBamTagTypes(cython.str bamfilestring):
+    """
+    :param bamfilestring: full text of a bam file
+    """
+    return set(itersplit(bamfilestring, regexStr=r"\w{2}:\w:"))
+
+
+@cython.returns(dict)
+def GetBamTagTypeDict(cython.str bamfile):
+    cdef list i
+    return {i[0]: i[1] for
+            i in [f.split(":") for
+                  f in GetBamTypes(bamfile)]}
+
+TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
+               "FM": "i", "FP": "i", "MQ": "i", "ND": "i",
+               "NF": "f", "NM": "i", "RP": "Z", "SC": "Z",
+               "SF": "f", "SV": "Z", "X0": "i", "X1": "i",
+               "XM": "i", "YA": "Z", "YM": "i", "YO": "Z",
+               "YQ": "i", "YR": "i", "YX": "i"}
