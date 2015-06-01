@@ -122,28 +122,22 @@ cdef class KmerFetcher(object):
     def __getitem__(self, key):
         return self.HashMap[key]
 
-    def __iteritems__(self, *args, **kwargs):
+    def iteritems(self, *args, **kwargs):
         return self.HashMap.iteritems(*args, **kwargs)
 
-    def __items__(self, *args, **kwargs):
+    def items(self, *args, **kwargs):
         return self.HashMap.items(*args, **kwargs)
 
-    def __itervalues__(self, *args, **kwargs):
+    def itervalues(self, *args, **kwargs):
         return self.HashMap.itervalues(*args, **kwargs)
 
-    def __values__(self, *args, **kwargs):
+    def values(self, *args, **kwargs):
         return self.HashMap.values(*args, **kwargs)
 
-    def __iterkeys__(self, *args, **kwargs):
+    def iterkeys(self, *args, **kwargs):
         return self.HashMap.iterkeys(*args, **kwargs)
 
-    def __keys__(self, *args, **kwargs):
-        return self.HashMap.keys(*args, **kwargs)
-
-    def __keys__(self, *args, **kwargs):
-        return self.HashMap.keys(*args, **kwargs)
-
-    def __keys__(self, *args, **kwargs):
+    def keys(self, *args, **kwargs):
         return self.HashMap.keys(*args, **kwargs)
 
 

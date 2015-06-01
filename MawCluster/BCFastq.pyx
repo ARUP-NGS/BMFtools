@@ -36,6 +36,8 @@ from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               pFastqProxy, TrimExt)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness
+oagseq = oag("sequence")
+oagqual = oag("quality")
 
 cimport cython
 cimport numpy as np
@@ -138,12 +140,16 @@ def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
                compressB64=cython.bint, lenR=cython.int,
                numEq=cython.int, maxScore=cython.int, ND=cython.int)
-def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
+def compareFqRecsFqPrx(list R, stringency=0.9,
                        famLimit=1000, keepFails=True,
-                       makeFA=True, makePV=True, name=None):
+                       makeFA=True, makePV=True, name=None, oagseq=oagseq,
+                       nparray=nparray, cython.bint NLowQual=False):
     """
     Compares the fastq records to create a consensus sequence (if it
-    passes a filter)
+    passes a filter).
+    If NLowQual is set, all bases with q < 3 are set to N.
+    If hybrid is set, a failure to successfully demultiplex falls back to a
+    base by base comparison.
     """
     if name is None:
         name = R[0].name
@@ -166,7 +172,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], lenR, famLimit))
         R = R[:famLimit]
-    seqs = list(cmap(oag("sequence"), R))
+    seqs = list(cmap(oagseq, R))
     maxScore = 0
     Success = False
     numEq = 0
@@ -180,37 +186,38 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
     except ZeroDivisionError:
         pl("Length of R: {}".format(lenR))
         pl("numEq: {}".format(numEq))
-    if(oge(frac, stringency)):
+    if(frac > stringency):
         Success = True
-    elif(ole(frac, 0.5)):
+    elif(frac < 0.5):
         Success = False
-    elif(hybrid):
-        return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA, name=name)
+    else:
+        return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA, name=name,
+                                 NLowQual=NLowQual)
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                   xrange(len(finalSeq))], dtype=np.int64)
     phredQuals = nparray([chr2ph[i] for i in list(R[0].quality)],
                          dtype=np.int64)
     phredQuals[phredQuals < 3] = 0
-    finalSeq[phredQuals < 3] = "N"  # Let's see if this works!
+    if(NLowQual):
+        finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
     phredQuals = nmultiply(lenR, phredQuals, dtype=np.int64)
     if(npany(ngreater(phredQuals, 93))):
         QualString = "".join(list(cmap(ph2chr, phredQuals)))
         PVString = "|PV=" + ",".join(phredQuals.astype(str).tolist())
     else:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = oadd("|PV=",
-                        ",".join(phredQuals.astype(str).tolist()))
-    TagString = "".join(["|FM=", lenRStr, "|FA=",
-                         ",".join(nparray(FA).astype(str)),
-                         "|ND=", str(nsubtract(lenR * len(seqs[0]),
-                                               nsum(FA))),
-                         PVString])
+        PVString = "|PV=%s" % (",".join(phredQuals.astype(str).tolist()))
+    TagString = "|FM%s|FA=%s|ND=%s%s" % (
+        lenRStr,  ",".join(FA.astype(str)),
+        lenR * len(finalSeq) - nsum(FA), PVString)
+    """
     try:
-        consFqString = "\n".join(
-            ["".join(["@", name, " ", R[0].comment, TagString]),
-             finalSeq.tostring(),
-             "+",
-             QualString, ""])
+    """
+    consFqString = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment, TagString,
+                                              finalSeq.tostring(), QualString)
+    """
+    Uncomment and add indent the consFqString assignment command
+    for debugging.
     except TypeError:
         print("TagString: {}".format(TagString))
         print("finalSeq: {}".format(finalSeq))
@@ -219,19 +226,23 @@ def compareFqRecsFqPrx(list R, stringency=0.9, hybrid=False,
         print("Comment {}".format(R[0].comment))
         print("".join(["@", R[0].name, " ", R[0].comment, TagString]))
         raise ThisIsMadness("I can't figure out what's going on.")
+    """
     if(Success is False):
         return consFqString.replace("Pass", "Fail"), name
     return consFqString, name
 
 
 @cython.returns(tuple)
-def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
+def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
+                      nparray=nparray, oagqual=oagqual,
+                      cython.bint NLowQual=False):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef cython.int lenR, ND
+    cdef cython.int lenR, ND, tmpInt
     cdef cython.bint Success
+    cdef cython.str seq
     cdef np.ndarray[np.int64_t, ndim = 2] quals
     cdef np.ndarray[np.int64_t, ndim = 2] qualA
     cdef np.ndarray[np.int64_t, ndim = 2] qualC
@@ -252,7 +263,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
         name = R[0]
 
     # print(repr(seqArray))
-    quals = nparray(map(fromQualityString, map(oag("quality"), R)))
+    quals = nparray(map(fromQualityString, map(oagqual, R)))
     """
     quals = nparray(
         [list(cmap(chr2phFunc, list(record.quality))) for record in R],
@@ -275,32 +286,32 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None):
     qualT = nsum(qualT, 0, dtype=np.int64)
     qualAllSum = npvstack(
         [qualA, qualC, qualG, qualT])
-    newSeq = np.array([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
+    newSeq = nparray([letterNumDict[tmpInt] for tmpInt in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsubtract(nmultiply(2, MaxPhredSum, dtype=np.int64),
                            nsum(qualAllSum, 0, dtype=np.int64),
                            dtype=np.int64)
     newSeq[phredQuals == 0] = "N"
-    FA = nparray([sum([seq[i] == newSeq[i] for seq in seqs]) for i in
-                  xrange(len(newSeq))], dtype=np.int64)
+    FA = nparray([sum([seq[tmpInt] == newSeq[tmpInt] for
+                       seq in seqs]) for
+                  tmpInt in xrange(len(newSeq))], dtype=np.int64)
     ND = lenR * len(seqs[0]) - nsum(FA)
     if(npany(nless(phredQuals, 0))):
         pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
         phredQuals = abs(phredQuals)
     if(npany(ngreater(phredQuals, 93))):
-        PVString = "|PV=" + ",".join(phredQuals.astype(str))
+        PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
         phredQuals[phredQuals > 93] = 93
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+        phredQualsStr = "".join([ph2chrDict[tmpInt] for tmpInt in phredQuals])
     else:
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+        phredQualsStr = "".join([ph2chrDict[tmpInt] for tmpInt in phredQuals])
         PVString = "|PV=" + ",".join(phredQuals.astype(str))
-    TagString = "".join(["|FM=", str(lenR), "|ND=",
-                         str(ND), "|FA=", FA.astype(str), PVString])
-    consolidatedFqStr = "\n".join([
-        "".join(["@", name, " ", R[0].comment, TagString]),
-        newSeq.tostring(),
-        "+",
-        phredQualsStr, ""])
+    TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join(FA.astype(str)),
+                                                             PVString)
+    consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
+                                                   TagString,
+                                                   newSeq.tostring(),
+                                                   phredQualsStr)
     if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail"), name
     return consolidatedFqStr, name

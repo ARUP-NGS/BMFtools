@@ -46,7 +46,8 @@ def CigarOpToLayoutPosList(cython.int offset, tuple cigarOp,
         quals = np.array(rec.opt("PV").split(","), dtype=np.int64)
     except KeyError:
         pl("Watch out - PV tag not set.", level=logging.DEBUG)
-        quals = np.array(rec.quality, dtype=np.int64)
+        quals = np.array(rec.query_qualities, dtype=np.int64)
+        # Let's make sure that these don't need reversal, too!
     try:
         agrees = np.array(rec.opt("FA").split(","), dtype=np.int64)
     except KeyError:
@@ -108,6 +109,7 @@ cdef class LayoutPos(object):
     """
     Holds one layout position - either part of the reference,
     part of the read, or both.
+
     """
     def __init__(self, cython.int pos=-1, cython.int readPos=-1,
                  cython.str base=None, cython.str operation=None,
@@ -115,9 +117,12 @@ cdef class LayoutPos(object):
         self.pos = pos
         self.readPos = readPos
         self.operation = operation
-        self.base = base if(quality > 2) else "N"
-        self.quality = quality if(base != "N") else 0
+        self.base = base
+        self.quality = quality if(self.base != "N") else 0
         self.agreement = agreement
+
+    cpdef cython.bint ismapped(self):
+        return self.operation == "M"
 
     def __str__(self):
         return "%s|%s|%s|%s|%s|%s" % (self.pos, self.readPos, self.base,
@@ -128,6 +133,24 @@ cdef class LayoutPos(object):
 cdef class Layout(object):
     """
     Holds a read and its layout information.
+
+    <-----issues----->
+    1. Quality string is coming back backwards.
+    2. The "start" position of a read is the first mapping base, not the place
+    on the reference that the first "matching" base would be.
+
+    This doctest was written so that it would load in one read,
+    make the string, and then hash that value. Since it wouldn't
+    match the interpreter's output to have a gigantic line and it would have
+    to violate pep8, I decided to test the value by its hash rather than by
+    string agreement.
+    >>> from sys import maxint
+    >>> from pysam import AlignmentFile as af
+    >>> handle = af("utilBMF/example.bam", "rb")
+    >>> returnStr = str(Layout.fromread(handle.next()))
+    >>> hashreturn = -8225309399721982299
+    >>> hash(returnStr)
+    -8225309399721982299
     """
 
     @classmethod
@@ -153,15 +176,23 @@ cdef class Layout(object):
             if(i.operation == "M"):
                 return i.pos - count
 
+    cpdef cython.int getAlignmentStart(self):
+        cdef LayoutPos i
+        for i in self:
+            if(i.operation == "M"):
+                return i.pos
+
     @cython.returns(list)
     def getAgreement(self, oagag=oagag):
         cdef cython.int i
-        return [i for i in map(oagag, self.positions) if i >= 0]
+        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+        return [i for i in map(oagag, self.positions) if i > -1]
 
     @cython.returns(list)
     def getQual(self, oagqual=oagqual):
         cdef cython.int i
-        return [i for i in map(oagqual, self.positions) if i >= 0]
+        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+        return [i for i in map(oagqual, self.positions) if i > -1]
 
     def getQualString(self):
         return "".join(map(ph2chr, self.getQual()))
@@ -213,6 +244,7 @@ cdef class Layout(object):
             self.rnext = "*"
             for count, pos in enumerate(self):
                 pos.readPos = count
+            self.is_reverse = 0
         self.update_tags()
         self.update_flag()
 
@@ -244,7 +276,7 @@ cdef class Layout(object):
         self.update()
         return "\t".join(map(
                 str, [self.Name, self.flag, self.contig,
-                      self.getRefPosForFirstPos() + 1, self.mapq,
+                      self.getAlignmentStart() + 1, self.mapq,
                       self.getCigarString(), self.rnext, self.pnext + 1,
                       self.tlen, self.getSeq(), self.getQualString()] +
                              self.get_tags()))
@@ -267,6 +299,7 @@ cdef class Layout(object):
         self.pnext = rec.mpos
         self.tlen = rec.tlen
         self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
+        self.is_reverse = -1 if(rec.is_reverse) else 1
 
 
 def LayoutSortKeySK(x, oagsk=oagsk):
@@ -297,7 +330,7 @@ def MergePositions(LayoutPos pos1, LayoutPos pos2):
                      pos2.quality - pos1.quality, pos2.agreement)
 
 @cython.returns(tuple)
-def MergeLayouts(Layout L1, Layout L2, omcfp=omcfp):
+def MergeLayoutsToList(Layout L1, Layout L2, omcfp=omcfp):
     """
     Merges two Layouts into a list of layout positions.
 

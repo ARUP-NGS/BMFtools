@@ -255,6 +255,7 @@ def pairedBarcodeTagging(
         cython.str bedfile="default",
         cython.str conversionXml="default", cython.str realigner="default",
         cython.float minAF=0.0, cython.str ref="default"):
+    cdef np.ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef cython.float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef cython.int FM, ND1, ND2
@@ -304,12 +305,23 @@ def pairedBarcodeTagging(
         try:
             ND1 = int(descDict1["ND"])
             ND2 = int(descDict2["ND"])
+            PhredQuals1 = nparray(descDict1["PV"].split(","), dtype=np.int64)
+            PhredQuals2 = nparray(descDict2["PV"].split(","), dtype=np.int64)
+            FA1 = nparray(descDict1["FA"].split(","), dtype=np.int64)
+            FA2 = nparray(descDict2["FA"].split(","), dtype=np.int64)
         except KeyError:
             raise ThisIsMadness("Number of Differences tag required for "
                                 "BMFTools >= v0.0.7")
         except ValueError:
             raise ValueError("ND tag value is invalid: "
                              "%s %s" % (descDict1["ND"], descDict2["ND"]))
+        # If the read is reversed, the PV tag must be reversed to match
+        if(read1bam.is_reverse):
+            PhredQuals1 = PhredQuals1[::-1]
+            FA1 = FA1[::-1]
+        if(read2bam.is_reverse):
+            PhredQuals2 = PhredQuals2[::-1]
+            FA2 = FA2[::-1]
         r1FracAlign = FractionAligned(read1bam)
         r1FracSC = FractionSoftClipped(read1bam)
         """
@@ -330,14 +342,15 @@ def pairedBarcodeTagging(
         contigSetStr = ",".join(sorted(
             [PysamToChrDict[read1bam.reference_id],
              PysamToChrDict[read2bam.reference_id]]))
+
         if(addDefault):
             read1bam.set_tags([("RP", coorString, "Z"),
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", descDict1["PV"], "Z"),
-                               ("FA", descDict1["FA"], "Z"),
+                               ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
+                               ("FA", ",".join(FA1.astype(str)), "Z"),
                                ("ND", ND1, "i"),
                                ("NF", ND1 * 1. / FM, "f"),
                                ("RG", "default", "Z"),
@@ -348,8 +361,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", descDict2["PV"], "Z"),
-                               ("FA", descDict2["FA"], "Z"),
+                               ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
+                               ("FA", ",".join(FA2.astype(str)), "Z"),
                                ("ND", ND2, "i"),
                                ("NF", ND2 * 1. / float(FM), "f"),
                                ("RG", "default", "Z"),
@@ -361,8 +374,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", descDict1["PV"], "Z"),
-                               ("FA", descDict1["FA"], "Z"),
+                               ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
+                               ("FA", ",".join(FA1.astype(str)), "Z"),
                                ("ND", ND1, "i"),
                                ("NF", 1. * ND1 / FM, "f"),
                                ("AF", r1FracAlign, "f"),
@@ -372,8 +385,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", descDict2["PV"], "Z"),
-                               ("FA", descDict2["FA"], "Z"),
+                               ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
+                               ("FA", ",".join(FA2.astype(str)), "Z"),
                                ("ND", ND2, "i"),
                                ("NF", 1. * ND2 / FM, "f"),
                                ("AF", r2FracAlign, "f"),
