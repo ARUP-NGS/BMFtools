@@ -1,7 +1,7 @@
 gatkpath=/mounts/bin/GenomeAnalysisTK.jar
 abrapath=/mounts/bin/abra.jar
 bowtie=/mounts/bin/bowtie
-ref=/mounts/genome/human_g1k_v37.fasta
+ref=/home/daniel/human_g1k_v37.fasta
 picardDir=/mounts/bin/picard-tools
 USeqDir=/yggdrasil/codeRepository/Packages/USeq_8.8.0/Apps
 aligner=mem
@@ -21,3 +21,4 @@ sortMem=12G
 MaxPValue=1e-30
 threads=2
 head=2
+parallel=False
