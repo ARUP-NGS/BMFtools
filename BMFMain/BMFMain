@@ -359,11 +359,11 @@ def main(argv=None):
         threads = 8
     if("bcLen" in cdk):
         bcLen = int(confDict['bcLen'])
+    else:
+        bcLen = args.bcLen
     parallel = args.parallel
     if("parallel" in cdk):
         parallel = confDict["parallel"].lower() == "true"
-    else:
-        bcLen = args.bcLen
     minAF = 0.
     if("minAF" in cdk):
         minAF = float(confDict[minAF])

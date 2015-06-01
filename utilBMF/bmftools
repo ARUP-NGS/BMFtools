@@ -18,6 +18,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    versionParser = subparsers.add_parser(
+        "v", description="Outputs version of BMFTools.")
     InputQtyParser = subparsers.add_parser(
         "qty",
         description=("Calculates the quantity of input DNA needed to reach "
@@ -669,6 +671,9 @@ def main():
     if(args.bmfsuites == "famstats"):
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(args.inFq, outfile=args.outfile)
+    if(args.bmfsuites == "v"):
+        from BMFMain.main import __version__
+        print(__version__)
     sys.exit(0)
 
 

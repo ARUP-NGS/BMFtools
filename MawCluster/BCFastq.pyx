@@ -248,15 +248,15 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
     cdef np.ndarray[np.int64_t, ndim = 2] qualC
     cdef np.ndarray[np.int64_t, ndim = 2] qualG
     cdef np.ndarray[np.int64_t, ndim = 2] qualT
+    cdef np.ndarray[np.int64_t, ndim = 1] qualAFlat, qualCFlat, qualGFlat, qualTFlat
     cdef np.ndarray[np.int64_t, ndim = 2] qualAllSum
     cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum
     cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
     cdef np.ndarray[np.int64_t, ndim = 1] FA
     cdef np.ndarray[char, ndim = 1, mode = "c"] newSeq
-    cdef np.ndarray[cython.str, ndim = 1] seqs
     lenR = len(R)
     Success = True
-    seqs = nparray(map(oag("sequence"), R), dtype=np.str_)
+    seqs = map(oag("sequence"), R)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = npvstack(stackArrays)
     if(name is None):
@@ -277,15 +277,15 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
     qualG = ccopy(quals)
     qualT = ccopy(quals)
     qualA[seqArray != "A"] = 0
-    qualA = nsum(qualA, 0, dtype=np.int64)
+    qualAFlat = nsum(qualA, 0, dtype=np.int64)
     qualC[seqArray != "C"] = 0
-    qualC = nsum(qualC, 0, dtype=np.int64)
+    qualCFlat = nsum(qualC, 0, dtype=np.int64)
     qualG[seqArray != "G"] = 0
-    qualG = nsum(qualG, 0, dtype=np.int64)
+    qualGFlat = nsum(qualG, 0, dtype=np.int64)
     qualT[seqArray != "T"] = 0
-    qualT = nsum(qualT, 0, dtype=np.int64)
+    qualTFlat = nsum(qualT, 0, dtype=np.int64)
     qualAllSum = npvstack(
-        [qualA, qualC, qualG, qualT])
+        [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
     newSeq = nparray([letterNumDict[tmpInt] for tmpInt in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsubtract(nmultiply(2, MaxPhredSum, dtype=np.int64),
@@ -296,9 +296,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
                        seq in seqs]) for
                   tmpInt in xrange(len(newSeq))], dtype=np.int64)
     ND = lenR * len(seqs[0]) - nsum(FA)
-    if(npany(nless(phredQuals, 0))):
-        pl("repr of phredQuals %s" % repr(phredQuals), level=logging.DEBUG)
-        phredQuals = abs(phredQuals)
+    phredQuals[phredQuals < 0] = 0
     if(npany(ngreater(phredQuals, 93))):
         PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
         phredQuals[phredQuals > 93] = 93
@@ -746,8 +744,12 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            tStr1, name = compareFqRecsFqPrx(workingSet1)
-            tStr2, name = compareFqRecsFqPrx(workingSet2, name=name)
+            if(onlyNumpy):
+                tStr1, name = compareFqRecsFast(workingSet1)
+                tStr2, name = compareFqRecsFast(workingSet2, name=name)
+            else:
+                tStr1, name = compareFqRecsFqPrx(workingSet1)
+                tStr2, name = compareFqRecsFqPrx(workingSet2, name=name)
             if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             sl1a(tStr1)

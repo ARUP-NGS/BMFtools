@@ -6,7 +6,6 @@ import cython
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl, CoorSortAndIndexBam,
-                              GetKmersToCheck, FastqStrFromKmerList,
                               Bowtie2FqToStr, GetMQPassReads,
                               GetInsertionFromAlignedSegment,
                               GetDeletionFromAlignedSegment,
@@ -14,6 +13,7 @@ from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               shen, ssStringFromRead, ccopy,
                               Insertion, Deletion, IndelQuiver,
                               AbstractIndelContainer, IDVCFLine)
+from utilBMF.HTSUtils import GetKmersToCheck, FastqStrFromKmerList
 from .SNVUtils import (HeaderInfoLine, HeaderFormatLine,
                        HeaderContigLine, HeaderCommandLine,
                        HeaderReferenceLine, HeaderFileFormatLine,
