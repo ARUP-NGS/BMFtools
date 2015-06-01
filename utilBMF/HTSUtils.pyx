@@ -1462,11 +1462,9 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.int minPileupLen=0,
 Base64ToInt = numconv.NumConv(64).str2int
 Int2Base64 = numconv.NumConv(64).int2str
 
-ph2chrDict = {}
-for i in xrange(100):
-    ph2chrDict[i] = chr(i + 33)
-chr2ph = {ph2chrDict[key]: key for key in
-          ph2chrDict.iterkeys()}
+ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
+# Pre-computes
+chr2ph = {i: ord(i) - 33 for i in [ph2chrDict[i] for i in range(94)]}
 
 """
 @cython.returns(np.int64_t)
@@ -2539,7 +2537,7 @@ def GetDSIndels(inBAM, outBAM):
 
 
 def hamming_cousins_exact(cython.str s, cython.int n,
-                          set alphabet={"A", "C", "G", "T"}):
+                          list alphabet=["A", "C", "G", "T"]):
     """Generate strings over alphabet whose Hamming distance from s is
     exactly n.
 
@@ -2564,8 +2562,8 @@ def hamming_cousins_exact(cython.str s, cython.int n,
             yield ''.join(cousin)
 
 
-def hamming_cousins(cython.str s, cython.int n,
-                    set alphabet={"A", "C", "G", "T"}):
+def hamming_cousins(cython.str s, cython.int n=0,
+                    list alphabet=["A", "C", "G", "T"]):
     """Generate strings over alphabet whose Hamming distance from s is
     less than or equal to n.
 

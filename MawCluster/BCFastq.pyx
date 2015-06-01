@@ -134,7 +134,7 @@ def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
         return ("cat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
                 " %s | tr '\t' '\n' > %s" % (memStr, outFastq))
 
-
+'''
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
                famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
@@ -182,7 +182,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9,
             maxScore = numEq
             finalSeq = np.array(list(seq))
     try:
-        frac = odiv(omul(numEq, 1.0), lenR)
+        frac = numEq * 1. / lenR
     except ZeroDivisionError:
         pl("Length of R: {}".format(lenR))
         pl("numEq: {}".format(numEq))
@@ -230,17 +230,18 @@ def compareFqRecsFqPrx(list R, stringency=0.9,
     if(Success is False):
         return consFqString.replace("Pass", "Fail"), name
     return consFqString, name
+'''
 
 
 @cython.returns(tuple)
 def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
                       nparray=nparray, oagqual=oagqual,
-                      cython.bint NLowQual=False):
+                      cython.bint NLowQual=False, dict ph2chrDict=ph2chrDict):
     """
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef cython.int lenR, ND, tmpInt
+    cdef cython.int lenR, ND
     cdef cython.bint Success
     cdef cython.str seq
     cdef np.ndarray[np.int64_t, ndim = 2] quals
@@ -259,6 +260,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
     seqs = map(oag("sequence"), R)
     stackArrays = tuple([np.char.array(s, itemsize=1) for s in seqs])
     seqArray = npvstack(stackArrays)
+
     if(name is None):
         name = R[0]
 
@@ -286,24 +288,19 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
     qualTFlat = nsum(qualT, 0, dtype=np.int64)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = nparray([letterNumDict[tmpInt] for tmpInt in npargmax(qualAllSum, 0)])
+    newSeq = nparray([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsubtract(nmultiply(2, MaxPhredSum, dtype=np.int64),
                            nsum(qualAllSum, 0, dtype=np.int64),
                            dtype=np.int64)
     newSeq[phredQuals == 0] = "N"
-    FA = nparray([sum([seq[tmpInt] == newSeq[tmpInt] for
+    FA = nparray([sum([seq[i] == newSeq[i] for
                        seq in seqs]) for
-                  tmpInt in xrange(len(newSeq))], dtype=np.int64)
-    ND = lenR * len(seqs[0]) - nsum(FA)
+                  i in xrange(len(newSeq))], dtype=np.int64)
+    ND = lenR * len(newSeq) - nsum(FA)
     phredQuals[phredQuals < 0] = 0
-    if(npany(ngreater(phredQuals, 93))):
-        PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
-        phredQuals[phredQuals > 93] = 93
-        phredQualsStr = "".join([ph2chrDict[tmpInt] for tmpInt in phredQuals])
-    else:
-        phredQualsStr = "".join([ph2chrDict[tmpInt] for tmpInt in phredQuals])
-        PVString = "|PV=" + ",".join(phredQuals.astype(str))
+    PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
+    phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join(FA.astype(str)),
                                                              PVString)
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
@@ -744,12 +741,8 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            if(onlyNumpy):
-                tStr1, name = compareFqRecsFast(workingSet1)
-                tStr2, name = compareFqRecsFast(workingSet2, name=name)
-            else:
-                tStr1, name = compareFqRecsFqPrx(workingSet1)
-                tStr2, name = compareFqRecsFqPrx(workingSet2, name=name)
+            tStr1, name = compareFqRecsFast(workingSet1)
+            tStr2, name = compareFqRecsFast(workingSet2, name=name)
             if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             sl1a(tStr1)
@@ -833,7 +826,7 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
                 workingBarcode = ""
                 workingSet = []
                 continue
-            tStr, name = compareFqRecsFqPrx(workingSet)
+            tStr, name = compareFqRecsFast(workingSet)
             if(skipFails and ("Fail" in tStr)):
                 continue
             sla(tStr)

@@ -651,7 +651,8 @@ def main():
         from MawCluster.IndelUtils import GetUniquelyMappableKmers
         from utilBMF.HTSUtils import PadAndMakeFasta
         from functools import partial
-        b = re.compile("\W")
+        print("Warning! getkmers doesn't work and I'm using it in some other fashion soon... Sorry.")
+        sys.exit(1)
         bedline = b.split(args.region)
         bedline[1] = int(bedline[1])
         bedline[2] = int(bedline[2])
