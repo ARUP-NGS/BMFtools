@@ -780,6 +780,79 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
     outputHandle2.close()
     return outFqPair1, outFqPair2
 
+def singleFastqConsolidate(fq, cython.float stringency=0.9,
+                        cython.int readsPerWrite=100,
+                        cython.bint UsecProfile=False,
+                        cython.bint onlyNumpy=True,
+                        cython.bint skipFails=False):
+    if(UsecProfile):
+        import cProfile
+        import pstats
+        pr=cProfile.Profile()
+        pr.enable()
+    cdef cython.str outFq, workingBarcode, bc4fq
+    cdef pysam.cfaidx.FastqFile inFq
+    cdef pFq fqRec
+    cdef list workingSet, StringList
+    cdef cython.int numProc
+    outFq = TrimExt(fq)+".cons.fastq"
+    pl("Now running singleFastqConsolidate on {}.".format(fq))
+    pl("Command required to duplicate this action:"
+        " singleFastqConsolidate('{}', ".format(fq) +
+        "stringency={})".format(stringency))
+    inFq = pysam.FastqFile(fq)
+    outputHandle = open(outFq,'w')
+    StringList = []
+    workingBarcode = ""
+    workingSet = []
+    numProc = 0
+    while True:
+        if (numProc % readsPerWrite == 0):
+            outputHandle.write("".join(StringList))
+            StringList = []
+            sla = StringList.append
+        try:
+            fqRec = pFastqProxy(inFq.next())
+        except StopIteration:
+            break
+        bc4fq = GetDescTagValue(fqRec.comment,"BS")
+        if(workingBarcode == ""):
+            try:
+                workingBarcode = bc4fq
+                workingSet = [fqRec]
+                continue
+            except TypeError:
+                print("workingBarcode = " + workingBarcode)
+                print("workingSet = " + repr(workingSet))
+                sys.exit()
+        elif(workingBarcode == bc4fq):
+            workingSet.append(fqRec)
+            continue
+        elif(workingBarcode != bc4fq):
+            if(len(workingSet) == 1):
+                workingBarcode = ""
+                workingSet = []
+                continue
+            tStr, name = compareFqRecsFqPrx(workingSet)
+            if(skipFails and ("Fail" in tStr)):
+                continue
+            sla(tStr)
+            workingSet = [fqRec]
+            workingBarcode = bc4fq
+            numProc += 1
+            continue
+    if(UsecProfile):
+        s = cStringIO.StringIO()
+        pr.disable()
+        sortby = "cumulative"
+        ps = pstats.Stats(pr, stream = s).sort_stats(sortby)
+        ps.print_stats()
+        open("cProfile.stats.txt",'w').write(s.getValue())
+    outputHandle.write("".join(StringList))
+    outputHandle.flush()
+    inFq.close()
+    outputHandle.close()
+    return outFq
 
 def TrimHomingSingle(
         fq,
