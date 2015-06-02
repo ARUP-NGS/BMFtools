@@ -16,8 +16,9 @@ from MawCluster.BCFastq import TrimHomingPaired
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl
 from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
+from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from MawCluster.BCVCF import VCFStats
 from MawCluster.FFPE import GetDeaminationFrequencies, FilterByDeaminationFreq
 
@@ -63,7 +64,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                 consfq1, consfq2, ref=ref, opts=opts, path=bwapath,
                 RG=RG, ID=ID, CN=CN, PL=PL, SM=SM, picardPath=picardPath)
         if(consfqSingle != "default"):
-            HTSUtils.FacePalm("This step is not relevant to shades.")
+            raise ("This step is not relevant to shades.")
     elif(aligner == "aln"):
         if(addRG is False):
             outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,
@@ -73,8 +74,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
                 consfq1, consfq2, ref=ref, opts=opts, RG=RG, SM=SM,
                 CN=CN, PL=PL, picardPath=picardPath, ID=ID)
         if(consfqSingle != "default"):
-            HTSUtils.FacePalm("This step is not required "
-                              "or important for shades.")
+            raise Tim("This step is not required or important for shades.")
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
     if(rLen < 0):
@@ -92,8 +92,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
     pl("Now realigning with: %s" % realigner)
     if("abra" in realigner.lower()):
         if(abrapath == "default"):
-            raise ThisIsMadness("abrapath must be set for abra to be the "
-                                "realigner")
+            raise Tim("abrapath must be set for abra to be the realigner")
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
                                           jar=abrapath, rLen=rLen,

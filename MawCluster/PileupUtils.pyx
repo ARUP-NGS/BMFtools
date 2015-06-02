@@ -170,7 +170,7 @@ cdef class PRInfo:
         self.PV = -1
         self.PV_Array = np.array([])
         self.PVFrac = -1.
-        if("PV" in list(cmap(oig0, tags))):
+        if("PV" in map(oig0, tags)):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = aopt("PV")
@@ -266,8 +266,8 @@ cdef class AlleleAggregateInfo:
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
-            self.TND = sum(cmap(oag("ND"), self.recList))
-            NFList = nparray(list(cmap(oag("NF"), self.recList)))
+            self.TND = sum(map(oag("ND"), self.recList))
+            NFList = nparray(map(oag("NF"), self.recList))
         else:
             self.TND = -1
             NFList = nparray([])
@@ -280,11 +280,11 @@ cdef class AlleleAggregateInfo:
             self.MNF = -1.
             self.maxNF = -1.
             self.NFSD = -1.
-        self.TotalReads = sum(cmap(oag("FM"), self.recList))
+        self.TotalReads = sum(map(oag("FM"), self.recList))
         self.MergedReads = lenR
-        self.ReverseMergedReads = sum(cmap(oagir, self.recList))
+        self.ReverseMergedReads = sum(map(oagir, self.recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = sum(cmap(
+        self.ReverseTotalReads = sum(map(
             oag("FM"), filter(oagir, self.recList)))
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
@@ -312,7 +312,7 @@ cdef class AlleleAggregateInfo:
         except ZeroDivisionError:
             self.reverseStrandFraction = -1.
         try:
-            self.MFractionAgreed = nmean(list(cmap(
+            self.MFractionAgreed = nmean(list(map(
                 oag("FractionAgreed"),  self.recList)))
         except TypeError:
             pl("Looks like these records have no FractionAgreed attribute. "
@@ -321,7 +321,7 @@ cdef class AlleleAggregateInfo:
         self.minFrac = minFracAgreed
         self.minFA = minFA
         try:
-            self.MFA = nmean(list(cmap(oag("FA"), self.recList)))
+            self.MFA = nmean(list(map(oag("FA"), self.recList)))
         except TypeError:
             pl("Looks like these records have no FA attribute. "
                "No worries.", level=logging.DEBUG)
@@ -496,20 +496,16 @@ cdef class PCInfo:
             self.TotalReads = self.MergedReads
         try:
             self.consensus = sorted(cyfreq(
-                cmap(oagbc, self.Records)).iteritems(),
+                map(oagbc, self.Records)).iteritems(),
                 key=oig1)[-1][0]
         except IndexError:
-            try:
-                self.consensus = sorted(cyfreq(
-                    map(oagbc, map(PRInfo, pileups))).iteritems(),
-                                        key=oig1)[-1][0]
-            except IndexError:
-                self.consensus = "N"  # All bases failed filtered. Oh well.
-                pl("Note: PCInfo empty at contig "
-                   "%s and position" % (self.contig, self.pos), level=logging.DEBUG)
+            self.consensus = "N"  # All bases failed filtered. Oh well.
+            pl("Note: PCInfo empty at contig "
+               "%s and position" % (self.contig, self.pos),
+               level=logging.DEBUG)
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
-                            for alt in set(cmap(oagbc, self.Records))}
+                            for alt in set(map(oagbc, self.Records))}
         query_positions = map(oagqp, self.Records)
         self.AAMBP = nmean(query_positions)
         self.AABPSD = nstd(query_positions)
@@ -549,12 +545,10 @@ cdef class PCInfo:
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         try:
             for key in self.MergedAlleleDict:
-                self.MergedAlleleFreqDict[key] = odiv(
-                    self.MergedAlleleDict[key],
-                    float(self.MergedReads))
-                self.TotalAlleleFreqDict[key] = odiv(
-                    self.TotalAlleleDict[key],
-                    float(self.TotalReads))
+                self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
+                    key] / float(self.MergedReads)
+                self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
+                    key] / float(self.TotalReads)
         except ZeroDivisionError:
             for key in self.MergedAlleleDict:
                 self.MergedAlleleFreqDict[key] = 0.

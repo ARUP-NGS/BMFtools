@@ -33,10 +33,10 @@ from functools import partial
 from pysam import fromQualityString
 
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
-                              ph2chrDict, chr2ph, printlog as pl, FacePalm,
+                              ph2chrDict, chr2ph, printlog as pl,
                               pFastqProxy, TrimExt)
 from utilBMF import HTSUtils
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness as Tim
 oagseq = oag("sequence")
 oagqual = oag("quality")
 npchararray = npchar.array
@@ -227,7 +227,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9,
         print("Name {}".format(R[0].name))
         print("Comment {}".format(R[0].comment))
         print("".join(["@", R[0].name, " ", R[0].comment, TagString]))
-        raise ThisIsMadness("I can't figure out what's going on.")
+        raise Tim("I can't figure out what's going on.")
     """
     if(Success is False):
         return consFqString.replace("Pass", "Fail"), name
@@ -329,7 +329,7 @@ def CutadaptPaired(cython.str fq1, cython.str fq2,
     outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
     outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
     if(p3Seq == "default"):
-        HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
+        raise Tim("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards"
@@ -357,7 +357,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     outfq = ".".join(fq.split('.')[0:-1] + ["cutadapt", "fastq"])
     if(p3Seq == "default"):
-        HTSUtils.FacePalm("3-prime primer sequence required for cutadapt!")
+        raise Tim("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
         commandStr = "cutadapt --mask-adapter {} -a {} -o {} -O {} {}".format(
@@ -659,7 +659,7 @@ def GetDescriptionTagDict(readDesc):
     # pl("Repr of tagDict is {}".format(tagDict))
     except TypeError:
         pl("tagSetEntries: {}".format(tagSetEntries))
-        raise ThisIsMadness("YOU HAVE NO CHANCE TO SURVIVE MAKE YOUR TIME")
+        raise Tim("YOU HAVE NO CHANCE TO SURVIVE MAKE YOUR TIME")
     return tagDict
 
 

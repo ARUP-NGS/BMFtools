@@ -14,7 +14,7 @@ import datetime
 import subprocess
 
 import BMFMain.ProcessingSteps as ps
-from utilBMF.HTSUtils import printlog as pl, FacePalm, ThisIsMadness
+from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
 from utilBMF import HTSUtils
 from utilBMF.QC import GetAllQCMetrics
 
@@ -320,8 +320,8 @@ def main(argv=None):
         if(args.ref != "default"):
             ref = args.ref
         else:
-            HTSUtils.FacePalm("Reference fasta required either in "
-                              "config file or by command-line options.!")
+            raise ThisIsMadness("Reference fasta required either in "
+                                "config file or by command-line options.!")
     opts = args.opts
     if("opts" in cdk):
         opts = args.opts
@@ -331,7 +331,7 @@ def main(argv=None):
         if(args.bed != "default"):
             bed = args.bed
         else:
-            FacePalm("Bed file required for analysis.")
+            raise ThisIsMadness("Bed file required for analysis.")
     if("single_end" in cdk):
         if(confDict['single_end'].lower() == "true"):
             single_end = True

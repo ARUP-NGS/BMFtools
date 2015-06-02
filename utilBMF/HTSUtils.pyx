@@ -12,7 +12,9 @@ from numpy import (any as npany, concatenate as nconcatenate, less as nless,
 from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
-from .ErrorHandling import *
+from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
+                                   FunctionCallException,
+                                   IllegalArgumentError, PermissionException)
 from collections import deque
 from entropy import shannon_entropy as shen
 import copy
@@ -341,38 +343,8 @@ def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
                                       fqPrx.quality[firstBase:lastBase])
 
 
-def FacePalm(string):
-    Str = ("............................................________ "
-           "\n....................................,.-'\"...................`"
-           "`~. \n.............................,.-\"........................"
-           "...........\"-., \n.........................,/.................."
-           ".............................\":, \n.....................,?....."
-           "................................................., \n..........."
-           "......../........................................................"
-           "...,} \n................./......................................."
-           "...............,:`^`..} \n.............../......................."
-           "............................,:\"........./ \n..............?....."
-           "__.........................................:`.........../ \n....."
-           "......../__.(.....\"~-,_..............................,:`........"
-           "../ \n.........../(_....\"~,_........\"~,_....................,:`"
-           "........_/ \n..........{.._$;_......\"=,_.......\"-,_.......,.-~-"
-           ",},.~\";/....} \n...........((.....*~_.......\"=-._......\";,,./`"
-           "..../\"............../ \n...,,,___.`~,......\"~.,................"
-           "....`.....}............../ \n............(....`=-,,.......`......"
-           "..................(......;_,,-\" \n............/.`~,......`-....."
-           "................................/ \n.............`~.*-,.........."
-           "...........................|,./.....,__ \n,,_..........}.>-._...."
-           "...............................|..............`=~-, \n.....`=~-,_"
-           "_......`,................................. \n...................`"
-           "=~-,,.,............................... \n........................"
-           "........`:,,...........................`..............__ \n......"
-           "...............................`=-,...................,%`>--==`` "
-           "\n........................................_..........._,-%......."
-           "` \n...................................,")
-    print(Str)
-    if(isinstance(string, str)):
-        raise ThisIsMadness(string)
-    raise ThisIsMadness("WHAT YOU SAY")
+def FacePalm(string, art=FPStr):
+    raise Tim("WHAT YOU SAY")
 
 
 @cython.returns(cython.bint)
@@ -404,9 +376,9 @@ def ReadPairIsDuplex(readPair, minShare="default"):
     elif(minShare == "default"):
         minLen = readPair.read1.query_length // 2
     else:
-        raise ThisIsMadness("minShare parameter required. Integer for "
-                            "an absolute number of bases overlapped re"
-                            "quired, float for a fraction of read length.")
+        raise Tim("minShare parameter required. Integer for an absolute "
+                  "number of bases overlapped required, float for a frac"
+                  "tion of read length.")
     return sum([x == 2 for x in
                 cyfreq(readPair.read1.get_reference_positions() +
                        readPair.read2.get_reference_positions()).values()]
@@ -415,7 +387,7 @@ def ReadPairIsDuplex(readPair, minShare="default"):
 
 def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
     if(ref == "default"):
-        raise ThisIsMadness("ref required to call bwasw.")
+        raise Tim("ref required to call bwasw.")
     if(outBAM == "default"):
         outBAM = ".".join(fq1.split(".")[:-1]) + ".bam"
     cStr = "bwa bwasw %s %s %s | samtools view -Sbh - > %s" % (ref, fq1, fq2,
@@ -449,9 +421,9 @@ def align_bwa_aln_addRG(R1, R2, ref="default", opts="", outBAM="default",
 
     """
     if(ref == "default"):
-        FacePalm("Reference file index required for alignment!")
+        raise Tim("Reference file index required for alignment!")
     if(picardPath == "default"):
-        FacePalm("Picard jar path required for adding read groups!")
+        raise Tim("Picard jar path required for adding read groups!")
     if(opts == ""):
         opts = "-n 3 -t 4"
     if(outBAM == "default"):
@@ -487,7 +459,7 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
 
     """
     if(ref == "default"):
-        FacePalm("Reference file index required for alignment!")
+        raise Tim("Reference file index required for alignment!")
     if(opts == ""):
         opts = "-n 3 -t 4"
     if(outBAM == "default"):
@@ -533,9 +505,9 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     outSAM = outBAM.replace(".bam", ".sam")
     if(ref == "default"):
-        FacePalm("Reference file index required for alignment!")
+        raise Tim("Reference file index required for alignment!")
     if(picardPath == "default"):
-        FacePalm("Path to picard jar required for adding RG!")
+        raise Tim("Path to picard jar required for adding RG!")
     opt_concat = ' '.join(opts.split())
     RGString = "@RG\tID:bwa SM:%s" % SM
     if(path == "default"):
@@ -568,7 +540,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
-        FacePalm("Reference file index required for alignment!")
+        raise Tim("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
     if(path == "default"):
         command_str = ("bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2) +
@@ -639,11 +611,11 @@ def CustomRefBowtiePaired(mergedFq,
     if(output == "default"):
         output = mergedFq.split('.')[0] + '.mergingFamilies.sam'
     if(barLen == "default"):
-        FacePalm("Barcode length must be set. Abort mission!")
+        raise Tim("Barcode length must be set. Abort mission!")
     if(bowtiePath == "bowtie"):
         printlog("Defaulting to bowtie for path to executable.")
     elif("2" in bowtiePath.split("/")[-1]):
-        FacePalm("Do not use bowtie2!")
+        raise Tim("Do not use bowtie2!")
     command_list = [
         "bowtie",
         "--threads",
@@ -734,7 +706,7 @@ def ReadOverlapsBed(samRecord, bedRef="default"):
             assert isinstance(line, list)
         except AssertionError:
             print(repr(line))
-            raise ThisIsMadness("OMGZ")
+            raise Tim("OMGZ")
         """
         try:
             contig = PysamToChrDict[samRecord.reference_id]
@@ -765,7 +737,7 @@ def VCFLineContainedInBed(VCFLineObject, bedRef="default"):
     try:
         assert(isinstance(VCFLineObject, MawCluster.BCVCF.VCFRecord))
     except AssertionError:
-        FacePalm("VCFLineContainedInBed requires a VCFRecord object!")
+        raise Tim("VCFLineContainedInBed requires a VCFRecord object!")
     for line in bedRef:
         if(VCFLineObject.CHROM == line[0]):
             assert isinstance(line[1], int)
@@ -810,7 +782,7 @@ def indexBowtie(fasta):
 
 def BedtoolsGenomeCov(inBAM, ref="default", outfile="default"):
     if(ref == "default"):
-        raise ThisIsMadness("A reference file path must be provided!")
+        raise Tim("A reference file path must be provided!")
     if(outfile == "default"):
         outfile = inBAM[0:-3] + ".doc.txt"
     outfileHandle = open(outfile, "w")
@@ -823,7 +795,7 @@ def BedtoolsGenomeCov(inBAM, ref="default", outfile="default"):
 
 def BedtoolsBamToBed(inBAM, outbed="default", ref="default"):
     if(ref == "default"):
-        raise ThisIsMadness("A reference file path must be provided!")
+        raise Tim("A reference file path must be provided!")
     if(outbed == "default"):
         outbed = inBAM[0:-4] + ".doc.bed"
     outfile = BedtoolsGenomeCov(inBAM, ref=ref)
@@ -991,7 +963,7 @@ cdef class ReadPair:
             assert isinstance(bedLines[0], str) and isinstance(
                 bedLines[1], int)
         except AssertionError:
-            FacePalm("Sorry, bedLines must be in ParseBed format.")
+            raise Tim("Sorry, bedLines must be in ParseBed format.")
         if(self.read1_is_unmapped is False):
             self.read1_in_bed = ReadOverlapsBed(self.read1, bedLines)
         else:
@@ -1053,10 +1025,10 @@ def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
     newread.qname = read1.qname + "Combined"
     newread.is_reverse = read1.is_reverse
     newread.reference_id = read1.reference_id
-    newread.pos = min([r1.pos, r2.pos])
-    newread.mapq = max([r1.mapq, r2.mapq])
-    newread.tlen = r1.tlen
-    newread.set_tags(r1.get_tags())
+    newread.pos = min([read1.pos, read2.pos])
+    newread.mapq = max([read1.mapq, read2.mapq])
+    newread.tlen = read1.tlen
+    newread.set_tags(read1.get_tags())
     read1First = (read1.pos > read2.pos)
     if(not BMFTags):
         for r1tup, r2tup in zip(r1baseTuples, r2baseTuples):
@@ -1071,9 +1043,9 @@ def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
                     CollapsedNewQuals.append(r1tup[2] - r2tup[2])
                 else:
                     CollapsedSeq += "N"
-                    CollapedNewQuals.append(0)
+                    CollapsedNewQuals.append(0)
     if(read1First):
-        raise ThisIsMadness("Sorry, I just have other things to finish now.")
+        raise Tim("Sorry, I just have other things to finish now.")
 
 
 def CollapseR1R2(pysam.calignmentfile.AlignedSegment R1,
@@ -1119,7 +1091,7 @@ cdef class PileupReadPair:
             assert len(readlist) == 2
         except AssertionError:
             pl("repr(readlist): %s" % repr(readlist))
-            raise ThisIsMadness(
+            raise Tim(
                 "readlist must be of length two to make a PileupReadPair!")
         self.RP = ReadPair(read1.alignment, read2.alignment)
         self.read1 = read1
@@ -1149,7 +1121,7 @@ def GetReadPair(inHandle):
     try:
         assert read1.query_name == read2.query_name
     except AssertionError:
-        FacePalm("These two reads have "
+        raise Tim("These two reads have "
                  "different query names. Abort!")
     return ReadPair(read1, read2)
 
@@ -1220,7 +1192,7 @@ def LoadReadsFromFile(inBAM, SVTag="default", minMQ=0,
         try:
             minFamSize = int(minFamSize)
         except ValueError:
-            FacePalm("Minimum family size must be castable to int!")
+            raise Tim("Minimum family size must be castable to int!")
         RecordsArray = [rec for rec in RecordsArray if
                         rec.opt("FM") >= minFamSize]
     inHandle.close()
@@ -1228,7 +1200,8 @@ def LoadReadsFromFile(inBAM, SVTag="default", minMQ=0,
 
 
 def LoadReadPairsFromFile(inBAM, SVTag="default",
-                          minMQ=0, minBQ=0):
+                          minMQ=0, minBQ=0,
+                          LambdaInsertSize=LambdaInsertSize):
     """
     Loads all pairs of reads from a name-sorted paired-end
     bam file into ReadPair objects. If SVTag is specified,
@@ -1262,7 +1235,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
             except StopIteration:
                 break
     if("LI" in tags):
-        return sorted(RecordsArray, key=linsertize)
+        return sorted(RecordsArray, key=LambdaInsertSize)
     else:
         return RecordsArray
 
@@ -1353,17 +1326,15 @@ class SoftClippedSeq:
     def __init__(self, seq, contig=None, is_reverse=None):
         assert isinstance(seq, str)
         if isinstance(contig, str) is False:
-            raise ThisIsMadness("Soft-clipped seq is ambiguous "
-                                "without a contig.")
+            raise Tim("Soft-clipped seq is ambiguous without a contig.")
         if isinstance(is_reverse, bool) is False:
-            raise ThisIsMadness("SoftClippedSeq needs to know to which"
-                                "strand it is mapped.")
+            raise Tim("SoftClippedSeq needs to know to which strand it is mapped.")
         self.seq = seq
         self.contig = contig
         self.is_reverse = is_reverse
 
     def RCChangeStrand(self):
-        self.seq = RevCmp(seq)
+        self.seq = RevCmp(self.seq)
         self.is_reverse = not self.is_reverse
 
 
@@ -1371,8 +1342,8 @@ def SplitSCRead(pysam.calignmentfile.AlignedSegment read):
     try:
         assert "S" in read.cigarstring
     except AssertionError:
-        FacePalm("You can't split a read by soft-clipping "
-                 "if it's not soft-clipped!")
+        raise Tim("You can't split a read by soft-clipping "
+                  "if it's not soft-clipped!")
     SoftClips = []
     clippedStart = 0
     clippedEnd = read.query_length
@@ -1406,12 +1377,22 @@ class Interval:
         self.end = self.interval[2]
 
 
+@cython.returns(cython.int)
+def LambdaSub(x):
+    return x[0] - x[1]
+
+
+@cython.returns(cython.int)
+def LambdaInsertSize(ReadPair_t x):
+    return x.insert_size
+
+
 @cython.returns(list)
 def CreateIntervalsFromCounter(dict CounterObj, cython.int minPileupLen=0,
                                cython.str contig="default",
                                bedIntervals="default",
                                cython.int mergeDist=0,
-                               cython.int minClustDepth=5):
+                               cython.int minClustDepth=5, lix=LambdaSub):
     """
     From a dictionary object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -1428,9 +1409,9 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.int minPileupLen=0,
     IntervalList = []
     MeanCovList = []
     if(contig == "default"):
-        FacePalm("contig required for this function!")
+        raise Tim("contig required for this function!")
     for k, g in groupby(
-            enumerate(sorted(CounterObj.iterkeys())), lix):
+            enumerate(sorted(CounterObj.iterkeys())), lambda x: x[0] - x[1]):
         posList = list(cmap(oig1, g))
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
@@ -1496,8 +1477,7 @@ def CigarToQueryIndices(cigar):
     sublist[0] is the cigarOp, sublist[1] is the list of positions.
     """
     if(cigar is None):
-        raise ThisIsMadness("I can't get query indices "
-                            "if there's no cigar string.")
+        raise Tim("I can't get query indices if there's no cigar string.")
     try:
         assert isinstance(cigar[0], tuple)
     except AssertionError:
@@ -1522,13 +1502,12 @@ def GetQueryIndexForCigarOperation(pysam.calignmentfile.AlignedSegment read,
     See pysam's documentation for details.
     """
     if(read.cigar is None):
-        raise ThisIsMadness("I can't get query indices "
-                            "if there's no cigar string.")
+        raise Tim("I can't get query indices if there's no cigar string.")
     try:
         assert(cigarOp in range(9))
     except AssertionError:
-        raise ThisIsMadness("Please read the doc string for "
-                            "GetQueryIndexForCigarOperation. Invalid cigarOp")
+        raise Tim("Please read the doc string for "
+                  "GetQueryIndexForCigarOperation. Invalid cigarOp")
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
     # Get positions in read which match cigar operation.
     QueryCigar = CigarToQueryIndices(read.cigar)
@@ -1600,13 +1579,12 @@ def GetGC2NMapForRead(pysam.calignmentfile.AlignedSegment read,
 def GetReadSequenceForCigarOp(pysam.calignmentfile.AlignedSegment read,
                               cigarOp=-1):
     if(read.cigar is None):
-        raise ThisIsMadness("Cigar must not be None to get "
-                            "sequence for an operation!")
+        raise Tim("Cigar must not be None to get sequence for an operation!")
     try:
         assert(cigarOp in range(9))
     except AssertionError:
-        raise ThisIsMadness("Please read the doc string for "
-                            "GetReadSequenceForCigarOp. Invalid cigarOp")
+        raise Tim("Please read the doc string for "
+                  "GetReadSequenceForCigarOp. Invalid cigarOp")
     filtCigar = GetQueryIndexForCigarOperation(read)
     seqTups = []
     for f in filtCigar:
@@ -1614,7 +1592,7 @@ def GetReadSequenceForCigarOp(pysam.calignmentfile.AlignedSegment read,
             continue
         else:
             pass
-    raise ThisIsMadness("I haven't finished writing this function. Oops!")
+    raise Tim("I haven't finished writing this function. Oops!")
 
 
 @cython.returns(list)
@@ -1742,7 +1720,7 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
                         outBAM="default", ID="default", LB="default",
                         PU="default"):
     if(picardPath == "default"):
-        raise ThisIsMadness("picardPath required to call PicardTools!")
+        raise Tim("picardPath required to call PicardTools!")
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[:-1] + ["addRG", "bam"])
     commandStr = ("java -jar %s AddOrReplaceReadGroups I=" % picardPath +
@@ -1760,6 +1738,7 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
                window=cython.int)
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                   window=20):
+    from sklearn.covariance import EllipticEnvelope
     cdef np.ndarray[np.longdouble_t, ndim = 1] GAFreqNP = f1
     cdef np.ndarray[np.longdouble_t, ndim = 1] CTFreqNP = f2
     cdef np.ndarray[np.longdouble_t, ndim = 1] FreqArray
@@ -1911,7 +1890,7 @@ def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
     try:
         assert ref != "default"
     except AssertionError:
-        raise ThisIsMadness("Reference required for AlnRealignAS!")
+        raise Tim("Reference required for AlnRealignAS!")
     FastqStr = ASToFastqSingle(read)
     commandStr = "echo \'%s\' | bwa bwasw -M %s -" % (FastqStr, ref)
     printlog("Command String: %s" % commandStr)
@@ -2027,7 +2006,7 @@ def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
     try:
         assert ctfreq >= 0
     except AssertionError:
-        raise ThisIsMadness("kwarg ctfreq required for DeaminationConfTest!")
+        raise Tim("kwarg ctfreq required for DeaminationConfTest!")
     ceiling = GetCeiling(ACR, p=ctfreq, pVal=conf)
     if(AC > ceiling):
         return True
@@ -2046,14 +2025,14 @@ class AbstractVCFProxyFilter(object):
     """
     Abstract class which serves as a template for VCF record post-filtering.
     """
-    def __init__(self, filterStr, func=FacePalm,
+    def __init__(self, filterStr, func=Tim,
                  key="default", value="*"):
-        if(func == FacePalm):
+        if(func == Tim):
             func("func must be overridden for "
                  "AbstractVCFProxyFilter to work!")
         if(filterStr == "default"):
-            FacePalm("filterStr must be set to append or replace the "
-                     "filter field.")
+            raise Tim("filterStr must be set to append or replace the "
+                      "filter field.")
         if(hasattr(func, "__call__")):
             self.func = func
         else:
@@ -2185,7 +2164,7 @@ class PopenCall(object):
 
     def resubmit(self):
         if(self.resubmissions >= self.maxresubs):
-            raise ThisIsMadness(
+            raise Tim(
                 "Resubmission limit %s reached!" % self.maxresubs)
         self.popen = DevNullPopen(self.commandString)
         self.resubmissions += 1
@@ -2233,7 +2212,7 @@ class PopenDispatcher(object):
         self.resubmittedjobcounts = 0
         self.MaxResubmissions = MaxResubmissions
         if(hasattr(func, "__call__") is False):
-            raise ThisIsMadness("func must be callable!")
+            raise Tim("func must be callable!")
         self.getReturnValue = func
         self.bgStrs = []
         self.fgStrs = []
@@ -2345,8 +2324,7 @@ class PopenDispatcher(object):
                 print("fgStrs: %s" % ":".join(self.fgStrs))
                 print("bgStrs: %s" % ":".join(self.bgStrs))
                 print(repr(self.outstrs))
-                raise ThisIsMadness(
-                    "Command string %s has a key value of None!" % key)
+                raise Tim("Command string %s has a key value of None!" % key)
         if("cleanup" in dir(self)):
             self.cleanup()
         return 0
@@ -2390,7 +2368,7 @@ def SplitBamByBed(bampath, bedpath):
         # Index it so that variant-calling can happen.
         check_call(["samtools", "index", bam])
         if(not os.path.isfile(bam + ".bai")):
-            raise ThisIsMadness("Index for bam not created!")
+            raise Tim("Index for bam not created!")
     return ziplist
 
 
@@ -2421,8 +2399,8 @@ def SplitBamByBedPysam(bampath, bedpath):
     for bam in bamlist:
         check_call(["samtools", "index", bam])
         if(os.path.isfile(bam + ".bai") is False):
-            raise ThisIsMadness("samtools couldn't index this bam. "
-                                "It should already be sorted. Abort!")
+            raise Tim("samtools couldn't index this bam. "
+                      "It should already be sorted. Abort!")
     return bamlist
 
 
@@ -2433,10 +2411,10 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
     Returns a command string for calling bmftools snv
     """
     if(conf == "default"):
-        raise ThisIsMadness("conf must be set for BMFsnvCommandString.")
+        raise Tim("conf must be set for BMFsnvCommandString.")
     tag = str(uuid.uuid4().get_hex().upper()[0:8])
     if(bed == "default"):
-        raise ThisIsMadness("bed must be set for BMFsnvCommandString.")
+        raise Tim("bed must be set for BMFsnvCommandString.")
     outVCF = ".".join(bampath.split(".")[:-1] +
                       ["bmf", "vcf"])
     config = parseConfig(conf)
@@ -2468,7 +2446,7 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
     Makes a PopenDispatcher object for calling these variant callers.
     """
     if conf == "default":
-        raise ThisIsMadness("conf file but be set for GetBMFsnvPopen")
+        raise Tim("conf file but be set for GetBMFsnvPopen")
     ziplist = GetBamBedList(bampath, bedpath)
     if(parallel is True):
         SplitBamParallel(bampath, bedpath)
@@ -2492,7 +2470,7 @@ def TrimExt(cython.str fname):
     if(fname is not None):
         return ".".join(fname.split(".")[:-1]).split("/")[-1]
     else:
-        raise ThisIsMadness("Cannot trim an extension of a None value!")
+        raise Tim("Cannot trim an extension of a None value!")
 
 
 @cython.returns(cython.str)
@@ -2655,9 +2633,8 @@ cdef class AbstractIndelContainer(object):
         self.StartStops = []
 
     def __str__(self):
-        raise ThisIsMadness("Abstract method must be inherited. Sorry, cdef w"
-                            "on't let me actually make this an abstract "
-                            "class.")
+        raise Tim("Abstract method must be inherited. Sorry, cdef won't let "
+                  "me actually make this an abstract class.")
 
     @cython.returns(cython.int)
     def __len__(self):
@@ -2719,8 +2696,8 @@ cdef class AbstractIndelContainer(object):
         try:
             assert AIC.uniqStr == self.uniqStr
         except AssertionError:
-            raise ThisIsMadness("To merge two IndelContainer objects, "
-                                "their unique string description must match.")
+            raise Tim("To merge two IndelContainer objects, "
+                      "their unique string description must match.")
         self.readnames += AIC.readnames
         self.StartStops += AIC.StartStops
 
@@ -2741,7 +2718,7 @@ cdef class Insertion(AbstractIndelContainer):
                  cython.str seq=None, pysam.cfaidx.FastaFile handle=None,
                  cython.int window=20):
         if(start < 0):
-            raise ThisIsMadness("start required for InsertionContainer.")
+            raise Tim("start required for InsertionContainer.")
         self.contig = contig
         self.start = start
         self.end = start + 1
@@ -2880,7 +2857,7 @@ cdef class IndelQuiver(object):
         try:
             SVTag = read.opt("SV")
         except KeyError:
-            raise ThisIsMadness("read must have an SV tag for IndelQuiver!")
+            raise Tim("read must have an SV tag for IndelQuiver!")
         if("DSI" in SVTag):
             Indel = GetInsertionFromAlignedSegment(read, handle=self.fastaRef)
             try:
@@ -3007,8 +2984,7 @@ cdef class IDVCFLine(object):
             self.ALT = self.REF[0]
             self.LEN = IC.end - IC.start
         else:
-            raise ThisIsMadness("Sorry, I haven't finished this "
-                                "VCF writer for complex indels.")
+            raise Tim("Sorry, I haven't finished this VCF writer for complex indels.")
         self.ID = IC.uniqStr
         self.reverseStrandFraction = sum(
             ["reverse" in ssString for ssString in
@@ -3152,7 +3128,7 @@ def GetBamTagTypeDict(cython.str bamfile):
     cdef list i
     return {i[0]: i[1] for
             i in [f.split(":") for
-                  f in GetBamTypes(bamfile)]}
+                  f in GetBamTagTypes(bamfile)]}
 
 TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
                "FM": "i", "FP": "i", "MQ": "i", "ND": "i",

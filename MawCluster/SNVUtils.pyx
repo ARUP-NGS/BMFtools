@@ -266,7 +266,7 @@ cdef class VCFPos:
         cdef AlleleAggregateInfo_t alt
         if(refHandle is None):
             if(reference == "default"):
-                HTSUtils.FacePalm("VCFPos requires a reference fasta.")
+                raise ThisIsMadness("VCFPos requires a reference fasta.")
             refHandle = pyFastaFile(reference)
         else:
             assert isinstance(refHandle, pysam.cfaidx.FastaFile)

@@ -8,8 +8,7 @@ from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl, CoorSortAndIndexBam,
                               GetInsertionFromAlignedSegment,
                               GetDeletionFromAlignedSegment,
-                              FacePalm, ParseBed,
-                              shen, ssStringFromRead, ccopy,
+                              ParseBed, shen, ssStringFromRead, ccopy,
                               Insertion, Deletion, IndelQuiver,
                               AbstractIndelContainer, IDVCFLine)
 from utilBMF.Uniqueness import GetKmersToCheck, FastqStrFromKmerList
@@ -219,7 +218,8 @@ def FillIndelQuiverRegion(inBAM, cython.int minPairs=2,
         try:
             svtags = rec.opt("SV")
         except KeyError:
-            FacePalm("SV tags must be marked to call tagged indels!")
+            raise ThisIsMadness("SV tags must be marked to call "
+                                "tagged indels!")
         if("DSI" in svtags):
             Quiver.addIndel(GetInsertionFromAlignedSegment(rec,
                                                            handle=refHandle))
