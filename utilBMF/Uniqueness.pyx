@@ -91,10 +91,11 @@ cdef class KmerFetcher(object):
     how to automate that.
 
     :param cython.str ref - path to reference fasta file.
-    :param cython.int padding - distance around region to pad for looking for kmers
+    :param cython.int padding - distance around region to pad for
+           looking for kmers
     :param cython.int mismatches - maximum permitted mismatches in alignment.
-    :param cython.int minMQ - minimum MQ for a kmer's alignment to be considered
-    acceptable.
+    :param cython.int minMQ - minimum MQ for a kmer's alignment to be
+    considered acceptable.
     :param cython.int k - length of kmers;
     * Note: minMQ doesn't make sense with bowtie/bowtie2's mapping quality
     assignments.

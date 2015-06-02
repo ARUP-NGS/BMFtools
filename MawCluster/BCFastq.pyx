@@ -147,6 +147,7 @@ def compareFqRecsFqPrx(list R, stringency=0.9,
                        makeFA=True, makePV=True, name=None, oagseq=oagseq,
                        nparray=nparray, cython.bint NLowQual=False):
     """
+    TODO: Unit test for this function.
     Compares the fastq records to create a consensus sequence (if it
     passes a filter).
     If NLowQual is set, all bases with q < 3 are set to N.
@@ -244,6 +245,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
                       nsum=nsum, dict chr2ph=chr2ph,
                       partialnpchar=partialnpchar):
     """
+    TODO: Unit test for this function.
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
@@ -417,6 +419,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
                        useGzip=False, readPairsPerWrite=10,
                        cython.int head=2):
     """
+    TODO: Unit test for this function.
     Tags fastqs with barcodes from an index fastq.
     """
     #  C declarations
@@ -531,6 +534,9 @@ def FastqSingleShading(fq,
                        outfq="default",
                        cython.bint gzip=False,
                        cython.int head=0):
+    """
+    TODO: Unit test for this function.
+    """
     cdef pysam.cfaidx.FastqProxy read1
     cdef pFq pRead1, pIndexRead
     cdef pysam.cfaidx.FastqFile inFq1, inIndex
@@ -669,6 +675,11 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
                            cython.bint onlyNumpy=True,
                            cython.bint skipSingles=False,
                            cython.bint skipFails=False):
+    """
+    TODO: Unit test for this function.
+    Also, it would be nice to do a groupby() that separates read 1 and read
+    2 records so that it's more pythonic, but that's a hassle.
+    """
     compareFqRecs = compareFqRecsFast if(onlyNumpy) else compareFqRecsFqPrx
     if(UsecProfile):
         import cProfile
@@ -777,11 +788,12 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
     outputHandle2.close()
     return outFqPair1, outFqPair2
 
+
 def singleFastqConsolidate(fq, cython.float stringency=0.9,
-                          cython.int readsPerWrite=100,
-                          cython.bint UsecProfile=False,
-                          cython.bint onlyNumpy=True,
-                          cython.bint skipFails=False):
+                           cython.int readsPerWrite=100,
+                           cython.bint UsecProfile=False,
+                           cython.bint onlyNumpy=True,
+                           cython.bint skipFails=False):
     if(UsecProfile):
         import cProfile
         import pstats
@@ -792,7 +804,7 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
     cdef pFq fqRec
     cdef list workingSet, StringList
     cdef cython.int numProc
-    outFq = TrimExt(fq)+".cons.fastq"
+    outFq = TrimExt(fq) + ".cons.fastq"
     pl("Now running singleFastqConsolidate on {}.".format(fq))
     pl("Command required to duplicate this action:"
         " singleFastqConsolidate('{}', ".format(fq) +
@@ -858,6 +870,9 @@ def TrimHomingSingle(
         cython.int bcLen=12,
         cython.str trim_err=None,
         cython.int start_trim=1):
+    """
+    TODO: Unit test for this function.
+    """
     cdef pysam.cfaidx.FastqProxy read
     cdef cython.int HomingLen, TotalTrim
     pl("TrimHoming: \"{}\" from {}.".format(homing, fq))
@@ -889,6 +904,9 @@ def TrimHomingSingle(
 def TrimHomingPaired(inFq1, inFq2, cython.int bcLen=12,
                      cython.str homing=None, cython.str trimfq1=None,
                      cython.str trimfq2=None, cython.int start_trim=1):
+    """
+    TODO: Unit test for this function.
+    """
     cdef pysam.cfaidx.FastqProxy read1, read2
     cdef cython.int HomingLen, TotalTrim
     pl("Getting inline barcodes for files %s, %s with homing %s." % (inFq1,

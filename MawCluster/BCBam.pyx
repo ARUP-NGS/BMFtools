@@ -255,6 +255,9 @@ def pairedBarcodeTagging(
         cython.str bedfile="default",
         cython.str conversionXml="default", cython.str realigner="default",
         cython.float minAF=0.0, cython.str ref="default"):
+    """
+    TODO: Unit test for this function.
+    """
     cdef np.ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef cython.float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
@@ -482,74 +485,6 @@ def ConsolidateInferred(inBAM, outBAM="default"):
     return outBAM
 
 
-def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
-    """
-    Tool for filtering a pair of BAM files by criteria.
-    Note: complexity filter is not needed for shades protocol.
-    """
-    list = ("adapter barcode complexity editdistance family "
-            "ismapped qc notinbed").split()
-    Logger = logging.getLogger("Primarylogger")
-    try:
-        assert isinstance(filterSet, str)  # This should be a string.
-    except AssertionError:
-        if(isinstance(filterSet, list)):
-            pl("filterSet is a list, which was not expected. repr: {}".format(
-                repr(filterSet)))
-            pl("Joining filterSet into a string.")
-            filterSet = ''.join(filterSet)
-            if(isinstance(filterSet, str) is False):
-                raise Tim("filterSet isn't a string after joining.")
-        else:
-            pl("Filter set is not as expected! Repr: {}".format(
-                repr(filterSet)))
-            raise ValueError("What is this? filterSet is not string or list.")
-    if(filterSet == "default"):
-        pl("List of valid filters: {}".format(', '.join(list)))
-        raise ValueError("Filter must be set!")
-    filterSet = filterSet.split(',')
-    for filt in filterSet:
-        if filt not in list:
-            pl("filterSet provided: {}".format(filterSet))
-            raise ValueError("Select valid filter(s) - {}".format(list))
-
-    if("adapter" in filterSet):
-        ALValue1 = int(read1.opt("FP"))
-        ALValue2 = int(read2.opt("FP"))
-        if(sum([ALValue1, ALValue2]) != 2):
-            return False
-
-    if("barcode" in filterSet):
-        if(read1.opt("BS") != read2.opt("BS")):
-            Logger.debug(
-                "Barcode sequence didn't match. Are you running shades?")
-            return False
-
-    if("editdistance" in filterSet):
-        NMValue1 = int(read1.opt("NM"))
-        NMValue2 = int(read2.opt("NM"))
-        if(NMValue1 == 0 and NMValue2 == 0):
-            return False
-
-    if("family" in filterSet):
-        FMValue1 = int(read1.opt("FM"))
-        FMValue2 = int(read2.opt("FM"))
-        if(FMValue1 < int(minFamSize) or FMValue2 < int(minFamSize)):
-            Logger.debug(("This family didn't survive. Their FMValues:" +
-                          "{}, {}".format(FMValue1, FMValue2)))
-            return False
-
-    if("ismapped" in filterSet):
-        if(read1.is_unmapped and read2.is_unmapped):
-            return False
-
-    if("qc" in filterSet):
-        if(read1.is_qcfail or read2.is_qcfail):
-            return False
-
-    return True
-
-
 def GenerateFamilyHistochart(BCIdx, output="default"):
     if(output == "default"):
         output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
@@ -560,114 +495,6 @@ def GenerateFamilyHistochart(BCIdx, output="default"):
     HTSUtils.PipedShellCall(Str)
     pl("Family size histochart: {}".format(output))
     return output
-
-
-def pairedFilterBam(inputBAM, passBAM="default",
-                    failBAM="default", criteria="default",
-                    deleteFailBam=False):
-    """
-    Filters out both reads in a pair based on a list of ","-separated criteria.
-    Both reads must pass for the pair to be written
-    Required: [sb]am file, name-sorted, keep unmapped reads,
-    and remove supplementary and secondary alignments.
-    criteria must be a string. If multiple filters are set,
-    they must be comma-separated and have no spaces.
-    """
-    cStr = ("pairedFilterBam({}, passBAM='{}', ".format(inputBAM, passBAM) +
-            "failBAM='{}', criteria='{}', delete".format(failBAM, criteria) +
-            "FailBam='{}')".format(deleteFailBam))
-    pl("Command required to reproduce this call: {}".format(cStr))
-    if(criteria == "default"):
-        raise NameError("Filter Failed: Criterion Not Set.")
-    if(passBAM == "default"):
-        passBAM = '.'.join(inputBAM.split('.')[0:-1])
-        passBAM += ".{}P.bam".format(criteria)
-    if(failBAM == "default"):
-        failBAM = '.'.join(inputBAM.split('.')[0:-1])
-        failBAM += ".{}F.bam".format(criteria)
-    pl("pairedFilterBam. Input: {}. Pass: {}".format(inputBAM, passBAM))
-    inBAM = pysam.Samfile(inputBAM, "rb")
-    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
-    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
-    criteriaList = criteria.lower()
-    pl("Criteria string is: {}".format(criteriaList))
-    pl("Following criteria will be used: {}".format(
-        str(criteriaList.split(','))))
-    for read in inBAM:
-        failed = False
-        if(read.is_read1):
-            read1 = read
-            continue
-        if(read.is_read2):
-            read2 = read
-            try:
-                assert read1.qname == read2.qname  # Sanity check
-            except AssertionError:
-                pl("Failed sanity check. Is the alignment file name-sorted?")
-                raise Tim("Please inspect your bam file!")
-            result = criteriaTest(read1, read2, filterSet=criteriaList)
-            if(result is False):
-                failed = True
-                failFilter.write(read1)
-                failFilter.write(read2)
-                continue
-            if(failed):
-                continue
-            passFilter.write(read1)
-            passFilter.write(read2)
-    passFilter.close()
-    failFilter.close()
-    inBAM.close()
-    if(str(deleteFailBam).lower() == "true"):
-        os.remove(failBAM)
-    return passBAM, failBAM
-
-
-def removeSecondary(inBAM, outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.2ndrm.bam'
-    input = pysam.Samfile(inBAM, "rb")
-    output = pysam.Samfile(outBAM, "wb", template=input)
-    pl(("Attempting to remove secondary"))
-    for entry in input:
-        if(entry.is_secondary or entry.flag >> 11 == 1):
-            continue
-        else:
-            output.write(entry)
-    return outBAM
-
-
-def Sam2Bam(insam, outBAM):
-    pl("Sam2Bam converting {} to {}".format(insam, outBAM))
-    output = open(outBAM, 'w', 0)
-    command_str = 'samtools view -Sbh {}'.format(insam)
-    pl((command_str))
-    check_call(shlex.split(command_str), stdout=output, shell=False)
-    return(command_str, outBAM)
-
-
-# Taken from Scrutils, by Jacob Durtschi
-def SamtoolsBam2fq(bamPath, outFastqPath):
-    pl("SamtoolsBam2fq converting {}".format(bamPath))
-    # Build commands that will be piped
-    samtoolsBam2fqCommand = ['samtools', 'bam2fq', bamPath]
-    gzipCommand = ['gzip']
-
-    # Open output fastq.gz file to be piped into
-    outFastq = open(outFastqPath, 'w')
-
-    # Call piped commands
-    process1 = subprocess.Popen(samtoolsBam2fqCommand,
-                                stdout=subprocess.PIPE, shell=False)
-    process2 = subprocess.Popen(gzipCommand, stdin=process1.stdout,
-                                stdout=outFastq, shell=False)
-    # process1.stdout.close()
-    # process1.wait()
-    process2.wait()
-    outFastq.flush()
-    outFastq.close()
-    # if processErr:
-
     return outFastqPath
 
 
@@ -677,6 +504,9 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     cdef pysam.calignmentfile.AlignedSegment entry
     cdef pysam.cfaidx.FastqFile reads
     cdef dict descDict
+    """
+    TODO: Unit test for this function.
+    """
     if(outputBAM == "default"):
         outputBAM = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -708,153 +538,6 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
-
-
-def SingleConsolidate(inBAM, outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    pl("SingleConsolidate. Input: {}. Output: {}".format(inBAM, outBAM))
-    inputHandle = pysam.Samfile(inBAM, 'rb')
-    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
-    workBC = ""
-    Set = []
-    for record in inputHandle:
-        barcodeRecord = [
-            tagSet for tagSet in record.tags if tagSet[0] == "BS"][0][1]
-        # print("Working: {}. Current: {}.".format(workBC,barcodeRecord))
-        # print("name of read with this barcode: {}".format(record.qname))
-        # print("Working set: {}".format(Set))
-        if(workBC == ""):
-            workBC = barcodeRecord
-            Set = []
-            Set.append(record)
-            continue
-        elif(workBC == barcodeRecord):
-            # print(record.qname)
-            # print(workBC==barcodeRecord)
-            # print("WorkBC: {}. Current: {}.".format(workBC,barcodeRecord))
-            try:
-                assert([tagSet for tagSet in Set[0].tags if tagSet[
-                    0] == "BS"][0][1] == [
-                    tagSet for tagSet in record.tags if tagSet[
-                        0] == "BS"][0][1])
-            except AssertionError:
-                BS1 = [tagSet for tagSet in Set[
-                    0].tags if tagSet[0] == "BS"][0][1]
-                BS2 = [tagSet for tagSet in record.tags if tagSet[
-                    0] == "BS"][0][1]
-                pl("BS1: {}. BS2: {}".format(BS1, BS2))
-                raise AssertionError("Well, there you go.")
-            Set.append(record)
-            continue
-        elif(workBC != barcodeRecord):
-            mergeRec, success = compareRecs(Set)
-            if(success):
-                outputHandle.write(mergeRec)
-            Set = []
-            Set.append(record)
-            workBC = barcodeRecord
-            continue
-        else:
-            raise RuntimeError("This code should be unreachable")
-    inputHandle.close()
-    outputHandle.close()
-    return outBAM
-
-
-@cython.returns(cython.bint)
-def singleCriteriaTest(read, filter="default"):
-    list = "adapter complexity editdistance family ismapped qc".split(' ')
-
-    if(filter == "default"):
-        pl(("List of valid filters: {}".format(', '.join(list))))
-        raise ValueError("Filter must be set!.")
-
-    if(filter not in list):
-        raise ValueError("Filter not supported. The list is: {}".format(list))
-
-    if(filter == "adapter"):
-        ALloc1 = [i for i, j in enumerate(read.tags) if j[0] == "FP"][0]
-
-        try:
-            ALValue1 = int(read.tags[ALloc1][1])
-        except IndexError:
-            ALValue1 = 0
-        if(ALValue1 == 0):
-            return False
-
-    if(filter == "complexity"):
-        a = "AAAAAAAAAA"
-        t = "TTTTTTTTTT"
-        c = "CCCCCCCCCC"
-        g = "GGGGGGGGGG"
-        rt = str(read.tags)
-        if(a in rt or t in rt or g in rt or c in rt):
-            return False
-
-    if(filter == "editdistance"):
-        NMloc1 = [i for i, j in enumerate(read.tags) if j[0] == "NM"][0]
-        if(read.tags[NMloc1][1] == 0):
-            return False
-
-    if(filter == "family"):
-        FMloc1 = [i for i, j in enumerate(read.tags) if j[0] == "FM"][0]
-        FMValue1 = int(read.tags[FMloc1][1])
-        if(FMValue1 < 3):
-            return False
-
-    if(filter == "ismapped"):
-        if(read.is_unmapped):
-            return False
-
-    if(filter == "qc"):
-        if(read.is_qcfail):
-            return False
-
-    return True
-
-
-def singleFilterBam(inputBAM, passBAM="default",
-                    failBAM="default", criteria="default"):
-    """
-    Filters out both reads in a pair based on a list of
-    comma-separated criteria. Both reads must pass to be written.
-    Required: [SB]AM file, coordinate-sorted,
-    supplementary and secondary alignments removed,unmapped reads retained.
-    """
-    cdef pysam.calignmentfile.AlignedSegment read
-    if(criteria == "default"):
-        raise NameError("Filter Failed: Criterion Not Set.")
-    if(passBAM == "default"):
-        passBAM = '.'.join(inputBAM.split('.')[0:-1])
-        passBAM += ".{}P.bam".format(criteria)
-    if(failBAM == "default"):
-        failBAM = '.'.join(inputBAM.split('.')[0:-1])
-        failBAM += ".{}F.bam".format(criteria)
-    pl("singleFilterBam. Input: {}. Pass: {}".format(inputBAM, passBAM))
-    inBAM = pysam.Samfile(inputBAM, "rb")
-    passFilter = pysam.Samfile(passBAM, "wb", template=inBAM)
-    failFilter = pysam.Samfile(failBAM, "wb", template=inBAM)
-    criteriaList = criteria.lower().split(',')
-    for i, entry in enumerate(criteriaList):
-        pl(("Criteria #{} is \"{}\"".format(i, entry)))
-    for read in inBAM:
-        failed = False
-        for criterion in criteriaList:
-            result = singleCriteriaTest(read, filter=criterion)
-            if(result is False):
-                failFilter.write(read)
-                failed = True
-                break
-            else:
-                continue
-        if(failed):
-            continue
-        passFilter.write(read)
-    passFilter.close()
-    failFilter.close()
-    inBAM.close()
-    return passBAM, failBAM
 
 
 def GetRPsWithI(inBAM, outBAM="default"):
