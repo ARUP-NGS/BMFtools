@@ -6,14 +6,12 @@ import cython
 from cytoolz import map as cmap
 from utilBMF.HTSUtils import (FractionAligned, FractionSoftClipped,
                               printlog as pl, CoorSortAndIndexBam,
-                              GetKmersToCheck, FastqStrFromKmerList,
-                              Bowtie2FqToStr, GetMQPassReads,
                               GetInsertionFromAlignedSegment,
                               GetDeletionFromAlignedSegment,
-                              FacePalm, ParseBed,
-                              shen, ssStringFromRead, ccopy,
+                              ParseBed, shen, ssStringFromRead, ccopy,
                               Insertion, Deletion, IndelQuiver,
                               AbstractIndelContainer, IDVCFLine)
+from utilBMF.Uniqueness import GetKmersToCheck, FastqStrFromKmerList
 from .SNVUtils import (HeaderInfoLine, HeaderFormatLine,
                        HeaderContigLine, HeaderCommandLine,
                        HeaderReferenceLine, HeaderFileFormatLine,
@@ -152,7 +150,7 @@ def GetFBOutVCFFromStr(cython.str cStr):
     """
     return cStr.split(" ")[2]
 
-
+'''
 @cython.returns(list)
 def GetUniquelyMappableKmers(cython.str ref, cython.int k=30,
                              list bedline=[], cython.int minMQ=1,
@@ -175,6 +173,7 @@ def GetUniquelyMappableKmers(cython.str ref, cython.int k=30,
     bowtieStr = Bowtie2FqToStr(fqStr, ref=ref, seed=k, mismatches=mismatches)
     PassingReadNames = GetMQPassReads(bowtieStr, minMQ=minMQ)
     return PassingReadNames
+'''
 
 
 @cython.returns(IndelQuiver_t)
@@ -219,7 +218,8 @@ def FillIndelQuiverRegion(inBAM, cython.int minPairs=2,
         try:
             svtags = rec.opt("SV")
         except KeyError:
-            FacePalm("SV tags must be marked to call tagged indels!")
+            raise ThisIsMadness("SV tags must be marked to call "
+                                "tagged indels!")
         if("DSI" in svtags):
             Quiver.addIndel(GetInsertionFromAlignedSegment(rec,
                                                            handle=refHandle))

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from utilBMF.HTSUtils import printlog as pl
-from utilBMF.HTSUtils import PysamToChrDict, FacePalm
+from utilBMF.HTSUtils import PysamToChrDict
+from utilBMF.ErrorHandling import ThisIsMadness
 
 import pysam
 from cytoolz import frequencies as cyfreq
@@ -52,7 +53,7 @@ def MarkReadPairPositions(inBAM, outBAM="default"):
         except StopIteration:
             break
         except AssertionError:
-            FacePalm("Input BAM is not name-sorted!")
+            raise ThisIsMadness("Input BAM is not name-sorted!")
     RPSetCounts = cyfreq(RPSetList)
     RPSCHandle = open(inBAM[0:-3] + "rpsc.table", "w")
     for key in RPSetCounts.keys():
@@ -99,7 +100,8 @@ def SortBamByRPTag(inBAM, outBAM="default", contigSets="default"):
             except StopIteration:
                 break
             except KeyError:
-                FacePalm("CS Key not present! Use MarkReadPairPositions")
+                raise ThisIsMadness("CS Key not present! "
+                                    "Use MarkReadPairPositions")
             if(readCount % 1000 == 0):
                 print("Number of read pairs read into memory"
                       " for contigSet {}: {}".format(cSet, readCount))

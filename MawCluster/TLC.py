@@ -3,6 +3,7 @@ from utilBMF import HTSUtils
 
 import pudb
 from utilBMF.HTSUtils import LoadReadsFromFile
+from utilBMF.ErrorHandling import ThisIsMadness as Tim
 
 
 def BMFXLC(inBAM,
@@ -34,7 +35,7 @@ def BMFXLC(inBAM,
         pl("Outfile: {}".format(outfile))
     outHandle = open(outfile, "w")
     if(bedfile == "default"):
-        FacePalm("Capture bed file required for translocation detection.")
+        raise Tim("Capture bed file required for translocation detection.")
     if(ref == "default"):
         ThisIsMadness("Path to reference index required!")
     if(insDistance == "default" or insDistance is None):

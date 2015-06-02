@@ -18,6 +18,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    versionParser = subparsers.add_parser(
+        "v", description="Outputs version of BMFTools.")
     InputQtyParser = subparsers.add_parser(
         "qty",
         description=("Calculates the quantity of input DNA needed to reach "
@@ -663,7 +665,8 @@ def main():
         from MawCluster.IndelUtils import GetUniquelyMappableKmers
         from utilBMF.HTSUtils import PadAndMakeFasta
         from functools import partial
-        b = re.compile("\W")
+        print("Warning! getkmers doesn't work and I'm using it in some other fashion soon... Sorry.")
+        sys.exit(1)
         bedline = b.split(args.region)
         bedline[1] = int(bedline[1])
         bedline[2] = int(bedline[2])
@@ -683,6 +686,9 @@ def main():
     if(args.bmfsuites == "famstats"):
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(args.inFq, outfile=args.outfile)
+    if(args.bmfsuites == "v"):
+        from BMFMain.main import __version__
+        print(__version__)
     sys.exit(0)
 
 

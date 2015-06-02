@@ -100,6 +100,6 @@ cdef class PCInfo:
     cdef public dict FailedSVReadDict, VariantDict, TotalAlleleFreqDict
     cdef public dict MergedAlleleFreqDict, MergedAlleleDict, TotalAlleleDict
     cdef public dict MergedStrandednessRatioDict, TotalStrandednessRatioDict
-    cdef public list Records, AltAlleleData
+    cdef public list Records, AltAlleleData, DiscNames
     cdef public cython.bint BothStrandAlignment
     cdef public cython.long maxND, FailedNDReads

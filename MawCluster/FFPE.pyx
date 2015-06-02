@@ -8,7 +8,7 @@ from .Probability import ConfidenceIntervalAAF, GetCeiling
 from .SNVUtils import HeaderFilterDict, HeaderFunctionCallLine
 from operator import methodcaller as mc
 from subprocess import check_output
-from utilBMF.ErrorHandling import IllegalArgumentError
+from utilBMF.ErrorHandling import IllegalArgumentError, ThisIsMadness
 import cStringIO
 import cython
 import logging
@@ -19,11 +19,10 @@ import pysam
 import shlex
 import subprocess
 import uuid
-from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness,
+from utilBMF.HTSUtils import (printlog as pl,
                               NameSortAndFixMate, makeinfodict,
                               MakeVCFProxyDeaminationFilter)
-
-
+from BMFMain.main import __version__ as BMFVersion
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
@@ -32,8 +31,6 @@ cimport cython
 """
 Contains utilities relating to FFPE
 """
-
-BMFVersion = "0.1.0.0beta"
 
 
 @cython.locals(maxFreq=np.longdouble_t)

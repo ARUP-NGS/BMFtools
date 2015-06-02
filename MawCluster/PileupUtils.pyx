@@ -6,12 +6,15 @@ import subprocess
 import os.path
 import shlex
 import logging
-import re
 import operator
 from operator import attrgetter as oag
 from operator import itemgetter as oig
 from operator import div as odiv
 from itertools import ifilterfalse as iff
+try:
+    import re2 as re
+except ImportError:
+    import re
 
 import numpy as np
 from numpy import (mean as nmean, max as nmax, sum as nsum,
@@ -21,7 +24,7 @@ from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
 from cytoolz import (map as cmap, frequencies as cyfreq,
                      partition as ctpartition)
-
+from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair, ssStringFromRead,
@@ -40,19 +43,37 @@ ctypedef PileupReadPair PileupReadPair_t
 #  Pre-defining some itemgetters and attrgetters
 oig1 = oig(1)
 oig0 = oig(0)
-oagbc = operator.attrgetter("BaseCall")
+oagbc = oag("BaseCall")
+oagir = oag("is_reverse")
+oagread = oag("read")
+oagqp = oag("query_position")
+oagmq= oag("MQ")
+oagbq = oag("BQ")
+oagname = oag("name")
+oagdisc = oag("discordant")
+oagqn = oag("query_name")
+oagal = oag("alignment")
+oagname = oag("name")
 
-
-def lname(x):
-    """
-    Tiny function for call.
-    """
-    return x.name
+@cython.returns(list)
+def GetDiscReadNames(pPileupColumn_t pPC, oagname=oagname):
+    cdef list returnList, gList
+    cdef cython.str name
+    returnList = []
+    for name, group in groupby(sorted(pPC.pileups, key=oagname), key=oagname):
+        gList = list(group)
+        if(len(gList) == 2 and gList[0].BaseCall != gList[1].BaseCall):
+            returnList.append(name)
+    return returnList
 
 
 @cython.locals(paired=cython.bint)
 @cython.returns(list)
-def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
+def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj,
+                           object oagname=oagname,
+                           object oagdisc=oagdisc,
+                           object ctpartition=ctpartition,
+                           object oagal=oagal, object oagqn=oagqn):
     """
     Takes a pPileupColumn object (python PileupColumn) as input
     and returns a list of PileupReadPair objects.
@@ -61,19 +82,13 @@ def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj):
     cdef list reads, readnames, readpairs, pileups
     cdef pPileupRead_t read
     cdef tuple i
-    cdef PileupReadPair_t pair
     pileups = pPileupColObj.pileups
-    ReadNameCounter = cyfreq(map(oag("query_name"),
-                                 list(cmap(oag("alignment"), pileups))))
+    ReadNameCounter = cyfreq(map(oagqn, map(oagal, pileups)))
     readnames = [i[0] for i in ReadNameCounter.iteritems() if i[1] == 2]
     reads = sorted([read for read in pileups if read.name in readnames],
-                   key=lname)
-    readpairs = list(cmap(PileupReadPair, ctpartition(2, reads)))
+                   key=oagname)
+    readpairs = map(PileupReadPair, ctpartition(2, reads))
     return [pair for pair in readpairs if pair.discordant]
-
-
-# Let's avoid typing this so many times and avoid calling the keys method
-# on dictionaries which have only these 4 nucleotides as keys.
 
 
 cdef class pPileupColumn:
@@ -155,7 +170,7 @@ cdef class PRInfo:
         self.PV = -1
         self.PV_Array = np.array([])
         self.PVFrac = -1.
-        if("PV" in list(cmap(oig0, tags))):
+        if("PV" in map(oig0, tags)):
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = aopt("PV")
@@ -211,7 +226,9 @@ cdef class AlleleAggregateInfo:
                  cython.int NUMALT=-1,
                  cython.float AABPSD=-1., cython.float AAMBP=-1.,
                  cython.float minFracAgreed=0.0, cython.int minFA=0,
-                 cython.float minPVFrac=0.0, cython.int FSR=-1):
+                 cython.float minPVFrac=0.0, cython.int FSR=-1,
+                 object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
+                 object oagmq=oagmq):
         cdef np.ndarray NFList
         cdef cython.int lenR
         cdef PRInfo_t rec
@@ -249,8 +266,8 @@ cdef class AlleleAggregateInfo:
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
-            self.TND = sum(cmap(oag("ND"), self.recList))
-            NFList = nparray(list(cmap(oag("NF"), self.recList)))
+            self.TND = sum(map(oag("ND"), self.recList))
+            NFList = nparray(map(oag("NF"), self.recList))
         else:
             self.TND = -1
             NFList = nparray([])
@@ -263,21 +280,20 @@ cdef class AlleleAggregateInfo:
             self.MNF = -1.
             self.maxNF = -1.
             self.NFSD = -1.
-        self.TotalReads = sum(cmap(oag("FM"), self.recList))
+        self.TotalReads = sum(map(oag("FM"), self.recList))
         self.MergedReads = lenR
-        self.ReverseMergedReads = sum(cmap(
-            oag("is_reverse"), self.recList))
+        self.ReverseMergedReads = sum(map(oagir, self.recList))
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = sum(cmap(
-            oag("FM"), filter(oag("is_reverse"), self.recList)))
+        self.ReverseTotalReads = sum(map(
+            oag("FM"), filter(oagir, self.recList)))
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
             self.AveFamSize = 1. * self.TotalReads / self.MergedReads
         except ZeroDivisionError:
             self.AveFamSize = -1.
         self.TotalAlleleDict = {"A": 0, "C": 0, "G": 0, "T": 0}
-        self.SumBQScore = sum(cmap(oag("BQ"), self.recList))
-        self.SumMQScore = sum(cmap(oag("MQ"), self.recList))
+        self.SumBQScore = sum(map(oagbq, self.recList))
+        self.SumMQScore = sum(map(oagmq, self.recList))
         try:
             self.AveMQ = 1. * self.SumMQScore / lenR
         except ZeroDivisionError:
@@ -296,7 +312,7 @@ cdef class AlleleAggregateInfo:
         except ZeroDivisionError:
             self.reverseStrandFraction = -1.
         try:
-            self.MFractionAgreed = nmean(list(cmap(
+            self.MFractionAgreed = nmean(list(map(
                 oag("FractionAgreed"),  self.recList)))
         except TypeError:
             pl("Looks like these records have no FractionAgreed attribute. "
@@ -305,7 +321,7 @@ cdef class AlleleAggregateInfo:
         self.minFrac = minFracAgreed
         self.minFA = minFA
         try:
-            self.MFA = nmean(list(cmap(oag("FA"), self.recList)))
+            self.MFA = nmean(list(map(oag("FA"), self.recList)))
         except TypeError:
             pl("Looks like these records have no FA attribute. "
                "No worries.", level=logging.DEBUG)
@@ -319,7 +335,7 @@ cdef class AlleleAggregateInfo:
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
         self.StrandCountsDict["reverse"] = sum(cmap(
-            oag("is_reverse"), self.recList))
+            oagir, self.recList))
         self.StrandCountsDict["forward"] = sum(
             rec.is_reverse is False for rec in self.recList)
         self.StrandCountsTotalDict = {}
@@ -347,8 +363,7 @@ cdef class AlleleAggregateInfo:
                                       cyfreq(map(oag("query_name"),
                                                  self.recList)).iteritems()
                                       if i[1] > 1])
-        query_positions = nparray(map(
-            oag("query_position"), self.recList), dtype=np.float64)
+        query_positions = nparray(map(oagqp, self.recList), dtype=np.float64)
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
@@ -386,13 +401,28 @@ cdef class PCInfo:
                  cython.str exclusionSVTags="MDC,LI",
                  cython.bint FracAlignFilter=False, cython.int primerLen=20,
                  cython.str experiment="", cython.float minAF=0.25,
-                 cython.int maxND=10):
+                 cython.int maxND=10, object oig1=oig1, object oagir=oagir,
+                 object oagqp=oagqp):
         cdef PRInfo_t rec
-        cdef list pileups, fks, svTags, exclusionTagList
+        cdef list pileups, fks, svTags, exclusionTagList, discNames
         cdef pPileupRead_t r
         cdef cython.int lenR, rsn
         cdef query_positions
         pileups = PileupColumn.pileups
+        # Get the read pairs which are discordant and get rid of them - one
+        # of them has to be wrong!
+        self.DiscNames = GetDiscReadNames(PileupColumn)
+        self.Records = [PRInfo(pileupRead) for
+                        pileupRead in pileups
+                        if(pileupRead.alignment.mapq >= self.minMQ) and
+                        (pileupRead.alignment.query_qualities[
+                            pileupRead.query_position] >= self.minBQ) and
+                        pileupRead.alignment.opt("FP") == 1 and
+                        pileupRead.alignment.opt("FM") >= minFA and
+                        pileupRead.alignment.opt("AF") >= minAF and
+                        pileupRead.alignment.opt("ND") <= maxND and
+                        pileupRead.name not in self.DiscNames]
+        # Remove discordant read pairs.
         if("amplicon" in experiment):
             self.ampliconFailed = sum(r for r in pileups
                                       if r.query_position <= primerLen)
@@ -421,8 +451,8 @@ cdef class PCInfo:
                 pileupRead.query_position] < self.minBQ for
             pileupRead in pileups)
         self.FailedMQReads = sum(
-            [pileupRead.alignment.mapping_quality < self.minMQ
-             for pileupRead in pileups])
+            pileupRead.alignment.mapping_quality < self.minMQ
+            for pileupRead in pileups)
         self.PCol = PileupColumn
         self.excludedSVTagStr = exclusionSVTags
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
@@ -446,25 +476,17 @@ cdef class PCInfo:
         print("Number of reads failed for MQ < {}: {}".format(self.minMQ,
               self.FailedMQReads))
         """
-        self.Records = [PRInfo(pileupRead) for pileupRead in pileups
-                        if(pileupRead.alignment.mapq >= self.minMQ) and
-                        (pileupRead.alignment.query_qualities[
-                            pileupRead.query_position] >= self.minBQ) and
-                        pileupRead.alignment.opt("FP") == 1 and
-                        pileupRead.alignment.opt("FM") >= minFA and
-                        pileupRead.alignment.opt("AF") >= minAF and
-                        pileupRead.alignment.opt("ND") <= maxND]
+
         self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
-        rsn = sum(cmap(oag("is_reverse"), self.Records))
+        rsn = sum(map(oagir, self.Records))
         if(rsn != lenR and rsn != 0):
             self.BothStrandAlignment = True
         else:
             self.BothStrandAlignment = False
         try:
             self.reverseStrandFraction = sum(
-                map(oag("is_reverse"),
-                    map(oag("read"), self.Records))) / (1. * lenR)
+                map(oagir, map(oagread, self.Records))) / (1. * lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
@@ -474,17 +496,17 @@ cdef class PCInfo:
             self.TotalReads = self.MergedReads
         try:
             self.consensus = sorted(cyfreq(
-                cmap(oagbc, self.Records)).iteritems(),
+                map(oagbc, self.Records)).iteritems(),
                 key=oig1)[-1][0]
         except IndexError:
-            self.consensus = sorted(cyfreq(
-                map(oagbc, list(cmap(PRInfo, pileups)))).iteritems(),
-                                    key=oig1)[-1][0]
+            self.consensus = "N"  # All bases failed filtered. Oh well.
+            pl("Note: PCInfo empty at contig "
+               "%s and position" % (self.contig, self.pos),
+               level=logging.DEBUG)
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
-                            for alt in set(cmap(oagbc, self.Records))}
-        query_positions = map(oag("query_position"),
-                              self.Records)
+                            for alt in set(map(oagbc, self.Records))}
+        query_positions = map(oagqp, self.Records)
         self.AAMBP = nmean(query_positions)
         self.AABPSD = nstd(query_positions)
 
@@ -523,12 +545,10 @@ cdef class PCInfo:
         self.TotalAlleleFreqDict = {"A": 0., "C": 0., "G": 0., "T": 0.}
         try:
             for key in self.MergedAlleleDict:
-                self.MergedAlleleFreqDict[key] = odiv(
-                    self.MergedAlleleDict[key],
-                    float(self.MergedReads))
-                self.TotalAlleleFreqDict[key] = odiv(
-                    self.TotalAlleleDict[key],
-                    float(self.TotalReads))
+                self.MergedAlleleFreqDict[key] = self.MergedAlleleDict[
+                    key] / float(self.MergedReads)
+                self.TotalAlleleFreqDict[key] = self.TotalAlleleDict[
+                    key] / float(self.TotalReads)
         except ZeroDivisionError:
             for key in self.MergedAlleleDict:
                 self.MergedAlleleFreqDict[key] = 0.

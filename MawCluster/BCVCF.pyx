@@ -18,10 +18,10 @@ from numpy import min as nmin
 import cython
 import pysam
 import os.path
-from cytoolz import map as cmap
-from utilBMF.HTSUtils import (ThisIsMadness, printlog as pl,
+from utilBMF.HTSUtils import (printlog as pl,
                               SortBgzipAndTabixVCF, is_reverse_to_str)
 from utilBMF import HTSUtils
+from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from . import SNVUtils
 
 
@@ -129,10 +129,10 @@ class VCFRecord:
             self.POS = int(VCFEntry[1])
         except IndexError:
             print("Line: {}".format(VCFEntry))
-            raise ThisIsMadness("Something went wrong.")
+            raise Tim("Something went wrong.")
         except ValueError:
             print(repr(VCFEntry))
-            raise ThisIsMadness("Improperly formatted VCF.")
+            raise Tim("Improperly formatted VCF.")
         self.ID = VCFEntry[2]
         self.REF = VCFEntry[3]
         if("<X>" in VCFEntry[4]):
@@ -301,7 +301,7 @@ def ParseVCF(inputVCFName):
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    lst = list(cmap(mc("lower"), "bed,I16".split(",")))
+    lst = map(mc("lower"), "bed,I16".split(","))
     # print("lst = {}".format(lst))
     if(filterOpt.lower() not in lst):
         raise ValueError(("Filter option not supported. Available options: " +
@@ -465,7 +465,7 @@ def FilterGZVCFByBed(inVCF, bedfile="default", outVCF="default"):
         pl("vcf file not bgzipped - sorting, bgzipping and tabixing.")
         inVCF = SortBgzipAndTabixVCF(inVCF)
     elif(inVCF[:-3] == ".gz"):
-        raise ThisIsMadness("Unrecognized file extension - either "
+        raise Tim("Unrecognized file extension - either "
                             "accepts bgzipped or unzipped vcf files.")
     if(outVCF == "default"):
         outVCF = inVCF[0:-7] + ".bedfilter.vcf.gz"
@@ -486,13 +486,13 @@ def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
     if(outVCF == "default"):
         outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.InfGt.vcf'
     if(INFOTag == "default"):
-        HTSUtils.FacePalm("INFO tag required!")
+        raise Tim("INFO tag required!")
     if(referenceValue == "default"):
-        HTSUtils.FacePalm("A query value required!")
+        raise Tim("A query value required!")
     try:
         assert isinstance(referenceValue, Type)
     except AssertionError:
-        HTSUtils.FacePalm("The query value and the INFOTag's type must agree."
+        raise Tim("The query value and the INFOTag's type must agree."
                           " How else could they be reasonably compared?")
     inVCF = ParseVCF(inVCF)
     outHandle = open(outVCF, "w")
@@ -528,14 +528,14 @@ def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
     if(outVCF == "default"):
         outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.InfEq.vcf'
     if(INFOTag == "default"):
-        HTSUtils.FacePalm("INFO tag required!")
+        raise Tim("INFO tag required!")
     if(referenceValue == "default"):
-        HTSUtils.FacePalm("A query value required!")
+        raise Tim("A query value required!")
     try:
         assert isinstance(referenceValue, Type)
     except AssertionError:
-        HTSUtils.FacePalm("The query value and the INFOTag's type must agree."
-                          " How else could they be reasonably compared?")
+        raise Tim("The query value and the INFOTag's type must agree."
+                  " How else could they be reasonably compared?")
     inVCF = ParseVCF(inVCF)
     outHandle = open(outVCF, "w")
     count = 0
@@ -752,9 +752,9 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     """
     cdef pysam.TabProxies.VCFProxy rec, qRec, i
     if(std == "default"):
-        raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
-                            "able name 'std', must be set to CompareVCFToStan"
-                            "dardSpecs")
+        raise Tim("Standard file (must be CHR/POS/ID/REF/ALT), vari"
+                  "able name 'std', must be set to CompareVCFToStan"
+                  "dardSpecs")
     if(outfile == "default"):
         outHandle = sys.stdout
     else:
@@ -829,14 +829,14 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
     cdef pysam.TabProxies.VCFProxy rec, qRec, i
     cdef cython.int lRefRecs
     if(std == "default"):
-        raise ThisIsMadness("Standard file (must be CHR/POS/ID/REF/ALT), vari"
-                            "able name 'std', must be set to CheckStdCallsFor"
-                            "VCFCalls")
+        raise Tim("Standard file (must be CHR/POS/ID/REF/ALT), vari"
+                  "able name 'std', must be set to CheckStdCallsFor"
+                  "VCFCalls")
     if(not isinstance(outfile, file)):
         if(not isinstance(outfile, str)):
-            raise ThisIsMadness("outfile variable is neither a file nor a "
-                                "string. I don't know what to do with this - "
-                                "check your kwargs!")
+            raise Tim("outfile variable is neither a file nor a "
+                      "string. I don't know what to do with this - "
+                      "check your kwargs!")
         outfile = open(outfile, "w")
     ofw = outfile.write
     asVCF = pysam.asVCF()
@@ -876,7 +876,7 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
                            str(rec).replace("\t", "&"),
                            str(qRec).replace("\t", "&")]))
             continue
-        raise ThisIsMadness("Unexpected behavior - reference VCF shouldn't ha"
-                            "ve more than one line with the same alt, should "
-                            "it?")
+        raise Tim("Unexpected behavior - reference VCF shouldn't ha"
+                  "ve more than one line with the same alt, should "
+                  "it?")
     return outfile

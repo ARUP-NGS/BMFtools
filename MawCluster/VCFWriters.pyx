@@ -163,7 +163,7 @@ def SNVCrawler(inBAM,
                     pl("Pysam's heinous errors in iteratio.")
                     pl("Region: %s" % repr(line))
                     raise ValueError(repr(line))
-                posStr, discReads = pPileupColToVCFLines(
+                posStr = pPileupColToVCFLines(
                     pPC, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
                     minFracAgreed=minFracAgreed, experiment=experiment,
                     MaxPValue=MaxPValue, refHandle=refHandle,
@@ -178,13 +178,11 @@ def SNVCrawler(inBAM,
         PileupIt = ICAR.next
         while True:
             try:
-                VCFString, discReads = PileupItToVCFLines(
+                VCFString = PileupItToVCFLines(
                     PileupIt(), minMQ=minMQ, minBQ=minBQ, minFA=minFA,
                     minFracAgreed=minFracAgreed, MaxPValue=MaxPValue,
                     experiment=experiment, reference=reference,
                     refHandle=refHandle, keepConsensus=keepConsensus)
-                for read in discReads:
-                    dpw(read)
             except StopIteration:
                 pl("Finished iterations.")
                 break
@@ -214,26 +212,14 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
-                minFracAgreed=0.0, minFA=2,
-                experiment=experiment)
-    DiscRPs = GetDiscordantReadPairs(PileupColumn)
-    DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
-    PileupColumn.pileups = [i for i in PileupColumn.pileups if
-                            i.alignment.query_name not in DiscRPNames]
-    discReads = []
-    for RP in DiscRPs:
-        reads = RP.RP.getReads()
-        for read in reads:
-            read.set_tag("DP", RP.discordanceString, "Z")
-            discReads.append(read)
-    NumDiscordantPairs = len(DiscRPNames)
+                minFracAgreed=minFracAgreed, minFA=minFA)
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,
                  reference=reference,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
-                 NDP=NumDiscordantPairs)
-    return str(pos), discReads
+                 NDP=len(PC.DiscNames))
+    return str(pos)
 
 
 @cython.returns(tuple)
@@ -246,34 +232,31 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                          cython.str reference="default",
                          pysam.cfaidx.FastaFile refHandle=None):
     cdef PCInfo_t PC
-    cdef list DiscRPs, reads, discReads, DiscRPNames
-    cdef pysam.calignmentfile.AlignedSegment read
-    cdef pPileupRead_t i
     cdef VCFPos_t pos
-    cdef cython.int NumDiscordantPairs
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
-                minFracAgreed=0.0, minFA=2,
+                minFracAgreed=minFracAgreed, minFA=minFA,
                 experiment=experiment)
-    DiscRPs = GetDiscordantReadPairs(PileupColumn)
-    DiscRPNames = list(set(cmap(oag("name"), DiscRPs)))
-    PileupColumn.pileups = [i for i in PileupColumn.pileups if
-                            i.alignment.query_name not in DiscRPNames]
+    """
+    Commenting out this section - I moved the filtering out of
+    discordant read pairs and into the PCInfo for some performance.
+    PC.Records = [i for i in PC.Records if
+                  i.alignment.query_name not in DiscRPNames]
     discReads = []
     for RP in DiscRPs:
         reads = RP.RP.getReads()
         for read in reads:
             read.set_tag("DP", RP.discordanceString, "Z")
             discReads.append(read)
-    NumDiscordantPairs = len(DiscRPNames)
+    """
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,
                  reference=reference,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
-                 NDP=NumDiscordantPairs)
-    return str(pos), discReads
+                 NDP=len(PC.DiscNames))
+    return str(pos)
 
 
 @cython.returns(tuple)
@@ -302,7 +285,7 @@ def IteratorColumnRegionToTuple(
         allDiscReads = list(set(allDiscReads + discReads))
         if(psPileupColumn.pos > puEnd):
             break
-    return VCFLines, allDiscReads
+    return VCFLines
 
 
 @cython.returns(cython.str)

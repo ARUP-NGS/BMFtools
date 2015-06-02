@@ -18,20 +18,19 @@ from subprocess import check_call
 from functools import partial
 
 import numpy as np
-from numpy import (array as nparray, sum as nsum, multiply as nmultiply,
-                   subtract as nsubtract, argmax as nargmax,
+from numpy import (array as nparray, sum as nsum, multiply as nmul,
+                   subtract as nsub, argmax as nargmax,
                    vstack as nvstack, char)
 import pysam
 import cython
-from cytoolz import map as cmap
 
 from .BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from . import BCFastq
-from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict, ThisIsMadness,
+from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
                               BwaswCall, samtoolsMergeBam, pFastqProxy)
-from utilBMF.ErrorHandling import IllegalArgumentError
+from utilBMF.ErrorHandling import IllegalArgumentError, ThisIsMadness as Tim
 from .SVUtils import returnDefault
 from utilBMF import HTSUtils
 import SecC
@@ -42,7 +41,8 @@ ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 npchararray = char.array
-
+oagseq = oag("seq")
+oagqqual = oag("query_qualities")
 
 @cython.locals(fixMate=cython.bint)
 def AbraCadabra(inBAM, outBAM="default",
@@ -61,7 +61,7 @@ def AbraCadabra(inBAM, outBAM="default",
                                    " to the benefits of inferring ideal para"
                                    "meters from the !")
     if(jar == "default"):
-        HTSUtils.FacePalm("Required: Path to abra jar!")
+        raise Tim("Required: Path to abra jar!")
     else:
         pl("Non-default abra jar used: " + jar)
     if(memStr == "default"):
@@ -135,16 +135,16 @@ def AbraCadabra(inBAM, outBAM="default",
 def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
                     nt=4, abra="default"):
     if(abra == "default"):
-        raise ThisIsMadness(
+        raise Tim(
             "Path to abra jar required for running KmerSizeCalculator.")
     if(ref == "default"):
-        raise ThisIsMadness(
+        raise Tim(
             "Path to reference required for running KmerSizeCalculator.")
     if(inbed == "default"):
-        raise ThisIsMadness(
+        raise Tim(
             "Path to input bed required for running KmerSizeCalculator.")
     if(rLen < 0):
-        raise ThisIsMadness(
+        raise Tim(
             "Read length required for running KmerSizeCalculator.")
     if(outbed == "default"):
         outbed = ".".join(inbed.split(".")[0:-1] + ["abra", "kmer"])
@@ -208,11 +208,11 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
 def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          bed="default", dbsnp="default"):
     if(ref == "default"):
-        raise ThisIsMadness("Reference file required for Indel Realignment")
+        raise Tim("Reference file required for Indel Realignment")
     if(bed == "default"):
-        raise ThisIsMadness("Bed file required for Indel Realignment")
+        raise Tim("Bed file required for Indel Realignment")
     if(gatk == "default"):
-        raise ThisIsMadness("Path to GATK Jar required for Indel Realignment")
+        raise Tim("Path to GATK Jar required for Indel Realignment")
     print dbsnp
     if(dbsnp == "default"):
         dbsnpStr = ""
@@ -265,7 +265,7 @@ def pairedBarcodeTagging(
     cdef pFq pFq1, pFq2
     # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
     if(realigner == "default"):
-        raise ThisIsMadness("realigner must be set to gatk, abra, or none.")
+        raise Tim("realigner must be set to gatk, abra, or none.")
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -310,8 +310,8 @@ def pairedBarcodeTagging(
             FA1 = nparray(descDict1["FA"].split(","), dtype=np.int64)
             FA2 = nparray(descDict2["FA"].split(","), dtype=np.int64)
         except KeyError:
-            raise ThisIsMadness("Number of Differences tag required for "
-                                "BMFTools >= v0.0.7")
+            raise Tim("Number of Differences tag required for "
+                      "BMFTools >= v0.0.7")
         except ValueError:
             raise ValueError("ND tag value is invalid: "
                              "%s %s" % (descDict1["ND"], descDict2["ND"]))
@@ -401,16 +401,15 @@ def pairedBarcodeTagging(
     return outBAMFile
 
 
-def compareRecs(RecordList):
+def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
     Success = True
-    seqs = list(cmap(oag("seq"), RecordList))
+    seqs = map(oagseq, RecordList)
     seqs = [str(record.seq) for record in RecordList]
     stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
     seqArray = nvstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = nparray(list(cmap(oag("query_qualities"),
-                         RecordList)))
+    quals = nparray(map(oagqqual, RecordList))
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)
@@ -426,8 +425,8 @@ def compareRecs(RecordList):
     qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
     newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = nsubtract(nmultiply(2, MaxPhredSum),
-                           nsum(qualAllSum, 0))
+    phredQuals = nsub(nmul(2, MaxPhredSum),
+                      nsum(qualAllSum, 0))
     phredQuals[phredQuals < 0] = 0
     outRec = RecordList[0]
     outRec.seq = newSeq
@@ -500,7 +499,7 @@ def criteriaTest(read1, read2, filterSet="default", minFamSize=3):
             pl("Joining filterSet into a string.")
             filterSet = ''.join(filterSet)
             if(isinstance(filterSet, str) is False):
-                HTSUtils.FacePalm("filterSet isn't a string after joining.")
+                raise Tim("filterSet isn't a string after joining.")
         else:
             pl("Filter set is not as expected! Repr: {}".format(
                 repr(filterSet)))
@@ -605,7 +604,7 @@ def pairedFilterBam(inputBAM, passBAM="default",
                 assert read1.qname == read2.qname  # Sanity check
             except AssertionError:
                 pl("Failed sanity check. Is the alignment file name-sorted?")
-                raise ThisIsMadness("Please inspect your bam file!")
+                raise Tim("Please inspect your bam file!")
             result = criteriaTest(read1, read2, filterSet=criteriaList)
             if(result is False):
                 failed = True
@@ -882,8 +881,8 @@ def GetRPsWithI(inBAM, outBAM="default"):
         try:
             assert read1.query_name == read2.query_name
         except AssertionError:
-            HTSUtils.FacePalm("Input fastq is not name sorted or is off in "
-                              "some other way! Abort!")
+            raise Tim("Input fastq is not name sorted or is off in "
+                      "some other way! Abort!")
         if(read2.cigarstring is None or read1.cigarstring is None or
            "I" not in read1.cigarstring or "I" not in read2.cigarstring):
             continue
@@ -983,7 +982,7 @@ def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.5,
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split()[:-1]) + ".SWRealigned.bam"
     if(ref == "default"):
-        raise ThisIsMadness("ref required for bwasw alignment.")
+        raise Tim("ref required for bwasw alignment.")
     print("Getting soft-clipped reads for bwasw realignment")
     NoRealign, Realign = GetSoftClips(
         inBAM, maxFracSoftClipped=maxFracSoftClipped)

@@ -9,8 +9,14 @@ import uuid
 import logging
 from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
-                              ThisIsMadness, printlog as pl, ParseBed)
+                              ThisIsMadness, printlog as pl, ParseBed,
+                              hamming_cousins)
 from cytoolz import frequencies as cyfreq
+from itertools import chain, partial
+from operator import attrgetter
+oagseq = attrgetter("seq")
+cfi = chain.from_iterable
+hammingPt = partial(hamming_cousins(n=1))
 cimport cython
 
 
@@ -69,8 +75,7 @@ cdef class RefKmer(object):
 
 
 cdef class KmerFetcher(object):
-    """
-    Contains parameters for finding representative kmers.
+    """Contains parameters for finding representative kmers.
     I want to permit the mixing of kmers of different sizes, so I have
     set a baseK, which is the K that we start using.
 
@@ -81,8 +86,17 @@ cdef class KmerFetcher(object):
     TODO: I'd like to have it know where dropout regions for these kmers
     are and have it increase the size of k only as necessary... Not sure
     how to automate that.
+
+    :param cython.str ref - path to reference fasta file.
+    :param cython.int padding - distance around region to pad for looking for kmers
+    :param cython.int mismatches - maximum permitted mismatches in alignment.
+    :param cython.int minMQ - minimum MQ for a kmer's alignment to be considered
+    acceptable.
+    :param cython.int k - length of kmers;
+    * Note: minMQ doesn't make sense with bowtie/bowtie2's mapping quality
+    assignments.
     """
-    def __init__(self, cython.str ref=None, cython.int padding=-1,
+    def __init__(self, cython.str ref=None, cython.int padding=50,
                  cython.int mismatches=-1, cython.int minMQ=1,
                  cython.int k=30):
         self.ref = ref
@@ -92,7 +106,23 @@ cdef class KmerFetcher(object):
         self.k = k
         self.HashMap = {}
 
+    @cython.returns(dict)
+    def BedToMap(self, cython.str bedpath):
+        """Fills the HashMap for each line in the bed file.
+        Returns a hashmap which maps all strings within hamming distance
+        of mismatches limit.
+        """
+        cdef list bedline
+        cdef list bedlines = ParseBed(bedpath)
+        for bedline in bedlines:
+            self.FillMap(bedline)
+        return self.BuildMapper(maplimit=self.mismatches)
+    # Should we consider changing the number of mapping mismatches permitted
+    # so as to be more stringent than with our mappability analysis?
+
     cdef setK(self, cython.int newK):
+        """Sets the value of K to the argument.
+        """
         self.k = newK
 
     cdef cython.int getK(self):
@@ -139,6 +169,25 @@ cdef class KmerFetcher(object):
 
     def keys(self, *args, **kwargs):
         return self.HashMap.keys(*args, **kwargs)
+
+    @cython.returns(dict)
+    def BuildMapper(self, object cfi=cfi, cython.int maplimit=1,
+                    object oagseq=oagseq, object hammingPt=hammingPt):
+        """
+        Once all regions of interest have been build,
+        create the mapping dictionary.
+        :param cfi - localizes the chain.from_iterable call.
+        :param hammingPt - localizes a partial hamming distance.
+        """
+        cdef cython.str region, kmer
+        cdef list kmerlist, mappingTups
+        cdef dict mappingDict
+        mappingTups = []
+        for region, kmerlist in self.iteritems():
+            mappingTups += [(kmer, region) for
+                            kmer in list(cfi(map(hammingPt,
+                                                 map(oagseq, kmerlist))))]
+        return dict(mappingTups)
 
 
 @cython.returns(dict)

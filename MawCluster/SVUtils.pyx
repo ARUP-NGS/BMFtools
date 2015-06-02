@@ -1,10 +1,10 @@
-from utilBMF.HTSUtils import (printlog as pl, ThisIsMadness, FacePalm,
+from utilBMF.HTSUtils import (printlog as pl,
                               ReadPair, ParseBed, SplitSCRead,
                               ReadPairIsDuplex,
                               PysamToChrDict, GetDeletedCoordinates,
                               is_read_softclipped, GetGC2NMapForRead,
                               GetInsertedStrs, ReadOverlapsBed as RIB, RevCmp)
-
+from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from collections import defaultdict
 from itertools import chain
 from numpy import argmax as nargmax
@@ -25,18 +25,6 @@ cimport pysam.calignmentfile
 cfi = chain.from_iterable
 
 
-cdef class TestClass:
-    """
-    Testing some of cython's abilities.
-    """
-    cdef public cython.str text
-    cdef public cython.int length
-
-    def __init__(self, inStr):
-        self.length = len(inStr)
-        self.text = inStr
-
-
 class XLocSegment:
 
     """
@@ -52,7 +40,8 @@ class XLocSegment:
                 bedIntervals[0][1], int)
         except AssertionError:
             print(repr(bedIntervals))
-            FacePalm("bedIntervals must be in ParseBed output format!")
+            raise Tim("bedIntervals must be in ParseBed "
+                                "output format! (str, int, int)")
         self.IntervalInBed = HTSUtils.IntervalOverlapsBed(
             interval, bedIntervals)
         self.interval = interval
@@ -85,8 +74,7 @@ class PutativeXLoc:
                  TransType="UnspecifiedSV",
                  inBAM="default"):
         if(inBAM == "default"):
-            ThisIsMadness("input BAM path required for SV VCF "
-                          "Writing required.")
+            Tim("input BAM path required for SV VCF Writing required.")
         self.TransType = TransType
         assert isinstance(header, dict)
         self.segments = [XLocSegment(DOR=dor, bedIntervals=bedIntervals,
@@ -103,7 +91,7 @@ class PutativeXLoc:
                     isinstance(bedIntervals[0][1], int))
         except AssertionError:
             print(repr(bedIntervals))
-            FacePalm("bedIntervals should be in ParseBed format!")
+            raise Tim("bedIntervals should be in ParseBed format!")
         self.bed = bedIntervals
         self.inBAM = inBAM
         self.nsegments = len(self.segments)
@@ -182,7 +170,7 @@ def SVSupportingReadPairs(bedInterval, recList="default", inHandle="default",
     try:
         assert isinstance(recList[0], pysam.calignmentfile.AlignedSegment)
     except AssertionError:
-        ThisIsMadness("recList must be a list of AlignedSegment objects")
+        Tim("recList must be a list of AlignedSegment objects")
     ReadOutBedList = [rec for rec in recList if
                       HTSUtils.ReadWithinDistOfBedInterval(rec,
                                                            bedLine=bedInterval,
@@ -227,7 +215,7 @@ def PileupMDC(ReadPairList, minClustDepth=5,
         assert isinstance(ReadPairList[0], HTSUtils.ReadPair)
     except IndexError:
         print(repr(ReadPairList))
-        raise ThisIsMadness("Something is wrong!!!")
+        raise Tim("Something is wrong!!!")
     contigs = list(set([rp.read1_contig for rp in ReadPairList] +
                        [rp.read2_contig for rp in ReadPairList]))
     PotTransIntervals = []
@@ -254,8 +242,9 @@ def PileupMDC(ReadPairList, minClustDepth=5,
             else:
                 continue
                 """
-                FacePalm("Something's not working as hoped - regions not"
-                         " in bed should have been filtered out already.")
+                raise ThisisMadness("Something's not working as hoped - regions"
+                                    " not in bed should have been filtered out"
+                                    " already.")
                 """
         PotTransIntervals += RegionsToPull
     PotTransIntervals = sorted(PotTransIntervals, key=oig(1))
@@ -291,7 +280,7 @@ def PileupISClustersByPos(ClusterList, minClustDepth=5,
         assert isinstance(ClusterList[0][0], HTSUtils.ReadPair)
     except IndexError:
         print(repr(ClusterList))
-        raise ThisIsMadness("Something is wrong!!!")
+        raise Tim("Something is wrong!!!")
     for cluster in ClusterList:
         print("Length of cluster: {}".format(len(cluster)))
     PotTransIntervals = []
@@ -347,12 +336,11 @@ class TranslocationVCFLine:
         assert isinstance(PutativeXLocObj, PutativeXLoc)
         self.TransType = TransType
         if(ref == "default"):
-            raise ThisIsMadness("Reference must be provided for "
-                                "creating a VCFLine.")
+            raise Tim("Reference must be provided for creating a VCFLine.")
         if(isinstance(inBAM, str)):
             inBAM = pysam.AlignmentFile(inBAM, "rb")
         elif(isinstance(inBAM, pysam.calignmentfile.AlignmentFile) is False):
-            raise ThisIsMadness("A source BAM file required for VCFLine.")
+            raise Tim("A source BAM file required for VCFLine.")
         segmentsInBed = [segment for segment in PutativeXLocObj.segments if
                          HTSUtils.IntervalOverlapsBed(segment.interval,
                                                       segment.bedIntervals)]
@@ -468,14 +456,14 @@ class SVTagFn(object):
     """
     Base class for SV tag testers.
     """
-    def __init__(self, func=FacePalm, extraField="default",
+    def __init__(self, func=Tim, extraField="default",
                  tag="default"):
         self.extraField = extraField
         self.func = func
-        if(func == FacePalm):
-            FacePalm("func must be set for SVTag condition!")
+        if(func == Tim):
+            raise Tim("func must be set for SVTag condition!")
         if(tag == "default"):
-            raise FacePalm("tag must be set for SVTagTest!")
+            raise Tim("tag must be set for SVTagTest!")
         self.tag = tag
 
     def test(self, pysam.calignmentfile.AlignedSegment read1,
@@ -580,7 +568,7 @@ def ORB_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
     """
     bedRef = extraField
     if(bedRef == "default"):
-        raise ThisIsMadness("bedRef must be provded to run this test!")
+        raise Tim("bedRef must be provded to run this test!")
     return not (sum([RIB(read1, bedRef=bedRef),
                      RIB(read2, bedRef=bedRef)]) - 1)
 
@@ -747,7 +735,7 @@ def MarkSVTags(pysam.calignmentfile.AlignedSegment read1,
     """
     from utilBMF.HTSUtils import ParseBed
     if bedObj == "default":
-        raise ThisIsMadness("Bed file required for marking SV tags.")
+        raise Tim("Bed file required for marking SV tags.")
     SVParamDict['ORB'] = bedObj
     SVParamDict['LI'] = maxInsert
     FeatureList = sorted([i for i in SVTestDict.iterkeys()])
@@ -794,7 +782,7 @@ def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
     cdef list SVPKeys
     cdef cython.bint SVR
     if bedObj == "default":
-        raise ThisIsMadness("Bed file required for marking SV tags.")
+        raise Tim("Bed file required for marking SV tags.")
     SVParamDict['ORB'] = bedObj
     SVParamDict['LI'] = maxInsert
     SVPKeys = SVParamDict.keys()
@@ -903,13 +891,13 @@ def BkptSequenceInterReads(list reads):
     Not written yet.
     """
     cdef pysam.calignmentfile.AlignedSegment read
-    raise ThisIsMadness("Unfinished function.")
+    raise Tim("Unfinished function.")
     newSeq = ""
     try:
         assert len(set([read.reference_id for read in reads if
                         read.is_unmapped is False])) == 2
     except AssertionError:
-        FacePalm("Interchromosomal translocations should be between 2"
+        raise Tim("Interchromosomal translocations should be between 2"
                  "contigs.")
     return newSeq
 
@@ -940,14 +928,14 @@ def BkptSequenceIntraReads(reads):
     try:
         assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
     except AssertionError:
-        FacePalm("BkptSequenceIntraReads requires a list of "
+        raise Tim("BkptSequenceIntraReads requires a list of "
                  "pysam AlignedSegment objects as input!")
     try:
         assert len(set([read.reference_id for read in reads if
                         read.is_unmapped is False])) == 1
     except AssertionError:
-        FacePalm("Intrachromosomal translocations should all be"
-                 "on the same contig.")
+        raise Tim("Intrachromosomal translocations should all be"
+                  "on the same contig.")
     # Separate reads based on which end of the translocation they're part of.
     negReads = sorted([read for read in reads if read.tlen < 0],
                       key=oag("pos"))
@@ -984,8 +972,8 @@ def BkptSequenceFromRPSet(ReadPairs, intra=True):
     try:
         assert isinstance(ReadPairs[0], HTSUtils.ReadPair)
     except AssertionError:
-        FacePalm("Input for Breakpoint sequence construction must be a "
-                 "list of ReadPair objects!")
+        raise Tim("Input for Breakpoint sequence construction must "
+                  "be a list of ReadPair objects!")
     if(intra):
         return BkptSequenceIntraRP(ReadPairs)
     elif(intra is False):
