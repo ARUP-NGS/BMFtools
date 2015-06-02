@@ -1107,6 +1107,10 @@ cdef class PileupReadPair:
     Accepts a list of length two as input.
     """
 
+    def MarkReads(self):
+        for read in self.RP.getReads():
+            read.set_tag("DP", self.RP.discordanceString, "Z")
+
     def __cinit__(self, tuple readlist):
         cdef pPileupRead_t read1
         cdef pPileupRead_t read2
@@ -1133,6 +1137,7 @@ cdef class PileupReadPair:
                                               self.read1.query_position))
         else:
             self.discordanceString = ""
+        self.MarkReads()
 
 
 def GetReadPair(inHandle):
@@ -1462,7 +1467,7 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.int minPileupLen=0,
 Base64ToInt = numconv.NumConv(64).str2int
 Int2Base64 = numconv.NumConv(64).int2str
 
-ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
+ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(1000000)}
 # Pre-computes
 chr2ph = {i: ord(i) - 33 for i in [ph2chrDict[i] for i in range(94)]}
 

@@ -18,12 +18,11 @@ from subprocess import check_call
 from functools import partial
 
 import numpy as np
-from numpy import (array as nparray, sum as nsum, multiply as nmultiply,
-                   subtract as nsubtract, argmax as nargmax,
+from numpy import (array as nparray, sum as nsum, multiply as nmul,
+                   subtract as nsub, argmax as nargmax,
                    vstack as nvstack, char)
 import pysam
 import cython
-from cytoolz import map as cmap
 
 from .BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
 from . import BCFastq
@@ -42,7 +41,8 @@ ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 npchararray = char.array
-
+oagseq = oag("seq")
+oagqqual = oag("query_qualities")
 
 @cython.locals(fixMate=cython.bint)
 def AbraCadabra(inBAM, outBAM="default",
@@ -401,16 +401,15 @@ def pairedBarcodeTagging(
     return outBAMFile
 
 
-def compareRecs(RecordList):
+def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
     Success = True
-    seqs = list(cmap(oag("seq"), RecordList))
+    seqs = map(oagseq, RecordList)
     seqs = [str(record.seq) for record in RecordList]
     stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
     seqArray = nvstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = nparray(list(cmap(oag("query_qualities"),
-                         RecordList)))
+    quals = nparray(map(oagqqual, RecordList))
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)
@@ -426,8 +425,8 @@ def compareRecs(RecordList):
     qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
     newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = nsubtract(nmultiply(2, MaxPhredSum),
-                           nsum(qualAllSum, 0))
+    phredQuals = nsub(nmul(2, MaxPhredSum),
+                      nsum(qualAllSum, 0))
     phredQuals[phredQuals < 0] = 0
     outRec = RecordList[0]
     outRec.seq = newSeq

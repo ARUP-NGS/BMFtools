@@ -1,4 +1,7 @@
-import re
+try:
+    import re2 as re
+except ImportError:
+    import re
 import subprocess
 import time
 import logging
