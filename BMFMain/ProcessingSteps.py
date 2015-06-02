@@ -164,6 +164,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
                       homing=None, bcLen=-1, head=0):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
+    pl("Parameters for cutadapt are p3Seq={}, p5Seq={}".format(p3Seq, p5Seq))
     if(inline_barcodes is False):
         bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                         inFastq2,

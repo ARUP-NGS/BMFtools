@@ -166,6 +166,18 @@ def main():
         "--indexFq",
         metavar="indexFastq",
         help="Index Fastq")
+    DMultiPlexParser.add_argument(
+        "-f",
+        "--p5Seq",
+        metavar="primer5Seq",
+        help="5' primer sequence used by cutadapt [default value is 'default', which will run cutadapt to only trim the 3' primer sequence, if given]",
+        default="default")
+    DMultiPlexParser.add_argument(
+        "-t",
+        "--p3Seq",
+        metavar="primer3Seq",
+        help="3' primer sequence used by cutadapt [default value is 'default', which will not run cutadapt]",
+        default="default")
     BamTagsParser.add_argument(
         "inBAM",
         metavar="inBAM",
@@ -567,7 +579,9 @@ def main():
         OutFastq1, OutFastq2 = pairedFastqShades(
             args.inFqs[0],
             args.inFqs[1],
-            indexfq=args.indexFq)
+            indexfq=args.indexFq,
+            p3Seq=args.p3Seq,
+            p5Seq=args.p5Seq)
         sys.exit(0)
     if(args.bmfsuites == "sv"):
         from utilBMF.HTSUtils import FacePalm
