@@ -281,6 +281,9 @@ cdef class Layout(object):
                       self.tlen, self.getSeq(), self.getQualString()] +
                              self.get_tags()))
 
+    @classmethod
+    def fromLayoutList(cls, list layouts, cython.str name=None):
+        pass
     def __init__(self, pysam.calignmentfile.AlignedSegment rec,
                  list layoutPositions, cython.int firstMapped,
                  PysamToChrDict=PysamToChrDict):

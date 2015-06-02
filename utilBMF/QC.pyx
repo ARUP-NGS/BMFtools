@@ -8,7 +8,8 @@ from numpy import (array as nparray, append as npappend,
                    mean as nmean, max as nmax, std as nstd)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
-                       ThisIsMadness, PipedShellCall)
+                       PipedShellCall)
+from .ErrorHandling import ThisIsMadness
 from MawCluster.PileupUtils import pPileupColumn
 import cython
 import logging

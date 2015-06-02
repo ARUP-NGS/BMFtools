@@ -58,6 +58,10 @@ oig0 = oig(0)
 cfi = chain.from_iterable
 
 
+global __version__
+
+__version__ = "0.1.0.0beta"
+
 def l1(x):
     return x[1]
 
@@ -76,6 +80,10 @@ def lreverse(x):
 def linsertsize(x):
     return x.insert_size
 
+
+@cython.returns(cython.int)
+def LambdaInsertSize(ReadPair_t x):
+    return x.insert_size
 
 def printlog(string, level=logging.INFO):
     Logger = logging.getLogger("Primarylogger")
@@ -1381,10 +1389,6 @@ class Interval:
 def LambdaSub(x):
     return x[0] - x[1]
 
-
-@cython.returns(cython.int)
-def LambdaInsertSize(ReadPair_t x):
-    return x.insert_size
 
 
 @cython.returns(list)

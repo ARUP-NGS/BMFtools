@@ -13,7 +13,7 @@ from cytoolz import map as cmap
 from .PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl
-from utilBMF.HTSUtils import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from .Probability import ConfidenceIntervalAAF
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo

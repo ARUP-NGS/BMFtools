@@ -486,9 +486,5 @@ def main(argv=None):
         subprocess.check_call(["cp", logfile, reviewdir])
     return
 
-global __version__
-
-__version__ = "0.1.0.0beta"
-
 if(__name__ == "__main__"):
     sys.exit(main())
