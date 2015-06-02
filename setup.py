@@ -54,7 +54,7 @@ config = {
     'author_email': 'daniel.baker@aruplab.com',
     'version': '0.1.0.0beta',
     'install_requires': install_requires,
-    'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
+    'packages': ["BMFMain", "utilBMF", "MawCluster", "SecC"],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
     'scripts': ['utilBMF/bmftools', 'BMFMain/BMFMain'],

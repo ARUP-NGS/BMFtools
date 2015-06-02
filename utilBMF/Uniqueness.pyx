@@ -59,6 +59,9 @@ cdef class RefKmer(object):
     """
     Contains useful information regarding representative kmers selected
     from reference sequence.
+    :param cython.str seq
+    :param cython.str contig=None
+    :param cython.int pos=-1
     """
 
     def __init__(self, cython.str seq, cython.str contig=None,

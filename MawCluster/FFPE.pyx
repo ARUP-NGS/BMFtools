@@ -21,8 +21,8 @@ import subprocess
 import uuid
 from utilBMF.HTSUtils import (printlog as pl,
                               NameSortAndFixMate, makeinfodict,
-                              MakeVCFProxyDeaminationFilter)
-from BMFMain.main import __version__ as BMFVersion
+                              MakeVCFProxyDeaminationFilter,
+                              __version__ as BMFVersion)
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
