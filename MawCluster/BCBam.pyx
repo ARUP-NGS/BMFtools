@@ -44,6 +44,7 @@ npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")
 
+
 @cython.locals(fixMate=cython.bint)
 def AbraCadabra(inBAM, outBAM="default",
                 jar="default", memStr="default", ref="default",

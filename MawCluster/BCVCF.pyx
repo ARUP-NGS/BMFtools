@@ -466,7 +466,7 @@ def FilterGZVCFByBed(inVCF, bedfile="default", outVCF="default"):
         inVCF = SortBgzipAndTabixVCF(inVCF)
     elif(inVCF[:-3] == ".gz"):
         raise Tim("Unrecognized file extension - either "
-                            "accepts bgzipped or unzipped vcf files.")
+                  "accepts bgzipped or unzipped vcf files.")
     if(outVCF == "default"):
         outVCF = inVCF[0:-7] + ".bedfilter.vcf.gz"
     print("bedfile used: {}".format(bedfile))
@@ -493,7 +493,7 @@ def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
         assert isinstance(referenceValue, Type)
     except AssertionError:
         raise Tim("The query value and the INFOTag's type must agree."
-                          " How else could they be reasonably compared?")
+                  " How else could they be reasonably compared?")
     inVCF = ParseVCF(inVCF)
     outHandle = open(outVCF, "w")
     count = 0

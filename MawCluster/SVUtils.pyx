@@ -41,7 +41,7 @@ class XLocSegment:
         except AssertionError:
             print(repr(bedIntervals))
             raise Tim("bedIntervals must be in ParseBed "
-                                "output format! (str, int, int)")
+                      "output format! (str, int, int)")
         self.IntervalInBed = HTSUtils.IntervalOverlapsBed(
             interval, bedIntervals)
         self.interval = interval
@@ -242,9 +242,9 @@ def PileupMDC(ReadPairList, minClustDepth=5,
             else:
                 continue
                 """
-                raise ThisisMadness("Something's not working as hoped - regions"
-                                    " not in bed should have been filtered out"
-                                    " already.")
+                raise ThisisMadness("Something's not working as hoped - "
+                                    "regions not in bed should have been "
+                                    "filtered out already.")
                 """
         PotTransIntervals += RegionsToPull
     PotTransIntervals = sorted(PotTransIntervals, key=oig(1))
@@ -898,7 +898,7 @@ def BkptSequenceInterReads(list reads):
                         read.is_unmapped is False])) == 2
     except AssertionError:
         raise Tim("Interchromosomal translocations should be between 2"
-                 "contigs.")
+                  "contigs.")
     return newSeq
 
 
@@ -929,7 +929,7 @@ def BkptSequenceIntraReads(reads):
         assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
     except AssertionError:
         raise Tim("BkptSequenceIntraReads requires a list of "
-                 "pysam AlignedSegment objects as input!")
+                  "pysam AlignedSegment objects as input!")
     try:
         assert len(set([read.reference_id for read in reads if
                         read.is_unmapped is False])) == 1

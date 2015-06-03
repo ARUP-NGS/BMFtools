@@ -279,11 +279,12 @@ cdef class Layout(object):
                       self.getAlignmentStart() + 1, self.mapq,
                       self.getCigarString(), self.rnext, self.pnext + 1,
                       self.tlen, self.getSeq(), self.getQualString()] +
-                             self.get_tags()))
+                self.get_tags()))
 
     @classmethod
     def fromLayoutList(cls, list layouts, cython.str name=None):
         pass
+
     def __init__(self, pysam.calignmentfile.AlignedSegment rec,
                  list layoutPositions, cython.int firstMapped,
                  PysamToChrDict=PysamToChrDict):
@@ -315,6 +316,7 @@ def LayoutSortKeySK(x, oagsk=oagsk):
     """
     return oagsk(x)
 
+
 @cython.returns(LayoutPos)
 def MergePositions(LayoutPos pos1, LayoutPos pos2):
     cdef cython.str base, operation
@@ -332,6 +334,7 @@ def MergePositions(LayoutPos pos1, LayoutPos pos2):
     return LayoutPos(pos1.pos, pos1.readPos, pos2.base, pos1.operation,
                      pos2.quality - pos1.quality, pos2.agreement)
 
+
 @cython.returns(tuple)
 def MergeLayoutsToList(Layout L1, Layout L2, omcfp=omcfp):
     """
@@ -343,7 +346,7 @@ def MergeLayoutsToList(Layout L1, Layout L2, omcfp=omcfp):
     :param Layout L1: One Layout object
     :param Layout L2: Another Layout object
     :param oagsk: A method caller function. Locally redefined for speed.
-    
+
     :return list Merged Positions
     :return bool Whether the merge was successful
     """

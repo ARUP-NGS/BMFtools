@@ -62,6 +62,7 @@ global __version__
 
 __version__ = "0.1.0.0beta"
 
+
 def l1(x):
     return x[1]
 
@@ -84,6 +85,7 @@ def linsertsize(x):
 @cython.returns(cython.int)
 def LambdaInsertSize(ReadPair_t x):
     return x.insert_size
+
 
 def printlog(string, level=logging.INFO):
     Logger = logging.getLogger("Primarylogger")
@@ -1130,7 +1132,7 @@ def GetReadPair(inHandle):
         assert read1.query_name == read2.query_name
     except AssertionError:
         raise Tim("These two reads have "
-                 "different query names. Abort!")
+                  "different query names. Abort!")
     return ReadPair(read1, read2)
 
 
@@ -1336,7 +1338,8 @@ class SoftClippedSeq:
         if isinstance(contig, str) is False:
             raise Tim("Soft-clipped seq is ambiguous without a contig.")
         if isinstance(is_reverse, bool) is False:
-            raise Tim("SoftClippedSeq needs to know to which strand it is mapped.")
+            raise Tim("SoftClippedSeq needs to know to "
+                      "which strand it is mapped.")
         self.seq = seq
         self.contig = contig
         self.is_reverse = is_reverse
@@ -1388,7 +1391,6 @@ class Interval:
 @cython.returns(cython.int)
 def LambdaSub(x):
     return x[0] - x[1]
-
 
 
 @cython.returns(list)
@@ -1452,7 +1454,7 @@ def CreateIntervalsFromCounter(dict CounterObj, cython.int minPileupLen=0,
 Base64ToInt = numconv.NumConv(64).str2int
 Int2Base64 = numconv.NumConv(64).int2str
 
-ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(1000000)}
+ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
 # Pre-computes
 chr2ph = {i: ord(i) - 33 for i in [ph2chrDict[i] for i in range(94)]}
 
@@ -2920,7 +2922,7 @@ cdef class BamTag(object):
         return cls(tokens[0], tokens[1],
                    {"Z": tokens[2], "A": tokens[2], "i": int(tokens[2]),
                     "f": float(tokens[2]), "H": tokens[2],
-                    "B":tokens[2]}[tokens[1]])
+                    "B": tokens[2]}[tokens[1]])
 
     @classmethod
     def fromtuple(cls, tuple tag):
@@ -2988,7 +2990,8 @@ cdef class IDVCFLine(object):
             self.ALT = self.REF[0]
             self.LEN = IC.end - IC.start
         else:
-            raise Tim("Sorry, I haven't finished this VCF writer for complex indels.")
+            raise Tim("Sorry, I haven't finished this VCF writer"
+                      " for complex indels.")
         self.ID = IC.uniqStr
         self.reverseStrandFraction = sum(
             ["reverse" in ssString for ssString in

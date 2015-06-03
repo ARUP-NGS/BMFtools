@@ -137,6 +137,7 @@ def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
         return ("cat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
                 " %s | tr '\t' '\n' > %s" % (memStr, outFastq))
 
+
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
                famLimit=cython.int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
@@ -145,7 +146,9 @@ def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
 def compareFqRecsFqPrx(list R, stringency=0.9,
                        famLimit=1000, keepFails=True,
                        makeFA=True, makePV=True, name=None, oagseq=oagseq,
-                       nparray=nparray, cython.bint NLowQual=False):
+                       nparray=nparray, cython.bint NLowQual=False,
+                       dict chr2ph=chr2ph, dict ph2chrDict=ph2chrDict,
+                       object ph2chr=ph2chr):
     """
     TODO: Unit test for this function.
     Compares the fastq records to create a consensus sequence (if it
@@ -197,19 +200,18 @@ def compareFqRecsFqPrx(list R, stringency=0.9,
         return compareFqRecsFast(R, makePV=makePV, makeFA=makeFA, name=name,
                                  NLowQual=NLowQual)
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
-                  xrange(len(finalSeq))], dtype=np.int64)
+                 xrange(len(finalSeq))], dtype=np.int64)
     phredQuals = nsum(nparray([[chr2ph[i] for i in rec.quality]
-    for rec in R], dtype=np.int64))
+                               for rec in R], dtype=np.int64))
     phredQuals[phredQuals < 3] = 0
     if(NLowQual):
         finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
     phredQuals = nmul(lenR, phredQuals, dtype=np.int64)
-    if(npany(ngreater(phredQuals, 93))):
-        QualString = "".join(list(cmap(ph2chr, phredQuals)))
-        PVString = "|PV=" + ",".join(phredQuals.astype(str).tolist())
-    else:
+    try:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
-        PVString = "|PV=%s" % (",".join(phredQuals.astype(str).tolist()))
+    except KeyError:
+        QualString = "".join(map(ph2chr, phredQuals))
+    PVString = "|PV=%s" % (",".join(phredQuals.astype(str).tolist()))
     TagString = "|FM%s|FA=%s|ND=%s%s" % (
         lenRStr,  ",".join(FA.astype(str)),
         lenR * len(finalSeq) - nsum(FA), PVString)
@@ -242,7 +244,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
                       ndiv=ndiv, nmul=nmul, npchararray=npchararray,
                       oagseq=oagseq, npargmax=npargmax, npamax=npamax,
                       npvstack=npvstack, dict letterNumDict=letterNumDict,
-                      nsum=nsum, dict chr2ph=chr2ph,
+                      nsum=nsum, dict chr2ph=chr2ph, dict ph2chr=ph2chr,
                       partialnpchar=partialnpchar):
     """
     TODO: Unit test for this function.
@@ -305,9 +307,12 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
     newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
     PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
-    phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+    try:
+        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
+    except KeyError:
+        phredQualsStr = "".join(map(ph2chr, phredQuals))
     TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join(FA.astype(str)),
-                                                             PVString)
+                                          PVString)
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
                                                    newSeq.tostring(),
@@ -797,7 +802,7 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
     if(UsecProfile):
         import cProfile
         import pstats
-        pr=cProfile.Profile()
+        pr = cProfile.Profile()
         pr.enable()
     cdef cython.str outFq, workingBarcode, bc4fq
     cdef pysam.cfaidx.FastqFile inFq
@@ -810,7 +815,7 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
         " singleFastqConsolidate('{}', ".format(fq) +
         "stringency={})".format(stringency))
     inFq = pysam.FastqFile(fq)
-    outputHandle = open(outFq,'w')
+    outputHandle = open(outFq, 'w')
     StringList = []
     workingBarcode = ""
     workingSet = []
@@ -824,7 +829,7 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
             fqRec = pFastqProxy(inFq.next())
         except StopIteration:
             break
-        bc4fq = GetDescTagValue(fqRec.comment,"BS")
+        bc4fq = GetDescTagValue(fqRec.comment, "BS")
         if(workingBarcode == ""):
             try:
                 workingBarcode = bc4fq
@@ -854,14 +859,15 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
         s = cStringIO.StringIO()
         pr.disable()
         sortby = "cumulative"
-        ps = pstats.Stats(pr, stream = s).sort_stats(sortby)
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
-        open("cProfile.stats.txt",'w').write(s.getValue())
+        open("cProfile.stats.txt", 'w').write(s.getValue())
     outputHandle.write("".join(StringList))
     outputHandle.flush()
     inFq.close()
     outputHandle.close()
     return outFq
+
 
 def TrimHomingSingle(
         fq,

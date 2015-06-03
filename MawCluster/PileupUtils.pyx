@@ -47,13 +47,14 @@ oagbc = oag("BaseCall")
 oagir = oag("is_reverse")
 oagread = oag("read")
 oagqp = oag("query_position")
-oagmq= oag("MQ")
+oagmq = oag("MQ")
 oagbq = oag("BQ")
 oagname = oag("name")
 oagdisc = oag("discordant")
 oagqn = oag("query_name")
 oagal = oag("alignment")
 oagname = oag("name")
+
 
 @cython.returns(list)
 def GetDiscReadNames(pPileupColumn_t pPC, oagname=oagname):
