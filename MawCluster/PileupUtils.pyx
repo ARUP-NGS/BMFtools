@@ -47,13 +47,14 @@ oagbc = oag("BaseCall")
 oagir = oag("is_reverse")
 oagread = oag("read")
 oagqp = oag("query_position")
-oagmq= oag("MQ")
+oagmq = oag("MQ")
 oagbq = oag("BQ")
 oagname = oag("name")
 oagdisc = oag("discordant")
 oagqn = oag("query_name")
 oagal = oag("alignment")
 oagname = oag("name")
+
 
 @cython.returns(list)
 def GetDiscReadNames(pPileupColumn_t pPC, oagname=oagname):
@@ -216,21 +217,21 @@ cdef class AlleleAggregateInfo:
 
     """
     def __init__(self, list recList, cython.str consensus="default",
-                 cython.int mergedSize=-1, cython.int totalSize=-1,
-                 cython.int minMQ=0,
-                 cython.int minBQ=0,
+                 int mergedSize=-1, int totalSize=-1,
+                 int minMQ=0,
+                 int minBQ=0,
                  cython.str contig="default",
-                 cython.int pos=-1,
-                 cython.int DOC=-1,
-                 cython.int DOCTotal=-1,
-                 cython.int NUMALT=-1,
+                 int pos=-1,
+                 int DOC=-1,
+                 int DOCTotal=-1,
+                 int NUMALT=-1,
                  cython.float AABPSD=-1., cython.float AAMBP=-1.,
-                 cython.float minFracAgreed=0.0, cython.int minFA=0,
-                 cython.float minPVFrac=0.0, cython.int FSR=-1,
+                 cython.float minFracAgreed=0.0, int minFA=0,
+                 cython.float minPVFrac=0.0, int FSR=-1,
                  object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
                  object oagmq=oagmq):
         cdef np.ndarray NFList
-        cdef cython.int lenR
+        cdef int lenR
         cdef PRInfo_t rec
         cdef tuple i
         if(consensus == "default"):
@@ -394,19 +395,19 @@ cdef class PCInfo:
     of the pileup.
     """
 
-    def __init__(self, pPileupColumn_t PileupColumn, cython.int minBQ=0,
-                 cython.int minMQ=0, cython.bint requireDuplex=True,
-                 cython.float minFracAgreed=0.0, cython.int minFA=0,
+    def __init__(self, pPileupColumn_t PileupColumn, int minBQ=0,
+                 int minMQ=0, cython.bint requireDuplex=True,
+                 cython.float minFracAgreed=0.0, int minFA=0,
                  cython.float minPVFrac=0.66,
                  cython.str exclusionSVTags="MDC,LI",
-                 cython.bint FracAlignFilter=False, cython.int primerLen=20,
+                 cython.bint FracAlignFilter=False, int primerLen=20,
                  cython.str experiment="", cython.float minAF=0.25,
-                 cython.int maxND=10, object oig1=oig1, object oagir=oagir,
+                 int maxND=10, object oig1=oig1, object oagir=oagir,
                  object oagqp=oagqp):
         cdef PRInfo_t rec
         cdef list pileups, fks, svTags, exclusionTagList, discNames
         cdef pPileupRead_t r
-        cdef cython.int lenR, rsn
+        cdef int lenR, rsn
         cdef query_positions
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
@@ -587,10 +588,10 @@ cdef class PCInfo:
                          pileupRead in pileups)
 
     @cython.returns(AlleleAggregateInfo_t)
-    def __getitem__(self, cython.int index):
+    def __getitem__(self, int index):
         return self.AltAlleleData[index]
 
-    @cython.returns(cython.int)
+    @cython.returns(int)
     def __len__(self):
         return len(self.AltAlleleData)
 
@@ -758,7 +759,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
 
 
 @cython.locals(MergeDOC=cython.float, TotalDOC=cython.float,
-               minMQ=cython.int, minBQ=cython.int)
+               minMQ=int, minBQ=int)
 def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                           outbed="default"):
     """

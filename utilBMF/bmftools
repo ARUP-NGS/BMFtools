@@ -687,7 +687,7 @@ def main():
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(args.inFq, outfile=args.outfile)
     if(args.bmfsuites == "v"):
-        from BMFMain.main import __version__
+        from utilBMF.HTSUtils import __version__
         print(__version__)
     sys.exit(0)
 

@@ -10,7 +10,7 @@ cdef class KmerFetcher(object):
 
     cdef readonly cython.str ref
     cdef public cython.int mismatches, minMQ, padding
-    cdef public dict HashMap
+    cdef public dict HashMap, FullMap
 
     cdef public cython.int getK(self)
     cdef public setK(self, cython.int)
@@ -24,3 +24,4 @@ cdef class KmerFetcher(object):
 cdef class RefKmer(object):
     cdef readonly cython.str contig, seq
     cdef readonly cython.int len, pos
+

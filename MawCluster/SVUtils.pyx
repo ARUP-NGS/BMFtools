@@ -32,7 +32,7 @@ class XLocSegment:
     depth of supporting reads, the regions involved, and a list of those reads.
     TODO: Eventually remove the assertions for speed.
     """
-    @cython.locals(DOR=cython.int)
+    @cython.locals(DOR=int)
     def __init__(self, interval="default", DOR=0,
                  bedIntervals="default"):
         try:
@@ -41,7 +41,7 @@ class XLocSegment:
         except AssertionError:
             print(repr(bedIntervals))
             raise Tim("bedIntervals must be in ParseBed "
-                                "output format! (str, int, int)")
+                      "output format! (str, int, int)")
         self.IntervalInBed = HTSUtils.IntervalOverlapsBed(
             interval, bedIntervals)
         self.interval = interval
@@ -242,9 +242,9 @@ def PileupMDC(ReadPairList, minClustDepth=5,
             else:
                 continue
                 """
-                raise ThisisMadness("Something's not working as hoped - regions"
-                                    " not in bed should have been filtered out"
-                                    " already.")
+                raise ThisisMadness("Something's not working as hoped - "
+                                    "regions not in bed should have been "
+                                    "filtered out already.")
                 """
         PotTransIntervals += RegionsToPull
     PotTransIntervals = sorted(PotTransIntervals, key=oig(1))
@@ -515,7 +515,7 @@ SVTestList = [SVTagFn(func=DRP_SNV_Tag_Condition, extraField=100000,
 @cython.returns(cython.bint)
 def LI_SV_Tag_Condition(pysam.calignmentfile.AlignedSegment read1,
                         pysam.calignmentfile.AlignedSegment read2,
-                        cython.int extraField=100000):
+                        int extraField=100000):
     maxInsert = extraField
     return abs(read1.tlen) >= maxInsert
 
@@ -724,7 +724,7 @@ SVParamDict = defaultdict(returnDefault,
                                SNVParamDict.items()))
 
 
-@cython.locals(SVR=cython.bint, maxInsert=cython.int)
+@cython.locals(SVR=cython.bint, maxInsert=int)
 @cython.returns(tuple)
 def MarkSVTags(pysam.calignmentfile.AlignedSegment read1,
                pysam.calignmentfile.AlignedSegment read2,
@@ -773,7 +773,7 @@ def MarkSVTags(pysam.calignmentfile.AlignedSegment read1,
 @cython.returns(tuple)
 def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
                  pysam.calignmentfile.AlignedSegment read2,
-                 bedObj="default", cython.int maxInsert=100000,
+                 bedObj="default", int maxInsert=100000,
                  list testList=SVTestList,
                  paramDict=SVParamDict):
     """
@@ -807,7 +807,7 @@ def MarkSVTagsFn(pysam.calignmentfile.AlignedSegment read1,
 def GetSVRelevantRecordsPaired(inBAM, SVBam="default",
                                bedfile="default",
                                supplementary="default",
-                               cython.int maxInsert=100000,
+                               int maxInsert=100000,
                                tempBAMPrefix="default",
                                FullBam="default",
                                summary="default"):
@@ -898,7 +898,7 @@ def BkptSequenceInterReads(list reads):
                         read.is_unmapped is False])) == 2
     except AssertionError:
         raise Tim("Interchromosomal translocations should be between 2"
-                 "contigs.")
+                  "contigs.")
     return newSeq
 
 
@@ -929,7 +929,7 @@ def BkptSequenceIntraReads(reads):
         assert isinstance(reads[0], pysam.calignmentfile.AlignedSegment)
     except AssertionError:
         raise Tim("BkptSequenceIntraReads requires a list of "
-                 "pysam AlignedSegment objects as input!")
+                  "pysam AlignedSegment objects as input!")
     try:
         assert len(set([read.reference_id for read in reads if
                         read.is_unmapped is False])) == 1

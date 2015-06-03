@@ -466,7 +466,7 @@ def FilterGZVCFByBed(inVCF, bedfile="default", outVCF="default"):
         inVCF = SortBgzipAndTabixVCF(inVCF)
     elif(inVCF[:-3] == ".gz"):
         raise Tim("Unrecognized file extension - either "
-                            "accepts bgzipped or unzipped vcf files.")
+                  "accepts bgzipped or unzipped vcf files.")
     if(outVCF == "default"):
         outVCF = inVCF[0:-7] + ".bedfilter.vcf.gz"
     print("bedfile used: {}".format(bedfile))
@@ -493,7 +493,7 @@ def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
         assert isinstance(referenceValue, Type)
     except AssertionError:
         raise Tim("The query value and the INFOTag's type must agree."
-                          " How else could they be reasonably compared?")
+                  " How else could they be reasonably compared?")
     inVCF = ParseVCF(inVCF)
     outHandle = open(outVCF, "w")
     count = 0
@@ -643,7 +643,7 @@ def ISplitMultipleAlts(inVCF, outVCF="default"):
 
 
 @cython.locals(maxAF=cython.float,
-               recFreq=cython.float, recordsPerWrite=cython.int)
+               recFreq=cython.float, recordsPerWrite=int)
 def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
                 recordsPerWrite=50000):
     """
@@ -745,7 +745,7 @@ def GetPotentialHetsVCFUK10K(inVCF, minAlFrac=0.2,
     outHandle.close()
 
 
-@cython.locals(nAllelesAtPos=cython.int)
+@cython.locals(nAllelesAtPos=int)
 def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     """
     Verifies the absence or presence of variants that should be in a VCF.
@@ -827,7 +827,7 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
     of "acceptableFilters". (which should be a comma-separated list of strings)
     """
     cdef pysam.TabProxies.VCFProxy rec, qRec, i
-    cdef cython.int lRefRecs
+    cdef int lRefRecs
     if(std == "default"):
         raise Tim("Standard file (must be CHR/POS/ID/REF/ALT), vari"
                   "able name 'std', must be set to CheckStdCallsFor"

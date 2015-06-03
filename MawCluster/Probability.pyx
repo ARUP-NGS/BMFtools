@@ -38,8 +38,8 @@ PROTOCOLS = ["ffpe", "amplicon", "cf", "other"]
 
 
 @memoize
-@cython.locals(DOC=cython.int, pVal=np.longdouble_t,
-               AC=cython.int)
+@cython.locals(DOC=int, pVal=np.longdouble_t,
+               AC=int)
 def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
                           method="agresti_coull"):
     """
@@ -58,8 +58,8 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
 
 
 @cython.returns(np.ndarray)
-def ConfidenceIntervalAI(cython.int Allele1,
-                         cython.int Allele2,
+def ConfidenceIntervalAI(int Allele1,
+                         int Allele2,
                          np.longdouble_t pVal=defaultPValue,
                          cython.str method="agresti_coull"):
     """
@@ -87,8 +87,8 @@ def ConfidenceIntervalAI(cython.int Allele1,
 
 
 @cython.returns(tuple)
-def MakeAICall(cython.int Allele1,
-               cython.int Allele2,
+def MakeAICall(int Allele1,
+               int Allele2,
                np.longdouble_t pVal=defaultPValue,
                cython.str method="agresti_coull"):
     """
@@ -108,9 +108,9 @@ def MakeAICall(cython.int Allele1,
 
 
 @memoize
-@cython.locals(n=cython.int, p=np.longdouble_t,
+@cython.locals(n=int, p=np.longdouble_t,
                pVal=np.longdouble_t)
-@cython.returns(cython.int)
+@cython.returns(int)
 def GetCeiling(n, p=0.0, pVal=defaultPValue):
     """
     Returns the maximum fraction of events per sample with a p value of pVal,
@@ -145,7 +145,7 @@ def StirlingsFact(n, k):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, k=cython.int, n=cython.int)
+@cython.locals(p=np.longdouble_t, k=int, n=int)
 @cython.returns(np.longdouble_t)
 def SamplingFrac(n, p=0., k=1):
     """
@@ -160,7 +160,7 @@ def SamplingFrac(n, p=0., k=1):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, k=cython.int, n=cython.int)
+@cython.locals(p=np.longdouble_t, k=int, n=int)
 @cython.returns(np.longdouble_t)
 def SamplingFrac_(n, p=0., k=1):
     """
@@ -174,7 +174,7 @@ def SamplingFrac_(n, p=0., k=1):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, k=cython.int, n=cython.int)
+@cython.locals(p=np.longdouble_t, k=int, n=int)
 @cython.returns(np.ndarray)
 def GetUnscaledProbs(n, p=0.):
     """
@@ -187,7 +187,7 @@ def GetUnscaledProbs(n, p=0.):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, k=cython.int, n=cython.int)
+@cython.locals(p=np.longdouble_t, k=int, n=int)
 @cython.returns(np.ndarray)
 def GetUnscaledProbs_(n, p=0.):
     """
@@ -200,21 +200,21 @@ def GetUnscaledProbs_(n, p=0.):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, k=cython.int, n=cython.int)
+@cython.locals(p=np.longdouble_t, k=int, n=int)
 @cython.returns(np.longdouble_t)
 def PartitionFunction(n, p=0.1):
     return nsum(GetUnscaledProbs(n, p=p), 0)
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, k=cython.int, n=cython.int)
+@cython.locals(p=np.longdouble_t, k=int, n=int)
 @cython.returns(np.longdouble_t)
 def PartitionFunction_(n, p=0.1):
     return nsum(GetUnscaledProbs_(n, p=p), 0)
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, n=cython.int, k=cython.int)
+@cython.locals(p=np.longdouble_t, n=int, k=int)
 @cython.returns(np.ndarray)
 def SamplingProbDist(n, p=0.):
     """
@@ -231,7 +231,7 @@ def SamplingProbDist(n, p=0.):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, n=cython.int, k=cython.int)
+@cython.locals(p=np.longdouble_t, n=int, k=int)
 @cython.returns(np.ndarray)
 def SamplingProbDist_(n, p=0.):
     """
@@ -248,7 +248,7 @@ def SamplingProbDist_(n, p=0.):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, n=cython.int, k=cython.int,
+@cython.locals(p=np.longdouble_t, n=int, k=int,
                PartitionFn=np.longdouble_t)
 def SamplingProbMoments(n, p=0.):
     """
@@ -263,7 +263,7 @@ def SamplingProbMoments(n, p=0.):
 
 
 @memoize
-@cython.locals(p=np.longdouble_t, n=cython.int, k=cython.int,
+@cython.locals(p=np.longdouble_t, n=int, k=int,
                PartitionFn=np.longdouble_t)
 def SamplingProbMoments_(n, p=0.):
     """

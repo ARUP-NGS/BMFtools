@@ -44,7 +44,7 @@ for x in ext:
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython',
-                    'cutadapt', 'lxml', 'scipy', 'entropy', 'statsmodels',
+                    'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
                     're2']
 
 config = {

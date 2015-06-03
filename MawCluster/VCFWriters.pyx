@@ -47,8 +47,8 @@ Settled on two major filters for inclusion in a pileup
 @cython.returns(cython.str)
 def SNVCrawler(inBAM,
                cython.str bed="default",
-               cython.int minMQ=0,
-               cython.int minBQ=0,
+               int minMQ=0,
+               int minBQ=0,
                cython.str OutVCF="default",
                cython.float MaxPValue=1e-30,
                cython.bint keepConsensus=False,
@@ -61,12 +61,12 @@ def SNVCrawler(inBAM,
                cython.str FORMATTags="default",
                cython.bint writeHeader=True,
                cython.float minFracAgreed=0.0,
-               cython.int minFA=2,
+               int minFA=2,
                cython.str experiment="",
                cython.bint parallel=True,
                sampleName="DefaultSampleName",
                conf="default"):
-    cdef cython.int NumDiscordantPairs = 0
+    cdef int NumDiscordantPairs = 0
     cdef cython.str VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR
     cdef pysam.calignmentfile.IteratorColumnAllRefs ICAR
@@ -194,9 +194,9 @@ def SNVCrawler(inBAM,
 
 @cython.returns(tuple)
 def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
-                       cython.int minMQ=-1, cython.int minBQ=-1,
+                       int minMQ=-1, int minBQ=-1,
                        cython.str experiment="",
-                       cython.int minFA=-1, cython.float minFracAgreed=-1.,
+                       int minFA=-1, cython.float minFracAgreed=-1.,
                        cython.float MaxPValue=-1.,
                        cython.bint keepConsensus=False,
                        cython.str reference="default",
@@ -207,7 +207,7 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     cdef pysam.calignmentfile.AlignedSegment read
     cdef pPileupRead_t i
     cdef VCFPos_t pos
-    cdef cython.int NumDiscordantPairs
+    cdef int NumDiscordantPairs
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
@@ -224,9 +224,9 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
 
 @cython.returns(tuple)
 def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
-                         cython.int minMQ=-1, cython.int minBQ=-1,
+                         int minMQ=-1, int minBQ=-1,
                          cython.str experiment="",
-                         cython.int minFA=-1, cython.float minFracAgreed=-1.,
+                         int minFA=-1, cython.float minFracAgreed=-1.,
                          cython.float MaxPValue=-1.,
                          cython.bint keepConsensus=False,
                          cython.str reference="default",
@@ -262,8 +262,8 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
 @cython.returns(tuple)
 def IteratorColumnRegionToTuple(
         pysam.calignmentfile.IteratorColumnRegion ICR,
-        cython.int minMQ=-1, cython.int minBQ=-1, cython.str experiment="",
-        cython.int minFA=-1, cython.float minFracAgreed=-1.,
+        int minMQ=-1, int minBQ=-1, cython.str experiment="",
+        int minFA=-1, cython.float minFracAgreed=-1.,
         cython.float MaxPValue=-1., puEnd=-1,
         pysam.cfaidx.FastaFile refHandle=None,
         cython.bint keepConsensus=True,
@@ -291,8 +291,8 @@ def IteratorColumnRegionToTuple(
 @cython.returns(cython.str)
 def IteratorColumnRegionToStr(
         pysam.calignmentfile.IteratorColumnRegion ICR,
-        cython.int minMQ=-1, cython.int minBQ=-1, cython.str experiment="",
-        cython.int minFA=-1, cython.float minFracAgreed=-1.,
+        int minMQ=-1, int minBQ=-1, cython.str experiment="",
+        int minFA=-1, cython.float minFracAgreed=-1.,
         cython.float MaxPValue=-1., puEnd=-1,
         pysam.cfaidx.FastaFile refHandle=None,
         cython.bint keepConsensus=True,

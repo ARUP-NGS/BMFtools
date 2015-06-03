@@ -123,3 +123,6 @@ cdef class BamTag(object):
     cdef readonly cython.str tag
     cdef readonly cython.str tagtype
     cdef readonly object value
+
+cdef class pFastqFile(object):
+    cdef public pysam.cfaidx.FastqFile handle

@@ -285,7 +285,6 @@ void LayoutOp::setAttributes(std::string cigarSeq, std::vector<int> qualitySlice
     int baseQuality, agreeCount, Pos, tmpRPos;
     /* char baseArg, char opArg, int RefIDArg, int posArg,
                               int readPosArg, int qualArg, int strand, int FA*/
-    LayoutPos ALP;
     for(int k = 0; k < quality.size(); k++) {
         //std::cerr << "Now making ALP # " << k + 1 << std::endl;
         switch(Operation){
@@ -320,9 +319,8 @@ void LayoutOp::setAttributes(std::string cigarSeq, std::vector<int> qualitySlice
         default:
             throw std::runtime_error("Sorry, unsupported cigar character. Email me and I'll change this.");
         }
-        ALP = LayoutPos(base, Operation, RefID, Pos, tmpRPos, baseQuality, strandedness, agreeCount);
         //std::cerr << ALP.__str__() << " is ALP string." << std::endl;
-        layoutPosVector.push_back(ALP);
+        layoutPosVector.push_back(new LayoutPos(base, Operation, RefID, Pos, tmpRPos, baseQuality, strandedness, agreeCount));
     }
     layoutPositions = layoutPosVector;
 }

@@ -49,31 +49,31 @@ cdef class SNVCFLine:
                  AlleleAggregateInfo_t AlleleAggregateObject,
                  cython.float MaxPValue=1e-30,
                  cython.str ID=".",
-                 cython.int DOCMerged=-1,
-                 cython.int DOCTotal=-1,
+                 int DOCMerged=-1,
+                 int DOCTotal=-1,
                  cython.str TotalFracStr="default",
                  cython.str MergedFracStr="default",
                  cython.str TotalCountStr="default",
                  cython.str MergedCountStr="default",
-                 cython.int FailedBQReads=-1, cython.int FailedMQReads=-1,
-                 cython.int FailedQCReads=-1, cython.int FailedFMReads=-1,
-                 cython.int FailedAFReads=-1,
-                 cython.int minNumFam=2,
-                 cython.int minNumSS=2,
+                 int FailedBQReads=-1, int FailedMQReads=-1,
+                 int FailedQCReads=-1, int FailedFMReads=-1,
+                 int FailedAFReads=-1,
+                 int minNumFam=2,
+                 int minNumSS=2,
                  cython.str REF=None,
                  cython.float reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
-                 cython.int minDuplexPairs=2,
+                 int minDuplexPairs=2,
                  cython.float minFracAgreedForFilter=0.666,
-                 cython.int minFA=0, cython.int BothStrandAlignment=-1,
-                 cython.float pValBinom=0.05, cython.int ampliconFailed=-1,
-                 cython.int NDP=-1, cython.str EST="none",
-                 cython.float minAF=-1., cython.int FailedNDReads=-1,
+                 int minFA=0, int BothStrandAlignment=-1,
+                 cython.float pValBinom=0.05, int ampliconFailed=-1,
+                 int NDP=-1, cython.str EST="none",
+                 cython.float minAF=-1., int FailedNDReads=-1,
                  cython.str flankingBefore=None,
                  cython.str flankingAfter=None):
         cdef np.longdouble_t maxAAF, minAAF
         cdef cython.float shenRef, shenVar
-        cdef cython.int AC, DOC
+        cdef int AC, DOC
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
                                 " as it is used in determining whether or no"
@@ -254,12 +254,12 @@ cdef class VCFPos:
                  cython.bint keepConsensus=True,
                  cython.str reference="default",
                  cython.bint requireDuplex=True,
-                 cython.int minDuplexPairs=1,
+                 int minDuplexPairs=1,
                  cython.float reverseStrandFraction=-1.,
                  cython.float minFracAgreed=0.0,
-                 cython.int minFA=0,
+                 int minFA=0,
                  cython.str experiment="",
-                 cython.int NDP=-1,
+                 int NDP=-1,
                  pysam.cfaidx.FastaFile refHandle=None,
                  shenRange=10):
         cdef SNVCFLine_t line

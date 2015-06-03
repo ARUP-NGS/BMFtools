@@ -13,8 +13,9 @@ import sys
 import datetime
 import subprocess
 
-import BMFMain.ProcessingSteps as ps
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from BMFMain import ProcessingSteps as ps
+from utilBMF.HTSUtils import printlog as pl
+from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF import HTSUtils
 from utilBMF.QC import GetAllQCMetrics
 
@@ -109,12 +110,12 @@ def main(argv=None):
         '--minMQ',
         help="Minimum mapping quality for variant call inclusion. "
              "Can be indicated by the config file.",
-        default=20)
+        default=-1)
     parser.add_argument(
         '--minBQ',
         help="Minimum base quality for variant call inclusion. "
              "Can be indicated by the config file.",
-        default=90)
+        default=-1)
     parser.add_argument(
         "--minCov",
         help="Minimum coverage for including a position"
@@ -195,14 +196,14 @@ def main(argv=None):
         experiment = args.experiment
     if("indelRealigner" in cdk):
         realigner = confDict["indelRealigner"]
-    if("minMQ" in cdk):
-        minMQ = int(confDict['minMQ'])
-    else:
-        minMQ = args.minMQ
-    if("minBQ" in cdk):
-        minBQ = int(confDict['minBQ'])
-    else:
-        minBQ = args.minBQ
+    try:
+        minMQ = args.minMQ if(args.minMQ >= 0) else int(confDict['minMQ'])
+    except KeyError:
+        raise ThisIsMadness("MinMQ not set in either config file or on the command file.")
+    try:
+        minBQ = args.minBQ if(args.minBQ >= 0) else int(confDict['minBQ'])
+    except KeyError:
+        raise ThisIsMadness("MinBQ not set in either config file or on the command file.")
     if("abrapath" in cdk):
         abrapath = confDict['abrapath']
     else:

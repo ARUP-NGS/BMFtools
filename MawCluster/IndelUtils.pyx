@@ -46,8 +46,8 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
     idIrl stands for indel irrelevant.
     Input BAM must be name sorted: coordinate sorted is not supported!
     """
-    cdef cython.int idrel
-    cdef cython.int idirl
+    cdef int idrel
+    cdef int idirl
     cdef pysam.calignmentfile.AlignedSegment read1, read2, entry
     if(indelOutputBAM == "default"):
         indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["indRel", "bam"])
@@ -86,7 +86,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
 
 @cython.returns(cython.bint)
 def IsIndelRelevant(
-        pysam.calignmentfile.AlignedSegment read, cython.int minFam=2,
+        pysam.calignmentfile.AlignedSegment read, int minFam=2,
         cython.float minSF=0.6, cython.bint keepUnmapped=False):
     """
     True if considered relevant to indels.
@@ -152,10 +152,10 @@ def GetFBOutVCFFromStr(cython.str cStr):
 
 '''
 @cython.returns(list)
-def GetUniquelyMappableKmers(cython.str ref, cython.int k=30,
-                             list bedline=[], cython.int minMQ=1,
-                             cython.int padding=-1,
-                             cython.int mismatches=-1):
+def GetUniquelyMappableKmers(cython.str ref, int k=30,
+                             list bedline=[], int minMQ=1,
+                             int padding=-1,
+                             int mismatches=-1):
     """
     Uses a set of HTSUtils methods to find kmers from a region
     which are uniquely mappable. This makes it possible to do alignment-free
@@ -177,11 +177,11 @@ def GetUniquelyMappableKmers(cython.str ref, cython.int k=30,
 
 
 @cython.returns(IndelQuiver_t)
-def FillIndelQuiverRegion(inBAM, cython.int minPairs=2,
+def FillIndelQuiverRegion(inBAM, int minPairs=2,
                           cython.float minShen=0.2,
-                          cython.int window=16, cython.str ref=None,
-                          list bedRegion=[], cython.int minMQ=1,
-                          cython.int minFM=1, cython.int minNumSS=1):
+                          int window=16, cython.str ref=None,
+                          list bedRegion=[], int minMQ=1,
+                          int minFM=1, int minNumSS=1):
     """
     To fill an IndelQuiver, the bam must have the SV tags set, and positive
     calls require a DSI or DSD tag.
@@ -193,7 +193,7 @@ def FillIndelQuiverRegion(inBAM, cython.int minPairs=2,
     cdef IndelQuiver_t Quiver
     cdef pysam.calignmentfile.AlignedSegment rec
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    cdef cython.int end
+    cdef int end
     Quiver = IndelQuiver(ref=ref, window=window, minFM=minFM, minMQ=minMQ,
                          bam=inBAM, minShen=minShen, minPairs=minPairs,
                          minNumSS=minNumSS)
@@ -233,10 +233,10 @@ def FillIndelQuiverRegion(inBAM, cython.int minPairs=2,
 
 
 @cython.returns(IndelQuiver_t)
-def FillEntireQuiver(inBAM, cython.int minPairs=2, cython.float minShen=0.2,
-                     cython.int window=16, cython.str ref=None,
-                     cython.str bed=None, cython.int minFM=1,
-                     cython.int minMQ=1, cython.int minNumSS=1):
+def FillEntireQuiver(inBAM, int minPairs=2, cython.float minShen=0.2,
+                     int window=16, cython.str ref=None,
+                     cython.str bed=None, int minFM=1,
+                     int minMQ=1, int minNumSS=1):
     """
     Simply fills a quiver for each region, merges the quivers, and returns
     the full quiver.
