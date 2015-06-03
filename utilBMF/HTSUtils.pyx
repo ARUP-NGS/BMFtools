@@ -3141,3 +3141,24 @@ TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
                "XM": "i", "YA": "Z", "YM": "i", "YO": "Z",
                "YQ": "i", "YR": "i", "YX": "i"}
 
+
+cdef class pFastqFile(object):
+    """
+    Contains a handle for a kseq.h wrapper and converts each FastqProxy
+    to a pFastqProxy
+    """
+    def __init__(self, object Fq):
+        if(isinstance(Fq, str)):
+            self.handle = pysam.FastqFile(Fq)
+        elif(isinstance(Fq, pysam.cfaidx.FastqFile)):
+            self.handle = Fq
+        else:
+            raise Tim("pFastqFile can be initiated by a "
+                      "pysam.cfaidx.FastqFile or a string.")
+
+    def __iter__(self):
+        return self
+
+    @cython.returns(pFastqProxy)
+    def next(self):
+        return pFastqProxy(next(self.handle))
