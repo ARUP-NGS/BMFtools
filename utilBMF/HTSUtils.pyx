@@ -77,12 +77,12 @@ def lreverse(x):
     return (x[1], x[0])
 
 
-@cython.returns(cython.int)
+@cython.returns(int)
 def linsertsize(x):
     return x.insert_size
 
 
-@cython.returns(cython.int)
+@cython.returns(int)
 def LambdaInsertSize(ReadPair_t x):
     return x.insert_size
 
@@ -339,8 +339,8 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
 
 @cython.returns(cython.str)
 def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
-                       cython.int firstBase=0,
-                       cython.int lastBase=-1337,
+                       int firstBase=0,
+                       int lastBase=-1337,
                        cython.str addString=""):
     if(lastBase == -1337):
         return "@%s %s%s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
@@ -370,7 +370,7 @@ def is_read_softclipped(read):
 
 
 @cython.returns(cython.bint)
-@cython.locals(minLen=cython.int)
+@cython.locals(minLen=int)
 def ReadPairIsDuplex(readPair, minShare="default"):
     """
     If minShare is an integer, require that many nucleotides
@@ -499,7 +499,8 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
 def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
                         path="default", picardPath="default",
                         PL="ILLUMINA", SM="default", ID="default",
-                        CN="default", RG="default"):
+                        CN="default", RG="default",
+                        cython.bint addCO=True):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -520,12 +521,14 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
         raise Tim("Path to picard jar required for adding RG!")
     opt_concat = ' '.join(opts.split())
     RGString = "@RG\tID:bwa SM:%s" % SM
+    baseString = "bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2)
+    if(addCO):
+        baseString = baseString.replace("bwa mem", "bwa mem -C")
+        baseString += "sed 's/\t[1-3]:[A-Z]:/\tCO:Z:/'"
     if(path == "default"):
-        command_str = ("bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2) +
-                       " > {}".format(outSAM))
+        command_str = baseString + "> %s" % outSAM
     else:
-        command_str = (path + " mem %s %s %s " % (opt_concat, ref, R1) +
-                       "{} > {}".format(R2, outSAM))
+        command_str = path + baseString[3:] + " > %s" % outSAM
     # command_list = command_str.split(' ')
     printlog(command_str)
     PipedShellCall(command_str)
@@ -967,7 +970,7 @@ cdef class ReadPair:
         self.SameStrand = (self.SameContig and
                            (read1.is_reverse == read2.is_reverse))
 
-    @cython.returns(cython.int)
+    @cython.returns(int)
     def NumOverlappingBed(self, list bedLines=[]):
         try:
             assert isinstance(bedLines[0], str) and isinstance(
@@ -1010,13 +1013,13 @@ def AlignPairDict(pysam.calignmentfile.AlignedSegment read):
 
 @cython.returns(pysam.calignmentfile.AlignedSegment)
 def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
-                     cython.int minQualDiff=3):
+                     int minQualDiff=3):
     """
     minQualDiff is the minimum difference between the quality
     scores in the case of disagreement.
     """
     cdef pysam.calignmentfile.AlignedSegment read1, read2, newread
-    cdef cython.int i
+    cdef int i
     if(not pair.SameContig or pair.SameStrand):
         return None  # Nothing to collapse!
     read1, read2 = pair.getReads()
@@ -1293,8 +1296,8 @@ def parseConfig(cython.str string):
 
 
 @cython.returns(dict)
-def ReadListToCovCounter(reads, cython.int minClustDepth=3,
-                         cython.int minPileupLen=10):
+def ReadListToCovCounter(reads, int minClustDepth=3,
+                         int minPileupLen=10):
     """
     Makes a Counter object of positions covered by a set of reads.
     Only safe at this point for intrachromosomal rearrangements!
@@ -1304,8 +1307,8 @@ def ReadListToCovCounter(reads, cython.int minClustDepth=3,
 
 
 @cython.returns(dict)
-def ReadPairListToCovCounter(list ReadPairList, cython.int minClustDepth=5,
-                             cython.int minPileupLen=10):
+def ReadPairListToCovCounter(list ReadPairList, int minClustDepth=5,
+                             int minPileupLen=10):
     """
     Makes a Counter object of positions covered by a set of read pairs.
     Only safe at this point for intrachromosomal rearrangements!
@@ -1388,17 +1391,17 @@ class Interval:
         self.end = self.interval[2]
 
 
-@cython.returns(cython.int)
+@cython.returns(int)
 def LambdaSub(x):
     return x[0] - x[1]
 
 
 @cython.returns(list)
-def CreateIntervalsFromCounter(dict CounterObj, cython.int minPileupLen=0,
+def CreateIntervalsFromCounter(dict CounterObj, int minPileupLen=0,
                                cython.str contig="default",
                                bedIntervals="default",
-                               cython.int mergeDist=0,
-                               cython.int minClustDepth=5, lix=LambdaSub):
+                               int mergeDist=0,
+                               int minClustDepth=5, lix=LambdaSub):
     """
     From a dictionary object containing the sum of the output of
     get_reference_positions for a list of AlignedSegment objects, it creates a
@@ -1476,7 +1479,7 @@ def ph2chr(x):
     return chr(x + 33) if x <= 93 else "~"
 
 
-@cython.locals(rq1=cython.int, n=cython.int)
+@cython.locals(rq1=int, n=int)
 def CigarToQueryIndices(cigar):
     """
     Returns a list of lists of positions within the read.
@@ -1501,7 +1504,7 @@ def CigarToQueryIndices(cigar):
 
 
 def GetQueryIndexForCigarOperation(pysam.calignmentfile.AlignedSegment read,
-                                   cython.int cigarOp=-1):
+                                   int cigarOp=-1):
     """
     Returns a list of lists of positions within each read
     which match the given cigarOp. The cigarOp must be an integer.
@@ -1569,7 +1572,7 @@ def GetGenomicCoordToNucleotideMapForFiltCigar(
         raise TypeError
 
 
-@cython.locals(cigarOp=cython.int)
+@cython.locals(cigarOp=int)
 def GetGC2NMapForRead(pysam.calignmentfile.AlignedSegment read,
                       cigarOp=-1):
     """
@@ -1581,7 +1584,7 @@ def GetGC2NMapForRead(pysam.calignmentfile.AlignedSegment read,
                                                       filtCigar=filtCigar)
 
 
-@cython.locals(cigarOp=cython.int)
+@cython.locals(cigarOp=int)
 def GetReadSequenceForCigarOp(pysam.calignmentfile.AlignedSegment read,
                               cigarOp=-1):
     if(read.cigar is None):
@@ -1606,7 +1609,7 @@ def GetDeletedCoordinates(pysam.calignmentfile.AlignedSegment read):
     """
     Returns a list of integers of genomic coordinates for deleted bases.
     """
-    cdef cython.int k
+    cdef int k
     assert isinstance(read, pysam.calignmentfile.AlignedSegment)
     apList = read.get_aligned_pairs()
     k = 0
@@ -1632,7 +1635,7 @@ def GetDeletedCoordinates(pysam.calignmentfile.AlignedSegment read):
 def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
     """
     """
-    cdef cython.int start, end
+    cdef int start, end
     cdef list apList
     cdef tuple i
     apList = read.get_aligned_pairs()
@@ -1661,7 +1664,7 @@ def GetInsertedStrs(pysam.calignmentfile.AlignedSegment read):
     Used to determine whether or not DSI is appropriate.
     """
     cdef dict readPosToAlignedPosDict
-    cdef cython.int l
+    cdef int l
     cdef list PrecedingBase, SuccessiveBase, stringList, set
     positions = GetInsertedNucleotides(read)
     stringList = []
@@ -1741,7 +1744,7 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
 
 @cython.locals(outliers_fraction=np.longdouble_t,
                contamination=np.longdouble_t,
-               window=cython.int)
+               window=int)
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                   window=20):
     from sklearn.covariance import EllipticEnvelope
@@ -1785,11 +1788,11 @@ def CalculateFamStats(inFq):
     """
     inHandle = pysam.FastqFile(inFq)
     cdef pysam.cfaidx.FastqProxy read
-    cdef cython.int famS
-    cdef cython.int sumFam
-    cdef cython.int numFam
-    cdef cython.int numSing
-    cdef cython.int sumAll
+    cdef int famS
+    cdef int sumFam
+    cdef int numFam
+    cdef int numSing
+    cdef int sumAll
     cdef np.longdouble_t meanFamAll
     cdef np.longdouble_t meanRealFam
     numSing = 0
@@ -1817,7 +1820,7 @@ def CalculateFamStats(inFq):
     return numSing, numFam, meanFamAll, meanRealFam
 
 
-@cython.locals(n=cython.int)
+@cython.locals(n=int)
 @cython.returns(list)
 def bitfield(n):
     """
@@ -1886,7 +1889,7 @@ def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
     Might fix this later, but I don't like it very much. If there were cython
     bindings to bwa, that would be the perfect use of it. Ehhh..
     """
-    cdef cython.int lAlignedArr, lbf
+    cdef int lAlignedArr, lbf
     cdef cython.float af
     cdef cython.str FastqStr, commandStr
     cdef list alignedArr, letters, numbers, tags, tag
@@ -1987,9 +1990,9 @@ def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
     """
     cdef dict InfoDict
     cdef dict Counts
-    cdef cython.int ACR
-    cdef cython.int ceiling
-    cdef cython.int AC
+    cdef int ACR
+    cdef int ceiling
+    cdef int AC
     InfoDict = makeinfodict(rec)
     Counts = dict([i.split(">") for i in
                   InfoDict["MACS"].split(",")])
@@ -2226,7 +2229,7 @@ class PopenDispatcher(object):
             self.cleanup = cleanup
         self.sleeptime = sleeptime
 
-    @cython.returns(cython.int)
+    @cython.returns(int)
     def _getJobNumber(self):
         return self.submitted + 1
 
@@ -2480,7 +2483,7 @@ def TrimExt(cython.str fname):
 
 
 @cython.returns(cython.str)
-def NPadSequence(cython.str seq, cython.int n=300):
+def NPadSequence(cython.str seq, int n=300):
     """
     Pads a sequence with "n" Ns.
     """
@@ -2493,7 +2496,7 @@ def FastaStyleSequence(cython.str seq):
 
 
 @cython.returns(cython.str)
-def PadAndMakeFasta(cython.str seq, cython.int n=300):
+def PadAndMakeFasta(cython.str seq, int n=300):
     return FastaStyleSequence(NPadSequence(seq, n=n))
 
 
@@ -2525,7 +2528,7 @@ def GetDSIndels(inBAM, outBAM):
     return outBAM
 
 
-def hamming_cousins_exact(cython.str s, cython.int n,
+def hamming_cousins_exact(cython.str s, int n,
                           list alphabet=["A", "C", "G", "T"]):
     """Generate strings over alphabet whose Hamming distance from s is
     exactly n.
@@ -2538,7 +2541,7 @@ def hamming_cousins_exact(cython.str s, cython.int n,
     ['abb', 'bab', 'bba']
 
     """
-    cdef cython.int lalphabetSub1
+    cdef int lalphabetSub1
     lalphabetSub1 = len(alphabet) - 1
     for positions in combinations(xrange(len(s)), n):
         for replacements in product(range(lalphabetSub1), repeat=n):
@@ -2551,7 +2554,7 @@ def hamming_cousins_exact(cython.str s, cython.int n,
             yield ''.join(cousin)
 
 
-def hamming_cousins(cython.str s, cython.int n=0,
+def hamming_cousins(cython.str s, int n=0,
                     list alphabet=["A", "C", "G", "T"]):
     """Generate strings over alphabet whose Hamming distance from s is
     less than or equal to n.
@@ -2588,7 +2591,7 @@ def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
     """
     Creates a Deletion object from a read.
     """
-    cdef cython.int start, end
+    cdef int start, end
     cdef list coords
     coords = GetDeletedCoordinates(read)
     start = coords[0]
@@ -2626,8 +2629,8 @@ cdef class AbstractIndelContainer(object):
     seq should be None for a deletion
     """
 
-    def __init__(self, cython.str contig, cython.int start=-666,
-                 cython.int end=-1, cython.int type=-137,
+    def __init__(self, cython.str contig, int start=-666,
+                 int end=-1, int type=-137,
                  cython.str seq=None):
         self.contig = contig
         self.start = start
@@ -2642,7 +2645,7 @@ cdef class AbstractIndelContainer(object):
         raise Tim("Abstract method must be inherited. Sorry, cdef won't let "
                   "me actually make this an abstract class.")
 
-    @cython.returns(cython.int)
+    @cython.returns(int)
     def __len__(self):
         """
         Returns the number of reads supporting it which have been queried
@@ -2683,14 +2686,14 @@ cdef class AbstractIndelContainer(object):
         return cyfreq(self.readnames)
 
     @cython.returns(cython.str)
-    def __getitem__(self, cython.int index):
+    def __getitem__(self, int index):
         return self.readnames[index]
 
     @cython.returns(list)
     def sort(self):
         self.readnames = sorted(self.readnames)
 
-    @cython.returns(cython.int)
+    @cython.returns(int)
     def getNumSS(self):
         return(len(set(self.StartStops)))
 
@@ -2720,9 +2723,9 @@ cdef class Insertion(AbstractIndelContainer):
     """
 
     def __init__(self, pysam.calignmentfile.AlignedSegment read,
-                 cython.str contig, cython.int start=-1,
+                 cython.str contig, int start=-1,
                  cython.str seq=None, pysam.cfaidx.FastaFile handle=None,
-                 cython.int window=20):
+                 int window=20):
         if(start < 0):
             raise Tim("start required for InsertionContainer.")
         self.contig = contig
@@ -2760,9 +2763,9 @@ cdef class Deletion(AbstractIndelContainer):
     """
 
     def __init__(self, pysam.calignmentfile.AlignedSegment read,
-                 cython.str contig=None, cython.int start=-1,
-                 cython.int end=-1,
-                 pysam.cfaidx.FastaFile handle=None, cython.int window=20):
+                 cython.str contig=None, int start=-1,
+                 int end=-1,
+                 pysam.cfaidx.FastaFile handle=None, int window=20):
         self.contig = contig
         self.start = start
         self.end = end
@@ -2797,10 +2800,10 @@ cdef class IndelQuiver(object):
     Counts is a similar object, but with the length of the data
     field as a value instead of the list itself.
     """
-    def __init__(self, cython.str ref=None, cython.int window=10,
-                 cython.int minMQ=0, cython.int minFM=0,
-                 cython.str bam=None, cython.int minNumSS=0,
-                 cython.float minShen=0.2, cython.int minPairs=1):
+    def __init__(self, cython.str ref=None, int window=10,
+                 int minMQ=0, int minFM=0,
+                 cython.str bam=None, int minNumSS=0,
+                 cython.float minShen=0.2, int minPairs=1):
         self.data = {}
         self.readnames = {}
         self.counts = {}
@@ -2813,7 +2816,7 @@ cdef class IndelQuiver(object):
         self.minShen = minShen
         self.minNumSS = minNumSS
 
-    @cython.returns(cython.int)
+    @cython.returns(int)
     def __len__(self):
         return len(self.data)
 
@@ -2954,7 +2957,7 @@ cdef class IDVCFLine(object):
     def __init__(self, AbstractIndelContainer_t IC, IndelQuiver_t quiver=None):
         cdef pysam.calignmentfile.PileupColumn PileupCol
         cdef pysam.calignmentfile.IteratorColumnRegion pileupIt
-        cdef cython.int tmpCov
+        cdef int tmpCov
         cdef cython.float MDP
         cdef tuple i
         cdef cython.str key
@@ -3142,7 +3145,7 @@ TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
                "NF": "f", "NM": "i", "RP": "Z", "SC": "Z",
                "SF": "f", "SV": "Z", "X0": "i", "X1": "i",
                "XM": "i", "YA": "Z", "YM": "i", "YO": "Z",
-               "YQ": "i", "YR": "i", "YX": "i"}
+               "YQ": "i", "YR": "i", "YX": "i", "MP": "Z"}
 
 
 cdef class pFastqFile(object):

@@ -132,7 +132,7 @@ def AbraCadabra(inBAM, outBAM="default",
     return outBAM
 
 
-@cython.locals(rLen=cython.int)
+@cython.locals(rLen=int)
 def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
                     nt=4, abra="default"):
     if(abra == "default"):
@@ -262,7 +262,7 @@ def pairedBarcodeTagging(
     cdef np.ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef cython.float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
-    cdef cython.int FM, ND1, ND2
+    cdef int FM, ND1, ND2
     cdef cython.bint addDefault, bwaswRescue
     cdef cython.str coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2

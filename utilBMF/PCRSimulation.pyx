@@ -14,7 +14,7 @@ Massively Parallel Sequencing datasets.
 """
 
 
-@cython.locals(countMC=cython.int, size=cython.int)
+@cython.locals(countMC=int, size=int)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def main():
@@ -62,7 +62,7 @@ def main():
     return
 
 
-@cython.locals(size=cython.int, i=cython.int)
+@cython.locals(size=int, i=int)
 @cython.boundscheck(False)  # Turn off boundscheck for this function
 @cython.wraparound(False)  # Turn off negative indexing
 @cython.returns(DTYPE_t)

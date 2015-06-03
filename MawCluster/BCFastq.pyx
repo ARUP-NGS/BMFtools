@@ -68,7 +68,7 @@ def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
             "$6, $7, $8}}' | sort -t\"|\" -k2,2 -k1,1 | tr '\t' '\n'")
 
 
-@cython.locals(checks=cython.int,
+@cython.locals(checks=int,
                parallel=cython.bint, sortMem=cython.str)
 def BarcodeSortBoth(cython.str inFq1, cython.str inFq2,
                     cython.str sortMem="6G", cython.bint parallel=False):
@@ -139,10 +139,10 @@ def getBarcodeSortStr(inFastq, outFastq="default", highMem=True):
 
 
 @cython.locals(stringency=cython.float, hybrid=cython.bint,
-               famLimit=cython.int, keepFails=cython.bint,
+               famLimit=int, keepFails=cython.bint,
                Success=cython.bint, PASS=cython.bint, frac=cython.float,
-               compressB64=cython.bint, lenR=cython.int,
-               numEq=cython.int, maxScore=cython.int, ND=cython.int)
+               compressB64=cython.bint, lenR=int,
+               numEq=int, maxScore=int, ND=int)
 def compareFqRecsFqPrx(list R, stringency=0.9,
                        famLimit=1000, keepFails=True,
                        makeFA=True, makePV=True, name=None, oagseq=oagseq,
@@ -244,14 +244,14 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
                       ndiv=ndiv, nmul=nmul, npchararray=npchararray,
                       oagseq=oagseq, npargmax=npargmax, npamax=npamax,
                       npvstack=npvstack, dict letterNumDict=letterNumDict,
-                      nsum=nsum, dict chr2ph=chr2ph, dict ph2chr=ph2chr,
-                      partialnpchar=partialnpchar):
+                      nsum=nsum, dict chr2ph=chr2ph,
+                      object partialnpchar=partialnpchar, object ph2chr=ph2chr):
     """
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef cython.int lenR, ND
+    cdef int lenR, ND
     cdef cython.bint Success
     cdef cython.str seq, qual, seqItem
     cdef np.ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
@@ -325,7 +325,7 @@ def compareFqRecsFast(R, makePV=True, makeFA=True, name=None, ccopy=ccopy,
 @cython.returns(cython.str)
 def CutadaptPaired(cython.str fq1, cython.str fq2,
                    p3Seq="default", p5Seq="default",
-                   cython.int overlapLen=6, cython.bint makeCall=True):
+                   int overlapLen=6, cython.bint makeCall=True):
     """
     Returns a string which can be called for running cutadapt v.1.7.1
     for paired-end reads in a single call.
@@ -356,7 +356,7 @@ def CutadaptPaired(cython.str fq1, cython.str fq2,
     return commandStr
 
 
-@cython.locals(overlapLen=cython.int)
+@cython.locals(overlapLen=int)
 @cython.returns(cython.str)
 def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
@@ -377,7 +377,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return commandStr, outfq
 
 
-@cython.locals(overlapLen=cython.int)
+@cython.locals(overlapLen=int)
 def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Calls cutadapt to remove adapter sequence at either end of the reads.
@@ -389,7 +389,7 @@ def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     return outfq
 
 
-@cython.locals(overlapLap=cython.int, numChecks=cython.int)
+@cython.locals(overlapLap=int, numChecks=int)
 def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
     fq1Str, outfq1 = CutadaptString(fq1, p3Seq=p3Seq, p5Seq=p5Seq,
                                     overlapLen=overlapLen)
@@ -419,10 +419,10 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
             raise subprocess.CalledProcessError("Cutadapt failed for read 2!")
 
 
-@cython.locals(useGzip=cython.bint, bLen=cython.int)
+@cython.locals(useGzip=cython.bint, bLen=int)
 def FastqPairedShading(fq1, fq2, indexfq="default",
                        useGzip=False, readPairsPerWrite=10,
-                       cython.int head=2):
+                       int head=2):
     """
     TODO: Unit test for this function.
     Tags fastqs with barcodes from an index fastq.
@@ -538,7 +538,7 @@ def FastqSingleShading(fq,
                        indexfq="default",
                        outfq="default",
                        cython.bint gzip=False,
-                       cython.int head=0):
+                       int head=0):
     """
     TODO: Unit test for this function.
     """
@@ -675,7 +675,7 @@ def GetDescriptionTagDict(readDesc):
 
 
 def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
-                           cython.int readPairsPerWrite=100,
+                           int readPairsPerWrite=100,
                            cython.bint UsecProfile=False,
                            cython.bint onlyNumpy=True,
                            cython.bint skipSingles=False,
@@ -695,7 +695,7 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
     cdef pysam.cfaidx.FastqFile inFq1, inFq2
     cdef pFq fqRec, fqRec2
     cdef list workingSet1, workingSet2, StringList1, StringList2
-    cdef cython.int numProc
+    cdef int numProc
     outFqPair1 = TrimExt(fq1) + ".cons.fastq"
     outFqPair2 = TrimExt(fq2) + '.cons.fastq'
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
@@ -795,7 +795,7 @@ def pairedFastqConsolidate(fq1, fq2, cython.float stringency=0.9,
 
 
 def singleFastqConsolidate(fq, cython.float stringency=0.9,
-                           cython.int readsPerWrite=100,
+                           int readsPerWrite=100,
                            cython.bint UsecProfile=False,
                            cython.bint onlyNumpy=True,
                            cython.bint skipFails=False):
@@ -808,7 +808,7 @@ def singleFastqConsolidate(fq, cython.float stringency=0.9,
     cdef pysam.cfaidx.FastqFile inFq
     cdef pFq fqRec
     cdef list workingSet, StringList
-    cdef cython.int numProc
+    cdef int numProc
     outFq = TrimExt(fq) + ".cons.fastq"
     pl("Now running singleFastqConsolidate on {}.".format(fq))
     pl("Command required to duplicate this action:"
@@ -873,14 +873,14 @@ def TrimHomingSingle(
         fq,
         cython.str homing=None,
         cython.str trimfq=None,
-        cython.int bcLen=12,
+        int bcLen=12,
         cython.str trim_err=None,
-        cython.int start_trim=1):
+        int start_trim=1):
     """
     TODO: Unit test for this function.
     """
     cdef pysam.cfaidx.FastqProxy read
-    cdef cython.int HomingLen, TotalTrim
+    cdef int HomingLen, TotalTrim
     pl("TrimHoming: \"{}\" from {}.".format(homing, fq))
     if(trim_err is None):
         trim_err = TrimExt(fq) + '.err.fastq'
@@ -907,14 +907,14 @@ def TrimHomingSingle(
     return trimfq
 
 
-def TrimHomingPaired(inFq1, inFq2, cython.int bcLen=12,
+def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
                      cython.str homing=None, cython.str trimfq1=None,
-                     cython.str trimfq2=None, cython.int start_trim=1):
+                     cython.str trimfq2=None, int start_trim=1):
     """
     TODO: Unit test for this function.
     """
     cdef pysam.cfaidx.FastqProxy read1, read2
-    cdef cython.int HomingLen, TotalTrim
+    cdef int HomingLen, TotalTrim
     pl("Getting inline barcodes for files %s, %s with homing %s." % (inFq1,
                                                                      inFq2,
                                                                      homing))

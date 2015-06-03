@@ -19,7 +19,7 @@ cimport cython
 
 
 @cython.returns(np.longdouble_t)
-def GetObservedAAFCeiling(cython.int AC, cython.int DOC,
+def GetObservedAAFCeiling(int AC, int DOC,
                           np.longdouble_t pVal=defaultPValue):
     """
     Returns the maximum AAF given observed AC and DOC.
@@ -28,8 +28,8 @@ def GetObservedAAFCeiling(cython.int AC, cython.int DOC,
 
 
 @cython.returns(cython.bint)
-def TestTumorVsNormal(cython.int tAC, cython.int tDOC,
-                      cython.int nAC, cython.int nDOC,
+def TestTumorVsNormal(int tAC, int tDOC,
+                      int nAC, int nDOC,
                       np.longdouble_t pVal=defaultPValue):
     """
     Tests whether the quantity of a variant in a tumor sample analyzed for
@@ -76,7 +76,7 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     (Will require a different function, actually.)
     """
     cdef pysam.TabProxies.VCFProxy rec, nRec, i
-    cdef cython.int nDOC, nAC, nAllelesAtPos
+    cdef int nDOC, nAC, nAllelesAtPos
     cdef np.longdouble_t nMaxAAF
     cdef cython.str f
     if(normal == "default"):

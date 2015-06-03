@@ -248,6 +248,7 @@ Most options are available for command-line as well. If an option is set in both
     2. For optimal compilation, use the -march flag. BMFTools' setup.py automatically attempts to find that appropriate value for you.
 
 
+Before I forget: I should write a logging/trace decorator which logs each major function call, along with args and kwargs.
 
 #TODO (ish):
 1. SNV:

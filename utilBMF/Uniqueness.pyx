@@ -27,14 +27,14 @@ def SequenceToFakeFq(cython.str seq):
 
 
 @cython.returns(list)
-def GetKmersToCheck(cython.str ref, cython.int k=30, list bedline=[],
-                    cython.int padding=-1):
+def GetKmersToCheck(cython.str ref, int k=30, list bedline=[],
+                    int padding=-1):
     """
     Gets a list of kmers which provide unique mappability
     to the region of interest.
     bedline should be the first 3 columns from a line in a bed file.
     """
-    cdef cython.int i, start, end
+    cdef int i, start, end
     cdef list kmerList, candidateKmers
     if(padding < 0):
         pl("Padding not set - defaults to kmer size.")
@@ -61,11 +61,11 @@ cdef class RefKmer(object):
     from reference sequence.
     :param cython.str seq
     :param cython.str contig=None
-    :param cython.int pos=-1
+    :param int pos=-1
     """
 
     def __init__(self, cython.str seq, cython.str contig=None,
-                 cython.int pos=-1):
+                 int pos=-1):
         assert pos >= 0  # pos needs to be set
         self.contig = contig
         self.seq = seq
@@ -91,18 +91,18 @@ cdef class KmerFetcher(object):
     how to automate that.
 
     :param cython.str ref - path to reference fasta file.
-    :param cython.int padding - distance around region to pad for
+    :param int padding - distance around region to pad for
            looking for kmers
-    :param cython.int mismatches - maximum permitted mismatches in alignment.
-    :param cython.int minMQ - minimum MQ for a kmer's alignment to be
+    :param int mismatches - maximum permitted mismatches in alignment.
+    :param int minMQ - minimum MQ for a kmer's alignment to be
     considered acceptable.
-    :param cython.int k - length of kmers;
+    :param int k - length of kmers;
     * Note: minMQ doesn't make sense with bowtie/bowtie2's mapping quality
     assignments.
     """
-    def __init__(self, cython.str ref=None, cython.int padding=50,
-                 cython.int mismatches=-1, cython.int minMQ=1,
-                 cython.int k=30):
+    def __init__(self, cython.str ref=None, int padding=50,
+                 int mismatches=-1, int minMQ=1,
+                 int k=30):
         self.ref = ref
         self.mismatches = mismatches
         self.minMQ = minMQ
@@ -137,12 +137,12 @@ cdef class KmerFetcher(object):
     # Should we consider changing the number of mapping mismatches permitted
     # so as to be more stringent than with our mappability analysis?
 
-    cdef setK(self, cython.int newK):
+    cdef setK(self, int newK):
         """Sets the value of K to the argument.
         """
         self.k = newK
 
-    cdef cython.int getK(self):
+    cdef int getK(self):
         return self.k
 
     cpdef cython.str getFastqString(self, list bedline):
@@ -188,7 +188,7 @@ cdef class KmerFetcher(object):
         return self.HashMap.keys(*args, **kwargs)
 
     @cython.returns(dict)
-    def BuildMapper(self, object cfi=cfi, cython.int maplimit=1,
+    def BuildMapper(self, object cfi=cfi, int maplimit=1,
                     object oagseq=oagseq, object hammingPt=hammingPt,
                     object RevCmp=RevCmp):
         """
@@ -215,10 +215,10 @@ def GetRepresentativeKmerDict(*args, **kwargs):
 
 
 @cython.returns(list)
-def GetRepKmersBwt(cython.str ref, cython.int k=30,
+def GetRepKmersBwt(cython.str ref, int k=30,
                    list bedline=[],
-                   cython.int padding=-1, cython.int seedlen=-1,
-                   cython.int mismatches=-1, cython.int minMQ=1,
+                   int padding=-1, int seedlen=-1,
+                   int mismatches=-1, int minMQ=1,
                    cython.bint useBowtie=False):
     cdef cython.str fqStr, output
     fqStr = FastqStrFromKmerList(GetKmersToCheck(ref, k=k, bedline=bedline,
@@ -234,7 +234,7 @@ def GetRepKmersBwt(cython.str ref, cython.int k=30,
 
 @cython.returns(cython.str)
 def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
-                  cython.int seed=-1, cython.int mismatches=-1):
+                  int seed=-1, int mismatches=-1):
     """
     Returns the string output of a bowtie2 call.
     With bowtie, you can specify precisely the number of permitted mismatches
@@ -262,7 +262,7 @@ def BowtieFqToStr(cython.str fqStr, cython.str ref=None,
 
 @cython.returns(cython.str)
 def BwaFqToStr(cython.str fqStr, cython.str ref=None,
-               cython.int seed=-1):
+               int seed=-1):
     """
     Returns the string output of a bwa mem call.
     """
@@ -285,7 +285,7 @@ def BwaFqToStr(cython.str fqStr, cython.str ref=None,
 
 
 @cython.returns(cython.bint)
-def PassesNM(cython.str rStr, cython.int maxNM=2):
+def PassesNM(cython.str rStr, int maxNM=2):
     """
     Checks a SAM line to see if its edit distance is below the minimum.
     """
@@ -299,7 +299,7 @@ def PassesNM(cython.str rStr, cython.int maxNM=2):
 
 
 @cython.returns(list)
-def GetMQPassRefKmersMem(cython.str bwaStr, cython.int maxNM=2):
+def GetMQPassRefKmersMem(cython.str bwaStr, int maxNM=2):
     """
     Takes a string output from bowtie and gets the names of the reads
     with MQ >= minMQ. Defaults to 1 (for a unique alignment)
@@ -364,7 +364,7 @@ def GetMQPassReadsBwt1(cython.str bwtStr):
 
 
 @cython.returns(list)
-def GetUniqMQsBowtie(cython.str bwtStr, cython.int minMQ=1):
+def GetUniqMQsBowtie(cython.str bwtStr, int minMQ=1):
     """
     Takes a string output from bowtie and gets the names of the reads
     with MQ >= minMQ. Defaults to 1 (for a unique alignment)

@@ -13,8 +13,9 @@ import sys
 import datetime
 import subprocess
 
-import BMFMain.ProcessingSteps as ps
-from utilBMF.HTSUtils import printlog as pl, ThisIsMadness
+from BMFMain import ProcessingSteps as ps
+from utilBMF.HTSUtils import printlog as pl
+from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF import HTSUtils
 from utilBMF.QC import GetAllQCMetrics
 
