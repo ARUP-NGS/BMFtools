@@ -166,7 +166,6 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
                       homing=None, bcLen=-1, head=0):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
-    pl("Parameters for cutadapt are p3Seq={}, p5Seq={}".format(p3Seq, p5Seq))
     if(inline_barcodes is False):
         bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
                                                         inFastq2,
@@ -180,10 +179,14 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
     # check_call(["rm", bcFastq1, bcFastq2])
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
         BSortFq1, BSortFq2, stringency=0.9)
+    pl("Parameters for cutadapt are p3Seq={}, p5Seq={}".format(p3Seq, p5Seq))
     if(p3Seq != "default"):
+        pl("Running cutadapt ...")
         BConsFastq1, BConsFastq2 = BCFastq.CutadaptPaired(
             BConsFastq1, BConsFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq)
+    else:
+        pl("Skipping cutadapt ...")
     check_call(["rm", BSortFq1, BSortFq2])
     try:
         famStats = GetFamSizeStats(
