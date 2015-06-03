@@ -10,7 +10,7 @@ import logging
 from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               ThisIsMadness, printlog as pl, ParseBed,
-                              hamming_cousins)
+                              hamming_cousins, RevCmp)
 from cytoolz import frequencies as cyfreq
 from itertools import chain, partial
 from operator import attrgetter
@@ -109,6 +109,19 @@ cdef class KmerFetcher(object):
         self.padding = padding
         self.k = k
         self.HashMap = {}
+        self.FullMap = None
+
+    @cython.returns(dict)
+    def IBedToMap(self, cython.str bedpath):
+        """Fills the HashMap for each line in the bed file.
+        Returns a hashmap which maps all strings within hamming distance
+        of mismatches limit.
+        """
+        cdef list bedline
+        cdef list bedlines = ParseBed(bedpath)
+        for bedline in bedlines:
+            self.FillMap(bedline)
+        self.FullMap = self.BuildMapper(maplimit=self.mismatches)
 
     @cython.returns(dict)
     def BedToMap(self, cython.str bedpath):
@@ -176,7 +189,8 @@ cdef class KmerFetcher(object):
 
     @cython.returns(dict)
     def BuildMapper(self, object cfi=cfi, cython.int maplimit=1,
-                    object oagseq=oagseq, object hammingPt=hammingPt):
+                    object oagseq=oagseq, object hammingPt=hammingPt,
+                    object RevCmp=RevCmp):
         """
         Once all regions of interest have been build,
         create the mapping dictionary.
@@ -191,7 +205,8 @@ cdef class KmerFetcher(object):
             mappingTups += [(kmer, region) for
                             kmer in list(cfi(map(hammingPt,
                                                  map(oagseq, kmerlist))))]
-        return dict(mappingTups)
+        return dict(mappingTups + [(RevCmp(kmer), region) for
+                                   kmer, region in mappingTups])
 
 
 @cython.returns(dict)
