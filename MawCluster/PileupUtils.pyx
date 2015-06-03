@@ -225,9 +225,9 @@ cdef class AlleleAggregateInfo:
                  int DOC=-1,
                  int DOCTotal=-1,
                  int NUMALT=-1,
-                 cython.float AABPSD=-1., cython.float AAMBP=-1.,
-                 cython.float minFracAgreed=0.0, int minFA=0,
-                 cython.float minPVFrac=0.0, int FSR=-1,
+                 float AABPSD=-1., float AAMBP=-1.,
+                 float minFracAgreed=0.0, int minFA=0,
+                 float minPVFrac=0.0, int FSR=-1,
                  object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
                  object oagmq=oagmq):
         cdef np.ndarray NFList
@@ -397,11 +397,11 @@ cdef class PCInfo:
 
     def __init__(self, pPileupColumn_t PileupColumn, int minBQ=0,
                  int minMQ=0, cython.bint requireDuplex=True,
-                 cython.float minFracAgreed=0.0, int minFA=0,
-                 cython.float minPVFrac=0.66,
+                 float minFracAgreed=0.0, int minFA=0,
+                 float minPVFrac=0.66,
                  cython.str exclusionSVTags="MDC,LI",
                  cython.bint FracAlignFilter=False, int primerLen=20,
-                 cython.str experiment="", cython.float minAF=0.25,
+                 cython.str experiment="", float minAF=0.25,
                  int maxND=10, object oig1=oig1, object oagir=oagir,
                  object oagqp=oagqp):
         cdef PRInfo_t rec
@@ -502,7 +502,7 @@ cdef class PCInfo:
         except IndexError:
             self.consensus = "N"  # All bases failed filtered. Oh well.
             pl("Note: PCInfo empty at contig "
-               "%s and position" % (self.contig, self.pos),
+               "%s and position %s" % (self.contig, self.pos),
                level=logging.DEBUG)
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
@@ -758,7 +758,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
     pass
 
 
-@cython.locals(MergeDOC=cython.float, TotalDOC=cython.float,
+@cython.locals(MergeDOC=float, TotalDOC=float,
                minMQ=int, minBQ=int)
 def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
                           outbed="default"):

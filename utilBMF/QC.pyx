@@ -83,7 +83,7 @@ def FracOnTarget(inBAM, bed="default", buffer=20):
     """
     cdef int numReadsTotal
     cdef int numReadsOnTarget
-    cdef cython.float fracOnTarget
+    cdef float fracOnTarget
     covBed, fracOnTarget = coverageBed(inBAM,
                                        bed=ExtendBed(bed, buffer=buffer))
     numReadsTotal = int(check_output(["samtools", "view", "-L", covBed,
@@ -116,7 +116,7 @@ def InsertSizeArray(inBAM):
 def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
                     minFM=2):
     cdef int TotalReads, FM, MappedReads, UnmappedReads
-    cdef cython.float fracOnTarget, stdInsert, meanInsert
+    cdef float fracOnTarget, stdInsert, meanInsert
     cdef int MappedFamReads, maxInsert
     cdef int MappedSingletonReads
     outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
@@ -216,12 +216,12 @@ def GetFamSizeStats(inFq, outfile=sys.stdout):
     cdef int sumFam = 0
     cdef int sumAll = 0
     cdef int famS
-    cdef cython.float MeanFamAll
-    cdef cython.float MeanRealFam
+    cdef float MeanFamAll
+    cdef float MeanRealFam
     cdef pysam.cfaidx.FastqFile FqHandle
     FqHandle = pysam.FastqFile(inFq)
     for read in FqHandle:
-        famS = int(read.comment.split(" ")[3].split("=")[1])
+        famS = int(read.comment.split("|")[3].split("=")[1])
         if(famS > 1):
             numFam += 1
             sumFam += famS

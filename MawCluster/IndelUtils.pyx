@@ -87,7 +87,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
 @cython.returns(cython.bint)
 def IsIndelRelevant(
         pysam.calignmentfile.AlignedSegment read, int minFam=2,
-        cython.float minSF=0.6, cython.bint keepUnmapped=False):
+        float minSF=0.6, cython.bint keepUnmapped=False):
     """
     True if considered relevant to indels.
     False otherwise.
@@ -178,7 +178,7 @@ def GetUniquelyMappableKmers(cython.str ref, int k=30,
 
 @cython.returns(IndelQuiver_t)
 def FillIndelQuiverRegion(inBAM, int minPairs=2,
-                          cython.float minShen=0.2,
+                          float minShen=0.2,
                           int window=16, cython.str ref=None,
                           list bedRegion=[], int minMQ=1,
                           int minFM=1, int minNumSS=1):
@@ -233,7 +233,7 @@ def FillIndelQuiverRegion(inBAM, int minPairs=2,
 
 
 @cython.returns(IndelQuiver_t)
-def FillEntireQuiver(inBAM, int minPairs=2, cython.float minShen=0.2,
+def FillEntireQuiver(inBAM, int minPairs=2, float minShen=0.2,
                      int window=16, cython.str ref=None,
                      cython.str bed=None, int minFM=1,
                      int minMQ=1, int minNumSS=1):

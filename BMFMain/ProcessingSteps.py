@@ -160,7 +160,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 
 
 @cython.locals(overlapLen=int,
-               stringency=cython.float)
+               stringency=float)
 def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
@@ -195,8 +195,8 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
 
 @cython.locals(minMQ=int, minBQ=int, MakeVCF=cython.bint,
                MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint,
-               minFA=int, minFracAgreed=cython.float,
-               deaminationPVal=cython.float)
+               minFA=int, minFracAgreed=float,
+               deaminationPVal=float)
 def pairedVCFProc(consMergeSortBAM,
                   ref="default",
                   opts="",

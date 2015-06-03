@@ -642,8 +642,8 @@ def ISplitMultipleAlts(inVCF, outVCF="default"):
     return outVCF
 
 
-@cython.locals(maxAF=cython.float,
-               recFreq=cython.float, recordsPerWrite=int)
+@cython.locals(maxAF=float,
+               recFreq=float, recordsPerWrite=int)
 def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
                 recordsPerWrite=50000):
     """

@@ -1879,7 +1879,7 @@ def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read,
 def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
                 pysam.calignmentfile.AlignmentFile alignmentfileObj,
                 cython.str extraOpts="",
-                cython.str ref="default", cython.float minAF=0.5):
+                cython.str ref="default", float minAF=0.5):
     """
     Passes the sequence and qualities of the provided read to bwa aln with
     an AlignedSegment as input. Updates the AlignedSegment's fields in-place
@@ -1890,7 +1890,7 @@ def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
     bindings to bwa, that would be the perfect use of it. Ehhh..
     """
     cdef int lAlignedArr, lbf
-    cdef cython.float af
+    cdef float af
     cdef cython.str FastqStr, commandStr
     cdef list alignedArr, letters, numbers, tags, tag
     if(read.opt("AF") == 1.):
@@ -2803,7 +2803,7 @@ cdef class IndelQuiver(object):
     def __init__(self, cython.str ref=None, int window=10,
                  int minMQ=0, int minFM=0,
                  cython.str bam=None, int minNumSS=0,
-                 cython.float minShen=0.2, int minPairs=1):
+                 float minShen=0.2, int minPairs=1):
         self.data = {}
         self.readnames = {}
         self.counts = {}
@@ -2958,7 +2958,7 @@ cdef class IDVCFLine(object):
         cdef pysam.calignmentfile.PileupColumn PileupCol
         cdef pysam.calignmentfile.IteratorColumnRegion pileupIt
         cdef int tmpCov
-        cdef cython.float MDP
+        cdef float MDP
         cdef tuple i
         cdef cython.str key
         cdef list ffkeys
