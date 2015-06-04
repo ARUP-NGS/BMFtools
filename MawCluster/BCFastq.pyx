@@ -139,7 +139,8 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
 
 
 cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
-                                    int famLimit=1000, cython.bint keepFails=True,
+                                    int famLimit=1000,
+                                    cython.bint keepFails=True,
                                     object oagseq=oagseq,
                                     dict chr2ph=chr2ph,
                                     dict ph2chrDict=ph2chrDict,
@@ -205,7 +206,8 @@ cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
     """
     try:
     """
-    consFqString = "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment, TagString,
+    consFqString = "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
+                                              TagString,
                                               finalSeq.tostring(), QualString)
     """
     Uncomment and add indent the consFqString assignment command

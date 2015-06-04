@@ -129,6 +129,7 @@ cpdef list permuteNucleotides(long maxn, object nci=nci):
     """
     return map(nci, xrange(maxn))
 
+
 @memoize
 @cython.returns(cython.str)
 def MemoRevCmp(cython.str seq):
