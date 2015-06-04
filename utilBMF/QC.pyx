@@ -221,7 +221,10 @@ def GetFamSizeStats(inFq, outfile=sys.stdout):
     cdef pysam.cfaidx.FastqFile FqHandle
     FqHandle = pysam.FastqFile(inFq)
     for read in FqHandle:
-        famS = int(read.comment.split(" ")[3].split("=")[1])
+        key = read.comment.split("|")[3].split("=")[0]
+        if key != "FM":
+            raise ThisIsMadness("Key in fastq read comment doesn't correspond to family size, given: " + key) 
+        famS = int(read.comment.split("|")[3].split("=")[1])
         if(famS > 1):
             numFam += 1
             sumFam += famS
