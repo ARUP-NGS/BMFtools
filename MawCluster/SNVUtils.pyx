@@ -47,7 +47,7 @@ cdef class SNVCFLine:
     """
     def __init__(self,
                  AlleleAggregateInfo_t AlleleAggregateObject,
-                 cython.float MaxPValue=1e-30,
+                 float MaxPValue=1e-30,
                  cython.str ID=".",
                  int DOCMerged=-1,
                  int DOCTotal=-1,
@@ -61,18 +61,18 @@ cdef class SNVCFLine:
                  int minNumFam=2,
                  int minNumSS=2,
                  cython.str REF=None,
-                 cython.float reverseStrandFraction=-1.0,
+                 float reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
                  int minDuplexPairs=2,
-                 cython.float minFracAgreedForFilter=0.666,
+                 float minFracAgreedForFilter=0.666,
                  int minFA=0, int BothStrandAlignment=-1,
-                 cython.float pValBinom=0.05, int ampliconFailed=-1,
+                 float pValBinom=0.05, int ampliconFailed=-1,
                  int NDP=-1, cython.str EST="none",
-                 cython.float minAF=-1., int FailedNDReads=-1,
+                 float minAF=-1., int FailedNDReads=-1,
                  cython.str flankingBefore=None,
                  cython.str flankingAfter=None):
         cdef np.longdouble_t maxAAF, minAAF
-        cdef cython.float shenRef, shenVar
+        cdef float shenRef, shenVar
         cdef int AC, DOC
         if(BothStrandAlignment < 0):
             raise ThisIsMadness("BothStrandAlignment required for SNVCFLine,"
@@ -250,13 +250,13 @@ cdef class VCFPos:
 
     def __init__(self,
                  PCInfo_t PCInfoObject,
-                 cython.float MaxPValue=1e-18,
+                 float MaxPValue=1e-18,
                  cython.bint keepConsensus=True,
                  cython.str reference="default",
                  cython.bint requireDuplex=True,
                  int minDuplexPairs=1,
-                 cython.float reverseStrandFraction=-1.,
-                 cython.float minFracAgreed=0.0,
+                 float reverseStrandFraction=-1.,
+                 float minFracAgreed=0.0,
                  int minFA=0,
                  cython.str experiment="",
                  int NDP=-1,

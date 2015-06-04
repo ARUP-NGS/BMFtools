@@ -13,9 +13,9 @@ cdef class pPileupRead:
     """
     cdef public cython.str BaseCall
     cdef public cython.bint is_del
-    cdef public cython.long level
-    cdef public cython.long indel
-    cdef public cython.long query_position
+    cdef public long level
+    cdef public long indel
+    cdef public long query_position
     cdef public cython.str name, str
     cdef public pysam.calignmentfile.AlignedSegment alignment
     cpdef object opt(self, cython.str arg)
@@ -55,7 +55,7 @@ cdef class ReadPair:
     cdef public cython.str read1_contig
     cdef public cython.str read2_contig
     cdef public cython.str ContigString
-    cdef public cython.long insert_size
+    cdef public long insert_size
     cdef public cython.bint read1_in_bed
     cdef public cython.bint read2_in_bed, SameStrand
 
@@ -71,7 +71,7 @@ cdef class AbstractIndelContainer:
     seq should be None for a deletion
     """
     cdef public cython.str contig, seq, uniqStr
-    cdef public cython.long type, shenwindow, end, start
+    cdef public long type, shenwindow, end, start
     cdef public cython.float shen
     cdef public list readnames, StartStops
     cdef public pysam.cfaidx.FastaFile handle
@@ -89,7 +89,7 @@ cdef class Insertion(AbstractIndelContainer):
 
 cdef class IndelQuiver(object):
     cdef public dict data, counts, readnames
-    cdef public cython.long window, minMQ, minFM, minPairs, minNumSS
+    cdef public long window, minMQ, minFM, minPairs, minNumSS
     cdef public pysam.cfaidx.FastaFile fastaRef
     cdef public pysam.calignmentfile.AlignmentFile bam
     cdef public cython.float minShen
@@ -105,7 +105,7 @@ cdef class IDVCFLine(object):
     """
 
     cdef public cython.str TYPE, REF, ALT, ID, CHROM, FILTER, FormatStr, str
-    cdef public cython.long POS, LEN, NumStartStops, NDPS, DPA
+    cdef public long POS, LEN, NumStartStops, NDPS, DPA
     cdef public cython.float reverseStrandFraction, QUAL, MDP
     cdef public cython.bint BothStrandSupport
     cdef public dict InfoFields, FormatFields
@@ -126,3 +126,7 @@ cdef class BamTag(object):
 
 cdef class pFastqFile(object):
     cdef public pysam.cfaidx.FastqFile handle
+
+cpdef public cython.str RevCmp(cython.str seq, dict CmpDict=?)
+
+cpdef public list permuteNucleotides(long maxn, object nci=?)

@@ -280,7 +280,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
 
 @memoize
 @cython.locals(l=cython.str)
-@cython.returns(cython.float)
+@cython.returns(float)
 def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
     """
     Returns allele frequency for a tabix VCF Proxy made from SNVCrawler.
@@ -289,7 +289,7 @@ def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
                        makeinfodict(rec)["MAFS"].split(",")])[l])
 
 
-@cython.returns(cython.float)
+@cython.returns(float)
 def GetTabixDeamFreq(cython.str inVCF):
     """
     Gets deamination frequency for a tabixed VCF file, under the assumption
@@ -299,7 +299,7 @@ def GetTabixDeamFreq(cython.str inVCF):
     cdef int atCounts
     cdef int gcCounts
     cdef pysam.TabProxies.VCFProxy rec
-    cdef cython.float freq
+    cdef float freq
     atCounts = 0
     gcCounts = 0
     import sys

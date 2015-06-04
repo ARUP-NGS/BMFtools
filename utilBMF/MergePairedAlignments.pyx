@@ -34,7 +34,7 @@ def CigarOpToLayoutPosList(int offset, tuple cigarOp,
                            pysam.calignmentfile.AlignedSegment rec):
     cdef tuple x
     cdef cython.str CigarChar
-    cdef np.ndarray[cython.long, ndim = 1] quals, agrees
+    cdef np.ndarray[long, ndim = 1] quals, agrees
     '''
     First case - 'M'
     Second case - 'I'

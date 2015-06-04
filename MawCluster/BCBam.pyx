@@ -255,13 +255,13 @@ def pairedBarcodeTagging(
         cython.str suppBam="default",
         cython.str bedfile="default",
         cython.str conversionXml="default", cython.str realigner="default",
-        cython.float minAF=0.0, cython.str ref="default"):
+        float minAF=0.0, cython.str ref="default"):
     """
     TODO: Unit test for this function.
     """
     cdef np.ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
-    cdef cython.float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
+    cdef float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
     cdef cython.bint addDefault, bwaswRescue
     cdef cython.str coorString, cStr, contigSetStr
@@ -578,13 +578,13 @@ def GetRPsWithI(inBAM, outBAM="default"):
 
 @cython.returns(cython.bint)
 def FracSoftclippedTest(pysam.calignmentfile.AlignedSegment rec,
-                        cython.float maxFracSoftClipped=0.25):
+                        float maxFracSoftClipped=0.25):
     if(FractionSoftClipped(rec) >= maxFracSoftClipped):
         return False
     return True
 
 
-def GetFracSCPartial(cython.float maxFracSoftClipped):
+def GetFracSCPartial(float maxFracSoftClipped):
     """
     Returns a partial for FracSoftclippedTest so that it can
     be passed into AbstractBamFilter.
@@ -621,7 +621,7 @@ def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
 
 
 def GetSoftClips(inBAM, failBAM="default", passBAM="default",
-                 cython.float maxFracSoftClipped=0.5):
+                 float maxFracSoftClipped=0.5):
     """
     Uses the AbstractBamFilter to get reads with Softclipped Fraction >= 0.25
     """
@@ -657,7 +657,7 @@ def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
         return outBAM
 
 
-def RealignSFReads(inBAM, cython.float maxFracSoftClipped=0.5,
+def RealignSFReads(inBAM, float maxFracSoftClipped=0.5,
                    ref="default", outBAM="default"):
     """
     Realigns reads which have a Softclipped Fraction that is above
