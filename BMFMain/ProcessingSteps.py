@@ -161,7 +161,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 
 @cython.locals(overlapLen=int,
                stringency=float)
-def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.9,
+def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.95,
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
                       homing=None, bcLen=-1, head=0):

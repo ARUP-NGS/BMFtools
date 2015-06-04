@@ -30,7 +30,7 @@ from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
 import pysam
 from cytoolz import map as cmap, memoize
 from functools import partial
-from pysam import fromQualityString
+from pysam import fromQualityString as fromQS
 
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               ph2chrDict, chr2ph, printlog as pl,
@@ -157,7 +157,7 @@ cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
     cdef np.ndarray[np.int64_t, ndim = 1] FA
     cdef np.ndarray[char, ndim = 1, mode = "c"] finalSeq
     cdef list seqs
-    cdef cython.str seqItem, seq, lenRStr
+    cdef cython.str seqItem, seq, lenRStr, qual
     cdef cython.str PVString, QualString, TagString, consFqString
     cdef int lenR, numEq, maxScore
     cdef cython.bint Success
@@ -190,8 +190,9 @@ cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
         return compareFqRecsFast(R)
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                  xrange(len(finalSeq))], dtype=np.int64)
-    phredQuals = nsum(nparray([[chr2ph[i] for i in rec.quality]
-                               for rec in R], dtype=np.int64))
+    phredQuals = nparray([nsum([chr2ph[seq[i]] for
+                                qual in map(oagqual, R)]) for
+                          i in xrange(len(finalSeq))])
     phredQuals[phredQuals < 3] = 0
     # finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
     phredQuals = nmul(lenR, phredQuals, dtype=np.int64)
@@ -235,29 +236,38 @@ cpdef cython.str compareFqRecsFast(list R,
                                    object oagqual=oagqual,
                                    object oagseq=oagseq,
                                    object partialnpchar=partialnpchar,
-                                   object ph2chr=ph2chr):
+                                   object ph2chr=ph2chr,
+                                   object fromQS=fromQS):
     """
     TODO: Unit test for this function.
     Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef int lenR, ND
+    cdef int lenR, ND, lenSeq
     cdef cython.bint Success
-    cdef cython.str seq, qual, seqItem
+    cdef cython.str seq, qual, seqItem, qualChar
     cdef np.ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
     cdef np.ndarray[np.int64_t, ndim = 2] qualT, qualAllSum
     cdef np.ndarray[np.int64_t, ndim = 1] qualAFlat, qualCFlat, qualGFlat, FA
     cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum, phredQuals, qualTFlat
     cdef np.ndarray[char, ndim = 1, mode = "c"] newSeq
     lenR = len(R)
+    lenSeq = len(R[0].sequence)
+    if lenR == 1:
+        PVString = "|PV=%s" % ",".join(map(str, fromQS(R[0].quality)))
+        TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
+                                                PVString)
+        return "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
+                                          TagString, R[0].sequence,
+                                          R[0].quality)
     Success = True
     seqs = map(oagseq, R)
     stackArrays = tuple(map(partialnpchar, seqs))
     seqArray = npvstack(stackArrays)
 
     # print(repr(seqArray))
-    quals = nparray(map(fromQualityString, map(oagqual, R)))
+    quals = nparray(map(fromQS, map(oagqual, R)))
     """
     quals = nparray(
         [list(cmap(chr2phFunc, list(record.quality))) for record in R],
@@ -284,14 +294,14 @@ cpdef cython.str compareFqRecsFast(list R,
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
     FA = nparray([sum([seq[i] == newSeq[i] for
                        seq in seqs]) for
-                  i in xrange(len(newSeq))], dtype=np.int64)
+                  i in xrange(lenSeq)], dtype=np.int64)
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
     phredQuals = ndiv(nmul(FA, nsum(nparray([[chr2ph[i] for i in qual] for
                                              qual in map(oagqual, R)]),
                                     0)), lenR, dtype=np.int64)
-    ND = lenR * len(newSeq) - nsum(FA)
+    ND = lenR * lenSeq - nsum(FA)
     newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
     PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
@@ -674,7 +684,6 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     Also, it would be nice to do a groupby() that separates read 1 and read
     2 records so that it's more pythonic, but that's a hassle.
     """
-    compareFqRecs = fn
     if(UsecProfile):
         import cProfile
         import pstats
@@ -750,8 +759,8 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            tStr1, name = fn(workingSet1)
-            tStr2, name = fn(workingSet2, name=name)
+            tStr1 = fn(workingSet1)
+            tStr2 = fn(workingSet2)
             if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
             sl1a(tStr1)
@@ -837,7 +846,7 @@ def singleFastqConsolidate(fq, float stringency=0.9,
                 workingBarcode = ""
                 workingSet = []
                 continue
-            tStr, name = fn(workingSet)
+            tStr = fn(workingSet)
             if(skipFails and ("Fail" in tStr)):
                 continue
             sla(tStr)
