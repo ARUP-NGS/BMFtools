@@ -16,7 +16,7 @@ from MawCluster.BCFastq import TrimHomingPaired
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
-from utilBMF.HTSUtils import printlog as pl
+from utilBMF.HTSUtils import printlog as pl, TrimExt
 from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from MawCluster.BCVCF import VCFStats
@@ -188,12 +188,9 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.95,
     else:
         pl("Skipping cutadapt ...")
     check_call(["rm", BSortFq1, BSortFq2])
-    try:
-        famStats = GetFamSizeStats(
-            BConsFastq1,
-            outfile=".".join(inFastq1.split(".")[0:-1]) + ".famstats.txt")
-    except CalledProcessError:
-        pl("Exception in calling GetFamSizeStats - don't sweat it, move on.")
+    famStats = GetFamSizeStats(
+        BConsFastq1,
+        outfile=TrimExt(inFastq1) + ".famstats.txt")
     return BConsFastq1, BConsFastq2
 
 

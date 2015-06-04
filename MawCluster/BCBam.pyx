@@ -29,7 +29,7 @@ from . import BCFastq
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
-                              BwaswCall, samtoolsMergeBam, pFastqProxy)
+                              BwaswCall, samtoolsMergeBam, pFastqProxy, TrimExt)
 from utilBMF.ErrorHandling import IllegalArgumentError, ThisIsMadness as Tim
 from .SVUtils import returnDefault
 from utilBMF import HTSUtils
@@ -254,13 +254,13 @@ def pairedBarcodeTagging(
         cython.str suppBam="default",
         cython.str bedfile="default",
         cython.str conversionXml="default", cython.str realigner="default",
-        float minAF=0.0, cython.str ref="default"):
+        double minAF=0.0, cython.str ref="default"):
     """
     TODO: Unit test for this function.
     """
     cdef np.ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
-    cdef float r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
+    cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
     cdef cython.bint addDefault, bwaswRescue
     cdef cython.str coorString, cStr, contigSetStr
@@ -564,13 +564,13 @@ def GetRPsWithI(inBAM, outBAM="default"):
 
 @cython.returns(cython.bint)
 def FracSoftclippedTest(pysam.calignmentfile.AlignedSegment rec,
-                        float maxFracSoftClipped=0.25):
+                        double maxFracSoftClipped=0.25):
     if(FractionSoftClipped(rec) >= maxFracSoftClipped):
         return False
     return True
 
 
-def GetFracSCPartial(float maxFracSoftClipped):
+def GetFracSCPartial(double maxFracSoftClipped):
     """
     Returns a partial for FracSoftclippedTest so that it can
     be passed into AbstractBamFilter.
@@ -607,7 +607,7 @@ def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
 
 
 def GetSoftClips(inBAM, failBAM="default", passBAM="default",
-                 float maxFracSoftClipped=0.5):
+                 double maxFracSoftClipped=0.5):
     """
     Uses the AbstractBamFilter to get reads with Softclipped Fraction >= 0.25
     """
@@ -622,7 +622,7 @@ def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
     not in the header.
     """
     tmpfile = str(uuid.uuid4().get_hex()[0:8]) + '.bam'
-    tag = "RA:z:" + RATag
+    tag = "RA:Z:" + RATag
     if(inplace):
         pl("Adding RA Tag 'in-place'.")
     else:
@@ -643,7 +643,7 @@ def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
         return outBAM
 
 
-def RealignSFReads(inBAM, float maxFracSoftClipped=0.5,
+def RealignSFReads(inBAM, double maxFracSoftClipped=0.5,
                    ref="default", outBAM="default"):
     """
     Realigns reads which have a Softclipped Fraction that is above
@@ -690,13 +690,16 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
     cdef dict CD  # Comment Dictionary
     cdef cAlignedSegment read
     cdef int FM, FP, ND
-    cdef float NF
+    cdef double NF, AF, SF
     for read in inbam:
         CD = GetCOTagDict_(read)
         ND = int(CD["ND"])
         FM = int(CD["FM"])
         FP = 1 if("pass" in CD["PV"].lower()) else 0
         NF = ND * 1. / FM
+        AF = getAF(read)
+        SF = getSF(read)
+
         if(addRG is False):
             read.set_tags([("BS", CD["BS"], "Z"),
                            ("FM", FM, "i"),
@@ -704,7 +707,9 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
                            ("FA", CD["FA"], "Z"),
                            ("FP",  FP, "i"),
                            ("ND", int(CD["ND"]), "i"),
-                           ("NF", NF, "f")
+                           ("NF", NF, "f"),
+                           ("AF", AF, "f"),
+                           ("SF", SF, "F")
                        ])
         else:
             read.set_tags([("BS", CD["BS"], "Z"),
@@ -714,6 +719,8 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
                            ("FP",  FP, "i"),
                            ("ND", int(CD["ND"]), "i"),
                            ("NF", NF, "f"),
+                           ("AF", AF, "f"),
+                           ("SF", SF, "F"),
                            ("RG", "default", "Z")
                        ])
         outbam.write(read)
@@ -729,6 +736,31 @@ cpdef BarcodeTagCOBam(cython.str bam, cython.str realigner="default"):
     cdef pysam.calignmentfile.AlignedSegment inHandle
     inHandle = pysam.AlignmentFile(bam)
     outbam = ".".join(bam.split("."))[:-1] + ".tagged.bam"
-    return BarcodeTagCOBam_(inHandle,
-                            pysam.AlignmentFile(outbam, template=inHandle),
-                            addRG=("gatk" in realigner.lower()))
+    BarcodeTagCOBam_(inHandle,
+                     pysam.AlignmentFile(outbam, template=inHandle),
+                     addRG=("gatk" in realigner.lower()))
+    return
+
+
+cdef double getSF(cAlignedSegment read):
+    cdef tuple tup
+    cdef int sum, sumSC
+    if(read.cigarstring is None):
+        return 0.
+    for tup in read.cigar:
+        sum += tup[1]
+        if(tup[0] == 4):
+            sumSC += tup[1]
+    return sum * 1. / sumSC
+
+
+cdef double getAF(cAlignedSegment read):
+    cdef tuple tup
+    cdef int sum, sumAligned
+    if(read.cigarstring is None):
+        return 0.
+    for tup in read.cigar:
+        sum += tup[1]
+        if(tup[0] == 0):
+            sumAligned += tup[1]
+    return sum * 1. / sumAligned

@@ -10,3 +10,6 @@ cpdef BarcodeTagCOBam(cython.str bam, cython.str realigner=?)
 cdef dict GetCOTagDict_(cAlignedSegment read)
 
 cpdef dict GetCOTagDict(cAlignedSegment read)
+
+cdef double getAF(cAlignedSegment read)
+cdef double getSF(cAlignedSegment read)

@@ -58,17 +58,20 @@ def CigarOpToLayoutPosList(int offset, tuple cigarOp,
     except KeyError:
         pl("Watch out - FA tag not set.", level=logging.DEBUG)
         agrees = np.array([1] * len(rec.sequence), dtype=np.int64)
-    return [LayoutPos(pos=x[1], readPos=x[0], operation=CigarChar,
-                      base=rec.seq[x[0]], quality=quals[x[0]],
+    return [LayoutPos(pos=x[1], readPos=x[0], operation=ord(CigarChar),
+                      base=ord(rec.seq[x[0]]), quality=quals[x[0]],
                       agreement=agrees[x[0]]) if
             x[1] is not None and x[0] is not None else
-            LayoutPos(-1, x[0], operation=CigarChar, base=rec.seq[x[0]],
+            LayoutPos(-1, x[0], operation=ord(CigarChar),
+                      base=ord(rec.seq[x[0]]),
                       quality=quals[x[0]], agreement=agrees[x[0]]) if
             x[0] is not None else
-            LayoutPos(x[1], -1, operation=CigarChar, base=CigarChar,
+            LayoutPos(x[1], -1, operation=ord(CigarChar),
+                      base=ord(CigarChar),
                       quality=quals[x[0]], agreement=agrees[x[0]]) if
             CigarChar == "S" else
-            LayoutPos(x[1], -1, operation=CigarChar, base=CigarChar,
+            LayoutPos(x[1], -1, operation=ord(CigarChar),
+                      base=ord(CigarChar),
                       quality=-1, agreement=-1)
             for x in rec.aligned_pairs[offset:offset + cigarOp[1]]]
 
@@ -117,21 +120,22 @@ cdef class LayoutPos(object):
 
     """
     def __init__(self, int pos=-1, int readPos=-1,
-                 cython.str base=None, cython.str operation=None,
+                 int base=-1, int operation=-1,
                  int quality=-1, int agreement=-1):
         self.pos = pos
         self.readPos = readPos
-        self.operation = ord(operation)
-        self.base = ord(base)
-        self.quality = quality if(self.base != "N") else 0
+        self.operation = operation
+        self.base = base
+        self.quality = quality if(self.base != 78) else 0 # 78 == "N"
         self.agreement = agreement
 
     cpdef cython.bint ismapped(self):
-        return self.operation == 'M'
+        return self.operation == 77  # 77 == "M"
 
+    @cython.returns(cython.str)
     def __str__(self):
-        return "%s|%s|%s|%s|%s|%s" % (self.pos, self.readPos, self.base,
-                                      self.operation, self.quality,
+        return "%s|%s|%s|%s|%s|%s" % (self.pos, self.readPos, chr(self.base),
+                                      chr(self.operation), self.quality,
                                       self.agreement)
 
 
@@ -172,7 +176,7 @@ cdef class Layout(object):
         cdef char i
         cdef LayoutPos_t pos
         return np.char.array([chrDict[i] for i in
-                              [pos.base for pos in 
+                              [pos.base for pos in
                                self.positions] if
                               i != 83 and i != 68])
     '''
@@ -183,7 +187,7 @@ cdef class Layout(object):
         cdef char i
         cdef LayoutPos_t pos
         return np.char.array(map(chr, [i for i in
-                                       [pos.base for pos in 
+                                       [pos.base for pos in
                                         self.positions] if
                                        i != 83 and i != 68]))
     '''
@@ -267,7 +271,7 @@ cdef class Layout(object):
                                     ",".join(self.getQual().astype(str)))
         self.tagDict["FA"] = BamTag("FA", "Z",
                                     ",".join(self.getAgreement().astype(str)))
-        
+
     cpdef update_tags(self):
         self.update_tagsNP()
 
@@ -297,7 +301,8 @@ cdef class Layout(object):
 
     @cython.returns(np.ndarray)
     def getOperations(self, oagop=oagop):
-        return np.array(map(chr, map(oagop, self.positions)))
+        cdef LayoutPos_t pos
+        return np.array(map(chr, [pos.operation for pos in self.positions]))
 
     cdef cython.str getCigarStringNP(self):
         return "".join([str(len(list(g))) + k for
@@ -371,8 +376,7 @@ def LayoutSortKeySK(x, oagsk=oagsk):
 cdef LayoutPos_t MergePositions(LayoutPos p1, p2):
 '''
 
-@cython.returns(LayoutPos)
-def MergePositions(LayoutPos pos1, LayoutPos pos2):
+cdef LayoutPos_t MergePositions(LayoutPos pos1, LayoutPos pos2):
     cdef cython.str base, operation
     cdef int pos, readPos
     print("Trying to merge: %s, %s" % (str(pos1), str(pos2)))
@@ -424,7 +428,8 @@ cdef tuple MergeLayoutsToList_(Layout_t L1, Layout_t L2):
     offset = L2.getRefPosForFirstPos() - L1.getRefPosForFirstPos()
     print("offset: %s" % offset)
     try:
-        return (L1[:offset] + map(MergePositions, izip(L1[offset:], L2)) +
+        return (L1[:offset] + [MergePositions(pos1, pos2) for
+                               pos1, pos2 in izip(L1[offset:], L2)] +
                 L2[len(L1) - offset:]), True
         '''
         return (L1[:offset] +

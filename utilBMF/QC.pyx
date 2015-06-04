@@ -222,7 +222,7 @@ cdef np.ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
         if key != "FM":
             print("Read causing the error: %s" % str(read))
             raise ThisIsMadness("Key in fastq read comment not FM as expected"
-                                ". Value: %s." % key) 
+                                ". Value: %s." % key)
         famS = int(value)
         if(famS > 1):
             numFam += 1

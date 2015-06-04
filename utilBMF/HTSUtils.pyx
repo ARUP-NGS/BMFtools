@@ -538,7 +538,7 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
     baseString = "bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("bwa mem", "bwa mem -C")
-        baseString += "sed 's/\t[1-3]:[A-Z]:/\tCO:Z:/'"
+        baseString += "sed 's/\t[1-4]:[A-Z]:/\tCO:Z:/'"
     if(path == "default"):
         command_str = baseString + "> %s" % outSAM
     else:
