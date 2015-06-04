@@ -36,8 +36,7 @@ from utilBMF import HTSUtils
 import SecC
 cimport numpy as np
 cimport cython
-cimport pysam.calignmentfile
-ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+
 cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 npchararray = char.array
@@ -486,19 +485,6 @@ def ConsolidateInferred(inBAM, outBAM="default"):
     return outBAM
 
 
-def GenerateFamilyHistochart(BCIdx, output="default"):
-    if(output == "default"):
-        output = '.'.join(BCIdx.split('.')[:-1]) + '.hist.txt'
-    Str = ("cat {} | awk '{{print $1}}' | sort | uniq -c | ".format(BCIdx) +
-           "awk 'BEGIN {{OFS=\"\t\"}};{{print $1,$2}}' | sort " +
-           "-k1,1n > {}".format(output))
-    pl("Command str: {}".format(Str))
-    HTSUtils.PipedShellCall(Str)
-    pl("Family size histochart: {}".format(output))
-    return output
-    return outFastqPath
-
-
 def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     cdef pFq FqPrx
     cdef pysam.cfaidx.FastqProxy tempRead
@@ -684,3 +670,65 @@ def RealignSFReads(inBAM, float maxFracSoftClipped=0.5,
     pl("Adding the RA tag")
     AddRATag(outBAM, inplace=True, RATag="bwasw")
     return outBAM
+
+
+cdef dict GetCOTagDict_(cAlignedSegment read):
+    cdef cython.str s, cStr
+    cStr = read.opt("CO")
+    return dict([s.split("=") for s in cStr.split("|")[1:]])
+
+
+cpdef dict GetCOTagDict(cAlignedSegment read):
+    return GetCOTagDict_(read)
+
+
+cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
+                      pysam.calignmentfile.AlignmentFile outbam,
+                      cython.bint addRG=False):
+    """In progress
+    """
+    cdef dict CD  # Comment Dictionary
+    cdef cAlignedSegment read
+    cdef int FM, FP, ND
+    cdef float NF
+    for read in inbam:
+        CD = GetCOTagDict_(read)
+        ND = int(CD["ND"])
+        FM = int(CD["FM"])
+        FP = 1 if("pass" in CD["PV"].lower()) else 0
+        NF = ND * 1. / FM
+        if(addRG is False):
+            read.set_tags([("BS", CD["BS"], "Z"),
+                           ("FM", FM, "i"),
+                           ("PV", CD["PV"], "Z"),
+                           ("FA", CD["FA"], "Z"),
+                           ("FP",  FP, "i"),
+                           ("ND", int(CD["ND"]), "i"),
+                           ("NF", NF, "f")
+                       ])
+        else:
+            read.set_tags([("BS", CD["BS"], "Z"),
+                           ("FM", FM, "i"),
+                           ("PV", CD["PV"], "Z"),
+                           ("FA", CD["FA"], "Z"),
+                           ("FP",  FP, "i"),
+                           ("ND", int(CD["ND"]), "i"),
+                           ("NF", NF, "f"),
+                           ("RG", "default", "Z")
+                       ])
+        outbam.write(read)
+    inbam.close()
+    outbam.close()
+    return
+
+
+cpdef BarcodeTagCOBam(cython.str bam, cython.str realigner="default"):
+    """In progress
+    """
+    cdef cython.str outbam
+    cdef pysam.calignmentfile.AlignedSegment inHandle
+    inHandle = pysam.AlignmentFile(bam)
+    outbam = ".".join(bam.split("."))[:-1] + ".tagged.bam"
+    return BarcodeTagCOBam_(inHandle,
+                            pysam.AlignmentFile(outbam, template=inHandle),
+                            addRG=("gatk" in realigner.lower()))

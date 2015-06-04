@@ -34,7 +34,7 @@ from pysam import fromQualityString as fromQS
 
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               ph2chrDict, chr2ph, printlog as pl,
-                              pFastqProxy, TrimExt)
+                              pFastqProxy, TrimExt, pFastqFile)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 oagseq = oag("sequence")
@@ -46,9 +46,6 @@ cimport cython
 cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
-cimport utilBMF.HTSUtils
-# from utilBMF._re2 cimport cpp_string
-ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 
 
 letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
@@ -217,13 +214,13 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
     except KeyError:
         QualString = "".join(map(ph2chr, phredQuals))
     PVString = "|PV=%s" % (",".join(phredQuals.astype(str).tolist()))
-    TagString = "|FM%s|FA=%s|ND=%s%s" % (
+    TagString = "|FM=%s|FA=%s|ND=%s%s" % (
         lenRStr,  ",".join(FA.astype(str)),
         lenR * len(finalSeq) - nsum(FA), PVString)
     """
     try:
     """
-    consFqString = "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
+    consFqString = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                               TagString,
                                               finalSeq.tostring(), QualString)
     """
@@ -286,7 +283,7 @@ cdef cython.str compareFqRecsFast(list R,
         PVString = "|PV=%s" % ",".join(map(str, fromQS(R[0].quality)))
         TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
                                                 PVString)
-        return "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
+        return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
                                           R[0].quality)
     elif lenR > famLimit:
@@ -341,7 +338,7 @@ cdef cython.str compareFqRecsFast(list R,
         phredQualsStr = "".join(map(ph2chr, phredQuals))
     TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join(FA.astype(str)),
                                           PVString)
-    consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
+    consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
                                                    newSeq.tostring(),
                                                    phredQualsStr)
@@ -705,9 +702,6 @@ def GetDescriptionTagDict(readDesc):
 def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
                            int readPairsPerWrite=100,
                            cython.bint UsecProfile=False,
-                           cython.bint onlyNumpy=True,
-                           cython.bint skipSingles=False,
-                           cython.bint skipFails=False,
                            object fn=cFRF_helper):
     """
     TODO: Unit test for this function.
@@ -719,11 +713,11 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         import pstats
         pr = cProfile.Profile()
         pr.enable()
-    cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1, rname
-    cdef pysam.cfaidx.FastqFile inFq1, inFq2
+    cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1
     cdef pFq fqRec, fqRec2
     cdef list workingSet1, workingSet2, StringList1, StringList2
     cdef int numProc
+    cdef pFastqFile_t inFq1, inFq2
     outFqPair1 = TrimExt(fq1) + ".cons.fastq"
     outFqPair2 = TrimExt(fq2) + '.cons.fastq'
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
@@ -731,8 +725,8 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
        " pairedFastqConsolidate('{}', '{}', ".format(fq1, fq2) +
        "stringency={}, readPairsPerWrite={})".format(stringency,
                                                      readPairsPerWrite))
-    inFq1 = pysam.FastqFile(fq1)
-    inFq2 = pysam.FastqFile(fq2)
+    inFq1 = pFastqFile(fq1)
+    inFq2 = pFastqFile(fq2)
     outputHandle1 = open(outFqPair1, 'w')
     outputHandle2 = open(outFqPair2, 'w')
     # cString1 = cStringIO.StringIO()
@@ -756,11 +750,11 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
             # cString1 = cStringIO.StringIO()
             # cString2 = cStringIO.StringIO()
         try:
-            fqRec = pFastqProxy(inFq1.next())
+            fqRec = inFq1.next()
         except StopIteration:
             break
-        bc4fq1 = GetDescTagValue(fqRec.comment, "BS")
-        fqRec2 = pFastqProxy(inFq2.next())
+        bc4fq1 = fqRec.getBS()
+        fqRec2 = inFq2.next()
         # Originally removing reads with family size <2, since one pair could
         # have more than the other, it's important that I keep these reads in
         # and filter them from the BAM file
@@ -780,20 +774,8 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
             workingSet2.append(fqRec2)
             continue
         elif(workingBarcode != bc4fq1):
-            if(skipSingles and len(workingSet1) == 1):
-                workingBarcode = ""
-                workingSet1 = []
-                workingSet2 = []
-                continue
-            # cString1.write(compareFqRecsFqPrx(workingSet1) + "\n")
-            # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
-            # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
-            # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            rname = workingSet1[0].name
-            tStr1 = fn(workingSet1, name=rname)
-            tStr2 = fn(workingSet2, name=rname)
-            if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
-                continue
+            tStr1 = fn(workingSet1, name=workingBarcode)
+            tStr2 = fn(workingSet2, name=workingBarcode)
             sl1a(tStr1)
             sl2a(tStr2)
             workingSet1 = [fqRec]

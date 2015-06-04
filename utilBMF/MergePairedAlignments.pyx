@@ -170,7 +170,7 @@ cdef class Layout(object):
         if the base calls aren't "S" (83) or "D" (68)
         """
         cdef char i
-        cdef LayoutPos pos
+        cdef LayoutPos_t pos
         return np.char.array([chrDict[i] for i in
                               [pos.base for pos in 
                                self.positions] if
@@ -181,7 +181,7 @@ cdef class Layout(object):
         if the base calls aren't "S" (83) or "D" (68)
         """
         cdef char i
-        cdef LayoutPos pos
+        cdef LayoutPos_t pos
         return np.char.array(map(chr, [i for i in
                                        [pos.base for pos in 
                                         self.positions] if
@@ -194,7 +194,7 @@ cdef class Layout(object):
     cdef int getRP4FP(self):
         """cdef class wrapped by getRefPosForFirstPos
         """
-        cdef LayoutPos i
+        cdef LayoutPos_t i
         cdef int count
         for count, i in enumerate(self):
             if(i.operation == "M"):
@@ -204,7 +204,7 @@ cdef class Layout(object):
         return self.getRP4FP()
 
     cpdef int getAlignmentStart(self):
-        cdef LayoutPos i
+        cdef LayoutPos_t i
         for i in self:
             if(i.operation == "M"):
                 return i.pos
@@ -216,7 +216,7 @@ cdef class Layout(object):
 
     cdef np.ndarray[int] getAgreementNP(self):
         cdef int i
-        cdef LayoutPos pos
+        cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
         return np.array([i for
                          i in [pos.agreement for
@@ -225,7 +225,7 @@ cdef class Layout(object):
 
     cdef np.ndarray[int] getQualNP(self):
         cdef int i
-        cdef LayoutPos pos
+        cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
         return np.array([i for
                          i in [pos.quality for
@@ -245,7 +245,7 @@ cdef class Layout(object):
     cdef int getLastRefPosNP(self):
         """cdef version of getLastRefPos
         """
-        cdef LayoutPos i
+        cdef LayoutPos_t i
         cdef int lastMPos, countFromMPos, count
         lastMPos = 0
         for count, i in enumerate(self):
@@ -272,7 +272,7 @@ cdef class Layout(object):
         self.update_tagsNP()
 
     def update(self):
-        cdef LayoutPos pos
+        cdef LayoutPos_t pos
         cdef int count
         if(self.isMerged):
             # Update it for the merged world!
@@ -368,7 +368,7 @@ def LayoutSortKeySK(x, oagsk=oagsk):
     """
     return oagsk(x)
 '''
-cdef LayoutPos MergePositions(LayoutPos p1, p2):
+cdef LayoutPos_t MergePositions(LayoutPos p1, p2):
 '''
 
 @cython.returns(LayoutPos)
@@ -396,8 +396,7 @@ def MergePositions(LayoutPos pos1, LayoutPos pos2):
                      pos2.quality - pos1.quality, pos2.agreement)
 
 
-@cython.returns(tuple)
-def MergeLayoutsToList(Layout_t L1, Layout_t L2, omcfp=omcfp):
+cdef tuple MergeLayoutsToList_(Layout_t L1, Layout_t L2):
     """
     Merges two Layouts into a list of layout positions.
 
@@ -412,34 +411,27 @@ def MergeLayoutsToList(Layout_t L1, Layout_t L2, omcfp=omcfp):
     :return bool Whether the merge was successful
     """
     cdef int offset
-    '''
-    Uncomment this block if you want to add checking for overlap.
-    cdef cython.bint overlap
-    cdef list refPositions
-    # Check that the layouts overlap
-    refPositions = sorted(i for i in
-                          map(oig1, L1.read.aligned_pairs +
-                              L2.read.aligned_pairs) if i is not None)
-    overlap = False
-    for k, group in groupby(refPositions):
-        if(len(list(group)) > 1):
-            overlap = True
-            break
-    if(overlap is False):
-        raise ThisIsMadness("These reads don't overlap..."
-                            "How can you merge them?")
-        # return L1[:] + L2[:], False  # Might go to this quiet failure
-    '''
+    cdef Layout_t tmpPos
+    cdef LayoutPos_t pos1, pos2
     if(LayoutsOverlap(L1, L2) is False):
         return [], False
-    L1, L2 = sorted((L1, L2), key=omcfp)  # First in pair goes first
+    if(L1.getRefPosForFirstPos() > L2.getRefPosForFirstPos()):
+        tmpPos = L1
+        L1 = L2
+        del tmpPos
+    # L1, L2 = sorted((L1, L2), key=omcfp) previous python code
+    # Rewritten to avoid the python object omcfp
     offset = L2.getRefPosForFirstPos() - L1.getRefPosForFirstPos()
     print("offset: %s" % offset)
     try:
+        return (L1[:offset] + map(MergePositions, izip(L1[offset:], L2)) +
+                L2[len(L1) - offset:]), True
+        '''
         return (L1[:offset] +
                 [MergePositions(pos1, pos2) for
                  pos1, pos2 in izip(L1[offset:], L2)] +
                 L2[len(L1) - offset:]), True
+        '''
     except ThisIsMadness:
         print("ThisIsMadness got thrown!")
         return L1[:] + L2[len(L1) - offset:], False
@@ -449,7 +441,7 @@ cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     cdef list layoutList
     cdef cython.str Name
     cdef cython.bint Success
-    layoutList, Success = MergeLayoutsToList(L1, L2)
+    layoutList, Success = MergeLayoutsToList_(L1, L2)
     if(Success is False):
         L1.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
         L2.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")

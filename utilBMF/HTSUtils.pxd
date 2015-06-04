@@ -116,6 +116,9 @@ cdef class pFastqProxy:
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
     cdef public cython.str comment, quality, sequence, name
+    cdef cython.str getBS_(self)
+    cpdef cython.str getBS(self)
+    cdef cython.str tostring(self)
 
 cdef class BamTag(object):
     """
@@ -127,6 +130,7 @@ cdef class BamTag(object):
 
 cdef class pFastqFile(object):
     cdef public pysam.cfaidx.FastqFile handle
+    cpdef close(self)
 
 cpdef public cython.str RevCmp(cython.str seq, dict CmpDict=?)
 
@@ -140,3 +144,5 @@ cpdef cython.bint ReadsOverlap(
 cdef cython.bint cReadsOverlap(
         cAlignedSegment read1,
         cAlignedSegment read2)
+
+cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)

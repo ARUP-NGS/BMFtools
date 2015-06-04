@@ -327,9 +327,19 @@ cdef class pFastqProxy:
         self.sequence = FastqProxyObj.sequence
         self.name = FastqProxyObj.name
 
-    def __str__(self):
+    cdef cython.str tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
                                         self.sequence, self.quality)
+
+    @cython.returns(cython.str)
+    def __str__(self):
+        return self.tostring()
+
+    cdef cython.str getBS_(self):
+        return self.comment.split("|")[2].split("=")[1]
+
+    cpdef cython.str getBS(self):
+        return self.getBS_()
 
 
 @cython.returns(cython.str)
@@ -1258,14 +1268,18 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
         return RecordsArray
 
 
-def WritePairToHandle(ReadPair, handle="default"):
+cpdef cython.bint WritePairToHandle(
+        ReadPair_t pair,
+        pysam.calignmentfile.AlignmentFile handle=None):
     """
     Writes a pair to a file handle.
     """
-    assert isinstance(handle, pysam.calignmentfile.AlignmentFile)
-    handle.write(ReadPair.read1)
-    handle.write(ReadPair.read2)
-    return True
+    try:
+        handle.write(ReadPair.read1)
+        handle.write(ReadPair.read2)
+        return True
+    except Exception:
+        return False
 
 
 @cython.returns(list)
@@ -3047,6 +3061,9 @@ cdef class pFastqFile(object):
     @cython.returns(pFastqProxy)
     def __next__(self):
         return pFastqProxy(next(self.handle))
+
+    cpdef close(self):
+        self.handle.close()
 
 
 cpdef cython.bint ReadsOverlap(

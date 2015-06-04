@@ -2,6 +2,7 @@ cimport cython
 cimport pysam.calignmentfile
 cimport numpy as np
 ctypedef Layout Layout_t
+ctypedef LayoutPos LayoutPos_t
 
 cdef class LayoutPos(object):
     cdef public cython.int pos, readPos, quality, agreement

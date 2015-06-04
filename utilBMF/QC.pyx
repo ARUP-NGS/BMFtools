@@ -8,7 +8,7 @@ from numpy import (array as nparray, append as npappend,
                    mean as nmean, max as nmax, std as nstd)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
-                       PipedShellCall)
+                       PipedShellCall, pFastqFile)
 from .ErrorHandling import ThisIsMadness
 from MawCluster.PileupUtils import pPileupColumn
 import cython
@@ -24,6 +24,7 @@ cimport cython
 cimport numpy as np
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
+cimport utilBMF.HTSUtils
 
 
 """
@@ -83,7 +84,7 @@ def FracOnTarget(inBAM, bed="default", buffer=20):
     """
     cdef int numReadsTotal
     cdef int numReadsOnTarget
-    cdef float fracOnTarget
+    cdef double fracOnTarget
     covBed, fracOnTarget = coverageBed(inBAM,
                                        bed=ExtendBed(bed, buffer=buffer))
     numReadsTotal = int(check_output(["samtools", "view", "-L", covBed,
@@ -116,7 +117,7 @@ def InsertSizeArray(inBAM):
 def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
                     minFM=2):
     cdef int TotalReads, FM, MappedReads, UnmappedReads
-    cdef float fracOnTarget, stdInsert, meanInsert
+    cdef double fracOnTarget, stdInsert, meanInsert
     cdef int MappedFamReads, maxInsert
     cdef int MappedSingletonReads
     outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
@@ -196,35 +197,33 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     return resultsDict
 
 
-def GetFamSizeStats(inFq, outfile=sys.stdout):
+cdef np.ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
     """
     Calculates family size and library diversity from a consolidated
     fastq file.
     """
-    if(outfile == sys.stdout):
-        outStr = "stdout"
-    elif(isinstance(outfile, str)):
-        outStr = outfile
-    else:
-        outStr = repr(outfile)
-    pl("Getting family stats for %s, outputting to %s" % (inFq, outStr))
-    if(isinstance(outfile, str)):
-        outfile = open(outfile, "w")
-    cdef pysam.cfaidx.FastqProxy read
-    cdef int numFam = 0
-    cdef int numSing = 0
-    cdef int sumFam = 0
-    cdef int sumAll = 0
-    cdef int famS
-    cdef float MeanFamAll
-    cdef float MeanRealFam
-    cdef pysam.cfaidx.FastqFile FqHandle
-    FqHandle = pysam.FastqFile(inFq)
+    cdef list rList
+    cdef int famS, numFam, numSing, sumFam, sumAll
+    cdef pFastqProxy_t read
+    cdef double MeanFamAll, MeanRealFam
+    cdef cython.str key, value
+    numFam = 0
+    numSing = 0
+    sumFam = 0
+    sumAll = 0
     for read in FqHandle:
-        key = read.comment.split("|")[3].split("=")[0]
+        rList = read.comment.split("|")[3].split("=")
+        try:
+            key = rList[0]
+            value = rList[1]
+        except IndexError:
+            print("Read causing the error: %s" % str(read))
+            raise IndexError
         if key != "FM":
-            raise ThisIsMadness("Key in fastq read comment doesn't correspond to family size, given: " + key) 
-        famS = int(read.comment.split("|")[3].split("=")[1])
+            print("Read causing the error: %s" % str(read))
+            raise ThisIsMadness("Key in fastq read comment not FM as expected"
+                                ". Value: %s." % key) 
+        famS = int(value)
         if(famS > 1):
             numFam += 1
             sumFam += famS
@@ -233,6 +232,34 @@ def GetFamSizeStats(inFq, outfile=sys.stdout):
         sumAll += famS
     MeanFamAll = sumAll / (1. * (numFam + numSing))
     MeanRealFam = sumFam / (1. * numFam)
+    return np.array([float(numFam), float(numSing), MeanFamAll,
+                     MeanRealFam], dtype=np.double)
+
+
+def GetFamSizeStats(cython.str inFq, outfile=sys.stdout):
+    """
+    Calculates family size and library diversity from a consolidated
+    fastq file.
+    """
+    cdef int numFam, numSing
+    cdef pysam.cfaidx.FastqProxy read
+    cdef double MeanFamAll, MeanRealFam
+    cdef pFastqFile_t FqHandle
+    cdef np.ndarray[double, ndim = 1] results
+    if(outfile == sys.stdout):
+        outStr = "stdout"
+    elif(isinstance(outfile, str)):
+        outStr = outfile
+        outfile = open(outfile, "w")
+    else:
+        outStr = repr(outfile)
+    pl("Getting family stats for %s, outputting to %s" % (inFq, outStr))
+    FqHandle = pFastqFile(inFq)
+    results = GetFamSizeStats_(FqHandle)
+    numFam = int(results[0])
+    numSing = int(results[1])
+    MeanFamAll = results[2]
+    MeanRealFam = results[3]
     string = ("numFam:%s\nNumSing:%s\n" % (numFam, numSing) +
               "MeanFamAll:%s\nMeanRealFam: %s" % (MeanFamAll, MeanRealFam))
     outfile.write(string + "\n")

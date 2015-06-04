@@ -5,7 +5,7 @@ except ImportError:
 import subprocess
 import time
 import logging
-from subprocess import check_call
+from subprocess import check_call, CalledProcessError
 
 import cython
 import numpy as np
@@ -192,7 +192,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.95,
         famStats = GetFamSizeStats(
             BConsFastq1,
             outfile=".".join(inFastq1.split(".")[0:-1]) + ".famstats.txt")
-    except Exception:
+    except CalledProcessError:
         pl("Exception in calling GetFamSizeStats - don't sweat it, move on.")
     return BConsFastq1, BConsFastq2
 
