@@ -16,22 +16,22 @@ cdef class AlleleAggregateInfo:
     recList must be a list of PRInfo objects.
 
     """
-    cdef public cython.long DOC
-    cdef public cython.long DOCTotal
-    cdef public cython.long NUMALT
-    cdef public cython.long pos
-    cdef public cython.long len
-    cdef public cython.long TND
-    cdef public cython.long TotalReads
-    cdef public cython.long MergedReads
-    cdef public cython.long ReverseMergedReads
-    cdef public cython.long ForwardMergedReads
-    cdef public cython.long ReverseTotalReads
-    cdef public cython.long ForwardTotalReads
-    cdef public cython.long SumBQScore
-    cdef public cython.long SumMQScore
-    cdef public cython.long FSR
-    cdef public cython.long NumberDuplexReads, maxND
+    cdef public long DOC
+    cdef public long DOCTotal
+    cdef public long NUMALT
+    cdef public long pos
+    cdef public long len
+    cdef public long TND
+    cdef public long TotalReads
+    cdef public long MergedReads
+    cdef public long ReverseMergedReads
+    cdef public long ForwardMergedReads
+    cdef public long ReverseTotalReads
+    cdef public long ForwardTotalReads
+    cdef public long SumBQScore
+    cdef public long SumMQScore
+    cdef public long FSR
+    cdef public long NumberDuplexReads, maxND
     cdef public cython.float MNF, maxNF, NFSD, AveFamSize, AveMQ, AveBQ, minMQ, minBQ
     cdef public cython.float minFA, MFractionAgreed, reverseStrandFraction, MFA
     cdef public cython.float minFrac, TotalAlleleFrequency, MergedAlleleFrequency
@@ -47,9 +47,9 @@ cdef class pPileupColumn:
     """
     Python container for the PileupColumn proxy in pysam.
     """
-    cdef public cython.long nsegments
-    cdef public cython.long reference_id
-    cdef public cython.long reference_pos
+    cdef public long nsegments
+    cdef public long reference_id
+    cdef public long reference_pos
     cdef public list pileups
 
 
@@ -64,7 +64,7 @@ cdef class PRInfo:
     is None first if you'd like to save yourself some headaches.
     """
     cdef public cython.bint Pass, is_reverse, is_proper_pair
-    cdef public cython.long FM, BQ, MQ, query_position, FA, PV, ND
+    cdef public long FM, BQ, MQ, query_position, FA, PV, ND
     cdef public pysam.calignmentfile.AlignedSegment read
     cdef public cython.str SVTagString
     cdef public cython.str BaseCall
@@ -92,9 +92,9 @@ cdef class PCInfo:
     cdef public cython.str MergedFracStr, MergedCountStr, TotalCountStr, str
     cdef public cython.str MergedStrandednessStr, TotalStrandednessStr, AlleleFreqStr
     cdef public cython.str contig
-    cdef public cython.long minMQ, minBQ, pos, FailedQCReads, FailedFMReads
-    cdef public cython.long FailedBQReads, FailedAFReads, FailedMQReads
-    cdef public cython.long FailedSVReads, MergedReads, TotalReads
+    cdef public long minMQ, minBQ, pos, FailedQCReads, FailedFMReads
+    cdef public long FailedBQReads, FailedAFReads, FailedMQReads
+    cdef public long FailedSVReads, MergedReads, TotalReads
     cdef public cython.float minAF, reverseStrandFraction, AAMBP, AABPSD
     cdef public pPileupColumn_t PCol
     cdef public dict FailedSVReadDict, VariantDict, TotalAlleleFreqDict
@@ -102,4 +102,4 @@ cdef class PCInfo:
     cdef public dict MergedStrandednessRatioDict, TotalStrandednessRatioDict
     cdef public list Records, AltAlleleData, DiscNames
     cdef public cython.bint BothStrandAlignment
-    cdef public cython.long maxND, FailedNDReads
+    cdef public long maxND, FailedNDReads

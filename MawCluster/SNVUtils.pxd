@@ -16,7 +16,7 @@ cdef class SNVCFLine:
     cdef public cython.str REF, CHROM, CONS, ALT, ID, FILTER, InfoStr, FormatStr, str
     cdef public cython.str FormatKey, FormatValue
     cdef public cython.str flankingBefore, flankingAfter
-    cdef public cython.long NumStartStops, POS
+    cdef public long NumStartStops, POS
     cdef public cython.bint BothStrandSupport, AABothStrandAlignment
     cdef public dtype128_t reverseStrandFraction, QUAL
     cdef public dict InfoFields, FormatFields
@@ -28,7 +28,7 @@ cdef class VCFPos:
     Holds the multiple SNVCFLine Objects and other information
     for writing VCF lines for each alt at a given position.
     """
-    cdef public cython.long pos, minMQ, FailedAFReads, minDuplexPairs
+    cdef public long pos, minMQ, FailedAFReads, minDuplexPairs
     cdef public cython.str consensus, TotalFracStr, MergedFracStr, TotalCountStr
     cdef public cython.str MergedCountStr, REF, EST, str
     cdef public cython.float reverseStrandFraction, minAF

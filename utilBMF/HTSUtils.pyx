@@ -123,16 +123,20 @@ ncs = nucConverter.str2int
 nucList = ["A", "C", "G", "T"]
 
 
-@cython.returns(list)
-def permuteNucleotides(cython.long maxn, object nci=nci):
+cpdef list permuteNucleotides(long maxn, object nci=nci):
     """
     nci should be set to a numConv object's int2str method call.
     """
     return map(nci, xrange(maxn))
 
-
+@memoize
 @cython.returns(cython.str)
-def RevCmp(cython.str seq):
+def MemoRevCmp(cython.str seq):
+    return "".join([CmpDict[i] for i in list(seq)])[::-1]
+
+
+cpdef cython.str RevCmp(cython.str seq, dict CmpDict=CmpDict):
+    cdef cython.str i
     return "".join([CmpDict[i] for i in list(seq)])[::-1]
 
 

@@ -12,14 +12,9 @@ from Cython.Build import cythonize
 # from setuptools import setup
 from distutils.core import setup
 
-#  BMFTools tries to install two binaries into your bin folder.
-#  If you want to change the install directory, edit this variable
-#  or copy it manually.
-installDir = "/mounts/bin"
-
 marchFlag = "-march=native"
 
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
+compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse"]
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
