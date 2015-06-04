@@ -1,4 +1,4 @@
-# cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
+# cython: c_string_type=str, c_string_encoding=ascii
 # cython: cdivision=True, cdivision_warnings=True, profile=True
 from __future__ import division
 
@@ -28,7 +28,7 @@ from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
                    vstack as npvstack, greater as ngreater, less as nless,
                    array as nparray, divide as ndiv, char as npchar)
 import pysam
-from cytoolz import map as cmap, memoize
+from cytoolz import memoize
 from functools import partial
 from pysam import fromQualityString as fromQS
 
@@ -138,13 +138,21 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
                 " %s | tr '\t' '\n' > %s" % (mem, outFastq))
 
 
-cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
-                                    int famLimit=1000,
-                                    cython.bint keepFails=True,
-                                    object oagseq=oagseq,
-                                    dict chr2ph=chr2ph,
-                                    dict ph2chrDict=ph2chrDict,
-                                    object ph2chr=ph2chr):
+@cython.boundscheck(False)
+cpdef cython.str cFRP_helper(list R, cython.str name=None):
+    return compareFqRecsFqPrx(R, name=name)
+
+
+@cython.boundscheck(False)
+cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
+                                   float stringency=0.9,
+                                   int famLimit=1000,
+                                   cython.bint keepFails=True,
+                                   object oagseq=oagseq,
+                                   dict chr2ph=chr2ph,
+                                   dict ph2chrDict=ph2chrDict,
+                                   object ph2chr=ph2chr,
+                                   object fromQS=fromQS):
     """
     TODO: Unit test for this function.
     Compares the fastq records to create a consensus sequence (if it
@@ -153,22 +161,32 @@ cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
     If hybrid is set, a failure to successfully demultiplex falls back to a
     base by base comparison.
     """
-    cdef np.ndarray[np.int64_t, ndim = 1] phredQuals
-    cdef np.ndarray[np.int64_t, ndim = 1] FA
+    cdef np.ndarray[np.int64_t, ndim = 1] phredQuals, FA
     cdef np.ndarray[char, ndim = 1, mode = "c"] finalSeq
     cdef list seqs
     cdef cython.str seqItem, seq, lenRStr, qual
     cdef cython.str PVString, QualString, TagString, consFqString
     cdef int lenR, numEq, maxScore
     cdef cython.bint Success
+    if(name is None):
+        name = R[0].name
     lenR = len(R)
     lenRStr = str(lenR)
+    '''
+    if lenR == 1:
+        PVString = "|PV=%s" % ",".join(map(str, fromQS(R[0].quality)))
+        TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
+                                                PVString)
+        return "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
+                                          TagString, R[0].sequence,
+                                          R[0].quality)
+    '''
     if(lenR > famLimit):
         logging.debug(
             "Read family - {} with {} members was capped at {}. ".format(
                 R[0], lenR, famLimit))
         R = R[:famLimit]
-    seqs = list(cmap(oagseq, R))
+    seqs = map(oagseq, R)
     maxScore = 0
     Success = False
     numEq = 0
@@ -186,8 +204,6 @@ cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
         Success = True
     elif(frac < 0.5):
         Success = False
-    else:
-        return compareFqRecsFast(R)
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                  xrange(len(finalSeq))], dtype=np.int64)
     phredQuals = nparray([nsum([chr2ph[seq[i]] for
@@ -227,17 +243,27 @@ cpdef cython.str compareFqRecsFqPrx(list R, float stringency=0.9,
     return consFqString
 
 
-cpdef cython.str compareFqRecsFast(list R,
-                                   dict chr2ph=chr2ph,
-                                   dict letterNumDict=letterNumDict,
-                                   dict ph2chrDict=ph2chrDict,
-                                   object ccopy=ccopy,
-                                   object npchararray=npchararray,
-                                   object oagqual=oagqual,
-                                   object oagseq=oagseq,
-                                   object partialnpchar=partialnpchar,
-                                   object ph2chr=ph2chr,
-                                   object fromQS=fromQS):
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef cython.str cFRF_helper(list R, cython.str name=None):
+    return compareFqRecsFast(R, name=name)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef cython.str compareFqRecsFast(list R,
+                                  cython.str name=None,
+                                  int famLimit=100,
+                                  dict chr2ph=chr2ph,
+                                  dict letterNumDict=letterNumDict,
+                                  dict ph2chrDict=ph2chrDict,
+                                  object ccopy=ccopy,
+                                  object npchararray=npchararray,
+                                  object oagqual=oagqual,
+                                  object oagseq=oagseq,
+                                  object partialnpchar=partialnpchar,
+                                  object ph2chr=ph2chr,
+                                  object fromQS=fromQS):
     """
     TODO: Unit test for this function.
     Also, consider making a cpdef version!
@@ -252,6 +278,8 @@ cpdef cython.str compareFqRecsFast(list R,
     cdef np.ndarray[np.int64_t, ndim = 1] qualAFlat, qualCFlat, qualGFlat, FA
     cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum, phredQuals, qualTFlat
     cdef np.ndarray[char, ndim = 1, mode = "c"] newSeq
+    if(name is None):
+        name = R[0].name
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
@@ -261,6 +289,8 @@ cpdef cython.str compareFqRecsFast(list R,
         return "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
                                           TagString, R[0].sequence,
                                           R[0].quality)
+    elif lenR > famLimit:
+        return compareFqRecsFqPrx(R, name=name)  # Lazy large fams
     Success = True
     seqs = map(oagseq, R)
     stackArrays = tuple(map(partialnpchar, seqs))
@@ -678,7 +708,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
                            cython.bint onlyNumpy=True,
                            cython.bint skipSingles=False,
                            cython.bint skipFails=False,
-                           object fn=compareFqRecsFast):
+                           object fn=cFRF_helper):
     """
     TODO: Unit test for this function.
     Also, it would be nice to do a groupby() that separates read 1 and read
@@ -689,7 +719,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         import pstats
         pr = cProfile.Profile()
         pr.enable()
-    cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1
+    cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1, rname
     cdef pysam.cfaidx.FastqFile inFq1, inFq2
     cdef pFq fqRec, fqRec2
     cdef list workingSet1, workingSet2, StringList1, StringList2
@@ -717,6 +747,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         if(numProc % readPairsPerWrite == 0):
             # outputHandle1.write(cString1.getvalue())
             # outputHandle2.write(cString2.getvalue())
+            print("Writing to disk for a second.")
             outputHandle1.write("".join(StringList1))
             outputHandle2.write("".join(StringList2))
             StringList1 = []
@@ -759,16 +790,21 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
             # cString2.write(compareFqRecsFqPrx(workingSet2) + "\n")
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
-            tStr1 = fn(workingSet1)
-            tStr2 = fn(workingSet2)
+            rname = workingSet1[0].name
+            print("Collapsing read 1. R length: %s" % len(workingSet1))
+            tStr1 = fn(workingSet1, name=rname)
+            print("Collapsing read 2")
+            tStr2 = fn(workingSet2, name=rname)
             if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
+            print("Appending strings to lists")
             sl1a(tStr1)
             sl2a(tStr2)
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1
             numProc += 1
+            print("Next set")
             continue
     if(UsecProfile):
         s = cStringIO.StringIO()
@@ -777,6 +813,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         open("cProfile.stats.txt", "w").write(s.getvalue())
+    print("Finished iterations - clean up.")
     # outputHandle1.write(cString1.getvalue())
     # outputHandle2.write(cString2.getvalue())
     outputHandle1.write("".join(StringList1))
@@ -789,6 +826,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     # cString2.close()
     outputHandle1.close()
     outputHandle2.close()
+    print("Returning output")
     return outFqPair1, outFqPair2
 
 
@@ -797,7 +835,7 @@ def singleFastqConsolidate(fq, float stringency=0.9,
                            cython.bint UsecProfile=False,
                            cython.bint onlyNumpy=True,
                            cython.bint skipFails=False,
-                           object fn=compareFqRecsFast):
+                           object fn=cFRF_helper):
     if(UsecProfile):
         import cProfile
         import pstats

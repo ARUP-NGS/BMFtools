@@ -6,7 +6,8 @@ import cython
 import numpy as np
 import logging
 from utilBMF.HTSUtils import (CigarDict, printlog as pl, PysamToChrDict,
-                              ph2chr, TagTypeDict, BamTag)
+                              ph2chr, TagTypeDict, BamTag, ph2chrDict,
+                              chr2ph)
 from utilBMF.ErrorHandling import ThisIsMadness
 from operator import attrgetter as oag, methodcaller as mc
 from itertools import izip, groupby
@@ -18,6 +19,8 @@ oagop = oag("operation")
 oagqual = oag("quality")
 oagag = oag("agreement")
 oagtag = oag("tag")
+
+chrDict = {x: chr(x) for x in xrange(126)}
 
 cimport pysam.calignmentfile
 cimport cython
@@ -116,13 +119,13 @@ cdef class LayoutPos(object):
                  int quality=-1, int agreement=-1):
         self.pos = pos
         self.readPos = readPos
-        self.operation = operation
-        self.base = base
+        self.operation = ord(operation)
+        self.base = ord(base)
         self.quality = quality if(self.base != "N") else 0
         self.agreement = agreement
 
     cpdef cython.bint ismapped(self):
-        return self.operation == "M"
+        return self.operation == 'M'
 
     def __str__(self):
         return "%s|%s|%s|%s|%s|%s" % (self.pos, self.readPos, self.base,
@@ -160,18 +163,43 @@ cdef class Layout(object):
     def __len__(self):
         return len(self.positions)
 
-    cpdef cython.str getSeq(self):
-        cdef cython.str i
-        return "".join([i for i in map(oagbase, self.positions) if
-                        i != "S" and i != "D"])
+    cdef np.ndarray[char] getSeqArr(self, dict chrDict=chrDict):
+        """Returns a character array of the base calls
+        if the base calls aren't "S" (83) or "D" (68)
+        """
+        cdef char i
+        cdef LayoutPos pos
+        return np.char.array([chrDict[i] for i in
+                              [pos.base for pos in 
+                               self.positions] if
+                              i != 83 and i != 68])
+    '''
+    cdef np.ndarray[char] getSeqArr(self):
+        """Returns a character array of the base calls
+        if the base calls aren't "S" (83) or "D" (68)
+        """
+        cdef char i
+        cdef LayoutPos pos
+        return np.char.array(map(chr, [i for i in
+                                       [pos.base for pos in 
+                                        self.positions] if
+                                       i != 83 and i != 68]))
+    '''
 
-    @cython.returns(int)
-    def getRefPosForFirstPos(self):
+    cpdef cython.str getSeq(self):
+        return self.getSeqArr().tostring()
+
+    cdef int getRP4FP(self):
+        """cdef class wrapped by getRefPosForFirstPos
+        """
         cdef LayoutPos i
         cdef int count
         for count, i in enumerate(self):
             if(i.operation == "M"):
                 return i.pos - count
+
+    cpdef int getRefPosForFirstPos(self):
+        return self.getRP4FP()
 
     cpdef int getAlignmentStart(self):
         cdef LayoutPos i
@@ -179,42 +207,67 @@ cdef class Layout(object):
             if(i.operation == "M"):
                 return i.pos
 
-    @cython.returns(list)
-    def getAgreement(self, oagag=oagag):
-        cdef int i
-        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
-        return [i for i in map(oagag, self.positions) if i > -1]
-
-    @cython.returns(list)
-    def getQual(self, object oagqual=oagqual):
-        cdef int i
-        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
-        return [i for i in map(oagqual, self.positions) if i > -1]
-
-    def getQualString(self, object ph2chr=ph2chr):
-        return "".join(map(ph2chr, self.getQual()))
-
-    @cython.returns(int)
-    def getLastRefPos(self):
+    cpdef np.ndarray[int] getAgreement(self):
+        """cpdef wrapper of getAgreementNP
         """
-        Finds the reference position which "matches" the last base in the
-        layout. This counts for any cigar operation.
+        return self.getAgreementNP()
+
+    cdef np.ndarray[int] getAgreementNP(self):
+        cdef int i
+        cdef LayoutPos pos
+        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+        return np.array([i for
+                         i in [pos.agreement for
+                               pos in self.positions] if i > -1],
+                        dtype=np.int64)
+
+    cdef np.ndarray[int] getQualNP(self):
+        cdef int i
+        cdef LayoutPos pos
+        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+        return np.array([i for
+                         i in [pos.quality for
+                               pos in self.positions] if i > -1],
+                        dtype=np.int64)
+
+    cpdef np.ndarray[int] getQual(self):
+        return self.getQualNP()
+
+    cdef cython.str getQualStringNP(self, dict ph2chrDict=ph2chrDict):
+        cdef int i
+        return "".join([ph2chrDict[i] for i in self.getQual()])
+
+    cpdef getQualString(self):
+        return self.getQualStringNP()
+
+    cdef int getLastRefPosNP(self):
+        """cdef version of getLastRefPos
         """
         cdef LayoutPos i
-        cdef int lastMPos, countFromMPos
+        cdef int lastMPos, countFromMPos, count
         lastMPos = 0
         for count, i in enumerate(self):
             countFromMPos += 1
-            if(i.operation == "M"):
+            if(i.operation == 77):  # 77 == M in ASCII
                 lastMPos = i.pos
                 countFromMPos = 0
         return lastMPos + countFromMPos
 
-    def update_tags(self):
+    cpdef int getLastRefPos(self):
+        """
+        Finds the reference position which "matches" the last base in the
+        layout. This counts for any cigar operation.
+        """
+        return self.getLastRefPosNP()
+
+    cdef update_tagsNP(self):
         self.tagDict["PV"] = BamTag("PV", "Z",
-                                    ",".join(map(str, self.getQual())))
+                                    ",".join(self.getQual().astype(str)))
         self.tagDict["FA"] = BamTag("FA", "Z",
-                                    ",".join(map(str, self.getAgreement())))
+                                    ",".join(self.getAgreement().astype(str)))
+        
+    cpdef update_tags(self):
+        self.update_tagsNP()
 
     def update(self):
         cdef LayoutPos pos
@@ -240,18 +293,16 @@ cdef class Layout(object):
                 pos.readPos = count
         self.update_tags()
 
-    @cython.returns(list)
+    @cython.returns(np.ndarray)
     def getOperations(self, oagop=oagop):
-        return map(oagop, self.positions)
+        return np.array(map(chr, map(oagop, self.positions)))
+
+    cdef cython.str getCigarStringNP(self):
+        return "".join([str(len(list(g))) + k for
+                        k, g in groupby(self.getOperations())])
 
     cpdef cython.str getCigarString(self):
-        cdef cython.str op, num
-        cdef list nums = []
-        cdef list ops = []
-        for k, g in groupby(self.getOperations()):
-            nums.append(str(len(list(g))))
-            ops.append(k)
-        return "".join([num + op for op, num in izip(ops, nums)])
+        return self.getCigarStringNP()
 
     @cython.returns(list)
     def get_tags(self, oagtag=oagtag):
@@ -382,9 +433,9 @@ def MergeLayoutsToList(Layout_t L1, Layout_t L2, omcfp=omcfp):
 cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     cdef list layoutList
     cdef cython.str Name
-    try:
-        layoutList = MergeLayoutsToList(L1, L2)
-    except ThisIsMadness:
+    cdef cython.bint Success
+    layoutList, Success = MergeLayoutsToList(L1, L2)
+    if(Success is False):
         L1.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
         L2.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
         return None

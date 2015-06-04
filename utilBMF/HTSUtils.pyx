@@ -3171,5 +3171,5 @@ cdef class pFastqFile(object):
         return self
 
     @cython.returns(pFastqProxy)
-    def next(self):
+    def __next__(self):
         return pFastqProxy(next(self.handle))
