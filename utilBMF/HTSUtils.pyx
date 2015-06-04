@@ -46,7 +46,6 @@ cimport numpy as np
 cimport pysam.cfaidx
 cimport pysam.calignmentfile
 cimport pysam.TabProxies
-ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
 ctypedef Insertion Insertion_t
 ctypedef Deletion Deletion_t
@@ -934,8 +933,8 @@ cdef class ReadPair:
     both marked as soft-clipped reads.
     """
 
-    def __init__(self, pysam.calignmentfile.AlignedSegment read1,
-                 pysam.calignmentfile.AlignedSegment read2):
+    def __init__(self, cAlignedSegment read1,
+                 cAlignedSegment read2):
         self.read1 = read1
         self.read2 = read2
         try:
@@ -1012,18 +1011,18 @@ def GetOverlappingBases(ReadPair_t pair):
 
 
 @cython.returns(dict)
-def AlignPairDict(pysam.calignmentfile.AlignedSegment read):
+def AlignPairDict(cAlignedSegment read):
     return {x: y for y, x in read.aligned_pairs}
 
 
-@cython.returns(pysam.calignmentfile.AlignedSegment)
+@cython.returns(cAlignedSegment)
 def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
                      int minQualDiff=3):
     """
     minQualDiff is the minimum difference between the quality
     scores in the case of disagreement.
     """
-    cdef pysam.calignmentfile.AlignedSegment read1, read2, newread
+    cdef cAlignedSegment read1, read2, newread
     cdef int i
     if(not pair.SameContig or pair.SameStrand):
         return None  # Nothing to collapse!
@@ -1066,8 +1065,8 @@ def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
         raise Tim("Sorry, I just have other things to finish now.")
 
 
-def CollapseR1R2(pysam.calignmentfile.AlignedSegment R1,
-                 pysam.calignmentfile.AlignedSegment R2):
+def CollapseR1R2(cAlignedSegment R1,
+                 cAlignedSegment R2):
     return CollapseReadPair(ReadPair(R1, R2))
 
 
@@ -1144,7 +1143,8 @@ def GetReadPair(inHandle):
     return ReadPair(read1, read2)
 
 
-def ReadsOverlap(read1, read2):
+cdef cython.bint cReadsOverlap(cAlignedSegment read1,
+                               cAlignedSegment read2):
     if(read1.reference_id != read2.reference_id):
         return False
     if(read1.reference_start > read2.reference_end or
@@ -1357,7 +1357,7 @@ class SoftClippedSeq:
         self.is_reverse = not self.is_reverse
 
 
-def SplitSCRead(pysam.calignmentfile.AlignedSegment read):
+def SplitSCRead(cAlignedSegment read):
     try:
         assert "S" in read.cigarstring
     except AssertionError:
@@ -1484,138 +1484,12 @@ def ph2chr(x):
     return chr(x + 33) if x <= 93 else "~"
 
 
-@cython.locals(rq1=int, n=int)
-def CigarToQueryIndices(cigar):
-    """
-    Returns a list of lists of positions within the read.
-    sublist[0] is the cigarOp, sublist[1] is the list of positions.
-    """
-    if(cigar is None):
-        raise Tim("I can't get query indices if there's no cigar string.")
-    try:
-        assert isinstance(cigar[0], tuple)
-    except AssertionError:
-        pl("Invalid argument - cigars are lists of tuples, but the first item"
-           " in this list is not a tuple!")
-    tuples = []
-    c = list(cmap(oig1, cigar))
-    cumSum = [sum(c[:i + 1]) for i in xrange(len(c))]
-    for n, entry in enumerate(cigar):
-        if n == 0:
-            tuples.append((entry[0], range(entry[1])))
-        else:
-            tuples.append((entry[0], range(cumSum[n - 1], cumSum[n])))
-    return tuples
-
-
-def GetQueryIndexForCigarOperation(pysam.calignmentfile.AlignedSegment read,
-                                   int cigarOp=-1):
-    """
-    Returns a list of lists of positions within each read
-    which match the given cigarOp. The cigarOp must be an integer.
-    See pysam's documentation for details.
-    """
-    if(read.cigar is None):
-        raise Tim("I can't get query indices if there's no cigar string.")
-    try:
-        assert(cigarOp in range(9))
-    except AssertionError:
-        raise Tim("Please read the doc string for "
-                  "GetQueryIndexForCigarOperation. Invalid cigarOp")
-    assert isinstance(read, pysam.calignmentfile.AlignedSegment)
-    # Get positions in read which match cigar operation.
-    QueryCigar = CigarToQueryIndices(read.cigar)
-    filtCigar = [i for i in QueryCigar if i[0] == cigarOp]
-    return filtCigar
-
-
-def GetReadNucsForFiltCigar(filtCigar,
-                            pysam.calignmentfile.AlignedSegment read):
-    """
-    Returns a list of strings for nucleotides matching a filtCigar.
-    """
-    seq = read.seq
-    return ["".join([seq[i] for i in g[1]]) for g in filtCigar]
-
-
-def GetGenomicCoordsForFiltCigar(filtCigar,
-                                 pysam.calignmentfile.AlignedSegment read):
-    """
-    Returns a list of lists for genomic coordinates matching a filtCigar.
-    """
-    cdef dgap
-    dgap = dict(read.get_aligned_pairs())
-    return [[dgap[i] for i in g[1]] for g in filtCigar]
-
-
-def GetGenomicCoordToNucleotideMapForFiltCigar(
-        pysam.calignmentfile.AlignedSegment read,
-        filtCigar="default"):
-    """
-    Returns a dictionary of genomic positions: nucleotides for a "filtered"
-    cigar and a read. This is used to compare whether or not two reads with
-    an insertion agree on the inserted nucleotides.
-    """
-    assert not isinstance(filtCigar, str)
-    seq = read.seq
-    dgap = dict(read.get_aligned_pairs())
-    try:
-        dgapList = [[dgap[i] for i in g[1]] for g in filtCigar]
-        seqList = [[seq[i] for i in g[1]] for g in filtCigar]
-        return {k: l for k, l in zip(
-            [[dgap[i] for i in g[1]] for g in filtCigar],
-            [[seq[i] for i in g[1]] for g in filtCigar])}
-    except TypeError:
-        print(repr(dgap))
-        print(repr(filtCigar))
-        print(repr(seq))
-        if("dgapList" in locals()):
-            print(repr(dgapList))
-        if("seqList" in locals()):
-            print(repr(seqList))
-        print(read.cigarstring)
-        raise TypeError
-
-
-@cython.locals(cigarOp=int)
-def GetGC2NMapForRead(pysam.calignmentfile.AlignedSegment read,
-                      cigarOp=-1):
-    """
-    Returns a dictionary of genomic positions: nucleotides for a provided
-    cigar operation.
-    """
-    filtCigar = GetQueryIndexForCigarOperation(read, cigarOp=cigarOp)
-    return GetGenomicCoordToNucleotideMapForFiltCigar(read,
-                                                      filtCigar=filtCigar)
-
-
-@cython.locals(cigarOp=int)
-def GetReadSequenceForCigarOp(pysam.calignmentfile.AlignedSegment read,
-                              cigarOp=-1):
-    if(read.cigar is None):
-        raise Tim("Cigar must not be None to get sequence for an operation!")
-    try:
-        assert(cigarOp in range(9))
-    except AssertionError:
-        raise Tim("Please read the doc string for "
-                  "GetReadSequenceForCigarOp. Invalid cigarOp")
-    filtCigar = GetQueryIndexForCigarOperation(read)
-    seqTups = []
-    for f in filtCigar:
-        if(len(f) == 0):
-            continue
-        else:
-            pass
-    raise Tim("I haven't finished writing this function. Oops!")
-
-
 @cython.returns(list)
-def GetDeletedCoordinates(pysam.calignmentfile.AlignedSegment read):
+def GetDeletedCoordinates(cAlignedSegment read):
     """
     Returns a list of integers of genomic coordinates for deleted bases.
     """
     cdef int k
-    assert isinstance(read, pysam.calignmentfile.AlignedSegment)
     apList = read.get_aligned_pairs()
     k = 0
     # Remove any soft-clipped bases at the front.
@@ -1637,7 +1511,7 @@ def GetDeletedCoordinates(pysam.calignmentfile.AlignedSegment read):
 
 
 @cython.returns(list)
-def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
+def GetInsertedNucleotides(cAlignedSegment read):
     """
     """
     cdef int start, end
@@ -1661,7 +1535,7 @@ def GetInsertedNucleotides(pysam.calignmentfile.AlignedSegment read):
 
 
 @cython.returns(list)
-def GetInsertedStrs(pysam.calignmentfile.AlignedSegment read):
+def GetInsertedStrs(cAlignedSegment read):
     """
     Returns a list of tuples for strings, along with preceding reference base
     and successive reference base position. We can then directly compare these
@@ -1836,7 +1710,7 @@ def bitfield(n):
 
 
 @cython.returns(cython.str)
-def ASToFastqSingle(pysam.calignmentfile.AlignedSegment read):
+def ASToFastqSingle(cAlignedSegment read):
     """
     Makes a string containing a single fastq record from
     one read.
@@ -1867,7 +1741,7 @@ def ASToFastqSingle(pysam.calignmentfile.AlignedSegment read):
 
 @cython.locals(alignmentfileObj=pysam.calignmentfile.AlignmentFile)
 @cython.returns(cython.str)
-def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read,
+def ASToFastqPaired(cAlignedSegment read,
                     alignmentfileObj):
     """
     Works for coordinate-sorted and indexed BAM files, but throws
@@ -1881,7 +1755,7 @@ def ASToFastqPaired(pysam.calignmentfile.AlignedSegment read,
 
 
 @cython.returns(pysam.calignmentfile.AlignmentFile)
-def SWRealignAS(pysam.calignmentfile.AlignedSegment read,
+def SWRealignAS(cAlignedSegment read,
                 pysam.calignmentfile.AlignmentFile alignmentfileObj,
                 cython.str extraOpts="",
                 cython.str ref="default", float minAF=0.5):
@@ -2391,7 +2265,7 @@ def SplitBamByBedPysam(bampath, bedpath):
     Rather than standard split by bed which uses parallel shell calls,
     instead this does it manually via pysam. Not sure if it's faster or not.
     """
-    cdef pysam.calignmentfile.AlignedSegment rec
+    cdef cAlignedSegment rec
     cdef pysam.calignmentfile.AlignmentFile inHandle
     cdef cython.str bam
     pl("Getting bamlist.")
@@ -2577,7 +2451,7 @@ def hamming_cousins(cython.str s, int n=0,
 
 
 @cython.returns(Insertion_t)
-def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
+def GetInsertionFromAlignedSegment(cAlignedSegment read,
                                    pysam.cfaidx.FastaFile handle=None):
     """
     Creates an Insertion object under the assumption that there is
@@ -2591,7 +2465,7 @@ def GetInsertionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
 
 
 @cython.returns(Deletion_t)
-def GetDeletionFromAlignedSegment(pysam.calignmentfile.AlignedSegment read,
+def GetDeletionFromAlignedSegment(cAlignedSegment read,
                                   pysam.cfaidx.FastaFile handle=None):
     """
     Creates a Deletion object from a read.
@@ -2616,7 +2490,7 @@ def is_reverse_to_str(cython.bint boolean):
 
 
 @cython.returns(cython.str)
-def ssStringFromRead(pysam.calignmentfile.AlignedSegment read):
+def ssStringFromRead(cAlignedSegment read):
     return ("#".join(list(cmap(str, sorted([read.reference_start,
                                             read.reference_end])))) +
             "#%s" % (is_reverse_to_str(read)))
@@ -2702,7 +2576,7 @@ cdef class AbstractIndelContainer(object):
     def getNumSS(self):
         return(len(set(self.StartStops)))
 
-    def register(self, pysam.calignmentfile.AlignedSegment read):
+    def register(self, cAlignedSegment read):
         self.readnames.append(read.query_name)
         self.StartStops.append(ssStringFromRead(read))
 
@@ -2727,7 +2601,7 @@ cdef class Insertion(AbstractIndelContainer):
     If no handle is provided, shen (Shannon Entropy) is set to -1.
     """
 
-    def __init__(self, pysam.calignmentfile.AlignedSegment read,
+    def __init__(self, cAlignedSegment read,
                  cython.str contig, int start=-1,
                  cython.str seq=None, pysam.cfaidx.FastaFile handle=None,
                  int window=20):
@@ -2767,7 +2641,7 @@ cdef class Deletion(AbstractIndelContainer):
     If the deletion is of length one, start and end should be the same.
     """
 
-    def __init__(self, pysam.calignmentfile.AlignedSegment read,
+    def __init__(self, cAlignedSegment read,
                  cython.str contig=None, int start=-1,
                  int end=-1,
                  pysam.cfaidx.FastaFile handle=None, int window=20):
@@ -2861,7 +2735,7 @@ cdef class IndelQuiver(object):
     def values(self):
         return self.data.values()
 
-    def addRead(self, pysam.calignmentfile.AlignedSegment read):
+    def addRead(self, cAlignedSegment read):
         cdef cython.str SVTag
         cdef AbstractIndelContainer_t Indel
         if(read.opt("FM") < self.minFM):
@@ -3076,14 +2950,14 @@ cdef class IDVCFLine(object):
 @cython.returns(list)
 def GetSCFractionArray(inBAM):
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    cdef pysam.calignmentfile.AlignedSegment i
+    cdef cAlignedSegment i
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     return [FractionSoftClipped(i) for i in inHandle]
 
 
 @cython.returns(np.ndarray)
 def GetTlenArray(inBAM):
-    cdef pysam.calignmentfile.AlignedSegment i
+    cdef cAlignedSegment i
     cdef np.ndarray[np.int64_t, ndim = 2] tlens
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tlens = np.array([i.tlen for i in inHandle if i.is_read1 and i.tlen != 0],
@@ -3173,3 +3047,11 @@ cdef class pFastqFile(object):
     @cython.returns(pFastqProxy)
     def __next__(self):
         return pFastqProxy(next(self.handle))
+
+
+cpdef cython.bint ReadsOverlap(
+        cAlignedSegment read1,
+        cAlignedSegment read2):
+    """cpdef wrapper of cReadsOverlap
+    """
+    return cReadsOverlap(read1, read2)

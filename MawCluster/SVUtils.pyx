@@ -2,7 +2,7 @@ from utilBMF.HTSUtils import (printlog as pl,
                               ReadPair, ParseBed, SplitSCRead,
                               ReadPairIsDuplex,
                               PysamToChrDict, GetDeletedCoordinates,
-                              is_read_softclipped, GetGC2NMapForRead,
+                              is_read_softclipped,
                               GetInsertedStrs, ReadOverlapsBed as RIB, RevCmp)
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from collections import defaultdict

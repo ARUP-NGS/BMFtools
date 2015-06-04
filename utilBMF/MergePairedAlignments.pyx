@@ -25,6 +25,8 @@ chrDict = {x: chr(x) for x in xrange(126)}
 cimport pysam.calignmentfile
 cimport cython
 cimport numpy as np
+from utilBMF.HTSUtils cimport cReadsOverlap
+
 
 """
 Contains utilities for merging a pair of overlapping alignments
@@ -285,7 +287,7 @@ cdef class Layout(object):
             self.tagDict["FM"].value *= 2  # Double the FM tag.
             self.tlen = 0
             self.pnext = 0
-            self.mapq = -1 * maxint
+            self.mapq = -1
             self.tagDict["MP"] = BamTag("MP", "A", "T")
             self.rnext = "*"
             self.flag = 2 + (16 if(self.is_reverse) else 32) + 192
@@ -365,22 +367,31 @@ def LayoutSortKeySK(x, oagsk=oagsk):
     an additional 20% speed increase for its use with map.
     """
     return oagsk(x)
-
+'''
+cdef LayoutPos MergePositions(LayoutPos p1, p2):
+'''
 
 @cython.returns(LayoutPos)
 def MergePositions(LayoutPos pos1, LayoutPos pos2):
     cdef cython.str base, operation
     cdef int pos, readPos
+    print("Trying to merge: %s, %s" % (str(pos1), str(pos2)))
     if(pos1.operation != pos2.operation):
         raise ThisIsMadness("Looks like merging these two "
                             "positions just doesn't work (discordance).")
     if(pos1.base == pos2.base):
+        print("Agreed base: %s" % chrDict[pos1.base])
+        print("Q1: %s. Q2: %s" % (pos1.quality, pos2.quality))
         return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
                          pos1.quality + pos2.quality,
                          pos1.agreement + pos2.agreement)
     elif(pos1.quality > pos2.quality):
+        print("Disagreed bases: %s, %s" % chrDict[pos1.base], chrDict[pos2.base])
+        print("Q1: %s. Q2: %s" % (pos1.quality, pos2.quality))
         return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
                          pos1.quality - pos2.quality, pos1.agreement)
+    print("Agreed base: %s" % chrDict[pos1.base])
+    print("Q1: %s. Q2: %s" % (pos1.quality, pos2.quality))
     return LayoutPos(pos1.pos, pos1.readPos, pos2.base, pos1.operation,
                      pos2.quality - pos1.quality, pos2.agreement)
 
@@ -419,14 +430,18 @@ def MergeLayoutsToList(Layout_t L1, Layout_t L2, omcfp=omcfp):
                             "How can you merge them?")
         # return L1[:] + L2[:], False  # Might go to this quiet failure
     '''
+    if(LayoutsOverlap(L1, L2) is False):
+        return [], False
     L1, L2 = sorted((L1, L2), key=omcfp)  # First in pair goes first
     offset = L2.getRefPosForFirstPos() - L1.getRefPosForFirstPos()
+    print("offset: %s" % offset)
     try:
         return (L1[:offset] +
                 [MergePositions(pos1, pos2) for
                  pos1, pos2 in izip(L1[offset:], L2)] +
                 L2[len(L1) - offset:]), True
     except ThisIsMadness:
+        print("ThisIsMadness got thrown!")
         return L1[:] + L2[len(L1) - offset:], False
 
 
@@ -444,3 +459,7 @@ cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     L1.isMerged = True
     L1.update()
     return L1
+
+
+cpdef cython.bint LayoutsOverlap(Layout_t L1, Layout_t L2):
+    return cReadsOverlap(L1.read, L2.read)

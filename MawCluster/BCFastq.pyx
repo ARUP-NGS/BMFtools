@@ -747,7 +747,6 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         if(numProc % readPairsPerWrite == 0):
             # outputHandle1.write(cString1.getvalue())
             # outputHandle2.write(cString2.getvalue())
-            print("Writing to disk for a second.")
             outputHandle1.write("".join(StringList1))
             outputHandle2.write("".join(StringList2))
             StringList1 = []
@@ -791,20 +790,16 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
             # String1 += compareFqRecsFqPrx(workingSet1) + "\n"
             # String2 += compareFqRecsFqPrx(workingSet2) + "\n"
             rname = workingSet1[0].name
-            print("Collapsing read 1. R length: %s" % len(workingSet1))
             tStr1 = fn(workingSet1, name=rname)
-            print("Collapsing read 2")
             tStr2 = fn(workingSet2, name=rname)
             if(skipFails and ("Fail" in tStr1 or "Fail" in tStr2)):
                 continue
-            print("Appending strings to lists")
             sl1a(tStr1)
             sl2a(tStr2)
             workingSet1 = [fqRec]
             workingSet2 = [fqRec2]
             workingBarcode = bc4fq1
             numProc += 1
-            print("Next set")
             continue
     if(UsecProfile):
         s = cStringIO.StringIO()
@@ -813,7 +808,6 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         open("cProfile.stats.txt", "w").write(s.getvalue())
-    print("Finished iterations - clean up.")
     # outputHandle1.write(cString1.getvalue())
     # outputHandle2.write(cString2.getvalue())
     outputHandle1.write("".join(StringList1))
@@ -826,7 +820,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     # cString2.close()
     outputHandle1.close()
     outputHandle2.close()
-    print("Returning output")
+    print("Consolidation a success!")
     return outFqPair1, outFqPair2
 
 
