@@ -401,7 +401,7 @@ cdef class PCInfo:
         cdef list pileups, fks, svTags, exclusionTagList, discNames
         cdef pPileupRead_t r
         cdef int lenR, rsn
-        cdef ndarray [np.float64_t, ndim = 1] query_positions
+        cdef ndarray[np.float64_t, ndim = 1] query_positions
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
         # of them has to be wrong!
@@ -572,11 +572,11 @@ cdef class PCInfo:
                 key]) for key in self.TotalStrandednessRatioDict.iterkeys()])
         self.AlleleFreqStr = "\t".join(
             map(str, [self.contig, self.pos, self.consensus,
-                       self.MergedReads, self.TotalReads, self.MergedCountStr,
-                       self.TotalCountStr, self.MergedFracStr,
-                       self.TotalFracStr,
-                       self.MergedStrandednessStr,
-                       self.TotalStrandednessStr]))
+                      self.MergedReads, self.TotalReads, self.MergedCountStr,
+                      self.TotalCountStr, self.MergedFracStr,
+                      self.TotalFracStr,
+                      self.MergedStrandednessStr,
+                      self.TotalStrandednessStr]))
         self.maxND = max(pileupRead.alignment.opt("ND") for
                          pileupRead in pileups)
 

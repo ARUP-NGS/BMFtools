@@ -267,12 +267,12 @@ cdef class Layout(object):
         return self.getLastRefPos_()
 
     cdef update_tags_(self):
-        self.tagDict["PV"] = BamTag("PV", "Z",
-                                    ",".join(self.getQual().astype(str)))
-        self.tagDict["FA"] = BamTag("FA", "Z",
-                                    ",".join(self.getAgreement().astype(str)))
-        self.tagDict["PM"] = BamTag("PM", "Z",
-                                    ",".join(self.getMergedPositions().astype(str)))
+        self.tagDict["PV"] = BamTag(
+            "PV", "Z", ",".join(self.getQual().astype(str)))
+        self.tagDict["FA"] = BamTag(
+            "FA", "Z", ",".join(self.getAgreement().astype(str)))
+        self.tagDict["PM"] = BamTag(
+            "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
 
     cpdef update_tags(self):
         self.update_tags_()

@@ -56,15 +56,8 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
            "addRG is being set to True.")
         addRG = True
     if(aligner == "mem"):
-        if(addRG is False):
-            outBAMProperPair = HTSUtils.align_bwa_mem(
-                consfq1, consfq2, ref=ref, opts=opts, path=bwapath)
-        else:
-            outBAMProperPair = HTSUtils.align_bwa_mem_addRG(
-                consfq1, consfq2, ref=ref, opts=opts, path=bwapath,
-                RG=RG, ID=ID, CN=CN, PL=PL, SM=SM, picardPath=picardPath)
-        if(consfqSingle != "default"):
-            raise ("This step is not relevant to shades.")
+        outBAMProperPair = BCBam.AlignAndTagMem(
+            consfq1, consfq2, ref=ref, opts=opts, addRG=addRG)
     elif(aligner == "aln"):
         if(addRG is False):
             outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,

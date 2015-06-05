@@ -3,7 +3,7 @@
 from __future__ import division
 import abc
 from copy import copy as ccopy
-from cytoolz import map as cmap, memoize, frequencies as cyfreq
+from cytoolz import memoize, frequencies as cyfreq
 from functools import partial
 from itertools import groupby, tee, chain, combinations, product
 from MawCluster.Probability import GetCeiling
@@ -45,6 +45,7 @@ regexcompile = re.compile
 oig1 = oig(1)
 oig0 = oig(0)
 cfi = chain.from_iterable
+mcgroup = mc("group", 0)
 
 
 global __version__
@@ -504,7 +505,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
                   path="default",
                   PL="ILLUMINA", SM="default", ID="default",
                   CN="default", RG="default",
-                  bint addCO=True, bint addRG=True):
+                  bint addCO=True):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -519,30 +520,32 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     :param cython.str opts - Options to pass to bwa
     :param bint addCO
     """
+    if(path == "default"):
+        path = "bwa"
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -M -T 0'
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
-    outSAM = outBAM.replace(".bam", ".sam")
     if(ref == "default"):
         raise Tim("Reference file index required for alignment!")
     opt_concat = ' '.join(opts.split())
-    RGString = "@RG\tID:bwa SM:%s" % SM
-    baseString = "bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2)
+    baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     if(addCO):
-        baseString = baseString.replace("bwa mem", "bwa mem -C")
-        baseString += "| sed 's/\t[1-4]:[A-Z]:/\tCO:Z:/'"
-        if(addRG):
-            baseString += ("| sed 's/^@PG/@RG\tID:default\t"
-                           "PL:ILLUMINA\tPU:default\tLB:default\tSM:default\t"
-                           "CN:default\n@PG/'")
+        baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
+        baseString += "| sed -e 's/\t[1-4]:[A-Z]:/\tRG:Z:default\tCO:Z:/'"
+        baseString += (" -e 's/^@PG/@RG\tID:default\t"
+                       "PL:ILLUMINA\tPU:default\tLB:default\tSM:default"
+                       "\tCN:default\n@PG/'")
     if(path == "default"):
-        command_str = baseString + "> %s" % outSAM
+        command_str = baseString + " | samtools view -Sbh - > %s" % outBAM
     else:
-        command_str = path + baseString[3:] + " > %s" % outSAM
+        command_str = "%s%s | samtools view -Sbh - > %s" % (path,
+                                                            baseString[3:],
+                                                            outBAM)
     # command_list = command_str.split(' ')
-    printlog(command_str)
-    check_call(command_str, shell=True)
+    printlog("bwa mem command string with RG/CO additions"
+             ": %s" % command_str)
+    PipedShellCall(command_str)
     return outBAM
 
 
@@ -583,7 +586,8 @@ def PipedShellCall(commandStr, delete=True, silent=False):
         str(uuid.uuid4().get_hex().upper()[0:8]))
     if silent is False:
         printlog("Command string: {}".format(commandStr), level=logging.DEBUG)
-    open(PipedShellCallFilename, "w").write(commandStr)
+    open(PipedShellCallFilename, "w").write(
+        commandStr.replace("\n", "\\n").replace("\t", "\\t"))
     subprocess.check_call(['bash', PipedShellCallFilename])
     if(delete):
         try:
@@ -1119,7 +1123,7 @@ def GetReadPair(inHandle):
 
 
 cdef bint cReadsOverlap(cAlignedSegment read1,
-                               cAlignedSegment read2):
+                        cAlignedSegment read2):
     if(read1.reference_id != read2.reference_id):
         return False
     if(read1.reference_start > read2.reference_end or
@@ -1405,7 +1409,7 @@ def CreateIntervalsFromCounter(dict CounterObj, int minPileupLen=0,
         raise Tim("contig required for this function!")
     for k, g in groupby(
             enumerate(sorted(CounterObj.iterkeys())), lambda x: x[0] - x[1]):
-        posList = list(cmap(oig1, g))
+        posList = map(oig1, g)
         if(posList[0] < posList[-1]):
             interval = [contig, posList[0], posList[-1] + 1]
         else:
@@ -2470,8 +2474,8 @@ def is_reverse_to_str(bint boolean):
 
 @cython.returns(cython.str)
 def ssStringFromRead(cAlignedSegment read):
-    return ("#".join(list(cmap(str, sorted([read.reference_start,
-                                            read.reference_end])))) +
+    return ("#".join(map(str, sorted([read.reference_start,
+                                      read.reference_end]))) +
             "#%s" % (is_reverse_to_str(read)))
 
 
@@ -2972,15 +2976,12 @@ def PlotTlen(inBAM, outfile="default"):
     return outfile
 
 
-mcgroup = mc("group", 0)
-
-
 def itersplit(inString, regexStr="\w+"):
     """
     Returns a split iterator over a string with a given regex.
     Default regexStr causes it to iterate over words.
     """
-    return (cmap(mcgroup, finditer(regexStr, inString)))
+    return (map(mcgroup, finditer(regexStr, inString)))
 
 
 @cython.returns(set)

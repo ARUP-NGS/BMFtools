@@ -6,9 +6,8 @@ from numpy cimport ndarray
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 
 cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile bam,
-                      pysam.calignmentfile.AlignmentFile outbam,
-                      bint addRG=?)
-cpdef BarcodeTagCOBam(cython.str bam, cython.str realigner=?)
+                      pysam.calignmentfile.AlignmentFile outbam)
+cpdef BarcodeTagCOBam(cython.str bam, cython.str outbam=?)
 
 cdef dict GetCOTagDict_(cAlignedSegment read)
 
@@ -16,3 +15,4 @@ cpdef dict GetCOTagDict(cAlignedSegment read)
 
 cdef double getAF(cAlignedSegment read)
 cdef double getSF(cAlignedSegment read)
+cdef cAlignedSegment TagAlignedSegment(cAlignedSegment read)

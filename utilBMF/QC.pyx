@@ -107,7 +107,7 @@ cdef ndarray[np.float64_t, ndim = 1] InsertSizeArray_(
         pysam.calignmentfile.AlignmentFile handle):
     cdef pysam.calignmentfile.AlignedSegment i
     return np.absolute(np.array([i.tlen for i in handle], dtype=np.float64))
-    
+
 
 @cython.returns(ndarray)
 def InsertSizeArray(cython.str inBAM):
