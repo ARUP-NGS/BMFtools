@@ -545,10 +545,11 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
-        baseString += "| sed -e 's/\t[1-4]:[A-Z]:/\tRG:Z:default\tCO:Z:/'"
-        baseString += (" -e 's/^@PG/@RG\tID:default\t"
-                       "PL:ILLUMINA\tPU:default\tLB:default\tSM:default"
-                       "\tCN:default\n@PG/'")
+        sedString = (" | sed -r -e 's/\t[0-9]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
+                     "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+                     "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
+                     "t\n@PG/'")
+        baseString += sedString
     if(path == "default"):
         command_str = baseString + " | samtools view -Sbh - > %s" % outBAM
     else:
@@ -1461,8 +1462,8 @@ Int2Base64 = numconv.NumConv(64).int2str
 ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
 # Pre-computes
 chr2ph = {i: ord(i) - 33 for i in [ph2chrDict[i] for i in range(94)]}
-chr2phStr = {i: str(ord(i)) - 33 for i in [ph2chrDict[i] for i in range(94)]}
-int2Str = {i: str(i) for i in xrange(1000)}
+chr2phStr = {x: str(y) for x, y in chr2ph.iteritems()}
+int2Str = {i: str(i) for i in xrange(10000)}
 
 """
 @cython.returns(np.int64_t)

@@ -38,7 +38,7 @@ from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
                               int2Str, chr2phStr)
 from utilBMF import HTSUtils
-from utilBMF.ErrorHandling import ThisIsMadness as Tim
+from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
 oagseq = oag("sequence")
 oagqual = oag("quality")
 npchararray = npchar.array
@@ -325,7 +325,10 @@ cdef cython.str compareFqRecsFast(list R,
     ND = lenR * lenSeq - nsum(FA)
     # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
-    PVString = "|PV=%s" % ",".join([int2Str[i] for i in phredQuals])
+    try:
+        PVString = "|PV=%s" % ",".join([int2Str[i] for i in phredQuals])
+    except KeyError:
+        PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
     try:
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     except KeyError:
@@ -440,7 +443,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 
 @cython.locals(useGzip=cython.bint, bLen=int)
 def FastqPairedShading(fq1, fq2, indexfq="default",
-                       useGzip=False, readPairsPerWrite=10,
+                       useGzip=False, SetSize=10,
                        int head=2):
     """
     TODO: Unit test for this function.
@@ -487,7 +490,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     ofh1w = outFqHandle1.write
     ofh2w = outFqHandle2.write
     while True:
-        if(numWritten >= readPairsPerWrite):
+        if(numWritten >= SetSize):
             if(not useGzip):
                 ofh1w(f1.getvalue())
                 ofh2w(f2.getvalue())
@@ -694,114 +697,57 @@ def GetDescriptionTagDict(readDesc):
 
 
 def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
-                           int readPairsPerWrite=100,
-                           cython.bint UsecProfile=False,
-                           object fn=cFRF_helper):
+                           int SetSize=100, bint parallel=True):
     """
     TODO: Unit test for this function.
     Also, it would be nice to do a groupby() that separates read 1 and read
     2 records so that it's more pythonic, but that's a hassle.
     """
-    if(UsecProfile):
-        import cProfile
-        import pstats
-        pr = cProfile.Profile()
-        pr.enable()
-    cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1
-    cdef pFastqProxy_t fqRec, fqRec2
-    cdef list workingSet1, workingSet2, StringList1, StringList2
-    cdef int numProc
-    cdef pFastqFile_t inFq1, inFq2
-    outFqPair1 = TrimExt(fq1) + ".cons.fastq"
-    outFqPair2 = TrimExt(fq2) + '.cons.fastq'
+    cdef cython.str outFq1, outFq2
+    cdef cython.int checks
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
-    pl("Command required to duplicate this action:"
-       " pairedFastqConsolidate('{}', '{}', ".format(fq1, fq2) +
-       "stringency={}, readPairsPerWrite={})".format(stringency,
-                                                     readPairsPerWrite))
-    inFq1 = pFastqFile(fq1)
-    inFq2 = pFastqFile(fq2)
-    outputHandle1 = open(outFqPair1, 'w')
-    outputHandle2 = open(outFqPair2, 'w')
-    # cString1 = cStringIO.StringIO()
-    # cString2 = cStringIO.StringIO()
-    StringList1 = []
-    StringList2 = []
-    workingBarcode = ""
-    workingSet1 = []
-    workingSet2 = []
-    numProc = 0
-    while True:
-        if(numProc % readPairsPerWrite == 0):
-            # outputHandle1.write(cString1.getvalue())
-            # outputHandle2.write(cString2.getvalue())
-            outputHandle1.write("".join(StringList1))
-            outputHandle2.write("".join(StringList2))
-            StringList1 = []
-            StringList2 = []
-            sl1a = StringList1.append
-            sl2a = StringList2.append
-            # cString1 = cStringIO.StringIO()
-            # cString2 = cStringIO.StringIO()
-        try:
-            fqRec = inFq1.next()
-        except StopIteration:
-            break
-        bc4fq1 = fqRec.getBS()
-        fqRec2 = inFq2.next()
-        # Originally removing reads with family size <2, since one pair could
-        # have more than the other, it's important that I keep these reads in
-        # and filter them from the BAM file
-        if(workingBarcode == ""):
-            try:
-                workingBarcode = bc4fq1
-                workingSet1 = [fqRec]
-                workingSet2 = [fqRec2]
-                continue
-            except TypeError:
-                print("workingBarcode = " + workingBarcode)
-                print("workingSet1 = " + repr(workingSet1))
-                print("workingSet2 = " + repr(workingSet2))
-                sys.exit()
-        elif(workingBarcode == bc4fq1):
-            workingSet1.append(fqRec)
-            workingSet2.append(fqRec2)
-            continue
-        elif(workingBarcode != bc4fq1):
-            tStr1 = fn(workingSet1, name=workingBarcode)
-            tStr2 = fn(workingSet2, name=workingBarcode)
-            sl1a(tStr1)
-            sl2a(tStr2)
-            workingSet1 = [fqRec]
-            workingSet2 = [fqRec2]
-            workingBarcode = bc4fq1
-            numProc += 1
-            continue
-    if(UsecProfile):
-        s = cStringIO.StringIO()
-        pr.disable()
-        sortby = "cumulative"
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        open("cProfile.stats.txt", "w").write(s.getvalue())
-    # outputHandle1.write(cString1.getvalue())
-    # outputHandle2.write(cString2.getvalue())
-    outputHandle1.write("".join(StringList1))
-    outputHandle2.write("".join(StringList2))
-    outputHandle1.flush()
-    outputHandle2.flush()
-    inFq1.close()
-    inFq2.close()
-    # cString1.close()
-    # cString2.close()
-    outputHandle1.close()
-    outputHandle2.close()
-    print("Consolidation a success!")
-    return outFqPair1, outFqPair2
+    pl("(What that really means is that I'm running "
+       "singleFastqConsolidate twice")
+    if(not parallel):
+        outFq1 = singleFastqConsolidate(fq1, stringency=stringency,
+                                        SetSize=SetSize)
+        outFq2 = singleFastqConsolidate(fq2, stringency=stringency,
+                                        SetSize=SetSize)
+    else:
+        # Make background process command string
+        cStr = ("python -c 'from MawCluster.BCFastq import singleFastqConsoli"
+                "date;singleFastqConsolidate(\"%s\", stringency=" % fq2 +
+                "%s, SetSize=%s);import sys;sys.exit(0)'" % (stringency,
+                                                             SetSize))
+        # Submit
+        PFC_Call = subprocess.Popen(cStr, stderr=None, shell=True,
+                                    stdout=None, stdin=None, close_fds=True)
+        # Run foreground job on other read
+        outFq1 = singleFastqConsolidate(fq1, stringency=stringency,
+                                        SetSize=SetSize)
+        checks = 0
+        # Have the other process wait until it's finished.
+        while PFC_Call.poll() is None and checks < 3600:
+            time.sleep(1)
+            checks += 1
+        if(PFC_Call.returncode == 0):
+            return outFq1, TrimExt(fq2) + ".cons.fastq"
+        elif(PFC_Call.returncode is not None):
+            raise FunctionCallException(
+                cStr, ("Background singleFastqConsolidate "
+                       "returned non-zero exit status."),
+                shell=True)
+        else:
+            raise FunctionCallException(
+                cStr, ("Background singleFastqConsolidate took more than an"
+                       "hour longer than the other read fastq. Giving up!"),
+                shell=True)
+    print("Consolidation a success for both!")
+    return outFq1, outFq2
 
 
 def singleFastqConsolidate(cython.str fq, float stringency=0.9,
-                           int readsPerWrite=100,
+                           int SetSize=100,
                            cython.bint onlyNumpy=True,
                            cython.bint skipFails=False,
                            object fn=cFRF_helper,
@@ -825,9 +771,9 @@ def singleFastqConsolidate(cython.str fq, float stringency=0.9,
     ohw = outputHandle.write
     sla = StringList.append
     for bc4fq, fqRecGen in groupby(inFq, key=getBS):
-        ffq = fn(list(fqRecGen))
+        ffq = fn(list(fqRecGen), bc4fq)
         sla(ffq)
-        if (numProc == readsPerWrite):
+        if (numProc == SetSize):
             ohw("".join(StringList))
             StringList = []
             sla = StringList.append
@@ -837,6 +783,7 @@ def singleFastqConsolidate(cython.str fq, float stringency=0.9,
     outputHandle.flush()
     inFq.close()
     outputHandle.close()
+    print("Consolidation a success for inFq: %s!" % fq)
     return outFq
 
 

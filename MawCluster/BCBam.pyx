@@ -711,7 +711,7 @@ cdef cAlignedSegment TagAlignedSegment(
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
-                   ("SF", SF, "F")
+                   ("SF", SF, "f")
                    ])
     return read
 
@@ -734,9 +734,9 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
 cpdef BarcodeTagCOBam(cython.str bam, cython.str outbam=None):
     """In progress
     """
-    cdef pysam.calignmentfile.AlignedSegment inHandle
+    cdef pysam.calignmentfile.AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(bam)
-    outbam = ".".join(bam.split("."))[:-1] + ".tagged.bam"
+    outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
     BarcodeTagCOBam_(inHandle,
                      pysam.AlignmentFile(outbam, template=inHandle))
     return
