@@ -759,20 +759,17 @@ def singleFastqConsolidate(cython.str fq, float stringency=0.9,
     cdef int numProc
     outFq = TrimExt(fq) + ".cons.fastq"
     pl("Now running singleFastqConsolidate on {}.".format(fq))
-    pl("Command required to duplicate this action:"
-        " singleFastqConsolidate('{}', ".format(fq) +
-        "stringency={})".format(stringency))
     inFq = pFastqFile(fq)
     outputHandle = open(outFq, 'w')
     StringList = []
     workingBarcode = ""
-    family = []
     numProc = 0
     ohw = outputHandle.write
     sla = StringList.append
     for bc4fq, fqRecGen in groupby(inFq, key=getBS):
         ffq = fn(list(fqRecGen), bc4fq)
         sla(ffq)
+        numProc += 1
         if (numProc == SetSize):
             ohw("".join(StringList))
             StringList = []
