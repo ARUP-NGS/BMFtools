@@ -9,6 +9,7 @@ ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef pFastqProxy pFastqProxy_t
 
 cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
@@ -126,7 +127,7 @@ cdef class pFastqProxy:
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
     cdef public cython.str comment, quality, sequence, name
-    cdef cython.str getBS_(self)
+    cdef cython.str cGetBS(self)
     cpdef cython.str getBS(self)
     cdef cython.str tostring(self)
 
@@ -157,3 +158,4 @@ cdef cython.bint cReadsOverlap(
 
 cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
+cdef cython.str cGetBS(pFastqProxy_t)

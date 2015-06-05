@@ -18,7 +18,8 @@ import time
 import cStringIO
 import operator
 from operator import (add as oadd, le as ole, ge as oge, div as odiv,
-                      mul as omul, add as oadd, attrgetter as oag)
+                      mul as omul, add as oadd, attrgetter as oag,
+                      methodcaller as mc)
 from subprocess import check_call
 
 import cython
@@ -30,11 +31,12 @@ from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
 import pysam
 from cytoolz import memoize
 from functools import partial
-from pysam import fromQualityString as fromQS
+from itertools import groupby
 
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               ph2chrDict, chr2ph, printlog as pl,
-                              pFastqProxy, TrimExt, pFastqFile)
+                              pFastqProxy, TrimExt, pFastqFile, getBS,
+                              int2Str, chr2phStr)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 oagseq = oag("sequence")
@@ -144,7 +146,7 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
                                    dict chr2ph=chr2ph,
                                    dict ph2chrDict=ph2chrDict,
                                    object ph2chr=ph2chr,
-                                   object fromQS=fromQS):
+                                   object int2Str=int2Str):
     """
     TODO: Unit test for this function.
     Compares the fastq records to create a consensus sequence (if it
@@ -166,7 +168,7 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
     lenRStr = str(lenR)
     '''
     if lenR == 1:
-        PVString = "|PV=%s" % ",".join(map(str, fromQS(R[0].quality)))
+        PVString = "|PV=%s" % ",".join([chr2phStr[i] for i in R[0].quality])
         TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
                                                 PVString)
         return "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
@@ -198,7 +200,7 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
         Success = False
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                  xrange(len(finalSeq))], dtype=np.int64)
-    phredQuals = nparray([sum([chr2ph[seq[i]] for
+    phredQuals = nparray([sum([chr2ph[qual[i]] for
                                qual in map(oagqual, R) if
                                seq[i] == finalSeq[i]]) for
                           i in xrange(len(finalSeq))])
@@ -208,9 +210,9 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
     except KeyError:
         QualString = "".join(map(ph2chr, phredQuals))
-    PVString = "|PV=%s" % (",".join(phredQuals.astype(str).tolist()))
+    PVString = "|PV=%s" % (",".join([int2Str[i] for i in phredQuals]))
     TagString = "|FM=%s|FA=%s|ND=%s%s" % (
-        lenRStr,  ",".join(FA.astype(str)),
+        lenRStr,  ",".join([int2Str[i] for i in FA]),
         lenR * len(finalSeq) - nsum(FA), PVString)
     """
     try:
@@ -255,14 +257,15 @@ cdef cython.str compareFqRecsFast(list R,
                                   object oagseq=oagseq,
                                   object partialnpchar=partialnpchar,
                                   object ph2chr=ph2chr,
-                                  object fromQS=fromQS):
+                                  object chr2phStr=chr2phStr,
+                                  object int2Str=int2Str):
     """
     TODO: Unit test for this function.
     Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef int lenR, ND, lenSeq, i_t
+    cdef int lenR, ND, lenSeq
     cdef cython.bint Success
     cdef cython.str seq, qual, seqItem, qualChar
     cdef ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
@@ -275,7 +278,7 @@ cdef cython.str compareFqRecsFast(list R,
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        PVString = "|PV=%s" % ",".join(map(str, fromQS(R[0].quality)))
+        PVString = "|PV=%s" % ",".join([chr2phStr[i] for i in R[0].quality])
         TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
                                                 PVString)
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
@@ -289,7 +292,8 @@ cdef cython.str compareFqRecsFast(list R,
     seqArray = npvstack(stackArrays)
 
     # print(repr(seqArray))
-    quals = nparray(map(fromQS, map(oagqual, R)))
+    quals = nparray([[chr2ph[i] for i in qual] for
+                     qual in map(oagqual, R)])
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
     quals[quals < 3] = 0
@@ -309,9 +313,9 @@ cdef cython.str compareFqRecsFast(list R,
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
     newSeq = nparray([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
-    FA = nparray([sum([seq[i_t] == newSeq[i_t] for
+    FA = nparray([sum([seq[i] == newSeq[i] for
                        seq in seqs]) for
-                  i_t in xrange(lenSeq)], dtype=np.int64)
+                  i in xrange(lenSeq)], dtype=np.int64)
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
@@ -319,14 +323,14 @@ cdef cython.str compareFqRecsFast(list R,
                                              qual in map(oagqual, R)]),
                                     0)), lenR, dtype=np.int64)
     ND = lenR * lenSeq - nsum(FA)
-    newSeq[phredQuals == 0] = "N"
+    # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
-    PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
+    PVString = "|PV=%s" % ",".join([int2Str[i] for i in phredQuals])
     try:
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     except KeyError:
         phredQualsStr = "".join(map(ph2chr, phredQuals))
-    TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join(FA.astype(str)),
+    TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join([int2Str[i] for i in FA]),
                                           PVString)
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
@@ -558,7 +562,7 @@ def FastqSingleShading(fq,
     TODO: Unit test for this function.
     """
     cdef pysam.cfaidx.FastqProxy read1
-    cdef pFq pRead1, pIndexRead
+    cdef pFastqProxy_t pRead1, pIndexRead
     cdef pysam.cfaidx.FastqFile inFq1, inIndex
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexfq == "default"):
@@ -704,7 +708,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
         pr = cProfile.Profile()
         pr.enable()
     cdef cython.str outFqPair1, outFqPair2, workingBarcode, bc4fq1
-    cdef pFq fqRec, fqRec2
+    cdef pFastqProxy_t fqRec, fqRec2
     cdef list workingSet1, workingSet2, StringList1, StringList2
     cdef int numProc
     cdef pFastqFile_t inFq1, inFq2
@@ -796,76 +800,40 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     return outFqPair1, outFqPair2
 
 
-def singleFastqConsolidate(fq, float stringency=0.9,
+def singleFastqConsolidate(cython.str fq, float stringency=0.9,
                            int readsPerWrite=100,
-                           cython.bint UsecProfile=False,
                            cython.bint onlyNumpy=True,
                            cython.bint skipFails=False,
-                           object fn=cFRF_helper):
-    if(UsecProfile):
-        import cProfile
-        import pstats
-        pr = cProfile.Profile()
-        pr.enable()
-    cdef cython.str outFq, workingBarcode, bc4fq
-    cdef pysam.cfaidx.FastqFile inFq
-    cdef pFq fqRec
-    cdef list workingSet, StringList
+                           object fn=cFRF_helper,
+                           object getBS=getBS,
+                           object groupby=groupby):
+    cdef cython.str outFq, bc4fq, ffq
+    cdef pFastqFile_t inFq
+    cdef list StringList
     cdef int numProc
     outFq = TrimExt(fq) + ".cons.fastq"
     pl("Now running singleFastqConsolidate on {}.".format(fq))
     pl("Command required to duplicate this action:"
         " singleFastqConsolidate('{}', ".format(fq) +
         "stringency={})".format(stringency))
-    inFq = pysam.FastqFile(fq)
+    inFq = pFastqFile(fq)
     outputHandle = open(outFq, 'w')
     StringList = []
     workingBarcode = ""
-    workingSet = []
+    family = []
     numProc = 0
-    while True:
-        if (numProc % readsPerWrite == 0):
-            outputHandle.write("".join(StringList))
+    ohw = outputHandle.write
+    sla = StringList.append
+    for bc4fq, fqRecGen in groupby(inFq, key=getBS):
+        ffq = fn(list(fqRecGen))
+        sla(ffq)
+        if (numProc == readsPerWrite):
+            ohw("".join(StringList))
             StringList = []
             sla = StringList.append
-        try:
-            fqRec = pFastqProxy(inFq.next())
-        except StopIteration:
-            break
-        bc4fq = GetDescTagValue(fqRec.comment, "BS")
-        if(workingBarcode == ""):
-            try:
-                workingBarcode = bc4fq
-                workingSet = [fqRec]
-                continue
-            except TypeError:
-                print("workingBarcode = " + workingBarcode)
-                print("workingSet = " + repr(workingSet))
-                sys.exit()
-        elif(workingBarcode == bc4fq):
-            workingSet.append(fqRec)
+            numProc = 0
             continue
-        elif(workingBarcode != bc4fq):
-            if(len(workingSet) == 1):
-                workingBarcode = ""
-                workingSet = []
-                continue
-            tStr = fn(workingSet)
-            if(skipFails and ("Fail" in tStr)):
-                continue
-            sla(tStr)
-            workingSet = [fqRec]
-            workingBarcode = bc4fq
-            numProc += 1
-            continue
-    if(UsecProfile):
-        s = cStringIO.StringIO()
-        pr.disable()
-        sortby = "cumulative"
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        open("cProfile.stats.txt", 'w').write(s.getValue())
-    outputHandle.write("".join(StringList))
+    ohw("".join(StringList))
     outputHandle.flush()
     inFq.close()
     outputHandle.close()

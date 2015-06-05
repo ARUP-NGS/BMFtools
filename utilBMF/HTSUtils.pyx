@@ -326,11 +326,24 @@ cdef class pFastqProxy:
     def __str__(self):
         return self.tostring()
 
-    cdef cython.str getBS_(self):
+    cdef cython.str cGetBS(self):
         return self.comment.split("|")[2].split("=")[1]
 
     cpdef cython.str getBS(self):
-        return self.getBS_()
+        return self.cGetBS()
+
+
+cdef cython.str cGetBS(pFastqProxy_t read):
+    """
+    Portable function for getting the barcode sequence from a marked BMFastq
+    """
+    return read.comment.split("|")[2].split("=")[1]
+
+
+cpdef cython.str getBS(pFastqProxy_t read):
+    """cpdef wrapper of cGetBS
+    """
+    return cGetBS(read)
 
 
 @cython.returns(cython.str)
@@ -1448,6 +1461,8 @@ Int2Base64 = numconv.NumConv(64).int2str
 ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
 # Pre-computes
 chr2ph = {i: ord(i) - 33 for i in [ph2chrDict[i] for i in range(94)]}
+chr2phStr = {i: str(ord(i)) - 33 for i in [ph2chrDict[i] for i in range(94)]}
+int2Str = {i: str(i) for i in xrange(1000)}
 
 """
 @cython.returns(np.int64_t)

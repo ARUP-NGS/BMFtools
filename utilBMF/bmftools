@@ -585,14 +585,17 @@ def main():
         OutTable = VCFStats(args.inVCF)
         sys.exit(0)
     if(args.bmfsuites == "dmp"):
-        from BMFMain.ProcessingSteps import pairedFastqShades
-        OutFastq1, OutFastq2 = pairedFastqShades(
-            args.inFqs[0],
-            args.inFqs[1],
-            indexfq=args.indexFq,
-            p3Seq=args.p3Seq,
-            p5Seq=args.p5Seq)
-        sys.exit(0)
+        if(len(args.inFqs) == 2):
+            from BMFMain.ProcessingSteps import pairedFastqShades
+            OutFastq1, OutFastq2 = pairedFastqShades(
+                args.inFqs[0],
+                args.inFqs[1],
+                indexfq=args.indexFq,
+                p3Seq=args.p3Seq,
+                p5Seq=args.p5Seq)
+            sys.exit(0)
+        elif(len(args.inFqs) == 1):
+            raise NotImplementedError("I haven't made this yet.")
     if(args.bmfsuites == "sv"):
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans

@@ -57,7 +57,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         addRG = True
     if(aligner == "mem"):
         outBAMProperPair = BCBam.AlignAndTagMem(
-            consfq1, consfq2, ref=ref, opts=opts, addRG=addRG)
+            consfq1, consfq2, ref=ref, opts=opts)
     elif(aligner == "aln"):
         if(addRG is False):
             outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,

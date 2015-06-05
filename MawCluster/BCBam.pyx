@@ -39,7 +39,7 @@ cimport numpy as np
 cimport cython
 
 cimport utilBMF.HTSUtils
-ctypedef utilBMF.HTSUtils.pFastqProxy pFq
+ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")
@@ -266,7 +266,7 @@ def pairedBarcodeTagging(
     cdef bint addDefault, bwaswRescue, passing
     cdef cython.str coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2
-    cdef pFq pFq1, pFq2
+    cdef pFastqProxy_t pFq1, pFq2
     # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
@@ -488,7 +488,7 @@ def ConsolidateInferred(inBAM, outBAM="default"):
 
 
 def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
-    cdef pFq FqPrx
+    cdef pFastqProxy_t FqPrx
     cdef pysam.cfaidx.FastqProxy tempRead
     cdef pysam.calignmentfile.AlignedSegment entry
     cdef pysam.cfaidx.FastqFile reads
@@ -698,7 +698,7 @@ cdef cAlignedSegment TagAlignedSegment(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    FP = 1 if("pass" in CommentDict["PV"].lower()) else 0
+    FP = 1 if("Pass" in CommentDict["PV"]) else 0
     NF = ND * 1. / FM
     AF = getAF(read)
     SF = getSF(read)
