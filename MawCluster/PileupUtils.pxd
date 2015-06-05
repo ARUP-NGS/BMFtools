@@ -1,6 +1,7 @@
 cimport cython
 cimport numpy as np
 cimport pysam.calignmentfile
+from numpy cimport ndarray
 from utilBMF.HTSUtils cimport pPileupRead
 ctypedef pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
@@ -70,7 +71,7 @@ cdef class PRInfo:
     cdef public cython.str BaseCall
     cdef public cython.str ssString, query_name
     cdef public cython.float FractionAgreed, PVFrac, NF
-    cdef public np.ndarray PV_Array
+    cdef public ndarray PV_Array
     cpdef object opt(self, cython.str arg)
 
 

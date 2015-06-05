@@ -2,6 +2,7 @@ cimport cython
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport numpy as np
+from numpy cimport ndarray
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
@@ -146,3 +147,4 @@ cdef cython.bint cReadsOverlap(
         cAlignedSegment read2)
 
 cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
+cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)

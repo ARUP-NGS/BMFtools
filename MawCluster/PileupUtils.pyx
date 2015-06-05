@@ -18,7 +18,7 @@ except ImportError:
 
 import numpy as np
 from numpy import (mean as nmean, max as nmax, sum as nsum,
-                   std as nstd, array as nparray)
+                   array as nparray, std as nstd)
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
@@ -28,7 +28,7 @@ from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair, ssStringFromRead,
-                              PysamToChrDict, nucList)
+                              PysamToChrDict, nucList, cyStdFlt, cyStdInt)
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -230,7 +230,8 @@ cdef class AlleleAggregateInfo:
                  float minPVFrac=0.0, int FSR=-1,
                  object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
                  object oagmq=oagmq):
-        cdef np.ndarray NFList
+        cdef ndarray NFList
+        cdef ndarray[np.float64_t, ndim = 1] query_positions
         cdef int lenR
         cdef PRInfo_t rec
         cdef tuple i
@@ -275,7 +276,7 @@ cdef class AlleleAggregateInfo:
         try:
             self.MNF = nmean(NFList)
             self.maxNF = nmax(NFList)
-            self.NFSD = nstd(NFList)
+            self.NFSD = cyStdFlt(NFList)
         except ValueError:
             #  This list must have length zero...
             self.MNF = -1.
@@ -366,7 +367,7 @@ cdef class AlleleAggregateInfo:
                                       if i[1] > 1])
         query_positions = nparray(map(oagqp, self.recList), dtype=np.float64)
         self.MBP = nmean(query_positions)
-        self.BPSD = nstd(query_positions)
+        self.BPSD = cyStdFlt(query_positions)
         self.minPVFrac = minPVFrac
         PVFArray = map(oag("PVFrac"), self.recList)
         #  PVFArray = [rec.PVFrac for rec in self.recList]
@@ -376,7 +377,7 @@ cdef class AlleleAggregateInfo:
             self.PFSD = -1.
         else:
             self.MPF = nmean(PVFArray)
-            self.PFSD = nstd(PVFArray)
+            self.PFSD = cyStdFlt(PVFArray)
         self.maxND = max(rec.opt("ND") for rec in self.recList)
 
 
@@ -408,7 +409,7 @@ cdef class PCInfo:
         cdef list pileups, fks, svTags, exclusionTagList, discNames
         cdef pPileupRead_t r
         cdef int lenR, rsn
-        cdef query_positions
+        cdef ndarray [np.float64_t, ndim = 1] query_positions
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
         # of them has to be wrong!
@@ -507,9 +508,9 @@ cdef class PCInfo:
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
                             for alt in set(map(oagbc, self.Records))}
-        query_positions = map(oagqp, self.Records)
+        query_positions = nparray(map(oagqp, self.Records), dtype=np.float64)
         self.AAMBP = nmean(query_positions)
-        self.AABPSD = nstd(query_positions)
+        self.AABPSD = cyStdFlt(query_positions)
 
         self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],

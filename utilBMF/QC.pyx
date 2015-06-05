@@ -5,10 +5,10 @@ from operator import attrgetter as oag
 from operator import methodcaller as mc
 from subprocess import check_output, check_call
 from numpy import (array as nparray, append as npappend,
-                   mean as nmean, max as nmax, std as nstd)
+                   mean as nmean, max as nmax)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
-                       PipedShellCall, pFastqFile)
+                       PipedShellCall, pFastqFile, cyStdFlt, cyStdInt)
 from .ErrorHandling import ThisIsMadness
 from MawCluster.PileupUtils import pPileupColumn
 import cython
@@ -103,14 +103,21 @@ def CountNumReads(inBAM):
     """
     return int(check_output(["samtools", "view", "-c", inBAM]).strip())
 
+cdef ndarray[np.float64_t, ndim = 1] InsertSizeArray_(
+        pysam.calignmentfile.AlignmentFile handle):
+    cdef pysam.calignmentfile.AlignedSegment i
+    return np.absolute(np.array([i.tlen for i in handle], dtype=np.float64))
+    
 
-def InsertSizeArray(inBAM):
+@cython.returns(ndarray)
+def InsertSizeArray(cython.str inBAM):
     """
     Returns an array of insert sizes for the sample.
     """
     cdef pysam.calignmentfile.AlignedSegment i
+    cdef pysam.calignmentfile.AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(inBAM, "rb")
-    return [abs(i.tlen) for i in inHandle]
+    return InsertSizeArray_(inHandle)
 
 
 @cython.locals(min=int, onTargetBuffer=int)
@@ -176,7 +183,7 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     MappedSingletonReads = MappedReads - MappedFamReads
     allInserts = allInserts[allInserts > 0]  # Remove tlen's of 0 from mean.
     meanInsert = nmean(allInserts[allInserts < 5000])
-    stdInsert = nstd(allInserts[allInserts < 5000])
+    stdInsert = cyStdInt(allInserts[allInserts < 5000])
     maxInsert = nmax(allInserts)
     # Don't include huge inserts in mean calculation.
     resultsDict["MeanInsert"] = meanInsert
@@ -197,7 +204,7 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     return resultsDict
 
 
-cdef np.ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
+cdef ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
     """
     Calculates family size and library diversity from a consolidated
     fastq file.
@@ -245,7 +252,7 @@ def GetFamSizeStats(cython.str inFq, outfile=sys.stdout):
     cdef pysam.cfaidx.FastqProxy read
     cdef double MeanFamAll, MeanRealFam
     cdef pFastqFile_t FqHandle
-    cdef np.ndarray[double, ndim = 1] results
+    cdef ndarray[double, ndim = 1] results
     if(outfile == sys.stdout):
         outStr = "stdout"
     elif(isinstance(outfile, str)):

@@ -1,5 +1,7 @@
 cimport cython
 cimport pysam.calignmentfile
+cimport pysam.cfaidx
+from numpy cimport ndarray
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 
 cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile bam,

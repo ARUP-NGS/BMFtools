@@ -8,7 +8,7 @@ from functools import partial
 from itertools import groupby, tee, chain, combinations, product
 from MawCluster.Probability import GetCeiling
 from numpy import (any as npany, concatenate as nconcatenate, less as nless,
-                   max as nmax, mean as nmean, min as nmin, std as nstd)
+                   max as nmax, mean as nmean, min as nmin)
 from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
@@ -52,6 +52,7 @@ ctypedef Deletion Deletion_t
 ctypedef AbstractIndelContainer AbstractIndelContainer_t
 ctypedef IndelQuiver IndelQuiver_t
 ctypedef IDVCFLine IDVCFLine_t
+from numpy cimport ndarray 
 oig1 = oig(1)
 oig0 = oig(0)
 cfi = chain.from_iterable
@@ -1641,9 +1642,9 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                   window=20):
     from sklearn.covariance import EllipticEnvelope
-    cdef np.ndarray[np.longdouble_t, ndim = 1] GAFreqNP = f1
-    cdef np.ndarray[np.longdouble_t, ndim = 1] CTFreqNP = f2
-    cdef np.ndarray[np.longdouble_t, ndim = 1] FreqArray
+    cdef ndarray[np.longdouble_t, ndim = 1] GAFreqNP = f1
+    cdef ndarray[np.longdouble_t, ndim = 1] CTFreqNP = f2
+    cdef ndarray[np.longdouble_t, ndim = 1] FreqArray
     FreqArray = nconcatenate(GAFreqNP, CTFreqNP)
     ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
@@ -1658,7 +1659,7 @@ def PlotNormalFit(array, outfile="default"):
     import matplotlib.pyplot as plt
     import matplotlib.mlab as mlab
     array = array.reshape(-1, 1)
-    mu, sigma = nmean(array), nstd(array)
+    mu, sigma = nmean(array), cyStdFlt(array)
     n, bins, patches = plt.hist(array, 50, normed=1, facecolor='green',
                                 alpha=0.75)
     y = mlab.normpdf(bins, mu, sigma)
@@ -2969,10 +2970,10 @@ def GetSCFractionArray(inBAM):
     return [FractionSoftClipped(i) for i in inHandle]
 
 
-@cython.returns(np.ndarray)
+@cython.returns(ndarray)
 def GetTlenArray(inBAM):
     cdef cAlignedSegment i
-    cdef np.ndarray[np.int64_t, ndim = 2] tlens
+    cdef ndarray[np.int64_t, ndim = 2] tlens
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tlens = np.array([i.tlen for i in inHandle if i.is_read1 and i.tlen != 0],
                      dtype=np.int64, ndmin=2)
@@ -2980,7 +2981,7 @@ def GetTlenArray(inBAM):
 
 
 def PlotTlen(inBAM, outfile="default"):
-    cdef np.ndarray[np.int64_t, ndim = 2] tlens
+    cdef ndarray[np.int64_t, ndim = 2] tlens
     pl("About to load tlens")
     tlens = GetTlenArray(inBAM)
     pl("Successfully loaded tlens.")
@@ -2990,7 +2991,7 @@ def PlotTlen(inBAM, outfile="default"):
     import matplotlib.mlab as mlab
     tlens = tlens.reshape(-1, 1)
     pl("Looks like I reshaped successfully.")
-    mu, sigma = nmean(tlens[tlens < 5000]), nstd(tlens[tlens < 5000])
+    mu, sigma = nmean(tlens[tlens < 5000]), cyStdFlt(tlens[tlens < 5000])
     # Only includes them in that calculation for reasonably possible
     # insert lengths.
     n, bins, patches = plt.hist(tlens, 200, normed=1, facecolor='green',
@@ -3072,3 +3073,37 @@ cpdef cython.bint ReadsOverlap(
     """cpdef wrapper of cReadsOverlap
     """
     return cReadsOverlap(read1, read2)
+
+
+cdef extern from "math.h":
+    double sqrt(double m)
+
+
+@cython.boundscheck(False)
+def cyStdInt(ndarray[np.int64_t, ndim=1] a):
+    """Taken from Notes On Cython, with some minor changes.
+    """
+    return cyOptStdDev_(a.astype(np.float64))
+
+
+@cython.boundscheck(False)
+def cyStdFlt(ndarray[np.float64_t, ndim=1] a):
+    """Taken from Notes On Cython, with some minor changes.
+    """
+    return cyOptStdDev_(a)
+
+
+@cython.boundscheck(False)
+cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a):
+    """Taken from Notes On Cython, with some minor changes.
+    """
+    cdef Py_ssize_t i
+    cdef Py_ssize_t n = a.shape[0]
+    cdef double m = 0.0
+    for i in range(n):
+        m += a[i]
+    m /= n
+    cdef double v = 0.0
+    for i in range(n):
+        v += (a[i] - m)**2
+    return sqrt(v / n)

@@ -18,6 +18,7 @@ import numpy as np
 from numpy import array as nparray
 from numpy import mean as nmean
 from numpy import sum as nsum
+from numpy cimport ndarray
 from scipy.stats import binom
 from scipy.misc import comb
 from statsmodels.stats import proportion
@@ -57,7 +58,7 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
                             "stats.proportion.")
 
 
-@cython.returns(np.ndarray)
+@cython.returns(ndarray)
 def ConfidenceIntervalAI(int Allele1,
                          int Allele2,
                          np.longdouble_t pVal=defaultPValue,
@@ -175,7 +176,7 @@ def SamplingFrac_(n, p=0., k=1):
 
 @memoize
 @cython.locals(p=np.longdouble_t, k=int, n=int)
-@cython.returns(np.ndarray)
+@cython.returns(ndarray)
 def GetUnscaledProbs(n, p=0.):
     """
     Calculates the probability moments for k in xrange(n + 1).
@@ -188,7 +189,7 @@ def GetUnscaledProbs(n, p=0.):
 
 @memoize
 @cython.locals(p=np.longdouble_t, k=int, n=int)
-@cython.returns(np.ndarray)
+@cython.returns(ndarray)
 def GetUnscaledProbs_(n, p=0.):
     """
     Calculates the probability moments for k in xrange(n + 1).
@@ -215,15 +216,15 @@ def PartitionFunction_(n, p=0.1):
 
 @memoize
 @cython.locals(p=np.longdouble_t, n=int, k=int)
-@cython.returns(np.ndarray)
+@cython.returns(ndarray)
 def SamplingProbDist(n, p=0.):
     """
     Given a fixed probability of an event with n samplings, returns
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[np.longdouble_t, ndim = 1] ProbDist
-    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim = 1] ProbDist
+    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
@@ -232,15 +233,15 @@ def SamplingProbDist(n, p=0.):
 
 @memoize
 @cython.locals(p=np.longdouble_t, n=int, k=int)
-@cython.returns(np.ndarray)
+@cython.returns(ndarray)
 def SamplingProbDist_(n, p=0.):
     """
     Given a fixed probability of an event with n samplings, returns
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[np.longdouble_t, ndim = 1] ProbDist
-    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim = 1] ProbDist
+    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
@@ -256,7 +257,7 @@ def SamplingProbMoments(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn
@@ -271,7 +272,7 @@ def SamplingProbMoments_(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef np.ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn

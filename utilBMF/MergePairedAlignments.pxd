@@ -1,6 +1,7 @@
 cimport cython
 cimport pysam.calignmentfile
 cimport numpy as np
+from numpy cimport ndarray
 ctypedef Layout Layout_t
 ctypedef LayoutPos LayoutPos_t
 
@@ -21,13 +22,13 @@ cdef class Layout(object):
     cpdef cython.int getAlignmentStart(self)
     cpdef cython.str getCigarString(self)
     cpdef cython.str getSeq(self)
-    cdef np.ndarray[char] getSeqArr(self, dict chrDict=?)
+    cdef ndarray[char] getSeqArr(self, dict chrDict=?)
     cdef int getRefPosForFirstPos_(self)
     cpdef int getRefPosForFirstPos(self)
-    cpdef np.ndarray[int] getAgreement(self)
-    cdef np.ndarray[int] getAgreement_(self)
-    cdef np.ndarray[int] getQual_(self)
-    cpdef np.ndarray[int] getQual(self)
+    cpdef ndarray[int] getAgreement(self)
+    cdef ndarray[int] getAgreement_(self)
+    cdef ndarray[int] getQual_(self)
+    cpdef ndarray[int] getQual(self)
     cdef cython.str getQualString_(self, dict ph2chrDict=?)
     cpdef getQualString(self)
     cdef int getLastRefPos_(self)

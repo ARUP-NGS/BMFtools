@@ -158,8 +158,8 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
     If hybrid is set, a failure to successfully demultiplex falls back to a
     base by base comparison.
     """
-    cdef np.ndarray[np.int64_t, ndim = 1] phredQuals, FA
-    cdef np.ndarray[char, ndim = 1, mode = "c"] finalSeq
+    cdef ndarray[np.int64_t, ndim = 1] phredQuals, FA
+    cdef ndarray[char, ndim = 1, mode = "c"] finalSeq
     cdef list seqs
     cdef cython.str seqItem, seq, lenRStr, qual
     cdef cython.str PVString, QualString, TagString, consFqString
@@ -270,11 +270,11 @@ cdef cython.str compareFqRecsFast(list R,
     cdef int lenR, ND, lenSeq
     cdef cython.bint Success
     cdef cython.str seq, qual, seqItem, qualChar
-    cdef np.ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
-    cdef np.ndarray[np.int64_t, ndim = 2] qualT, qualAllSum
-    cdef np.ndarray[np.int64_t, ndim = 1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef np.ndarray[np.int64_t, ndim = 1] MaxPhredSum, phredQuals, qualTFlat
-    cdef np.ndarray[char, ndim = 1, mode = "c"] newSeq
+    cdef ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
+    cdef ndarray[np.int64_t, ndim = 2] qualT, qualAllSum
+    cdef ndarray[np.int64_t, ndim = 1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[np.int64_t, ndim = 1] MaxPhredSum, phredQuals, qualTFlat
+    cdef ndarray[char, ndim = 1, mode = "c"] newSeq
     if(name is None):
         name = R[0].name
     lenR = len(R)

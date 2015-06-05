@@ -39,7 +39,7 @@ def CigarOpToLayoutPosList(int offset, tuple cigarOp,
                            pysam.calignmentfile.AlignedSegment rec):
     cdef tuple x
     cdef cython.str CigarChar
-    cdef np.ndarray[long, ndim = 1] quals, agrees
+    cdef ndarray[long, ndim = 1] quals, agrees
     '''
     First case - 'M'
     Second case - 'I'
@@ -169,7 +169,7 @@ cdef class Layout(object):
     def __len__(self):
         return len(self.positions)
 
-    cdef np.ndarray[char] getSeqArr(self, dict chrDict=chrDict):
+    cdef ndarray[char] getSeqArr(self, dict chrDict=chrDict):
         """Returns a character array of the base calls
         if the base calls aren't "S" (83) or "D" (68)
         """
@@ -180,7 +180,7 @@ cdef class Layout(object):
                                self.positions] if
                               i != 83 and i != 68])
     '''
-    cdef np.ndarray[char] getSeqArr(self):
+    cdef ndarray[char] getSeqArr(self):
         """Returns a character array of the base calls
         if the base calls aren't "S" (83) or "D" (68)
         """
@@ -213,12 +213,12 @@ cdef class Layout(object):
             if(i.operation == "M"):
                 return i.pos
 
-    cpdef np.ndarray[int] getAgreement(self):
+    cpdef ndarray[int] getAgreement(self):
         """cpdef wrapper of getAgreement_
         """
         return self.getAgreement_()
 
-    cdef np.ndarray[int] getAgreement_(self):
+    cdef ndarray[int] getAgreement_(self):
         cdef int i
         cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
@@ -227,7 +227,7 @@ cdef class Layout(object):
                                pos in self.positions] if i > -1],
                         dtype=np.int64)
 
-    cdef np.ndarray[int] getQual_(self):
+    cdef ndarray[int] getQual_(self):
         cdef int i
         cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
@@ -236,7 +236,7 @@ cdef class Layout(object):
                                pos in self.positions] if i > -1],
                         dtype=np.int64)
 
-    cpdef np.ndarray[int] getQual(self):
+    cpdef ndarray[int] getQual(self):
         return self.getQual_()
 
     cdef cython.str getQualString_(self, dict ph2chrDict=ph2chrDict):
@@ -271,6 +271,8 @@ cdef class Layout(object):
                                     ",".join(self.getQual().astype(str)))
         self.tagDict["FA"] = BamTag("FA", "Z",
                                     ",".join(self.getAgreement().astype(str)))
+        self.tagDict["PM"] = BamTag("PM", "Z",
+                                    ",".join(self.getMergedPositions().astype(str)))
 
     cpdef update_tags(self):
         self.update_tags_()
@@ -299,7 +301,7 @@ cdef class Layout(object):
                 pos.readPos = count
         self.update_tags()
 
-    @cython.returns(np.ndarray)
+    @cython.returns(ndarray)
     def getOperations(self, oagop=oagop):
         cdef LayoutPos_t pos
         return np.array(map(chr, [pos.operation for pos in self.positions]))

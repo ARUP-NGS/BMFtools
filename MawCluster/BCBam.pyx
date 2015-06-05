@@ -259,7 +259,7 @@ def pairedBarcodeTagging(
     """
     TODO: Unit test for this function.
     """
-    cdef np.ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
+    cdef ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2

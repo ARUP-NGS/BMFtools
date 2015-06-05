@@ -1,5 +1,6 @@
 cimport cython
 cimport utilBMF.HTSUtils
+from numpy cimport ndarray
 # from utilBMF._re2 cimport cpp_string
 ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
