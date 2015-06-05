@@ -1,9 +1,11 @@
 cimport cython
+cimport numpy as np
+cimport pysam.calignmentfile
+cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
-from numpy cimport ndarray
-# from utilBMF._re2 cimport cpp_string
-ctypedef utilBMF.HTSUtils.pFastqProxy pFq
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
+ctypedef utilBMF.HTSUtils.pFastqProxy pFq
+from numpy cimport ndarray
 
 cdef cython.str compareFqRecsFast(list R,
                                   cython.str name=?,

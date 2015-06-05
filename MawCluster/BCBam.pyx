@@ -45,12 +45,12 @@ oagseq = oag("seq")
 oagqqual = oag("query_qualities")
 
 
-@cython.locals(fixMate=cython.bint)
+@cython.locals(fixMate=bint)
 def AbraCadabra(inBAM, outBAM="default",
                 jar="default", memStr="default", ref="default",
                 threads="4", bed="default", working="default",
                 log="default", fixMate=True, tempPrefix="tmpPref",
-                rLen=-1, intelPath="default", cython.bint leftAlign=True):
+                rLen=-1, intelPath="default", bint leftAlign=True):
     """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
@@ -254,7 +254,7 @@ def pairedBarcodeTagging(
         cython.str outBAMFile="default",
         cython.str suppBam="default",
         cython.str bedfile="default",
-        cython.str conversionXml="default", cython.str realigner="default",
+        cython.str conversionXml="default", cython.str realigner="none",
         double minAF=0.0, cython.str ref="default"):
     """
     TODO: Unit test for this function.
@@ -263,13 +263,11 @@ def pairedBarcodeTagging(
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
-    cdef cython.bint addDefault, bwaswRescue
+    cdef bint addDefault, bwaswRescue
     cdef cython.str coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2
     cdef pFq pFq1, pFq2
     # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
-    if(realigner == "default"):
-        raise Tim("realigner must be set to gatk, abra, or none.")
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -563,7 +561,7 @@ def GetRPsWithI(inBAM, outBAM="default"):
     return outBAM
 
 
-@cython.returns(cython.bint)
+@cython.returns(bint)
 def FracSoftclippedTest(pysam.calignmentfile.AlignedSegment rec,
                         double maxFracSoftClipped=0.25):
     if(FractionSoftClipped(rec) >= maxFracSoftClipped):
@@ -685,7 +683,7 @@ cpdef dict GetCOTagDict(cAlignedSegment read):
 
 cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
                       pysam.calignmentfile.AlignmentFile outbam,
-                      cython.bint addRG=False):
+                      bint addRG=False):
     """In progress
     """
     cdef dict CD  # Comment Dictionary

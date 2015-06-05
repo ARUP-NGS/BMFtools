@@ -42,11 +42,6 @@ oagqual = oag("quality")
 npchararray = npchar.array
 partialnpchar = partial(npchararray, itemsize=1)
 
-cimport cython
-cimport numpy as np
-cimport pysam.cfaidx
-cimport pysam.calignmentfile
-
 
 letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
                  0: 'A', 1: 'C', 2: 'G', 3: 'T'}
@@ -295,11 +290,6 @@ cdef cython.str compareFqRecsFast(list R,
 
     # print(repr(seqArray))
     quals = nparray(map(fromQS, map(oagqual, R)))
-    """
-    quals = nparray(
-        [list(cmap(chr2phFunc, list(record.quality))) for record in R],
-        dtype=np.int64)
-    """
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
     quals[quals < 3] = 0

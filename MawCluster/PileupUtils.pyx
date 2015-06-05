@@ -22,7 +22,7 @@ from numpy import (mean as nmean, max as nmax, sum as nsum,
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
-from cytoolz import (map as cmap, frequencies as cyfreq,
+from cytoolz import (frequencies as cyfreq,
                      partition as ctpartition)
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
@@ -31,14 +31,6 @@ from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PysamToChrDict, nucList, cyStdFlt, cyStdInt)
 from utilBMF import HTSUtils
 import utilBMF
-
-from utilBMF.HTSUtils cimport PileupReadPair
-cimport numpy as np
-cimport pysam.calignmentfile
-cimport utilBMF.HTSUtils
-ctypedef PRInfo PRInfo_t
-ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
-ctypedef PileupReadPair PileupReadPair_t
 
 #  Pre-defining some itemgetters and attrgetters
 oig1 = oig(1)
@@ -229,9 +221,9 @@ cdef class AlleleAggregateInfo:
                  float minFracAgreed=0.0, int minFA=0,
                  float minPVFrac=0.0, int FSR=-1,
                  object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
-                 object oagmq=oagmq):
+                 object oagmq=oagmq, object nparray=nparray):
         cdef ndarray NFList
-        cdef ndarray[np.float64_t, ndim = 1] query_positions
+        cdef ndarray[np.float64_t, ndim = 1] query_positions, PVFArray
         cdef int lenR
         cdef PRInfo_t rec
         cdef tuple i
@@ -336,7 +328,7 @@ cdef class AlleleAggregateInfo:
             ["&&".join([self.transition, is_reverse_to_str(
                 rec.is_reverse)]) for rec in self.recList])
         self.StrandCountsDict = {}
-        self.StrandCountsDict["reverse"] = sum(cmap(
+        self.StrandCountsDict["reverse"] = sum(map(
             oagir, self.recList))
         self.StrandCountsDict["forward"] = sum(
             rec.is_reverse is False for rec in self.recList)
@@ -369,7 +361,7 @@ cdef class AlleleAggregateInfo:
         self.MBP = nmean(query_positions)
         self.BPSD = cyStdFlt(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = map(oag("PVFrac"), self.recList)
+        PVFArray = nparray(map(oag("PVFrac"), self.recList), dtype=np.float64)
         #  PVFArray = [rec.PVFrac for rec in self.recList]
 
         if(len(PVFArray) == 0):
@@ -493,7 +485,7 @@ cdef class PCInfo:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
         try:
-            self.TotalReads = sum(cmap(oag("FM"), self.Records))
+            self.TotalReads = sum(map(oag("FM"), self.Records))
         except KeyError:
             self.TotalReads = self.MergedReads
         try:
@@ -579,7 +571,7 @@ cdef class PCInfo:
             str(self.TotalStrandednessRatioDict[
                 key]) for key in self.TotalStrandednessRatioDict.iterkeys()])
         self.AlleleFreqStr = "\t".join(
-            cmap(str, [self.contig, self.pos, self.consensus,
+            map(str, [self.contig, self.pos, self.consensus,
                        self.MergedReads, self.TotalReads, self.MergedCountStr,
                        self.TotalCountStr, self.MergedFracStr,
                        self.TotalFracStr,

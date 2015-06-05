@@ -3,6 +3,7 @@ import sys
 #  import warnings # Uncomment this if you want to treat warnings as errors.
 from utilBMF.HTSUtils import printlog as pl, TrimExt
 from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
+from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 #  from pudb import set_trace
 
 """
@@ -18,6 +19,9 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    TagBamParser = subparsers.add_parser(
+        "tagbam", description=("Tag a BAM file with appropriate information"
+                               " from merged fastq files."))
     versionParser = subparsers.add_parser(
         "v", description="Outputs version of BMFTools.")
     InputQtyParser = subparsers.add_parser(
@@ -69,9 +73,6 @@ def main():
                                              description="Marks, combines, and"
                                              " processes a dataset of fastqs f"
                                              "or further analysis.")
-    BamTagsParser = subparsers.add_parser("tagbam",
-                                          description="Tags a BAM file with in"
-                                          "formation from Fastq file(s)")
     SNVParser = subparsers.add_parser("snv", description="Call SNVs. Assumes "
                                       "that reads have been collapsed from a "
                                       "family size of at least 2")
@@ -180,16 +181,21 @@ def main():
         metavar="primer3Seq",
         help="3' primer sequence used by cutadapt [default value is 'default', which will not run cutadapt]",
         default="default")
-    BamTagsParser.add_argument(
+    TagBamParser.add_argument(
         "inBAM",
         metavar="inBAM",
-        help="Untagged Bam")
-    BamTagsParser.add_argument(
+        help="Untagged Bam, name-sorted")
+    TagBamParser.add_argument(
         "--fastq",
         "-f",
         metavar="InFastqs",
         nargs="+",
-        help="Tagged, Merged Fastq File")
+        help="Tagged, Merged Fastq File(s)")
+    TagBamParser.add_argument(
+        "-o", "--outfile",
+        help=("Path to output file. If not set, defaults to variation "
+              "on input bam."),
+        type=str, default="default")
     SVParser.add_argument(
         'bam',
         help=("Coordinate-Sorted, Indexed Bam File"),
@@ -494,6 +500,8 @@ def main():
                     runconf["is_slave"] = True
             if(args.is_slave is True):
                 is_slave = True
+            if("is_slave" not in locals()):
+                is_slave = False
             runconf["is_slave"] = is_slave
             runconf["commandStr"] = commandStr
         else:
@@ -689,8 +697,15 @@ def main():
     if(args.bmfsuites == "v"):
         from utilBMF.HTSUtils import __version__
         print(__version__)
-    sys.exit(0)
+    if(args.bmfsuites == "tagbam"):
+        fastqs = args.fastq
+        if(len(fastqs) == 1):
+            singleBarcodeTagging(fastqs[0], args.inBAM, outputBAM=args.outfile)
+        elif(len(fastqs) == 2):
+            pairedBarcodeTagging(fastqs[0], fastqs[1], args.inBAM,
+                                 outBAMFile=args.outfile)
+    return 0
 
 
 if(__name__ == "__main__"):
-    main()
+    sys.exit(main())

@@ -7,6 +7,13 @@ ctypedef pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
 
 
+from utilBMF.HTSUtils cimport PileupReadPair
+cimport utilBMF.HTSUtils
+ctypedef PRInfo PRInfo_t
+ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
+ctypedef PileupReadPair PileupReadPair_t
+
+
 cdef class AlleleAggregateInfo:
 
     """

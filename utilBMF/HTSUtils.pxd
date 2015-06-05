@@ -3,11 +3,20 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
+from cython cimport bint
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+
+cimport pysam.TabProxies
+ctypedef pysam.calignmentfile.PileupRead cPileupRead
+ctypedef Insertion Insertion_t
+ctypedef Deletion Deletion_t
+ctypedef AbstractIndelContainer AbstractIndelContainer_t
+ctypedef IndelQuiver IndelQuiver_t
+ctypedef IDVCFLine IDVCFLine_t
 
 cdef class pPileupRead:
     """

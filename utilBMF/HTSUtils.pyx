@@ -42,17 +42,6 @@ except ImportError:
     from re import finditer
 regexcompile = re.compile
 
-cimport numpy as np
-cimport pysam.cfaidx
-cimport pysam.calignmentfile
-cimport pysam.TabProxies
-ctypedef pysam.calignmentfile.PileupRead cPileupRead
-ctypedef Insertion Insertion_t
-ctypedef Deletion Deletion_t
-ctypedef AbstractIndelContainer AbstractIndelContainer_t
-ctypedef IndelQuiver IndelQuiver_t
-ctypedef IDVCFLine IDVCFLine_t
-from numpy cimport ndarray 
 oig1 = oig(1)
 oig0 = oig(0)
 cfi = chain.from_iterable
@@ -67,7 +56,7 @@ def l1(x):
     return x[1]
 
 
-@cython.returns(cython.bint)
+@cython.returns(bint)
 def lisnone(x):
     return x[1] is None
 
@@ -372,7 +361,7 @@ def FacePalm(string, art=FPStr):
     raise Tim("WHAT YOU SAY")
 
 
-@cython.returns(cython.bint)
+@cython.returns(bint)
 def is_read_softclipped(read):
     """
     Simply returns whether or not a read is soft-clipped
@@ -384,7 +373,7 @@ def is_read_softclipped(read):
     return False
 
 
-@cython.returns(cython.bint)
+@cython.returns(bint)
 @cython.locals(minLen=int)
 def ReadPairIsDuplex(readPair, minShare="default"):
     """
@@ -511,11 +500,11 @@ def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
     return outBAM
 
 
-def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
-                        path="default", picardPath="default",
-                        PL="ILLUMINA", SM="default", ID="default",
-                        CN="default", RG="default",
-                        cython.bint addCO=True):
+def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
+                  path="default",
+                  PL="ILLUMINA", SM="default", ID="default",
+                  CN="default", RG="default",
+                  bint addCO=True, bint addRG=True):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -524,6 +513,11 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
     supplementary alignments, and
     writing each reads' alignment,
     regardless of mapping quality.
+    :param cython.str R1 - Path to Fq 1
+    :param cython.str R2 - Path to Fq 2
+    :param cython.str ref - Path to reference
+    :param cython.str opts - Options to pass to bwa
+    :param bint addCO
     """
     if(opts == ""):
         opts = '-t 4 -v 1 -Y -M -T 0'
@@ -532,53 +526,23 @@ def align_bwa_mem_addRG(R1, R2, ref="default", opts="", outBAM="default",
     outSAM = outBAM.replace(".bam", ".sam")
     if(ref == "default"):
         raise Tim("Reference file index required for alignment!")
-    if(picardPath == "default"):
-        raise Tim("Path to picard jar required for adding RG!")
     opt_concat = ' '.join(opts.split())
     RGString = "@RG\tID:bwa SM:%s" % SM
     baseString = "bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("bwa mem", "bwa mem -C")
-        baseString += "sed 's/\t[1-4]:[A-Z]:/\tCO:Z:/'"
+        baseString += "| sed 's/\t[1-4]:[A-Z]:/\tCO:Z:/'"
+        if(addRG):
+            baseString += ("| sed 's/^@PG/@RG\tID:default\t"
+                           "PL:ILLUMINA\tPU:default\tLB:default\tSM:default\t"
+                           "CN:default\n@PG/'")
     if(path == "default"):
         command_str = baseString + "> %s" % outSAM
     else:
         command_str = path + baseString[3:] + " > %s" % outSAM
     # command_list = command_str.split(' ')
     printlog(command_str)
-    PipedShellCall(command_str)
-    AddReadGroupsPicard(outSAM, outBAM=outBAM, SM=SM, ID=ID, PL=PL,
-                        CN=CN, picardPath=picardPath, RG=RG)
-    return outBAM
-
-
-def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
-                  path="default"):
-    """
-    Aligns a set of paired-end
-    reads to a reference
-    with provided options using bwa mem.
-    Defaults to 4 threads, silent alignment, listing
-    supplementary alignments, and
-    writing each reads' alignment,
-    regardless of mapping quality.
-    """
-    if(opts == ""):
-        opts = '-t 4 -v 1 -Y -M -T 0'
-    if(outBAM == "default"):
-        outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
-    if(ref == "default"):
-        raise Tim("Reference file index required for alignment!")
-    opt_concat = ' '.join(opts.split())
-    if(path == "default"):
-        command_str = ("bwa mem %s %s %s %s " % (opt_concat, ref, R1, R2) +
-                       " | samtools view -Sbh - > {}".format(outBAM))
-    else:
-        command_str = (path + " mem %s %s %s " % (opt_concat, ref, R1) +
-                       "{} | samtools view -Sbh - > {}".format(R2, outBAM))
-    # command_list = command_str.split(' ')
-    printlog(command_str)
-    PipedShellCall(command_str, delete=True)
+    check_call(command_str, shell=True)
     return outBAM
 
 
@@ -887,7 +851,7 @@ def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
     return outBAM
 
 
-@cython.locals(sortAndIndex=cython.bint)
+@cython.locals(sortAndIndex=bint)
 def NameSortAndFixMate(inBAM, outBAM="default", prefix="MetasyntacticVar",
                        uuid="true", threads="4", memStr="4G",
                        sortAndIndex=False, deleteIntermediate=True):
@@ -1027,7 +991,7 @@ def AlignPairDict(cAlignedSegment read):
 
 
 @cython.returns(cAlignedSegment)
-def CollapseReadPair(ReadPair_t pair, cython.bint BMFTags=True,
+def CollapseReadPair(ReadPair_t pair, bint BMFTags=True,
                      int minQualDiff=3):
     """
     minQualDiff is the minimum difference between the quality
@@ -1154,7 +1118,7 @@ def GetReadPair(inHandle):
     return ReadPair(read1, read2)
 
 
-cdef cython.bint cReadsOverlap(cAlignedSegment read1,
+cdef bint cReadsOverlap(cAlignedSegment read1,
                                cAlignedSegment read2):
     if(read1.reference_id != read2.reference_id):
         return False
@@ -1269,7 +1233,7 @@ def LoadReadPairsFromFile(inBAM, SVTag="default",
         return RecordsArray
 
 
-cpdef cython.bint WritePairToHandle(
+cpdef bint WritePairToHandle(
         ReadPair_t pair,
         pysam.calignmentfile.AlignmentFile handle=None):
     """
@@ -1876,7 +1840,7 @@ def makeformatdict(pysam.TabProxies.VCFProxy rec):
     return dict(zip(rec.format.split(":"), rec[0].split(":")))
 
 
-@cython.returns(cython.bint)
+@cython.returns(bint)
 def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
                         np.longdouble_t ctfreq=-1., np.longdouble_t conf=1e-3):
     """
@@ -2495,7 +2459,7 @@ def GetDeletionFromAlignedSegment(cAlignedSegment read,
 
 
 @cython.returns(cython.str)
-def is_reverse_to_str(cython.bint boolean):
+def is_reverse_to_str(bint boolean):
     if(boolean):
         return "reverse"
     elif(boolean is False):
@@ -2547,7 +2511,7 @@ cdef class AbstractIndelContainer(object):
         """
         return len(self.readnames)
 
-    @cython.returns(cython.bint)
+    @cython.returns(bint)
     def compare(self, indelObj):
         """
         Used for comparing two insertion or deletion objects.
@@ -3067,7 +3031,7 @@ cdef class pFastqFile(object):
         self.handle.close()
 
 
-cpdef cython.bint ReadsOverlap(
+cpdef bint ReadsOverlap(
         cAlignedSegment read1,
         cAlignedSegment read2):
     """cpdef wrapper of cReadsOverlap

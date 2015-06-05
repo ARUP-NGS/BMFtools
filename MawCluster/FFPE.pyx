@@ -1,7 +1,7 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: profile=True, cdivision=True, cdivision_warnings=True
 
-from cytoolz import map as cmap, memoize
+from cytoolz import memoize
 from math import log10 as mlog10
 from .BCVCF import IterativeVCFFile
 from .Probability import ConfidenceIntervalAAF, GetCeiling
@@ -26,6 +26,7 @@ from utilBMF.HTSUtils import (printlog as pl,
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
+mclower = memoize(mc("lower"))
 
 
 """
@@ -51,7 +52,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
     cdef int DP
     cdef int GC
     cdef np.longdouble_t freq
-    validFilters = list(cmap(mc("lower"), HeaderFilterDict.keys()))
+    validFilters = map(mc("lower"), HeaderFilterDict.keys())
     FILTER = FILTER.lower()
     filters = FILTER.split(",")
     pl("Filters: %s" % filters)
@@ -75,8 +76,8 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
         lid = line.InfoDict
         cons = lid["CONS"]
         MACSStr = lid["MACS"]
-        macsDict = dict(list(cmap(mc(
-            "split", ">"), MACSStr.split(","))))
+        macsDict = dict(map(mc(
+            "split", ">"), MACSStr.split(",")))
         if(cons == "C" and line.REF == "C"):
             GC = int(macsDict["C"])
             TA = int(macsDict["T"])
@@ -109,7 +110,7 @@ def GetDeaminationFrequencies(inVCF, maxFreq=0.15, FILTER="",
 
 @cython.returns(np.longdouble_t)
 def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
-                  minGCcount=50):
+                  minGCcount=50, object mclower=mclower):
 
     """
     Trying to see if the C compilation is throwing anything off.
@@ -118,7 +119,7 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
     FILTER must be a comma-separated list of FILTER strings as defined
     in the VCF header.
     """
-    validFilters = list(cmap(mc("lower"), HeaderFilterDict.keys()))
+    validFilters = map(mclower, HeaderFilterDict.keys())
     filters = FILTER.lower().split(",")
     pl("Filters: %s" % filters)
     pl("maxFreq: %s" % maxFreq)
@@ -141,8 +142,8 @@ def PyGetDeamFreq(inVCF, maxFreq=0.15, FILTER="",
         lid = line.InfoDict
         cons = lid["CONS"]
         MACSStr = lid["MACS"]
-        macsDict = dict(list(cmap(mc(
-            "split", ">"), MACSStr.split(","))))
+        macsDict = dict(map(mc(
+            "split", ">"), MACSStr.split(",")))
         if((cons == "C" or line.REF == "C") and line.ALT == "C"):
             GC = int(macsDict["C"])
             TA = int(macsDict["T"])
@@ -381,9 +382,9 @@ def TabixDeamFilter(inVCF, pVal=0.001, ctfreq=0.006,
     for rec in inHandle:
         recordsArray.append(FilterFn(rec))
         if(len(recordsArray) >= recordsPerWrite):
-            outHandle.write("\n".join(list(cmap(str, recordsArray))) + "\n")
+            outHandle.write("\n".join(map(str, recordsArray)) + "\n")
             recordsArray = []
-    outHandle.write("\n".join(list(cmap(str, recordsArray))) + "\n")
+    outHandle.write("\n".join(map(str, recordsArray)) + "\n")
     outHandle.flush()
     outHandle.close()
     return outVCF
