@@ -195,7 +195,7 @@ cdef class Layout(object):
     cpdef cython.str getSeq(self):
         return self.getSeqArr().tostring()
 
-    cdef int getRP4FP(self):
+    cdef int getRefPosForFirstPos_(self):
         """cdef class wrapped by getRefPosForFirstPos
         """
         cdef LayoutPos_t i
@@ -205,7 +205,7 @@ cdef class Layout(object):
                 return i.pos - count
 
     cpdef int getRefPosForFirstPos(self):
-        return self.getRP4FP()
+        return self.getRefPosForFirstPos_()
 
     cpdef int getAlignmentStart(self):
         cdef LayoutPos_t i
@@ -214,11 +214,11 @@ cdef class Layout(object):
                 return i.pos
 
     cpdef np.ndarray[int] getAgreement(self):
-        """cpdef wrapper of getAgreementNP
+        """cpdef wrapper of getAgreement_
         """
-        return self.getAgreementNP()
+        return self.getAgreement_()
 
-    cdef np.ndarray[int] getAgreementNP(self):
+    cdef np.ndarray[int] getAgreement_(self):
         cdef int i
         cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
@@ -227,7 +227,7 @@ cdef class Layout(object):
                                pos in self.positions] if i > -1],
                         dtype=np.int64)
 
-    cdef np.ndarray[int] getQualNP(self):
+    cdef np.ndarray[int] getQual_(self):
         cdef int i
         cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
@@ -237,16 +237,16 @@ cdef class Layout(object):
                         dtype=np.int64)
 
     cpdef np.ndarray[int] getQual(self):
-        return self.getQualNP()
+        return self.getQual_()
 
-    cdef cython.str getQualStringNP(self, dict ph2chrDict=ph2chrDict):
+    cdef cython.str getQualString_(self, dict ph2chrDict=ph2chrDict):
         cdef int i
         return "".join([ph2chrDict[i] for i in self.getQual()])
 
     cpdef getQualString(self):
-        return self.getQualStringNP()
+        return self.getQualString_()
 
-    cdef int getLastRefPosNP(self):
+    cdef int getLastRefPos_(self):
         """cdef version of getLastRefPos
         """
         cdef LayoutPos_t i
@@ -264,16 +264,16 @@ cdef class Layout(object):
         Finds the reference position which "matches" the last base in the
         layout. This counts for any cigar operation.
         """
-        return self.getLastRefPosNP()
+        return self.getLastRefPos_()
 
-    cdef update_tagsNP(self):
+    cdef update_tags_(self):
         self.tagDict["PV"] = BamTag("PV", "Z",
                                     ",".join(self.getQual().astype(str)))
         self.tagDict["FA"] = BamTag("FA", "Z",
                                     ",".join(self.getAgreement().astype(str)))
 
     cpdef update_tags(self):
-        self.update_tagsNP()
+        self.update_tags_()
 
     def update(self):
         cdef LayoutPos_t pos
@@ -304,12 +304,12 @@ cdef class Layout(object):
         cdef LayoutPos_t pos
         return np.array(map(chr, [pos.operation for pos in self.positions]))
 
-    cdef cython.str getCigarStringNP(self):
+    cdef cython.str getCigarString_(self):
         return "".join([str(len(list(g))) + k for
                         k, g in groupby(self.getOperations())])
 
     cpdef cython.str getCigarString(self):
-        return self.getCigarStringNP()
+        return self.getCigarString_()
 
     @cython.returns(list)
     def get_tags(self, oagtag=oagtag):
@@ -377,10 +377,21 @@ cdef LayoutPos_t MergePositions(LayoutPos p1, p2):
 '''
 
 cdef LayoutPos_t MergePositions(LayoutPos pos1, LayoutPos pos2):
-    cdef cython.str base, operation
+    """Merges two positions. Order does matter - pos1 overrides po2 when
+    pos2 is soft-clipped.
+    """
+    cdef cython.str base
     cdef int pos, readPos
     print("Trying to merge: %s, %s" % (str(pos1), str(pos2)))
     if(pos1.operation != pos2.operation):
+        if(pos2.operation == 83):  # if pos2.operation is "S"
+            if(pos1.operation == 77):  # if pos1.operation is "M"
+                return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+                                 77, pos1.quality, pos1.agreement)
+            else:
+                return LayoutPos(pos1.pos, pos1.readPos, 78, 78, 0, 0)
+                # Returns N for both the cigar op and the base.
+                # Quality 0, agreement 0.
         raise ThisIsMadness("Looks like merging these two "
                             "positions just doesn't work (discordance).")
     if(pos1.base == pos2.base):
