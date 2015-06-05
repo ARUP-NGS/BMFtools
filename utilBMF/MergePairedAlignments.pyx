@@ -12,6 +12,7 @@ from utilBMF.ErrorHandling import ThisIsMadness
 from operator import attrgetter as oag, methodcaller as mc
 from itertools import izip, groupby
 from sys import maxint
+from utilBMF.HTSUtils cimport cReadsOverlap
 oagsk = oag("firstMapped")
 omcfp = mc("getRefPosForFirstPos")
 oagbase = oag("base")
@@ -25,7 +26,6 @@ chrDict = {x: chr(x) for x in xrange(126)}
 cimport pysam.calignmentfile
 cimport cython
 cimport numpy as np
-from utilBMF.HTSUtils cimport cReadsOverlap
 
 
 """
@@ -126,7 +126,7 @@ cdef class LayoutPos(object):
         self.readPos = readPos
         self.operation = operation
         self.base = base
-        self.quality = quality if(self.base != 78) else 0 # 78 == "N"
+        self.quality = quality if(self.base != 78) else 0  # 78 == "N"
         self.agreement = agreement
 
     cpdef cython.bint ismapped(self):
@@ -401,8 +401,8 @@ cdef LayoutPos_t MergePositions(LayoutPos pos1, LayoutPos pos2):
                          pos1.quality + pos2.quality,
                          pos1.agreement + pos2.agreement)
     elif(pos1.quality > pos2.quality):
-        print("Disagreed bases: %s, %s" % chrDict[pos1.base], chrDict[pos2.base])
-        print("Q1: %s. Q2: %s" % (pos1.quality, pos2.quality))
+        print("Disagreed! Q1: %s. Q2: %s. " % (pos1.quality, pos2.quality) +
+              "B1: %s. B2: %s." % (chr(pos1.base), chr(pos2.base)))
         return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
                          pos1.quality - pos2.quality, pos1.agreement)
     print("Agreed base: %s" % chrDict[pos1.base])

@@ -29,7 +29,8 @@ from . import BCFastq
 from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
-                              BwaswCall, samtoolsMergeBam, pFastqProxy, TrimExt)
+                              BwaswCall, samtoolsMergeBam, pFastqProxy,
+                              TrimExt)
 from utilBMF.ErrorHandling import IllegalArgumentError, ThisIsMadness as Tim
 from .SVUtils import returnDefault
 from utilBMF import HTSUtils
@@ -710,7 +711,7 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
                            ("NF", NF, "f"),
                            ("AF", AF, "f"),
                            ("SF", SF, "F")
-                       ])
+                           ])
         else:
             read.set_tags([("BS", CD["BS"], "Z"),
                            ("FM", FM, "i"),
@@ -722,7 +723,7 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
                            ("AF", AF, "f"),
                            ("SF", SF, "F"),
                            ("RG", "default", "Z")
-                       ])
+                           ])
         outbam.write(read)
     inbam.close()
     outbam.close()
