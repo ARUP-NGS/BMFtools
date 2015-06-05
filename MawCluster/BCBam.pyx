@@ -263,7 +263,7 @@ def pairedBarcodeTagging(
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
-    cdef bint addDefault, bwaswRescue
+    cdef bint addDefault, bwaswRescue, passing
     cdef cython.str coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2
     cdef pFq pFq1, pFq2
@@ -301,6 +301,7 @@ def pairedBarcodeTagging(
         elif(entry.is_read2):
             read2bam = entry
             pFq2 = pFastqProxy(r2hn())
+        passing = "Pass" in descDict1["FP"]
         descDict1 = getdesc(pFq1.comment)
         descDict2 = getdesc(pFq2.comment)
         FM = int(descDict1["FM"])
@@ -350,7 +351,7 @@ def pairedBarcodeTagging(
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
-                               ("FP", int("Pass" in descDict1["FP"]), "i"),
+                               ("FP", passing, "i"),
                                ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
                                ("FA", ",".join(FA1.astype(str)), "Z"),
                                ("ND", ND1, "i"),
@@ -362,7 +363,7 @@ def pairedBarcodeTagging(
                                ("SC", contigSetStr, "Z"),
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
-                               ("FP", int("Pass" in descDict1["FP"]), "i"),
+                               ("FP", passing, "i"),
                                ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
                                ("FA", ",".join(FA2.astype(str)), "Z"),
                                ("ND", ND2, "i"),
@@ -393,6 +394,8 @@ def pairedBarcodeTagging(
                                ("NF", 1. * ND2 / FM, "f"),
                                ("AF", r2FracAlign, "f"),
                                ("SF", r2FracSC, "f")])
+        read1bam.is_qcfail = (not passing)
+        read2bam.is_qcfail = (not passing)
         # I used to mark the BAMs at this stage, but it's not appropriate to
         # do so until after indel realignment.
         obw(read1bam)
@@ -499,7 +502,6 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
         suppBam = bam.split('.')[0] + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
     reads = pysam.FastqFile(fastq)
-    # inBAM = removeSecondary(args.bam_file) #Artefactual code
     postFilterBAM = pysam.Samfile(bam, "rb")
     suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
     outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
@@ -517,9 +519,10 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
         for key in descDict.iterkeys():
             entry.setTag(key, descDict[key])
         if("Pass" in descDict["FP"]):
-            entry.tags = entry.tags + [("FP", 1)]
+            entry.set_tag("FP", 1)
         else:
-            entry.tags = entry.tags + [("FP", 0)]
+            entry.set_tag("FP", 0)
+            entry.is_qcfail = True
         outBAM.write(entry)
     outBAM.close()
     postFilterBAM.close()
