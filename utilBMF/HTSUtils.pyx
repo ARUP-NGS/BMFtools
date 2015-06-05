@@ -3031,6 +3031,9 @@ cdef class pFastqFile(object):
     cpdef close(self):
         self.handle.close()
 
+    def refresh(self):
+        self.handle = pysam.FastqFile(self.handle.filename)
+
 
 cpdef bint ReadsOverlap(
         cAlignedSegment read1,

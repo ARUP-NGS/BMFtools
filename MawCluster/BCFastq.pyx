@@ -198,12 +198,12 @@ cdef cython.str compareFqRecsFqPrx(list R, cython.str name=None,
         Success = False
     FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                  xrange(len(finalSeq))], dtype=np.int64)
-    phredQuals = nparray([nsum([chr2ph[seq[i]] for
-                                qual in map(oagqual, R)]) for
+    phredQuals = nparray([sum([chr2ph[seq[i]] for
+                               qual in map(oagqual, R) if
+                               seq[i] == finalSeq[i]]) for
                           i in xrange(len(finalSeq))])
     phredQuals[phredQuals < 3] = 0
     # finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
-    phredQuals = nmul(lenR, phredQuals, dtype=np.int64)
     try:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
     except KeyError:
@@ -262,7 +262,7 @@ cdef cython.str compareFqRecsFast(list R,
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef int lenR, ND, lenSeq
+    cdef int lenR, ND, lenSeq, i_t
     cdef cython.bint Success
     cdef cython.str seq, qual, seqItem, qualChar
     cdef ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
@@ -309,9 +309,9 @@ cdef cython.str compareFqRecsFast(list R,
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
     newSeq = nparray([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
-    FA = nparray([sum([seq[i] == newSeq[i] for
+    FA = nparray([sum([seq[i_t] == newSeq[i_t] for
                        seq in seqs]) for
-                  i in xrange(lenSeq)], dtype=np.int64)
+                  i_t in xrange(lenSeq)], dtype=np.int64)
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
