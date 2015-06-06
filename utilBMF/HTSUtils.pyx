@@ -121,13 +121,13 @@ cpdef list permuteNucleotides(long maxn, object nci=nci):
 
 
 @memoize
-@cython.returns(cython.str)
-def MemoRevCmp(cython.str seq):
+@cython.returns(cystr)
+def MemoRevCmp(cystr seq):
     return "".join([CmpDict[i] for i in list(seq)])[::-1]
 
 
-cpdef cython.str RevCmp(cython.str seq, dict CmpDict=CmpDict):
-    cdef cython.str i
+cpdef cystr RevCmp(cystr seq, dict CmpDict=CmpDict):
+    cdef cystr i
     return "".join([CmpDict[i] for i in list(seq)])[::-1]
 
 
@@ -273,7 +273,7 @@ PysamToChrDict["GL000192.1"] = 83
 
 
 @cython.returns(dict)
-def GetPysamToChrDict(cython.str alignmentFileText):
+def GetPysamToChrDict(cystr alignmentFileText):
     """
     Input variable contains the "text" attribute from a pysam.AlignmentFile
     object.
@@ -318,35 +318,35 @@ cdef class pFastqProxy:
         self.sequence = FastqProxyObj.sequence
         self.name = FastqProxyObj.name
 
-    cdef cython.str tostring(self):
+    cdef cystr tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
                                         self.sequence, self.quality)
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         return self.tostring()
 
-    cdef cython.str cGetBS(self):
+    cdef cystr cGetBS(self):
         return self.comment.split("|")[2].split("=")[1]
 
-    cpdef cython.str getBS(self):
+    cpdef cystr getBS(self):
         return self.cGetBS()
 
 
-cdef cython.str cGetBS(pFastqProxy_t read):
+cdef cystr cGetBS(pFastqProxy_t read):
     """
     Portable function for getting the barcode sequence from a marked BMFastq
     """
     return read.comment.split("|")[2].split("=")[1]
 
 
-cpdef cython.str getBS(pFastqProxy_t read):
+cpdef cystr getBS(pFastqProxy_t read):
     """cpdef wrapper of cGetBS
     """
     return cGetBS(read)
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
     """
     Just makes a string from a FastqProxy object.
@@ -355,11 +355,11 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
                                     fqPrx.sequence, fqPrx.quality)
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
                        int firstBase=0,
                        int lastBase=-1337,
-                       cython.str addString=""):
+                       cystr addString=""):
     if(lastBase == -1337):
         return "@%s %s%s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
                                           addString,
@@ -527,10 +527,10 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     supplementary alignments, and
     writing each reads' alignment,
     regardless of mapping quality.
-    :param cython.str R1 - Path to Fq 1
-    :param cython.str R2 - Path to Fq 2
-    :param cython.str ref - Path to reference
-    :param cython.str opts - Options to pass to bwa
+    :param cystr R1 - Path to Fq 1
+    :param cystr R2 - Path to Fq 2
+    :param cystr ref - Path to reference
+    :param cystr opts - Options to pass to bwa
     :param bint addCO
     """
     if(path == "default"):
@@ -1076,7 +1076,7 @@ cdef class pPileupRead:
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
 
-    cpdef object opt(self, cython.str arg):
+    cpdef object opt(self, cystr arg):
         return self.alignment.opt(arg)
 
 
@@ -1266,7 +1266,7 @@ cpdef bint WritePairToHandle(
 
 
 @cython.returns(list)
-def ParseBed(cython.str bedfile):
+def ParseBed(cystr bedfile):
     """
     Parses a bedfile in, leaving a list of length 3.
     bed[0] is a string (contig), and bed[1:] are all
@@ -1282,7 +1282,7 @@ def ParseBed(cython.str bedfile):
 
 
 @cython.returns(dict)
-def parseConfig(cython.str string):
+def parseConfig(cystr string):
     """
     Parses in a file into a dictionary of key value pairs.
     Key is line.strip().split("=")[0].
@@ -1400,7 +1400,7 @@ def LambdaSub(x):
 
 @cython.returns(list)
 def CreateIntervalsFromCounter(dict CounterObj, int minPileupLen=0,
-                               cython.str contig="default",
+                               cystr contig="default",
                                bedIntervals="default",
                                int mergeDist=0,
                                int minClustDepth=5, lix=LambdaSub):
@@ -1626,9 +1626,9 @@ def AddReadGroupsPicard(inBAM, RG="default", SM="default",
 def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
                   window=20):
     from sklearn.covariance import EllipticEnvelope
-    cdef ndarray[np.longdouble_t, ndim = 1] GAFreqNP = f1
-    cdef ndarray[np.longdouble_t, ndim = 1] CTFreqNP = f2
-    cdef ndarray[np.longdouble_t, ndim = 1] FreqArray
+    cdef ndarray[np.longdouble_t, ndim=1] GAFreqNP = f1
+    cdef ndarray[np.longdouble_t, ndim=1] CTFreqNP = f2
+    cdef ndarray[np.longdouble_t, ndim=1] FreqArray
     FreqArray = nconcatenate(GAFreqNP, CTFreqNP)
     ee1 = EllipticEnvelope(contamination=contamination, assume_centered=False)
     ee2 = EllipticEnvelope(contamination=contamination, assume_centered=False)
@@ -1708,7 +1708,7 @@ def bitfield(n):
     return [1 if digit == '1' else 0 for digit in bin(n)[2:]]
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def ASToFastqSingle(cAlignedSegment read):
     """
     Makes a string containing a single fastq record from
@@ -1739,7 +1739,7 @@ def ASToFastqSingle(cAlignedSegment read):
 
 
 @cython.locals(alignmentfileObj=pysam.calignmentfile.AlignmentFile)
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def ASToFastqPaired(cAlignedSegment read,
                     alignmentfileObj):
     """
@@ -1756,8 +1756,8 @@ def ASToFastqPaired(cAlignedSegment read,
 @cython.returns(pysam.calignmentfile.AlignmentFile)
 def SWRealignAS(cAlignedSegment read,
                 pysam.calignmentfile.AlignmentFile alignmentfileObj,
-                cython.str extraOpts="",
-                cython.str ref="default", float minAF=0.5):
+                cystr extraOpts="",
+                cystr ref="default", float minAF=0.5):
     """
     Passes the sequence and qualities of the provided read to bwa aln with
     an AlignedSegment as input. Updates the AlignedSegment's fields in-place
@@ -1769,7 +1769,7 @@ def SWRealignAS(cAlignedSegment read,
     """
     cdef int lAlignedArr, lbf
     cdef float af
-    cdef cython.str FastqStr, commandStr
+    cdef cystr FastqStr, commandStr
     cdef list alignedArr, letters, numbers, tags, tag
     if(read.opt("AF") == 1.):
         # Nothing wrong a fully-aligned read.
@@ -1998,8 +1998,8 @@ def SortBgzipAndTabixVCF(inVCF, outVCF="default", vcflib=True):
     return outVCF + ".gz"
 
 
-@cython.returns(cython.str)
-def SplitBed(cython.str bedpath):
+@cython.returns(cystr)
+def SplitBed(cystr bedpath):
     bedbase = ".".join(bedpath.split(".")[0:-1])
     bedlines = ParseBed(bedpath)
     contigs = list(set(map(oig0, bedlines)))
@@ -2015,7 +2015,7 @@ def SplitBed(cython.str bedpath):
                      contig in contigs])
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def MergeBamList(bamlist, picardPath="default", memStr="-Xmx6G",
                  outbam="default"):
     """
@@ -2057,12 +2057,12 @@ class PopenCall(object):
         self.resubmissions += 1
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def GetOutVCFFromBMFsnvPopen(d):
     return d.commandString.split(" ")[9]
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def GetOutVCFFromBMFsnvCStr(d):
     return d.split(" ")[9]
 
@@ -2266,7 +2266,7 @@ def SplitBamByBedPysam(bampath, bedpath):
     """
     cdef cAlignedSegment rec
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    cdef cython.str bam
+    cdef cystr bam
     pl("Getting bamlist.")
     bamlist = map(oig1, GetBamBedList(bampath, bedpath))
     refContigNumList = [PysamToChrDict[bam.split(".")[-2]] for bam in bamlist]
@@ -2291,9 +2291,9 @@ def SplitBamByBedPysam(bampath, bedpath):
     return bamlist
 
 
-@cython.returns(cython.str)
-def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
-                        cython.str bed="default"):
+@cython.returns(cystr)
+def BMFsnvCommandString(cystr bampath, cystr conf="default",
+                        cystr bed="default"):
     """
     Returns a command string for calling bmftools snv
     """
@@ -2318,8 +2318,8 @@ def BMFsnvCommandString(cython.str bampath, cython.str conf="default",
             "--bed %s --is-slave --outVCF %s #%s" % (bed, outVCF, FnCall))
 
 
-@cython.returns(cython.str)
-def GetUUIDFromCommandString(cython.str cStr):
+@cython.returns(cystr)
+def GetUUIDFromCommandString(cystr cStr):
     """
     Gets the UUID tag from slave jobs. Used for concatenating VCFs from
     parallel calls.
@@ -2348,8 +2348,8 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
                            func=GetOutVCFFromBMFsnvCStr)
 
 
-@cython.returns(cython.str)
-def TrimExt(cython.str fname):
+@cython.returns(cystr)
+def TrimExt(cystr fname):
     """
     Trims the extension from the filename so that I don't have to type this
     every single time.
@@ -2360,21 +2360,21 @@ def TrimExt(cython.str fname):
         raise Tim("Cannot trim an extension of a None value!")
 
 
-@cython.returns(cython.str)
-def NPadSequence(cython.str seq, int n=300):
+@cython.returns(cystr)
+def NPadSequence(cystr seq, int n=300):
     """
     Pads a sequence with "n" Ns.
     """
     return "N" * n + seq + "N" * n
 
 
-@cython.returns(cython.str)
-def FastaStyleSequence(cython.str seq):
+@cython.returns(cystr)
+def FastaStyleSequence(cystr seq):
     return ">" + seq + "\n" + seq
 
 
-@cython.returns(cython.str)
-def PadAndMakeFasta(cython.str seq, int n=300):
+@cython.returns(cystr)
+def PadAndMakeFasta(cystr seq, int n=300):
     return FastaStyleSequence(NPadSequence(seq, n=n))
 
 
@@ -2406,7 +2406,7 @@ def GetDSIndels(inBAM, outBAM):
     return outBAM
 
 
-def hamming_cousins_exact(cython.str s, int n,
+def hamming_cousins_exact(cystr s, int n,
                           list alphabet=["A", "C", "G", "T"]):
     """Generate strings over alphabet whose Hamming distance from s is
     exactly n.
@@ -2432,7 +2432,7 @@ def hamming_cousins_exact(cython.str s, int n,
             yield ''.join(cousin)
 
 
-def hamming_cousins(cython.str s, int n=0,
+def hamming_cousins(cystr s, int n=0,
                     list alphabet=["A", "C", "G", "T"]):
     """Generate strings over alphabet whose Hamming distance from s is
     less than or equal to n.
@@ -2478,7 +2478,7 @@ def GetDeletionFromAlignedSegment(cAlignedSegment read,
                     start=start, end=end, handle=handle)
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def is_reverse_to_str(bint boolean):
     if(boolean):
         return "reverse"
@@ -2488,7 +2488,7 @@ def is_reverse_to_str(bint boolean):
         return "unmapped"
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def ssStringFromRead(cAlignedSegment read):
     return ("#".join(map(str, sorted([read.reference_start,
                                       read.reference_end]))) +
@@ -2507,9 +2507,9 @@ cdef class AbstractIndelContainer(object):
     seq should be None for a deletion
     """
 
-    def __init__(self, cython.str contig, int start=-666,
+    def __init__(self, cystr contig, int start=-666,
                  int end=-1, int type=-137,
-                 cython.str seq=None):
+                 cystr seq=None):
         self.contig = contig
         self.start = start
         self.end = end
@@ -2563,7 +2563,7 @@ cdef class AbstractIndelContainer(object):
     def GetNameCounter(self):
         return cyfreq(self.readnames)
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __getitem__(self, int index):
         return self.readnames[index]
 
@@ -2601,8 +2601,8 @@ cdef class Insertion(AbstractIndelContainer):
     """
 
     def __init__(self, cAlignedSegment read,
-                 cython.str contig, int start=-1,
-                 cython.str seq=None, pysam.cfaidx.FastaFile handle=None,
+                 cystr contig, int start=-1,
+                 cystr seq=None, pysam.cfaidx.FastaFile handle=None,
                  int window=20):
         if(start < 0):
             raise Tim("start required for InsertionContainer.")
@@ -2627,7 +2627,7 @@ cdef class Insertion(AbstractIndelContainer):
         self.shenwindow = window
         self.StartStops = [ssStringFromRead(read)]
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         return self.uniqStr + "|%s" % len(self.readnames)
 
@@ -2641,7 +2641,7 @@ cdef class Deletion(AbstractIndelContainer):
     """
 
     def __init__(self, cAlignedSegment read,
-                 cython.str contig=None, int start=-1,
+                 cystr contig=None, int start=-1,
                  int end=-1,
                  pysam.cfaidx.FastaFile handle=None, int window=20):
         self.contig = contig
@@ -2663,7 +2663,7 @@ cdef class Deletion(AbstractIndelContainer):
         self.shenwindow = window
         self.StartStops = [ssStringFromRead(read)]
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         return self.uniqStr + "|%s" % len(self.readnames)
 
@@ -2678,9 +2678,9 @@ cdef class IndelQuiver(object):
     Counts is a similar object, but with the length of the data
     field as a value instead of the list itself.
     """
-    def __init__(self, cython.str ref=None, int window=10,
+    def __init__(self, cystr ref=None, int window=10,
                  int minMQ=0, int minFM=0,
-                 cython.str bam=None, int minNumSS=0,
+                 cystr bam=None, int minNumSS=0,
                  float minShen=0.2, int minPairs=1):
         self.data = {}
         self.readnames = {}
@@ -2699,10 +2699,10 @@ cdef class IndelQuiver(object):
         return len(self.data)
 
     @cython.returns(list)
-    def __getitem__(self, cython.str key):
+    def __getitem__(self, cystr key):
         return self.data[key]
 
-    def __setitem__(self, cython.str key, list value):
+    def __setitem__(self, cystr key, list value):
         self.data[key] = value
 
     def setIndelShen(self, AbstractIndelContainer_t indelObj):
@@ -2735,7 +2735,7 @@ cdef class IndelQuiver(object):
         return self.data.values()
 
     def addRead(self, cAlignedSegment read):
-        cdef cython.str SVTag
+        cdef cystr SVTag
         cdef AbstractIndelContainer_t Indel
         if(read.opt("FM") < self.minFM):
             return
@@ -2763,7 +2763,7 @@ cdef class IndelQuiver(object):
                        self.readnames.itervalues()}
 
     def mergeQuiver(self, IndelQuiver_t quiverObj):
-        cdef cython.str key
+        cdef cystr key
         for key in quiverObj.readnames.keys():
             try:
                 self.readnames[key] += quiverObj[key]
@@ -2778,7 +2778,7 @@ cdef class IndelQuiver(object):
                 self[key] = quiverObj[key]
 
     @cython.returns(dict)
-    def getIndelCounter(self, cython.str uniqStr):
+    def getIndelCounter(self, cystr uniqStr):
         try:
             return cyfreq(self.readnames[uniqStr])
         except KeyError:
@@ -2794,7 +2794,7 @@ cdef class BamTag(object):
     Contains a tag, a value, and a type, all of which are string objects.
     """
     @classmethod
-    def fromstring(cls, cython.str tagString):
+    def fromstring(cls, cystr tagString):
         """The dictionary is a pythonic proxy for a switch statement.
         Initializes and returns a BamTag object.
         """
@@ -2807,19 +2807,19 @@ cdef class BamTag(object):
 
     @classmethod
     def fromtuple(cls, tuple tag):
-        cdef cython.str tagtype
+        cdef cystr tagtype
         try:
             tagtype = TagTypeDict[tag[0]]
         except KeyError:
             tagtype = "Z"  # A safer fallback
         return cls(tag[0], tagtype, tag[1])
 
-    def __init__(self, cython.str tag, cython.str tagtype, value):
+    def __init__(self, cystr tag, cystr tagtype, value):
         self.tag = tag
         self.tagtype = tagtype
         self.value = value
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         return "%s:%s:%s" % (self.tag, self.tagtype, self.value)
 
@@ -2838,7 +2838,7 @@ cdef class IDVCFLine(object):
         cdef int tmpCov
         cdef float MDP
         cdef tuple i
-        cdef cython.str key
+        cdef cystr key
         cdef list ffkeys
         self.CHROM = IC.contig
         self.NumStartStops = len(set(IC.StartStops))
@@ -3001,7 +3001,7 @@ def itersplit(inString, regexStr="\w+"):
 
 
 @cython.returns(set)
-def GetBamTagTypes(cython.str bamfilestring):
+def GetBamTagTypes(cystr bamfilestring):
     """
     :param bamfilestring: full text of a bam file
     """
@@ -3009,7 +3009,7 @@ def GetBamTagTypes(cython.str bamfilestring):
 
 
 @cython.returns(dict)
-def GetBamTagTypeDict(cython.str bamfile):
+def GetBamTagTypeDict(cystr bamfile):
     cdef list i
     return {i[0]: i[1] for
             i in [f.split(":") for

@@ -16,6 +16,7 @@ asVCF = pysam.asVCF()
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
+from utilBMF.HTSUtils cimport cystr
 
 
 @cython.returns(np.longdouble_t)
@@ -78,7 +79,7 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     cdef pysam.TabProxies.VCFProxy rec, nRec, i
     cdef int nDOC, nAC, nAllelesAtPos
     cdef np.longdouble_t nMaxAAF
-    cdef cython.str f
+    cdef cystr f
     if(normal == "default"):
         raise ThisIsMadness("Noraml VCF required for T/N filtering.")
     if(outVCF == "default"):

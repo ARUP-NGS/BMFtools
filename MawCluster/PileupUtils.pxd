@@ -12,6 +12,7 @@ cimport utilBMF.HTSUtils
 ctypedef PRInfo PRInfo_t
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PileupReadPair PileupReadPair_t
+from utilBMF.HTSUtils cimport cystr
 
 
 cdef class AlleleAggregateInfo:
@@ -47,7 +48,7 @@ cdef class AlleleAggregateInfo:
     cdef public list recList
     cdef public dict TotalAlleleDict, StrandCountsDict, StrandCountsTotalDict
     cdef public dict strandedTransitionDict
-    cdef public cython.str ALT, consensus, transition, contig
+    cdef public cystr ALT, consensus, transition, contig
     cdef public cython.bint BothStrandSupport
 
 
@@ -74,12 +75,12 @@ cdef class PRInfo:
     cdef public cython.bint Pass, is_reverse, is_proper_pair
     cdef public long FM, BQ, MQ, query_position, FA, PV, ND
     cdef public pysam.calignmentfile.AlignedSegment read
-    cdef public cython.str SVTagString
-    cdef public cython.str BaseCall
-    cdef public cython.str ssString, query_name
+    cdef public cystr SVTagString
+    cdef public cystr BaseCall
+    cdef public cystr ssString, query_name
     cdef public cython.float FractionAgreed, PVFrac, NF
     cdef public ndarray PV_Array
-    cpdef object opt(self, cython.str arg)
+    cpdef object opt(self, cystr arg)
 
 
 cdef class PCInfo:
@@ -96,10 +97,10 @@ cdef class PCInfo:
     The presence of one of these tags in a read causes it to be thrown out
     of the pileup.
     """
-    cdef public cython.str experiment, excludedSVTagStr, consensus, TotalFracStr
-    cdef public cython.str MergedFracStr, MergedCountStr, TotalCountStr, str
-    cdef public cython.str MergedStrandednessStr, TotalStrandednessStr, AlleleFreqStr
-    cdef public cython.str contig
+    cdef public cystr experiment, excludedSVTagStr, consensus, TotalFracStr
+    cdef public cystr MergedFracStr, MergedCountStr, TotalCountStr, str
+    cdef public cystr MergedStrandednessStr, TotalStrandednessStr, AlleleFreqStr
+    cdef public cystr contig
     cdef public long minMQ, minBQ, pos, FailedQCReads, FailedFMReads
     cdef public long FailedBQReads, FailedAFReads, FailedMQReads
     cdef public long FailedSVReads, MergedReads, TotalReads

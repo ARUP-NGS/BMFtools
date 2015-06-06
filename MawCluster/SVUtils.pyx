@@ -22,6 +22,7 @@ import uuid
 cimport numpy as np
 cimport cython
 cimport pysam.calignmentfile
+from utilBMF.HTSUtils cimport cystr
 cfi = chain.from_iterable
 
 

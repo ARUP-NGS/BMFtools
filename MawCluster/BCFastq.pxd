@@ -5,10 +5,11 @@ cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
+from utilBMF.HTSUtils cimport cystr
 from numpy cimport ndarray
 
-cdef cython.str compareFqRecsFast(list R,
-                                  cython.str name=?,
+cdef cystr compareFqRecsFast(list R,
+                                  cystr name=?,
                                   int famLimit=?,
                                   dict chr2ph=?,
                                   dict letterNumDict=?,
@@ -21,8 +22,8 @@ cdef cython.str compareFqRecsFast(list R,
                                   object ph2chr=?,
                                   object chr2phStr=?,
                                   object int2Str=?)
-cdef cython.str compareFqRecsFqPrx(list R,
-                                   cython.str name=?,
+cdef cystr compareFqRecsFqPrx(list R,
+                                   cystr name=?,
                                    float stringency=?,
                                    int famLimit=?,
                                    cython.bint keepFails=?,
@@ -31,5 +32,5 @@ cdef cython.str compareFqRecsFqPrx(list R,
                                    dict ph2chrDict=?,
                                    object ph2chr=?,
                                    object int2Str=?)
-cpdef cython.str cFRF_helper(list R, cython.str name=?)
-cpdef cython.str cFRP_helper(list R, cython.str name=?)
+cpdef cystr cFRF_helper(list R, cystr name=?)
+cpdef cystr cFRP_helper(list R, cystr name=?)

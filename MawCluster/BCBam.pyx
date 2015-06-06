@@ -248,23 +248,23 @@ def GATKIndelRealignment(inBAM, gatk="default", ref="default",
 
 
 def pairedBarcodeTagging(
-        cython.str fq1,
-        cython.str fq2,
-        cython.str bam,
-        cython.str outBAMFile="default",
-        cython.str suppBam="default",
-        cython.str bedfile="default",
-        cython.str conversionXml="default", cython.str realigner="none",
-        double minAF=0.0, cython.str ref="default"):
+        cystr fq1,
+        cystr fq2,
+        cystr bam,
+        cystr outBAMFile="default",
+        cystr suppBam="default",
+        cystr bedfile="default",
+        cystr conversionXml="default", cystr realigner="none",
+        double minAF=0.0, cystr ref="default"):
     """
     TODO: Unit test for this function.
     """
-    cdef ndarray[np.int64_t, ndim = 1] PhredQuals1, PhredQuals2, FA1, FA2
+    cdef ndarray[np.int64_t, ndim=1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
     cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
     cdef bint addDefault, bwaswRescue, passing
-    cdef cython.str coorString, cStr, contigSetStr
+    cdef cystr coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2
     cdef pFastqProxy_t pFq1, pFq2
     # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
@@ -675,7 +675,7 @@ def RealignSFReads(inBAM, double maxFracSoftClipped=0.5,
 
 
 cdef dict GetCOTagDict_(cAlignedSegment read):
-    cdef cython.str s, cStr
+    cdef cystr s, cStr
     cStr = read.opt("CO")
     return dict([s.split("=") for s in cStr.split("|")[1:]])
 
@@ -689,7 +689,7 @@ cdef cAlignedSegment TagAlignedSegment(
     cdef dict CommentDict
     cdef int FM, FP, ND
     cdef double NF, AF, SF
-    cdef ndarray[np.int64_t, ndim = 1] PhredQuals, FA
+    cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
     CommentDict = GetCOTagDict(read)
     PhredQuals = nparray(CommentDict["PV"].split(","), dtype=np.int64)
     FA = nparray(CommentDict["FA"].split(","), dtype=np.int64)
@@ -731,7 +731,7 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
     return
 
 
-cpdef BarcodeTagCOBam(cython.str bam, cython.str outbam=None):
+cpdef BarcodeTagCOBam(cystr bam, cystr outbam=None):
     """In progress
     """
     cdef pysam.calignmentfile.AlignmentFile inHandle
@@ -742,8 +742,8 @@ cpdef BarcodeTagCOBam(cython.str bam, cython.str outbam=None):
     return
 
 
-def AlignAndTagMem(cython.str fq1, cython.str fq2,
-                   cython.str outBAM="default",
+def AlignAndTagMem(cystr fq1, cystr fq2,
+                   cystr outBAM="default",
                    ref="default", opts=""):
     FirstBam = align_bwa_mem(fq1, fq2, outBAM=outBAM, addCO=True,
                              ref=ref, opts=opts)

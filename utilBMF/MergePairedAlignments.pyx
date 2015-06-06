@@ -38,8 +38,8 @@ into a single read.
 def CigarOpToLayoutPosList(int offset, tuple cigarOp,
                            pysam.calignmentfile.AlignedSegment rec):
     cdef tuple x
-    cdef cython.str CigarChar
-    cdef ndarray[long, ndim = 1] quals, agrees
+    cdef cystr CigarChar
+    cdef ndarray[long, ndim=1] quals, agrees
     '''
     First case - 'M'
     Second case - 'I'
@@ -132,7 +132,7 @@ cdef class LayoutPos(object):
     cpdef cython.bint ismapped(self):
         return self.operation == 77  # 77 == "M"
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         return "%s|%s|%s|%s|%s|%s" % (self.pos, self.readPos, chr(self.base),
                                       chr(self.operation), self.quality,
@@ -192,7 +192,7 @@ cdef class Layout(object):
                                        i != 83 and i != 68]))
     '''
 
-    cpdef cython.str getSeq(self):
+    cpdef cystr getSeq(self):
         return self.getSeqArr().tostring()
 
     cdef int getRefPosForFirstPos_(self):
@@ -239,7 +239,7 @@ cdef class Layout(object):
     cpdef ndarray[int] getQual(self):
         return self.getQual_()
 
-    cdef cython.str getQualString_(self, dict ph2chrDict=ph2chrDict):
+    cdef cystr getQualString_(self, dict ph2chrDict=ph2chrDict):
         cdef int i
         return "".join([ph2chrDict[i] for i in self.getQual()])
 
@@ -306,11 +306,11 @@ cdef class Layout(object):
         cdef LayoutPos_t pos
         return np.array(map(chr, [pos.operation for pos in self.positions]))
 
-    cdef cython.str getCigarString_(self):
+    cdef cystr getCigarString_(self):
         return "".join([str(len(list(g))) + k for
                         k, g in groupby(self.getOperations())])
 
-    cpdef cython.str getCigarString(self):
+    cpdef cystr getCigarString(self):
         return self.getCigarString_()
 
     @cython.returns(list)
@@ -322,7 +322,7 @@ cdef class Layout(object):
         self.update()
         return self.flag
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         """
         Converts the record into a SAM record.
@@ -382,7 +382,7 @@ cdef LayoutPos_t MergePositions(LayoutPos pos1, LayoutPos pos2):
     """Merges two positions. Order does matter - pos1 overrides po2 when
     pos2 is soft-clipped.
     """
-    cdef cython.str base
+    cdef cystr base
     cdef int pos, readPos
     print("Trying to merge: %s, %s" % (str(pos1), str(pos2)))
     if(pos1.operation != pos2.operation):
@@ -457,7 +457,7 @@ cdef tuple MergeLayoutsToList_(Layout_t L1, Layout_t L2):
 
 cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     cdef list layoutList
-    cdef cython.str Name
+    cdef cystr Name
     cdef cython.bint Success
     layoutList, Success = MergeLayoutsToList_(L1, L2)
     if(Success is False):

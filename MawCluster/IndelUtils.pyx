@@ -26,6 +26,7 @@ cimport pysam.calignmentfile
 cimport cython
 cimport numpy as np
 cimport utilBMF.HTSUtils
+from utilBMF.HTSUtils cimport cystr
 ctypedef utilBMF.HTSUtils.IndelQuiver IndelQuiver_t
 ctypedef utilBMF.HTSUtils.AbstractIndelContainer AbstractIndelContainer_t
 ctypedef utilBMF.HTSUtils.Insertion Insertion_t
@@ -143,8 +144,8 @@ def GetFreebayesCallStr(inBAM, ref="default", bed="default",
     return cStr
 
 
-@cython.returns(cython.str)
-def GetFBOutVCFFromStr(cython.str cStr):
+@cython.returns(cystr)
+def GetFBOutVCFFromStr(cystr cStr):
     """
     Gets out vcf from freebayes call. Used for parallelization.
     """
@@ -152,7 +153,7 @@ def GetFBOutVCFFromStr(cython.str cStr):
 
 '''
 @cython.returns(list)
-def GetUniquelyMappableKmers(cython.str ref, int k=30,
+def GetUniquelyMappableKmers(cystr ref, int k=30,
                              list bedline=[], int minMQ=1,
                              int padding=-1,
                              int mismatches=-1):
@@ -163,7 +164,7 @@ def GetUniquelyMappableKmers(cython.str ref, int k=30,
     If no outfile is specified, defaults to stdout
     """
     cdef list kmerList, PassingReadNames
-    cdef cython.str fqStr, bowtieStr
+    cdef cystr fqStr, bowtieStr
     pl("Getting potential kmers for k=%s" % k)
     kmerList = GetKmersToCheck(ref, k=k, bedline=bedline, padding=padding)
     pl("Making dummy fastq records for each kmer")
@@ -179,7 +180,7 @@ def GetUniquelyMappableKmers(cython.str ref, int k=30,
 @cython.returns(IndelQuiver_t)
 def FillIndelQuiverRegion(inBAM, int minPairs=2,
                           float minShen=0.2,
-                          int window=16, cython.str ref=None,
+                          int window=16, cystr ref=None,
                           list bedRegion=[], int minMQ=1,
                           int minFM=1, int minNumSS=1):
     """
@@ -234,8 +235,8 @@ def FillIndelQuiverRegion(inBAM, int minPairs=2,
 
 @cython.returns(IndelQuiver_t)
 def FillEntireQuiver(inBAM, int minPairs=2, float minShen=0.2,
-                     int window=16, cython.str ref=None,
-                     cython.str bed=None, int minFM=1,
+                     int window=16, cystr ref=None,
+                     cystr bed=None, int minFM=1,
                      int minMQ=1, int minNumSS=1):
     """
     Simply fills a quiver for each region, merges the quivers, and returns
