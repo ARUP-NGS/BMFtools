@@ -545,7 +545,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
-        sedString = (" | sed -r -e 's/\t[0-9]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
+        sedString = (" | sed -r -e 's/\t[0-9]:[A-Z]:[0-9]+:[AGCNT]+/\tRG:Z:"
                      "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
                      "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
                      "t\n@PG/'")

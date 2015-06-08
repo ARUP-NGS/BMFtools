@@ -19,9 +19,9 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
-    alignBamParser = subparsers.add_parser(
-        "alignbam", description=("Performs alignment and sam tagging of"
-                                 " consolidated fastq files."))
+    alignTagBamParser = subparsers.add_parser(
+        "aligntagbam", description=("Performs alignment and sam tagging of"
+                                    " consolidated fastq files to generate a tagged bam."))
     TagBamParser = subparsers.add_parser(
         "tagbam", description=("Tag a BAM file with appropriate information"
                                " from merged fastq files."))
@@ -184,28 +184,28 @@ def main():
         metavar="primer3Seq",
         help="3' primer sequence used by cutadapt [default value is 'default', which will not run cutadapt]",
         default="default")
-    alignBamParser.add_argument(
+    alignTagBamParser.add_argument(
         "inFqs",
         nargs="+",
         help="Input Fastq Files")
-    alignBamParser.add_argument(
+    alignTagBamParser.add_argument(
         "-b",
         "--bed",
         metavar="bed",
         help="Bed file not used in the alignment but used in the REalignment and MawCluster.SVUtils's GetSVRelevantRecordsPaired",
         default="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed")
-    alignBamParser.add_argument(
+    alignTagBamParser.add_argument(
         "-r",
         "--ref",
         metavar="ref",
         help="Reference FASTA to align fastqs to")
-    alignBamParser.add_argument(
+    alignTagBamParser.add_argument(
         "-a",
         "--aligner",
         metavar="aligner",
         help="Aligner program (e.g. bwa mem or bwa aln)",
         default="mem")
-    alignBamParser.add_argument(
+    alignTagBamParser.add_argument(
         "-g",
         "--realigner",
         metavar="realigner",
@@ -737,7 +737,7 @@ def main():
         elif(len(fastqs) == 2):
             pairedBarcodeTagging(fastqs[0], fastqs[1], args.inBAM,
                                  outBAMFile=args.outfile)
-    if(args.bmfsuites == "alignbam"):
+    if(args.bmfsuites == "aligntagbam"):
         from BMFMain.ProcessingSteps import pairedBamProc
         pairedBamProc(
             args.inFqs[0],
