@@ -1,6 +1,7 @@
 cimport cython
 cimport numpy as np
 ctypedef np.longdouble_t dtype128_t
+ctypedef cython.str cystr
 
 
 cdef class SNVCFLine:
@@ -13,9 +14,9 @@ cdef class SNVCFLine:
     minNumSS is the minumum number of start/stop combinations required to
     support a variant call.
     """
-    cdef public cython.str REF, CHROM, CONS, ALT, ID, FILTER, InfoStr, FormatStr, str
-    cdef public cython.str FormatKey, FormatValue
-    cdef public cython.str flankingBefore, flankingAfter
+    cdef public cystr REF, CHROM, CONS, ALT, ID, FILTER, InfoStr, FormatStr, str
+    cdef public cystr FormatKey, FormatValue
+    cdef public cystr flankingBefore, flankingAfter
     cdef public long NumStartStops, POS
     cdef public cython.bint BothStrandSupport, AABothStrandAlignment
     cdef public dtype128_t reverseStrandFraction, QUAL
@@ -29,8 +30,8 @@ cdef class VCFPos:
     for writing VCF lines for each alt at a given position.
     """
     cdef public long pos, minMQ, FailedAFReads, minDuplexPairs
-    cdef public cython.str consensus, TotalFracStr, MergedFracStr, TotalCountStr
-    cdef public cython.str MergedCountStr, REF, EST, str
+    cdef public cystr consensus, TotalFracStr, MergedFracStr, TotalCountStr
+    cdef public cystr MergedCountStr, REF, EST, str
     cdef public cython.float reverseStrandFraction, minAF
     cdef public cython.bint AABothStrandAlignment, requireDuplex, keepConsensus
     cdef public cython.bint DuplexRequired

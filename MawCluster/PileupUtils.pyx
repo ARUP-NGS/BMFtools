@@ -51,7 +51,7 @@ oagname = oag("name")
 @cython.returns(list)
 def GetDiscReadNames(pPileupColumn_t pPC, oagname=oagname):
     cdef list returnList, gList
-    cdef cython.str name
+    cdef cystr name
     returnList = []
     for name, group in groupby(sorted(pPC.pileups, key=oagname), key=oagname):
         gList = list(group)
@@ -116,7 +116,7 @@ cdef class PRInfo:
 
     def __init__(self, pPileupRead_t PileupRead):
         cdef pysam.calignmentfile.AlignedSegment alignment
-        cdef cython.str PVSTring
+        cdef cystr PVSTring
         self.Pass = True
         alignment = PileupRead.alignment
         tags = alignment.tags
@@ -185,11 +185,11 @@ cdef class PRInfo:
             self.NF = aopt("NF")
         except KeyError:
             pass
-    cpdef object opt(self, cython.str arg):
+    cpdef object opt(self, cystr arg):
         return self.read.opt(arg)
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def is_reverse_to_str(cython.bint boolean):
     if(boolean):
         return "reverse"
@@ -208,11 +208,11 @@ cdef class AlleleAggregateInfo:
     recList must be a list of PRInfo objects.
 
     """
-    def __init__(self, list recList, cython.str consensus="default",
+    def __init__(self, list recList, cystr consensus="default",
                  int mergedSize=-1, int totalSize=-1,
                  int minMQ=0,
                  int minBQ=0,
-                 cython.str contig="default",
+                 cystr contig="default",
                  int pos=-1,
                  int DOC=-1,
                  int DOCTotal=-1,
@@ -223,7 +223,7 @@ cdef class AlleleAggregateInfo:
                  object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
                  object oagmq=oagmq, object nparray=nparray):
         cdef ndarray NFList
-        cdef ndarray[np.float64_t, ndim = 1] query_positions, PVFArray
+        cdef ndarray[np.float64_t, ndim=1] query_positions, PVFArray
         cdef int lenR
         cdef PRInfo_t rec
         cdef tuple i
@@ -392,16 +392,16 @@ cdef class PCInfo:
                  int minMQ=0, cython.bint requireDuplex=True,
                  float minFracAgreed=0.0, int minFA=0,
                  float minPVFrac=0.66,
-                 cython.str exclusionSVTags="MDC,LI",
+                 cystr exclusionSVTags="MDC,LI",
                  cython.bint FracAlignFilter=False, int primerLen=20,
-                 cython.str experiment="", float minAF=0.25,
+                 cystr experiment="", float minAF=0.25,
                  int maxND=10, object oig1=oig1, object oagir=oagir,
                  object oagqp=oagqp):
         cdef PRInfo_t rec
         cdef list pileups, fks, svTags, exclusionTagList, discNames
         cdef pPileupRead_t r
         cdef int lenR, rsn
-        cdef ndarray [np.float64_t, ndim = 1] query_positions
+        cdef ndarray[np.float64_t, ndim=1] query_positions
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
         # of them has to be wrong!
@@ -572,11 +572,11 @@ cdef class PCInfo:
                 key]) for key in self.TotalStrandednessRatioDict.iterkeys()])
         self.AlleleFreqStr = "\t".join(
             map(str, [self.contig, self.pos, self.consensus,
-                       self.MergedReads, self.TotalReads, self.MergedCountStr,
-                       self.TotalCountStr, self.MergedFracStr,
-                       self.TotalFracStr,
-                       self.MergedStrandednessStr,
-                       self.TotalStrandednessStr]))
+                      self.MergedReads, self.TotalReads, self.MergedCountStr,
+                      self.TotalCountStr, self.MergedFracStr,
+                      self.TotalFracStr,
+                      self.MergedStrandednessStr,
+                      self.TotalStrandednessStr]))
         self.maxND = max(pileupRead.alignment.opt("ND") for
                          pileupRead in pileups)
 
@@ -590,7 +590,7 @@ cdef class PCInfo:
 
     @cython.returns(str)
     def __str__(self):
-        cdef cython.str outStr
+        cdef cystr outStr
         outStr = ""
         for alt in self.AltAlleleData:
             outStr += "\t".join(

@@ -27,6 +27,7 @@ pconfint = proportion.proportion_confint
 
 
 cimport numpy as np
+from utilBMF.HTSUtils cimport cystr
 
 """
 Contains probabilistic tools for accurately identifying somatic mutations.
@@ -62,7 +63,7 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
 def ConfidenceIntervalAI(int Allele1,
                          int Allele2,
                          np.longdouble_t pVal=defaultPValue,
-                         cython.str method="agresti_coull"):
+                         cystr method="agresti_coull"):
     """
     Returns the confidence interval for an allelic imbalance
     given counts for Allele1 and Allele2, where those are the most common
@@ -91,7 +92,7 @@ def ConfidenceIntervalAI(int Allele1,
 def MakeAICall(int Allele1,
                int Allele2,
                np.longdouble_t pVal=defaultPValue,
-               cython.str method="agresti_coull"):
+               cystr method="agresti_coull"):
     """
     Gets confidence bounds, returns a call, a "minor" allele frequency,
     an observed allelic imbalance ratio (as defined by more common allele
@@ -223,8 +224,8 @@ def SamplingProbDist(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef ndarray[np.longdouble_t, ndim = 1] ProbDist
-    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim=1] ProbDist
+    cdef ndarray[np.longdouble_t, ndim=1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
@@ -240,8 +241,8 @@ def SamplingProbDist_(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef ndarray[np.longdouble_t, ndim = 1] ProbDist
-    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim=1] ProbDist
+    cdef ndarray[np.longdouble_t, ndim=1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0)
     ProbDist = UnscaledProbs / PartitionFn
@@ -257,7 +258,7 @@ def SamplingProbMoments(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim=1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn
@@ -272,7 +273,7 @@ def SamplingProbMoments_(n, p=0.):
     the probability that precisely "K" events have occurred.
     """
     assert 0. < p < 1.
-    cdef ndarray[np.longdouble_t, ndim = 1] UnscaledProbs
+    cdef ndarray[np.longdouble_t, ndim=1] UnscaledProbs
     UnscaledProbs = GetUnscaledProbs_(n, p=p)
     PartitionFn = nsum(UnscaledProbs, 0, dtype=np.longdouble)
     return UnscaledProbs, PartitionFn

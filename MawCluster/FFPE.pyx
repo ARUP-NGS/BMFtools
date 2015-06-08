@@ -26,6 +26,7 @@ from utilBMF.HTSUtils import (printlog as pl,
 cimport pysam.TabProxies
 cimport numpy as np
 cimport cython
+from utilBMF.HTSUtils cimport cystr
 mclower = memoize(mc("lower"))
 
 
@@ -280,7 +281,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
 
 
 @memoize
-@cython.locals(l=cython.str)
+@cython.locals(l=cystr)
 @cython.returns(float)
 def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
     """
@@ -291,7 +292,7 @@ def getFreq(pysam.TabProxies.VCFProxy rec, l="d"):
 
 
 @cython.returns(float)
-def GetTabixDeamFreq(cython.str inVCF):
+def GetTabixDeamFreq(cystr inVCF):
     """
     Gets deamination frequency for a tabixed VCF file, under the assumption
     that the majority of C-T/G-A calls at low frequencies which are not

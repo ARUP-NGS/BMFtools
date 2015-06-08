@@ -1,4 +1,5 @@
 cimport cython
+from utilBMF.HTSUtils cimport cystr
 
 cdef class KmerFetcher(object):
     """
@@ -8,20 +9,19 @@ cdef class KmerFetcher(object):
     """
     cdef readonly cython.int k
 
-    cdef readonly cython.str ref
+    cdef readonly cystr ref
     cdef public cython.int mismatches, minMQ, padding
     cdef public dict HashMap, FullMap
 
     cdef public cython.int getK(self)
     cdef public setK(self, cython.int)
-    cpdef cython.str getFastqString(self, list)
-    cpdef cython.str getOutputString(self, list)
+    cpdef cystr getFastqString(self, list)
+    cpdef cystr getOutputString(self, list)
     cpdef public FillMap(self, list)
     cpdef public list GetUniqueKmers(self, list)
-    cpdef FMfrombed(self, cython.str)
+    cpdef FMfrombed(self, cystr)
 
 
 cdef class RefKmer(object):
-    cdef readonly cython.str contig, seq
+    cdef readonly cystr contig, seq
     cdef readonly cython.int len, pos
-

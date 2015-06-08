@@ -22,6 +22,7 @@ from entropy import shannon_entropy as shen
 cimport cython
 cimport pysam.cfaidx
 cimport numpy as np
+from utilBMF.HTSUtils cimport cystr
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PCInfo PCInfo_t
 ctypedef SNVCFLine SNVCFLine_t
@@ -48,29 +49,29 @@ cdef class SNVCFLine:
     def __init__(self,
                  AlleleAggregateInfo_t AlleleAggregateObject,
                  float MaxPValue=1e-30,
-                 cython.str ID=".",
+                 cystr ID=".",
                  int DOCMerged=-1,
                  int DOCTotal=-1,
-                 cython.str TotalFracStr="default",
-                 cython.str MergedFracStr="default",
-                 cython.str TotalCountStr="default",
-                 cython.str MergedCountStr="default",
+                 cystr TotalFracStr="default",
+                 cystr MergedFracStr="default",
+                 cystr TotalCountStr="default",
+                 cystr MergedCountStr="default",
                  int FailedBQReads=-1, int FailedMQReads=-1,
                  int FailedQCReads=-1, int FailedFMReads=-1,
                  int FailedAFReads=-1,
                  int minNumFam=2,
                  int minNumSS=2,
-                 cython.str REF=None,
+                 cystr REF=None,
                  float reverseStrandFraction=-1.0,
                  cython.bint requireDuplex=True,
                  int minDuplexPairs=2,
                  float minFracAgreedForFilter=0.666,
                  int minFA=0, int BothStrandAlignment=-1,
                  float pValBinom=0.05, int ampliconFailed=-1,
-                 int NDP=-1, cython.str EST="none",
+                 int NDP=-1, cystr EST="none",
                  float minAF=-1., int FailedNDReads=-1,
-                 cython.str flankingBefore=None,
-                 cython.str flankingAfter=None):
+                 cystr flankingBefore=None,
+                 cystr flankingAfter=None):
         cdef np.longdouble_t maxAAF, minAAF
         cdef float shenRef, shenVar
         cdef int AC, DOC
@@ -252,13 +253,13 @@ cdef class VCFPos:
                  PCInfo_t PCInfoObject,
                  float MaxPValue=1e-18,
                  cython.bint keepConsensus=True,
-                 cython.str reference="default",
+                 cystr reference="default",
                  cython.bint requireDuplex=True,
                  int minDuplexPairs=1,
                  float reverseStrandFraction=-1.,
                  float minFracAgreed=0.0,
                  int minFA=0,
-                 cython.str experiment="",
+                 cystr experiment="",
                  int NDP=-1,
                  pysam.cfaidx.FastaFile refHandle=None,
                  shenRange=10):
@@ -360,10 +361,10 @@ cdef class HeaderInfoLine(object):
     This class holds a VCF INFO header line.
     """
 
-    cdef public cython.str cType, cID, cDescription, str, cNumber
+    cdef public cystr cType, cID, cDescription, str, cNumber
 
-    def __init__(self, cython.str ID="default", cython.str Number="default",
-                 cython.str Type="default", cython.str Description="default"):
+    def __init__(self, cystr ID="default", cystr Number="default",
+                 cystr Type="default", cystr Description="default"):
         self.cType = Type
         self.cNumber = Number
         self.cID = ID.upper()
@@ -377,7 +378,7 @@ cdef class HeaderInfoLine(object):
         else:
             raise ThisIsMadness("A description is required.")
 
-    @cython.returns(cython.str)
+    @cython.returns(cystr)
     def __str__(self):
         self.str = ("##INFO=<ID="
                     "{},Number={},Type=".format(self.cID, self.cNumber) +
@@ -494,7 +495,7 @@ class HeaderFunctionCallLine:
     This class holds a VCF Function Call Line.
     """
 
-    def __init__(self, cython.str callStr="default"):
+    def __init__(self, cystr callStr="default"):
         self.callStr = callStr
 
     def __str__(self):
@@ -977,7 +978,7 @@ HeaderFormatDict["SHENRANGE"] = HeaderFormatLine(
     Type="Integer", Number="1")
 
 
-@cython.returns(cython.str)
+@cython.returns(cystr)
 def GetContigHeaderLines(dict header):
     """
     This program creates the string for the contig lines

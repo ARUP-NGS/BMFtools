@@ -25,6 +25,7 @@ cimport numpy as np
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
+from utilBMF.HTSUtils cimport cystr
 
 
 """
@@ -103,14 +104,14 @@ def CountNumReads(inBAM):
     """
     return int(check_output(["samtools", "view", "-c", inBAM]).strip())
 
-cdef ndarray[np.float64_t, ndim = 1] InsertSizeArray_(
+cdef ndarray[np.float64_t, ndim=1] InsertSizeArray_(
         pysam.calignmentfile.AlignmentFile handle):
     cdef pysam.calignmentfile.AlignedSegment i
     return np.absolute(np.array([i.tlen for i in handle], dtype=np.float64))
-    
+
 
 @cython.returns(ndarray)
-def InsertSizeArray(cython.str inBAM):
+def InsertSizeArray(cystr inBAM):
     """
     Returns an array of insert sizes for the sample.
     """
@@ -213,7 +214,7 @@ cdef ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
     cdef int famS, numFam, numSing, sumFam, sumAll
     cdef pFastqProxy_t read
     cdef double MeanFamAll, MeanRealFam
-    cdef cython.str key, value
+    cdef cystr key, value
     numFam = 0
     numSing = 0
     sumFam = 0
@@ -243,7 +244,7 @@ cdef ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
                      MeanRealFam], dtype=np.double)
 
 
-def GetFamSizeStats(cython.str inFq, outfile=sys.stdout):
+def GetFamSizeStats(cystr inFq, outfile=sys.stdout):
     """
     Calculates family size and library diversity from a consolidated
     fastq file.
@@ -252,7 +253,7 @@ def GetFamSizeStats(cython.str inFq, outfile=sys.stdout):
     cdef pysam.cfaidx.FastqProxy read
     cdef double MeanFamAll, MeanRealFam
     cdef pFastqFile_t FqHandle
-    cdef ndarray[double, ndim = 1] results
+    cdef ndarray[double, ndim=1] results
     if(outfile == sys.stdout):
         outStr = "stdout"
     elif(isinstance(outfile, str)):

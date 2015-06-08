@@ -4,11 +4,13 @@ cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
+ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef pFastqProxy pFastqProxy_t
 
 cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
@@ -22,14 +24,14 @@ cdef class pPileupRead:
     """
     Python container for the PileupRead proxy in pysam
     """
-    cdef public cython.str BaseCall
+    cdef public cystr BaseCall
     cdef public cython.bint is_del
     cdef public long level
     cdef public long indel
     cdef public long query_position
-    cdef public cython.str name, str
+    cdef public cystr name, str
     cdef public cAlignedSegment alignment
-    cpdef object opt(self, cython.str arg)
+    cpdef object opt(self, cystr arg)
 
 cdef class PileupReadPair:
 
@@ -44,8 +46,8 @@ cdef class PileupReadPair:
     cdef public pPileupRead_t read2
     cdef public ReadPair_t RP
     cdef public cython.bint discordant
-    cdef public cython.str discordanceString
-    cdef public cython.str name
+    cdef public cystr discordanceString
+    cdef public cystr name
 
 
 cdef class ReadPair:
@@ -63,9 +65,9 @@ cdef class ReadPair:
     cdef public cython.bint read2_is_unmapped
     cdef public cython.bint read2_soft_clipped
     cdef public cython.bint SameContig
-    cdef public cython.str read1_contig
-    cdef public cython.str read2_contig
-    cdef public cython.str ContigString
+    cdef public cystr read1_contig
+    cdef public cystr read2_contig
+    cdef public cystr ContigString
     cdef public long insert_size
     cdef public cython.bint read1_in_bed
     cdef public cython.bint read2_in_bed, SameStrand
@@ -81,7 +83,7 @@ cdef class AbstractIndelContainer:
     reference base position.
     seq should be None for a deletion
     """
-    cdef public cython.str contig, seq, uniqStr
+    cdef public cystr contig, seq, uniqStr
     cdef public long type, shenwindow, end, start
     cdef public cython.float shen
     cdef public list readnames, StartStops
@@ -115,7 +117,7 @@ cdef class IDVCFLine(object):
     support a variant call.
     """
 
-    cdef public cython.str TYPE, REF, ALT, ID, CHROM, FILTER, FormatStr, str
+    cdef public cystr TYPE, REF, ALT, ID, CHROM, FILTER, FormatStr, str
     cdef public long POS, LEN, NumStartStops, NDPS, DPA
     cdef public cython.float reverseStrandFraction, QUAL, MDP
     cdef public cython.bint BothStrandSupport
@@ -125,24 +127,24 @@ cdef class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
-    cdef public cython.str comment, quality, sequence, name
-    cdef cython.str getBS_(self)
-    cpdef cython.str getBS(self)
-    cdef cython.str tostring(self)
+    cdef public cystr comment, quality, sequence, name
+    cdef cystr cGetBS(self)
+    cpdef cystr getBS(self)
+    cdef cystr tostring(self)
 
 cdef class BamTag(object):
     """
     Contains a tag, a value, and a type, all of which are string objects.
     """
-    cdef readonly cython.str tag
-    cdef readonly cython.str tagtype
+    cdef readonly cystr tag
+    cdef readonly cystr tagtype
     cdef public object value
 
 cdef class pFastqFile(object):
     cdef public pysam.cfaidx.FastqFile handle
     cpdef close(self)
 
-cpdef public cython.str RevCmp(cython.str seq, dict CmpDict=?)
+cpdef public cystr RevCmp(cystr seq, dict CmpDict=?)
 
 cpdef public list permuteNucleotides(long maxn, object nci=?)
 
@@ -157,3 +159,4 @@ cdef cython.bint cReadsOverlap(
 
 cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
+cdef cystr cGetBS(pFastqProxy_t)
