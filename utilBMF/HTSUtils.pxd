@@ -4,6 +4,9 @@ cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
+from utilBMF.cstring cimport cs_to_ph
+from cpython cimport array as c_array
+ctypedef c_array.array carray
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
@@ -131,6 +134,7 @@ cdef class pFastqProxy:
     cdef cystr cGetBS(self)
     cpdef cystr getBS(self)
     cdef cystr tostring(self)
+    cpdef carray getQualArray(self)
 
 cdef class BamTag(object):
     """

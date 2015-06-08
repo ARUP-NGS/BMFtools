@@ -332,6 +332,10 @@ cdef class pFastqProxy:
     cpdef cystr getBS(self):
         return self.cGetBS()
 
+    cpdef carray getQualArray(self):
+        return cs_to_ph(self.quality)
+
+
 
 cdef cystr cGetBS(pFastqProxy_t read):
     """

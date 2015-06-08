@@ -210,10 +210,16 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
     except KeyError:
         QualString = "".join(map(ph2chr, phredQuals))
-    PVString = "|PV=%s" % (",".join([int2Str[i] for i in phredQuals]))
-    TagString = "|FM=%s|FA=%s|ND=%s%s" % (
-        lenRStr,  ",".join([int2Str[i] for i in FA]),
-        lenR * len(finalSeq) - nsum(FA), PVString)
+    try:
+        PVString = "|PV=%s" % (",".join([int2Str[i] for i in phredQuals]))
+    except KeyError:
+        PVString = "|PV=%s" % (",".join(phredQuals.astype(str)))
+    try:
+        FAString = "|FA=%s" % (",".join([int2Str[i] for i in FA]))
+    except KeyError:
+        FAString = "|FA=%s" % (",".join(FA.astype(str)))
+    TagString = "|FM=%s%sND=%s%s" % (
+        lenRStr,  FAString, lenR * len(finalSeq) - nsum(FA), PVString)
     """
     try:
     """
@@ -267,7 +273,8 @@ cdef cystr compareFqRecsFast(list R,
     """
     cdef int lenR, ND, lenSeq
     cdef cython.bint Success
-    cdef cystr seq, qual, seqItem, qualChar
+    cdef cystr seq, qual, seqItem, qualChar, PVString, TagString
+    cdef cystr consolidatedFqStr
     cdef ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
     cdef ndarray[np.int64_t, ndim = 2] qualT, qualAllSum
     cdef ndarray[np.int64_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
@@ -333,8 +340,12 @@ cdef cystr compareFqRecsFast(list R,
         phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
     except KeyError:
         phredQualsStr = "".join(map(ph2chr, phredQuals))
-    TagString = "|FM=%s|ND=%s|FA=%s%s" % (lenR, ND, ",".join([int2Str[i] for i in FA]),
-                                          PVString)
+    try:
+        FAString = "|FA=%s" % ",".join([int2Str[i] for i in FA])
+    except KeyError:
+        FAString = ",".join(FA.astype(str))
+    TagString = "|FM=%s|ND=%s%s%s" % (lenR, ND, FAString,
+                                      PVString)
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
                                                    newSeq.tostring(),
