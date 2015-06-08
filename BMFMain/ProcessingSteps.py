@@ -85,9 +85,10 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
            ", but in case something dies later, this could be responsible",
            level=logging.DEBUG)
     pl("Now tagging BAM with custom SAM tags.")
+    #NOTE: bed file given as an option but not currently used BCBam.pairedBarcodeTagging
     taggedBAM = BCBam.pairedBarcodeTagging(
         consfq1, consfq2, outBAMProperPair, bedfile=bed, realigner=realigner,
-        ref=ref, minAF=minAF)
+        ref=ref, minAF=minAF) 
     # check_call(["rm", outBAMProperPair])
     pl("Now realigning with: %s" % realigner)
     if("abra" in realigner.lower()):
