@@ -71,8 +71,9 @@ def main():
                                          " frequency.")
     DMultiPlexParser = subparsers.add_parser("dmp",
                                              description="Marks, combines, and"
-                                             " processes a dataset of fastqs f"
-                                             "or further analysis.")
+                                             " processes a dataset of single o"
+                                             "r paired fastqs for further anal"
+                                             "ysis.")
     SNVParser = subparsers.add_parser("snv", description="Call SNVs. Assumes "
                                       "that reads have been collapsed from a "
                                       "family size of at least 2")
@@ -404,7 +405,7 @@ def main():
         "--ligation-efficiency",
         help="Efficiency of ligation of adapters.",
         type=float, default=0.5)
-    
+
     # set_trace()
 
     args = parser.parse_args()
@@ -595,7 +596,7 @@ def main():
                 p5Seq=args.p5Seq)
             sys.exit(0)
         elif(len(args.inFqs) == 1):
-            raise NotImplementedError("I haven't made this yet.")
+            NotImplementedError("I haven't made this yet.")
     if(args.bmfsuites == "sv"):
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans
