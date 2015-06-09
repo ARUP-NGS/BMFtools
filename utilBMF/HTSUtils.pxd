@@ -136,6 +136,11 @@ cdef class pFastqProxy:
     cdef cystr tostring(self)
     cpdef carray getQualArray(self)
 
+
+cdef class pFastqFile(object):
+    cdef public pysam.cfaidx.FastqFile handle
+    cpdef close(self)
+
 cdef class BamTag(object):
     """
     Contains a tag, a value, and a type, all of which are string objects.
@@ -143,10 +148,6 @@ cdef class BamTag(object):
     cdef readonly cystr tag
     cdef readonly cystr tagtype
     cdef public object value
-
-cdef class pFastqFile(object):
-    cdef public pysam.cfaidx.FastqFile handle
-    cpdef close(self)
 
 cpdef public cystr RevCmp(cystr seq, dict CmpDict=?)
 
