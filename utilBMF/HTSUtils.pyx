@@ -560,6 +560,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     printlog("bwa mem command string with RG/CO additions"
              ": %s" % command_str)
     PipedShellCall(command_str)
+    printlog("bwa mem aligned output is: %s" %outBAM)
     return outBAM
 
 

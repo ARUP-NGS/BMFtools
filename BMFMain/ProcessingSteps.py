@@ -56,6 +56,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
            "addRG is being set to True.")
         addRG = True
     if(aligner == "mem"):
+        pl("Now aligning with: %s" % aligner)
         outBAMProperPair = BCBam.AlignAndTagMem(
             consfq1, consfq2, ref=ref, opts=opts)
     elif(aligner == "aln"):

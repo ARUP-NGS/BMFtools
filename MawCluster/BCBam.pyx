@@ -271,7 +271,7 @@ def pairedBarcodeTagging(
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
-        suppBam = bam.split('.')[0] + '.2ndSupp.bam'
+        suppBam = '.'.join(bam.split('.')[0:-1]) + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
     cStr = "pairedBarcodeTagging({}, {}, {}, minAF={})".format(fq1, fq2,
                                                                bam, minAF)
@@ -728,18 +728,19 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
         outbam.write(TagAlignedSegment(read))
     inbam.close()
     outbam.close()
-    return
+    #return
 
 
 cpdef BarcodeTagCOBam(cystr bam, cystr outbam=None):
     """In progress
     """
+    pl("Tagging BAM with barcode tags in CO field ...")
     cdef pysam.calignmentfile.AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(bam)
     outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
     BarcodeTagCOBam_(inHandle,
-                     pysam.AlignmentFile(outbam, template=inHandle))
-    return
+                     pysam.AlignmentFile(outbam, "wb", template=inHandle))
+    return outbam
 
 
 def AlignAndTagMem(cystr fq1, cystr fq2,
