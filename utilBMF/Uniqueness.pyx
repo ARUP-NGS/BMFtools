@@ -9,26 +9,26 @@ import uuid
 import logging
 from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
-                              ThisIsMadness, printlog as pl, ParseBed,
+                              printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
+from utilBMF.ErrorHandling import ThisIsMadness
 from cytoolz import frequencies as cyfreq
-from itertools import chain, partial
+from itertools import chain
+from functools import partial
 from operator import attrgetter
 oagseq = attrgetter("seq")
 cfi = chain.from_iterable
-hammingPt = partial(hamming_cousins(n=1))
+hammingPt = partial(hamming_cousins, n=1)
 cimport cython
 
 
-@cython.returns(cystr)
-def SequenceToFakeFq(cystr seq):
+cpdef cystr SequenceToFakeFq(cystr seq):
     return ("@" + seq + "\n" + seq +
             "\n+\n" + "G" * len(seq))
 
 
-@cython.returns(list)
-def GetKmersToCheck(cystr ref, int k=30, list bedline=[],
-                    int padding=-1):
+cpdef list GetKmersToCheck(cystr ref, int k=30, list bedline=[],
+                           int padding=-1):
     """
     Gets a list of kmers which provide unique mappability
     to the region of interest.
@@ -47,8 +47,7 @@ def GetKmersToCheck(cystr ref, int k=30, list bedline=[],
     return [regionStr[i:i + k] for i in xrange(end - start - k)]
 
 
-@cython.returns(cystr)
-def FastqStrFromKmerList(list kmerList):
+cpdef cystr FastqStrFromKmerList(list kmerList):
     """
     Creates a dummy fastq string from a list of kmers.
     """
@@ -222,12 +221,11 @@ def GetRepresentativeKmerDict(*args, **kwargs):
     return cyfreq(GetRepKmersBwt(*args, **kwargs))
 
 
-@cython.returns(list)
-def GetRepKmersBwt(cystr ref, int k=30,
-                   list bedline=[],
-                   int padding=-1, int seedlen=-1,
-                   int mismatches=-1, int minMQ=1,
-                   cython.bint useBowtie=False):
+cpdef list GetRepKmersBwt(cystr ref, int k=30,
+                          list bedline=[],
+                          int padding=-1, int seedlen=-1,
+                          int mismatches=-1, int minMQ=1,
+                          cython.bint useBowtie=False):
     cdef cystr fqStr, output
     fqStr = FastqStrFromKmerList(GetKmersToCheck(ref, k=k, bedline=bedline,
                                                  padding=padding))
@@ -240,9 +238,8 @@ def GetRepKmersBwt(cystr ref, int k=30,
     return GetUniqMQsBowtie(output, minMQ=minMQ)
 
 
-@cython.returns(cystr)
-def BowtieFqToStr(cystr fqStr, cystr ref=None,
-                  int seed=-1, int mismatches=-1):
+cpdef cystr BowtieFqToStr(cystr fqStr, cystr ref=None,
+                          int seed=-1, int mismatches=-1):
     """
     Returns the string output of a bowtie2 call.
     With bowtie, you can specify precisely the number of permitted mismatches

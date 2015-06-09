@@ -25,3 +25,18 @@ cdef class KmerFetcher(object):
 cdef class RefKmer(object):
     cdef readonly cystr contig, seq
     cdef readonly cython.int len, pos
+
+cpdef cystr SequenceToFakeFq(cystr seq)
+cpdef list GetKmersToCheck(cystr ref, int k=?, list bedline=?,
+                           int padding=?)
+cpdef cystr FastqStrFromKmerList(list kmerList)
+cpdef list GetRepKmersBwt(cystr ref,
+                          int k=?,
+                          list bedline=?,
+                          int padding=?,
+                          int seedlen=?,
+                          int mismatches=?,
+                          int minMQ=?,
+                          cython.bint useBowtie=?)
+cpdef cystr BowtieFqToStr(cystr fqStr, cystr ref=?,
+                          int seed=?, int mismatches=?)
