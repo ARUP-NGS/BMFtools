@@ -197,6 +197,8 @@ def main(argv=None):
         rescue = ("true" in confDict["rescue"].lower())
     if(args.rescue is not None):
         rescue = ("true" in args.rescue.lower())
+    if('rescue' not in locals()):
+        rescue = False
     if("experiment" in cdk):
         experiment = confDict["experiment"]
     if args.experiment != "default":
@@ -392,7 +394,7 @@ def main(argv=None):
         if(args.initialStep == 1):
             pl("Beginning fastq processing.")
             trimfq1, trimfq2 = ps.pairedFastqShades(
-                args.fq[0], args.fq[1], indexfq=args.idxFastq,
+                args.fq[0], args.fq[1], indexFq=args.idxFastq,
                 p3Seq=p3Seq, p5Seq=p5Seq, sortMem=sortMem,
                 inline_barcodes=inline_barcodes, homing=homing,
                 bcLen=bcLen, head=head, rescue=rescue)

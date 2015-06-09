@@ -193,14 +193,14 @@ def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
     return BConsFastq1, BConsFastq2
 
 
-def singleFastqShades(inFastq, indexfq="default", stringency=0.95,
+def singleFastqShades(inFastq, indexFq="default", stringency=0.95,
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G",
                       inline_barcodes=False, homing=None,
                       bcLen=-1, head=0):
     pl("Beginning singleFastqShades for {}".format(inFastq))
     if(inline_barcodes is False):
-        bcFastq = BCFastq.FastqSingleShading(inFastq, indexfq=indexfq,
+        bcFastq = BCFastq.FastqSingleShading(inFastq, indexFq=indexFq,
                                              head=head)
     else:
         bcFastq = BCFastq.TrimHomingSingle(inFastq, homing=homing, bcLen=bcLen)

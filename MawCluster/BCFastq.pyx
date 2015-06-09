@@ -467,8 +467,8 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
     Tags fastqs with barcodes from an index fastq.
     """
     #  C declarations
-    cdef pysam.cfaidx.FastqProxy read1
-    cdef pysam.cfaidx.FastqProxy read2
+    cdef pFastqProxy_t read1
+    cdef pFastqProxy_t read2
     cdef pysam.cfaidx.FastqProxy indexRead
     cdef cystr outfq1
     cdef cystr outfq2
@@ -483,9 +483,8 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
         outfq1 += ".gz"
         outfq2 += ".gz"
     pl("Output fastqs: {}, {}.".format(outfq1, outfq2))
-    inFq1 = pysam.FastqFile(fq1)
-    inFq2 = pysam.FastqFile(fq2)
-    ifn1 = inFq1.next
+    inFq1 = pFastqFile(fq1)
+    inFq2 = pFastqFile(fq2)
     ifn2 = inFq2.next
     if useGzip is False:
         outFqHandle1 = open(outfq1, "w")
@@ -508,8 +507,7 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
     numWritten = 0
     ofh1w = outFqHandle1.write
     ofh2w = outFqHandle2.write
-
-    while True:
+    for read1 in inFq1:
         if(numWritten >= SetSize):
             if(not useGzip):
                 ofh1w(f1.getvalue())
@@ -526,39 +524,21 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
                 f1 = gzip.GzipFile(fileobj=cString1, mode="w")
                 f2 = gzip.GzipFile(fileobj=cString2, mode="w")
             numWritten = 0
-        try:
-            read1 = ifn1()
-        except StopIteration:
-            break
         read2 = ifn2()
         indexRead = ifin()
-        tempBar = indexRead.sequence
+        tempBar = "%s%s%s" % (read1.sequence[:head], indexRead.sequence,
+                              read2.sequence[:head])
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
         # print("bLen is {}".format(bLen))
-        if(not BarcodePasses(tempBar, hpLimit=hpLimit)):
-            '''
-            pl("Failing barcode for read {} is {} ".format(indexRead,
-                                                           tempBar),
-               level=logging.DEBUG)
-            '''
-            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar,
-                                  read2.sequence[:head])
-            f1.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read1.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence,
-                                          read1.quality))
-            f2.write("@%s %s|FP=IndexFail|BS=" % (read1.name, read2.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence,
-                                          read2.quality))
+        if(BarcodePasses(tempBar, hpLimit=hpLimit)):
+            tagStr = "|FP=IndexPass|BS=%s" % tempBar
         else:
-            tempBar = "%s%s%s" % (read1.sequence[:head], tempBar,
-                                  read2.sequence[:head])
-            f1.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read1.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read1.sequence,
-                                          read1.quality))
-            f2.write("@%s %s|FP=IndexPass|BS=" % (read1.name, read2.comment) +
-                     "%s\n%s\n+\n%s\n" % (tempBar, read2.sequence,
-                                          read2.quality))
+            tagStr = "|FP=IndexFail|BS=%s" % tempBar
+        read1.comment += tagStr
+        read2.comment += tagStr
+        f1.write(str(read1))
+        f2.write(str(read2))
         numWritten += 1
     if(useGzip is False):
         ofh1w(f1.getvalue())
@@ -579,7 +559,7 @@ def FastqSingleShading(fq,
                        cython.bint gzip=False,
                        int head=0):
     """
-    TODO: Unit test for this function.
+    Unit test done. Marks a single fastq with its index fq string.
     """
     cdef pysam.cfaidx.FastqProxy read1
     cdef pFastqProxy_t pRead1, pIndexRead
@@ -607,75 +587,6 @@ def FastqSingleShading(fq,
     if(gzip):
         check_call(['gzip', fq], shell=False)
     return
-
-
-def HomingSeqLoc(fq, homing, bcLen=12):
-    pl("Now beginning HomingSeqLoc.")
-    cdef pysam.cfaidx.FastqProxy read
-    cdef utilBMF.HTSUtils.pFastqProxy pRead
-    InFastq = pysam.FastqFile(fq)
-    Tpref = '.'.join(fq.split('.')[0:-1])
-    Prefix = Tpref.split('/')[-1]
-    StdFilename = Prefix + '.{}.fastq'.format("homing" + str(bcLen))
-    ElseFilename = Prefix + '.else.fastq'
-    ElseLoc = Prefix + '.else.supp'
-    StdFastq = open(StdFilename, 'w', 0)  # Homing at expected Location
-    ElseFastq = open(ElseFilename, 'w', 0)
-    ElseLocations = open(ElseLoc, 'w', 0)
-    for read in InFastq:
-        pRead = pFastqProxy(read)
-        seq = pRead.sequence
-        if(seq.find(homing) == -1):
-            pRead.comment += "|FP=HomingFail"
-            ElseFastq.write(str(pRead))
-        elif(seq[bcLen:bcLen + len(homing)] == homing):
-            pRead.comment += "|FP=HomingPass"
-            StdFastq.write(str(pRead))
-        else:
-            pRead.comment = "|FP=HomingFail"
-            ElseFastq.write(str(pRead))
-            ElseLocations.write(repr(seq.find(homing)) + "\t" +
-                                pRead.name + "\n")
-    StdFastq.close()
-    ElseFastq.close()
-    ElseLocations.close()
-    return StdFilename, ElseFilename
-
-
-def fastq_sort(in_fastq, out_fastq):
-    pl("Now beginning fastq_sort.")
-    outfile = open(out_fastq, 'w')
-    command_str = ('cat ' + in_fastq + ' | paste - - - - | '
-                   'sort -k1,1 -t " " | tr "\t" "\n"')
-    subprocess.check_call(command_str, stdout=open(outfile, "w"), shell=True)
-    outfile.close()
-    return(command_str)
-
-
-def FastqRegex(fq, string, matchFile="default", missFile="default"):
-    if(matchFile == "default"):
-        matchFile = ('.'.join(fq.split(
-                     '.')[0:-1]) + '.match.fastq').split('/')[-1]
-    if(missFile == "default"):
-        missFile = (
-            '.'.join(fq.split('.')[0:-1]) + '.miss.fastq').split('/')[-1]
-    CommandStr = ("cat " + fq + " | paste - - - - | grep '" +
-                  string + "' | tr '\t' '\n' > " + matchFile)
-    check_call(CommandStr, shell=True)
-    CommandStr2 = ("cat {} | paste - - - - | grep ".format(fq) +
-                   "-v '{}' | tr '\t' '\n' > {}".format(
-        string,
-        missFile))
-    check_call(CommandStr2, shell=True)
-    return(CommandStr, CommandStr2, matchFile, missFile)
-
-
-def fastx_trim(infq, outfq, n):
-    pl("Now beginning fastx_trimmer.")
-    command_str = ['fastx_trimmer', '-l', str(n), '-i', infq, '-o', outfq]
-    pl(command_str)
-    subprocess.check_call(command_str)
-    return(command_str)
 
 
 @cython.returns(cystr)

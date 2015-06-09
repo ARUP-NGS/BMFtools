@@ -735,7 +735,7 @@ cpdef BarcodeTagCOBam(cystr bam, cystr outbam=None):
     """In progress
     """
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    inHandle = pysam.AlignmentFile(bam)
+    inHandle = pysam.AlignmentFile(bam, "rb")
     outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
     BarcodeTagCOBam_(inHandle,
                      pysam.AlignmentFile(outbam, "wb", template=inHandle))
