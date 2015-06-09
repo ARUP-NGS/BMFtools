@@ -147,7 +147,8 @@ cdef class ArrayLayoutPos:
     def __cinit__(self, int pos=-1, int readPos=-1,
                   int base=-1, int operation=-1,
                   int quality=-1, int agreement=-1):
-        self.values = array('i', [pos, readPos, base, operation, quality, agreement])
+        self.values = array('i', [pos, readPos, base,
+                                  operation, quality, agreement])
 
     def __init__(self, *args):
         self.__cinit__(*args)

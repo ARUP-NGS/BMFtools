@@ -336,7 +336,6 @@ cdef class pFastqProxy:
         return cs_to_ph(self.quality)
 
 
-
 cdef cystr cGetBS(pFastqProxy_t read):
     """
     Portable function for getting the barcode sequence from a marked BMFastq
@@ -2961,7 +2960,7 @@ def GetSCFractionArray(inBAM):
 @cython.returns(ndarray)
 def GetTlenArray(inBAM):
     cdef cAlignedSegment i
-    cdef ndarray[np.int64_t, ndim = 2] tlens
+    cdef ndarray[np.int64_t, ndim=2] tlens
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tlens = np.array([i.tlen for i in inHandle if i.is_read1 and i.tlen != 0],
                      dtype=np.int64, ndmin=2)
@@ -2969,7 +2968,7 @@ def GetTlenArray(inBAM):
 
 
 def PlotTlen(inBAM, outfile="default"):
-    cdef ndarray[np.int64_t, ndim = 2] tlens
+    cdef ndarray[np.int64_t, ndim=2] tlens
     pl("About to load tlens")
     tlens = GetTlenArray(inBAM)
     pl("Successfully loaded tlens.")

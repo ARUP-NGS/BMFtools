@@ -167,9 +167,9 @@ def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
                 minFam=minFamRsq, head=head, mm=mmRsq)
         else:
             bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
-                                                           inFastq2,
-                                                           indexFq=indexFq,
-                                                           head=head)
+                                                            inFastq2,
+                                                            indexFq=indexFq,
+                                                            head=head)
     else:
         bcFastq1, bcFastq2 = TrimHomingPaired(inFastq1, inFastq2,
                                               homing=homing, bcLen=bcLen)

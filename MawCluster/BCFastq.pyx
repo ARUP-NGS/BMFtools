@@ -281,8 +281,8 @@ cdef cystr compareFqRecsFast(list R,
     cdef cython.bint Success
     cdef cystr seq, qual, seqItem, qualChar, PVString, TagString
     cdef cystr consolidatedFqStr
-    cdef ndarray[np.int64_t, ndim = 2] quals, qualA, qualC, qualG
-    cdef ndarray[np.int64_t, ndim = 2] qualT, qualAllSum
+    cdef ndarray[np.int64_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[np.int64_t, ndim=2] qualT, qualAllSum
     cdef ndarray[np.int64_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
     cdef ndarray[np.int64_t, ndim=1] MaxPhredSum, phredQuals, qualTFlat
     cdef ndarray[char, ndim=1, mode = "c"] newSeq
@@ -968,11 +968,13 @@ def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
     pl("Calling RescueShadingWrapper.")
     if(indexFq is None):
         raise Tim("Index Fq must be set to rescue barcodes.")
-    pl("About to do a rescue step for barcodes for %s and %s." % (inFq1, inFq2))
+    pl("About to do a rescue step for barcodes for %s and %s." % (inFq1,
+                                                                  inFq2))
     rescueDict, TrueFamDict = BarcodeRescueDicts(indexFq, n=mm, minFam=minFam,
                                                  tmpFile=tmpFilename)
     pl("Dictionaries filled!")
-    return RescuePairedFastqShading(inFq1, inFq2, indexFq, rescueDict=rescueDict,
+    return RescuePairedFastqShading(inFq1, inFq2, indexFq,
+                                    rescueDict=rescueDict,
                                     TrueFamDict=TrueFamDict, head=head)
 
 

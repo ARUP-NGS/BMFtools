@@ -20,7 +20,8 @@ cdef view.array ps2va(char * inArr, size_t size):
     directly as integers without having to copy. This somehow seems close but
     just isn't working as I'd want it to.
     """
-    cdef view.array ret_array = view.array(shape=(size,), itemsize=sizeof(char),
+    cdef view.array ret_array = view.array(shape=(size,),
+                                           itemsize=sizeof(char),
                                            format="i", allocate_buffer=False,
                                            mode='c')
     ret_array.data = inArr

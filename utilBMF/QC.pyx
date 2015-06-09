@@ -25,7 +25,6 @@ cimport numpy as np
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
-from utilBMF.HTSUtils cimport cystr
 
 
 """

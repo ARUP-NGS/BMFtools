@@ -1,17 +1,18 @@
 # cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
 # cython: cdivision=True, cdivision_warnings=True, profile=True
-## Standard library/builtins.
+
+# Standard library/builtins.
 import logging
 from operator import attrgetter as oag
 import sys
 from subprocess import CalledProcessError, check_call
 
-## Third party includes
+# Third party includes
 import pysam
 import cython
 from cytoolz import map as cmap
 
-## local python imports
+# local python imports
 cimport MawCluster.PileupUtils as PileupUtils
 from . import BCVCF
 from .SNVUtils import GetVCFHeader
@@ -23,18 +24,18 @@ from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness, FunctionCallException
 
-## local cython imports
+# local cython imports
 from utilBMF.HTSUtils cimport cystr
 from MawCluster.SNVUtils cimport VCFPos
 from utilBMF.HTSUtils cimport pPileupRead
 
-## Third party cython imports
+# Third party cython imports
 from cython cimport str as cystr
 cimport cython
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 
-## ctypedefs
+# ctypedefs
 ctypedef PileupUtils.PCInfo PCInfo_t
 ctypedef PileupUtils.pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
