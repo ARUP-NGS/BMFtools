@@ -6,9 +6,9 @@ from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 
-cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile bam,
+cdef cystr BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile bam,
                       pysam.calignmentfile.AlignmentFile outbam)
-cpdef BarcodeTagCOBam(cystr bam, cystr outbam=?)
+cpdef cystr BarcodeTagCOBam(cystr bam, cystr outbam=?)
 
 cdef dict GetCOTagDict_(cAlignedSegment read)
 
