@@ -10,6 +10,7 @@ import logging
 import os
 import shlex
 import subprocess
+from subprocess import check_output
 from copy import copy as ccopy
 import gzip
 import sys
@@ -17,6 +18,7 @@ import collections
 import time
 import cStringIO
 import operator
+import uuid
 from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       mul as omul, add as oadd, attrgetter as oag,
                       methodcaller as mc)
@@ -36,9 +38,13 @@ from itertools import groupby
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
                               ph2chrDict, chr2ph, printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
-                              int2Str, chr2phStr)
+                              int2Str, chr2phStr, hamming_cousins)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
+try:
+    import re2 as re
+except ImportError:
+    import re
 oagseq = oag("sequence")
 oagqual = oag("quality")
 npchararray = npchar.array
@@ -252,19 +258,19 @@ cpdef cystr cFRF_helper(list R, cystr name=None):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr compareFqRecsFast(list R,
-                                  cystr name=None,
-                                  int famLimit=100,
-                                  dict chr2ph=chr2ph,
-                                  dict letterNumDict=letterNumDict,
-                                  dict ph2chrDict=ph2chrDict,
-                                  object ccopy=ccopy,
-                                  object npchararray=npchararray,
-                                  object oagqual=oagqual,
-                                  object oagseq=oagseq,
-                                  object partialnpchar=partialnpchar,
-                                  object ph2chr=ph2chr,
-                                  object chr2phStr=chr2phStr,
-                                  object int2Str=int2Str):
+                             cystr name=None,
+                             int famLimit=100,
+                             dict chr2ph=chr2ph,
+                             dict letterNumDict=letterNumDict,
+                             dict ph2chrDict=ph2chrDict,
+                             object ccopy=ccopy,
+                             object npchararray=npchararray,
+                             object oagqual=oagqual,
+                             object oagseq=oagseq,
+                             object partialnpchar=partialnpchar,
+                             object ph2chr=ph2chr,
+                             object chr2phStr=chr2phStr,
+                             object int2Str=int2Str):
     """
     TODO: Unit test for this function.
     Also, consider making a cpdef version!
@@ -452,7 +458,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
             raise subprocess.CalledProcessError("Cutadapt failed for read 2!")
 
 
-@cython.locals(useGzip=cython.bint, bLen=int)
+@cython.locals(useGzip=cython.bint, hpLimit=int)
 def FastqPairedShading(fq1, fq2, indexfq="default",
                        useGzip=False, SetSize=10,
                        int head=2):
@@ -494,12 +500,15 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
         f1 = gzip.GzipFile(fileobj=cString1, mode="w")
         f2 = gzip.GzipFile(fileobj=cString2, mode="w")
     inIndex = pysam.FastqFile(indexfq)
+    hpLimit = len(inIndex.next().sequence) * 5 // 6
+    inIndex = pysam.FastqFile(indexfq)
     ifin = inIndex.next
     outFqSet1 = []
     outFqSet2 = []
     numWritten = 0
     ofh1w = outFqHandle1.write
     ofh2w = outFqHandle2.write
+
     while True:
         if(numWritten >= SetSize):
             if(not useGzip):
@@ -524,13 +533,10 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
         read2 = ifn2()
         indexRead = ifin()
         tempBar = indexRead.sequence
-        bLen = len(indexRead.sequence) * 5 // 6
         # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
         # This is for removing low complexity reads
         # print("bLen is {}".format(bLen))
-        if(("N" in tempBar or "A" * bLen in tempBar or
-                "C" * bLen in tempBar or "G" * bLen in tempBar or
-                "T" * bLen in tempBar)):
+        if(not BarcodePasses(tempBar, hpLimit=hpLimit)):
             '''
             pl("Failing barcode for read {} is {} ".format(indexRead,
                                                            tempBar),
@@ -898,3 +904,170 @@ def CalcFamUtils(inFq, asDict=False):
     if(asDict):
         return dict([i.split("=") for i in strOut.split(";")])
     return strOut
+
+
+@cython.returns(tuple)
+def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
+                       cystr tmpFile=None):
+    """Returns two dictionaries.
+    1. rescueHistDict maps random barcodes to the central barcode they
+    should have been.
+    2. TrueFamDict's keys are all "True family" barcodes with the value set
+    to None. It's just O(1) to check for a hashmap key's membership vs. O(n)
+    for checking a list's membership.
+    """
+    cdef list histList
+    cdef dict histDict, rescueHistDict, TrueFamDict
+    cdef cystr h, y, x
+    cdef int y1
+    cStr = ("zcat %s | paste - - - - | cut -f2 | sort | " % indexFqPath +
+            "uniq -c | awk 'BEGIN {{OFS=\"\t\"}};{{print $1, $2}}'")
+    pl("Calling cStr: %s" % cStr)
+    if tmpFile is None:
+        histList = [tuple(tmpStr.split("\t")) for tmpStr in
+                    check_output(cStr,
+                                 shell=True).split("\n") if tmpStr != ""]
+    else:
+        check_call(cStr + " > %s" % tmpFile, shell=True)
+        histList = [tuple(tmpStr.split("\t")) for tmpStr in
+                    open(tmpFile, "r").read().split("\n") if tmpStr != ""]
+    histDict = {y: int(x) for x, y in histList}
+    TrueFamDict = {x: None for x, y1 in histDict.iteritems() if y1 >= minFam}
+    if(len(TrueFamDict) == 0):
+        rescueHistDict = {}
+    else:
+        rescueHistDict = {h: y for y in TrueFamDict.iterkeys() for
+                          h in hamming_cousins(y, n=n)}
+    if(tmpFile is not None):
+        check_call(["rm", tmpFile])
+    return rescueHistDict, TrueFamDict
+
+
+cdef bint BarcodePasses(cystr barcode, int hpLimit=-1, bint useRe=True):
+    if(hpLimit < 0):
+        raise Tim("Barcode length must be set to test if it passes!")
+    if(useRe):
+        b = re.compile("(ACGT){%s}" % hpLimit)
+        if b.match(barcode) is not None:
+            return False
+        if("N" in barcode):
+            return False
+    else:
+        if("A" * hpLimit in barcode or "C" * hpLimit in barcode or
+           "G" * hpLimit in barcode or "T" * hpLimit in barcode or
+           "N" in barcode):
+            return False
+    return True
+
+
+def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
+                         int minFam=10, int mm=1, int head=2):
+    cdef dict rescueDict, TrueFamDict
+    cdef cystr tmpFilename
+    tmpFilename = str(uuid.uuid4().get_hex()[0:8]) + ".tmp"
+    pl("Calling RescueShadingWrapper.")
+    if(indexFq is None):
+        raise Tim("Index Fq must be set to rescue barcodes.")
+    pl("About to do a rescue step for barcodes for %s and %s." % (inFq1, inFq2))
+    rescueDict, TrueFamDict = BarcodeRescueDicts(indexFq, n=mm, minFam=minFam,
+                                                 tmpFile=tmpFilename)
+    pl("Dictionaries filled!")
+    return RescuePairedFastqShading(inFq1, inFq2, indexFq, rescueDict=rescueDict,
+                                    TrueFamDict=TrueFamDict, head=head)
+
+
+@cython.returns(tuple)
+def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
+                             cystr indexFq,
+                             dict rescueDict=None, dict TrueFamDict=None,
+                             cystr outFq1=None, cystr outFq2=None,
+                             int head=2):
+    """Rescues orphans from a barcode rescue.
+    Works under the assumption that the number of random nucleotides used
+    as molecular barcodes is sufficiently high that any read "family" with
+    size below the minFam used to create the rescueDict object can be safely
+    considered to be a sequencer error.
+    """
+    cdef cystr tmpBS, saltedBS, tagStr
+    cdef pFastqFile_t inHandle1, inHandle2, indexHandle
+    cdef pFastqProxy_t rec1, rec2, index_read
+    cdef int bLen, hpLimit
+    if(outFq1 is None):
+        outFq1 = TrimExt(inFq1) + ".rescued.shaded.fastq"
+    if(outFq2 is None):
+        outFq2 = TrimExt(inFq2) + ".rescued.shaded.fastq"
+    if(TrueFamDict is None or rescueDict is None):
+        raise Tim("TrueFamDict and rescueDict must not be None! Reprs! "
+                  "TFD: %s. Rescue: %s." % (repr(TrueFamDict),
+                                            repr(rescueDict)))
+    print("Beginning RescuePairedFastqShading. Outfqs: %s, %s." % (outFq1,
+                                                                   outFq2))
+    inHandle1 = pFastqFile(inFq1)
+    inHandle2 = pFastqFile(inFq2)
+    indexHandle = pFastqFile(indexFq)
+    outHandle1 = open(outFq1, "w")
+    outHandle2 = open(outFq2, "w")
+    ohw1 = outHandle1.write
+    ohw2 = outHandle2.write
+    ih2n = inHandle2.next
+    bLen = len(indexHandle.next().sequence) + 2 * head
+    hpLimit = bLen * 5 // 6  # Homopolymer limit
+    indexHandle = pFastqFile(indexFq)
+    ihn = indexHandle.next
+    for rec1 in inHandle1:
+        try:
+            index_read = ihn()
+            rec2 = ih2n()
+        except StopIteration:
+            raise Tim("Index fastq and read fastqs have different sizes. "
+                      "Abort!")
+        tmpBS = index_read.sequence
+        try:
+            TrueFamDict[tmpBS]
+            saltedBS = "%s%s%s" % (rec1.sequence[:head], tmpBS,
+                                   rec2.sequence[:head])
+            if(BarcodePasses(saltedBS, hpLimit=hpLimit)):
+                tagStr = " |FP=IndexPass|BS=%s" % saltedBS
+                rec1.comment += tagStr
+                rec2.comment += tagStr
+            else:
+                tagStr = " |FP=IndexFail|BS=%s" % saltedBS
+                rec1.comment += tagStr
+                rec2.comment += tagStr
+            ohw1(str(rec1))
+            ohw2(str(rec1))
+            continue
+        except KeyError:
+            pass
+        try:
+            saltedBS = rescueDict[tmpBS]
+            saltedBS = "%s%s%s" % (rec1.sequence[:head], saltedBS,
+                                   rec2.sequence[:head])
+            if(BarcodePasses(saltedBS, hpLimit=hpLimit)):
+                tagStr = " |FP=IndexPass|BS=%s|OS=%s" % (saltedBS,
+                                                         tmpBS)
+                rec1.comment += tagStr
+                rec2.comment += tagStr
+            else:
+                tagStr = " |FP=IndexFail|BS=%s|OS=%s" % (saltedBS,
+                                                         tmpBS)
+                rec1.comment += tagStr
+                rec2.comment += tagStr
+            ohw1(str(rec1))
+            ohw2(str(rec1))
+            continue
+        except KeyError:
+            # This isn't in a true family. Blech!
+            saltedBS = "%s%s%s" % (rec1.sequence[:head], tmpBS,
+                                   rec2.sequence[:head])
+            tagStr = " |FP=IndexFail|BS=%s" % saltedBS
+            rec1.comment += tagStr
+            rec2.comment += tagStr
+            print("rec1 str: %s." % str(rec1))
+            print("rec2 str: %s." % str(rec2))
+            ohw1(str(rec1))
+            ohw2(str(rec1))
+            continue
+    outHandle1.close()
+    outHandle2.close()
+    return outFq1, outFq2
