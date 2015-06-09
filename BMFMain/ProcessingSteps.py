@@ -188,7 +188,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
             p3Seq=p3Seq, p5Seq=p5Seq)
     else:
         pl("Skipping cutadapt ...")
-    check_call(["rm", BSortFq1, BSortFq2])
+    # check_call(["rm", BSortFq1, BSortFq2])
     famStats = GetFamSizeStats(
         BConsFastq1,
         outfile=TrimExt(inFastq1) + ".famstats.txt")

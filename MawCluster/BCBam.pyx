@@ -487,7 +487,8 @@ def ConsolidateInferred(inBAM, outBAM="default"):
     return outBAM
 
 
-def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
+def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
+                         cystr suppBam="default"):
     cdef pFastqProxy_t FqPrx
     cdef pysam.cfaidx.FastqProxy tempRead
     cdef pysam.calignmentfile.AlignedSegment entry
@@ -497,9 +498,9 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     TODO: Unit test for this function.
     """
     if(outputBAM == "default"):
-        outputBAM = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
+        outputBAM = TrimExt(bam) + ".tagged.bam"
     if(suppBam == "default"):
-        suppBam = bam.split('.')[0] + '.2ndSupp.bam'
+        suppBam = TrimExt(bam) + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
     reads = pysam.FastqFile(fastq)
     postFilterBAM = pysam.Samfile(bam, "rb")

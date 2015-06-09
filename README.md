@@ -240,25 +240,12 @@ Most options are available for command-line as well. If an option is set in both
     4. Further indel work.
     5. Optional bwasw realignment for all reads with AF <= minAF
 
-1. Settings Recommendations
-
-    1. The "readPairsPerWrite" parameter can provide great speed improvements.
-        1. For my workstation (64GB RAM, 16 threads), the following table indicates that 100 gives me peak performance.
-        2. For my cert server (192GB RAM, 24 threads), it looks like 10 might give me peak performance, but more rigorous tests are underway.
-    2. For optimal compilation, use the -march flag. BMFTools' setup.py automatically attempts to find that appropriate value for you.
-
 
 Before I forget: I should write a logging/trace decorator which logs each major function call, along with args and kwargs.
 
-#TODO (ish):
-1. SNV:
-    2. Error Characterization Code
-        1. Write database reading and processing.
-    3. Add read length to the INFO field (both full read length and read length without Ns)
-2. Indels:
-    1. Figure out the indel relevance piece.
-    2. Assembly work (kmer-based selection and unitig-based assembly)
-3. SV:
-    1. Finish consensus sequence for intrachromosomal.
-    2. Finish writing structural variants to a VCF format
-    3. Work on interchromosomal translocations
+## Style guidelines
+
+### Modified PEP8
+Since cython is so different from python, some of the PEP8 rules are (inappropriately) being triggered by this code when pep8 is run on it.
+We have decided to follow a modified PEP8, where all PEP8 complaints are considered valid except for "whitespace around operator" for cdefs as appropriate (such as ndarray[float, ndim=1]) and "module level import" not at top of file.
+The second is because pep8 doesn't realize that cimports are still imports.

@@ -324,7 +324,7 @@ cdef class Layout(object):
             self.mapq = -1
             self.tagDict["MP"] = BamTag("MP", "A", "T")
             self.rnext = "*"
-            self.flag = 2 + (16 if(self.is_reverse) else 32) + 192
+            self.flag = 2 + (16 if(self.is_reverse) else 32)
             for count, pos in enumerate(self):
                 pos.readPos = count
         self.update_tags()
