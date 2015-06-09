@@ -145,14 +145,14 @@ cpdef cystr cFRP_helper(list R, cystr name=None):
 
 @cython.boundscheck(False)
 cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
-                                   float stringency=0.9,
-                                   int famLimit=1000,
-                                   cython.bint keepFails=True,
-                                   object oagseq=oagseq,
-                                   dict chr2ph=chr2ph,
-                                   dict ph2chrDict=ph2chrDict,
-                                   object ph2chr=ph2chr,
-                                   object int2Str=int2Str):
+                              float stringency=0.9,
+                              int famLimit=1000,
+                              cython.bint keepFails=True,
+                              object oagseq=oagseq,
+                              dict chr2ph=chr2ph,
+                              dict ph2chrDict=ph2chrDict,
+                              object ph2chr=ph2chr,
+                              object int2Str=int2Str):
     """
     TODO: Unit test for this function.
     Compares the fastq records to create a consensus sequence (if it

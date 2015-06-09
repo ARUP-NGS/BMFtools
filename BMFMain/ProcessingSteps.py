@@ -192,12 +192,17 @@ def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
         outfile=TrimExt(inFastq1) + ".famstats.txt")
     return BConsFastq1, BConsFastq2
 
+
 @cython.locals(overlapLen=int,
                stringency=float)
+<<<<<<< HEAD
 def singleFastqShades(inFastq,indexFq="default",stringency=0.95,
+=======
+def singleFastqShades(inFastq, indexfq="default", stringency=0.95,
+>>>>>>> 86b17479be83aace062b7004cd5722671dd28d74
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G",
-                      inline_barcodes=False,homing=None,
+                      inline_barcodes=False, homing=None,
                       bcLen=-1, head=0):
     pl("Beginning singleFastqShades for {}".format(inFastq))
     if(inline_barcodes is False):
@@ -205,20 +210,21 @@ def singleFastqShades(inFastq,indexFq="default",stringency=0.95,
                                              head=head)
     else:
         bcFastq = BCFastq.TrimHomingSingle(inFastq, homing=homing, bcLen=bcLen)
-    BSortFq = BCFastq.BarcodeSort(bcFastq,sortMem=sortMem)
+    BSortFq = BCFastq.BarcodeSort(bcFastq, sortMem=sortMem)
     BConsFastq = BCFastq.singleFastqConsolidate(BSortFq, stringency=0.9)
-    pl("Parameters for cutadapt are p3Seq={}, p5Seq".format(p3Seq,p5Seq))
+    pl("Parameters for cutadapt are p3Seq={}, p5Seq".format(p3Seq, p5Seq))
     if(p3Seq != "default"):
         pl("Running cutadapt ...")
         BConsFastq = BCFastq.CutAdaptSingle(BConsFastq, overlapLen=overlapLen,
-        p3Seq=p3Seq, p5Seq=p5Seq)
+                                            p3Seq=p3Seq, p5Seq=p5Seq)
     else:
         pl("Skipping cutadapt")
-    check_call(["rm",BSortFq])
+    check_call(["rm", BSortFq])
     famStats = GetFamSizeStats(
         BConsFastq,
         outfile=TrimExt(inFastq) + ".famstats.txt")
     return BConsFastq
+
 
 @cython.locals(minMQ=int, minBQ=int, MakeVCF=cython.bint,
                MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint,
