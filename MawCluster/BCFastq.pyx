@@ -417,7 +417,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
 
 
 @cython.locals(overlapLen=int)
-def CallCutadapt(fq, p3Seq="default", p5Seq="default", overlapLen=6):
+def CutadaptSingle(fq, p3Seq="default", p5Seq="default", overlapLen=6):
     """
     Calls cutadapt to remove adapter sequence at either end of the reads.
     Written for v1.7.1 and single-end calls.
