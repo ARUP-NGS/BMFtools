@@ -12,6 +12,7 @@ from utilBMF.ErrorHandling import ThisIsMadness
 from operator import attrgetter as oag, methodcaller as mc
 from itertools import izip, groupby
 from sys import maxint
+from array import array
 from utilBMF.HTSUtils cimport cReadsOverlap
 oagsk = oag("firstMapped")
 omcfp = mc("getRefPosForFirstPos")
@@ -113,7 +114,7 @@ def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):
     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]
 
 
-cdef class LayoutPos(object):
+cdef class LayoutPos:
     """
     Holds one layout position - either part of the reference,
     part of the read, or both.
@@ -137,6 +138,33 @@ cdef class LayoutPos(object):
         return "%s|%s|%s|%s|%s|%s" % (self.pos, self.readPos, chr(self.base),
                                       chr(self.operation), self.quality,
                                       self.agreement)
+
+
+cdef class ArrayLayoutPos:
+    # pos, readPos, quality, agreement, operation, base
+    # cdef public cystr operation, base
+
+    def __cinit__(self, int pos=-1, int readPos=-1,
+                  int base=-1, int operation=-1,
+                  int quality=-1, int agreement=-1):
+        self.values = array('i', [pos, readPos, base,
+                                  operation, quality, agreement])
+
+    def __init__(self, *args):
+        self.__cinit__(*args)
+
+    def __getitem__(self, int index):
+        return self.values[index]
+
+    cpdef cython.bint ismapped(self):
+        return self[3] == 77
+
+    @cython.returns(cystr)
+    def __str__(self):
+        return "%s|%s|%s|%s|%s|%s" % (self.values[0], self.values[1],
+                                      chr(self.values[2]),
+                                      chr(self.values[3]),
+                                      self.values[4], self.values[5])
 
 
 cdef class Layout(object):
@@ -213,12 +241,12 @@ cdef class Layout(object):
             if(i.operation == "M"):
                 return i.pos
 
-    cpdef ndarray[int] getAgreement(self):
+    cpdef ndarray[int, ndim=1] getAgreement(self):
         """cpdef wrapper of getAgreement_
         """
         return self.getAgreement_()
 
-    cdef ndarray[int] getAgreement_(self):
+    cdef ndarray[int, ndim=1] getAgreement_(self):
         cdef int i
         cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
@@ -227,7 +255,7 @@ cdef class Layout(object):
                                pos in self.positions] if i > -1],
                         dtype=np.int64)
 
-    cdef ndarray[int] getQual_(self):
+    cdef ndarray[int, ndim=1] getQual_(self):
         cdef int i
         cdef LayoutPos_t pos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
@@ -236,7 +264,7 @@ cdef class Layout(object):
                                pos in self.positions] if i > -1],
                         dtype=np.int64)
 
-    cpdef ndarray[int] getQual(self):
+    cpdef ndarray[int, ndim=1] getQual(self):
         return self.getQual_()
 
     cdef cystr getQualString_(self, dict ph2chrDict=ph2chrDict):
@@ -379,7 +407,7 @@ cdef LayoutPos_t MergePositions(LayoutPos p1, p2):
 '''
 
 cdef LayoutPos_t MergePositions(LayoutPos pos1, LayoutPos pos2):
-    """Merges two positions. Order does matter - pos1 overrides po2 when
+    """Merges two positions. Order does matter - pos1 overrides pos2 when
     pos2 is soft-clipped.
     """
     cdef cystr base

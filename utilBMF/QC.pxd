@@ -1,6 +1,7 @@
 cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
+from utilBMF.HTSUtils cimport cystr
 cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t

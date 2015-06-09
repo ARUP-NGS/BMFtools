@@ -301,9 +301,9 @@ def pairedBarcodeTagging(
         elif(entry.is_read2):
             read2bam = entry
             pFq2 = pFastqProxy(r2hn())
-        passing = "Pass" in descDict1["FP"]
         descDict1 = getdesc(pFq1.comment)
         descDict2 = getdesc(pFq2.comment)
+        passing = "Pass" in descDict1["FP"]
         FM = int(descDict1["FM"])
         try:
             ND1 = int(descDict1["ND"])
@@ -716,8 +716,8 @@ cdef cAlignedSegment TagAlignedSegment(
     return read
 
 
-cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
-                      pysam.calignmentfile.AlignmentFile outbam):
+cdef cystr BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
+                            pysam.calignmentfile.AlignmentFile outbam):
     """In progress
     """
     cdef dict CD  # Comment Dictionary
@@ -728,19 +728,18 @@ cdef BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
         outbam.write(TagAlignedSegment(read))
     inbam.close()
     outbam.close()
-    #return
+    return outbam.filename
 
 
-cpdef BarcodeTagCOBam(cystr bam, cystr outbam=None):
+cpdef cystr BarcodeTagCOBam(cystr bam, cystr outbam=None):
     """In progress
     """
     pl("Tagging BAM with barcode tags in CO field ...")
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    inHandle = pysam.AlignmentFile(bam)
+    inHandle = pysam.AlignmentFile(bam, "rb")
     outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
-    BarcodeTagCOBam_(inHandle,
+    return BarcodeTagCOBam_(inHandle,
                      pysam.AlignmentFile(outbam, "wb", template=inHandle))
-    return outbam
 
 
 def AlignAndTagMem(cystr fq1, cystr fq2,

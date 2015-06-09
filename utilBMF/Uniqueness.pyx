@@ -99,6 +99,13 @@ cdef class KmerFetcher(object):
     :param int k - length of kmers;
     * Note: minMQ doesn't make sense with bowtie/bowtie2's mapping quality
     assignments.
+    Example use for creating a mapper with this:
+
+    KF = KmerFetcher(ref="~/human_g1k_v37.fasta", k=32)
+    mapper = KF.IBedToMap("~/cfDNA_targets.bed")
+
+    Now you can map reads with this mapper!
+
     """
     def __init__(self, cystr ref=None, int padding=50,
                  int mismatches=-1, int minMQ=1,
@@ -116,6 +123,7 @@ cdef class KmerFetcher(object):
         """Fills the HashMap for each line in the bed file.
         Returns a hashmap which maps all strings within hamming distance
         of mismatches limit.
+        I is for in-place.
         """
         cdef list bedline
         cdef list bedlines = ParseBed(bedpath)

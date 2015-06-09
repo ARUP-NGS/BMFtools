@@ -25,6 +25,8 @@ def main():
     TagBamParser = subparsers.add_parser(
         "tagbam", description=("Tag a BAM file with appropriate information"
                                " from merged fastq files."))
+    RescueShadingParser = subparsers.add_parser(
+        "rsq", description="Rescue fastq shading.")
     versionParser = subparsers.add_parser(
         "v", description="Outputs version of BMFTools.")
     InputQtyParser = subparsers.add_parser(
@@ -434,9 +436,22 @@ def main():
         "--ligation-efficiency",
         help="Efficiency of ligation of adapters.",
         type=float, default=0.5)
-    
-    # set_trace()
+    RescueShadingParser.add_argument(
+        "-f", "--fastqs", help="Path to fastq files.",
+        nargs="+", type=str)
+    RescueShadingParser.add_argument(
+        "--head",
+        help=("Number of bases from each read with "
+              "which to salt the barcode."),
+        type=int, default=2)
+    RescueShadingParser.add_argument(
+        "-n", help="Mismatch limit", default=1,
+        type=int)
+    RescueShadingParser.add_argument(
+        "--minFam", "-m", help="Minimum family size for true families.",
+        default=10, type=int)
 
+    # set_trace()
     args = parser.parse_args()
     commandStr = " ".join(sys.argv)
     if(args.bmfsuites == "qty"):
@@ -625,7 +640,13 @@ def main():
                 p5Seq=args.p5Seq)
             sys.exit(0)
         elif(len(args.inFqs) == 1):
-            raise NotImplementedError("I haven't made this yet.")
+            from BMFMain.ProcessingSteps import singleFastqShades
+            OutFastq = singleFastqShades(
+                args.inFqs[0],
+                indexfq=args.indexFq,
+                p3Seq=args.p3Seq,
+                p5Seq=args.p5Seq)
+            sys.exit(0)
     if(args.bmfsuites == "sv"):
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans
@@ -747,7 +768,10 @@ def main():
             aligner=args.aligner,
             realigner=args.realigner)
         sys.exit(0)
-        
+    if(args.bmfsuites == "rsq"):
+        from MawCluster.BCFastq import RescueShadingWrapper
+        RescueShadingWrapper(args.fastqs[0], args.fastqs[1], indexFq=args.fastqs[2],
+                             minFam=args.minFam, mm=args.n, head=args.head)
     return 0
 
 
