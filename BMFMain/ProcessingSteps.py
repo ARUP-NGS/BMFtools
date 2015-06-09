@@ -154,16 +154,22 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
 
 @cython.locals(overlapLen=int,
                stringency=float)
-def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.95,
+def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
-                      homing=None, bcLen=-1, head=0):
+                      homing=None, bcLen=-1, head=0, rescue=False,
+                      minFamRsq=10, mmRsq=1):
     pl("Beginning pairedFastqShades for {}, {}".format(inFastq1, inFastq2))
     if(inline_barcodes is False):
-        bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
-                                                        inFastq2,
-                                                        indexfq=indexfq,
-                                                        head=head)
+        if(rescue):
+            bcFastq1, bcFastq2 = BCFastq.RescueShadingWrapper(
+                inFastq1, inFastq2, indexFq=indexFq,
+                minFam=minFamRsq, head=head, mm=mmRsq)
+        else:
+            bcFastq1, bcFastq2 = BCFastq.FastqPairedShading(inFastq1,
+                                                           inFastq2,
+                                                           indexFq=indexFq,
+                                                           head=head)
     else:
         bcFastq1, bcFastq2 = TrimHomingPaired(inFastq1, inFastq2,
                                               homing=homing, bcLen=bcLen)
@@ -188,14 +194,14 @@ def pairedFastqShades(inFastq1, inFastq2, indexfq="default", stringency=0.95,
 
 @cython.locals(overlapLen=int,
                stringency=float)
-def singleFastqShades(inFastq,indexfq="default",stringency=0.95,
+def singleFastqShades(inFastq,indexFq="default",stringency=0.95,
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G",
                       inline_barcodes=False,homing=None,
                       bcLen=-1, head=0):
     pl("Beginning singleFastqShades for {}".format(inFastq))
     if(inline_barcodes is False):
-        bcFastq = BCFastq.FastqSingleShading(inFastq, indexfq=indexfq,
+        bcFastq = BCFastq.FastqSingleShading(inFastq, indexFq=indexFq,
                                              head=head)
     else:
         bcFastq = BCFastq.TrimHomingSingle(inFastq, homing=homing, bcLen=bcLen)

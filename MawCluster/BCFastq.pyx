@@ -459,7 +459,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 
 
 @cython.locals(useGzip=cython.bint, hpLimit=int)
-def FastqPairedShading(fq1, fq2, indexfq="default",
+def FastqPairedShading(fq1, fq2, indexFq="default",
                        useGzip=False, SetSize=10,
                        int head=2):
     """
@@ -473,7 +473,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
     cdef cystr outfq1
     cdef cystr outfq2
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
-    if(indexfq == "default"):
+    if(indexFq == "default"):
         raise ValueError("For an i5/i7 index ")
     outfq1 = TrimExt(fq1).replace(".fastq",
                                   "").split("/")[-1] + ".shaded.fastq"
@@ -499,9 +499,9 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
         cString2 = cStringIO.StringIO()
         f1 = gzip.GzipFile(fileobj=cString1, mode="w")
         f2 = gzip.GzipFile(fileobj=cString2, mode="w")
-    inIndex = pysam.FastqFile(indexfq)
+    inIndex = pysam.FastqFile(indexFq)
     hpLimit = len(inIndex.next().sequence) * 5 // 6
-    inIndex = pysam.FastqFile(indexfq)
+    inIndex = pysam.FastqFile(indexFq)
     ifin = inIndex.next
     outFqSet1 = []
     outFqSet2 = []
@@ -574,7 +574,7 @@ def FastqPairedShading(fq1, fq2, indexfq="default",
 
 
 def FastqSingleShading(fq,
-                       indexfq="default",
+                       indexFq="default",
                        outfq="default",
                        cython.bint gzip=False,
                        int head=0):
@@ -585,13 +585,13 @@ def FastqSingleShading(fq,
     cdef pFastqProxy_t pRead1, pIndexRead
     cdef pysam.cfaidx.FastqFile inFq1, inIndex
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
-    if(indexfq == "default"):
+    if(indexFq == "default"):
         raise ValueError("For an i5/i7 index ")
     if(outfq == "default"):
         outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
     inFq1 = pysam.FastqFile(fq)
     outFqHandle1 = open(outfq, "w")
-    inIndex = pysam.FastqFile(indexfq)
+    inIndex = pysam.FastqFile(indexFq)
     for read1 in inFq1:
         pIndexRead = pFastqProxy(inIndex.next())
         pRead1 = pFastqProxy(read1)
