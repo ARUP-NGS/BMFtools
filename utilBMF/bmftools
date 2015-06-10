@@ -2,6 +2,8 @@
 import sys
 #  import warnings # Uncomment this if you want to treat warnings as errors.
 from utilBMF.HTSUtils import printlog as pl, TrimExt
+from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
+from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 #  from pudb import set_trace
 
 """
@@ -186,38 +188,36 @@ def main():
         default="default")
     alignTagBamParser.add_argument(
         "inFqs",
-        nargs=2,
-        help=("Input Fastq Files (Read 1 and Read 2, respectively.) These *mu"
-              "st* be consolidated fastq records for proper bam tagging."))
+        nargs="+",
+        help="Input Fastq Files")
     alignTagBamParser.add_argument(
         "-b",
         "--bed",
         metavar="bed",
-        help=("Bed file not used in the alignment but used in the REalignment"
-              " and MawCluster.SVUtils's GetSVRelevantRecordsPaired"),
+        help="Bed file not used in the alignment but used in the REalignment and MawCluster.SVUtils's GetSVRelevantRecordsPaired",
         default="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed")
     alignTagBamParser.add_argument(
         "-r",
         "--ref",
         metavar="ref",
-        help=("Path to reference FASTA to align fastqs to. Assumes "
-              "that an index has been built."))
+        help="Reference FASTA to align fastqs to")
     alignTagBamParser.add_argument(
         "-a",
         "--aligner",
         metavar="aligner",
-        help=("Aligner program (e.g. 'mem' for bwa mem, 'aln' for bwa aln). N"
-              "ote: tagging for bams produced by aln is not supported for chi"
-              "meric/split reads as of yet. For this functionality, you must "
-              "use bwa mem"),
+        help="Aligner program (e.g. bwa mem or bwa aln)",
         default="mem")
     alignTagBamParser.add_argument(
         "-g",
         "--realigner",
         metavar="realigner",
-<<<<<<< HEAD
         help="Realigner program (e.g. abra or gatk)",
         default="abra")
+    alignTagBamParser.add_argument(
+        "-p", "--gatkpath",
+        metavar="gatk",
+        help="Path to the GATK Jar",
+        default="default")
     alignTagBamParser.add_argument(
         "-t",
         "--abrapath",
@@ -229,15 +229,7 @@ def main():
         "--readlength",
         metavar="readlength",
         help="Read length (for abra.KmerSizeEvaluator program",
-        default="-1")
-=======
-        help=("Realigner program (e.g. abra or gatk). Set to 'none' to run ne"
-              "ither, and set to 'abra,gatk' to run both. GATK's uses dbsnp a"
-              "s its prior, whereas abra works solely by assembly. Given that"
-              " these are complementary approaches, it seems appropriate to c"
-              "onsider running both. Default: gatk."),
-        default="gatk")
->>>>>>> ae5e14a037dc7c5a0b60cdae78841cb75e6c414c
+        default=-1, type=int)
     TagBamParser.add_argument(
         "inBAM",
         metavar="inBAM",
@@ -660,7 +652,7 @@ def main():
             OutFastq1, OutFastq2 = pairedFastqShades(
                 args.inFqs[0],
                 args.inFqs[1],
-                indexFq=args.indexFq,
+                indexfq=args.indexFq,
                 p3Seq=args.p3Seq,
                 p5Seq=args.p5Seq)
             sys.exit(0)
@@ -668,7 +660,7 @@ def main():
             from BMFMain.ProcessingSteps import singleFastqShades
             OutFastq = singleFastqShades(
                 args.inFqs[0],
-                indexFq=args.indexFq,
+                indexfq=args.indexFq,
                 p3Seq=args.p3Seq,
                 p5Seq=args.p5Seq)
             sys.exit(0)
@@ -711,7 +703,6 @@ def main():
                                    outVCF=args.outVCF)
         sys.exit(0)
     if(args.bmfsuites == "ffpe"):
-        from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
         # ctfreq defaults to -1. This conditional checks to see if it's set.
         if(args.ctfreq < 0):
             Output = TrainAndFilter(args.inVCF, maxFreq=args.maxFreq,
@@ -778,7 +769,6 @@ def main():
         from utilBMF.HTSUtils import __version__
         print(__version__)
     if(args.bmfsuites == "tagbam"):
-        from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
         fastqs = args.fastq
         if(len(fastqs) == 1):
             singleBarcodeTagging(fastqs[0], args.inBAM, outputBAM=args.outfile)
@@ -795,8 +785,9 @@ def main():
             aligner=args.aligner,
             realigner=args.realigner,
             abrapath=args.abrapath,
-            rLen = int(args.readlength))
-        return 0  # return 0 (Cf.: sys.exit(main())) exits with returncode 0
+            rLen = args.readlength,
+            gatkpath=args.gatkpath)
+        sys.exit(0)
     if(args.bmfsuites == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
         RescueShadingWrapper(args.fastqs[0], args.fastqs[1], indexFq=args.fastqs[2],

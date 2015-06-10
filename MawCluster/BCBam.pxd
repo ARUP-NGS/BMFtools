@@ -5,6 +5,7 @@ from cython cimport bint
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 
 cdef cystr BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile bam,
                       pysam.calignmentfile.AlignmentFile outbam)

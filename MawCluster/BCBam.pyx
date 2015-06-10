@@ -266,7 +266,7 @@ def pairedBarcodeTagging(
     cdef cystr coorString, cStr, contigSetStr
     cdef dict descDict1, descDict2
     cdef pFastqProxy_t pFq1, pFq2
-    # cdef pysam.calignmentfile.AlignmentFile postFilterBAM, outBAM, suppBAM
+    # cdef AlignmentFile postFilterBAM, outBAM, suppBAM
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -585,7 +585,7 @@ def GetFracSCPartial(double maxFracSoftClipped):
 def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
                       func=returnDefault, appendStr=""):
     cdef pysam.calignmentfile.AlignedSegment rec, r1, r2
-    cdef pysam.calignmentfile.AlignmentFile inHandle, raHandle, nrHandle
+    cdef AlignmentFile inHandle, raHandle, nrHandle
     if(failBAM == "default"):
         failBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Fail", "bam"])
     if(passBAM == "default"):
@@ -716,8 +716,8 @@ cdef cAlignedSegment TagAlignedSegment(
     return read
 
 
-cdef cystr BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
-                            pysam.calignmentfile.AlignmentFile outbam):
+cdef cystr BarcodeTagCOBam_(AlignmentFile inbam,
+                            AlignmentFile outbam):
     """In progress
     """
     cdef cAlignedSegment read
@@ -732,7 +732,7 @@ cpdef cystr BarcodeTagCOBam(cystr bam, cystr outbam=None):
     """In progress
     """
     pl("Tagging BAM with barcode tags in CO field ...")
-    cdef pysam.calignmentfile.AlignmentFile inHandle
+    cdef AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(bam, "rb")
     outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
     return BarcodeTagCOBam_(inHandle,
