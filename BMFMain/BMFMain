@@ -407,7 +407,6 @@ def main(argv=None):
                     aligner=aligner,
                     ref=ref,
                     bed=bed,
-                    mincov=int(args.minCov),
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
@@ -418,7 +417,7 @@ def main(argv=None):
                     trimfq1, trimfq2,
                     aligner=aligner, ref=ref,
                     bed=bed,
-                    mincov=int(args.minCov), abrapath=abrapath,
+                    abrapath=abrapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
                     realigner=realigner, rLen=readLength, minAF=minAF,
                     opts=opts)
@@ -449,7 +448,6 @@ def main(argv=None):
                     aligner=aligner,
                     ref=ref,
                     bed=bed,
-                    mincov=int(args.minCov),
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, rLen=readLength,
@@ -462,7 +460,6 @@ def main(argv=None):
                     aligner=aligner,
                     ref=ref,
                     bed=bed,
-                    mincov=int(args.minCov),
                     abrapath=abrapath,
                     picardPath=picardPath, rLen=readLength,
                     opts=opts)

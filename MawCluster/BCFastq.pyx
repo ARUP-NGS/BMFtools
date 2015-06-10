@@ -210,7 +210,7 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
                                qual in map(oagqual, R) if
                                seq[i] == finalSeq[i]]) for
                           i in xrange(len(finalSeq))])
-    phredQuals[phredQuals < 3] = 0
+    # phredQuals[phredQuals < 3] = 0  # Throw array q scores of 2.
     # finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
     try:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
@@ -224,7 +224,7 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
         FAString = "|FA=%s" % (",".join([int2Str[i] for i in FA]))
     except KeyError:
         FAString = "|FA=%s" % (",".join(FA.astype(str)))
-    TagString = "|FM=%s%sND=%s%s" % (
+    TagString = "|FM=%s%s|ND=%s%s" % (
         lenRStr,  FAString, lenR * len(finalSeq) - nsum(FA), PVString)
     """
     try:
@@ -291,9 +291,9 @@ cdef cystr compareFqRecsFast(list R,
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        PVString = "|PV=%s" % ",".join([chr2phStr[i] for i in R[0].quality])
         TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
-                                                PVString)
+                                                ",".join([chr2phStr[i] for
+                                                          i in R[0].quality]))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
                                           R[0].quality)
@@ -309,7 +309,10 @@ cdef cystr compareFqRecsFast(list R,
                      qual in map(oagqual, R)])
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
-    quals[quals < 3] = 0
+    # quals[quals < 3] = 0
+    # --- Actually ---,  it seems that the q scores of 2 are higher quality
+    # than Illumina expects them to be, so let's keep them. They should also
+    # ideally be recalibrated.
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)
@@ -455,7 +458,8 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
             time.sleep(1)
             continue
         else:
-            raise subprocess.CalledProcessError("Cutadapt failed for read 2!")
+            raise subprocess.CalledProcessError(
+                fq2Popen.returncode, fq2Str ,"Cutadapt failed for read 2!")
 
 
 @cython.locals(useGzip=cython.bint, hpLimit=int)
@@ -957,12 +961,12 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             saltedBS = "%s%s%s" % (rec1.sequence[:head], saltedBS,
                                    rec2.sequence[:head])
             if(BarcodePasses(saltedBS, hpLimit=hpLimit)):
-                tagStr = " |FP=IndexPass|BS=%s|OS=%s" % (saltedBS,
+                tagStr = "|FP=IndexPass|BS=%s|OS=%s" % (saltedBS,
                                                          tmpBS)
                 rec1.comment += tagStr
                 rec2.comment += tagStr
             else:
-                tagStr = " |FP=IndexFail|BS=%s|OS=%s" % (saltedBS,
+                tagStr = "|FP=IndexFail|BS=%s|OS=%s" % (saltedBS,
                                                          tmpBS)
                 rec1.comment += tagStr
                 rec2.comment += tagStr
@@ -973,11 +977,9 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             # This isn't in a true family. Blech!
             saltedBS = "%s%s%s" % (rec1.sequence[:head], tmpBS,
                                    rec2.sequence[:head])
-            tagStr = " |FP=IndexFail|BS=%s" % saltedBS
+            tagStr = "|FP=IndexFail|BS=%s" % saltedBS
             rec1.comment += tagStr
             rec2.comment += tagStr
-            print("rec1 str: %s." % str(rec1))
-            print("rec2 str: %s." % str(rec2))
             ohw1(str(rec1))
             ohw2(str(rec1))
             continue

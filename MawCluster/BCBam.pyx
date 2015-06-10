@@ -253,7 +253,6 @@ def pairedBarcodeTagging(
         cystr bam,
         cystr outBAMFile="default",
         cystr suppBam="default",
-        cystr bedfile="default",
         cystr conversionXml="default", cystr realigner="none",
         double minAF=0.0, cystr ref="default"):
     """
@@ -272,7 +271,8 @@ def pairedBarcodeTagging(
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
         suppBam = '.'.join(bam.split('.')[0:-1]) + '.2ndSupp.bam'
-    pl("pairedBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outBAMFile))
+    pl("pairedBarcodeTagging. Input bam: %s. outputBAM: %s" % (bam,
+                                                               outBAMFile))
     cStr = "pairedBarcodeTagging({}, {}, {}, minAF={})".format(fq1, fq2,
                                                                bam, minAF)
     pl("Command string to reproduce call: {}".format(cStr))
@@ -487,7 +487,8 @@ def ConsolidateInferred(inBAM, outBAM="default"):
     return outBAM
 
 
-def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
+def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
+                         cystr suppBam="default"):
     cdef pFastqProxy_t FqPrx
     cdef pysam.cfaidx.FastqProxy tempRead
     cdef pysam.calignmentfile.AlignedSegment entry
@@ -497,9 +498,9 @@ def singleBarcodeTagging(fastq, bam, outputBAM="default", suppBam="default"):
     TODO: Unit test for this function.
     """
     if(outputBAM == "default"):
-        outputBAM = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
+        outputBAM = TrimExt(bam) + ".tagged.bam"
     if(suppBam == "default"):
-        suppBam = bam.split('.')[0] + '.2ndSupp.bam'
+        suppBam = TrimExt(bam) + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
     reads = pysam.FastqFile(fastq)
     postFilterBAM = pysam.Samfile(bam, "rb")
@@ -687,7 +688,7 @@ cpdef dict GetCOTagDict(cAlignedSegment read):
 cdef cAlignedSegment TagAlignedSegment(
         cAlignedSegment read):
     cdef dict CommentDict
-    cdef int FM, FP, ND
+    cdef int FM, ND
     cdef double NF, AF, SF
     cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
     CommentDict = GetCOTagDict(read)
@@ -698,16 +699,15 @@ cdef cAlignedSegment TagAlignedSegment(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    FP = 1 if("Pass" in CommentDict["PV"]) else 0
+    read.is_qcfail = 1 if("Pass" in CommentDict["PV"]) else 0
     NF = ND * 1. / FM
     AF = getAF(read)
     SF = getSF(read)
-    read.is_qcfail = FP
     read.set_tags([("BS", CommentDict["BS"], "Z"),
                    ("FM", FM, "i"),
                    ("PV", ",".join(PhredQuals.astype(str)), "Z"),
                    ("FA", ",".join(FA.astype(str)), "Z"),
-                   ("FP",  FP, "i"),
+                   ("FP", read.is_qcfail, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
@@ -720,10 +720,7 @@ cdef cystr BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile inbam,
                             pysam.calignmentfile.AlignmentFile outbam):
     """In progress
     """
-    cdef dict CD  # Comment Dictionary
     cdef cAlignedSegment read
-    cdef int FM, FP, ND
-    cdef double NF, AF, SF
     for read in inbam:
         outbam.write(TagAlignedSegment(read))
     inbam.close()
@@ -751,21 +748,29 @@ def AlignAndTagMem(cystr fq1, cystr fq2,
     return taggedBAM
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef double getSF(cAlignedSegment read):
     cdef tuple tup
     cdef int sum, sumSC
+    sum = 0
+    sumSC = 0
     if(read.cigarstring is None):
         return 0.
     for tup in read.cigar:
         sum += tup[1]
         if(tup[0] == 4):
             sumSC += tup[1]
-    return sum * 1. / sumSC
+    return sumSC * 1. / sum if(sum != 0) else 0.
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef double getAF(cAlignedSegment read):
     cdef tuple tup
     cdef int sum, sumAligned
+    sum = 0
+    sumAligned = 0
     if(read.cigarstring is None):
         return 0.
     for tup in read.cigar:

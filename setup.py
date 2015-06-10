@@ -38,7 +38,7 @@ ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
 for x in ext:
     x.extra_compile_args += compilerList
 
-install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython',
+install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
                     're2']
 
@@ -47,7 +47,7 @@ config = {
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.1.0.0beta',
+    'version': '0.1.0.1beta',
     'install_requires': install_requires,
     'packages': ["BMFMain", "utilBMF", "MawCluster", "SecC"],
     'ext_modules': ext,
