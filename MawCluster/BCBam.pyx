@@ -45,12 +45,12 @@ oagseq = oag("seq")
 oagqqual = oag("query_qualities")
 
 
-@cython.locals(fixMate=bint)
 def AbraCadabra(inBAM, outBAM="default",
                 jar="default", memStr="default", ref="default",
                 threads="4", bed="default", working="default",
-                log="default", fixMate=True, tempPrefix="tmpPref",
-                rLen=-1, intelPath="default", bint leftAlign=True):
+                log="default", bint fixMate=True, tempPrefix="tmpPref",
+                rLen=-1, intelPath="default", bint leftAlign=True,
+                bint kmers_precomputed=True):
     """
     Calls abra for indel realignment. It supposedly
     out-performs GATK's IndelRealigner.
@@ -72,6 +72,9 @@ def AbraCadabra(inBAM, outBAM="default",
         pl("Non-default memory string used: " + memStr)
     if(ref == "default"):
         raise ValueError("Reference fasta must be provided!")
+    if(ref.split(".")[-1] == "gz"):
+        raise Warning("Reference fasta is gzipped, with which "
+                      "abra is not compatible. Be warned!")
     else:
         pl("Reference file set: {}.".format(ref))
     if(bed == "default"):
@@ -98,8 +101,9 @@ def AbraCadabra(inBAM, outBAM="default",
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    bed = AbraKmerBedfile(bed, ref=ref, abra=jar,
-                          rLen=rLen)
+    if(not kmers_precomputed):
+        bed = AbraKmerBedfile(bed, ref=ref, abra=jar,
+                              rLen=rLen)
     if(path.isfile(inBAM + ".bai") is False):
         pl("No bam index found for input bam - attempting to create.")
         check_call(['samtools', 'index', inBAM])

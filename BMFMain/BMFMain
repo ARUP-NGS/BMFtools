@@ -385,6 +385,8 @@ def main(argv=None):
         inline_barcodes = "true" in confDict["inline_barcodes"].lower()
     if(args.inline_barcodes is not None):
         inline_barcodes = args.inline_barcodes
+    kmers_precomputed = ("kmers_precomputed" in cdk and
+                         confDict['kmers_precomputed'].lower() == "true")
     if(single_end):
         pl("Single-end analysis chosen.")
         HTSUtils.ThisIsMadness("Single-end analysis not currently "
@@ -411,7 +413,7 @@ def main(argv=None):
                     bwapath=bwapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
                     realigner=realigner, rLen=readLength, minAF=minAF,
-                    opts=opts)
+                    opts=opts, kmers_precomputed=kmers_precomputed)
             else:
                 procSortedBam = ps.pairedBamProc(
                     trimfq1, trimfq2,

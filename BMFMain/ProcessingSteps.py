@@ -36,7 +36,8 @@ def pairedBamProc(consfq1, consfq2, opts="",
                   picardPath="default",
                   addRG=False,
                   realigner="abra", gatkpath="default", dbsnp="default",
-                  rLen=-1, intelDeflator="default", minAF=0.0):
+                  rLen=-1, intelDeflator="default", minAF=0.0,
+                  kmers_precomputed=False):
     """
     Performs alignment and bam tagging of consolidated fastq files.
     """
@@ -81,7 +82,8 @@ def pairedBamProc(consfq1, consfq2, opts="",
         coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
                                           jar=abrapath, rLen=rLen,
-                                          intelPath=intelDeflator)
+                                          intelPath=intelDeflator,
+                                          kmers_precomputed=kmers_precomputed)
         if("gatk" in realigner.lower()):
             pl("Realigning around known indels, too. "
                "Lots of steps, hard to know which ones matter.")
@@ -242,12 +244,8 @@ def pairedVCFProc(consMergeSortBAM,
         else:
             CleanedVCF = VCFWriters.SNVCrawler(consMergeSortBAM, conf=conf)
         if("ffpe" in exp.lower()):
-            deaminationFrequency = np.mean(
-                GetDeaminationFrequencies(CleanedVCF), dtype=np.longdouble)
-            FFPEFilteredVCF = FilterByDeaminationFreq(
-                CleanedVCF, ctfreq=deaminationFrequency,
-                pVal=deaminationPVal)
-            finalVCF = FFPEFilteredVCF
+            raise NotImplementedError("This has been recoded/reworked, "
+                                      "but not re-implemented.")
         else:
             finalVCF = CleanedVCF
         pl("SNP VCF: {}".format(finalVCF))
