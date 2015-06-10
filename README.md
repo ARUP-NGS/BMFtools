@@ -242,6 +242,28 @@ Most options are available for command-line as well. If an option is set in both
     4. Further indel work.
     5. Optional bwasw realignment for all reads with AF <= minAF
 
+12. Changes in BMFTools v.0.1.0.0beta and v0.1.0.1beta
+    0. Re-coded a lot of the under-the-hood stuff.
+        1. Fastq consolidation.
+        2. Fastq marking
+        3. Bam tagging
+        4. Alignment
+        5. Bam record processing.
+        6. Addition of the header line with RG:default in one pass (no call to Picard)
+        7. Re-wrote the SV tagging.
+        8. Completely re-did barcode rescue.
+    1. Wrote the pairedBarcodeTagging in C++ with bamtools API. Defaults to running in cython after piping.
+    1. Support for more single-end analysis.
+    2. Unit tests.
+    3. Addition of optional "head" parameter for salting molecular barcodes.
+    4. Indel work.
+        1. Toy indel caller that requires that both reads in a pair support it and that the Shannon entropy be above a threshold. That being said, it's not that great, and we still have to try to call variants in low complexity regions.
+    5. Uniqueness/mappability work.
+        1. Read binning based on an expanded hashmap for O(1) inexact string comparison.
+        2. It would be fast if all of our reads were on-target...
+    6. A number of optimizations, including some string comparisons as integers.
+    8. Removing old/dead code.
+
 
 Before I forget: I should write a logging/trace decorator which logs each major function call, along with args and kwargs.
 

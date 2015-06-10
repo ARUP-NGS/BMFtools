@@ -24,8 +24,9 @@ from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from . import SNVUtils
 
-
+cimport cython
 cimport pysam.TabProxies
+ctypedef cython.str cystr
 
 """
 Contains tools for working with VCF Files - writing, reading, processing.
@@ -301,7 +302,8 @@ def ParseVCF(inputVCFName):
 
 
 def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
-    lst = map(mc("lower"), "bed,I16".split(","))
+    cdef cystr tmpStr
+    lst = [tmpStr.lower() for tmpStr in "bed,I16".split(",")]
     # print("lst = {}".format(lst))
     if(filterOpt.lower() not in lst):
         raise ValueError(("Filter option not supported. Available options: " +
