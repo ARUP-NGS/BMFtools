@@ -66,21 +66,23 @@ Some of vcflib's tools are used, although vcflib (key-word argument for these ca
 
 ### Required external tools:
 #### Aligners
-bwa (mem or aln, depending on needs.)
 
-bowtie (for "alignment-free" local assembly) [Not bowtie2! bowtie2 is better in biological applications, for controlling inexact string matching, bowtie is ideal.]
+samtools >= 1.1
+bwa >= 0.7.10 (mem, aln, bwasw)
+
+bowtie/bowtie2
 
 #### Compiler
 gcc >= gccv5.0
 (Not essential, but gcc5 does offer -floop-unroll-and-jam and a few other neat compiler optimizations.)
 
 #### Adapter Trimming
-Cutadapt
+Cutadapt >= 1.7
 
 #### Indel Realigners
-Assembly Based Realigner (abra) (requires bwa)
+ABRA >= 0.85 (Assembly Based Realigner, which in turn requires bwa)
 
-GATK IndelRealigner
+GATK >= 1.6.5, for its IndelRealigner
 
 
 ## BMF Tags

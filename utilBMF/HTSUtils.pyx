@@ -50,7 +50,7 @@ mcgroup = mc("group", 0)
 
 global __version__
 
-__version__ = "0.1.0.0beta"
+__version__ = "0.1.0.1beta"
 
 
 def l1(x):
@@ -470,11 +470,12 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
     PipedShellCall(alnStr2)
     sampeBaseStr = "bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2])
     if(addRG):
-        sampeBaseStr += (" | sed 's/^@PG/@RG\tID:default\tPL:ILLUMINA\tPU:default\tLB:"
-                         "default\tSM:default\tCN:default\n@PG/'")
+        sampeBaseStr += (" | sed 's/^@PG/@RG\tID:default\tPL:ILLUMINA\tPU:def"
+                         "ault\tLB:default\tSM:default\tCN:default\n@PG/'")
+    # sampeStr = sampeBaseStr + " | samtools view -Sbh - > %s" % outBAM
     sampeStr = sampeBaseStr + " | samtools view -Sbh - > %s" % outBAM
     printlog("bwa aln string: {}".format(sampeStr))
-    check_call(sampeStr, shell=True)
+    check_call(sampeStr.replace("\t", "\\t").replace("\n", "\\n"), shell=True)
     os.remove(R1Sai)
     os.remove(R2Sai)
     return outBAM
@@ -482,8 +483,6 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
 
 def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
                   path="default",
-                  PL="ILLUMINA", SM="default", ID="default",
-                  CN="default", RG="default",
                   bint addCO=True):
     """
     Aligns a set of paired-end

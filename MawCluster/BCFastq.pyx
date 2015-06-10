@@ -210,7 +210,7 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
                                qual in map(oagqual, R) if
                                seq[i] == finalSeq[i]]) for
                           i in xrange(len(finalSeq))])
-    phredQuals[phredQuals < 3] = 0
+    # phredQuals[phredQuals < 3] = 0  # Throw array q scores of 2.
     # finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
     try:
         QualString = "".join([ph2chrDict[i] for i in phredQuals])
@@ -309,7 +309,10 @@ cdef cystr compareFqRecsFast(list R,
                      qual in map(oagqual, R)])
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
-    quals[quals < 3] = 0
+    # quals[quals < 3] = 0
+    # --- Actually ---,  it seems that the q scores of 2 are higher quality
+    # than Illumina expects them to be, so let's keep them. They should also
+    # ideally be recalibrated.
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)
