@@ -35,14 +35,29 @@ from utilBMF.HTSUtils cimport cystr
 Contains utilities relating to FFPE and amplicon sequencing
 """
 
+cdef cAlignedSegment AmpliconTrimRead(cAlignedSegment rec, int primerLen):
+    cdef cystr tempQual
+    rec.setTag("PV", rec.opt("PV").split(",")[primerLen:], "Z")
+    rec.setTag("FA", rec.opt("FA").split(",")[primerLen:], "Z")
+    tempQual = rec.qual[primerLen:]
+    rec.seq = rec.seq[primerLen:]
+    rec.qual = tempQual
+    if(rec.is_reverse):
+        rec.pos -= primerLen
+    else:
+        rec.pos += primerLen
+    return rec
 
-@cython.locals(primerLen=int, fixmate=cython.bint)
-def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
-                                fixmate=True):
+
+def PrefilterAmpliconSequencing(cystr inBAM, int primerLen=20,
+                                cystr outBAM="default",
+                                bint fixmate=True):
     """
     This program outputs a BAM file which eliminates potential mispriming
     events from the input BAM file.
     """
+    cdef cystr tempFile, tempQual
+    cdef cAlignedSegment rec
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[0:-1] + ["amplicon",
                                                     "filt", "bam"])
@@ -53,14 +68,7 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     outHandle = pysam.AlignmentFile(tempFile, "wb", template=inHandle)
     for rec in inHandle:
-        tempQual = rec.qual[primerLen:]
-        rec.seq = rec.seq[primerLen:]
-        rec.qual = tempQual
-        if(rec.is_reverse):
-            rec.pos -= primerLen
-        else:
-            rec.pos += primerLen
-        outHandle.write(rec)
+        outHandle.write(AmpliconTrimRead(rec, primerLen))
     inHandle.close()
     outHandle.close()
     if(fixmate):
@@ -69,7 +77,6 @@ def PrefilterAmpliconSequencing(inBAM, primerLen=20, outBAM="default",
     return outBAM
 
 
-@memoize
 @cython.returns(double)
 def getFreq(pysam.TabProxies.VCFProxy rec, cystr base="d"):
     """
@@ -83,6 +90,12 @@ cdef dict getFreqDict(pysam.TabProxies.VCFProxy rec):
     cdef cystr i, x, y
     return {x: float(y) for x, y in i.split(">") for
             i in makeinfodict(rec)["MAFS"].split(",")}
+
+
+cdef dict getCountDictFromInfoDict(dict InfoDict):
+    cdef cystr i, x, y
+    return {x: int(y) for x, y in i.split(">") for
+            i in InfoDict["MAFS"].split(",")}
 
 
 cdef dict getFreqDictFromInfoDict(dict InfoDict):
@@ -100,40 +113,33 @@ def GetTabixDeamFreq(cystr inVCF):
     """
     cdef int atCounts, gcCounts
     cdef pysam.TabProxies.VCFProxy rec
-    cdef float freq
-    cdef dict mid, freqDict
+    cdef double freq
+    cdef dict mid, freqDict, countDict
     atCounts = 0
     gcCounts = 0
     a = pysam.tabix_iterator(open(inVCF, "rb"), pysam.asVCF())
     for rec in a:
         mid = makeinfodict(rec)
         freqDict = getFreqDictFromInfoDict(mid)
+        countDict = getCountDictFromInfoDict(mid)
         if(mid["CONS"] == "C" and
            freqDict["T"] / freqDict["C"] < 0.15 and
            rec.alt == "T"):
-            atCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["T"])
-            gcCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["C"])
-        if(mid["CONS"] == "G" and
+            atCounts += countDict["T"]
+            gcCounts += countDict["G"]
+        elif(mid["CONS"] == "G" and
            freqDict["A"] / freqDict["G"] < 0.15 and
            rec.alt == "A"):
-            atCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["A"])
-            gcCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["G"])
-        if(rec.ref == "C" and freqDict["T"] < 0.25 and
+            atCounts += countDict["A"]
+            gcCounts += countDict["G"]
+        elif(rec.ref == "C" and freqDict["T"] < 0.25 and
            freqDict["C"] >= 0.3 and rec.alt == "T"):
-            atCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["T"])
-            gcCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["C"])
-        if(rec.ref == "G" and freqDict["A"] < 0.25 and
+            atCounts += countDict["T"]
+            gcCounts += countDict["C"]
+        elif(rec.ref == "G" and freqDict["A"] < 0.25 and
            freqDict["G"] >= 0.3 and rec.alt == "A"):
-            atCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["A"])
-            gcCounts += int(dict([i.split(">") for
-                                  i in mid["MACS"].split(",")])["G"])
+            atCounts += countDict["A"]
+            gcCounts += countDict["G"]
     freq = (1. * atCounts) / gcCounts
     print("Final atCounts: %s" % atCounts)
     print("Final gcCounts: %s" % gcCounts)

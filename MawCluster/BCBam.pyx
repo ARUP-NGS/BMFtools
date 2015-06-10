@@ -34,6 +34,7 @@ from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict,
 from utilBMF.ErrorHandling import IllegalArgumentError, ThisIsMadness as Tim
 from .SVUtils import returnDefault
 from utilBMF import HTSUtils
+from warnings import warn
 import SecC
 cimport numpy as np
 cimport cython
@@ -73,8 +74,8 @@ def AbraCadabra(inBAM, outBAM="default",
     if(ref == "default"):
         raise ValueError("Reference fasta must be provided!")
     if(ref.split(".")[-1] == "gz"):
-        raise Warning("Reference fasta is gzipped, with which "
-                      "abra is not compatible. Be warned!")
+        warn("Reference fasta is gzipped, with which "
+             "abra is not compatible. Be warned!", UserWarning)
     else:
         pl("Reference file set: {}.".format(ref))
     if(bed == "default"):
