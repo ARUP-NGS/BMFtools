@@ -82,7 +82,8 @@ def AbraCadabra(inBAM, outBAM="default",
     else:
         pl("Bed file set: {}.".format(bed))
     if(working == "default"):
-        working = inBAM.split('.')[0] + ".working_dir"
+        bamFilename= path.basename(inBAM)
+        working = path.dirname(inBAM) + bamFilename.split('.')[0] + ".working_dir"
         pl("Default working directory set to be: " + working)
     else:
         pl("Non-default working directory: " + working)
