@@ -215,12 +215,29 @@ def main():
         "-g",
         "--realigner",
         metavar="realigner",
+<<<<<<< HEAD
+        help="Realigner program (e.g. abra or gatk)",
+        default="abra")
+    alignTagBamParser.add_argument(
+        "-t",
+        "--abrapath",
+        metavar="abrapath",
+        help="Path to the abra realigner program",
+        default="default")
+    alignTagBamParser.add_argument(
+        "-l",
+        "--readlength",
+        metavar="readlength",
+        help="Read length (for abra.KmerSizeEvaluator program",
+        default="-1")
+=======
         help=("Realigner program (e.g. abra or gatk). Set to 'none' to run ne"
               "ither, and set to 'abra,gatk' to run both. GATK's uses dbsnp a"
               "s its prior, whereas abra works solely by assembly. Given that"
               " these are complementary approaches, it seems appropriate to c"
               "onsider running both. Default: gatk."),
         default="gatk")
+>>>>>>> ae5e14a037dc7c5a0b60cdae78841cb75e6c414c
     TagBamParser.add_argument(
         "inBAM",
         metavar="inBAM",
@@ -776,7 +793,9 @@ def main():
             ref=args.ref,
             bed=args.bed,
             aligner=args.aligner,
-            realigner=args.realigner)
+            realigner=args.realigner,
+            abrapath=args.abrapath,
+            rLen = int(args.readlength))
         return 0  # return 0 (Cf.: sys.exit(main())) exits with returncode 0
     if(args.bmfsuites == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
