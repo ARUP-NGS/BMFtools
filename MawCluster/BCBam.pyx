@@ -102,7 +102,8 @@ def AbraCadabra(inBAM, outBAM="default",
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    if(not kmers_precomputed):
+    pl("Kmers precomputed (as far as Abracadabra sees): %s" % kmers_precomputed)
+    if(kmers_precomputed is False):
         bed = AbraKmerBedfile(bed, ref=ref, abra=jar,
                               rLen=rLen)
     if(path.isfile(inBAM + ".bai") is False):
@@ -112,8 +113,10 @@ def AbraCadabra(inBAM, outBAM="default",
             inBAM = HTSUtils.CoorSortAndIndexBam(inBAM, outBAM, uuid=True)
     command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
                " --out {} --ref {} --targets".format(outBAM, ref) +
-               " {} --threads {} ".format(bed, threads) +
-               "--working {} --mbq 200".format(working))
+               " {} --threads {} " % (bed, threads) +
+               "--working %s --mbq 200 --mer 0.0025 --mad 20000" % working)
+    if(kmers_precomputed):
+        command = command.replace("--targets", "--target-kmers")
     pl("Command: {}.".format(command))
     check_call(shlex.split(command), shell=False)
     pl("Deleting abra's intermediate directory.")

@@ -25,7 +25,7 @@ import cython
 from cytoolz import (frequencies as cyfreq,
                      partition as ctpartition)
 from itertools import groupby
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness, AbortMission
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair, ssStringFromRead,
                               PysamToChrDict, nucList, cyStdFlt, cyStdInt)
@@ -386,6 +386,11 @@ cdef class PCInfo:
     exclusionSVTags should be a string of comma-separated SV tags.
     The presence of one of these tags in a read causes it to be thrown out
     of the pileup.
+
+    Note: If a PileupColumn has no reads passing all filters, an error
+    AbortMission is thrown so that it can act as a sort of GOTO for rapidly
+    getting back to the process without having to remove a None or try passing
+    back an invalid object.
     """
 
     def __init__(self, pPileupColumn_t PileupColumn, int minBQ=0,
@@ -493,10 +498,7 @@ cdef class PCInfo:
                 map(oagbc, self.Records)).iteritems(),
                 key=oig1)[-1][0]
         except IndexError:
-            self.consensus = "N"  # All bases failed filtered. Oh well.
-            pl("Note: PCInfo empty at contig "
-               "%s and position %s" % (self.contig, self.pos),
-               level=logging.DEBUG)
+            raise AbortMission("No reads at position passing filters. Move along.")
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
                             for alt in set(map(oagbc, self.Records))}
@@ -746,118 +748,6 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
                     Interval.updateWithPileupColumn(PC.PCol)
                 else:
                     del Interval
-    inHandle.close()
-    outHandle.close()
-    pass
-
-
-@cython.locals(MergeDOC=float, TotalDOC=float,
-               minMQ=int, minBQ=int)
-def CalcWithinBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
-                          outbed="default"):
-    """
-    Calculates DOC and creates a bed file containing coverage information
-    for each position in a provided bed, only counting reads with
-    a given minimum mapping quality or base quality.
-    """
-    if(outbed == "default"):
-        outbed = inBAM[0:-4] + ".doc.bed"
-    pl(('Command required to reproduce this call: '
-        'CalcWithinBedCoverage("{}", bed='.format(inBAM) +
-        '"{}", minMQ="{}", minBQ='.format(bed, minMQ) +
-        '"{}", outbed="{}")'.format(minBQ, outbed)))
-    if(bed == "default"):
-        pl("Bed file required for CalcWithinBedCoverage")
-        raise ThisIsMadness("Bedfile required for calculating coverage.")
-    bedLines = HTSUtils.ParseBed(bed)
-    subprocess.check_call(shlex.split("samtools index {}".format(inBAM)),
-                          shell=False)
-    if(os.path.isfile(inBAM + ".bai") is False):
-        pl("Bam index file could not be created. Sorting and indexing.")
-        inBAM = HTSUtils.CoorSortAndIndexBam(inBAM)
-        pl("Sorted BAM Location: {}".format(inBAM))
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    outHandle = open(outbed, "w")
-    outHandle.write("\t".join(["#Chr", "Start", "End",
-                               "Number Of Merged Mapped Bases",
-                               "Number of Unmerged Mapped Bases",
-                               "Avg Merged Coverage",
-                               "Avg Total Coverage",
-                               "Mean Family Size",
-                               "SD of Family Size"]) + "\n")
-    for line in bedLines:
-        TotalReads = 0
-        MergedReads = 0
-        pileupIterator = inHandle.pileup(line[0],
-                                         line[1],
-                                         line[2],
-                                         max_depth=100000,
-                                         multiple_iterators=True)
-        while True:
-            try:
-                PC = PCInfo(pPileupColumn(next(pileupIterator)))
-            except StopIteration:
-                pl("Stopping iteration for bed line: {}".format(line),
-                   level=logging.DEBUG)
-                break
-            TotalReads += PC.TotalReads
-            MergedReads += PC.MergedReads
-        length = float(operator.sub(line[2], line[1]))
-        MergeDOC = odiv(MergedReads, length)
-        TotalDOC = odiv(TotalReads, length)
-        MeanFamSize = odiv(TotalReads, MergedReads)
-        outHandle.write("\t".join(nparray([
-            line[0], line[1], line[2],
-            MergedReads, TotalReads, MergeDOC,
-            TotalDOC]).astype(str)) +
-            "\n")
-        outHandle.flush()
-    inHandle.close()
-    outHandle.close()
-    return outbed
-
-
-def CalcWithoutBedCoverage(inBAM, bed="default", minMQ=0, minBQ=0,
-                           outbed="default"):
-    """
-    Calculates DOC and creates a bed file containing each position
-    not in provided bed, only counting reads with a given minimum mapping
-    quality or base quality.
-    """
-    if(outbed == "default"):
-        outbed = inBAM[0:-4] + ".doc.SBI.bed"
-    pl(("Command required to reproduce this call: "
-        "CalcWithoutBedCoverage(\"{}\", bed=".format(inBAM) +
-        "\"{}\", minMQ=\"{}\", minBQ=".format(bed, minMQ) +
-        "\"{}\", outbed={})".format(minBQ, outbed)))
-    if(bed == "default"):
-        pl("Bed file required for CalcWithoutBedCoverage")
-        raise ThisIsMadness("Bedfile required for calculating coverage.")
-    bedLines = HTSUtils.ParseBed(bed)
-    subprocess.check_call(shlex.split("samtools index {}".format(inBAM)),
-                          shell=False)
-    if(os.path.isfile(inBAM + ".bai") is False):
-        pl("Bam index file could not be created. Sorting and indexing.")
-        inBAM = HTSUtils.CoorSortAndIndexBam(inBAM)
-        pl("Sorted BAM Location: {}".format(inBAM))
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    outHandle = open(outbed, "w")
-    outHandle.write("\t".join(["#Chr", "Start", "End",
-                               "Number Of Merged Mapped Bases",
-                               "Number of Unmerged Mapped Bases"]) + "\n")
-    pileupIterator = inHandle.pileup(max_depth=100000, multiple_iterators=True)
-    while True:
-        try:
-            p = pPileupColumn(next(pileupIterator))
-        except StopIteration:
-            pl("Finished iterations. (CalcWithoutBedCoverage)")
-        PC = PCInfo(p, minMQ=minMQ, minBQ=minBQ)
-        if HTSUtils.PosContainedInBed(PC.contig, PC.pos, bedLines):
-            continue
-        outHandle.write("\t".join(
-            [str(i)
-             for i in [PC.contig, PC.pos, PC.pos + 1,
-                       PC.MergedReads, PC.TotalReads]]) + "\n")
     inHandle.close()
     outHandle.close()
     pass

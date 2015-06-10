@@ -13,7 +13,7 @@ from cytoolz import map as cmap
 from .PileupUtils import PCInfo, AlleleAggregateInfo
 from utilBMF import HTSUtils
 from utilBMF.HTSUtils import printlog as pl
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness, AbortMission
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from .Probability import ConfidenceIntervalAAF
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
@@ -299,6 +299,8 @@ cdef class VCFPos:
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
         self.EST = PCInfoObject.excludedSVTagStr
+        if(sum(aai.MergedReads for aai in PCInfoObject.AltAlleleData) == 0):
+            raise AbortMission("VCFPos has no reads passing filters.")
         self.VCFLines = [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
