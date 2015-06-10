@@ -224,7 +224,7 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
         FAString = "|FA=%s" % (",".join([int2Str[i] for i in FA]))
     except KeyError:
         FAString = "|FA=%s" % (",".join(FA.astype(str)))
-    TagString = "|FM=%s%sND=%s%s" % (
+    TagString = "|FM=%s%s|ND=%s%s" % (
         lenRStr,  FAString, lenR * len(finalSeq) - nsum(FA), PVString)
     """
     try:
@@ -291,9 +291,9 @@ cdef cystr compareFqRecsFast(list R,
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        PVString = "|PV=%s" % ",".join([chr2phStr[i] for i in R[0].quality])
         TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
-                                                PVString)
+                                                ",".join([chr2phStr[i] for
+                                                          i in R[0].quality]))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
                                           R[0].quality)
