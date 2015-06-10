@@ -213,6 +213,18 @@ def main():
         metavar="realigner",
         help="Realigner program (e.g. abra or gatk)",
         default="abra")
+    alignTagBamParser.add_argument(
+        "-t",
+        "--abrapath",
+        metavar="abrapath",
+        help="Path to the abra realigner program",
+        default="default")
+    alignTagBamParser.add_argument(
+        "-l",
+        "--readlength",
+        metavar="readlength",
+        help="Read length (for abra.KmerSizeEvaluator program",
+        default="-1")
     TagBamParser.add_argument(
         "inBAM",
         metavar="inBAM",
@@ -766,7 +778,9 @@ def main():
             ref=args.ref,
             bed=args.bed,
             aligner=args.aligner,
-            realigner=args.realigner)
+            realigner=args.realigner,
+            abrapath=args.abrapath,
+            rLen = int(args.readlength))
         sys.exit(0)
     if(args.bmfsuites == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
