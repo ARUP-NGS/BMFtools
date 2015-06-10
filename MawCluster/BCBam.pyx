@@ -152,7 +152,7 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     commandStr = ("java -cp %s abra.KmerSizeEvaluator " % abra +
                   "%s %s %s %s %s" % (rLen, ref, outbed, nt, inbed))
     pl("AbraKmerSizeEvaluator call string: %s" % commandStr)
-    check_call(shlex.split(commandStr))
+    check_call(commandStr, shell=True)
     return outbed
 
 
@@ -259,7 +259,7 @@ def pairedBarcodeTagging(
     TODO: Unit test for this function.
     """
     cdef ndarray[np.int64_t, ndim=1] PhredQuals1, PhredQuals2, FA1, FA2
-    cdef pysam.calignmentfile.AlignedSegment entry, read1bam, read2bam
+    cdef cAlignedSegment entry, read1bam, read2bam
     cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
     cdef bint addDefault, bwaswRescue, passing
@@ -491,7 +491,7 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
                          cystr suppBam="default"):
     cdef pFastqProxy_t FqPrx
     cdef pysam.cfaidx.FastqProxy tempRead
-    cdef pysam.calignmentfile.AlignedSegment entry
+    cdef cAlignedSegment entry
     cdef pysam.cfaidx.FastqFile reads
     cdef dict descDict
     """
@@ -537,9 +537,9 @@ def GetRPsWithI(inBAM, outBAM="default"):
     If outBAM is left as default, it chooses to write to a filename based
     on the inBAM name.
     """
-    cdef pysam.calignmentfile.AlignedSegment read1
-    cdef pysam.calignmentfile.AlignedSegment read2
-    cdef pysam.calignmentfile.AlignedSegment entry
+    cdef cAlignedSegment read1
+    cdef cAlignedSegment read2
+    cdef cAlignedSegment entry
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[0:-1]) + ".InsertedReadPairs.bam"
@@ -566,7 +566,7 @@ def GetRPsWithI(inBAM, outBAM="default"):
 
 
 @cython.returns(bint)
-def FracSoftclippedTest(pysam.calignmentfile.AlignedSegment rec,
+def FracSoftclippedTest(cAlignedSegment rec,
                         double maxFracSoftClipped=0.25):
     if(FractionSoftClipped(rec) >= maxFracSoftClipped):
         return False
@@ -584,7 +584,7 @@ def GetFracSCPartial(double maxFracSoftClipped):
 
 def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
                       func=returnDefault, appendStr=""):
-    cdef pysam.calignmentfile.AlignedSegment rec, r1, r2
+    cdef cAlignedSegment rec, r1, r2
     cdef AlignmentFile inHandle, raHandle, nrHandle
     if(failBAM == "default"):
         failBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Fail", "bam"])

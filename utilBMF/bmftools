@@ -2,7 +2,6 @@
 import sys
 #  import warnings # Uncomment this if you want to treat warnings as errors.
 from utilBMF.HTSUtils import printlog as pl, TrimExt
-from MawCluster.FFPE import TrainAndFilter, FilterByDeaminationFreq
 from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 #  from pudb import set_trace
 
@@ -56,10 +55,6 @@ def main():
                             "tened BAMs, but the results are not reliable be"
                             "cause this program assumes as much.",
                             type=str)
-    FFPEParser = subparsers.add_parser(
-        "ffpe", description="Estimates cytosine deamination frequencies in a "
-        "VCF outputs a VCF with appropriate variants filtered. FILTER: Deamin"
-        "ationNoise")
     VCFCmpParser = subparsers.add_parser(
         "vcfcmp", description="Compares VCF files.")
     VCFStatsParser = subparsers.add_parser("vcfstats",
@@ -329,18 +324,6 @@ def main():
         "--outVCF", help="output VCF. 'default' will pick a modified form of"
         " the inVCF name.",
         type=str, default="default")
-    FFPEParser.add_argument(
-        "inVCF", help="Path to the input VCF.", type=str)
-    FFPEParser.add_argument(
-        "--pVal", help="P value for confidence interval. Default: 0.05",
-        default=0.05, type=float)
-    FFPEParser.add_argument(
-        "--ctfreq", help="Estimated deamination frequency for the sample.",
-        type=float, default=-1.)
-    FFPEParser.add_argument(
-        "--maxFreq", help="Maximum frequency for a C-[TU]/G-A event to be as"
-        "sumed to be deamination due to formalin fixation.", default=0.1,
-        type=float)
     VCFCmpParser.add_argument(
         "queryVCF", help="Query VCF to compare to reference VCF.",
         type=str)
@@ -701,15 +684,6 @@ def main():
         from MawCluster import BCVCF
         Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
                                    outVCF=args.outVCF)
-        sys.exit(0)
-    if(args.bmfsuites == "ffpe"):
-        # ctfreq defaults to -1. This conditional checks to see if it's set.
-        if(args.ctfreq < 0):
-            Output = TrainAndFilter(args.inVCF, maxFreq=args.maxFreq,
-                                    pVal=args.pVal)
-        else:
-            Output = FilterByDeaminationFreq(args.inVCF, pVal=args.pVal,
-                                             ctfreq=args.ctfreq)
         sys.exit(0)
     if(args.bmfsuites == "vcfcmp"):
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
