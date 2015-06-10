@@ -20,7 +20,6 @@ from utilBMF.HTSUtils import printlog as pl, TrimExt
 from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from MawCluster.BCVCF import VCFStats
-from MawCluster.FFPE import GetDeaminationFrequencies, FilterByDeaminationFreq
 
 
 @cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
