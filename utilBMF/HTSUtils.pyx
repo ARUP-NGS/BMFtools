@@ -391,13 +391,13 @@ def is_read_softclipped(read):
 
 
 @cython.returns(bint)
-@cython.locals(minLen=int)
 def ReadPairIsDuplex(readPair, minShare="default"):
     """
     If minShare is an integer, require that many nucleotides
     overlapping to count it as duplex.
     Defaults to sharing at least half.
     """
+    cdef int minLen
     if(readPair.read1_contig != readPair.read2_contig):
         return False
     if(isinstance(minShare, int)):
@@ -442,28 +442,24 @@ def BedtoolsBam2Fq(BAM, outfq1="default", outfq2="default"):
     return outfq1, outfq2
 
 
-def align_bwa_aln_addRG(R1, R2, ref="default", opts="", outBAM="default",
-                        picardPath="default", RG="default",
-                        PL="ILLUMINA", SM="default", ID="default",
-                        CN="default"):
+def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
+                  cystr opts="", cystr outBAM=None,
+                  bint addRG=True):
     """
     Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
     In order to make BAMs compatible with both GATK and pysam,
 
     """
-    if(ref == "default"):
+    if(ref is None):
         raise Tim("Reference file index required for alignment!")
-    if(picardPath == "default"):
-        raise Tim("Picard jar path required for adding read groups!")
     if(opts == ""):
         opts = "-n 3 -t 4"
-    if(outBAM == "default"):
+    if(outBAM is None):
         outBAM = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
     outSAM = outBAM.replace("bam", "sam")
     # Note: ID has to be "bwa" so that it passes the SAM validation that
     # the hsdjdk has, which is required for either GATK realignment or
     # ABRA realignment.
-    str(uuid.uuid4().get_hex().upper()[0:8])
     R1Sai = R1 + ".tmp.sai"
     R2Sai = R2 + ".tmp.sai"
     alnStr1 = ("bwa aln " + opts + " " + " ".join([ref, R1]) +
@@ -472,46 +468,13 @@ def align_bwa_aln_addRG(R1, R2, ref="default", opts="", outBAM="default",
     alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
                " > " + R2Sai)
     PipedShellCall(alnStr2)
-    sampeStr = ("bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2]) +
-                "  > " + outSAM)
+    sampeBaseStr = "bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2])
+    if(addRG):
+        sampeBaseStr += (" | sed 's/^@PG/@RG\tID:default\tPL:ILLUMINA\tPU:default\tLB:"
+                         "default\tSM:default\tCN:default\n@PG/'")
+    sampeStr = sampeBaseStr + " | samtools view -Sbh - > %s" % outBAM
     printlog("bwa aln string: {}".format(sampeStr))
-    PipedShellCall(sampeStr)
-    AddReadGroupsPicard(outSAM, outBAM=outBAM, SM=SM, ID=ID, PL=PL,
-                        CN=CN, picardPath=picardPath)
-    os.remove(R1Sai)
-    os.remove(R2Sai)
-    return outBAM
-
-
-def align_bwa_aln(R1, R2, ref="default", opts="", outBAM="default"):
-    """
-    Aligns a set of paired-end reads using bwa aln. Defaults to 4 threads.
-    In order to make BAMs compatible with both GATK and pysam,
-
-    """
-    if(ref == "default"):
-        raise Tim("Reference file index required for alignment!")
-    if(opts == ""):
-        opts = "-n 3 -t 4"
-    if(outBAM == "default"):
-        outBAM = '.'.join(R1.split('.')[0:-1]) + ".aln.bam"
-    outSAM = outBAM.replace("bam", "sam")
-    # Note: ID has to be "bwa" so that it passes the SAM validation that
-    # the hsdjdk has, which is required for either GATK realignment or
-    # ABRA realignment.
-    str(uuid.uuid4().get_hex().upper()[0:8])
-    R1Sai = R1 + ".tmp.sai"
-    R2Sai = R2 + ".tmp.sai"
-    alnStr1 = ("bwa aln " + opts + " " + " ".join([ref, R1]) +
-               " > " + R1Sai)
-    PipedShellCall(alnStr1)
-    alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
-               " > " + R2Sai)
-    PipedShellCall(alnStr2)
-    sampeStr = ("bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2]) +
-                " | samtools view -h - > " + outBAM)
-    printlog("bwa aln string: {}".format(sampeStr))
-    PipedShellCall(sampeStr)
+    check_call(sampeStr, shell=True)
     os.remove(R1Sai)
     os.remove(R2Sai)
     return outBAM

@@ -24,25 +24,21 @@ from MawCluster.FFPE import GetDeaminationFrequencies, FilterByDeaminationFreq
 
 
 @cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
-               addRG=cython.bint, mincov=int, rLen=int)
-def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
+               addRG=cython.bint, rLen=int)
+def pairedBamProc(consfq1, consfq2, opts="",
                   bamPrefix="default", ref="default", aligner="default",
                   barIndex="default",
                   bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
-                  mincov=5,
                   abrapath="default",
                   coverageForAllRegions=False,
                   calcCoverage=True,
                   bwapath="default",
                   picardPath="default",
-                  addRG=False, PL="ILLUMINA",
-                  SM="default", CN="default",
-                  RG="default", ID="default",
+                  addRG=False,
                   realigner="abra", gatkpath="default", dbsnp="default",
                   rLen=-1, intelDeflator="default", minAF=0.0):
     """
-    Performs alignment and sam tagging of consolidated fastq files.
-    Note: the i5/i7 indexing strategy ("Shades") does not use the consfqSingle
+    Performs alignment and bam tagging of consolidated fastq files.
     """
     if(ref == "default"):
         raise ValueError("Reference index required!")
@@ -57,18 +53,16 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         addRG = True
     if(aligner == "mem"):
         pl("Now aligning with: %s" % aligner)
-        outBAMProperPair = BCBam.AlignAndTagMem(
+        taggedBAM = BCBam.AlignAndTagMem(
             consfq1, consfq2, ref=ref, opts=opts)
     elif(aligner == "aln"):
-        if(addRG is False):
-            outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,
-                                                      ref=ref, opts=opts)
-        else:
-            outBAMProperPair = HTSUtils.align_bwa_aln_addRG(
-                consfq1, consfq2, ref=ref, opts=opts, RG=RG, SM=SM,
-                CN=CN, PL=PL, picardPath=picardPath, ID=ID)
-        if(consfqSingle != "default"):
-            raise Tim("This step is not required or important for shades.")
+        outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,
+                                                  ref=ref, opts=opts,
+                                                  addRG=addRG)
+        pl("Now tagging BAM with custom SAM tags.")
+        taggedBAM = BCBam.pairedBarcodeTagging(
+            consfq1, consfq2, outBAMProperPair, realigner=realigner,
+            ref=ref, minAF=minAF)
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
     if(rLen < 0):
@@ -78,11 +72,7 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         pl("Warning: path to picard jar not set. This isn't required for much"
            ", but in case something dies later, this could be responsible",
            level=logging.DEBUG)
-    pl("Now tagging BAM with custom SAM tags.")
-    #NOTE: bed file given as an option but not currently used BCBam.pairedBarcodeTagging
-    taggedBAM = BCBam.pairedBarcodeTagging(
-        consfq1, consfq2, outBAMProperPair, bedfile=bed, realigner=realigner,
-        ref=ref, minAF=minAF) 
+
     # check_call(["rm", outBAMProperPair])
     pl("Now realigning with: %s" % realigner)
     if("abra" in realigner.lower()):
@@ -116,38 +106,15 @@ def pairedBamProc(consfq1, consfq2, consfqSingle="default", opts="",
         pl("Number of families found: {}".format(
             re.findall(r'\d+', out)[0]))
         histochart = BCBam.GenerateFamilyHistochart(barIndex)
-        pl("Histochart of family sizes: {}".format(histochart))
-    # UNCOMMENT THIS BLOCK IF YOU WANT TO START MESSING WITH RESCUE
-    """
-        pl("Rescue step, marking the BD as their Hamming distance.")
-        newRef = GenerateBarcodeIndexReference(uniqueBigFamilies)
-        indexBowtie(newRef)
-        mergedFastq = mergeSequencesFastq(tags1, tags2,)
-        joiningSAM = CustomRefBowtiePaired(mergedFastq,newRef)
-        return
-        joinedFamilies = fuzzyJoining(familyMarked,joiningSAM)
-        pl("joinedFamilies is {}".format(joinedFamilies))
-    """
-    # This step not needed for shades protocol, as fastq
-    # families have already been filtered for size.
-    # familyP, familyF = BCBam.pairedFilterBam(
-    #    families, criteria="family")
     tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
     summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])
 
-    SVBam, MarkedFamilies = SVRP(namesortedRealignedFull,
-                                 bedfile=bed,
-                                 tempBAMPrefix=tempBAMPrefix,
-                                 summary=summary)
-    if(SVBam != "NotWritten"):
-        pl(("{} is the bam with all reads considered relevant ".format(SVBam) +
-            "to structural variants."))
-    else:
-        pl("Structural variant bam not written. Ask for it next time!")
-    pl("All records BAM: %s" % MarkedFamilies)
+    MarkedFamilies = SVRP(namesortedRealignedFull,
+                          bedfile=bed,
+                          tempBAMPrefix=tempBAMPrefix,
+                          summary=summary)
+    pl("SV Marked BAM: %s" % MarkedFamilies)
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
-    pl("Change of plans - now, the SV-marked BAM is not used for "
-       "SNP calling due to the differing alignment needs.")
     check_call(["rm", namesortedRealignedFull])
     coorSorted = HTSUtils.CoorSortAndIndexBam(MarkedFamilies)
     check_call(["rm", MarkedFamilies])

@@ -253,7 +253,6 @@ def pairedBarcodeTagging(
         cystr bam,
         cystr outBAMFile="default",
         cystr suppBam="default",
-        cystr bedfile="default",
         cystr conversionXml="default", cystr realigner="none",
         double minAF=0.0, cystr ref="default"):
     """
