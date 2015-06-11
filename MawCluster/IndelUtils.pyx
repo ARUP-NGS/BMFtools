@@ -17,7 +17,7 @@ from .SNVUtils import (HeaderInfoLine, HeaderFormatLine,
                        HeaderReferenceLine, HeaderFileFormatLine,
                        GetContigHeaderLines, HeaderFilterLine)
 from utilBMF.ErrorHandling import ThisIsMadness
-import os.path
+from os import path as ospath
 import uuid
 from cytoolz.itertoolz import frequencies as cyfreq
 import sys
@@ -114,7 +114,7 @@ def GetFreebayesCallStr(inBAM, ref="default", bed="default",
     """
     Used to call freebayes for indel calling.
     """
-    if(os.path.isfile(inBAM + ".bai") is False):
+    if(ospath.isfile(inBAM + ".bai") is False):
         pl("BAM must be coordinate-sorted and "
            "indexed for freebayes to call variants. Doing so!")
         inBAM = CoorSortAndIndexBam(inBAM)

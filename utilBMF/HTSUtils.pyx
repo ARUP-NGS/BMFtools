@@ -10,6 +10,7 @@ from MawCluster.Probability import GetCeiling
 from numpy import (any as npany, concatenate as nconcatenate, less as nless,
                    max as nmax, mean as nmean, min as nmin)
 from operator import iadd as oia, itemgetter as oig, methodcaller as mc
+from os import path as ospath
 from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
@@ -476,8 +477,7 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
     sampeStr = sampeBaseStr + " | samtools view -Sbh - > %s" % outBAM
     printlog("bwa aln string: {}".format(sampeStr))
     check_call(sampeStr.replace("\t", "\\t").replace("\n", "\\n"), shell=True)
-    os.remove(R1Sai)
-    os.remove(R2Sai)
+    check_call(["rm", R1Sai, R2Sai])
     return outBAM
 
 
@@ -517,10 +517,10 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
         sedString = (" | sed -r -e 's/^@PG/@RG\tID:default\tPL:ILLUMINA\t"
                      "PU:default\tLB:default\tSM:default\tCN:default\n@PG/'")
         if(not fqCO):
-            sedString += (" -e 's/\t[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\tR"
-                         "G:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tP"
-                         "L:ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:"
-                         "default\n@PG/'")
+            sedString += (" -e 's/\t[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
+                          "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\t"
+                          "PL:ILLUMINA\tPU:default\tLB:default\tSM:default"
+                          "\tCN:default\n@PG/'")
         else:
             sedString += " -e 's/$/\tRG:Z:default/'"
         baseString += sedString
@@ -580,8 +580,8 @@ def PipedShellCall(commandStr, delete=True, silent=False):
     subprocess.check_call(['bash', PipedShellCallFilename])
     if(delete):
         try:
-            os.remove(PipedShellCallFilename)
-        except OSError:
+            check_call(["rm", PipedShellCallFilename])
+        except CalledProcessError:
             printlog("Piped shell call deletion failed. Oh well!",
                      level=logging.DEBUG)
     return commandStr
@@ -2230,7 +2230,7 @@ def SplitBamByBed(bampath, bedpath):
                     "-o", bam, bampath])
         # Index it so that variant-calling can happen.
         check_call(["samtools", "index", bam])
-        if(not os.path.isfile(bam + ".bai")):
+        if(not ospath.isfile(bam + ".bai")):
             raise Tim("Index for bam not created!")
     return ziplist
 
@@ -2261,7 +2261,7 @@ def SplitBamByBedPysam(bampath, bedpath):
             continue
     for bam in bamlist:
         check_call(["samtools", "index", bam])
-        if(os.path.isfile(bam + ".bai") is False):
+        if(ospath.isfile(bam + ".bai") is False):
             raise Tim("samtools couldn't index this bam. "
                       "It should already be sorted. Abort!")
     return bamlist

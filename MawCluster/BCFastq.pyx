@@ -459,7 +459,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
             continue
         else:
             raise subprocess.CalledProcessError(
-                fq2Popen.returncode, fq2Str ,"Cutadapt failed for read 2!")
+                fq2Popen.returncode, fq2Str, "Cutadapt failed for read 2!")
 
 
 @cython.locals(useGzip=cython.bint, hpLimit=int)
@@ -958,16 +958,13 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             pass
         try:
             saltedBS = rescueDict[tmpBS]
-            saltedBS = "%s%s%s" % (rec1.sequence[:head], saltedBS,
-                                   rec2.sequence[:head])
+            saltedBS = rec1.sequence[:head] + saltedBS + rec2.sequence[:head]
             if(BarcodePasses(saltedBS, hpLimit=hpLimit)):
-                tagStr = "|FP=IndexPass|BS=%s|OS=%s" % (saltedBS,
-                                                         tmpBS)
+                tagStr = "|FP=IndexPass|BS=" + saltedBS + "|OS=" + tmpBS
                 rec1.comment += tagStr
                 rec2.comment += tagStr
             else:
-                tagStr = "|FP=IndexFail|BS=%s|OS=%s" % (saltedBS,
-                                                         tmpBS)
+                tagStr = "|FP=IndexFail|BS=" + saltedBS + "|OS=" + tmpBS
                 rec1.comment += tagStr
                 rec2.comment += tagStr
             ohw1(str(rec1))
@@ -975,9 +972,8 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             continue
         except KeyError:
             # This isn't in a true family. Blech!
-            saltedBS = "%s%s%s" % (rec1.sequence[:head], tmpBS,
-                                   rec2.sequence[:head])
-            tagStr = "|FP=IndexFail|BS=%s" % saltedBS
+            saltedBS = rec1.sequence[:head] + tmpBS + rec2.sequence[:head]
+            tagStr = "|FP=IndexFail|BS=" + saltedBS
             rec1.comment += tagStr
             rec2.comment += tagStr
             ohw1(str(rec1))

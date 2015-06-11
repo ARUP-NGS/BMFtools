@@ -17,7 +17,7 @@ from numpy import mean as nmean
 from numpy import min as nmin
 import cython
 import pysam
-import os.path
+from os import path as ospath
 from utilBMF.HTSUtils import (printlog as pl,
                               SortBgzipAndTabixVCF, is_reverse_to_str)
 from utilBMF import HTSUtils
@@ -763,11 +763,11 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
         outHandle = open(outfile, "w")
     ohw = outHandle.write
     asVCF = pysam.asVCF()
-    if(os.path.isfile(std + ".tbi") is False):
+    if(ospath.isfile(std + ".tbi") is False):
         pl("No tabix index found for standard - sorting, "
            "bgzipping, and tabixing.")
         std = SortBgzipAndTabixVCF(std)
-    if(os.path.isfile(inVCF + ".tbi") is False):
+    if(ospath.isfile(inVCF + ".tbi") is False):
         pl("No tabix index found for query VCF - sorting, "
            "bgzipping, and tabixing.")
         inVCF = SortBgzipAndTabixVCF(inVCF)

@@ -51,9 +51,10 @@ class MyTestCase(unittest.TestCase):
                                      ',112,114,113,103,113,111,113,114,114,11'
                                      '4,112,110,111,113,113,114,114,110,112,1'
                                      '13,113,113,114,114,112,114,113,108,108'
-                                     '\n', 'AAATCGGGTCACTCCCACCTGAATACTGCGCTT'
-                                     'TTCCGATCGGCTTAAAAAATGGCGCACCACGAGATTA\n'
-                                     , '+\n', '~~~~~~~~~~~~~~~~~~~~~x~~~~~~~~'
+                                     '\n',
+                                     'AAATCGGGTCACTCCCACCTGAATACTGCGCTTTTCCGA'
+                                     'TCGGCTTAAAAAATGGCGCACCACGAGATTA\n',
+                                     '+\n', '~~~~~~~~~~~~~~~~~~~~~x~~~~~~~~'
                                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
                                      '~\n']
         subprocess.check_call("rm TestR1.cons.fastq", shell=True)

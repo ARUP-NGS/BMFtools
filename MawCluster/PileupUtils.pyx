@@ -3,7 +3,7 @@
 
 from __future__ import division
 import subprocess
-import os.path
+from os import path as ospath
 import shlex
 import logging
 import operator
@@ -498,7 +498,9 @@ cdef class PCInfo:
                 map(oagbc, self.Records)).iteritems(),
                 key=oig1)[-1][0]
         except IndexError:
-            raise AbortMission("No reads at position passing filters. Move along.")
+            raise AbortMission("No reads at position passing filters."
+                               " Move along - these aren't the "
+                               "positions you're looking for.")
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
                             for alt in set(map(oagbc, self.Records))}
@@ -677,7 +679,7 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
         outbed = inBAM[0:-4] + ".doc.bed"
     subprocess.check_call(shlex.split("samtools index {}".format(inBAM)),
                           shell=False)
-    if(os.path.isfile(inBAM + ".bai") is False):
+    if(ospath.isfile(inBAM + ".bai") is False):
         pl("Bam index file was not created. Sorting and indexing.")
         inBAM = HTSUtils.CoorSortAndIndexBam(inBAM)
         pl("Sorted BAM Location: {}".format(inBAM))

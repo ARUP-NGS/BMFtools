@@ -178,9 +178,9 @@ def main():
         "-f",
         "--p5Seq",
         metavar="primer5Seq",
-        help=("5' primer sequence used by cutadapt (defaults to 'default', wh"
-              "ich will run cutadapt to only trim the 3' primer sequence, if "
-              "given)"),
+        help=("5' primer sequence used by cutadapt (defaults to 'default', "
+              "which will run cutadapt to only trim the 3' primer sequence, "
+              "if given)"),
         default="default")
     DMultiPlexParser.add_argument(
         "-t",
@@ -192,7 +192,8 @@ def main():
     DMultiPlexParser.add_argument(
         "-r", "--rescue", action="store_true", default=False,
         help=("Flag to perform barcode rescue with default rescue parameters "
-              "for experiments with very low library diversity."))
+              "for experiments with very low library diversity. Currently "
+              "only supported for paired-end reads."))
     alignTagBamParser.add_argument(
         "inFqs",
         nargs="+",
@@ -678,7 +679,8 @@ def main():
                 args.inFqs[1],
                 indexfq=args.indexFq,
                 p3Seq=args.p3Seq,
-                p5Seq=args.p5Seq)
+                p5Seq=args.p5Seq,
+                rescue=args.rescue)
             sys.exit(0)
         elif(len(args.inFqs) == 1):
             from BMFMain.ProcessingSteps import singleFastqShades

@@ -225,7 +225,8 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
     try:
-        PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
+        PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
+                    experiment=experiment,
                     minFracAgreed=minFracAgreed, minFA=minFA)
         pos = VCFPos(PC, MaxPValue=MaxPValue,
                      keepConsensus=keepConsensus,
@@ -252,7 +253,8 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     try:
-        PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
+        PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
+                    experiment=experiment,
                     minFracAgreed=minFracAgreed, minFA=minFA,
                     experiment=experiment)
         pos = VCFPos(PC, MaxPValue=MaxPValue,
@@ -373,6 +375,7 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
                     outVCF, bedfile=config["bed"])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         return bedFilteredVCF
+
 
 @cython.returns(bint)
 def testPosStr(cystr posStr):

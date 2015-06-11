@@ -64,13 +64,13 @@ def coverageBed(inBAM, bed="default", outbed="default"):
     pl("Calculating coverage bed. bed: %s. inBAM: %s. " % (bed, inBAM) +
        "outbed: %s" % outbed)
     commandStr = ("samtools bedcov %s %s | awk  " % (bed, inBAM) +
-                  '\'{{FS=OFS="\t"}};{{print $1, $2, $3, $4, $5, $6, $7, $NF /'
-                  " ($3 - $2)}}' > %s" % (outbed))
+                  '\'{{FS=OFS="\t"}};{{print $1, $2, $3, $4, $5, $6, $7, $NF '
+                  "/ ($3 - $2)}}' > %s" % (outbed))
     check_call(commandStr.replace("\t", "\\t").replace("\n", "\\n"),
                shell=True)
     awkcall = "awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $NF}}'"
-    fracOnTargetCStr = ("echo $(%s %s | paste -sd+ | bc) / " % (awkcall, outbed) +
-                        " $(samtools view -c %s) | bc -l" % inBAM)
+    fracOnTargetCStr = ("echo $(%s %s | paste -sd+ |  " % (awkcall, outbed) +
+                        "bc) / $(samtools view -c %s) | bc -l" % inBAM)
     print("FracOnTargetCStr: %s" % fracOnTargetCStr)
     fracOnTarget = float(check_output(fracOnTargetCStr.replace(
         "\t", "\\t").replace("\n", "\\n"), shell=True).strip())

@@ -574,9 +574,8 @@ cpdef bint ORS_SV_Tag_Condition(cAlignedSegment read1,
     Returns true iff precisely one read is soft-clipped and the reads are
     considered properly mapped.
     """
-    return (read1.is_proper_pair
-            and not (sum([is_read_softclipped(read1),
-                          is_read_softclipped(read2)]) - 1))
+    return (read1.is_proper_pair and
+            not (("S" in read1.cigarstring) == ("S" in read2.cigarstring)))
 
 
 cpdef bint MI_SV_Tag_Condition(cAlignedSegment read1,

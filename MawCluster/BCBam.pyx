@@ -85,7 +85,8 @@ def AbraCadabra(inBAM, outBAM="default",
         pl("Bed file set: {}.".format(bed))
     if(working == "default"):
         bamFilename= path.basename(inBAM)
-        working = path.dirname(inBAM) + bamFilename.split('.')[0] + ".working_dir"
+        working = (path.dirname(inBAM) + bamFilename.split('.')[0] +
+                   ".working_dir")
         pl("Default working directory set to be: " + working)
     else:
         pl("Non-default working directory: " + working)
@@ -104,7 +105,6 @@ def AbraCadabra(inBAM, outBAM="default",
         pl("Working directory already exists - deleting!")
         shutil.rmtree(working)
     # Check bed file to make sure it is in appropriate format for abra
-    pl("Kmers precomputed (as far as Abracadabra sees): %s" % kmers_precomputed)
     if(kmers_precomputed is False):
         bed = AbraKmerBedfile(bed, ref=ref, abra=jar,
                               rLen=rLen)
@@ -294,7 +294,7 @@ def pairedBarcodeTagging(
     pl("pairedBarcodeTagging. Input bam: %s. outputBAM: %s" % (bam,
                                                                outBAMFile))
     cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2,
-                                                               bam)
+                                                     bam)
     pl("Command string to reproduce call: {}".format(cStr))
     pl("realigner: %s" % realigner)
     # read1Handle = pysam.FastqFile(fq1)
@@ -724,8 +724,8 @@ cpdef cystr BarcodeTagCOBam(cystr bam, cystr outbam=None):
     cdef AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(bam, "rb")
     outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
-    return BarcodeTagCOBam_(inHandle,
-                     pysam.AlignmentFile(outbam, "wb", template=inHandle))
+    return BarcodeTagCOBam_(
+        inHandle, pysam.AlignmentFile(outbam, "wb", template=inHandle))
 
 
 def AlignAndTagMem(cystr fq1, cystr fq2,

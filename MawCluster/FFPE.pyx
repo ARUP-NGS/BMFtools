@@ -128,16 +128,16 @@ def GetTabixDeamFreq(cystr inVCF):
             atCounts += countDict["T"]
             gcCounts += countDict["G"]
         elif(mid["CONS"] == "G" and
-           freqDict["A"] / freqDict["G"] < 0.15 and
-           rec.alt == "A"):
+             freqDict["A"] / freqDict["G"] < 0.15 and
+             rec.alt == "A"):
             atCounts += countDict["A"]
             gcCounts += countDict["G"]
         elif(rec.ref == "C" and freqDict["T"] < 0.25 and
-           freqDict["C"] >= 0.3 and rec.alt == "T"):
+             freqDict["C"] >= 0.3 and rec.alt == "T"):
             atCounts += countDict["T"]
             gcCounts += countDict["C"]
         elif(rec.ref == "G" and freqDict["A"] < 0.25 and
-           freqDict["G"] >= 0.3 and rec.alt == "A"):
+             freqDict["G"] >= 0.3 and rec.alt == "A"):
             atCounts += countDict["A"]
             gcCounts += countDict["G"]
     freq = (1. * atCounts) / gcCounts
