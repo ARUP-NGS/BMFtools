@@ -17,4 +17,4 @@ cpdef dict GetCOTagDict(cAlignedSegment read)
 
 cdef double getAF(cAlignedSegment read)
 cdef double getSF(cAlignedSegment read)
-cdef cAlignedSegment TagAlignedSegment(cAlignedSegment read)
+# cpdef cAlignedSegment TagAlignedSegment(cAlignedSegment read)

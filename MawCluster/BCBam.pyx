@@ -165,15 +165,6 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     return outbed
 
 
-def Bam2Sam(inBAM, outsam):
-    pl("Bam2Sam. Input: {}. Output: {}.".format(inBAM, outsam))
-    output = open(outsam, 'w', 0)
-    command_str = 'samtools view -h {}'.format(inBAM)
-    pl(command_str)
-    check_call(shlex.split(command_str), stdout=output, shell=False)
-    return(command_str, outsam)
-
-
 def BarcodeSort(inBAM, outBAM="default", paired=True):
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + "barcodeSorted.bam"
@@ -191,24 +182,30 @@ def BarcodeSort(inBAM, outBAM="default", paired=True):
 
 
 def mergeBarcodes(reads1, reads2, outfile="default"):
+    """Takes the barcodes from reads 1 and 2 and concatenates them
+    at the bam stage.
+    Used for inline barcoding.
+    """
+    cdef cAlignedSegment entry1, entry2
+    cdef cystr concatBarcode
+    cdef AlignmentFile reader1, reader2, outSAM
     pl("mergeBarcodes. R1: {}. R2: {}".format(reads1, reads2))
-    reader1 = pysam.Samfile(reads1, "rb")
-    reader2 = pysam.Samfile(reads2, "rb")
+    reader1 = pysam.AlignmentFile(reads1, "rb")
+    reader2 = pysam.AlignmentFile(reads2, "rb")
     if(outfile == "default"):
         outfile = '.'.join(reads1.split('.')[0:-2]) + '.merged.bam'
-    outSAM = pysam.Samfile(outfile, "wb", template=reader1)
+    outSAM = pysam.AlignmentFile(outfile, "wb", template=reader1)
+    osw = outSAM.write
     for entry1 in reader1:
         entry2 = reader2.next()
         assert entry1.qname == entry2.qname
-        Barcode1 = entry1.opt("BS")
-        Barcode2 = entry1.opt("BS")
         # print("Barcode 1: {}. Barcode 2: {}.".format(Barcode1,Barcode2))
-        concatBarcode = Barcode1 + Barcode2
+        concatBarcode = entry1.opt("BS") + entry2.opt("BS")
         # print("New barcode will be {}".format(concatBarcode))
-        entry1.setTag("BS", concatBarcode)
-        entry2.setTag("BS", concatBarcode)
-        outSAM.write(entry1)
-        outSAM.write(entry2)
+        entry1.setTag("BS", concatBarcode, "Z")
+        entry2.setTag("BS", concatBarcode, "Z")
+        osw(entry1)
+        osw(entry2)
     reader1.close()
     reader2.close()
     outSAM.close()
@@ -262,9 +259,16 @@ def pairedBarcodeTagging(
         cystr bam,
         cystr outBAMFile="default",
         cystr suppBam="default",
-        cystr conversionXml="default", cystr realigner="none",
-        double minAF=0.0, cystr ref="default"):
-    """
+        cystr conversionXml="default", cystr realigner="none"):
+    """Tags a BAM from comments in fastq file records.
+    This only needs to be called for methods for which fastq comment has not
+    been appended to each record in the sam file (e.g., bwa mem -C)
+    :param cystr fq1 - Path to read 1 fastq
+    :param cystr fq2 - Path to read 2 fastq
+    :param cystr bam - Path to aligned, name-sorted bam
+    :param cystr conversionXml - Path to xml from bcl2fastq for
+    annotating reads.
+    :param cystr realigner - if "gatk" in this string, add RG.
     TODO: Unit test for this function.
     """
     cdef ndarray[np.int64_t, ndim=1] PhredQuals1, PhredQuals2, FA1, FA2
@@ -282,8 +286,8 @@ def pairedBarcodeTagging(
         suppBam = '.'.join(bam.split('.')[0:-1]) + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Input bam: %s. outputBAM: %s" % (bam,
                                                                outBAMFile))
-    cStr = "pairedBarcodeTagging({}, {}, {}, minAF={})".format(fq1, fq2,
-                                                               bam, minAF)
+    cStr = "pairedBarcodeTagging({}, {}, {},)".format(fq1, fq2,
+                                                      bam)
     pl("Command string to reproduce call: {}".format(cStr))
     pl("realigner: %s" % realigner)
     # read1Handle = pysam.FastqFile(fq1)
@@ -300,7 +304,7 @@ def pairedBarcodeTagging(
     r1hn = read1Handle.next
     r2hn = read2Handle.next
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag >= 2048):
+        if(entry.is_secondary or entry.flag & 2048):
             suppBAM.write(entry)
             continue
         if(entry.is_read1):
@@ -336,18 +340,8 @@ def pairedBarcodeTagging(
             FA2 = FA2[::-1]
         r1FracAlign = FractionAligned(read1bam)
         r1FracSC = FractionSoftClipped(read1bam)
-        """
-        if(r1FracAlign < minAF and not read1bam.is_unmapped):
-            read1bam = SWRealignAS(read1bam, postFilterBAM, ref=ref)
-            r1FracAlign = FractionAligned(read1bam)
-        """
         r2FracAlign = FractionAligned(read2bam)
         r2FracSC = FractionSoftClipped(read2bam)
-        """
-        if(r2FracAlign < minAF and not read2bam.is_unmapped):
-            read2bam = SWRealignAS(read2bam, postFilterBAM, ref=ref)
-            r2FracAlign = FractionAligned(read2bam)
-        """
         coorString = ",".join(sorted([":".join([PysamToChrDict[
             read1bam.reference_id], str(read1bam.pos)]), ":".join([
                 PysamToChrDict[read2bam.reference_id], str(read2bam.pos)])]))
@@ -416,6 +410,8 @@ def pairedBarcodeTagging(
 
 
 def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
+    """
+    """
     Success = True
     seqs = map(oagseq, RecordList)
     seqs = [str(record.seq) for record in RecordList]
@@ -454,8 +450,8 @@ def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
 def ConsolidateInferred(inBAM, outBAM="default"):
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.Samfile(inBAM, 'rb')
-    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
+    inputHandle = pysam.AlignmentFile(inBAM, 'rb')
+    outputHandle = pysam.AlignmentFile(outBAM, 'wb', template=inputHandle)
     workBC1 = ""
     workBC2 = ""
     Set1 = []
@@ -512,11 +508,11 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
         suppBam = TrimExt(bam) + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
     reads = pysam.FastqFile(fastq)
-    postFilterBAM = pysam.Samfile(bam, "rb")
-    suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
-    outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
+    postFilterBAM = pysam.AlignmentFile(bam, "rb")
+    suppBAM = pysam.AlignmentFile(suppBam, "wb", template=postFilterBAM)
+    outBAM = pysam.AlignmentFile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag >> 11):
+        if(entry.is_secondary or entry.flag & 2048):
             suppBAM.write(entry)
             continue
         else:
@@ -537,41 +533,6 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
-
-
-def GetRPsWithI(inBAM, outBAM="default"):
-    """
-    Gets read pairs with an I in both R1 and R2's cigar strings.
-    Must be namesorted!
-    If outBAM is left as default, it chooses to write to a filename based
-    on the inBAM name.
-    """
-    cdef cAlignedSegment read1
-    cdef cAlignedSegment read2
-    cdef cAlignedSegment entry
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(outBAM == "default"):
-        outBAM = ".".join(inBAM.split(".")[0:-1]) + ".InsertedReadPairs.bam"
-    outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
-    ohw = outHandle.write
-    for entry in inHandle:
-        if(entry.is_read1):
-            read1 = entry
-            continue
-        if(entry.is_read2):
-            read2 = entry
-        try:
-            assert read1.query_name == read2.query_name
-        except AssertionError:
-            raise Tim("Input fastq is not name sorted or is off in "
-                      "some other way! Abort!")
-        if(read2.cigarstring is None or read1.cigarstring is None or
-           "I" not in read1.cigarstring or "I" not in read2.cigarstring):
-            continue
-        ohw(read1)
-        ohw(read2)
-    outHandle.close()
-    return outBAM
 
 
 @cython.returns(bint)
@@ -694,7 +655,7 @@ cpdef dict GetCOTagDict(cAlignedSegment read):
     return GetCOTagDict_(read)
 
 
-cdef cAlignedSegment TagAlignedSegment(
+cpdef cAlignedSegment TagAlignedSegment(
         cAlignedSegment read):
     cdef dict CommentDict
     cdef int FM, ND
