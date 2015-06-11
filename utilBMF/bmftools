@@ -85,6 +85,11 @@ def main():
         "sma",
         description="Tool for splitting a VCF File with multiple alts per"
         " line into a VCF where each line has a unique alt.")
+    GetUniqueKmerBedParser = subparsers.add_parser(
+        "getuniquekmersbed",
+        description=("Tool for selecting kmers which are unique identifiers "
+                     "for a region of interest for assembly and produces a"
+                     "bed file covering these regions."))
     GetKmerParser = subparsers.add_parser(
         "getkmers",
         description=("Tool for selecting kmers which are unique identifiers "
@@ -344,6 +349,35 @@ def main():
     help=("If set, writes both set comparisons (std vs. query and query vs. "
           "standard) for filenames based on the input file name. Stdout not "
           "supported."))
+    GetUniqueKmerBedParser.add_argument(
+        "--inbed", "-i",
+        metavar="inbed",
+        help="Path to input bed file defining regions where we are interested in searching for unique kmers.",
+        type=str)
+    GetUniqueKmerBedParser.add_argument(
+        "--ref", "-r",
+        metavar="ref",
+        help="Path to reference file. (Must be faidx'd)",
+        type=str)
+    GetUniqueKmerBedParser.add_argument(
+        "-k", help="Length of unique sequence groups (kmers) to search for in the reference.",
+        metavar="kmer",
+        type=int, default=32)
+    GetUniqueKmerBedParser.add_argument(
+        "--padding", "-p",
+        metavar="pad",
+        help="Distance around the region of interest to pad.",
+        type=int, default=0)
+    GetUniqueKmerBedParser.add_argument(
+        "--mismatches", "-m",
+        metavar="mismatches",
+        help="Number of allowed mismatches.",
+        type=int, default=0)
+    GetUniqueKmerBedParser.add_argument(
+        "--outbed", "-o",
+        metavar="outbed",
+        help="Path to output bed file.",
+        type=str)
     GetKmerParser.add_argument(
         "--ref", "-r",
         help="Path to reference file. (Must be faidx'd)",
@@ -713,6 +747,14 @@ def main():
             CheckVCFForStdCalls(args.queryVCF, std=args.std,
                                 outfile=sys.stdout)
         sys.exit(0)
+    if(args.bmfsuites == "getuniquekmersbed"):
+        from utilBMF.Uniqueness import KmerFetcher
+        KF = KmerFetcher(ref=args.ref, padding=args.pad, mismatches=args.mismatches,
+                         k=args.kmer)
+        for line in args.inbed:
+            KF.FillMap("contig", start, stop)
+        KF.keys()
+
     if(args.bmfsuites == "getkmers"):
         import re
         from MawCluster.IndelUtils import GetUniquelyMappableKmers
@@ -751,7 +793,7 @@ def main():
                                  outBAMFile=args.outfile)
     if(args.bmfsuites == "aligntagbam"):
         from BMFMain.ProcessingSteps import pairedBamProc
-        pairedBamProc(
+        outBAM = pairedBamProc(
             args.inFqs[0],
             args.inFqs[1],
             ref=args.ref,
@@ -761,7 +803,7 @@ def main():
             abrapath=args.abrapath,
             rLen = args.readlength,
             gatkpath=args.gatkpath)
-        pl("aligntagbam completed succesfully!")
+        pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
     if(args.bmfsuites == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
