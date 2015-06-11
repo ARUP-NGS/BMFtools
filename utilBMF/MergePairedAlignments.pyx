@@ -5,9 +5,7 @@ import pysam
 import cython
 import numpy as np
 import logging
-from utilBMF.HTSUtils import (CigarDict, printlog as pl, PysamToChrDict,
-                              ph2chr, TagTypeDict, BamTag, ph2chrDict,
-                              chr2ph)
+from utilBMF.HTSUtils import printlog as pl, BamTag
 from utilBMF.ErrorHandling import ThisIsMadness
 from operator import attrgetter as oag, methodcaller as mc
 from itertools import izip, groupby

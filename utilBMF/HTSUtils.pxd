@@ -167,5 +167,6 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 
 
-cdef public dict CmpDict
+cdef public dict CmpDict, PysamToChrDict, CigarDict, ph2chrDict
+cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList

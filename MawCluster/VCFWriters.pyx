@@ -18,7 +18,7 @@ from . import BCVCF
 from .SNVUtils import GetVCFHeader
 from .PileupUtils import (pPileupColumn,
                           GetDiscordantReadPairs, PCInfo)
-from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
+from utilBMF.HTSUtils import (printlog as pl,
                               ParseBed, PopenDispatcher, PopenCall,
                               parseConfig, TrimExt)
 from utilBMF import HTSUtils

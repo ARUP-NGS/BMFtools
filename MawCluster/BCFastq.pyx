@@ -36,9 +36,9 @@ from functools import partial
 from itertools import groupby
 
 from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
-                              ph2chrDict, chr2ph, printlog as pl,
+                              printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
-                              int2Str, chr2phStr, hamming_cousins)
+                              hamming_cousins)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
 try:
@@ -536,11 +536,11 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
         # This is for removing low complexity reads
         # print("bLen is {}".format(bLen))
         if(BarcodePasses(tempBar, hpLimit=hpLimit)):
-            tagStr = "|FP=IndexPass|BS=%s" % tempBar
+            tagStr = "|FP=IndexPass|BS=" + tempBar
         else:
-            tagStr = "|FP=IndexFail|BS=%s" % tempBar
-        read1.comment += tagStr
-        read2.comment += tagStr
+            tagStr = "|FP=IndexFail|BS=" + tempBar
+        read1.comment = "CO:Z:" + read1.comment + tagStr
+        read2.comment = "CO:Z:" + read2.comment + tagStr
         f1.write(str(read1))
         f2.write(str(read2))
         numWritten += 1

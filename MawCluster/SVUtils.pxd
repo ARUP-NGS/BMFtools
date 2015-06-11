@@ -1,6 +1,8 @@
+cimport cython
+cimport numpy as np
 cimport pysam.calignmentfile
 from cython cimport bint
-
+from utilBMF.HTSUtils cimport PysamToChrDict, cystr
 
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 

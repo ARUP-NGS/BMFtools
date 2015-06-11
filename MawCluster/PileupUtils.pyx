@@ -28,7 +28,7 @@ from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness, AbortMission
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
                               PileupReadPair, ssStringFromRead,
-                              PysamToChrDict, nucList, cyStdFlt, cyStdInt)
+                              cyStdFlt, cyStdInt)
 from utilBMF import HTSUtils
 import utilBMF
 

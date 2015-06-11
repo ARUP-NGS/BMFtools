@@ -1,7 +1,7 @@
 from utilBMF.HTSUtils import (printlog as pl,
                               ReadPair, ParseBed, SplitSCRead,
                               ReadPairIsDuplex,
-                              PysamToChrDict, GetDeletedCoordinates,
+                              GetDeletedCoordinates,
                               is_read_softclipped,
                               GetInsertedStrs, ReadOverlapsBed as RIB, RevCmp)
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
@@ -19,10 +19,7 @@ import numpy as np
 import operator
 import pysam
 import uuid
-cimport numpy as np
-cimport cython
-cimport pysam.calignmentfile
-from utilBMF.HTSUtils cimport cystr
+
 cfi = chain.from_iterable
 
 

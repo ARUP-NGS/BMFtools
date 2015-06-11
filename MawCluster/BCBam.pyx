@@ -24,9 +24,9 @@ from numpy import (array as nparray, sum as nsum, multiply as nmul,
 import pysam
 import cython
 
-from .BCFastq import letterNumDict, GetDescriptionTagDict as getdesc
+from .BCFastq import GetDescriptionTagDict as getdesc
 from . import BCFastq
-from utilBMF.HTSUtils import (printlog as pl, PysamToChrDict,
+from utilBMF.HTSUtils import (printlog as pl,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
                               BwaswCall, samtoolsMergeBam, pFastqProxy,
@@ -36,6 +36,7 @@ from .SVUtils import returnDefault
 from utilBMF import HTSUtils
 from warnings import warn
 import SecC
+
 cimport numpy as np
 cimport cython
 
@@ -191,24 +192,25 @@ def BarcodeSort(inBAM, outBAM="default", paired=True):
 
 
 def mergeBarcodes(reads1, reads2, outfile="default"):
+    cdef cystr concatBarcode
+    cdef cAlignedSegment entry1, entry2
     pl("mergeBarcodes. R1: {}. R2: {}".format(reads1, reads2))
-    reader1 = pysam.Samfile(reads1, "rb")
-    reader2 = pysam.Samfile(reads2, "rb")
+    reader1 = pysam.AlignmentFile(reads1, "rb")
+    reader2 = pysam.AlignmentFile(reads2, "rb")
     if(outfile == "default"):
         outfile = '.'.join(reads1.split('.')[0:-2]) + '.merged.bam'
-    outSAM = pysam.Samfile(outfile, "wb", template=reader1)
+    outSAM = pysam.AlignmentFile(outfile, "wb", template=reader1)
+    osw = outSAM.write
     for entry1 in reader1:
         entry2 = reader2.next()
         assert entry1.qname == entry2.qname
-        Barcode1 = entry1.opt("BS")
-        Barcode2 = entry1.opt("BS")
         # print("Barcode 1: {}. Barcode 2: {}.".format(Barcode1,Barcode2))
-        concatBarcode = Barcode1 + Barcode2
+        concatBarcode = entry1.opt("BS") + entry2.opt("BS")
         # print("New barcode will be {}".format(concatBarcode))
         entry1.setTag("BS", concatBarcode)
         entry2.setTag("BS", concatBarcode)
-        outSAM.write(entry1)
-        outSAM.write(entry2)
+        osw(entry1)
+        osw(entry2)
     reader1.close()
     reader2.close()
     outSAM.close()
@@ -263,9 +265,18 @@ def pairedBarcodeTagging(
         cystr outBAMFile="default",
         cystr suppBam="default",
         cystr conversionXml="default", cystr realigner="none",
-        double minAF=0.0, cystr ref="default"):
+        cystr ref="default"):
     """
     TODO: Unit test for this function.
+    Tags a BAM from comments in fastq file records.
+    Not used for reads where the comment has
+    been appended to each record in the sam file (e.g., bwa mem -C)
+    :param cystr fq1 - Path to read 1 fastq
+    :param cystr fq2 - Path to read 2 fastq
+    :param cystr bam - Path to aligned, name-sorted bam
+    :param cystr conversionXml - Path to xml from bcl2fastq for
+    annotating reads.
+    :param cystr realigner - if "gatk" in this string, add RG.
     """
     cdef ndarray[np.int64_t, ndim=1] PhredQuals1, PhredQuals2, FA1, FA2
     cdef cAlignedSegment entry, read1bam, read2bam
@@ -282,8 +293,8 @@ def pairedBarcodeTagging(
         suppBam = '.'.join(bam.split('.')[0:-1]) + '.2ndSupp.bam'
     pl("pairedBarcodeTagging. Input bam: %s. outputBAM: %s" % (bam,
                                                                outBAMFile))
-    cStr = "pairedBarcodeTagging({}, {}, {}, minAF={})".format(fq1, fq2,
-                                                               bam, minAF)
+    cStr = "pairedBarcodeTagging({}, {}, {})".format(fq1, fq2,
+                                                               bam)
     pl("Command string to reproduce call: {}".format(cStr))
     pl("realigner: %s" % realigner)
     # read1Handle = pysam.FastqFile(fq1)
@@ -454,8 +465,8 @@ def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
 def ConsolidateInferred(inBAM, outBAM="default"):
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.Samfile(inBAM, 'rb')
-    outputHandle = pysam.Samfile(outBAM, 'wb', template=inputHandle)
+    inputHandle = pysam.AlignmentFile(inBAM, 'rb')
+    outputHandle = pysam.AlignmentFile(outBAM, 'wb', template=inputHandle)
     workBC1 = ""
     workBC2 = ""
     Set1 = []
@@ -512,11 +523,11 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
         suppBam = TrimExt(bam) + '.2ndSupp.bam'
     pl("singleBarcodeTagging. Fq: {}. outputBAM: {}".format(bam, outputBAM))
     reads = pysam.FastqFile(fastq)
-    postFilterBAM = pysam.Samfile(bam, "rb")
-    suppBAM = pysam.Samfile(suppBam, "wb", template=postFilterBAM)
-    outBAM = pysam.Samfile(outputBAM, "wb", template=postFilterBAM)
+    postFilterBAM = pysam.AlignmentFile(bam, "rb")
+    suppBAM = pysam.AlignmentFile(suppBam, "wb", template=postFilterBAM)
+    outBAM = pysam.AlignmentFile(outputBAM, "wb", template=postFilterBAM)
     for entry in postFilterBAM:
-        if(entry.is_secondary or entry.flag >> 11):
+        if(entry.is_secondary or entry.flag & 2048):
             suppBAM.write(entry)
             continue
         else:
@@ -537,41 +548,6 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
-
-
-def GetRPsWithI(inBAM, outBAM="default"):
-    """
-    Gets read pairs with an I in both R1 and R2's cigar strings.
-    Must be namesorted!
-    If outBAM is left as default, it chooses to write to a filename based
-    on the inBAM name.
-    """
-    cdef cAlignedSegment read1
-    cdef cAlignedSegment read2
-    cdef cAlignedSegment entry
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(outBAM == "default"):
-        outBAM = ".".join(inBAM.split(".")[0:-1]) + ".InsertedReadPairs.bam"
-    outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
-    ohw = outHandle.write
-    for entry in inHandle:
-        if(entry.is_read1):
-            read1 = entry
-            continue
-        if(entry.is_read2):
-            read2 = entry
-        try:
-            assert read1.query_name == read2.query_name
-        except AssertionError:
-            raise Tim("Input fastq is not name sorted or is off in "
-                      "some other way! Abort!")
-        if(read2.cigarstring is None or read1.cigarstring is None or
-           "I" not in read1.cigarstring or "I" not in read2.cigarstring):
-            continue
-        ohw(read1)
-        ohw(read2)
-    outHandle.close()
-    return outBAM
 
 
 @cython.returns(bint)

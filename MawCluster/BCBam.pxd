@@ -4,6 +4,8 @@ cimport pysam.cfaidx
 from cython cimport bint
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr
+from utilBMF.HTSUtils cimport PysamToChrDict
+from MawCluster.BCFastq cimport letterNumDict
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 

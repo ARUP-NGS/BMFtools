@@ -4,7 +4,7 @@ cimport numpy as np
 from numpy cimport ndarray
 ctypedef Layout Layout_t
 ctypedef LayoutPos LayoutPos_t
-from utilBMF.HTSUtils cimport cystr
+from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, CigarDict, TagTypeDict
 
 cdef class LayoutPos:
     cdef public cython.int pos, readPos, quality, agreement
@@ -53,3 +53,5 @@ cdef class Layout:
     cpdef update_tags(self)
 
 cpdef Layout_t MergeLayoutsToLayout(Layout_t, Layout_t)
+
+cdef public dict chrDict
