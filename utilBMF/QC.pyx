@@ -9,6 +9,7 @@ from numpy import (array as nparray, append as npappend,
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
                        pFastqFile, cyStdFlt, cyStdInt)
+from MawCluster.BCFastq import GetDescriptionTagDict as descDict
 from .ErrorHandling import ThisIsMadness
 from MawCluster.PileupUtils import pPileupColumn
 from os import path as ospath
@@ -212,28 +213,18 @@ cdef ndarray[double] GetFamSizeStats_(pFastqFile_t FqHandle):
     Calculates family size and library diversity from a consolidated
     fastq file.
     """
-    cdef list rList
     cdef int famS, numFam, numSing, sumFam, sumAll
     cdef pFastqProxy_t read
     cdef double MeanFamAll, MeanRealFam
     cdef cystr key, value
+    cdef dict rDict
     numFam = 0
     numSing = 0
     sumFam = 0
     sumAll = 0
     for read in FqHandle:
-        rList = read.comment.split("|")[3].split("=")
-        try:
-            key = rList[0]
-            value = rList[1]
-        except IndexError:
-            print("Read causing the error: %s" % str(read))
-            raise IndexError
-        if key != "FM":
-            print("Read causing the error: %s" % str(read))
-            raise ThisIsMadness("Key in fastq read comment not FM as expected"
-                                ". Value: %s." % key)
-        famS = int(value)
+        rDict = descDict(read.comment)
+        famS = int(rDict["FM"])
         if(famS > 1):
             numFam += 1
             sumFam += famS
