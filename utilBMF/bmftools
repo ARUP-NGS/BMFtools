@@ -178,14 +178,21 @@ def main():
         "-f",
         "--p5Seq",
         metavar="primer5Seq",
-        help="5' primer sequence used by cutadapt [default value is 'default', which will run cutadapt to only trim the 3' primer sequence, if given]",
+        help=("5' primer sequence used by cutadapt (defaults to 'default', wh"
+              "ich will run cutadapt to only trim the 3' primer sequence, if "
+              "given)"),
         default="default")
     DMultiPlexParser.add_argument(
         "-t",
         "--p3Seq",
         metavar="primer3Seq",
-        help="3' primer sequence used by cutadapt [default value is 'default', which will not run cutadapt]",
+        help=("3' primer sequence used by cutadapt (defaults to 'default', "
+              "which will not run cutadapt)"),
         default="default")
+    DMultiPlexParser.add_argument(
+        "-r", "--rescue", action="store_true", default=False,
+        help=("Flag to perform barcode rescue with default rescue parameters "
+              "for experiments with very low library diversity."))
     alignTagBamParser.add_argument(
         "inFqs",
         nargs="+",
