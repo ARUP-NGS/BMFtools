@@ -1,4 +1,5 @@
 cimport cython
+from cython cimport bint
 from utilBMF.HTSUtils cimport cystr
 
 cdef class KmerFetcher(object):
@@ -37,6 +38,8 @@ cpdef list GetRepKmersBwt(cystr ref,
                           int seedlen=?,
                           int mismatches=?,
                           int minMQ=?,
-                          cython.bint useBowtie=?)
+                          bint useBowtie=?)
 cpdef cystr BowtieFqToStr(cystr fqStr, cystr ref=?,
                           int seed=?, int mismatches=?)
+
+cdef dict mmDict

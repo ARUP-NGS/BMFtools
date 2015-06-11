@@ -483,7 +483,7 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
 
 def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
                   path="default",
-                  bint addCO=True):
+                  bint addCO=True, bint fqCO=True):
     """
     Aligns a set of paired-end
     reads to a reference
@@ -492,11 +492,15 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     supplementary alignments, and
     writing each reads' alignment,
     regardless of mapping quality.
+    In addition, adds an RG header line for "default",
+    primarily for compatibility with GATK/Picard.
     :param cystr R1 - Path to Fq 1
     :param cystr R2 - Path to Fq 2
     :param cystr ref - Path to reference
     :param cystr opts - Options to pass to bwa
-    :param bint addCO
+    :param bint addCO - Whether or not to use the -C option.
+    :param bint fqCO - True if the fastq comment section has
+    had CO: prepended to it.
     """
     if(path == "default"):
         path = "bwa"
@@ -510,10 +514,15 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
-        sedString = (" | sed -r -e 's/\t[1-3]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
-                     "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
-                     "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
-                     "t\n@PG/'")
+        sedString = (" | sed -r -e 's/^@PG/@RG\tID:default\tPL:ILLUMINA\tP"
+                     "PU:default\tLB:default\tSM:default\tCN:default\n@PG/'")
+        if(not fqCO):
+            sedString += (" -e 's/\t[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\tR"
+                         "G:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tP"
+                         "L:ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:"
+                         "default\n@PG/'")
+        else:
+            sedString += " -e 's/$/\tRG:Z:default/'"
         baseString += sedString
     if(path == "default"):
         command_str = baseString + " | samtools view -Sbh - > %s" % outBAM
