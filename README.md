@@ -72,6 +72,8 @@ bwa >= 0.7.10 (mem, aln, bwasw)
 
 bowtie/bowtie2
 
+bamleftalign (from FreeBayes)
+
 #### Compiler
 gcc >= gccv5.0
 (Not essential, but gcc5 does offer -floop-unroll-and-jam and a few other neat compiler optimizations.)
