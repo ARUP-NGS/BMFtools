@@ -696,6 +696,9 @@ cpdef dict GetCOTagDict(cAlignedSegment read):
 
 cdef cAlignedSegment TagAlignedSegment(
         cAlignedSegment read):
+    """
+    Adds necessary information from a CO: tag to appropriate other tags.
+    """
     cdef dict CommentDict
     cdef int FM, ND
     cdef double NF, AF, SF
@@ -721,7 +724,8 @@ cdef cAlignedSegment TagAlignedSegment(
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
                    ("SF", SF, "f")
-                   ])
+                   ] + read.get_tags())
+    read.set_tag("CO", None)  # Delete the CO tag.
     return read
 
 
@@ -786,4 +790,4 @@ cdef double getAF(cAlignedSegment read):
         sum += tup[1]
         if(tup[0] == 0):
             sumAligned += tup[1]
-    return sum * 1. / sumAligned
+    return sumAligned * 1. / sum

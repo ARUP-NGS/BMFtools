@@ -35,7 +35,7 @@ def pairedBamProc(consfq1, consfq2, opts="",
                   picardPath="default",
                   addRG=False,
                   realigner="abra", gatkpath="default", dbsnp="default",
-                  rLen=-1, intelDeflator="default", minAF=0.0,
+                  rLen=-1, intelDeflator="default",
                   kmers_precomputed=False):
     """
     Performs alignment and bam tagging of consolidated fastq files.
@@ -61,8 +61,7 @@ def pairedBamProc(consfq1, consfq2, opts="",
                                                   addRG=addRG)
         pl("Now tagging BAM with custom SAM tags.")
         taggedBAM = BCBam.pairedBarcodeTagging(
-            consfq1, consfq2, outBAMProperPair, realigner=realigner,
-            ref=ref, minAF=minAF)
+            consfq1, consfq2, outBAMProperPair, realigner=realigner)
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
     if(rLen < 0):

@@ -165,3 +165,7 @@ cdef cython.bint cReadsOverlap(
 cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
+
+
+cdef public dict CmpDict
+cdef public list nucList

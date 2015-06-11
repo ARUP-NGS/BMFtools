@@ -154,12 +154,6 @@ def main(argv=None):
                         default="default")
     parser.add_argument("--readLength", help="Read length",
                         default=-1, type=int)
-    parser.add_argument(
-        "--minAF",
-        help=("Min aligned fraction for permitting use in variant call or, if "
-              "bwasw rescue is being used, the maximum aligned fraction that "
-              "will prompt a re-alignment."),
-        default=-1., type=float)
     parser.add_argument("--experiment", "-e",
                         help="A comma-joined list of strings with extra infor"
                         "mation for informing analysis. Currently in beta sup"
@@ -374,12 +368,6 @@ def main(argv=None):
     parallel = args.parallel
     if("parallel" in cdk):
         parallel = confDict["parallel"].lower() == "true"
-    minAF = 0.
-    if("minAF" in cdk):
-        minAF = float(confDict[minAF])
-    else:
-        if(args.minAF != 0.0):
-            minAF = args.minAF
     inline_barcodes = False
     if("inline_barcodes" in cdk):
         inline_barcodes = "true" in confDict["inline_barcodes"].lower()
@@ -412,7 +400,7 @@ def main(argv=None):
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner, rLen=readLength, minAF=minAF,
+                    realigner=realigner, rLen=readLength,
                     opts=opts, kmers_precomputed=kmers_precomputed)
             else:
                 procSortedBam = ps.pairedBamProc(
@@ -421,7 +409,7 @@ def main(argv=None):
                     bed=bed,
                     abrapath=abrapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
-                    realigner=realigner, rLen=readLength, minAF=minAF,
+                    realigner=realigner, rLen=readLength,
                     opts=opts, kmers_precomputed=kmers_precomputed)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
@@ -453,7 +441,7 @@ def main(argv=None):
                     abrapath=abrapath,
                     bwapath=bwapath,
                     picardPath=picardPath, rLen=readLength,
-                    minAF=minAF, realigner=realigner, dbsnp=dbsnp,
+                    realigner=realigner, dbsnp=dbsnp,
                     opts=opts)
             else:
                 procSortedBam = ps.pairedBamProc(

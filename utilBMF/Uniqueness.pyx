@@ -16,9 +16,15 @@ from cytoolz import frequencies as cyfreq
 from itertools import chain
 from functools import partial
 from operator import attrgetter
+try:
+    import re2 as re
+except ImportError:
+    import re
+mmDict = {i: re.compile("NM:i:[0-%s]" % i) for i in xrange(20)}
 oagseq = attrgetter("seq")
 cfi = chain.from_iterable
 hammingPt = partial(hamming_cousins, n=1)
+
 cimport cython
 
 
@@ -93,24 +99,35 @@ cdef class KmerFetcher(object):
     :param int padding - distance around region to pad for
            looking for kmers
     :param int mismatches - maximum permitted mismatches in alignment.
+    Defaults to 0.
     :param int minMQ - minimum MQ for a kmer's alignment to be
     considered acceptable.
+    Defaults to 1
     :param int k - length of kmers;
     * Note: minMQ doesn't make sense with bowtie/bowtie2's mapping quality
     assignments.
     Example use for creating a mapper with this:
 
-    KF = KmerFetcher(ref="~/human_g1k_v37.fasta", k=32)
-    mapper = KF.IBedToMap("~/cfDNA_targets.bed")
+    KF = KmerFetcher(ref="/home/daniel/human_g1k_v37.fasta", k=32)
+    mapper = KF.BedToMap("~/cfDNA_targets.bed")
 
     Now you can map reads with this mapper!
 
+    Alternatively, you can use KF.IBedToMap("~/cfDNA_targets.bed").
+    Instead of assigning that hashmap to mapper as above, the hashmap
+    is saved as self.FullMap.
+
     """
     def __init__(self, cystr ref=None, int padding=50,
-                 int mismatches=-1, int minMQ=1,
+                 int mismatches=0, int minMQ=1,
                  int k=30):
         self.ref = ref
-        self.mismatches = mismatches
+        if(mismatches >= 0):
+            self.mismatches = mismatches
+        else:
+            pl("KmerFetcher's mismatches set to below 0 - setting to 0, "
+               "as that breaks downstream steps.")
+            self.mismatches = 0
         self.minMQ = minMQ
         self.padding = padding
         self.k = k
@@ -225,7 +242,7 @@ cpdef list GetRepKmersBwt(cystr ref, int k=30,
                           list bedline=[],
                           int padding=-1, int seedlen=-1,
                           int mismatches=-1, int minMQ=1,
-                          cython.bint useBowtie=False):
+                          bint useBowtie=False):
     cdef cystr fqStr, output
     fqStr = FastqStrFromKmerList(GetKmersToCheck(ref, k=k, bedline=bedline,
                                                  padding=padding))
@@ -234,7 +251,7 @@ cpdef list GetRepKmersBwt(cystr ref, int k=30,
                                mismatches=mismatches)
         return GetUniqMQsBowtie(output, minMQ=minMQ)
     else:
-        output = BwaFqToStr(fqStr, ref=ref, )
+        output = BwaFqToStr(fqStr, ref=ref, seed=seedlen)
     return GetUniqMQsBowtie(output, minMQ=minMQ)
 
 
@@ -284,23 +301,32 @@ def BwaFqToStr(cystr fqStr, cystr ref=None,
     pl("Bowtie command string: %s" % cStr, level=logging.DEBUG)
     print("Bwa command string: %s" % cStr)
     outStr = check_output(cStr, shell=True)  # Capture output to string
-    # check_call(["rm", tmpFile])  # Delete the temporary file.
+    check_call(["rm", tmpFile])  # Delete the temporary file.
     print("Returning BwaFqToStr output")
     return outStr
 
 
-@cython.returns(cython.bint)
-def PassesNM(cystr rStr, int maxNM=2):
+@cython.returns(bint)
+def PassesNM1(cystr rStr, int maxNM=2, dict mmDict=mmDict):
     """
-    Checks a SAM line to see if its edit distance is below the minimum.
+    Checks a SAM line to see if its edit distance is below or equal
+    to the maximum.
     """
-    cdef cython.list strList
-    cdef cystr qStr
-    strList = ["NM:i:%s\t" % i for i in range(maxNM + 1)]
-    for qStr in strList:
-        if(qStr in rStr):
+    cdef int i
+    cdef list strList = ["NM:i:%s" % i for i in xrange(maxNM + 1)]
+    for item in strList:
+        if item in rStr:
             return True
     return False
+
+
+@cython.returns(bint)
+def PassesNM(cystr rStr, int maxNM=2, dict mmDict=mmDict):
+    """
+    Checks a SAM line to see if its edit distance is below or equal
+    to the maximum.
+    """
+    return mmDict[maxNM].match(rStr) is not None
 
 
 @cython.returns(list)
@@ -328,12 +354,11 @@ def GetMQPassReadsMem(cystr bwaStr):
     Takes a string output from bowtie and gets the names of the reads
     with MQ >= minMQ. Defaults to 1 (for a unique alignment)
     """
-    cdef list lines, i
+    cdef list i
     cdef cystr f
-    cdef tuple nameCount
     return [i[0] for i in [f.strip().split("\t") for
-                           f in bwaStr.split("\n") if
-                           "XA:Z:" not in f and f[0] != "@" and f != ""]
+                           f in bwaStr.split("\n") if f != "" and
+                           f[0] != "@" and "XA:Z:" not in f]
             if i[4] != "0"]
 
 
