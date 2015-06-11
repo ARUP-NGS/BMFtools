@@ -35,7 +35,7 @@ from cytoolz import memoize
 from functools import partial
 from itertools import groupby
 
-from utilBMF.HTSUtils import (PipedShellCall, GetSliceFastqProxy, ph2chr,
+from utilBMF.HTSUtils import (SliceFastqProxy, ph2chr,
                               printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
                               hamming_cousins)
@@ -88,7 +88,7 @@ def BarcodeSortBoth(cystr inFq1, cystr inFq2,
        "for read 1. Command: {}".format(BSstring1))
     BSCall1 = subprocess.Popen(BSstring1, stderr=None, shell=True,
                                stdout=None, stdin=None, close_fds=True)
-    PipedShellCall(BSstring2)
+    check_call(BSstring2, shell=True)
     BSCall1.poll()
     checks = 0
     if(BSCall1.returncode == 0):
@@ -117,7 +117,7 @@ def BarcodeSort(cystr inFastq, cystr outFastq="default",
     cdef cystr BSstring
     pl("Sorting {} by barcode sequence.".format(inFastq))
     BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem)
-    PipedShellCall(BSstring)
+    check_call(BSstring, shell=True)
     pl("Barcode Sort shell call: {}".format(BSstring))
     if(outFastq == "default"):  # Added for compatibility with getBSstr
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
@@ -747,7 +747,7 @@ def TrimHomingSingle(
                level=logging.DEBUG)
             ew(str(pFastqProxy(read)))
             continue
-        tw(GetSliceFastqProxy(read, firstBase=TotalTrim,
+        tw(SliceFastqProxy(read, firstBase=TotalTrim,
                               addString="|BS=" + read.sequence[0:bcLen]))
     trimHandle.close()
     errHandle.close()
@@ -793,9 +793,9 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
             ew(str(pFastqProxy(read2)))
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
-        tw1(GetSliceFastqProxy(read1, firstBase=TotalTrim,
+        tw1(SliceFastqProxy(read1, firstBase=TotalTrim,
                                addString="|BS=%s" % barcode))
-        tw2(GetSliceFastqProxy(read2, firstBase=TotalTrim,
+        tw2(SliceFastqProxy(read2, firstBase=TotalTrim,
                                addString="|BS=%s" % barcode))
     trimHandle1.close()
     trimHandle2.close()

@@ -8,14 +8,14 @@ from numpy import (array as nparray, append as npappend,
                    mean as nmean, max as nmax)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
-                       PipedShellCall, pFastqFile, cyStdFlt, cyStdInt)
+                       pFastqFile, cyStdFlt, cyStdInt)
 from .ErrorHandling import ThisIsMadness
 from MawCluster.PileupUtils import pPileupColumn
+from os import path as ospath
 import cython
 import logging
 import numpy as np
 import operator
-import os.path
 import pysam
 import shlex
 import subprocess
@@ -43,7 +43,7 @@ def ExtendBed(bedfile, buffer=100, outbed="default"):
                   "{0}, $3 + {0}, $4, $5, $6".format(buffer) +
                   "}}' > %s" % outbed)
     pl("ExtendBed command string: %s" % commandStr)
-    PipedShellCall(commandStr)
+    check_call(commandStr, shell=True)
     return outbed
 
 
@@ -156,9 +156,9 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     ReadsOnTarget = 0
     ReadsOffTarget = 0
     MappedFamReads = 0
-    if(os.path.isfile(inBAM + ".bai") is False):
+    if(ospath.isfile(inBAM + ".bai") is False):
         check_call(["samtools", "index", inBAM])
-        if(os.path.isfile(inBAM + ".bai") is False):
+        if(ospath.isfile(inBAM + ".bai") is False):
             pl("Input BAM was not coordinate sorted - doing so now.")
             inBAM = CoorSortAndIndexBam(inBAM)
     covBed, fracOnTarget = coverageBed(inBAM, bed=extendedBed)

@@ -360,7 +360,7 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
 
 
 @cython.returns(cystr)
-def GetSliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
+def SliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
                        int firstBase=0,
                        int lastBase=-1337,
                        cystr addString=""):
@@ -465,10 +465,10 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
     R2Sai = R2 + ".tmp.sai"
     alnStr1 = ("bwa aln " + opts + " " + " ".join([ref, R1]) +
                " > " + R1Sai)
-    PipedShellCall(alnStr1)
+    check_call(alnStr1, shell=True)
     alnStr2 = ("bwa aln " + opts + " " + " ".join([ref, R2]) +
                " > " + R2Sai)
-    PipedShellCall(alnStr2)
+    check_call(alnStr2, shell=True)
     sampeBaseStr = "bwa sampe " + " ".join([ref, R1Sai, R2Sai, R1, R2])
     if(addRG):
         sampeBaseStr += (" | sed 's/^@PG/@RG\tID:default\tPL:ILLUMINA\tPU:def"
@@ -533,7 +533,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     # command_list = command_str.split(' ')
     printlog("bwa mem command string with RG/CO additions"
              ": %s" % command_str)
-    PipedShellCall(command_str)
+    check_call(command_str, shell=True)
     printlog("bwa mem aligned output is: %s" %outBAM)
     return outBAM
 
