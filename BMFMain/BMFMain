@@ -422,7 +422,7 @@ def main(argv=None):
                     abrapath=abrapath,
                     picardPath=picardPath, dbsnp=dbsnp, gatkpath=gatkpath,
                     realigner=realigner, rLen=readLength, minAF=minAF,
-                    opts=opts)
+                    opts=opts, kmers_precomputed=kmers_precomputed)
             if(makeReviewDir):
                 subprocess.check_call(["cp", procSortedBam, reviewdir])
             VCFOutDict = ps.pairedVCFProc(

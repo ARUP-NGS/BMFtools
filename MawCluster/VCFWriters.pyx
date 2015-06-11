@@ -22,7 +22,8 @@ from utilBMF.HTSUtils import (PysamToChrDict, printlog as pl,
                               ParseBed, PopenDispatcher, PopenCall,
                               parseConfig, TrimExt)
 from utilBMF import HTSUtils
-from utilBMF.ErrorHandling import ThisIsMadness, FunctionCallException
+from utilBMF.ErrorHandling import (ThisIsMadness, FunctionCallException,
+                                   AbortMission)
 
 # local cython imports
 from utilBMF.HTSUtils cimport cystr
@@ -180,7 +181,7 @@ def SNVCrawler(inBAM,
                     minFracAgreed=minFracAgreed, experiment=experiment,
                     MaxPValue=MaxPValue, refHandle=refHandle,
                     keepConsensus=keepConsensus, reference=reference)
-                if(len(posStr) != 0):
+                if(testPosStr(posStr)):
                     ohw(posStr + "\n")
                 if(pPC.reference_pos > line[2]):
                     pl("Bed region complete.")
@@ -198,13 +199,13 @@ def SNVCrawler(inBAM,
             except StopIteration:
                 pl("Finished iterations.")
                 break
-            if(len(VCFString) != 0):
+            if(testPosStr(VCFString)):
                 ohw(VCFString + "\n")
     discPairHandle.close()
     return OutVCF
 
 
-@cython.returns(tuple)
+@cython.returns(cystr)
 def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
                        int minMQ=-1, int minBQ=-1,
                        cystr experiment="",
@@ -223,18 +224,21 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
     PileupColumn = pPileupColumn(PileupCol)
-    PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
-                minFracAgreed=minFracAgreed, minFA=minFA)
-    pos = VCFPos(PC, MaxPValue=MaxPValue,
-                 keepConsensus=keepConsensus,
-                 reference=reference,
-                 minFracAgreed=minFracAgreed,
-                 minFA=minFA, refHandle=refHandle,
-                 NDP=len(PC.DiscNames))
-    return str(pos)
+    try:
+        PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
+                    minFracAgreed=minFracAgreed, minFA=minFA)
+        pos = VCFPos(PC, MaxPValue=MaxPValue,
+                     keepConsensus=keepConsensus,
+                     reference=reference,
+                     minFracAgreed=minFracAgreed,
+                     minFA=minFA, refHandle=refHandle,
+                     NDP=len(PC.DiscNames))
+        return str(pos)
+    except AbortMission:
+        return "empty"
 
 
-@cython.returns(tuple)
+@cython.returns(cystr)
 def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                          int minMQ=-1, int minBQ=-1,
                          cystr experiment="",
@@ -247,57 +251,19 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
     cdef VCFPos_t pos
     if(refHandle is None):
         raise ThisIsMadness("refHandle must be provided to write VCF lines!")
-    PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
-                minFracAgreed=minFracAgreed, minFA=minFA,
-                experiment=experiment)
-    """
-    Commenting out this section - I moved the filtering out of
-    discordant read pairs and into the PCInfo for some performance.
-    PC.Records = [i for i in PC.Records if
-                  i.alignment.query_name not in DiscRPNames]
-    discReads = []
-    for RP in DiscRPs:
-        reads = RP.RP.getReads()
-        for read in reads:
-            read.set_tag("DP", RP.discordanceString, "Z")
-            discReads.append(read)
-    """
-    pos = VCFPos(PC, MaxPValue=MaxPValue,
-                 keepConsensus=keepConsensus,
-                 reference=reference,
-                 minFracAgreed=minFracAgreed,
-                 minFA=minFA, refHandle=refHandle,
-                 NDP=len(PC.DiscNames))
-    return str(pos)
-
-
-@cython.returns(tuple)
-def IteratorColumnRegionToTuple(
-        pysam.calignmentfile.IteratorColumnRegion ICR,
-        int minMQ=-1, int minBQ=-1, cystr experiment="",
-        int minFA=-1, float minFracAgreed=-1.,
-        float MaxPValue=-1., puEnd=-1,
-        pysam.cfaidx.FastaFile refHandle=None,
-        cython.bint keepConsensus=True,
-        cystr reference="default"):
-    cdef pysam.calignmentfile.PileupColumn psPileupColumn
-    cdef list VCFLines, discReads, allDiscReads
-    if(puEnd < 0):
-        raise ThisIsMadness("Need final entry in bed line to do ICR->VCF")
-    VCFLines = []
-    allDiscReads = []
-    for psPileupColumn in ICR:
-        posStr, discReads = PileupItToVCFLines(
-            psPileupColumn, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
-            minFracAgreed=minFracAgreed, experiment=experiment,
-            MaxPValue=MaxPValue, refHandle=refHandle,
-            keepConsensus=keepConsensus, reference=reference)
-        if(len(posStr) != 0):
-            VCFLines.append(posStr)
-        allDiscReads = list(set(allDiscReads + discReads))
-        if(psPileupColumn.pos > puEnd):
-            break
-    return VCFLines
+    try:
+        PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ, experiment=experiment,
+                    minFracAgreed=minFracAgreed, minFA=minFA,
+                    experiment=experiment)
+        pos = VCFPos(PC, MaxPValue=MaxPValue,
+                     keepConsensus=keepConsensus,
+                     reference=reference,
+                     minFracAgreed=minFracAgreed,
+                     minFA=minFA, refHandle=refHandle,
+                     NDP=len(PC.DiscNames))
+        return str(pos)
+    except AbortMission:
+        return "empty"
 
 
 @cython.returns(cystr)
@@ -316,14 +282,13 @@ def IteratorColumnRegionToStr(
     VCFLines = []
     allDiscReads = []
     for psPileupColumn in ICR:
-        posStr, discReads = PileupItToVCFLines(
+        posStr = PileupItToVCFLines(
             psPileupColumn, minMQ=minMQ, minBQ=minBQ, minFA=minFA,
             minFracAgreed=minFracAgreed, experiment=experiment,
             MaxPValue=MaxPValue, refHandle=refHandle,
             keepConsensus=keepConsensus, reference=reference)
-        if(len(posStr) != 0):
+        if(testPosStr(posStr)):
             VCFLines.append(posStr)
-        allDiscReads = list(set(allDiscReads + discReads))
         if(psPileupColumn.pos > puEnd):
             break
     return "\n".join(VCFLines)
@@ -408,3 +373,11 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
                     outVCF, bedfile=config["bed"])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         return bedFilteredVCF
+
+@cython.returns(bint)
+def testPosStr(cystr posStr):
+    if(posStr != "empty"):
+        if(posStr != ""):
+            return True
+        raise ThisIsMadness("Somehow this posStr is just empty... why?")
+    return False
