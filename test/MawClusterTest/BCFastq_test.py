@@ -1,11 +1,13 @@
-__author__ = 'dnephi'
-
+#!/user/bin/env python
 import unittest
 import sys
 import subprocess
 from utilBMF.HTSUtils import pFastqFile
 from MawCluster.BCFastq import (cFRF_helper as compareFqRecsFast,
                                 pairedFastqConsolidate, singleFastqConsolidate)
+
+__author__ = 'dnephi'
+
 
 class MyTestCase(unittest.TestCase):
 
@@ -36,8 +38,25 @@ class MyTestCase(unittest.TestCase):
     def test_sfc(self):
         singleFastqConsolidate("../data/TestR1.fastq")
         conFq = open("TestR1.cons.fastq")
-        assert conFq.readlines() == ['@AAAAAATGGACCCATTAACC 1:N:0:ACAGTG|FP=IndexPass|BS=AAAAAATGGACCCATTAACC|FM=3|ND=0|FA=3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3|PV=101,102,102,101,102,114,111,114,111,113,106,113,108,113,114,114,112,113,113,111,113,87,109,113,112,113,113,113,114,111,114,113,114,111,113,113,114,113,114,106,113,112,114,113,103,113,111,113,114,114,114,112,110,111,113,113,114,114,110,112,113,113,113,114,114,112,114,113,108,108\n', 'AAATCGGGTCACTCCCACCTGAATACTGCGCTTTTCCGATCGGCTTAAAAAATGGCGCACCACGAGATTA\n', '+\n', '~~~~~~~~~~~~~~~~~~~~~x~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n']
-        subprocess.check_call("rm TestR1.cons.fastq",shell=True)
+        assert conFq.readlines() == ['@AAAAAATGGACCCATTAACC 1:N:0:ACAGTG|FP=I'
+                                     'ndexPass|BS=AAAAAATGGACCCATTAACC|FM=3|N'
+                                     'D=0|FA=3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,'
+                                     '3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3'
+                                     ',3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,'
+                                     '3,3,3,3,3,3,3,3,3,3,3,3,3,3,3|PV=101,10'
+                                     '2,102,101,102,114,111,114,111,113,106,1'
+                                     '13,108,113,114,114,112,113,113,111,113,'
+                                     '87,109,113,112,113,113,113,114,111,114,'
+                                     '113,114,111,113,113,114,113,114,106,113'
+                                     ',112,114,113,103,113,111,113,114,114,11'
+                                     '4,112,110,111,113,113,114,114,110,112,1'
+                                     '13,113,113,114,114,112,114,113,108,108'
+                                     '\n', 'AAATCGGGTCACTCCCACCTGAATACTGCGCTT'
+                                     'TTCCGATCGGCTTAAAAAATGGCGCACCACGAGATTA\n'
+                                     , '+\n', '~~~~~~~~~~~~~~~~~~~~~x~~~~~~~~'
+                                     '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
+                                     '~\n']
+        subprocess.check_call("rm TestR1.cons.fastq", shell=True)
         conFq.close()
 
 if __name__ == '__main__':
