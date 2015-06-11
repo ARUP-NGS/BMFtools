@@ -84,7 +84,7 @@ Cutadapt >= 1.7
 #### Indel Realigners
 ABRA >= 0.85 (Assembly Based Realigner, which in turn requires bwa)
 
-GATK >= 1.6.5, for its IndelRealigner
+GATK >= 1.6, for its IndelRealigner
 
 
 ## BMF Tags
@@ -266,8 +266,10 @@ Most options are available for command-line as well. If an option is set in both
     6. A number of optimizations, including some string comparisons as integers.
     8. Removing old/dead code.
 
+## TODO:
+1. Coverage metrics/on-target calculation.
+    1. Currently, samtools bedcov is used but that gives up after 8000 reads at a position, which doesn't work for our purposes.
 
-Before I forget: I should write a logging/trace decorator which logs each major function call, along with args and kwargs.
 
 ## Style guidelines
 

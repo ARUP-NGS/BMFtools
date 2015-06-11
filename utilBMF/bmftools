@@ -3,6 +3,7 @@ import sys
 #  import warnings # Uncomment this if you want to treat warnings as errors.
 from utilBMF.HTSUtils import printlog as pl, TrimExt
 from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
+from utilBMF.ArgumentSketcher import ArgumentSketcher
 #  from pudb import set_trace
 
 """
@@ -20,7 +21,8 @@ def main():
     subparsers = parser.add_subparsers(dest="bmfsuites")
     alignTagBamParser = subparsers.add_parser(
         "aligntagbam", description=("Performs alignment and sam tagging of"
-                                    " consolidated fastq files to generate a tagged bam."))
+                                    " consolidated fastq files to generate "
+                                    "a tagged bam."))
     TagBamParser = subparsers.add_parser(
         "tagbam", description=("Tag a BAM file with appropriate information"
                                " from merged fastq files."))
@@ -38,16 +40,16 @@ def main():
     PSNVParser.add_argument(
         "--conf",
         help="Config file to hold this so we don't have to specify.",
-        type=str, default="default")
+        type=str)
     PSNVParser.add_argument(
         "--threads",
         help="Number of threads.",
-        type=int, default=4)
+        type=int)
     PSNVParser.add_argument(
         "-o",
         "--outVCF",
         help="Output VCF File.",
-        default="default",
+        default=None,
         metavar="OutputVCF")
     PSNVParser.add_argument("inBAM",
                             help="Input BAM, Coordinate-sorted and indexed, "
@@ -61,14 +63,6 @@ def main():
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
                                            "ansitions.")
-    VCFAFFilterParser = subparsers.add_parser("faf",
-                                              description="Filter a VCF by AF")
-    VCFHetParser = subparsers.add_parser("findhets",
-                                         description="Split VCF lines with mul"
-                                         "tiple ALTs, then writes to files onl"
-                                         "y those variants with either desired"
-                                         " Het frequency or given minor allele"
-                                         " frequency.")
     DMultiPlexParser = subparsers.add_parser("dmp",
                                              description="Marks, combines, and"
                                              " processes a dataset of fastqs f"
@@ -90,10 +84,6 @@ def main():
         description=("Tool for selecting kmers which are unique identifiers "
                      "for a region of interest for assembly and produces a"
                      "bed file covering these regions."))
-    GetKmerParser = subparsers.add_parser(
-        "getkmers",
-        description=("Tool for selecting kmers which are unique identifiers "
-                     "for a region of interest for assembly."))
     SNVParser.add_argument("inBAM",
                            help="Input BAM, Coordinate-sorted and indexed, "
                            "with BMF Tags included. bmftools runs on unflat"
@@ -103,65 +93,62 @@ def main():
         "--bed",
         "-b",
         help="Full path to bed file.",
-        default="default",
+        default=None,
         metavar="bedpath")
     SNVParser.add_argument(
         "-o",
         "--outVCF",
         help="Output VCF File.",
-        default="default",
+        default=None,
         metavar="OutputVCF")
     SNVParser.add_argument(
         "--minBQ",
         help="Minimum Base Quality to consider",
-        default=80,
+        default=None,
         type=int)
     SNVParser.add_argument(
         "--minMQ",
         help="Minimum Mapping Quality to consider",
-        default=20,
+        default=None,
         type=int)
     SNVParser.add_argument(
         "--MaxPValue",
         "-p",
         help="Maximum P value to consider, in e notation.",
         type=float,
-        default=1e-15)
+        default=None)
     SNVParser.add_argument(
         "--keepConsensus",
         "-k",
-        action="store_true")
+        default=None)
     SNVParser.add_argument(
         "--logfile",
         help="Name for logfile.",
-        default="default")
+        default=None)
     SNVParser.add_argument(
         "-r",
-        "--reference-fasta",
+        "--ref",
         help="Provide reference fasta.",
-        default="default")
-    SNVParser.add_argument("-m", "--min-frac-agreed",
-                           help="Minimum fraction of family agreed on base.",
-                           default=0.75, type=float)
+        default=None)
     SNVParser.add_argument("--minFA", help="Minimum family agreed on base.",
-                           default=3, type=int)
+                           default=None, type=int)
     SNVParser.add_argument(
         "--conf",
         help="Config file to hold this so we don't have to specify.",
-        type=str, default="default")
+        type=str)
     SNVParser.add_argument(
-        "--analysisTag", type=str, default="default",
+        "--analysisTag", type=str,
         help=("Tag to append to the output VCF before the file extension."
               "Used to delineate analysis pipelines."))
     SNVParser.add_argument(
         "--is-slave",
         help="Whether or not SNVCrawler is slave instance.",
-        action="store_true", default=False)
+        action="store_true")
     SNVParser.add_argument(
         "--minFracAgreed",
         help=("Minimum fraction of reads in family to agree on a base call "
               "for inclusion in variant calling."),
-        type=float, default=0.8)
+        type=float)
     VCFStatsParser.add_argument(
         "inVCF",
         help="Input VCF, as created by SNVCrawler.")
@@ -173,24 +160,23 @@ def main():
         "-i",
         "--indexFq",
         metavar="indexFastq",
-        help="Index Fastq")
+        help="Index Fastq",
+        required=True)
     DMultiPlexParser.add_argument(
         "-f",
         "--p5Seq",
         metavar="primer5Seq",
         help=("5' primer sequence used by cutadapt (defaults to 'default', "
               "which will run cutadapt to only trim the 3' primer sequence, "
-              "if given)"),
-        default="default")
+              "if given)"))
     DMultiPlexParser.add_argument(
         "-t",
         "--p3Seq",
         metavar="primer3Seq",
         help=("3' primer sequence used by cutadapt (defaults to 'default', "
-              "which will not run cutadapt)"),
-        default="default")
+              "which will not run cutadapt)"))
     DMultiPlexParser.add_argument(
-        "-r", "--rescue", action="store_true", default=False,
+        "-r", "--rescue", action="store_true",
         help=("Flag to perform barcode rescue with default rescue parameters "
               "for experiments with very low library diversity. Currently "
               "only supported for paired-end reads."))
@@ -202,8 +188,8 @@ def main():
         "-b",
         "--bed",
         metavar="bed",
-        help="Bed file not used in the alignment but used in the REalignment and MawCluster.SVUtils's GetSVRelevantRecordsPaired",
-        default="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed")
+        help=("Bed file not used in the alignment but used in the REalignment"
+              " and MawCluster.SVUtils's GetSVRelevantRecordsPaired"))
     alignTagBamParser.add_argument(
         "-r",
         "--ref",
@@ -213,31 +199,27 @@ def main():
         "-a",
         "--aligner",
         metavar="aligner",
-        help="Aligner program (e.g. bwa mem or bwa aln)",
-        default="mem")
+        help="Aligner program (e.g. bwa mem or bwa aln)")
     alignTagBamParser.add_argument(
         "-g",
         "--realigner",
         metavar="realigner",
-        help="Realigner program (e.g. abra or gatk)",
-        default="abra")
+        help="Realigner program (e.g. abra or gatk)")
     alignTagBamParser.add_argument(
         "-p", "--gatkpath",
         metavar="gatk",
-        help="Path to the GATK Jar",
-        default="default")
+        help="Path to the GATK Jar")
     alignTagBamParser.add_argument(
         "-t",
         "--abrapath",
         metavar="abrapath",
-        help="Path to the abra realigner program",
-        default="default")
+        help="Path to the abra realigner program")
     alignTagBamParser.add_argument(
         "-l",
         "--readlength",
         metavar="readlength",
         help="Read length (for abra.KmerSizeEvaluator program",
-        default=-1, type=int)
+        type=int)
     TagBamParser.add_argument(
         "inBAM",
         metavar="inBAM",
@@ -252,7 +234,7 @@ def main():
         "-o", "--outfile",
         help=("Path to output file. If not set, defaults to variation "
               "on input bam."),
-        type=str, default="default")
+        type=str)
     SVParser.add_argument(
         'bam',
         help=("Coordinate-Sorted, Indexed Bam File"),
@@ -261,35 +243,29 @@ def main():
         "-b",
         "--bed",
         help="Path to bedfile.",
-        default="default"
         )
     SVParser.add_argument(
         "--minMQ",
         "-m",
         help="Minimum mapping quality for inclusion. Default: 0.",
-        default=0,
         type=int)
     SVParser.add_argument(
         "--minBQ",
         help="Minimum base quality for inclusion. Default: 0.",
-        default=0,
         type=int)
     SVParser.add_argument(
         "-o",
         "--outTsv",
         help="Output tsv",
-        default="default"
         )
     SVParser.add_argument(
         "--minPileupLen",
         "-l",
         help="Length of interval to be considered for call.",
-        default=10,
         type=int)
     SVParser.add_argument(
         "--minClustDepth",
         "-d",
-        default=10,
         type=int,
         help="Minimum depth for a cluster to be considered for call.")
     SVParser.add_argument(
@@ -300,43 +276,14 @@ def main():
     SVParser.add_argument("--insert-distance",
                           "-i",
                           help="Maximum difference between edit distances"
-                          " for clustering families together",
-                          default=35)
+                          " for clustering families together")
     SMAParser.add_argument(
         "inVCF",
         help="Input VCF", type=str)
     SMAParser.add_argument(
         "--outVCF",
         "-o",
-        help="Output VCF. If unset, defaults to a modified form of the input.",
-        default="default")
-    VCFHetParser.add_argument(
-        "inVCF", help="Input VCF", type=str)
-    VCFHetParser.add_argument(
-        "--outVCF",
-        "-o",
-        help="Output VCF. If unset, defaults to a modified form of the input.",
-        default="default")
-    VCFHetParser.add_argument(
-        "--vcf-format",
-        "-f",
-        help="VCF Format. 'ExAC' for ExAC style, 'UK10K' for UK10K style.",
-        default="ExAC")
-    VCFHetParser.add_argument(
-        "--min-het-frac",
-        help="Minimum fraction of population het OR minimum minor "
-        "allele frequency, depending on dataset.",
-        type=float,
-        default=0.025)
-    VCFAFFilterParser.add_argument(
-        "inVCF", help="Path to input VCF")
-    VCFAFFilterParser.add_argument(
-        "--maxAF", help="Max allele frequency to keep",
-        type=float, default=0.1)
-    VCFAFFilterParser.add_argument(
-        "--outVCF", help="output VCF. 'default' will pick a modified form of"
-        " the inVCF name.",
-        type=str, default="default")
+        help="Output VCF. If unset, defaults to a modified form of the input.")
     VCFCmpParser.add_argument(
         "queryVCF", help="Query VCF to compare to reference VCF.",
         type=str)
@@ -344,23 +291,23 @@ def main():
         "--std", help="Reference VCF for comparing to query VCF.",
         type=str, required=True)
     VCFCmpParser.add_argument(
-        "-o", "--outfile", help="Set output file path instead of stdout.",
-        default=None)
+        "-o", "--outfile", help="Set output file path instead of stdout.")
     VCFCmpParser.add_argument(
         "--check-std",
         help=("If set, check standard VCF for calls in the query VCF rather "
               "than default behavior, which is checking the query VCF for "
               "calls that should be in the standard."),
-        action="store_true", default=False)
+        action="store_true")
     VCFCmpParser.add_argument(
-    "--check-both", action="store_true", default=True,
-    help=("If set, writes both set comparisons (std vs. query and query vs. "
-          "standard) for filenames based on the input file name. Stdout not "
-          "supported."))
+        "--check-both", action="store_true",
+        help=("If set, writes both set comparisons (std vs. query and query "
+              "vs. standard) for filenames based on the input file name. "
+              "Stdout not supported."))
     GetUniqueKmerBedParser.add_argument(
         "--inbed", "-i",
         metavar="inbed",
-        help="Path to input bed file defining regions where we are interested in searching for unique kmers.",
+        help=("Path to input bed file defining regions where we are "
+              "interested in searching for unique kmers."),
         type=str)
     GetUniqueKmerBedParser.add_argument(
         "--ref", "-r",
@@ -368,66 +315,32 @@ def main():
         help="Path to reference file. (Must be faidx'd)",
         type=str)
     GetUniqueKmerBedParser.add_argument(
-        "-k", help="Length of unique sequence groups (kmers) to search for in the reference.",
+        "-k", "--kmer", help=("Length of unique sequence groups (kmers) "
+                              "to search for in the reference."),
         metavar="kmer",
-        type=int, default=32)
+        type=int)
     GetUniqueKmerBedParser.add_argument(
         "--padding", "-p",
-        metavar="pad",
         help="Distance around the region of interest to pad.",
-        type=int, default=0)
+        type=int)
     GetUniqueKmerBedParser.add_argument(
         "--mismatches", "-m",
         metavar="mismatches",
         help="Number of allowed mismatches.",
-        type=int, default=0)
+        type=int)
     GetUniqueKmerBedParser.add_argument(
         "--outbed", "-o",
         metavar="outbed",
         help="Path to output bed file.",
         type=str)
-    GetKmerParser.add_argument(
-        "--ref", "-r",
-        help="Path to reference file. (Must be faidx'd)",
-        type=str)
-    GetKmerParser.add_argument(
-        "-k", help="Length of kmer",
-        type=int, default=32)
-    GetKmerParser.add_argument(
-        "--minMQ", "-m",
-        help=("Minimum mapping quality to consider a kmer a "
-              "sufficiently unique identifier."),
-        type=int, default=1)
-    GetKmerParser.add_argument(
-        "--padding", "-p",
-        help="Distance around the region of interest to pad.",
-        type=int, default=0)
-    GetKmerParser.add_argument(
-        "region",
-        help="Region string in samtools formatting. e.g., 1:4000-50000.",
-        type=str)
-    GetKmerParser.add_argument(
-        "-o", "--outfile",
-        help="Path to outfile. If outfile is not set, defaults to stdout.",
-        type=str, default="default")
-    GetKmerParser.add_argument(
-        "--padding-distance", "-d",
-        help=("Distance around the kmer to pad the fasta reference for "
-              "pulling down relevant reads."),
-        type=int, default=120)
-    GetKmerParser.add_argument(
-        "-l", "--mismatch-limit",
-        help=("Number of mismatches to permit for alignment or "
-              "for the dual hashmap."))
     FamStatsParser = subparsers.add_parser(
         "famstats", description=("Generate family size stats for a "
                                  "flattened fastq file."))
     FamStatsParser.add_argument(
         "inFq", help="Path to flattened fastq file.", type=str)
     FamStatsParser.add_argument(
-        "-o", "--outfile", help="Path to output file. Default: stdout",
-        type=argparse.FileType("w"),
-        default=sys.stdout)
+        "-o", "--outfile-handle", help="Path to output file. Default: stdout",
+        type=argparse.FileType("w"))
     InputQtyParser.add_argument(
         "-n", "--number-of-templates",
         help="Number of template molecules sequenced. "
@@ -444,7 +357,7 @@ def main():
     InputQtyParser.add_argument(
         "--on-target", "-o",
         help="Fraction of reads which are on-target. Default: 0.25 (25%).",
-        type=float, default=0.25)
+        type=float)
     InputQtyParser.add_argument(
         "--region-size", "-s",
         help="Size of capture region in number of bases.",
@@ -456,28 +369,29 @@ def main():
     InputQtyParser.add_argument(
         "--genome-size", "-g",
         help="Genome size for organism. Defaults to human genome length.",
-        default=3.2e9, type=float)
+        type=float)
     InputQtyParser.add_argument(
         "--no-strand-correction",
-        help="Whether or not to count copies of the genome by strand rather than by dsDNA.",
+        help=("Whether or not to count copies of the genome by "
+              "strand rather than by dsDNA."),
         action="store_true")
     InputQtyParser.add_argument(
         "--qc-fail",
         help="Fraction of reads not usable due to failing QC. Default: 0.1.",
-        default=0.1, type=float)
+        type=float)
     InputQtyParser.add_argument(
         "--mean-aligned-fraction",
         help=("Fraction of average read aligned. Default: 0.9"),
-        default=0.9, type=float)
+        type=float)
     InputQtyParser.add_argument(
         "--mapped-fraction",
         help=("Fraction of reads properly mapped with "
               "MQ != minMQ for variant-calling."),
-        default=0.83, type=float)
+        type=float)
     InputQtyParser.add_argument(
         "--ligation-efficiency",
         help="Efficiency of ligation of adapters.",
-        type=float, default=0.5)
+        type=float)
     RescueShadingParser.add_argument(
         "-f", "--fastqs", help="Path to fastq files.",
         nargs="+", type=str)
@@ -485,56 +399,64 @@ def main():
         "--head",
         help=("Number of bases from each read with "
               "which to salt the barcode."),
-        type=int, default=2)
+        type=int)
     RescueShadingParser.add_argument(
-        "-n", help="Mismatch limit", default=1,
+        "--mm", help="Mismatch limit",
         type=int)
     RescueShadingParser.add_argument(
         "--minFam", "-m", help="Minimum family size for true families.",
-        default=10, type=int)
+        type=int)
+    # for each subparser, add_argument for conf.
+    # Load default one and then override with config file.
+    # Then override any arguments that are not None.
 
     # set_trace()
-    args = parser.parse_args()
+    Palin = parser.parse_args()
+    Chapman = ArgumentSketcher(Palin, Palin.conf)
+    # confDict = load(something)
     commandStr = " ".join(sys.argv)
-    if(args.bmfsuites == "qty"):
-        templatesOnTarget = args.number_of_templates * args.on_target
-        if(args.paired):
+    print("subcommand: %s" % Chapman['bmfsuites'])
+    if(Chapman['bmfsuites'] == "qty"):
+        templatesOnTarget = Palin.number_of_templates * Palin.on_target
+        if(Palin.paired):
             readsOnTarget = templatesOnTarget * 2
         else:
             readsOnTarget = templatesOnTarget
-        basesOnTarget = (readsOnTarget * args.read_length *
-                         (1 - args.qc_fail) * args.mean_aligned_fraction *
-                         args.mapped_fraction / args.ligation_efficiency)
+        basesOnTarget = (readsOnTarget * Palin.read_length *
+                         (1 - Chapman['qc_fail']) *
+                         Chapman['mean_aligned_fraction'] *
+                         Chapman['mapped_fraction'] /
+                         Chapman['ligation_efficiency'])
         # Ligation efficiency decreases diversity. Correct for this.
-        genomeEquivalentsPerPg = 6.022e23 / (args.genome_size * 1e15 *
-                                             650 * args.ligation_efficiency)
-        meanOnTargetCoverage = basesOnTarget / args.region_size
-        NumCopiesDesired = meanOnTargetCoverage / args.FM
+        genomeEquivalentsPerPg = 6.022e23 / (Chapman['genome_size'] * 1e15 *
+                                             650 *
+                                             Chapman['ligation_efficiency'])
+        meanOnTargetCoverage = basesOnTarget / Chapman['region']
+        NumCopiesDesired = meanOnTargetCoverage / Palin.FM
         DesiredInputQty = NumCopiesDesired / genomeEquivalentsPerPg
-        if(not args.no_strand_correction):
+        if(not Palin.no_strand_correction):
             DesiredInputQty /= 2
         print("Desired input qty: %.8fpg" % DesiredInputQty)
-    if(args.bmfsuites == "psnv"):
+    if(Chapman['bmfsuites'] == "psnv"):
         from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
         from subprocess import check_call
         import pysam
         from MawCluster import BCVCF
         from MawCluster.SNVUtils import GetVCFHeader
-        if(args.outVCF == "default"):
-            outVCF = ".".join(args.inBAM.split(".")[0:-1] +
+        if(Chapman['outVCF'] == "default"):
+            outVCF = ".".join(Chapman['inBAM'].split(".")[0:-1] +
                               ["FULL", "bmf", "vcf"])
         else:
-            outVCF = args.outVCF
-        config = parseConfig(args.conf)
+            outVCF = Chapman['outVCF']
         outHandle = open(outVCF, "w")
         outHandle.write(GetVCFHeader(
-                        commandStr=commandStr, reference=config["ref"],
-                        header=pysam.AlignmentFile(args.inBAM, "rb").header))
+            commandStr=commandStr, reference=Chapman["ref"],
+            header=pysam.AlignmentFile(Chapman['inBAM'], "rb").header))
         pl("Splitting BAM file by contig.")
-        Dispatcher = GetBMFsnvPopen(args.inBAM, config['bed'],
-                                    conf=args.conf,
-                                    threads=args.threads)
+        Dispatcher = GetBMFsnvPopen(Chapman['inBAM'], Chapman['bed'],
+                                    conf=Chapman['conf'],
+                                    threads=Chapman['threads'])
         if(Dispatcher.daemon() != 0):
             raise ThisIsMadness("Dispatcher failed somehow.")
         pl("Shell calls completed without errors.")
@@ -542,83 +464,31 @@ def main():
             check_call("cat %s >> %s" % (vcffile, outVCF), shell=True)
         pl("Filtering VCF by bed file. Pre-filter path: %s" % outVCF)
         bedFilteredVCF = BCVCF.FilterVCFFileByBed(
-                    outVCF, bedfile=config['bed'])
+                    outVCF, bedfile=conf['bed'])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
-    if(args.bmfsuites == "snv"):
+    if(Chapman['bmfsuites'] == "snv"):
         from MawCluster.VCFWriters import SNVCrawler
         from utilBMF.HTSUtils import parseConfig
         from MawCluster.BCVCF import VCFStats
-        runconf = {}
-        if(args.conf != "default"):
-            config = parseConfig(args.conf)
-            if("minMQ" in config.keys()):
-                runconf["minMQ"] = int(config["minMQ"])
-            if(args.minMQ != 0):
-                runconf["minMQ"] = args.minMQ
-            if("minBQ" in config.keys()):
-                runconf["minBQ"] = int(config["minBQ"])
-            if(args.minBQ != 0):
-                runconf["minBQ"] = args.minBQ
-            if("MaxPValue" in config.keys()):
-                runconf["MaxPValue"] = float(config["MaxPValue"])
-            if(args.MaxPValue != 1e-15):
-                runconf["MaxPValue"] = args.MaxPValue
-            if("minFracAgreed" in config.keys()):
-                runconf["minFracAgreed"] = float(config["minFracAgreed"])
-            if(args.min_frac_agreed != 0):
-                runconf["minFracAgreed"] = args.min_frac_agreed
-            if("ref" in config.keys()):
-                runconf["reference"] = config["ref"]
-            if(args.reference_fasta != "default"):
-                runconf["reference"] = args.reference_fasta
-            if("bed" in config.keys()):
-                runconf["bed"] = config["bed"]
-            if(args.bed != "default"):
-                runconf["bed"] = args.bed
-            if("minFA" in config.keys()):
-                runconf["minFA"] = int(config["minFA"])
-            if(args.minFA != 0):
-                runconf["minFA"] = args.minFA
-            if("MaxPValue" not in runconf.keys()):
-                runconf["MaxPValue"] = args.MaxPValue
-            if("is_slave" in config.keys()):
-                if(config["is_slave"].lower() == "true"):
-                    runconf["is_slave"] = True
-            if(args.is_slave is True):
-                is_slave = True
-            if("is_slave" not in locals()):
-                is_slave = False
-            runconf["is_slave"] = is_slave
-            runconf["commandStr"] = commandStr
-        else:
-            runconf["bed"] = args.bed
-            runconf["minMQ"] = int(args.minMQ)
-            runconf["minBQ"] = int(args.minBQ)
-            runconf["minFA"] = int(args.minFA)
-            runconf["MaxPValue"] = float(args.MaxPValue)
-            runconf["minFracAgreed"] = float(args.minFracAgreed)
-            runconf["reference"] = args.reference_fasta
-            runconf["is_slave"] = args.is_slave
-        print(repr(runconf))
-        if(args.analysisTag != "default"):
-            analysisTag = (args.analysisTag + "-" +
-                           "-".join([str(runconf[i]) for i in
+        if(Chapman['analysisTag'] != "default"):
+            analysisTag = (Chapman['analysisTag'] + "-" +
+                           "-".join([str(Chapman[i]) for i in
                                      ["minMQ", "minBQ", "minFA",
                                       "MaxPValue",
                                       "minFracAgreed"]]))
         else:
-            analysisTag = "-".join([str(runconf[i]) for i in
+            analysisTag = "-".join([str(Chapman[i]) for i in
                                     ["minMQ", "minBQ", "minFA",
                                      "MaxPValue", "minFracAgreed"]])
-        if(args.outVCF == "default"):
-            OutVCF = ".".join(args.inBAM.split(".")[0:-1] +
+        if(Chapman['outVCF'] == "default"):
+            OutVCF = ".".join(Chapman['inBAM'].split(".")[0:-1] +
                               [analysisTag, "bmf", "vcf"])
         else:
-            OutVCF = args.outVCF
-        for pair in runconf.items():
-            print("runconf entry. Key: %s. Value: %s." % (pair[0],
-                                                          pair[1]))
+            OutVCF = Chapman['outVCF']
+        for pair in Chapman.items():
+            pl("Chapman entry. Key: %s. Value: %s." % (pair[0], pair[1]),
+               level=logging.DEBUG)
         """
         import cProfile
         import pstats
@@ -626,36 +496,36 @@ def main():
         pr.enable()
         """
 
-        if("bed" in runconf.keys()):
-            print("Reference: %s" % runconf["reference"])
-            # OutVCF = SNVCrawler(args.inBAM, **runconf)
-            OutVCF = SNVCrawler(args.inBAM,
-                                bed=runconf["bed"],
-                                minMQ=runconf["minMQ"],
-                                minBQ=runconf["minBQ"],
-                                MaxPValue=runconf["MaxPValue"],
-                                keepConsensus=args.keepConsensus,
+        if("bed" in Chapman.keys()):
+            print("Reference: %s" % Chapman["reference"])
+            # OutVCF = SNVCrawler(Chapman['inBAM'], **Chapman)
+            OutVCF = SNVCrawler(Chapman['inBAM'],
+                                bed=Chapman["bed"],
+                                minMQ=Chapman["minMQ"],
+                                minBQ=Chapman["minBQ"],
+                                MaxPValue=Chapman["MaxPValue"],
+                                keepConsensus=Chapman['keepConsensus'],
                                 commandStr=commandStr,
-                                reference=runconf["reference"],
+                                reference=Chapman["reference"],
                                 reference_is_path=True,
-                                minFracAgreed=runconf["minFracAgreed"],
-                                minFA=runconf["minFA"],
+                                minFracAgreed=Chapman["minFracAgreed"],
+                                minFA=Chapman["minFA"],
                                 OutVCF=OutVCF,
-                                writeHeader=(not args.is_slave))
+                                writeHeader=(not Chapman['is_slave']))
             OutTable = VCFStats(OutVCF)
         else:
-            OutVCF = SNVCrawler(args.inBAM,
-                                minMQ=runconf["minMQ"],
-                                minBQ=runconf["minBQ"],
-                                MaxPValue=runconf["MaxPValue"],
-                                keepConsensus=args.keepConsensus,
+            OutVCF = SNVCrawler(Chapman['inBAM'],
+                                minMQ=Chapman["minMQ"],
+                                minBQ=Chapman["minBQ"],
+                                MaxPValue=Chapman["MaxPValue"],
+                                keepConsensus=Chapman['keepConsensus'],
                                 commandStr=commandStr,
-                                reference=runconf["reference"],
+                                reference=Chapman["reference"],
                                 reference_is_path=True,
-                                minFracAgreed=runconf["minFracAgreed"],
+                                minFracAgreed=Chapman["minFracAgreed"],
                                 OutVCF=OutVCF,
-                                minFA=runconf["minFA"],
-                                writeHeader=(not args.is_slave))
+                                minFA=Chapman["minFA"],
+                                writeHeader=(not Chapman['is_slave']))
             OutTable = VCFStats(OutVCF)
         """
         import cStringIO
@@ -667,157 +537,128 @@ def main():
         open("cProfile.stats.txt", "w").write(s.getvalue())
         """
         sys.exit(0)
-    if(args.bmfsuites == "vcfstats"):
+    if(Chapman['bmfsuites'] == "vcfstats"):
         from MawCluster.BCVCF import VCFStats
-        OutTable = VCFStats(args.inVCF)
+        OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
-    if(args.bmfsuites == "dmp"):
-        if(len(args.inFqs) == 2):
+    if(Chapman['bmfsuites'] == "dmp"):
+        if(len(Chapman['inFqs']) == 2):
             from BMFMain.ProcessingSteps import pairedFastqShades
             OutFastq1, OutFastq2 = pairedFastqShades(
-                args.inFqs[0],
-                args.inFqs[1],
-                indexFq=args.indexFq,
-                p3Seq=args.p3Seq,
-                p5Seq=args.p5Seq,
-                rescue=args.rescue)
-            sys.exit(0)
-        elif(len(args.inFqs) == 1):
+                Chapman['inFqs'][0],
+                Chapman['inFqs'][1],
+                indexFq=Chapman['indexFq'],
+                p3Seq=Chapman['p3Seq'],
+                p5Seq=Chapman['p5Seq'],
+                rescue=Chapman['rescue'])
+            return 0  # sys.exit(main()) returns 0
+        elif(len(Chapman['inFqs']) == 1):
             from BMFMain.ProcessingSteps import singleFastqShades
             OutFastq = singleFastqShades(
-                args.inFqs[0],
-                indexFq=args.indexFq,
-                p3Seq=args.p3Seq,
-                p5Seq=args.p5Seq)
-            sys.exit(0)
-    if(args.bmfsuites == "sv"):
+                Chapman['inFqs'][0],
+                indexFq=Chapman['indexFq'],
+                p3Seq=Chapman['p3Seq'],
+                p5Seq=Chapman['p5Seq'])
+            return 0  # sys.exit(main()) returns 0
+    if(Chapman['bmfsuites'] == "sv"):
+        from utilBMF.ErrorHandling import ThisIsMadness
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans
-        if(args.bed == "default"):
-            FacePalm("Bed file required!")
+        if(Chapman['bed'] == "default"):
+            raise ThisIsMadness("Bed file required!")
         else:
             Output = CallIntraTrans(
-                args.bam,
-                outfile=args.outTsv,
-                bedfile=args.bed,
-                minMQ=args.minMQ,
-                minBQ=args.minBQ,
-                minClustDepth=args.minClustDepth,
-                minPileupLen=args.minPileupLen,
-                ref=args.ref,
-                insDistance=args.insert_distance)
+                Chapman['bam'],
+                outfile=Chapman['outTsv'],
+                bedfile=Chapman['bed'],
+                minMQ=Chapman['minMQ'],
+                minBQ=Chapman['minBQ'],
+                minClustDepth=Chapman['minClustDepth'],
+                minPileupLen=Chapman['minPileupLen'],
+                ref=Chapman['ref'],
+                insDistance=Chapman['insert_distance'])
         return Output
-    if(args.bmfsuites == "sma"):
+    if(Chapman['bmfsuites'] == "sma"):
         from MawCluster import BCVCF
-        Output = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
+        Output = BCVCF.ISplitMultipleAlts(Chapman['inVCF'], Chapman['outVCF'])
         sys.exit(0)
-    if(args.bmfsuites == "findhets"):
-        from MawCluster import BCVCF
-        smaOut = BCVCF.ISplitMultipleAlts(args.inVCF, outVCF=args.outVCF)
-        print("Multiple alts split: {}".format(smaOut))
-        if(args.vcf_format.lower() == "exac"):
-            hetOut = BCVCF.GetPotentialHetsVCF(smaOut,
-                                               minHetFrac=args.min_het_frac,
-                                               outVCF=args.outVCF)
-        elif(args.vcf_format.lower() == "uk10k"):
-            hetOut = BCVCF.GetPotentialHetsVCFUK10K(args.inVCF)
-        print("Potential Hets VCF: {}".format(hetOut))
-        return hetOut
-    if(args.bmfsuites == "faf"):
-        from MawCluster import BCVCF
-        Output = BCVCF.IFilterByAF(args.inVCF, maxAF=args.maxAF,
-                                   outVCF=args.outVCF)
-        sys.exit(0)
-    if(args.bmfsuites == "vcfcmp"):
+    if(Chapman['bmfsuites'] == "vcfcmp"):
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
                                       CheckVCFForStdCalls)
-        if(args.check_both):
-            if(args.outfile is None):
-                args.outfile = args.queryVCF
-            StdForVCF = TrimExt(args.outfile) + ".VerifyCalls.vcf"
-            VCFVsStd = TrimExt(args.outfile) + ".CheckForStdConcordance.vcf"
-            CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
+        if(Chapman['check_both']):
+            if(Chapman['outfile'] is None):
+                Chapman['outfile'] = Chapman['queryVCF']
+            StdForVCF = TrimExt(Chapman['outfile']) + ".VerifyCalls.vcf"
+            VCFVsStd = (TrimExt(Chapman['outfile']) +
+                        ".CheckForStdConcordance.vcf")
+            CheckStdCallsForVCFCalls(Chapman['queryVCF'], Chapman['std'],
                                      outfile=StdForVCF)
-            CheckVCFForStdCalls(args.queryVCF, std=args.std,
+            CheckVCFForStdCalls(Chapman['queryVCF'], std=Chapman['std'],
                                 outfile=VCFVsStd)
             sys.exit(0)
-        if(args.check_std):
-            if(args.outfile is not None):
-                CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
-                                         outfile=args.outfile)
+        if(Chapman['check_std']):
+            if(Chapman['outfile'] is not None):
+                CheckStdCallsForVCFCalls(Chapman['queryVCF'],
+                                         std=Chapman['std'],
+                                         outfile=Chapman['outfile'])
             else:
-                CheckStdCallsForVCFCalls(args.queryVCF, std=args.std,
+                CheckStdCallsForVCFCalls(Chapman['queryVCF'],
+                                         std=Chapman['std'],
                                          outfile=sys.stdout)
             sys.exit(0)
-        if(args.outfile is not None):
-            CheckVCFForStdCalls(args.queryVCF, std=args.std,
-                                outfile=args.outfile)
+        if(Chapman['outfile'] is not None):
+            CheckVCFForStdCalls(Chapman['queryVCF'], std=Chapman['std'],
+                                outfile=Chapman['outfile'])
         else:
-            CheckVCFForStdCalls(args.queryVCF, std=args.std,
+            CheckVCFForStdCalls(Chapman['queryVCF'], std=Chapman['std'],
                                 outfile=sys.stdout)
         sys.exit(0)
-    if(args.bmfsuites == "getuniquekmersbed"):
+    if(Chapman['bmfsuites'] == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
-        KF = KmerFetcher(ref=args.ref, padding=args.pad, mismatches=args.mismatches,
-                         k=args.kmer)
-        for line in args.inbed:
+        KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
+                         mismatches=Chapman['mismatches'],
+                         k=Chapman['kmer'])
+        for line in Chapman['inbed']:
             KF.FillMap("contig", start, stop)
         KF.keys()
 
-    if(args.bmfsuites == "getkmers"):
-        import re
-        from MawCluster.IndelUtils import GetUniquelyMappableKmers
-        from utilBMF.HTSUtils import PadAndMakeFasta
-        from functools import partial
-        print("Warning! getkmers doesn't work and I'm using it in some other fashion soon... Sorry.")
-        sys.exit(1)
-        bedline = b.split(args.region)
-        bedline[1] = int(bedline[1])
-        bedline[2] = int(bedline[2])
-        kmerList = GetUniquelyMappableKmers(args.ref, k=args.k,
-                                            minMQ=args.minMQ,
-                                            padding=args.padding,
-                                            bedline=bedline,
-                                            mismatches=args.mismatch_limit)
-        if(args.outfile == "default"):
-            outHandle = sys.stdout
-        else:
-            outHandle = open(args.outfile, "w")
-        FastaCreation = partial(PadAndMakeFasta, n=args.padding_distance)
-        FastaString = "\n".join(map(FastaCreation, kmerList))
-        outHandle.write(FastaString)
-        sys.exit(0)
-    if(args.bmfsuites == "famstats"):
+    if(Chapman['bmfsuites'] == "famstats"):
         from utilBMF.QC import GetFamSizeStats
-        Stats = GetFamSizeStats(args.inFq, outfile=args.outfile)
-    if(args.bmfsuites == "v"):
+        Stats = GetFamSizeStats(Chapman['inFq'],
+                                outfile=Chapman['outfile_handle'])
+    if(Chapman['bmfsuites'] == "v"):
         from utilBMF.HTSUtils import __version__
         print(__version__)
-    if(args.bmfsuites == "tagbam"):
-        fastqs = args.fastq
+    if(Chapman['bmfsuites'] == "tagbam"):
+        fastqs = Chapman['fastq']
         if(len(fastqs) == 1):
-            singleBarcodeTagging(fastqs[0], args.inBAM, outputBAM=args.outfile)
+            singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
+                                 outputBAM=Chapman['outfile'])
         elif(len(fastqs) == 2):
-            pairedBarcodeTagging(fastqs[0], fastqs[1], args.inBAM,
-                                 outBAMFile=args.outfile)
-    if(args.bmfsuites == "aligntagbam"):
+            pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
+                                 outBAMFile=Chapman['outfile'])
+    if(Chapman['bmfsuites'] == "aligntagbam"):
         from BMFMain.ProcessingSteps import pairedBamProc
         outBAM = pairedBamProc(
-            args.inFqs[0],
-            args.inFqs[1],
-            ref=args.ref,
-            bed=args.bed,
-            aligner=args.aligner,
-            realigner=args.realigner,
-            abrapath=args.abrapath,
-            rLen = args.readlength,
-            gatkpath=args.gatkpath)
+            Chapman['inFqs'][0],
+            Chapman['inFqs'][1],
+            ref=Chapman['ref'],
+            bed=Chapman['bed'],
+            aligner=Chapman['aligner'],
+            realigner=Chapman['realigner'],
+            abrapath=Chapman['abrapath'],
+            rLen=Chapman['readlength'],
+            gatkpath=Chapman['gatkpath'])
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
-    if(args.bmfsuites == "rsq"):
+    if(Chapman['bmfsuites'] == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
-        RescueShadingWrapper(args.fastqs[0], args.fastqs[1], indexFq=args.fastqs[2],
-                             minFam=args.minFam, mm=args.n, head=args.head)
+        RescueShadingWrapper(Chapman['fastqs'][0],
+                             Chapman['fastqs'][1],
+                             indexFq=Chapman['fastqs'][2],
+                             minFam=Chapman['minFam'],
+                             mm=Chapman['mm'],
+                             head=Chapman['head'])
     return 0
 
 
