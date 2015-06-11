@@ -114,7 +114,7 @@ def AbraCadabra(inBAM, outBAM="default",
             inBAM = HTSUtils.CoorSortAndIndexBam(inBAM, outBAM, uuid=True)
     command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
                " --out {} --ref {} --targets".format(outBAM, ref) +
-               " {} --threads {} " % (bed, threads) +
+               " {} --threads {} ".format(bed, threads) +
                "--working %s --mbq 200 --mer 0.0025 --mad 20000" % working)
     if(kmers_precomputed):
         command = command.replace("--targets", "--target-kmers")

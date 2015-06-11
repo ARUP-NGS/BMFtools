@@ -815,6 +815,7 @@ def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
     subprocess.check_call(shlex.split("samtools index {}".format(outBAM)))
     if(delete):
         subprocess.check_call(["rm", inBAM])
+    printlog("Output BAM is: " + outBAM)
     return outBAM
 
 
