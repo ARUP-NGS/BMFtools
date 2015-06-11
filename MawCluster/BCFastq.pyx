@@ -539,8 +539,8 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
             tagStr = "|FP=IndexPass|BS=" + tempBar
         else:
             tagStr = "|FP=IndexFail|BS=" + tempBar
-        read1.comment = "CO:Z:" + read1.comment + tagStr
-        read2.comment = "CO:Z:" + read2.comment + tagStr
+        read1.comment += tagStr
+        read2.comment += tagStr
         f1.write(str(read1))
         f2.write(str(read2))
         numWritten += 1

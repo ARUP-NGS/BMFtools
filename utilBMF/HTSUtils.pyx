@@ -514,15 +514,10 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
-        sedString = (" | sed -r -e 's/^@PG/@RG\tID:default\tPL:ILLUMINA\t"
-                     "PU:default\tLB:default\tSM:default\tCN:default\n@PG/'")
-        if(not fqCO):
-            sedString += (" -e 's/\t[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
-                          "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\t"
-                          "PL:ILLUMINA\tPU:default\tLB:default\tSM:default"
-                          "\tCN:default\n@PG/'")
-        else:
-            sedString += " -e 's/$/\tRG:Z:default/'"
+        sedString = (" | sed -r -e 's/\t[0-9]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
+                     "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+                     "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
+                     "t\n@PG/'")
         baseString += sedString
     if(path == "default"):
         command_str = baseString + " | samtools view -Sbh - > %s" % outBAM
@@ -533,7 +528,8 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     # command_list = command_str.split(' ')
     printlog("bwa mem command string with RG/CO additions"
              ": %s" % command_str)
-    check_call(command_str, shell=True)
+    check_call(command_str.replace("\n", "\\n").replace("\t", "\\t"),
+               shell=True)
     printlog("bwa mem aligned output is: %s" %outBAM)
     return outBAM
 
@@ -553,7 +549,7 @@ def align_bwa_mem_se(reads, ref, opts, outBAM):
                    " | samtools view -Sbh - > {}".format(outBAM))
     # command_list = command_str.split(' ')
     printlog(command_str)
-    PipedShellCall(command_str, delete=True)
+    check_call(command_str, shell=True)
     return outBAM, command_str
 
 
@@ -568,23 +564,6 @@ def align_snap(R1, R2, ref, opts, outBAM):
     printlog(command_str)
     subprocess.check_call(shlex.split(command_str), shell=False)
     return(command_str)
-
-
-def PipedShellCall(commandStr, delete=True, silent=False):
-    PipedShellCallFilename = "PipedShellCall{}.sh".format(
-        str(uuid.uuid4().get_hex().upper()[0:8]))
-    if silent is False:
-        printlog("Command string: {}".format(commandStr), level=logging.DEBUG)
-    open(PipedShellCallFilename, "w").write(
-        commandStr.replace("\n", "\\n").replace("\t", "\\t"))
-    subprocess.check_call(['bash', PipedShellCallFilename])
-    if(delete):
-        try:
-            check_call(["rm", PipedShellCallFilename])
-        except CalledProcessError:
-            printlog("Piped shell call deletion failed. Oh well!",
-                     level=logging.DEBUG)
-    return commandStr
 
 
 def CustomRefBowtiePaired(mergedFq,
