@@ -10,6 +10,10 @@ __author__ = 'dnephi'
 
 
 class MyTestCase(unittest.TestCase):
+    """
+    TODO: Add a unit test to assert that the sum of the sizes of merged
+    families equals the number of pre-merged reads.
+    """
 
     def tearDown(self):
         pass

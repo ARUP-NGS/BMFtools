@@ -50,7 +50,7 @@ mcgroup = mc("group", 0)
 
 global __version__
 
-__version__ = "0.1.0.1beta"
+__version__ = "0.1.0.2beta"
 
 
 def l1(x):
@@ -513,8 +513,8 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     if(addCO):
         baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
-        sedString = (" | sed -r -e 's/\t[0-9]:[A-Z]:[0-9]+:[AGCNT]+\|/\tRG:Z:"
-                     "default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+        sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\t"
+                     "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
                      "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
                      "t\n@PG/'")
         baseString += sedString
@@ -1557,14 +1557,14 @@ def FractionAligned(cAlignedSegment read):
 
 
 def AddReadGroupsPicard(inBAM, RG="default", SM="default",
-                        PL="ILLUMINA", CN="default", picardPath="default",
+                        PL="ILLUMINA", CN="default", picardpath="default",
                         outBAM="default", ID="default", LB="default",
                         PU="default"):
-    if(picardPath == "default"):
-        raise Tim("picardPath required to call PicardTools!")
+    if(picardpath == "default"):
+        raise Tim("picardpath required to call PicardTools!")
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[:-1] + ["addRG", "bam"])
-    commandStr = ("java -jar %s AddOrReplaceReadGroups I=" % picardPath +
+    commandStr = ("java -jar %s AddOrReplaceReadGroups I=" % picardpath +
                   "%s O=%s VALIDATION_STRINGENCY=SILENT " % (inBAM, outBAM) +
                   " CN=%s PL=%s SM=%s ID=%s LB=%s PU=%s" % (CN, PL,
                                                             SM, ID, LB,
@@ -1970,7 +1970,7 @@ def SplitBed(cystr bedpath):
 
 
 @cython.returns(cystr)
-def MergeBamList(bamlist, picardPath="default", memStr="-Xmx6G",
+def MergeBamList(bamlist, picardpath="default", memStr="-Xmx6G",
                  outbam="default"):
     """
     Merges a list of BAMs. Used for merging discordant read bams for
@@ -1980,7 +1980,7 @@ def MergeBamList(bamlist, picardPath="default", memStr="-Xmx6G",
         bamlist = bamlist.split(":")
     if(outbam == "default"):
         outbam = bamlist[0].split(".")[0:-1] + ".merged.bam"
-    commandStr = "java %s -jar %s AS=true" % (memStr, picardPath)
+    commandStr = "java %s -jar %s AS=true" % (memStr, picardpath)
     commandStr += " I=" + " I=".join(bamlist)
     commandStr += " O=%s" % outbam
     check_call(shlex.split(commandStr))
@@ -2309,7 +2309,10 @@ def TrimExt(cystr fname):
     every single time.
     """
     if(fname is not None):
-        return ".".join(fname.split(".")[:-1]).split("/")[-1]
+        tmpList = fname.split("/")[-1].split(".")[:-1]
+        if(tmpList[-1] == "gz"):
+            tmpList = tmpList[:-1]
+        return ".".join(tmpList)
     else:
         raise Tim("Cannot trim an extension of a None value!")
 

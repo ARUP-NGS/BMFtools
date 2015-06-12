@@ -63,22 +63,22 @@ cdef carray cs_to_ia(cystr input_str):
 Speed experiments
 
 In [5]: %timeit strlen0("Hello")
-The slowest run took 46.08 times longer than the fastest. This could mean that an intermediate result is being cached 
+The slowest run took 46.08 times longer than the fastest. This could mean that an intermediate result is being cached
 10000000 loops, best of 3: 88 ns per loop
 
 In [6]: %timeit strlen2("Hello")
-The slowest run took 68.72 times longer than the fastest. This could mean that an intermediate result is being cached 
+The slowest run took 68.72 times longer than the fastest. This could mean that an intermediate result is being cached
 10000000 loops, best of 3: 59 ns per loop
 
 In [7]: %timeit strlen1("Hello")
-The slowest run took 63.71 times longer than the fastest. This could mean that an intermediate result is being cached 
+The slowest run took 63.71 times longer than the fastest. This could mean that an intermediate result is being cached
 10000000 loops, best of 3: 48.7 ns per loop
 
 In [8]: %timeit len("Hello")
-The slowest run took 74.42 times longer than the fastest. This could mean that an intermediate result is being cached 
+The slowest run took 74.42 times longer than the fastest. This could mean that an intermediate result is being cached
 10000000 loops, best of 3: 41.6 ns per loop
 
-It makes sense that strlen1 would be slower than 
+It makes sense that strlen1 would be slower than
 '''
 
 cdef int cstrlen0(char * input_str):

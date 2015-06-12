@@ -23,6 +23,7 @@ from utilBMF.HTSUtils import (printlog as pl,
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import (ThisIsMadness, FunctionCallException,
                                    AbortMission)
+from utilBMF.ArgumentSketcher import parseSketchConfig
 
 # local cython imports
 from utilBMF.HTSUtils cimport cystr
@@ -88,7 +89,7 @@ def SNVCrawler(inBAM,
     cdef pPileupRead_t i
     cdef pysam.calignmentfile.AlignedSegment read
     if(conf != "default"):
-        confDict = parseConfig(conf)
+        confDict = parseSketchConfig(conf)
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
         bedSet = True

@@ -31,6 +31,11 @@ class MissingExternalTool(Exception):
     Thrown when one wants to prematurely escape due to something unexpected.
     """
     def __init__(self, message=""):
+        try:
+            print("Repr of Chapman object: %s" % repr(globals()['Chapman']))
+        except KeyError:
+            print("Note: Chapman object not in globals. Globals:"
+                  " %s" % repr(globals()))
         super(Exception, self).__init__()
         self.message = message
 
@@ -62,6 +67,17 @@ class FunctionCallException(Exception):
         print("Message: %s" % message)
         print("Was shell: %s" % shell)
         raise Exception(message)
+
+
+class MissingGlobalVariable(Exception):
+    """
+    Thrown when a global variable one expects doesn't exist.
+    """
+    def __init__(self, variable, message="Missing global variable ???"):
+        if(message == "Missing global variable ???"):
+            message = "Missing global variable %s ???" % variable
+        self.variable = variable
+        super(Exception, self).__init__(message)
 
 
 FPStr = ("............................................________ \n............"

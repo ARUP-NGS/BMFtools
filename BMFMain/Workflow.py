@@ -32,7 +32,7 @@ def pairedBamProc(consfq1, consfq2, opts="",
                   coverageForAllRegions=False,
                   calcCoverage=True,
                   bwapath="default",
-                  picardPath="default",
+                  picardpath="default",
                   addRG=False,
                   realigner="abra", gatkpath="default", dbsnp="default",
                   rLen=-1, intelDeflator="default",
@@ -67,7 +67,7 @@ def pairedBamProc(consfq1, consfq2, opts="",
     if(rLen < 0):
         pl("rLen < 0 in pairedBamproc. This typically means that this "
            "is not set.")
-    if(picardPath == "default"):
+    if(picardpath == "default"):
         pl("Warning: path to picard jar not set. This isn't required for much"
            ", but in case something dies later, this could be responsible",
            level=logging.DEBUG)
@@ -213,7 +213,10 @@ def pairedVCFProc(consMergeSortBAM,
     be run to filter out those artefacts.
     """
     if(bed == "default"):
-        raise ValueError("Bed file location must be set!")
+        try:
+            bed = globals()['Chapman']['bed']
+        except KeyError:
+            raise ValueError("Bed file location must be set!")
     if(conf == "default"):
         raise ValueError("config file location must be set!")
     if(ref == "default"):

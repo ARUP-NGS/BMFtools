@@ -529,17 +529,10 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
             numWritten = 0
         read2 = ifn2()
         indexRead = ifin()
-        tempBar = "%s%s%s" % (read1.sequence[:head], indexRead.sequence,
-                              read2.sequence[:head])
-        # bLen - 10 of 12 in a row, or 5/6. See Loeb, et al.
-        # This is for removing low complexity reads
-        # print("bLen is {}".format(bLen))
-        if(BarcodePasses(tempBar, hpLimit=hpLimit)):
-            tagStr = "|FP=IndexPass|BS=" + tempBar
-        else:
-            tagStr = "|FP=IndexFail|BS=" + tempBar
-        read1.comment += tagStr
-        read2.comment += tagStr
+        tempBar = (read1.sequence[:head] + indexRead.sequence +
+                   read2.sequence[:head])
+        read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
+        read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
         f1.write(str(read1))
         f2.write(str(read2))
         numWritten += 1
@@ -687,7 +680,8 @@ def singleFastqConsolidate(cystr fq, float stringency=0.9,
     cdef cystr outFq, bc4fq, ffq
     cdef pFastqFile_t inFq
     cdef list StringList
-    cdef int numProc
+    cdef int numProc, TotalCount, MergedCount
+    cdef list pFqPrxList
     outFq = TrimExt(fq) + ".cons.fastq"
     pl("Now running singleFastqConsolidate on {}.".format(fq))
     inFq = pFastqFile(fq)
@@ -695,12 +689,16 @@ def singleFastqConsolidate(cystr fq, float stringency=0.9,
     StringList = []
     workingBarcode = ""
     numProc = 0
+    TotalCount = 0
     ohw = outputHandle.write
     sla = StringList.append
     for bc4fq, fqRecGen in groupby(inFq, key=getBS):
-        ffq = fn(list(fqRecGen), bc4fq)
+        pFqPrxList = list(fqRecGen)
+        ffq = fn(pFqPrxList, bc4fq)
         sla(ffq)
         numProc += 1
+        TotalCount += len(pFqPrxList)
+        MergedCount += 1
         if (numProc == SetSize):
             ohw("".join(StringList))
             StringList = []
@@ -711,6 +709,9 @@ def singleFastqConsolidate(cystr fq, float stringency=0.9,
     outputHandle.flush()
     inFq.close()
     outputHandle.close()
+    if("SampleMetrics" in globals()):
+        globals()['SampleMetrics']['TotalReadCount'] = TotalCount
+        globals()['SampleMetrics']['MergedReadCount'] = MergedCount
     print("Consolidation a success for inFq: %s!" % fq)
     return outFq
 
@@ -937,47 +938,43 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
         except StopIteration:
             raise Tim("Index fastq and read fastqs have different sizes. "
                       "Abort!")
-        tmpBS = index_read.sequence
         try:
-            TrueFamDict[tmpBS]
-            saltedBS = "%s%s%s" % (rec1.sequence[:head], tmpBS,
-                                   rec2.sequence[:head])
-            if(BarcodePasses(saltedBS, hpLimit=hpLimit)):
-                tagStr = " |FP=IndexPass|BS=%s" % saltedBS
-                rec1.comment += tagStr
-                rec2.comment += tagStr
-            else:
-                tagStr = " |FP=IndexFail|BS=%s" % saltedBS
-                rec1.comment += tagStr
-                rec2.comment += tagStr
+            TrueFamDict[index_read.sequence]
+            saltedBS = (rec1.sequence[:head] + index_read.sequence +
+                        rec2.sequence[:head])
+            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
             ohw2(str(rec1))
             continue
         except KeyError:
             pass
         try:
-            saltedBS = rescueDict[tmpBS]
-            saltedBS = rec1.sequence[:head] + saltedBS + rec2.sequence[:head]
-            if(BarcodePasses(saltedBS, hpLimit=hpLimit)):
-                tagStr = "|FP=IndexPass|BS=" + saltedBS + "|OS=" + tmpBS
-                rec1.comment += tagStr
-                rec2.comment += tagStr
-            else:
-                tagStr = "|FP=IndexFail|BS=" + saltedBS + "|OS=" + tmpBS
-                rec1.comment += tagStr
-                rec2.comment += tagStr
+            saltedBS = (rec1.sequence[:head] +
+                        rescueDict[index_read.sequence] +
+                        rec2.sequence[:head])
+            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
             ohw2(str(rec1))
             continue
         except KeyError:
             # This isn't in a true family. Blech!
-            saltedBS = rec1.sequence[:head] + tmpBS + rec2.sequence[:head]
-            tagStr = "|FP=IndexFail|BS=" + saltedBS
-            rec1.comment += tagStr
-            rec2.comment += tagStr
+            saltedBS = (rec1.sequence[:head] + index_read.sequence +
+                        rec2.sequence[:head])
+            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
             ohw2(str(rec1))
             continue
     outHandle1.close()
     outHandle2.close()
     return outFq1, outFq2
+
+cdef cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
+    if(BarcodePasses(saltedBS, hpLimit)):
+        return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
+    return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
+
+cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
+    return cMakeTagComment(saltedBS, rec, hpLimit)

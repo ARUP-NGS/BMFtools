@@ -34,5 +34,7 @@ cdef cystr compareFqRecsFqPrx(list R,
                                    object int2Str=?)
 cpdef cystr cFRF_helper(list R, cystr name=?)
 cpdef cystr cFRP_helper(list R, cystr name=?)
+cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
+cdef cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 
 cdef public dict letterNumDict

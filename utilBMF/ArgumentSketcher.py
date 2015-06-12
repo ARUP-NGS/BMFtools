@@ -5,6 +5,7 @@ from warnings import warn
 from operator import attrgetter as oag
 from utilBMF._bmftools_helper import defaultConfig
 
+
 @cython.returns(bint)
 @cython.locals(input_str=cystr)
 def to_bool(input_str):
@@ -69,7 +70,10 @@ class ArgumentSketcher(object):
                    key=cystr, value=object)
     def __init__(self, args, configPath):
         # assert isinstance(args, argparse.Namespace)
-        self.config = defaultConfig
+        self.config = {key: value for key, value in
+                       defaultConfig.iteritems()}
+        # Load in config by copying each item so as to not give
+        # ArgumentSketcher a dict subclass.
         for key, value in parseSketchConfig(configPath).iteritems():
             self.config[key] = value
         self.args = args

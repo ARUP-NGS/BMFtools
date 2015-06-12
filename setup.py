@@ -52,7 +52,7 @@ config = {
     'packages': ["BMFMain", "utilBMF", "MawCluster", "SecC"],
     'ext_modules': ext,
     'include_dirs': [np.get_include()] + pysam.get_include(),
-    'scripts': ['utilBMF/bmftools', 'BMFMain/BMFMain'],
+    'scripts': ['utilBMF/bmftools'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

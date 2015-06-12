@@ -273,6 +273,13 @@ Most options are available for command-line as well. If an option is set in both
     6. A number of optimizations, including some string comparisons as integers.
     8. Removing old/dead code.
 
+13. Changesin BMFTools v0.1.0.2beta
+    1. Complete restructure of main program, argument parsing, and error handling.
+    2. Moved to a global config/started review directory infrastructure.
+    3. Faster failure of pileups where all reads failed filters.
+    4. String handling/other under-the-hood.
+    5. Chapman now controls all global arguments.
+
 ## TODO:
 1. Coverage metrics/on-target calculation.
     1. Currently, samtools bedcov is used but that gives up after 8000 reads at a position, which doesn't work for our purposes.
