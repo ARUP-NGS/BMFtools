@@ -78,3 +78,10 @@ class ArgumentSketcher(object):
 
     def __getitem__(self, item):
         return self.config[item]
+
+    def __setitem__(self, key, value):
+        self.config[key] = value
+
+    @cython.locals(key=cystr)
+    def __call__(self, key):
+        return self[key]

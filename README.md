@@ -86,6 +86,10 @@ ABRA >= 0.85 (Assembly Based Realigner, which in turn requires bwa)
 
 GATK >= 1.6, for its IndelRealigner
 
+#### Depth Calculations
+[FastDepthOfCoverage](https://github.com/ARUP-NGS/Pipeline/blob/master/src/main/java/util/coverage/CovCalcApp.java) [Now included in java/ folder as FastDOC.java]
+Alternatively, you may use GATK.
+
 
 ## BMF Tags
 

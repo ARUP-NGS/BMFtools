@@ -1,5 +1,4 @@
 # cython: c_string_type=str, c_string_encoding=ascii
-# cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
 from operator import attrgetter as oag
 from operator import methodcaller as mc
@@ -8,9 +7,9 @@ from numpy import (array as nparray, append as npappend,
                    mean as nmean, max as nmax)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
-                       pFastqFile, cyStdFlt, cyStdInt)
+                       pFastqFile, cyStdFlt, cyStdInt, TrimExt)
 from MawCluster.BCFastq import GetDescriptionTagDict as descDict
-from .ErrorHandling import ThisIsMadness
+from .ErrorHandling import ThisIsMadness, MissingExternalTool
 from MawCluster.PileupUtils import pPileupColumn
 from os import path as ospath
 import cython
@@ -48,7 +47,9 @@ def ExtendBed(bedfile, buffer=100, outbed="default"):
     return outbed
 
 
-def coverageBed(inBAM, bed="default", outbed="default"):
+def FastDOCBed(inBAM, bed="default", outbed="default",
+               cystr FastDOCPath="default", int threads=8,
+               int readLen=-1):
     """
     Uses samtool bedcov tool.
     Requires samtools >= 1.
@@ -57,29 +58,43 @@ def coverageBed(inBAM, bed="default", outbed="default"):
     queried and returns a tuple of the Popen and the outbed. Use if you
     want this to go on in the background.
     """
+    cdef double fracOnTarget, numReadsOnTarget, numBasesOnTarget
+    cdef int numReadsTotal
+    if(readLen < 0):
+        pl("readLen not set, inferring from inBAM %s." % inBAM)
+        readLen = len(pysam.AlignmentFile(inBAM, "rb").next().seq)
+        pl("readLen inferred to be %s" % readLen)
     if(bed == "default"):
         raise ThisIsMadness("bed file required for calling "
-                            "utilBMF.QC.coverageBed")
+                            "utilBMF.QC.FastDOCBed")
     if(outbed == "default"):
-        outbed = ".".join(bed.split(".")[0:-1] + ["cov", "bed"])
+        outbed = TrimExt(bed) + "cov.bed"
+    if(FastDOCPath == "default"):
+        try:
+            FastDOCPath = globals()['Chapman']['FastDOCPath']
+        except KeyError:
+            raise MissingExternalTool("FastDOCPath must be set to call FastDOC!")
+    commandStr = ("java -jar %s %s %s " % (FastDOCPath, bed, inBAM) +
+                  " --threads %s --format bed > %s" % (threads, outbed))
     pl("Calculating coverage bed. bed: %s. inBAM: %s. " % (bed, inBAM) +
-       "outbed: %s" % outbed)
-    commandStr = ("samtools bedcov %s %s | awk  " % (bed, inBAM) +
-                  '\'{{FS=OFS="\t"}};{{print $1, $2, $3, $4, $5, $6, $7, $NF '
-                  "/ ($3 - $2)}}' > %s" % (outbed))
-    check_call(commandStr.replace("\t", "\\t").replace("\n", "\\n"),
-               shell=True)
-    awkcall = "awk 'BEGIN {{FS=OFS=\"\t\"}};{{print $NF}}'"
-    fracOnTargetCStr = ("echo $(%s %s | paste -sd+ |  " % (awkcall, outbed) +
-                        "bc) / $(samtools view -c %s) | bc -l" % inBAM)
-    print("FracOnTargetCStr: %s" % fracOnTargetCStr)
-    fracOnTarget = float(check_output(fracOnTargetCStr.replace(
-        "\t", "\\t").replace("\n", "\\n"), shell=True).strip())
+       "outbed: %s. Command string: %s" % (outbed, commandStr))
+    check_call(commandStr, shell=True)
+    commandStr = ("awk 'FS=OFS=\"\t\" {{print ($3 - $2) * $4}}' "
+                  "%s | grep -v '^$'" % outbed)
+    numBasesOnTarget = sum(float(i) for i in check_output(
+        commandStr.replace("\t", "\\t"), shell=True).split("\n") if
+                           i != "")
+    pl("Number of bases on target: %s" % numBasesOnTarget)
+    numReadsOnTarget = numBasesOnTarget / readLen
+    numReadsTotal = CountNumReads(inBAM)
+    fracOnTarget = numReadsOnTarget / numReadsTotal
+    sys.stderr.write("Fraction on target: %s\n" % fracOnTarget)
     return outbed, fracOnTarget
 
 
 @cython.locals(buffer=int)
-def FracOnTarget(inBAM, bed="default", buffer=20):
+def FracOnTarget(inBAM, bed="default", buffer=20,
+                 cystr FastDOCPath="default", int threads=8):
     """
     Calculates the fraction of mapped reads aligned to a target region.
     Do to "bleeding out" of regions of capture, there is an optional
@@ -89,15 +104,11 @@ def FracOnTarget(inBAM, bed="default", buffer=20):
     cdef int numReadsTotal
     cdef int numReadsOnTarget
     cdef double fracOnTarget
-    covBed, fracOnTarget = coverageBed(inBAM,
-                                       bed=ExtendBed(bed, buffer=buffer))
-    numReadsTotal = int(check_output(["samtools", "view", "-L", covBed,
-                                      "-c", inBAM]).strip())
-    numReadsOnTarget = int(check_output(
-        "awk 'FS=OFS=\"\t\" {print $(NF - 1)}' %s | paste -sd+ | bc" % covBed,
-        shell=True).strip())
-    fracOnTarget = numReadsOnTarget / (1. * numReadsTotal)
-    return fracOnTarget
+    covBed, fracOnTarget = FastDOCBed(inBAM,
+                                      bed=ExtendBed(bed, buffer=buffer),
+                                      FastDOCPath=FastDOCPath,
+                                      threads=threads)
+    return FracOnTarget
 
 
 @cython.returns(int)
@@ -106,6 +117,7 @@ def CountNumReads(inBAM):
     Simply counts the number of reads in a BAM file.
     """
     return int(check_output(["samtools", "view", "-c", inBAM]).strip())
+
 
 cdef ndarray[np.float64_t, ndim=1] InsertSizeArray_(
         pysam.calignmentfile.AlignmentFile handle):
@@ -159,10 +171,11 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     MappedFamReads = 0
     if(ospath.isfile(inBAM + ".bai") is False):
         check_call(["samtools", "index", inBAM])
+        sys.stderr.write("Fraction on target: %s" % fracOnTarget)
         if(ospath.isfile(inBAM + ".bai") is False):
             pl("Input BAM was not coordinate sorted - doing so now.")
             inBAM = CoorSortAndIndexBam(inBAM)
-    covBed, fracOnTarget = coverageBed(inBAM, bed=extendedBed)
+    covBed, fracOnTarget = FastDOCBed(inBAM, bed=extendedBed)
     resultsDict["covbed"] = covBed
     resultsDict["fracOnTarget"] = fracOnTarget
     print("About to iterate through alignment file to get more QC metrics.")

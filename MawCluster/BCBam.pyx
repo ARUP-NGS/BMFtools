@@ -1,6 +1,5 @@
 #!python
 # cython: c_string_type=str, c_string_encoding=ascii
-# cython: profile=True, cdivision=True, cdivision_warnings=True
 from __future__ import division
 import shlex
 import subprocess
@@ -31,7 +30,8 @@ from utilBMF.HTSUtils import (printlog as pl,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
                               BwaswCall, samtoolsMergeBam, pFastqProxy,
                               TrimExt, align_bwa_mem)
-from utilBMF.ErrorHandling import IllegalArgumentError, ThisIsMadness as Tim
+from utilBMF.ErrorHandling import (IllegalArgumentError, ThisIsMadness as Tim,
+                                   MissingExternalTool)
 from .SVUtils import returnDefault
 from utilBMF import HTSUtils
 from warnings import warn
@@ -55,16 +55,18 @@ def AbraCadabra(inBAM, outBAM="default",
                 bint kmers_precomputed=True):
     """
     Calls abra for indel realignment. It supposedly
-    out-performs GATK's IndelRealigner.
-    Note: bed file must be first 3 columns only and
-    coordinate sorted. You will likely need an additional bed file for this.
+    out-performs GATK's IndelRealigner, though it does right-align
+    some indels.
+
+    It also calls samtools fixmate to restore mate information and
+    bamleftalign to left align any that abra right-aligned.
     """
     if(rLen < 0):
         raise IllegalArgumentError("Read length must be set to call abra due"
                                    " to the benefits of inferring ideal para"
                                    "meters from the !")
     if(jar == "default"):
-        raise Tim("Required: Path to abra jar!")
+        raise MissingExternalTool("Required: Path to abra jar!")
     else:
         pl("Non-default abra jar used: " + jar)
     if(memStr == "default"):
@@ -146,7 +148,7 @@ def AbraCadabra(inBAM, outBAM="default",
 def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
                     nt=4, abra="default"):
     if(abra == "default"):
-        raise Tim(
+        raise MissingExternalTool(
             "Path to abra jar required for running KmerSizeCalculator.")
     if(ref == "default"):
         raise Tim(
@@ -220,11 +222,11 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
 def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          bed="default", dbsnp="default"):
     if(ref == "default"):
-        raise Tim("Reference file required for Indel Realignment")
+        raise MissingExternalTool("Reference file required for Indel Realignment")
     if(bed == "default"):
         raise Tim("Bed file required for Indel Realignment")
     if(gatk == "default"):
-        raise Tim("Path to GATK Jar required for Indel Realignment")
+        raise MissingExternalTool("Path to GATK Jar required for Indel Realignment")
     print dbsnp
     if(dbsnp == "default"):
         dbsnpStr = ""

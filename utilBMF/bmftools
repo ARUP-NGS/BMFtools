@@ -19,6 +19,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    BedCovParser = subparsers.add_parser(
+        "bedcov", description="Calls FastDepthOfCoverage.")
     alignTagBamParser = subparsers.add_parser(
         "aligntagbam", description=("Performs alignment and sam tagging of"
                                     " consolidated fastq files to generate "
@@ -406,17 +408,36 @@ def main():
     RescueShadingParser.add_argument(
         "--minFam", "-m", help="Minimum family size for true families.",
         type=int)
+    BedCovParser.add_argument(
+        "inBAM", help="Path to input BAM.")
+    BedCovParser.add_argument(
+        "--bed", "-b", help="Path to bed over which to calculate coverage.")
+    BedCovParser.add_argument(
+        "--threads", "-t", help="Number of threads to use.")
+    BedCovParser.add_argument(
+        "--FastDOCPath", "-p", help="Path to FastDOC executable jar.")
+    BedCovParser.add_argument(
+        "--conf", "-c", help=("Path to config file. Can be used in place of"
+                              " any command line arguments."))
+    BedCovParser.add_argument(
+        "--bed-buffer",
+        help=("Number of bases in each direction to pad the bed intervals for"
+              " reads bleeding out into surrounding regions."))
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
 
     # set_trace()
     Palin = parser.parse_args()
+    global Chapman
+    if(hasattr(Palin, "conf") is False):
+        Palin.conf = None
     Chapman = ArgumentSketcher(Palin, Palin.conf)
     # confDict = load(something)
     commandStr = " ".join(sys.argv)
-    print("subcommand: %s" % Chapman['bmfsuites'])
-    if(Chapman['bmfsuites'] == "qty"):
+    subcommand = Chapman['bmfsuites']
+    print("subcommand: %s" % subcommand)
+    if(subcommand == "qty"):
         templatesOnTarget = Palin.number_of_templates * Palin.on_target
         if(Palin.paired):
             readsOnTarget = templatesOnTarget * 2
@@ -437,7 +458,7 @@ def main():
         if(not Palin.no_strand_correction):
             DesiredInputQty /= 2
         print("Desired input qty: %.8fpg" % DesiredInputQty)
-    if(Chapman['bmfsuites'] == "psnv"):
+    if(subcommand == "psnv"):
         from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
         from subprocess import check_call
@@ -467,7 +488,7 @@ def main():
                     outVCF, bedfile=conf['bed'])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
-    if(Chapman['bmfsuites'] == "snv"):
+    if(subcommand == "snv"):
         from MawCluster.VCFWriters import SNVCrawler
         from utilBMF.HTSUtils import parseConfig
         from MawCluster.BCVCF import VCFStats
@@ -537,11 +558,11 @@ def main():
         open("cProfile.stats.txt", "w").write(s.getvalue())
         """
         sys.exit(0)
-    if(Chapman['bmfsuites'] == "vcfstats"):
+    if(subcommand == "vcfstats"):
         from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
-    if(Chapman['bmfsuites'] == "dmp"):
+    if(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
             from BMFMain.ProcessingSteps import pairedFastqShades
             OutFastq1, OutFastq2 = pairedFastqShades(
@@ -560,7 +581,7 @@ def main():
                 p3Seq=Chapman['p3Seq'],
                 p5Seq=Chapman['p5Seq'])
             return 0  # sys.exit(main()) returns 0
-    if(Chapman['bmfsuites'] == "sv"):
+    if(subcommand == "sv"):
         from utilBMF.ErrorHandling import ThisIsMadness
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans
@@ -578,11 +599,11 @@ def main():
                 ref=Chapman['ref'],
                 insDistance=Chapman['insert_distance'])
         return Output
-    if(Chapman['bmfsuites'] == "sma"):
+    if(subcommand == "sma"):
         from MawCluster import BCVCF
         Output = BCVCF.ISplitMultipleAlts(Chapman['inVCF'], Chapman['outVCF'])
         sys.exit(0)
-    if(Chapman['bmfsuites'] == "vcfcmp"):
+    if(subcommand == "vcfcmp"):
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
                                       CheckVCFForStdCalls)
         if(Chapman['check_both']):
@@ -613,7 +634,7 @@ def main():
             CheckVCFForStdCalls(Chapman['queryVCF'], std=Chapman['std'],
                                 outfile=sys.stdout)
         sys.exit(0)
-    if(Chapman['bmfsuites'] == "getuniquekmersbed"):
+    if(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
                          mismatches=Chapman['mismatches'],
@@ -622,14 +643,14 @@ def main():
             KF.FillMap("contig", start, stop)
         KF.keys()
 
-    if(Chapman['bmfsuites'] == "famstats"):
+    if(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(Chapman['inFq'],
                                 outfile=Chapman['outfile_handle'])
-    if(Chapman['bmfsuites'] == "v"):
+    if(subcommand == "v"):
         from utilBMF.HTSUtils import __version__
         print(__version__)
-    if(Chapman['bmfsuites'] == "tagbam"):
+    if(subcommand == "tagbam"):
         fastqs = Chapman['fastq']
         if(len(fastqs) == 1):
             singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
@@ -637,7 +658,7 @@ def main():
         elif(len(fastqs) == 2):
             pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
                                  outBAMFile=Chapman['outfile'])
-    if(Chapman['bmfsuites'] == "aligntagbam"):
+    if(subcommand == "aligntagbam"):
         from BMFMain.ProcessingSteps import pairedBamProc
         outBAM = pairedBamProc(
             Chapman['inFqs'][0],
@@ -651,7 +672,7 @@ def main():
             gatkpath=Chapman['gatkpath'])
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
-    if(Chapman['bmfsuites'] == "rsq"):
+    if(subcommand == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
         RescueShadingWrapper(Chapman['fastqs'][0],
                              Chapman['fastqs'][1],
@@ -659,6 +680,14 @@ def main():
                              minFam=Chapman['minFam'],
                              mm=Chapman['mm'],
                              head=Chapman['head'])
+    if(subcommand == "bedcov"):
+        from utilBMF.QC import FastDOCBed, ExtendBed
+        if(Chapman['bed_buffer'] != 0):
+            Chapman['bed'] = ExtendBed(Chapman['bed'], buffer=Chapman['bed_buffer'])
+        pl("Buffering bed by %s" % Chapman['bed_buffer'])
+        outbed, fracOnTarget = FastDOCBed(Chapman['inBAM'], bed=Chapman['bed'],
+                                          threads=Chapman['threads'],
+                                          FastDOCPath=Chapman['FastDOCPath'])
     return 0
 
 

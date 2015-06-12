@@ -1,5 +1,4 @@
 # cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
-# cython: cdivision=True, cdivision_warnings=True, profile=True
 from __future__ import division
 from collections import defaultdict
 import operator

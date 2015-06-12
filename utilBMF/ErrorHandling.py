@@ -26,6 +26,15 @@ class AbortMission(Exception):
         self.message = message
 
 
+class MissingExternalTool(Exception):
+    """
+    Thrown when one wants to prematurely escape due to something unexpected.
+    """
+    def __init__(self, message=""):
+        super(Exception, self).__init__()
+        self.message = message
+
+
 class ThisIsMadness(Exception):
     """
     Thrown when something just doesn't seem right and existing exceptions

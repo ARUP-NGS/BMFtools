@@ -1,10 +1,34 @@
 import sys
 
+"""
+This module contains default values for each subcommand of bmftools.
+When adding additional subcommands or extending existing ones, there is a simple
+protocol to follow.
+First, write argparse normally, except that no defaults should be set.
+This causes the Namespace to populate None objects, which this defaultConfig
+overrides.
+Second, for attributes for which you want a default behavior besides None set,
+set that value here, replacing any '-' characters with '_', and make sure it
+is clearly typed. (See below)
+Third, when overriding the default config with a run config file,
+make sure it follows "new config" style, which is as follows.
+
+key|value|typechar#Comment field
+e.g.:
+abrapath|default|s
+maxAF|0.1|f
+
+typechar is 's' for string, 'b' for bool, 'i' for int, 'f' for float.
+
+"""
+
+
 defaultConfig = {
                  "abrapath": "default",
                  "aligner": "mem",
                  "analysisTag": "default",
                  "bed": "/dev/random",
+                 "bed_buffer": 0,
                  "check_both": True,
                  "gatkpath": "default",
                  "genome_size": 3.2e9,
