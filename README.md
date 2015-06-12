@@ -65,14 +65,17 @@ re2 (Google) is a fast alternative to standard python re. BMFTools will attempt 
 Some of vcflib's tools are used, although vcflib (key-word argument for these calls) can be set to False to do it manually on the shell.
 
 ### Required external tools:
+
+#### Utilities set
+samtools >= 1.1
+bamleftalign (from FreeBayes)
+
 #### Aligners
 
-samtools >= 1.1
 bwa >= 0.7.10 (mem, aln, bwasw)
 
 bowtie/bowtie2
 
-bamleftalign (from FreeBayes)
 
 #### Compiler
 gcc >= gccv5.0
