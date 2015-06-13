@@ -13,7 +13,6 @@ from utilBMF.ErrorHandling import ThisIsMadness
 
 import cython
 import numpy as np
-from numpy import array as nparray
 from numpy import mean as nmean
 from numpy import sum as nsum
 from numpy cimport ndarray
@@ -47,7 +46,7 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
     and DOC.
     """
     if(method == "scipy"):
-        return (nparray(binom.interval(1 - pVal, DOC,
+        return (np.array(binom.interval(1 - pVal, DOC,
                                        AC * 1. / DOC)) / DOC).tolist()
     try:
         return pconfint(AC, DOC, alpha=pVal, method=method)
@@ -73,11 +72,11 @@ def ConfidenceIntervalAI(int Allele1,
     else:
         ratio = 1. * Allele2 / Allele1
     if(method == "scipy"):
-        return nparray(binom.interval(1 - pVal,
+        return np.array(binom.interval(1 - pVal,
                                       Allele1 + Allele2, ratio),
                        dtype=np.longdouble)
     try:
-        return nparray(pconfint(Allele1, Allele1 + Allele2,
+        return np.array(pconfint(Allele1, Allele1 + Allele2,
                                 alpha=pVal, method=method),
                        dtype=np.longdouble)
     except NotImplementedError:
@@ -182,7 +181,7 @@ def GetUnscaledProbs(n, p=0.):
     This uses a factorial, primarily for
     speed, but it's also definitely good enough.
     """
-    return nparray([SamplingFrac(n, p=p, k=k) for k in xrange(n + 1)],
+    return np.array([SamplingFrac(n, p=p, k=k) for k in xrange(n + 1)],
                    dtype=np.longdouble)
 
 
@@ -195,7 +194,7 @@ def GetUnscaledProbs_(n, p=0.):
     This uses Stirling's approximation instead of factorial, primarily for
     speed, but it's also definitely good enough.
     """
-    return nparray([SamplingFrac_(n, p=p, k=k) for k in xrange(n + 1)],
+    return np.array([SamplingFrac_(n, p=p, k=k) for k in xrange(n + 1)],
                    dtype=np.longdouble)
 
 

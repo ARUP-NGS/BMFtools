@@ -123,10 +123,14 @@ These are only used for merging read pairs.
 
 Tag | Content | Format |
 ----|-----|-----|
+DG | Discordant positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
+DR | Discordant read positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
+MA | Indices for read positions which agreed during merging. | String. Regex: [0-9,]+ |
 mp | Original Mate Position | Integer |
 om | Original Mapping Quality | Integer |
 op | Original Position | Integer |
 ot | Original Template Langth | Integer |
+PM | Indices for read positions which have been merged | String. Regex: [0-9,]+ |
 
 ## Valid Tags for SV SAM tag
 

@@ -10,7 +10,6 @@ import sys
 from cStringIO import InputType, OutputType
 from subprocess import check_call, check_output
 import numpy as np
-from numpy import array as nparray
 from numpy import sum as nsum
 from numpy import mean as nmean
 from numpy import min as nmin
@@ -193,7 +192,7 @@ class VCFRecord:
                 self.Samples.append(field)
         self.VCFFilename = VCFFilename
         if(len(self.Samples) == 0):
-            recordStr = '\t'.join(nparray([self.CHROM,
+            recordStr = '\t'.join(np.array([self.CHROM,
                                            self.POS,
                                            self.ID,
                                            self.REF,
@@ -203,7 +202,7 @@ class VCFRecord:
                                            self.GENOTYPE]).astype(str))
         else:
             sampleStr = "\t".join(self.Samples)
-            recordStr = '\t'.join(nparray([self.CHROM,
+            recordStr = '\t'.join(np.array([self.CHROM,
                                            self.POS, self.ID,
                                            self.REF, self.ALT,
                                            self.QUAL, self.FILTER, self.INFO,
@@ -333,7 +332,7 @@ def VCFRecordTest(inputVCFRec, filterOpt="default", param="default"):
             raise ValueError("Minimum # dissenting reads must be set.")
         param = int(param)
         ConsensusIsRef = True
-        I16Array = nparray(inputVCFRec.InfoArrayDict['I16']).astype("int")
+        I16Array = np.array(inputVCFRec.InfoArrayDict['I16']).astype("int")
         if(nsum(I16Array[0:2]) < nsum(I16Array[2:4])):
             ConsensusIsRef = False
         if(ConsensusIsRef):

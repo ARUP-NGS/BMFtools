@@ -9,13 +9,13 @@ from MawCluster.BCFastq cimport letterNumDict
 ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 
-cdef cystr BarcodeTagCOBam_(pysam.calignmentfile.AlignmentFile bam,
+cdef cystr cBarcodeTagCOBam(pysam.calignmentfile.AlignmentFile bam,
                       pysam.calignmentfile.AlignmentFile outbam)
-cpdef cystr BarcodeTagCOBam(cystr bam, cystr outbam=?)
+cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=?)
 
-cdef dict GetCOTagDict_(cAlignedSegment read)
+cdef dict cGetCOTagDict(cAlignedSegment read)
 
-cpdef dict GetCOTagDict(cAlignedSegment read)
+cpdef dict pGetCOTagDict(cAlignedSegment read)
 
 cdef double getAF(cAlignedSegment read)
 cdef double getSF(cAlignedSegment read)

@@ -17,7 +17,7 @@ from subprocess import check_call
 from functools import partial
 
 import numpy as np
-from numpy import (array as nparray, sum as nsum, multiply as nmul,
+from numpy import (sum as nsum, multiply as nmul,
                    subtract as nsub, argmax as nargmax,
                    vstack as nvstack, char)
 import pysam
@@ -330,10 +330,10 @@ def pairedBarcodeTagging(
         try:
             ND1 = int(descDict1["ND"])
             ND2 = int(descDict2["ND"])
-            PhredQuals1 = nparray(descDict1["PV"].split(","), dtype=np.int64)
-            PhredQuals2 = nparray(descDict2["PV"].split(","), dtype=np.int64)
-            FA1 = nparray(descDict1["FA"].split(","), dtype=np.int64)
-            FA2 = nparray(descDict2["FA"].split(","), dtype=np.int64)
+            PhredQuals1 = np.array(descDict1["PV"].split(","), dtype=np.int64)
+            PhredQuals2 = np.array(descDict2["PV"].split(","), dtype=np.int64)
+            FA1 = np.array(descDict1["FA"].split(","), dtype=np.int64)
+            FA2 = np.array(descDict2["FA"].split(","), dtype=np.int64)
         except KeyError:
             raise Tim("Number of Differences tag required for "
                       "BMFTools >= v0.0.7")
@@ -436,7 +436,7 @@ def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
     seqArray = nvstack(stackArrays)
     # print(repr(seqArray))
 
-    quals = nparray(map(oagqqual, RecordList))
+    quals = np.array(map(oagqqual, RecordList))
     qualA = ccopy(quals)
     qualC = ccopy(quals)
     qualG = ccopy(quals)
@@ -662,14 +662,14 @@ def RealignSFReads(inBAM, double maxFracSoftClipped=0.5,
     return outBAM
 
 
-cdef dict GetCOTagDict_(cAlignedSegment read):
+cdef dict cGetCOTagDict(cAlignedSegment read):
     cdef cystr s, cStr
     cStr = read.opt("CO")
     return dict([s.split("=") for s in cStr.split("|")[1:]])
 
 
-cpdef dict GetCOTagDict(cAlignedSegment read):
-    return GetCOTagDict_(read)
+cpdef dict pGetCOTagDict(cAlignedSegment read):
+    return cGetCOTagDict(read)
 
 
 cdef cAlignedSegment TagAlignedSegment(
@@ -681,9 +681,9 @@ cdef cAlignedSegment TagAlignedSegment(
     cdef int FM, ND
     cdef double NF, AF, SF
     cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
-    CommentDict = GetCOTagDict(read)
-    PhredQuals = nparray(CommentDict["PV"].split(","), dtype=np.int64)
-    FA = nparray(CommentDict["FA"].split(","), dtype=np.int64)
+    CommentDict = cGetCOTagDict(read)
+    PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
+    FA = np.array(CommentDict["FA"].split(","), dtype=np.int64)
     if(read.is_reverse):
         PhredQuals = PhredQuals[::-1]
         FA = FA[::-1]
@@ -707,7 +707,7 @@ cdef cAlignedSegment TagAlignedSegment(
     return read
 
 
-cdef cystr BarcodeTagCOBam_(AlignmentFile inbam,
+cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
                             AlignmentFile outbam):
     """In progress
     """
@@ -719,14 +719,14 @@ cdef cystr BarcodeTagCOBam_(AlignmentFile inbam,
     return outbam.filename
 
 
-cpdef cystr BarcodeTagCOBam(cystr bam, cystr outbam=None):
+cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=None):
     """In progress
     """
     pl("Tagging BAM with barcode tags in CO field ...")
     cdef AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(bam, "rb")
     outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
-    return BarcodeTagCOBam_(
+    return cBarcodeTagCOBam(
         inHandle, pysam.AlignmentFile(outbam, "wb", template=inHandle))
 
 
@@ -735,7 +735,7 @@ def AlignAndTagMem(cystr fq1, cystr fq2,
                    ref="default", opts=""):
     FirstBam = align_bwa_mem(fq1, fq2, outBAM=outBAM, addCO=True,
                              ref=ref, opts=opts)
-    taggedBAM = BarcodeTagCOBam(FirstBam, outbam=outBAM)
+    taggedBAM = pBarcodeTagCOBam(FirstBam, outbam=outBAM)
     return taggedBAM
 
 

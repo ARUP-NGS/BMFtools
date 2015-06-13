@@ -3,7 +3,7 @@ from __future__ import division
 from operator import attrgetter as oag
 from operator import methodcaller as mc
 from subprocess import check_output, check_call
-from numpy import (array as nparray, append as npappend,
+from numpy import (append as npappend,
                    mean as nmean, max as nmax)
 from cytoolz import map as cmap
 from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
@@ -20,11 +20,7 @@ import pysam
 import shlex
 import subprocess
 import sys
-cimport cython
-cimport numpy as np
-cimport pysam.calignmentfile
-cimport pysam.cfaidx
-cimport utilBMF.HTSUtils
+
 
 
 """

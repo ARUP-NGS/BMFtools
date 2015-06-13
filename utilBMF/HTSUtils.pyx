@@ -131,10 +131,6 @@ cpdef cystr RevCmp(cystr seq, dict CmpDict=CmpDict):
     return "".join([CmpDict[i] for i in list(seq)])[::-1]
 
 
-CigarDict = {"M": 0, "I": 1, "D": 2, "N": 3, "S": 4, "H": 5, "P": 6, "=": 7,
-             "X": 8, 0: "M", 1: "I", 2: "D", 3: "N", 4: "S", 5: "H", 6: "P",
-             7: "=", 8: "X"}
-
 
 PysamToChrDict = {}
 for i in xrange(22):
@@ -272,20 +268,23 @@ PysamToChrDict["GL000192.1"] = 83
 # PysamToChrDict["gi|9626372|ref|NC_001422.1|"] = 84
 
 
+def BuildRefIDDict(cystr bam):
+    """
+    TODO: Switch over to this vs. the PysamToChrDict usage.
+    This way, it defaults to the hard-coded, but automatically
+    builds it from the BAM file.
+    """
+    global ReferenceDict
+    ReferenceDict = GetPysamToChrDictFromAlignmentFile(
+        pysam.AlignmentFile(bam, "rb"))
+
+
 @cython.returns(dict)
-def GetPysamToChrDict(cystr alignmentFileText):
-    """
-    Input variable contains the "text" attribute from a pysam.AlignmentFile
-    object.
-    """
-    global PysamToChrDict
-    PysamToChrDict = dict(list(enumerate(
-        [i.replace("SN:", "").split("\t")[1] for i in
-         alignmentFileText.split('\n') if i[0:3] == "@SQ"])))
-    global PysamToChrDict
-    PysamToChrDict = {PysamToChrDict[key]: key for key in
-                      PysamToChrDict.iterkeys()}
-    return
+def getRefIDConversionDict():
+    if("ReferenceDict" in globals()):
+        return globals()["ReferenceDict"]
+    else:
+        return PysamToChrDict
 
 
 @cython.returns(dict)

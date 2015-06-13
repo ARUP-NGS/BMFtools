@@ -14,6 +14,8 @@ from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from BMFMain import Workflow as wf
 
+global ReferenceDict
+
 """
 bmftools contains various utilities for barcoded reads and for
 somatic variant calling. Written to be similar in form to bcftools

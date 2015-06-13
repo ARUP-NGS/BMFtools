@@ -28,7 +28,7 @@ import numpy as np
 from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
                    multiply as nmul, subtract as nsub, any as npany,
                    vstack as npvstack, greater as ngreater, less as nless,
-                   array as nparray, divide as ndiv, char as npchar)
+                   divide as ndiv, char as npchar)
 import pysam
 from cytoolz import memoize
 from functools import partial
@@ -203,9 +203,9 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
         Success = True
     elif(frac < 0.5):
         Success = False
-    FA = nparray([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
+    FA = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
                  xrange(len(finalSeq))], dtype=np.int64)
-    phredQuals = nparray([sum([chr2ph[qual[i]] for
+    phredQuals = np.array([sum([chr2ph[qual[i]] for
                                qual in map(oagqual, R) if
                                seq[i] == finalSeq[i]]) for
                           i in xrange(len(finalSeq))])
@@ -250,13 +250,13 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef cystr cFRF_helper(list R, cystr name=None):
-    return compareFqRecsFast(R, name=name)
+cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
+    return cCompareFqRecsFast(R, name=name)
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef cystr compareFqRecsFast(list R,
+cdef cystr cCompareFqRecsFast(list R,
                              cystr name=None,
                              int famLimit=100,
                              dict chr2ph=chr2ph,
@@ -304,7 +304,7 @@ cdef cystr compareFqRecsFast(list R,
     seqArray = npvstack(stackArrays)
 
     # print(repr(seqArray))
-    quals = nparray([[chr2ph[i] for i in qual] for
+    quals = np.array([[chr2ph[i] for i in qual] for
                      qual in map(oagqual, R)])
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
@@ -326,15 +326,15 @@ cdef cystr compareFqRecsFast(list R,
     qualTFlat = nsum(qualT, 0, dtype=np.int64)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = nparray([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
+    newSeq = np.array([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
-    FA = nparray([sum([seq[i] == newSeq[i] for
+    FA = np.array([sum([seq[i] == newSeq[i] for
                        seq in seqs]) for
                   i in xrange(lenSeq)], dtype=np.int64)
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
-    phredQuals = ndiv(nmul(FA, nsum(nparray([[chr2ph[i] for i in qual] for
+    phredQuals = ndiv(nmul(FA, nsum(np.array([[chr2ph[i] for i in qual] for
                                              qual in map(oagqual, R)]),
                                     0)), lenR, dtype=np.int64)
     ND = lenR * lenSeq - nsum(FA)
@@ -674,7 +674,7 @@ def singleFastqConsolidate(cystr fq, float stringency=0.9,
                            int SetSize=100,
                            cython.bint onlyNumpy=True,
                            cython.bint skipFails=False,
-                           object fn=cFRF_helper,
+                           object fn=pCompareFqRecsFast,
                            object getBS=getBS,
                            object groupby=groupby):
     cdef cystr outFq, bc4fq, ffq

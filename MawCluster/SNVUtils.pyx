@@ -6,7 +6,6 @@ from operator import methodcaller as mc, attrgetter as oag
 import pysam
 import cython
 import numpy as np
-from numpy import array as nparray
 from math import log10 as mlog10
 from cytoolz import map as cmap
 from .PileupUtils import PCInfo, AlleleAggregateInfo

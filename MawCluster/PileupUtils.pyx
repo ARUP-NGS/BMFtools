@@ -17,7 +17,7 @@ except ImportError:
 
 import numpy as np
 from numpy import (mean as nmean, max as nmax, sum as nsum,
-                   array as nparray, std as nstd)
+                   std as nstd)
 import pysam
 from pysam.calignmentfile import PileupRead as cPileupRead
 import cython
@@ -166,7 +166,7 @@ cdef class PRInfo:
             # If there are characters beside digits and commas, then it these
             # values must have been encoded in base 85.
             PVString = aopt("PV")
-            self.PV_Array = nparray(PVString.split(','),
+            self.PV_Array = np.array(PVString.split(','),
                                     dtype=np.int64)
             self.PV = self.PV_Array[self.query_position]
             try:
@@ -220,7 +220,7 @@ cdef class AlleleAggregateInfo:
                  float minFracAgreed=0.0, int minFA=0,
                  float minPVFrac=0.0, int FSR=-1,
                  object oagir=oagir, object oagqp=oagqp, object oagbq=oagbq,
-                 object oagmq=oagmq, object nparray=nparray):
+                 object oagmq=oagmq, object nparray=np.array):
         cdef ndarray NFList
         cdef ndarray[np.float64_t, ndim=1] query_positions, PVFArray
         cdef int lenR
@@ -260,10 +260,10 @@ cdef class AlleleAggregateInfo:
         # Total Number of Differences
         if(lenR != 0):
             self.TND = sum(map(oag("ND"), self.recList))
-            NFList = nparray(map(oag("NF"), self.recList))
+            NFList = np.array(map(oag("NF"), self.recList))
         else:
             self.TND = -1
-            NFList = nparray([])
+            NFList = np.array([])
         try:
             self.MNF = nmean(NFList)
             self.maxNF = nmax(NFList)
@@ -356,11 +356,11 @@ cdef class AlleleAggregateInfo:
                                       cyfreq(map(oag("query_name"),
                                                  self.recList)).iteritems()
                                       if i[1] > 1])
-        query_positions = nparray(map(oagqp, self.recList), dtype=np.float64)
+        query_positions = np.array(map(oagqp, self.recList), dtype=np.float64)
         self.MBP = nmean(query_positions)
         self.BPSD = cyStdFlt(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = nparray(map(oag("PVFrac"), self.recList), dtype=np.float64)
+        PVFArray = np.array(map(oag("PVFrac"), self.recList), dtype=np.float64)
         #  PVFArray = [rec.PVFrac for rec in self.recList]
 
         if(len(PVFArray) == 0):
@@ -503,7 +503,7 @@ cdef class PCInfo:
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
                             for alt in set(map(oagbc, self.Records))}
-        query_positions = nparray(map(oagqp, self.Records), dtype=np.float64)
+        query_positions = np.array(map(oagqp, self.Records), dtype=np.float64)
         self.AAMBP = nmean(query_positions)
         self.AABPSD = cyStdFlt(query_positions)
 
@@ -597,7 +597,7 @@ cdef class PCInfo:
         outStr = ""
         for alt in self.AltAlleleData:
             outStr += "\t".join(
-                nparray([self.contig,
+                np.array([self.contig,
                          self.pos,
                          self.consensus,
                          alt.ALT,
