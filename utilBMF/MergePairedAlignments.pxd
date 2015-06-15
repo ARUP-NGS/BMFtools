@@ -4,7 +4,7 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
-from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, cReadsOverlap
+from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, cReadsOverlap, BamTag
 from cython cimport bint
 from libc.stdlib cimport malloc, free
 ctypedef Layout Layout_t
@@ -12,6 +12,17 @@ ctypedef LayoutPos LayoutPos_t
 ctypedef ArrayLayout ArrayLayout_t
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef unsigned char uchar
+ctypedef BamTag BamTag_t
+
+cdef struct ArrayLayoutPos:
+    int pos
+    int readPos
+    int quality
+    int agreement
+    char operation
+    char base
+    char mergeAgreed
+ctypedef ArrayLayoutPos ArrayLayoutPos_t
 
 cdef class LayoutPos:
     cdef public cython.int pos, readPos, quality, agreement
@@ -24,7 +35,7 @@ cdef class LayoutPos:
 
 cdef class ArrayLayout:
     cdef public AlignedSegment_t read
-    cdef int **layoutArray
+    cdef ArrayLayoutPos_t *layoutArray
     cdef public size_t length
 
     cdef public uchar mapq
@@ -39,6 +50,8 @@ cdef class ArrayLayout:
     cpdef ndarray[int, ndim=1] getQual(self)
     cdef cystr cGetQualString(self)
     cpdef cystr getQualString(self)
+    cdef ndarray[char] getSeqArr(self)
+    cpdef cystr getSeq(self)
 
     
 '''
