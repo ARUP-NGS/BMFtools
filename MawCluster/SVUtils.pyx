@@ -464,8 +464,8 @@ class SVTagFn(object):
             raise Tim("tag must be set for SVTagTest!")
         self.tag = tag
 
-    def test(self, cAlignedSegment read1,
-             cAlignedSegment read2,
+    def test(self, AlignedSegment_t read1,
+             AlignedSegment_t read2,
              object extraField="default"):
         if(extraField != "default"):
             if self.func(read1, read2, extraField=extraField):
@@ -492,8 +492,8 @@ class SVTagFn(object):
 
 
 @cython.returns(bint)
-def DRP_SNV_Tag_Condition(cAlignedSegment read1,
-                          cAlignedSegment read2,
+def DRP_SNV_Tag_Condition(AlignedSegment_t read1,
+                          AlignedSegment_t read2,
                           object extraField=SVParamDict['DRP']):
     """
     Duplex Read Pair
@@ -507,56 +507,56 @@ SNVTestDict = {}
 # removing this test, as it will be superceded by MergePairedAlignments
 
 
-cpdef bint LI_SV_Tag_Condition(cAlignedSegment read1,
-                               cAlignedSegment read2,
+cpdef bint LI_SV_Tag_Condition(AlignedSegment_t read1,
+                               AlignedSegment_t read2,
                                int extraField=100000):
     return cLI_SV_Tag_Condition(read1, read2, extraField)
 
 
-cdef bint cLI_SV_Tag_Condition(cAlignedSegment read1,
-                               cAlignedSegment read2,
+cdef bint cLI_SV_Tag_Condition(AlignedSegment_t read1,
+                               AlignedSegment_t read2,
                                int maxInsert=100000):
     return read1.tlen > maxInsert
 
 
-cpdef bint MDC_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint MDC_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 object extraField=None):
     return cMDC_SV_Tag_Condition(read1, read2)
 
 
-cdef bint cMDC_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2):
+cdef bint cMDC_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2):
     return (read1.reference_id != read2.reference_id)
 
 
-cdef bint cORU_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2):
+cdef bint cORU_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2):
     return (read1.is_unmapped + read2.is_unmapped == 1)
 
 
-cpdef bint ORU_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint ORU_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 extraField=None):
     return cORU_SV_Tag_Condition(read1, read2)
 
 
-cpdef bint MSS_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint MSS_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 object extraField=None):
     return cMSS_SV_Tag_Condition(read1, read2)
 
 
-cdef bint cMSS_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2):
+cdef bint cMSS_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2):
     if(read1.reference_id == read2.reference_id):
         if(read1.is_reverse == read2.is_reverse):
             return True
     return False
 
 
-cpdef bint ORB_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint ORB_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 list extraField=None):
     """
     Returns true iff precisely one read is in the bed file region.
@@ -567,8 +567,8 @@ cpdef bint ORB_SV_Tag_Condition(cAlignedSegment read1,
                      RIB(read2, bedRef=extraField)]) - 1)
 
 
-cpdef bint ORS_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint ORS_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 object extraField=None):
     """
     Returns true iff precisely one read is soft-clipped and the reads are
@@ -578,8 +578,8 @@ cpdef bint ORS_SV_Tag_Condition(cAlignedSegment read1,
             not (("S" in read1.cigarstring) == ("S" in read2.cigarstring)))
 
 
-cpdef bint MI_SV_Tag_Condition(cAlignedSegment read1,
-                               cAlignedSegment read2,
+cpdef bint MI_SV_Tag_Condition(AlignedSegment_t read1,
+                               AlignedSegment_t read2,
                                object extraField=SVParamDict['MI']):
     """
     Returns true if TLEN >= minimum length && TLEN =< LI requirements.
@@ -592,8 +592,8 @@ cpdef bint MI_SV_Tag_Condition(cAlignedSegment read1,
 SNVParamDict = defaultdict(returnDefault)
 
 
-cpdef bint DSD_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint DSD_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 object extraField="default"):
     """
     Duplex Shared Deletion - if read1 and read2 share a deletion
@@ -608,8 +608,8 @@ cpdef bint DSD_SV_Tag_Condition(cAlignedSegment read1,
     return False
 
 
-cpdef bint DSI_SV_Tag_Condition(cAlignedSegment read1,
-                                cAlignedSegment read2,
+cpdef bint DSI_SV_Tag_Condition(AlignedSegment_t read1,
+                                AlignedSegment_t read2,
                                 object extraField="default"):
     """
     Duplex Shared Insertion - if read1 and read2 share an insertion
@@ -632,8 +632,8 @@ cpdef bint DSI_SV_Tag_Condition(cAlignedSegment read1,
 
 
 @cython.returns(bint)
-def DDI_SV_Tag_Condition(cAlignedSegment read1,
-                         cAlignedSegment read2,
+def DDI_SV_Tag_Condition(AlignedSegment_t read1,
+                         AlignedSegment_t read2,
                          extraField="default"):
     """
     Duplex Discordant Insertion - if one read has an insertion that the
@@ -686,7 +686,7 @@ SVTestDict = cytoolz.merge([SVTestDict, SNVTestDict])
 SVParamDict = dict(SVParamDict.items() + SNVParamDict.items())
 
 
-cpdef tuple MarkSVTagsFn(cAlignedSegment read1, cAlignedSegment read2,
+cpdef tuple MarkSVTagsFn(AlignedSegment_t read1, AlignedSegment_t read2,
                          list bedObj=None, int maxInsert=100000):
     """
     cpdef wrapper of cMarkSVTagsFn
@@ -695,8 +695,8 @@ cpdef tuple MarkSVTagsFn(cAlignedSegment read1, cAlignedSegment read2,
                          maxInsert=maxInsert)
 
 
-cdef tuple cMarkSVTagsFn(cAlignedSegment read1,
-                         cAlignedSegment read2,
+cdef tuple cMarkSVTagsFn(AlignedSegment_t read1,
+                         AlignedSegment_t read2,
                          list bedObj=None,
                          int maxInsert=100000,
                          dict testDict=SVTestDict,
@@ -757,9 +757,9 @@ def GetSVRelevantRecordsPaired(inBAM, cystr SVBam=None,
     (Spanning Bed with Improper pair)
     NF for None Found
     """
-    cdef cAlignedSegment read
-    cdef cAlignedSegment read1
-    cdef cAlignedSegment read2
+    cdef AlignedSegment_t read
+    cdef AlignedSegment_t read1
+    cdef AlignedSegment_t read2
     cdef list bed
     if(FullBam == "default"):
         FullBam = '.'.join(inBAM.split('.')[0:-1]) + '.SVmarked.bam'

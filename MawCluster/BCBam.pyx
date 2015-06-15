@@ -195,7 +195,7 @@ def BarcodeSort(inBAM, outBAM="default", paired=True):
 
 def mergeBarcodes(reads1, reads2, outfile="default"):
     cdef cystr concatBarcode
-    cdef cAlignedSegment entry1, entry2
+    cdef AlignedSegment_t entry1, entry2
     pl("mergeBarcodes. R1: {}. R2: {}".format(reads1, reads2))
     reader1 = pysam.AlignmentFile(reads1, "rb")
     reader2 = pysam.AlignmentFile(reads2, "rb")
@@ -281,7 +281,7 @@ def pairedBarcodeTagging(
     :param cystr realigner - if "gatk" in this string, add RG.
     """
     cdef ndarray[np.int64_t, ndim=1] PhredQuals1, PhredQuals2, FA1, FA2
-    cdef cAlignedSegment entry, read1bam, read2bam
+    cdef AlignedSegment_t entry, read1bam, read2bam
     cdef double r1FracAlign, r2FracAlign, r1FracSC, r2FracSC
     cdef int FM, ND1, ND2
     cdef bint addDefault, bwaswRescue, passing
@@ -513,7 +513,7 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
                          cystr suppBam="default"):
     cdef pFastqProxy_t FqPrx
     cdef pysam.cfaidx.FastqProxy tempRead
-    cdef cAlignedSegment entry
+    cdef AlignedSegment_t entry
     cdef pysam.cfaidx.FastqFile reads
     cdef dict descDict
     """
@@ -553,7 +553,7 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
 
 
 @cython.returns(bint)
-def FracSoftclippedTest(cAlignedSegment rec,
+def FracSoftclippedTest(AlignedSegment_t rec,
                         double maxFracSoftClipped=0.25):
     if(FractionSoftClipped(rec) >= maxFracSoftClipped):
         return False
@@ -571,7 +571,7 @@ def GetFracSCPartial(double maxFracSoftClipped):
 
 def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
                       func=returnDefault, appendStr=""):
-    cdef cAlignedSegment rec, r1, r2
+    cdef AlignedSegment_t rec, r1, r2
     cdef AlignmentFile inHandle, raHandle, nrHandle
     if(failBAM == "default"):
         failBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Fail", "bam"])
@@ -662,18 +662,18 @@ def RealignSFReads(inBAM, double maxFracSoftClipped=0.5,
     return outBAM
 
 
-cdef dict cGetCOTagDict(cAlignedSegment read):
+cdef dict cGetCOTagDict(AlignedSegment_t read):
     cdef cystr s, cStr
     cStr = read.opt("CO")
     return dict([s.split("=") for s in cStr.split("|")[1:]])
 
 
-cpdef dict pGetCOTagDict(cAlignedSegment read):
+cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
-cdef cAlignedSegment TagAlignedSegment(
-        cAlignedSegment read):
+cdef AlignedSegment_t TagAlignedSegment(
+        AlignedSegment_t read):
     """
     Adds necessary information from a CO: tag to appropriate other tags.
     """
@@ -711,7 +711,7 @@ cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
                             AlignmentFile outbam):
     """In progress
     """
-    cdef cAlignedSegment read
+    cdef AlignedSegment_t read
     for read in inbam:
         outbam.write(TagAlignedSegment(read))
     inbam.close()
@@ -741,7 +741,7 @@ def AlignAndTagMem(cystr fq1, cystr fq2,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef double getSF(cAlignedSegment read):
+cdef double getSF(AlignedSegment_t read):
     cdef tuple tup
     cdef int sum, sumSC
     sum = 0
@@ -757,7 +757,7 @@ cdef double getSF(cAlignedSegment read):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef double getAF(cAlignedSegment read):
+cdef double getAF(AlignedSegment_t read):
     cdef tuple tup
     cdef int sum, sumAligned
     sum = 0

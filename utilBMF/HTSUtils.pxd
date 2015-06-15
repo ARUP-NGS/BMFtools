@@ -12,7 +12,7 @@ ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
-ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef pFastqProxy pFastqProxy_t
 
 cimport pysam.TabProxies
@@ -33,7 +33,7 @@ cdef class pPileupRead:
     cdef public long indel
     cdef public long query_position
     cdef public cystr name, str
-    cdef public cAlignedSegment alignment
+    cdef public AlignedSegment_t alignment
     cpdef object opt(self, cystr arg)
 
 cdef class PileupReadPair:
@@ -60,8 +60,8 @@ cdef class ReadPair:
     Currently, one read unmapped and one read soft-clipped are
     both marked as soft-clipped reads.
     """
-    cdef public cAlignedSegment read1
-    cdef public cAlignedSegment read2
+    cdef public AlignedSegment_t read1
+    cdef public AlignedSegment_t read2
     cdef public list SVTags
     cdef public cython.bint read1_is_unmapped
     cdef public cython.bint read1_soft_clipped
@@ -154,13 +154,13 @@ cpdef public cystr RevCmp(cystr seq, dict CmpDict=?)
 cpdef public list permuteNucleotides(long maxn, object nci=?)
 
 cpdef cython.bint ReadsOverlap(
-        cAlignedSegment read1,
-        cAlignedSegment read2)
+        AlignedSegment_t read1,
+        AlignedSegment_t read2)
 
 
 cdef cython.bint cReadsOverlap(
-        cAlignedSegment read1,
-        cAlignedSegment read2)
+        AlignedSegment_t read1,
+        AlignedSegment_t read2)
 
 cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)

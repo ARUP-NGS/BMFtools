@@ -4,6 +4,7 @@ from warnings import warn
 
 from operator import attrgetter as oag
 from utilBMF._bmftools_helper import defaultConfig
+from utilBMF.HTSUtils import printlog as pl
 
 
 @cython.returns(bint)
@@ -74,7 +75,12 @@ class ArgumentSketcher(object):
                        defaultConfig.iteritems()}
         # Load in config by copying each item so as to not give
         # ArgumentSketcher a dict subclass.
-        for key, value in parseSketchConfig(configPath).iteritems():
+        try:
+            tmpConfDict = parseSketchConfig(configPath)
+        except TypeError:
+            pl("No config path provided - skipping.")
+            tmpConfDict = {}
+        for key, value in tmpConfDict.iteritems():
             self.config[key] = value
         self.args = args
         self.keys = [i for i in dir(args) if i[0] != "_"]

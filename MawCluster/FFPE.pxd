@@ -4,9 +4,9 @@ from cpython cimport array as c_array
 ctypedef c_array.array carray
 from cython cimport bint
 from utilBMF.HTSUtils cimport cystr
-ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 
-cdef cAlignedSegment AmpliconTrimRead(cAlignedSegment rec, int primerLen)
+cdef AlignedSegment_t AmpliconTrimRead(AlignedSegment_t rec, int primerLen)
 cdef dict getFreqDict(pysam.TabProxies.VCFProxy rec)
 cdef dict getFreqDictFromInfoDict(dict InfoDict)
 cdef dict getCountDictFromInfoDict(dict InfoDict)
