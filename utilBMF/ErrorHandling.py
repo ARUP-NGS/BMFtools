@@ -13,8 +13,25 @@ class PermissionException(Exception):
     pass
 
 
+class ImproperArgumentError(ValueError):
+    """
+    Thrown when an argument is the correct type but the object
+    is not a suitable target for it. e.g., laying out an unmapped
+    read.
+    """
+    def __init__(self, message=""):
+        super(ValueError, self).__init__()
+        self.message = message
+        if(message != ""):
+            print("Improper Argument Error: %s" % message)
+
+
 class IllegalArgumentError(ValueError):
-    pass
+    def __init__(self, message=""):
+        super(ValueError, self).__init__()
+        self.message = message
+        if(message != ""):
+            print("Illegal Argument Error: %s" % message)
 
 
 class AbortMission(Exception):

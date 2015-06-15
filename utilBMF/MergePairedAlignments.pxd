@@ -6,30 +6,53 @@ cimport utilBMF.HTSUtils
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, cReadsOverlap
 from cython cimport bint
+from libc.stdlib cimport malloc, free
 ctypedef Layout Layout_t
 ctypedef LayoutPos LayoutPos_t
-ctypedef pysam.calignmentfile.AlignedSegment cAlignedSegment
+ctypedef ArrayLayout ArrayLayout_t
+ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef unsigned char uchar
 
 cdef class LayoutPos:
     cdef public cython.int pos, readPos, quality, agreement
     cdef public char operation, base, mergeAgreed
-    cdef bint isMerged
+    cdef bint merged
     # cdef public cystr operation, base
     cpdef bint ismapped(self)
     cdef bint getMergeAgreed(self)
+    cdef bint getMergeSet(self)
 
+cdef class ArrayLayout:
+    cdef public AlignedSegment_t read
+    cdef int **layoutArray
+    cdef public size_t length
 
+    cdef public uchar mapq
+    cdef public int tlen, pnext, flag, InitPos, firstMapped
+
+    cdef public dict tagDict
+
+    cdef bint cPosIsMapped(self, int position)
+    cpdef bint posIsMapped(self, int position)
+    cdef int getFirstMappedRefPos(self)
+    cdef ndarray[int, ndim=1] cGetQual(self)
+    cpdef ndarray[int, ndim=1] getQual(self)
+    cdef cystr cGetQualString(self)
+    cpdef cystr getQualString(self)
+
+    
+'''
 cdef class ArrayLayoutPos:
     cdef public int[6] values
     # pos, readPos, quality, agreement, operation, base
     # cdef public cystr operation, base
     cpdef bint ismapped(self)
 
-
 cdef class ArrayLayout:
     cdef public pysam.calignmentfile.AlignedSegment read
     cdef ndarray data
     cdef public bint isMerged, is_reverse
+'''
 
 
 cdef class Layout:
@@ -43,15 +66,15 @@ cdef class Layout:
     cpdef cython.int getAlignmentStart(self)
     cpdef cystr getCigarString(self)
     cpdef cystr getSeq(self)
-    cdef ndarray[char] getSeqArr(self, dict chrDict=?)
+    cdef ndarray[char] getSeqArr(self)
     cdef int cGetRefPosForFirstPos(self)
     cpdef int pGetRefPosForFirstPos(self)
     cpdef ndarray[int, ndim=1] getAgreement(self)
     cdef ndarray[int, ndim=1] cGetAgreement(self)
     cdef ndarray[int, ndim=1] cGetQual(self)
     cpdef ndarray[int, ndim=1] getQual(self)
-    cdef cystr cGetQualString(self, dict ph2chrDict=?)
-    cpdef getQualString(self)
+    cdef cystr cGetQualString(self)
+    cpdef cystr getQualString(self)
     cdef int cGetLastRefPos(self)
     cpdef int getLastRefPos(self)
     cdef cystr cGetCigarString(self)
@@ -70,6 +93,7 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
 
 cdef public dict chrDict, CigarDict
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
+cdef int getLayoutLen(AlignedSegment_t read)
 
 cdef class ListBool:
     cdef list List

@@ -34,7 +34,7 @@ from utilBMF.HTSUtils cimport cystr
 Contains utilities relating to FFPE and amplicon sequencing
 """
 
-cdef cAlignedSegment AmpliconTrimRead(cAlignedSegment rec, int primerLen):
+cdef AlignedSegment_t AmpliconTrimRead(AlignedSegment_t rec, int primerLen):
     cdef cystr tempQual
     rec.setTag("PV", rec.opt("PV").split(",")[primerLen:], "Z")
     rec.setTag("FA", rec.opt("FA").split(",")[primerLen:], "Z")
@@ -56,7 +56,7 @@ def PrefilterAmpliconSequencing(cystr inBAM, int primerLen=20,
     events from the input BAM file.
     """
     cdef cystr tempFile, tempQual
-    cdef cAlignedSegment rec
+    cdef AlignedSegment_t rec
     if(outBAM == "default"):
         outBAM = ".".join(inBAM.split(".")[0:-1] + ["amplicon",
                                                     "filt", "bam"])

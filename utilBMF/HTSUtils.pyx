@@ -81,24 +81,24 @@ def printlog(string, level=logging.INFO):
     Logger = logging.getLogger("Primarylogger")
     if(level == logging.DEBUG):
         Logger.debug(string.replace(
-            "\t", "\\t").replace("\n", "\\n").replace(
+            "\t", "\\t").replace(
                 "'", "\'").replace('"', '\\"'))
         return
         # Doesn't print to string if set to debug mode.
     elif(level == logging.INFO):
         Logger.info(string.replace(
-            "\t", "\\t").replace("\n", "\\n").replace(
+            "\t", "\\t").replace(
                 "'", "\'").replace('"', '\\"'))
     elif(level == logging.WARNING):
         Logger.warning(string.replace(
-            "\t", "\\t").replace("\n", "\\n").replace(
+            "\t", "\\t").replace(
                 "'", "\'").replace('"', '\\"'))
     else:
         Logger.critical(string.replace(
-            "\t", "\\t").replace("\n", "\\n").replace(
+            "\t", "\\t").replace(
             "'", "\'").replace('"', '\\"'))
     sys.stderr.write(string.replace(
-        "\t", "\\t").replace("\n", "\\n").replace(
+        "\t", "\\t").replace(
         "'", "\'").replace('"', '\\"') + "\n")
     return
 
@@ -879,8 +879,8 @@ cdef class ReadPair:
     both marked as soft-clipped reads.
     """
 
-    def __init__(self, cAlignedSegment read1,
-                 cAlignedSegment read2):
+    def __init__(self, AlignedSegment_t read1,
+                 AlignedSegment_t read2):
         self.read1 = read1
         self.read2 = read2
         try:
@@ -957,18 +957,18 @@ def GetOverlappingBases(ReadPair_t pair):
 
 
 @cython.returns(dict)
-def AlignPairDict(cAlignedSegment read):
+def AlignPairDict(AlignedSegment_t read):
     return {x: y for y, x in read.aligned_pairs}
 
 
-@cython.returns(cAlignedSegment)
+@cython.returns(AlignedSegment_t)
 def CollapseReadPair(ReadPair_t pair, bint BMFTags=True,
                      int minQualDiff=3):
     """
     minQualDiff is the minimum difference between the quality
     scores in the case of disagreement.
     """
-    cdef cAlignedSegment read1, read2, newread
+    cdef AlignedSegment_t read1, read2, newread
     cdef int i
     if(not pair.SameContig or pair.SameStrand):
         return None  # Nothing to collapse!
@@ -1011,8 +1011,8 @@ def CollapseReadPair(ReadPair_t pair, bint BMFTags=True,
         raise Tim("Sorry, I just have other things to finish now.")
 
 
-def CollapseR1R2(cAlignedSegment R1,
-                 cAlignedSegment R2):
+def CollapseR1R2(AlignedSegment_t R1,
+                 AlignedSegment_t R2):
     return CollapseReadPair(ReadPair(R1, R2))
 
 
@@ -1089,8 +1089,8 @@ def GetReadPair(inHandle):
     return ReadPair(read1, read2)
 
 
-cdef bint cReadsOverlap(cAlignedSegment read1,
-                        cAlignedSegment read2):
+cdef bint cReadsOverlap(AlignedSegment_t read1,
+                        AlignedSegment_t read2):
     if(read1.reference_id != read2.reference_id):
         return False
     if(read1.reference_start > read2.reference_end or
@@ -1307,7 +1307,7 @@ class SoftClippedSeq:
         self.is_reverse = not self.is_reverse
 
 
-def SplitSCRead(cAlignedSegment read):
+def SplitSCRead(AlignedSegment_t read):
     try:
         assert "S" in read.cigarstring
     except AssertionError:
@@ -1437,7 +1437,7 @@ def ph2chr(x):
 
 
 @cython.returns(list)
-def GetDeletedCoordinates(cAlignedSegment read):
+def GetDeletedCoordinates(AlignedSegment_t read):
     """
     Returns a list of integers of genomic coordinates for deleted bases.
     """
@@ -1463,7 +1463,7 @@ def GetDeletedCoordinates(cAlignedSegment read):
 
 
 @cython.returns(list)
-def GetInsertedNucleotides(cAlignedSegment read):
+def GetInsertedNucleotides(AlignedSegment_t read):
     """
     """
     cdef int start, end
@@ -1487,7 +1487,7 @@ def GetInsertedNucleotides(cAlignedSegment read):
 
 
 @cython.returns(list)
-def GetInsertedStrs(cAlignedSegment read):
+def GetInsertedStrs(AlignedSegment_t read):
     """
     Returns a list of tuples for strings, along with preceding reference base
     and successive reference base position. We can then directly compare these
@@ -1516,7 +1516,7 @@ def GetInsertedStrs(cAlignedSegment read):
 
 
 @cython.returns(np.longdouble_t)
-def FractionSoftClipped(cAlignedSegment read):
+def FractionSoftClipped(AlignedSegment_t read):
     """
     Returns the fraction of a read aligned.
     """
@@ -1546,7 +1546,7 @@ def FractionAlignedCigar(list cigar):
 
 
 @cython.returns(np.longdouble_t)
-def FractionAligned(cAlignedSegment read):
+def FractionAligned(AlignedSegment_t read):
     """
     Returns the fraction of a read aligned.
     """
@@ -1662,7 +1662,7 @@ def bitfield(n):
 
 
 @cython.returns(cystr)
-def ASToFastqSingle(cAlignedSegment read):
+def ASToFastqSingle(AlignedSegment_t read):
     """
     Makes a string containing a single fastq record from
     one read.
@@ -1693,7 +1693,7 @@ def ASToFastqSingle(cAlignedSegment read):
 
 @cython.locals(alignmentfileObj=pysam.calignmentfile.AlignmentFile)
 @cython.returns(cystr)
-def ASToFastqPaired(cAlignedSegment read,
+def ASToFastqPaired(AlignedSegment_t read,
                     alignmentfileObj):
     """
     Works for coordinate-sorted and indexed BAM files, but throws
@@ -1707,7 +1707,7 @@ def ASToFastqPaired(cAlignedSegment read,
 
 
 @cython.returns(pysam.calignmentfile.AlignmentFile)
-def SWRealignAS(cAlignedSegment read,
+def SWRealignAS(AlignedSegment_t read,
                 pysam.calignmentfile.AlignmentFile alignmentfileObj,
                 cystr extraOpts="",
                 cystr ref="default", float minAF=0.5):
@@ -2217,7 +2217,7 @@ def SplitBamByBedPysam(bampath, bedpath):
     Rather than standard split by bed which uses parallel shell calls,
     instead this does it manually via pysam. Not sure if it's faster or not.
     """
-    cdef cAlignedSegment rec
+    cdef AlignedSegment_t rec
     cdef pysam.calignmentfile.AlignmentFile inHandle
     cdef cystr bam
     pl("Getting bamlist.")
@@ -2406,7 +2406,7 @@ def hamming_cousins(cystr s, int n=0,
 
 
 @cython.returns(Insertion_t)
-def GetInsertionFromAlignedSegment(cAlignedSegment read,
+def GetInsertionFromAlignedSegment(AlignedSegment_t read,
                                    pysam.cfaidx.FastaFile handle=None):
     """
     Creates an Insertion object under the assumption that there is
@@ -2420,7 +2420,7 @@ def GetInsertionFromAlignedSegment(cAlignedSegment read,
 
 
 @cython.returns(Deletion_t)
-def GetDeletionFromAlignedSegment(cAlignedSegment read,
+def GetDeletionFromAlignedSegment(AlignedSegment_t read,
                                   pysam.cfaidx.FastaFile handle=None):
     """
     Creates a Deletion object from a read.
@@ -2445,7 +2445,7 @@ def is_reverse_to_str(bint boolean):
 
 
 @cython.returns(cystr)
-def ssStringFromRead(cAlignedSegment read):
+def ssStringFromRead(AlignedSegment_t read):
     return ("#".join(map(str, sorted([read.reference_start,
                                       read.reference_end]))) +
             "#%s" % (is_reverse_to_str(read)))
@@ -2531,7 +2531,7 @@ cdef class AbstractIndelContainer(object):
     def getNumSS(self):
         return(len(set(self.StartStops)))
 
-    def register(self, cAlignedSegment read):
+    def register(self, AlignedSegment_t read):
         self.readnames.append(read.query_name)
         self.StartStops.append(ssStringFromRead(read))
 
@@ -2556,7 +2556,7 @@ cdef class Insertion(AbstractIndelContainer):
     If no handle is provided, shen (Shannon Entropy) is set to -1.
     """
 
-    def __init__(self, cAlignedSegment read,
+    def __init__(self, AlignedSegment_t read,
                  cystr contig, int start=-1,
                  cystr seq=None, pysam.cfaidx.FastaFile handle=None,
                  int window=20):
@@ -2596,7 +2596,7 @@ cdef class Deletion(AbstractIndelContainer):
     If the deletion is of length one, start and end should be the same.
     """
 
-    def __init__(self, cAlignedSegment read,
+    def __init__(self, AlignedSegment_t read,
                  cystr contig=None, int start=-1,
                  int end=-1,
                  pysam.cfaidx.FastaFile handle=None, int window=20):
@@ -2690,7 +2690,7 @@ cdef class IndelQuiver(object):
     def values(self):
         return self.data.values()
 
-    def addRead(self, cAlignedSegment read):
+    def addRead(self, AlignedSegment_t read):
         cdef cystr SVTag
         cdef AbstractIndelContainer_t Indel
         if(read.opt("FM") < self.minFM):
@@ -2905,14 +2905,14 @@ cdef class IDVCFLine(object):
 @cython.returns(list)
 def GetSCFractionArray(inBAM):
     cdef pysam.calignmentfile.AlignmentFile inHandle
-    cdef cAlignedSegment i
+    cdef AlignedSegment_t i
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     return [FractionSoftClipped(i) for i in inHandle]
 
 
 @cython.returns(ndarray)
 def GetTlenArray(inBAM):
-    cdef cAlignedSegment i
+    cdef AlignedSegment_t i
     cdef ndarray[np.int64_t, ndim=2] tlens
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     tlens = np.array([i.tlen for i in inHandle if i.is_read1 and i.tlen != 0],
@@ -3008,8 +3008,8 @@ cdef class pFastqFile(object):
 
 
 cpdef bint ReadsOverlap(
-        cAlignedSegment read1,
-        cAlignedSegment read2):
+        AlignedSegment_t read1,
+        AlignedSegment_t read2):
     """cpdef wrapper of cReadsOverlap
     """
     return cReadsOverlap(read1, read2)

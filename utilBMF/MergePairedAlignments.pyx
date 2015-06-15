@@ -18,12 +18,11 @@ from subprocess import check_call
 from sys import maxint
 
 ##BMFTools imports
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
 from utilBMF.HTSUtils import printlog as pl, BamTag, TrimExt
 
 ##DEFINES
 oagsk = oag("firstMapped")
-omcfp = mc("cGetRefPosForFirstPos")
 oagbase = oag("base")
 oagop = oag("operation")
 oagqual = oag("quality")
@@ -78,7 +77,7 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
     except KeyError:
         pl("Watch out - FA tag not set.", level=logging.DEBUG)
         agrees = np.array([1] * len(rec.sequence), dtype=np.int64)
-    return [LayoutPos(pos=x1, readPos=x0, operation=CigarChar,
+    return [LayoutPos(pos=x1, readPos=x0, operation=77,
                       base=ord(rec.seq[x0]), quality=quals[x0],
                       agreement=agrees[x0]) if
             x1 is not None and x0 is not None else
@@ -133,6 +132,148 @@ def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):
     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]
 
 
+cdef class ArrayLayout:
+    """
+    Represents a layout as an array of arrays.
+    7 integers each for:
+        pos
+        readPos
+        operation
+        base
+        quality
+        agreement
+        mergeAgreed
+    , respectively.
+    Additional fields:
+        firstMapped
+            layout index for first "M" base.
+        
+    Test for whether a merge has been attempted
+    by seeing if mergeAgreed == 1. 1 is unset.
+    """
+    def __cinit__(self, AlignedSegment_t read):
+        self.read = read
+        self.length = getLayoutLen(read)
+        self.layoutArray = <int **>malloc(self.length *
+                                          sizeof(int) * 7)
+        self.mapq = read.mapq
+
+    def __init__(self, AlignedSegment_t read):
+        cdef char CigarOp
+        self.firstMapped = -1
+        cdef int tmpInt = 0
+        cdef tuple tmpTup
+        cdef ndarray[int, ndim=1] quals, agrees
+        try:
+            quals = np.array(read.opt("PV").split(","), dtype=np.int32)
+        except KeyError:
+            pl("Watch out - PV tag not set.", level=logging.DEBUG)
+            quals = np.array(read.query_qualities, dtype=np.int32)
+            # Let's make sure that these don't need reversal, too!
+        try:
+            agrees = np.array(read.opt("FA").split(","), dtype=np.int32)
+        except KeyError:
+            pl("Watch out - FA tag not set.", level=logging.DEBUG)
+            agrees = np.array([1] * len(read.sequence), dtype=np.int32)
+
+        # Copy out original alignment information
+        self.InitPos = read.pos
+        self.tlen = read.tlen
+        self.pnext = read.pnext
+        self.flag = read.flag
+        for tmpTup in read.cigar:
+            CigarOp = tmpTup[0]
+            for tmpInt in xrange(tmpInt, tmpInt + tmpTup[1]):
+                if(CigarOp == 0):
+                    """
+                    Case: 'M'
+                    """
+                    self.layoutArray[tmpInt] = [read.aligned_pairs[tmpInt][1],
+                                                read.aligned_pairs[tmpInt][0],
+                                                77,
+                                                ord(read.seq[tmpInt]),
+                                                quals[tmpInt],
+                                                agrees[tmpInt], 1]
+                    if(self.firstMapped < 0):
+                        self.firstMapped = tmpInt
+                elif(CigarOp == 4):
+                    """
+                    Case: 'S'
+                    """
+                    self.layoutArray[tmpInt] = [read.aligned_pairs[tmpInt][1],
+                                                -1, 68, 68,
+                                                -1, -1, 1]
+                elif(CigarOp == 1):
+                    """
+                    Case: 'I'
+                    """
+                    self.layoutArray[tmpInt] = [-1,
+                                                read.aligned_pairs[tmpInt][0],
+                                                73, ord(read.seq[tmpInt]),
+                                                quals[tmpInt],
+                                                agrees[tmpInt], 1]
+                elif(CigarOp == 2):
+                    """
+                    Case: 'D'
+                    """
+                    self.layoutArray[tmpInt] = [read.aligned_pairs[tmpInt][1],
+                                                -1,
+                                                68, 68,
+                                                -1, -1, 1]
+                else:
+                    raise NotImplementedError(
+                        "Only MIDS cigar operations currently supported. If "
+                        "you have an application that could use further "
+                        "support, please contact me.")
+
+    cdef bint cPosIsMapped(self, int position):
+        return self.layoutArray[position][3] == 77  # == "M"
+
+    cpdef bint posIsMapped(self, int position):
+        return self.cPosIsMapped(position)
+
+    cdef int getFirstMappedRefPos(self):
+        cdef int tmpInt
+        for tmpInt in xrange(self.length):
+            if(self.layoutArray[tmpInt][3] == 77):
+                return self.layoutArray[tmpInt][0]
+            # Operation is M, returns the ref position.
+        raise ImproperArgumentError(
+            "ArrayLayout has no 'M' cigar operation positions. "
+            "This read can't be layed out???")
+
+    cdef ndarray[int, ndim=1] cGetQual(self):
+        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+        # pos.base == 66 for "B", which is a blank spot.
+        # quality is set to less than 0 for an "N" cigar operation.
+        return np.array([self.layoutArray[tmpInt][4] for
+                         tmpInt in xrange(self.length)
+                         if self.layoutArray[tmpInt][4] > -1 and
+                         self.layoutArray[tmpInt][2] != 66],
+                        dtype=np.int32)
+
+    cpdef ndarray[int, ndim=1] getQual(self):
+        return self.cGetQual()
+
+    cdef cystr cGetQualString(self):
+        cdef int i
+        return "".join([ph2chrDict[i] for i in self.cGetQual()])
+
+    cpdef cystr getQualString(self):
+        return self.cGetQualString()
+
+    def __dealloc__(self):
+        free(self.layoutArray)
+'''
+    @cython.returns(cystr)
+    def __str__(self):
+        cdef int j
+        cdef int * i
+        return "|".join([":".join(map(str, [i for i in xrange(7)])) for
+                         self.layoutArray[j] for j in xrange(self.length)])
+'''
+
+
 cdef class LayoutPos:
     """
     Holds one layout position - either part of the reference,
@@ -144,9 +285,9 @@ cdef class LayoutPos:
     readPos:
         -1 if "D"
     mergeAgreed:
-        -1 = Not merged
+        1 = Not merged
         0 = Merge did not agree
-        1 = Merge Agreed
+        2 = Merge Agreed
     base:
         ascii char/int for the base
         [ord(i) for i in 'ACGNT']
@@ -159,28 +300,41 @@ cdef class LayoutPos:
     def __init__(self, int pos=-1, int readPos=-1,
                  char base=-1, char operation=-1,
                  int quality=-1, int agreement=-1,
-                 bint isMerged=False, char mergeAgreed=-1):
+                 bint merged=False, char mergeAgreed=1):
         self.pos = pos
         self.readPos = readPos
         self.operation = operation
         self.base = base
         self.quality = quality if(self.base != 78) else 0  # 78 == "N"
         self.agreement = agreement
-        self.isMerged = isMerged
+        self.merged = merged
         self.mergeAgreed = mergeAgreed
 
     cpdef bint ismapped(self):
         return self.operation == 77  # 77 == "M"
 
     cdef bint getMergeAgreed(self):
-        return self.mergeAgreed > 0
+        return self.mergeAgreed == 2
+
+    cdef bint getMergeSet(self):
+        return self.mergeAgreed != 1
 
     @cython.returns(cystr)
     def __str__(self):
         return "%s|%s|%s|%s|%s|%s|%s|%s" % (
             self.pos, self.readPos, chr(self.base), chr(self.operation),
-            self.quality, self.agreement, self.isMerged, self.mergeAgreed)
+            self.quality, self.agreement, self.merged, self.mergeAgreed)
 
+'''
+cdef class ArrayLayout:
+    def __cinit__(self, LayoutPos_t * lpp, char len, bint merged=False):
+        self.lpp = lpp
+        self.len = len
+        self.merged = merged
+'''     
+
+
+'''
 cdef class ArrayLayoutPos:
     # pos, readPos, quality, agreement, operation, base
     # cdef public cystr operation, base
@@ -207,7 +361,7 @@ cdef class ArrayLayoutPos:
                                       chr(self.values[2]),
                                       chr(self.values[3]),
                                       self.values[4], self.values[5])
-
+'''
 
 cdef class Layout(object):
     """
@@ -239,7 +393,9 @@ cdef class Layout(object):
     def __len__(self):
         return len(self.positions)
 
-    cdef ndarray[char] getSeqArr(self, dict chrDict=chrDict):
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
+    cdef ndarray[char] getSeqArr(self):
         """Returns a character array of the base calls
         if the base calls aren't "S" (83) or "D" (68)
         """
@@ -251,9 +407,13 @@ cdef class Layout(object):
                               pos.agreement > -1],
                              itemsize=1)
 
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
     cpdef cystr getSeq(self):
         return self.getSeqArr().tostring()
 
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
     cdef int cGetRefPosForFirstPos(self):
         """cdef class wrapped by pGetRefPosForFirstPos
         """
@@ -266,6 +426,8 @@ cdef class Layout(object):
     cpdef int pGetRefPosForFirstPos(self):
         return self.cGetRefPosForFirstPos()
 
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
     cpdef int getAlignmentStart(self):
         cdef LayoutPos_t i
         for i in self.positions:
@@ -294,16 +456,16 @@ cdef class Layout(object):
         return np.array([pos.quality for
                          pos in self.positions if pos.base != 66 and
                          pos.quality > -1],
-                        dtype=np.int64)
+                        dtype=np.int32)
 
     cpdef ndarray[int, ndim=1] getQual(self):
         return self.cGetQual()
 
-    cdef cystr cGetQualString(self, dict ph2chrDict=ph2chrDict):
+    cdef cystr cGetQualString(self):
         cdef int i
-        return "".join([ph2chrDict[i] for i in self.getQual()])
+        return "".join([ph2chrDict[i] for i in self.cGetQual()])
 
-    cpdef getQualString(self):
+    cpdef cystr getQualString(self):
         return self.cGetQualString()
 
     cdef int cGetLastRefPos(self):
@@ -347,7 +509,7 @@ cdef class Layout(object):
         """
         cdef LayoutPos_t lpos
         return np.array([lpos.readPos for lpos in self.positions if
-                         lpos.isMerged],
+                         lpos.merged],
                         dtype=np.int8)
 
     cdef ndarray[char, ndim=1] cGetMergeAgreements(self):
@@ -369,7 +531,7 @@ cdef class Layout(object):
         if(self.isMerged is False):
             return np.array([], dtype=np.int64)
         return np.array([p.pos for p in self.positions if
-                         p.mergeAgreed == 0 and p.pos >= 0],
+                         p.mergeAgreed == 1 and p.pos >= 0],
                         dtype=np.int64)
 
     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):
@@ -381,7 +543,7 @@ cdef class Layout(object):
         if(self.isMerged is False):
             return np.array([], dtype=np.int64)
         return np.array([p.readPos for p in self.positions if
-                         p.mergeAgreed == 0 and p.readPos >= 0],
+                         p.mergeAgreed == 1 and p.readPos >= 0],
                         dtype=np.int64)
 
     cdef update_tags_(self):
@@ -409,7 +571,7 @@ cdef class Layout(object):
             self.tagDict["om"] = BamTag("om", "i", self.mapq)
             # Original mapped position
             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
-            self.tagDict["MP"] = BamTag("MP", "A", "T")
+            self.tagDict["MP"] = BamTag("MP", "Z", "T")
 
     cpdef update_tags(self):
         self.update_tags_()
@@ -421,7 +583,13 @@ cdef class Layout(object):
         if(self.isMerged):
             self.tlen = len(self.getSeqArr())
             self.pnext = 0
-            self.mapq = -1
+            # Only change the original mapq to -1 if the tagDict entry om is
+            # present. (Original Mapping)
+            try:
+                self.tagDict["om"]
+                pass
+            except KeyError:
+                self.mapq = -1
             self.rnext = "*"
             self.flag = 2 + (16 if(self.is_reverse) else 32)
             for count, pos in enumerate(self):
@@ -431,11 +599,9 @@ cdef class Layout(object):
     def getOperations(self, oagop=oagop):
         """
         In [15]: %timeit [chr(p.operation) for p in l1.positions]
-        The slowest run took 5.12 times longer than the fastest. This could mean that an intermediate result is being cached 
         100000 loops, best of 3: 9.35 us per loop
 
         In [16]: %timeit map(chr, [p.operation for p in l1.positions])
-        The slowest run took 6.09 times longer than the fastest. This could mean that an intermediate result is being cached 
         100000 loops, best of 3: 8.69 us per loop
         """
         cdef LayoutPos_t pos
@@ -513,10 +679,10 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                                  pos1.operation,
                                  pos1.quality + pos2.quality,
                                  pos1.agreement + pos2.agreement,
-                                 isMerged=True, mergeAgreed=1)
+                                 merged=True, mergeAgreed=2)
             else:
                 return LayoutPos(pos1.pos, pos1.readPos, 66, 78, -137, -137,
-                                 isMerged=True, mergeAgreed=0)
+                                 merged=True, mergeAgreed=0)
                 # B marks a "Blank" space - for these bases, no quality entry
                 # and no sequence entry are added to the output sam read.
                 # N is the Cigar Operation
@@ -525,32 +691,32 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
         if(pos1.operation == pos2.operation):
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
                              pos1.quality + pos2.quality,
-                             pos1.agreement + pos2.agreement, isMerged=True,
-                             mergeAgreed=1)
+                             pos1.agreement + pos2.agreement, merged=True,
+                             mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
-                             isMerged=True, mergeAgreed=1)
+                             merged=True, mergeAgreed=2)
         else:
             return LayoutPos(pos1.pos, pos1.readPos, 66, 78, -137, -137,
-                             isMerged=True, mergeAgreed=0)
+                             merged=True, mergeAgreed=0)
     else:
         if(pos1.operation == pos2.operation):
             if(pos1.quality > pos2.quality):
                 return LayoutPos(
                     pos1.pos, pos1.readPos, pos1.base, pos1.operation,
                     pos1.quality - pos2.quality, pos1.agreement,
-                    isMerged=True, mergeAgreed=0)
+                    merged=True, mergeAgreed=0)
             else:
                 return LayoutPos(
                     pos1.pos, pos1.readPos, pos2.base, pos1.operation,
                     pos2.quality - pos1.quality, pos2.agreement,
-                    isMerged=True, mergeAgreed=0)
+                    merged=True, mergeAgreed=0)
         else:
             return LayoutPos(pos1.pos, pos1.readPos, 66, 78, -137, -137,
-                             isMerged=True, mergeAgreed=0)
+                             merged=True, mergeAgreed=0)
 
 
 cdef ListBool cMergeLayoutsToList(Layout_t L1, Layout_t L2):
@@ -576,8 +742,6 @@ cdef ListBool cMergeLayoutsToList(Layout_t L1, Layout_t L2):
         tmpPos = L1
         L1 = L2
         del tmpPos
-    # L1, L2 = sorted((L1, L2), key=omcfp) previous python code
-    # Rewritten to avoid the python object omcfp
     offset = L2.cGetRefPosForFirstPos() - L1.cGetRefPosForFirstPos()
     try:
         return ListBool((L1[:offset] + [cMergePositions(pos1, pos2) for
@@ -639,7 +803,7 @@ def MergePairedAlignmentsToBam(cystr inBAM, cystr outBAM=None,
 
 def MergePairedAlignments(cystr inBAM, cystr outSAM=None,
                           bint PipeToBam=False):
-    cdef cAlignedSegment read, read1, read2
+    cdef AlignedSegment_t read, read1, read2
     cdef Layout_t Layout1, Layout2, retLayout
     cdef int count = 0
     if(outSAM is None):
@@ -682,3 +846,17 @@ def MergePairedAlignments(cystr inBAM, cystr outSAM=None,
     outHandle.close()
     inHandle.close()
     return outSAM
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef int getLayoutLen(AlignedSegment_t read):
+    cdef tuple tmpTup
+    cdef int lensum = 0
+    if(read.cigarstring is None):
+        raise ImproperArgumentError(
+            "read " + read.query_name +
+            " is unmapped - no such thing as a layout length!")
+    for tmpTup in read.cigar:
+        lensum += tmpTup[1]
+    return lensum

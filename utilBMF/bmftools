@@ -44,6 +44,8 @@ def main():
         "rsq", description="Rescue fastq shading.")
     versionParser = subparsers.add_parser(
         "v", description="Outputs version of BMFTools.")
+    versionParser.add_argument(
+        "--conf", help="Path to config file, only for compatibility.")
     InputQtyParser = subparsers.add_parser(
         "qty",
         description=("Calculates the quantity of input DNA needed to reach "
@@ -634,13 +636,19 @@ def main():
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     # Begin logging
     ## Grabs first non "bmftools
-    basename = [i for i in sys.argv[2:] if i[0] != "-"][0]
-    print("basename for log: %s" % TrimExt(basename))
+    try:
+        basename = [i for i in sys.argv[2:] if i[0] != "-"][0]
+    except IndexError:
+        basename = "MetasyntacticBasename"
+    try:
+        logbasename = TrimExt(basename)
+    except IndexError:
+        logbasename = basename
     if(Chapman['logfile'] != "default"):
         logfile = Chapman['logfile']
     else:
         logfile = (os.getcwd() + "/" +
-                   TrimExt(basename).split('.')[0] +
+                   logbasename.split('.')[0] +
                    '.log')
     if(Chapman['file_prefix'] != "default"):
         logfile = os.getcwd() + "/" + Chapman['file_prefix'] + ".log"
@@ -677,7 +685,7 @@ def main():
 
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
-    print("subcommand: %s" % subcommand)
+    print("Now executable bmftools subcommand %s" % subcommand)
     if(subcommand == "qty"):
         templatesOnTarget = Palin.number_of_templates * Palin.on_target
         if(Palin.paired):
