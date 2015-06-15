@@ -20,6 +20,7 @@ try:
     import re2 as re
 except ImportError:
     import re
+# Dictionary of edit distance flags to the reference (excludes clipping)
 mmDict = {i: re.compile("NM:i:[0-%s]" % i) for i in xrange(20)}
 oagseq = attrgetter("seq")
 cfi = chain.from_iterable
@@ -120,7 +121,7 @@ cdef class KmerFetcher(object):
     """
     def __init__(self, cystr ref=None, int padding=50,
                  int mismatches=0, int minMQ=1,
-                 int k=30):
+                 int k=30, cystr aligner='mem'):
         self.ref = ref
         if(mismatches >= 0):
             self.mismatches = mismatches
@@ -131,13 +132,13 @@ cdef class KmerFetcher(object):
         self.minMQ = minMQ
         self.padding = padding
         self.k = k
+        self.aligner = aligner
         self.HashMap = {}
         self.FullMap = None
 
-    @cython.returns(dict)
     def IBedToMap(self, cystr bedpath):
         """Fills the HashMap for each line in the bed file.
-        Returns a hashmap which maps all strings within hamming distance
+        Sets the FullMap hashmap to map all strings within hamming distance
         of mismatches limit.
         I is for in-place.
         """
@@ -174,16 +175,22 @@ cdef class KmerFetcher(object):
                                                     bedline=bedline,
                                                     padding=self.padding))
 
-    cpdef cystr getOutputString(self, list bedline):
-        return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
+    cpdef cystr getOutputString(self, list bedline, cystr aligner="mem"):
+        if(aligner == "mem"):
+            return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
+        elif(aligner=="bwt"):
+            return BowtieFqToStr(self.getFastqString(bedline), ref=self.ref,
+                                 mismatches=self.mismatches)
+        else:
+            raise ValueError("Sorry, only bwa mem or bowtie is supported currently.")
 
     cpdef FillMap(self, list bedline):
         self.HashMap[
             ":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
 
     cpdef list GetUniqueKmers(self, list bedline):
-        return GetMQPassRefKmersMem(self.getOutputString(bedline),
-                                    maxNM=self.mismatches)
+        return GetMQPassRefKmersMem(self.getOutputString(bedline, aligner=self.aligner),
+                                    maxNM=self.mismatches, minMQ=self.minMQ)
 
     cpdef FMfrombed(self, cystr bedfile):
         cdef list bedline
@@ -330,10 +337,12 @@ def PassesNM(cystr rStr, int maxNM=2, dict mmDict=mmDict):
 
 
 @cython.returns(list)
-def GetMQPassRefKmersMem(cystr bwaStr, int maxNM=2):
+def GetMQPassRefKmersMem(cystr bwaStr, int maxNM=2, int minMQ=1):
     """
-    Takes a string output from bowtie and gets the names of the reads
-    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
+    Takes a string output from bowtie (SAM format) and gets the names of the reads
+    with MQ >= minMQ that are unique alignments. Returns a RefKmer object
+    built from passing bowtie output with unique mappings (no XA:Z or XT:A:R flags or
+    non-zero mapping qualities).
     """
     cdef list lines, i
     cdef cystr f
@@ -342,10 +351,11 @@ def GetMQPassRefKmersMem(cystr bwaStr, int maxNM=2):
                     pos=int(i[3])) for i in [f.strip().split("\t") for
                                              f in bwaStr.split("\n") if
                                              "XA:Z:" not in f and  # Supp aln
+                                             "XT:A:R" not in f and  # Supp aln
                                              f != "" and  # Empty line
                                              f[0] != "@" and  # Header
                                              PassesNM(f, maxNM=maxNM)]  # NM
-            if i[4] != "0"]
+            if i[4] != "0" and i[4] >= minMQ]
 
 
 @cython.returns(list)

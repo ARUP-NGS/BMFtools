@@ -17,7 +17,7 @@ cdef class KmerFetcher(object):
     cdef public cython.int getK(self)
     cdef public setK(self, cython.int)
     cpdef cystr getFastqString(self, list)
-    cpdef cystr getOutputString(self, list)
+    cpdef cystr getOutputString(self, list, str aligner=?)
     cpdef public FillMap(self, list)
     cpdef public list GetUniqueKmers(self, list)
     cpdef FMfrombed(self, cystr)

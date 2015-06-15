@@ -218,7 +218,7 @@ def main():
         "-a",
         "--aligner",
         metavar="aligner",
-        help="Aligner program (e.g. bwa mem or bwa aln)")
+        help="Aligner program (e.g. bwa 'mem' or bwa 'aln')")
     alignTagBamParser.add_argument(
         "-g",
         "--realigner",
@@ -357,6 +357,11 @@ def main():
         "--ref", "-r",
         metavar="ref",
         help="Path to reference file. (Must be faidx'd)",
+        type=str)
+    GetUniqueKmerBedParser.add_argument(
+        "--aligner", "-a",
+        metavar="aligner",
+        help="Aligner program (e.g. takes bwa 'mem' or bowtie 'bwt').",
         type=str)
     GetUniqueKmerBedParser.add_argument(
         "-k", "--kmer", help=("Length of unique sequence groups (kmers) "
@@ -872,12 +877,18 @@ def main():
         sys.exit(0)
     if(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
+        from utilBMF.HTSUtils import ParseBed
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
-                         mismatches=Chapman['mismatches'],
-                         k=Chapman['kmer'])
-        for line in Chapman['inbed']:
-            KF.FillMap("contig", start, stop)
-        KF.keys()
+                         mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
+                         k=Chapman['kmer'], aligner=Chapman['aligner'])
+
+        bedlines = ParseBed(Chapman['inbed'])
+        # Get's unique kmers in each line of bed file and loading it into the KmerFetcher
+        # HashMap object by running GetUniqueKmers: runs alignment & parses its output
+        for line in bedlines:
+            KF.FillMap(line)
+        uniquekmerList = KF.keys()
+        print uniquekmerList #need to convert this to a bed file
 
     if(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
