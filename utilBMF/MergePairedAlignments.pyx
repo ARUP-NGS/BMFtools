@@ -314,10 +314,11 @@ cdef class ArrayLayout:
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
-    cpdef cystr getSeq2(self):
+    cpdef cystr getSeq(self):
         cdef int i
         return "".join([chrDict[self.layouts[i].base] for i in
-                        xrange(self.length)])
+                        xrange(self.length) if
+                        self.layouts[i].operation != 68])
 
     @cython.returns(cystr)
     def __str__(self):
@@ -510,12 +511,16 @@ cdef class Layout(object):
         """
         return self.cGetLastRefPos()
 
-    cpdef ndarray[char, ndim=1] getMergedPositions(self):
+    cpdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):
         """
         Returns the indices of the bases in the merged read
         which have been merged.
         """
         return self.cGetMergedPositions()
+
+    cpdef list getPositions(self):
+        cdef LayoutPos_t tmpPos
+        return [tmpPos for tmpPos in self.positions]
 
     cpdef ndarray[char, ndim=1] getMergeAgreements(self):
         """
@@ -524,7 +529,7 @@ cdef class Layout(object):
         """
         return self.cGetMergeAgreements()
 
-    cdef ndarray[char, ndim=1] cGetMergedPositions(self):
+    cdef ndarray[np.int16_t, ndim=1] cGetMergedPositions(self):
         """
         Returns the indices of the bases in the merged read
         which have been merged.
@@ -532,7 +537,7 @@ cdef class Layout(object):
         cdef LayoutPos_t lpos
         return np.array([lpos.readPos for lpos in self.positions if
                          lpos.merged],
-                        dtype=np.int8)
+                        dtype=np.int16)
 
     cdef ndarray[char, ndim=1] cGetMergeAgreements(self):
         """
@@ -672,6 +677,7 @@ cdef class Layout(object):
         newRead.flag = self.getFlag()
         newRead.reference_id = PysamToChrDict[self.contig]
         newRead.query_sequence = self.getSeq()
+        print(str(self.read))
         newRead.query_qualities = [93 if(i > 92) else i for
                                    i in self.cGetQual()]
         newRead.reference_start = self.getAlignmentStart()
@@ -823,7 +829,8 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                     pos2.quality - pos1.quality, pos2.agreement,
                     merged=True, mergeAgreed=0)
         else:
-            return LayoutPos(pos1.pos, pos1.readPos, 66, 78, -137, -137,
+            return LayoutPos(pos1.pos, pos1.readPos, "N", pos1.operation,
+                             -137, -137,
                              merged=True, mergeAgreed=0)
 
 

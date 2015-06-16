@@ -97,12 +97,13 @@ cdef class Layout:
     cdef cystr cGetCigarString(self)
     cdef update_tags_(self)
     cpdef update_tags(self)
-    cdef ndarray[char, ndim=1] cGetMergedPositions(self)
+    cdef ndarray[np.int16_t, ndim=1] cGetMergedPositions(self)
     cdef ndarray[char, ndim=1] cGetMergeAgreements(self)
-    cpdef ndarray[char, ndim=1] getMergedPositions(self)
+    cpdef ndarray[np.int16_t, ndim=1] getMergedPositions(self)
     cpdef ndarray[char, ndim=1] getMergeAgreements(self)
     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self)
     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self)
+    cpdef list getPositions(self)
 
 cpdef Layout_t MergeLayoutsToLayout(Layout_t, Layout_t)
 cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
