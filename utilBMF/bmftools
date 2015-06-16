@@ -927,7 +927,7 @@ def main():
             aligner=Chapman['aligner'],
             realigner=Chapman['realigner'],
             abrapath=Chapman['abrapath'],
-            rLen=Chapman['readlength'],
+            rLen=Chapman['readLength'],
             gatkpath=Chapman['gatkpath'])
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
