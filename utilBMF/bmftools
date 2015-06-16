@@ -14,6 +14,8 @@ from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from BMFMain import Workflow as wf
 
+from utilBMF.ErrorHandling import ThisIsHKMadness
+
 global ReferenceDict
 
 """
@@ -369,6 +371,10 @@ def main():
         "-k", "--kmer", help=("Length of unique sequence groups (kmers) "
                               "to search for in the reference."),
         metavar="kmer",
+        type=int)
+    GetUniqueKmerBedParser.add_argument(
+        "-s", "--seed", help=("Seed length (for bowtie only)"),
+        metavar="seed",
         type=int)
     GetUniqueKmerBedParser.add_argument(
         "--padding", "-p",
@@ -886,9 +892,11 @@ def main():
     if(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
         from utilBMF.HTSUtils import ParseBed
+        if Chapman['aligner'] == 'bwt':
+            raise ThisIsHKMadness("Bowtie not recommended for use due to identified bugs.")
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
                          mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
-                         k=Chapman['kmer'], aligner=Chapman['aligner'])
+                         k=Chapman['kmer'], seed=Chapman['seed'], aligner=Chapman['aligner'])
 
         bedlines = ParseBed(Chapman['inbed'])
         # Get's unique kmers in each line of bed file and loading it into the KmerFetcher

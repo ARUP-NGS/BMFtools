@@ -121,7 +121,7 @@ cdef class KmerFetcher(object):
     """
     def __init__(self, cystr ref=None, int padding=50,
                  int mismatches=0, int minMQ=1,
-                 int k=30, cystr aligner='mem'):
+                 int k=30, int seed=-1, cystr aligner='mem'):
         self.ref = ref
         if(mismatches >= 0):
             self.mismatches = mismatches
@@ -132,6 +132,7 @@ cdef class KmerFetcher(object):
         self.minMQ = minMQ
         self.padding = padding
         self.k = k
+        self.seed = seed
         self.aligner = aligner
         self.HashMap = {}
         self.FullMap = None
@@ -180,7 +181,7 @@ cdef class KmerFetcher(object):
             return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
         elif(aligner=="bwt"):
             return BowtieFqToStr(self.getFastqString(bedline), ref=self.ref,
-                                 mismatches=self.mismatches)
+                                 seed=self.seed, mismatches=self.mismatches)
         else:
             raise ValueError("Sorry, only bwa mem or bowtie is supported currently.")
 
