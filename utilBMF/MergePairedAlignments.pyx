@@ -148,13 +148,22 @@ cdef class ArrayLayout:
             layout index for first "M" base.
 
     Test for whether a merge has been attempted
-    by seeing if mergeAgreed == 1. 1 is unset.
+    by seeing if mergeAgreed == 1. 1 is unset, 2 is success, 0 is failure.
     """
-    def __cinit__(self, AlignedSegment_t read):
+    def __cinit__(self, AlignedSegment_t read, bint buffer=True):
         cdef int i
         self.length = len(read.seq)
+        if(buffer):
+            self.buffered_length = abs(read.tlen)
+        else:
+            self.buffered_length = self.length
+        if(self.buffered_length > 2 * self.length):
+            print("buffered_length: %s. length: %s" % (self.buffered_length, self.length))
+            raise ImproperArgumentError(
+                "tlen for read is greater than 2 times the length of the read"
+                " - there is no overlap between R1 and R2.")
         self.layouts = <ArrayLayoutPos_t *>malloc(
-            self.length * (sizeof(ArrayLayoutPos_t)))
+            self.buffered_length * (sizeof(ArrayLayoutPos_t)))
         self.mapq = read.mapq
 
     def __init__(self, AlignedSegment_t read):
@@ -203,7 +212,7 @@ cdef class ArrayLayout:
                     """
                     Case: 'S'
                     """
-                    self.layouts[tmpInt].pos = read.aligned_pairs[tmpInt][1]
+                    self.layouts[tmpInt].pos = -1 * read.pos
                     self.layouts[tmpInt].readPos = read.aligned_pairs[tmpInt][0]
                     self.layouts[tmpInt].operation = 83
                     self.layouts[tmpInt].base = ord(read.seq[tmpInt])
@@ -271,11 +280,9 @@ cdef class ArrayLayout:
     cdef ndarray[int, ndim=1] cGetQual(self):
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
         # pos.base == 66 for "B", which is a blank spot.
-        # quality is set to less than 0 for an "N" cigar operation.
         return np.array([self.layouts[tmpInt].quality for
-                         tmpInt in xrange(self.length)
-                         if self.layouts[tmpInt].quality > -1 and
-                         self.layouts[tmpInt].base != 66],
+                         tmpInt in xrange(self.length) if
+                         self.layouts[tmpInt].operation != 68],
                         dtype=np.int32)
 
     @cython.boundscheck(False)
@@ -297,25 +304,28 @@ cdef class ArrayLayout:
     @cython.wraparound(False)
     cdef ndarray[char] getSeqArr(self):
         """Returns a character array of the base calls
-        if the operations aren't "S" (83) or "D" (68)
+        if the operations aren't "D" (68)
         """
         cdef int i
         return np.char.array([chrDict[self.layouts[i].base]
                               for i in xrange(self.length) if
-                              self.layouts[i].operation != 68 and
-                              self.layouts[i].operation != 83 and
-                              self.layouts[i].agreement > -1],
+                              self.layouts[i].operation != 68],
                              itemsize=1)
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
-    cpdef cystr getSeq(self):
-        return self.getSeqArr().tostring()
+    cpdef cystr getSeq2(self):
+        cdef int i
+        return "".join([chrDict[self.layouts[i].base] for i in
+                        xrange(self.length)])
 
     @cython.returns(cystr)
     def __str__(self):
         cdef int i, j
         raise NotImplementedError("This hasn't been made.")
+
+    cdef resize_to_buffer(self):
+        self.length = self.buffered_length
 
     cdef resize(self, size_t newSize):
         self.length = newSize
@@ -330,7 +340,7 @@ cdef class LayoutPos:
 
     All of these fields are chars/ints.
     pos:
-        -1 if "I" or "S"
+        -1 if "I", -1 * read.pos if "S"
     readPos:
         -1 if "D"
     mergeAgreed:
@@ -409,7 +419,7 @@ cdef class Layout(object):
     @cython.wraparound(False)
     cdef ndarray[char] getSeqArr(self):
         """Returns a character array of the base calls
-        if the base calls aren't "S" (83) or "D" (68)
+        if the base calls aren't "D" (68)
         """
         cdef char i
         cdef LayoutPos_t pos
@@ -427,7 +437,7 @@ cdef class Layout(object):
     @cython.boundscheck(False)
     @cython.wraparound(False)
     cdef int cGetRefPosForFirstPos(self):
-        """cdef class wrapped by pGetRefPosForFirstPos
+        """cdef class wrapped by getRefPosForFirstPos
         """
         cdef LayoutPos_t i
         cdef int count
@@ -435,7 +445,7 @@ cdef class Layout(object):
             if(i.operation == "M"):
                 return i.pos - count
 
-    cpdef int pGetRefPosForFirstPos(self):
+    cpdef int getRefPosForFirstPos(self):
         return self.cGetRefPosForFirstPos()
 
     @cython.boundscheck(False)
@@ -705,6 +715,10 @@ cdef ArrayLayout_t cMergeArrayLayouts(ArrayLayout_t L1,
                                       ArrayLayout_t L2):
     cdef ArrayLayout_t tmpLayout
     cdef int start1, start2, tmpInt, offset
+    raise NotImplementedError(
+        "I haven't been able to make this work just yet, though I could avoid"
+        " making an ArrayLayout_t object at all and simply make a new "
+        "AlignedSegment object straight from the ArrayLayout_t L1 object.")
     start1 = L1.getFirstAlignedRefPos()
     start2 = L2.getFirstAlignedRefPos()
     # Switch order.
@@ -720,9 +734,15 @@ cdef ArrayLayout_t cMergeArrayLayouts(ArrayLayout_t L1,
         L1.layouts[tmpInt + offset] = MergeALPs(L1.layouts[tmpInt +
                                                            offset],
                                                 L2.layouts[tmpInt])
+    '''
     L1.resize(L1.length + L2.length - offset)
+    Resize by realloc removed - originally allocating enough memory to
+    merge. resize_to_buffer changes L1.length to L1.buffered_length,
+    since it will have been filled in by L2's values.
+    '''
     for tmpInt in range(L2.length - offset):
         L1.layouts[tmpInt + L1.length] = L2.layouts[tmpInt + offset]
+    L1.resize_to_buffer()
     return L1
 
 
@@ -872,17 +892,33 @@ cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
 
 
 cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2):
-    return cReadsOverlap(L1.read, L2.read)
+    cdef int pos1, pos2, readlen
+    cdef LayoutPos_t tmpPos
+    if(L1.read.reference_id != L2.read.reference_id):
+        return False
+    pos1 = L1.getRefPosForFirstPos()
+    pos2 = L2.getRefPosForFirstPos()
+    readlen = len([tmpPos for tmpPos in L1.positions if
+                   tmpPos.operation != 68])
+    if(abs(pos2 - pos1) < readlen):
+        return True
+    return False
 
 
 def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
-                          bint pipe=False):
+                          bint pipe=False, int readLength=-1):
     cdef AlignedSegment_t read, read1, read2
     cdef Layout_t Layout1, Layout2, retLayout
+    cdef int rLen2
     cdef int count = 0
+    inHandle = pysam.AlignmentFile(inBAM, "rb")
+    if(readLength < 0):
+        pl("readLength not set - inferring.")
+        readLength = len(inHandle.next().seq)
+        inHandle = pysam.AlignmentFile(inBAM, "rb")
+    rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.
     if(outBAM is None):
         outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(pipe):
         outHandle = pysam.AlignmentFile("-", "wb",
                                         header=inHandle.header)
@@ -899,6 +935,11 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
             read1 = read
             continue
         read2 = read
+        if(read1.reference_id != read2.reference_id or read1.is_unmapped or
+           read2.is_unmapped or abs(read1.tlen) >= rLen2):
+            ohw(read1)
+            ohw(read2)
+            continue
         try:
             assert(read1.query_name == read2.query_name)
         except AssertionError:

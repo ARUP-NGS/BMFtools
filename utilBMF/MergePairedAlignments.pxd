@@ -4,7 +4,7 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
-from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, cReadsOverlap, BamTag
+from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, BamTag
 from cython cimport bint
 from libc.stdlib cimport malloc, free, realloc
 ctypedef Layout Layout_t
@@ -38,7 +38,7 @@ cdef class ArrayLayout:
     cdef public size_t length
 
     cdef public uchar mapq
-    cdef public int tlen, pnext, flag, InitPos, firstMapped
+    cdef public int tlen, pnext, flag, InitPos, firstMapped, buffered_length
 
     cdef public dict tagDict
 
@@ -55,6 +55,7 @@ cdef class ArrayLayout:
     cdef int getFirstMappedReadPos(self)
     cdef int getFirstMappedRefPos(self)
     cdef int getFirstAlignedRefPos(self)
+    cdef resize_to_buffer(self)
 
     
 '''
@@ -84,7 +85,7 @@ cdef class Layout:
     cpdef cystr getSeq(self)
     cdef ndarray[char] getSeqArr(self)
     cdef int cGetRefPosForFirstPos(self)
-    cpdef int pGetRefPosForFirstPos(self)
+    cpdef int getRefPosForFirstPos(self)
     cpdef ndarray[int, ndim=1] getAgreement(self)
     cdef ndarray[int, ndim=1] cGetAgreement(self)
     cdef ndarray[int, ndim=1] cGetQual(self)
@@ -121,3 +122,4 @@ cdef ArrayLayout_t cMergeArrayLayouts(ArrayLayout_t L1,
                                       ArrayLayout_t L2)
 cpdef ArrayLayout_t MergeArrayLayouts(ArrayLayout_t L1,
                                       ArrayLayout_t L2)
+cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2)
