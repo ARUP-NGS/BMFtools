@@ -6,7 +6,7 @@ cimport utilBMF.HTSUtils
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, cReadsOverlap, BamTag
 from cython cimport bint
-from libc.stdlib cimport malloc, free
+from libc.stdlib cimport malloc, free, realloc
 ctypedef Layout Layout_t
 ctypedef LayoutPos LayoutPos_t
 ctypedef ArrayLayout ArrayLayout_t
@@ -34,8 +34,7 @@ cdef class LayoutPos:
     cdef bint getMergeSet(self)
 
 cdef class ArrayLayout:
-    cdef public AlignedSegment_t read
-    cdef ArrayLayoutPos_t *layoutArray
+    cdef ArrayLayoutPos_t *layouts
     cdef public size_t length
 
     cdef public uchar mapq
@@ -52,6 +51,10 @@ cdef class ArrayLayout:
     cpdef cystr getQualString(self)
     cdef ndarray[char] getSeqArr(self)
     cpdef cystr getSeq(self)
+    cdef resize(self, size_t newSize)
+    cdef int getFirstMappedReadPos(self)
+    cdef int getFirstMappedRefPos(self)
+    cdef int getFirstAlignedRefPos(self)
 
     
 '''
@@ -111,3 +114,10 @@ cdef int getLayoutLen(AlignedSegment_t read)
 cdef class ListBool:
     cdef list List
     cdef bint Bool
+
+cdef ArrayLayoutPos_t MergeALPs(ArrayLayoutPos_t ALP1,
+                                ArrayLayoutPos_t ALP2)
+cdef ArrayLayout_t cMergeArrayLayouts(ArrayLayout_t L1,
+                                      ArrayLayout_t L2)
+cpdef ArrayLayout_t MergeArrayLayouts(ArrayLayout_t L1,
+                                      ArrayLayout_t L2)
