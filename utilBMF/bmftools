@@ -900,11 +900,19 @@ def main():
 
         bedlines = ParseBed(Chapman['inbed'])
         # Get's unique kmers in each line of bed file and loading it into the KmerFetcher
-        # HashMap object by running GetUniqueKmers: runs alignment & parses its output
+        # HashMap object (key=inbed region, value=Kmer object) by running GetUniqueKmers:
+        # runs alignment on a fastq file of kmers built in the padded bed regions
+        # & parses its output
         for line in bedlines:
             KF.FillMap(line)
         uniquekmerList = KF.keys()
+        print "Keys are"
         print uniquekmerList #need to convert this to a bed file
+        print "values are"
+        print KF.values()
+        print "First key/value is"
+        print uniquekmerList[0]
+        print KF[uniquekmerList[0]]
 
     if(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
