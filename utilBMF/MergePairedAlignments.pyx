@@ -314,7 +314,7 @@ cdef class ArrayLayout:
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
-    cpdef cystr getSeq2(self):
+    cpdef cystr getSeq(self):
         cdef int i
         return "".join([chrDict[self.layouts[i].base] for i in
                         xrange(self.length)])
