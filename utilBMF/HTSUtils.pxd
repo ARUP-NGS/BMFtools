@@ -135,6 +135,8 @@ cdef class pFastqProxy:
     cpdef cystr getBS(self)
     cdef cystr tostring(self)
     cpdef carray getQualArray(self)
+    cdef int cGetFM(self)
+    cpdef int getFM(self)
 
 
 cdef class pFastqFile(object):

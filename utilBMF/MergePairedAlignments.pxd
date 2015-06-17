@@ -4,7 +4,7 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
-from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, BamTag
+from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, BamTag, cReadsOverlap
 from cython cimport bint
 from libc.stdlib cimport malloc, free, realloc
 from libc.stdint cimport uint16_t
@@ -35,12 +35,12 @@ cdef extern from "MPA.h":
     ArrayLayoutPos_t cMergeLayoutPositions(ArrayLayoutPos_t L1, ArrayLayoutPos_t L2)
     int getFirstAlignedRefPos(ArrayLayout_t layout)
     ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2)
-    MergeRet_t MergeWithPassFail(ArrayLayout_t AL1, ArrayLayout_t AL2)
 
 
 cdef class Layout:
     cdef ArrayLayout_t Layout
 
+    cdef AlignedSegment_t read
     cdef public uchar mapq
     cdef public int tlen, pnext, flag, InitPos, firstMapped, reference_id, pos, rnext
     cdef public dict tagDict
@@ -68,10 +68,8 @@ cdef class Layout:
     # Utilities for creating output objects
     cdef cystr cGetCigarString(self)
     cpdef cystr getCigarString(self)
-    cdef cystr cGetCigarString2(self)
-    cpdef cystr getCigarString2(self)
 
-    cdef ndarray[np.int16_t, ndim=1] cGetQual(self)
+    cdef ndarray[int, ndim=1] cGetQual(self)
     cpdef ndarray[int, ndim=1] getQual(self)
 
     cdef cystr cGetQualString(self)
@@ -83,14 +81,17 @@ cdef class Layout:
 
     # Utilities for BMF metadata
     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self)
-    cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self)
+    cdef ndarray[np.int16_t, ndim=1] cGetReadDiscordantPositions(self)
     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self)
 
     # Output objects
-    cdef AlignedSegment_t __read__(self)
+    cpdef AlignedSegment_t __read__(self)
+    cdef AlignedSegment_t __cread__(self)
+    cdef AlignedSegment_t __newread__(self)
 
     # Updates
     cdef update_read_positions(self)
+    cdef update_read(self)
 
 
 cdef public dict chrDict, CigarDict, CigarStrDict

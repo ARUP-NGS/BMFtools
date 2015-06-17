@@ -323,8 +323,24 @@ cdef class pFastqProxy:
     def __str__(self):
         return self.tostring()
 
+    cpdef int getFM(self):
+        return self.cGetFM()
+
+    cdef int cGetFM(self):
+        cdef cystr entry, key, value
+        for entry in self.comment.split("|")[1:]:
+            key, value = entry.split("=")
+            if(key == "FM"):
+                return int(value)
+        return -1
+
     cdef cystr cGetBS(self):
-        return self.comment.split("|")[2].split("=")[1]
+        cdef cystr entry, key, value
+        for entry in self.comment.split("|")[1:]:
+            key, value = entry.split("=")
+            if(key == "BS"):
+                return value
+        return ""
 
     cpdef cystr getBS(self):
         return self.cGetBS()
@@ -1089,13 +1105,16 @@ def GetReadPair(inHandle):
 
 cdef bint cReadsOverlap(AlignedSegment_t read1,
                         AlignedSegment_t read2):
-    if(read1.reference_id != read2.reference_id):
-        return False
-    if(read1.reference_start > read2.reference_end or
+    # Same strand or different contigs.
+    if(read1.is_unmapped or read2.is_unmapped or
+       read1.reference_id != read2.reference_id or
+       read1.is_reverse == read2.is_reverse or
+       read1.reference_start > read2.reference_end or
        read1.reference_end < read2.reference_start):
         return False
-    else:
-        return True
+    if(abs(read1.tlen) >= len(read1.seq) + len(read2.seq)):
+        return False
+    return True
 
 
 def ReadPairsInsertSizeWithinDistance(ReadPair1, ReadPair2, distance=300):

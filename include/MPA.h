@@ -26,4 +26,4 @@ typedef struct MergeRet {
 ArrayLayoutPos_t cMergeLayoutPositions(ArrayLayoutPos_t L1, ArrayLayoutPos_t L2);
 int getFirstAlignedRefPos(ArrayLayout_t layout);
 ArrayLayout_t MergeLayouts(ArrayLayout_t L1, ArrayLayout_t L2);
-MergeRet_t MergeWithPassFail(ArrayLayout_t AL1, ArrayLayout_t AL2);
+//ArrayLayout_t MergeWithPassFail(ArrayLayout_t AL1, ArrayLayout_t AL2);
