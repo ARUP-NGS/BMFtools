@@ -1,11 +1,12 @@
-try:
-    import re2 as re
-except ImportError:
-    import re
 import subprocess
 import time
 import logging
 from subprocess import check_call, CalledProcessError
+try:
+    from re2 import findall
+except ImportError:
+    print("re2 import failed - falling back to re.")
+    from re import findall
 
 import cython
 import numpy as np
@@ -104,7 +105,7 @@ def pairedBamProc(consfq1, consfq2, opts="",
         p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
         out, err = p.communicate()
         pl("Number of families found: {}".format(
-            re.findall(r'\d+', out)[0]))
+            findall(r'\d+', out)[0]))
         histochart = BCBam.GenerateFamilyHistochart(barIndex)
     tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
     summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])

@@ -14,7 +14,7 @@ from distutils.core import setup
 
 marchFlag = "-march=native"
 
-compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse"]
+compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse", "-std=c99"]
 
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",

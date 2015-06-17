@@ -33,14 +33,12 @@ import sys
 import time
 import uuid
 try:
-    import re2 as re
-    from re2 import finditer
+    from re2 import finditer, compile as regex_compile
 except ImportError:
     print("Tried to load re2, a faster version of re. Failed. "
           "Importing regular re.")
     import re
-    from re import finditer
-regexcompile = re.compile
+    from re import finditer, compile as regex_compile
 
 oig1 = oig(1)
 oig0 = oig(0)
@@ -1762,8 +1760,8 @@ def SWRealignAS(AlignedSegment_t read,
                  "Returning original read.", level=logging.INFO)
         return read
     # Now check the cigar string.
-    ra = regexcompile("[A-Z]")
-    rn = regexcompile("[0-9]")
+    ra = regex_compile("[A-Z]")
+    rn = regex_compile("[0-9]")
     letters = [i for i in rn.split(alignedArr[5]) if i != ""]
     numbers = [int(i) for i in ra.split(alignedArr[5])[:-1]]
     # Calculate aligned fraction. Fail realignment if minAF not met.

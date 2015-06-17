@@ -729,14 +729,6 @@ typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
  * ctypedef ReadPair ReadPair_t
  */
 typedef __pyx_t_5numpy_longdouble_t __pyx_t_7utilBMF_8HTSUtils_dtype128_t;
-
-/* "utilBMF/MergePairedAlignments.pxd":11
- * from libc.stdlib cimport malloc, free, realloc
- * ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
- * ctypedef unsigned char uchar             # <<<<<<<<<<<<<<
- * ctypedef BamTag BamTag_t
- * ctypedef Layout Layout_t
- */
 typedef unsigned char __pyx_t_7utilBMF_21MergePairedAlignments_uchar;
 #if CYTHON_CCOMPLEX
   #ifdef __cplusplus
@@ -1063,16 +1055,16 @@ struct __pyx_opt_args_7utilBMF_8HTSUtils_WritePairToHandle {
   struct __pyx_obj_5pysam_14calignmentfile_AlignmentFile *handle;
 };
 
-/* "utilBMF/MergePairedAlignments.pxd":10
- * from cython cimport bint
+/* "utilBMF/MergePairedAlignments.pxd":11
  * from libc.stdlib cimport malloc, free, realloc
+ * from libc.stdint cimport uint16_t
  * ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t             # <<<<<<<<<<<<<<
  * ctypedef unsigned char uchar
  * ctypedef BamTag BamTag_t
  */
 typedef struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t;
 
-/* "utilBMF/MergePairedAlignments.pxd":12
+/* "utilBMF/MergePairedAlignments.pxd":13
  * ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
  * ctypedef unsigned char uchar
  * ctypedef BamTag BamTag_t             # <<<<<<<<<<<<<<
@@ -1081,7 +1073,7 @@ typedef struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *__pyx_t_7utilBM
  */
 typedef struct __pyx_obj_7utilBMF_8HTSUtils_BamTag *__pyx_t_7utilBMF_21MergePairedAlignments_BamTag_t;
 
-/* "utilBMF/MergePairedAlignments.pxd":13
+/* "utilBMF/MergePairedAlignments.pxd":14
  * ctypedef unsigned char uchar
  * ctypedef BamTag BamTag_t
  * ctypedef Layout Layout_t             # <<<<<<<<<<<<<<
@@ -1090,23 +1082,32 @@ typedef struct __pyx_obj_7utilBMF_8HTSUtils_BamTag *__pyx_t_7utilBMF_21MergePair
  */
 typedef struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_t_7utilBMF_21MergePairedAlignments_Layout_t;
 
-/* "utilBMF/MergePairedAlignments.pxd":14
+/* "utilBMF/MergePairedAlignments.pxd":15
  * ctypedef BamTag BamTag_t
  * ctypedef Layout Layout_t
  * ctypedef ArrayLayoutPos ArrayLayoutPos_t             # <<<<<<<<<<<<<<
  * ctypedef ArrayLayout ArrayLayout_t
- * 
+ * ctypedef MergeRet MergeRet_t
  */
 typedef struct ArrayLayoutPos __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t;
 
-/* "utilBMF/MergePairedAlignments.pxd":15
+/* "utilBMF/MergePairedAlignments.pxd":16
  * ctypedef Layout Layout_t
  * ctypedef ArrayLayoutPos ArrayLayoutPos_t
  * ctypedef ArrayLayout ArrayLayout_t             # <<<<<<<<<<<<<<
- * 
+ * ctypedef MergeRet MergeRet_t
  * 
  */
 typedef struct ArrayLayout __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t;
+
+/* "utilBMF/MergePairedAlignments.pxd":17
+ * ctypedef ArrayLayoutPos ArrayLayoutPos_t
+ * ctypedef ArrayLayout ArrayLayout_t
+ * ctypedef MergeRet MergeRet_t             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+typedef struct MergeRet __pyx_t_7utilBMF_21MergePairedAlignments_MergeRet_t;
 
 /* "cfaidx.pxd":18
  *         char *s
@@ -1744,7 +1745,7 @@ struct __pyx_obj_7utilBMF_8HTSUtils_BamTag {
 };
 
 
-/* "utilBMF/MergePairedAlignments.pxd":35
+/* "utilBMF/MergePairedAlignments.pxd":41
  * 
  * 
  * cdef class Layout:             # <<<<<<<<<<<<<<
@@ -1761,11 +1762,18 @@ struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout {
   int flag;
   int InitPos;
   int firstMapped;
+  int reference_id;
+  int pos;
+  int rnext;
   PyObject *tagDict;
+  __pyx_t_7utilBMF_8HTSUtils_cystr Name;
+  int is_reverse;
+  int isMerged;
+  int MergeSuccess;
 };
 
 
-/* "utilBMF/MergePairedAlignments.pxd":62
+/* "utilBMF/MergePairedAlignments.pxd":100
  * cpdef cystr ALPToStr(ArrayLayoutPos_t ALP)
  * 
  * cdef class ListBool:             # <<<<<<<<<<<<<<
@@ -2144,7 +2152,7 @@ struct __pyx_vtabstruct_7utilBMF_8HTSUtils_pFastqFile {
 static struct __pyx_vtabstruct_7utilBMF_8HTSUtils_pFastqFile *__pyx_vtabptr_7utilBMF_8HTSUtils_pFastqFile;
 
 
-/* "utilBMF/MergePairedAlignments.pyx":74
+/* "utilBMF/MergePairedAlignments.pyx":78
  * 
  * 
  * cdef class Layout:             # <<<<<<<<<<<<<<
@@ -2154,9 +2162,22 @@ static struct __pyx_vtabstruct_7utilBMF_8HTSUtils_pFastqFile *__pyx_vtabptr_7uti
 
 struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout {
   int (*getFirstAlignedRefPos)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  int (*getFirstMappedReadPos)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  int (*getAlignmentStart)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
   int (*cPosIsMapped)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int);
   int (*posIsMapped)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int, int __pyx_skip_dispatch);
-  int (*getFirstMappedRefPos)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyObject *(*MergeLayouts_in_place)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t);
+  PyObject *(*MergeLayout)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t, int __pyx_skip_dispatch);
+  PyObject *(*update_tags_)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyArrayObject *(*getMergedPositions)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyArrayObject *(*getAgreement)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
+  PyArrayObject *(*cGetAgreement)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyArrayObject *(*getOperations)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
+  PyArrayObject *(*cGetOperations)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  __pyx_t_7utilBMF_8HTSUtils_cystr (*cGetCigarString)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  __pyx_t_7utilBMF_8HTSUtils_cystr (*getCigarString)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
+  __pyx_t_7utilBMF_8HTSUtils_cystr (*cGetCigarString2)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  __pyx_t_7utilBMF_8HTSUtils_cystr (*getCigarString2)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
   PyArrayObject *(*cGetQual)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
   PyArrayObject *(*getQual)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
   __pyx_t_7utilBMF_8HTSUtils_cystr (*cGetQualString)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
@@ -2164,8 +2185,11 @@ struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout {
   PyArrayObject *(*cGetSeqArr)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
   PyArrayObject *(*getSeqArr)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
   __pyx_t_7utilBMF_8HTSUtils_cystr (*getSeq)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch);
-  int (*getFirstMappedReadPos)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
-  PyObject *(*MergeLayouts_in_place)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t);
+  PyArrayObject *(*cGetGenomicDiscordantPositions)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyArrayObject *(*cGetReadDiscordantPositions)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyArrayObject *(*getMergeAgreements)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t (*__pyx___read__)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
+  PyObject *(*update_read_positions)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *);
 };
 static struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *__pyx_vtabptr_7utilBMF_21MergePairedAlignments_Layout;
 
@@ -2327,6 +2351,30 @@ static void __Pyx_ExceptionReset(PyObject *type, PyObject *value, PyObject *tb);
 
 static int __Pyx_GetException(PyObject **type, PyObject **value, PyObject **tb);
 
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg);
+#endif
+
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg);
+
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func);
+#else
+#define __Pyx_PyObject_CallNoArg(func) __Pyx_PyObject_Call(func, __pyx_empty_tuple, NULL)
+#endif
+
+#include <string.h>
+
+static CYTHON_INLINE int __Pyx_PyBytes_Equals(PyObject* s1, PyObject* s2, int equals);
+
+static CYTHON_INLINE int __Pyx_PyUnicode_Equals(PyObject* s1, PyObject* s2, int equals);
+
+#if PY_MAJOR_VERSION >= 3
+#define __Pyx_PyString_Equals __Pyx_PyUnicode_Equals
+#else
+#define __Pyx_PyString_Equals __Pyx_PyBytes_Equals
+#endif
+
 static void __Pyx_RaiseBufferIndexError(int axis);
 
 #define __Pyx_BufPtrStrided1d(type, buf, i0, s0) (type)((char*)buf + i0 * s0)
@@ -2335,21 +2383,9 @@ static CYTHON_INLINE void __Pyx_ErrFetch(PyObject **type, PyObject **value, PyOb
 
 static void __Pyx_Raise(PyObject *type, PyObject *value, PyObject *tb, PyObject *cause);
 
-#if CYTHON_COMPILING_IN_CPYTHON
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg);
-#endif
-
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg);
-
 static void __Pyx_WriteUnraisable(const char *name, int clineno,
                                   int lineno, const char *filename,
                                   int full_traceback);
-
-#if CYTHON_COMPILING_IN_CPYTHON
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func);
-#else
-#define __Pyx_PyObject_CallNoArg(func) __Pyx_PyObject_Call(func, __pyx_empty_tuple, NULL)
-#endif
 
 #if PY_MAJOR_VERSION < 3
 #define __Pyx_PyString_Join __Pyx_PyBytes_Join
@@ -2388,7 +2424,36 @@ static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key) {
     #define __Pyx_PyDict_GetItem(d, key) PyObject_GetItem(d, key)
 #endif
 
+#if CYTHON_COMPILING_IN_CPYTHON
+#define __Pyx_PyObject_DelAttrStr(o,n) __Pyx_PyObject_SetAttrStr(o,n,NULL)
+static CYTHON_INLINE int __Pyx_PyObject_SetAttrStr(PyObject* obj, PyObject* attr_name, PyObject* value) {
+    PyTypeObject* tp = Py_TYPE(obj);
+    if (likely(tp->tp_setattro))
+        return tp->tp_setattro(obj, attr_name, value);
+#if PY_MAJOR_VERSION < 3
+    if (likely(tp->tp_setattr))
+        return tp->tp_setattr(obj, PyString_AS_STRING(attr_name), value);
+#endif
+    return PyObject_SetAttr(obj, attr_name, value);
+}
+#else
+#define __Pyx_PyObject_DelAttrStr(o,n)   PyObject_DelAttr(o,n)
+#define __Pyx_PyObject_SetAttrStr(o,n,v) PyObject_SetAttr(o,n,v)
+#endif
+
+static PyObject* __Pyx_PyObject_CallMethod0(PyObject* obj, PyObject* method_name);
+
 static CYTHON_INLINE void __Pyx_RaiseNoneNotIterableError(void);
+
+static void __Pyx_UnpackTupleError(PyObject *, Py_ssize_t index);
+
+static CYTHON_INLINE int __Pyx_unpack_tuple2(PyObject* tuple, PyObject** value1, PyObject** value2,
+                                             int is_tuple, int has_known_size, int decref_tuple);
+
+static CYTHON_INLINE PyObject* __Pyx_dict_iterator(PyObject* dict, int is_dict, PyObject* method_name,
+                                                   Py_ssize_t* p_orig_length, int* p_is_dict);
+static CYTHON_INLINE int __Pyx_dict_iter_next(PyObject* dict_or_iter, Py_ssize_t orig_length, Py_ssize_t* ppos,
+                                              PyObject** pkey, PyObject** pvalue, PyObject** pitem, int is_dict);
 
 static int __Pyx_SetVtable(PyObject *dict, void *vtable);
 
@@ -2442,6 +2507,8 @@ static PyObject *__Pyx_Import(PyObject *name, PyObject *from_list, int level);
 
 static CYTHON_INLINE int __Pyx_PyInt_As_int(PyObject *);
 
+static CYTHON_INLINE uint16_t __Pyx_PyInt_As_uint16_t(PyObject *);
+
 static CYTHON_INLINE char __Pyx_PyInt_As_char(PyObject *);
 
 static CYTHON_INLINE long __Pyx_PyInt_As_long(PyObject *);
@@ -2464,8 +2531,14 @@ static int __Pyx_PrintOne(PyObject* stream, PyObject *o);
 
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_char(char value);
 
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_uint16_t(uint16_t value);
+
 static PyObject* __pyx_convert__to_py_ArrayLayoutPos(struct ArrayLayoutPos s);
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_char(unsigned char value);
+
+static CYTHON_INLINE npy_int16 __Pyx_PyInt_As_npy_int16(PyObject *);
+
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_npy_int16(npy_int16 value);
 
 #ifndef _ARRAYARRAY_H
 #define _ARRAYARRAY_H
@@ -2677,23 +2750,6 @@ static CYTHON_INLINE __pyx_t_double_complex __pyx_t_double_complex_from_parts(do
 
 static int __Pyx_check_binary_version(void);
 
-#if CYTHON_COMPILING_IN_CPYTHON
-#define __Pyx_PyObject_DelAttrStr(o,n) __Pyx_PyObject_SetAttrStr(o,n,NULL)
-static CYTHON_INLINE int __Pyx_PyObject_SetAttrStr(PyObject* obj, PyObject* attr_name, PyObject* value) {
-    PyTypeObject* tp = Py_TYPE(obj);
-    if (likely(tp->tp_setattro))
-        return tp->tp_setattro(obj, attr_name, value);
-#if PY_MAJOR_VERSION < 3
-    if (likely(tp->tp_setattr))
-        return tp->tp_setattr(obj, PyString_AS_STRING(attr_name), value);
-#endif
-    return PyObject_SetAttr(obj, attr_name, value);
-}
-#else
-#define __Pyx_PyObject_DelAttrStr(o,n)   PyObject_DelAttr(o,n)
-#define __Pyx_PyObject_SetAttrStr(o,n,v) PyObject_SetAttr(o,n,v)
-#endif
-
 static int __Pyx_ExportVoidPtr(PyObject *name, void *p, const char *sig);
 
 static int __Pyx_ExportFunction(const char *name, void (*f)(void), const char *sig);
@@ -2720,7 +2776,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cPosIsMapped(struct 
 static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_v_position, int __pyx_skip_dispatch); /* proto*/
 static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPos(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
 static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstAlignedRefPos(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
-static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAlignmentStart(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
 static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
 static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getQual(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
 static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQualString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
@@ -2728,7 +2784,23 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
 static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqArr(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
 static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
 static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeq(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
+static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayout(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_pairedLayout, int __pyx_skip_dispatch); /* proto*/
 static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayouts_in_place(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t __pyx_v_pairedLayout); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getMergeAgreements(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getMergedPositions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_update_tags_(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_update_read_positions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetGenomicDiscordantPositions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetReadDiscordantPositions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAgreement(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetAgreement(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_f_7utilBMF_21MergePairedAlignments_6Layout___read__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getOperations(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetOperations(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetCigarString2(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetCigarString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto*/
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString2(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch); /* proto*/
 
 /* Module declarations from 'cython.view' */
 
@@ -2917,8 +2989,12 @@ static PyTypeObject *__pyx_ptype_7utilBMF_21MergePairedAlignments_Layout = 0;
 static PyTypeObject *__pyx_ptype_7utilBMF_21MergePairedAlignments_ListBool = 0;
 __PYX_EXTERN_C DL_EXPORT(PyObject) *__pyx_v_7utilBMF_21MergePairedAlignments_chrDict;
 __PYX_EXTERN_C DL_EXPORT(PyObject) *__pyx_v_7utilBMF_21MergePairedAlignments_CigarDict;
+__PYX_EXTERN_C DL_EXPORT(PyObject) *__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict;
+static PyObject *__pyx_v_7utilBMF_21MergePairedAlignments_oagtag = 0;
 static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_ALPToStr(__pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t, int __pyx_skip_dispatch); /*proto*/
 static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *); /*proto*/
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int(int *, Py_ssize_t); /*proto*/
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int(int *, Py_ssize_t); /*proto*/
 static __Pyx_TypeInfo __Pyx_TypeInfo_int = { "int", NULL, sizeof(int), { 0 }, 0, IS_UNSIGNED(int) ? 'U' : 'I', IS_UNSIGNED(int), 0 };
 #define __Pyx_MODULE_NAME "utilBMF.MergePairedAlignments"
 int __pyx_module_is_main_utilBMF__MergePairedAlignments = 0;
@@ -2932,13 +3008,15 @@ static PyObject *__pyx_builtin_ord;
 static PyObject *__pyx_builtin_NotImplementedError;
 static PyObject *__pyx_builtin_range;
 static PyObject *__pyx_builtin_map;
+static PyObject *__pyx_builtin_sorted;
+static PyObject *__pyx_builtin_AttributeError;
 static PyObject *__pyx_builtin_MemoryError;
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_RuntimeError;
 static PyObject *__pyx_builtin_TypeError;
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_8ListBool___cinit__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_ListBool *__pyx_v_self, PyObject *__pyx_v_List, int __pyx_v_Bool); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_lambda1None(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_i); /* proto */
-static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos(CYTHON_UNUSED PyObject *__pyx_self, struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *__pyx_v_rec); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos(CYTHON_UNUSED PyObject *__pyx_self, __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_rec); /* proto */
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read); /* proto */
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4posIsMapped(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_v_position); /* proto */
@@ -2948,6 +3026,13 @@ static void __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10__dealloc__(stru
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12getSeqArr(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_14getSeq(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_16__str__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_18MergeLayout(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_pairedLayout); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_20update(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_22getAgreement(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_24getOperations(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_26getCigarString2(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_28getCigarString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_30getFlag(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4mapq___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4mapq_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4tlen___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
@@ -2960,23 +3045,49 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7InitPos___ge
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7InitPos_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_11firstMapped___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_11firstMapped_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12reference_id___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_3pos___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_3pos_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5rnext___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5rnext_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7tagDict___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7tagDict_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7tagDict_4__del__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name_4__del__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_8isMerged___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self); /* proto */
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignments(CYTHON_UNUSED PyObject *__pyx_self, __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_inBAM, __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_outBAM, int __pyx_v_pipe, int __pyx_v_readLength); /* proto */
 static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6ALPToStr(CYTHON_UNUSED PyObject *__pyx_self, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t __pyx_v_ALP); /* proto */
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_8testLayout(CYTHON_UNUSED PyObject *__pyx_self, __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_inBAM, __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_outBAM); /* proto */
 static int __pyx_pf_7cpython_5array_5array___getbuffer__(arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info, CYTHON_UNUSED int __pyx_v_flags); /* proto */
 static void __pyx_pf_7cpython_5array_5array_2__releasebuffer__(CYTHON_UNUSED arrayobject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static PyObject *__pyx_tp_new_7utilBMF_21MergePairedAlignments_Layout(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_7utilBMF_21MergePairedAlignments_ListBool(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
+static char __pyx_k_A[] = "A";
 static char __pyx_k_B[] = "B";
+static char __pyx_k_D[] = "D";
+static char __pyx_k_F[] = "F";
 static char __pyx_k_H[] = "H";
 static char __pyx_k_I[] = "I";
 static char __pyx_k_L[] = "L";
+static char __pyx_k_M[] = "M";
+static char __pyx_k_N[] = "N";
 static char __pyx_k_O[] = "O";
+static char __pyx_k_P[] = "P";
 static char __pyx_k_Q[] = "Q";
+static char __pyx_k_S[] = "S";
+static char __pyx_k_T[] = "T";
+static char __pyx_k_X[] = "X";
+static char __pyx_k_Z[] = "Z";
 static char __pyx_k_b[] = "b";
 static char __pyx_k_d[] = "d";
 static char __pyx_k_f[] = "f";
@@ -2985,26 +3096,38 @@ static char __pyx_k_h[] = "h";
 static char __pyx_k_i[] = "i";
 static char __pyx_k_l[] = "l";
 static char __pyx_k_q[] = "q";
+static char __pyx_k_DG[] = "DG";
+static char __pyx_k_DR[] = "DR";
 static char __pyx_k_FA[] = "FA";
+static char __pyx_k_MA[] = "MA";
+static char __pyx_k_MP[] = "MP";
+static char __pyx_k_PM[] = "PM";
 static char __pyx_k_PV[] = "PV";
 static char __pyx_k_Zd[] = "Zd";
 static char __pyx_k_Zf[] = "Zf";
 static char __pyx_k_Zg[] = "Zg";
 static char __pyx_k__2[] = ",";
 static char __pyx_k_mc[] = "mc";
+static char __pyx_k_mp[] = "mp";
 static char __pyx_k_np[] = "np";
+static char __pyx_k_om[] = "om";
+static char __pyx_k_op[] = "op";
+static char __pyx_k_ot[] = "ot";
 static char __pyx_k_pl[] = "pl";
 static char __pyx_k_rb[] = "rb";
 static char __pyx_k_wb[] = "wb";
-static char __pyx_k__10[] = "";
-static char __pyx_k__11[] = "#";
-static char __pyx_k__13[] = "-";
-static char __pyx_k__15[] = "|";
+static char __pyx_k__11[] = "";
+static char __pyx_k__12[] = "#";
+static char __pyx_k__15[] = "-";
+static char __pyx_k__17[] = "|";
+static char __pyx_k__38[] = "=";
 static char __pyx_k_chr[] = "chr";
 static char __pyx_k_end[] = "end";
+static char __pyx_k_key[] = "key";
 static char __pyx_k_map[] = "map";
 static char __pyx_k_oag[] = "oag";
 static char __pyx_k_ohw[] = "ohw";
+static char __pyx_k_oig[] = "oig";
 static char __pyx_k_opt[] = "opt";
 static char __pyx_k_ord[] = "ord";
 static char __pyx_k_pos[] = "pos";
@@ -3018,13 +3141,16 @@ static char __pyx_k_base[] = "base";
 static char __pyx_k_char[] = "char";
 static char __pyx_k_file[] = "file";
 static char __pyx_k_flag[] = "flag";
+static char __pyx_k_int8[] = "int8";
 static char __pyx_k_izip[] = "izip";
 static char __pyx_k_join[] = "join";
 static char __pyx_k_main[] = "__main__";
 static char __pyx_k_mapq[] = "mapq";
 static char __pyx_k_next[] = "next";
+static char __pyx_k_oig0[] = "oig0";
 static char __pyx_k_pipe[] = "pipe";
 static char __pyx_k_read[] = "read";
+static char __pyx_k_tags[] = "tags";
 static char __pyx_k_test[] = "__test__";
 static char __pyx_k_tlen[] = "tlen";
 static char __pyx_k_uuid[] = "uuid";
@@ -3049,17 +3175,22 @@ static char __pyx_k_rLen2[] = "rLen2";
 static char __pyx_k_range[] = "range";
 static char __pyx_k_read1[] = "read1";
 static char __pyx_k_read2[] = "read2";
+static char __pyx_k_rnext[] = "rnext";
 static char __pyx_k_split[] = "split";
 static char __pyx_k_write[] = "write";
 static char __pyx_k_BamTag[] = "BamTag";
+static char __pyx_k_astype[] = "astype";
 static char __pyx_k_getSeq[] = "getSeq";
 static char __pyx_k_header[] = "header";
 static char __pyx_k_import[] = "__import__";
+static char __pyx_k_layout[] = "layout";
 static char __pyx_k_length[] = "length";
 static char __pyx_k_maxint[] = "maxint";
 static char __pyx_k_oagtag[] = "oagtag";
 static char __pyx_k_outBAM[] = "outBAM";
 static char __pyx_k_read_2[] = "read ";
+static char __pyx_k_sorted[] = "sorted";
+static char __pyx_k_update[] = "update";
 static char __pyx_k_xrange[] = "xrange";
 static char __pyx_k_Layout1[] = "Layout1";
 static char __pyx_k_Layout2[] = "Layout2";
@@ -3075,6 +3206,7 @@ static char __pyx_k_quality[] = "quality";
 static char __pyx_k_readPos[] = "readPos";
 static char __pyx_k_ALPToStr[] = "ALPToStr";
 static char __pyx_k_KeyError[] = "KeyError";
+static char __pyx_k_get_tags[] = "get_tags";
 static char __pyx_k_inHandle[] = "inHandle";
 static char __pyx_k_is_read1[] = "is_read1";
 static char __pyx_k_itemsize[] = "itemsize";
@@ -3082,12 +3214,15 @@ static char __pyx_k_operator[] = "operator";
 static char __pyx_k_printlog[] = "printlog";
 static char __pyx_k_pyx_capi[] = "__pyx_capi__";
 static char __pyx_k_sequence[] = "sequence";
+static char __pyx_k_template[] = "template";
 static char __pyx_k_tmpInt_s[] = "tmpInt: %s.";
 static char __pyx_k_CigarDict[] = "CigarDict";
 static char __pyx_k_TypeError[] = "TypeError";
 static char __pyx_k_a_mapping[] = "a mapping";
 static char __pyx_k_agreement[] = "agreement";
+static char __pyx_k_fromtuple[] = "fromtuple";
 static char __pyx_k_getSeqArr[] = "getSeqArr";
+static char __pyx_k_iteritems[] = "iteritems";
 static char __pyx_k_itertools[] = "itertools";
 static char __pyx_k_operation[] = "operation";
 static char __pyx_k_outHandle[] = "outHandle";
@@ -3095,26 +3230,40 @@ static char __pyx_k_retLayout[] = "retLayout";
 static char __pyx_k_ValueError[] = "ValueError";
 static char __pyx_k_attrgetter[] = "attrgetter";
 static char __pyx_k_check_call[] = "check_call";
+static char __pyx_k_is_reverse[] = "is_reverse";
+static char __pyx_k_itemgetter[] = "itemgetter";
+static char __pyx_k_itervalues[] = "itervalues";
 static char __pyx_k_pyx_vtable[] = "__pyx_vtable__";
 static char __pyx_k_query_name[] = "query_name";
 static char __pyx_k_readLength[] = "readLength";
 static char __pyx_k_subprocess[] = "subprocess";
+static char __pyx_k_testLayout[] = "testLayout";
 static char __pyx_k_MemoryError[] = "MemoryError";
+static char __pyx_k_MergeLayout[] = "MergeLayout";
 static char __pyx_k_cigarstring[] = "cigarstring";
 static char __pyx_k_firstMapped[] = "firstMapped";
 static char __pyx_k_is_unmapped[] = "is_unmapped";
 static char __pyx_k_lambda1None[] = "lambda1None";
 static char __pyx_k_mergeAgreed[] = "mergeAgreed";
 static char __pyx_k_posIsMapped[] = "posIsMapped";
+static char __pyx_k_CigarStrDict[] = "CigarStrDict";
 static char __pyx_k_RuntimeError[] = "RuntimeError";
+static char __pyx_k_getAgreement[] = "getAgreement";
 static char __pyx_k_is_secondary[] = "is_secondary";
 static char __pyx_k_methodcaller[] = "methodcaller";
 static char __pyx_k_reference_id[] = "reference_id";
 static char __pyx_k_AlignmentFile[] = "AlignmentFile";
 static char __pyx_k_ThisIsMadness[] = "ThisIsMadness";
 static char __pyx_k_aligned_pairs[] = "aligned_pairs";
+static char __pyx_k_cGetOperation[] = "cGetOperation";
+static char __pyx_k_getOperations[] = "getOperations";
 static char __pyx_k_getQualString[] = "getQualString";
+static char __pyx_k_AlignedSegment[] = "AlignedSegment";
 static char __pyx_k_AssertionError[] = "AssertionError";
+static char __pyx_k_AttributeError[] = "AttributeError";
+static char __pyx_k_getCigarString[] = "getCigarString";
+static char __pyx_k_testLayout_bam[] = ".testLayout.bam";
+static char __pyx_k_getCigarString2[] = "getCigarString2";
 static char __pyx_k_query_qualities[] = "query_qualities";
 static char __pyx_k_is_supplementary[] = "is_supplementary";
 static char __pyx_k_utilBMF_HTSUtils[] = "utilBMF.HTSUtils";
@@ -3127,6 +3276,7 @@ static char __pyx_k_utilBMF_ErrorHandling[] = "utilBMF.ErrorHandling";
 static char __pyx_k_PairMergeProcessed_bam[] = ".PairMergeProcessed.bam";
 static char __pyx_k_Watch_out_FA_tag_not_set[] = "Watch out - FA tag not set.";
 static char __pyx_k_Watch_out_PV_tag_not_set[] = "Watch out - PV tag not set.";
+static char __pyx_k_str_of_BT_with_tag_s_is_s[] = "str of BT with tag %s is %s.";
 static char __pyx_k_Repr_of_read_align_pairs_s[] = "Repr of read.align_pairs: %s";
 static char __pyx_k_ndarray_is_not_C_contiguous[] = "ndarray is not C contiguous";
 static char __pyx_k_readLength_not_set_inferring[] = "readLength not set - inferring.";
@@ -3148,25 +3298,40 @@ static char __pyx_k_No_value_specified_for_struct_at_4[] = "No value specified f
 static char __pyx_k_No_value_specified_for_struct_at_5[] = "No value specified for struct attribute 'operation'";
 static char __pyx_k_No_value_specified_for_struct_at_6[] = "No value specified for struct attribute 'base'";
 static char __pyx_k_No_value_specified_for_struct_at_7[] = "No value specified for struct attribute 'mergeAgreed'";
+static PyObject *__pyx_n_s_A;
 static PyObject *__pyx_n_s_ALPToStr;
+static PyObject *__pyx_n_s_AlignedSegment;
 static PyObject *__pyx_n_s_AlignmentFile;
 static PyObject *__pyx_kp_s_ArrayLayout_has_no_M_cigar_opera;
 static PyObject *__pyx_n_s_AssertionError;
+static PyObject *__pyx_n_s_AttributeError;
 static PyObject *__pyx_n_s_BamTag;
 static PyObject *__pyx_kp_s_Bam_is_either_not_name_sorted_or;
 static PyObject *__pyx_n_s_Bool;
 static PyObject *__pyx_n_s_CigarDict;
+static PyObject *__pyx_n_s_CigarStrDict;
+static PyObject *__pyx_n_s_D;
 static PyObject *__pyx_n_s_DEBUG;
+static PyObject *__pyx_n_s_DG;
+static PyObject *__pyx_n_s_DR;
+static PyObject *__pyx_n_s_F;
 static PyObject *__pyx_n_s_FA;
 static PyObject *__pyx_kp_u_Format_string_allocated_too_shor;
 static PyObject *__pyx_kp_u_Format_string_allocated_too_shor_2;
+static PyObject *__pyx_n_s_H;
+static PyObject *__pyx_n_s_I;
 static PyObject *__pyx_n_s_ImproperArgumentError;
 static PyObject *__pyx_n_s_KeyError;
 static PyObject *__pyx_n_s_Layout1;
 static PyObject *__pyx_n_s_Layout2;
 static PyObject *__pyx_n_s_List;
+static PyObject *__pyx_n_s_M;
+static PyObject *__pyx_n_s_MA;
+static PyObject *__pyx_n_s_MP;
 static PyObject *__pyx_n_s_MemoryError;
+static PyObject *__pyx_n_s_MergeLayout;
 static PyObject *__pyx_n_s_MergePairedAlignments;
+static PyObject *__pyx_n_s_N;
 static PyObject *__pyx_kp_s_No_value_specified_for_struct_at;
 static PyObject *__pyx_kp_s_No_value_specified_for_struct_at_2;
 static PyObject *__pyx_kp_s_No_value_specified_for_struct_at_3;
@@ -3177,26 +3342,35 @@ static PyObject *__pyx_kp_s_No_value_specified_for_struct_at_7;
 static PyObject *__pyx_kp_u_Non_native_byte_order_not_suppor;
 static PyObject *__pyx_n_s_NotImplementedError;
 static PyObject *__pyx_kp_s_Only_MIDS_cigar_operations_curre;
+static PyObject *__pyx_n_s_P;
+static PyObject *__pyx_n_s_PM;
 static PyObject *__pyx_n_s_PV;
 static PyObject *__pyx_kp_s_PairMergeProcessed_bam;
 static PyObject *__pyx_kp_s_Repr_of_read_align_pairs_s;
 static PyObject *__pyx_n_s_RuntimeError;
+static PyObject *__pyx_n_s_S;
+static PyObject *__pyx_n_s_T;
 static PyObject *__pyx_n_s_ThisIsMadness;
 static PyObject *__pyx_n_s_TrimExt;
 static PyObject *__pyx_n_s_TypeError;
 static PyObject *__pyx_n_s_ValueError;
 static PyObject *__pyx_kp_s_Watch_out_FA_tag_not_set;
 static PyObject *__pyx_kp_s_Watch_out_PV_tag_not_set;
-static PyObject *__pyx_kp_s__10;
+static PyObject *__pyx_n_s_X;
+static PyObject *__pyx_n_s_Z;
 static PyObject *__pyx_kp_s__11;
-static PyObject *__pyx_kp_s__13;
+static PyObject *__pyx_kp_s__12;
 static PyObject *__pyx_kp_s__15;
+static PyObject *__pyx_kp_s__17;
 static PyObject *__pyx_kp_s__2;
+static PyObject *__pyx_kp_s__38;
 static PyObject *__pyx_n_s_agreement;
 static PyObject *__pyx_n_s_aligned_pairs;
 static PyObject *__pyx_n_s_array;
+static PyObject *__pyx_n_s_astype;
 static PyObject *__pyx_n_s_attrgetter;
 static PyObject *__pyx_n_s_base;
+static PyObject *__pyx_n_s_cGetOperation;
 static PyObject *__pyx_n_s_char;
 static PyObject *__pyx_n_s_check_call;
 static PyObject *__pyx_n_s_chr;
@@ -3210,11 +3384,17 @@ static PyObject *__pyx_n_s_end;
 static PyObject *__pyx_n_s_file;
 static PyObject *__pyx_n_s_firstMapped;
 static PyObject *__pyx_n_s_flag;
+static PyObject *__pyx_n_s_fromtuple;
+static PyObject *__pyx_n_s_getAgreement;
+static PyObject *__pyx_n_s_getCigarString;
+static PyObject *__pyx_n_s_getCigarString2;
 static PyObject *__pyx_n_s_getFirstMappedRefPos;
+static PyObject *__pyx_n_s_getOperations;
 static PyObject *__pyx_n_s_getQual;
 static PyObject *__pyx_n_s_getQualString;
 static PyObject *__pyx_n_s_getSeq;
 static PyObject *__pyx_n_s_getSeqArr;
+static PyObject *__pyx_n_s_get_tags;
 static PyObject *__pyx_n_s_groupby;
 static PyObject *__pyx_n_s_header;
 static PyObject *__pyx_n_s_i;
@@ -3223,16 +3403,23 @@ static PyObject *__pyx_n_s_inBAM;
 static PyObject *__pyx_n_s_inHandle;
 static PyObject *__pyx_n_s_int16;
 static PyObject *__pyx_n_s_int32;
+static PyObject *__pyx_n_s_int8;
 static PyObject *__pyx_n_s_is_read1;
+static PyObject *__pyx_n_s_is_reverse;
 static PyObject *__pyx_n_s_is_secondary;
 static PyObject *__pyx_n_s_is_supplementary;
 static PyObject *__pyx_n_s_is_unmapped;
 static PyObject *__pyx_kp_s_is_unmapped_no_such_thing_as_a;
+static PyObject *__pyx_n_s_itemgetter;
 static PyObject *__pyx_n_s_itemsize;
+static PyObject *__pyx_n_s_iteritems;
 static PyObject *__pyx_n_s_itertools;
+static PyObject *__pyx_n_s_itervalues;
 static PyObject *__pyx_n_s_izip;
 static PyObject *__pyx_n_s_join;
+static PyObject *__pyx_n_s_key;
 static PyObject *__pyx_n_s_lambda1None;
+static PyObject *__pyx_n_s_layout;
 static PyObject *__pyx_n_s_layouts;
 static PyObject *__pyx_n_s_length;
 static PyObject *__pyx_n_s_level;
@@ -3244,6 +3431,7 @@ static PyObject *__pyx_n_s_maxint;
 static PyObject *__pyx_n_s_mc;
 static PyObject *__pyx_n_s_mergeAgreed;
 static PyObject *__pyx_n_s_methodcaller;
+static PyObject *__pyx_n_s_mp;
 static PyObject *__pyx_kp_u_ndarray_is_not_C_contiguous;
 static PyObject *__pyx_kp_u_ndarray_is_not_Fortran_contiguou;
 static PyObject *__pyx_n_s_next;
@@ -3257,10 +3445,15 @@ static PyObject *__pyx_n_s_oagqual;
 static PyObject *__pyx_n_s_oagsk;
 static PyObject *__pyx_n_s_oagtag;
 static PyObject *__pyx_n_s_ohw;
+static PyObject *__pyx_n_s_oig;
+static PyObject *__pyx_n_s_oig0;
+static PyObject *__pyx_n_s_om;
+static PyObject *__pyx_n_s_op;
 static PyObject *__pyx_n_s_operation;
 static PyObject *__pyx_n_s_operator;
 static PyObject *__pyx_n_s_opt;
 static PyObject *__pyx_n_s_ord;
+static PyObject *__pyx_n_s_ot;
 static PyObject *__pyx_n_s_outBAM;
 static PyObject *__pyx_n_s_outHandle;
 static PyObject *__pyx_n_s_pipe;
@@ -3289,16 +3482,24 @@ static PyObject *__pyx_kp_s_read_2;
 static PyObject *__pyx_n_s_rec;
 static PyObject *__pyx_n_s_reference_id;
 static PyObject *__pyx_n_s_retLayout;
+static PyObject *__pyx_n_s_rnext;
 static PyObject *__pyx_n_s_seq;
 static PyObject *__pyx_n_s_sequence;
+static PyObject *__pyx_n_s_sorted;
 static PyObject *__pyx_n_s_split;
+static PyObject *__pyx_kp_s_str_of_BT_with_tag_s_is_s;
 static PyObject *__pyx_n_s_subprocess;
 static PyObject *__pyx_n_s_sys;
 static PyObject *__pyx_n_s_tag;
+static PyObject *__pyx_n_s_tags;
+static PyObject *__pyx_n_s_template;
 static PyObject *__pyx_n_s_test;
+static PyObject *__pyx_n_s_testLayout;
+static PyObject *__pyx_kp_s_testLayout_bam;
 static PyObject *__pyx_n_s_tlen;
 static PyObject *__pyx_kp_s_tmpInt_s;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
+static PyObject *__pyx_n_s_update;
 static PyObject *__pyx_n_s_utilBMF_ErrorHandling;
 static PyObject *__pyx_n_s_utilBMF_HTSUtils;
 static PyObject *__pyx_n_s_utilBMF_MergePairedAlignments;
@@ -3325,6 +3526,7 @@ static PyObject *__pyx_int_78;
 static PyObject *__pyx_int_80;
 static PyObject *__pyx_int_83;
 static PyObject *__pyx_int_88;
+static PyObject *__pyx_int_93;
 static PyObject *__pyx_int_neg_1;
 static PyObject *__pyx_tuple_;
 static PyObject *__pyx_tuple__3;
@@ -3334,10 +3536,10 @@ static PyObject *__pyx_tuple__6;
 static PyObject *__pyx_tuple__7;
 static PyObject *__pyx_tuple__8;
 static PyObject *__pyx_tuple__9;
-static PyObject *__pyx_tuple__12;
+static PyObject *__pyx_tuple__10;
+static PyObject *__pyx_tuple__13;
 static PyObject *__pyx_tuple__14;
 static PyObject *__pyx_tuple__16;
-static PyObject *__pyx_tuple__17;
 static PyObject *__pyx_tuple__18;
 static PyObject *__pyx_tuple__19;
 static PyObject *__pyx_tuple__20;
@@ -3356,15 +3558,21 @@ static PyObject *__pyx_tuple__32;
 static PyObject *__pyx_tuple__33;
 static PyObject *__pyx_tuple__34;
 static PyObject *__pyx_tuple__35;
+static PyObject *__pyx_tuple__36;
 static PyObject *__pyx_tuple__37;
 static PyObject *__pyx_tuple__39;
-static PyObject *__pyx_codeobj__36;
-static PyObject *__pyx_codeobj__38;
+static PyObject *__pyx_tuple__41;
+static PyObject *__pyx_tuple__43;
+static PyObject *__pyx_tuple__45;
 static PyObject *__pyx_codeobj__40;
+static PyObject *__pyx_codeobj__42;
+static PyObject *__pyx_codeobj__44;
+static PyObject *__pyx_codeobj__46;
 PyObject *__pyx_v_7utilBMF_21MergePairedAlignments_chrDict = 0;
 PyObject *__pyx_v_7utilBMF_21MergePairedAlignments_CigarDict = 0;
+PyObject *__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict = 0;
 
-/* "utilBMF/MergePairedAlignments.pyx":53
+/* "utilBMF/MergePairedAlignments.pyx":57
  *     Used to strongly type return type of a list and a bool
  *     """
  *     def __cinit__(self, list List, bint Bool):             # <<<<<<<<<<<<<<
@@ -3403,11 +3611,11 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_8ListBool_1__cinit__(PyObje
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_Bool)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -3416,17 +3624,17 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_8ListBool_1__cinit__(PyObje
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
     }
     __pyx_v_List = ((PyObject*)values[0]);
-    __pyx_v_Bool = __Pyx_PyObject_IsTrue(values[1]); if (unlikely((__pyx_v_Bool == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+    __pyx_v_Bool = __Pyx_PyObject_IsTrue(values[1]); if (unlikely((__pyx_v_Bool == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("utilBMF.MergePairedAlignments.ListBool.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_List), (&PyList_Type), 1, "List", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_List), (&PyList_Type), 1, "List", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_8ListBool___cinit__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_ListBool *)__pyx_v_self), __pyx_v_List, __pyx_v_Bool);
 
   /* function exit code */
@@ -3443,7 +3651,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_8ListBool___cinit__(struct 
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":54
+  /* "utilBMF/MergePairedAlignments.pyx":58
  *     """
  *     def __cinit__(self, list List, bint Bool):
  *         self.List = List             # <<<<<<<<<<<<<<
@@ -3456,7 +3664,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_8ListBool___cinit__(struct 
   __Pyx_DECREF(__pyx_v_self->List);
   __pyx_v_self->List = __pyx_v_List;
 
-  /* "utilBMF/MergePairedAlignments.pyx":55
+  /* "utilBMF/MergePairedAlignments.pyx":59
  *     def __cinit__(self, list List, bint Bool):
  *         self.List = List
  *         self.Bool = Bool             # <<<<<<<<<<<<<<
@@ -3465,7 +3673,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_8ListBool___cinit__(struct 
  */
   __pyx_v_self->Bool = __pyx_v_Bool;
 
-  /* "utilBMF/MergePairedAlignments.pyx":53
+  /* "utilBMF/MergePairedAlignments.pyx":57
  *     Used to strongly type return type of a list and a bool
  *     """
  *     def __cinit__(self, list List, bint Bool):             # <<<<<<<<<<<<<<
@@ -3479,7 +3687,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_8ListBool___cinit__(struct 
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":59
+/* "utilBMF/MergePairedAlignments.pyx":63
  * 
  * @cython.returns(bint)
  * def lambda1None(tuple i):             # <<<<<<<<<<<<<<
@@ -3498,7 +3706,7 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_1lambda1None(PyObject
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("lambda1None (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_i), (&PyTuple_Type), 1, "i", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 59; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_i), (&PyTuple_Type), 1, "i", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 63; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_lambda1None(__pyx_self, ((PyObject*)__pyx_v_i));
 
   /* function exit code */
@@ -3520,7 +3728,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_lambda1None(CYTHON_UN
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("lambda1None", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":65
+  /* "utilBMF/MergePairedAlignments.pyx":69
  *     you can tell based on whether it is in the middle or the end of a read.
  *     """
  *     return i[1] is None             # <<<<<<<<<<<<<<
@@ -3530,19 +3738,19 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_lambda1None(CYTHON_UN
   __Pyx_XDECREF(__pyx_r);
   if (unlikely(__pyx_v_i == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = (__pyx_t_1 == Py_None);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":59
+  /* "utilBMF/MergePairedAlignments.pyx":63
  * 
  * @cython.returns(bint)
  * def lambda1None(tuple i):             # <<<<<<<<<<<<<<
@@ -3561,10 +3769,10 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_lambda1None(CYTHON_UN
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":69
+/* "utilBMF/MergePairedAlignments.pyx":73
  * 
  * @cython.returns(int)
- * def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):             # <<<<<<<<<<<<<<
+ * def getFirstMappedRefPos(AlignedSegment_t rec):             # <<<<<<<<<<<<<<
  *     cdef tuple i
  *     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]
  */
@@ -3579,8 +3787,8 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_3getFirstMappedRefPos
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("getFirstMappedRefPos (wrapper)", 0);
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_rec), __pyx_ptype_5pysam_14calignmentfile_AlignedSegment, 1, "rec", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos(__pyx_self, ((struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_rec));
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_rec), __pyx_ptype_5pysam_14calignmentfile_AlignedSegment, 1, "rec", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos(__pyx_self, ((__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t)__pyx_v_rec));
 
   /* function exit code */
   goto __pyx_L0;
@@ -3591,7 +3799,7 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_3getFirstMappedRefPos
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos(CYTHON_UNUSED PyObject *__pyx_self, struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *__pyx_v_rec) {
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos(CYTHON_UNUSED PyObject *__pyx_self, __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_rec) {
   PyObject *__pyx_v_i = 0;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
@@ -3607,25 +3815,25 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("getFirstMappedRefPos", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":71
- * def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):
+  /* "utilBMF/MergePairedAlignments.pyx":75
+ * def getFirstMappedRefPos(AlignedSegment_t rec):
  *     cdef tuple i
  *     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]             # <<<<<<<<<<<<<<
  * 
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_rec), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_rec), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   if (likely(PyList_CheckExact(__pyx_t_2)) || PyTuple_CheckExact(__pyx_t_2)) {
     __pyx_t_3 = __pyx_t_2; __Pyx_INCREF(__pyx_t_3); __pyx_t_4 = 0;
     __pyx_t_5 = NULL;
   } else {
-    __pyx_t_4 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_5 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   for (;;) {
@@ -3633,16 +3841,16 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos
       if (likely(PyList_CheckExact(__pyx_t_3))) {
         if (__pyx_t_4 >= PyList_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_2 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_4); __Pyx_INCREF(__pyx_t_2); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_4); __Pyx_INCREF(__pyx_t_2); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       } else {
         if (__pyx_t_4 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_2 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_4); __Pyx_INCREF(__pyx_t_2); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_4); __Pyx_INCREF(__pyx_t_2); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       }
     } else {
@@ -3651,45 +3859,45 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         break;
       }
       __Pyx_GOTREF(__pyx_t_2);
     }
-    if (!(likely(PyTuple_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_t_2)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (!(likely(PyTuple_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_t_2)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_XDECREF_SET(__pyx_v_i, ((PyObject*)__pyx_t_2));
     __pyx_t_2 = 0;
     if (unlikely(__pyx_v_i == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_2 = __Pyx_GetItemInt_Tuple(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __pyx_t_2 = __Pyx_GetItemInt_Tuple(__pyx_v_i, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_2 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
     __Pyx_GOTREF(__pyx_t_2);
     __pyx_t_6 = (__pyx_t_2 != Py_None);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __pyx_t_7 = (__pyx_t_6 != 0);
     if (__pyx_t_7) {
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_v_i))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_v_i))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       goto __pyx_L5;
     }
     __pyx_L5:;
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_t_1, 0, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_t_1, 0, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_3, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_3, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":69
+  /* "utilBMF/MergePairedAlignments.pyx":73
  * 
  * @cython.returns(int)
- * def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):             # <<<<<<<<<<<<<<
+ * def getFirstMappedRefPos(AlignedSegment_t rec):             # <<<<<<<<<<<<<<
  *     cdef tuple i
  *     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]
  */
@@ -3708,7 +3916,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_2getFirstMappedRefPos
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":94
+/* "utilBMF/MergePairedAlignments.pyx":98
  *     """
  * 
  *     def __cinit__(self, AlignedSegment_t read):             # <<<<<<<<<<<<<<
@@ -3744,7 +3952,7 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_1__cinit__(PyObject
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 94; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 98; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -3755,13 +3963,13 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_1__cinit__(PyObject
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 94; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 98; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_read), __pyx_ptype_5pysam_14calignmentfile_AlignedSegment, 1, "read", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 94; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_read), __pyx_ptype_5pysam_14calignmentfile_AlignedSegment, 1, "read", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 98; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), __pyx_v_read);
 
   /* function exit code */
@@ -3796,7 +4004,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":96
+  /* "utilBMF/MergePairedAlignments.pyx":100
  *     def __cinit__(self, AlignedSegment_t read):
  *         cdef int i, x0, x1
  *         cdef LayoutLen = 0             # <<<<<<<<<<<<<<
@@ -3806,22 +4014,22 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
   __Pyx_INCREF(__pyx_int_0);
   __pyx_v_LayoutLen = __pyx_int_0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":97
+  /* "utilBMF/MergePairedAlignments.pyx":101
  *         cdef int i, x0, x1
  *         cdef LayoutLen = 0
  *         for x0, x1 in read.cigar:             # <<<<<<<<<<<<<<
  *             LayoutLen += x1
  *         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigar); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigar); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   if (likely(PyList_CheckExact(__pyx_t_1)) || PyTuple_CheckExact(__pyx_t_1)) {
     __pyx_t_2 = __pyx_t_1; __Pyx_INCREF(__pyx_t_2); __pyx_t_3 = 0;
     __pyx_t_4 = NULL;
   } else {
-    __pyx_t_3 = -1; __pyx_t_2 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = -1; __pyx_t_2 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_4 = Py_TYPE(__pyx_t_2)->tp_iternext; if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = Py_TYPE(__pyx_t_2)->tp_iternext; if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   for (;;) {
@@ -3829,16 +4037,16 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
       if (likely(PyList_CheckExact(__pyx_t_2))) {
         if (__pyx_t_3 >= PyList_GET_SIZE(__pyx_t_2)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_3); __Pyx_INCREF(__pyx_t_1); __pyx_t_3++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_3); __Pyx_INCREF(__pyx_t_1); __pyx_t_3++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_3); __pyx_t_3++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_3); __pyx_t_3++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       } else {
         if (__pyx_t_3 >= PyTuple_GET_SIZE(__pyx_t_2)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_2, __pyx_t_3); __Pyx_INCREF(__pyx_t_1); __pyx_t_3++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_2, __pyx_t_3); __Pyx_INCREF(__pyx_t_1); __pyx_t_3++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_3); __pyx_t_3++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_3); __pyx_t_3++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       }
     } else {
@@ -3847,7 +4055,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         break;
       }
@@ -3863,7 +4071,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
       if (unlikely(size != 2)) {
         if (size > 2) __Pyx_RaiseTooManyValuesError(2);
         else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       #if CYTHON_COMPILING_IN_CPYTHON
       if (likely(PyTuple_CheckExact(sequence))) {
@@ -3876,15 +4084,15 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
       __Pyx_INCREF(__pyx_t_5);
       __Pyx_INCREF(__pyx_t_6);
       #else
-      __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_5 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_6 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_6 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_6);
       #endif
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     } else {
       Py_ssize_t index = -1;
-      __pyx_t_7 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_7 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __pyx_t_8 = Py_TYPE(__pyx_t_7)->tp_iternext;
@@ -3892,7 +4100,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
       __Pyx_GOTREF(__pyx_t_5);
       index = 1; __pyx_t_6 = __pyx_t_8(__pyx_t_7); if (unlikely(!__pyx_t_6)) goto __pyx_L5_unpacking_failed;
       __Pyx_GOTREF(__pyx_t_6);
-      if (__Pyx_IternextUnpackEndCheck(__pyx_t_8(__pyx_t_7), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_8(__pyx_t_7), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_t_8 = NULL;
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       goto __pyx_L6_unpacking_done;
@@ -3900,32 +4108,32 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __pyx_t_8 = NULL;
       if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_L6_unpacking_done:;
     }
-    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_5); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_5); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_10 = __Pyx_PyInt_As_int(__pyx_t_6); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 97; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_10 = __Pyx_PyInt_As_int(__pyx_t_6); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 101; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_x0 = __pyx_t_9;
     __pyx_v_x1 = __pyx_t_10;
 
-    /* "utilBMF/MergePairedAlignments.pyx":98
+    /* "utilBMF/MergePairedAlignments.pyx":102
  *         cdef LayoutLen = 0
  *         for x0, x1 in read.cigar:
  *             LayoutLen += x1             # <<<<<<<<<<<<<<
  *         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(
  *             LayoutLen * (sizeof(ArrayLayoutPos_t))), length=LayoutLen)
  */
-    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_x1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 98; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_x1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 102; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_6 = PyNumber_InPlaceAdd(__pyx_v_LayoutLen, __pyx_t_1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 98; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = PyNumber_InPlaceAdd(__pyx_v_LayoutLen, __pyx_t_1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 102; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF_SET(__pyx_v_LayoutLen, __pyx_t_6);
     __pyx_t_6 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":97
+    /* "utilBMF/MergePairedAlignments.pyx":101
  *         cdef int i, x0, x1
  *         cdef LayoutLen = 0
  *         for x0, x1 in read.cigar:             # <<<<<<<<<<<<<<
@@ -3935,22 +4143,22 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":100
+  /* "utilBMF/MergePairedAlignments.pyx":104
  *             LayoutLen += x1
  *         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(
  *             LayoutLen * (sizeof(ArrayLayoutPos_t))), length=LayoutLen)             # <<<<<<<<<<<<<<
  * 
  *     def __init__(self, AlignedSegment_t read):
  */
-  __pyx_t_2 = __Pyx_PyInt_FromSize_t((sizeof(__pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t))); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 100; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_FromSize_t((sizeof(__pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t))); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 104; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_6 = PyNumber_Multiply(__pyx_v_LayoutLen, __pyx_t_2); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 100; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyNumber_Multiply(__pyx_v_LayoutLen, __pyx_t_2); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 104; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_12 = __Pyx_PyInt_As_size_t(__pyx_t_6); if (unlikely((__pyx_t_12 == (size_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 100; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_12 = __Pyx_PyInt_As_size_t(__pyx_t_6); if (unlikely((__pyx_t_12 == (size_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 104; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":99
+  /* "utilBMF/MergePairedAlignments.pyx":103
  *         for x0, x1 in read.cigar:
  *             LayoutLen += x1
  *         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(             # <<<<<<<<<<<<<<
@@ -3959,17 +4167,17 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
  */
   __pyx_t_11.layouts = ((__pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t *)malloc(__pyx_t_12));
 
-  /* "utilBMF/MergePairedAlignments.pyx":100
+  /* "utilBMF/MergePairedAlignments.pyx":104
  *             LayoutLen += x1
  *         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(
  *             LayoutLen * (sizeof(ArrayLayoutPos_t))), length=LayoutLen)             # <<<<<<<<<<<<<<
  * 
  *     def __init__(self, AlignedSegment_t read):
  */
-  __pyx_t_12 = __Pyx_PyInt_As_size_t(__pyx_v_LayoutLen); if (unlikely((__pyx_t_12 == (size_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 100; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_12 = __Pyx_PyInt_As_size_t(__pyx_v_LayoutLen); if (unlikely((__pyx_t_12 == (size_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 104; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_11.length = __pyx_t_12;
 
-  /* "utilBMF/MergePairedAlignments.pyx":99
+  /* "utilBMF/MergePairedAlignments.pyx":103
  *         for x0, x1 in read.cigar:
  *             LayoutLen += x1
  *         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(             # <<<<<<<<<<<<<<
@@ -3978,7 +4186,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
  */
   __pyx_v_self->Layout = __pyx_t_11;
 
-  /* "utilBMF/MergePairedAlignments.pyx":94
+  /* "utilBMF/MergePairedAlignments.pyx":98
  *     """
  * 
  *     def __cinit__(self, AlignedSegment_t read):             # <<<<<<<<<<<<<<
@@ -4003,12 +4211,12 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout___cinit__(struct __
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":102
+/* "utilBMF/MergePairedAlignments.pyx":106
  *             LayoutLen * (sizeof(ArrayLayoutPos_t))), length=LayoutLen)
  * 
  *     def __init__(self, AlignedSegment_t read):             # <<<<<<<<<<<<<<
- *         cdef char CigarOp
- *         cdef int tmpInt = 0
+ *         # C Definitions
+ *         cdef char CigarOp, CigarOpLen
  */
 
 /* Python wrapper */
@@ -4039,7 +4247,7 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3__init__(PyObject 
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 102; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
@@ -4050,13 +4258,13 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3__init__(PyObject 
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 102; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("__init__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_read), __pyx_ptype_5pysam_14calignmentfile_AlignedSegment, 1, "read", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 102; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_read), __pyx_ptype_5pysam_14calignmentfile_AlignedSegment, 1, "read", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), __pyx_v_read);
 
   /* function exit code */
@@ -4070,13 +4278,12 @@ static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3__init__(PyObject 
 
 static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read) {
   char __pyx_v_CigarOp;
+  char __pyx_v_CigarOpLen;
   int __pyx_v_tmpInt;
   int __pyx_v_offset;
-  int __pyx_v_CigarOpLen;
-  PyObject *__pyx_v_tmpTup = 0;
+  int __pyx_v_readPos;
   PyArrayObject *__pyx_v_quals = 0;
   PyArrayObject *__pyx_v_agrees = 0;
-  int __pyx_v_readPos;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_agrees;
   __Pyx_Buffer __pyx_pybuffer_agrees;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_quals;
@@ -4101,18 +4308,22 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
   PyObject *__pyx_t_16 = NULL;
   PyObject *__pyx_t_17 = NULL;
   Py_ssize_t __pyx_t_18;
-  PyObject *(*__pyx_t_19)(PyObject *);
-  char __pyx_t_20;
+  int __pyx_t_19;
+  PyObject *(*__pyx_t_20)(PyObject *);
   int __pyx_t_21;
-  int __pyx_t_22;
-  int __pyx_t_23;
-  __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t __pyx_t_24;
+  PyObject *(*__pyx_t_22)(PyObject *);
+  char __pyx_t_23;
+  char __pyx_t_24;
   int __pyx_t_25;
   int __pyx_t_26;
-  int __pyx_t_27;
-  int __pyx_t_28;
+  __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t __pyx_t_27;
+  uint16_t __pyx_t_28;
   int __pyx_t_29;
   int __pyx_t_30;
+  int __pyx_t_31;
+  int __pyx_t_32;
+  int __pyx_t_33;
+  int __pyx_t_34;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -4126,39 +4337,48 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
   __pyx_pybuffernd_agrees.data = NULL;
   __pyx_pybuffernd_agrees.rcbuffer = &__pyx_pybuffer_agrees;
 
-  /* "utilBMF/MergePairedAlignments.pyx":104
- *     def __init__(self, AlignedSegment_t read):
- *         cdef char CigarOp
+  /* "utilBMF/MergePairedAlignments.pyx":109
+ *         # C Definitions
+ *         cdef char CigarOp, CigarOpLen
  *         cdef int tmpInt = 0             # <<<<<<<<<<<<<<
  *         cdef int offset = 0
- *         cdef int CigarOpLen
+ *         cdef int readPos = 0
  */
   __pyx_v_tmpInt = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":105
- *         cdef char CigarOp
+  /* "utilBMF/MergePairedAlignments.pyx":110
+ *         cdef char CigarOp, CigarOpLen
  *         cdef int tmpInt = 0
  *         cdef int offset = 0             # <<<<<<<<<<<<<<
- *         cdef int CigarOpLen
- *         cdef tuple tmpTup
+ *         cdef int readPos = 0
+ *         cdef ndarray[int, ndim=1] quals, agrees
  */
   __pyx_v_offset = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":110
+  /* "utilBMF/MergePairedAlignments.pyx":111
+ *         cdef int tmpInt = 0
+ *         cdef int offset = 0
+ *         cdef int readPos = 0             # <<<<<<<<<<<<<<
  *         cdef ndarray[int, ndim=1] quals, agrees
  *         cdef ArrayLayoutPos_t tmpPos
+ */
+  __pyx_v_readPos = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":117
+ * 
+ *         # Parsing out base-by-base information.
  *         self.mapq = read.mapq             # <<<<<<<<<<<<<<
  *         self.firstMapped = -1
  *         try:
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_mapq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 110; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_mapq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 117; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyInt_As_unsigned_char(__pyx_t_1); if (unlikely((__pyx_t_2 == (unsigned char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 110; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_As_unsigned_char(__pyx_t_1); if (unlikely((__pyx_t_2 == (unsigned char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 117; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->mapq = __pyx_t_2;
 
-  /* "utilBMF/MergePairedAlignments.pyx":111
- *         cdef ArrayLayoutPos_t tmpPos
+  /* "utilBMF/MergePairedAlignments.pyx":118
+ *         # Parsing out base-by-base information.
  *         self.mapq = read.mapq
  *         self.firstMapped = -1             # <<<<<<<<<<<<<<
  *         try:
@@ -4166,7 +4386,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
   __pyx_v_self->firstMapped = -1;
 
-  /* "utilBMF/MergePairedAlignments.pyx":112
+  /* "utilBMF/MergePairedAlignments.pyx":119
  *         self.mapq = read.mapq
  *         self.firstMapped = -1
  *         try:             # <<<<<<<<<<<<<<
@@ -4180,49 +4400,49 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __Pyx_XGOTREF(__pyx_t_5);
     /*try:*/ {
 
-      /* "utilBMF/MergePairedAlignments.pyx":113
+      /* "utilBMF/MergePairedAlignments.pyx":120
  *         self.firstMapped = -1
  *         try:
  *             quals = np.array(read.opt("PV").split(","), dtype=np.int32)             # <<<<<<<<<<<<<<
  *         except KeyError:
  *             pl("Watch out - PV tag not set.", level=logging.DEBUG)
  */
-      __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_opt); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_opt); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple_, NULL); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_split); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_split); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-      __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__3, NULL); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_1);
       PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_7);
       __Pyx_GIVEREF(__pyx_t_7);
       __pyx_t_7 = 0;
-      __pyx_t_7 = PyDict_New(); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_7 = PyDict_New(); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_7);
-      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_int32); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_int32); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_dtype, __pyx_t_9) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      if (PyDict_SetItem(__pyx_t_7, __pyx_n_s_dtype, __pyx_t_9) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_1, __pyx_t_7); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_1, __pyx_t_7); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-      if (!(likely(((__pyx_t_9) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_9, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      if (!(likely(((__pyx_t_9) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_9, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       __pyx_t_10 = ((PyArrayObject *)__pyx_t_9);
       {
         __Pyx_BufFmt_StackElem __pyx_stack[1];
@@ -4238,7 +4458,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           }
         }
         __pyx_pybuffernd_quals.diminfo[0].strides = __pyx_pybuffernd_quals.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_quals.diminfo[0].shape = __pyx_pybuffernd_quals.rcbuffer->pybuffer.shape[0];
-        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
       __pyx_t_10 = 0;
       __pyx_v_quals = ((PyArrayObject *)__pyx_t_9);
@@ -4255,7 +4475,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
     __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":114
+    /* "utilBMF/MergePairedAlignments.pyx":121
  *         try:
  *             quals = np.array(read.opt("PV").split(","), dtype=np.int32)
  *         except KeyError:             # <<<<<<<<<<<<<<
@@ -4265,69 +4485,69 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __pyx_t_11 = PyErr_ExceptionMatches(__pyx_builtin_KeyError);
     if (__pyx_t_11) {
       __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_9, &__pyx_t_7, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 114; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      if (__Pyx_GetException(&__pyx_t_9, &__pyx_t_7, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_GOTREF(__pyx_t_1);
 
-      /* "utilBMF/MergePairedAlignments.pyx":115
+      /* "utilBMF/MergePairedAlignments.pyx":122
  *             quals = np.array(read.opt("PV").split(","), dtype=np.int32)
  *         except KeyError:
  *             pl("Watch out - PV tag not set.", level=logging.DEBUG)             # <<<<<<<<<<<<<<
  *             quals = np.array(read.query_qualities, dtype=np.int32)
  *             # Let's make sure that these don't need reversal, too!
  */
-      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_pl); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_pl); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_8 = PyDict_New(); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_8 = PyDict_New(); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_15 = __Pyx_GetModuleGlobalName(__pyx_n_s_logging); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_15 = __Pyx_GetModuleGlobalName(__pyx_n_s_logging); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_15);
-      __pyx_t_16 = __Pyx_PyObject_GetAttrStr(__pyx_t_15, __pyx_n_s_DEBUG); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_16 = __Pyx_PyObject_GetAttrStr(__pyx_t_15, __pyx_n_s_DEBUG); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_16);
       __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-      if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_level, __pyx_t_16) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_level, __pyx_t_16) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-      __pyx_t_16 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_tuple__4, __pyx_t_8); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_16 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_tuple__4, __pyx_t_8); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_16);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
 
-      /* "utilBMF/MergePairedAlignments.pyx":116
+      /* "utilBMF/MergePairedAlignments.pyx":123
  *         except KeyError:
  *             pl("Watch out - PV tag not set.", level=logging.DEBUG)
  *             quals = np.array(read.query_qualities, dtype=np.int32)             # <<<<<<<<<<<<<<
  *             # Let's make sure that these don't need reversal, too!
  *         try:
  */
-      __pyx_t_16 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_16 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_16);
-      __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_16, __pyx_n_s_array); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_16, __pyx_n_s_array); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-      __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_query_qualities); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_query_qualities); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_16);
-      __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_6);
       PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_16);
       __Pyx_GIVEREF(__pyx_t_16);
       __pyx_t_16 = 0;
-      __pyx_t_16 = PyDict_New(); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_16 = PyDict_New(); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_16);
-      __pyx_t_15 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_15 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_15);
-      __pyx_t_17 = __Pyx_PyObject_GetAttrStr(__pyx_t_15, __pyx_n_s_int32); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_17 = __Pyx_PyObject_GetAttrStr(__pyx_t_15, __pyx_n_s_int32); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_17);
       __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-      if (PyDict_SetItem(__pyx_t_16, __pyx_n_s_dtype, __pyx_t_17) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      if (PyDict_SetItem(__pyx_t_16, __pyx_n_s_dtype, __pyx_t_17) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-      __pyx_t_17 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_6, __pyx_t_16); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      __pyx_t_17 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_6, __pyx_t_16); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __Pyx_GOTREF(__pyx_t_17);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-      if (!(likely(((__pyx_t_17) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_17, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+      if (!(likely(((__pyx_t_17) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_17, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       __pyx_t_10 = ((PyArrayObject *)__pyx_t_17);
       {
         __Pyx_BufFmt_StackElem __pyx_stack[1];
@@ -4343,7 +4563,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           }
         }
         __pyx_pybuffernd_quals.diminfo[0].strides = __pyx_pybuffernd_quals.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_quals.diminfo[0].shape = __pyx_pybuffernd_quals.rcbuffer->pybuffer.shape[0];
-        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 116; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
+        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 123; __pyx_clineno = __LINE__; goto __pyx_L5_except_error;}
       }
       __pyx_t_10 = 0;
       __Pyx_XDECREF_SET(__pyx_v_quals, ((PyArrayObject *)__pyx_t_17));
@@ -4368,7 +4588,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __pyx_L10_try_end:;
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":118
+  /* "utilBMF/MergePairedAlignments.pyx":125
  *             quals = np.array(read.query_qualities, dtype=np.int32)
  *             # Let's make sure that these don't need reversal, too!
  *         try:             # <<<<<<<<<<<<<<
@@ -4382,49 +4602,49 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "utilBMF/MergePairedAlignments.pyx":119
+      /* "utilBMF/MergePairedAlignments.pyx":126
  *             # Let's make sure that these don't need reversal, too!
  *         try:
  *             agrees = np.array(read.opt("FA").split(","), dtype=np.int32)             # <<<<<<<<<<<<<<
  *         except KeyError:
  *             pl("Watch out - FA tag not set.", level=logging.DEBUG)
  */
-      __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_opt); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_opt); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__5, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__5, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_split); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_split); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__6, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__6, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_1);
       PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_9);
       __Pyx_GIVEREF(__pyx_t_9);
       __pyx_t_9 = 0;
-      __pyx_t_9 = PyDict_New(); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_9 = PyDict_New(); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_9);
-      __pyx_t_17 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_17 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_17);
-      __pyx_t_16 = __Pyx_PyObject_GetAttrStr(__pyx_t_17, __pyx_n_s_int32); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_16 = __Pyx_PyObject_GetAttrStr(__pyx_t_17, __pyx_n_s_int32); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_16);
       __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
-      if (PyDict_SetItem(__pyx_t_9, __pyx_n_s_dtype, __pyx_t_16) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      if (PyDict_SetItem(__pyx_t_9, __pyx_n_s_dtype, __pyx_t_16) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-      __pyx_t_16 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_1, __pyx_t_9); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      __pyx_t_16 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_1, __pyx_t_9); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __Pyx_GOTREF(__pyx_t_16);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-      if (!(likely(((__pyx_t_16) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_16, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+      if (!(likely(((__pyx_t_16) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_16, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       __pyx_t_10 = ((PyArrayObject *)__pyx_t_16);
       {
         __Pyx_BufFmt_StackElem __pyx_stack[1];
@@ -4440,7 +4660,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           }
         }
         __pyx_pybuffernd_agrees.diminfo[0].strides = __pyx_pybuffernd_agrees.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_agrees.diminfo[0].shape = __pyx_pybuffernd_agrees.rcbuffer->pybuffer.shape[0];
-        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
+        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L13_error;}
       }
       __pyx_t_10 = 0;
       __pyx_v_agrees = ((PyArrayObject *)__pyx_t_16);
@@ -4460,7 +4680,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
     __Pyx_XDECREF(__pyx_t_16); __pyx_t_16 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":120
+    /* "utilBMF/MergePairedAlignments.pyx":127
  *         try:
  *             agrees = np.array(read.opt("FA").split(","), dtype=np.int32)
  *         except KeyError:             # <<<<<<<<<<<<<<
@@ -4470,52 +4690,52 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __pyx_t_11 = PyErr_ExceptionMatches(__pyx_builtin_KeyError);
     if (__pyx_t_11) {
       __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-      if (__Pyx_GetException(&__pyx_t_16, &__pyx_t_9, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      if (__Pyx_GetException(&__pyx_t_16, &__pyx_t_9, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 127; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_16);
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_GOTREF(__pyx_t_1);
 
-      /* "utilBMF/MergePairedAlignments.pyx":121
+      /* "utilBMF/MergePairedAlignments.pyx":128
  *             agrees = np.array(read.opt("FA").split(","), dtype=np.int32)
  *         except KeyError:
  *             pl("Watch out - FA tag not set.", level=logging.DEBUG)             # <<<<<<<<<<<<<<
  *             agrees = np.array([1] * len(read.sequence), dtype=np.int32)
  * 
  */
-      __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_pl); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_pl); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_7);
-      __pyx_t_17 = PyDict_New(); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_17 = PyDict_New(); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_17);
-      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_logging); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_logging); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_DEBUG); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_DEBUG); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-      if (PyDict_SetItem(__pyx_t_17, __pyx_n_s_level, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      if (PyDict_SetItem(__pyx_t_17, __pyx_n_s_level, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_tuple__7, __pyx_t_17); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_tuple__7, __pyx_t_17); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-      /* "utilBMF/MergePairedAlignments.pyx":122
+      /* "utilBMF/MergePairedAlignments.pyx":129
  *         except KeyError:
  *             pl("Watch out - FA tag not set.", level=logging.DEBUG)
  *             agrees = np.array([1] * len(read.sequence), dtype=np.int32)             # <<<<<<<<<<<<<<
  * 
  *         # Copy out original alignment information
  */
-      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_17 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_array); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_17 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_array); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_17);
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __pyx_t_8 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_sequence); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_8 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_sequence); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_18 = PyObject_Length(__pyx_t_8); if (unlikely(__pyx_t_18 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_18 = PyObject_Length(__pyx_t_8); if (unlikely(__pyx_t_18 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      __pyx_t_8 = PyList_New(1 * ((__pyx_t_18<0) ? 0:__pyx_t_18)); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_8 = PyList_New(1 * ((__pyx_t_18<0) ? 0:__pyx_t_18)); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
       { Py_ssize_t __pyx_temp;
         for (__pyx_temp=0; __pyx_temp < __pyx_t_18; __pyx_temp++) {
@@ -4524,26 +4744,26 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           __Pyx_GIVEREF(__pyx_int_1);
         }
       }
-      __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_7);
       PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_8);
       __Pyx_GIVEREF(__pyx_t_8);
       __pyx_t_8 = 0;
-      __pyx_t_8 = PyDict_New(); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_8 = PyDict_New(); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_8);
-      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_15 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_int32); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_15 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_int32); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_15);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-      if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_dtype, __pyx_t_15) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      if (PyDict_SetItem(__pyx_t_8, __pyx_n_s_dtype, __pyx_t_15) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-      __pyx_t_15 = __Pyx_PyObject_Call(__pyx_t_17, __pyx_t_7, __pyx_t_8); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      __pyx_t_15 = __Pyx_PyObject_Call(__pyx_t_17, __pyx_t_7, __pyx_t_8); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __Pyx_GOTREF(__pyx_t_15);
       __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-      if (!(likely(((__pyx_t_15) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_15, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+      if (!(likely(((__pyx_t_15) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_15, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       __pyx_t_10 = ((PyArrayObject *)__pyx_t_15);
       {
         __Pyx_BufFmt_StackElem __pyx_stack[1];
@@ -4559,7 +4779,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           }
         }
         __pyx_pybuffernd_agrees.diminfo[0].strides = __pyx_pybuffernd_agrees.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_agrees.diminfo[0].shape = __pyx_pybuffernd_agrees.rcbuffer->pybuffer.shape[0];
-        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
+        if (unlikely(__pyx_t_11 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 129; __pyx_clineno = __LINE__; goto __pyx_L15_except_error;}
       }
       __pyx_t_10 = 0;
       __Pyx_XDECREF_SET(__pyx_v_agrees, ((PyArrayObject *)__pyx_t_15));
@@ -4584,165 +4804,417 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
     __pyx_L20_try_end:;
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":125
+  /* "utilBMF/MergePairedAlignments.pyx":132
  * 
  *         # Copy out original alignment information
  *         self.InitPos = read.pos             # <<<<<<<<<<<<<<
+ *         self.pos = read.pos
  *         self.tlen = read.tlen
- *         self.pnext = read.pnext
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 125; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 132; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 125; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 132; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->InitPos = __pyx_t_11;
 
-  /* "utilBMF/MergePairedAlignments.pyx":126
+  /* "utilBMF/MergePairedAlignments.pyx":133
  *         # Copy out original alignment information
  *         self.InitPos = read.pos
+ *         self.pos = read.pos             # <<<<<<<<<<<<<<
+ *         self.tlen = read.tlen
+ *         self.pnext = read.pnext
+ */
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 133; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 133; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_self->pos = __pyx_t_11;
+
+  /* "utilBMF/MergePairedAlignments.pyx":134
+ *         self.InitPos = read.pos
+ *         self.pos = read.pos
  *         self.tlen = read.tlen             # <<<<<<<<<<<<<<
  *         self.pnext = read.pnext
  *         self.flag = read.flag
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_tlen); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_tlen); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 134; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 134; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->tlen = __pyx_t_11;
 
-  /* "utilBMF/MergePairedAlignments.pyx":127
- *         self.InitPos = read.pos
+  /* "utilBMF/MergePairedAlignments.pyx":135
+ *         self.pos = read.pos
  *         self.tlen = read.tlen
  *         self.pnext = read.pnext             # <<<<<<<<<<<<<<
  *         self.flag = read.flag
- *         cdef int readPos = 0
+ *         self.Name = read.query_name
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 127; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 135; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 127; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 135; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->pnext = __pyx_t_11;
 
-  /* "utilBMF/MergePairedAlignments.pyx":128
+  /* "utilBMF/MergePairedAlignments.pyx":136
  *         self.tlen = read.tlen
  *         self.pnext = read.pnext
  *         self.flag = read.flag             # <<<<<<<<<<<<<<
- *         cdef int readPos = 0
- *         for tmpTup in read.cigar:
+ *         self.Name = read.query_name
+ *         self.reference_id = read.reference_id
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_flag); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_flag); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 136; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 136; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_v_self->flag = __pyx_t_11;
 
-  /* "utilBMF/MergePairedAlignments.pyx":129
+  /* "utilBMF/MergePairedAlignments.pyx":137
  *         self.pnext = read.pnext
  *         self.flag = read.flag
- *         cdef int readPos = 0             # <<<<<<<<<<<<<<
- *         for tmpTup in read.cigar:
- *             CigarOp = tmpTup[0]
+ *         self.Name = read.query_name             # <<<<<<<<<<<<<<
+ *         self.reference_id = read.reference_id
+ *         self.is_reverse = read.is_reverse
  */
-  __pyx_v_readPos = 0;
-
-  /* "utilBMF/MergePairedAlignments.pyx":130
- *         self.flag = read.flag
- *         cdef int readPos = 0
- *         for tmpTup in read.cigar:             # <<<<<<<<<<<<<<
- *             CigarOp = tmpTup[0]
- *             CigarOpLen = tmpTup[1]
- */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigar); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_query_name); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 137; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (likely(PyList_CheckExact(__pyx_t_1)) || PyTuple_CheckExact(__pyx_t_1)) {
-    __pyx_t_9 = __pyx_t_1; __Pyx_INCREF(__pyx_t_9); __pyx_t_18 = 0;
-    __pyx_t_19 = NULL;
-  } else {
-    __pyx_t_18 = -1; __pyx_t_9 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_19 = Py_TYPE(__pyx_t_9)->tp_iternext; if (unlikely(!__pyx_t_19)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  }
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  for (;;) {
-    if (likely(!__pyx_t_19)) {
-      if (likely(PyList_CheckExact(__pyx_t_9))) {
-        if (__pyx_t_18 >= PyList_GET_SIZE(__pyx_t_9)) break;
-        #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_9, __pyx_t_18); __Pyx_INCREF(__pyx_t_1); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_9, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        #endif
-      } else {
-        if (__pyx_t_18 >= PyTuple_GET_SIZE(__pyx_t_9)) break;
-        #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_9, __pyx_t_18); __Pyx_INCREF(__pyx_t_1); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_9, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        #endif
-      }
-    } else {
-      __pyx_t_1 = __pyx_t_19(__pyx_t_9);
-      if (unlikely(!__pyx_t_1)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        }
-        break;
-      }
-      __Pyx_GOTREF(__pyx_t_1);
-    }
-    if (!(likely(PyTuple_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_t_1)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 130; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_XDECREF_SET(__pyx_v_tmpTup, ((PyObject*)__pyx_t_1));
-    __pyx_t_1 = 0;
+  if (!(likely(PyString_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_1)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 137; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GIVEREF(__pyx_t_1);
+  __Pyx_GOTREF(__pyx_v_self->Name);
+  __Pyx_DECREF(__pyx_v_self->Name);
+  __pyx_v_self->Name = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_1);
+  __pyx_t_1 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":131
- *         cdef int readPos = 0
- *         for tmpTup in read.cigar:
- *             CigarOp = tmpTup[0]             # <<<<<<<<<<<<<<
- *             CigarOpLen = tmpTup[1]
- *             for tmpInt in xrange(offset, offset + CigarOpLen):
+  /* "utilBMF/MergePairedAlignments.pyx":138
+ *         self.flag = read.flag
+ *         self.Name = read.query_name
+ *         self.reference_id = read.reference_id             # <<<<<<<<<<<<<<
+ *         self.is_reverse = read.is_reverse
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
  */
-    if (unlikely(__pyx_v_tmpTup == Py_None)) {
-      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 131; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    }
-    __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v_tmpTup, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 131; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-    __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_20 = __Pyx_PyInt_As_char(__pyx_t_1); if (unlikely((__pyx_t_20 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 131; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_v_CigarOp = __pyx_t_20;
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_reference_id); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 138; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 138; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_self->reference_id = __pyx_t_11;
 
-    /* "utilBMF/MergePairedAlignments.pyx":132
- *         for tmpTup in read.cigar:
- *             CigarOp = tmpTup[0]
- *             CigarOpLen = tmpTup[1]             # <<<<<<<<<<<<<<
+  /* "utilBMF/MergePairedAlignments.pyx":139
+ *         self.Name = read.query_name
+ *         self.reference_id = read.reference_id
+ *         self.is_reverse = read.is_reverse             # <<<<<<<<<<<<<<
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
+ *                         in read.get_tags() if tag[0] not in ["PV", "FA"]}
+ */
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_reverse); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 139; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_19 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely((__pyx_t_19 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 139; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_v_self->is_reverse = __pyx_t_19;
+
+  /* "utilBMF/MergePairedAlignments.pyx":140
+ *         self.reference_id = read.reference_id
+ *         self.is_reverse = read.is_reverse
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag             # <<<<<<<<<<<<<<
+ *                         in read.get_tags() if tag[0] not in ["PV", "FA"]}
+ *         self.isMerged = (read.has_tag("MP") and read.opt("MP") == "T")
+ */
+  { /* enter inner scope */
+    PyObject *__pyx_8genexpr1__pyx_v_tag = NULL;
+    __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+
+    /* "utilBMF/MergePairedAlignments.pyx":141
+ *         self.is_reverse = read.is_reverse
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
+ *                         in read.get_tags() if tag[0] not in ["PV", "FA"]}             # <<<<<<<<<<<<<<
+ *         self.isMerged = (read.has_tag("MP") and read.opt("MP") == "T")
+ * 
+ */
+    __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_get_tags); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+    __Pyx_GOTREF(__pyx_t_16);
+    __pyx_t_15 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_16))) {
+      __pyx_t_15 = PyMethod_GET_SELF(__pyx_t_16);
+      if (likely(__pyx_t_15)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_16);
+        __Pyx_INCREF(__pyx_t_15);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_16, function);
+      }
+    }
+    if (__pyx_t_15) {
+      __pyx_t_9 = __Pyx_PyObject_CallOneArg(__pyx_t_16, __pyx_t_15); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+      __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
+    } else {
+      __pyx_t_9 = __Pyx_PyObject_CallNoArg(__pyx_t_16); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+    }
+    __Pyx_GOTREF(__pyx_t_9);
+    __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+    if (likely(PyList_CheckExact(__pyx_t_9)) || PyTuple_CheckExact(__pyx_t_9)) {
+      __pyx_t_16 = __pyx_t_9; __Pyx_INCREF(__pyx_t_16); __pyx_t_18 = 0;
+      __pyx_t_20 = NULL;
+    } else {
+      __pyx_t_18 = -1; __pyx_t_16 = PyObject_GetIter(__pyx_t_9); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+      __Pyx_GOTREF(__pyx_t_16);
+      __pyx_t_20 = Py_TYPE(__pyx_t_16)->tp_iternext; if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+    }
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    for (;;) {
+      if (likely(!__pyx_t_20)) {
+        if (likely(PyList_CheckExact(__pyx_t_16))) {
+          if (__pyx_t_18 >= PyList_GET_SIZE(__pyx_t_16)) break;
+          #if CYTHON_COMPILING_IN_CPYTHON
+          __pyx_t_9 = PyList_GET_ITEM(__pyx_t_16, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          #else
+          __pyx_t_9 = PySequence_ITEM(__pyx_t_16, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          #endif
+        } else {
+          if (__pyx_t_18 >= PyTuple_GET_SIZE(__pyx_t_16)) break;
+          #if CYTHON_COMPILING_IN_CPYTHON
+          __pyx_t_9 = PyTuple_GET_ITEM(__pyx_t_16, __pyx_t_18); __Pyx_INCREF(__pyx_t_9); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          #else
+          __pyx_t_9 = PySequence_ITEM(__pyx_t_16, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          #endif
+        }
+      } else {
+        __pyx_t_9 = __pyx_t_20(__pyx_t_16);
+        if (unlikely(!__pyx_t_9)) {
+          PyObject* exc_type = PyErr_Occurred();
+          if (exc_type) {
+            if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+            else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          }
+          break;
+        }
+        __Pyx_GOTREF(__pyx_t_9);
+      }
+      if (!(likely(PyTuple_CheckExact(__pyx_t_9))||((__pyx_t_9) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_t_9)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+      __Pyx_XDECREF_SET(__pyx_8genexpr1__pyx_v_tag, ((PyObject*)__pyx_t_9));
+      __pyx_t_9 = 0;
+      if (unlikely(__pyx_8genexpr1__pyx_v_tag == Py_None)) {
+        PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+      }
+      __pyx_t_9 = __Pyx_GetItemInt_Tuple(__pyx_8genexpr1__pyx_v_tag, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;};
+      __Pyx_GOTREF(__pyx_t_9);
+      __pyx_t_21 = (__Pyx_PyString_Equals(__pyx_t_9, __pyx_n_s_PV, Py_NE)); if (unlikely(__pyx_t_21 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+      if (__pyx_t_21) {
+      } else {
+        __pyx_t_19 = __pyx_t_21;
+        goto __pyx_L29_bool_binop_done;
+      }
+      __pyx_t_21 = (__Pyx_PyString_Equals(__pyx_t_9, __pyx_n_s_FA, Py_NE)); if (unlikely(__pyx_t_21 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+      __pyx_t_19 = __pyx_t_21;
+      __pyx_L29_bool_binop_done:;
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      __pyx_t_21 = (__pyx_t_19 != 0);
+      if (__pyx_t_21) {
+
+        /* "utilBMF/MergePairedAlignments.pyx":140
+ *         self.reference_id = read.reference_id
+ *         self.is_reverse = read.is_reverse
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag             # <<<<<<<<<<<<<<
+ *                         in read.get_tags() if tag[0] not in ["PV", "FA"]}
+ *         self.isMerged = (read.has_tag("MP") and read.opt("MP") == "T")
+ */
+        if (unlikely(__pyx_8genexpr1__pyx_v_tag == Py_None)) {
+          PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+        }
+        __pyx_t_9 = __Pyx_GetItemInt_Tuple(__pyx_8genexpr1__pyx_v_tag, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;};
+        __Pyx_GOTREF(__pyx_t_9);
+        __pyx_t_8 = __Pyx_PyObject_GetAttrStr(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_n_s_fromtuple); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+        __Pyx_GOTREF(__pyx_t_8);
+        __pyx_t_7 = NULL;
+        if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_8))) {
+          __pyx_t_7 = PyMethod_GET_SELF(__pyx_t_8);
+          if (likely(__pyx_t_7)) {
+            PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_8);
+            __Pyx_INCREF(__pyx_t_7);
+            __Pyx_INCREF(function);
+            __Pyx_DECREF_SET(__pyx_t_8, function);
+          }
+        }
+        if (!__pyx_t_7) {
+          __pyx_t_15 = __Pyx_PyObject_CallOneArg(__pyx_t_8, __pyx_8genexpr1__pyx_v_tag); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          __Pyx_GOTREF(__pyx_t_15);
+        } else {
+          __pyx_t_17 = PyTuple_New(1+1); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          __Pyx_GOTREF(__pyx_t_17);
+          PyTuple_SET_ITEM(__pyx_t_17, 0, __pyx_t_7); __Pyx_GIVEREF(__pyx_t_7); __pyx_t_7 = NULL;
+          __Pyx_INCREF(__pyx_8genexpr1__pyx_v_tag);
+          PyTuple_SET_ITEM(__pyx_t_17, 0+1, __pyx_8genexpr1__pyx_v_tag);
+          __Pyx_GIVEREF(__pyx_8genexpr1__pyx_v_tag);
+          __pyx_t_15 = __Pyx_PyObject_Call(__pyx_t_8, __pyx_t_17, NULL); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+          __Pyx_GOTREF(__pyx_t_15);
+          __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
+        }
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        if (unlikely(PyDict_SetItem(__pyx_t_1, (PyObject*)__pyx_t_9, (PyObject*)__pyx_t_15))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L25_error;}
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
+        goto __pyx_L28;
+      }
+      __pyx_L28:;
+    }
+    __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+    __Pyx_XDECREF(__pyx_8genexpr1__pyx_v_tag);
+    goto __pyx_L31_exit_scope;
+    __pyx_L25_error:;
+    __Pyx_XDECREF(__pyx_8genexpr1__pyx_v_tag);
+    goto __pyx_L1_error;
+    __pyx_L31_exit_scope:;
+  } /* exit inner scope */
+  __Pyx_GIVEREF(__pyx_t_1);
+  __Pyx_GOTREF(__pyx_v_self->tagDict);
+  __Pyx_DECREF(__pyx_v_self->tagDict);
+  __pyx_v_self->tagDict = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":142
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
+ *                         in read.get_tags() if tag[0] not in ["PV", "FA"]}
+ *         self.isMerged = (read.has_tag("MP") and read.opt("MP") == "T")             # <<<<<<<<<<<<<<
+ * 
+ *         # Parse out the read cigar.
+ */
+  __pyx_t_1 = ((struct __pyx_vtabstruct_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_read->__pyx_vtab)->has_tag(((struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_read), __pyx_n_s_MP, 0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_19 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_19 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (__pyx_t_19) {
+  } else {
+    __pyx_t_21 = __pyx_t_19;
+    goto __pyx_L32_bool_binop_done;
+  }
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_opt); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_16 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__8, NULL); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_16);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_19 = (__Pyx_PyString_Equals(__pyx_t_16, __pyx_n_s_T, Py_EQ)); if (unlikely(__pyx_t_19 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+  __pyx_t_21 = __pyx_t_19;
+  __pyx_L32_bool_binop_done:;
+  __pyx_v_self->isMerged = __pyx_t_21;
+
+  /* "utilBMF/MergePairedAlignments.pyx":145
+ * 
+ *         # Parse out the read cigar.
+ *         for CigarOp, CigarOpLen in read.cigar:             # <<<<<<<<<<<<<<
  *             for tmpInt in xrange(offset, offset + CigarOpLen):
  *                 if(CigarOp == 0):
  */
-    if (unlikely(__pyx_v_tmpTup == Py_None)) {
-      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 132; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    }
-    __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v_tmpTup, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 132; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+  __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigar); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_16);
+  if (likely(PyList_CheckExact(__pyx_t_16)) || PyTuple_CheckExact(__pyx_t_16)) {
+    __pyx_t_1 = __pyx_t_16; __Pyx_INCREF(__pyx_t_1); __pyx_t_18 = 0;
+    __pyx_t_20 = NULL;
+  } else {
+    __pyx_t_18 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_t_16); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_11 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 132; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_v_CigarOpLen = __pyx_t_11;
+    __pyx_t_20 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_20)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+  for (;;) {
+    if (likely(!__pyx_t_20)) {
+      if (likely(PyList_CheckExact(__pyx_t_1))) {
+        if (__pyx_t_18 >= PyList_GET_SIZE(__pyx_t_1)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_16 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_18); __Pyx_INCREF(__pyx_t_16); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_16 = PySequence_ITEM(__pyx_t_1, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      } else {
+        if (__pyx_t_18 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_16 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_18); __Pyx_INCREF(__pyx_t_16); __pyx_t_18++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_16 = PySequence_ITEM(__pyx_t_1, __pyx_t_18); __pyx_t_18++; if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      }
+    } else {
+      __pyx_t_16 = __pyx_t_20(__pyx_t_1);
+      if (unlikely(!__pyx_t_16)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        break;
+      }
+      __Pyx_GOTREF(__pyx_t_16);
+    }
+    if ((likely(PyTuple_CheckExact(__pyx_t_16))) || (PyList_CheckExact(__pyx_t_16))) {
+      PyObject* sequence = __pyx_t_16;
+      #if CYTHON_COMPILING_IN_CPYTHON
+      Py_ssize_t size = Py_SIZE(sequence);
+      #else
+      Py_ssize_t size = PySequence_Size(sequence);
+      #endif
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      #if CYTHON_COMPILING_IN_CPYTHON
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_15 = PyTuple_GET_ITEM(sequence, 0); 
+        __pyx_t_9 = PyTuple_GET_ITEM(sequence, 1); 
+      } else {
+        __pyx_t_15 = PyList_GET_ITEM(sequence, 0); 
+        __pyx_t_9 = PyList_GET_ITEM(sequence, 1); 
+      }
+      __Pyx_INCREF(__pyx_t_15);
+      __Pyx_INCREF(__pyx_t_9);
+      #else
+      __pyx_t_15 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_15);
+      __pyx_t_9 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_9);
+      #endif
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_8 = PyObject_GetIter(__pyx_t_16); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_8);
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+      __pyx_t_22 = Py_TYPE(__pyx_t_8)->tp_iternext;
+      index = 0; __pyx_t_15 = __pyx_t_22(__pyx_t_8); if (unlikely(!__pyx_t_15)) goto __pyx_L36_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_15);
+      index = 1; __pyx_t_9 = __pyx_t_22(__pyx_t_8); if (unlikely(!__pyx_t_9)) goto __pyx_L36_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_9);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_22(__pyx_t_8), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_22 = NULL;
+      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+      goto __pyx_L37_unpacking_done;
+      __pyx_L36_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+      __pyx_t_22 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_L37_unpacking_done:;
+    }
+    __pyx_t_23 = __Pyx_PyInt_As_char(__pyx_t_15); if (unlikely((__pyx_t_23 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
+    __pyx_t_24 = __Pyx_PyInt_As_char(__pyx_t_9); if (unlikely((__pyx_t_24 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    __pyx_v_CigarOp = __pyx_t_23;
+    __pyx_v_CigarOpLen = __pyx_t_24;
 
-    /* "utilBMF/MergePairedAlignments.pyx":133
- *             CigarOp = tmpTup[0]
- *             CigarOpLen = tmpTup[1]
+    /* "utilBMF/MergePairedAlignments.pyx":146
+ *         # Parse out the read cigar.
+ *         for CigarOp, CigarOpLen in read.cigar:
  *             for tmpInt in xrange(offset, offset + CigarOpLen):             # <<<<<<<<<<<<<<
  *                 if(CigarOp == 0):
  *                     """
  */
     __pyx_t_11 = (__pyx_v_offset + __pyx_v_CigarOpLen);
-    for (__pyx_t_21 = __pyx_v_offset; __pyx_t_21 < __pyx_t_11; __pyx_t_21+=1) {
-      __pyx_v_tmpInt = __pyx_t_21;
+    for (__pyx_t_25 = __pyx_v_offset; __pyx_t_25 < __pyx_t_11; __pyx_t_25+=1) {
+      __pyx_v_tmpInt = __pyx_t_25;
 
-      /* "utilBMF/MergePairedAlignments.pyx":188
- *                     '''
+      /* "utilBMF/MergePairedAlignments.pyx":192
+ *                         mergeAgreed=1)
  *                     readPos += 1
  *                 elif(CigarOp == 2):             # <<<<<<<<<<<<<<
  *                     """
@@ -4750,8 +5222,8 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
       switch (__pyx_v_CigarOp) {
 
-        /* "utilBMF/MergePairedAlignments.pyx":134
- *             CigarOpLen = tmpTup[1]
+        /* "utilBMF/MergePairedAlignments.pyx":147
+ *         for CigarOp, CigarOpLen in read.cigar:
  *             for tmpInt in xrange(offset, offset + CigarOpLen):
  *                 if(CigarOp == 0):             # <<<<<<<<<<<<<<
  *                     """
@@ -4759,7 +5231,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
         case 0:
 
-        /* "utilBMF/MergePairedAlignments.pyx":138
+        /* "utilBMF/MergePairedAlignments.pyx":151
  *                     Case: 'M'
  *                     """
  *                     try:             # <<<<<<<<<<<<<<
@@ -4773,7 +5245,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           __Pyx_XGOTREF(__pyx_t_5);
           /*try:*/ {
 
-            /* "utilBMF/MergePairedAlignments.pyx":139
+            /* "utilBMF/MergePairedAlignments.pyx":152
  *                     """
  *                     try:
  *                         assert read.aligned_pairs[tmpInt][1] is not None             # <<<<<<<<<<<<<<
@@ -4782,19 +5254,19 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
             #ifndef CYTHON_WITHOUT_ASSERTIONS
             if (unlikely(!Py_OptimizeFlag)) {
-              __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 139; __pyx_clineno = __LINE__; goto __pyx_L27_error;}
-              __Pyx_GOTREF(__pyx_t_1);
-              __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_1, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 139; __pyx_clineno = __LINE__; goto __pyx_L27_error;};
+              __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 152; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
               __Pyx_GOTREF(__pyx_t_16);
-              __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-              __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_16, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 139; __pyx_clineno = __LINE__; goto __pyx_L27_error;};
-              __Pyx_GOTREF(__pyx_t_1);
+              __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_16, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 152; __pyx_clineno = __LINE__; goto __pyx_L40_error;};
+              __Pyx_GOTREF(__pyx_t_9);
               __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-              __pyx_t_22 = (__pyx_t_1 != Py_None);
-              __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-              if (unlikely(!(__pyx_t_22 != 0))) {
+              __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_9, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 152; __pyx_clineno = __LINE__; goto __pyx_L40_error;};
+              __Pyx_GOTREF(__pyx_t_16);
+              __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+              __pyx_t_21 = (__pyx_t_16 != Py_None);
+              __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+              if (unlikely(!(__pyx_t_21 != 0))) {
                 PyErr_SetNone(PyExc_AssertionError);
-                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 139; __pyx_clineno = __LINE__; goto __pyx_L27_error;}
+                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 152; __pyx_clineno = __LINE__; goto __pyx_L40_error;}
               }
             }
             #endif
@@ -4802,65 +5274,65 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
           __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
           __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
-          goto __pyx_L34_try_end;
-          __pyx_L27_error:;
+          goto __pyx_L47_try_end;
+          __pyx_L40_error:;
           __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-          __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
           __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+          __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
           __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_XDECREF(__pyx_t_15); __pyx_t_15 = 0;
+          __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
           __Pyx_XDECREF(__pyx_t_16); __pyx_t_16 = 0;
-          __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-          /* "utilBMF/MergePairedAlignments.pyx":140
+          /* "utilBMF/MergePairedAlignments.pyx":153
  *                     try:
  *                         assert read.aligned_pairs[tmpInt][1] is not None
  *                     except AssertionError:             # <<<<<<<<<<<<<<
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))
  *                         print("tmpInt: %s." % tmpInt)
  */
-          __pyx_t_23 = PyErr_ExceptionMatches(__pyx_builtin_AssertionError);
-          if (__pyx_t_23) {
+          __pyx_t_26 = PyErr_ExceptionMatches(__pyx_builtin_AssertionError);
+          if (__pyx_t_26) {
             __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-            if (__Pyx_GetException(&__pyx_t_1, &__pyx_t_16, &__pyx_t_15) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
-            __Pyx_GOTREF(__pyx_t_1);
+            if (__Pyx_GetException(&__pyx_t_16, &__pyx_t_9, &__pyx_t_15) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 153; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
             __Pyx_GOTREF(__pyx_t_16);
+            __Pyx_GOTREF(__pyx_t_9);
             __Pyx_GOTREF(__pyx_t_15);
 
-            /* "utilBMF/MergePairedAlignments.pyx":141
+            /* "utilBMF/MergePairedAlignments.pyx":154
  *                         assert read.aligned_pairs[tmpInt][1] is not None
  *                     except AssertionError:
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))             # <<<<<<<<<<<<<<
  *                         print("tmpInt: %s." % tmpInt)
  *                         assert False
  */
-            __pyx_t_8 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
+            __pyx_t_8 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 154; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
             __Pyx_GOTREF(__pyx_t_8);
-            __pyx_t_7 = PyObject_Repr(__pyx_t_8); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
-            __Pyx_GOTREF(__pyx_t_7);
+            __pyx_t_17 = PyObject_Repr(__pyx_t_8); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 154; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
+            __Pyx_GOTREF(__pyx_t_17);
             __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-            __pyx_t_8 = __Pyx_PyString_Format(__pyx_kp_s_Repr_of_read_align_pairs_s, __pyx_t_7); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
+            __pyx_t_8 = __Pyx_PyString_Format(__pyx_kp_s_Repr_of_read_align_pairs_s, __pyx_t_17); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 154; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
             __Pyx_GOTREF(__pyx_t_8);
-            __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-            if (__Pyx_PrintOne(0, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 141; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
+            __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
+            if (__Pyx_PrintOne(0, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 154; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
             __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-            /* "utilBMF/MergePairedAlignments.pyx":142
+            /* "utilBMF/MergePairedAlignments.pyx":155
  *                     except AssertionError:
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))
  *                         print("tmpInt: %s." % tmpInt)             # <<<<<<<<<<<<<<
  *                         assert False
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  */
-            __pyx_t_8 = __Pyx_PyInt_From_int(__pyx_v_tmpInt); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
+            __pyx_t_8 = __Pyx_PyInt_From_int(__pyx_v_tmpInt); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 155; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
             __Pyx_GOTREF(__pyx_t_8);
-            __pyx_t_7 = __Pyx_PyString_Format(__pyx_kp_s_tmpInt_s, __pyx_t_8); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
-            __Pyx_GOTREF(__pyx_t_7);
+            __pyx_t_17 = __Pyx_PyString_Format(__pyx_kp_s_tmpInt_s, __pyx_t_8); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 155; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
+            __Pyx_GOTREF(__pyx_t_17);
             __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-            if (__Pyx_PrintOne(0, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
-            __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+            if (__Pyx_PrintOne(0, __pyx_t_17) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 155; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
+            __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
 
-            /* "utilBMF/MergePairedAlignments.pyx":143
+            /* "utilBMF/MergePairedAlignments.pyx":156
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))
  *                         print("tmpInt: %s." % tmpInt)
  *                         assert False             # <<<<<<<<<<<<<<
@@ -4871,144 +5343,144 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
             if (unlikely(!Py_OptimizeFlag)) {
               if (unlikely(!0)) {
                 PyErr_SetNone(PyExc_AssertionError);
-                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 143; __pyx_clineno = __LINE__; goto __pyx_L29_except_error;}
+                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 156; __pyx_clineno = __LINE__; goto __pyx_L42_except_error;}
               }
             }
             #endif
-            __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
             __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
             __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-            goto __pyx_L28_exception_handled;
+            goto __pyx_L41_exception_handled;
           }
-          goto __pyx_L29_except_error;
-          __pyx_L29_except_error:;
+          goto __pyx_L42_except_error;
+          __pyx_L42_except_error:;
           __Pyx_XGIVEREF(__pyx_t_3);
           __Pyx_XGIVEREF(__pyx_t_4);
           __Pyx_XGIVEREF(__pyx_t_5);
           __Pyx_ExceptionReset(__pyx_t_3, __pyx_t_4, __pyx_t_5);
           goto __pyx_L1_error;
-          __pyx_L28_exception_handled:;
+          __pyx_L41_exception_handled:;
           __Pyx_XGIVEREF(__pyx_t_3);
           __Pyx_XGIVEREF(__pyx_t_4);
           __Pyx_XGIVEREF(__pyx_t_5);
           __Pyx_ExceptionReset(__pyx_t_3, __pyx_t_4, __pyx_t_5);
-          __pyx_L34_try_end:;
+          __pyx_L47_try_end:;
         }
 
-        /* "utilBMF/MergePairedAlignments.pyx":145
+        /* "utilBMF/MergePairedAlignments.pyx":158
  *                         assert False
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=read.aligned_pairs[tmpInt][1],             # <<<<<<<<<<<<<<
  *                         readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=77, base=ord(read.seq[readPos]),
  */
-        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_9, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-        __pyx_t_23 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 145; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __pyx_t_26 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_26 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_24.pos = __pyx_t_23;
+        __pyx_t_27.pos = __pyx_t_26;
 
-        /* "utilBMF/MergePairedAlignments.pyx":146
+        /* "utilBMF/MergePairedAlignments.pyx":159
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=read.aligned_pairs[tmpInt][1],
  *                         readPos=read.aligned_pairs[tmpInt][0],             # <<<<<<<<<<<<<<
  *                         operation=77, base=ord(read.seq[readPos]),
  *                         quality=quals[readPos], agreement=agrees[readPos],
  */
-        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 146; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 159; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 146; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 159; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 146; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_9, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 159; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-        __pyx_t_23 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 146; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __pyx_t_28 = __Pyx_PyInt_As_uint16_t(__pyx_t_15); if (unlikely((__pyx_t_28 == (uint16_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 159; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_24.readPos = __pyx_t_23;
-        __pyx_t_24.operation = 77;
+        __pyx_t_27.readPos = __pyx_t_28;
+        __pyx_t_27.operation = 77;
 
-        /* "utilBMF/MergePairedAlignments.pyx":147
+        /* "utilBMF/MergePairedAlignments.pyx":160
  *                         pos=read.aligned_pairs[tmpInt][1],
  *                         readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=77, base=ord(read.seq[readPos]),             # <<<<<<<<<<<<<<
  *                         quality=quals[readPos], agreement=agrees[readPos],
  *                         mergeAgreed=1)
  */
-        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_seq); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 147; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_seq); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_readPos, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 147; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_readPos, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_15 = PyTuple_New(1); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 147; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = PyTuple_New(1); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        PyTuple_SET_ITEM(__pyx_t_15, 0, __pyx_t_16);
-        __Pyx_GIVEREF(__pyx_t_16);
-        __pyx_t_16 = 0;
-        __pyx_t_16 = __Pyx_PyObject_Call(__pyx_builtin_ord, __pyx_t_15, NULL); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 147; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_16);
+        PyTuple_SET_ITEM(__pyx_t_15, 0, __pyx_t_9);
+        __Pyx_GIVEREF(__pyx_t_9);
+        __pyx_t_9 = 0;
+        __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ord, __pyx_t_15, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_9);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_20 = __Pyx_PyInt_As_char(__pyx_t_16); if (unlikely((__pyx_t_20 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 147; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-        __pyx_t_24.base = __pyx_t_20;
+        __pyx_t_24 = __Pyx_PyInt_As_char(__pyx_t_9); if (unlikely((__pyx_t_24 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __pyx_t_27.base = __pyx_t_24;
 
-        /* "utilBMF/MergePairedAlignments.pyx":148
+        /* "utilBMF/MergePairedAlignments.pyx":161
  *                         readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=77, base=ord(read.seq[readPos]),
  *                         quality=quals[readPos], agreement=agrees[readPos],             # <<<<<<<<<<<<<<
  *                         mergeAgreed=1)
  *                     if(self.firstMapped < 0):
  */
-        __pyx_t_23 = __pyx_v_readPos;
-        __pyx_t_25 = -1;
-        if (__pyx_t_23 < 0) {
-          __pyx_t_23 += __pyx_pybuffernd_quals.diminfo[0].shape;
-          if (unlikely(__pyx_t_23 < 0)) __pyx_t_25 = 0;
-        } else if (unlikely(__pyx_t_23 >= __pyx_pybuffernd_quals.diminfo[0].shape)) __pyx_t_25 = 0;
-        if (unlikely(__pyx_t_25 != -1)) {
-          __Pyx_RaiseBufferIndexError(__pyx_t_25);
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 148; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_26 = __pyx_v_readPos;
+        __pyx_t_29 = -1;
+        if (__pyx_t_26 < 0) {
+          __pyx_t_26 += __pyx_pybuffernd_quals.diminfo[0].shape;
+          if (unlikely(__pyx_t_26 < 0)) __pyx_t_29 = 0;
+        } else if (unlikely(__pyx_t_26 >= __pyx_pybuffernd_quals.diminfo[0].shape)) __pyx_t_29 = 0;
+        if (unlikely(__pyx_t_29 != -1)) {
+          __Pyx_RaiseBufferIndexError(__pyx_t_29);
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 161; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_24.quality = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_quals.rcbuffer->pybuffer.buf, __pyx_t_23, __pyx_pybuffernd_quals.diminfo[0].strides));
-        __pyx_t_25 = __pyx_v_readPos;
-        __pyx_t_26 = -1;
-        if (__pyx_t_25 < 0) {
-          __pyx_t_25 += __pyx_pybuffernd_agrees.diminfo[0].shape;
-          if (unlikely(__pyx_t_25 < 0)) __pyx_t_26 = 0;
-        } else if (unlikely(__pyx_t_25 >= __pyx_pybuffernd_agrees.diminfo[0].shape)) __pyx_t_26 = 0;
-        if (unlikely(__pyx_t_26 != -1)) {
-          __Pyx_RaiseBufferIndexError(__pyx_t_26);
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 148; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27.quality = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_quals.rcbuffer->pybuffer.buf, __pyx_t_26, __pyx_pybuffernd_quals.diminfo[0].strides));
+        __pyx_t_29 = __pyx_v_readPos;
+        __pyx_t_30 = -1;
+        if (__pyx_t_29 < 0) {
+          __pyx_t_29 += __pyx_pybuffernd_agrees.diminfo[0].shape;
+          if (unlikely(__pyx_t_29 < 0)) __pyx_t_30 = 0;
+        } else if (unlikely(__pyx_t_29 >= __pyx_pybuffernd_agrees.diminfo[0].shape)) __pyx_t_30 = 0;
+        if (unlikely(__pyx_t_30 != -1)) {
+          __Pyx_RaiseBufferIndexError(__pyx_t_30);
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 161; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_24.agreement = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_agrees.rcbuffer->pybuffer.buf, __pyx_t_25, __pyx_pybuffernd_agrees.diminfo[0].strides));
-        __pyx_t_24.mergeAgreed = 1;
+        __pyx_t_27.agreement = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_agrees.rcbuffer->pybuffer.buf, __pyx_t_29, __pyx_pybuffernd_agrees.diminfo[0].strides));
+        __pyx_t_27.mergeAgreed = 1;
 
-        /* "utilBMF/MergePairedAlignments.pyx":144
+        /* "utilBMF/MergePairedAlignments.pyx":157
  *                         print("tmpInt: %s." % tmpInt)
  *                         assert False
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(             # <<<<<<<<<<<<<<
  *                         pos=read.aligned_pairs[tmpInt][1],
  *                         readPos=read.aligned_pairs[tmpInt][0],
  */
-        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_24;
+        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_27;
 
-        /* "utilBMF/MergePairedAlignments.pyx":150
+        /* "utilBMF/MergePairedAlignments.pyx":163
  *                         quality=quals[readPos], agreement=agrees[readPos],
  *                         mergeAgreed=1)
  *                     if(self.firstMapped < 0):             # <<<<<<<<<<<<<<
  *                         self.firstMapped = tmpInt
  *                     readPos += 1
  */
-        __pyx_t_22 = ((__pyx_v_self->firstMapped < 0) != 0);
-        if (__pyx_t_22) {
+        __pyx_t_21 = ((__pyx_v_self->firstMapped < 0) != 0);
+        if (__pyx_t_21) {
 
-          /* "utilBMF/MergePairedAlignments.pyx":151
+          /* "utilBMF/MergePairedAlignments.pyx":164
  *                         mergeAgreed=1)
  *                     if(self.firstMapped < 0):
  *                         self.firstMapped = tmpInt             # <<<<<<<<<<<<<<
@@ -5016,11 +5488,11 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  *                 elif(CigarOp == 4):
  */
           __pyx_v_self->firstMapped = __pyx_v_tmpInt;
-          goto __pyx_L37;
+          goto __pyx_L50;
         }
-        __pyx_L37:;
+        __pyx_L50:;
 
-        /* "utilBMF/MergePairedAlignments.pyx":152
+        /* "utilBMF/MergePairedAlignments.pyx":165
  *                     if(self.firstMapped < 0):
  *                         self.firstMapped = tmpInt
  *                     readPos += 1             # <<<<<<<<<<<<<<
@@ -5030,7 +5502,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
         __pyx_v_readPos = (__pyx_v_readPos + 1);
         break;
 
-        /* "utilBMF/MergePairedAlignments.pyx":153
+        /* "utilBMF/MergePairedAlignments.pyx":166
  *                         self.firstMapped = tmpInt
  *                     readPos += 1
  *                 elif(CigarOp == 4):             # <<<<<<<<<<<<<<
@@ -5039,7 +5511,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
         case 4:
 
-        /* "utilBMF/MergePairedAlignments.pyx":157
+        /* "utilBMF/MergePairedAlignments.pyx":170
  *                     Case: 'S'
  *                     """
  *                     try:             # <<<<<<<<<<<<<<
@@ -5053,7 +5525,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           __Pyx_XGOTREF(__pyx_t_3);
           /*try:*/ {
 
-            /* "utilBMF/MergePairedAlignments.pyx":158
+            /* "utilBMF/MergePairedAlignments.pyx":171
  *                     """
  *                     try:
  *                         assert read.aligned_pairs[tmpInt][1] is None             # <<<<<<<<<<<<<<
@@ -5062,19 +5534,19 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
             #ifndef CYTHON_WITHOUT_ASSERTIONS
             if (unlikely(!Py_OptimizeFlag)) {
-              __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L38_error;}
-              __Pyx_GOTREF(__pyx_t_16);
-              __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L38_error;};
+              __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 171; __pyx_clineno = __LINE__; goto __pyx_L51_error;}
+              __Pyx_GOTREF(__pyx_t_9);
+              __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_9, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 171; __pyx_clineno = __LINE__; goto __pyx_L51_error;};
               __Pyx_GOTREF(__pyx_t_15);
-              __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-              __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L38_error;};
-              __Pyx_GOTREF(__pyx_t_16);
+              __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+              __pyx_t_9 = __Pyx_GetItemInt(__pyx_t_15, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 171; __pyx_clineno = __LINE__; goto __pyx_L51_error;};
+              __Pyx_GOTREF(__pyx_t_9);
               __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-              __pyx_t_22 = (__pyx_t_16 == Py_None);
-              __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-              if (unlikely(!(__pyx_t_22 != 0))) {
+              __pyx_t_21 = (__pyx_t_9 == Py_None);
+              __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+              if (unlikely(!(__pyx_t_21 != 0))) {
                 PyErr_SetNone(PyExc_AssertionError);
-                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 158; __pyx_clineno = __LINE__; goto __pyx_L38_error;}
+                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 171; __pyx_clineno = __LINE__; goto __pyx_L51_error;}
               }
             }
             #endif
@@ -5082,65 +5554,65 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
           __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
           __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
           __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-          goto __pyx_L45_try_end;
-          __pyx_L38_error:;
+          goto __pyx_L58_try_end;
+          __pyx_L51_error:;
           __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
-          __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
-          __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
           __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
-          __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
-          __Pyx_XDECREF(__pyx_t_15); __pyx_t_15 = 0;
+          __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+          __Pyx_XDECREF(__pyx_t_17); __pyx_t_17 = 0;
           __Pyx_XDECREF(__pyx_t_16); __pyx_t_16 = 0;
+          __Pyx_XDECREF(__pyx_t_15); __pyx_t_15 = 0;
+          __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-          /* "utilBMF/MergePairedAlignments.pyx":159
+          /* "utilBMF/MergePairedAlignments.pyx":172
  *                     try:
  *                         assert read.aligned_pairs[tmpInt][1] is None
  *                     except AssertionError:             # <<<<<<<<<<<<<<
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))
  *                         print("tmpInt: %s." % tmpInt)
  */
-          __pyx_t_26 = PyErr_ExceptionMatches(__pyx_builtin_AssertionError);
-          if (__pyx_t_26) {
+          __pyx_t_30 = PyErr_ExceptionMatches(__pyx_builtin_AssertionError);
+          if (__pyx_t_30) {
             __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-            if (__Pyx_GetException(&__pyx_t_16, &__pyx_t_15, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 159; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
-            __Pyx_GOTREF(__pyx_t_16);
+            if (__Pyx_GetException(&__pyx_t_9, &__pyx_t_15, &__pyx_t_16) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 172; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
+            __Pyx_GOTREF(__pyx_t_9);
             __Pyx_GOTREF(__pyx_t_15);
-            __Pyx_GOTREF(__pyx_t_1);
+            __Pyx_GOTREF(__pyx_t_16);
 
-            /* "utilBMF/MergePairedAlignments.pyx":160
+            /* "utilBMF/MergePairedAlignments.pyx":173
  *                         assert read.aligned_pairs[tmpInt][1] is None
  *                     except AssertionError:
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))             # <<<<<<<<<<<<<<
  *                         print("tmpInt: %s." % tmpInt)
  *                         assert False
  */
-            __pyx_t_7 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
-            __Pyx_GOTREF(__pyx_t_7);
-            __pyx_t_8 = PyObject_Repr(__pyx_t_7); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
+            __pyx_t_17 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 173; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
+            __Pyx_GOTREF(__pyx_t_17);
+            __pyx_t_8 = PyObject_Repr(__pyx_t_17); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 173; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
             __Pyx_GOTREF(__pyx_t_8);
-            __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-            __pyx_t_7 = __Pyx_PyString_Format(__pyx_kp_s_Repr_of_read_align_pairs_s, __pyx_t_8); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
-            __Pyx_GOTREF(__pyx_t_7);
+            __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
+            __pyx_t_17 = __Pyx_PyString_Format(__pyx_kp_s_Repr_of_read_align_pairs_s, __pyx_t_8); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 173; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
+            __Pyx_GOTREF(__pyx_t_17);
             __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-            if (__Pyx_PrintOne(0, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
-            __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+            if (__Pyx_PrintOne(0, __pyx_t_17) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 173; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
+            __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
 
-            /* "utilBMF/MergePairedAlignments.pyx":161
+            /* "utilBMF/MergePairedAlignments.pyx":174
  *                     except AssertionError:
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))
  *                         print("tmpInt: %s." % tmpInt)             # <<<<<<<<<<<<<<
  *                         assert False
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  */
-            __pyx_t_7 = __Pyx_PyInt_From_int(__pyx_v_tmpInt); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 161; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
-            __Pyx_GOTREF(__pyx_t_7);
-            __pyx_t_8 = __Pyx_PyString_Format(__pyx_kp_s_tmpInt_s, __pyx_t_7); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 161; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
+            __pyx_t_17 = __Pyx_PyInt_From_int(__pyx_v_tmpInt); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
+            __Pyx_GOTREF(__pyx_t_17);
+            __pyx_t_8 = __Pyx_PyString_Format(__pyx_kp_s_tmpInt_s, __pyx_t_17); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
             __Pyx_GOTREF(__pyx_t_8);
-            __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-            if (__Pyx_PrintOne(0, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 161; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
+            __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
+            if (__Pyx_PrintOne(0, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
             __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-            /* "utilBMF/MergePairedAlignments.pyx":162
+            /* "utilBMF/MergePairedAlignments.pyx":175
  *                         print("Repr of read.align_pairs: %s" % repr(read.aligned_pairs))
  *                         print("tmpInt: %s." % tmpInt)
  *                         assert False             # <<<<<<<<<<<<<<
@@ -5151,123 +5623,123 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
             if (unlikely(!Py_OptimizeFlag)) {
               if (unlikely(!0)) {
                 PyErr_SetNone(PyExc_AssertionError);
-                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 162; __pyx_clineno = __LINE__; goto __pyx_L40_except_error;}
+                {__pyx_filename = __pyx_f[0]; __pyx_lineno = 175; __pyx_clineno = __LINE__; goto __pyx_L53_except_error;}
               }
             }
             #endif
-            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
             __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-            __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-            goto __pyx_L39_exception_handled;
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            goto __pyx_L52_exception_handled;
           }
-          goto __pyx_L40_except_error;
-          __pyx_L40_except_error:;
+          goto __pyx_L53_except_error;
+          __pyx_L53_except_error:;
           __Pyx_XGIVEREF(__pyx_t_5);
           __Pyx_XGIVEREF(__pyx_t_4);
           __Pyx_XGIVEREF(__pyx_t_3);
           __Pyx_ExceptionReset(__pyx_t_5, __pyx_t_4, __pyx_t_3);
           goto __pyx_L1_error;
-          __pyx_L39_exception_handled:;
+          __pyx_L52_exception_handled:;
           __Pyx_XGIVEREF(__pyx_t_5);
           __Pyx_XGIVEREF(__pyx_t_4);
           __Pyx_XGIVEREF(__pyx_t_3);
           __Pyx_ExceptionReset(__pyx_t_5, __pyx_t_4, __pyx_t_3);
-          __pyx_L45_try_end:;
+          __pyx_L58_try_end:;
         }
 
-        /* "utilBMF/MergePairedAlignments.pyx":164
+        /* "utilBMF/MergePairedAlignments.pyx":177
  *                         assert False
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=-1 * read.pos, readPos=read.aligned_pairs[tmpInt][0],             # <<<<<<<<<<<<<<
  *                         operation=83, base=ord(read.seq[readPos]),
  *                         quality=quals[readPos], agreement=agrees[readPos],
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_1);
-        __pyx_t_15 = PyNumber_Multiply(__pyx_int_neg_1, __pyx_t_1); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_pos); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_15 = PyNumber_Multiply(__pyx_int_neg_1, __pyx_t_16); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_26 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_26 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_30 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_30 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_24.pos = __pyx_t_26;
-        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27.pos = __pyx_t_30;
+        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_16);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_1, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_26 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_26 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 164; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_28 = __Pyx_PyInt_As_uint16_t(__pyx_t_15); if (unlikely((__pyx_t_28 == (uint16_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 177; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_24.readPos = __pyx_t_26;
-        __pyx_t_24.operation = 83;
+        __pyx_t_27.readPos = __pyx_t_28;
+        __pyx_t_27.operation = 83;
 
-        /* "utilBMF/MergePairedAlignments.pyx":165
+        /* "utilBMF/MergePairedAlignments.pyx":178
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=-1 * read.pos, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=83, base=ord(read.seq[readPos]),             # <<<<<<<<<<<<<<
  *                         quality=quals[readPos], agreement=agrees[readPos],
  *                         mergeAgreed=1)
  */
-        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_seq); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 165; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_seq); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 178; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_readPos, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 165; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_readPos, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 178; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_16);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_15 = PyTuple_New(1); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 165; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = PyTuple_New(1); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 178; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        PyTuple_SET_ITEM(__pyx_t_15, 0, __pyx_t_1);
-        __Pyx_GIVEREF(__pyx_t_1);
-        __pyx_t_1 = 0;
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_builtin_ord, __pyx_t_15, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 165; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_1);
+        PyTuple_SET_ITEM(__pyx_t_15, 0, __pyx_t_16);
+        __Pyx_GIVEREF(__pyx_t_16);
+        __pyx_t_16 = 0;
+        __pyx_t_16 = __Pyx_PyObject_Call(__pyx_builtin_ord, __pyx_t_15, NULL); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 178; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_16);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_20 = __Pyx_PyInt_As_char(__pyx_t_1); if (unlikely((__pyx_t_20 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 165; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_24.base = __pyx_t_20;
+        __pyx_t_24 = __Pyx_PyInt_As_char(__pyx_t_16); if (unlikely((__pyx_t_24 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 178; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_27.base = __pyx_t_24;
 
-        /* "utilBMF/MergePairedAlignments.pyx":166
+        /* "utilBMF/MergePairedAlignments.pyx":179
  *                         pos=-1 * read.pos, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=83, base=ord(read.seq[readPos]),
  *                         quality=quals[readPos], agreement=agrees[readPos],             # <<<<<<<<<<<<<<
  *                         mergeAgreed=1)
  *                     readPos += 1
  */
-        __pyx_t_26 = __pyx_v_readPos;
-        __pyx_t_27 = -1;
-        if (__pyx_t_26 < 0) {
-          __pyx_t_26 += __pyx_pybuffernd_quals.diminfo[0].shape;
-          if (unlikely(__pyx_t_26 < 0)) __pyx_t_27 = 0;
-        } else if (unlikely(__pyx_t_26 >= __pyx_pybuffernd_quals.diminfo[0].shape)) __pyx_t_27 = 0;
-        if (unlikely(__pyx_t_27 != -1)) {
-          __Pyx_RaiseBufferIndexError(__pyx_t_27);
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 166; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_30 = __pyx_v_readPos;
+        __pyx_t_31 = -1;
+        if (__pyx_t_30 < 0) {
+          __pyx_t_30 += __pyx_pybuffernd_quals.diminfo[0].shape;
+          if (unlikely(__pyx_t_30 < 0)) __pyx_t_31 = 0;
+        } else if (unlikely(__pyx_t_30 >= __pyx_pybuffernd_quals.diminfo[0].shape)) __pyx_t_31 = 0;
+        if (unlikely(__pyx_t_31 != -1)) {
+          __Pyx_RaiseBufferIndexError(__pyx_t_31);
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 179; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_24.quality = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_quals.rcbuffer->pybuffer.buf, __pyx_t_26, __pyx_pybuffernd_quals.diminfo[0].strides));
-        __pyx_t_27 = __pyx_v_readPos;
-        __pyx_t_28 = -1;
-        if (__pyx_t_27 < 0) {
-          __pyx_t_27 += __pyx_pybuffernd_agrees.diminfo[0].shape;
-          if (unlikely(__pyx_t_27 < 0)) __pyx_t_28 = 0;
-        } else if (unlikely(__pyx_t_27 >= __pyx_pybuffernd_agrees.diminfo[0].shape)) __pyx_t_28 = 0;
-        if (unlikely(__pyx_t_28 != -1)) {
-          __Pyx_RaiseBufferIndexError(__pyx_t_28);
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 166; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27.quality = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_quals.rcbuffer->pybuffer.buf, __pyx_t_30, __pyx_pybuffernd_quals.diminfo[0].strides));
+        __pyx_t_31 = __pyx_v_readPos;
+        __pyx_t_32 = -1;
+        if (__pyx_t_31 < 0) {
+          __pyx_t_31 += __pyx_pybuffernd_agrees.diminfo[0].shape;
+          if (unlikely(__pyx_t_31 < 0)) __pyx_t_32 = 0;
+        } else if (unlikely(__pyx_t_31 >= __pyx_pybuffernd_agrees.diminfo[0].shape)) __pyx_t_32 = 0;
+        if (unlikely(__pyx_t_32 != -1)) {
+          __Pyx_RaiseBufferIndexError(__pyx_t_32);
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 179; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_24.agreement = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_agrees.rcbuffer->pybuffer.buf, __pyx_t_27, __pyx_pybuffernd_agrees.diminfo[0].strides));
-        __pyx_t_24.mergeAgreed = 1;
+        __pyx_t_27.agreement = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_agrees.rcbuffer->pybuffer.buf, __pyx_t_31, __pyx_pybuffernd_agrees.diminfo[0].strides));
+        __pyx_t_27.mergeAgreed = 1;
 
-        /* "utilBMF/MergePairedAlignments.pyx":163
+        /* "utilBMF/MergePairedAlignments.pyx":176
  *                         print("tmpInt: %s." % tmpInt)
  *                         assert False
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(             # <<<<<<<<<<<<<<
  *                         pos=-1 * read.pos, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=83, base=ord(read.seq[readPos]),
  */
-        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_24;
+        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_27;
 
-        /* "utilBMF/MergePairedAlignments.pyx":168
+        /* "utilBMF/MergePairedAlignments.pyx":181
  *                         quality=quals[readPos], agreement=agrees[readPos],
  *                         mergeAgreed=1)
  *                     readPos += 1             # <<<<<<<<<<<<<<
@@ -5277,7 +5749,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
         __pyx_v_readPos = (__pyx_v_readPos + 1);
         break;
 
-        /* "utilBMF/MergePairedAlignments.pyx":169
+        /* "utilBMF/MergePairedAlignments.pyx":182
  *                         mergeAgreed=1)
  *                     readPos += 1
  *                 elif(CigarOp == 1):             # <<<<<<<<<<<<<<
@@ -5286,102 +5758,102 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
         case 1:
 
-        /* "utilBMF/MergePairedAlignments.pyx":173
+        /* "utilBMF/MergePairedAlignments.pyx":186
  *                     Case: 'I'
  *                     """
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(             # <<<<<<<<<<<<<<
  *                         pos=-1, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=73, base=ord(read.seq[readPos]),
  */
-        __pyx_t_24.pos = -1;
+        __pyx_t_27.pos = -1;
 
-        /* "utilBMF/MergePairedAlignments.pyx":174
+        /* "utilBMF/MergePairedAlignments.pyx":187
  *                     """
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=-1, readPos=read.aligned_pairs[tmpInt][0],             # <<<<<<<<<<<<<<
  *                         operation=73, base=ord(read.seq[readPos]),
  *                         quality=quals[readPos], agreement=agrees[readPos],
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_1);
-        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_1, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 187; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 187; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_15, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 187; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_16);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_28 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_28 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 174; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_24.readPos = __pyx_t_28;
-        __pyx_t_24.operation = 73;
+        __pyx_t_28 = __Pyx_PyInt_As_uint16_t(__pyx_t_16); if (unlikely((__pyx_t_28 == (uint16_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 187; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_27.readPos = __pyx_t_28;
+        __pyx_t_27.operation = 73;
 
-        /* "utilBMF/MergePairedAlignments.pyx":175
+        /* "utilBMF/MergePairedAlignments.pyx":188
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=-1, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=73, base=ord(read.seq[readPos]),             # <<<<<<<<<<<<<<
  *                         quality=quals[readPos], agreement=agrees[readPos],
  *                         mergeAgreed=1)
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_seq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 175; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_1);
-        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_1, __pyx_v_readPos, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 175; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_16 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_seq); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 188; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, __pyx_v_readPos, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 188; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 175; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        __Pyx_GOTREF(__pyx_t_1);
-        PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_15);
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_16 = PyTuple_New(1); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 188; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_16);
+        PyTuple_SET_ITEM(__pyx_t_16, 0, __pyx_t_15);
         __Pyx_GIVEREF(__pyx_t_15);
         __pyx_t_15 = 0;
-        __pyx_t_15 = __Pyx_PyObject_Call(__pyx_builtin_ord, __pyx_t_1, NULL); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 175; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_Call(__pyx_builtin_ord, __pyx_t_16, NULL); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 188; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_20 = __Pyx_PyInt_As_char(__pyx_t_15); if (unlikely((__pyx_t_20 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 175; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_24 = __Pyx_PyInt_As_char(__pyx_t_15); if (unlikely((__pyx_t_24 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 188; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_24.base = __pyx_t_20;
+        __pyx_t_27.base = __pyx_t_24;
 
-        /* "utilBMF/MergePairedAlignments.pyx":176
+        /* "utilBMF/MergePairedAlignments.pyx":189
  *                         pos=-1, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=73, base=ord(read.seq[readPos]),
  *                         quality=quals[readPos], agreement=agrees[readPos],             # <<<<<<<<<<<<<<
  *                         mergeAgreed=1)
- *                     '''
+ *                     readPos += 1
  */
-        __pyx_t_28 = __pyx_v_readPos;
-        __pyx_t_29 = -1;
-        if (__pyx_t_28 < 0) {
-          __pyx_t_28 += __pyx_pybuffernd_quals.diminfo[0].shape;
-          if (unlikely(__pyx_t_28 < 0)) __pyx_t_29 = 0;
-        } else if (unlikely(__pyx_t_28 >= __pyx_pybuffernd_quals.diminfo[0].shape)) __pyx_t_29 = 0;
-        if (unlikely(__pyx_t_29 != -1)) {
-          __Pyx_RaiseBufferIndexError(__pyx_t_29);
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 176; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_32 = __pyx_v_readPos;
+        __pyx_t_33 = -1;
+        if (__pyx_t_32 < 0) {
+          __pyx_t_32 += __pyx_pybuffernd_quals.diminfo[0].shape;
+          if (unlikely(__pyx_t_32 < 0)) __pyx_t_33 = 0;
+        } else if (unlikely(__pyx_t_32 >= __pyx_pybuffernd_quals.diminfo[0].shape)) __pyx_t_33 = 0;
+        if (unlikely(__pyx_t_33 != -1)) {
+          __Pyx_RaiseBufferIndexError(__pyx_t_33);
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 189; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_24.quality = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_quals.rcbuffer->pybuffer.buf, __pyx_t_28, __pyx_pybuffernd_quals.diminfo[0].strides));
-        __pyx_t_29 = __pyx_v_readPos;
-        __pyx_t_30 = -1;
-        if (__pyx_t_29 < 0) {
-          __pyx_t_29 += __pyx_pybuffernd_agrees.diminfo[0].shape;
-          if (unlikely(__pyx_t_29 < 0)) __pyx_t_30 = 0;
-        } else if (unlikely(__pyx_t_29 >= __pyx_pybuffernd_agrees.diminfo[0].shape)) __pyx_t_30 = 0;
-        if (unlikely(__pyx_t_30 != -1)) {
-          __Pyx_RaiseBufferIndexError(__pyx_t_30);
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 176; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_27.quality = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_quals.rcbuffer->pybuffer.buf, __pyx_t_32, __pyx_pybuffernd_quals.diminfo[0].strides));
+        __pyx_t_33 = __pyx_v_readPos;
+        __pyx_t_34 = -1;
+        if (__pyx_t_33 < 0) {
+          __pyx_t_33 += __pyx_pybuffernd_agrees.diminfo[0].shape;
+          if (unlikely(__pyx_t_33 < 0)) __pyx_t_34 = 0;
+        } else if (unlikely(__pyx_t_33 >= __pyx_pybuffernd_agrees.diminfo[0].shape)) __pyx_t_34 = 0;
+        if (unlikely(__pyx_t_34 != -1)) {
+          __Pyx_RaiseBufferIndexError(__pyx_t_34);
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 189; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_24.agreement = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_agrees.rcbuffer->pybuffer.buf, __pyx_t_29, __pyx_pybuffernd_agrees.diminfo[0].strides));
-        __pyx_t_24.mergeAgreed = 1;
+        __pyx_t_27.agreement = (*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_agrees.rcbuffer->pybuffer.buf, __pyx_t_33, __pyx_pybuffernd_agrees.diminfo[0].strides));
+        __pyx_t_27.mergeAgreed = 1;
 
-        /* "utilBMF/MergePairedAlignments.pyx":173
+        /* "utilBMF/MergePairedAlignments.pyx":186
  *                     Case: 'I'
  *                     """
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(             # <<<<<<<<<<<<<<
  *                         pos=-1, readPos=read.aligned_pairs[tmpInt][0],
  *                         operation=73, base=ord(read.seq[readPos]),
  */
-        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_24;
+        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_27;
 
-        /* "utilBMF/MergePairedAlignments.pyx":187
- *                     self.Layout.layouts[tmpInt].mergeAgreed = 1
- *                     '''
+        /* "utilBMF/MergePairedAlignments.pyx":191
+ *                         quality=quals[readPos], agreement=agrees[readPos],
+ *                         mergeAgreed=1)
  *                     readPos += 1             # <<<<<<<<<<<<<<
  *                 elif(CigarOp == 2):
  *                     """
@@ -5389,8 +5861,8 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
         __pyx_v_readPos = (__pyx_v_readPos + 1);
         break;
 
-        /* "utilBMF/MergePairedAlignments.pyx":188
- *                     '''
+        /* "utilBMF/MergePairedAlignments.pyx":192
+ *                         mergeAgreed=1)
  *                     readPos += 1
  *                 elif(CigarOp == 2):             # <<<<<<<<<<<<<<
  *                     """
@@ -5398,59 +5870,59 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
         case 2:
 
-        /* "utilBMF/MergePairedAlignments.pyx":193
+        /* "utilBMF/MergePairedAlignments.pyx":197
  *                     """
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(
  *                         pos=read.aligned_pairs[tmpInt][1],             # <<<<<<<<<<<<<<
  *                         readPos=-1,
  *                         operation=68, base=68,
  */
-        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 193; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_aligned_pairs); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 197; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_1 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 193; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-        __Pyx_GOTREF(__pyx_t_1);
+        __pyx_t_16 = __Pyx_GetItemInt(__pyx_t_15, __pyx_v_tmpInt, int, 1, __Pyx_PyInt_From_int, 0, 1, 1); if (unlikely(__pyx_t_16 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 197; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __Pyx_GOTREF(__pyx_t_16);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_1, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 193; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+        __pyx_t_15 = __Pyx_GetItemInt(__pyx_t_16, 1, long, 1, __Pyx_PyInt_From_long, 0, 0, 1); if (unlikely(__pyx_t_15 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 197; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
         __Pyx_GOTREF(__pyx_t_15);
-        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-        __pyx_t_30 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_30 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 193; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_34 = __Pyx_PyInt_As_int(__pyx_t_15); if (unlikely((__pyx_t_34 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 197; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        __pyx_t_24.pos = __pyx_t_30;
-        __pyx_t_24.readPos = -1;
-        __pyx_t_24.operation = 68;
-        __pyx_t_24.base = 68;
-        __pyx_t_24.quality = -1;
-        __pyx_t_24.agreement = -1;
-        __pyx_t_24.mergeAgreed = 1;
+        __pyx_t_27.pos = __pyx_t_34;
+        __pyx_t_27.readPos = -1;
+        __pyx_t_27.operation = 68;
+        __pyx_t_27.base = 68;
+        __pyx_t_27.quality = -1;
+        __pyx_t_27.agreement = -1;
+        __pyx_t_27.mergeAgreed = 1;
 
-        /* "utilBMF/MergePairedAlignments.pyx":192
+        /* "utilBMF/MergePairedAlignments.pyx":196
  *                     Case: 'D'
  *                     """
  *                     self.Layout.layouts[tmpInt] = ArrayLayoutPos(             # <<<<<<<<<<<<<<
  *                         pos=read.aligned_pairs[tmpInt][1],
  *                         readPos=-1,
  */
-        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_24;
+        (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]) = __pyx_t_27;
         break;
         default:
 
-        /* "utilBMF/MergePairedAlignments.pyx":198
+        /* "utilBMF/MergePairedAlignments.pyx":202
  *                         quality=-1, agreement=-1, mergeAgreed=1)
  *                 else:
  *                     raise NotImplementedError(             # <<<<<<<<<<<<<<
  *                         "Only MIDS cigar operations currently supported. If "
  *                         "you have an application that could use further "
  */
-        __pyx_t_15 = __Pyx_PyObject_Call(__pyx_builtin_NotImplementedError, __pyx_tuple__8, NULL); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 198; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_15 = __Pyx_PyObject_Call(__pyx_builtin_NotImplementedError, __pyx_tuple__9, NULL); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 202; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_15);
         __Pyx_Raise(__pyx_t_15, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 198; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 202; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         break;
       }
     }
 
-    /* "utilBMF/MergePairedAlignments.pyx":202
+    /* "utilBMF/MergePairedAlignments.pyx":206
  *                         "you have an application that could use further "
  *                         "support, please contact me.")
  *             offset += CigarOpLen             # <<<<<<<<<<<<<<
@@ -5459,22 +5931,22 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
  */
     __pyx_v_offset = (__pyx_v_offset + __pyx_v_CigarOpLen);
 
-    /* "utilBMF/MergePairedAlignments.pyx":130
- *         self.flag = read.flag
- *         cdef int readPos = 0
- *         for tmpTup in read.cigar:             # <<<<<<<<<<<<<<
- *             CigarOp = tmpTup[0]
- *             CigarOpLen = tmpTup[1]
+    /* "utilBMF/MergePairedAlignments.pyx":145
+ * 
+ *         # Parse out the read cigar.
+ *         for CigarOp, CigarOpLen in read.cigar:             # <<<<<<<<<<<<<<
+ *             for tmpInt in xrange(offset, offset + CigarOpLen):
+ *                 if(CigarOp == 0):
  */
   }
-  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":102
+  /* "utilBMF/MergePairedAlignments.pyx":106
  *             LayoutLen * (sizeof(ArrayLayoutPos_t))), length=LayoutLen)
  * 
  *     def __init__(self, AlignedSegment_t read):             # <<<<<<<<<<<<<<
- *         cdef char CigarOp
- *         cdef int tmpInt = 0
+ *         # C Definitions
+ *         cdef char CigarOp, CigarOpLen
  */
 
   /* function exit code */
@@ -5501,14 +5973,13 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_2__init__(struct __
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_agrees.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_quals.rcbuffer->pybuffer);
   __pyx_L2:;
-  __Pyx_XDECREF(__pyx_v_tmpTup);
   __Pyx_XDECREF((PyObject *)__pyx_v_quals);
   __Pyx_XDECREF((PyObject *)__pyx_v_agrees);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":204
+/* "utilBMF/MergePairedAlignments.pyx":208
  *             offset += CigarOpLen
  * 
  *     cdef bint cPosIsMapped(self, int position):             # <<<<<<<<<<<<<<
@@ -5521,7 +5992,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cPosIsMapped(struct 
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("cPosIsMapped", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":205
+  /* "utilBMF/MergePairedAlignments.pyx":209
  * 
  *     cdef bint cPosIsMapped(self, int position):
  *         return self.Layout.layouts[position].operation == 77  # == "M"             # <<<<<<<<<<<<<<
@@ -5531,7 +6002,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cPosIsMapped(struct 
   __pyx_r = ((__pyx_v_self->Layout.layouts[__pyx_v_position]).operation == 77);
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":204
+  /* "utilBMF/MergePairedAlignments.pyx":208
  *             offset += CigarOpLen
  * 
  *     cdef bint cPosIsMapped(self, int position):             # <<<<<<<<<<<<<<
@@ -5545,7 +6016,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cPosIsMapped(struct 
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":207
+/* "utilBMF/MergePairedAlignments.pyx":211
  *         return self.Layout.layouts[position].operation == 77  # == "M"
  * 
  *     cpdef bint posIsMapped(self, int position):             # <<<<<<<<<<<<<<
@@ -5572,10 +6043,10 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(struct _
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_posIsMapped); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_posIsMapped); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5posIsMapped)) {
-      __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_position); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_position); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_INCREF(__pyx_t_1);
       __pyx_t_4 = __pyx_t_1; __pyx_t_5 = NULL;
@@ -5589,22 +6060,22 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(struct _
         }
       }
       if (!__pyx_t_5) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
         __Pyx_GOTREF(__pyx_t_2);
       } else {
-        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_6);
         PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __Pyx_GIVEREF(__pyx_t_5); __pyx_t_5 = NULL;
         PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_3);
         __Pyx_GIVEREF(__pyx_t_3);
         __pyx_t_3 = 0;
-        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       }
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely((__pyx_t_7 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely((__pyx_t_7 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       __pyx_r = __pyx_t_7;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -5613,7 +6084,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(struct _
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":208
+  /* "utilBMF/MergePairedAlignments.pyx":212
  * 
  *     cpdef bint posIsMapped(self, int position):
  *         return self.cPosIsMapped(position)             # <<<<<<<<<<<<<<
@@ -5623,7 +6094,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(struct _
   __pyx_r = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cPosIsMapped(__pyx_v_self, __pyx_v_position);
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":207
+  /* "utilBMF/MergePairedAlignments.pyx":211
  *         return self.Layout.layouts[position].operation == 77  # == "M"
  * 
  *     cpdef bint posIsMapped(self, int position):             # <<<<<<<<<<<<<<
@@ -5657,7 +6128,7 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5posIsMapped(
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("posIsMapped (wrapper)", 0);
   assert(__pyx_arg_position); {
-    __pyx_v_position = __Pyx_PyInt_As_int(__pyx_arg_position); if (unlikely((__pyx_v_position == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+    __pyx_v_position = __Pyx_PyInt_As_int(__pyx_arg_position); if (unlikely((__pyx_v_position == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -5681,7 +6152,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4posIsMapped(
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("posIsMapped", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(__pyx_v_self, __pyx_v_position, 1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 207; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped(__pyx_v_self, __pyx_v_position, 1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 211; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -5698,7 +6169,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4posIsMapped(
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":210
+/* "utilBMF/MergePairedAlignments.pyx":214
  *         return self.cPosIsMapped(position)
  * 
  *     cdef int getFirstMappedReadPos(self):             # <<<<<<<<<<<<<<
@@ -5715,7 +6186,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPo
   int __pyx_t_3;
   __Pyx_RefNannySetupContext("getFirstMappedReadPos", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":212
+  /* "utilBMF/MergePairedAlignments.pyx":216
  *     cdef int getFirstMappedReadPos(self):
  *         cdef int i
  *         for i in range(self.Layout.length):             # <<<<<<<<<<<<<<
@@ -5726,7 +6197,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPo
   for (__pyx_t_2 = 0; __pyx_t_2 < __pyx_t_1; __pyx_t_2+=1) {
     __pyx_v_i = __pyx_t_2;
 
-    /* "utilBMF/MergePairedAlignments.pyx":213
+    /* "utilBMF/MergePairedAlignments.pyx":217
  *         cdef int i
  *         for i in range(self.Layout.length):
  *             if(self.Layout.layouts[i].operation == 77):             # <<<<<<<<<<<<<<
@@ -5736,7 +6207,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPo
     __pyx_t_3 = (((__pyx_v_self->Layout.layouts[__pyx_v_i]).operation == 77) != 0);
     if (__pyx_t_3) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":214
+      /* "utilBMF/MergePairedAlignments.pyx":218
  *         for i in range(self.Layout.length):
  *             if(self.Layout.layouts[i].operation == 77):
  *                 return i             # <<<<<<<<<<<<<<
@@ -5748,7 +6219,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPo
     }
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":210
+  /* "utilBMF/MergePairedAlignments.pyx":214
  *         return self.cPosIsMapped(position)
  * 
  *     cdef int getFirstMappedReadPos(self):             # <<<<<<<<<<<<<<
@@ -5763,7 +6234,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPo
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":216
+/* "utilBMF/MergePairedAlignments.pyx":220
  *                 return i
  * 
  *     cdef int getFirstAlignedRefPos(self):             # <<<<<<<<<<<<<<
@@ -5776,17 +6247,17 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstAlignedRefPo
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("getFirstAlignedRefPos", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":217
+  /* "utilBMF/MergePairedAlignments.pyx":221
  * 
  *     cdef int getFirstAlignedRefPos(self):
  *         return getFirstAlignedRefPos(self.Layout)             # <<<<<<<<<<<<<<
  * 
- *     cdef int getFirstMappedRefPos(self):
+ *     cdef int getAlignmentStart(self):
  */
   __pyx_r = getFirstAlignedRefPos(__pyx_v_self->Layout);
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":216
+  /* "utilBMF/MergePairedAlignments.pyx":220
  *                 return i
  * 
  *     cdef int getFirstAlignedRefPos(self):             # <<<<<<<<<<<<<<
@@ -5800,15 +6271,15 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstAlignedRefPo
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":219
+/* "utilBMF/MergePairedAlignments.pyx":223
  *         return getFirstAlignedRefPos(self.Layout)
  * 
- *     cdef int getFirstMappedRefPos(self):             # <<<<<<<<<<<<<<
+ *     cdef int getAlignmentStart(self):             # <<<<<<<<<<<<<<
  *         cdef int tmpInt
  *         for tmpInt in range(self.Layout.length):
  */
 
-static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAlignmentStart(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
   int __pyx_v_tmpInt;
   int __pyx_r;
   __Pyx_RefNannyDeclarations
@@ -5820,10 +6291,10 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("getFirstMappedRefPos", 0);
+  __Pyx_RefNannySetupContext("getAlignmentStart", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":221
- *     cdef int getFirstMappedRefPos(self):
+  /* "utilBMF/MergePairedAlignments.pyx":225
+ *     cdef int getAlignmentStart(self):
  *         cdef int tmpInt
  *         for tmpInt in range(self.Layout.length):             # <<<<<<<<<<<<<<
  *             if(self.Layout.layouts[tmpInt].operation == 77):
@@ -5833,7 +6304,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos
   for (__pyx_t_2 = 0; __pyx_t_2 < __pyx_t_1; __pyx_t_2+=1) {
     __pyx_v_tmpInt = __pyx_t_2;
 
-    /* "utilBMF/MergePairedAlignments.pyx":222
+    /* "utilBMF/MergePairedAlignments.pyx":226
  *         cdef int tmpInt
  *         for tmpInt in range(self.Layout.length):
  *             if(self.Layout.layouts[tmpInt].operation == 77):             # <<<<<<<<<<<<<<
@@ -5843,7 +6314,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos
     __pyx_t_3 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation == 77) != 0);
     if (__pyx_t_3) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":223
+      /* "utilBMF/MergePairedAlignments.pyx":227
  *         for tmpInt in range(self.Layout.length):
  *             if(self.Layout.layouts[tmpInt].operation == 77):
  *                 return self.Layout.layouts[tmpInt].pos             # <<<<<<<<<<<<<<
@@ -5855,26 +6326,26 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos
     }
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":225
+  /* "utilBMF/MergePairedAlignments.pyx":229
  *                 return self.Layout.layouts[tmpInt].pos
  *             # Operation is M, returns the ref position.
  *         raise ImproperArgumentError(             # <<<<<<<<<<<<<<
  *             "ArrayLayout has no 'M' cigar operation positions. "
  *             "This read can't be layed out???")
  */
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_ImproperArgumentError); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_ImproperArgumentError); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__9, NULL); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__10, NULL); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_Raise(__pyx_t_5, 0, 0, 0);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "utilBMF/MergePairedAlignments.pyx":219
+  /* "utilBMF/MergePairedAlignments.pyx":223
  *         return getFirstAlignedRefPos(self.Layout)
  * 
- *     cdef int getFirstMappedRefPos(self):             # <<<<<<<<<<<<<<
+ *     cdef int getAlignmentStart(self):             # <<<<<<<<<<<<<<
  *         cdef int tmpInt
  *         for tmpInt in range(self.Layout.length):
  */
@@ -5883,16 +6354,16 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_WriteUnraisable("utilBMF.MergePairedAlignments.Layout.getFirstMappedRefPos", __pyx_clineno, __pyx_lineno, __pyx_filename, 0);
+  __Pyx_WriteUnraisable("utilBMF.MergePairedAlignments.Layout.getAlignmentStart", __pyx_clineno, __pyx_lineno, __pyx_filename, 0);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":231
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+/* "utilBMF/MergePairedAlignments.pyx":233
+ *             "This read can't be layed out???")
+ * 
  *     cdef ndarray[np.int16_t, ndim=1] cGetQual(self):             # <<<<<<<<<<<<<<
  *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
  *         # pos.base == 66 for "B", which is a blank spot.
@@ -5915,7 +6386,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual(
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("cGetQual", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":235
+  /* "utilBMF/MergePairedAlignments.pyx":237
  *         # pos.base == 66 for "B", which is a blank spot.
  *         cdef int tmpInt
  *         return np.array([self.Layout.layouts[tmpInt].quality for             # <<<<<<<<<<<<<<
@@ -5923,15 +6394,15 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual(
  *                          self.Layout.layouts[tmpInt].operation != 68],
  */
   __Pyx_XDECREF(((PyObject *)__pyx_r));
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
 
-  /* "utilBMF/MergePairedAlignments.pyx":236
+  /* "utilBMF/MergePairedAlignments.pyx":238
  *         cdef int tmpInt
  *         return np.array([self.Layout.layouts[tmpInt].quality for
  *                          tmpInt in range(self.Layout.length) if             # <<<<<<<<<<<<<<
@@ -5942,7 +6413,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual(
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_tmpInt = __pyx_t_4;
 
-    /* "utilBMF/MergePairedAlignments.pyx":237
+    /* "utilBMF/MergePairedAlignments.pyx":239
  *         return np.array([self.Layout.layouts[tmpInt].quality for
  *                          tmpInt in range(self.Layout.length) if
  *                          self.Layout.layouts[tmpInt].operation != 68],             # <<<<<<<<<<<<<<
@@ -5952,64 +6423,64 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual(
     __pyx_t_5 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation != 68) != 0);
     if (__pyx_t_5) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":235
+      /* "utilBMF/MergePairedAlignments.pyx":237
  *         # pos.base == 66 for "B", which is a blank spot.
  *         cdef int tmpInt
  *         return np.array([self.Layout.layouts[tmpInt].quality for             # <<<<<<<<<<<<<<
  *                          tmpInt in range(self.Layout.length) if
  *                          self.Layout.layouts[tmpInt].operation != 68],
  */
-      __pyx_t_6 = __Pyx_PyInt_From_int((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).quality); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_6 = __Pyx_PyInt_From_int((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).quality); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_6);
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
       goto __pyx_L5;
     }
     __pyx_L5:;
   }
-  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
 
-  /* "utilBMF/MergePairedAlignments.pyx":238
+  /* "utilBMF/MergePairedAlignments.pyx":240
  *                          tmpInt in range(self.Layout.length) if
  *                          self.Layout.layouts[tmpInt].operation != 68],
  *                         dtype=np.int16)             # <<<<<<<<<<<<<<
  * 
- *     @cython.boundscheck(False)
+ *     cpdef ndarray[int, ndim=1] getQual(self):
  */
-  __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 238; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 240; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_int16); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 238; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_int16); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 240; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":235
+  /* "utilBMF/MergePairedAlignments.pyx":237
  *         # pos.base == 66 for "B", which is a blank spot.
  *         cdef int tmpInt
  *         return np.array([self.Layout.layouts[tmpInt].quality for             # <<<<<<<<<<<<<<
  *                          tmpInt in range(self.Layout.length) if
  *                          self.Layout.layouts[tmpInt].operation != 68],
  */
-  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, __pyx_t_1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, __pyx_t_1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  if (!(likely(((__pyx_t_8) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_8, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 235; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_t_8) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_8, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 237; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = ((PyArrayObject *)__pyx_t_8);
   __pyx_t_8 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":231
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+  /* "utilBMF/MergePairedAlignments.pyx":233
+ *             "This read can't be layed out???")
+ * 
  *     cdef ndarray[np.int16_t, ndim=1] cGetQual(self):             # <<<<<<<<<<<<<<
  *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
  *         # pos.base == 66 for "B", which is a blank spot.
@@ -6031,8 +6502,8 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual(
 }
 
 /* "utilBMF/MergePairedAlignments.pyx":242
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+ *                         dtype=np.int16)
+ * 
  *     cpdef ndarray[int, ndim=1] getQual(self):             # <<<<<<<<<<<<<<
  *         return self.cGetQual()
  * 
@@ -6087,7 +6558,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getQual(s
   }
 
   /* "utilBMF/MergePairedAlignments.pyx":243
- *     @cython.wraparound(False)
+ * 
  *     cpdef ndarray[int, ndim=1] getQual(self):
  *         return self.cGetQual()             # <<<<<<<<<<<<<<
  * 
@@ -6101,8 +6572,8 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getQual(s
   goto __pyx_L0;
 
   /* "utilBMF/MergePairedAlignments.pyx":242
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+ *                         dtype=np.int16)
+ * 
  *     cpdef ndarray[int, ndim=1] getQual(self):             # <<<<<<<<<<<<<<
  *         return self.cGetQual()
  * 
@@ -6251,7 +6722,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__10, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 247; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__11, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 247; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 247; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -6440,7 +6911,7 @@ static void __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10__dealloc__(stru
  *     def __dealloc__(self):
  *         free(self.Layout.layouts)             # <<<<<<<<<<<<<<
  * 
- *     @cython.boundscheck(False)
+ *     cdef ndarray[char] cGetSeqArr(self):
  */
   free(__pyx_v_self->Layout.layouts);
 
@@ -6456,9 +6927,9 @@ static void __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10__dealloc__(stru
   __Pyx_RefNannyFinishContext();
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":257
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+/* "utilBMF/MergePairedAlignments.pyx":255
+ *         free(self.Layout.layouts)
+ * 
  *     cdef ndarray[char] cGetSeqArr(self):             # <<<<<<<<<<<<<<
  *         """Returns a character array of the base calls
  *         if the operations aren't "D" (68)
@@ -6480,7 +6951,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqAr
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("cGetSeqArr", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":262
+  /* "utilBMF/MergePairedAlignments.pyx":260
  *         """
  *         cdef int i
  *         return np.char.array([chrDict[self.Layout.layouts[i].base]             # <<<<<<<<<<<<<<
@@ -6488,18 +6959,18 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqAr
  *                               self.Layout.layouts[i].operation != 68],
  */
   __Pyx_XDECREF(((PyObject *)__pyx_r));
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_char); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_char); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_array); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_array); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "utilBMF/MergePairedAlignments.pyx":263
+  /* "utilBMF/MergePairedAlignments.pyx":261
  *         cdef int i
  *         return np.char.array([chrDict[self.Layout.layouts[i].base]
  *                               for i in xrange(self.Layout.length) if             # <<<<<<<<<<<<<<
@@ -6510,7 +6981,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqAr
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "utilBMF/MergePairedAlignments.pyx":264
+    /* "utilBMF/MergePairedAlignments.pyx":262
  *         return np.char.array([chrDict[self.Layout.layouts[i].base]
  *                               for i in xrange(self.Layout.length) if
  *                               self.Layout.layouts[i].operation != 68],             # <<<<<<<<<<<<<<
@@ -6520,7 +6991,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqAr
     __pyx_t_5 = (((__pyx_v_self->Layout.layouts[__pyx_v_i]).operation != 68) != 0);
     if (__pyx_t_5) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":262
+      /* "utilBMF/MergePairedAlignments.pyx":260
  *         """
  *         cdef int i
  *         return np.char.array([chrDict[self.Layout.layouts[i].base]             # <<<<<<<<<<<<<<
@@ -6529,40 +7000,40 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqAr
  */
       if (unlikely(__pyx_v_7utilBMF_21MergePairedAlignments_chrDict == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_6 = __Pyx_PyInt_From_char((__pyx_v_self->Layout.layouts[__pyx_v_i]).base); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_6 = __Pyx_PyInt_From_char((__pyx_v_self->Layout.layouts[__pyx_v_i]).base); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_7 = __Pyx_PyDict_GetItem(__pyx_v_7utilBMF_21MergePairedAlignments_chrDict, __pyx_t_6); if (unlikely(__pyx_t_7 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+      __pyx_t_7 = __Pyx_PyDict_GetItem(__pyx_v_7utilBMF_21MergePairedAlignments_chrDict, __pyx_t_6); if (unlikely(__pyx_t_7 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_7))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_7))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       goto __pyx_L5;
     }
     __pyx_L5:;
   }
-  __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
   PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_2);
   __pyx_t_2 = 0;
-  __pyx_t_2 = PyDict_New(); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyDict_New(); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_itemsize, __pyx_int_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_7, __pyx_t_2); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_2, __pyx_n_s_itemsize, __pyx_int_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_7, __pyx_t_2); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 262; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(((__pyx_t_6) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_6, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = ((PyArrayObject *)__pyx_t_6);
   __pyx_t_6 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":257
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+  /* "utilBMF/MergePairedAlignments.pyx":255
+ *         free(self.Layout.layouts)
+ * 
  *     cdef ndarray[char] cGetSeqArr(self):             # <<<<<<<<<<<<<<
  *         """Returns a character array of the base calls
  *         if the operations aren't "D" (68)
@@ -6582,7 +7053,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqAr
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":267
+/* "utilBMF/MergePairedAlignments.pyx":265
  *                              itemsize=1)
  * 
  *     cpdef ndarray[char] getSeqArr(self):             # <<<<<<<<<<<<<<
@@ -6606,7 +7077,7 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getSeqArr); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 267; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getSeqArr); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_13getSeqArr)) {
       __Pyx_XDECREF(((PyObject *)__pyx_r));
@@ -6622,14 +7093,14 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 267; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 267; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 267; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_r = ((PyArrayObject *)__pyx_t_2);
       __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -6638,21 +7109,21 @@ static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":268
+  /* "utilBMF/MergePairedAlignments.pyx":266
  * 
  *     cpdef ndarray[char] getSeqArr(self):
  *         return self.cGetSeqArr()             # <<<<<<<<<<<<<<
  * 
- *     @cython.boundscheck(False)
+ *     cpdef cystr getSeq(self):
  */
   __Pyx_XDECREF(((PyObject *)__pyx_r));
-  __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetSeqArr(__pyx_v_self)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 268; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetSeqArr(__pyx_v_self)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 266; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":267
+  /* "utilBMF/MergePairedAlignments.pyx":265
  *                              itemsize=1)
  * 
  *     cpdef ndarray[char] getSeqArr(self):             # <<<<<<<<<<<<<<
@@ -6696,7 +7167,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12getSeqArr(s
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("getSeqArr", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = ((PyObject *)__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr(__pyx_v_self, 1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 267; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = ((PyObject *)__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr(__pyx_v_self, 1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 265; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6713,9 +7184,9 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12getSeqArr(s
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":272
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+/* "utilBMF/MergePairedAlignments.pyx":268
+ *         return self.cGetSeqArr()
+ * 
  *     cpdef cystr getSeq(self):             # <<<<<<<<<<<<<<
  *         cdef int i
  *         return "".join([chrDict[self.Layout.layouts[i].base] for i in
@@ -6741,7 +7212,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
   if (unlikely(__pyx_skip_dispatch)) ;
   /* Check if overridden in Python */
   else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getSeq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 272; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getSeq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 268; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_15getSeq)) {
       __Pyx_XDECREF(__pyx_r);
@@ -6757,14 +7228,14 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
         }
       }
       if (__pyx_t_4) {
-        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 272; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 268; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       } else {
-        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 272; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 268; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __Pyx_GOTREF(__pyx_t_2);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      if (!(likely(PyString_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_2)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 272; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (!(likely(PyString_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_2)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 268; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_2);
       __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -6773,7 +7244,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":274
+  /* "utilBMF/MergePairedAlignments.pyx":270
  *     cpdef cystr getSeq(self):
  *         cdef int i
  *         return "".join([chrDict[self.Layout.layouts[i].base] for i in             # <<<<<<<<<<<<<<
@@ -6781,10 +7252,10 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
  *                         self.Layout.layouts[i].operation != 68])
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
 
-  /* "utilBMF/MergePairedAlignments.pyx":275
+  /* "utilBMF/MergePairedAlignments.pyx":271
  *         cdef int i
  *         return "".join([chrDict[self.Layout.layouts[i].base] for i in
  *                         xrange(self.Layout.length) if             # <<<<<<<<<<<<<<
@@ -6795,7 +7266,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
   for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
     __pyx_v_i = __pyx_t_6;
 
-    /* "utilBMF/MergePairedAlignments.pyx":276
+    /* "utilBMF/MergePairedAlignments.pyx":272
  *         return "".join([chrDict[self.Layout.layouts[i].base] for i in
  *                         xrange(self.Layout.length) if
  *                         self.Layout.layouts[i].operation != 68])             # <<<<<<<<<<<<<<
@@ -6805,7 +7276,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
     __pyx_t_7 = (((__pyx_v_self->Layout.layouts[__pyx_v_i]).operation != 68) != 0);
     if (__pyx_t_7) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":274
+      /* "utilBMF/MergePairedAlignments.pyx":270
  *     cpdef cystr getSeq(self):
  *         cdef int i
  *         return "".join([chrDict[self.Layout.layouts[i].base] for i in             # <<<<<<<<<<<<<<
@@ -6814,30 +7285,30 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
  */
       if (unlikely(__pyx_v_7utilBMF_21MergePairedAlignments_chrDict == Py_None)) {
         PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_2 = __Pyx_PyInt_From_char((__pyx_v_self->Layout.layouts[__pyx_v_i]).base); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_2 = __Pyx_PyInt_From_char((__pyx_v_self->Layout.layouts[__pyx_v_i]).base); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_2);
-      __pyx_t_3 = __Pyx_PyDict_GetItem(__pyx_v_7utilBMF_21MergePairedAlignments_chrDict, __pyx_t_2); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+      __pyx_t_3 = __Pyx_PyDict_GetItem(__pyx_v_7utilBMF_21MergePairedAlignments_chrDict, __pyx_t_2); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_3))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_3))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       goto __pyx_L5;
     }
     __pyx_L5:;
   }
-  __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__10, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__11, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 274; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 270; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_3);
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":272
- *     @cython.boundscheck(False)
- *     @cython.wraparound(False)
+  /* "utilBMF/MergePairedAlignments.pyx":268
+ *         return self.cGetSeqArr()
+ * 
  *     cpdef cystr getSeq(self):             # <<<<<<<<<<<<<<
  *         cdef int i
  *         return "".join([chrDict[self.Layout.layouts[i].base] for i in
@@ -6879,7 +7350,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_14getSeq(stru
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("getSeq", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeq(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 272; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeq(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 268; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6896,7 +7367,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_14getSeq(stru
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":279
+/* "utilBMF/MergePairedAlignments.pyx":275
  * 
  *     @cython.returns(cystr)
  *     def __str__(self):             # <<<<<<<<<<<<<<
@@ -6931,7 +7402,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_16__str__(str
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__str__", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":281
+  /* "utilBMF/MergePairedAlignments.pyx":277
  *     def __str__(self):
  *         cdef int i
  *         return "#".join(map(ALPToStr, [self.Layout.layouts[i] for             # <<<<<<<<<<<<<<
@@ -6939,35 +7410,35 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_16__str__(str
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_ALPToStr); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_ALPToStr); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
 
-  /* "utilBMF/MergePairedAlignments.pyx":282
+  /* "utilBMF/MergePairedAlignments.pyx":278
  *         cdef int i
  *         return "#".join(map(ALPToStr, [self.Layout.layouts[i] for
  *                                        i in range(self.Layout.length)]))             # <<<<<<<<<<<<<<
  * 
- *     cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
+ *     cpdef MergeLayout(self, Layout_t pairedLayout):
  */
   __pyx_t_3 = __pyx_v_self->Layout.length;
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "utilBMF/MergePairedAlignments.pyx":281
+    /* "utilBMF/MergePairedAlignments.pyx":277
  *     def __str__(self):
  *         cdef int i
  *         return "#".join(map(ALPToStr, [self.Layout.layouts[i] for             # <<<<<<<<<<<<<<
  *                                        i in range(self.Layout.length)]))
  * 
  */
-    __pyx_t_5 = __pyx_convert__to_py_ArrayLayoutPos((__pyx_v_self->Layout.layouts[__pyx_v_i])); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __pyx_convert__to_py_ArrayLayoutPos((__pyx_v_self->Layout.layouts[__pyx_v_i])); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
-    if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_5))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_5))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   }
-  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
   PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
@@ -6975,17 +7446,17 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_16__str__(str
   __Pyx_GIVEREF(__pyx_t_2);
   __pyx_t_1 = 0;
   __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_map, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_map, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyString_Join(__pyx_kp_s__11, __pyx_t_2); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = __Pyx_PyString_Join(__pyx_kp_s__12, __pyx_t_2); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_r = __pyx_t_5;
   __pyx_t_5 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":279
+  /* "utilBMF/MergePairedAlignments.pyx":275
  * 
  *     @cython.returns(cystr)
  *     def __str__(self):             # <<<<<<<<<<<<<<
@@ -7006,34 +7477,212 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_16__str__(str
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":284
+/* "utilBMF/MergePairedAlignments.pyx":280
  *                                        i in range(self.Layout.length)]))
  * 
- *     cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):             # <<<<<<<<<<<<<<
- *         self.Layout = MergeLayouts(self.Layout, pairedLayout)
+ *     cpdef MergeLayout(self, Layout_t pairedLayout):             # <<<<<<<<<<<<<<
+ *         self.MergeLayouts_in_place(pairedLayout.Layout)
  * 
+ */
+
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_19MergeLayout(PyObject *__pyx_v_self, PyObject *__pyx_v_pairedLayout); /*proto*/
+static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayout(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_pairedLayout, int __pyx_skip_dispatch) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("MergeLayout", 0);
+  /* Check if called by wrapper */
+  if (unlikely(__pyx_skip_dispatch)) ;
+  /* Check if overridden in Python */
+  else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_MergeLayout); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_19MergeLayout)) {
+      __Pyx_XDECREF(__pyx_r);
+      __Pyx_INCREF(__pyx_t_1);
+      __pyx_t_3 = __pyx_t_1; __pyx_t_4 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_4)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_4);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (!__pyx_t_4) {
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)__pyx_v_pairedLayout)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_2);
+      } else {
+        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_5);
+        PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4); __Pyx_GIVEREF(__pyx_t_4); __pyx_t_4 = NULL;
+        __Pyx_INCREF(((PyObject *)__pyx_v_pairedLayout));
+        PyTuple_SET_ITEM(__pyx_t_5, 0+1, ((PyObject *)__pyx_v_pairedLayout));
+        __Pyx_GIVEREF(((PyObject *)__pyx_v_pairedLayout));
+        __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_2);
+        __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      }
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __pyx_r = __pyx_t_2;
+      __pyx_t_2 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      goto __pyx_L0;
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":281
+ * 
+ *     cpdef MergeLayout(self, Layout_t pairedLayout):
+ *         self.MergeLayouts_in_place(pairedLayout.Layout)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
+ */
+  __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->MergeLayouts_in_place(__pyx_v_self, __pyx_v_pairedLayout->Layout); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":280
+ *                                        i in range(self.Layout.length)]))
+ * 
+ *     cpdef MergeLayout(self, Layout_t pairedLayout):             # <<<<<<<<<<<<<<
+ *         self.MergeLayouts_in_place(pairedLayout.Layout)
+ * 
+ */
+
+  /* function exit code */
+  __pyx_r = Py_None; __Pyx_INCREF(Py_None);
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.MergeLayout", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_19MergeLayout(PyObject *__pyx_v_self, PyObject *__pyx_v_pairedLayout); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_19MergeLayout(PyObject *__pyx_v_self, PyObject *__pyx_v_pairedLayout) {
+  CYTHON_UNUSED int __pyx_lineno = 0;
+  CYTHON_UNUSED const char *__pyx_filename = NULL;
+  CYTHON_UNUSED int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("MergeLayout (wrapper)", 0);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_pairedLayout), __pyx_ptype_7utilBMF_21MergePairedAlignments_Layout, 1, "pairedLayout", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_18MergeLayout(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((__pyx_t_7utilBMF_21MergePairedAlignments_Layout_t)__pyx_v_pairedLayout));
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_18MergeLayout(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_pairedLayout) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("MergeLayout", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayout(__pyx_v_self, __pyx_v_pairedLayout, 1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 280; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.MergeLayout", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":283
+ *         self.MergeLayouts_in_place(pairedLayout.Layout)
+ * 
+ *     cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):             # <<<<<<<<<<<<<<
+ *         cdef Layout_t tmpLayout
+ *         cdef MergeRet_t RetValue
  */
 
 static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayouts_in_place(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t __pyx_v_pairedLayout) {
+  __pyx_t_7utilBMF_21MergePairedAlignments_MergeRet_t __pyx_v_RetValue;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
+  __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t __pyx_t_1;
+  char __pyx_t_2;
   __Pyx_RefNannySetupContext("MergeLayouts_in_place", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":285
- * 
- *     cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
- *         self.Layout = MergeLayouts(self.Layout, pairedLayout)             # <<<<<<<<<<<<<<
- * 
- * '''
+  /* "utilBMF/MergePairedAlignments.pyx":286
+ *         cdef Layout_t tmpLayout
+ *         cdef MergeRet_t RetValue
+ *         RetValue = MergeWithPassFail(             # <<<<<<<<<<<<<<
+ *             self.Layout, pairedLayout)
+ *         self.Layout = RetValue.Layout
  */
-  __pyx_v_self->Layout = MergeLayouts(__pyx_v_self->Layout, __pyx_v_pairedLayout);
+  __pyx_v_RetValue = MergeWithPassFail(__pyx_v_self->Layout, __pyx_v_pairedLayout);
 
-  /* "utilBMF/MergePairedAlignments.pyx":284
- *                                        i in range(self.Layout.length)]))
+  /* "utilBMF/MergePairedAlignments.pyx":288
+ *         RetValue = MergeWithPassFail(
+ *             self.Layout, pairedLayout)
+ *         self.Layout = RetValue.Layout             # <<<<<<<<<<<<<<
+ *         self.MergeSuccess = RetValue.Success
+ *         self.isMerged = True
+ */
+  __pyx_t_1 = __pyx_v_RetValue.Layout;
+  __pyx_v_self->Layout = __pyx_t_1;
+
+  /* "utilBMF/MergePairedAlignments.pyx":289
+ *             self.Layout, pairedLayout)
+ *         self.Layout = RetValue.Layout
+ *         self.MergeSuccess = RetValue.Success             # <<<<<<<<<<<<<<
+ *         self.isMerged = True
+ * 
+ */
+  __pyx_t_2 = __pyx_v_RetValue.Success;
+  __pyx_v_self->MergeSuccess = __pyx_t_2;
+
+  /* "utilBMF/MergePairedAlignments.pyx":290
+ *         self.Layout = RetValue.Layout
+ *         self.MergeSuccess = RetValue.Success
+ *         self.isMerged = True             # <<<<<<<<<<<<<<
+ * 
+ *     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):
+ */
+  __pyx_v_self->isMerged = 1;
+
+  /* "utilBMF/MergePairedAlignments.pyx":283
+ *         self.MergeLayouts_in_place(pairedLayout.Layout)
  * 
  *     cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):             # <<<<<<<<<<<<<<
- *         self.Layout = MergeLayouts(self.Layout, pairedLayout)
- * 
+ *         cdef Layout_t tmpLayout
+ *         cdef MergeRet_t RetValue
  */
 
   /* function exit code */
@@ -7043,11 +7692,3535 @@ static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayouts_i
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pxd":38
+/* "utilBMF/MergePairedAlignments.pyx":292
+ *         self.isMerged = True
+ * 
+ *     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ */
+
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getMergeAgreements(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  size_t __pyx_t_3;
+  int __pyx_t_4;
+  int __pyx_t_5;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getMergeAgreements", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":294
+ *     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt             # <<<<<<<<<<<<<<
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 2],
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":295
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ *                          in range(self.Layout.length) if             # <<<<<<<<<<<<<<
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 2],
+ *                         dtype=np.int16)
+ */
+  __pyx_t_3 = __pyx_v_self->Layout.length;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_tmpInt = __pyx_t_4;
+
+    /* "utilBMF/MergePairedAlignments.pyx":296
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 2],             # <<<<<<<<<<<<<<
+ *                         dtype=np.int16)
+ * 
+ */
+    __pyx_t_5 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).mergeAgreed == 2) != 0);
+    if (__pyx_t_5) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":294
+ *     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt             # <<<<<<<<<<<<<<
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 2],
+ */
+      __pyx_t_6 = __Pyx_PyInt_From_uint16_t((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).readPos); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_6);
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      goto __pyx_L5;
+    }
+    __pyx_L5:;
+  }
+  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_1);
+  __pyx_t_1 = 0;
+  __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":297
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 2],
+ *                         dtype=np.int16)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):
+ */
+  __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_int16); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 297; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":294
+ *     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt             # <<<<<<<<<<<<<<
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 2],
+ */
+  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, __pyx_t_1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (!(likely(((__pyx_t_8) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_8, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 294; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_8);
+  __pyx_t_8 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":292
+ *         self.isMerged = True
+ * 
+ *     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getMergeAgreements", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":299
+ *                         dtype=np.int16)
+ * 
+ *     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ */
+
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getMergedPositions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  size_t __pyx_t_3;
+  int __pyx_t_4;
+  int __pyx_t_5;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getMergedPositions", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":301
+ *     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt             # <<<<<<<<<<<<<<
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":302
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ *                          in range(self.Layout.length) if             # <<<<<<<<<<<<<<
+ *                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
+ *                         dtype=np.int16)
+ */
+  __pyx_t_3 = __pyx_v_self->Layout.length;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_tmpInt = __pyx_t_4;
+
+    /* "utilBMF/MergePairedAlignments.pyx":303
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed != 1],             # <<<<<<<<<<<<<<
+ *                         dtype=np.int16)
+ * 
+ */
+    __pyx_t_5 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).mergeAgreed != 1) != 0);
+    if (__pyx_t_5) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":301
+ *     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt             # <<<<<<<<<<<<<<
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
+ */
+      __pyx_t_6 = __Pyx_PyInt_From_uint16_t((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).readPos); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_6);
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      goto __pyx_L5;
+    }
+    __pyx_L5:;
+  }
+  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_1);
+  __pyx_t_1 = 0;
+  __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":304
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
+ *                         dtype=np.int16)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef update_tags_(self):
+ */
+  __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_int16); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 304; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":301
+ *     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt             # <<<<<<<<<<<<<<
+ *                          in range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
+ */
+  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, __pyx_t_1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (!(likely(((__pyx_t_8) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_8, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 301; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_8);
+  __pyx_t_8 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":299
+ *                         dtype=np.int16)
+ * 
+ *     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getMergedPositions", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":306
+ *                         dtype=np.int16)
+ * 
+ *     cdef update_tags_(self):             # <<<<<<<<<<<<<<
+ *         self.tagDict["PV"] = BamTag(
+ *             "PV", "Z", ",".join(self.cGetQual().astype(str)))
+ */
+
+static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_update_tags_(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  int __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("update_tags_", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":308
+ *     cdef update_tags_(self):
+ *         self.tagDict["PV"] = BamTag(
+ *             "PV", "Z", ",".join(self.cGetQual().astype(str)))             # <<<<<<<<<<<<<<
+ *         self.tagDict["FA"] = BamTag(
+ *             "FA", "Z", ",".join(self.cGetAgreement().astype(str)))
+ */
+  __pyx_t_2 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetQual(__pyx_v_self)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_astype); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_3))) {
+    __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_3);
+    if (likely(__pyx_t_2)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_2);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_3, function);
+    }
+  }
+  if (!__pyx_t_2) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)((PyObject*)(&PyString_Type)))); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+  } else {
+    __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2); __Pyx_GIVEREF(__pyx_t_2); __pyx_t_2 = NULL;
+    __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
+    PyTuple_SET_ITEM(__pyx_t_4, 0+1, ((PyObject *)((PyObject*)(&PyString_Type))));
+    __Pyx_GIVEREF(((PyObject *)((PyObject*)(&PyString_Type))));
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__2, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 308; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":307
+ * 
+ *     cdef update_tags_(self):
+ *         self.tagDict["PV"] = BamTag(             # <<<<<<<<<<<<<<
+ *             "PV", "Z", ",".join(self.cGetQual().astype(str)))
+ *         self.tagDict["FA"] = BamTag(
+ */
+  __pyx_t_1 = PyTuple_New(3); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_INCREF(__pyx_n_s_PV);
+  PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_PV);
+  __Pyx_GIVEREF(__pyx_n_s_PV);
+  __Pyx_INCREF(__pyx_n_s_Z);
+  PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_n_s_Z);
+  __Pyx_GIVEREF(__pyx_n_s_Z);
+  PyTuple_SET_ITEM(__pyx_t_1, 2, __pyx_t_3);
+  __Pyx_GIVEREF(__pyx_t_3);
+  __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_1, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_PV, __pyx_t_3) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 307; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":310
+ *             "PV", "Z", ",".join(self.cGetQual().astype(str)))
+ *         self.tagDict["FA"] = BamTag(
+ *             "FA", "Z", ",".join(self.cGetAgreement().astype(str)))             # <<<<<<<<<<<<<<
+ *         if(self.isMerged):
+ *             self.tagDict["PM"] = BamTag(
+ */
+  __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetAgreement(__pyx_v_self)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_astype); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
+    __pyx_t_1 = PyMethod_GET_SELF(__pyx_t_4);
+    if (likely(__pyx_t_1)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_4);
+      __Pyx_INCREF(__pyx_t_1);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_4, function);
+    }
+  }
+  if (!__pyx_t_1) {
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, ((PyObject *)((PyObject*)(&PyString_Type)))); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+  } else {
+    __pyx_t_2 = PyTuple_New(1+1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_1); __Pyx_GIVEREF(__pyx_t_1); __pyx_t_1 = NULL;
+    __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
+    PyTuple_SET_ITEM(__pyx_t_2, 0+1, ((PyObject *)((PyObject*)(&PyString_Type))));
+    __Pyx_GIVEREF(((PyObject *)((PyObject*)(&PyString_Type))));
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_PyString_Join(__pyx_kp_s__2, __pyx_t_3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 310; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":309
+ *         self.tagDict["PV"] = BamTag(
+ *             "PV", "Z", ",".join(self.cGetQual().astype(str)))
+ *         self.tagDict["FA"] = BamTag(             # <<<<<<<<<<<<<<
+ *             "FA", "Z", ",".join(self.cGetAgreement().astype(str)))
+ *         if(self.isMerged):
+ */
+  __pyx_t_3 = PyTuple_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 309; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_INCREF(__pyx_n_s_FA);
+  PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_FA);
+  __Pyx_GIVEREF(__pyx_n_s_FA);
+  __Pyx_INCREF(__pyx_n_s_Z);
+  PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_Z);
+  __Pyx_GIVEREF(__pyx_n_s_Z);
+  PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_t_4);
+  __Pyx_GIVEREF(__pyx_t_4);
+  __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 309; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 309; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_FA, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 309; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":311
+ *         self.tagDict["FA"] = BamTag(
+ *             "FA", "Z", ",".join(self.cGetAgreement().astype(str)))
+ *         if(self.isMerged):             # <<<<<<<<<<<<<<
+ *             self.tagDict["PM"] = BamTag(
+ *                 "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
+ */
+  __pyx_t_5 = (__pyx_v_self->isMerged != 0);
+  if (__pyx_t_5) {
+
+    /* "utilBMF/MergePairedAlignments.pyx":313
+ *         if(self.isMerged):
+ *             self.tagDict["PM"] = BamTag(
+ *                 "PM", "Z", ",".join(self.getMergedPositions().astype(str)))             # <<<<<<<<<<<<<<
+ *             self.tagDict["MA"] = BamTag(
+ *                 "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
+ */
+    __pyx_t_3 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->getMergedPositions(__pyx_v_self)); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_astype); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_t_3 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_2))) {
+      __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_2);
+      if (likely(__pyx_t_3)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
+        __Pyx_INCREF(__pyx_t_3);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_2, function);
+      }
+    }
+    if (!__pyx_t_3) {
+      __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_2, ((PyObject *)((PyObject*)(&PyString_Type)))); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_4);
+    } else {
+      __pyx_t_1 = PyTuple_New(1+1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+      PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_t_3); __Pyx_GIVEREF(__pyx_t_3); __pyx_t_3 = NULL;
+      __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      PyTuple_SET_ITEM(__pyx_t_1, 0+1, ((PyObject *)((PyObject*)(&PyString_Type))));
+      __Pyx_GIVEREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_1, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    }
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyString_Join(__pyx_kp_s__2, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 313; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":312
+ *             "FA", "Z", ",".join(self.cGetAgreement().astype(str)))
+ *         if(self.isMerged):
+ *             self.tagDict["PM"] = BamTag(             # <<<<<<<<<<<<<<
+ *                 "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
+ *             self.tagDict["MA"] = BamTag(
+ */
+    __pyx_t_4 = PyTuple_New(3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_INCREF(__pyx_n_s_PM);
+    PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_PM);
+    __Pyx_GIVEREF(__pyx_n_s_PM);
+    __Pyx_INCREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_n_s_Z);
+    __Pyx_GIVEREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_4, 2, __pyx_t_2);
+    __Pyx_GIVEREF(__pyx_t_2);
+    __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_PM, __pyx_t_2) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 312; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":315
+ *                 "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
+ *             self.tagDict["MA"] = BamTag(
+ *                 "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))             # <<<<<<<<<<<<<<
+ *             self.tagDict["DG"] = BamTag(
+ *                 "DG", "Z", ",".join(
+ */
+    __pyx_t_4 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->getMergeAgreements(__pyx_v_self)); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_astype); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __pyx_t_4 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
+      __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_1);
+      if (likely(__pyx_t_4)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_1);
+        __Pyx_INCREF(__pyx_t_4);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_1, function);
+      }
+    }
+    if (!__pyx_t_4) {
+      __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, ((PyObject *)((PyObject*)(&PyString_Type)))); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+    } else {
+      __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+      PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_4); __Pyx_GIVEREF(__pyx_t_4); __pyx_t_4 = NULL;
+      __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      PyTuple_SET_ITEM(__pyx_t_3, 0+1, ((PyObject *)((PyObject*)(&PyString_Type))));
+      __Pyx_GIVEREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_3, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_1 = __Pyx_PyString_Join(__pyx_kp_s__2, __pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 315; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":314
+ *             self.tagDict["PM"] = BamTag(
+ *                 "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
+ *             self.tagDict["MA"] = BamTag(             # <<<<<<<<<<<<<<
+ *                 "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
+ *             self.tagDict["DG"] = BamTag(
+ */
+    __pyx_t_2 = PyTuple_New(3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_INCREF(__pyx_n_s_MA);
+    PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_n_s_MA);
+    __Pyx_GIVEREF(__pyx_n_s_MA);
+    __Pyx_INCREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_n_s_Z);
+    __Pyx_GIVEREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_2, 2, __pyx_t_1);
+    __Pyx_GIVEREF(__pyx_t_1);
+    __pyx_t_1 = 0;
+    __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_MA, __pyx_t_1) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 314; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":318
+ *             self.tagDict["DG"] = BamTag(
+ *                 "DG", "Z", ",".join(
+ *                     self.cGetGenomicDiscordantPositions().astype(str)))             # <<<<<<<<<<<<<<
+ *             self.tagDict["DR"] = BamTag(
+ *                 "DR", "Z", ",".join(
+ */
+    __pyx_t_2 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetGenomicDiscordantPositions(__pyx_v_self)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_astype); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_3))) {
+      __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_3);
+      if (likely(__pyx_t_2)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+        __Pyx_INCREF(__pyx_t_2);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_3, function);
+      }
+    }
+    if (!__pyx_t_2) {
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)((PyObject*)(&PyString_Type)))); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+    } else {
+      __pyx_t_4 = PyTuple_New(1+1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_4);
+      PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2); __Pyx_GIVEREF(__pyx_t_2); __pyx_t_2 = NULL;
+      __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      PyTuple_SET_ITEM(__pyx_t_4, 0+1, ((PyObject *)((PyObject*)(&PyString_Type))));
+      __Pyx_GIVEREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_4, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 318; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    }
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":317
+ *                 "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
+ *             self.tagDict["DG"] = BamTag(
+ *                 "DG", "Z", ",".join(             # <<<<<<<<<<<<<<
+ *                     self.cGetGenomicDiscordantPositions().astype(str)))
+ *             self.tagDict["DR"] = BamTag(
+ */
+    __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__2, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 317; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":316
+ *             self.tagDict["MA"] = BamTag(
+ *                 "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
+ *             self.tagDict["DG"] = BamTag(             # <<<<<<<<<<<<<<
+ *                 "DG", "Z", ",".join(
+ *                     self.cGetGenomicDiscordantPositions().astype(str)))
+ */
+    __pyx_t_1 = PyTuple_New(3); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_INCREF(__pyx_n_s_DG);
+    PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_n_s_DG);
+    __Pyx_GIVEREF(__pyx_n_s_DG);
+    __Pyx_INCREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_n_s_Z);
+    __Pyx_GIVEREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_1, 2, __pyx_t_3);
+    __Pyx_GIVEREF(__pyx_t_3);
+    __pyx_t_3 = 0;
+    __pyx_t_3 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_1, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_DG, __pyx_t_3) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 316; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":321
+ *             self.tagDict["DR"] = BamTag(
+ *                 "DR", "Z", ",".join(
+ *                     self.cGetReadDiscordantPositions().astype(str)))             # <<<<<<<<<<<<<<
+ *             # Update it for the merged world!
+ *             # Original template length
+ */
+    __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetReadDiscordantPositions(__pyx_v_self)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_astype); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_1 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
+      __pyx_t_1 = PyMethod_GET_SELF(__pyx_t_4);
+      if (likely(__pyx_t_1)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_4);
+        __Pyx_INCREF(__pyx_t_1);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_4, function);
+      }
+    }
+    if (!__pyx_t_1) {
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, ((PyObject *)((PyObject*)(&PyString_Type)))); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+    } else {
+      __pyx_t_2 = PyTuple_New(1+1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+      PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_1); __Pyx_GIVEREF(__pyx_t_1); __pyx_t_1 = NULL;
+      __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      PyTuple_SET_ITEM(__pyx_t_2, 0+1, ((PyObject *)((PyObject*)(&PyString_Type))));
+      __Pyx_GIVEREF(((PyObject *)((PyObject*)(&PyString_Type))));
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_2, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 321; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    }
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":320
+ *                     self.cGetGenomicDiscordantPositions().astype(str)))
+ *             self.tagDict["DR"] = BamTag(
+ *                 "DR", "Z", ",".join(             # <<<<<<<<<<<<<<
+ *                     self.cGetReadDiscordantPositions().astype(str)))
+ *             # Update it for the merged world!
+ */
+    __pyx_t_4 = __Pyx_PyString_Join(__pyx_kp_s__2, __pyx_t_3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 320; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":319
+ *                 "DG", "Z", ",".join(
+ *                     self.cGetGenomicDiscordantPositions().astype(str)))
+ *             self.tagDict["DR"] = BamTag(             # <<<<<<<<<<<<<<
+ *                 "DR", "Z", ",".join(
+ *                     self.cGetReadDiscordantPositions().astype(str)))
+ */
+    __pyx_t_3 = PyTuple_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_INCREF(__pyx_n_s_DR);
+    PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_DR);
+    __Pyx_GIVEREF(__pyx_n_s_DR);
+    __Pyx_INCREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_Z);
+    __Pyx_GIVEREF(__pyx_n_s_Z);
+    PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_t_4);
+    __Pyx_GIVEREF(__pyx_t_4);
+    __pyx_t_4 = 0;
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_DR, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 319; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":324
+ *             # Update it for the merged world!
+ *             # Original template length
+ *             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)             # <<<<<<<<<<<<<<
+ *             # Original mate position
+ *             self.tagDict["mp"] = BamTag("mp", "i", self.pnext)
+ */
+    __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->tlen); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_3 = PyTuple_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_INCREF(__pyx_n_s_ot);
+    PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_ot);
+    __Pyx_GIVEREF(__pyx_n_s_ot);
+    __Pyx_INCREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_i);
+    __Pyx_GIVEREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_t_4);
+    __Pyx_GIVEREF(__pyx_t_4);
+    __pyx_t_4 = 0;
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_ot, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 324; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":326
+ *             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
+ *             # Original mate position
+ *             self.tagDict["mp"] = BamTag("mp", "i", self.pnext)             # <<<<<<<<<<<<<<
+ *             # Original mapping quality
+ *             self.tagDict["om"] = BamTag("om", "i", self.mapq)
+ */
+    __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->pnext); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_3 = PyTuple_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_INCREF(__pyx_n_s_mp);
+    PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_mp);
+    __Pyx_GIVEREF(__pyx_n_s_mp);
+    __Pyx_INCREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_i);
+    __Pyx_GIVEREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_t_4);
+    __Pyx_GIVEREF(__pyx_t_4);
+    __pyx_t_4 = 0;
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_mp, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 326; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":328
+ *             self.tagDict["mp"] = BamTag("mp", "i", self.pnext)
+ *             # Original mapping quality
+ *             self.tagDict["om"] = BamTag("om", "i", self.mapq)             # <<<<<<<<<<<<<<
+ *             # Original mapped position
+ *             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
+ */
+    __pyx_t_4 = __Pyx_PyInt_From_unsigned_char(__pyx_v_self->mapq); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_3 = PyTuple_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_INCREF(__pyx_n_s_om);
+    PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_om);
+    __Pyx_GIVEREF(__pyx_n_s_om);
+    __Pyx_INCREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_i);
+    __Pyx_GIVEREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_t_4);
+    __Pyx_GIVEREF(__pyx_t_4);
+    __pyx_t_4 = 0;
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_om, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 328; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":330
+ *             self.tagDict["om"] = BamTag("om", "i", self.mapq)
+ *             # Original mapped position
+ *             self.tagDict["op"] = BamTag("op", "i", self.InitPos)             # <<<<<<<<<<<<<<
+ *             self.tagDict["MP"] = BamTag("MP", "A", "T")
+ * 
+ */
+    __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_self->InitPos); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_3 = PyTuple_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __Pyx_INCREF(__pyx_n_s_op);
+    PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_op);
+    __Pyx_GIVEREF(__pyx_n_s_op);
+    __Pyx_INCREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_i);
+    __Pyx_GIVEREF(__pyx_n_s_i);
+    PyTuple_SET_ITEM(__pyx_t_3, 2, __pyx_t_4);
+    __Pyx_GIVEREF(__pyx_t_4);
+    __pyx_t_4 = 0;
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_t_3, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_op, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 330; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":331
+ *             # Original mapped position
+ *             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
+ *             self.tagDict["MP"] = BamTag("MP", "A", "T")             # <<<<<<<<<<<<<<
+ * 
+ *     cdef update_read_positions(self):
+ */
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_8HTSUtils_BamTag)), __pyx_tuple__13, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    if (unlikely(PyDict_SetItem(__pyx_v_self->tagDict, __pyx_n_s_MP, __pyx_t_4) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    goto __pyx_L3;
+  }
+  __pyx_L3:;
+
+  /* "utilBMF/MergePairedAlignments.pyx":306
+ *                         dtype=np.int16)
+ * 
+ *     cdef update_tags_(self):             # <<<<<<<<<<<<<<
+ *         self.tagDict["PV"] = BamTag(
+ *             "PV", "Z", ",".join(self.cGetQual().astype(str)))
+ */
+
+  /* function exit code */
+  __pyx_r = Py_None; __Pyx_INCREF(Py_None);
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.update_tags_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":333
+ *             self.tagDict["MP"] = BamTag("MP", "A", "T")
+ * 
+ *     cdef update_read_positions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         for tmpInt in range(self.Layout.length):
+ */
+
+static PyObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_update_read_positions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  size_t __pyx_t_1;
+  int __pyx_t_2;
+  __Pyx_RefNannySetupContext("update_read_positions", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":335
+ *     cdef update_read_positions(self):
+ *         cdef int tmpInt
+ *         for tmpInt in range(self.Layout.length):             # <<<<<<<<<<<<<<
+ *             self.Layout.layouts[tmpInt].readPos = tmpInt
+ * 
+ */
+  __pyx_t_1 = __pyx_v_self->Layout.length;
+  for (__pyx_t_2 = 0; __pyx_t_2 < __pyx_t_1; __pyx_t_2+=1) {
+    __pyx_v_tmpInt = __pyx_t_2;
+
+    /* "utilBMF/MergePairedAlignments.pyx":336
+ *         cdef int tmpInt
+ *         for tmpInt in range(self.Layout.length):
+ *             self.Layout.layouts[tmpInt].readPos = tmpInt             # <<<<<<<<<<<<<<
+ * 
+ *     def update(self):
+ */
+    (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).readPos = __pyx_v_tmpInt;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":333
+ *             self.tagDict["MP"] = BamTag("MP", "A", "T")
+ * 
+ *     cdef update_read_positions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         for tmpInt in range(self.Layout.length):
+ */
+
+  /* function exit code */
+  __pyx_r = Py_None; __Pyx_INCREF(Py_None);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":338
+ *             self.Layout.layouts[tmpInt].readPos = tmpInt
+ * 
+ *     def update(self):             # <<<<<<<<<<<<<<
+ *         cdef int count
+ *         self.update_tags_()
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_21update(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_21update(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("update (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_20update(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_20update(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  int __pyx_t_4;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  long __pyx_t_8;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("update", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":340
+ *     def update(self):
+ *         cdef int count
+ *         self.update_tags_()             # <<<<<<<<<<<<<<
+ *         if(self.isMerged):
+ *             self.tlen = len(self.getSeqArr())
+ */
+  __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->update_tags_(__pyx_v_self); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 340; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":341
+ *         cdef int count
+ *         self.update_tags_()
+ *         if(self.isMerged):             # <<<<<<<<<<<<<<
+ *             self.tlen = len(self.getSeqArr())
+ *             self.pnext = 0
+ */
+  __pyx_t_2 = (__pyx_v_self->isMerged != 0);
+  if (__pyx_t_2) {
+
+    /* "utilBMF/MergePairedAlignments.pyx":342
+ *         self.update_tags_()
+ *         if(self.isMerged):
+ *             self.tlen = len(self.getSeqArr())             # <<<<<<<<<<<<<<
+ *             self.pnext = 0
+ *             self.rnext = self.reference_id
+ */
+    __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->getSeqArr(__pyx_v_self, 0)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 342; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_3 = PyObject_Length(__pyx_t_1); if (unlikely(__pyx_t_3 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 342; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_v_self->tlen = __pyx_t_3;
+
+    /* "utilBMF/MergePairedAlignments.pyx":343
+ *         if(self.isMerged):
+ *             self.tlen = len(self.getSeqArr())
+ *             self.pnext = 0             # <<<<<<<<<<<<<<
+ *             self.rnext = self.reference_id
+ *             # Only change the original mapq to -1 if the tagDict entry om is
+ */
+    __pyx_v_self->pnext = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":344
+ *             self.tlen = len(self.getSeqArr())
+ *             self.pnext = 0
+ *             self.rnext = self.reference_id             # <<<<<<<<<<<<<<
+ *             # Only change the original mapq to -1 if the tagDict entry om is
+ *             # present. (Original Mapping)
+ */
+    __pyx_t_4 = __pyx_v_self->reference_id;
+    __pyx_v_self->rnext = __pyx_t_4;
+
+    /* "utilBMF/MergePairedAlignments.pyx":347
+ *             # Only change the original mapq to -1 if the tagDict entry om is
+ *             # present. (Original Mapping)
+ *             try:             # <<<<<<<<<<<<<<
+ *                 self.tagDict["om"]
+ *                 self.mapq = -1
+ */
+    {
+      __Pyx_ExceptionSave(&__pyx_t_5, &__pyx_t_6, &__pyx_t_7);
+      __Pyx_XGOTREF(__pyx_t_5);
+      __Pyx_XGOTREF(__pyx_t_6);
+      __Pyx_XGOTREF(__pyx_t_7);
+      /*try:*/ {
+
+        /* "utilBMF/MergePairedAlignments.pyx":348
+ *             # present. (Original Mapping)
+ *             try:
+ *                 self.tagDict["om"]             # <<<<<<<<<<<<<<
+ *                 self.mapq = -1
+ *             except KeyError:
+ */
+        if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+          PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 348; __pyx_clineno = __LINE__; goto __pyx_L4_error;}
+        }
+        __pyx_t_1 = __Pyx_PyDict_GetItem(__pyx_v_self->tagDict, __pyx_n_s_om); if (unlikely(__pyx_t_1 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 348; __pyx_clineno = __LINE__; goto __pyx_L4_error;};
+        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+        /* "utilBMF/MergePairedAlignments.pyx":349
+ *             try:
+ *                 self.tagDict["om"]
+ *                 self.mapq = -1             # <<<<<<<<<<<<<<
+ *             except KeyError:
+ *                 pass
+ */
+        __pyx_v_self->mapq = -1;
+      }
+      __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
+      __Pyx_XDECREF(__pyx_t_6); __pyx_t_6 = 0;
+      __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+      goto __pyx_L11_try_end;
+      __pyx_L4_error:;
+      __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":350
+ *                 self.tagDict["om"]
+ *                 self.mapq = -1
+ *             except KeyError:             # <<<<<<<<<<<<<<
+ *                 pass
+ *             self.flag = 2 + (16 if(self.is_reverse) else 32)
+ */
+      __pyx_t_4 = PyErr_ExceptionMatches(__pyx_builtin_KeyError);
+      if (__pyx_t_4) {
+        PyErr_Restore(0,0,0);
+        goto __pyx_L5_exception_handled;
+      }
+      goto __pyx_L6_except_error;
+      __pyx_L6_except_error:;
+      __Pyx_XGIVEREF(__pyx_t_5);
+      __Pyx_XGIVEREF(__pyx_t_6);
+      __Pyx_XGIVEREF(__pyx_t_7);
+      __Pyx_ExceptionReset(__pyx_t_5, __pyx_t_6, __pyx_t_7);
+      goto __pyx_L1_error;
+      __pyx_L5_exception_handled:;
+      __Pyx_XGIVEREF(__pyx_t_5);
+      __Pyx_XGIVEREF(__pyx_t_6);
+      __Pyx_XGIVEREF(__pyx_t_7);
+      __Pyx_ExceptionReset(__pyx_t_5, __pyx_t_6, __pyx_t_7);
+      __pyx_L11_try_end:;
+    }
+
+    /* "utilBMF/MergePairedAlignments.pyx":352
+ *             except KeyError:
+ *                 pass
+ *             self.flag = 2 + (16 if(self.is_reverse) else 32)             # <<<<<<<<<<<<<<
+ *             self.update_read_positions()
+ * 
+ */
+    if ((__pyx_v_self->is_reverse != 0)) {
+      __pyx_t_8 = 16;
+    } else {
+      __pyx_t_8 = 32;
+    }
+    __pyx_v_self->flag = (2 + __pyx_t_8);
+
+    /* "utilBMF/MergePairedAlignments.pyx":353
+ *                 pass
+ *             self.flag = 2 + (16 if(self.is_reverse) else 32)
+ *             self.update_read_positions()             # <<<<<<<<<<<<<<
+ * 
+ *     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):
+ */
+    __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->update_read_positions(__pyx_v_self); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 353; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    goto __pyx_L3;
+  }
+  __pyx_L3:;
+
+  /* "utilBMF/MergePairedAlignments.pyx":338
+ *             self.Layout.layouts[tmpInt].readPos = tmpInt
+ * 
+ *     def update(self):             # <<<<<<<<<<<<<<
+ *         cdef int count
+ *         self.update_tags_()
+ */
+
+  /* function exit code */
+  __pyx_r = Py_None; __Pyx_INCREF(Py_None);
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.update", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":355
+ *             self.update_read_positions()
+ * 
+ *     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in
+ */
+
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetGenomicDiscordantPositions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  size_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_t_6;
+  int __pyx_t_7;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("cGetGenomicDiscordantPositions", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":357
+ *     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_array); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+
+  /* "utilBMF/MergePairedAlignments.pyx":358
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in
+ *                          range(self.Layout.length) if             # <<<<<<<<<<<<<<
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ */
+  __pyx_t_4 = __pyx_v_self->Layout.length;
+  for (__pyx_t_5 = 0; __pyx_t_5 < __pyx_t_4; __pyx_t_5+=1) {
+    __pyx_v_tmpInt = __pyx_t_5;
+
+    /* "utilBMF/MergePairedAlignments.pyx":359
+ *         return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and             # <<<<<<<<<<<<<<
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ * 
+ */
+    __pyx_t_7 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).mergeAgreed == 0) != 0);
+    if (__pyx_t_7) {
+    } else {
+      __pyx_t_6 = __pyx_t_7;
+      goto __pyx_L6_bool_binop_done;
+    }
+
+    /* "utilBMF/MergePairedAlignments.pyx":360
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ *                          self.Layout.layouts[tmpInt].operation != 66])             # <<<<<<<<<<<<<<
+ * 
+ *     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):
+ */
+    __pyx_t_7 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation != 66) != 0);
+    __pyx_t_6 = __pyx_t_7;
+    __pyx_L6_bool_binop_done:;
+    if (__pyx_t_6) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":357
+ *     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ */
+      __pyx_t_8 = __Pyx_PyInt_From_int((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).pos); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_8);
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_8))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+      goto __pyx_L5;
+    }
+    __pyx_L5:;
+  }
+  __pyx_t_8 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+    __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_3);
+    if (likely(__pyx_t_8)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_8);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_3, function);
+    }
+  }
+  if (!__pyx_t_8) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_GOTREF(__pyx_t_1);
+  } else {
+    __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_8); __Pyx_GIVEREF(__pyx_t_8); __pyx_t_8 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_9, 0+1, __pyx_t_2);
+    __Pyx_GIVEREF(__pyx_t_2);
+    __pyx_t_2 = 0;
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 357; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_1);
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":355
+ *             self.update_read_positions()
+ * 
+ *     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.cGetGenomicDiscordantPositions", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":362
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ * 
+ *     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in
+ */
+
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetReadDiscordantPositions(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  size_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_t_6;
+  int __pyx_t_7;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("cGetReadDiscordantPositions", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":364
+ *     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_array); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+
+  /* "utilBMF/MergePairedAlignments.pyx":365
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in
+ *                          range(self.Layout.length) if             # <<<<<<<<<<<<<<
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ */
+  __pyx_t_4 = __pyx_v_self->Layout.length;
+  for (__pyx_t_5 = 0; __pyx_t_5 < __pyx_t_4; __pyx_t_5+=1) {
+    __pyx_v_tmpInt = __pyx_t_5;
+
+    /* "utilBMF/MergePairedAlignments.pyx":366
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and             # <<<<<<<<<<<<<<
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ * 
+ */
+    __pyx_t_7 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).mergeAgreed == 0) != 0);
+    if (__pyx_t_7) {
+    } else {
+      __pyx_t_6 = __pyx_t_7;
+      goto __pyx_L6_bool_binop_done;
+    }
+
+    /* "utilBMF/MergePairedAlignments.pyx":367
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ *                          self.Layout.layouts[tmpInt].operation != 66])             # <<<<<<<<<<<<<<
+ * 
+ *     cpdef ndarray[int, ndim=1] getAgreement(self):
+ */
+    __pyx_t_7 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation != 66) != 0);
+    __pyx_t_6 = __pyx_t_7;
+    __pyx_L6_bool_binop_done:;
+    if (__pyx_t_6) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":364
+ *     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length) if
+ *                          self.Layout.layouts[tmpInt].mergeAgreed == 0 and
+ */
+      __pyx_t_8 = __Pyx_PyInt_From_uint16_t((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).readPos); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_8);
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_8))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+      goto __pyx_L5;
+    }
+    __pyx_L5:;
+  }
+  __pyx_t_8 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+    __pyx_t_8 = PyMethod_GET_SELF(__pyx_t_3);
+    if (likely(__pyx_t_8)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_8);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_3, function);
+    }
+  }
+  if (!__pyx_t_8) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_GOTREF(__pyx_t_1);
+  } else {
+    __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_8); __Pyx_GIVEREF(__pyx_t_8); __pyx_t_8 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_9, 0+1, __pyx_t_2);
+    __Pyx_GIVEREF(__pyx_t_2);
+    __pyx_t_2 = 0;
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 364; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_1);
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":362
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ * 
+ *     cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.cGetReadDiscordantPositions", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":369
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ * 
+ *     cpdef ndarray[int, ndim=1] getAgreement(self):             # <<<<<<<<<<<<<<
+ *         """cpdef wrapper of cGetAgreement
+ *         """
+ */
+
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_23getAgreement(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAgreement(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch) {
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getAgreement", 0);
+  /* Check if called by wrapper */
+  if (unlikely(__pyx_skip_dispatch)) ;
+  /* Check if overridden in Python */
+  else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getAgreement); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_23getAgreement)) {
+      __Pyx_XDECREF(((PyObject *)__pyx_r));
+      __Pyx_INCREF(__pyx_t_1);
+      __pyx_t_3 = __pyx_t_1; __pyx_t_4 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_4)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_4);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (__pyx_t_4) {
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      } else {
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_r = ((PyArrayObject *)__pyx_t_2);
+      __pyx_t_2 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      goto __pyx_L0;
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":372
+ *         """cpdef wrapper of cGetAgreement
+ *         """
+ *         return self.cGetAgreement()             # <<<<<<<<<<<<<<
+ * 
+ *     cdef ndarray[uint16_t, ndim=1] cGetAgreement(self):
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_1 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetAgreement(__pyx_v_self)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 372; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = ((PyArrayObject *)__pyx_t_1);
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":369
+ *                          self.Layout.layouts[tmpInt].operation != 66])
+ * 
+ *     cpdef ndarray[int, ndim=1] getAgreement(self):             # <<<<<<<<<<<<<<
+ *         """cpdef wrapper of cGetAgreement
+ *         """
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getAgreement", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_23getAgreement(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static char __pyx_doc_7utilBMF_21MergePairedAlignments_6Layout_22getAgreement[] = "cpdef wrapper of cGetAgreement\n        ";
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_23getAgreement(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("getAgreement (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_22getAgreement(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_22getAgreement(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getAgreement", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = ((PyObject *)__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAgreement(__pyx_v_self, 1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 369; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getAgreement", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":374
+ *         return self.cGetAgreement()
+ * 
+ *     cdef ndarray[uint16_t, ndim=1] cGetAgreement(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+ */
+
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetAgreement(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  size_t __pyx_t_3;
+  int __pyx_t_4;
+  int __pyx_t_5;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("cGetAgreement", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":377
+ *         cdef int tmpInt
+ *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+ *         return np.array([self.Layout.layouts[tmpInt].agreement for             # <<<<<<<<<<<<<<
+ *                         tmpInt in range(self.Layout.length) if
+ *                         self.Layout.layouts[tmpInt].operation != 68],
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":378
+ *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+ *         return np.array([self.Layout.layouts[tmpInt].agreement for
+ *                         tmpInt in range(self.Layout.length) if             # <<<<<<<<<<<<<<
+ *                         self.Layout.layouts[tmpInt].operation != 68],
+ *                         dtype=np.int16)
+ */
+  __pyx_t_3 = __pyx_v_self->Layout.length;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_tmpInt = __pyx_t_4;
+
+    /* "utilBMF/MergePairedAlignments.pyx":379
+ *         return np.array([self.Layout.layouts[tmpInt].agreement for
+ *                         tmpInt in range(self.Layout.length) if
+ *                         self.Layout.layouts[tmpInt].operation != 68],             # <<<<<<<<<<<<<<
+ *                         dtype=np.int16)
+ * 
+ */
+    __pyx_t_5 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation != 68) != 0);
+    if (__pyx_t_5) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":377
+ *         cdef int tmpInt
+ *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+ *         return np.array([self.Layout.layouts[tmpInt].agreement for             # <<<<<<<<<<<<<<
+ *                         tmpInt in range(self.Layout.length) if
+ *                         self.Layout.layouts[tmpInt].operation != 68],
+ */
+      __pyx_t_6 = __Pyx_PyInt_From_uint16_t((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).agreement); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_6);
+      if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      goto __pyx_L5;
+    }
+    __pyx_L5:;
+  }
+  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_1);
+  __pyx_t_1 = 0;
+  __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":380
+ *                         tmpInt in range(self.Layout.length) if
+ *                         self.Layout.layouts[tmpInt].operation != 68],
+ *                         dtype=np.int16)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef AlignedSegment_t __read__(self):
+ */
+  __pyx_t_7 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 380; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_8 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_int16); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 380; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":377
+ *         cdef int tmpInt
+ *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+ *         return np.array([self.Layout.layouts[tmpInt].agreement for             # <<<<<<<<<<<<<<
+ *                         tmpInt in range(self.Layout.length) if
+ *                         self.Layout.layouts[tmpInt].operation != 68],
+ */
+  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_6, __pyx_t_1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (!(likely(((__pyx_t_8) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_8, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 377; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_8);
+  __pyx_t_8 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":374
+ *         return self.cGetAgreement()
+ * 
+ *     cdef ndarray[uint16_t, ndim=1] cGetAgreement(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.cGetAgreement", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":382
+ *                         dtype=np.int16)
+ * 
+ *     cdef AlignedSegment_t __read__(self):             # <<<<<<<<<<<<<<
+ *         cdef np.int16_t tmpInt
+ *         cdef BamTag_t BT
+ */
+
+static __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_f_7utilBMF_21MergePairedAlignments_6Layout___read__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  __pyx_t_5numpy_int16_t __pyx_v_tmpInt;
+  __pyx_t_7utilBMF_21MergePairedAlignments_BamTag_t __pyx_v_BT = 0;
+  __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_retSegment = 0;
+  __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  Py_ssize_t __pyx_t_4;
+  PyObject *(*__pyx_t_5)(PyObject *);
+  __pyx_t_5numpy_int16_t __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *__pyx_t_10 = NULL;
+  Py_ssize_t __pyx_t_11;
+  int __pyx_t_12;
+  int __pyx_t_13;
+  PyObject *__pyx_t_14 = NULL;
+  PyObject *__pyx_t_15 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__read__", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":386
+ *         cdef BamTag_t BT
+ *         cdef AlignedSegment_t retSegment
+ *         self.update()             # <<<<<<<<<<<<<<
+ *         retSegment = AlignedSegment()
+ *         retSegment.query_name = self.Name
+ */
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_update); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 386; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_2))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_2);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_2, function);
+    }
+  }
+  if (__pyx_t_3) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 386; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  } else {
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 386; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":387
+ *         cdef AlignedSegment_t retSegment
+ *         self.update()
+ *         retSegment = AlignedSegment()             # <<<<<<<<<<<<<<
+ *         retSegment.query_name = self.Name
+ *         retSegment.seq = self.getSeq()
+ */
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_AlignedSegment); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 387; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_2))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_2);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_2, function);
+    }
+  }
+  if (__pyx_t_3) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 387; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  } else {
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 387; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5pysam_14calignmentfile_AlignedSegment))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 387; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_retSegment = ((__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":388
+ *         self.update()
+ *         retSegment = AlignedSegment()
+ *         retSegment.query_name = self.Name             # <<<<<<<<<<<<<<
+ *         retSegment.seq = self.getSeq()
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt
+ */
+  __pyx_t_1 = __pyx_v_self->Name;
+  __Pyx_INCREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_query_name, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 388; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":389
+ *         retSegment = AlignedSegment()
+ *         retSegment.query_name = self.Name
+ *         retSegment.seq = self.getSeq()             # <<<<<<<<<<<<<<
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt
+ *                                       for tmpInt in self.cGetQual()]
+ */
+  __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->getSeq(__pyx_v_self, 0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_seq, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":390
+ *         retSegment.query_name = self.Name
+ *         retSegment.seq = self.getSeq()
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt             # <<<<<<<<<<<<<<
+ *                                       for tmpInt in self.cGetQual()]
+ *         retSegment.flag = self.flag
+ */
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":391
+ *         retSegment.seq = self.getSeq()
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt
+ *                                       for tmpInt in self.cGetQual()]             # <<<<<<<<<<<<<<
+ *         retSegment.flag = self.flag
+ *         retSegment.reference_id = self.reference_id
+ */
+  __pyx_t_2 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetQual(__pyx_v_self)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  if (likely(PyList_CheckExact(__pyx_t_2)) || PyTuple_CheckExact(__pyx_t_2)) {
+    __pyx_t_3 = __pyx_t_2; __Pyx_INCREF(__pyx_t_3); __pyx_t_4 = 0;
+    __pyx_t_5 = NULL;
+  } else {
+    __pyx_t_4 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_5 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  for (;;) {
+    if (likely(!__pyx_t_5)) {
+      if (likely(PyList_CheckExact(__pyx_t_3))) {
+        if (__pyx_t_4 >= PyList_GET_SIZE(__pyx_t_3)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_2 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_4); __Pyx_INCREF(__pyx_t_2); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      } else {
+        if (__pyx_t_4 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_2 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_4); __Pyx_INCREF(__pyx_t_2); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      }
+    } else {
+      __pyx_t_2 = __pyx_t_5(__pyx_t_3);
+      if (unlikely(!__pyx_t_2)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        break;
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+    }
+    __pyx_t_6 = __Pyx_PyInt_As_npy_int16(__pyx_t_2); if (unlikely((__pyx_t_6 == (npy_int16)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_v_tmpInt = __pyx_t_6;
+
+    /* "utilBMF/MergePairedAlignments.pyx":390
+ *         retSegment.query_name = self.Name
+ *         retSegment.seq = self.getSeq()
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt             # <<<<<<<<<<<<<<
+ *                                       for tmpInt in self.cGetQual()]
+ *         retSegment.flag = self.flag
+ */
+    if (((__pyx_v_tmpInt > 92) != 0)) {
+      __Pyx_INCREF(__pyx_int_93);
+      __pyx_t_2 = __pyx_int_93;
+    } else {
+
+      /* "utilBMF/MergePairedAlignments.pyx":391
+ *         retSegment.seq = self.getSeq()
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt
+ *                                       for tmpInt in self.cGetQual()]             # <<<<<<<<<<<<<<
+ *         retSegment.flag = self.flag
+ *         retSegment.reference_id = self.reference_id
+ */
+      __pyx_t_7 = __Pyx_PyInt_From_npy_int16(__pyx_v_tmpInt); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_7);
+      __pyx_t_2 = __pyx_t_7;
+      __pyx_t_7 = 0;
+    }
+    if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_2))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":390
+ *         retSegment.query_name = self.Name
+ *         retSegment.seq = self.getSeq()
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt             # <<<<<<<<<<<<<<
+ *                                       for tmpInt in self.cGetQual()]
+ *         retSegment.flag = self.flag
+ */
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_query_qualities, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 390; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":392
+ *         retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt
+ *                                       for tmpInt in self.cGetQual()]
+ *         retSegment.flag = self.flag             # <<<<<<<<<<<<<<
+ *         retSegment.reference_id = self.reference_id
+ *         retSegment.rnext = self.rnext
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->flag); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 392; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_flag, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 392; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":393
+ *                                       for tmpInt in self.cGetQual()]
+ *         retSegment.flag = self.flag
+ *         retSegment.reference_id = self.reference_id             # <<<<<<<<<<<<<<
+ *         retSegment.rnext = self.rnext
+ *         retSegment.tlen = self.tlen
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->reference_id); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 393; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_reference_id, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 393; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":394
+ *         retSegment.flag = self.flag
+ *         retSegment.reference_id = self.reference_id
+ *         retSegment.rnext = self.rnext             # <<<<<<<<<<<<<<
+ *         retSegment.tlen = self.tlen
+ *         retSegment.pnext = self.pnext
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->rnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_rnext, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 394; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":395
+ *         retSegment.reference_id = self.reference_id
+ *         retSegment.rnext = self.rnext
+ *         retSegment.tlen = self.tlen             # <<<<<<<<<<<<<<
+ *         retSegment.pnext = self.pnext
+ *         retSegment.pos = self.getAlignmentStart()
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->tlen); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 395; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_tlen, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 395; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":396
+ *         retSegment.rnext = self.rnext
+ *         retSegment.tlen = self.tlen
+ *         retSegment.pnext = self.pnext             # <<<<<<<<<<<<<<
+ *         retSegment.pos = self.getAlignmentStart()
+ *         retSegment.cigarstring = self.cGetCigarString()
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->pnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 396; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_pnext, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 396; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":397
+ *         retSegment.tlen = self.tlen
+ *         retSegment.pnext = self.pnext
+ *         retSegment.pos = self.getAlignmentStart()             # <<<<<<<<<<<<<<
+ *         retSegment.cigarstring = self.cGetCigarString()
+ *         retSegment.mapq = self.mapq
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_int(((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->getAlignmentStart(__pyx_v_self)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 397; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_pos, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 397; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":398
+ *         retSegment.pnext = self.pnext
+ *         retSegment.pos = self.getAlignmentStart()
+ *         retSegment.cigarstring = self.cGetCigarString()             # <<<<<<<<<<<<<<
+ *         retSegment.mapq = self.mapq
+ *         try:
+ */
+  __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetCigarString(__pyx_v_self); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 398; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_cigarstring, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 398; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":399
+ *         retSegment.pos = self.getAlignmentStart()
+ *         retSegment.cigarstring = self.cGetCigarString()
+ *         retSegment.mapq = self.mapq             # <<<<<<<<<<<<<<
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in
+ */
+  __pyx_t_1 = __Pyx_PyInt_From_unsigned_char(__pyx_v_self->mapq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_mapq, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 399; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":400
+ *         retSegment.cigarstring = self.cGetCigarString()
+ *         retSegment.mapq = self.mapq
+ *         try:             # <<<<<<<<<<<<<<
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in
+ *                                       self.tagDict.itervalues()],
+ */
+  {
+    __Pyx_ExceptionSave(&__pyx_t_8, &__pyx_t_9, &__pyx_t_10);
+    __Pyx_XGOTREF(__pyx_t_8);
+    __Pyx_XGOTREF(__pyx_t_9);
+    __Pyx_XGOTREF(__pyx_t_10);
+    /*try:*/ {
+
+      /* "utilBMF/MergePairedAlignments.pyx":401
+ *         retSegment.mapq = self.mapq
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in             # <<<<<<<<<<<<<<
+ *                                       self.tagDict.itervalues()],
+ *                                      key=oig0)
+ */
+      __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+      __pyx_t_4 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":402
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in
+ *                                       self.tagDict.itervalues()],             # <<<<<<<<<<<<<<
+ *                                      key=oig0)
+ *         except AttributeError:
+ */
+      if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+        PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "itervalues");
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 402; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      }
+
+      /* "utilBMF/MergePairedAlignments.pyx":401
+ *         retSegment.mapq = self.mapq
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in             # <<<<<<<<<<<<<<
+ *                                       self.tagDict.itervalues()],
+ *                                      key=oig0)
+ */
+      __pyx_t_2 = __Pyx_dict_iterator(__pyx_v_self->tagDict, 1, __pyx_n_s_itervalues, (&__pyx_t_11), (&__pyx_t_12)); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 402; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_XDECREF(__pyx_t_3);
+      __pyx_t_3 = __pyx_t_2;
+      __pyx_t_2 = 0;
+      while (1) {
+
+        /* "utilBMF/MergePairedAlignments.pyx":402
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in
+ *                                       self.tagDict.itervalues()],             # <<<<<<<<<<<<<<
+ *                                      key=oig0)
+ *         except AttributeError:
+ */
+        __pyx_t_13 = __Pyx_dict_iter_next(__pyx_t_3, __pyx_t_11, &__pyx_t_4, NULL, &__pyx_t_2, NULL, __pyx_t_12);
+        if (unlikely(__pyx_t_13 == 0)) break;
+        if (unlikely(__pyx_t_13 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 402; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+        __Pyx_GOTREF(__pyx_t_2);
+
+        /* "utilBMF/MergePairedAlignments.pyx":401
+ *         retSegment.mapq = self.mapq
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in             # <<<<<<<<<<<<<<
+ *                                       self.tagDict.itervalues()],
+ *                                      key=oig0)
+ */
+        if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_7utilBMF_8HTSUtils_BamTag))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+        __Pyx_XDECREF_SET(__pyx_v_BT, ((__pyx_t_7utilBMF_21MergePairedAlignments_BamTag_t)__pyx_t_2));
+        __pyx_t_2 = 0;
+        __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+        __Pyx_GOTREF(__pyx_t_2);
+        __Pyx_INCREF(__pyx_v_BT->tag);
+        PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_v_BT->tag);
+        __Pyx_GIVEREF(__pyx_v_BT->tag);
+        __Pyx_INCREF(__pyx_v_BT->value);
+        PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_v_BT->value);
+        __Pyx_GIVEREF(__pyx_v_BT->value);
+        if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_2))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+      }
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+      PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
+      __Pyx_GIVEREF(__pyx_t_1);
+      __pyx_t_1 = 0;
+      __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+
+      /* "utilBMF/MergePairedAlignments.pyx":403
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in
+ *                                       self.tagDict.itervalues()],
+ *                                      key=oig0)             # <<<<<<<<<<<<<<
+ *         except AttributeError:
+ *             for BT in self.tagDict.iteritems():
+ */
+      __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_oig0); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 403; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+      if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_key, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":401
+ *         retSegment.mapq = self.mapq
+ *         try:
+ *             retSegment.tags = sorted([(BT.tag, BT.value) for BT in             # <<<<<<<<<<<<<<
+ *                                       self.tagDict.itervalues()],
+ *                                      key=oig0)
+ */
+      __pyx_t_2 = __Pyx_PyObject_Call(__pyx_builtin_sorted, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      if (__Pyx_PyObject_SetAttrStr(((PyObject *)__pyx_v_retSegment), __pyx_n_s_tags, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L5_error;}
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    }
+    __Pyx_XDECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+    __Pyx_XDECREF(__pyx_t_10); __pyx_t_10 = 0;
+    goto __pyx_L12_try_end;
+    __pyx_L5_error:;
+    __Pyx_XDECREF(__pyx_t_7); __pyx_t_7 = 0;
+    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":404
+ *                                       self.tagDict.itervalues()],
+ *                                      key=oig0)
+ *         except AttributeError:             # <<<<<<<<<<<<<<
+ *             for BT in self.tagDict.iteritems():
+ *                 print("str of BT with tag %s is %s." % (BT.tag, str(BT)))
+ */
+    __pyx_t_12 = PyErr_ExceptionMatches(__pyx_builtin_AttributeError);
+    if (__pyx_t_12) {
+      __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__read__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      if (__Pyx_GetException(&__pyx_t_2, &__pyx_t_1, &__pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_GOTREF(__pyx_t_3);
+
+      /* "utilBMF/MergePairedAlignments.pyx":405
+ *                                      key=oig0)
+ *         except AttributeError:
+ *             for BT in self.tagDict.iteritems():             # <<<<<<<<<<<<<<
+ *                 print("str of BT with tag %s is %s." % (BT.tag, str(BT)))
+ *             raise AttributeError
+ */
+      __pyx_t_11 = 0;
+      if (unlikely(__pyx_v_self->tagDict == Py_None)) {
+        PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "iteritems");
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+      }
+      __pyx_t_14 = __Pyx_dict_iterator(__pyx_v_self->tagDict, 1, __pyx_n_s_iteritems, (&__pyx_t_4), (&__pyx_t_12)); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+      __Pyx_GOTREF(__pyx_t_14);
+      __Pyx_XDECREF(__pyx_t_7);
+      __pyx_t_7 = __pyx_t_14;
+      __pyx_t_14 = 0;
+      while (1) {
+        __pyx_t_13 = __Pyx_dict_iter_next(__pyx_t_7, __pyx_t_4, &__pyx_t_11, NULL, NULL, &__pyx_t_14, __pyx_t_12);
+        if (unlikely(__pyx_t_13 == 0)) break;
+        if (unlikely(__pyx_t_13 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_GOTREF(__pyx_t_14);
+        if (!(likely(((__pyx_t_14) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_14, __pyx_ptype_7utilBMF_8HTSUtils_BamTag))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 405; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_XDECREF_SET(__pyx_v_BT, ((__pyx_t_7utilBMF_21MergePairedAlignments_BamTag_t)__pyx_t_14));
+        __pyx_t_14 = 0;
+
+        /* "utilBMF/MergePairedAlignments.pyx":406
+ *         except AttributeError:
+ *             for BT in self.tagDict.iteritems():
+ *                 print("str of BT with tag %s is %s." % (BT.tag, str(BT)))             # <<<<<<<<<<<<<<
+ *             raise AttributeError
+ *         return retSegment
+ */
+        __pyx_t_14 = PyTuple_New(1); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 406; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_GOTREF(__pyx_t_14);
+        __Pyx_INCREF(((PyObject *)__pyx_v_BT));
+        PyTuple_SET_ITEM(__pyx_t_14, 0, ((PyObject *)__pyx_v_BT));
+        __Pyx_GIVEREF(((PyObject *)__pyx_v_BT));
+        __pyx_t_15 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyString_Type))), __pyx_t_14, NULL); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 406; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_GOTREF(__pyx_t_15);
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+        __pyx_t_14 = PyTuple_New(2); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 406; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_GOTREF(__pyx_t_14);
+        __Pyx_INCREF(__pyx_v_BT->tag);
+        PyTuple_SET_ITEM(__pyx_t_14, 0, __pyx_v_BT->tag);
+        __Pyx_GIVEREF(__pyx_v_BT->tag);
+        PyTuple_SET_ITEM(__pyx_t_14, 1, __pyx_t_15);
+        __Pyx_GIVEREF(__pyx_t_15);
+        __pyx_t_15 = 0;
+        __pyx_t_15 = __Pyx_PyString_Format(__pyx_kp_s_str_of_BT_with_tag_s_is_s, __pyx_t_14); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 406; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_GOTREF(__pyx_t_15);
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+        if (__Pyx_PrintOne(0, __pyx_t_15) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 406; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+        __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
+      }
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":407
+ *             for BT in self.tagDict.iteritems():
+ *                 print("str of BT with tag %s is %s." % (BT.tag, str(BT)))
+ *             raise AttributeError             # <<<<<<<<<<<<<<
+ *         return retSegment
+ * 
+ */
+      __Pyx_Raise(__pyx_builtin_AttributeError, 0, 0, 0);
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 407; __pyx_clineno = __LINE__; goto __pyx_L7_except_error;}
+    }
+    goto __pyx_L7_except_error;
+    __pyx_L7_except_error:;
+    __Pyx_XGIVEREF(__pyx_t_8);
+    __Pyx_XGIVEREF(__pyx_t_9);
+    __Pyx_XGIVEREF(__pyx_t_10);
+    __Pyx_ExceptionReset(__pyx_t_8, __pyx_t_9, __pyx_t_10);
+    goto __pyx_L1_error;
+    __pyx_L12_try_end:;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":408
+ *                 print("str of BT with tag %s is %s." % (BT.tag, str(BT)))
+ *             raise AttributeError
+ *         return retSegment             # <<<<<<<<<<<<<<
+ * 
+ *     cpdef ndarray[np.int8_t, ndim=1] getOperations(self):
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __Pyx_INCREF(((PyObject *)__pyx_v_retSegment));
+  __pyx_r = __pyx_v_retSegment;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":382
+ *                         dtype=np.int16)
+ * 
+ *     cdef AlignedSegment_t __read__(self):             # <<<<<<<<<<<<<<
+ *         cdef np.int16_t tmpInt
+ *         cdef BamTag_t BT
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_14);
+  __Pyx_XDECREF(__pyx_t_15);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.__read__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF((PyObject *)__pyx_v_BT);
+  __Pyx_XDECREF((PyObject *)__pyx_v_retSegment);
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":410
+ *         return retSegment
+ * 
+ *     cpdef ndarray[np.int8_t, ndim=1] getOperations(self):             # <<<<<<<<<<<<<<
+ *         return self.cGetOperation()
+ * 
+ */
+
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_25getOperations(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getOperations(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch) {
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getOperations", 0);
+  /* Check if called by wrapper */
+  if (unlikely(__pyx_skip_dispatch)) ;
+  /* Check if overridden in Python */
+  else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getOperations); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_25getOperations)) {
+      __Pyx_XDECREF(((PyObject *)__pyx_r));
+      __Pyx_INCREF(__pyx_t_1);
+      __pyx_t_3 = __pyx_t_1; __pyx_t_4 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_4)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_4);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (__pyx_t_4) {
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      } else {
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (!(likely(((__pyx_t_2) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_2, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_r = ((PyArrayObject *)__pyx_t_2);
+      __pyx_t_2 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      goto __pyx_L0;
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":411
+ * 
+ *     cpdef ndarray[np.int8_t, ndim=1] getOperations(self):
+ *         return self.cGetOperation()             # <<<<<<<<<<<<<<
+ * 
+ *     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_cGetOperation); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 411; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_2))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_2);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_2, function);
+    }
+  }
+  if (__pyx_t_3) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 411; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  } else {
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 411; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 411; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_1);
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":410
+ *         return retSegment
+ * 
+ *     cpdef ndarray[np.int8_t, ndim=1] getOperations(self):             # <<<<<<<<<<<<<<
+ *         return self.cGetOperation()
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getOperations", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_25getOperations(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_25getOperations(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("getOperations (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_24getOperations(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_24getOperations(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getOperations", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = ((PyObject *)__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getOperations(__pyx_v_self, 1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 410; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getOperations", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":413
+ *         return self.cGetOperation()
+ * 
+ *     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in
+ */
+
+static PyArrayObject *__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetOperations(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_tmpInt;
+  PyArrayObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  size_t __pyx_t_3;
+  int __pyx_t_4;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("cGetOperations", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":415
+ *     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length)], dtype=np.int8)
+ * 
+ */
+  __Pyx_XDECREF(((PyObject *)__pyx_r));
+  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_array); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":416
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in
+ *                          range(self.Layout.length)], dtype=np.int8)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef cystr cGetCigarString2(self):
+ */
+  __pyx_t_3 = __pyx_v_self->Layout.length;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_tmpInt = __pyx_t_4;
+
+    /* "utilBMF/MergePairedAlignments.pyx":415
+ *     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length)], dtype=np.int8)
+ * 
+ */
+    __pyx_t_5 = __Pyx_PyInt_From_char((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
+    if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_5))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  }
+  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_5);
+  PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_1);
+  __pyx_t_1 = 0;
+  __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":416
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in
+ *                          range(self.Layout.length)], dtype=np.int8)             # <<<<<<<<<<<<<<
+ * 
+ *     cdef cystr cGetCigarString2(self):
+ */
+  __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_np); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 416; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_int8); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 416; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_7);
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":415
+ *     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in             # <<<<<<<<<<<<<<
+ *                          range(self.Layout.length)], dtype=np.int8)
+ * 
+ */
+  __pyx_t_7 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_7);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (!(likely(((__pyx_t_7) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_7, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 415; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((PyArrayObject *)__pyx_t_7);
+  __pyx_t_7 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":413
+ *         return self.cGetOperation()
+ * 
+ *     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.cGetOperations", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF((PyObject *)__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":418
+ *                          range(self.Layout.length)], dtype=np.int8)
+ * 
+ *     cdef cystr cGetCigarString2(self):             # <<<<<<<<<<<<<<
+ *         cdef int CigarOpLen = 0
+ *         cdef int CigarOpNumber = 0
+ */
+
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetCigarString2(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_v_CigarOpLen;
+  int __pyx_v_CigarOpNumber;
+  int __pyx_v_tmpInt;
+  int __pyx_v_LastCigarOp;
+  int __pyx_v_CigarOpLengths[50];
+  int __pyx_v_CigarOperations[50];
+  PyObject *__pyx_v_cigar_op_len = NULL;
+  PyObject *__pyx_v_cigar_operation = NULL;
+  __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  char __pyx_t_1;
+  size_t __pyx_t_2;
+  int __pyx_t_3;
+  int __pyx_t_4;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  int __pyx_t_7;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *__pyx_t_10 = NULL;
+  Py_ssize_t __pyx_t_11;
+  PyObject *__pyx_t_12 = NULL;
+  PyObject *(*__pyx_t_13)(PyObject *);
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("cGetCigarString2", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":419
+ * 
+ *     cdef cystr cGetCigarString2(self):
+ *         cdef int CigarOpLen = 0             # <<<<<<<<<<<<<<
+ *         cdef int CigarOpNumber = 0
+ *         cdef int tmpInt
+ */
+  __pyx_v_CigarOpLen = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":420
+ *     cdef cystr cGetCigarString2(self):
+ *         cdef int CigarOpLen = 0
+ *         cdef int CigarOpNumber = 0             # <<<<<<<<<<<<<<
+ *         cdef int tmpInt
+ *         cdef int LastCigarOp = self.Layout.layouts[0].operation
+ */
+  __pyx_v_CigarOpNumber = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":422
+ *         cdef int CigarOpNumber = 0
+ *         cdef int tmpInt
+ *         cdef int LastCigarOp = self.Layout.layouts[0].operation             # <<<<<<<<<<<<<<
+ *         cdef int[50] CigarOpLengths
+ *         cdef int[50] CigarOperations
+ */
+  __pyx_t_1 = (__pyx_v_self->Layout.layouts[0]).operation;
+  __pyx_v_LastCigarOp = __pyx_t_1;
+
+  /* "utilBMF/MergePairedAlignments.pyx":425
+ *         cdef int[50] CigarOpLengths
+ *         cdef int[50] CigarOperations
+ *         for tmpInt in range(self.Layout.length):             # <<<<<<<<<<<<<<
+ *             if(self.Layout.layouts[tmpInt].operation == LastCigarOp):
+ *                 CigarOpLen += 1
+ */
+  __pyx_t_2 = __pyx_v_self->Layout.length;
+  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+    __pyx_v_tmpInt = __pyx_t_3;
+
+    /* "utilBMF/MergePairedAlignments.pyx":426
+ *         cdef int[50] CigarOperations
+ *         for tmpInt in range(self.Layout.length):
+ *             if(self.Layout.layouts[tmpInt].operation == LastCigarOp):             # <<<<<<<<<<<<<<
+ *                 CigarOpLen += 1
+ *                 continue
+ */
+    __pyx_t_4 = (((__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation == __pyx_v_LastCigarOp) != 0);
+    if (__pyx_t_4) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":427
+ *         for tmpInt in range(self.Layout.length):
+ *             if(self.Layout.layouts[tmpInt].operation == LastCigarOp):
+ *                 CigarOpLen += 1             # <<<<<<<<<<<<<<
+ *                 continue
+ *             else:
+ */
+      __pyx_v_CigarOpLen = (__pyx_v_CigarOpLen + 1);
+
+      /* "utilBMF/MergePairedAlignments.pyx":428
+ *             if(self.Layout.layouts[tmpInt].operation == LastCigarOp):
+ *                 CigarOpLen += 1
+ *                 continue             # <<<<<<<<<<<<<<
+ *             else:
+ *                 CigarOpLengths[CigarOpNumber] = CigarOpLen
+ */
+      goto __pyx_L3_continue;
+    }
+    /*else*/ {
+
+      /* "utilBMF/MergePairedAlignments.pyx":430
+ *                 continue
+ *             else:
+ *                 CigarOpLengths[CigarOpNumber] = CigarOpLen             # <<<<<<<<<<<<<<
+ *                 CigarOperations[CigarOpNumber] = LastCigarOp
+ *                 CigarOpLen = 0
+ */
+      (__pyx_v_CigarOpLengths[__pyx_v_CigarOpNumber]) = __pyx_v_CigarOpLen;
+
+      /* "utilBMF/MergePairedAlignments.pyx":431
+ *             else:
+ *                 CigarOpLengths[CigarOpNumber] = CigarOpLen
+ *                 CigarOperations[CigarOpNumber] = LastCigarOp             # <<<<<<<<<<<<<<
+ *                 CigarOpLen = 0
+ *                 LastCigarOp = self.Layout.layouts[tmpInt].operation
+ */
+      (__pyx_v_CigarOperations[__pyx_v_CigarOpNumber]) = __pyx_v_LastCigarOp;
+
+      /* "utilBMF/MergePairedAlignments.pyx":432
+ *                 CigarOpLengths[CigarOpNumber] = CigarOpLen
+ *                 CigarOperations[CigarOpNumber] = LastCigarOp
+ *                 CigarOpLen = 0             # <<<<<<<<<<<<<<
+ *                 LastCigarOp = self.Layout.layouts[tmpInt].operation
+ *                 CigarOpNumber += 1
+ */
+      __pyx_v_CigarOpLen = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":433
+ *                 CigarOperations[CigarOpNumber] = LastCigarOp
+ *                 CigarOpLen = 0
+ *                 LastCigarOp = self.Layout.layouts[tmpInt].operation             # <<<<<<<<<<<<<<
+ *                 CigarOpNumber += 1
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for
+ */
+      __pyx_t_1 = (__pyx_v_self->Layout.layouts[__pyx_v_tmpInt]).operation;
+      __pyx_v_LastCigarOp = __pyx_t_1;
+
+      /* "utilBMF/MergePairedAlignments.pyx":434
+ *                 CigarOpLen = 0
+ *                 LastCigarOp = self.Layout.layouts[tmpInt].operation
+ *                 CigarOpNumber += 1             # <<<<<<<<<<<<<<
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for
+ *                         cigar_op_len, cigar_operation in
+ */
+      __pyx_v_CigarOpNumber = (__pyx_v_CigarOpNumber + 1);
+    }
+    __pyx_L3_continue:;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":435
+ *                 LastCigarOp = self.Layout.layouts[tmpInt].operation
+ *                 CigarOpNumber += 1
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for             # <<<<<<<<<<<<<<
+ *                         cigar_op_len, cigar_operation in
+ *                         [(CigarOpLengths[tmpInt], CigarOperations) for
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_5 = PyList_New(0); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_5);
+
+  /* "utilBMF/MergePairedAlignments.pyx":437
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for
+ *                         cigar_op_len, cigar_operation in
+ *                         [(CigarOpLengths[tmpInt], CigarOperations) for             # <<<<<<<<<<<<<<
+ *                          tmpInt in range(CigarOpNumber)]])
+ * 
+ */
+  __pyx_t_6 = PyList_New(0); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+
+  /* "utilBMF/MergePairedAlignments.pyx":438
+ *                         cigar_op_len, cigar_operation in
+ *                         [(CigarOpLengths[tmpInt], CigarOperations) for
+ *                          tmpInt in range(CigarOpNumber)]])             # <<<<<<<<<<<<<<
+ * 
+ *     cdef cystr cGetCigarString(self):
+ */
+  __pyx_t_3 = __pyx_v_CigarOpNumber;
+  for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_3; __pyx_t_7+=1) {
+    __pyx_v_tmpInt = __pyx_t_7;
+
+    /* "utilBMF/MergePairedAlignments.pyx":437
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for
+ *                         cigar_op_len, cigar_operation in
+ *                         [(CigarOpLengths[tmpInt], CigarOperations) for             # <<<<<<<<<<<<<<
+ *                          tmpInt in range(CigarOpNumber)]])
+ * 
+ */
+    __pyx_t_8 = __Pyx_PyInt_From_int((__pyx_v_CigarOpLengths[__pyx_v_tmpInt])); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_8);
+    __pyx_t_9 = __Pyx_carray_to_py_int(__pyx_v_CigarOperations, 50); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    __pyx_t_10 = PyTuple_New(2); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_10);
+    PyTuple_SET_ITEM(__pyx_t_10, 0, __pyx_t_8);
+    __Pyx_GIVEREF(__pyx_t_8);
+    PyTuple_SET_ITEM(__pyx_t_10, 1, __pyx_t_9);
+    __Pyx_GIVEREF(__pyx_t_9);
+    __pyx_t_8 = 0;
+    __pyx_t_9 = 0;
+    if (unlikely(__Pyx_ListComp_Append(__pyx_t_6, (PyObject*)__pyx_t_10))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
+  }
+  __pyx_t_10 = __pyx_t_6; __Pyx_INCREF(__pyx_t_10); __pyx_t_11 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  for (;;) {
+    if (__pyx_t_11 >= PyList_GET_SIZE(__pyx_t_10)) break;
+    #if CYTHON_COMPILING_IN_CPYTHON
+    __pyx_t_6 = PyList_GET_ITEM(__pyx_t_10, __pyx_t_11); __Pyx_INCREF(__pyx_t_6); __pyx_t_11++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    #else
+    __pyx_t_6 = PySequence_ITEM(__pyx_t_10, __pyx_t_11); __pyx_t_11++; if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 437; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    #endif
+    if ((likely(PyTuple_CheckExact(__pyx_t_6))) || (PyList_CheckExact(__pyx_t_6))) {
+      PyObject* sequence = __pyx_t_6;
+      #if CYTHON_COMPILING_IN_CPYTHON
+      Py_ssize_t size = Py_SIZE(sequence);
+      #else
+      Py_ssize_t size = PySequence_Size(sequence);
+      #endif
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      #if CYTHON_COMPILING_IN_CPYTHON
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_9 = PyTuple_GET_ITEM(sequence, 0); 
+        __pyx_t_8 = PyTuple_GET_ITEM(sequence, 1); 
+      } else {
+        __pyx_t_9 = PyList_GET_ITEM(sequence, 0); 
+        __pyx_t_8 = PyList_GET_ITEM(sequence, 1); 
+      }
+      __Pyx_INCREF(__pyx_t_9);
+      __Pyx_INCREF(__pyx_t_8);
+      #else
+      __pyx_t_9 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_9);
+      __pyx_t_8 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_8);
+      #endif
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_12 = PyObject_GetIter(__pyx_t_6); if (unlikely(!__pyx_t_12)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_12);
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      __pyx_t_13 = Py_TYPE(__pyx_t_12)->tp_iternext;
+      index = 0; __pyx_t_9 = __pyx_t_13(__pyx_t_12); if (unlikely(!__pyx_t_9)) goto __pyx_L10_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_9);
+      index = 1; __pyx_t_8 = __pyx_t_13(__pyx_t_12); if (unlikely(!__pyx_t_8)) goto __pyx_L10_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_8);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_13(__pyx_t_12), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_13 = NULL;
+      __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
+      goto __pyx_L11_unpacking_done;
+      __pyx_L10_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
+      __pyx_t_13 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 436; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_L11_unpacking_done:;
+    }
+
+    /* "utilBMF/MergePairedAlignments.pyx":436
+ *                 CigarOpNumber += 1
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for
+ *                         cigar_op_len, cigar_operation in             # <<<<<<<<<<<<<<
+ *                         [(CigarOpLengths[tmpInt], CigarOperations) for
+ *                          tmpInt in range(CigarOpNumber)]])
+ */
+    __Pyx_XDECREF_SET(__pyx_v_cigar_op_len, __pyx_t_9);
+    __pyx_t_9 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_cigar_operation, __pyx_t_8);
+    __pyx_t_8 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":435
+ *                 LastCigarOp = self.Layout.layouts[tmpInt].operation
+ *                 CigarOpNumber += 1
+ *         return "".join([str(cigar_op_len) + CigarStrDict[cigar_operation] for             # <<<<<<<<<<<<<<
+ *                         cigar_op_len, cigar_operation in
+ *                         [(CigarOpLengths[tmpInt], CigarOperations) for
+ */
+    __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_6);
+    __Pyx_INCREF(__pyx_v_cigar_op_len);
+    PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_v_cigar_op_len);
+    __Pyx_GIVEREF(__pyx_v_cigar_op_len);
+    __pyx_t_8 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyString_Type))), __pyx_t_6, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_8);
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    if (unlikely(__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    __pyx_t_6 = __Pyx_PyDict_GetItem(__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict, __pyx_v_cigar_operation); if (unlikely(__pyx_t_6 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __Pyx_GOTREF(__pyx_t_6);
+    __pyx_t_9 = PyNumber_Add(__pyx_t_8, __pyx_t_6); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    if (unlikely(__Pyx_ListComp_Append(__pyx_t_5, (PyObject*)__pyx_t_9))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
+  __pyx_t_10 = __Pyx_PyString_Join(__pyx_kp_s__11, __pyx_t_5); if (unlikely(!__pyx_t_10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_10);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  if (!(likely(PyString_CheckExact(__pyx_t_10))||((__pyx_t_10) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_10)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 435; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_10);
+  __pyx_t_10 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":418
+ *                          range(self.Layout.length)], dtype=np.int8)
+ * 
+ *     cdef cystr cGetCigarString2(self):             # <<<<<<<<<<<<<<
+ *         cdef int CigarOpLen = 0
+ *         cdef int CigarOpNumber = 0
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_XDECREF(__pyx_t_10);
+  __Pyx_XDECREF(__pyx_t_12);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.cGetCigarString2", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_cigar_op_len);
+  __Pyx_XDECREF(__pyx_v_cigar_operation);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":440
+ *                          tmpInt in range(CigarOpNumber)]])
+ * 
+ *     cdef cystr cGetCigarString(self):             # <<<<<<<<<<<<<<
+ *         return "".join([str(len(list(g))) + CigarStrDict[k] for
+ *                         k, g in groupby(self.cGetOperations())])
+ */
+
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetCigarString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_v_k = NULL;
+  PyObject *__pyx_v_g = NULL;
+  __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  Py_ssize_t __pyx_t_7;
+  PyObject *(*__pyx_t_8)(PyObject *);
+  PyObject *(*__pyx_t_9)(PyObject *);
+  Py_ssize_t __pyx_t_10;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("cGetCigarString", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":441
+ * 
+ *     cdef cystr cGetCigarString(self):
+ *         return "".join([str(len(list(g))) + CigarStrDict[k] for             # <<<<<<<<<<<<<<
+ *                         k, g in groupby(self.cGetOperations())])
+ * 
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+
+  /* "utilBMF/MergePairedAlignments.pyx":442
+ *     cdef cystr cGetCigarString(self):
+ *         return "".join([str(len(list(g))) + CigarStrDict[k] for
+ *                         k, g in groupby(self.cGetOperations())])             # <<<<<<<<<<<<<<
+ * 
+ *     cpdef cystr getCigarString2(self):
+ */
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_groupby); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_4 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetOperations(__pyx_v_self)); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+    __pyx_t_5 = PyMethod_GET_SELF(__pyx_t_3);
+    if (likely(__pyx_t_5)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+      __Pyx_INCREF(__pyx_t_5);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_3, function);
+    }
+  }
+  if (!__pyx_t_5) {
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __Pyx_GOTREF(__pyx_t_2);
+  } else {
+    __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_6);
+    PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __Pyx_GIVEREF(__pyx_t_5); __pyx_t_5 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_t_4);
+    __Pyx_GIVEREF(__pyx_t_4);
+    __pyx_t_4 = 0;
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_6, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (likely(PyList_CheckExact(__pyx_t_2)) || PyTuple_CheckExact(__pyx_t_2)) {
+    __pyx_t_3 = __pyx_t_2; __Pyx_INCREF(__pyx_t_3); __pyx_t_7 = 0;
+    __pyx_t_8 = NULL;
+  } else {
+    __pyx_t_7 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_8 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  for (;;) {
+    if (likely(!__pyx_t_8)) {
+      if (likely(PyList_CheckExact(__pyx_t_3))) {
+        if (__pyx_t_7 >= PyList_GET_SIZE(__pyx_t_3)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_2 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_7); __Pyx_INCREF(__pyx_t_2); __pyx_t_7++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_7); __pyx_t_7++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      } else {
+        if (__pyx_t_7 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_2 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_7); __Pyx_INCREF(__pyx_t_2); __pyx_t_7++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_2 = PySequence_ITEM(__pyx_t_3, __pyx_t_7); __pyx_t_7++; if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      }
+    } else {
+      __pyx_t_2 = __pyx_t_8(__pyx_t_3);
+      if (unlikely(!__pyx_t_2)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        break;
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+    }
+    if ((likely(PyTuple_CheckExact(__pyx_t_2))) || (PyList_CheckExact(__pyx_t_2))) {
+      PyObject* sequence = __pyx_t_2;
+      #if CYTHON_COMPILING_IN_CPYTHON
+      Py_ssize_t size = Py_SIZE(sequence);
+      #else
+      Py_ssize_t size = PySequence_Size(sequence);
+      #endif
+      if (unlikely(size != 2)) {
+        if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+        else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      #if CYTHON_COMPILING_IN_CPYTHON
+      if (likely(PyTuple_CheckExact(sequence))) {
+        __pyx_t_6 = PyTuple_GET_ITEM(sequence, 0); 
+        __pyx_t_4 = PyTuple_GET_ITEM(sequence, 1); 
+      } else {
+        __pyx_t_6 = PyList_GET_ITEM(sequence, 0); 
+        __pyx_t_4 = PyList_GET_ITEM(sequence, 1); 
+      }
+      __Pyx_INCREF(__pyx_t_6);
+      __Pyx_INCREF(__pyx_t_4);
+      #else
+      __pyx_t_6 = PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_6);
+      __pyx_t_4 = PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_4);
+      #endif
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    } else {
+      Py_ssize_t index = -1;
+      __pyx_t_5 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_5);
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+      __pyx_t_9 = Py_TYPE(__pyx_t_5)->tp_iternext;
+      index = 0; __pyx_t_6 = __pyx_t_9(__pyx_t_5); if (unlikely(!__pyx_t_6)) goto __pyx_L5_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_6);
+      index = 1; __pyx_t_4 = __pyx_t_9(__pyx_t_5); if (unlikely(!__pyx_t_4)) goto __pyx_L5_unpacking_failed;
+      __Pyx_GOTREF(__pyx_t_4);
+      if (__Pyx_IternextUnpackEndCheck(__pyx_t_9(__pyx_t_5), 2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_9 = NULL;
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      goto __pyx_L6_unpacking_done;
+      __pyx_L5_unpacking_failed:;
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      __pyx_t_9 = NULL;
+      if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 442; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_L6_unpacking_done:;
+    }
+    __Pyx_XDECREF_SET(__pyx_v_k, __pyx_t_6);
+    __pyx_t_6 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_g, __pyx_t_4);
+    __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":441
+ * 
+ *     cdef cystr cGetCigarString(self):
+ *         return "".join([str(len(list(g))) + CigarStrDict[k] for             # <<<<<<<<<<<<<<
+ *                         k, g in groupby(self.cGetOperations())])
+ * 
+ */
+    __pyx_t_2 = PySequence_List(__pyx_v_g); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_10 = PyList_GET_SIZE(__pyx_t_2); if (unlikely(__pyx_t_10 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __pyx_t_2 = PyInt_FromSsize_t(__pyx_t_10); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2);
+    __Pyx_GIVEREF(__pyx_t_2);
+    __pyx_t_2 = 0;
+    __pyx_t_2 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)(&PyString_Type))), __pyx_t_4, NULL); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    if (unlikely(__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    }
+    __pyx_t_4 = __Pyx_PyDict_GetItem(__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict, __pyx_v_k); if (unlikely(__pyx_t_4 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_6 = PyNumber_Add(__pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_6);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_PyString_Join(__pyx_kp_s__11, __pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  if (!(likely(PyString_CheckExact(__pyx_t_3))||((__pyx_t_3) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_3)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 441; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_3);
+  __pyx_t_3 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":440
+ *                          tmpInt in range(CigarOpNumber)]])
+ * 
+ *     cdef cystr cGetCigarString(self):             # <<<<<<<<<<<<<<
+ *         return "".join([str(len(list(g))) + CigarStrDict[k] for
+ *                         k, g in groupby(self.cGetOperations())])
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.cGetCigarString", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_k);
+  __Pyx_XDECREF(__pyx_v_g);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":444
+ *                         k, g in groupby(self.cGetOperations())])
+ * 
+ *     cpdef cystr getCigarString2(self):             # <<<<<<<<<<<<<<
+ *         return self.cGetCigarString2()
+ * 
+ */
+
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_27getCigarString2(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString2(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch) {
+  __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getCigarString2", 0);
+  /* Check if called by wrapper */
+  if (unlikely(__pyx_skip_dispatch)) ;
+  /* Check if overridden in Python */
+  else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getCigarString2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_27getCigarString2)) {
+      __Pyx_XDECREF(__pyx_r);
+      __Pyx_INCREF(__pyx_t_1);
+      __pyx_t_3 = __pyx_t_1; __pyx_t_4 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_4)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_4);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (__pyx_t_4) {
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      } else {
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (!(likely(PyString_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_2)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_2);
+      __pyx_t_2 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      goto __pyx_L0;
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":445
+ * 
+ *     cpdef cystr getCigarString2(self):
+ *         return self.cGetCigarString2()             # <<<<<<<<<<<<<<
+ * 
+ *     cpdef cystr getCigarString(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetCigarString2(__pyx_v_self); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 445; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_1);
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":444
+ *                         k, g in groupby(self.cGetOperations())])
+ * 
+ *     cpdef cystr getCigarString2(self):             # <<<<<<<<<<<<<<
+ *         return self.cGetCigarString2()
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getCigarString2", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_27getCigarString2(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_27getCigarString2(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("getCigarString2 (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_26getCigarString2(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_26getCigarString2(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getCigarString2", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString2(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 444; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getCigarString2", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":447
+ *         return self.cGetCigarString2()
+ * 
+ *     cpdef cystr getCigarString(self):             # <<<<<<<<<<<<<<
+ *         return self.cGetCigarString()
+ * 
+ */
+
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_29getCigarString(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, int __pyx_skip_dispatch) {
+  __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getCigarString", 0);
+  /* Check if called by wrapper */
+  if (unlikely(__pyx_skip_dispatch)) ;
+  /* Check if overridden in Python */
+  else if (unlikely(Py_TYPE(((PyObject *)__pyx_v_self))->tp_dictoffset != 0)) {
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_getCigarString); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_29getCigarString)) {
+      __Pyx_XDECREF(__pyx_r);
+      __Pyx_INCREF(__pyx_t_1);
+      __pyx_t_3 = __pyx_t_1; __pyx_t_4 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_4)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_4);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (__pyx_t_4) {
+        __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      } else {
+        __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (!(likely(PyString_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_2)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_2);
+      __pyx_t_2 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      goto __pyx_L0;
+    }
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  }
+
+  /* "utilBMF/MergePairedAlignments.pyx":448
+ * 
+ *     cpdef cystr getCigarString(self):
+ *         return self.cGetCigarString()             # <<<<<<<<<<<<<<
+ * 
+ *     def getFlag(self):
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self->__pyx_vtab)->cGetCigarString(__pyx_v_self); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 448; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_1);
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":447
+ *         return self.cGetCigarString2()
+ * 
+ *     cpdef cystr getCigarString(self):             # <<<<<<<<<<<<<<
+ *         return self.cGetCigarString()
+ * 
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getCigarString", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_29getCigarString(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_29getCigarString(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("getCigarString (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_28getCigarString(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_28getCigarString(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getCigarString", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString(__pyx_v_self, 1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 447; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getCigarString", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":450
+ *         return self.cGetCigarString()
+ * 
+ *     def getFlag(self):             # <<<<<<<<<<<<<<
+ *         self.update()
+ *         return self.flag
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_31getFlag(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_31getFlag(PyObject *__pyx_v_self, CYTHON_UNUSED PyObject *unused) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("getFlag (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_30getFlag(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_30getFlag(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("getFlag", 0);
+
+  /* "utilBMF/MergePairedAlignments.pyx":451
+ * 
+ *     def getFlag(self):
+ *         self.update()             # <<<<<<<<<<<<<<
+ *         return self.flag
+ * '''
+ */
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_update); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 451; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_2);
+  __pyx_t_3 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_2))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_2);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_2, function);
+    }
+  }
+  if (__pyx_t_3) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 451; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  } else {
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(__pyx_t_2); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 451; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_1);
+  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":452
+ *     def getFlag(self):
+ *         self.update()
+ *         return self.flag             # <<<<<<<<<<<<<<
+ * '''
+ *     @cython.returns(AlignedSegment_t)
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->flag); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 452; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":450
+ *         return self.cGetCigarString()
+ * 
+ *     def getFlag(self):             # <<<<<<<<<<<<<<
+ *         self.update()
+ *         return self.flag
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.getFlag", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pxd":44
  *     cdef ArrayLayout_t Layout
  * 
  *     cdef public uchar mapq             # <<<<<<<<<<<<<<
- *     cdef public int tlen, pnext, flag, InitPos, firstMapped
+ *     cdef public int tlen, pnext, flag, InitPos, firstMapped, reference_id, pos, rnext
  *     cdef public dict tagDict
  */
 
@@ -7073,7 +11246,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4mapq___get__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_unsigned_char(__pyx_v_self->mapq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_unsigned_char(__pyx_v_self->mapq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7111,7 +11284,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4mapq_2__set__(stru
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  __pyx_t_1 = __Pyx_PyInt_As_unsigned_char(__pyx_v_value); if (unlikely((__pyx_t_1 == (unsigned char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 38; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_As_unsigned_char(__pyx_v_value); if (unlikely((__pyx_t_1 == (unsigned char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->mapq = __pyx_t_1;
 
   /* function exit code */
@@ -7125,12 +11298,12 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4mapq_2__set__(stru
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pxd":39
+/* "utilBMF/MergePairedAlignments.pxd":45
  * 
  *     cdef public uchar mapq
- *     cdef public int tlen, pnext, flag, InitPos, firstMapped             # <<<<<<<<<<<<<<
+ *     cdef public int tlen, pnext, flag, InitPos, firstMapped, reference_id, pos, rnext             # <<<<<<<<<<<<<<
  *     cdef public dict tagDict
- * 
+ *     cdef public cystr Name
  */
 
 /* Python wrapper */
@@ -7155,7 +11328,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4tlen___get__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->tlen); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->tlen); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7193,7 +11366,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4tlen_2__set__(stru
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->tlen = __pyx_t_1;
 
   /* function exit code */
@@ -7229,7 +11402,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5pnext___get_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->pnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->pnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7267,7 +11440,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5pnext_2__set__(str
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->pnext = __pyx_t_1;
 
   /* function exit code */
@@ -7303,7 +11476,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4flag___get__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->flag); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->flag); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7341,7 +11514,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4flag_2__set__(stru
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->flag = __pyx_t_1;
 
   /* function exit code */
@@ -7377,7 +11550,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7InitPos___ge
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->InitPos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->InitPos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7415,7 +11588,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7InitPos_2__set__(s
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->InitPos = __pyx_t_1;
 
   /* function exit code */
@@ -7451,7 +11624,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_11firstMapped
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->firstMapped); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->firstMapped); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7489,7 +11662,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_11firstMapped_2__se
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_v_self->firstMapped = __pyx_t_1;
 
   /* function exit code */
@@ -7503,12 +11676,234 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_11firstMapped_2__se
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pxd":40
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12reference_id___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12reference_id___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->reference_id); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.reference_id.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_self->reference_id = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.reference_id.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3pos_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3pos_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_3pos___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_3pos___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.pos.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3pos_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3pos_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_3pos_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_3pos_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_self->pos = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.pos.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5rnext_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5rnext_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5rnext___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5rnext___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->rnext); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.rnext.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5rnext_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5rnext_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5rnext_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_5rnext_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_self->rnext = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.rnext.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pxd":46
  *     cdef public uchar mapq
- *     cdef public int tlen, pnext, flag, InitPos, firstMapped
+ *     cdef public int tlen, pnext, flag, InitPos, firstMapped, reference_id, pos, rnext
  *     cdef public dict tagDict             # <<<<<<<<<<<<<<
- * 
- *     cdef int getFirstAlignedRefPos(self)
+ *     cdef public cystr Name
+ *     cdef public bint is_reverse, isMerged, MergeSuccess
  */
 
 /* Python wrapper */
@@ -7561,7 +11956,7 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7tagDict_2__set__(s
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__set__", 0);
-  if (!(likely(PyDict_CheckExact(__pyx_v_value))||((__pyx_v_value) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "dict", Py_TYPE(__pyx_v_value)->tp_name), 0))) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(PyDict_CheckExact(__pyx_v_value))||((__pyx_v_value) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "dict", Py_TYPE(__pyx_v_value)->tp_name), 0))) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_t_1 = __pyx_v_value;
   __Pyx_INCREF(__pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
@@ -7611,7 +12006,345 @@ static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_7tagDict_4__del__(s
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":623
+/* "utilBMF/MergePairedAlignments.pxd":47
+ *     cdef public int tlen, pnext, flag, InitPos, firstMapped, reference_id, pos, rnext
+ *     cdef public dict tagDict
+ *     cdef public cystr Name             # <<<<<<<<<<<<<<
+ *     cdef public bint is_reverse, isMerged, MergeSuccess
+ * 
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_self->Name);
+  __pyx_r = __pyx_v_self->Name;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  if (!(likely(PyString_CheckExact(__pyx_v_value))||((__pyx_v_value) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_v_value)->tp_name), 0))) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 47; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __pyx_v_value;
+  __Pyx_INCREF(__pyx_t_1);
+  __Pyx_GIVEREF(__pyx_t_1);
+  __Pyx_GOTREF(__pyx_v_self->Name);
+  __Pyx_DECREF(__pyx_v_self->Name);
+  __pyx_v_self->Name = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.Name.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_5__del__(PyObject *__pyx_v_self); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_5__del__(PyObject *__pyx_v_self) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__del__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name_4__del__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_4Name_4__del__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__del__", 0);
+  __Pyx_INCREF(Py_None);
+  __Pyx_GIVEREF(Py_None);
+  __Pyx_GOTREF(__pyx_v_self->Name);
+  __Pyx_DECREF(__pyx_v_self->Name);
+  __pyx_v_self->Name = ((__pyx_t_7utilBMF_8HTSUtils_cystr)Py_None);
+
+  /* function exit code */
+  __pyx_r = 0;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pxd":48
+ *     cdef public dict tagDict
+ *     cdef public cystr Name
+ *     cdef public bint is_reverse, isMerged, MergeSuccess             # <<<<<<<<<<<<<<
+ * 
+ *     cdef int getFirstAlignedRefPos(self)
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_v_self->is_reverse); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 48; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.is_reverse.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 48; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_self->is_reverse = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.is_reverse.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_8isMerged___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_8isMerged___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_v_self->isMerged); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 48; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.isMerged.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 48; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_self->isMerged = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.isMerged.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_1__get__(PyObject *__pyx_v_self); /*proto*/
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_1__get__(PyObject *__pyx_v_self) {
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess___get__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess___get__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self) {
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__get__", 0);
+  __Pyx_XDECREF(__pyx_r);
+  __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_v_self->MergeSuccess); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 48; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
+  goto __pyx_L0;
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.MergeSuccess.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* Python wrapper */
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value); /*proto*/
+static int __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_2__set__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_self), ((PyObject *)__pyx_v_value));
+
+  /* function exit code */
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static int __pyx_pf_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_2__set__(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *__pyx_v_self, PyObject *__pyx_v_value) {
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__set__", 0);
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(__pyx_v_value); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 48; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_self->MergeSuccess = __pyx_t_1;
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.Layout.MergeSuccess.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":812
  * 
  * 
  * def MergePairedAlignments(cystr inBAM, cystr outBAM=None,             # <<<<<<<<<<<<<<
@@ -7670,7 +12403,7 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_5MergePairedAlignment
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "MergePairedAlignments") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "MergePairedAlignments") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -7685,10 +12418,10 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_5MergePairedAlignment
     __pyx_v_inBAM = ((__pyx_t_7utilBMF_8HTSUtils_cystr)values[0]);
     __pyx_v_outBAM = ((__pyx_t_7utilBMF_8HTSUtils_cystr)values[1]);
     if (values[2]) {
-      __pyx_v_pipe = __Pyx_PyObject_IsTrue(values[2]); if (unlikely((__pyx_v_pipe == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 624; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_v_pipe = __Pyx_PyObject_IsTrue(values[2]); if (unlikely((__pyx_v_pipe == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 813; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
     } else {
 
-      /* "utilBMF/MergePairedAlignments.pyx":624
+      /* "utilBMF/MergePairedAlignments.pyx":813
  * 
  * def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
  *                           bint pipe=False, int readLength=-1):             # <<<<<<<<<<<<<<
@@ -7698,24 +12431,24 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_5MergePairedAlignment
       __pyx_v_pipe = ((int)0);
     }
     if (values[3]) {
-      __pyx_v_readLength = __Pyx_PyInt_As_int(values[3]); if (unlikely((__pyx_v_readLength == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 624; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      __pyx_v_readLength = __Pyx_PyInt_As_int(values[3]); if (unlikely((__pyx_v_readLength == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 813; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
     } else {
       __pyx_v_readLength = ((int)-1);
     }
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("MergePairedAlignments", 0, 1, 4, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("MergePairedAlignments", 0, 1, 4, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("utilBMF.MergePairedAlignments.MergePairedAlignments", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_inBAM), (&PyString_Type), 1, "inBAM", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outBAM), (&PyString_Type), 1, "outBAM", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_inBAM), (&PyString_Type), 1, "inBAM", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outBAM), (&PyString_Type), 1, "outBAM", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignments(__pyx_self, __pyx_v_inBAM, __pyx_v_outBAM, __pyx_v_pipe, __pyx_v_readLength);
 
-  /* "utilBMF/MergePairedAlignments.pyx":623
+  /* "utilBMF/MergePairedAlignments.pyx":812
  * 
  * 
  * def MergePairedAlignments(cystr inBAM, cystr outBAM=None,             # <<<<<<<<<<<<<<
@@ -7736,6 +12469,8 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read = 0;
   __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read1 = 0;
   __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read2 = 0;
+  __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_Layout1 = 0;
+  __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_Layout2 = 0;
   int __pyx_v_rLen2;
   int __pyx_v_count;
   PyObject *__pyx_v_inHandle = NULL;
@@ -7766,7 +12501,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __Pyx_RefNannySetupContext("MergePairedAlignments", 0);
   __Pyx_INCREF(__pyx_v_outBAM);
 
-  /* "utilBMF/MergePairedAlignments.pyx":628
+  /* "utilBMF/MergePairedAlignments.pyx":817
  *     cdef Layout_t Layout1, Layout2, retLayout
  *     cdef int rLen2
  *     cdef int count = 0             # <<<<<<<<<<<<<<
@@ -7775,16 +12510,16 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
  */
   __pyx_v_count = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":629
+  /* "utilBMF/MergePairedAlignments.pyx":818
  *     cdef int rLen2
  *     cdef int count = 0
  *     inHandle = pysam.AlignmentFile(inBAM, "rb")             # <<<<<<<<<<<<<<
  *     if(readLength < 0):
  *         pl("readLength not set - inferring.")
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 629; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 818; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 629; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 818; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __pyx_t_2 = NULL;
@@ -7799,7 +12534,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       __pyx_t_4 = 1;
     }
   }
-  __pyx_t_5 = PyTuple_New(2+__pyx_t_4); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 629; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = PyTuple_New(2+__pyx_t_4); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 818; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
   if (__pyx_t_2) {
     PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_2); __Pyx_GIVEREF(__pyx_t_2); __pyx_t_2 = NULL;
@@ -7810,14 +12545,14 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __Pyx_INCREF(__pyx_n_s_rb);
   PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_4, __pyx_n_s_rb);
   __Pyx_GIVEREF(__pyx_n_s_rb);
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 629; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 818; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_inHandle = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":630
+  /* "utilBMF/MergePairedAlignments.pyx":819
  *     cdef int count = 0
  *     inHandle = pysam.AlignmentFile(inBAM, "rb")
  *     if(readLength < 0):             # <<<<<<<<<<<<<<
@@ -7827,28 +12562,28 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __pyx_t_6 = ((__pyx_v_readLength < 0) != 0);
   if (__pyx_t_6) {
 
-    /* "utilBMF/MergePairedAlignments.pyx":631
+    /* "utilBMF/MergePairedAlignments.pyx":820
  *     inHandle = pysam.AlignmentFile(inBAM, "rb")
  *     if(readLength < 0):
  *         pl("readLength not set - inferring.")             # <<<<<<<<<<<<<<
  *         readLength = len(inHandle.next().seq)
  *         inHandle = pysam.AlignmentFile(inBAM, "rb")
  */
-    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_pl); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 631; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_pl); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 820; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__12, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 631; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__14, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 820; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":632
+    /* "utilBMF/MergePairedAlignments.pyx":821
  *     if(readLength < 0):
  *         pl("readLength not set - inferring.")
  *         readLength = len(inHandle.next().seq)             # <<<<<<<<<<<<<<
  *         inHandle = pysam.AlignmentFile(inBAM, "rb")
  *     rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.
  */
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_next); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 632; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_next); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 821; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     __pyx_t_5 = NULL;
     if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
@@ -7861,30 +12596,30 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       }
     }
     if (__pyx_t_5) {
-      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 632; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 821; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     } else {
-      __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 632; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 821; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_seq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 632; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_seq); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 821; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_4 = PyObject_Length(__pyx_t_1); if (unlikely(__pyx_t_4 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 632; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = PyObject_Length(__pyx_t_1); if (unlikely(__pyx_t_4 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 821; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_v_readLength = __pyx_t_4;
 
-    /* "utilBMF/MergePairedAlignments.pyx":633
+    /* "utilBMF/MergePairedAlignments.pyx":822
  *         pl("readLength not set - inferring.")
  *         readLength = len(inHandle.next().seq)
  *         inHandle = pysam.AlignmentFile(inBAM, "rb")             # <<<<<<<<<<<<<<
  *     rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.
  *     if(outBAM is None):
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 633; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 822; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 633; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 822; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_t_3 = NULL;
@@ -7899,7 +12634,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
         __pyx_t_4 = 1;
       }
     }
-    __pyx_t_2 = PyTuple_New(2+__pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 633; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = PyTuple_New(2+__pyx_t_4); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 822; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
     if (__pyx_t_3) {
       PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_3); __Pyx_GIVEREF(__pyx_t_3); __pyx_t_3 = NULL;
@@ -7910,7 +12645,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
     __Pyx_INCREF(__pyx_n_s_rb);
     PyTuple_SET_ITEM(__pyx_t_2, 1+__pyx_t_4, __pyx_n_s_rb);
     __Pyx_GIVEREF(__pyx_n_s_rb);
-    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 633; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 822; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -7920,7 +12655,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   }
   __pyx_L3:;
 
-  /* "utilBMF/MergePairedAlignments.pyx":634
+  /* "utilBMF/MergePairedAlignments.pyx":823
  *         readLength = len(inHandle.next().seq)
  *         inHandle = pysam.AlignmentFile(inBAM, "rb")
  *     rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.             # <<<<<<<<<<<<<<
@@ -7929,7 +12664,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
  */
   __pyx_v_rLen2 = (2 * __pyx_v_readLength);
 
-  /* "utilBMF/MergePairedAlignments.pyx":635
+  /* "utilBMF/MergePairedAlignments.pyx":824
  *         inHandle = pysam.AlignmentFile(inBAM, "rb")
  *     rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.
  *     if(outBAM is None):             # <<<<<<<<<<<<<<
@@ -7940,14 +12675,14 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __pyx_t_7 = (__pyx_t_6 != 0);
   if (__pyx_t_7) {
 
-    /* "utilBMF/MergePairedAlignments.pyx":636
+    /* "utilBMF/MergePairedAlignments.pyx":825
  *     rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.
  *     if(outBAM is None):
  *         outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"             # <<<<<<<<<<<<<<
  *     if(pipe):
  *         outHandle = pysam.AlignmentFile("-", "wb",
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_TrimExt); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 636; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_TrimExt); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 825; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
     __pyx_t_2 = NULL;
     if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_5))) {
@@ -7960,31 +12695,31 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       }
     }
     if (!__pyx_t_2) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_v_inBAM); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 636; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_v_inBAM); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 825; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_1);
     } else {
-      __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 636; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 825; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_3);
       PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_2); __Pyx_GIVEREF(__pyx_t_2); __pyx_t_2 = NULL;
       __Pyx_INCREF(__pyx_v_inBAM);
       PyTuple_SET_ITEM(__pyx_t_3, 0+1, __pyx_v_inBAM);
       __Pyx_GIVEREF(__pyx_v_inBAM);
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 636; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 825; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     }
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_5 = PyNumber_Add(__pyx_t_1, __pyx_kp_s_PairMergeProcessed_bam); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 636; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = PyNumber_Add(__pyx_t_1, __pyx_kp_s_PairMergeProcessed_bam); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 825; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    if (!(likely(PyString_CheckExact(__pyx_t_5))||((__pyx_t_5) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_5)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 636; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (!(likely(PyString_CheckExact(__pyx_t_5))||((__pyx_t_5) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_5)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 825; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF_SET(__pyx_v_outBAM, ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_5));
     __pyx_t_5 = 0;
     goto __pyx_L4;
   }
   __pyx_L4:;
 
-  /* "utilBMF/MergePairedAlignments.pyx":637
+  /* "utilBMF/MergePairedAlignments.pyx":826
  *     if(outBAM is None):
  *         outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
  *     if(pipe):             # <<<<<<<<<<<<<<
@@ -7994,41 +12729,41 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __pyx_t_7 = (__pyx_v_pipe != 0);
   if (__pyx_t_7) {
 
-    /* "utilBMF/MergePairedAlignments.pyx":638
+    /* "utilBMF/MergePairedAlignments.pyx":827
  *         outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
  *     if(pipe):
  *         outHandle = pysam.AlignmentFile("-", "wb",             # <<<<<<<<<<<<<<
  *                                         header=inHandle.header)
  *     else:
  */
-    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 638; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 827; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 638; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 827; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_5 = PyDict_New(); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 638; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = PyDict_New(); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 827; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
 
-    /* "utilBMF/MergePairedAlignments.pyx":639
+    /* "utilBMF/MergePairedAlignments.pyx":828
  *     if(pipe):
  *         outHandle = pysam.AlignmentFile("-", "wb",
  *                                         header=inHandle.header)             # <<<<<<<<<<<<<<
  *     else:
  *         outHandle = pysam.AlignmentFile(outBAM, "wb",
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_header); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 639; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_header); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 828; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_header, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 638; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_header, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 827; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":638
+    /* "utilBMF/MergePairedAlignments.pyx":827
  *         outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
  *     if(pipe):
  *         outHandle = pysam.AlignmentFile("-", "wb",             # <<<<<<<<<<<<<<
  *                                         header=inHandle.header)
  *     else:
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__14, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 638; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_tuple__16, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 827; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -8038,19 +12773,19 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   }
   /*else*/ {
 
-    /* "utilBMF/MergePairedAlignments.pyx":641
+    /* "utilBMF/MergePairedAlignments.pyx":830
  *                                         header=inHandle.header)
  *     else:
  *         outHandle = pysam.AlignmentFile(outBAM, "wb",             # <<<<<<<<<<<<<<
  *                                         header=inHandle.header)
  *     ohw = outHandle.write
  */
-    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 641; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 830; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 641; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 830; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 641; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 830; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_INCREF(__pyx_v_outBAM);
     PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_v_outBAM);
@@ -8058,29 +12793,29 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
     __Pyx_INCREF(__pyx_n_s_wb);
     PyTuple_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_wb);
     __Pyx_GIVEREF(__pyx_n_s_wb);
-    __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 641; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 830; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
 
-    /* "utilBMF/MergePairedAlignments.pyx":642
+    /* "utilBMF/MergePairedAlignments.pyx":831
  *     else:
  *         outHandle = pysam.AlignmentFile(outBAM, "wb",
  *                                         header=inHandle.header)             # <<<<<<<<<<<<<<
  *     ohw = outHandle.write
  *     for read in inHandle:
  */
-    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_header); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 642; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_header); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 831; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
-    if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_header, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 641; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_header, __pyx_t_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 830; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":641
+    /* "utilBMF/MergePairedAlignments.pyx":830
  *                                         header=inHandle.header)
  *     else:
  *         outHandle = pysam.AlignmentFile(outBAM, "wb",             # <<<<<<<<<<<<<<
  *                                         header=inHandle.header)
  *     ohw = outHandle.write
  */
-    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 641; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 830; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -8090,19 +12825,19 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   }
   __pyx_L5:;
 
-  /* "utilBMF/MergePairedAlignments.pyx":643
+  /* "utilBMF/MergePairedAlignments.pyx":832
  *         outHandle = pysam.AlignmentFile(outBAM, "wb",
  *                                         header=inHandle.header)
  *     ohw = outHandle.write             # <<<<<<<<<<<<<<
  *     for read in inHandle:
  *         count += 1
  */
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_outHandle, __pyx_n_s_write); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 643; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_outHandle, __pyx_n_s_write); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 832; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
   __pyx_v_ohw = __pyx_t_2;
   __pyx_t_2 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":644
+  /* "utilBMF/MergePairedAlignments.pyx":833
  *                                         header=inHandle.header)
  *     ohw = outHandle.write
  *     for read in inHandle:             # <<<<<<<<<<<<<<
@@ -8113,25 +12848,25 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
     __pyx_t_2 = __pyx_v_inHandle; __Pyx_INCREF(__pyx_t_2); __pyx_t_4 = 0;
     __pyx_t_8 = NULL;
   } else {
-    __pyx_t_4 = -1; __pyx_t_2 = PyObject_GetIter(__pyx_v_inHandle); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = -1; __pyx_t_2 = PyObject_GetIter(__pyx_v_inHandle); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_2);
-    __pyx_t_8 = Py_TYPE(__pyx_t_2)->tp_iternext; if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_8 = Py_TYPE(__pyx_t_2)->tp_iternext; if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   for (;;) {
     if (likely(!__pyx_t_8)) {
       if (likely(PyList_CheckExact(__pyx_t_2))) {
         if (__pyx_t_4 >= PyList_GET_SIZE(__pyx_t_2)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_4); __Pyx_INCREF(__pyx_t_1); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_2, __pyx_t_4); __Pyx_INCREF(__pyx_t_1); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       } else {
         if (__pyx_t_4 >= PyTuple_GET_SIZE(__pyx_t_2)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_2, __pyx_t_4); __Pyx_INCREF(__pyx_t_1); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_2, __pyx_t_4); __Pyx_INCREF(__pyx_t_1); __pyx_t_4++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PySequence_ITEM(__pyx_t_2, __pyx_t_4); __pyx_t_4++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       }
     } else {
@@ -8140,17 +12875,17 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         break;
       }
       __Pyx_GOTREF(__pyx_t_1);
     }
-    if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5pysam_14calignmentfile_AlignedSegment))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 644; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (!(likely(((__pyx_t_1) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_1, __pyx_ptype_5pysam_14calignmentfile_AlignedSegment))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 833; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_XDECREF_SET(__pyx_v_read, ((__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":645
+    /* "utilBMF/MergePairedAlignments.pyx":834
  *     ohw = outHandle.write
  *     for read in inHandle:
  *         count += 1             # <<<<<<<<<<<<<<
@@ -8159,31 +12894,31 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
  */
     __pyx_v_count = (__pyx_v_count + 1);
 
-    /* "utilBMF/MergePairedAlignments.pyx":646
+    /* "utilBMF/MergePairedAlignments.pyx":835
  *     for read in inHandle:
  *         count += 1
  *         if(read.is_supplementary or read.is_secondary):             # <<<<<<<<<<<<<<
  *             ohw(read)
  *             continue
  */
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_supplementary); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 646; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_supplementary); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 835; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 646; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 835; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (!__pyx_t_6) {
     } else {
       __pyx_t_7 = __pyx_t_6;
       goto __pyx_L9_bool_binop_done;
     }
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_secondary); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 646; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_secondary); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 835; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 646; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 835; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_7 = __pyx_t_6;
     __pyx_L9_bool_binop_done:;
     if (__pyx_t_7) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":647
+      /* "utilBMF/MergePairedAlignments.pyx":836
  *         count += 1
  *         if(read.is_supplementary or read.is_secondary):
  *             ohw(read)             # <<<<<<<<<<<<<<
@@ -8202,23 +12937,23 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
         }
       }
       if (!__pyx_t_5) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)__pyx_v_read)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 647; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)__pyx_v_read)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 836; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
       } else {
-        __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 647; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 836; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_9);
         PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_5); __Pyx_GIVEREF(__pyx_t_5); __pyx_t_5 = NULL;
         __Pyx_INCREF(((PyObject *)__pyx_v_read));
         PyTuple_SET_ITEM(__pyx_t_9, 0+1, ((PyObject *)__pyx_v_read));
         __Pyx_GIVEREF(((PyObject *)__pyx_v_read));
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 647; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 836; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       }
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "utilBMF/MergePairedAlignments.pyx":648
+      /* "utilBMF/MergePairedAlignments.pyx":837
  *         if(read.is_supplementary or read.is_secondary):
  *             ohw(read)
  *             continue             # <<<<<<<<<<<<<<
@@ -8228,20 +12963,20 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       goto __pyx_L6_continue;
     }
 
-    /* "utilBMF/MergePairedAlignments.pyx":649
+    /* "utilBMF/MergePairedAlignments.pyx":838
  *             ohw(read)
  *             continue
  *         if(read.is_read1):             # <<<<<<<<<<<<<<
  *             read1 = read
  *             continue
  */
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_read1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 649; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_is_read1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 838; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_7 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 649; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_7 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 838; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_7) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":650
+      /* "utilBMF/MergePairedAlignments.pyx":839
  *             continue
  *         if(read.is_read1):
  *             read1 = read             # <<<<<<<<<<<<<<
@@ -8251,7 +12986,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       __Pyx_INCREF(((PyObject *)__pyx_v_read));
       __Pyx_XDECREF_SET(__pyx_v_read1, __pyx_v_read);
 
-      /* "utilBMF/MergePairedAlignments.pyx":651
+      /* "utilBMF/MergePairedAlignments.pyx":840
  *         if(read.is_read1):
  *             read1 = read
  *             continue             # <<<<<<<<<<<<<<
@@ -8261,7 +12996,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       goto __pyx_L6_continue;
     }
 
-    /* "utilBMF/MergePairedAlignments.pyx":652
+    /* "utilBMF/MergePairedAlignments.pyx":841
  *             read1 = read
  *             continue
  *         read2 = read             # <<<<<<<<<<<<<<
@@ -8271,30 +13006,30 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
     __Pyx_INCREF(((PyObject *)__pyx_v_read));
     __Pyx_XDECREF_SET(__pyx_v_read2, __pyx_v_read);
 
-    /* "utilBMF/MergePairedAlignments.pyx":653
+    /* "utilBMF/MergePairedAlignments.pyx":842
  *             continue
  *         read2 = read
  *         if(read1.reference_id != read2.reference_id or read1.is_unmapped or             # <<<<<<<<<<<<<<
  *            read2.is_unmapped or abs(read1.tlen) >= rLen2):
  *             ohw(read1)
  */
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_reference_id); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 653; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_reference_id); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 842; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read2), __pyx_n_s_reference_id); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 653; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read2), __pyx_n_s_reference_id); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 842; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_9 = PyObject_RichCompare(__pyx_t_1, __pyx_t_3, Py_NE); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 653; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = PyObject_RichCompare(__pyx_t_1, __pyx_t_3, Py_NE); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 842; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 653; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 842; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     if (!__pyx_t_6) {
     } else {
       __pyx_t_7 = __pyx_t_6;
       goto __pyx_L13_bool_binop_done;
     }
-    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_is_unmapped); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 653; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_is_unmapped); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 842; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 653; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 842; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     if (!__pyx_t_6) {
     } else {
@@ -8302,39 +13037,39 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       goto __pyx_L13_bool_binop_done;
     }
 
-    /* "utilBMF/MergePairedAlignments.pyx":654
+    /* "utilBMF/MergePairedAlignments.pyx":843
  *         read2 = read
  *         if(read1.reference_id != read2.reference_id or read1.is_unmapped or
  *            read2.is_unmapped or abs(read1.tlen) >= rLen2):             # <<<<<<<<<<<<<<
  *             ohw(read1)
  *             ohw(read2)
  */
-    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read2), __pyx_n_s_is_unmapped); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read2), __pyx_n_s_is_unmapped); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     if (!__pyx_t_6) {
     } else {
       __pyx_t_7 = __pyx_t_6;
       goto __pyx_L13_bool_binop_done;
     }
-    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_tlen); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_tlen); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_3 = PyNumber_Absolute(__pyx_t_9); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = PyNumber_Absolute(__pyx_t_9); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-    __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_rLen2); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyInt_From_int(__pyx_v_rLen2); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_9);
-    __pyx_t_1 = PyObject_RichCompare(__pyx_t_3, __pyx_t_9, Py_GE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = PyObject_RichCompare(__pyx_t_3, __pyx_t_9, Py_GE); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 654; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 843; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_t_7 = __pyx_t_6;
     __pyx_L13_bool_binop_done:;
     if (__pyx_t_7) {
 
-      /* "utilBMF/MergePairedAlignments.pyx":655
+      /* "utilBMF/MergePairedAlignments.pyx":844
  *         if(read1.reference_id != read2.reference_id or read1.is_unmapped or
  *            read2.is_unmapped or abs(read1.tlen) >= rLen2):
  *             ohw(read1)             # <<<<<<<<<<<<<<
@@ -8353,23 +13088,23 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
         }
       }
       if (!__pyx_t_3) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_9, ((PyObject *)__pyx_v_read1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 655; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_9, ((PyObject *)__pyx_v_read1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 844; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
       } else {
-        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 655; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_5 = PyTuple_New(1+1); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 844; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_5);
         PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_3); __Pyx_GIVEREF(__pyx_t_3); __pyx_t_3 = NULL;
         __Pyx_INCREF(((PyObject *)__pyx_v_read1));
         PyTuple_SET_ITEM(__pyx_t_5, 0+1, ((PyObject *)__pyx_v_read1));
         __Pyx_GIVEREF(((PyObject *)__pyx_v_read1));
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 655; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_5, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 844; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       }
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "utilBMF/MergePairedAlignments.pyx":656
+      /* "utilBMF/MergePairedAlignments.pyx":845
  *            read2.is_unmapped or abs(read1.tlen) >= rLen2):
  *             ohw(read1)
  *             ohw(read2)             # <<<<<<<<<<<<<<
@@ -8388,23 +13123,23 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
         }
       }
       if (!__pyx_t_5) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_9, ((PyObject *)__pyx_v_read2)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 656; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_9, ((PyObject *)__pyx_v_read2)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 845; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
       } else {
-        __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 656; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_3 = PyTuple_New(1+1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 845; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_3);
         PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_5); __Pyx_GIVEREF(__pyx_t_5); __pyx_t_5 = NULL;
         __Pyx_INCREF(((PyObject *)__pyx_v_read2));
         PyTuple_SET_ITEM(__pyx_t_3, 0+1, ((PyObject *)__pyx_v_read2));
         __Pyx_GIVEREF(((PyObject *)__pyx_v_read2));
-        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 656; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_9, __pyx_t_3, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 845; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       }
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-      /* "utilBMF/MergePairedAlignments.pyx":657
+      /* "utilBMF/MergePairedAlignments.pyx":846
  *             ohw(read1)
  *             ohw(read2)
  *             continue             # <<<<<<<<<<<<<<
@@ -8414,7 +13149,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       goto __pyx_L6_continue;
     }
 
-    /* "utilBMF/MergePairedAlignments.pyx":658
+    /* "utilBMF/MergePairedAlignments.pyx":847
  *             ohw(read2)
  *             continue
  *         try:             # <<<<<<<<<<<<<<
@@ -8428,7 +13163,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       __Pyx_XGOTREF(__pyx_t_12);
       /*try:*/ {
 
-        /* "utilBMF/MergePairedAlignments.pyx":659
+        /* "utilBMF/MergePairedAlignments.pyx":848
  *             continue
  *         try:
  *             assert(read1.query_name == read2.query_name)             # <<<<<<<<<<<<<<
@@ -8437,18 +13172,18 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
  */
         #ifndef CYTHON_WITHOUT_ASSERTIONS
         if (unlikely(!Py_OptimizeFlag)) {
-          __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_query_name); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 659; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
+          __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read1), __pyx_n_s_query_name); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 848; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
           __Pyx_GOTREF(__pyx_t_1);
-          __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read2), __pyx_n_s_query_name); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 659; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
+          __pyx_t_9 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read2), __pyx_n_s_query_name); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 848; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
           __Pyx_GOTREF(__pyx_t_9);
-          __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_t_9, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 659; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
+          __pyx_t_3 = PyObject_RichCompare(__pyx_t_1, __pyx_t_9, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 848; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
           __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
           __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-          __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_7 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 659; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
+          __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely(__pyx_t_7 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 848; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
           __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
           if (unlikely(!__pyx_t_7)) {
             PyErr_SetNone(PyExc_AssertionError);
-            {__pyx_filename = __pyx_f[0]; __pyx_lineno = 659; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
+            {__pyx_filename = __pyx_f[0]; __pyx_lineno = 848; __pyx_clineno = __LINE__; goto __pyx_L17_error;}
           }
         }
         #endif
@@ -8463,7 +13198,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-      /* "utilBMF/MergePairedAlignments.pyx":660
+      /* "utilBMF/MergePairedAlignments.pyx":849
  *         try:
  *             assert(read1.query_name == read2.query_name)
  *         except AssertionError:             # <<<<<<<<<<<<<<
@@ -8473,31 +13208,31 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       __pyx_t_13 = PyErr_ExceptionMatches(__pyx_builtin_AssertionError);
       if (__pyx_t_13) {
         __Pyx_AddTraceback("utilBMF.MergePairedAlignments.MergePairedAlignments", __pyx_clineno, __pyx_lineno, __pyx_filename);
-        if (__Pyx_GetException(&__pyx_t_3, &__pyx_t_9, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 660; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+        if (__Pyx_GetException(&__pyx_t_3, &__pyx_t_9, &__pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 849; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_GOTREF(__pyx_t_9);
         __Pyx_GOTREF(__pyx_t_1);
 
-        /* "utilBMF/MergePairedAlignments.pyx":661
+        /* "utilBMF/MergePairedAlignments.pyx":850
  *             assert(read1.query_name == read2.query_name)
  *         except AssertionError:
  *             raise ThisIsMadness("Bam is either not name sorted or you are "             # <<<<<<<<<<<<<<
  *                                 "missing a read from the pair around read "
  *                                 "# %s in the bam." % count)
  */
-        __pyx_t_14 = __Pyx_GetModuleGlobalName(__pyx_n_s_ThisIsMadness); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 661; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+        __pyx_t_14 = __Pyx_GetModuleGlobalName(__pyx_n_s_ThisIsMadness); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 850; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
         __Pyx_GOTREF(__pyx_t_14);
 
-        /* "utilBMF/MergePairedAlignments.pyx":663
+        /* "utilBMF/MergePairedAlignments.pyx":852
  *             raise ThisIsMadness("Bam is either not name sorted or you are "
  *                                 "missing a read from the pair around read "
  *                                 "# %s in the bam." % count)             # <<<<<<<<<<<<<<
- *         '''
  *         Layout1 = Layout(read1)
+ *         Layout2 = Layout(read2)
  */
-        __pyx_t_15 = __Pyx_PyInt_From_int(__pyx_v_count); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 663; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+        __pyx_t_15 = __Pyx_PyInt_From_int(__pyx_v_count); if (unlikely(!__pyx_t_15)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 852; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
         __Pyx_GOTREF(__pyx_t_15);
-        __pyx_t_16 = __Pyx_PyString_Format(__pyx_kp_s_Bam_is_either_not_name_sorted_or, __pyx_t_15); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 663; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+        __pyx_t_16 = __Pyx_PyString_Format(__pyx_kp_s_Bam_is_either_not_name_sorted_or, __pyx_t_15); if (unlikely(!__pyx_t_16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 852; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
         __Pyx_GOTREF(__pyx_t_16);
         __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
         __pyx_t_15 = NULL;
@@ -8511,24 +13246,24 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
           }
         }
         if (!__pyx_t_15) {
-          __pyx_t_5 = __Pyx_PyObject_CallOneArg(__pyx_t_14, __pyx_t_16); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 661; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+          __pyx_t_5 = __Pyx_PyObject_CallOneArg(__pyx_t_14, __pyx_t_16); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 850; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
           __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
           __Pyx_GOTREF(__pyx_t_5);
         } else {
-          __pyx_t_17 = PyTuple_New(1+1); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 661; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+          __pyx_t_17 = PyTuple_New(1+1); if (unlikely(!__pyx_t_17)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 850; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
           __Pyx_GOTREF(__pyx_t_17);
           PyTuple_SET_ITEM(__pyx_t_17, 0, __pyx_t_15); __Pyx_GIVEREF(__pyx_t_15); __pyx_t_15 = NULL;
           PyTuple_SET_ITEM(__pyx_t_17, 0+1, __pyx_t_16);
           __Pyx_GIVEREF(__pyx_t_16);
           __pyx_t_16 = 0;
-          __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_14, __pyx_t_17, NULL); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 661; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+          __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_14, __pyx_t_17, NULL); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 850; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
           __Pyx_GOTREF(__pyx_t_5);
           __Pyx_DECREF(__pyx_t_17); __pyx_t_17 = 0;
         }
         __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
         __Pyx_Raise(__pyx_t_5, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 661; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 850; __pyx_clineno = __LINE__; goto __pyx_L19_except_error;}
       }
       goto __pyx_L19_except_error;
       __pyx_L19_except_error:;
@@ -8540,7 +13275,199 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
       __pyx_L24_try_end:;
     }
 
-    /* "utilBMF/MergePairedAlignments.pyx":644
+    /* "utilBMF/MergePairedAlignments.pyx":853
+ *                                 "missing a read from the pair around read "
+ *                                 "# %s in the bam." % count)
+ *         Layout1 = Layout(read1)             # <<<<<<<<<<<<<<
+ *         Layout2 = Layout(read2)
+ *         Layout1.MergeLayouts_in_place(Layout2.Layout)
+ */
+    __pyx_t_1 = PyTuple_New(1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 853; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_INCREF(((PyObject *)__pyx_v_read1));
+    PyTuple_SET_ITEM(__pyx_t_1, 0, ((PyObject *)__pyx_v_read1));
+    __Pyx_GIVEREF(((PyObject *)__pyx_v_read1));
+    __pyx_t_9 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_21MergePairedAlignments_Layout)), __pyx_t_1, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 853; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_Layout1, ((__pyx_t_7utilBMF_21MergePairedAlignments_Layout_t)__pyx_t_9));
+    __pyx_t_9 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":854
+ *                                 "# %s in the bam." % count)
+ *         Layout1 = Layout(read1)
+ *         Layout2 = Layout(read2)             # <<<<<<<<<<<<<<
+ *         Layout1.MergeLayouts_in_place(Layout2.Layout)
+ *         if(Layout1.MergeSuccess):
+ */
+    __pyx_t_9 = PyTuple_New(1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 854; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_9);
+    __Pyx_INCREF(((PyObject *)__pyx_v_read2));
+    PyTuple_SET_ITEM(__pyx_t_9, 0, ((PyObject *)__pyx_v_read2));
+    __Pyx_GIVEREF(((PyObject *)__pyx_v_read2));
+    __pyx_t_1 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_21MergePairedAlignments_Layout)), __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 854; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_Layout2, ((__pyx_t_7utilBMF_21MergePairedAlignments_Layout_t)__pyx_t_1));
+    __pyx_t_1 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":855
+ *         Layout1 = Layout(read1)
+ *         Layout2 = Layout(read2)
+ *         Layout1.MergeLayouts_in_place(Layout2.Layout)             # <<<<<<<<<<<<<<
+ *         if(Layout1.MergeSuccess):
+ *             ohw(Layout1.__read__())
+ */
+    __pyx_t_1 = ((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_Layout1->__pyx_vtab)->MergeLayouts_in_place(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_Layout1), __pyx_v_Layout2->Layout); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 855; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":856
+ *         Layout2 = Layout(read2)
+ *         Layout1.MergeLayouts_in_place(Layout2.Layout)
+ *         if(Layout1.MergeSuccess):             # <<<<<<<<<<<<<<
+ *             ohw(Layout1.__read__())
+ *         else:
+ */
+    __pyx_t_7 = (__pyx_v_Layout1->MergeSuccess != 0);
+    if (__pyx_t_7) {
+
+      /* "utilBMF/MergePairedAlignments.pyx":857
+ *         Layout1.MergeLayouts_in_place(Layout2.Layout)
+ *         if(Layout1.MergeSuccess):
+ *             ohw(Layout1.__read__())             # <<<<<<<<<<<<<<
+ *         else:
+ *             read1.set_tag("MP", "F")
+ */
+      __pyx_t_9 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_Layout1->__pyx_vtab)->__pyx___read__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_Layout1))); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 857; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_9);
+      __Pyx_INCREF(__pyx_v_ohw);
+      __pyx_t_3 = __pyx_v_ohw; __pyx_t_5 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_5 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_5)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_5);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (!__pyx_t_5) {
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_9); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 857; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+        __Pyx_GOTREF(__pyx_t_1);
+      } else {
+        __pyx_t_14 = PyTuple_New(1+1); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 857; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_14);
+        PyTuple_SET_ITEM(__pyx_t_14, 0, __pyx_t_5); __Pyx_GIVEREF(__pyx_t_5); __pyx_t_5 = NULL;
+        PyTuple_SET_ITEM(__pyx_t_14, 0+1, __pyx_t_9);
+        __Pyx_GIVEREF(__pyx_t_9);
+        __pyx_t_9 = 0;
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_14, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 857; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+      }
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+      goto __pyx_L27;
+    }
+    /*else*/ {
+
+      /* "utilBMF/MergePairedAlignments.pyx":859
+ *             ohw(Layout1.__read__())
+ *         else:
+ *             read1.set_tag("MP", "F")             # <<<<<<<<<<<<<<
+ *             read2.set_tag("MP", "F")
+ *             ohw(read1)
+ */
+      __pyx_t_1 = ((struct __pyx_vtabstruct_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_read1->__pyx_vtab)->set_tag(((struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_read1), __pyx_n_s_MP, __pyx_n_s_F, 0, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 859; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":860
+ *         else:
+ *             read1.set_tag("MP", "F")
+ *             read2.set_tag("MP", "F")             # <<<<<<<<<<<<<<
+ *             ohw(read1)
+ *             ohw(read2)
+ */
+      __pyx_t_1 = ((struct __pyx_vtabstruct_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_read2->__pyx_vtab)->set_tag(((struct __pyx_obj_5pysam_14calignmentfile_AlignedSegment *)__pyx_v_read2), __pyx_n_s_MP, __pyx_n_s_F, 0, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 860; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_1);
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":861
+ *             read1.set_tag("MP", "F")
+ *             read2.set_tag("MP", "F")
+ *             ohw(read1)             # <<<<<<<<<<<<<<
+ *             ohw(read2)
+ *     outHandle.close()
+ */
+      __Pyx_INCREF(__pyx_v_ohw);
+      __pyx_t_3 = __pyx_v_ohw; __pyx_t_14 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_14 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_14)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_14);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (!__pyx_t_14) {
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)__pyx_v_read1)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 861; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_1);
+      } else {
+        __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 861; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_9);
+        PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_14); __Pyx_GIVEREF(__pyx_t_14); __pyx_t_14 = NULL;
+        __Pyx_INCREF(((PyObject *)__pyx_v_read1));
+        PyTuple_SET_ITEM(__pyx_t_9, 0+1, ((PyObject *)__pyx_v_read1));
+        __Pyx_GIVEREF(((PyObject *)__pyx_v_read1));
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_9, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 861; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+      }
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+      /* "utilBMF/MergePairedAlignments.pyx":862
+ *             read2.set_tag("MP", "F")
+ *             ohw(read1)
+ *             ohw(read2)             # <<<<<<<<<<<<<<
+ *     outHandle.close()
+ *     inHandle.close()
+ */
+      __Pyx_INCREF(__pyx_v_ohw);
+      __pyx_t_3 = __pyx_v_ohw; __pyx_t_9 = NULL;
+      if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_3);
+        if (likely(__pyx_t_9)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
+          __Pyx_INCREF(__pyx_t_9);
+          __Pyx_INCREF(function);
+          __Pyx_DECREF_SET(__pyx_t_3, function);
+        }
+      }
+      if (!__pyx_t_9) {
+        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_3, ((PyObject *)__pyx_v_read2)); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 862; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_1);
+      } else {
+        __pyx_t_14 = PyTuple_New(1+1); if (unlikely(!__pyx_t_14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 862; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_14);
+        PyTuple_SET_ITEM(__pyx_t_14, 0, __pyx_t_9); __Pyx_GIVEREF(__pyx_t_9); __pyx_t_9 = NULL;
+        __Pyx_INCREF(((PyObject *)__pyx_v_read2));
+        PyTuple_SET_ITEM(__pyx_t_14, 0+1, ((PyObject *)__pyx_v_read2));
+        __Pyx_GIVEREF(((PyObject *)__pyx_v_read2));
+        __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_14, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 862; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_1);
+        __Pyx_DECREF(__pyx_t_14); __pyx_t_14 = 0;
+      }
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    }
+    __pyx_L27:;
+
+    /* "utilBMF/MergePairedAlignments.pyx":833
  *                                         header=inHandle.header)
  *     ohw = outHandle.write
  *     for read in inHandle:             # <<<<<<<<<<<<<<
@@ -8551,65 +13478,65 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   }
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":676
- *         ohw(retLayout.__read__())
- *         '''
+  /* "utilBMF/MergePairedAlignments.pyx":863
+ *             ohw(read1)
+ *             ohw(read2)
  *     outHandle.close()             # <<<<<<<<<<<<<<
  *     inHandle.close()
  *     return outBAM
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_outHandle, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 676; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_outHandle, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 863; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_9 = NULL;
+  __pyx_t_3 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
-    __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_1);
-    if (likely(__pyx_t_9)) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_1);
+    if (likely(__pyx_t_3)) {
       PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_1);
-      __Pyx_INCREF(__pyx_t_9);
+      __Pyx_INCREF(__pyx_t_3);
       __Pyx_INCREF(function);
       __Pyx_DECREF_SET(__pyx_t_1, function);
     }
   }
-  if (__pyx_t_9) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_9); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 676; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  if (__pyx_t_3) {
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 863; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   } else {
-    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 676; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 863; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":677
- *         '''
+  /* "utilBMF/MergePairedAlignments.pyx":864
+ *             ohw(read2)
  *     outHandle.close()
  *     inHandle.close()             # <<<<<<<<<<<<<<
  *     return outBAM
  * 
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 677; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_close); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 864; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_9 = NULL;
+  __pyx_t_3 = NULL;
   if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_1))) {
-    __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_1);
-    if (likely(__pyx_t_9)) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_1);
+    if (likely(__pyx_t_3)) {
       PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_1);
-      __Pyx_INCREF(__pyx_t_9);
+      __Pyx_INCREF(__pyx_t_3);
       __Pyx_INCREF(function);
       __Pyx_DECREF_SET(__pyx_t_1, function);
     }
   }
-  if (__pyx_t_9) {
-    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_9); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 677; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  if (__pyx_t_3) {
+    __pyx_t_2 = __Pyx_PyObject_CallOneArg(__pyx_t_1, __pyx_t_3); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 864; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   } else {
-    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 677; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_2 = __Pyx_PyObject_CallNoArg(__pyx_t_1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 864; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":678
+  /* "utilBMF/MergePairedAlignments.pyx":865
  *     outHandle.close()
  *     inHandle.close()
  *     return outBAM             # <<<<<<<<<<<<<<
@@ -8621,7 +13548,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __pyx_r = __pyx_v_outBAM;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":623
+  /* "utilBMF/MergePairedAlignments.pyx":812
  * 
  * 
  * def MergePairedAlignments(cystr inBAM, cystr outBAM=None,             # <<<<<<<<<<<<<<
@@ -8646,6 +13573,8 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   __Pyx_XDECREF((PyObject *)__pyx_v_read);
   __Pyx_XDECREF((PyObject *)__pyx_v_read1);
   __Pyx_XDECREF((PyObject *)__pyx_v_read2);
+  __Pyx_XDECREF((PyObject *)__pyx_v_Layout1);
+  __Pyx_XDECREF((PyObject *)__pyx_v_Layout2);
   __Pyx_XDECREF(__pyx_v_inHandle);
   __Pyx_XDECREF(__pyx_v_outHandle);
   __Pyx_XDECREF(__pyx_v_ohw);
@@ -8655,7 +13584,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_4MergePairedAlignment
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":683
+/* "utilBMF/MergePairedAlignments.pyx":870
  * @cython.boundscheck(False)
  * @cython.wraparound(False)
  * cdef int getLayoutLen(AlignedSegment_t read):             # <<<<<<<<<<<<<<
@@ -8683,7 +13612,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("getLayoutLen", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":685
+  /* "utilBMF/MergePairedAlignments.pyx":872
  * cdef int getLayoutLen(AlignedSegment_t read):
  *     cdef tuple tmpTup
  *     cdef int lensum = 0             # <<<<<<<<<<<<<<
@@ -8692,43 +13621,43 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
  */
   __pyx_v_lensum = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":686
+  /* "utilBMF/MergePairedAlignments.pyx":873
  *     cdef tuple tmpTup
  *     cdef int lensum = 0
  *     if(read.cigarstring is None):             # <<<<<<<<<<<<<<
  *         raise ImproperArgumentError(
  *             "read " + read.query_name +
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigarstring); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 686; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigarstring); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 873; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = (__pyx_t_1 == Py_None);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_3 = (__pyx_t_2 != 0);
   if (__pyx_t_3) {
 
-    /* "utilBMF/MergePairedAlignments.pyx":687
+    /* "utilBMF/MergePairedAlignments.pyx":874
  *     cdef int lensum = 0
  *     if(read.cigarstring is None):
  *         raise ImproperArgumentError(             # <<<<<<<<<<<<<<
  *             "read " + read.query_name +
  *             " is unmapped - no such thing as a layout length!")
  */
-    __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_ImproperArgumentError); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 687; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_ImproperArgumentError); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 874; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_4);
 
-    /* "utilBMF/MergePairedAlignments.pyx":688
+    /* "utilBMF/MergePairedAlignments.pyx":875
  *     if(read.cigarstring is None):
  *         raise ImproperArgumentError(
  *             "read " + read.query_name +             # <<<<<<<<<<<<<<
  *             " is unmapped - no such thing as a layout length!")
  *     for tmpTup in read.cigar:
  */
-    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_query_name); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 688; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_query_name); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 875; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_6 = PyNumber_Add(__pyx_kp_s_read_2, __pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 688; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_6 = PyNumber_Add(__pyx_kp_s_read_2, __pyx_t_5); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 875; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_5 = PyNumber_Add(__pyx_t_6, __pyx_kp_s_is_unmapped_no_such_thing_as_a); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 688; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = PyNumber_Add(__pyx_t_6, __pyx_kp_s_is_unmapped_no_such_thing_as_a); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 875; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_t_6 = NULL;
@@ -8742,42 +13671,42 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
       }
     }
     if (!__pyx_t_6) {
-      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 687; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 874; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __Pyx_GOTREF(__pyx_t_1);
     } else {
-      __pyx_t_7 = PyTuple_New(1+1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 687; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_7 = PyTuple_New(1+1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 874; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_7);
       PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_6); __Pyx_GIVEREF(__pyx_t_6); __pyx_t_6 = NULL;
       PyTuple_SET_ITEM(__pyx_t_7, 0+1, __pyx_t_5);
       __Pyx_GIVEREF(__pyx_t_5);
       __pyx_t_5 = 0;
-      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 687; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_7, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 874; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_1);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     }
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __Pyx_Raise(__pyx_t_1, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 687; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 874; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
 
-  /* "utilBMF/MergePairedAlignments.pyx":690
+  /* "utilBMF/MergePairedAlignments.pyx":877
  *             "read " + read.query_name +
  *             " is unmapped - no such thing as a layout length!")
  *     for tmpTup in read.cigar:             # <<<<<<<<<<<<<<
  *         lensum += tmpTup[1]
  *     return lensum
  */
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigar); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_read), __pyx_n_s_cigar); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   if (likely(PyList_CheckExact(__pyx_t_1)) || PyTuple_CheckExact(__pyx_t_1)) {
     __pyx_t_4 = __pyx_t_1; __Pyx_INCREF(__pyx_t_4); __pyx_t_8 = 0;
     __pyx_t_9 = NULL;
   } else {
-    __pyx_t_8 = -1; __pyx_t_4 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_8 = -1; __pyx_t_4 = PyObject_GetIter(__pyx_t_1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_4);
-    __pyx_t_9 = Py_TYPE(__pyx_t_4)->tp_iternext; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = Py_TYPE(__pyx_t_4)->tp_iternext; if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   for (;;) {
@@ -8785,16 +13714,16 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
       if (likely(PyList_CheckExact(__pyx_t_4))) {
         if (__pyx_t_8 >= PyList_GET_SIZE(__pyx_t_4)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_8); __Pyx_INCREF(__pyx_t_1); __pyx_t_8++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PyList_GET_ITEM(__pyx_t_4, __pyx_t_8); __Pyx_INCREF(__pyx_t_1); __pyx_t_8++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_8); __pyx_t_8++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_8); __pyx_t_8++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       } else {
         if (__pyx_t_8 >= PyTuple_GET_SIZE(__pyx_t_4)) break;
         #if CYTHON_COMPILING_IN_CPYTHON
-        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_4, __pyx_t_8); __Pyx_INCREF(__pyx_t_1); __pyx_t_8++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PyTuple_GET_ITEM(__pyx_t_4, __pyx_t_8); __Pyx_INCREF(__pyx_t_1); __pyx_t_8++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #else
-        __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_8); __pyx_t_8++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = PySequence_ITEM(__pyx_t_4, __pyx_t_8); __pyx_t_8++; if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         #endif
       }
     } else {
@@ -8803,37 +13732,37 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
         break;
       }
       __Pyx_GOTREF(__pyx_t_1);
     }
-    if (!(likely(PyTuple_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_t_1)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 690; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (!(likely(PyTuple_CheckExact(__pyx_t_1))||((__pyx_t_1) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "tuple", Py_TYPE(__pyx_t_1)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 877; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_XDECREF_SET(__pyx_v_tmpTup, ((PyObject*)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "utilBMF/MergePairedAlignments.pyx":691
+    /* "utilBMF/MergePairedAlignments.pyx":878
  *             " is unmapped - no such thing as a layout length!")
  *     for tmpTup in read.cigar:
  *         lensum += tmpTup[1]             # <<<<<<<<<<<<<<
  *     return lensum
  * 
  */
-    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_lensum); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 691; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_lensum); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 878; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_1);
     if (unlikely(__pyx_v_tmpTup == Py_None)) {
       PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 691; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      {__pyx_filename = __pyx_f[0]; __pyx_lineno = 878; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     }
-    __pyx_t_7 = PyNumber_InPlaceAdd(__pyx_t_1, PyTuple_GET_ITEM(__pyx_v_tmpTup, 1)); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 691; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_7 = PyNumber_InPlaceAdd(__pyx_t_1, PyTuple_GET_ITEM(__pyx_v_tmpTup, 1)); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 878; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_10 = __Pyx_PyInt_As_int(__pyx_t_7); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 691; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_10 = __Pyx_PyInt_As_int(__pyx_t_7); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 878; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __pyx_v_lensum = __pyx_t_10;
 
-    /* "utilBMF/MergePairedAlignments.pyx":690
+    /* "utilBMF/MergePairedAlignments.pyx":877
  *             "read " + read.query_name +
  *             " is unmapped - no such thing as a layout length!")
  *     for tmpTup in read.cigar:             # <<<<<<<<<<<<<<
@@ -8843,7 +13772,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
   }
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":692
+  /* "utilBMF/MergePairedAlignments.pyx":879
  *     for tmpTup in read.cigar:
  *         lensum += tmpTup[1]
  *     return lensum             # <<<<<<<<<<<<<<
@@ -8853,7 +13782,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
   __pyx_r = __pyx_v_lensum;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":683
+  /* "utilBMF/MergePairedAlignments.pyx":870
  * @cython.boundscheck(False)
  * @cython.wraparound(False)
  * cdef int getLayoutLen(AlignedSegment_t read):             # <<<<<<<<<<<<<<
@@ -8876,7 +13805,7 @@ static int __pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen(__pyx_t_7utilBM
   return __pyx_r;
 }
 
-/* "utilBMF/MergePairedAlignments.pyx":695
+/* "utilBMF/MergePairedAlignments.pyx":882
  * 
  * 
  * cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):             # <<<<<<<<<<<<<<
@@ -8901,7 +13830,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("ALPToStr", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":696
+  /* "utilBMF/MergePairedAlignments.pyx":883
  * 
  * cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):
  *     return "|".join(map(str, [ALP.pos, ALP.readPos, ALP.quality,             # <<<<<<<<<<<<<<
@@ -8909,58 +13838,61 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
  *                               chr(ALP.base), ALP.mergeAgreed]))
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_ALP.pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_ALP.pos); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_ALP.readPos); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_From_uint16_t(__pyx_v_ALP.readPos); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_ALP.quality); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_ALP.quality); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
 
-  /* "utilBMF/MergePairedAlignments.pyx":697
+  /* "utilBMF/MergePairedAlignments.pyx":884
  * cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):
  *     return "|".join(map(str, [ALP.pos, ALP.readPos, ALP.quality,
  *                               ALP.agreement, chr(ALP.operation),             # <<<<<<<<<<<<<<
  *                               chr(ALP.base), ALP.mergeAgreed]))
+ * 
  */
-  __pyx_t_4 = __Pyx_PyInt_From_int(__pyx_v_ALP.agreement); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 697; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_PyInt_From_uint16_t(__pyx_v_ALP.agreement); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 884; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyInt_From_char(__pyx_v_ALP.operation); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 697; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = __Pyx_PyInt_From_char(__pyx_v_ALP.operation); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 884; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 697; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 884; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5);
   __Pyx_GIVEREF(__pyx_t_5);
   __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_builtin_chr, __pyx_t_6, NULL); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 697; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_builtin_chr, __pyx_t_6, NULL); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 884; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":698
+  /* "utilBMF/MergePairedAlignments.pyx":885
  *     return "|".join(map(str, [ALP.pos, ALP.readPos, ALP.quality,
  *                               ALP.agreement, chr(ALP.operation),
  *                               chr(ALP.base), ALP.mergeAgreed]))             # <<<<<<<<<<<<<<
+ * 
+ * def testLayout(cystr inBAM, cystr outBAM=None):
  */
-  __pyx_t_6 = __Pyx_PyInt_From_char(__pyx_v_ALP.base); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 698; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = __Pyx_PyInt_From_char(__pyx_v_ALP.base); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 885; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 698; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 885; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
   PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_6);
   __Pyx_GIVEREF(__pyx_t_6);
   __pyx_t_6 = 0;
-  __pyx_t_6 = __Pyx_PyObject_Call(__pyx_builtin_chr, __pyx_t_7, NULL); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 698; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_6 = __Pyx_PyObject_Call(__pyx_builtin_chr, __pyx_t_7, NULL); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 885; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  __pyx_t_7 = __Pyx_PyInt_From_char(__pyx_v_ALP.mergeAgreed); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 698; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __Pyx_PyInt_From_char(__pyx_v_ALP.mergeAgreed); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 885; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
 
-  /* "utilBMF/MergePairedAlignments.pyx":696
+  /* "utilBMF/MergePairedAlignments.pyx":883
  * 
  * cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):
  *     return "|".join(map(str, [ALP.pos, ALP.readPos, ALP.quality,             # <<<<<<<<<<<<<<
  *                               ALP.agreement, chr(ALP.operation),
  *                               chr(ALP.base), ALP.mergeAgreed]))
  */
-  __pyx_t_8 = PyList_New(7); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = PyList_New(7); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
   PyList_SET_ITEM(__pyx_t_8, 0, __pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_1);
@@ -8983,7 +13915,7 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
   __pyx_t_5 = 0;
   __pyx_t_6 = 0;
   __pyx_t_7 = 0;
-  __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_INCREF(((PyObject *)((PyObject*)(&PyString_Type))));
   PyTuple_SET_ITEM(__pyx_t_7, 0, ((PyObject *)((PyObject*)(&PyString_Type))));
@@ -8991,18 +13923,18 @@ static __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_f_7utilBMF_21MergePairedAlignments
   PyTuple_SET_ITEM(__pyx_t_7, 1, __pyx_t_8);
   __Pyx_GIVEREF(__pyx_t_8);
   __pyx_t_8 = 0;
-  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_builtin_map, __pyx_t_7, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_8 = __Pyx_PyObject_Call(__pyx_builtin_map, __pyx_t_7, NULL); if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_8);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-  __pyx_t_7 = __Pyx_PyString_Join(__pyx_kp_s__15, __pyx_t_8); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = __Pyx_PyString_Join(__pyx_kp_s__17, __pyx_t_8); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-  if (!(likely(PyString_CheckExact(__pyx_t_7))||((__pyx_t_7) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_7)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 696; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (!(likely(PyString_CheckExact(__pyx_t_7))||((__pyx_t_7) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_7)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 883; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_r = ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_7);
   __pyx_t_7 = 0;
   goto __pyx_L0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":695
+  /* "utilBMF/MergePairedAlignments.pyx":882
  * 
  * 
  * cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):             # <<<<<<<<<<<<<<
@@ -9039,7 +13971,7 @@ static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_7ALPToStr(PyObject *_
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("ALPToStr (wrapper)", 0);
   assert(__pyx_arg_ALP); {
-    __pyx_v_ALP = __pyx_convert__from_py_ArrayLayoutPos(__pyx_arg_ALP); if (unlikely(PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 695; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+    __pyx_v_ALP = __pyx_convert__from_py_ArrayLayoutPos(__pyx_arg_ALP); if (unlikely(PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 882; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -9063,7 +13995,7 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6ALPToStr(CYTHON_UNUS
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("ALPToStr", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_ALPToStr(__pyx_v_ALP, 0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 695; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __pyx_f_7utilBMF_21MergePairedAlignments_ALPToStr(__pyx_v_ALP, 0); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 882; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -9075,6 +14007,454 @@ static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_6ALPToStr(CYTHON_UNUS
   __Pyx_AddTraceback("utilBMF.MergePairedAlignments.ALPToStr", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "utilBMF/MergePairedAlignments.pyx":887
+ *                               chr(ALP.base), ALP.mergeAgreed]))
+ * 
+ * def testLayout(cystr inBAM, cystr outBAM=None):             # <<<<<<<<<<<<<<
+ *     cdef AlignedSegment_t read
+ *     cdef Layout_t layout
+ */
+
+/* Python wrapper */
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_9testLayout(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyMethodDef __pyx_mdef_7utilBMF_21MergePairedAlignments_9testLayout = {"testLayout", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_9testLayout, METH_VARARGS|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_7utilBMF_21MergePairedAlignments_9testLayout(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+  __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_inBAM = 0;
+  __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_outBAM = 0;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  PyObject *__pyx_r = 0;
+  __Pyx_RefNannyDeclarations
+  __Pyx_RefNannySetupContext("testLayout (wrapper)", 0);
+  {
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_inBAM,&__pyx_n_s_outBAM,0};
+    PyObject* values[2] = {0,0};
+    values[1] = ((__pyx_t_7utilBMF_8HTSUtils_cystr)Py_None);
+    if (unlikely(__pyx_kwds)) {
+      Py_ssize_t kw_args;
+      const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
+      switch (pos_args) {
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        case  0: break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+      kw_args = PyDict_Size(__pyx_kwds);
+      switch (pos_args) {
+        case  0:
+        if (likely((values[0] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_inBAM)) != 0)) kw_args--;
+        else goto __pyx_L5_argtuple_error;
+        case  1:
+        if (kw_args > 0) {
+          PyObject* value = PyDict_GetItem(__pyx_kwds, __pyx_n_s_outBAM);
+          if (value) { values[1] = value; kw_args--; }
+        }
+      }
+      if (unlikely(kw_args > 0)) {
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "testLayout") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+      }
+    } else {
+      switch (PyTuple_GET_SIZE(__pyx_args)) {
+        case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
+        case  1: values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
+        break;
+        default: goto __pyx_L5_argtuple_error;
+      }
+    }
+    __pyx_v_inBAM = ((__pyx_t_7utilBMF_8HTSUtils_cystr)values[0]);
+    __pyx_v_outBAM = ((__pyx_t_7utilBMF_8HTSUtils_cystr)values[1]);
+  }
+  goto __pyx_L4_argument_unpacking_done;
+  __pyx_L5_argtuple_error:;
+  __Pyx_RaiseArgtupleInvalid("testLayout", 0, 1, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __pyx_L3_error:;
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.testLayout", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_RefNannyFinishContext();
+  return NULL;
+  __pyx_L4_argument_unpacking_done:;
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_inBAM), (&PyString_Type), 1, "inBAM", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outBAM), (&PyString_Type), 1, "outBAM", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_r = __pyx_pf_7utilBMF_21MergePairedAlignments_8testLayout(__pyx_self, __pyx_v_inBAM, __pyx_v_outBAM);
+
+  /* function exit code */
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static PyObject *__pyx_pf_7utilBMF_21MergePairedAlignments_8testLayout(CYTHON_UNUSED PyObject *__pyx_self, __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_inBAM, __pyx_t_7utilBMF_8HTSUtils_cystr __pyx_v_outBAM) {
+  __pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t __pyx_v_read = 0;
+  __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t __pyx_v_layout = 0;
+  PyObject *__pyx_v_inHandle = NULL;
+  PyObject *__pyx_v_outHandle = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  int __pyx_t_1;
+  int __pyx_t_2;
+  PyObject *__pyx_t_3 = NULL;
+  PyObject *__pyx_t_4 = NULL;
+  PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  Py_ssize_t __pyx_t_7;
+  PyObject *(*__pyx_t_8)(PyObject *);
+  PyObject *__pyx_t_9 = NULL;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("testLayout", 0);
+  __Pyx_INCREF(__pyx_v_outBAM);
+
+  /* "utilBMF/MergePairedAlignments.pyx":890
+ *     cdef AlignedSegment_t read
+ *     cdef Layout_t layout
+ *     if(outBAM is None):             # <<<<<<<<<<<<<<
+ *         outBAM = TrimExt(inBAM) + ".testLayout.bam"
+ *     inHandle = pysam.AlignmentFile(inBAM, "rb")
+ */
+  __pyx_t_1 = (__pyx_v_outBAM == ((__pyx_t_7utilBMF_8HTSUtils_cystr)Py_None));
+  __pyx_t_2 = (__pyx_t_1 != 0);
+  if (__pyx_t_2) {
+
+    /* "utilBMF/MergePairedAlignments.pyx":891
+ *     cdef Layout_t layout
+ *     if(outBAM is None):
+ *         outBAM = TrimExt(inBAM) + ".testLayout.bam"             # <<<<<<<<<<<<<<
+ *     inHandle = pysam.AlignmentFile(inBAM, "rb")
+ *     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
+ */
+    __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_TrimExt); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 891; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_5 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_4))) {
+      __pyx_t_5 = PyMethod_GET_SELF(__pyx_t_4);
+      if (likely(__pyx_t_5)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_4);
+        __Pyx_INCREF(__pyx_t_5);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_4, function);
+      }
+    }
+    if (!__pyx_t_5) {
+      __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_v_inBAM); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 891; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+    } else {
+      __pyx_t_6 = PyTuple_New(1+1); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 891; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_6);
+      PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5); __Pyx_GIVEREF(__pyx_t_5); __pyx_t_5 = NULL;
+      __Pyx_INCREF(__pyx_v_inBAM);
+      PyTuple_SET_ITEM(__pyx_t_6, 0+1, __pyx_v_inBAM);
+      __Pyx_GIVEREF(__pyx_v_inBAM);
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_t_6, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 891; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+    }
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __pyx_t_4 = PyNumber_Add(__pyx_t_3, __pyx_kp_s_testLayout_bam); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 891; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (!(likely(PyString_CheckExact(__pyx_t_4))||((__pyx_t_4) == Py_None)||(PyErr_Format(PyExc_TypeError, "Expected %.16s, got %.200s", "str", Py_TYPE(__pyx_t_4)->tp_name), 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 891; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF_SET(__pyx_v_outBAM, ((__pyx_t_7utilBMF_8HTSUtils_cystr)__pyx_t_4));
+    __pyx_t_4 = 0;
+    goto __pyx_L3;
+  }
+  __pyx_L3:;
+
+  /* "utilBMF/MergePairedAlignments.pyx":892
+ *     if(outBAM is None):
+ *         outBAM = TrimExt(inBAM) + ".testLayout.bam"
+ *     inHandle = pysam.AlignmentFile(inBAM, "rb")             # <<<<<<<<<<<<<<
+ *     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
+ *     for read in inHandle:
+ */
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 892; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 892; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = NULL;
+  __pyx_t_7 = 0;
+  if (CYTHON_COMPILING_IN_CPYTHON && unlikely(PyMethod_Check(__pyx_t_6))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_6);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_6);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_6, function);
+      __pyx_t_7 = 1;
+    }
+  }
+  __pyx_t_5 = PyTuple_New(2+__pyx_t_7); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 892; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_5);
+  if (__pyx_t_3) {
+    PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_3); __Pyx_GIVEREF(__pyx_t_3); __pyx_t_3 = NULL;
+  }
+  __Pyx_INCREF(__pyx_v_inBAM);
+  PyTuple_SET_ITEM(__pyx_t_5, 0+__pyx_t_7, __pyx_v_inBAM);
+  __Pyx_GIVEREF(__pyx_v_inBAM);
+  __Pyx_INCREF(__pyx_n_s_rb);
+  PyTuple_SET_ITEM(__pyx_t_5, 1+__pyx_t_7, __pyx_n_s_rb);
+  __Pyx_GIVEREF(__pyx_n_s_rb);
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_5, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 892; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __pyx_v_inHandle = __pyx_t_4;
+  __pyx_t_4 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":893
+ *         outBAM = TrimExt(inBAM) + ".testLayout.bam"
+ *     inHandle = pysam.AlignmentFile(inBAM, "rb")
+ *     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)             # <<<<<<<<<<<<<<
+ *     for read in inHandle:
+ *         layout = Layout(read)
+ */
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_pysam); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 893; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_AlignmentFile); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 893; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 893; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_INCREF(__pyx_v_outBAM);
+  PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_outBAM);
+  __Pyx_GIVEREF(__pyx_v_outBAM);
+  __Pyx_INCREF(__pyx_n_s_wb);
+  PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_n_s_wb);
+  __Pyx_GIVEREF(__pyx_n_s_wb);
+  __pyx_t_5 = PyDict_New(); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 893; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_5);
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_template, __pyx_v_inHandle) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 893; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_6, __pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 893; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  __pyx_v_outHandle = __pyx_t_3;
+  __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":894
+ *     inHandle = pysam.AlignmentFile(inBAM, "rb")
+ *     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
+ *     for read in inHandle:             # <<<<<<<<<<<<<<
+ *         layout = Layout(read)
+ *         read = layout.__read__()
+ */
+  if (likely(PyList_CheckExact(__pyx_v_inHandle)) || PyTuple_CheckExact(__pyx_v_inHandle)) {
+    __pyx_t_3 = __pyx_v_inHandle; __Pyx_INCREF(__pyx_t_3); __pyx_t_7 = 0;
+    __pyx_t_8 = NULL;
+  } else {
+    __pyx_t_7 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_v_inHandle); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_8 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  for (;;) {
+    if (likely(!__pyx_t_8)) {
+      if (likely(PyList_CheckExact(__pyx_t_3))) {
+        if (__pyx_t_7 >= PyList_GET_SIZE(__pyx_t_3)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_5 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_7); __Pyx_INCREF(__pyx_t_5); __pyx_t_7++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_7); __pyx_t_7++; if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      } else {
+        if (__pyx_t_7 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
+        #if CYTHON_COMPILING_IN_CPYTHON
+        __pyx_t_5 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_7); __Pyx_INCREF(__pyx_t_5); __pyx_t_7++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #else
+        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_7); __pyx_t_7++; if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        #endif
+      }
+    } else {
+      __pyx_t_5 = __pyx_t_8(__pyx_t_3);
+      if (unlikely(!__pyx_t_5)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (likely(exc_type == PyExc_StopIteration || PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+          else {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        }
+        break;
+      }
+      __Pyx_GOTREF(__pyx_t_5);
+    }
+    if (!(likely(((__pyx_t_5) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_5, __pyx_ptype_5pysam_14calignmentfile_AlignedSegment))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 894; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_XDECREF_SET(__pyx_v_read, ((__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t)__pyx_t_5));
+    __pyx_t_5 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":895
+ *     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
+ *     for read in inHandle:
+ *         layout = Layout(read)             # <<<<<<<<<<<<<<
+ *         read = layout.__read__()
+ *         outHandle.write(read)
+ */
+    __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 895; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
+    __Pyx_INCREF(((PyObject *)__pyx_v_read));
+    PyTuple_SET_ITEM(__pyx_t_5, 0, ((PyObject *)__pyx_v_read));
+    __Pyx_GIVEREF(((PyObject *)__pyx_v_read));
+    __pyx_t_4 = __Pyx_PyObject_Call(((PyObject *)((PyObject*)__pyx_ptype_7utilBMF_21MergePairedAlignments_Layout)), __pyx_t_5, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 895; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_XDECREF_SET(__pyx_v_layout, ((__pyx_t_7utilBMF_21MergePairedAlignments_Layout_t)__pyx_t_4));
+    __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":896
+ *     for read in inHandle:
+ *         layout = Layout(read)
+ *         read = layout.__read__()             # <<<<<<<<<<<<<<
+ *         outHandle.write(read)
+ *     inHandle.close()
+ */
+    __pyx_t_4 = ((PyObject *)((struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_layout->__pyx_vtab)->__pyx___read__(((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)__pyx_v_layout))); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 896; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_4);
+    __Pyx_DECREF_SET(__pyx_v_read, ((__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t)__pyx_t_4));
+    __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":897
+ *         layout = Layout(read)
+ *         read = layout.__read__()
+ *         outHandle.write(read)             # <<<<<<<<<<<<<<
+ *     inHandle.close()
+ *     outHandle.close()
+ */
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_outHandle, __pyx_n_s_write); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 897; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
+    __pyx_t_6 = NULL;
+    if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_5))) {
+      __pyx_t_6 = PyMethod_GET_SELF(__pyx_t_5);
+      if (likely(__pyx_t_6)) {
+        PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
+        __Pyx_INCREF(__pyx_t_6);
+        __Pyx_INCREF(function);
+        __Pyx_DECREF_SET(__pyx_t_5, function);
+      }
+    }
+    if (!__pyx_t_6) {
+      __pyx_t_4 = __Pyx_PyObject_CallOneArg(__pyx_t_5, ((PyObject *)__pyx_v_read)); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 897; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_4);
+    } else {
+      __pyx_t_9 = PyTuple_New(1+1); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 897; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_9);
+      PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_6); __Pyx_GIVEREF(__pyx_t_6); __pyx_t_6 = NULL;
+      __Pyx_INCREF(((PyObject *)__pyx_v_read));
+      PyTuple_SET_ITEM(__pyx_t_9, 0+1, ((PyObject *)__pyx_v_read));
+      __Pyx_GIVEREF(((PyObject *)__pyx_v_read));
+      __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_5, __pyx_t_9, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 897; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    }
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "utilBMF/MergePairedAlignments.pyx":894
+ *     inHandle = pysam.AlignmentFile(inBAM, "rb")
+ *     outHandle = pysam.AlignmentFile(outBAM, "wb", template=inHandle)
+ *     for read in inHandle:             # <<<<<<<<<<<<<<
+ *         layout = Layout(read)
+ *         read = layout.__read__()
+ */
+  }
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":898
+ *         read = layout.__read__()
+ *         outHandle.write(read)
+ *     inHandle.close()             # <<<<<<<<<<<<<<
+ *     outHandle.close()
+ *     return outBAM
+ */
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_inHandle, __pyx_n_s_close); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 898; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
+    __pyx_t_5 = PyMethod_GET_SELF(__pyx_t_4);
+    if (likely(__pyx_t_5)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_4);
+      __Pyx_INCREF(__pyx_t_5);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_4, function);
+    }
+  }
+  if (__pyx_t_5) {
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 898; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  } else {
+    __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_4); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 898; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":899
+ *         outHandle.write(read)
+ *     inHandle.close()
+ *     outHandle.close()             # <<<<<<<<<<<<<<
+ *     return outBAM
+ */
+  __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_outHandle, __pyx_n_s_close); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 899; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_5 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_4))) {
+    __pyx_t_5 = PyMethod_GET_SELF(__pyx_t_4);
+    if (likely(__pyx_t_5)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_4);
+      __Pyx_INCREF(__pyx_t_5);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_4, function);
+    }
+  }
+  if (__pyx_t_5) {
+    __pyx_t_3 = __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 899; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+  } else {
+    __pyx_t_3 = __Pyx_PyObject_CallNoArg(__pyx_t_4); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 899; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  }
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":900
+ *     inHandle.close()
+ *     outHandle.close()
+ *     return outBAM             # <<<<<<<<<<<<<<
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_outBAM);
+  __pyx_r = __pyx_v_outBAM;
+  goto __pyx_L0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":887
+ *                               chr(ALP.base), ALP.mergeAgreed]))
+ * 
+ * def testLayout(cystr inBAM, cystr outBAM=None):             # <<<<<<<<<<<<<<
+ *     cdef AlignedSegment_t read
+ *     cdef Layout_t layout
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_3);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_AddTraceback("utilBMF.MergePairedAlignments.testLayout", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = NULL;
+  __pyx_L0:;
+  __Pyx_XDECREF((PyObject *)__pyx_v_read);
+  __Pyx_XDECREF((PyObject *)__pyx_v_layout);
+  __Pyx_XDECREF(__pyx_v_inHandle);
+  __Pyx_XDECREF(__pyx_v_outHandle);
+  __Pyx_XDECREF(__pyx_v_outBAM);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -9865,7 +15245,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__16, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__18, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -9905,7 +15285,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  * 
  *             info.buf = PyArray_DATA(self)
  */
-    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__17, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__19, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
     __Pyx_Raise(__pyx_t_3, 0, 0, 0);
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -10182,7 +15562,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  *                 if   t == NPY_BYTE:        f = "b"
  *                 elif t == NPY_UBYTE:       f = "B"
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__18, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__20, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -10994,7 +16374,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  * 
  *         if ((child.byteorder == c'>' and little_endian) or
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_RuntimeError, __pyx_tuple__19, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 802; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_RuntimeError, __pyx_tuple__21, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 802; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -11046,7 +16426,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  *             # One could encode it in the format string and have Cython
  *             # complain instead, BUT: < and > in format strings also imply
  */
-      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__20, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 806; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__22, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 806; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_3);
       __Pyx_Raise(__pyx_t_3, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -11147,7 +16527,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  * 
  *             # Until ticket #99 is fixed, use integers to avoid warnings
  */
-        __pyx_t_4 = __Pyx_PyObject_Call(__pyx_builtin_RuntimeError, __pyx_tuple__21, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 826; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_4 = __Pyx_PyObject_Call(__pyx_builtin_RuntimeError, __pyx_tuple__23, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 826; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_4);
         __Pyx_Raise(__pyx_t_4, 0, 0, 0);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -11733,7 +17113,8 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
   PyObject *__pyx_t_7 = NULL;
   PyObject *__pyx_t_8 = NULL;
   PyObject *__pyx_t_9 = NULL;
-  char __pyx_t_10;
+  uint16_t __pyx_t_10;
+  char __pyx_t_11;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -11818,7 +17199,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.pos = value
  *     try:
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__22, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L6_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__24, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L6_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -11902,7 +17283,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.readPos = value
  *     try:
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__23, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L16_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__25, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L16_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -11925,8 +17306,8 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     try:
  *         value = obj['quality']
  */
-  __pyx_t_6 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_6 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 25; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_v_result.readPos = __pyx_t_6;
+  __pyx_t_10 = __Pyx_PyInt_As_uint16_t(__pyx_v_value); if (unlikely((__pyx_t_10 == (uint16_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 25; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_result.readPos = __pyx_t_10;
 
   /* "FromPyStructUtility":26
  *         raise ValueError("No value specified for struct attribute 'readPos'")
@@ -11986,7 +17367,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.quality = value
  *     try:
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__24, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L26_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__26, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L26_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -12070,7 +17451,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.agreement = value
  *     try:
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__25, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L36_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__27, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L36_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -12093,8 +17474,8 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     try:
  *         value = obj['operation']
  */
-  __pyx_t_6 = __Pyx_PyInt_As_int(__pyx_v_value); if (unlikely((__pyx_t_6 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_v_result.agreement = __pyx_t_6;
+  __pyx_t_10 = __Pyx_PyInt_As_uint16_t(__pyx_v_value); if (unlikely((__pyx_t_10 == (uint16_t)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_result.agreement = __pyx_t_10;
 
   /* "FromPyStructUtility":36
  *         raise ValueError("No value specified for struct attribute 'agreement'")
@@ -12154,7 +17535,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.operation = value
  *     try:
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__26, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L46_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__28, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L46_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -12177,8 +17558,8 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     try:
  *         value = obj['base']
  */
-  __pyx_t_10 = __Pyx_PyInt_As_char(__pyx_v_value); if (unlikely((__pyx_t_10 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_v_result.operation = __pyx_t_10;
+  __pyx_t_11 = __Pyx_PyInt_As_char(__pyx_v_value); if (unlikely((__pyx_t_11 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_result.operation = __pyx_t_11;
 
   /* "FromPyStructUtility":41
  *         raise ValueError("No value specified for struct attribute 'operation'")
@@ -12238,7 +17619,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.base = value
  *     try:
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__27, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L56_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__29, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L56_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -12261,8 +17642,8 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     try:
  *         value = obj['mergeAgreed']
  */
-  __pyx_t_10 = __Pyx_PyInt_As_char(__pyx_v_value); if (unlikely((__pyx_t_10 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_v_result.base = __pyx_t_10;
+  __pyx_t_11 = __Pyx_PyInt_As_char(__pyx_v_value); if (unlikely((__pyx_t_11 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 45; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_result.base = __pyx_t_11;
 
   /* "FromPyStructUtility":46
  *         raise ValueError("No value specified for struct attribute 'base'")
@@ -12322,7 +17703,7 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     result.mergeAgreed = value
  *     return result
  */
-      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__28, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 49; __pyx_clineno = __LINE__; goto __pyx_L66_except_error;}
+      __pyx_t_9 = __Pyx_PyObject_Call(__pyx_builtin_ValueError, __pyx_tuple__30, NULL); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 49; __pyx_clineno = __LINE__; goto __pyx_L66_except_error;}
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_Raise(__pyx_t_9, 0, 0, 0);
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -12345,8 +17726,8 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
  *     return result
  * 
  */
-  __pyx_t_10 = __Pyx_PyInt_As_char(__pyx_v_value); if (unlikely((__pyx_t_10 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_v_result.mergeAgreed = __pyx_t_10;
+  __pyx_t_11 = __Pyx_PyInt_As_char(__pyx_v_value); if (unlikely((__pyx_t_11 == (char)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_v_result.mergeAgreed = __pyx_t_11;
 
   /* "FromPyStructUtility":51
  *         raise ValueError("No value specified for struct attribute 'mergeAgreed'")
@@ -12378,6 +17759,221 @@ static struct ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(PyObject *__p
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
+
+/* "carray.to_py":77
+ * 
+ * @cname("__Pyx_carray_to_py_int")
+ * cdef inline list __Pyx_carray_to_py_int(int *v, Py_ssize_t length):             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     cdef object value
+ */
+
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int(int *__pyx_v_v, Py_ssize_t __pyx_v_length) {
+  size_t __pyx_v_i;
+  PyObject *__pyx_v_value = 0;
+  PyObject *__pyx_v_l = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  size_t __pyx_t_2;
+  size_t __pyx_t_3;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int", 0);
+
+  /* "carray.to_py":80
+ *     cdef size_t i
+ *     cdef object value
+ *     l = PyList_New(length)             # <<<<<<<<<<<<<<
+ *     for i in range(<size_t>length):
+ *         value = v[i]
+ */
+  __pyx_t_1 = PyList_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 80; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_l = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "carray.to_py":81
+ *     cdef object value
+ *     l = PyList_New(length)
+ *     for i in range(<size_t>length):             # <<<<<<<<<<<<<<
+ *         value = v[i]
+ *         Py_INCREF(value)
+ */
+  __pyx_t_2 = ((size_t)__pyx_v_length);
+  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+    __pyx_v_i = __pyx_t_3;
+
+    /* "carray.to_py":82
+ *     l = PyList_New(length)
+ *     for i in range(<size_t>length):
+ *         value = v[i]             # <<<<<<<<<<<<<<
+ *         Py_INCREF(value)
+ *         PyList_SET_ITEM(l, i, value)
+ */
+    __pyx_t_1 = __Pyx_PyInt_From_int((__pyx_v_v[__pyx_v_i])); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 82; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
+    __pyx_t_1 = 0;
+
+    /* "carray.to_py":83
+ *     for i in range(<size_t>length):
+ *         value = v[i]
+ *         Py_INCREF(value)             # <<<<<<<<<<<<<<
+ *         PyList_SET_ITEM(l, i, value)
+ *     return l
+ */
+    Py_INCREF(__pyx_v_value);
+
+    /* "carray.to_py":84
+ *         value = v[i]
+ *         Py_INCREF(value)
+ *         PyList_SET_ITEM(l, i, value)             # <<<<<<<<<<<<<<
+ *     return l
+ * 
+ */
+    PyList_SET_ITEM(__pyx_v_l, __pyx_v_i, __pyx_v_value);
+  }
+
+  /* "carray.to_py":85
+ *         Py_INCREF(value)
+ *         PyList_SET_ITEM(l, i, value)
+ *     return l             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_l);
+  __pyx_r = __pyx_v_l;
+  goto __pyx_L0;
+
+  /* "carray.to_py":77
+ * 
+ * @cname("__Pyx_carray_to_py_int")
+ * cdef inline list __Pyx_carray_to_py_int(int *v, Py_ssize_t length):             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     cdef object value
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_XDECREF(__pyx_v_l);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "carray.to_py":89
+ * 
+ * @cname("__Pyx_carray_to_tuple_int")
+ * cdef inline tuple __Pyx_carray_to_tuple_int(int *v, Py_ssize_t length):             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     cdef object value
+ */
+
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int(int *__pyx_v_v, Py_ssize_t __pyx_v_length) {
+  size_t __pyx_v_i;
+  PyObject *__pyx_v_value = 0;
+  PyObject *__pyx_v_t = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  size_t __pyx_t_2;
+  size_t __pyx_t_3;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int", 0);
+
+  /* "carray.to_py":92
+ *     cdef size_t i
+ *     cdef object value
+ *     t = PyTuple_New(length)             # <<<<<<<<<<<<<<
+ *     for i in range(<size_t>length):
+ *         value = v[i]
+ */
+  __pyx_t_1 = PyTuple_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 92; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_t = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "carray.to_py":93
+ *     cdef object value
+ *     t = PyTuple_New(length)
+ *     for i in range(<size_t>length):             # <<<<<<<<<<<<<<
+ *         value = v[i]
+ *         Py_INCREF(value)
+ */
+  __pyx_t_2 = ((size_t)__pyx_v_length);
+  for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+    __pyx_v_i = __pyx_t_3;
+
+    /* "carray.to_py":94
+ *     t = PyTuple_New(length)
+ *     for i in range(<size_t>length):
+ *         value = v[i]             # <<<<<<<<<<<<<<
+ *         Py_INCREF(value)
+ *         PyTuple_SET_ITEM(t, i, value)
+ */
+    __pyx_t_1 = __Pyx_PyInt_From_int((__pyx_v_v[__pyx_v_i])); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 94; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
+    __pyx_t_1 = 0;
+
+    /* "carray.to_py":95
+ *     for i in range(<size_t>length):
+ *         value = v[i]
+ *         Py_INCREF(value)             # <<<<<<<<<<<<<<
+ *         PyTuple_SET_ITEM(t, i, value)
+ *     return t
+ */
+    Py_INCREF(__pyx_v_value);
+
+    /* "carray.to_py":96
+ *         value = v[i]
+ *         Py_INCREF(value)
+ *         PyTuple_SET_ITEM(t, i, value)             # <<<<<<<<<<<<<<
+ *     return t
+ */
+    PyTuple_SET_ITEM(__pyx_v_t, __pyx_v_i, __pyx_v_value);
+  }
+
+  /* "carray.to_py":97
+ *         Py_INCREF(value)
+ *         PyTuple_SET_ITEM(t, i, value)
+ *     return t             # <<<<<<<<<<<<<<
+ */
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_t);
+  __pyx_r = __pyx_v_t;
+  goto __pyx_L0;
+
+  /* "carray.to_py":89
+ * 
+ * @cname("__Pyx_carray_to_tuple_int")
+ * cdef inline tuple __Pyx_carray_to_tuple_int(int *v, Py_ssize_t length):             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     cdef object value
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_XDECREF(__pyx_v_t);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
 static struct __pyx_vtabstruct_7utilBMF_21MergePairedAlignments_Layout __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout;
 
 static PyObject *__pyx_tp_new_7utilBMF_21MergePairedAlignments_Layout(PyTypeObject *t, PyObject *a, PyObject *k) {
@@ -12392,6 +17988,7 @@ static PyObject *__pyx_tp_new_7utilBMF_21MergePairedAlignments_Layout(PyTypeObje
   p = ((struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *)o);
   p->__pyx_vtab = __pyx_vtabptr_7utilBMF_21MergePairedAlignments_Layout;
   p->tagDict = ((PyObject*)Py_None); Py_INCREF(Py_None);
+  p->Name = ((__pyx_t_7utilBMF_8HTSUtils_cystr)Py_None); Py_INCREF(Py_None);
   if (unlikely(__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_1__cinit__(o, a, k) < 0)) {
     Py_DECREF(o); o = 0;
   }
@@ -12415,6 +18012,7 @@ static void __pyx_tp_dealloc_7utilBMF_21MergePairedAlignments_Layout(PyObject *o
     PyErr_Restore(etype, eval, etb);
   }
   Py_CLEAR(p->tagDict);
+  Py_CLEAR(p->Name);
   (*Py_TYPE(o)->tp_free)(o);
 }
 
@@ -12520,6 +18118,48 @@ static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_firstMapped(Py
   }
 }
 
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_reference_id(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_reference_id(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12reference_id_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_pos(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3pos_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_pos(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_3pos_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_rnext(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5rnext_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_rnext(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5rnext_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
 static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_tagDict(PyObject *o, CYTHON_UNUSED void *x) {
   return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_7tagDict_1__get__(o);
 }
@@ -12533,12 +18173,74 @@ static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_tagDict(PyObje
   }
 }
 
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_Name(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_Name(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_3__set__(o, v);
+  }
+  else {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_4Name_5__del__(o);
+  }
+}
+
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_is_reverse(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_is_reverse(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_10is_reverse_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_isMerged(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_isMerged(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_8isMerged_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
+static PyObject *__pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_MergeSuccess(PyObject *o, CYTHON_UNUSED void *x) {
+  return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_1__get__(o);
+}
+
+static int __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_MergeSuccess(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
+  if (v) {
+    return __pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_12MergeSuccess_3__set__(o, v);
+  }
+  else {
+    PyErr_SetString(PyExc_NotImplementedError, "__del__");
+    return -1;
+  }
+}
+
 static PyMethodDef __pyx_methods_7utilBMF_21MergePairedAlignments_Layout[] = {
   {"posIsMapped", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_5posIsMapped, METH_O, 0},
   {"getQual", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_7getQual, METH_NOARGS, 0},
   {"getQualString", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_9getQualString, METH_NOARGS, 0},
   {"getSeqArr", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_13getSeqArr, METH_NOARGS, 0},
   {"getSeq", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_15getSeq, METH_NOARGS, 0},
+  {"MergeLayout", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_19MergeLayout, METH_O, 0},
+  {"update", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_21update, METH_NOARGS, 0},
+  {"getAgreement", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_23getAgreement, METH_NOARGS, __pyx_doc_7utilBMF_21MergePairedAlignments_6Layout_22getAgreement},
+  {"getOperations", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_25getOperations, METH_NOARGS, 0},
+  {"getCigarString2", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_27getCigarString2, METH_NOARGS, 0},
+  {"getCigarString", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_29getCigarString, METH_NOARGS, 0},
+  {"getFlag", (PyCFunction)__pyx_pw_7utilBMF_21MergePairedAlignments_6Layout_31getFlag, METH_NOARGS, 0},
   {0, 0, 0, 0}
 };
 
@@ -12549,7 +18251,14 @@ static struct PyGetSetDef __pyx_getsets_7utilBMF_21MergePairedAlignments_Layout[
   {(char *)"flag", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_flag, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_flag, 0, 0},
   {(char *)"InitPos", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_InitPos, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_InitPos, 0, 0},
   {(char *)"firstMapped", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_firstMapped, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_firstMapped, 0, 0},
+  {(char *)"reference_id", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_reference_id, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_reference_id, 0, 0},
+  {(char *)"pos", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_pos, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_pos, 0, 0},
+  {(char *)"rnext", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_rnext, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_rnext, 0, 0},
   {(char *)"tagDict", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_tagDict, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_tagDict, 0, 0},
+  {(char *)"Name", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_Name, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_Name, 0, 0},
+  {(char *)"is_reverse", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_is_reverse, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_is_reverse, 0, 0},
+  {(char *)"isMerged", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_isMerged, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_isMerged, 0, 0},
+  {(char *)"MergeSuccess", __pyx_getprop_7utilBMF_21MergePairedAlignments_6Layout_MergeSuccess, __pyx_setprop_7utilBMF_21MergePairedAlignments_6Layout_MergeSuccess, 0, 0},
   {0, 0, 0, 0, 0}
 };
 
@@ -12742,25 +18451,40 @@ static struct PyModuleDef __pyx_moduledef = {
 #endif
 
 static __Pyx_StringTabEntry __pyx_string_tab[] = {
+  {&__pyx_n_s_A, __pyx_k_A, sizeof(__pyx_k_A), 0, 0, 1, 1},
   {&__pyx_n_s_ALPToStr, __pyx_k_ALPToStr, sizeof(__pyx_k_ALPToStr), 0, 0, 1, 1},
+  {&__pyx_n_s_AlignedSegment, __pyx_k_AlignedSegment, sizeof(__pyx_k_AlignedSegment), 0, 0, 1, 1},
   {&__pyx_n_s_AlignmentFile, __pyx_k_AlignmentFile, sizeof(__pyx_k_AlignmentFile), 0, 0, 1, 1},
   {&__pyx_kp_s_ArrayLayout_has_no_M_cigar_opera, __pyx_k_ArrayLayout_has_no_M_cigar_opera, sizeof(__pyx_k_ArrayLayout_has_no_M_cigar_opera), 0, 0, 1, 0},
   {&__pyx_n_s_AssertionError, __pyx_k_AssertionError, sizeof(__pyx_k_AssertionError), 0, 0, 1, 1},
+  {&__pyx_n_s_AttributeError, __pyx_k_AttributeError, sizeof(__pyx_k_AttributeError), 0, 0, 1, 1},
   {&__pyx_n_s_BamTag, __pyx_k_BamTag, sizeof(__pyx_k_BamTag), 0, 0, 1, 1},
   {&__pyx_kp_s_Bam_is_either_not_name_sorted_or, __pyx_k_Bam_is_either_not_name_sorted_or, sizeof(__pyx_k_Bam_is_either_not_name_sorted_or), 0, 0, 1, 0},
   {&__pyx_n_s_Bool, __pyx_k_Bool, sizeof(__pyx_k_Bool), 0, 0, 1, 1},
   {&__pyx_n_s_CigarDict, __pyx_k_CigarDict, sizeof(__pyx_k_CigarDict), 0, 0, 1, 1},
+  {&__pyx_n_s_CigarStrDict, __pyx_k_CigarStrDict, sizeof(__pyx_k_CigarStrDict), 0, 0, 1, 1},
+  {&__pyx_n_s_D, __pyx_k_D, sizeof(__pyx_k_D), 0, 0, 1, 1},
   {&__pyx_n_s_DEBUG, __pyx_k_DEBUG, sizeof(__pyx_k_DEBUG), 0, 0, 1, 1},
+  {&__pyx_n_s_DG, __pyx_k_DG, sizeof(__pyx_k_DG), 0, 0, 1, 1},
+  {&__pyx_n_s_DR, __pyx_k_DR, sizeof(__pyx_k_DR), 0, 0, 1, 1},
+  {&__pyx_n_s_F, __pyx_k_F, sizeof(__pyx_k_F), 0, 0, 1, 1},
   {&__pyx_n_s_FA, __pyx_k_FA, sizeof(__pyx_k_FA), 0, 0, 1, 1},
   {&__pyx_kp_u_Format_string_allocated_too_shor, __pyx_k_Format_string_allocated_too_shor, sizeof(__pyx_k_Format_string_allocated_too_shor), 0, 1, 0, 0},
   {&__pyx_kp_u_Format_string_allocated_too_shor_2, __pyx_k_Format_string_allocated_too_shor_2, sizeof(__pyx_k_Format_string_allocated_too_shor_2), 0, 1, 0, 0},
+  {&__pyx_n_s_H, __pyx_k_H, sizeof(__pyx_k_H), 0, 0, 1, 1},
+  {&__pyx_n_s_I, __pyx_k_I, sizeof(__pyx_k_I), 0, 0, 1, 1},
   {&__pyx_n_s_ImproperArgumentError, __pyx_k_ImproperArgumentError, sizeof(__pyx_k_ImproperArgumentError), 0, 0, 1, 1},
   {&__pyx_n_s_KeyError, __pyx_k_KeyError, sizeof(__pyx_k_KeyError), 0, 0, 1, 1},
   {&__pyx_n_s_Layout1, __pyx_k_Layout1, sizeof(__pyx_k_Layout1), 0, 0, 1, 1},
   {&__pyx_n_s_Layout2, __pyx_k_Layout2, sizeof(__pyx_k_Layout2), 0, 0, 1, 1},
   {&__pyx_n_s_List, __pyx_k_List, sizeof(__pyx_k_List), 0, 0, 1, 1},
+  {&__pyx_n_s_M, __pyx_k_M, sizeof(__pyx_k_M), 0, 0, 1, 1},
+  {&__pyx_n_s_MA, __pyx_k_MA, sizeof(__pyx_k_MA), 0, 0, 1, 1},
+  {&__pyx_n_s_MP, __pyx_k_MP, sizeof(__pyx_k_MP), 0, 0, 1, 1},
   {&__pyx_n_s_MemoryError, __pyx_k_MemoryError, sizeof(__pyx_k_MemoryError), 0, 0, 1, 1},
+  {&__pyx_n_s_MergeLayout, __pyx_k_MergeLayout, sizeof(__pyx_k_MergeLayout), 0, 0, 1, 1},
   {&__pyx_n_s_MergePairedAlignments, __pyx_k_MergePairedAlignments, sizeof(__pyx_k_MergePairedAlignments), 0, 0, 1, 1},
+  {&__pyx_n_s_N, __pyx_k_N, sizeof(__pyx_k_N), 0, 0, 1, 1},
   {&__pyx_kp_s_No_value_specified_for_struct_at, __pyx_k_No_value_specified_for_struct_at, sizeof(__pyx_k_No_value_specified_for_struct_at), 0, 0, 1, 0},
   {&__pyx_kp_s_No_value_specified_for_struct_at_2, __pyx_k_No_value_specified_for_struct_at_2, sizeof(__pyx_k_No_value_specified_for_struct_at_2), 0, 0, 1, 0},
   {&__pyx_kp_s_No_value_specified_for_struct_at_3, __pyx_k_No_value_specified_for_struct_at_3, sizeof(__pyx_k_No_value_specified_for_struct_at_3), 0, 0, 1, 0},
@@ -12771,26 +18495,35 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_u_Non_native_byte_order_not_suppor, __pyx_k_Non_native_byte_order_not_suppor, sizeof(__pyx_k_Non_native_byte_order_not_suppor), 0, 1, 0, 0},
   {&__pyx_n_s_NotImplementedError, __pyx_k_NotImplementedError, sizeof(__pyx_k_NotImplementedError), 0, 0, 1, 1},
   {&__pyx_kp_s_Only_MIDS_cigar_operations_curre, __pyx_k_Only_MIDS_cigar_operations_curre, sizeof(__pyx_k_Only_MIDS_cigar_operations_curre), 0, 0, 1, 0},
+  {&__pyx_n_s_P, __pyx_k_P, sizeof(__pyx_k_P), 0, 0, 1, 1},
+  {&__pyx_n_s_PM, __pyx_k_PM, sizeof(__pyx_k_PM), 0, 0, 1, 1},
   {&__pyx_n_s_PV, __pyx_k_PV, sizeof(__pyx_k_PV), 0, 0, 1, 1},
   {&__pyx_kp_s_PairMergeProcessed_bam, __pyx_k_PairMergeProcessed_bam, sizeof(__pyx_k_PairMergeProcessed_bam), 0, 0, 1, 0},
   {&__pyx_kp_s_Repr_of_read_align_pairs_s, __pyx_k_Repr_of_read_align_pairs_s, sizeof(__pyx_k_Repr_of_read_align_pairs_s), 0, 0, 1, 0},
   {&__pyx_n_s_RuntimeError, __pyx_k_RuntimeError, sizeof(__pyx_k_RuntimeError), 0, 0, 1, 1},
+  {&__pyx_n_s_S, __pyx_k_S, sizeof(__pyx_k_S), 0, 0, 1, 1},
+  {&__pyx_n_s_T, __pyx_k_T, sizeof(__pyx_k_T), 0, 0, 1, 1},
   {&__pyx_n_s_ThisIsMadness, __pyx_k_ThisIsMadness, sizeof(__pyx_k_ThisIsMadness), 0, 0, 1, 1},
   {&__pyx_n_s_TrimExt, __pyx_k_TrimExt, sizeof(__pyx_k_TrimExt), 0, 0, 1, 1},
   {&__pyx_n_s_TypeError, __pyx_k_TypeError, sizeof(__pyx_k_TypeError), 0, 0, 1, 1},
   {&__pyx_n_s_ValueError, __pyx_k_ValueError, sizeof(__pyx_k_ValueError), 0, 0, 1, 1},
   {&__pyx_kp_s_Watch_out_FA_tag_not_set, __pyx_k_Watch_out_FA_tag_not_set, sizeof(__pyx_k_Watch_out_FA_tag_not_set), 0, 0, 1, 0},
   {&__pyx_kp_s_Watch_out_PV_tag_not_set, __pyx_k_Watch_out_PV_tag_not_set, sizeof(__pyx_k_Watch_out_PV_tag_not_set), 0, 0, 1, 0},
-  {&__pyx_kp_s__10, __pyx_k__10, sizeof(__pyx_k__10), 0, 0, 1, 0},
+  {&__pyx_n_s_X, __pyx_k_X, sizeof(__pyx_k_X), 0, 0, 1, 1},
+  {&__pyx_n_s_Z, __pyx_k_Z, sizeof(__pyx_k_Z), 0, 0, 1, 1},
   {&__pyx_kp_s__11, __pyx_k__11, sizeof(__pyx_k__11), 0, 0, 1, 0},
-  {&__pyx_kp_s__13, __pyx_k__13, sizeof(__pyx_k__13), 0, 0, 1, 0},
+  {&__pyx_kp_s__12, __pyx_k__12, sizeof(__pyx_k__12), 0, 0, 1, 0},
   {&__pyx_kp_s__15, __pyx_k__15, sizeof(__pyx_k__15), 0, 0, 1, 0},
+  {&__pyx_kp_s__17, __pyx_k__17, sizeof(__pyx_k__17), 0, 0, 1, 0},
   {&__pyx_kp_s__2, __pyx_k__2, sizeof(__pyx_k__2), 0, 0, 1, 0},
+  {&__pyx_kp_s__38, __pyx_k__38, sizeof(__pyx_k__38), 0, 0, 1, 0},
   {&__pyx_n_s_agreement, __pyx_k_agreement, sizeof(__pyx_k_agreement), 0, 0, 1, 1},
   {&__pyx_n_s_aligned_pairs, __pyx_k_aligned_pairs, sizeof(__pyx_k_aligned_pairs), 0, 0, 1, 1},
   {&__pyx_n_s_array, __pyx_k_array, sizeof(__pyx_k_array), 0, 0, 1, 1},
+  {&__pyx_n_s_astype, __pyx_k_astype, sizeof(__pyx_k_astype), 0, 0, 1, 1},
   {&__pyx_n_s_attrgetter, __pyx_k_attrgetter, sizeof(__pyx_k_attrgetter), 0, 0, 1, 1},
   {&__pyx_n_s_base, __pyx_k_base, sizeof(__pyx_k_base), 0, 0, 1, 1},
+  {&__pyx_n_s_cGetOperation, __pyx_k_cGetOperation, sizeof(__pyx_k_cGetOperation), 0, 0, 1, 1},
   {&__pyx_n_s_char, __pyx_k_char, sizeof(__pyx_k_char), 0, 0, 1, 1},
   {&__pyx_n_s_check_call, __pyx_k_check_call, sizeof(__pyx_k_check_call), 0, 0, 1, 1},
   {&__pyx_n_s_chr, __pyx_k_chr, sizeof(__pyx_k_chr), 0, 0, 1, 1},
@@ -12804,11 +18537,17 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_file, __pyx_k_file, sizeof(__pyx_k_file), 0, 0, 1, 1},
   {&__pyx_n_s_firstMapped, __pyx_k_firstMapped, sizeof(__pyx_k_firstMapped), 0, 0, 1, 1},
   {&__pyx_n_s_flag, __pyx_k_flag, sizeof(__pyx_k_flag), 0, 0, 1, 1},
+  {&__pyx_n_s_fromtuple, __pyx_k_fromtuple, sizeof(__pyx_k_fromtuple), 0, 0, 1, 1},
+  {&__pyx_n_s_getAgreement, __pyx_k_getAgreement, sizeof(__pyx_k_getAgreement), 0, 0, 1, 1},
+  {&__pyx_n_s_getCigarString, __pyx_k_getCigarString, sizeof(__pyx_k_getCigarString), 0, 0, 1, 1},
+  {&__pyx_n_s_getCigarString2, __pyx_k_getCigarString2, sizeof(__pyx_k_getCigarString2), 0, 0, 1, 1},
   {&__pyx_n_s_getFirstMappedRefPos, __pyx_k_getFirstMappedRefPos, sizeof(__pyx_k_getFirstMappedRefPos), 0, 0, 1, 1},
+  {&__pyx_n_s_getOperations, __pyx_k_getOperations, sizeof(__pyx_k_getOperations), 0, 0, 1, 1},
   {&__pyx_n_s_getQual, __pyx_k_getQual, sizeof(__pyx_k_getQual), 0, 0, 1, 1},
   {&__pyx_n_s_getQualString, __pyx_k_getQualString, sizeof(__pyx_k_getQualString), 0, 0, 1, 1},
   {&__pyx_n_s_getSeq, __pyx_k_getSeq, sizeof(__pyx_k_getSeq), 0, 0, 1, 1},
   {&__pyx_n_s_getSeqArr, __pyx_k_getSeqArr, sizeof(__pyx_k_getSeqArr), 0, 0, 1, 1},
+  {&__pyx_n_s_get_tags, __pyx_k_get_tags, sizeof(__pyx_k_get_tags), 0, 0, 1, 1},
   {&__pyx_n_s_groupby, __pyx_k_groupby, sizeof(__pyx_k_groupby), 0, 0, 1, 1},
   {&__pyx_n_s_header, __pyx_k_header, sizeof(__pyx_k_header), 0, 0, 1, 1},
   {&__pyx_n_s_i, __pyx_k_i, sizeof(__pyx_k_i), 0, 0, 1, 1},
@@ -12817,16 +18556,23 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_inHandle, __pyx_k_inHandle, sizeof(__pyx_k_inHandle), 0, 0, 1, 1},
   {&__pyx_n_s_int16, __pyx_k_int16, sizeof(__pyx_k_int16), 0, 0, 1, 1},
   {&__pyx_n_s_int32, __pyx_k_int32, sizeof(__pyx_k_int32), 0, 0, 1, 1},
+  {&__pyx_n_s_int8, __pyx_k_int8, sizeof(__pyx_k_int8), 0, 0, 1, 1},
   {&__pyx_n_s_is_read1, __pyx_k_is_read1, sizeof(__pyx_k_is_read1), 0, 0, 1, 1},
+  {&__pyx_n_s_is_reverse, __pyx_k_is_reverse, sizeof(__pyx_k_is_reverse), 0, 0, 1, 1},
   {&__pyx_n_s_is_secondary, __pyx_k_is_secondary, sizeof(__pyx_k_is_secondary), 0, 0, 1, 1},
   {&__pyx_n_s_is_supplementary, __pyx_k_is_supplementary, sizeof(__pyx_k_is_supplementary), 0, 0, 1, 1},
   {&__pyx_n_s_is_unmapped, __pyx_k_is_unmapped, sizeof(__pyx_k_is_unmapped), 0, 0, 1, 1},
   {&__pyx_kp_s_is_unmapped_no_such_thing_as_a, __pyx_k_is_unmapped_no_such_thing_as_a, sizeof(__pyx_k_is_unmapped_no_such_thing_as_a), 0, 0, 1, 0},
+  {&__pyx_n_s_itemgetter, __pyx_k_itemgetter, sizeof(__pyx_k_itemgetter), 0, 0, 1, 1},
   {&__pyx_n_s_itemsize, __pyx_k_itemsize, sizeof(__pyx_k_itemsize), 0, 0, 1, 1},
+  {&__pyx_n_s_iteritems, __pyx_k_iteritems, sizeof(__pyx_k_iteritems), 0, 0, 1, 1},
   {&__pyx_n_s_itertools, __pyx_k_itertools, sizeof(__pyx_k_itertools), 0, 0, 1, 1},
+  {&__pyx_n_s_itervalues, __pyx_k_itervalues, sizeof(__pyx_k_itervalues), 0, 0, 1, 1},
   {&__pyx_n_s_izip, __pyx_k_izip, sizeof(__pyx_k_izip), 0, 0, 1, 1},
   {&__pyx_n_s_join, __pyx_k_join, sizeof(__pyx_k_join), 0, 0, 1, 1},
+  {&__pyx_n_s_key, __pyx_k_key, sizeof(__pyx_k_key), 0, 0, 1, 1},
   {&__pyx_n_s_lambda1None, __pyx_k_lambda1None, sizeof(__pyx_k_lambda1None), 0, 0, 1, 1},
+  {&__pyx_n_s_layout, __pyx_k_layout, sizeof(__pyx_k_layout), 0, 0, 1, 1},
   {&__pyx_n_s_layouts, __pyx_k_layouts, sizeof(__pyx_k_layouts), 0, 0, 1, 1},
   {&__pyx_n_s_length, __pyx_k_length, sizeof(__pyx_k_length), 0, 0, 1, 1},
   {&__pyx_n_s_level, __pyx_k_level, sizeof(__pyx_k_level), 0, 0, 1, 1},
@@ -12838,6 +18584,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_mc, __pyx_k_mc, sizeof(__pyx_k_mc), 0, 0, 1, 1},
   {&__pyx_n_s_mergeAgreed, __pyx_k_mergeAgreed, sizeof(__pyx_k_mergeAgreed), 0, 0, 1, 1},
   {&__pyx_n_s_methodcaller, __pyx_k_methodcaller, sizeof(__pyx_k_methodcaller), 0, 0, 1, 1},
+  {&__pyx_n_s_mp, __pyx_k_mp, sizeof(__pyx_k_mp), 0, 0, 1, 1},
   {&__pyx_kp_u_ndarray_is_not_C_contiguous, __pyx_k_ndarray_is_not_C_contiguous, sizeof(__pyx_k_ndarray_is_not_C_contiguous), 0, 1, 0, 0},
   {&__pyx_kp_u_ndarray_is_not_Fortran_contiguou, __pyx_k_ndarray_is_not_Fortran_contiguou, sizeof(__pyx_k_ndarray_is_not_Fortran_contiguou), 0, 1, 0, 0},
   {&__pyx_n_s_next, __pyx_k_next, sizeof(__pyx_k_next), 0, 0, 1, 1},
@@ -12851,10 +18598,15 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_oagsk, __pyx_k_oagsk, sizeof(__pyx_k_oagsk), 0, 0, 1, 1},
   {&__pyx_n_s_oagtag, __pyx_k_oagtag, sizeof(__pyx_k_oagtag), 0, 0, 1, 1},
   {&__pyx_n_s_ohw, __pyx_k_ohw, sizeof(__pyx_k_ohw), 0, 0, 1, 1},
+  {&__pyx_n_s_oig, __pyx_k_oig, sizeof(__pyx_k_oig), 0, 0, 1, 1},
+  {&__pyx_n_s_oig0, __pyx_k_oig0, sizeof(__pyx_k_oig0), 0, 0, 1, 1},
+  {&__pyx_n_s_om, __pyx_k_om, sizeof(__pyx_k_om), 0, 0, 1, 1},
+  {&__pyx_n_s_op, __pyx_k_op, sizeof(__pyx_k_op), 0, 0, 1, 1},
   {&__pyx_n_s_operation, __pyx_k_operation, sizeof(__pyx_k_operation), 0, 0, 1, 1},
   {&__pyx_n_s_operator, __pyx_k_operator, sizeof(__pyx_k_operator), 0, 0, 1, 1},
   {&__pyx_n_s_opt, __pyx_k_opt, sizeof(__pyx_k_opt), 0, 0, 1, 1},
   {&__pyx_n_s_ord, __pyx_k_ord, sizeof(__pyx_k_ord), 0, 0, 1, 1},
+  {&__pyx_n_s_ot, __pyx_k_ot, sizeof(__pyx_k_ot), 0, 0, 1, 1},
   {&__pyx_n_s_outBAM, __pyx_k_outBAM, sizeof(__pyx_k_outBAM), 0, 0, 1, 1},
   {&__pyx_n_s_outHandle, __pyx_k_outHandle, sizeof(__pyx_k_outHandle), 0, 0, 1, 1},
   {&__pyx_n_s_pipe, __pyx_k_pipe, sizeof(__pyx_k_pipe), 0, 0, 1, 1},
@@ -12883,16 +18635,24 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_rec, __pyx_k_rec, sizeof(__pyx_k_rec), 0, 0, 1, 1},
   {&__pyx_n_s_reference_id, __pyx_k_reference_id, sizeof(__pyx_k_reference_id), 0, 0, 1, 1},
   {&__pyx_n_s_retLayout, __pyx_k_retLayout, sizeof(__pyx_k_retLayout), 0, 0, 1, 1},
+  {&__pyx_n_s_rnext, __pyx_k_rnext, sizeof(__pyx_k_rnext), 0, 0, 1, 1},
   {&__pyx_n_s_seq, __pyx_k_seq, sizeof(__pyx_k_seq), 0, 0, 1, 1},
   {&__pyx_n_s_sequence, __pyx_k_sequence, sizeof(__pyx_k_sequence), 0, 0, 1, 1},
+  {&__pyx_n_s_sorted, __pyx_k_sorted, sizeof(__pyx_k_sorted), 0, 0, 1, 1},
   {&__pyx_n_s_split, __pyx_k_split, sizeof(__pyx_k_split), 0, 0, 1, 1},
+  {&__pyx_kp_s_str_of_BT_with_tag_s_is_s, __pyx_k_str_of_BT_with_tag_s_is_s, sizeof(__pyx_k_str_of_BT_with_tag_s_is_s), 0, 0, 1, 0},
   {&__pyx_n_s_subprocess, __pyx_k_subprocess, sizeof(__pyx_k_subprocess), 0, 0, 1, 1},
   {&__pyx_n_s_sys, __pyx_k_sys, sizeof(__pyx_k_sys), 0, 0, 1, 1},
   {&__pyx_n_s_tag, __pyx_k_tag, sizeof(__pyx_k_tag), 0, 0, 1, 1},
+  {&__pyx_n_s_tags, __pyx_k_tags, sizeof(__pyx_k_tags), 0, 0, 1, 1},
+  {&__pyx_n_s_template, __pyx_k_template, sizeof(__pyx_k_template), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
+  {&__pyx_n_s_testLayout, __pyx_k_testLayout, sizeof(__pyx_k_testLayout), 0, 0, 1, 1},
+  {&__pyx_kp_s_testLayout_bam, __pyx_k_testLayout_bam, sizeof(__pyx_k_testLayout_bam), 0, 0, 1, 0},
   {&__pyx_n_s_tlen, __pyx_k_tlen, sizeof(__pyx_k_tlen), 0, 0, 1, 1},
   {&__pyx_kp_s_tmpInt_s, __pyx_k_tmpInt_s, sizeof(__pyx_k_tmpInt_s), 0, 0, 1, 0},
   {&__pyx_kp_u_unknown_dtype_code_in_numpy_pxd, __pyx_k_unknown_dtype_code_in_numpy_pxd, sizeof(__pyx_k_unknown_dtype_code_in_numpy_pxd), 0, 1, 0, 0},
+  {&__pyx_n_s_update, __pyx_k_update, sizeof(__pyx_k_update), 0, 0, 1, 1},
   {&__pyx_n_s_utilBMF_ErrorHandling, __pyx_k_utilBMF_ErrorHandling, sizeof(__pyx_k_utilBMF_ErrorHandling), 0, 0, 1, 1},
   {&__pyx_n_s_utilBMF_HTSUtils, __pyx_k_utilBMF_HTSUtils, sizeof(__pyx_k_utilBMF_HTSUtils), 0, 0, 1, 1},
   {&__pyx_n_s_utilBMF_MergePairedAlignments, __pyx_k_utilBMF_MergePairedAlignments, sizeof(__pyx_k_utilBMF_MergePairedAlignments), 0, 0, 1, 1},
@@ -12905,17 +18665,19 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
 };
 static int __Pyx_InitCachedBuiltins(void) {
   #if PY_MAJOR_VERSION >= 3
-  __pyx_builtin_xrange = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_xrange) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_xrange = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_xrange) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   #else
-  __pyx_builtin_xrange = __Pyx_GetBuiltinName(__pyx_n_s_xrange); if (!__pyx_builtin_xrange) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_xrange = __Pyx_GetBuiltinName(__pyx_n_s_xrange); if (!__pyx_builtin_xrange) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   #endif
-  __pyx_builtin_chr = __Pyx_GetBuiltinName(__pyx_n_s_chr); if (!__pyx_builtin_chr) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_builtin_KeyError = __Pyx_GetBuiltinName(__pyx_n_s_KeyError); if (!__pyx_builtin_KeyError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 114; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_builtin_AssertionError = __Pyx_GetBuiltinName(__pyx_n_s_AssertionError); if (!__pyx_builtin_AssertionError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 140; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_builtin_ord = __Pyx_GetBuiltinName(__pyx_n_s_ord); if (!__pyx_builtin_ord) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 147; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_builtin_NotImplementedError = __Pyx_GetBuiltinName(__pyx_n_s_NotImplementedError); if (!__pyx_builtin_NotImplementedError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 198; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 212; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_builtin_map = __Pyx_GetBuiltinName(__pyx_n_s_map); if (!__pyx_builtin_map) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 281; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_chr = __Pyx_GetBuiltinName(__pyx_n_s_chr); if (!__pyx_builtin_chr) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_KeyError = __Pyx_GetBuiltinName(__pyx_n_s_KeyError); if (!__pyx_builtin_KeyError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_AssertionError = __Pyx_GetBuiltinName(__pyx_n_s_AssertionError); if (!__pyx_builtin_AssertionError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 153; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_ord = __Pyx_GetBuiltinName(__pyx_n_s_ord); if (!__pyx_builtin_ord) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 160; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_NotImplementedError = __Pyx_GetBuiltinName(__pyx_n_s_NotImplementedError); if (!__pyx_builtin_NotImplementedError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 202; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 216; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_map = __Pyx_GetBuiltinName(__pyx_n_s_map); if (!__pyx_builtin_map) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 277; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_sorted = __Pyx_GetBuiltinName(__pyx_n_s_sorted); if (!__pyx_builtin_sorted) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 401; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_AttributeError = __Pyx_GetBuiltinName(__pyx_n_s_AttributeError); if (!__pyx_builtin_AttributeError) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 404; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) {__pyx_filename = __pyx_f[2]; __pyx_lineno = 107; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 802; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -12929,99 +18691,121 @@ static int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "utilBMF/MergePairedAlignments.pyx":113
+  /* "utilBMF/MergePairedAlignments.pyx":120
  *         self.firstMapped = -1
  *         try:
  *             quals = np.array(read.opt("PV").split(","), dtype=np.int32)             # <<<<<<<<<<<<<<
  *         except KeyError:
  *             pl("Watch out - PV tag not set.", level=logging.DEBUG)
  */
-  __pyx_tuple_ = PyTuple_Pack(1, __pyx_n_s_PV); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple_ = PyTuple_Pack(1, __pyx_n_s_PV); if (unlikely(!__pyx_tuple_)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple_);
   __Pyx_GIVEREF(__pyx_tuple_);
-  __pyx_tuple__3 = PyTuple_Pack(1, __pyx_kp_s__2); if (unlikely(!__pyx_tuple__3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 113; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__3 = PyTuple_Pack(1, __pyx_kp_s__2); if (unlikely(!__pyx_tuple__3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 120; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__3);
   __Pyx_GIVEREF(__pyx_tuple__3);
 
-  /* "utilBMF/MergePairedAlignments.pyx":115
+  /* "utilBMF/MergePairedAlignments.pyx":122
  *             quals = np.array(read.opt("PV").split(","), dtype=np.int32)
  *         except KeyError:
  *             pl("Watch out - PV tag not set.", level=logging.DEBUG)             # <<<<<<<<<<<<<<
  *             quals = np.array(read.query_qualities, dtype=np.int32)
  *             # Let's make sure that these don't need reversal, too!
  */
-  __pyx_tuple__4 = PyTuple_Pack(1, __pyx_kp_s_Watch_out_PV_tag_not_set); if (unlikely(!__pyx_tuple__4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 115; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__4 = PyTuple_Pack(1, __pyx_kp_s_Watch_out_PV_tag_not_set); if (unlikely(!__pyx_tuple__4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 122; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
 
-  /* "utilBMF/MergePairedAlignments.pyx":119
+  /* "utilBMF/MergePairedAlignments.pyx":126
  *             # Let's make sure that these don't need reversal, too!
  *         try:
  *             agrees = np.array(read.opt("FA").split(","), dtype=np.int32)             # <<<<<<<<<<<<<<
  *         except KeyError:
  *             pl("Watch out - FA tag not set.", level=logging.DEBUG)
  */
-  __pyx_tuple__5 = PyTuple_Pack(1, __pyx_n_s_FA); if (unlikely(!__pyx_tuple__5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__5 = PyTuple_Pack(1, __pyx_n_s_FA); if (unlikely(!__pyx_tuple__5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__5);
   __Pyx_GIVEREF(__pyx_tuple__5);
-  __pyx_tuple__6 = PyTuple_Pack(1, __pyx_kp_s__2); if (unlikely(!__pyx_tuple__6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 119; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__6 = PyTuple_Pack(1, __pyx_kp_s__2); if (unlikely(!__pyx_tuple__6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 126; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__6);
   __Pyx_GIVEREF(__pyx_tuple__6);
 
-  /* "utilBMF/MergePairedAlignments.pyx":121
+  /* "utilBMF/MergePairedAlignments.pyx":128
  *             agrees = np.array(read.opt("FA").split(","), dtype=np.int32)
  *         except KeyError:
  *             pl("Watch out - FA tag not set.", level=logging.DEBUG)             # <<<<<<<<<<<<<<
  *             agrees = np.array([1] * len(read.sequence), dtype=np.int32)
  * 
  */
-  __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_Watch_out_FA_tag_not_set); if (unlikely(!__pyx_tuple__7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 121; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_Watch_out_FA_tag_not_set); if (unlikely(!__pyx_tuple__7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 128; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
 
-  /* "utilBMF/MergePairedAlignments.pyx":198
+  /* "utilBMF/MergePairedAlignments.pyx":142
+ *         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
+ *                         in read.get_tags() if tag[0] not in ["PV", "FA"]}
+ *         self.isMerged = (read.has_tag("MP") and read.opt("MP") == "T")             # <<<<<<<<<<<<<<
+ * 
+ *         # Parse out the read cigar.
+ */
+  __pyx_tuple__8 = PyTuple_Pack(1, __pyx_n_s_MP); if (unlikely(!__pyx_tuple__8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 142; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__8);
+  __Pyx_GIVEREF(__pyx_tuple__8);
+
+  /* "utilBMF/MergePairedAlignments.pyx":202
  *                         quality=-1, agreement=-1, mergeAgreed=1)
  *                 else:
  *                     raise NotImplementedError(             # <<<<<<<<<<<<<<
  *                         "Only MIDS cigar operations currently supported. If "
  *                         "you have an application that could use further "
  */
-  __pyx_tuple__8 = PyTuple_Pack(1, __pyx_kp_s_Only_MIDS_cigar_operations_curre); if (unlikely(!__pyx_tuple__8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 198; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__8);
-  __Pyx_GIVEREF(__pyx_tuple__8);
+  __pyx_tuple__9 = PyTuple_Pack(1, __pyx_kp_s_Only_MIDS_cigar_operations_curre); if (unlikely(!__pyx_tuple__9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 202; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__9);
+  __Pyx_GIVEREF(__pyx_tuple__9);
 
-  /* "utilBMF/MergePairedAlignments.pyx":225
+  /* "utilBMF/MergePairedAlignments.pyx":229
  *                 return self.Layout.layouts[tmpInt].pos
  *             # Operation is M, returns the ref position.
  *         raise ImproperArgumentError(             # <<<<<<<<<<<<<<
  *             "ArrayLayout has no 'M' cigar operation positions. "
  *             "This read can't be layed out???")
  */
-  __pyx_tuple__9 = PyTuple_Pack(1, __pyx_kp_s_ArrayLayout_has_no_M_cigar_opera); if (unlikely(!__pyx_tuple__9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 225; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__9);
-  __Pyx_GIVEREF(__pyx_tuple__9);
+  __pyx_tuple__10 = PyTuple_Pack(1, __pyx_kp_s_ArrayLayout_has_no_M_cigar_opera); if (unlikely(!__pyx_tuple__10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 229; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__10);
+  __Pyx_GIVEREF(__pyx_tuple__10);
 
-  /* "utilBMF/MergePairedAlignments.pyx":631
+  /* "utilBMF/MergePairedAlignments.pyx":331
+ *             # Original mapped position
+ *             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
+ *             self.tagDict["MP"] = BamTag("MP", "A", "T")             # <<<<<<<<<<<<<<
+ * 
+ *     cdef update_read_positions(self):
+ */
+  __pyx_tuple__13 = PyTuple_Pack(3, __pyx_n_s_MP, __pyx_n_s_A, __pyx_n_s_T); if (unlikely(!__pyx_tuple__13)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 331; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__13);
+  __Pyx_GIVEREF(__pyx_tuple__13);
+
+  /* "utilBMF/MergePairedAlignments.pyx":820
  *     inHandle = pysam.AlignmentFile(inBAM, "rb")
  *     if(readLength < 0):
  *         pl("readLength not set - inferring.")             # <<<<<<<<<<<<<<
  *         readLength = len(inHandle.next().seq)
  *         inHandle = pysam.AlignmentFile(inBAM, "rb")
  */
-  __pyx_tuple__12 = PyTuple_Pack(1, __pyx_kp_s_readLength_not_set_inferring); if (unlikely(!__pyx_tuple__12)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 631; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__12);
-  __Pyx_GIVEREF(__pyx_tuple__12);
+  __pyx_tuple__14 = PyTuple_Pack(1, __pyx_kp_s_readLength_not_set_inferring); if (unlikely(!__pyx_tuple__14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 820; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__14);
+  __Pyx_GIVEREF(__pyx_tuple__14);
 
-  /* "utilBMF/MergePairedAlignments.pyx":638
+  /* "utilBMF/MergePairedAlignments.pyx":827
  *         outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
  *     if(pipe):
  *         outHandle = pysam.AlignmentFile("-", "wb",             # <<<<<<<<<<<<<<
  *                                         header=inHandle.header)
  *     else:
  */
-  __pyx_tuple__14 = PyTuple_Pack(2, __pyx_kp_s__13, __pyx_n_s_wb); if (unlikely(!__pyx_tuple__14)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 638; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__14);
-  __Pyx_GIVEREF(__pyx_tuple__14);
+  __pyx_tuple__16 = PyTuple_Pack(2, __pyx_kp_s__15, __pyx_n_s_wb); if (unlikely(!__pyx_tuple__16)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 827; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__16);
+  __Pyx_GIVEREF(__pyx_tuple__16);
 
   /* "../../../mounts/anaconda/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":218
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
@@ -13030,9 +18814,9 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
  */
-  __pyx_tuple__16 = PyTuple_Pack(1, __pyx_kp_u_ndarray_is_not_C_contiguous); if (unlikely(!__pyx_tuple__16)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__16);
-  __Pyx_GIVEREF(__pyx_tuple__16);
+  __pyx_tuple__18 = PyTuple_Pack(1, __pyx_kp_u_ndarray_is_not_C_contiguous); if (unlikely(!__pyx_tuple__18)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 218; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__18);
+  __Pyx_GIVEREF(__pyx_tuple__18);
 
   /* "../../../mounts/anaconda/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":222
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
@@ -13041,9 +18825,9 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  *             info.buf = PyArray_DATA(self)
  */
-  __pyx_tuple__17 = PyTuple_Pack(1, __pyx_kp_u_ndarray_is_not_Fortran_contiguou); if (unlikely(!__pyx_tuple__17)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__17);
-  __Pyx_GIVEREF(__pyx_tuple__17);
+  __pyx_tuple__19 = PyTuple_Pack(1, __pyx_kp_u_ndarray_is_not_Fortran_contiguou); if (unlikely(!__pyx_tuple__19)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 222; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__19);
+  __Pyx_GIVEREF(__pyx_tuple__19);
 
   /* "../../../mounts/anaconda/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":260
  *                 if ((descr.byteorder == c'>' and little_endian) or
@@ -13052,9 +18836,9 @@ static int __Pyx_InitCachedConstants(void) {
  *                 if   t == NPY_BYTE:        f = "b"
  *                 elif t == NPY_UBYTE:       f = "B"
  */
-  __pyx_tuple__18 = PyTuple_Pack(1, __pyx_kp_u_Non_native_byte_order_not_suppor); if (unlikely(!__pyx_tuple__18)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__18);
-  __Pyx_GIVEREF(__pyx_tuple__18);
+  __pyx_tuple__20 = PyTuple_Pack(1, __pyx_kp_u_Non_native_byte_order_not_suppor); if (unlikely(!__pyx_tuple__20)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 260; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__20);
+  __Pyx_GIVEREF(__pyx_tuple__20);
 
   /* "../../../mounts/anaconda/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":802
  * 
@@ -13063,9 +18847,9 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  *         if ((child.byteorder == c'>' and little_endian) or
  */
-  __pyx_tuple__19 = PyTuple_Pack(1, __pyx_kp_u_Format_string_allocated_too_shor); if (unlikely(!__pyx_tuple__19)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 802; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__19);
-  __Pyx_GIVEREF(__pyx_tuple__19);
+  __pyx_tuple__21 = PyTuple_Pack(1, __pyx_kp_u_Format_string_allocated_too_shor); if (unlikely(!__pyx_tuple__21)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 802; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__21);
+  __Pyx_GIVEREF(__pyx_tuple__21);
 
   /* "../../../mounts/anaconda/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":806
  *         if ((child.byteorder == c'>' and little_endian) or
@@ -13074,9 +18858,9 @@ static int __Pyx_InitCachedConstants(void) {
  *             # One could encode it in the format string and have Cython
  *             # complain instead, BUT: < and > in format strings also imply
  */
-  __pyx_tuple__20 = PyTuple_Pack(1, __pyx_kp_u_Non_native_byte_order_not_suppor); if (unlikely(!__pyx_tuple__20)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 806; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__20);
-  __Pyx_GIVEREF(__pyx_tuple__20);
+  __pyx_tuple__22 = PyTuple_Pack(1, __pyx_kp_u_Non_native_byte_order_not_suppor); if (unlikely(!__pyx_tuple__22)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 806; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__22);
+  __Pyx_GIVEREF(__pyx_tuple__22);
 
   /* "../../../mounts/anaconda/lib/python2.7/site-packages/Cython/Includes/numpy/__init__.pxd":826
  *             t = child.type_num
@@ -13085,9 +18869,9 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  *             # Until ticket #99 is fixed, use integers to avoid warnings
  */
-  __pyx_tuple__21 = PyTuple_Pack(1, __pyx_kp_u_Format_string_allocated_too_shor_2); if (unlikely(!__pyx_tuple__21)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 826; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__21);
-  __Pyx_GIVEREF(__pyx_tuple__21);
+  __pyx_tuple__23 = PyTuple_Pack(1, __pyx_kp_u_Format_string_allocated_too_shor_2); if (unlikely(!__pyx_tuple__23)) {__pyx_filename = __pyx_f[3]; __pyx_lineno = 826; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__23);
+  __Pyx_GIVEREF(__pyx_tuple__23);
 
   /* "FromPyStructUtility":19
  *         value = obj['pos']
@@ -13096,9 +18880,9 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.pos = value
  *     try:
  */
-  __pyx_tuple__22 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at); if (unlikely(!__pyx_tuple__22)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__22);
-  __Pyx_GIVEREF(__pyx_tuple__22);
+  __pyx_tuple__24 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at); if (unlikely(!__pyx_tuple__24)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__24);
+  __Pyx_GIVEREF(__pyx_tuple__24);
 
   /* "FromPyStructUtility":24
  *         value = obj['readPos']
@@ -13107,9 +18891,9 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.readPos = value
  *     try:
  */
-  __pyx_tuple__23 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_2); if (unlikely(!__pyx_tuple__23)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__23);
-  __Pyx_GIVEREF(__pyx_tuple__23);
+  __pyx_tuple__25 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_2); if (unlikely(!__pyx_tuple__25)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__25);
+  __Pyx_GIVEREF(__pyx_tuple__25);
 
   /* "FromPyStructUtility":29
  *         value = obj['quality']
@@ -13118,9 +18902,9 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.quality = value
  *     try:
  */
-  __pyx_tuple__24 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_3); if (unlikely(!__pyx_tuple__24)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__24);
-  __Pyx_GIVEREF(__pyx_tuple__24);
+  __pyx_tuple__26 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_3); if (unlikely(!__pyx_tuple__26)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__26);
+  __Pyx_GIVEREF(__pyx_tuple__26);
 
   /* "FromPyStructUtility":34
  *         value = obj['agreement']
@@ -13129,9 +18913,9 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.agreement = value
  *     try:
  */
-  __pyx_tuple__25 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_4); if (unlikely(!__pyx_tuple__25)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__25);
-  __Pyx_GIVEREF(__pyx_tuple__25);
+  __pyx_tuple__27 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_4); if (unlikely(!__pyx_tuple__27)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__27);
+  __Pyx_GIVEREF(__pyx_tuple__27);
 
   /* "FromPyStructUtility":39
  *         value = obj['operation']
@@ -13140,9 +18924,9 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.operation = value
  *     try:
  */
-  __pyx_tuple__26 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_5); if (unlikely(!__pyx_tuple__26)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__26);
-  __Pyx_GIVEREF(__pyx_tuple__26);
+  __pyx_tuple__28 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_5); if (unlikely(!__pyx_tuple__28)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__28);
+  __Pyx_GIVEREF(__pyx_tuple__28);
 
   /* "FromPyStructUtility":44
  *         value = obj['base']
@@ -13151,9 +18935,9 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.base = value
  *     try:
  */
-  __pyx_tuple__27 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_6); if (unlikely(!__pyx_tuple__27)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__27);
-  __Pyx_GIVEREF(__pyx_tuple__27);
+  __pyx_tuple__29 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_6); if (unlikely(!__pyx_tuple__29)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__29);
+  __Pyx_GIVEREF(__pyx_tuple__29);
 
   /* "FromPyStructUtility":49
  *         value = obj['mergeAgreed']
@@ -13162,111 +18946,134 @@ static int __Pyx_InitCachedConstants(void) {
  *     result.mergeAgreed = value
  *     return result
  */
-  __pyx_tuple__28 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_7); if (unlikely(!__pyx_tuple__28)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 49; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__28);
-  __Pyx_GIVEREF(__pyx_tuple__28);
+  __pyx_tuple__30 = PyTuple_Pack(1, __pyx_kp_s_No_value_specified_for_struct_at_7); if (unlikely(!__pyx_tuple__30)) {__pyx_filename = __pyx_f[4]; __pyx_lineno = 49; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__30);
+  __Pyx_GIVEREF(__pyx_tuple__30);
 
-  /* "utilBMF/MergePairedAlignments.pyx":27
+  /* "utilBMF/MergePairedAlignments.pyx":28
  * ##DEFINES
  * 
  * oagsk = oag("firstMapped")             # <<<<<<<<<<<<<<
  * oagbase = oag("base")
  * oagop = oag("operation")
  */
-  __pyx_tuple__29 = PyTuple_Pack(1, __pyx_n_s_firstMapped); if (unlikely(!__pyx_tuple__29)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__29);
-  __Pyx_GIVEREF(__pyx_tuple__29);
+  __pyx_tuple__31 = PyTuple_Pack(1, __pyx_n_s_firstMapped); if (unlikely(!__pyx_tuple__31)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__31);
+  __Pyx_GIVEREF(__pyx_tuple__31);
 
-  /* "utilBMF/MergePairedAlignments.pyx":28
+  /* "utilBMF/MergePairedAlignments.pyx":29
  * 
  * oagsk = oag("firstMapped")
  * oagbase = oag("base")             # <<<<<<<<<<<<<<
  * oagop = oag("operation")
  * oagqual = oag("quality")
  */
-  __pyx_tuple__30 = PyTuple_Pack(1, __pyx_n_s_base); if (unlikely(!__pyx_tuple__30)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__30);
-  __Pyx_GIVEREF(__pyx_tuple__30);
+  __pyx_tuple__32 = PyTuple_Pack(1, __pyx_n_s_base); if (unlikely(!__pyx_tuple__32)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__32);
+  __Pyx_GIVEREF(__pyx_tuple__32);
 
-  /* "utilBMF/MergePairedAlignments.pyx":29
+  /* "utilBMF/MergePairedAlignments.pyx":30
  * oagsk = oag("firstMapped")
  * oagbase = oag("base")
  * oagop = oag("operation")             # <<<<<<<<<<<<<<
  * oagqual = oag("quality")
  * oagag = oag("agreement")
  */
-  __pyx_tuple__31 = PyTuple_Pack(1, __pyx_n_s_operation); if (unlikely(!__pyx_tuple__31)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__31);
-  __Pyx_GIVEREF(__pyx_tuple__31);
+  __pyx_tuple__33 = PyTuple_Pack(1, __pyx_n_s_operation); if (unlikely(!__pyx_tuple__33)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__33);
+  __Pyx_GIVEREF(__pyx_tuple__33);
 
-  /* "utilBMF/MergePairedAlignments.pyx":30
+  /* "utilBMF/MergePairedAlignments.pyx":31
  * oagbase = oag("base")
  * oagop = oag("operation")
  * oagqual = oag("quality")             # <<<<<<<<<<<<<<
  * oagag = oag("agreement")
  * oagtag = oag("tag")
  */
-  __pyx_tuple__32 = PyTuple_Pack(1, __pyx_n_s_quality); if (unlikely(!__pyx_tuple__32)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__32);
-  __Pyx_GIVEREF(__pyx_tuple__32);
+  __pyx_tuple__34 = PyTuple_Pack(1, __pyx_n_s_quality); if (unlikely(!__pyx_tuple__34)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__34);
+  __Pyx_GIVEREF(__pyx_tuple__34);
 
-  /* "utilBMF/MergePairedAlignments.pyx":31
+  /* "utilBMF/MergePairedAlignments.pyx":32
  * oagop = oag("operation")
  * oagqual = oag("quality")
  * oagag = oag("agreement")             # <<<<<<<<<<<<<<
  * oagtag = oag("tag")
- * chrDict = {x: chr(x) for x in xrange(33, 126)}
+ * oig0 = oig(0)
  */
-  __pyx_tuple__33 = PyTuple_Pack(1, __pyx_n_s_agreement); if (unlikely(!__pyx_tuple__33)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__33);
-  __Pyx_GIVEREF(__pyx_tuple__33);
+  __pyx_tuple__35 = PyTuple_Pack(1, __pyx_n_s_agreement); if (unlikely(!__pyx_tuple__35)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__35);
+  __Pyx_GIVEREF(__pyx_tuple__35);
 
-  /* "utilBMF/MergePairedAlignments.pyx":32
+  /* "utilBMF/MergePairedAlignments.pyx":33
  * oagqual = oag("quality")
  * oagag = oag("agreement")
  * oagtag = oag("tag")             # <<<<<<<<<<<<<<
+ * oig0 = oig(0)
+ * chrDict = {x: chr(x) for x in xrange(33, 126)}
+ */
+  __pyx_tuple__36 = PyTuple_Pack(1, __pyx_n_s_tag); if (unlikely(!__pyx_tuple__36)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__36);
+  __Pyx_GIVEREF(__pyx_tuple__36);
+
+  /* "utilBMF/MergePairedAlignments.pyx":34
+ * oagag = oag("agreement")
+ * oagtag = oag("tag")
+ * oig0 = oig(0)             # <<<<<<<<<<<<<<
  * chrDict = {x: chr(x) for x in xrange(33, 126)}
  * 
  */
-  __pyx_tuple__34 = PyTuple_Pack(1, __pyx_n_s_tag); if (unlikely(!__pyx_tuple__34)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__34);
-  __Pyx_GIVEREF(__pyx_tuple__34);
+  __pyx_tuple__37 = PyTuple_Pack(1, __pyx_int_0); if (unlikely(!__pyx_tuple__37)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__37);
+  __Pyx_GIVEREF(__pyx_tuple__37);
 
-  /* "utilBMF/MergePairedAlignments.pyx":59
+  /* "utilBMF/MergePairedAlignments.pyx":63
  * 
  * @cython.returns(bint)
  * def lambda1None(tuple i):             # <<<<<<<<<<<<<<
  *     """
  *     If a tuple in a cigar returns true for this function,
  */
-  __pyx_tuple__35 = PyTuple_Pack(1, __pyx_n_s_i); if (unlikely(!__pyx_tuple__35)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 59; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__35);
-  __Pyx_GIVEREF(__pyx_tuple__35);
-  __pyx_codeobj__36 = (PyObject*)__Pyx_PyCode_New(1, 0, 1, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__35, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_lambda1None, 59, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__36)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 59; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__39 = PyTuple_Pack(1, __pyx_n_s_i); if (unlikely(!__pyx_tuple__39)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 63; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__39);
+  __Pyx_GIVEREF(__pyx_tuple__39);
+  __pyx_codeobj__40 = (PyObject*)__Pyx_PyCode_New(1, 0, 1, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__39, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_lambda1None, 63, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__40)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 63; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "utilBMF/MergePairedAlignments.pyx":69
+  /* "utilBMF/MergePairedAlignments.pyx":73
  * 
  * @cython.returns(int)
- * def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):             # <<<<<<<<<<<<<<
+ * def getFirstMappedRefPos(AlignedSegment_t rec):             # <<<<<<<<<<<<<<
  *     cdef tuple i
  *     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]
  */
-  __pyx_tuple__37 = PyTuple_Pack(2, __pyx_n_s_rec, __pyx_n_s_i); if (unlikely(!__pyx_tuple__37)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__37);
-  __Pyx_GIVEREF(__pyx_tuple__37);
-  __pyx_codeobj__38 = (PyObject*)__Pyx_PyCode_New(1, 0, 2, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__37, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_getFirstMappedRefPos, 69, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__38)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__41 = PyTuple_Pack(2, __pyx_n_s_rec, __pyx_n_s_i); if (unlikely(!__pyx_tuple__41)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__41);
+  __Pyx_GIVEREF(__pyx_tuple__41);
+  __pyx_codeobj__42 = (PyObject*)__Pyx_PyCode_New(1, 0, 2, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__41, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_getFirstMappedRefPos, 73, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__42)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "utilBMF/MergePairedAlignments.pyx":623
+  /* "utilBMF/MergePairedAlignments.pyx":812
  * 
  * 
  * def MergePairedAlignments(cystr inBAM, cystr outBAM=None,             # <<<<<<<<<<<<<<
  *                           bint pipe=False, int readLength=-1):
  *     cdef AlignedSegment_t read, read1, read2
  */
-  __pyx_tuple__39 = PyTuple_Pack(15, __pyx_n_s_inBAM, __pyx_n_s_outBAM, __pyx_n_s_pipe, __pyx_n_s_readLength, __pyx_n_s_read, __pyx_n_s_read1, __pyx_n_s_read2, __pyx_n_s_Layout1, __pyx_n_s_Layout2, __pyx_n_s_retLayout, __pyx_n_s_rLen2, __pyx_n_s_count, __pyx_n_s_inHandle, __pyx_n_s_outHandle, __pyx_n_s_ohw); if (unlikely(!__pyx_tuple__39)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_tuple__39);
-  __Pyx_GIVEREF(__pyx_tuple__39);
-  __pyx_codeobj__40 = (PyObject*)__Pyx_PyCode_New(4, 0, 15, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__39, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_MergePairedAlignments, 623, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__40)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__43 = PyTuple_Pack(15, __pyx_n_s_inBAM, __pyx_n_s_outBAM, __pyx_n_s_pipe, __pyx_n_s_readLength, __pyx_n_s_read, __pyx_n_s_read1, __pyx_n_s_read2, __pyx_n_s_Layout1, __pyx_n_s_Layout2, __pyx_n_s_retLayout, __pyx_n_s_rLen2, __pyx_n_s_count, __pyx_n_s_inHandle, __pyx_n_s_outHandle, __pyx_n_s_ohw); if (unlikely(!__pyx_tuple__43)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__43);
+  __Pyx_GIVEREF(__pyx_tuple__43);
+  __pyx_codeobj__44 = (PyObject*)__Pyx_PyCode_New(4, 0, 15, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__43, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_MergePairedAlignments, 812, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__44)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+
+  /* "utilBMF/MergePairedAlignments.pyx":887
+ *                               chr(ALP.base), ALP.mergeAgreed]))
+ * 
+ * def testLayout(cystr inBAM, cystr outBAM=None):             # <<<<<<<<<<<<<<
+ *     cdef AlignedSegment_t read
+ *     cdef Layout_t layout
+ */
+  __pyx_tuple__45 = PyTuple_Pack(6, __pyx_n_s_inBAM, __pyx_n_s_outBAM, __pyx_n_s_read, __pyx_n_s_layout, __pyx_n_s_inHandle, __pyx_n_s_outHandle); if (unlikely(!__pyx_tuple__45)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_tuple__45);
+  __Pyx_GIVEREF(__pyx_tuple__45);
+  __pyx_codeobj__46 = (PyObject*)__Pyx_PyCode_New(2, 0, 6, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__45, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_yggdrasil_workspace_BMFTools_ut, __pyx_n_s_testLayout, 887, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__46)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -13294,6 +19101,7 @@ static int __Pyx_InitGlobals(void) {
   __pyx_int_80 = PyInt_FromLong(80); if (unlikely(!__pyx_int_80)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_83 = PyInt_FromLong(83); if (unlikely(!__pyx_int_83)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_88 = PyInt_FromLong(88); if (unlikely(!__pyx_int_88)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_int_93 = PyInt_FromLong(93); if (unlikely(!__pyx_int_93)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_neg_1 = PyInt_FromLong(-1); if (unlikely(!__pyx_int_neg_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   return 0;
   __pyx_L1_error:;
@@ -13385,18 +19193,35 @@ PyMODINIT_FUNC PyInit_MergePairedAlignments(void)
   /*--- Global init code ---*/
   __pyx_v_7utilBMF_21MergePairedAlignments_chrDict = ((PyObject*)Py_None); Py_INCREF(Py_None);
   __pyx_v_7utilBMF_21MergePairedAlignments_CigarDict = ((PyObject*)Py_None); Py_INCREF(Py_None);
+  __pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict = ((PyObject*)Py_None); Py_INCREF(Py_None);
+  __pyx_v_7utilBMF_21MergePairedAlignments_oagtag = Py_None; Py_INCREF(Py_None);
   /*--- Variable export code ---*/
   if (__Pyx_ExportVoidPtr(__pyx_n_s_chrDict, (void *)&__pyx_v_7utilBMF_21MergePairedAlignments_chrDict, "PyObject *") < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (__Pyx_ExportVoidPtr(__pyx_n_s_CigarDict, (void *)&__pyx_v_7utilBMF_21MergePairedAlignments_CigarDict, "PyObject *") < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_ExportVoidPtr(__pyx_n_s_CigarStrDict, (void *)&__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict, "PyObject *") < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_ExportVoidPtr(__pyx_n_s_oagtag, (void *)&__pyx_v_7utilBMF_21MergePairedAlignments_oagtag, "PyObject *") < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   /*--- Function export code ---*/
   if (__Pyx_ExportFunction("getLayoutLen", (void (*)(void))__pyx_f_7utilBMF_21MergePairedAlignments_getLayoutLen, "int (__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t)") < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (__Pyx_ExportFunction("ALPToStr", (void (*)(void))__pyx_f_7utilBMF_21MergePairedAlignments_ALPToStr, "__pyx_t_7utilBMF_8HTSUtils_cystr (__pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayoutPos_t, int __pyx_skip_dispatch)") < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   /*--- Type init code ---*/
   __pyx_vtabptr_7utilBMF_21MergePairedAlignments_Layout = &__pyx_vtable_7utilBMF_21MergePairedAlignments_Layout;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getFirstAlignedRefPos = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstAlignedRefPos;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getFirstMappedReadPos = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPos;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getAlignmentStart = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAlignmentStart;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cPosIsMapped = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cPosIsMapped;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.posIsMapped = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_posIsMapped;
-  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getFirstMappedRefPos = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedRefPos;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.MergeLayouts_in_place = (PyObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayouts_in_place;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.MergeLayout = (PyObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, __pyx_t_7utilBMF_21MergePairedAlignments_Layout_t, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayout;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.update_tags_ = (PyObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_update_tags_;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getMergedPositions = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getMergedPositions;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getAgreement = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getAgreement;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetAgreement = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetAgreement;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getOperations = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getOperations;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetOperations = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetOperations;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetCigarString = (__pyx_t_7utilBMF_8HTSUtils_cystr (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetCigarString;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getCigarString = (__pyx_t_7utilBMF_8HTSUtils_cystr (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetCigarString2 = (__pyx_t_7utilBMF_8HTSUtils_cystr (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetCigarString2;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getCigarString2 = (__pyx_t_7utilBMF_8HTSUtils_cystr (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getCigarString2;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetQual = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQual;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getQual = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getQual;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetQualString = (__pyx_t_7utilBMF_8HTSUtils_cystr (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetQualString;
@@ -13404,16 +19229,19 @@ PyMODINIT_FUNC PyInit_MergePairedAlignments(void)
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetSeqArr = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetSeqArr;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getSeqArr = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeqArr;
   __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getSeq = (__pyx_t_7utilBMF_8HTSUtils_cystr (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, int __pyx_skip_dispatch))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getSeq;
-  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getFirstMappedReadPos = (int (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getFirstMappedReadPos;
-  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.MergeLayouts_in_place = (PyObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *, __pyx_t_7utilBMF_21MergePairedAlignments_ArrayLayout_t))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_MergeLayouts_in_place;
-  if (PyType_Ready(&__pyx_type_7utilBMF_21MergePairedAlignments_Layout) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 74; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetGenomicDiscordantPositions = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetGenomicDiscordantPositions;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.cGetReadDiscordantPositions = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_cGetReadDiscordantPositions;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.getMergeAgreements = (PyArrayObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_getMergeAgreements;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.__pyx___read__ = (__pyx_t_7utilBMF_21MergePairedAlignments_AlignedSegment_t (*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout___read__;
+  __pyx_vtable_7utilBMF_21MergePairedAlignments_Layout.update_read_positions = (PyObject *(*)(struct __pyx_obj_7utilBMF_21MergePairedAlignments_Layout *))__pyx_f_7utilBMF_21MergePairedAlignments_6Layout_update_read_positions;
+  if (PyType_Ready(&__pyx_type_7utilBMF_21MergePairedAlignments_Layout) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 78; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_type_7utilBMF_21MergePairedAlignments_Layout.tp_print = 0;
-  if (__Pyx_SetVtable(__pyx_type_7utilBMF_21MergePairedAlignments_Layout.tp_dict, __pyx_vtabptr_7utilBMF_21MergePairedAlignments_Layout) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 74; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyObject_SetAttrString(__pyx_m, "Layout", (PyObject *)&__pyx_type_7utilBMF_21MergePairedAlignments_Layout) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 74; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (__Pyx_SetVtable(__pyx_type_7utilBMF_21MergePairedAlignments_Layout.tp_dict, __pyx_vtabptr_7utilBMF_21MergePairedAlignments_Layout) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 78; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyObject_SetAttrString(__pyx_m, "Layout", (PyObject *)&__pyx_type_7utilBMF_21MergePairedAlignments_Layout) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 78; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_ptype_7utilBMF_21MergePairedAlignments_Layout = &__pyx_type_7utilBMF_21MergePairedAlignments_Layout;
-  if (PyType_Ready(&__pyx_type_7utilBMF_21MergePairedAlignments_ListBool) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 49; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyType_Ready(&__pyx_type_7utilBMF_21MergePairedAlignments_ListBool) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_type_7utilBMF_21MergePairedAlignments_ListBool.tp_print = 0;
-  if (PyObject_SetAttrString(__pyx_m, "ListBool", (PyObject *)&__pyx_type_7utilBMF_21MergePairedAlignments_ListBool) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 49; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyObject_SetAttrString(__pyx_m, "ListBool", (PyObject *)&__pyx_type_7utilBMF_21MergePairedAlignments_ListBool) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_ptype_7utilBMF_21MergePairedAlignments_ListBool = &__pyx_type_7utilBMF_21MergePairedAlignments_ListBool;
   /*--- Type import code ---*/
   __pyx_ptype_7cpython_4type_type = __Pyx_ImportType(__Pyx_BUILTIN_MODULE_NAME, "type", 
@@ -13562,308 +19390,353 @@ PyMODINIT_FUNC PyInit_MergePairedAlignments(void)
  * import pysam
  * import cython
  * import numpy as np             # <<<<<<<<<<<<<<
+ * from pysam import AlignedSegment
  * 
- * ## Standard Library local imports
  */
   __pyx_t_3 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 12; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":15
+  /* "utilBMF/MergePairedAlignments.pyx":13
+ * import cython
+ * import numpy as np
+ * from pysam import AlignedSegment             # <<<<<<<<<<<<<<
  * 
  * ## Standard Library local imports
- * from array import array             # <<<<<<<<<<<<<<
- * from itertools import izip, groupby
- * from operator import attrgetter as oag, methodcaller as mc
  */
-  __pyx_t_3 = PyList_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = PyList_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_INCREF(__pyx_n_s_array);
-  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_array);
-  __Pyx_GIVEREF(__pyx_n_s_array);
-  __pyx_t_4 = __Pyx_Import(__pyx_n_s_array, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_INCREF(__pyx_n_s_AlignedSegment);
+  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_AlignedSegment);
+  __Pyx_GIVEREF(__pyx_n_s_AlignedSegment);
+  __pyx_t_4 = __Pyx_Import(__pyx_n_s_pysam, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_array); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_AlignedSegment); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_array, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 15; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_AlignedSegment, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 13; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
   /* "utilBMF/MergePairedAlignments.pyx":16
+ * 
  * ## Standard Library local imports
- * from array import array
- * from itertools import izip, groupby             # <<<<<<<<<<<<<<
- * from operator import attrgetter as oag, methodcaller as mc
- * from subprocess import check_call
+ * from array import array             # <<<<<<<<<<<<<<
+ * from itertools import izip, groupby
+ * from operator import attrgetter as oag, methodcaller as mc, itemgetter as oig
  */
-  __pyx_t_4 = PyList_New(2); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyList_New(1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_INCREF(__pyx_n_s_izip);
-  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_izip);
-  __Pyx_GIVEREF(__pyx_n_s_izip);
-  __Pyx_INCREF(__pyx_n_s_groupby);
-  PyList_SET_ITEM(__pyx_t_4, 1, __pyx_n_s_groupby);
-  __Pyx_GIVEREF(__pyx_n_s_groupby);
-  __pyx_t_3 = __Pyx_Import(__pyx_n_s_itertools, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_INCREF(__pyx_n_s_array);
+  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_array);
+  __Pyx_GIVEREF(__pyx_n_s_array);
+  __pyx_t_3 = __Pyx_Import(__pyx_n_s_array, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_izip); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_array); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_izip, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_groupby); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_groupby, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_array, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 16; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
   /* "utilBMF/MergePairedAlignments.pyx":17
+ * ## Standard Library local imports
  * from array import array
- * from itertools import izip, groupby
- * from operator import attrgetter as oag, methodcaller as mc             # <<<<<<<<<<<<<<
+ * from itertools import izip, groupby             # <<<<<<<<<<<<<<
+ * from operator import attrgetter as oag, methodcaller as mc, itemgetter as oig
  * from subprocess import check_call
- * from sys import maxint
  */
   __pyx_t_3 = PyList_New(2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_INCREF(__pyx_n_s_attrgetter);
-  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_attrgetter);
-  __Pyx_GIVEREF(__pyx_n_s_attrgetter);
-  __Pyx_INCREF(__pyx_n_s_methodcaller);
-  PyList_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_methodcaller);
-  __Pyx_GIVEREF(__pyx_n_s_methodcaller);
-  __pyx_t_4 = __Pyx_Import(__pyx_n_s_operator, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_INCREF(__pyx_n_s_izip);
+  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_izip);
+  __Pyx_GIVEREF(__pyx_n_s_izip);
+  __Pyx_INCREF(__pyx_n_s_groupby);
+  PyList_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_groupby);
+  __Pyx_GIVEREF(__pyx_n_s_groupby);
+  __pyx_t_4 = __Pyx_Import(__pyx_n_s_itertools, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_attrgetter); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_izip); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oag, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_izip, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_methodcaller); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_groupby); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_mc, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_groupby, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
   /* "utilBMF/MergePairedAlignments.pyx":18
+ * from array import array
  * from itertools import izip, groupby
- * from operator import attrgetter as oag, methodcaller as mc
- * from subprocess import check_call             # <<<<<<<<<<<<<<
+ * from operator import attrgetter as oag, methodcaller as mc, itemgetter as oig             # <<<<<<<<<<<<<<
+ * from subprocess import check_call
  * from sys import maxint
- * 
  */
-  __pyx_t_4 = PyList_New(1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyList_New(3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_INCREF(__pyx_n_s_check_call);
-  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_check_call);
-  __Pyx_GIVEREF(__pyx_n_s_check_call);
-  __pyx_t_3 = __Pyx_Import(__pyx_n_s_subprocess, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_INCREF(__pyx_n_s_attrgetter);
+  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_attrgetter);
+  __Pyx_GIVEREF(__pyx_n_s_attrgetter);
+  __Pyx_INCREF(__pyx_n_s_methodcaller);
+  PyList_SET_ITEM(__pyx_t_4, 1, __pyx_n_s_methodcaller);
+  __Pyx_GIVEREF(__pyx_n_s_methodcaller);
+  __Pyx_INCREF(__pyx_n_s_itemgetter);
+  PyList_SET_ITEM(__pyx_t_4, 2, __pyx_n_s_itemgetter);
+  __Pyx_GIVEREF(__pyx_n_s_itemgetter);
+  __pyx_t_3 = __Pyx_Import(__pyx_n_s_operator, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_check_call); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_attrgetter); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_check_call, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oag, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_methodcaller); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_mc, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_itemgetter); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oig, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 18; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
   /* "utilBMF/MergePairedAlignments.pyx":19
- * from operator import attrgetter as oag, methodcaller as mc
+ * from itertools import izip, groupby
+ * from operator import attrgetter as oag, methodcaller as mc, itemgetter as oig
+ * from subprocess import check_call             # <<<<<<<<<<<<<<
+ * from sys import maxint
+ * 
+ */
+  __pyx_t_3 = PyList_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_INCREF(__pyx_n_s_check_call);
+  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_check_call);
+  __Pyx_GIVEREF(__pyx_n_s_check_call);
+  __pyx_t_4 = __Pyx_Import(__pyx_n_s_subprocess, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_check_call); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_check_call, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":20
+ * from operator import attrgetter as oag, methodcaller as mc, itemgetter as oig
  * from subprocess import check_call
  * from sys import maxint             # <<<<<<<<<<<<<<
  * 
  * ##BMFTools imports
  */
-  __pyx_t_3 = PyList_New(1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_INCREF(__pyx_n_s_maxint);
-  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_maxint);
-  __Pyx_GIVEREF(__pyx_n_s_maxint);
-  __pyx_t_4 = __Pyx_Import(__pyx_n_s_sys, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyList_New(1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_maxint); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_INCREF(__pyx_n_s_maxint);
+  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_maxint);
+  __Pyx_GIVEREF(__pyx_n_s_maxint);
+  __pyx_t_3 = __Pyx_Import(__pyx_n_s_sys, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_maxint, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 19; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_maxint); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_maxint, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 20; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":22
+  /* "utilBMF/MergePairedAlignments.pyx":23
  * 
  * ##BMFTools imports
  * from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError             # <<<<<<<<<<<<<<
  * from utilBMF.HTSUtils import printlog as pl, BamTag, TrimExt
  * 
  */
-  __pyx_t_4 = PyList_New(2); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_3 = PyList_New(2); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_n_s_ThisIsMadness);
-  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_ThisIsMadness);
+  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_ThisIsMadness);
   __Pyx_GIVEREF(__pyx_n_s_ThisIsMadness);
   __Pyx_INCREF(__pyx_n_s_ImproperArgumentError);
-  PyList_SET_ITEM(__pyx_t_4, 1, __pyx_n_s_ImproperArgumentError);
+  PyList_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_ImproperArgumentError);
   __Pyx_GIVEREF(__pyx_n_s_ImproperArgumentError);
-  __pyx_t_3 = __Pyx_Import(__pyx_n_s_utilBMF_ErrorHandling, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_ThisIsMadness); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_Import(__pyx_n_s_utilBMF_ErrorHandling, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ThisIsMadness, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_ImproperArgumentError); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ImproperArgumentError, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 22; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_ThisIsMadness); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ThisIsMadness, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_ImproperArgumentError); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_ImproperArgumentError, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":23
+  /* "utilBMF/MergePairedAlignments.pyx":24
  * ##BMFTools imports
  * from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
  * from utilBMF.HTSUtils import printlog as pl, BamTag, TrimExt             # <<<<<<<<<<<<<<
  * 
  * ##DEFINES
  */
-  __pyx_t_3 = PyList_New(3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_4 = PyList_New(3); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
   __Pyx_INCREF(__pyx_n_s_printlog);
-  PyList_SET_ITEM(__pyx_t_3, 0, __pyx_n_s_printlog);
+  PyList_SET_ITEM(__pyx_t_4, 0, __pyx_n_s_printlog);
   __Pyx_GIVEREF(__pyx_n_s_printlog);
   __Pyx_INCREF(__pyx_n_s_BamTag);
-  PyList_SET_ITEM(__pyx_t_3, 1, __pyx_n_s_BamTag);
+  PyList_SET_ITEM(__pyx_t_4, 1, __pyx_n_s_BamTag);
   __Pyx_GIVEREF(__pyx_n_s_BamTag);
   __Pyx_INCREF(__pyx_n_s_TrimExt);
-  PyList_SET_ITEM(__pyx_t_3, 2, __pyx_n_s_TrimExt);
+  PyList_SET_ITEM(__pyx_t_4, 2, __pyx_n_s_TrimExt);
   __Pyx_GIVEREF(__pyx_n_s_TrimExt);
-  __pyx_t_4 = __Pyx_Import(__pyx_n_s_utilBMF_HTSUtils, __pyx_t_3, -1); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_printlog); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_Import(__pyx_n_s_utilBMF_HTSUtils, __pyx_t_4, -1); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_pl, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_ImportFrom(__pyx_t_4, __pyx_n_s_TrimExt); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_TrimExt, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 23; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_printlog); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_pl, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __pyx_t_4 = __Pyx_ImportFrom(__pyx_t_3, __pyx_n_s_TrimExt); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_TrimExt, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 24; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":27
+  /* "utilBMF/MergePairedAlignments.pyx":28
  * ##DEFINES
  * 
  * oagsk = oag("firstMapped")             # <<<<<<<<<<<<<<
  * oagbase = oag("base")
  * oagop = oag("operation")
  */
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__29, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagsk, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__31, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagsk, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":28
+  /* "utilBMF/MergePairedAlignments.pyx":29
  * 
  * oagsk = oag("firstMapped")
  * oagbase = oag("base")             # <<<<<<<<<<<<<<
  * oagop = oag("operation")
  * oagqual = oag("quality")
  */
-  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__30, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagbase, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__32, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagbase, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":29
+  /* "utilBMF/MergePairedAlignments.pyx":30
  * oagsk = oag("firstMapped")
  * oagbase = oag("base")
  * oagop = oag("operation")             # <<<<<<<<<<<<<<
  * oagqual = oag("quality")
  * oagag = oag("agreement")
  */
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__31, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagop, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__33, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagop, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":30
+  /* "utilBMF/MergePairedAlignments.pyx":31
  * oagbase = oag("base")
  * oagop = oag("operation")
  * oagqual = oag("quality")             # <<<<<<<<<<<<<<
  * oagag = oag("agreement")
  * oagtag = oag("tag")
  */
-  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__32, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagqual, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__34, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagqual, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":31
+  /* "utilBMF/MergePairedAlignments.pyx":32
  * oagop = oag("operation")
  * oagqual = oag("quality")
  * oagag = oag("agreement")             # <<<<<<<<<<<<<<
  * oagtag = oag("tag")
- * chrDict = {x: chr(x) for x in xrange(33, 126)}
- */
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__33, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagag, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-  /* "utilBMF/MergePairedAlignments.pyx":32
- * oagqual = oag("quality")
- * oagag = oag("agreement")
- * oagtag = oag("tag")             # <<<<<<<<<<<<<<
- * chrDict = {x: chr(x) for x in xrange(33, 126)}
- * 
+ * oig0 = oig(0)
  */
   __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__34, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__35, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagtag, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oagag, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
   /* "utilBMF/MergePairedAlignments.pyx":33
+ * oagqual = oag("quality")
+ * oagag = oag("agreement")
+ * oagtag = oag("tag")             # <<<<<<<<<<<<<<
+ * oig0 = oig(0)
+ * chrDict = {x: chr(x) for x in xrange(33, 126)}
+ */
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_oag); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_4, __pyx_tuple__36, NULL); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+  __Pyx_XGOTREF(__pyx_v_7utilBMF_21MergePairedAlignments_oagtag);
+  __Pyx_DECREF_SET(__pyx_v_7utilBMF_21MergePairedAlignments_oagtag, __pyx_t_3);
+  __Pyx_GIVEREF(__pyx_t_3);
+  __pyx_t_3 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":34
  * oagag = oag("agreement")
  * oagtag = oag("tag")
+ * oig0 = oig(0)             # <<<<<<<<<<<<<<
+ * chrDict = {x: chr(x) for x in xrange(33, 126)}
+ * 
+ */
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_oig); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_4 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_tuple__37, NULL); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_oig0, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 34; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":35
+ * oagtag = oag("tag")
+ * oig0 = oig(0)
  * chrDict = {x: chr(x) for x in xrange(33, 126)}             # <<<<<<<<<<<<<<
  * 
  * 
  */
   { /* enter inner scope */
     long __pyx_7genexpr__pyx_v_7utilBMF_21MergePairedAlignments_x;
-    __pyx_t_4 = PyDict_New(); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_4 = PyDict_New(); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_4);
     for (__pyx_t_5 = 33; __pyx_t_5 < 126; __pyx_t_5+=1) {
       __pyx_7genexpr__pyx_v_7utilBMF_21MergePairedAlignments_x = __pyx_t_5;
-      __pyx_t_3 = __Pyx_PyInt_From_long(__pyx_7genexpr__pyx_v_7utilBMF_21MergePairedAlignments_x); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_3 = __Pyx_PyInt_From_long(__pyx_7genexpr__pyx_v_7utilBMF_21MergePairedAlignments_x); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_6 = __Pyx_PyInt_From_long(__pyx_7genexpr__pyx_v_7utilBMF_21MergePairedAlignments_x); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_6 = __Pyx_PyInt_From_long(__pyx_7genexpr__pyx_v_7utilBMF_21MergePairedAlignments_x); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_6);
-      __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_7 = PyTuple_New(1); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_7);
       PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_6);
       __Pyx_GIVEREF(__pyx_t_6);
       __pyx_t_6 = 0;
-      __pyx_t_6 = __Pyx_PyObject_Call(__pyx_builtin_chr, __pyx_t_7, NULL); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_6 = __Pyx_PyObject_Call(__pyx_builtin_chr, __pyx_t_7, NULL); if (unlikely(!__pyx_t_6)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-      if (unlikely(PyDict_SetItem(__pyx_t_4, (PyObject*)__pyx_t_3, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      if (unlikely(PyDict_SetItem(__pyx_t_4, (PyObject*)__pyx_t_3, (PyObject*)__pyx_t_6))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     }
@@ -13873,72 +19746,107 @@ PyMODINIT_FUNC PyInit_MergePairedAlignments(void)
   __Pyx_GIVEREF(__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":44
+  /* "utilBMF/MergePairedAlignments.pyx":46
  * # Maps CigarOp numbers to ASCII characters
  * # and the reverse
  * CigarDict = {0: 77, 1: 73, 2: 68, 3: 83, 4: 78, 5: 72,             # <<<<<<<<<<<<<<
  *              6: 80, 7: 61, 8: 88,
  *              77: 0, 73: 1, 68:2, 83: 3, 78: 4, 72: 5,
  */
-  __pyx_t_4 = PyDict_New(); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyDict_New(); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_0, __pyx_int_77) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_1, __pyx_int_73) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_2, __pyx_int_68) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_3, __pyx_int_83) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_4, __pyx_int_78) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_5, __pyx_int_72) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_6, __pyx_int_80) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_7, __pyx_int_61) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_8, __pyx_int_88) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_77, __pyx_int_0) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_73, __pyx_int_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_68, __pyx_int_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_83, __pyx_int_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_78, __pyx_int_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_72, __pyx_int_5) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_80, __pyx_int_6) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_61, __pyx_int_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (PyDict_SetItem(__pyx_t_4, __pyx_int_88, __pyx_int_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_0, __pyx_int_77) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_1, __pyx_int_73) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_2, __pyx_int_68) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_3, __pyx_int_83) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_4, __pyx_int_78) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_5, __pyx_int_72) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_6, __pyx_int_80) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_7, __pyx_int_61) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_8, __pyx_int_88) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_77, __pyx_int_0) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_73, __pyx_int_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_68, __pyx_int_2) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_83, __pyx_int_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_78, __pyx_int_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_72, __pyx_int_5) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_80, __pyx_int_6) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_61, __pyx_int_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_88, __pyx_int_8) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_XGOTREF(__pyx_v_7utilBMF_21MergePairedAlignments_CigarDict);
   __Pyx_DECREF_SET(__pyx_v_7utilBMF_21MergePairedAlignments_CigarDict, ((PyObject*)__pyx_t_4));
   __Pyx_GIVEREF(__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":59
+  /* "utilBMF/MergePairedAlignments.pyx":50
+ *              77: 0, 73: 1, 68:2, 83: 3, 78: 4, 72: 5,
+ *              80: 6, 61: 7, 88: 8}
+ * CigarStrDict = {77: "M", 73: "I", 68: "D", 78: "N", 83: "S", 72: "H",             # <<<<<<<<<<<<<<
+ *                 80: "P", 61: "=", 88: "X"}
+ * 
+ */
+  __pyx_t_4 = PyDict_New(); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_77, __pyx_n_s_M) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_73, __pyx_n_s_I) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_68, __pyx_n_s_D) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_78, __pyx_n_s_N) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_83, __pyx_n_s_S) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_72, __pyx_n_s_H) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_80, __pyx_n_s_P) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_61, __pyx_kp_s__38) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_t_4, __pyx_int_88, __pyx_n_s_X) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 50; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_XGOTREF(__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict);
+  __Pyx_DECREF_SET(__pyx_v_7utilBMF_21MergePairedAlignments_CigarStrDict, ((PyObject*)__pyx_t_4));
+  __Pyx_GIVEREF(__pyx_t_4);
+  __pyx_t_4 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":63
  * 
  * @cython.returns(bint)
  * def lambda1None(tuple i):             # <<<<<<<<<<<<<<
  *     """
  *     If a tuple in a cigar returns true for this function,
  */
-  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_1lambda1None, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 59; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_1lambda1None, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 63; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_lambda1None, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 59; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_lambda1None, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 63; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":69
+  /* "utilBMF/MergePairedAlignments.pyx":73
  * 
  * @cython.returns(int)
- * def getFirstMappedRefPos(pysam.calignmentfile.AlignedSegment rec):             # <<<<<<<<<<<<<<
+ * def getFirstMappedRefPos(AlignedSegment_t rec):             # <<<<<<<<<<<<<<
  *     cdef tuple i
  *     return [i for i in rec.aligned_pairs if i[1] is not None][0][1]
  */
-  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_3getFirstMappedRefPos, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_3getFirstMappedRefPos, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_getFirstMappedRefPos, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_getFirstMappedRefPos, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "utilBMF/MergePairedAlignments.pyx":623
+  /* "utilBMF/MergePairedAlignments.pyx":812
  * 
  * 
  * def MergePairedAlignments(cystr inBAM, cystr outBAM=None,             # <<<<<<<<<<<<<<
  *                           bint pipe=False, int readLength=-1):
  *     cdef AlignedSegment_t read, read1, read2
  */
-  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_5MergePairedAlignments, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_5MergePairedAlignments, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_MergePairedAlignments, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 623; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_MergePairedAlignments, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 812; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+  /* "utilBMF/MergePairedAlignments.pyx":887
+ *                               chr(ALP.base), ALP.mergeAgreed]))
+ * 
+ * def testLayout(cystr inBAM, cystr outBAM=None):             # <<<<<<<<<<<<<<
+ *     cdef AlignedSegment_t read
+ *     cdef Layout_t layout
+ */
+  __pyx_t_4 = PyCFunction_NewEx(&__pyx_mdef_7utilBMF_21MergePairedAlignments_9testLayout, NULL, __pyx_n_s_utilBMF_MergePairedAlignments); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_4);
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_testLayout, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 887; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
   /* "utilBMF/MergePairedAlignments.pyx":1
@@ -13951,12 +19859,12 @@ PyMODINIT_FUNC PyInit_MergePairedAlignments(void)
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_test, __pyx_t_4) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-  /* "FromPyStructUtility":11
+  /* "carray.to_py":89
  * 
- * @cname("__pyx_convert__from_py_ArrayLayoutPos")
- * cdef ArrayLayoutPos __pyx_convert__from_py_ArrayLayoutPos(obj) except *:             # <<<<<<<<<<<<<<
- *     cdef ArrayLayoutPos result
- *     if not PyMapping_Check(obj):
+ * @cname("__Pyx_carray_to_tuple_int")
+ * cdef inline tuple __Pyx_carray_to_tuple_int(int *v, Py_ssize_t length):             # <<<<<<<<<<<<<<
+ *     cdef size_t i
+ *     cdef object value
  */
 
   /*--- Wrapped vars code ---*/
@@ -15005,6 +20913,190 @@ bad:
     return -1;
 }
 
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg) {
+    PyObject *self, *result;
+    PyCFunction cfunc;
+    cfunc = PyCFunction_GET_FUNCTION(func);
+    self = PyCFunction_GET_SELF(func);
+    if (unlikely(Py_EnterRecursiveCall((char*)" while calling a Python object")))
+        return NULL;
+    result = cfunc(self, arg);
+    Py_LeaveRecursiveCall();
+    if (unlikely(!result) && unlikely(!PyErr_Occurred())) {
+        PyErr_SetString(
+            PyExc_SystemError,
+            "NULL result without error in PyObject_Call");
+    }
+    return result;
+}
+#endif
+
+#if CYTHON_COMPILING_IN_CPYTHON
+static PyObject* __Pyx__PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+    PyObject *result;
+    PyObject *args = PyTuple_New(1);
+    if (unlikely(!args)) return NULL;
+    Py_INCREF(arg);
+    PyTuple_SET_ITEM(args, 0, arg);
+    result = __Pyx_PyObject_Call(func, args, NULL);
+    Py_DECREF(args);
+    return result;
+}
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+#ifdef __Pyx_CyFunction_USED
+    if (likely(PyCFunction_Check(func) || PyObject_TypeCheck(func, __pyx_CyFunctionType))) {
+#else
+    if (likely(PyCFunction_Check(func))) {
+#endif
+        if (likely(PyCFunction_GET_FLAGS(func) & METH_O)) {
+            return __Pyx_PyObject_CallMethO(func, arg);
+        }
+    }
+    return __Pyx__PyObject_CallOneArg(func, arg);
+}
+#else
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+    PyObject* args = PyTuple_Pack(1, arg);
+    return (likely(args)) ? __Pyx_PyObject_Call(func, args, NULL) : NULL;
+}
+#endif
+
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func) {
+#ifdef __Pyx_CyFunction_USED
+    if (likely(PyCFunction_Check(func) || PyObject_TypeCheck(func, __pyx_CyFunctionType))) {
+#else
+    if (likely(PyCFunction_Check(func))) {
+#endif
+        if (likely(PyCFunction_GET_FLAGS(func) & METH_NOARGS)) {
+            return __Pyx_PyObject_CallMethO(func, NULL);
+        }
+    }
+    return __Pyx_PyObject_Call(func, __pyx_empty_tuple, NULL);
+}
+#endif
+
+static CYTHON_INLINE int __Pyx_PyBytes_Equals(PyObject* s1, PyObject* s2, int equals) {
+#if CYTHON_COMPILING_IN_PYPY
+    return PyObject_RichCompareBool(s1, s2, equals);
+#else
+    if (s1 == s2) {
+        return (equals == Py_EQ);
+    } else if (PyBytes_CheckExact(s1) & PyBytes_CheckExact(s2)) {
+        const char *ps1, *ps2;
+        Py_ssize_t length = PyBytes_GET_SIZE(s1);
+        if (length != PyBytes_GET_SIZE(s2))
+            return (equals == Py_NE);
+        ps1 = PyBytes_AS_STRING(s1);
+        ps2 = PyBytes_AS_STRING(s2);
+        if (ps1[0] != ps2[0]) {
+            return (equals == Py_NE);
+        } else if (length == 1) {
+            return (equals == Py_EQ);
+        } else {
+            int result = memcmp(ps1, ps2, (size_t)length);
+            return (equals == Py_EQ) ? (result == 0) : (result != 0);
+        }
+    } else if ((s1 == Py_None) & PyBytes_CheckExact(s2)) {
+        return (equals == Py_NE);
+    } else if ((s2 == Py_None) & PyBytes_CheckExact(s1)) {
+        return (equals == Py_NE);
+    } else {
+        int result;
+        PyObject* py_result = PyObject_RichCompare(s1, s2, equals);
+        if (!py_result)
+            return -1;
+        result = __Pyx_PyObject_IsTrue(py_result);
+        Py_DECREF(py_result);
+        return result;
+    }
+#endif
+}
+
+static CYTHON_INLINE int __Pyx_PyUnicode_Equals(PyObject* s1, PyObject* s2, int equals) {
+#if CYTHON_COMPILING_IN_PYPY
+    return PyObject_RichCompareBool(s1, s2, equals);
+#else
+#if PY_MAJOR_VERSION < 3
+    PyObject* owned_ref = NULL;
+#endif
+    int s1_is_unicode, s2_is_unicode;
+    if (s1 == s2) {
+        goto return_eq;
+    }
+    s1_is_unicode = PyUnicode_CheckExact(s1);
+    s2_is_unicode = PyUnicode_CheckExact(s2);
+#if PY_MAJOR_VERSION < 3
+    if ((s1_is_unicode & (!s2_is_unicode)) && PyString_CheckExact(s2)) {
+        owned_ref = PyUnicode_FromObject(s2);
+        if (unlikely(!owned_ref))
+            return -1;
+        s2 = owned_ref;
+        s2_is_unicode = 1;
+    } else if ((s2_is_unicode & (!s1_is_unicode)) && PyString_CheckExact(s1)) {
+        owned_ref = PyUnicode_FromObject(s1);
+        if (unlikely(!owned_ref))
+            return -1;
+        s1 = owned_ref;
+        s1_is_unicode = 1;
+    } else if (((!s2_is_unicode) & (!s1_is_unicode))) {
+        return __Pyx_PyBytes_Equals(s1, s2, equals);
+    }
+#endif
+    if (s1_is_unicode & s2_is_unicode) {
+        Py_ssize_t length;
+        int kind;
+        void *data1, *data2;
+        if (unlikely(__Pyx_PyUnicode_READY(s1) < 0) || unlikely(__Pyx_PyUnicode_READY(s2) < 0))
+            return -1;
+        length = __Pyx_PyUnicode_GET_LENGTH(s1);
+        if (length != __Pyx_PyUnicode_GET_LENGTH(s2)) {
+            goto return_ne;
+        }
+        kind = __Pyx_PyUnicode_KIND(s1);
+        if (kind != __Pyx_PyUnicode_KIND(s2)) {
+            goto return_ne;
+        }
+        data1 = __Pyx_PyUnicode_DATA(s1);
+        data2 = __Pyx_PyUnicode_DATA(s2);
+        if (__Pyx_PyUnicode_READ(kind, data1, 0) != __Pyx_PyUnicode_READ(kind, data2, 0)) {
+            goto return_ne;
+        } else if (length == 1) {
+            goto return_eq;
+        } else {
+            int result = memcmp(data1, data2, (size_t)(length * kind));
+            #if PY_MAJOR_VERSION < 3
+            Py_XDECREF(owned_ref);
+            #endif
+            return (equals == Py_EQ) ? (result == 0) : (result != 0);
+        }
+    } else if ((s1 == Py_None) & s2_is_unicode) {
+        goto return_ne;
+    } else if ((s2 == Py_None) & s1_is_unicode) {
+        goto return_ne;
+    } else {
+        int result;
+        PyObject* py_result = PyObject_RichCompare(s1, s2, equals);
+        if (!py_result)
+            return -1;
+        result = __Pyx_PyObject_IsTrue(py_result);
+        Py_DECREF(py_result);
+        return result;
+    }
+return_eq:
+    #if PY_MAJOR_VERSION < 3
+    Py_XDECREF(owned_ref);
+    #endif
+    return (equals == Py_EQ);
+return_ne:
+    #if PY_MAJOR_VERSION < 3
+    Py_XDECREF(owned_ref);
+    #endif
+    return (equals == Py_NE);
+#endif
+}
+
 static void __Pyx_RaiseBufferIndexError(int axis) {
   PyErr_Format(PyExc_IndexError,
      "Out of bounds on buffer access (axis %d)", axis);
@@ -15198,55 +21290,6 @@ bad:
 }
 #endif
 
-#if CYTHON_COMPILING_IN_CPYTHON
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg) {
-    PyObject *self, *result;
-    PyCFunction cfunc;
-    cfunc = PyCFunction_GET_FUNCTION(func);
-    self = PyCFunction_GET_SELF(func);
-    if (unlikely(Py_EnterRecursiveCall((char*)" while calling a Python object")))
-        return NULL;
-    result = cfunc(self, arg);
-    Py_LeaveRecursiveCall();
-    if (unlikely(!result) && unlikely(!PyErr_Occurred())) {
-        PyErr_SetString(
-            PyExc_SystemError,
-            "NULL result without error in PyObject_Call");
-    }
-    return result;
-}
-#endif
-
-#if CYTHON_COMPILING_IN_CPYTHON
-static PyObject* __Pyx__PyObject_CallOneArg(PyObject *func, PyObject *arg) {
-    PyObject *result;
-    PyObject *args = PyTuple_New(1);
-    if (unlikely(!args)) return NULL;
-    Py_INCREF(arg);
-    PyTuple_SET_ITEM(args, 0, arg);
-    result = __Pyx_PyObject_Call(func, args, NULL);
-    Py_DECREF(args);
-    return result;
-}
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
-#ifdef __Pyx_CyFunction_USED
-    if (likely(PyCFunction_Check(func) || PyObject_TypeCheck(func, __pyx_CyFunctionType))) {
-#else
-    if (likely(PyCFunction_Check(func))) {
-#endif
-        if (likely(PyCFunction_GET_FLAGS(func) & METH_O)) {
-            return __Pyx_PyObject_CallMethO(func, arg);
-        }
-    }
-    return __Pyx__PyObject_CallOneArg(func, arg);
-}
-#else
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
-    PyObject* args = PyTuple_Pack(1, arg);
-    return (likely(args)) ? __Pyx_PyObject_Call(func, args, NULL) : NULL;
-}
-#endif
-
 static void __Pyx_WriteUnraisable(const char *name, CYTHON_UNUSED int clineno,
                                   CYTHON_UNUSED int lineno, CYTHON_UNUSED const char *filename,
                                   int full_traceback) {
@@ -15274,29 +21317,185 @@ static void __Pyx_WriteUnraisable(const char *name, CYTHON_UNUSED int clineno,
     }
 }
 
-#if CYTHON_COMPILING_IN_CPYTHON
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func) {
-#ifdef __Pyx_CyFunction_USED
-    if (likely(PyCFunction_Check(func) || PyObject_TypeCheck(func, __pyx_CyFunctionType))) {
-#else
-    if (likely(PyCFunction_Check(func))) {
-#endif
-        if (likely(PyCFunction_GET_FLAGS(func) & METH_NOARGS)) {
-            return __Pyx_PyObject_CallMethO(func, NULL);
-        }
-    }
-    return __Pyx_PyObject_Call(func, __pyx_empty_tuple, NULL);
-}
-#endif
-
 #if !CYTHON_COMPILING_IN_CPYTHON
 static CYTHON_INLINE PyObject* __Pyx_PyBytes_Join(PyObject* sep, PyObject* values) {
     return PyObject_CallMethodObjArgs(sep, __pyx_n_s_join, values, NULL);
 }
 #endif
 
+static PyObject* __Pyx_PyObject_CallMethod0(PyObject* obj, PyObject* method_name) {
+    PyObject *method, *result = NULL;
+    method = __Pyx_PyObject_GetAttrStr(obj, method_name);
+    if (unlikely(!method)) goto bad;
+#if CYTHON_COMPILING_IN_CPYTHON
+    if (likely(PyMethod_Check(method))) {
+        PyObject *self = PyMethod_GET_SELF(method);
+        if (likely(self)) {
+            PyObject *function = PyMethod_GET_FUNCTION(method);
+            result = __Pyx_PyObject_CallOneArg(function, self);
+            Py_DECREF(method);
+            return result;
+        }
+    }
+#endif
+    result = __Pyx_PyObject_CallNoArg(method);
+    Py_DECREF(method);
+bad:
+    return result;
+}
+
 static CYTHON_INLINE void __Pyx_RaiseNoneNotIterableError(void) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+}
+
+static void __Pyx_UnpackTupleError(PyObject *t, Py_ssize_t index) {
+    if (t == Py_None) {
+      __Pyx_RaiseNoneNotIterableError();
+    } else if (PyTuple_GET_SIZE(t) < index) {
+      __Pyx_RaiseNeedMoreValuesError(PyTuple_GET_SIZE(t));
+    } else {
+      __Pyx_RaiseTooManyValuesError(index);
+    }
+}
+
+static CYTHON_INLINE int __Pyx_unpack_tuple2(PyObject* tuple, PyObject** pvalue1, PyObject** pvalue2,
+                                             int is_tuple, int has_known_size, int decref_tuple) {
+    Py_ssize_t index;
+    PyObject *value1 = NULL, *value2 = NULL, *iter = NULL;
+    if (!is_tuple && unlikely(!PyTuple_Check(tuple))) {
+        iternextfunc iternext;
+        iter = PyObject_GetIter(tuple);
+        if (unlikely(!iter)) goto bad;
+        if (decref_tuple) { Py_DECREF(tuple); tuple = NULL; }
+        iternext = Py_TYPE(iter)->tp_iternext;
+        value1 = iternext(iter); if (unlikely(!value1)) { index = 0; goto unpacking_failed; }
+        value2 = iternext(iter); if (unlikely(!value2)) { index = 1; goto unpacking_failed; }
+        if (!has_known_size && unlikely(__Pyx_IternextUnpackEndCheck(iternext(iter), 2))) goto bad;
+        Py_DECREF(iter);
+    } else {
+        if (!has_known_size && unlikely(PyTuple_GET_SIZE(tuple) != 2)) {
+            __Pyx_UnpackTupleError(tuple, 2);
+            goto bad;
+        }
+#if CYTHON_COMPILING_IN_PYPY
+        value1 = PySequence_ITEM(tuple, 0);
+        if (unlikely(!value1)) goto bad;
+        value2 = PySequence_ITEM(tuple, 1);
+        if (unlikely(!value2)) goto bad;
+#else
+        value1 = PyTuple_GET_ITEM(tuple, 0);
+        value2 = PyTuple_GET_ITEM(tuple, 1);
+        Py_INCREF(value1);
+        Py_INCREF(value2);
+#endif
+        if (decref_tuple) { Py_DECREF(tuple); }
+    }
+    *pvalue1 = value1;
+    *pvalue2 = value2;
+    return 0;
+unpacking_failed:
+    if (!has_known_size && __Pyx_IterFinish() == 0)
+        __Pyx_RaiseNeedMoreValuesError(index);
+bad:
+    Py_XDECREF(iter);
+    Py_XDECREF(value1);
+    Py_XDECREF(value2);
+    if (decref_tuple) { Py_XDECREF(tuple); }
+    return -1;
+}
+
+static CYTHON_INLINE PyObject* __Pyx_dict_iterator(PyObject* iterable, int is_dict, PyObject* method_name,
+                                                   Py_ssize_t* p_orig_length, int* p_source_is_dict) {
+    is_dict = is_dict || likely(PyDict_CheckExact(iterable));
+    *p_source_is_dict = is_dict;
+#if !CYTHON_COMPILING_IN_PYPY
+    if (is_dict) {
+        *p_orig_length = PyDict_Size(iterable);
+        Py_INCREF(iterable);
+        return iterable;
+    }
+#endif
+    *p_orig_length = 0;
+    if (method_name) {
+        PyObject* iter;
+        iterable = __Pyx_PyObject_CallMethod0(iterable, method_name);
+        if (!iterable)
+            return NULL;
+#if !CYTHON_COMPILING_IN_PYPY
+        if (PyTuple_CheckExact(iterable) || PyList_CheckExact(iterable))
+            return iterable;
+#endif
+        iter = PyObject_GetIter(iterable);
+        Py_DECREF(iterable);
+        return iter;
+    }
+    return PyObject_GetIter(iterable);
+}
+static CYTHON_INLINE int __Pyx_dict_iter_next(PyObject* iter_obj, Py_ssize_t orig_length, Py_ssize_t* ppos,
+                                              PyObject** pkey, PyObject** pvalue, PyObject** pitem, int source_is_dict) {
+    PyObject* next_item;
+#if !CYTHON_COMPILING_IN_PYPY
+    if (source_is_dict) {
+        PyObject *key, *value;
+        if (unlikely(orig_length != PyDict_Size(iter_obj))) {
+            PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
+            return -1;
+        }
+        if (unlikely(!PyDict_Next(iter_obj, ppos, &key, &value))) {
+            return 0;
+        }
+        if (pitem) {
+            PyObject* tuple = PyTuple_New(2);
+            if (unlikely(!tuple)) {
+                return -1;
+            }
+            Py_INCREF(key);
+            Py_INCREF(value);
+            PyTuple_SET_ITEM(tuple, 0, key);
+            PyTuple_SET_ITEM(tuple, 1, value);
+            *pitem = tuple;
+        } else {
+            if (pkey) {
+                Py_INCREF(key);
+                *pkey = key;
+            }
+            if (pvalue) {
+                Py_INCREF(value);
+                *pvalue = value;
+            }
+        }
+        return 1;
+    } else if (PyTuple_CheckExact(iter_obj)) {
+        Py_ssize_t pos = *ppos;
+        if (unlikely(pos >= PyTuple_GET_SIZE(iter_obj))) return 0;
+        *ppos = pos + 1;
+        next_item = PyTuple_GET_ITEM(iter_obj, pos);
+        Py_INCREF(next_item);
+    } else if (PyList_CheckExact(iter_obj)) {
+        Py_ssize_t pos = *ppos;
+        if (unlikely(pos >= PyList_GET_SIZE(iter_obj))) return 0;
+        *ppos = pos + 1;
+        next_item = PyList_GET_ITEM(iter_obj, pos);
+        Py_INCREF(next_item);
+    } else
+#endif
+    {
+        next_item = PyIter_Next(iter_obj);
+        if (unlikely(!next_item)) {
+            return __Pyx_IterFinish();
+        }
+    }
+    if (pitem) {
+        *pitem = next_item;
+    } else if (pkey && pvalue) {
+        if (__Pyx_unpack_tuple2(next_item, pkey, pvalue, source_is_dict, source_is_dict, 1))
+            return -1;
+    } else if (pkey) {
+        *pkey = next_item;
+    } else {
+        *pvalue = next_item;
+    }
+    return 1;
 }
 
 static int __Pyx_SetVtable(PyObject *dict, void *vtable) {
@@ -15721,6 +21920,101 @@ raise_neg_overflow:
     PyErr_SetString(PyExc_OverflowError,
         "can't convert negative value to int");
     return (int) -1;
+}
+
+static CYTHON_INLINE uint16_t __Pyx_PyInt_As_uint16_t(PyObject *x) {
+    const uint16_t neg_one = (uint16_t) -1, const_zero = 0;
+    const int is_unsigned = neg_one > const_zero;
+#if PY_MAJOR_VERSION < 3
+    if (likely(PyInt_Check(x))) {
+        if (sizeof(uint16_t) < sizeof(long)) {
+            __PYX_VERIFY_RETURN_INT(uint16_t, long, PyInt_AS_LONG(x))
+        } else {
+            long val = PyInt_AS_LONG(x);
+            if (is_unsigned && unlikely(val < 0)) {
+                goto raise_neg_overflow;
+            }
+            return (uint16_t) val;
+        }
+    } else
+#endif
+    if (likely(PyLong_Check(x))) {
+        if (is_unsigned) {
+#if CYTHON_COMPILING_IN_CPYTHON && PY_MAJOR_VERSION >= 3
+ #if CYTHON_USE_PYLONG_INTERNALS
+            switch (Py_SIZE(x)) {
+                case  0: return 0;
+                case  1: __PYX_VERIFY_RETURN_INT(uint16_t, digit, ((PyLongObject*)x)->ob_digit[0]);
+            }
+ #endif
+#endif
+            if (unlikely(Py_SIZE(x) < 0)) {
+                goto raise_neg_overflow;
+            }
+            if (sizeof(uint16_t) <= sizeof(unsigned long)) {
+                __PYX_VERIFY_RETURN_INT(uint16_t, unsigned long, PyLong_AsUnsignedLong(x))
+            } else if (sizeof(uint16_t) <= sizeof(unsigned long long)) {
+                __PYX_VERIFY_RETURN_INT(uint16_t, unsigned long long, PyLong_AsUnsignedLongLong(x))
+            }
+        } else {
+#if CYTHON_COMPILING_IN_CPYTHON && PY_MAJOR_VERSION >= 3
+ #if CYTHON_USE_PYLONG_INTERNALS
+            switch (Py_SIZE(x)) {
+                case  0: return 0;
+                case  1: __PYX_VERIFY_RETURN_INT(uint16_t,  digit, +(((PyLongObject*)x)->ob_digit[0]));
+                case -1: __PYX_VERIFY_RETURN_INT(uint16_t, sdigit, -(sdigit) ((PyLongObject*)x)->ob_digit[0]);
+            }
+ #endif
+#endif
+            if (sizeof(uint16_t) <= sizeof(long)) {
+                __PYX_VERIFY_RETURN_INT(uint16_t, long, PyLong_AsLong(x))
+            } else if (sizeof(uint16_t) <= sizeof(long long)) {
+                __PYX_VERIFY_RETURN_INT(uint16_t, long long, PyLong_AsLongLong(x))
+            }
+        }
+        {
+#if CYTHON_COMPILING_IN_PYPY && !defined(_PyLong_AsByteArray)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "_PyLong_AsByteArray() not available in PyPy, cannot convert large numbers");
+#else
+            uint16_t val;
+            PyObject *v = __Pyx_PyNumber_Int(x);
+ #if PY_MAJOR_VERSION < 3
+            if (likely(v) && !PyLong_Check(v)) {
+                PyObject *tmp = v;
+                v = PyNumber_Long(tmp);
+                Py_DECREF(tmp);
+            }
+ #endif
+            if (likely(v)) {
+                int one = 1; int is_little = (int)*(unsigned char *)&one;
+                unsigned char *bytes = (unsigned char *)&val;
+                int ret = _PyLong_AsByteArray((PyLongObject *)v,
+                                              bytes, sizeof(val),
+                                              is_little, !is_unsigned);
+                Py_DECREF(v);
+                if (likely(!ret))
+                    return val;
+            }
+#endif
+            return (uint16_t) -1;
+        }
+    } else {
+        uint16_t val;
+        PyObject *tmp = __Pyx_PyNumber_Int(x);
+        if (!tmp) return (uint16_t) -1;
+        val = __Pyx_PyInt_As_uint16_t(tmp);
+        Py_DECREF(tmp);
+        return val;
+    }
+raise_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "value too large to convert to uint16_t");
+    return (uint16_t) -1;
+raise_neg_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "can't convert negative value to uint16_t");
+    return (uint16_t) -1;
 }
 
 static CYTHON_INLINE char __Pyx_PyInt_As_char(PyObject *x) {
@@ -16322,6 +22616,32 @@ static CYTHON_INLINE PyObject* __Pyx_PyInt_From_char(char value) {
     }
 }
 
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_uint16_t(uint16_t value) {
+    const uint16_t neg_one = (uint16_t) -1, const_zero = 0;
+    const int is_unsigned = neg_one > const_zero;
+    if (is_unsigned) {
+        if (sizeof(uint16_t) < sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(uint16_t) <= sizeof(unsigned long)) {
+            return PyLong_FromUnsignedLong((unsigned long) value);
+        } else if (sizeof(uint16_t) <= sizeof(unsigned long long)) {
+            return PyLong_FromUnsignedLongLong((unsigned long long) value);
+        }
+    } else {
+        if (sizeof(uint16_t) <= sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(uint16_t) <= sizeof(long long)) {
+            return PyLong_FromLongLong((long long) value);
+        }
+    }
+    {
+        int one = 1; int little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&value;
+        return _PyLong_FromByteArray(bytes, sizeof(uint16_t),
+                                     little, !is_unsigned);
+    }
+}
+
 static PyObject* __pyx_convert__to_py_ArrayLayoutPos(struct ArrayLayoutPos s) {
             PyObject* res;
             PyObject* member;
@@ -16329,13 +22649,13 @@ static PyObject* __pyx_convert__to_py_ArrayLayoutPos(struct ArrayLayoutPos s) {
             member = __Pyx_PyInt_From_int(s.pos); if (member == NULL) goto bad;
             if (PyDict_SetItem(res, __pyx_n_s_pos, member) < 0) goto bad;
             Py_DECREF(member);
-            member = __Pyx_PyInt_From_int(s.readPos); if (member == NULL) goto bad;
+            member = __Pyx_PyInt_From_uint16_t(s.readPos); if (member == NULL) goto bad;
             if (PyDict_SetItem(res, __pyx_n_s_readPos, member) < 0) goto bad;
             Py_DECREF(member);
             member = __Pyx_PyInt_From_int(s.quality); if (member == NULL) goto bad;
             if (PyDict_SetItem(res, __pyx_n_s_quality, member) < 0) goto bad;
             Py_DECREF(member);
-            member = __Pyx_PyInt_From_int(s.agreement); if (member == NULL) goto bad;
+            member = __Pyx_PyInt_From_uint16_t(s.agreement); if (member == NULL) goto bad;
             if (PyDict_SetItem(res, __pyx_n_s_agreement, member) < 0) goto bad;
             Py_DECREF(member);
             member = __Pyx_PyInt_From_char(s.operation); if (member == NULL) goto bad;
@@ -16375,6 +22695,127 @@ static PyObject* __pyx_convert__to_py_ArrayLayoutPos(struct ArrayLayoutPos s) {
         int one = 1; int little = (int)*(unsigned char *)&one;
         unsigned char *bytes = (unsigned char *)&value;
         return _PyLong_FromByteArray(bytes, sizeof(unsigned char),
+                                     little, !is_unsigned);
+    }
+}
+
+static CYTHON_INLINE npy_int16 __Pyx_PyInt_As_npy_int16(PyObject *x) {
+    const npy_int16 neg_one = (npy_int16) -1, const_zero = 0;
+    const int is_unsigned = neg_one > const_zero;
+#if PY_MAJOR_VERSION < 3
+    if (likely(PyInt_Check(x))) {
+        if (sizeof(npy_int16) < sizeof(long)) {
+            __PYX_VERIFY_RETURN_INT(npy_int16, long, PyInt_AS_LONG(x))
+        } else {
+            long val = PyInt_AS_LONG(x);
+            if (is_unsigned && unlikely(val < 0)) {
+                goto raise_neg_overflow;
+            }
+            return (npy_int16) val;
+        }
+    } else
+#endif
+    if (likely(PyLong_Check(x))) {
+        if (is_unsigned) {
+#if CYTHON_COMPILING_IN_CPYTHON && PY_MAJOR_VERSION >= 3
+ #if CYTHON_USE_PYLONG_INTERNALS
+            switch (Py_SIZE(x)) {
+                case  0: return 0;
+                case  1: __PYX_VERIFY_RETURN_INT(npy_int16, digit, ((PyLongObject*)x)->ob_digit[0]);
+            }
+ #endif
+#endif
+            if (unlikely(Py_SIZE(x) < 0)) {
+                goto raise_neg_overflow;
+            }
+            if (sizeof(npy_int16) <= sizeof(unsigned long)) {
+                __PYX_VERIFY_RETURN_INT(npy_int16, unsigned long, PyLong_AsUnsignedLong(x))
+            } else if (sizeof(npy_int16) <= sizeof(unsigned long long)) {
+                __PYX_VERIFY_RETURN_INT(npy_int16, unsigned long long, PyLong_AsUnsignedLongLong(x))
+            }
+        } else {
+#if CYTHON_COMPILING_IN_CPYTHON && PY_MAJOR_VERSION >= 3
+ #if CYTHON_USE_PYLONG_INTERNALS
+            switch (Py_SIZE(x)) {
+                case  0: return 0;
+                case  1: __PYX_VERIFY_RETURN_INT(npy_int16,  digit, +(((PyLongObject*)x)->ob_digit[0]));
+                case -1: __PYX_VERIFY_RETURN_INT(npy_int16, sdigit, -(sdigit) ((PyLongObject*)x)->ob_digit[0]);
+            }
+ #endif
+#endif
+            if (sizeof(npy_int16) <= sizeof(long)) {
+                __PYX_VERIFY_RETURN_INT(npy_int16, long, PyLong_AsLong(x))
+            } else if (sizeof(npy_int16) <= sizeof(long long)) {
+                __PYX_VERIFY_RETURN_INT(npy_int16, long long, PyLong_AsLongLong(x))
+            }
+        }
+        {
+#if CYTHON_COMPILING_IN_PYPY && !defined(_PyLong_AsByteArray)
+            PyErr_SetString(PyExc_RuntimeError,
+                            "_PyLong_AsByteArray() not available in PyPy, cannot convert large numbers");
+#else
+            npy_int16 val;
+            PyObject *v = __Pyx_PyNumber_Int(x);
+ #if PY_MAJOR_VERSION < 3
+            if (likely(v) && !PyLong_Check(v)) {
+                PyObject *tmp = v;
+                v = PyNumber_Long(tmp);
+                Py_DECREF(tmp);
+            }
+ #endif
+            if (likely(v)) {
+                int one = 1; int is_little = (int)*(unsigned char *)&one;
+                unsigned char *bytes = (unsigned char *)&val;
+                int ret = _PyLong_AsByteArray((PyLongObject *)v,
+                                              bytes, sizeof(val),
+                                              is_little, !is_unsigned);
+                Py_DECREF(v);
+                if (likely(!ret))
+                    return val;
+            }
+#endif
+            return (npy_int16) -1;
+        }
+    } else {
+        npy_int16 val;
+        PyObject *tmp = __Pyx_PyNumber_Int(x);
+        if (!tmp) return (npy_int16) -1;
+        val = __Pyx_PyInt_As_npy_int16(tmp);
+        Py_DECREF(tmp);
+        return val;
+    }
+raise_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "value too large to convert to npy_int16");
+    return (npy_int16) -1;
+raise_neg_overflow:
+    PyErr_SetString(PyExc_OverflowError,
+        "can't convert negative value to npy_int16");
+    return (npy_int16) -1;
+}
+
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_npy_int16(npy_int16 value) {
+    const npy_int16 neg_one = (npy_int16) -1, const_zero = 0;
+    const int is_unsigned = neg_one > const_zero;
+    if (is_unsigned) {
+        if (sizeof(npy_int16) < sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(npy_int16) <= sizeof(unsigned long)) {
+            return PyLong_FromUnsignedLong((unsigned long) value);
+        } else if (sizeof(npy_int16) <= sizeof(unsigned long long)) {
+            return PyLong_FromUnsignedLongLong((unsigned long long) value);
+        }
+    } else {
+        if (sizeof(npy_int16) <= sizeof(long)) {
+            return PyInt_FromLong((long) value);
+        } else if (sizeof(npy_int16) <= sizeof(long long)) {
+            return PyLong_FromLongLong((long long) value);
+        }
+    }
+    {
+        int one = 1; int little = (int)*(unsigned char *)&one;
+        unsigned char *bytes = (unsigned char *)&value;
+        return _PyLong_FromByteArray(bytes, sizeof(npy_int16),
                                      little, !is_unsigned);
     }
 }
