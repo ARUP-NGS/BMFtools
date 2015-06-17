@@ -15,6 +15,8 @@ from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from utilBMF.QC import GetAllQCMetrics
 from BMFMain import Workflow as wf
 
+from utilBMF.ErrorHandling import ThisIsHKMadness
+
 global ReferenceDict
 
 """
@@ -224,7 +226,7 @@ def main():
         "-a",
         "--aligner",
         metavar="aligner",
-        help="Aligner program (e.g. bwa mem or bwa aln)")
+        help="Aligner program (e.g. bwa 'mem' or bwa 'aln')")
     alignTagBamParser.add_argument(
         "-g",
         "--realigner",
@@ -365,9 +367,18 @@ def main():
         help="Path to reference file. (Must be faidx'd)",
         type=str)
     GetUniqueKmerBedParser.add_argument(
+        "--aligner", "-a",
+        metavar="aligner",
+        help="Aligner program (e.g. takes bwa 'mem' or bowtie 'bwt').",
+        type=str)
+    GetUniqueKmerBedParser.add_argument(
         "-k", "--kmer", help=("Length of unique sequence groups (kmers) "
                               "to search for in the reference."),
         metavar="kmer",
+        type=int)
+    GetUniqueKmerBedParser.add_argument(
+        "-s", "--seed", help=("Seed length (for bowtie only)"),
+        metavar="seed",
         type=int)
     GetUniqueKmerBedParser.add_argument(
         "--padding", "-p",
@@ -896,12 +907,28 @@ def main():
         sys.exit(0)
     if(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
+        from utilBMF.HTSUtils import ParseBed
+        if Chapman['aligner'] == 'bwt':
+            raise ThisIsHKMadness("Bowtie not recommended for use due to identified bugs.")
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
-                         mismatches=Chapman['mismatches'],
-                         k=Chapman['kmer'])
-        for line in Chapman['inbed']:
-            KF.FillMap("contig", start, stop)
-        KF.keys()
+                         mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
+                         k=Chapman['kmer'], seed=Chapman['seed'], aligner=Chapman['aligner'])
+
+        bedlines = ParseBed(Chapman['inbed'])
+        # Get's unique kmers in each line of bed file and loading it into the KmerFetcher
+        # HashMap object (key=inbed region, value=Kmer object) by running GetUniqueKmers:
+        # runs alignment on a fastq file of kmers built in the padded bed regions
+        # & parses its output
+        for line in bedlines:
+            KF.FillMap(line)
+        uniquekmerList = KF.keys()
+        print "Keys are"
+        print uniquekmerList #need to convert this to a bed file
+        print "values are"
+        print KF.values()
+        print "First key/value is"
+        print uniquekmerList[0]
+        print KF[uniquekmerList[0]]
 
     if(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats

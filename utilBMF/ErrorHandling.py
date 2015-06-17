@@ -68,6 +68,16 @@ class ThisIsMadness(Exception):
         super(Exception, self).__init__(message)
         self.message = message
 
+class ThisIsHKMadness(Exception):
+    """
+    Thrown when something just doesn't seem right and existing exceptions
+    don't have enough panache.
+    """
+    def __init__(self, message=""):
+        print(HKStr)
+        # Call the base class constructor with the parameters it needs
+        super(Exception, self).__init__(message)
+        self.message = message
 
 class FunctionCallException(Exception):
     """
@@ -123,3 +133,11 @@ FPStr = ("............................................________ \n............"
          ".................................`=-,...................,%`>--==`` "
          "\n........................................_..........._,-%.......` "
          "\n...................................,")
+
+HKStr = ("\n"
+         "   ( )---( )   \n"
+         "   /       \   \n"
+         "  +  0  o 0 +   ~~ This is madness!  \n"
+         "   + _____ +   \n"
+         "     / ^ -L   \n"
+         "   (~( \/ | )   \n")

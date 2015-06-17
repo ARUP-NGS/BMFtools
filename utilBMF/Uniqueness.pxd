@@ -10,14 +10,14 @@ cdef class KmerFetcher(object):
     """
     cdef readonly cython.int k
 
-    cdef readonly cystr ref
-    cdef public cython.int mismatches, minMQ, padding
+    cdef readonly cystr ref, aligner
+    cdef public cython.int mismatches, minMQ, padding, seed
     cdef public dict HashMap, FullMap
 
     cdef public cython.int getK(self)
     cdef public setK(self, cython.int)
     cpdef cystr getFastqString(self, list)
-    cpdef cystr getOutputString(self, list)
+    cpdef cystr getOutputString(self, list, str aligner=?)
     cpdef public FillMap(self, list)
     cpdef public list GetUniqueKmers(self, list)
     cpdef FMfrombed(self, cystr)
