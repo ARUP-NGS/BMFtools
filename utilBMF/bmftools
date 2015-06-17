@@ -12,6 +12,7 @@ from utilBMF.HTSUtils import printlog as pl, TrimExt
 from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
+from utilBMF.QC import GetAllQCMetrics
 from BMFMain import Workflow as wf
 
 global ReferenceDict
