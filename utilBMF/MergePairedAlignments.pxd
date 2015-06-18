@@ -5,9 +5,11 @@ cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, BamTag, cReadsOverlap
+from utilBMF.PysamUtils cimport CopyAlignedSegment
 from cython cimport bint
 from libc.stdlib cimport malloc, free, realloc
 from libc.stdint cimport uint16_t
+from cpython.array cimport array as py_array
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef unsigned char uchar
 ctypedef BamTag BamTag_t
@@ -34,13 +36,13 @@ cdef extern from "MPA.h":
         char Success
     ArrayLayoutPos_t cMergeLayoutPositions(ArrayLayoutPos_t L1, ArrayLayoutPos_t L2)
     int getFirstAlignedRefPos(ArrayLayout_t layout)
-    ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2)
+    # ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2)
+    char MergeOverlappedLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2)
 
 
 cdef class Layout:
     cdef ArrayLayout_t Layout
 
-    cdef AlignedSegment_t read
     cdef public uchar mapq
     cdef public int tlen, pnext, flag, InitPos, firstMapped, reference_id, pos, rnext
     cdef public dict tagDict
@@ -48,14 +50,15 @@ cdef class Layout:
     cdef public bint is_reverse, isMerged, MergeSuccess
 
     cdef int getFirstAlignedRefPos(self)
+    cdef int getLastAlignedRefPos(self)
     cdef int getFirstMappedReadPos(self)
     cdef int getAlignmentStart(self)
 
     cdef bint cPosIsMapped(self, int position)
     cpdef bint posIsMapped(self, int position)
 
-    cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout)
-    cpdef MergeLayout(self, Layout_t pairedLayout)
+    cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout)
+    cpdef AlignedSegment_t MergeLayoutToAS(self, Layout_t pairedLayout, AlignedSegment_t template)
     cdef update_tags_(self)
     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self)
     cpdef ndarray[int, ndim=1] getAgreement(self)
@@ -79,19 +82,29 @@ cdef class Layout:
     cpdef ndarray[char] getSeqArr(self)
     cpdef cystr getSeq(self)
 
+    cdef list get_merge_tags(self)
+
     # Utilities for BMF metadata
     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self)
     cdef ndarray[np.int16_t, ndim=1] cGetReadDiscordantPositions(self)
     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self)
 
     # Output objects
-    cpdef AlignedSegment_t __read__(self)
-    cdef AlignedSegment_t __cread__(self)
-    cdef AlignedSegment_t __newread__(self)
+    cpdef cystr __sam__(self, Layout_t pairedLayout,
+                        AlignedSegment_t template=?)
+    cdef cystr __csam__(self, Layout_t pairedLayout,
+                        AlignedSegment_t template=?)
 
     # Updates
     cdef update_read_positions(self)
-    cdef update_read(self)
+
+    # Slices
+    cdef ndarray[int, ndim=1] cGetAgreementSlice(self, size_t start=?)
+    cdef ndarray[int, ndim=1] cGetQualSlice(self, size_t start=?)
+    cdef cystr cGetCigarStringSlice(self, size_t start=?)
+    cdef ndarray[char] cGetSeqArrSlice(self, size_t start=?)
+    cdef ndarray[np.int8_t, ndim=1] cGetOperationsSlice(self, size_t start=?)
+    cdef cystr cGetQualStringSlice(self, size_t start=?)
 
 
 cdef public dict chrDict, CigarDict, CigarStrDict
@@ -101,5 +114,6 @@ cpdef cystr ALPToStr(ArrayLayoutPos_t ALP)
 cdef class ListBool:
     cdef list List
     cdef bint Bool
+
 
 cdef object oagtag

@@ -211,3 +211,9 @@ cdef carray cs_to_ph(cystr input_str):
 @cython.wraparound(False)
 cpdef carray str2intarray(cystr instr):
     return cs_to_ia(instr)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef carray str2phredarray(cystr instr):
+    return cs_to_ph(instr)

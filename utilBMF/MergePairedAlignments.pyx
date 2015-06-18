@@ -32,6 +32,7 @@ oagqual = oag("quality")
 oagag = oag("agreement")
 oagtag = oag("tag")
 oig0 = oig(0)
+oig1 = oig(1)
 chrDict = {x: chr(x) for x in xrange(33, 126)}
 
 
@@ -112,7 +113,6 @@ cdef class Layout:
         cdef ndarray[int, ndim=1] quals, agrees
         cdef ArrayLayoutPos_t tmpPos
         cdef tuple tag
-        self.read = read
 
         # Parsing out base-by-base information.
         self.mapq = read.mapq
@@ -213,10 +213,18 @@ cdef class Layout:
         return self.cPosIsMapped(position)
 
     cdef int getFirstMappedReadPos(self):
-        cdef int i
+        cdef size_t i
         for i in range(self.Layout.length):
             if(self.Layout.layouts[i].operation == 77):
                 return i
+
+    cdef int getLastAlignedRefPos(self):
+        cdef size_t i, counter
+        counter = 0
+        for i from self.Layout.length > i >= 0:
+            if(self.Layout.layouts[i].operation == 77):
+                return self.Layout.layouts[i].pos + counter
+            counter += 1
 
     cdef int getFirstAlignedRefPos(self):
         return getFirstAlignedRefPos(self.Layout)
@@ -240,8 +248,23 @@ cdef class Layout:
                          self.Layout.layouts[tmpInt].operation != 68],
                         dtype=np.int32)
 
+    cdef ndarray[int, ndim=1] cGetAgreementSlice(self, size_t start=0):
+        return np.array([self.Layout.layouts[tmpInt].agreement for tmpInt
+                         in range(start, self.Layout.length) if
+                         self.Layout.layouts[tmpInt].operation != 68])
+
+    cdef ndarray[int, ndim=1] cGetQualSlice(self, size_t start=0):
+        return np.array([self.Layout.layouts[tmpInt].quality for tmpInt
+                         in range(start, self.Layout.length) if
+                         self.Layout.layouts[tmpInt].operation != 68])
+
     cpdef ndarray[int, ndim=1] getQual(self):
         return self.cGetQual()
+
+    cdef cystr cGetQualStringSlice(self, size_t start=0):
+        cdef int i
+        return "".join([ph2chrDict[i] for i
+                        in self.cGetQualSlice(start)])
 
     cdef cystr cGetQualString(self):
         cdef int i
@@ -253,11 +276,21 @@ cdef class Layout:
     def __dealloc__(self):
         free(self.Layout.layouts)
 
+    cdef ndarray[char] cGetSeqArrSlice(self, size_t start=0):
+        """Returns a character array of the base calls
+        if the operations aren't "D" (68)
+        """
+        cdef size_t i
+        return np.char.array([chrDict[self.Layout.layouts[i].base]
+                              for i in xrange(start, self.Layout.length) if
+                              self.Layout.layouts[i].operation != 68],
+                             itemsize=1)
+
     cdef ndarray[char] cGetSeqArr(self):
         """Returns a character array of the base calls
         if the operations aren't "D" (68)
         """
-        cdef int i
+        cdef size_t i
         return np.char.array([chrDict[self.Layout.layouts[i].base]
                               for i in xrange(self.Layout.length) if
                               self.Layout.layouts[i].operation != 68],
@@ -274,25 +307,51 @@ cdef class Layout:
 
     @cython.returns(cystr)
     def __str__(self):
-        cdef int i
-        return "#".join(map(ALPToStr, [self.Layout.layouts[i] for
-                                       i in range(self.Layout.length)]))
+        cdef ArrayLayoutPos_t tmpALP
+        return "#".join(map(ALPToStr, [ALP for ALP in
+                                       self.Layout.layouts[:self.Layout.length]
+                                       ]))
 
-    cpdef MergeLayout(self, Layout_t pairedLayout):
-        self.MergeLayouts_in_place(pairedLayout.Layout)
+    cpdef AlignedSegment_t MergeLayoutToAS(self, Layout_t pairedLayout,
+                                           AlignedSegment_t template):
+        cdef size_t tmpInt
+        cdef cystr tmpQual
+        cdef char offset
+        # cdef AlignedSegment_t retAS = self.read
+        retAS = CopyAlignedSegment(template)
+        offset = self.MergeLayouts_in_place(pairedLayout.Layout)
+        if(self.MergeSuccess is False):
+            return None
+        retAS.cigarstring += pairedLayout.cGetCigarStringSlice(offset)
+        retAS.cigar = FlattenCigar(retAS.cigar)
+        tmpQual = retAS.qual
+        retAS.seq += pairedLayout.cGetSeqArrSlice(offset).tostring()
+        retAS.qual = tmpQual + pairedLayout.cGetQualStringSlice(offset)
+        retAS.set_tag("PV", retAS.opt("PV") + "," +
+                          ",".join(self.cGetQualSlice(offset).astype(str)))
+        retAS.set_tag("FA",
+                      (retAS.opt("FA") +
+                       "," +
+                       ",".join(self.cGetAgreementSlice(offset).astype(str))))
+        retAS.set_tags(self.get_merge_tags())
+        retAS.mapq = 255  # Meaning mapping quality is not meaningful without a realignment.
+        retAS.reference_id = self.reference_id
+        retAS.pos = self.getAlignmentStart()
+        return retAS
 
-    cdef MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
+    cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
         print("Begging MergeLayouts_in_place")
-        self.Layout = MergeLayouts(self.Layout, pairedLayout)
+        cdef char offset
+        offset = MergeOverlappedLayouts(self.Layout, pairedLayout)
         cdef int tmpInt
         self.MergeSuccess = True
         for tmpInt in range(self.Layout.length):
-            print("Begging MergeLayouts_in_place")
             print("ALP String: %s" % ALPToStr(self.Layout.layouts[tmpInt]))
             if(self.Layout.layouts[tmpInt].mergeAgreed < 0):
                 self.MergeSuccess = False
-        print("Assigned values to self for safekeeping. Read name: %s" % self.read.query_name)
+        self.update()
         self.isMerged = True
+        return offset
 
     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self):
         cdef int tmpInt
@@ -308,9 +367,52 @@ cdef class Layout:
                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
                         dtype=np.int16)
 
+    cdef list get_merge_tags(self):
+        cdef ndarray[np.int32_t, ndim=1] GenDiscPos
+        cdef ndarray[np.int16_t, ndim=1] ReadDiscPos
+        cdef str PMStr, MAStr, DGStr, DRStr
+
+        assert self.isMerged
+
+        GenDiscPos = self.cGetGenomicDiscordantPositions()
+        ReadDiscPos = self.cGetReadDiscordantPositions()
+        PMStr = ",".join(self.getMergedPositions().astype(str))
+        MAStr = ",".join(self.getMergeAgreements().astype(str))
+        DGStr = ",".join(GenDiscPos.astype(str))
+        DRStr = ",".join(ReadDiscPos.astype(str))
+        if(len(GenDiscPos) > 0):
+            return [("PM", PMStr), ("MA", MAStr),
+                    ("ot", self.tlen), ("mp", self.pnext),
+                    ("om", self.mapq), ("MP", "T"),
+                    ("DG", DGStr),("DR", DRStr)]
+        return [("PM", PMStr), ("MA", MAStr),
+                ("ot", self.tlen), ("mp", self.pnext),
+                ("om", self.mapq), ("MP", "T")]
+
+    cpdef cystr __sam__(self, Layout_t pairedLayout,
+                        AlignedSegment_t template=None):
+        return self.__csam__(pairedLayout, template)
+
+    cdef cystr __csam__(self, Layout_t pairedLayout,
+                        AlignedSegment_t template=None):
+        """ 
+        Converts the record into a SAM record.
+        Note: the position is incremented by 1 because SAM positions are
+        1-based instead of 0-based.
+        """
+        self.update()
+        return "\t".join(map(
+                str, [self.Name, self.getFlag(), self.contig,
+                      self.getAlignmentStart() + 1, self.mapq,
+                      self.getCigarString(), self.rnext, self.pnext + 1,
+                      self.tlen, self.getSeq(), self.getQualString()] +
+                self.get_tags()))
+
+
     cdef update_tags_(self):
         cdef ndarray[np.int32_t, ndim=1] GenDiscPos
         cdef ndarray[np.int16_t, ndim=1] ReadDiscPos
+        cdef str PMStr, MAStr, DGStr, DRStr
         self.tagDict["PV"] = BamTag(
             "PV", "Z", ",".join(self.cGetQual().astype(str)))
         self.tagDict["FA"] = BamTag(
@@ -318,15 +420,19 @@ cdef class Layout:
         if(self.isMerged):
             GenDiscPos = self.cGetGenomicDiscordantPositions()
             ReadDiscPos = self.cGetReadDiscordantPositions()
+            PMStr = ",".join(self.getMergedPositions().astype(str))
+            MAStr = ",".join(self.getMergeAgreements().astype(str))
+            DGStr = ",".join(GenDiscPos.astype(str))
+            DRStr = ",".join(ReadDiscPos.astype(str))
             self.tagDict["PM"] = BamTag(
-                "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
+                "PM", "Z", PMStr)
             self.tagDict["MA"] = BamTag(
-                "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
+                "MA", "Z", MAStr)
             if(len(GenDiscPos) > 0):
                 self.tagDict["DG"] = BamTag(
-                    "DG", "Z", ",".join(GenDiscPos.astype(str)))
+                    "DG", "Z", DGStr)
                 self.tagDict["DR"] = BamTag(
-                    "DR", "Z", ",".join(ReadDiscPos.astype(str)))
+                    "DR", "Z", DRStr)
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
@@ -359,8 +465,9 @@ cdef class Layout:
                 pass
             self.flag = 2 + (16 if(self.is_reverse) else 32)
             self.update_read_positions()
-        self.update_read()
+        # self.update_read()
 
+    '''
     cdef update_read(self):
         cdef int tmpInt
         cdef BamTag_t BT
@@ -378,21 +485,22 @@ cdef class Layout:
         self.read.tags = sorted([(BT.tag, BT.value) for BT in
                                  self.tagDict.itervalues()],
                                 key=oig0)
+    '''
 
     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):
-        cdef int tmpInt
-        return np.array([self.Layout.layouts[tmpInt].pos for tmpInt in
-                         range(self.Layout.length) if
-                         self.Layout.layouts[tmpInt].mergeAgreed == 0 and
-                         self.Layout.layouts[tmpInt].operation != 66],
+        cdef ArrayLayoutPos_t tmpLayoutPos
+        return np.array([tmpLayoutPos.pos for tmpLayoutPos in
+                         self.Layout.layouts[:self.Layout.length] if
+                         tmpLayoutPos.mergeAgreed == 0 and
+                         tmpLayoutPos.operation != 66],
                         dtype=np.int32)
 
     cdef ndarray[np.int16_t, ndim=1] cGetReadDiscordantPositions(self):
-        cdef int tmpInt
-        return np.array([self.Layout.layouts[tmpInt].readPos for tmpInt in
-                         range(self.Layout.length) if
-                         self.Layout.layouts[tmpInt].mergeAgreed == 0 and
-                         self.Layout.layouts[tmpInt].operation != 66],
+        cdef ArrayLayoutPos_t tmpLayoutPos
+        return np.array([tmpLayoutPos.readPos for tmpLayoutPos in
+                         self.Layout.layouts[:self.Layout.length] if
+                         tmpLayoutPos.mergeAgreed == 0 and
+                         tmpLayoutPos.operation != 66],
                         dtype=np.int16)
         
     cpdef ndarray[int, ndim=1] getAgreement(self):
@@ -401,57 +509,29 @@ cdef class Layout:
         return self.cGetAgreement()
 
     cdef ndarray[uint16_t, ndim=1] cGetAgreement(self):
-        cdef int tmpInt
+        cdef ArrayLayoutPos_t tmpLayoutPos
         # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
-        return np.array([self.Layout.layouts[tmpInt].agreement for
-                        tmpInt in range(self.Layout.length) if
-                        self.Layout.layouts[tmpInt].operation != 68],
+        return np.array([tmpLayoutPos.agreement for tmpLayoutPos in
+                         self.Layout.layouts[:self.Layout.length] if
+                         tmpLayoutPos.operation != 66],
                         dtype=np.int16)
-
-    cdef AlignedSegment_t __cread__(self):
-        cdef np.int16_t tmpInt
-        cdef BamTag_t BT
-        self.update()
-        return self.read
-
-    cpdef AlignedSegment_t __read__(self):
-        return self.__cread__()
-
-    cdef AlignedSegment_t __newread__(self):
-        cdef np.int16_t tmpInt
-        cdef BamTag_t BT
-        cdef AlignedSegment_t retSegment
-        self.update()
-        retSegment = AlignedSegment()
-        retSegment.query_name = self.Name
-        retSegment.seq = self.getSeq()
-        retSegment.query_qualities = [93 if(tmpInt > 92) else tmpInt
-                                      for tmpInt in self.cGetQual()]
-        retSegment.flag = self.flag
-        retSegment.reference_id = self.reference_id
-        retSegment.rnext = self.rnext
-        retSegment.tlen = self.tlen
-        retSegment.pnext = self.pnext
-        retSegment.pos = self.getAlignmentStart()
-        retSegment.cigarstring = self.cGetCigarString()
-        retSegment.mapq = self.mapq
-        try:
-            retSegment.tags = sorted([(BT.tag, BT.value) for BT in
-                                      self.tagDict.itervalues()],
-                                     key=oig0)
-        except AttributeError:
-            for BT in self.tagDict.iteritems():
-                print("str of BT with tag %s is %s." % (BT.tag, str(BT)))
-            raise AttributeError
-        return retSegment
 
     cpdef ndarray[np.int8_t, ndim=1] getOperations(self):
         return self.cGetOperations()
+
+    cdef ndarray[np.int8_t, ndim=1] cGetOperationsSlice(self, size_t start=0):
+        cdef int tmpInt
+        return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in
+                         range(start, self.Layout.length)], dtype=np.int8)
 
     cdef ndarray[np.int8_t, ndim=1] cGetOperations(self):
         cdef int tmpInt
         return np.array([self.Layout.layouts[tmpInt].operation for tmpInt in
                          range(self.Layout.length)], dtype=np.int8)
+
+    cdef cystr cGetCigarStringSlice(self, size_t start=0):
+        return "".join([str(len(list(g))) + CigarStrDict[k] for
+                        k, g in groupby(self.cGetOperationsSlice(start))])
 
     cdef cystr cGetCigarString(self):
         return "".join([str(len(list(g))) + CigarStrDict[k] for
@@ -464,383 +544,32 @@ cdef class Layout:
         self.update()
         return self.flag
 
-'''
-    @cython.returns(AlignedSegment_t)
-    def __read__(self):
-        cdef AlignedSegment_t newRead
-        cdef int i
-        cdef BamTag_t BT
-        newRead = pysam.AlignedSegment()
-        newRead.query_name = self.Name
-        newRead.flag = self.getFlag()
-        newRead.reference_id = PysamToChrDict[self.contig]
-        newRead.query_sequence = self.getSeq()
-        print(str(self.read))
-        newRead.query_qualities = [93 if(i > 92) else i for
-                                   i in self.cGetQual()]
-        newRead.reference_start = self.getAlignmentStart()
-        newRead.cigarstring = self.getCigarString()
-        newRead.tlen = self.tlen
-        newRead.mapq = self.mapq
-        newRead.tags = [(BT.tag, BT.value) for BT in self.tagDict.itervalues()]
-        newRead.next_reference_id = PysamToChrDict[self.rnext]
-        newRead.pnext = self.pnext
-        return newRead
-'''
-'''
-
-Dinosaur code from before the struct version of Layout. Keeping around since
-I'll have to recode most of this for the new object scheme.
-cdef class Layout(object):
-    """
-    Holds a read and its layout information.
-
-    This doctest was written so that it would load in one read,
-    make the string, and then hash that value. Since it wouldn't
-    match the interpreter's output to have a gigantic line and it would have
-    to violate pep8, I decided to test the value by its hash rather than by
-    string agreement.
-    Unfortunately, this only works on 64-bit systems, as the hash function
-    is different for 32-bit systems.
-    >>> from sys import maxint
-    >>> from pysam import AlignmentFile as af
-    >>> handle = af("utilBMF/example.bam", "rb")
-    >>> returnStr = str(Layout.fromread(handle.next()))
-    >>> hashreturn = -8225309399721982299
-    >>> hash(returnStr)
-    -8225309399721982299
-    """
-
-    @classmethod
-    def fromread(cls, pysam.calignmentfile.AlignedSegment rec):
-        return cls(*makeLayoutTuple(rec))
-
-    def __getitem__(self, index):
-        return self.positions[index]
-
-    def __len__(self):
-        return len(self.positions)
-
-    @cython.boundscheck(False)
-    @cython.wraparound(False)
-    cdef ndarray[char] getSeqArr(self):
-        """Returns a character array of the base calls
-        if the base calls aren't "D" (68)
-        """
-        cdef char i
-        cdef LayoutPos_t pos
-        return np.char.array([chrDict[pos.base]
-                              for pos in self.positions if
-                              pos.operation != 68 and
-                              pos.agreement > -1],
-                             itemsize=1)
-
-    @cython.boundscheck(False)
-    @cython.wraparound(False)
-    cpdef cystr getSeq(self):
-        return self.getSeqArr().tostring()
-
-    @cython.boundscheck(False)
-    @cython.wraparound(False)
-    cdef int cGetRefPosForFirstPos(self):
-        """cdef class wrapped by getRefPosForFirstPos
-        """
-        cdef LayoutPos_t i
-        cdef int count
-        for count, i in enumerate(self):
-            if(i.operation == "M"):
-                return i.pos - count
-
-    cpdef int getRefPosForFirstPos(self):
-        return self.cGetRefPosForFirstPos()
-
-    @cython.boundscheck(False)
-    @cython.wraparound(False)
-    cpdef int getAlignmentStart(self):
-        cdef LayoutPos_t i
-        for i in self.positions:
-            if(i.operation == 77):  # operation is "M"
-                return i.pos
-
-    cpdef ndarray[int, ndim=1] getAgreement(self):
-        """cpdef wrapper of cGetAgreement
-        """
-        return self.cGetAgreement()
-
-    cdef ndarray[int, ndim=1] cGetAgreement(self):
-        cdef int i
-        cdef LayoutPos_t pos
-        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
-        return np.array([i for
-                         i in [pos.agreement for
-                               pos in self.positions] if i > -1],
-                        dtype=np.int64)
-
-    cdef ndarray[int, ndim=1] cGetQual(self):
-        cdef LayoutPos_t pos
-        # Ask if >= 0. My tests say it's ~1% faster to ask (> -1) than (>= 0).
-        # pos.base == 66 for "B", which is a blank spot.
-        # quality is set to less than 0 for an "N" cigar operation.
-        return np.array([pos.quality for
-                         pos in self.positions if pos.base != 66 and
-                         pos.quality > -1],
-                        dtype=np.int32)
-
-    cpdef ndarray[int, ndim=1] getQual(self):
-        return self.cGetQual()
-
-    cdef cystr cGetQualString(self):
-        cdef int i
-        return "".join([ph2chrDict[i] for i in self.cGetQual()])
-
-    cpdef cystr getQualString(self):
-        return self.cGetQualString()
-
-    cdef int cGetLastRefPos(self):
-        """cdef version of getLastRefPos
-        """
-        cdef LayoutPos_t i
-        cdef int lastMPos, countFromMPos, count
-        lastMPos = 0
-        for count, i in enumerate(self):
-            countFromMPos += 1
-            if(i.operation == 77):  # 77 == M in ASCII
-                lastMPos = i.pos
-                countFromMPos = 0
-        return lastMPos + countFromMPos
-
-    cpdef int getLastRefPos(self):
-        """
-        Finds the reference position which "matches" the last base in the
-        layout. This counts for any cigar operation.
-        """
-        return self.cGetLastRefPos()
-
-    cpdef ndarray[np.int16_t, ndim=1] getMergedPositions(self):
-        """
-        Returns the indices of the bases in the merged read
-        which have been merged.
-        """
-        return self.cGetMergedPositions()
-
-    cpdef list getPositions(self):
-        cdef LayoutPos_t tmpPos
-        return [tmpPos for tmpPos in self.positions]
-
-    cpdef ndarray[char, ndim=1] getMergeAgreements(self):
-        """
-        Returns the indices of the bases in the merged read
-        which have been merged successfully.
-        """
-        return self.cGetMergeAgreements()
-
-    cdef ndarray[np.int16_t, ndim=1] cGetMergedPositions(self):
-        """
-        Returns the indices of the bases in the merged read
-        which have been merged.
-        """
-        cdef LayoutPos_t lpos
-        return np.array([lpos.readPos for lpos in self.positions if
-                         lpos.merged],
-                        dtype=np.int16)
-
-    cdef ndarray[char, ndim=1] cGetMergeAgreements(self):
-        """
-        Returns the indices of the bases in the merged read
-        which have been merged successfully.
-        """
-        cdef LayoutPos_t lpos
-        return np.array([lpos.readPos for lpos in self.positions if
-                         lpos.getMergeAgreed()],
-                        dtype=np.int8)
-
-    cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):
-        """
-        Returns a 1-d array of integers for genomic positions which
-        were discordant between the pairs.
-        """
-        cdef LayoutPos_t p
-        if(self.isMerged is False):
-            return np.array([], dtype=np.int64)
-        return np.array([p.pos for p in self.positions if
-                         p.mergeAgreed == 0 and p.pos >= 0],
-                        dtype=np.int64)
-
-    cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):
-        """
-        Returns a 1-d array of integers for genomic positions which
-        were discordant between the pairs.
-        """
-        cdef LayoutPos_t p
-        if(self.isMerged is False):
-            return np.array([], dtype=np.int64)
-        return np.array([p.readPos for p in self.positions if
-                         p.mergeAgreed == 0 and p.readPos >= 0],
-                        dtype=np.int64)
-
-    cdef update_tags_(self):
-        self.tagDict["PV"] = BamTag(
-            "PV", "Z", ",".join(self.getQual().astype(str)))
-        self.tagDict["FA"] = BamTag(
-            "FA", "Z", ",".join(self.getAgreement().astype(str)))
-        if(self.isMerged):
-            self.tagDict["PM"] = BamTag(
-                "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
-            self.tagDict["MA"] = BamTag(
-                "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
-            self.tagDict["DG"] = BamTag(
-                "DG", "Z", ",".join(
-                    self.cGetGenomicDiscordantPositions().astype(str)))
-            self.tagDict["DR"] = BamTag(
-                "DR", "Z", ",".join(
-                    self.cGetReadDiscordantPositions().astype(str)))
-            # Update it for the merged world!
-            # Original template length
-            self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
-            # Original mate position
-            self.tagDict["mp"] = BamTag("mp", "i", self.pnext)
-            # Original mapping quality
-            self.tagDict["om"] = BamTag("om", "i", self.mapq)
-            # Original mapped position
-            self.tagDict["op"] = BamTag("op", "i", self.InitPos)
-            self.tagDict["MP"] = BamTag("MP", "Z", "T")
-
-    cpdef update_tags(self):
-        self.update_tags_()
-
-    def update(self):
-        cdef LayoutPos_t pos
-        cdef int count
-        self.update_tags()
-        if(self.isMerged):
-            self.tlen = len(self.getSeqArr())
-            self.pnext = 0
-            # Only change the original mapq to -1 if the tagDict entry om is
-            # present. (Original Mapping)
-            try:
-                self.tagDict["om"]
-                pass
-            except KeyError:
-                self.mapq = -1
-            self.rnext = "*"
-            self.flag = 2 + (16 if(self.is_reverse) else 32)
-            for count, pos in enumerate(self):
-                pos.readPos = count
-
-    @cython.returns(ndarray)
-    def getOperations(self, oagop=oagop):
-        """
-        In [15]: %timeit [chr(p.operation) for p in l1.positions]
-        100000 loops, best of 3: 9.35 us per loop
-
-        In [16]: %timeit map(chr, [p.operation for p in l1.positions])
-        100000 loops, best of 3: 8.69 us per loop
-        """
-        cdef LayoutPos_t pos
-        # Skip this operation if the operation is "N"
-        return np.array(map(chr, [pos.operation for pos in
-                                  self.positions if pos.operation != 78]))
-
-    cdef cystr cGetCigarString(self):
-        return "".join([str(len(list(g))) + k for
-                        k, g in groupby(self.getOperations())])
-
-    cpdef cystr getCigarString(self):
-        return self.cGetCigarString()
-
-    @cython.returns(list)
-    def get_tags(self, oagtag=oagtag):
-        self.update_tags()
-        return sorted(self.tagDict.itervalues(), key=oagtag)
-
-    def getFlag(self):
-        self.update()
-        return self.flag
-
-    @cython.returns(cystr)
-    def __str__(self):
-        """
-        Converts the record into a SAM record.
-        Note: the position is incremented by 1 because SAM positions are
-        1-based instead of 0-based.
-        """
-        self.update()
-        return "\t".join(map(
-                str, [self.Name, self.getFlag(), self.contig,
-                      self.getAlignmentStart() + 1, self.mapq,
-                      self.getCigarString(), self.rnext, self.pnext + 1,
-                      self.tlen, self.getSeq(), self.getQualString()] +
-                self.get_tags()))
-
-    @cython.returns(AlignedSegment_t)
-    def __read__(self):
-        cdef AlignedSegment_t newRead
-        cdef int i
-        cdef BamTag_t BT
-        newRead = pysam.AlignedSegment()
-        newRead.query_name = self.Name
-        newRead.flag = self.getFlag()
-        newRead.reference_id = PysamToChrDict[self.contig]
-        newRead.query_sequence = self.getSeq()
-        print(str(self.read))
-        newRead.query_qualities = [93 if(i > 92) else i for
-                                   i in self.cGetQual()]
-        newRead.reference_start = self.getAlignmentStart()
-        newRead.cigarstring = self.getCigarString()
-        newRead.tlen = self.tlen
-        newRead.mapq = self.mapq
-        newRead.tags = [(BT.tag, BT.value) for BT in self.tagDict.itervalues()]
-        newRead.next_reference_id = PysamToChrDict[self.rnext]
-        newRead.pnext = self.pnext
-        return newRead
-
-    def __init__(self, pysam.calignmentfile.AlignedSegment rec,
-                 list layoutPositions, int firstMapped,
-                 PysamToChrDict=PysamToChrDict):
-        cdef tuple tag
-        self.mapq = rec.mapq
-        self.read = rec
-        self.positions = layoutPositions
-        self.firstMapped = firstMapped
-        self.InitPos = rec.pos
-        self.Name = rec.query_name
-        self.contig = PysamToChrDict[rec.reference_id]
-        self.flag = rec.flag
-        # When the get_tags(with_value_type=True) is implemented,
-        # then switch the code over.
-        # Then I can change the way I make BAM tags, since
-        # with_value_type is the optional argument to add to get_tags
-        # on a pysam.calignmentfile.AlignedSegment object.
-        # This will ensure that I don't need to already know
-        # the type beforehand. (IE, get rid of the type dict)
-        self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
-                        in rec.get_tags() if tag[0] not in ["PV", "FA"]}
-        self.rnext = PysamToChrDict[rec.mrnm]
-        self.pnext = rec.mpos
-        self.tlen = rec.tlen
-        self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
-        self.is_reverse = rec.is_reverse
-'''
-
 
 def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
-                          bint pipe=False, int readLength=-1):
-    cdef AlignedSegment_t read, read1, read2
+                          bint pipe=False, int readLength=-1,
+                          cystr outMerge=None):
+    cdef AlignedSegment_t read, read1, read2, newRead
     cdef Layout_t Layout1, Layout2, retLayout
     cdef int count = 0
+    cdef cystr newSamRead
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(readLength < 0):
         pl("readLength not set - inferring.")
         readLength = len(inHandle.next().seq)
         inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(outBAM is None):
-        outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
+        outBAM = TrimExt(inBAM) + ".PairMergeProcessed.sam"
+    if(outMerge is None):
+        outMerge = TrimExt(inBAM) + ".PairMergedReads.sam"
     if(pipe):
-        outHandle = pysam.AlignmentFile("-", "wb",
+        outHandle = pysam.AlignmentFile("-", "w",
                                         header=inHandle.header)
+        outHandleMerge = sys.stdout
+        outHandleMerge.write(inHandle.text)
     else:
-        outHandle = pysam.AlignmentFile(outBAM, "wb",
+        outHandle = pysam.AlignmentFile(outBAM, "w",
                                         header=inHandle.header)
+        outHandleMerge = open(outMerge, "w")
     for read in inHandle:
         print("Name: %s" % read.query_name)
         count += 1
@@ -857,13 +586,6 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
         else:
             print("Read is neither read 1 nor read 2: %s" % (not read.is_read1 and not read.is_read2))
             raise ThisIsMadness("Read is neither read 1 nor read 2? %s" % read.query_name)
-        if(cReadsOverlap(read1, read2) is False):
-            read1.set_tag("MP", "N")
-            read2.set_tag("MP", "N")
-            outHandle.write(read1)
-            outHandle.write(read2)
-            print("I am continuing over these records because the reads didn't overlap.")
-            continue
         try:
             assert(read1.query_name == read2.query_name)
         except AssertionError:
@@ -871,38 +593,42 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
             raise ThisIsMadness("Bam is either not name sorted or you are "
                                 "missing a read from the pair around read "
                                 "# %s in the bam." % count)
+        if(cReadsOverlap(read1, read2) is False):
+            read1.set_tag("MP", "N")
+            read2.set_tag("MP", "N")
+            outHandle.write(read1)
+            outHandle.write(read2)
+            print("I am continuing over these records because the reads didn't overlap.")
+            continue
         print("Making Layout1")
         Layout1 = Layout(read1)
         print("Making Layout2")
         Layout2 = Layout(read2)
         print("Merging Layouts")
         if(read1.pos < read2.pos):
-            Layout1.MergeLayout(Layout2)
-            Layout1.update()
+            newReadString = Layout1.__csam__(Layout2, read1)
             print("Merging didn't break everything!")
+            print(newReadString)
             if(Layout1.MergeSuccess):
-                outHandle.write(Layout1.read)
+                outHandleMerge.write(newReadString)
             else:
                 print("Bam record merge failed, write original reads to file.")
                 read1.set_tag("MP", "F")
                 read2.set_tag("MP", "F")
                 outHandle.write(read1)
                 outHandle.write(read2)
-                # del read1
-                # del read2
         else:
-            Layout2.MergeLayout(Layout1)
-            Layout2.update()
+            newReadString = Layout2.__csam__(Layout1, read2)
             print("Merging didn't break everything!")
             if(Layout2.MergeSuccess):
-                outHandle.write(Layout2.read)
+                print("New SAM read: %s" % newReadString)
+                outHandleMerge.write(newReadString)
+                print("And neither did writing!")
             else:
                 read1.set_tag("MP", "F")
                 read2.set_tag("MP", "F")
                 outHandle.write(read1)
                 outHandle.write(read2)
-                # del read1
-                # del read2
     outHandle.close()
     inHandle.close()
     return outBAM
@@ -939,3 +665,12 @@ def testLayout(cystr inBAM, cystr outBAM=None):
     inHandle.close()
     outHandle.close()
     return outBAM
+
+
+cdef list FlattenCigar(list cigar):
+    cdef size_t k
+    cdef list retList = []
+    for k, g in groupby(cigar, oig0):
+        glist = list(g)
+        retList.append((k, sum(map(oig1, glist))))
+    return retList

@@ -309,11 +309,18 @@ cdef class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
-    def __init__(self, pysam.cfaidx.FastqProxy FastqProxyObj):
-        self.comment = FastqProxyObj.comment
-        self.quality = FastqProxyObj.quality
-        self.sequence = FastqProxyObj.sequence
-        self.name = FastqProxyObj.name
+
+    def __init__(self, cystr comment, cystr quality,
+                 cystr sequence, cystr name):
+        self.comment = comment
+        self.quality = quality
+        self.sequence = sequence
+        self.name = name
+
+    @classmethod
+    def fromFastqProxy(cls, pysam.cfaidx.FastqProxy FastqProxyObj):
+        return cls(FastqProxyObj.comment, FastqProxyObj.quality,
+            FastqProxyObj.sequence, FastqProxyObj.name)
 
     cdef cystr tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
@@ -348,6 +355,18 @@ cdef class pFastqProxy:
     cpdef carray getQualArray(self):
         return cs_to_ph(self.quality)
 
+    cpdef cystr getSlice(self, int start=0, int end=-1337,
+                         cystr addComment=""):
+        if(end == -1337):
+            return "@%s %s%s\n%s\n+\n%s\n" % (self.name, self.comment,
+                                              addComment,
+                                              self.sequence[start:],
+                                              self.quality[start:])
+        return "@%s %s%s\n%s\n+\n%s\n" % (self.name, self.comment,
+                                          addComment,
+                                          self.sequence[start:end],
+                                          self.quality[start:end])
+
 
 cdef cystr cGetBS(pFastqProxy_t read):
     """
@@ -373,9 +392,9 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
 
 @cython.returns(cystr)
 def SliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
-                       int firstBase=0,
-                       int lastBase=-1337,
-                       cystr addString=""):
+                    int firstBase=0,
+                    int lastBase=-1337,
+                    cystr addString=""):
     if(lastBase == -1337):
         return "@%s %s%s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
                                           addString,
@@ -3015,7 +3034,7 @@ cdef class pFastqFile(object):
 
     @cython.returns(pFastqProxy)
     def __next__(self):
-        return pFastqProxy(next(self.handle))
+        return pFastqProxy.fromFastqProxy(next(self.handle))
 
     cpdef close(self):
         self.handle.close()

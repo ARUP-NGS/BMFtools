@@ -26,6 +26,14 @@ class ImproperArgumentError(ValueError):
             print("Improper Argument Error: %s" % message)
 
 
+class ConsideredHarmful(ValueError):
+    def __init__(self, message=""):
+        super(ValueError, self).__init__()
+        self.message = message
+        if(message != ""):
+            print(message)
+
+
 class IllegalArgumentError(ValueError):
     def __init__(self, message=""):
         super(ValueError, self).__init__()

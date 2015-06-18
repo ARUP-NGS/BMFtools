@@ -569,8 +569,8 @@ def FastqSingleShading(fq,
     outFqHandle1 = open(outfq, "w")
     inIndex = pysam.FastqFile(indexFq)
     for read1 in inFq1:
-        pIndexRead = pFastqProxy(inIndex.next())
-        pRead1 = pFastqProxy(read1)
+        pIndexRead = pFastqProxy.fromFastqProxy(inIndex.next())
+        pRead1 = pFastqProxy.fromFastqProxy(read1)
         if("N" in pRead1.pIndexRead.sequence):
             read1.comment += "|FP=IndexFail|BS=%" % (read1.sequence[:head] +
                                                      pIndexRead.sequence)
@@ -745,7 +745,7 @@ def TrimHomingSingle(
         if homing not in homingLoc:
             pl("Homing sequence not in tag. Writing to error file.",
                level=logging.DEBUG)
-            ew(str(pFastqProxy(read)))
+            ew(str(pFastqProxy.fromFastqProxy(read)))
             continue
         tw(SliceFastqProxy(read, firstBase=TotalTrim,
                               addString="|BS=" + read.sequence[0:bcLen]))
@@ -785,12 +785,12 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
     for read1 in InFastq1:
         read2 = fqNext()
         if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy(read1)))
-            ew(str(pFastqProxy(read2)))
+            ew(str(pFastqProxy.fromFastqProxy(read1)))
+            ew(str(pFastqProxy.fromFastqProxy(read2)))
             continue
         if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy(read1)))
-            ew(str(pFastqProxy(read2)))
+            ew(str(pFastqProxy.fromFastqProxy(read1)))
+            ew(str(pFastqProxy.fromFastqProxy(read2)))
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,

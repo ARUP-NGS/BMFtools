@@ -48,10 +48,13 @@ int getFirstAlignedRefPos(ArrayLayout_t layout){
 }
 
 
-ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2){
+char MergeOverlappedLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2){
 	int start1, start2, offset;
 	start1 = getFirstAlignedRefPos(AL1);
 	start2 = getFirstAlignedRefPos(AL2);
+	/*
+	//You'll want to make sure that AL1's start position is less than
+	//AL2's since I'm trying to avoid this kind of moving.
 	if(start1 > start2){
 		// Switch the order to make AL1 the first read.
 		ArrayLayout_t tmpLayout = AL2;
@@ -60,17 +63,18 @@ ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2){
 		int tmpInt = start2;
 		start2 = start1;
 		start1 = tmpInt;
-	}
+	} */
 	offset = start2 - start1;
 	// Now figuring out precisely how long this is going to have to be
 	for(int i = 0; i < offset; i++){
 		if(AL1.layouts[i].operation == 68){
+			// Correct for "D" operations
 			offset += 1;
 		}
 	}
-	AL1.length = offset + AL2.length;
-	printf("Reallocating");
-	AL1.layouts = (ArrayLayoutPos_t*)realloc(AL1.layouts, (AL1.length) * sizeof(ArrayLayoutPos_t));
+	// AL1.length = offset + AL2.length;
+	//printf("Reallocating");
+	//AL1.layouts = (ArrayLayoutPos_t*)realloc(AL1.layouts, (AL1.length) * sizeof(ArrayLayoutPos_t));
 	// Since we're updating AL1 in place, no need to copy entries before the overlap.
 
 	// Merge positions where there is an overlap.
@@ -78,15 +82,10 @@ ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2){
 		printf("Accessing AL1.layout i %d", i);
 		AL1.layouts[i] = cMergeLayoutPositions(AL1.layouts[i], AL2.layouts[i - offset]);
 	}
-	// Copy over the entries after the overlap.
-	//for(int i = AL1.length - offset; i < AL1.length; i++){
-	for(int i = AL2.length - offset; i < AL2.length; i++){
-		printf("Okay, now I'm trying to update this position %d\n", i);
-		printf("I am currently accessing AL1 layout # %d\n", i + offset);
-		//AL1.layouts[i] = AL2.layouts[i - AL1.length + offset];
-		AL1.layouts[i + offset] = AL2.layouts[i];
-	}
-	return AL1;
+	//LayoutOffset_t retValue;
+	//retValue.Layout = AL1;
+	//retValue.offset = offset;
+	return offset;  // Note: Only merges the overlapping positions!
 }
 /*
 ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2){

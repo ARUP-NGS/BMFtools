@@ -318,11 +318,11 @@ def pairedBarcodeTagging(
             continue
         if(entry.is_read1):
             read1bam = entry
-            pFq1 = pFastqProxy(r1hn())
+            pFq1 = pFastqProxy.fromFastqProxy(r1hn())
             continue
         elif(entry.is_read2):
             read2bam = entry
-            pFq2 = pFastqProxy(r2hn())
+            pFq2 = pFastqProxy.fromFastqProxy(r2hn())
         descDict1 = getdesc(pFq1.comment)
         descDict2 = getdesc(pFq2.comment)
         passing = "Pass" in descDict1["FP"]
@@ -535,7 +535,7 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
         else:
             try:
                 tempRead = reads.next()
-                FqPrx = pFastqProxy(tempRead)
+                FqPrx = pFastqProxy.fromFastqProxy(tempRead)
             except StopIteration:
                 break
         descDict = getdesc(FqPrx.comment)

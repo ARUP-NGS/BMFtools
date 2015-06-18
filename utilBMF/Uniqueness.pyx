@@ -11,17 +11,17 @@ from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness, ConsideredHarmful, ThisIsHKMadness
 from cytoolz import frequencies as cyfreq
 from itertools import chain
 from functools import partial
 from operator import attrgetter
 try:
-    import re2 as re
+    from re2 import compile as regex_compile
 except ImportError:
-    import re
+    from re import compile as regex_compile
 # Dictionary of edit distance flags to the reference (excludes clipping)
-mmDict = {i: re.compile(r'NM:i:[0-%s]' % i) for i in xrange(20)}
+mmDict = {i: regex_compile(r'NM:i:[0-%s]' % i) for i in xrange(20)}
 oagseq = attrgetter("seq")
 cfi = chain.from_iterable
 hammingPt = partial(hamming_cousins, n=1)
@@ -180,6 +180,7 @@ cdef class KmerFetcher(object):
         if(aligner == "mem"):
             return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
         elif(aligner=="bwt"):
+            raise ConsideredHarmful("Use of bowtie for uniqueness calculations is unreliable.")
             return BowtieFqToStr(self.getFastqString(bedline), ref=self.ref,
                                  seed=self.seed, mismatches=self.mismatches)
         else:
@@ -188,9 +189,8 @@ cdef class KmerFetcher(object):
     cpdef FillMap(self, list bedline):
         """Fills a dictionary (keyed by the input bed file 'chr:start:stop') with
         the list of kmers in that region that uniquely map to the reference."""
-        kmerList = self.GetUniqueKmers(bedline)
         self.HashMap[
-            ":".join(map(str, bedline))] = kmerList
+            ":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
 
 
     cpdef list GetUniqueKmers(self, list bedline):
@@ -318,20 +318,6 @@ def BwaFqToStr(cystr fqStr, cystr ref=None,
     check_call(["rm", tmpFile])  # Delete the temporary file.
     print("Returning BwaFqToStr output with " + str(outStr.count("\n")) + " lines.")
     return outStr
-
-
-@cython.returns(bint)
-def PassesNM1(cystr rStr, int maxNM=2, dict mmDict=mmDict):
-    """
-    Checks a SAM line to see if its edit distance is below or equal
-    to the maximum.
-    """
-    cdef int i
-    cdef list strList = ["NM:i:%s" % i for i in xrange(maxNM + 1)]
-    for item in strList:
-        if item in rStr:
-            return True
-    return False
 
 
 @cython.returns(bint)
