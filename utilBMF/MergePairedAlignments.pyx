@@ -18,6 +18,10 @@ from itertools import izip, groupby
 from operator import attrgetter as oag, methodcaller as mc, itemgetter as oig
 from subprocess import check_call
 from sys import maxint
+try:
+    from re2 import split as rsplit
+except ImportError:
+    from re import split as rsplit
 
 ##BMFTools imports
 from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
@@ -367,6 +371,12 @@ cdef class Layout:
                          self.Layout.layouts[tmpInt].mergeAgreed != 1],
                         dtype=np.int16)
 
+    cdef set_merge_tags_BT(self):
+        cdef cystr tag
+        cdef object value
+        for tag, value in self.get_merge_tags():
+            self.tagDict[tag] = BamTag.fromtuple((tag, value))
+
     cdef list get_merge_tags(self):
         cdef ndarray[np.int32_t, ndim=1] GenDiscPos
         cdef ndarray[np.int16_t, ndim=1] ReadDiscPos
@@ -400,59 +410,49 @@ cdef class Layout:
         Note: the position is incremented by 1 because SAM positions are
         1-based instead of 0-based.
         """
+        cdef cystr NewCigarString
+        cdef int offset
+        offset = self.MergeLayouts_in_place(pairedLayout.Layout)
+        if(self.MergeSuccess is False):
+            return None
         self.update()
+        self.tagDict["PV"].value += (
+            "," + ",".join(self.cGetQualSlice(offset).astype(str)))
+        self.tagDict["FA"].value += (
+            "," + ",".join(self.cGetAgreementSlice(offset).astype(str)))
+        NewCigarString = FlattenCigarString(
+            self.getCigarString + pairedLayout.cGetCigarStringSlice(offset))
         return "\t".join(map(
                 str, [self.Name, self.getFlag(), self.contig,
                       self.getAlignmentStart() + 1, self.mapq,
                       self.getCigarString(), self.rnext, self.pnext + 1,
                       self.tlen, self.getSeq(), self.getQualString()] +
-                self.get_tags()))
+                self.get_tag_string()))
+        return ("\t" + self.Name + "\t%s" % self.getFlag() + "\t" + self.contig + 
+                "\t%s\t%s" % (self.getAlignmentStart() + 1, self.mapq) +
+                "\t" + NewCigarString +
+                "\t%s\t%s\t%s\t" % (self.rnext, self.pnext + 1, self.tlen) +
+                self.getSeq() +
+                pairedLayout.cGetSeqArrSlice(offset).tostring() + "\t" +
+                self.getQualString() +
+                pairedLayout.cGetQualStringSlice(offset) + "\t" +
+                + self.get_tag_string())
 
-
-    cdef update_tags_(self):
-        cdef ndarray[np.int32_t, ndim=1] GenDiscPos
-        cdef ndarray[np.int16_t, ndim=1] ReadDiscPos
-        cdef str PMStr, MAStr, DGStr, DRStr
-        self.tagDict["PV"] = BamTag(
-            "PV", "Z", ",".join(self.cGetQual().astype(str)))
-        self.tagDict["FA"] = BamTag(
-            "FA", "Z", ",".join(self.cGetAgreement().astype(str)))
-        if(self.isMerged):
-            GenDiscPos = self.cGetGenomicDiscordantPositions()
-            ReadDiscPos = self.cGetReadDiscordantPositions()
-            PMStr = ",".join(self.getMergedPositions().astype(str))
-            MAStr = ",".join(self.getMergeAgreements().astype(str))
-            DGStr = ",".join(GenDiscPos.astype(str))
-            DRStr = ",".join(ReadDiscPos.astype(str))
-            self.tagDict["PM"] = BamTag(
-                "PM", "Z", PMStr)
-            self.tagDict["MA"] = BamTag(
-                "MA", "Z", MAStr)
-            if(len(GenDiscPos) > 0):
-                self.tagDict["DG"] = BamTag(
-                    "DG", "Z", DGStr)
-                self.tagDict["DR"] = BamTag(
-                    "DR", "Z", DRStr)
-            # Update it for the merged world!
-            # Original template length
-            self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
-            # Original mate position
-            self.tagDict["mp"] = BamTag("mp", "i", self.pnext)
-            # Original mapping quality
-            self.tagDict["om"] = BamTag("om", "i", self.mapq)
-            # Original mapped position
-            self.tagDict["op"] = BamTag("op", "i", self.InitPos)
-            self.tagDict["MP"] = BamTag("MP", "A", "T")
+    cdef get_tag_string(self):
+        cdef BamTag_t BT
+        return "\t".join([BT.__str__() for BT in self.tagDict.itervalues()])
 
     cdef update_read_positions(self):
+        cdef ArrayLayoutPos_t tmpALP
         cdef int tmpInt
-        for tmpInt in range(self.Layout.length):
-            self.Layout.layouts[tmpInt].readPos = tmpInt
+        for tmpALP in self.Layout.layouts[:self.Layout.length]:
+            self.tmpALP.readPos = tmpInt if(tmpALP.operation != 68) else -1
+            tmpInt += 1
 
     def update(self):
         cdef int count
-        self.update_tags_()
         if(self.isMerged):
+            self.set_merge_tags_BT()
             self.tlen = len(self.getSeqArr())
             self.pnext = 0
             self.rnext = self.reference_id
@@ -674,3 +674,45 @@ cdef list FlattenCigar(list cigar):
         glist = list(g)
         retList.append((k, sum(map(oig1, glist))))
     return retList
+
+cpdef cystr FlattenCigarString(cystr cigar):
+    return cFlattenCigarString(cigar)
+
+
+cdef cystr cFlattenCigarString(cystr cigar):
+    """
+    Flattens cigar strings for cases where it is needed.
+    """
+    cdef size_t count = 0
+    cdef int runSum = 0
+    cdef int tmpInt
+    cdef char cigarOpChar, tmpCigarOpChar
+    cdef cystr retStr
+    cdef int cigarOpLen
+    cdef int newCigarOpLen
+    cdef py_array chars = cs_to_ia("".join(rsplit("[0-9]+", cigar)[1:]))
+    cdef py_array Lengths = array('i', map(int, rsplit("[A-Z]", cigar)[:len(chars)]))
+    cdef list outTupleList = []
+    '''
+    cdef py_array Lengths = array(
+        "i", )
+    '''
+    for CigarOpChar, entries in groupby(zip(chars, Lengths), key=oig0):
+        for tmpCigarOpChar, tmpInt in list(entries):
+            runSum += tmpInt
+        outTupleList.append(opLenToStr(CigarOpChar, runSum))
+        '''
+        if(CigarOpChar == 68):
+            retStr += "D%s" % runSum
+        elif(CigarOpChar == 77):
+            retStr += "M%s" % runSum
+        elif(CigarOpChar == 73):
+            retStr += "I%s" % runSum
+        elif(CigarOpChar == 83):
+            retStr += "S%s" % runSum
+        else:
+            raise NotImplementedError(
+                "Only MIDS operations currently supported.")
+        '''
+        runSum = 0
+    return "".join(outTupleList)

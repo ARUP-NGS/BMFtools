@@ -6,10 +6,11 @@ cimport utilBMF.HTSUtils
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, BamTag, cReadsOverlap
 from utilBMF.PysamUtils cimport CopyAlignedSegment
+from utilBMF.cstring cimport cs_to_ia
 from cython cimport bint
+from cpython.array cimport array as py_array
 from libc.stdlib cimport malloc, free, realloc
 from libc.stdint cimport uint16_t
-from cpython.array cimport array as py_array
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef unsigned char uchar
 ctypedef BamTag BamTag_t
@@ -59,7 +60,6 @@ cdef class Layout:
 
     cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout)
     cpdef AlignedSegment_t MergeLayoutToAS(self, Layout_t pairedLayout, AlignedSegment_t template)
-    cdef update_tags_(self)
     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self)
     cpdef ndarray[int, ndim=1] getAgreement(self)
     cdef ndarray[uint16_t, ndim=1] cGetAgreement(self)
@@ -83,6 +83,7 @@ cdef class Layout:
     cpdef cystr getSeq(self)
 
     cdef list get_merge_tags(self)
+    cdef get_tag_string(self)
 
     # Utilities for BMF metadata
     cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self)
@@ -97,6 +98,7 @@ cdef class Layout:
 
     # Updates
     cdef update_read_positions(self)
+    cdef set_merge_tags_BT(self)
 
     # Slices
     cdef ndarray[int, ndim=1] cGetAgreementSlice(self, size_t start=?)
@@ -109,11 +111,24 @@ cdef class Layout:
 
 cdef public dict chrDict, CigarDict, CigarStrDict
 cdef int getLayoutLen(AlignedSegment_t read)  # Gets layout length
+cpdef cystr FlattenCigarString(cystr cigar)
+cdef cystr cFlattenCigarString(cystr cigar)
 cpdef cystr ALPToStr(ArrayLayoutPos_t ALP)
 
 cdef class ListBool:
     cdef list List
     cdef bint Bool
 
+cdef inline cystr opLenToStr(char op, int opLen):
+    if(op == 68):
+        return "D%s" % opLen
+    elif(op == 77):
+        return "M%s" % opLen
+    elif(op == 73):
+        return "I%s" % opLen
+    elif(op == 83):
+        return "S%s" % opLen
+    else:
+        return ""
 
-cdef object oagtag
+cdef object oagtag, oig0, oig1

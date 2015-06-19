@@ -9,7 +9,7 @@ import logging
 from copy import copy as ccopy
 from os import path
 import operator
-from operator import attrgetter as oag
+from operator import attrgetter as oag, methodcaller as mc
 import string
 import uuid
 import sys
@@ -45,6 +45,8 @@ ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")
+mcoptBS = mc("opt", "BS")
+# BSStringList = map(mcoptBS, readList)
 
 
 def AbraCadabra(inBAM, outBAM="default",

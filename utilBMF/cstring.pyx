@@ -33,28 +33,28 @@ cpdef print_chars(cystr input_str):
     rather than making the views and accessing them, based on my comparison
     with print_chars
     """
-    cdef carray arr = cs_to_ia(input_str)
+    cdef py_array arr = cs_to_ia(input_str)
     cdef int i
     for i in xrange(100000):
         ",".join(map(str, arr))
     return
 
 
-cdef carray cs_to_ia2(cystr input_str):
+cdef py_array cs_to_ia2(cystr input_str):
     return array('i', ps2va(<char*> input_str, len(input_str)))
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
-cpdef carray str2intarray2(cystr input_str):
+cpdef py_array str2intarray2(cystr input_str):
     """Don't use this function - it is equivalent to str2intarray, but
     slower than naive python
     """
-    return <carray> ps2va(input_str, len(input_str))
+    return <py_array> ps2va(input_str, len(input_str))
 
 
-cdef carray cs_to_ia(cystr input_str):
+cdef py_array cs_to_ia(cystr input_str):
     cdef char i
     return array('B', [i for i in <char *> input_str])
 
@@ -202,18 +202,18 @@ def char_in_p_str(input_str, char_arg):
     return char_arg[0] in input_str
 
 
-cdef carray cs_to_ph(cystr input_str):
+cdef py_array cs_to_ph(cystr input_str):
     cdef char i
     return array('B', [i - 33 for i in <char *> input_str])
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef carray str2intarray(cystr instr):
+cpdef py_array str2intarray(cystr instr):
     return cs_to_ia(instr)
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef carray str2phredarray(cystr instr):
+cpdef py_array str2phredarray(cystr instr):
     return cs_to_ph(instr)
