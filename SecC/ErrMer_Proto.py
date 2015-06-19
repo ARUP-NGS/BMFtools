@@ -23,10 +23,6 @@ args=parser.parse_args()
 consInFq = pFastqFile(args.cons)
 readsInFq = pFastqFile(args.reads)
 
-def createTransMatrix():
-    transMatrix=[[0]*4,[0]*4]
-
-
 nucIndex = {"A":0,"C":1,"T":2,"G":3}
 nucList = ["A","C","T","G","N"]
 k=4
@@ -82,6 +78,5 @@ for kmer, wrong in sortedKmers[:10]:
         for x in range(data.shape[1]):
             plt.text(x+0.5, y+0.5, str(heatedKmers[kmer][y, x])[:5],
                      horizontalalignment='center',
-                     verticalalignment='center',
-                     )
+                     verticalalignment='center',)
     plt.show()

@@ -20,13 +20,10 @@ MawCluster/VCFWriters.c
 MawCluster/__init__.c
 SecC/Cassandra.c
 SecC/ErrMer.c
-SecC/ErrMer.pyx
 SecC/ErrMerDriver.c
-SecC/ErrMerDriver.py
 SecC/ErrMer_Proto.c
 SecC/SecC.c
 SecC/__init__.c
-SecC/trying_shit.txt
 test/MawClusterTest/BCFastq_test.c
 utilBMF/ArgumentSketcher.c
 utilBMF/ArgumentSketcher.h
