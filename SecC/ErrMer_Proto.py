@@ -5,6 +5,9 @@ from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
 from MawCluster.BCFastq import GetDescTagValue
 import argparse
+import operator
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 # create a generation from the pysam alignment object
 # cimport pysam.calignmentfile
@@ -24,9 +27,11 @@ def createTransMatrix():
     transMatrix=[[0]*4,[0]*4]
 
 
-nucIndex = {"A":0,"C":1,"T":3,"G":4,"N":5}
+nucIndex = {"A":0,"C":1,"T":2,"G":3}
+nucList = ["A","C","T","G","N"]
 k=4
 kmerDict={}
+kmerTotals={}
 for bc4fq, fqRecGen, in groupby(readsInFq, key=getBS):
     consRead = consInFq.next()
     famCount = int(GetDescTagValue(consRead.comment,"FM"))
@@ -46,43 +51,37 @@ for bc4fq, fqRecGen, in groupby(readsInFq, key=getBS):
             consBase = consRead.sequence[baseIndex+k]
             if(recKmer != consKmer):
                 continue
+            if recBase == "N":
+                continue
             if recKmer not in kmerDict.keys():
-                ()
-                kmerDict[recKmer] = np.zeros((2,4,4),dtype=np.int)
-            if recBase == consBase:
-                kmerDict[recKmer][0][nucIndex[consBase]][nucIndex[recBase]]+=1
-            else:
-                kmerDict[recKmer][1][nucIndex[consBase]][nucIndex[recBase]]+=1
+                kmerDict[recKmer] = np.zeros((4,4),dtype=np.float)
+                kmerTotals[recKmer] = [0,0]
+            kmerDict[recKmer][nucIndex[recBase]][nucIndex[consBase]]+=1.0
+            kmerTotals[recKmer][1]+=1
+            if recBase != consBase:
+                kmerTotals[recKmer][0]+=1
 
-"""
-            if recKmer not in kmerDict.keys():
-                kmerDict[recKmer]={"A":[0,0],"C":[0,0],"T":[0,0],"G":[0,0],
-                                   "N":[0,0],"total":[0,0]}
-            if recBase == consBase:
-                kmerDict[recKmer][recBase][0]+=1
-                kmerDict[recKmer]["total"][0]+=1
-            else:
-                kmerDict[recKmer][recBase][1]+=1
-                kmerDict[recKmer]["total"][1]+=1
+wrongKmers = {kmer:kmerTotals[kmer][0]/kmerTotals[kmer][1] for kmer
+              in kmerTotals}
+sortedKmers = sorted(wrongKmers.items(), key=operator.itemgetter(1),
+                     reverse=True)
+heatedKmers = {kmer:kmerDict[kmer]/kmerDict[kmer].sum(axis=0)[:,None] for
+               kmer in kmerDict}
 
-nucList = ["total","A","T","C","G","N"]
-out=open("Kmer_Bias.txt",'w')
-for kmer in kmerDict:
-    o = []
-    o.append(kmer)
-    #o.append(tr)
-    #o.append(tw)
-    for base in nucList:
-        r = kmerDict[kmer][base][0]
-        w = kmerDict[kmer][base][1]
-        #o.append(r)
-        #o.append(w)
-        if w == 0:
-            o.append(0)
-        else:
-            o.append(w/(r+w))
-    o = [str(i) for i in o]
-    o = "\t".join(o)+"\n"
-    out.write(o)
-out.close()
-"""
+for kmer, wrong in sortedKmers[:10]:
+    fig, ax = plt.subplots()
+    plt.suptitle(kmer,fontsize=24)
+    data = heatedKmers[kmer]
+    np.fill_diagonal(data,0)
+    heatmap = ax.pcolor(data, cmap=plt.cm.Blues, edgecolors='k')
+    ax.set_xticks(np.arange(data.shape[0])+0.5, minor=False)
+    ax.set_yticks(np.arange(data.shape[1])+0.5, minor=False)
+    ax.set_xticklabels(nucList, minor=False)
+    ax.set_yticklabels(nucList, minor=False)
+    for y in range(data.shape[0]):
+        for x in range(data.shape[1]):
+            plt.text(x+0.5, y+0.5, str(heatedKmers[kmer][y, x])[:5],
+                     horizontalalignment='center',
+                     verticalalignment='center',
+                     )
+    plt.show()
