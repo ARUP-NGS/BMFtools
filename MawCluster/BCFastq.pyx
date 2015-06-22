@@ -140,28 +140,9 @@ cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2QualStr(qualArr)
 
 
-cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
-
-
 cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2PVString(qualArr)
 
-
-cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
-
-
-cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt = np.max(qualArr)
-    if(tmpInt < 9001):
-        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
-                                     tmpInt in qualArr]))
-    else:
-        return "|PV=%s" % ",".join(qualArr.astype(str))
 
 cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
@@ -747,7 +728,7 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
         histList = [tuple(tmpStr.split("\t")) for tmpStr in
                     open(tmpFile, "r").read().split("\n") if tmpStr != ""]
     histDict = {y: int(x) for x, y in histList}
-    TrueFamDict = {x: None for x, y1 in histDict.iteritems() if y1 >= minFam}
+    TrueFamDict = {x: x for x, y1 in histDict.iteritems() if y1 >= minFam}
     if(len(TrueFamDict) == 0):
         rescueHistDict = {}
     else:
@@ -788,7 +769,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
     size below the minFam used to create the rescueDict object can be safely
     considered to be a sequencer error.
     """
-    cdef cystr tmpBS, saltedBS, tagStr
+    cdef cystr tmpBS, saltedBS, tagStr, indexSeq
     cdef pFastqFile_t inHandle1, inHandle2, indexHandle
     cdef pFastqProxy_t rec1, rec2, index_read
     cdef int bLen, hpLimit
@@ -822,34 +803,28 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             raise Tim("Index fastq and read fastqs have different sizes. "
                       "Abort!")
         try:
-            TrueFamDict[index_read.sequence]
-            saltedBS = (rec1.sequence[:head] + index_read.sequence +
+            indexSeq = TrueFamDict[index_read.sequence]
+            saltedBS = (rec1.sequence[:head] + indexSeq +
                         rec2.sequence[:head])
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec2))
-            continue
         except KeyError:
             pass
-        try:
-            saltedBS = (rec1.sequence[:head] +
-                        rescueDict[index_read.sequence] +
-                        rec2.sequence[:head])
-            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
-            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec2))
-            continue
-        except KeyError:
-            # This isn't in a true family. Blech!
-            saltedBS = (rec1.sequence[:head] + index_read.sequence +
-                        rec2.sequence[:head])
-            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
-            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec2))
-            continue
+            try:
+                indexSeq = rescueDict[index_read.sequence]
+                saltedBS = (rec1.sequence[:head] +
+                            indexSeq +
+                            rec2.sequence[:head])
+                rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+                rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
+            except KeyError:
+                # This isn't in a true family. Blech!
+                saltedBS = (rec1.sequence[:head] + index_read.sequence +
+                            rec2.sequence[:head])
+                rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+                rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
+        ohw1(str(rec1))
+        ohw2(str(rec2))
     outHandle1.close()
     outHandle2.close()
     return outFq1, outFq2

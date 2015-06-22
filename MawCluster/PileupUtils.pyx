@@ -431,7 +431,7 @@ cdef class PCInfo:
         #  pl("minMQ: %s" % minMQ)
         self.minBQ = minBQ
         #  pl("minBQ: %s" % minBQ)
-        self.contig = PysamToChrDict[PileupColumn.reference_id]
+        self.contig = PysamToChrInline(PileupColumn.reference_id)
         self.minAF = minAF
         #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
@@ -654,7 +654,7 @@ class PileupInterval:
             operator.sub(self.end, self.start)))
 
     def __str__(self):
-        self.str = "\t".join([str(i) for i in [PysamToChrDict[self.contig],
+        self.str = "\t".join([str(i) for i in [PysamToChrInline(self.contig),
                                                self.start,
                                                self.end,
                                                self.UniqueCoverage,

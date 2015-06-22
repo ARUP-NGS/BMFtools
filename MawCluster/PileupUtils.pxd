@@ -13,6 +13,7 @@ ctypedef PRInfo PRInfo_t
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PileupReadPair PileupReadPair_t
 from utilBMF.HTSUtils cimport cystr, nucList, PysamToChrDict
+from utilBMF.PysamUtils cimport PysamToChrInline
 
 
 cdef class AlleleAggregateInfo:

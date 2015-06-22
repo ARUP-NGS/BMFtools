@@ -291,6 +291,9 @@ def pairedBarcodeTagging(
     cdef dict descDict1, descDict2
     cdef pFastqProxy_t pFq1, pFq2
     # cdef AlignmentFile postFilterBAM, outBAM, suppBAM
+    raise DeprecationWarning(
+        "Hey, don't use this function! the COBam tagging method "
+        "has superceded the ways of the past.")
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
@@ -703,7 +706,8 @@ cdef AlignedSegment_t TagAlignedSegment(
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
-                   ("SF", SF, "f")
+                   ("SF", SF, "f"),
+                   ("RP", RPString(read), "Z")
                    ] + read.get_tags())
     read.set_tag("CO", None)  # Delete the CO tag.
     return read

@@ -23,6 +23,7 @@ cdef inline cystr RevCmpChar(cystr character):
     else:
         return "N"
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef inline cystr RevCmpInt(char character):
@@ -37,20 +38,20 @@ cdef inline cystr RevCmpInt(char character):
     else:
         return "N"
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline char RevCmpToChar(char character):
-    with nogil:
-        if(character == 65):
-            return 84
-        elif(character == 67):
-            return 71
-        elif(character == 84):
-            return 65
-        elif(character == 71):
-            return 57
-        else:
-            return 78
+cdef inline char RevCmpToChar(char character) nogil:
+    if(character == 65):
+        return 84
+    elif(character == 67):
+        return 71
+    elif(character == 84):
+        return 65
+    elif(character == 71):
+        return 57
+    else:
+        return 78
 
 
 @cython.boundscheck(False)
@@ -70,18 +71,15 @@ cdef inline cystr Num2Nuc(int number):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline char Nuc2Num(char character):
-    with nogil:
-        if(character == 84):
-            return 3
-        elif(character == 71):
-            return 2
-        elif(character == 67):
-            return 1
-        elif(character == 65):
-            return 0
-        else:
-            return 0
+cdef inline char Nuc2Num(char character) nogil:
+    if(character == 84):
+        return 3
+    elif(character == 71):
+        return 2
+    elif(character == 67):
+        return 1
+    else:
+        return 0
 
 
 @cython.boundscheck(False)
