@@ -1,6 +1,7 @@
 from __future__ import division
 import numpy as np
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS
+from utilBMF.HTSUtils cimport nucList
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
 from MawCluster.BCFastq import GetDescTagValue
@@ -48,11 +49,13 @@ def ParseMDZ(mdzStr,start):
     bases = ["A","T","C","G","N"]
     counts = [str(i) for i in range(0,10)]+["~"]
     for item in mdzStr:
+        curval = item
         if item in bases:
             itemType = "base"
-        if item in count:
+        if item in counts:
             itemType = "count"
-        if curval == lastval
+        if curval == lastval:
+            raise NotImplementedError("Oh no, I haven't finished this...")
 
 
 def main():
@@ -66,7 +69,8 @@ def main():
     kmerDict={}
     kmerTotals={}
     for bc4fq, fqRecGen, in groupby(readsInFq, key=getBS):
-        conBS =
+        consRead = consBam.next()
+        consBS = bc4fq
         famCount = consRead.opt("FM")
         if famCount <= 100:
             continue

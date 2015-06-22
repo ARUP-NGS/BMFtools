@@ -5,8 +5,8 @@ cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.cstring cimport cs_to_ph
-from cpython cimport array as c_array
-ctypedef c_array.array py_array
+from cpython cimport array
+ctypedef array.array py_array
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
@@ -153,7 +153,7 @@ cdef class BamTag(object):
     cdef readonly cystr tagtype
     cdef public object value
 
-cpdef public cystr RevCmp(cystr seq, dict CmpDict=?)
+cpdef public cystr RevCmp(cystr seq)
 
 cpdef public list permuteNucleotides(long maxn, object nci=?)
 
@@ -171,6 +171,18 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 
 
-cdef public dict CmpDict, PysamToChrDict, ph2chrDict
+cdef public dict PysamToChrDict, ph2chrDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
+
+cdef inline cystr RevCmpChar(cystr character):
+    if(character == "A"):
+        return "T"
+    elif(character == "C"):
+        return "G"
+    elif(character == "G"):
+        return "C"
+    elif(character == "T"):
+        return "A"
+    else:
+        return "N"

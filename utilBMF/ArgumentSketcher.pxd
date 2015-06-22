@@ -1,4 +1,3 @@
-from utilBMF.HTSUtils cimport cystr
-from cython cimport bint
+from cython cimport bint, str as cystr
 
 cdef public dict TypeConversionDict

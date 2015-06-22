@@ -1,7 +1,7 @@
 cimport pysam.calignmentfile
 cimport pysam.TabProxies
-from cpython cimport array as c_array
-ctypedef c_array.array py_array
+from cpython cimport array
+ctypedef array.array py_array
 from cython cimport bint
 from utilBMF.HTSUtils cimport cystr
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t

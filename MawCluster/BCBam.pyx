@@ -452,7 +452,7 @@ def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
     qualT[seqArray != "T"] = 0
     qualTSum = nsum(qualT, 0)
     qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
+    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsub(nmul(2, MaxPhredSum),
                       nsum(qualAllSum, 0))

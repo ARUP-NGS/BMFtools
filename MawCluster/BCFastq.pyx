@@ -22,6 +22,7 @@ from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       mul as omul, add as oadd, attrgetter as oag,
                       methodcaller as mc)
 from subprocess import check_call
+from array import array
 
 import cython
 import numpy as np
@@ -34,7 +35,7 @@ from cytoolz import memoize
 from functools import partial
 from itertools import groupby
 
-from utilBMF.HTSUtils import (SliceFastqProxy, ph2chr,
+from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
                               hamming_cousins)
@@ -48,10 +49,6 @@ oagseq = oag("sequence")
 oagqual = oag("quality")
 npchararray = npchar.array
 partialnpchar = partial(npchararray, itemsize=1)
-
-
-letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
-                 0: 'A', 1: 'C', 2: 'G', 3: 'T'}
 
 
 @memoize
@@ -142,16 +139,49 @@ cpdef cystr cFRP_helper(list R, cystr name=None):
     return compareFqRecsFqPrx(R, name=name)
 
 
+cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    """
+    cpdef wrapper for QualArr2QualStr
+
+    Compared speed for a typed list comprehension against that for a map.
+    Results:
+    In [6]: %timeit QualArr2PVString(c)
+    100000 loops, best of 3: 6.49 us per loop
+
+    In [7]: %timeit QualArr2PVStringMap(c)
+    100000 loops, best of 3: 8.9 us per loop
+
+    """
+    return cQualArr2QualStr(qualArr)
+
+
+cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
+
+
+cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+    return cQualArr2PVString(qualArr)
+
+
+cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
+                                 tmpInt in qualArr]))
+
+
+cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "|PV=%s" % (",".join([int2strInline(tmpInt) for
+                                 tmpInt in qualArr]))
+
+
 @cython.boundscheck(False)
 cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
                               float stringency=0.9,
                               int famLimit=1000,
                               cython.bint keepFails=True,
-                              object oagseq=oagseq,
-                              dict chr2ph=chr2ph,
-                              dict ph2chrDict=ph2chrDict,
-                              object ph2chr=ph2chr,
-                              object int2Str=int2Str):
+                              object oagseq=oagseq):
     """
     TODO: Unit test for this function.
     Compares the fastq records to create a consensus sequence (if it
@@ -160,7 +190,7 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
     If hybrid is set, a failure to successfully demultiplex falls back to a
     base by base comparison.
     """
-    cdef ndarray[np.int64_t, ndim=1] phredQuals, FA
+    cdef ndarray[np_int32_t, ndim=1] phredQuals, FA
     cdef ndarray[char, ndim=1, mode = "c"] finalSeq
     cdef list seqs
     cdef cystr seqItem, seq, lenRStr, qual
@@ -204,25 +234,16 @@ cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
     elif(frac < 0.5):
         Success = False
     FA = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
-                 xrange(len(finalSeq))], dtype=np.int64)
+                 xrange(len(finalSeq))], dtype=np.int32)
     phredQuals = np.array([sum([chr2ph[qual[i]] for
                                qual in map(oagqual, R) if
                                seq[i] == finalSeq[i]]) for
-                          i in xrange(len(finalSeq))])
+                          i in xrange(len(finalSeq))], dtype=np.int32)
     # phredQuals[phredQuals < 3] = 0  # Throw array q scores of 2.
     # finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
-    try:
-        QualString = "".join([ph2chrDict[i] for i in phredQuals])
-    except KeyError:
-        QualString = "".join(map(ph2chr, phredQuals))
-    try:
-        PVString = "|PV=%s" % (",".join([int2Str[i] for i in phredQuals]))
-    except KeyError:
-        PVString = "|PV=%s" % (",".join(phredQuals.astype(str)))
-    try:
-        FAString = "|FA=%s" % (",".join([int2Str[i] for i in FA]))
-    except KeyError:
-        FAString = "|FA=%s" % (",".join(FA.astype(str)))
+    QualString = cQualArr2QualStr(phredQuals)
+    PVString = cQualArr2PVString(phredQuals)
+    FAString = cQualArr2FAString(FA)
     TagString = "|FM=%s%s|ND=%s%s" % (
         lenRStr,  FAString, lenR * len(finalSeq) - nsum(FA), PVString)
     """
@@ -257,34 +278,25 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,
-                             cystr name=None,
-                             int famLimit=100,
-                             dict chr2ph=chr2ph,
-                             dict letterNumDict=letterNumDict,
-                             dict ph2chrDict=ph2chrDict,
-                             object ccopy=ccopy,
-                             object npchararray=npchararray,
-                             object oagqual=oagqual,
-                             object oagseq=oagseq,
-                             object partialnpchar=partialnpchar,
-                             object ph2chr=ph2chr,
-                             object chr2phStr=chr2phStr,
-                             object int2Str=int2Str):
+                              cystr name=None,
+                              int famLimit=100):
     """
     TODO: Unit test for this function.
     Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     """
-    cdef int lenR, ND, lenSeq
+    cdef int lenR, ND, lenSeq, tmpInt
     cdef cython.bint Success
     cdef cystr seq, qual, seqItem, qualChar, PVString, TagString
     cdef cystr consolidatedFqStr
-    cdef ndarray[np.int64_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np.int64_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np.int64_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np.int64_t, ndim=1] MaxPhredSum, phredQuals, qualTFlat
+    # cdef char tmpChar
+    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
+    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[np_int32_t, ndim=1] MaxPhredSum, phredQuals, qualTFlat
     cdef ndarray[char, ndim=1, mode = "c"] newSeq
+    cdef pFastqProxy_t tmpFqP, rec
     if(name is None):
         name = R[0].name
     lenR = len(R)
@@ -299,13 +311,13 @@ cdef cystr cCompareFqRecsFast(list R,
     elif lenR > famLimit:
         return compareFqRecsFqPrx(R, name=name)  # Lazy large fams
     Success = True
-    seqs = map(oagseq, R)
-    stackArrays = tuple(map(partialnpchar, seqs))
+    seqs = [rec.sequence for rec in R]
+    stackArrays = tuple([partialnpchar(seq) for seq in seqs])
     seqArray = npvstack(stackArrays)
 
     # print(repr(seqArray))
-    quals = np.array([[chr2ph[i] for i in qual] for
-                     qual in map(oagqual, R)])
+    quals = np.array([cs_to_ph(qual) for
+                     qual in [tmpFqP.quality for tmpFqP in R]], dtype=np.int32)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
     # quals[quals < 3] = 0
@@ -317,41 +329,32 @@ cdef cystr cCompareFqRecsFast(list R,
     qualG = ccopy(quals)
     qualT = ccopy(quals)
     qualA[seqArray != "A"] = 0
-    qualAFlat = nsum(qualA, 0, dtype=np.int64)
+    qualAFlat = nsum(qualA, 0, dtype=np.int32)
     qualC[seqArray != "C"] = 0
-    qualCFlat = nsum(qualC, 0, dtype=np.int64)
+    qualCFlat = nsum(qualC, 0, dtype=np.int32)
     qualG[seqArray != "G"] = 0
-    qualGFlat = nsum(qualG, 0, dtype=np.int64)
+    qualGFlat = nsum(qualG, 0, dtype=np.int32)
     qualT[seqArray != "T"] = 0
-    qualTFlat = nsum(qualT, 0, dtype=np.int64)
+    qualTFlat = nsum(qualT, 0, dtype=np.int32)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = np.array([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
+    newSeq = np.char.array(map(Num2Nuc, npargmax(qualAllSum, 0)))
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
-    FA = np.array([sum([seq[i] == newSeq[i] for
+    FA = np.array([sum([seq[tmpInt] == newSeq[tmpInt] for
                        seq in seqs]) for
-                  i in xrange(lenSeq)], dtype=np.int64)
+                  tmpInt in xrange(lenSeq)], dtype=np.int32)
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
-    phredQuals = ndiv(nmul(FA, nsum(np.array([[chr2ph[i] for i in qual] for
-                                             qual in map(oagqual, R)]),
-                                    0)), lenR, dtype=np.int64)
+    phredQuals = ndiv(nmul(FA, nsum(np.array([cs_to_ph(qual) for
+                                              qual in map(oagqual, R)]),
+                                    0)), lenR, dtype=np.int32)
     ND = lenR * lenSeq - nsum(FA)
     # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
-    try:
-        PVString = "|PV=%s" % ",".join([int2Str[i] for i in phredQuals])
-    except KeyError:
-        PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
-    try:
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-    except KeyError:
-        phredQualsStr = "".join(map(ph2chr, phredQuals))
-    try:
-        FAString = "|FA=%s" % ",".join([int2Str[i] for i in FA])
-    except KeyError:
-        FAString = ",".join(FA.astype(str))
+    PVString = cQualArr2PVString(phredQuals)
+    phredQualsStr = cQualArr2QualStr(phredQuals)
+    FAString = cQualArr2FAString(FA)
     TagString = "|FM=%s|ND=%s%s%s" % (lenR, ND, FAString,
                                       PVString)
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,

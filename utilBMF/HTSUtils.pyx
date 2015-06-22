@@ -102,8 +102,6 @@ def printlog(string, level=logging.INFO):
 
 pl = printlog
 
-CmpDict = {"A": "T", "C": "G", "G": "C", "T": "A"}
-
 nucConverter = numconv.NumConv(4, "ACGT")  # Used to do permutations
 nci = nucConverter.int2str
 ncs = nucConverter.str2int
@@ -121,13 +119,12 @@ cpdef list permuteNucleotides(long maxn, object nci=nci):
 @memoize
 @cython.returns(cystr)
 def MemoRevCmp(cystr seq):
-    return "".join([CmpDict[i] for i in list(seq)])[::-1]
+    return RevCmp(seq)
 
 
-cpdef cystr RevCmp(cystr seq, dict CmpDict=CmpDict):
+cpdef cystr RevCmp(cystr seq):
     cdef cystr i
-    return "".join([CmpDict[i] for i in list(seq)])[::-1]
-
+    return "".join([RevCmpChar(i) for i in list(seq)])[::-1]
 
 
 PysamToChrDict = {}

@@ -422,12 +422,14 @@ cdef class Layout:
             "," + ",".join(self.cGetAgreementSlice(offset).astype(str)))
         NewCigarString = FlattenCigarString(
             self.getCigarString + pairedLayout.cGetCigarStringSlice(offset))
+        '''
         return "\t".join(map(
                 str, [self.Name, self.getFlag(), self.contig,
                       self.getAlignmentStart() + 1, self.mapq,
                       self.getCigarString(), self.rnext, self.pnext + 1,
                       self.tlen, self.getSeq(), self.getQualString()] +
                 self.get_tag_string()))
+        '''
         return ("\t" + self.Name + "\t%s" % self.getFlag() + "\t" + self.contig + 
                 "\t%s\t%s" % (self.getAlignmentStart() + 1, self.mapq) +
                 "\t" + NewCigarString +
