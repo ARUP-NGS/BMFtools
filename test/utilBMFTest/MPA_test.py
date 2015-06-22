@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/user/bin/env python
 import shlex
 import subprocess
 import sys
 import unittest
 
-from utilBMF.QC import GetAllQCMetrics
+from utilBMF.MergePairedAlignments import MergePairedAlignments
 
 __author__ = 'dnephi'
 

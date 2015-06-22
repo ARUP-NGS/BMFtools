@@ -559,19 +559,10 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
         pl("readLength not set - inferring.")
         readLength = len(inHandle.next().seq)
         inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(outBAM is None):
-        outBAM = TrimExt(inBAM) + ".PairMergeProcessed.sam"
-    if(outMerge is None):
-        outMerge = TrimExt(inBAM) + ".PairMergedReads.sam"
-    if(pipe):
-        outHandle = pysam.AlignmentFile("-", "w",
-                                        header=inHandle.header)
-        outHandleMerge = sys.stdout
-        outHandleMerge.write(inHandle.text)
-    else:
-        outHandle = pysam.AlignmentFile(outBAM, "w",
-                                        header=inHandle.header)
-        outHandleMerge = open(outMerge, "w")
+    outHandle = pysam.AlignmentFile("-", "w",
+                                    header=inHandle.header)
+    outHandleMerge = sys.stdout
+    outHandleMerge.write(inHandle.text)
     for read in inHandle:
         print("Name: %s" % read.query_name)
         count += 1

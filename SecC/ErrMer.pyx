@@ -90,7 +90,14 @@ def main():
                     continue
                 if recBase == "N":
                     continue
+                '''
+                Replaced an "x in y" call with a dict try/except.
                 if recKmer not in kmerDict.keys():
+                '''
+                try:
+                    kmerDict[recKmer]
+                    pass
+                except KeyError:
                     kmerDict[recKmer] = np.zeros((4,4),dtype=np.float)
                     kmerTotals[recKmer] = [0,0]
                 kmerDict[recKmer][nucIndex[recBase]][nucIndex[consBase]]+=1.0

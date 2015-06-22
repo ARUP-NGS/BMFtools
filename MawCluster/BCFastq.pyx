@@ -156,10 +156,12 @@ cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
 
 
 cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|PV=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
-
+    cdef np_int32_t tmpInt = np.max(qualArr)
+    if(tmpInt < 9001):
+        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
+                                     tmpInt in qualArr]))
+    else:
+        return "|PV=%s" % ",".join(qualArr.astype(int))
 
 cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
@@ -756,23 +758,6 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
     return rescueHistDict, TrueFamDict
 
 
-cdef bint BarcodePasses(cystr barcode, int hpLimit=-1, bint useRe=True):
-    if(hpLimit < 0):
-        raise Tim("Barcode length must be set to test if it passes!")
-    if(useRe):
-        b = regex_compile("(ACGT){%s}" % hpLimit)
-        if b.match(barcode) is not None:
-            return False
-        if("N" in barcode):
-            return False
-    else:
-        if("A" * hpLimit in barcode or "C" * hpLimit in barcode or
-           "G" * hpLimit in barcode or "T" * hpLimit in barcode or
-           "N" in barcode):
-            return False
-    return True
-
-
 def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
                          int minFam=10, int mm=1, int head=2):
     cdef dict rescueDict, TrueFamDict
@@ -843,7 +828,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
-            ohw2(str(rec1))
+            ohw2(str(rec2))
             continue
         except KeyError:
             pass
@@ -854,7 +839,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
-            ohw2(str(rec1))
+            ohw2(str(rec2))
             continue
         except KeyError:
             # This isn't in a true family. Blech!
@@ -863,16 +848,15 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
-            ohw2(str(rec1))
+            ohw2(str(rec2))
             continue
     outHandle1.close()
     outHandle2.close()
     return outFq1, outFq2
 
-cdef cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
-    if(BarcodePasses(saltedBS, hpLimit)):
-        return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
-    return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
 
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
+    """
+    Python-visible MakeTagComment.
+    """
     return cMakeTagComment(saltedBS, rec, hpLimit)
