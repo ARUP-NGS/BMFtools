@@ -81,6 +81,7 @@ class MyTestCase(unittest.TestCase):
                                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
                                      '~\n']
         conFq.close()
+        self.filenames.append("TestR1.cons.fastq")
 
 if __name__ == '__main__':
     unittest.main()
