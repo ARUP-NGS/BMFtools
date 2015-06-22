@@ -2823,22 +2823,6 @@ cdef class BamTag(object):
         """
         self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
-    @cython.returns(cystr)
-    def __str__(self):
-        """
-        In [14]: %timeit c = "PV" + ":" + "Z" + ":%s" % 1337
-        10000000 loops, best of 3: 55.7 ns per loop
-    
-        In [15]: %timeit c = "PV" + ":" + "Z" + ":" +  str(1337)
-        1000000 loops, best of 3: 181 ns per loop
-
-        In [17]: %timeit c = "%s:%s:%s" % ("PV", "Z", 1337)
-        1000000 loops, best of 3: 270 ns per loop
-        In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
-        1000000 loops, best of 3: 710 ns per loop
-        """
-        self.tag + ":" + self.tagtype + ":%s" % (self.value)
-
 
 cdef class IDVCFLine(object):
 

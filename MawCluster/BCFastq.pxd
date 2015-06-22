@@ -15,17 +15,8 @@ ctypedef cython.str cystr
 ctypedef array.array py_array
 ctypedef np.int32_t np_int32_t
 
-cdef cystr cCompareFqRecsFast(list R,
-                              cystr name=?,
-                              int famLimit=?)
-cdef cystr compareFqRecsFqPrx(list R,
-                              cystr name=?,
-                              float stringency=?,
-                              int famLimit=?,
-                              cython.bint keepFails=?,
-                              object oagseq=?)
+cdef cystr cCompareFqRecsFast(list R, cystr name=?)
 cpdef cystr pCompareFqRecsFast(list R, cystr name=?)
-cpdef cystr cFRP_helper(list R, cystr name=?)
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 cdef cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 

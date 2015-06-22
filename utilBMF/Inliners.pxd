@@ -46,6 +46,7 @@ cdef inline char RevCmpToChar(char character):
     else:
         return 78
 
+
 cdef inline cystr Num2Nuc(int number):
     if(number == 0):
         return "A"
@@ -18647,3 +18648,209 @@ cdef inline char chr2phImplicit(char character):
         return 92
     else:
         return 93
+
+
+cdef inline cystr chrACGNTInline(char character):
+    if(character == 65):
+        return "A"
+    elif(character == 67):
+        return "C"
+    elif(character == 71):
+        return "G"
+    elif(character == 84):
+        return "T"
+    elif(character == 78):
+        return "N"
+    else:
+        return "X"
+
+
+cdef inline cystr chrInline(char character):
+    if(character == 33):
+            return '!'
+    elif(character == 34):
+            return '"'
+    elif(character == 35):
+            return '#'
+    elif(character == 36):
+            return '$'
+    elif(character == 37):
+            return '%'
+    elif(character == 38):
+            return '&'
+    elif(character == 39):
+            return '\''
+    elif(character == 40):
+            return '('
+    elif(character == 41):
+            return ')'
+    elif(character == 42):
+            return '*'
+    elif(character == 43):
+            return '+'
+    elif(character == 44):
+            return ','
+    elif(character == 45):
+            return '-'
+    elif(character == 46):
+            return '.'
+    elif(character == 47):
+            return '/'
+    elif(character == 48):
+            return '0'
+    elif(character == 49):
+            return '1'
+    elif(character == 50):
+            return '2'
+    elif(character == 51):
+            return '3'
+    elif(character == 52):
+            return '4'
+    elif(character == 53):
+            return '5'
+    elif(character == 54):
+            return '6'
+    elif(character == 55):
+            return '7'
+    elif(character == 56):
+            return '8'
+    elif(character == 57):
+            return '9'
+    elif(character == 58):
+            return ':'
+    elif(character == 59):
+            return ';'
+    elif(character == 60):
+            return '<'
+    elif(character == 61):
+            return '='
+    elif(character == 62):
+            return '>'
+    elif(character == 63):
+            return '?'
+    elif(character == 64):
+            return '@'
+    elif(character == 65):
+            return 'A'
+    elif(character == 66):
+            return 'B'
+    elif(character == 67):
+            return 'C'
+    elif(character == 68):
+            return 'D'
+    elif(character == 69):
+            return 'E'
+    elif(character == 70):
+            return 'F'
+    elif(character == 71):
+            return 'G'
+    elif(character == 72):
+            return 'H'
+    elif(character == 73):
+            return 'I'
+    elif(character == 74):
+            return 'J'
+    elif(character == 75):
+            return 'K'
+    elif(character == 76):
+            return 'L'
+    elif(character == 77):
+            return 'M'
+    elif(character == 78):
+            return 'N'
+    elif(character == 79):
+            return 'O'
+    elif(character == 80):
+            return 'P'
+    elif(character == 81):
+            return 'Q'
+    elif(character == 82):
+            return 'R'
+    elif(character == 83):
+            return 'S'
+    elif(character == 84):
+            return 'T'
+    elif(character == 85):
+            return 'U'
+    elif(character == 86):
+            return 'V'
+    elif(character == 87):
+            return 'W'
+    elif(character == 88):
+            return 'X'
+    elif(character == 89):
+            return 'Y'
+    elif(character == 90):
+            return 'Z'
+    elif(character == 91):
+            return '['
+    elif(character == 92):
+            return '\\'
+    elif(character == 93):
+            return ']'
+    elif(character == 94):
+            return '^'
+    elif(character == 95):
+            return '_'
+    elif(character == 96):
+            return '`'
+    elif(character == 97):
+            return 'a'
+    elif(character == 98):
+            return 'b'
+    elif(character == 99):
+            return 'c'
+    elif(character == 100):
+            return 'd'
+    elif(character == 101):
+            return 'e'
+    elif(character == 102):
+            return 'f'
+    elif(character == 103):
+            return 'g'
+    elif(character == 104):
+            return 'h'
+    elif(character == 105):
+            return 'i'
+    elif(character == 106):
+            return 'j'
+    elif(character == 107):
+            return 'k'
+    elif(character == 108):
+            return 'l'
+    elif(character == 109):
+            return 'm'
+    elif(character == 110):
+            return 'n'
+    elif(character == 111):
+            return 'o'
+    elif(character == 112):
+            return 'p'
+    elif(character == 113):
+            return 'q'
+    elif(character == 114):
+            return 'r'
+    elif(character == 115):
+            return 's'
+    elif(character == 116):
+            return 't'
+    elif(character == 117):
+            return 'u'
+    elif(character == 118):
+            return 'v'
+    elif(character == 119):
+            return 'w'
+    elif(character == 120):
+            return 'x'
+    elif(character == 121):
+            return 'y'
+    elif(character == 122):
+            return 'z'
+    elif(character == 123):
+            return '{'
+    elif(character == 124):
+            return '|'
+    elif(character == 125):
+            return '}'
+    else:
+            return '~'

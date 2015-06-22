@@ -3,8 +3,8 @@ import cython
 from warnings import warn
 
 from operator import attrgetter as oag
-from utilBMF._bmftools_helper import defaultConfig
-from utilBMF.HTSUtils import printlog as pl
+from ._bmftools_helper import defaultConfig
+from .HTSUtils import printlog as pl
 
 
 @cython.returns(bint)
