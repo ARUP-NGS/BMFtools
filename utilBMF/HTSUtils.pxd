@@ -4,7 +4,7 @@ cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
-from utilBMF.cstring cimport cs_to_ph
+from utilBMF.cstring cimport cs_to_ph, cs_to_ia, RevCmpImplicit
 from cpython cimport array
 ctypedef array.array py_array
 ctypedef cython.str cystr
@@ -174,15 +174,3 @@ cdef cystr cGetBS(pFastqProxy_t)
 cdef public dict PysamToChrDict, ph2chrDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
-
-cdef inline cystr RevCmpChar(cystr character):
-    if(character == "A"):
-        return "T"
-    elif(character == "C"):
-        return "G"
-    elif(character == "G"):
-        return "C"
-    elif(character == "T"):
-        return "A"
-    else:
-        return "N"

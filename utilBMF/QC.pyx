@@ -142,7 +142,7 @@ def InsertSizeArray(cystr inBAM):
 
 @cython.locals(min=int, onTargetBuffer=int)
 def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
-                    minFM=2):
+                    minFM=2, FastDOCPath="default"):
     cdef int TotalReads, FM, MappedReads, UnmappedReads
     cdef double fracOnTarget, stdInsert, meanInsert
     cdef int MappedFamReads, maxInsert
@@ -173,7 +173,8 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     ReadsOnTarget = 0
     ReadsOffTarget = 0
     MappedFamReads = 0
-    covBed, fracOnTarget = FastDOCBed(inBAM, bed=extendedBed)
+    covBed, fracOnTarget = FastDOCBed(inBAM, bed=extendedBed,
+                                      FastDOCPath=FastDOCPath)
     if(ospath.isfile(inBAM + ".bai") is False):
         check_call(["samtools", "index", inBAM])
         sys.stderr.write("Fraction on target: %s" % fracOnTarget)

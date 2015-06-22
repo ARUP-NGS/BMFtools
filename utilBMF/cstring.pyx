@@ -59,6 +59,12 @@ cdef py_array cs_to_ia(cystr input_str):
     return array('B', [i for i in <char *> input_str])
 
 
+cdef cystr RevCmpImplicit(cystr seq):
+    cdef char i
+    return "".join([RevCmpInt(i) for i in
+                    <char *>seq])[::-1]
+
+
 '''
 Speed experiments
 

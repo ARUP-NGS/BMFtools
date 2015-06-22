@@ -123,8 +123,7 @@ def MemoRevCmp(cystr seq):
 
 
 cpdef cystr RevCmp(cystr seq):
-    cdef cystr i
-    return "".join([RevCmpChar(i) for i in list(seq)])[::-1]
+    return RevCmpImplicit(seq)
 
 
 PysamToChrDict = {}
