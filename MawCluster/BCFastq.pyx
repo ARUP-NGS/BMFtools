@@ -863,7 +863,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             ohw1(str(rec1))
-            ohw2(str(rec1))
+            ohw2(str(rec2))
             continue
     outHandle1.close()
     outHandle2.close()
