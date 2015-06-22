@@ -37,3 +37,5 @@ utilBMF/__init__.c
 utilBMF/_bmftools_helper.c
 utilBMF/cFqProc.c
 utilBMF/cstring.c
+Doc/*
+BMFTools.egg-info/*

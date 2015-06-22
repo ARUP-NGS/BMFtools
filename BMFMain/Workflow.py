@@ -27,7 +27,6 @@ from MawCluster.BCVCF import VCFStats
                addRG=cython.bint, rLen=int)
 def pairedBamProc(consfq1, consfq2, opts="",
                   bamPrefix="default", ref="default", aligner="default",
-                  barIndex="default",
                   bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
                   abrapath="default",
                   coverageForAllRegions=False,
@@ -100,13 +99,6 @@ def pairedBamProc(consfq1, consfq2, opts="",
         realignedFull = taggedBAM
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
-    # check_call(["rm", realignedFull])
-    if(barIndex != "default"):
-        p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
-        out, err = p.communicate()
-        pl("Number of families found: {}".format(
-            findall(r'\d+', out)[0]))
-        histochart = BCBam.GenerateFamilyHistochart(barIndex)
     tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
     summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])
 
