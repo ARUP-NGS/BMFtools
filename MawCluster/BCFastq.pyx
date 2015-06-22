@@ -161,7 +161,7 @@ cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
         return "|PV=%s" % (",".join([int2strInline(tmpInt) for
                                      tmpInt in qualArr]))
     else:
-        return "|PV=%s" % ",".join(qualArr.astype(int))
+        return "|PV=%s" % ",".join(qualArr.astype(str))
 
 cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
