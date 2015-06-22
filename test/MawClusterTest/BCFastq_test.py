@@ -83,5 +83,11 @@ class MyTestCase(unittest.TestCase):
         conFq.close()
         self.filenames.append("TestR1.cons.fastq")
 
+    def test_famsizestats(self):
+        """
+        TODO: Test GetFamSizeStats
+        """
+        pass
+
 if __name__ == '__main__':
     unittest.main()
