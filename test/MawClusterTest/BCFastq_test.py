@@ -1,7 +1,10 @@
 #!/user/bin/env python
-import unittest
-import sys
+import shlex
 import subprocess
+import sys
+import unittest
+
+from BMFMain.Workflow import pairedFastqShades
 from utilBMF.HTSUtils import pFastqFile
 from MawCluster.BCFastq import (pCompareFqRecsFast as cCompareFqRecsFast,
                                 pairedFastqConsolidate, singleFastqConsolidate)
@@ -16,13 +19,15 @@ class MyTestCase(unittest.TestCase):
     """
 
     def tearDown(self):
-        pass
+        for filename in self.filenames:
+            subprocess.check_call(["rm", filename])
 
     def setUp(self):
         self.handle = pFastqFile("../data/TestR1.fastq")
         self.prefastqs = [i for i in self.handle]
+        self.filenames = []
 
-    def test_dmp(self):
+    def test_compareFqRecs(self):
         assert cCompareFqRecsFast(self.prefastqs) == (
             '@MISEQ-M00736:68:000000000-A8D2D:1:2117:26553:9909 1:N:0:ACAGTG|'
             'FP=IndexPass|BS=AAAAAATGGACCCATTAACC|FM=3|ND=0|FA=3,3,3,3,3,3,3,'
@@ -37,7 +42,21 @@ class MyTestCase(unittest.TestCase):
             '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
 
     def test_pfc(self):
-        pass
+        pairedFastqShades("../data/TinyDemo_R1.fastq.gz",
+                          "../data/TinyDemo_R3.fastq.gz",
+                          indexFq="../data/TinyDemo_R2.fastq.gz")
+        cStrToCheck = ("cat TinyDemo_R1.shaded.BS.cons.fastq | paste "
+                       "- - - - | cut -d'|' -f4 | cut -d'=' -f2 | paste -sd+ "
+                       "| bc")
+        assert int(subprocess.check_output(cStrToCheck,
+                                           shell=True).strip()) == 25000
+        self.filenames += ["TinyDemo_R1.fastq.famstats.txt",
+                           "TinyDemo_R1.shaded.BS.cons.fastq",
+                           "TinyDemo_R1.shaded.BS.fastq",
+                           "TinyDemo_R1.shaded.fastq",
+                           "TinyDemo_R3.shaded.BS.cons.fastq",
+                           "TinyDemo_R3.shaded.BS.fastq",
+                           "TinyDemo_R3.shaded.fastq"]
 
     def test_sfc(self):
         singleFastqConsolidate("../data/TestR1.fastq")
@@ -61,8 +80,8 @@ class MyTestCase(unittest.TestCase):
                                      '+\n', '~~~~~~~~~~~~~~~~~~~~~x~~~~~~~~'
                                      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
                                      '~\n']
-        subprocess.check_call("rm TestR1.cons.fastq", shell=True)
         conFq.close()
+        self.filenames.append("TestR1.cons.fastq")
 
 if __name__ == '__main__':
     unittest.main()

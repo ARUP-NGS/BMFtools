@@ -3,11 +3,11 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 from cython cimport bint
 from numpy cimport ndarray
-from utilBMF.HTSUtils cimport cystr
 from utilBMF.HTSUtils cimport PysamToChrDict
-from MawCluster.BCFastq cimport letterNumDict
+from utilBMF.Inliners cimport Num2Nuc
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
+ctypedef cython.str cystr
 
 cdef cystr cBarcodeTagCOBam(pysam.calignmentfile.AlignmentFile bam,
                       pysam.calignmentfile.AlignmentFile outbam)

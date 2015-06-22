@@ -4,9 +4,9 @@ cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
-from utilBMF.cstring cimport cs_to_ph
-from cpython cimport array as c_array
-ctypedef c_array.array carray
+from utilBMF.cstring cimport cs_to_ph, cs_to_ia, RevCmpImplicit
+from cpython cimport array
+ctypedef array.array py_array
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
@@ -134,7 +134,7 @@ cdef class pFastqProxy:
     cdef cystr cGetBS(self)
     cpdef cystr getBS(self)
     cdef cystr tostring(self)
-    cpdef carray getQualArray(self)
+    cpdef py_array getQualArray(self)
     cdef int cGetFM(self)
     cpdef int getFM(self)
     cpdef cystr getSlice(self, int start=?, int end=?,
@@ -153,7 +153,7 @@ cdef class BamTag(object):
     cdef readonly cystr tagtype
     cdef public object value
 
-cpdef public cystr RevCmp(cystr seq, dict CmpDict=?)
+cpdef public cystr RevCmp(cystr seq)
 
 cpdef public list permuteNucleotides(long maxn, object nci=?)
 
@@ -171,6 +171,6 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 
 
-cdef public dict CmpDict, PysamToChrDict, ph2chrDict
+cdef public dict PysamToChrDict, ph2chrDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList

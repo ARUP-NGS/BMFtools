@@ -102,8 +102,6 @@ def printlog(string, level=logging.INFO):
 
 pl = printlog
 
-CmpDict = {"A": "T", "C": "G", "G": "C", "T": "A"}
-
 nucConverter = numconv.NumConv(4, "ACGT")  # Used to do permutations
 nci = nucConverter.int2str
 ncs = nucConverter.str2int
@@ -121,13 +119,11 @@ cpdef list permuteNucleotides(long maxn, object nci=nci):
 @memoize
 @cython.returns(cystr)
 def MemoRevCmp(cystr seq):
-    return "".join([CmpDict[i] for i in list(seq)])[::-1]
+    return RevCmp(seq)
 
 
-cpdef cystr RevCmp(cystr seq, dict CmpDict=CmpDict):
-    cdef cystr i
-    return "".join([CmpDict[i] for i in list(seq)])[::-1]
-
+cpdef cystr RevCmp(cystr seq):
+    return RevCmpImplicit(seq)
 
 
 PysamToChrDict = {}
@@ -352,7 +348,7 @@ cdef class pFastqProxy:
     cpdef cystr getBS(self):
         return self.cGetBS()
 
-    cpdef carray getQualArray(self):
+    cpdef py_array getQualArray(self):
         return cs_to_ph(self.quality)
 
     cpdef cystr getSlice(self, int start=0, int end=-1337,
@@ -2813,7 +2809,19 @@ cdef class BamTag(object):
 
     @cython.returns(cystr)
     def __str__(self):
-        return "%s:%s:%s" % (self.tag, self.tagtype, self.value)
+        """
+        In [14]: %timeit c = "PV" + ":" + "Z" + ":%s" % 1337
+        10000000 loops, best of 3: 55.7 ns per loop
+    
+        In [15]: %timeit c = "PV" + ":" + "Z" + ":" +  str(1337)
+        1000000 loops, best of 3: 181 ns per loop
+
+        In [17]: %timeit c = "%s:%s:%s" % ("PV", "Z", 1337)
+        1000000 loops, best of 3: 270 ns per loop
+        In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
+        1000000 loops, best of 3: 710 ns per loop
+        """
+        self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
 
 cdef class IDVCFLine(object):
@@ -3012,8 +3020,9 @@ TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
                "NF": "f", "NM": "i", "RP": "Z", "SC": "Z",
                "SF": "f", "SV": "Z", "X0": "i", "X1": "i",
                "XM": "i", "YA": "Z", "YM": "i", "YO": "Z",
-               "YQ": "i", "YR": "i", "YX": "i", "MP": "Z"}
-
+               "YQ": "i", "YR": "i", "YX": "i", "MP": "A",
+               "PM": "Z", "MA": "Z", "ot": "i", "mp": "i",
+               "om": "i"}
 
 cdef class pFastqFile(object):
     """

@@ -9,7 +9,7 @@ import logging
 from copy import copy as ccopy
 from os import path
 import operator
-from operator import attrgetter as oag
+from operator import attrgetter as oag, methodcaller as mc
 import string
 import uuid
 import sys
@@ -45,6 +45,8 @@ ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")
+mcoptBS = mc("opt", "BS")
+# BSStringList = map(mcoptBS, readList)
 
 
 def AbraCadabra(inBAM, outBAM="default",
@@ -450,7 +452,7 @@ def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
     qualT[seqArray != "T"] = 0
     qualTSum = nsum(qualT, 0)
     qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
+    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsub(nmul(2, MaxPhredSum),
                       nsum(qualAllSum, 0))

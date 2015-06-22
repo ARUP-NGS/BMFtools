@@ -25,6 +25,7 @@ ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PCInfo PCInfo_t
 ctypedef SNVCFLine SNVCFLine_t
 pyFastaFile = pysam.FastaFile
+mcupdate = mc("update")
 
 """
 This module contains a variety of tools for calling variants.
@@ -332,7 +333,7 @@ cdef class VCFPos:
         self.minDuplexPairs = minDuplexPairs
 
     def __str__(self):
-        list(cmap(mc("update"), self.VCFLines))
+        map(mcupdate, self.VCFLines)
         self.str = "\n".join(list(cmap(str, self.VCFLines)))
         return self.str
 
