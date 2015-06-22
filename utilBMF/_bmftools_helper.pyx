@@ -28,8 +28,6 @@ parsed in as something other than a string.
 """
 
 
-
-
 defaultConfig = {
                  "abrapath": "default",
                  "aligner": "mem",

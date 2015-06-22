@@ -1021,7 +1021,8 @@ def main():
                 exp=Chapman['experiment'], conf=Chapman['conf'],
                 parallel=Chapman['parallel'])
             QCMetrics = GetAllQCMetrics(procSortedBam, bedfile=Chapman['bed'],
-                                        minFM=Chapman['minFM'])
+                                        minFM=Chapman['minFM'],
+                                        FastDOCPath=Chapman["FastDOCPath"])
             pl("Last stop! Watch your step.")
     if(subcommand == "mpa"):
         from utilBMF.MergePairedAlignments import MergePairedAlignments

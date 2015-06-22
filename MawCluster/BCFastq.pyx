@@ -297,14 +297,15 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef ndarray[np_int32_t, ndim=1] MaxPhredSum, phredQuals, qualTFlat
     cdef ndarray[char, ndim=1, mode = "c"] newSeq
     cdef pFastqProxy_t tmpFqP, rec
+    cdef char tmpChar
     if(name is None):
         name = R[0].name
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
-                                                ",".join([chr2phStr[i] for
-                                                          i in R[0].quality]))
+        phredQuals = np.array(cs_to_ph(R[0].quality), dtype=np.int32)
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                     cQualArr2PVString(phredQuals))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
                                           R[0].quality)
@@ -338,7 +339,7 @@ cdef cystr cCompareFqRecsFast(list R,
     qualTFlat = nsum(qualT, 0, dtype=np.int32)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = np.char.array(map(Num2Nuc, npargmax(qualAllSum, 0)))
+    newSeq = np.char.array([Num2Nuc(tmpChar) for tmpChar in npargmax(qualAllSum, 0)])
     MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
     FA = np.array([sum([seq[tmpInt] == newSeq[tmpInt] for
                        seq in seqs]) for
@@ -346,9 +347,8 @@ cdef cystr cCompareFqRecsFast(list R,
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
-    phredQuals = ndiv(nmul(FA, nsum(np.array([cs_to_ph(qual) for
-                                              qual in map(oagqual, R)]),
-                                    0)), lenR, dtype=np.int32)
+    phredQuals = ndiv(nmul(FA, nsum(quals, 0)),
+                      lenR, dtype=np.int32)
     ND = lenR * lenSeq - nsum(FA)
     # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
