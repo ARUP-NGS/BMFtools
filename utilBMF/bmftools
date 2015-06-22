@@ -587,9 +587,10 @@ def main():
                         "e for inclusion in variant call", type=int)
     MainSubparser.add_argument("--picardpath", help="Path to picard jar. Required fo"
                         "r calling PicardTools.")
-    MainSubparser.add_argument("--indelRealigner", help="Select which indel realigne"
-                        "r you wish to use. Supported: abra, GATK. Set to "
-                        "None to avoid realignment.")
+    MainSubparser.add_argument(
+        "-g", "--realigner",
+        help="Select which indel realigner you wish to use. Supported: abra, "
+        "GATK. Set to None to avoid realignment.")
     MainSubparser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)")
     MainSubparser.add_argument("--readLength", help="Read length",
                         type=int)
@@ -729,7 +730,7 @@ def main():
         if(not Palin.no_strand_correction):
             DesiredInputQty /= 2
         print("Desired input qty: %.8fpg" % DesiredInputQty)
-    if(subcommand == "psnv"):
+    elif(subcommand == "psnv"):
         from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
         from subprocess import check_call
@@ -759,7 +760,7 @@ def main():
                     outVCF, bedfile=conf['bed'])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
-    if(subcommand == "snv"):
+    elif(subcommand == "snv"):
         from MawCluster.VCFWriters import SNVCrawler
         from utilBMF.HTSUtils import parseConfig
         from MawCluster.BCVCF import VCFStats
@@ -829,11 +830,11 @@ def main():
         open("cProfile.stats.txt", "w").write(s.getvalue())
         """
         sys.exit(0)
-    if(subcommand == "vcfstats"):
+    elif(subcommand == "vcfstats"):
         from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
-    if(subcommand == "dmp"):
+    elif(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
             from BMFMain.Workflow import pairedFastqShades
             OutFastq1, OutFastq2 = pairedFastqShades(
@@ -852,7 +853,7 @@ def main():
                 p3Seq=Chapman['p3Seq'],
                 p5Seq=Chapman['p5Seq'])
             return 0  # sys.exit(main()) returns 0
-    if(subcommand == "sv"):
+    elif(subcommand == "sv"):
         from utilBMF.ErrorHandling import ThisIsMadness
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans
@@ -870,11 +871,11 @@ def main():
                 ref=Chapman['ref'],
                 insDistance=Chapman['insert_distance'])
         return Output
-    if(subcommand == "sma"):
+    elif(subcommand == "sma"):
         from MawCluster import BCVCF
         Output = BCVCF.ISplitMultipleAlts(Chapman['inVCF'], Chapman['outVCF'])
         sys.exit(0)
-    if(subcommand == "vcfcmp"):
+    elif(subcommand == "vcfcmp"):
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
                                       CheckVCFForStdCalls)
         if(Chapman['check_both']):
@@ -905,13 +906,13 @@ def main():
             CheckVCFForStdCalls(Chapman['queryVCF'], std=Chapman['std'],
                                 outfile=sys.stdout)
         sys.exit(0)
-    if(subcommand == "getuniquekmersbed"):
+    elif(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
         from utilBMF.HTSUtils import ParseBed
         if Chapman['aligner'] == 'bwt':
             raise ThisIsHKMadness("Bowtie not recommended for use due to identified bugs.")
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
-                         mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
+                         mismatches=Chapman['mismatches'], minMQ=Chapman['minMQ'],
                          k=Chapman['kmer'], seed=Chapman['seed'], aligner=Chapman['aligner'])
 
         bedlines = ParseBed(Chapman['inbed'])
@@ -930,14 +931,14 @@ def main():
         print uniquekmerList[0]
         print KF[uniquekmerList[0]]
 
-    if(subcommand == "famstats"):
+    elif(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(Chapman['inFq'],
                                 outfile=Chapman['outfile_handle'])
-    if(subcommand == "v"):
+    elif(subcommand == "v"):
         from utilBMF.HTSUtils import __version__
         print(__version__)
-    if(subcommand == "tagbam"):
+    elif(subcommand == "tagbam"):
         fastqs = Chapman['fastq']
         if(len(fastqs) == 1):
             singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
@@ -945,7 +946,7 @@ def main():
         elif(len(fastqs) == 2):
             pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
                                  outBAMFile=Chapman['outfile'])
-    if(subcommand == "aligntagbam"):
+    elif(subcommand == "aligntagbam"):
         from BMFMain.Workflow import pairedBamProc
         outBAM = pairedBamProc(
             Chapman['inFqs'][0],
@@ -959,7 +960,7 @@ def main():
             gatkpath=Chapman['gatkpath'])
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
-    if(subcommand == "rsq"):
+    elif(subcommand == "rsq"):
         from MawCluster.BCFastq import RescueShadingWrapper
         RescueShadingWrapper(Chapman['fastqs'][0],
                              Chapman['fastqs'][1],
@@ -967,7 +968,7 @@ def main():
                              minFam=Chapman['minFam'],
                              mm=Chapman['mm'],
                              head=Chapman['head'])
-    if(subcommand == "bedcov"):
+    elif(subcommand == "bedcov"):
         # sys.stderr.write("config repr: %s" % repr(Chapman.config))
         from utilBMF.QC import FastDOCBed, ExtendBed
         if(Chapman['bed_buffer'] != 0):
@@ -976,7 +977,7 @@ def main():
         outbed, fracOnTarget = FastDOCBed(Chapman['inBAM'], bed=Chapman['bed'],
                                           threads=Chapman['threads'],
                                           FastDOCPath=Chapman['FastDOCPath'])
-    if(subcommand == "main"):
+    elif(subcommand == "main"):
         print("Beginning something!")
         if(Chapman['single_end'] is True):
             pl("Single-end analysis chosen.")
@@ -1003,7 +1004,7 @@ def main():
                 picardpath=Chapman['picardpath'],
                 dbsnp=Chapman['dbsnp'],
                 gatkpath=Chapman['gatkpath'],
-                realigner=Chapman['realigner'],
+                realigner=Chapman('realigner'),
                 rLen=Chapman['readLength'],
                 opts=Chapman['opts'],
                 kmers_precomputed=Chapman['kmers_precomputed'],

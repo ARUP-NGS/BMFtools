@@ -63,7 +63,7 @@ class ArgumentSketcher(object):
     @cython.locals(key=cystr, oag=object)
     def arbitrate(self, oag=oag):
         for key in self.keys:
-            value = oag(key)(self.args)
+            value = getattr(self.args, key)
             if(value is not None):
                 self.config[key] = value
 
@@ -94,4 +94,4 @@ class ArgumentSketcher(object):
 
     @cython.locals(key=cystr)
     def __call__(self, key):
-        return self[key]
+        return self.config[key]

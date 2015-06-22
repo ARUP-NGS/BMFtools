@@ -291,9 +291,6 @@ def pairedBarcodeTagging(
     cdef dict descDict1, descDict2
     cdef pFastqProxy_t pFq1, pFq2
     # cdef AlignmentFile postFilterBAM, outBAM, suppBAM
-    raise DeprecationWarning(
-        "Hey, don't use this function! the COBam tagging method "
-        "has superceded the ways of the past.")
     if(outBAMFile == "default"):
         outBAMFile = '.'.join(bam.split('.')[0:-1]) + ".tagged.bam"
     if(suppBam == "default"):
