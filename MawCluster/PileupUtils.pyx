@@ -6,6 +6,7 @@ from os import path as ospath
 import shlex
 import logging
 import operator
+import warnings
 from operator import attrgetter as oag
 from operator import itemgetter as oig
 from operator import div as odiv
@@ -131,7 +132,13 @@ cdef class PRInfo:
         self.BQ = PileupRead.BQ
         self.FA = PileupRead.FA
         self.MQ = alignment.mapq
-        self.SVPass = TestSVTags(aopt("SV"))
+        try:
+            self.SVPass = TestSVTags(aopt("SV"))
+        except KeyError:
+            self.SVPass = True
+            warnings.warn(
+                "Note: SV tag not present. All reads "
+                "will pass the SV filter.", RuntimeWarning)
         if(alignment.is_qcfail or aopt("FP") == 0):
             self.Pass = False
         self.query_name = PileupRead.name
@@ -570,7 +577,7 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     """
     raise NotImplementedError("Haven't finished updating these objects.")
     cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-    cdef pPileupRead_t tpr
+    cdef PFInfo_t tpr
     for tpr in Records:
         if tpr.MQ < minMQ:
             retArr[0] += 1
@@ -763,3 +770,17 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
     inHandle.close()
     outHandle.close()
     pass
+
+'''
+cdef tuple BuildRegionReadDictionaries(AlignmentFile_t handle,
+                                       list interval):
+    """
+    Builds a dictionary from each read in the region for PV and FA.
+    """
+    cdef AlignedSegment_t tmpRead
+    cdef dict PVDict, FADict
+    PVDict = {}
+    FADict = {}
+    for tmpRead in handle.fetch(interval[0], interval[1], interval[2]):
+        PVDict[AS_to_key(tmpRead)] =
+'''

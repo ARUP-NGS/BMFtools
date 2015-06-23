@@ -18,6 +18,7 @@ ctypedef pPileupRead pPileupRead_t
 ctypedef PRInfo PRInfo_t
 ctypedef pysam.calignmentfile.PileupRead PileupRead_t
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 
 
 cdef class AlleleAggregateInfo:
@@ -151,3 +152,10 @@ cdef inline bint TestSVTags(cystr inTag):
         if(TestSVFlag(tagflag) is False):
             return False
     return True
+
+
+cdef inline cystr AS_to_key(AlignedSegment_t read):
+    if(read.is_read1):
+        return read.query_name + "1"
+    else:
+        return read.query_name + "2"

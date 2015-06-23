@@ -186,7 +186,8 @@ def SNVCrawler(inBAM,
                     minFracAgreed=minFracAgreed, experiment=experiment,
                     MaxPValue=MaxPValue, refHandle=refHandle,
                     keepConsensus=keepConsensus, reference=reference)
-                ohw(posStr + "\n")
+                if(posStr != ""):
+                    ohw(posStr + "\n")
                 if(pPC.reference_pos > line[2]):
                     pl("Bed region %s complete." % BedListToStr(line))
                     break

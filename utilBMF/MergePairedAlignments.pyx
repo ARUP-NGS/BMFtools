@@ -644,6 +644,7 @@ cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):
                               ALP.agreement, chr(ALP.operation),
                               chr(ALP.base), ALP.mergeAgreed]))
 
+
 def testLayout(cystr inBAM, cystr outBAM=None):
     cdef AlignedSegment_t read
     cdef Layout_t layout
@@ -668,6 +669,7 @@ cdef list FlattenCigar(list cigar):
         retList.append((k, sum(map(oig1, glist))))
     return retList
 
+
 cpdef cystr FlattenCigarString(cystr cigar):
     return cFlattenCigarString(cigar)
 
@@ -684,8 +686,8 @@ cdef cystr cFlattenCigarString(cystr cigar):
     cdef int cigarOpLen
     cdef int newCigarOpLen
     cdef py_array chars = cs_to_ia("".join(rsplit("[0-9]+", cigar)[1:]))
-    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpItStr in
-                                        rsplit("[A-Z]", cigar)[:len(chars)]))
+    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpIntStr in
+                                        rsplit("[A-Z]", cigar)[:len(chars)]])
     cdef list outTupleList = []
     '''
     cdef py_array Lengths = array(
