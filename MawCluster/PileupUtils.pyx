@@ -569,11 +569,13 @@ cdef class PCInfo:
 
     @cython.returns(cystr)
     def getQCFailString(self):
-        return ("BQ:%s;FA:%s;MQ:%s" % (FailedBQReads, FailedFAReads,
-                                       FailedMQReads) +
-                ";ND:%s;AMP:%s;SV:%s" % (FailedNDReads, FailedAMPReads,
-                                         FailedSVReads) +
-                ";AF:%s" % FailedAFReads)
+        return ("BQ:%s;FA:%s;MQ:%s" % (self.FailedBQReads,
+                                       self.FailedFAReads,
+                                       self.FailedMQReads) +
+                ";ND:%s;AMP:%s;SV:%s" % (self.FailedNDReads,
+                                         self.FailedAMPReads,
+                                         self.FailedSVReads) +
+                ";AF:%s" % self.FailedAFReads)
 
 
 @cython.returns(tuple)

@@ -269,6 +269,8 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
                  NDP=len(PC.DiscNames))
+    if(len(pos.VCFLines) == 0):
+        return "empty"
     return str(pos)
 
 

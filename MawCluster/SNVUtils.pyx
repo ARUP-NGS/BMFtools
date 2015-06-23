@@ -291,6 +291,10 @@ cdef class VCFPos:
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
         self.EST = PCInfoObject.excludedSVTagStr
+        print("Length of AltAlleleData: %s" % len(PCInfoObject.AltAlleleData))
+        for alt in PCInfoObject.AltAlleleData:
+            print("Total reads for alt allele %s is %s." % (alt.ALT,
+                                                            alt.MergedReads))
         self.VCFLines = [line for line in [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
@@ -334,6 +338,9 @@ cdef class VCFPos:
             for tmpLine in self.VCFLines:
                 tmpLine.update()
             return "\n".join([str(tmpLine) for tmpLine in self.VCFLines])
+        print("SNVCFLine at contig %s and position %s" % (self.contig,
+                                                          self.POS) +
+              " is entirely empty.")
         return "empty"
 
 

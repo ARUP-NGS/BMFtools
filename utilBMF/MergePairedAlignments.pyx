@@ -549,7 +549,7 @@ cdef class Layout:
 
 
 def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
-                          bint pipe=False, int readLength=-1,
+                          int readLength=-1,
                           cystr outMerge=None):
     cdef AlignedSegment_t read, read1, read2, newRead
     cdef Layout_t Layout1, Layout2, retLayout
@@ -600,7 +600,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
         Layout2 = Layout(read2)
         print("Merging Layouts")
         if(read1.pos < read2.pos):
-            newReadString = Layout1.__csam__(Layout2, read1)
+            newReadString = Layout1.__csam__(Layout2)
             print("Merging didn't break everything!")
             print(newReadString)
             if(Layout1.MergeSuccess):
@@ -612,7 +612,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                 outHandle.write(read1)
                 outHandle.write(read2)
         else:
-            newReadString = Layout2.__csam__(Layout1, read2)
+            newReadString = Layout2.__csam__(Layout1)
             print("Merging didn't break everything!")
             if(Layout2.MergeSuccess):
                 print("New SAM read: %s" % newReadString)
