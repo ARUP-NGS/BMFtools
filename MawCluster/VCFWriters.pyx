@@ -230,6 +230,7 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
                 experiment=experiment,
                 minFracAgreed=minFracAgreed, minFA=minFA)
     if(PC.MergedReads == 0):
+        print("PC Failure log: %s" % PC.getQCFailString())
         return "empty"
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,

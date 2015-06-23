@@ -330,7 +330,7 @@ cdef class VCFPos:
         self.VCFLines = [tmpLine for tmpLine in self.VCFLines if
                         tmpLine is not None]
         '''
-        if(len(tmpLine) > 0):
+        if(len(self.VCFLines) > 0):
             for tmpLine in self.VCFLines:
                 tmpLine.update()
             return "\n".join([str(tmpLine) for tmpLine in self.VCFLines])

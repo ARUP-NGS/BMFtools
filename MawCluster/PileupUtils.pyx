@@ -567,6 +567,14 @@ cdef class PCInfo:
         self.str = outStr
         return self.str
 
+    @cython.returns(cystr)
+    def getQCFailString(self):
+        return ("BQ:%s;FA:%s;MQ:%s" % (FailedBQReads, FailedFAReads,
+                                       FailedMQReads) +
+                ";ND:%s;AMP:%s;SV:%s" % (FailedNDReads, FailedAMPReads,
+                                         FailedSVReads) +
+                ";AF:%s" % FailedAFReads)
+
 
 @cython.returns(tuple)
 def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,

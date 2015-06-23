@@ -315,7 +315,7 @@ cdef class Layout:
         return "#".join(map(ALPToStr, [ALP for ALP in
                                        self.Layout.layouts[:self.Layout.length]
                                        ]))
-
+    '''
     cpdef AlignedSegment_t MergeLayoutToAS(self, Layout_t pairedLayout,
                                            AlignedSegment_t template):
         cdef size_t tmpInt
@@ -342,6 +342,7 @@ cdef class Layout:
         retAS.reference_id = self.reference_id
         retAS.pos = self.getAlignmentStart()
         return retAS
+    '''
 
     cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
         print("Begging MergeLayouts_in_place")
@@ -399,12 +400,10 @@ cdef class Layout:
                 ("ot", self.tlen), ("mp", self.pnext),
                 ("om", self.mapq), ("MP", "T")]
 
-    cpdef cystr __sam__(self, Layout_t pairedLayout,
-                        AlignedSegment_t template=None):
-        return self.__csam__(pairedLayout, template)
+    cpdef cystr __sam__(self, Layout_t pairedLayout):
+        return self.__csam__(pairedLayout)
 
-    cdef cystr __csam__(self, Layout_t pairedLayout,
-                        AlignedSegment_t template=None):
+    cdef cystr __csam__(self, Layout_t pairedLayout):
         """
         Converts the record into a SAM record.
         Note: the position is incremented by 1 because SAM positions are
@@ -420,6 +419,8 @@ cdef class Layout:
             "," + ",".join(self.cGetQualSlice(offset).astype(str)))
         self.tagDict["FA"].value += (
             "," + ",".join(self.cGetAgreementSlice(offset).astype(str)))
+        self.tagDict["FM"].value *= 2
+        # Double the number of "family members" to describe merging.
         NewCigarString = FlattenCigarString(
             self.getCigarString + pairedLayout.cGetCigarStringSlice(offset))
         '''
@@ -430,7 +431,7 @@ cdef class Layout:
                       self.tlen, self.getSeq(), self.getQualString()] +
                 self.get_tag_string()))
         '''
-        return ("\t" + self.Name + "\t%s" % self.getFlag() + "\t" + self.contig +
+        return (self.Name + "\t%s" % self.getFlag() + "\t" + self.contig +
                 "\t%s\t%s" % (self.getAlignmentStart() + 1, self.mapq) +
                 "\t" + NewCigarString +
                 "\t%s\t%s\t%s\t" % (self.rnext, self.pnext + 1, self.tlen) +

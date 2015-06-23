@@ -2811,7 +2811,12 @@ cdef class BamTag(object):
         try:
             tagtype = TagTypeDict[tag[0]]
         except KeyError:
-            tagtype = "Z"  # A safer fallback
+            if(isinstance(tag[1], int)):
+                tagtype = "i"
+            elif(isinstance(tag[1], float)):
+                tagtype = "f"
+            else:
+                tagtype = "Z"  # A safer fallback
         return cls(tag[0], tagtype, tag[1])
 
     def __init__(self, cystr tag, cystr tagtype, value):
