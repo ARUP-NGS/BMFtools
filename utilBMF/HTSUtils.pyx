@@ -1051,7 +1051,6 @@ cdef class pPileupRead:
     """
 
     def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
-        print("PV Tag! %s" % PileupRead.alignment.opt("PV"))
         cdef ndarray[np_int32_t, ndim=1] BQs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
@@ -1063,11 +1062,6 @@ cdef class pPileupRead:
             PileupRead.alignment.opt("PV").split(","),
             dtype=np.int32)
         self.AF = PileupRead.alignment.opt("AF")
-        if(np.sum(BQs) == 0):
-            print(str(PileupRead.alignment))
-            print(str(PileupRead.alignment.get_tags()))
-            print("Name: %s" % PileupRead.alignment.query_name)
-            raise Tim
         self.BQ = BQs[self.query_position]
         self.FA = int(self.alignment.opt(
             "FA").split(",")[self.query_position])

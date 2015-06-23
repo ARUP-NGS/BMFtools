@@ -47,13 +47,6 @@ ctypedef VCFPos VCFPos_t
 Programs which write VCFs.
 Currently: SNVCrawler.
 
-In development: SV
-
-Settled on two major filters for inclusion in a pileup
-1. Min FA (number of family members agreeing) [int=2] (I just can't get
-   too big a family...)
-2. Min Fraction Agreement Within Family [float=0.6667]
-
 """
 
 
@@ -178,7 +171,7 @@ def SNVCrawler(inBAM,
                         line))
                     break
                 except ValueError:
-                    pl("Pysam's heinous errors in iteratio.")
+                    pl("Pysam's heinous errors in iteration happened...")
                     pl("Region: %s" % repr(line))
                     raise ValueError(repr(line))
                 posStr = pPileupColToVCFLines(
@@ -383,12 +376,3 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
                     outVCF, bedfile=config["bed"])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         return bedFilteredVCF
-
-
-@cython.returns(bint)
-def testPosStr(cystr posStr):
-    if(posStr != "empty"):
-        if(posStr != ""):
-            return True
-        raise ThisIsMadness("Somehow this posStr is just empty... why?")
-    return False
