@@ -405,7 +405,7 @@ cdef class Layout:
 
     cdef cystr __csam__(self, Layout_t pairedLayout,
                         AlignedSegment_t template=None):
-        """ 
+        """
         Converts the record into a SAM record.
         Note: the position is incremented by 1 because SAM positions are
         1-based instead of 0-based.
@@ -430,7 +430,7 @@ cdef class Layout:
                       self.tlen, self.getSeq(), self.getQualString()] +
                 self.get_tag_string()))
         '''
-        return ("\t" + self.Name + "\t%s" % self.getFlag() + "\t" + self.contig + 
+        return ("\t" + self.Name + "\t%s" % self.getFlag() + "\t" + self.contig +
                 "\t%s\t%s" % (self.getAlignmentStart() + 1, self.mapq) +
                 "\t" + NewCigarString +
                 "\t%s\t%s\t%s\t" % (self.rnext, self.pnext + 1, self.tlen) +
@@ -504,7 +504,7 @@ cdef class Layout:
                          tmpLayoutPos.mergeAgreed == 0 and
                          tmpLayoutPos.operation != 66],
                         dtype=np.int16)
-        
+
     cpdef ndarray[int, ndim=1] getAgreement(self):
         """cpdef wrapper of cGetAgreement
         """
@@ -684,8 +684,8 @@ cdef cystr cFlattenCigarString(cystr cigar):
     cdef int cigarOpLen
     cdef int newCigarOpLen
     cdef py_array chars = cs_to_ia("".join(rsplit("[0-9]+", cigar)[1:]))
-    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpItStr in
-                                        rsplit("[A-Z]", cigar)[:len(chars)]))
+    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpIntStr in
+                                        rsplit("[A-Z]", cigar)[:len(chars)]])
     cdef list outTupleList = []
     '''
     cdef py_array Lengths = array(
