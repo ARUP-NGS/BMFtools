@@ -140,25 +140,8 @@ cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2QualStr(qualArr)
 
 
-cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
-
-
 cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2PVString(qualArr)
-
-
-cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
-
-
-cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|PV=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
 
 
 cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
@@ -504,6 +487,26 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
+cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
+
+
+cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt = np.max(qualArr)
+    if(tmpInt < 9001):
+        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
+                                     tmpInt in qualArr]))
+    else:
+        return "|PV=%s" % ",".join(qualArr.astype(str))
+
+
+cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
+                                 tmpInt in qualArr]))
+
+
 def GetDescriptionTagDict(readDesc):
     """Returns a set of key/value pairs in a dictionary for """
     tagSetEntries = [i.strip().split("=") for i in readDesc.split("|")][1:]
@@ -745,7 +748,7 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
         histList = [tuple(tmpStr.split("\t")) for tmpStr in
                     open(tmpFile, "r").read().split("\n") if tmpStr != ""]
     histDict = {y: int(x) for x, y in histList}
-    TrueFamDict = {x: None for x, y1 in histDict.iteritems() if y1 >= minFam}
+    TrueFamDict = {x: x for x, y1 in histDict.iteritems() if y1 >= minFam}
     if(len(TrueFamDict) == 0):
         rescueHistDict = {}
     else:
@@ -754,23 +757,6 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
     if(tmpFile is not None):
         check_call(["rm", tmpFile])
     return rescueHistDict, TrueFamDict
-
-
-cdef bint BarcodePasses(cystr barcode, int hpLimit=-1, bint useRe=True):
-    if(hpLimit < 0):
-        raise Tim("Barcode length must be set to test if it passes!")
-    if(useRe):
-        b = regex_compile("(ACGT){%s}" % hpLimit)
-        if b.match(barcode) is not None:
-            return False
-        if("N" in barcode):
-            return False
-    else:
-        if("A" * hpLimit in barcode or "C" * hpLimit in barcode or
-           "G" * hpLimit in barcode or "T" * hpLimit in barcode or
-           "N" in barcode):
-            return False
-    return True
 
 
 def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
@@ -803,7 +789,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
     size below the minFam used to create the rescueDict object can be safely
     considered to be a sequencer error.
     """
-    cdef cystr tmpBS, saltedBS, tagStr
+    cdef cystr tmpBS, saltedBS, tagStr, indexSeq
     cdef pFastqFile_t inHandle1, inHandle2, indexHandle
     cdef pFastqProxy_t rec1, rec2, index_read
     cdef int bLen, hpLimit
@@ -837,42 +823,35 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             raise Tim("Index fastq and read fastqs have different sizes. "
                       "Abort!")
         try:
-            TrueFamDict[index_read.sequence]
-            saltedBS = (rec1.sequence[:head] + index_read.sequence +
+            indexSeq = TrueFamDict[index_read.sequence]
+            saltedBS = (rec1.sequence[:head] + indexSeq +
                         rec2.sequence[:head])
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec1))
-            continue
         except KeyError:
             pass
-        try:
-            saltedBS = (rec1.sequence[:head] +
-                        rescueDict[index_read.sequence] +
-                        rec2.sequence[:head])
-            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
-            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec1))
-            continue
-        except KeyError:
-            # This isn't in a true family. Blech!
-            saltedBS = (rec1.sequence[:head] + index_read.sequence +
-                        rec2.sequence[:head])
-            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
-            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec2))
-            continue
+            try:
+                indexSeq = rescueDict[index_read.sequence]
+                saltedBS = (rec1.sequence[:head] +
+                            indexSeq +
+                            rec2.sequence[:head])
+                rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+                rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
+            except KeyError:
+                # This isn't in a true family. Blech!
+                saltedBS = (rec1.sequence[:head] + index_read.sequence +
+                            rec2.sequence[:head])
+                rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+                rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
+        ohw1(str(rec1))
+        ohw2(str(rec2))
     outHandle1.close()
     outHandle2.close()
     return outFq1, outFq2
 
-cdef cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
-    if(BarcodePasses(saltedBS, hpLimit)):
-        return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
-    return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
 
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
+    """
+    Python-visible MakeTagComment.
+    """
     return cMakeTagComment(saltedBS, rec, hpLimit)

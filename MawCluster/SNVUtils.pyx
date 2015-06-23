@@ -14,16 +14,9 @@ from utilBMF.HTSUtils import printlog as pl
 from utilBMF.ErrorHandling import ThisIsMadness, AbortMission
 from utilBMF.HTSUtils import ReadPairIsDuplex
 from .Probability import ConfidenceIntervalAAF
-from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
 from entropy import shannon_entropy as shen
 
-cimport cython
-cimport pysam.cfaidx
-cimport numpy as np
-from utilBMF.HTSUtils cimport cystr
-ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
-ctypedef PCInfo PCInfo_t
-ctypedef SNVCFLine SNVCFLine_t
+
 pyFastaFile = pysam.FastaFile
 mcupdate = mc("update")
 
@@ -56,7 +49,7 @@ cdef class SNVCFLine:
                  cystr TotalCountStr="default",
                  cystr MergedCountStr="default",
                  int FailedBQReads=-1, int FailedMQReads=-1,
-                 int FailedQCReads=-1, int FailedFMReads=-1,
+                 int FailedQCReads=-1, int FailedFAReads=-1,
                  int FailedAFReads=-1,
                  int minNumFam=2,
                  int minNumSS=2,
@@ -196,7 +189,7 @@ cdef class SNVCFLine:
                              "AABS": BothStrandAlignment,
                              "MQF": FailedMQReads,
                              "FAF": FailedAFReads,
-                             "FQC": FailedQCReads, "FFM": FailedFMReads,
+                             "FQC": FailedQCReads, "FFA": FailedFAReads,
                              "FSR": AlleleAggregateObject.FSR,
                              "AABPSD": AlleleAggregateObject.AABPSD,
                              "AAMBP": AlleleAggregateObject.AAMBP,
@@ -270,8 +263,7 @@ cdef class VCFPos:
             refHandle = pyFastaFile(reference)
         else:
             assert isinstance(refHandle, pysam.cfaidx.FastaFile)
-        if("amplicon" in PCInfoObject.experiment):
-            ampliconFailed = PCInfoObject.ampliconFailed
+        ampliconFailed = PCInfoObject.FailedAMPReads
         try:
             assert NDP >= 0
         except AssertionError:
@@ -298,9 +290,15 @@ cdef class VCFPos:
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
         self.EST = PCInfoObject.excludedSVTagStr
-        if(sum(aai.MergedReads for aai in PCInfoObject.AltAlleleData) == 0):
+        if(PCInfoObject.AltAlleleData is None or
+           sum(aai.MergedReads for aai in PCInfoObject.AltAlleleData if
+               aai is not None) == 0):
+            self = None
+            return
+            '''
             raise AbortMission("VCFPos has no reads passing filters.")
-        self.VCFLines = [SNVCFLine(
+            '''
+        self.VCFLines = [line for line in [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
             TotalFracStr=self.TotalFracStr,
@@ -318,8 +316,9 @@ cdef class VCFPos:
             minFA=minFA, BothStrandAlignment=PCInfoObject.BothStrandAlignment,
             NDP=NDP, EST=self.EST, FailedAFReads=PCInfoObject.FailedAFReads,
             minAF=self.minAF, FailedNDReads=PCInfoObject.FailedNDReads,
-            flankingBefore=flankingBefore, flankingAfter=flankingAfter)
-            for alt in PCInfoObject.AltAlleleData]
+            flankingBefore=flankingBefore, flankingAfter=flankingAfter,
+            ampliconFailed=ampliconFailed)
+            for alt in PCInfoObject.AltAlleleData] if line is not None]
         self.keepConsensus = keepConsensus
         if(keepConsensus):
             self.str = "\n".join([str(line)
@@ -333,8 +332,16 @@ cdef class VCFPos:
         self.minDuplexPairs = minDuplexPairs
 
     def __str__(self):
-        map(mcupdate, self.VCFLines)
-        self.str = "\n".join(list(cmap(str, self.VCFLines)))
+        cdef SNVCFLine_t tmpLine
+        '''
+        self.VCFLines = [tmpLine for tmpLine in self.VCFLines if
+                        tmpLine is not None]
+        '''
+        if(self.VCFLines is None):
+            return ""
+        for tmpLine in self.VCFLines:
+            tmpLine.update()
+        self.str = "\n".join([str(tmpLine) for tmpLine in self.VCFLines])
         return self.str
 
 
@@ -879,9 +886,9 @@ HeaderFormatDict["MQF"] = HeaderFormatLine(
     Description="Number of (merged) reads failed for low MQ.",
     Number="1",
     Type="Integer")
-HeaderFormatDict["FFM"] = HeaderFormatLine(
-    ID="FFM", Description="Number of reads failed for too few reads in a fami"
-    "ly", Number="1", Type="Integer")
+HeaderFormatDict["FFA"] = HeaderFormatLine(
+    ID="FFA", Description="Number of reads failed for too few reads in a fami"
+    "ly agreeing on a base", Number="1", Type="Integer")
 HeaderFormatDict["FQC"] = HeaderFormatLine(
     ID="FQC", Description="Number of reads failed for not passing QC ",
     Number="1", Type="Integer")

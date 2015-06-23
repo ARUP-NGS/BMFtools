@@ -559,19 +559,10 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
         pl("readLength not set - inferring.")
         readLength = len(inHandle.next().seq)
         inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(outBAM is None):
-        outBAM = TrimExt(inBAM) + ".PairMergeProcessed.sam"
-    if(outMerge is None):
-        outMerge = TrimExt(inBAM) + ".PairMergedReads.sam"
-    if(pipe):
-        outHandle = pysam.AlignmentFile("-", "w",
-                                        header=inHandle.header)
-        outHandleMerge = sys.stdout
-        outHandleMerge.write(inHandle.text)
-    else:
-        outHandle = pysam.AlignmentFile(outBAM, "w",
-                                        header=inHandle.header)
-        outHandleMerge = open(outMerge, "w")
+    outHandle = pysam.AlignmentFile("-", "w",
+                                    header=inHandle.header)
+    outHandleMerge = sys.stdout
+    outHandleMerge.write(inHandle.text)
     for read in inHandle:
         print("Name: %s" % read.query_name)
         count += 1
@@ -689,11 +680,12 @@ cdef cystr cFlattenCigarString(cystr cigar):
     cdef int runSum = 0
     cdef int tmpInt
     cdef char cigarOpChar, tmpCigarOpChar
-    cdef cystr retStr
+    cdef cystr retStr, tmpIntStr
     cdef int cigarOpLen
     cdef int newCigarOpLen
     cdef py_array chars = cs_to_ia("".join(rsplit("[0-9]+", cigar)[1:]))
-    cdef py_array Lengths = array('i', map(int, rsplit("[A-Z]", cigar)[:len(chars)]))
+    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpItStr in
+                                        rsplit("[A-Z]", cigar)[:len(chars)]))
     cdef list outTupleList = []
     '''
     cdef py_array Lengths = array(
@@ -703,18 +695,5 @@ cdef cystr cFlattenCigarString(cystr cigar):
         for tmpCigarOpChar, tmpInt in list(entries):
             runSum += tmpInt
         outTupleList.append(opLenToStr(CigarOpChar, runSum))
-        '''
-        if(CigarOpChar == 68):
-            retStr += "D%s" % runSum
-        elif(CigarOpChar == 77):
-            retStr += "M%s" % runSum
-        elif(CigarOpChar == 73):
-            retStr += "I%s" % runSum
-        elif(CigarOpChar == 83):
-            retStr += "S%s" % runSum
-        else:
-            raise NotImplementedError(
-                "Only MIDS operations currently supported.")
-        '''
         runSum = 0
     return "".join(outTupleList)

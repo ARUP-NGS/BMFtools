@@ -22,18 +22,21 @@ ctypedef Deletion Deletion_t
 ctypedef AbstractIndelContainer AbstractIndelContainer_t
 ctypedef IndelQuiver IndelQuiver_t
 ctypedef IDVCFLine IDVCFLine_t
+ctypedef np.int32_t np_int32_t
 
 cdef class pPileupRead:
     """
     Python container for the PileupRead proxy in pysam
     """
     cdef public cystr BaseCall
-    cdef public cython.bint is_del
+    cdef public bint is_del
     cdef public long level
     cdef public long indel
     cdef public long query_position
+    cdef public float AF
     cdef public cystr name, str
     cdef public AlignedSegment_t alignment
+    cdef public np_int32_t BQ, FA, MBQ
     cpdef object opt(self, cystr arg)
 
 cdef class PileupReadPair:
@@ -48,7 +51,7 @@ cdef class PileupReadPair:
     cdef public pPileupRead_t read1
     cdef public pPileupRead_t read2
     cdef public ReadPair_t RP
-    cdef public cython.bint discordant
+    cdef public bint discordant
     cdef public cystr discordanceString
     cdef public cystr name
 
@@ -63,17 +66,17 @@ cdef class ReadPair:
     cdef public AlignedSegment_t read1
     cdef public AlignedSegment_t read2
     cdef public list SVTags
-    cdef public cython.bint read1_is_unmapped
-    cdef public cython.bint read1_soft_clipped
-    cdef public cython.bint read2_is_unmapped
-    cdef public cython.bint read2_soft_clipped
-    cdef public cython.bint SameContig
+    cdef public bint read1_is_unmapped
+    cdef public bint read1_soft_clipped
+    cdef public bint read2_is_unmapped
+    cdef public bint read2_soft_clipped
+    cdef public bint SameContig
     cdef public cystr read1_contig
     cdef public cystr read2_contig
     cdef public cystr ContigString
     cdef public long insert_size
-    cdef public cython.bint read1_in_bed
-    cdef public cython.bint read2_in_bed, SameStrand
+    cdef public bint read1_in_bed
+    cdef public bint read2_in_bed, SameStrand
 
 
 cdef class AbstractIndelContainer:
@@ -123,7 +126,7 @@ cdef class IDVCFLine(object):
     cdef public cystr TYPE, REF, ALT, ID, CHROM, FILTER, FormatStr, str
     cdef public long POS, LEN, NumStartStops, NDPS, DPA
     cdef public cython.float reverseStrandFraction, QUAL, MDP
-    cdef public cython.bint BothStrandSupport
+    cdef public bint BothStrandSupport
     cdef public dict InfoFields, FormatFields
 
 cdef class pFastqProxy:
@@ -157,16 +160,16 @@ cpdef public cystr RevCmp(cystr seq)
 
 cpdef public list permuteNucleotides(long maxn, object nci=?)
 
-cpdef cython.bint ReadsOverlap(
+cpdef bint ReadsOverlap(
         AlignedSegment_t read1,
         AlignedSegment_t read2)
 
 
-cdef cython.bint cReadsOverlap(
+cdef bint cReadsOverlap(
         AlignedSegment_t read1,
         AlignedSegment_t read2)
 
-cpdef cython.bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
+cpdef bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 

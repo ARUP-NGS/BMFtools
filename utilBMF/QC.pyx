@@ -22,7 +22,6 @@ import subprocess
 import sys
 
 
-
 """
 Contains functions and miscellania for QC metrics.
 """
@@ -76,7 +75,8 @@ def FastDOCBed(inBAM, bed="default", outbed="default",
             FastDOCPath = Chapman['FastDOCPath']
         except KeyError:
             print("globals: %s" % globals())
-            raise MissingExternalTool("FastDOCPath must be set to call FastDOC!")
+            raise MissingExternalTool(
+                "FastDOCPath must be set to call FastDOC!")
     commandStr = ("java -jar %s %s %s " % (FastDOCPath, bed, inBAM) +
                   " --threads %s --format bed -m %s > " % (threads, minMQ) +
                   outbed)
@@ -140,14 +140,13 @@ def InsertSizeArray(cystr inBAM):
     return InsertSizeArray_(inHandle)
 
 
-@cython.locals(min=int, onTargetBuffer=int)
-def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
-                    minFM=2, FastDOCPath="default"):
+def GetAllQCMetrics(inBAM, bedfile="default", int onTargetBuffer=20,
+                    int minFM=2, FastDOCPath="default", int minMQ=-1):
     cdef int TotalReads, FM, MappedReads, UnmappedReads
     cdef double fracOnTarget, stdInsert, meanInsert
     cdef int MappedFamReads, maxInsert
     cdef int MappedSingletonReads
-    outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
+    outfile = TrimExt(inBAM) + ".qc.txt"
     outHandle = open(outfile, "w")
     pl("GetAllQCMetrics running")
     if(bedfile == "default"):
@@ -174,7 +173,8 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     ReadsOffTarget = 0
     MappedFamReads = 0
     covBed, fracOnTarget = FastDOCBed(inBAM, bed=extendedBed,
-                                      FastDOCPath=FastDOCPath)
+                                      FastDOCPath=FastDOCPath,
+                                      minMQ=minMQ)
     if(ospath.isfile(inBAM + ".bai") is False):
         check_call(["samtools", "index", inBAM])
         sys.stderr.write("Fraction on target: %s" % fracOnTarget)

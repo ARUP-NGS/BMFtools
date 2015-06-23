@@ -1,18 +1,23 @@
 cimport cython
+from cython cimport bint
 cimport numpy as np
 cimport pysam.calignmentfile
-from numpy cimport ndarray
-from utilBMF.HTSUtils cimport pPileupRead
-ctypedef pPileupColumn pPileupColumn_t
-ctypedef pPileupRead pPileupRead_t
-
-
-from utilBMF.HTSUtils cimport PileupReadPair
 cimport utilBMF.HTSUtils
-ctypedef PRInfo PRInfo_t
+from numpy cimport ndarray
+from utilBMF.HTSUtils cimport cystr, nucList, PysamToChrDict
+from utilBMF.HTSUtils cimport PileupReadPair
+from utilBMF.HTSUtils cimport pPileupRead
+from utilBMF.PysamUtils cimport PysamToChrInline
+from cpython cimport array as c_array
+ctypedef np.int32_t np_int32_t
+ctypedef c_array.array py_array
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PileupReadPair PileupReadPair_t
-from utilBMF.HTSUtils cimport cystr, nucList, PysamToChrDict
+ctypedef pPileupColumn pPileupColumn_t
+ctypedef pPileupRead pPileupRead_t
+ctypedef PRInfo PRInfo_t
+ctypedef pysam.calignmentfile.PileupRead PileupRead_t
+ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 
 
 cdef class AlleleAggregateInfo:
@@ -49,7 +54,7 @@ cdef class AlleleAggregateInfo:
     cdef public dict TotalAlleleDict, StrandCountsDict, StrandCountsTotalDict
     cdef public dict strandedTransitionDict
     cdef public cystr ALT, consensus, transition, contig
-    cdef public cython.bint BothStrandSupport
+    cdef public bint BothStrandSupport
 
 
 cdef class pPileupColumn:
@@ -72,14 +77,14 @@ cdef class PRInfo:
     produced using BMFTools), they are set to None. Check to see if an attribute
     is None first if you'd like to save yourself some headaches.
     """
-    cdef public cython.bint Pass, is_reverse, is_proper_pair
-    cdef public long FM, BQ, MQ, query_position, FA, PV, ND
-    cdef public pysam.calignmentfile.AlignedSegment read
-    cdef public cystr SVTagString
+    cdef public bint Pass, is_reverse, is_proper_pair
+    cdef public bint SVPass
+    cdef public long FM, MQ, query_position, FA, ND
+    cdef public np_int32_t BQ
+    cdef public AlignedSegment_t read
     cdef public cystr BaseCall
     cdef public cystr ssString, query_name
-    cdef public cython.float FractionAgreed, PVFrac, NF
-    cdef public ndarray PV_Array
+    cdef public cython.float FractionAgreed, PVFrac, NF, AF
     cpdef object opt(self, cystr arg)
 
 
@@ -101,8 +106,9 @@ cdef class PCInfo:
     cdef public cystr MergedFracStr, MergedCountStr, TotalCountStr, str
     cdef public cystr MergedStrandednessStr, TotalStrandednessStr, AlleleFreqStr
     cdef public cystr contig
-    cdef public long minMQ, minBQ, pos, FailedQCReads, FailedFMReads
-    cdef public long FailedBQReads, FailedAFReads, FailedMQReads
+    cdef public long minMQ, minBQ, pos, FailedQCReads, FailedFAReads
+    cdef public long FailedBQReads, FailedAFReads, FailedMQReads, FailedNDReads
+    cdef public long FailedAMPReads
     cdef public long FailedSVReads, MergedReads, TotalReads
     cdef public cython.float minAF, reverseStrandFraction, AAMBP, AABPSD
     cdef public pPileupColumn_t PCol
@@ -110,5 +116,38 @@ cdef class PCInfo:
     cdef public dict MergedAlleleFreqDict, MergedAlleleDict, TotalAlleleDict
     cdef public dict MergedStrandednessRatioDict, TotalStrandednessRatioDict
     cdef public list Records, AltAlleleData, DiscNames
-    cdef public cython.bint BothStrandAlignment
-    cdef public long maxND, FailedNDReads
+    cdef public bint BothStrandAlignment
+    cdef public long maxND
+
+cdef inline bint TestSVFlag(cystr tagflag):
+    if(tagflag == "LI"):
+        return False
+    elif(tagflag == "MI"):
+        return False
+    elif(tagflag == "MDC"):
+        return False
+    elif(tagflag == "MSS"):
+        return False
+    elif(tagflag == "ORU"):
+        return True
+    elif(tagflag == "ORB"):
+        return True
+    elif(tagflag == "ORS"):
+        return True
+    elif(tagflag == "DRP"):
+        return True
+    elif(tagflag == "DSI"):
+        return True
+    elif(tagflag == "DSD"):
+        return True
+    elif(tagflag == "NF"):
+        return True
+    else:
+        return True
+
+cdef inline bint TestSVTags(cystr inTag):
+    cdef cystr tagflag
+    for tagflag in inTag.split(","):
+        if(TestSVFlag(tagflag) is False):
+            return False
+    return True

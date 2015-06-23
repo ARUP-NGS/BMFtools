@@ -72,7 +72,6 @@ def pairedBamProc(consfq1, consfq2, opts="",
            ", but in case something dies later, this could be responsible",
            level=logging.DEBUG)
 
-    # check_call(["rm", outBAMProperPair])
     pl("Now realigning with: %s" % realigner)
     if("abra" in realigner.lower()):
         if(abrapath == "default"):

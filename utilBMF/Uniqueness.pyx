@@ -332,15 +332,17 @@ def PassesNM(cystr rStr, int maxNM=2, dict mmDict=mmDict):
 @cython.returns(list)
 def GetMQPassRefKmersMem(cystr bwaStr, int maxNM=2, int minMQ=1):
     """
-    Takes a string output from bowtie (SAM format) and gets the names of the reads
-    with MQ >= minMQ that are unique alignments. Returns a list of RefKmer objects
-    built from passing bowtie output with unique mappings (no XA:Z or XT:A:R flags or
+    Takes a string output from bowtie (SAM format) and gets the names of the
+    reads with MQ >= minMQ that are unique alignments. Returns a list of
+    RefKmer objects built from passing bowtie output with unique mappings
+    (no XA:Z or XT:A:R flags or
     non-zero mapping qualities).
     """
     cdef list lines, i
     cdef cystr f
     cdef tuple nameCount
-    print "Number of reads is (approximately) " + str(bwaStr.count("\n") - bwaStr.count("@"))
+    pl("Number of reads is (approximately) " +
+       str(bwaStr.count("\n") - bwaStr.count("@")), level=logging.DEBUG)
 
     return [RefKmer(i[0], contig=i[2],
                     pos=int(i[3])) for i in [f.strip().split("\t") for
