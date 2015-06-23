@@ -43,10 +43,9 @@ def HeatMaps(heatedKmers,sortedKmers):
         plt.savefig(kmer)
 
 
-def recConsCompare(rec,cons,KmerDict,KmerTotals):
+def recsConsCompare(recGen,consGen,KmerDict,KmerTotals):
     """Compares read and consensus to build a dictionary of context specific
         errors"""
-    pass
 
 
 
@@ -83,7 +82,6 @@ def main():
     for bc4fq1, fqRecGen1, in groupby(readsInFq1, key=getBS):
         consBS, consReads = bgn()
         bc4fq2, fqRecGen2 = r2ggn()
-        fqrg2 = fqRecGen2.next
         if(bc4fq1 != bc4fq2):
             raise ThisIsMadness("Fastq barcodes don't match")
         if(consBS != bc4fq1):
@@ -99,12 +97,14 @@ def main():
                 consRead2 = cRead
         if consRead1.opt("FM") <= 100:
             continue
+        recsConsCompare(fqRecGen1, consRead1, nucIndex, kmerDict, kmerTotals)
+        recsConsCompare(fqRecGen2, fqRecGen2, nucIndex, kmerDict, kmerTotals)
+        """
         for rec1 in fqRecGen1:
             rec2 = fqrg2()
-            """
             kmerDict, KmerTotals = readConsCompare(rec1,consRead1,KmerDict,
                                                    KmerTotals)
-            if(rec.sequence == consRead.sequence):
+            if(rec1.sequence == consRead1.sequence):
                 continue
             for baseIndex in xrange(len(rec.sequence)-k):
                 recKmer = rec.sequence[baseIndex:baseIndex+k]
@@ -123,6 +123,7 @@ def main():
                 kmerTotals[recKmer][1]+=1
                 if recBase != consBase:
                     kmerTotals[recKmer][0]+=1
+        """
     wrongKmers = {kmer:kmerTotals[kmer][0]/kmerTotals[kmer][1] for kmer
                   in kmerTotals}
     sortedKmers = sorted(wrongKmers.items(), key=operator.itemgetter(1),
@@ -130,6 +131,6 @@ def main():
     heatedKmers = {kmer:kmerDict[kmer]/kmerTotals[kmer][0] for
                    kmer in kmerDict}
     HeatMaps()
-"""
+
 if __name__ == "__main__":
     main()
