@@ -1,4 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True
 
 from __future__ import division
 import subprocess
@@ -28,8 +29,7 @@ from cytoolz import (frequencies as cyfreq,
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness, AbortMission
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
-                              PileupReadPair, ssStringFromRead,
-                              cyStdFlt, cyStdInt)
+                              PileupReadPair, ssStringFromRead)
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -227,24 +227,22 @@ cdef class AlleleAggregateInfo:
         if(lenR != 0):
             self.TND = sum(map(oag("ND"), self.recList))
             NFList = np.array(map(oag("NF"), self.recList))
+            self.MNF = nmean(NFList)
+            self.maxNF = nmax(NFList)
+            self.NFSD = nstd(NFList)
         else:
             self.TND = -1
             NFList = np.array([])
-        try:
-            self.MNF = nmean(NFList)
-            self.maxNF = nmax(NFList)
-            self.NFSD = cyStdFlt(NFList)
-        except ValueError:
-            #  This list must have length zero...
             self.MNF = -1.
             self.maxNF = -1.
             self.NFSD = -1.
-        self.TotalReads = sum(map(oag("FM"), self.recList))
+        self.TotalReads = sum([rec.FM for rec in self.recList])
         self.MergedReads = lenR
-        self.ReverseMergedReads = sum(map(oagir, self.recList))
+        self.ReverseMergedReads = sum([rec.is_reverse for rec in
+                                       self.recList])
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = sum(map(
-            oag("FM"), filter(oagir, self.recList)))
+        self.ReverseTotalReads = sum([rec.FM for rec in self.recList if
+                                      rec.is_reverse])
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
             self.AveFamSize = 1. * self.TotalReads / self.MergedReads
@@ -322,11 +320,14 @@ cdef class AlleleAggregateInfo:
                                       cyfreq(map(oag("query_name"),
                                                  self.recList)).iteritems()
                                       if i[1] > 1])
-        query_positions = np.array(map(oagqp, self.recList), dtype=np.float64)
+        query_positions = np.array([rec.query_positions for
+                                    rec in self.recList],
+                                   dtype=np.float64)
         self.MBP = nmean(query_positions)
-        self.BPSD = cyStdFlt(query_positions)
+        self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = np.array(map(oag("PVFrac"), self.recList), dtype=np.float64)
+        PVFArray = np.array([rec.PVFrac for rec in  self.recList],
+                            dtype=np.float64)
         #  PVFArray = [rec.PVFrac for rec in self.recList]
 
         if(len(PVFArray) == 0):
@@ -334,7 +335,7 @@ cdef class AlleleAggregateInfo:
             self.PFSD = -1.
         else:
             self.MPF = nmean(PVFArray)
-            self.PFSD = cyStdFlt(PVFArray)
+            self.PFSD = nstd(PVFArray)
         self.maxND = max(rec.opt("ND") for rec in self.recList)
 
 
@@ -452,7 +453,7 @@ cdef class PCInfo:
                             for alt in set(map(oagbc, self.Records))}
         query_positions = np.array(map(oagqp, self.Records), dtype=np.float64)
         self.AAMBP = nmean(query_positions)
-        self.AABPSD = cyStdFlt(query_positions)
+        self.AABPSD = nstd(query_positions)
 
         self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],

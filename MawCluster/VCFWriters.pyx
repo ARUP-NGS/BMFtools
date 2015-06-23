@@ -5,11 +5,11 @@ import logging
 from operator import attrgetter as oag
 import sys
 from subprocess import CalledProcessError, check_call
+import warnings
 
 # Third party includes
 import pysam
 import cython
-from cytoolz import map as cmap
 
 # local python imports
 cimport MawCluster.PileupUtils as PileupUtils
@@ -179,8 +179,13 @@ def SNVCrawler(inBAM,
                     minFracAgreed=minFracAgreed, experiment=experiment,
                     MaxPValue=MaxPValue, refHandle=refHandle,
                     keepConsensus=keepConsensus, reference=reference)
-                if(posStr != ""):
+                if(posStr != "empty"):
+                    print("posStr: '%s'" % posStr)
                     ohw(posStr + "\n")
+                else:
+                    warnings.warn(
+                        "Empty string at position - go find out why.",
+                        RuntimeWarning)
                 if(pPC.reference_pos > line[2]):
                     pl("Bed region %s complete." % BedListToStr(line))
                     break
@@ -224,18 +229,17 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
                 experiment=experiment,
                 minFracAgreed=minFracAgreed, minFA=minFA)
-    if(PC is None):
-        return ""
+    if(PC.MergedReads == 0):
+        return "empty"
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,
                  reference=reference,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
                  NDP=len(PC.DiscNames))
-    if(pos is not None):
-        return str(pos)
-    else:
-        return ""
+    if(len(pos.VCFLines) == 0):
+        return "empty"
+    return str(pos)
 
 
 @cython.returns(cystr)
@@ -247,6 +251,9 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                          cython.bint keepConsensus=False,
                          cystr reference="default",
                          pysam.cfaidx.FastaFile refHandle=None):
+    """
+    Returns 'empty' if no positions made it.
+    """
     cdef PCInfo_t PC
     cdef VCFPos_t pos
     if(refHandle is None):
@@ -255,18 +262,13 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                 experiment=experiment,
                 minFracAgreed=minFracAgreed, minFA=minFA,
                 experiment=experiment)
-    if(PC is None):
-        return ""
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,
                  reference=reference,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
                  NDP=len(PC.DiscNames))
-    if(pos is not None):
-        return str(pos)
-    else:
-        return ""
+    return str(pos)
 
 
 @cython.returns(cystr)
