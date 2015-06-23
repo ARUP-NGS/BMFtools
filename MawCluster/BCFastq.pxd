@@ -19,11 +19,12 @@ cdef cystr cCompareFqRecsFast(list R, cystr name=?)
 cpdef cystr pCompareFqRecsFast(list R, cystr name=?)
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 
-# cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
+cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
 cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
 
 cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr)
-# cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr)
+cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr)
+cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr)
 
 
 cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
@@ -33,29 +34,10 @@ cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
     else:
         return True
 
+
 cdef inline cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
     cdef bint PASS = BarcodePasses(saltedBS, hpLimit)
     if(PASS == True):
         return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
     else:
         return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
-
-
-cdef inline cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
-
-
-cdef inline cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
-
-
-cdef inline cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt = np.max(qualArr)
-    if(tmpInt < 9001):
-        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
-                                     tmpInt in qualArr]))
-    else:
-        return "|PV=%s" % ",".join(qualArr.astype(str))

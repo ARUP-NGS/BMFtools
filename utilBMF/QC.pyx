@@ -75,7 +75,8 @@ def FastDOCBed(inBAM, bed="default", outbed="default",
             FastDOCPath = Chapman['FastDOCPath']
         except KeyError:
             print("globals: %s" % globals())
-            raise MissingExternalTool("FastDOCPath must be set to call FastDOC!")
+            raise MissingExternalTool(
+                "FastDOCPath must be set to call FastDOC!")
     commandStr = ("java -jar %s %s %s " % (FastDOCPath, bed, inBAM) +
                   " --threads %s --format bed -m %s > " % (threads, minMQ) +
                   outbed)

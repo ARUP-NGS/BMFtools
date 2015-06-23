@@ -10,6 +10,7 @@ from operator import attrgetter as oag
 from operator import itemgetter as oig
 from operator import div as odiv
 from itertools import ifilterfalse as iff
+from array import array
 try:
     import re2 as re
 except ImportError:
@@ -59,7 +60,7 @@ def GetDiscReadNames(pPileupColumn_t pPC, oagname=oagname):
     return returnList
 
 
-@cython.locals(paired=cython.bint)
+@cython.locals(paired=bint)
 @cython.returns(list)
 def GetDiscordantReadPairs(pPileupColumn_t pPileupColObj,
                            object oagname=oagname,
@@ -88,6 +89,7 @@ cdef class pPileupColumn:
     Python container for the PileupColumn proxy in pysam.
     """
     def __cinit__(self, pysam.calignmentfile.PileupColumn PileupColumn):
+        cdef PileupRead_t p
         self.pileups = [pPileupRead(p) for p in PileupColumn.pileups if not
                         p.is_del and not p.is_refskip]
         self.nsegments = len(self.pileups)
@@ -113,83 +115,43 @@ cdef class PRInfo:
     to save yourself some headaches.
     """
 
+    cpdef object opt(self, cystr arg):
+        return self.read.opt(arg)
+
     def __init__(self, pPileupRead_t PileupRead):
         cdef pysam.calignmentfile.AlignedSegment alignment
-        cdef cystr PVSTring
-        self.Pass = True
         alignment = PileupRead.alignment
-        tags = alignment.tags
         aopt = alignment.opt
-        try:
-            self.FM = aopt("FM")
-        except KeyError:
-            self.FM = 1
-        """
-        except ValueError:
-            p = re.compile("\D")
-            try:
-                self.FM = int(p.sub("", alignment.opt("FM")))
-            except ValueError:
-                pl("Ain't nothing I can do. Something's wrong"
-                   " with your FM tag: {}".format(p.sub(
-                       "", alignment.opt("FM"))))
-        """
+        self.Pass = True
+        self.read = alignment
+        self.AF = aopt("AF")
+        self.ND = aopt("ND")
+        self.NF = aopt("NF")
+        self.FM = aopt("FM")
+        self.BQ = PileupRead.BQ
+        self.FA = PileupRead.FA
+        self.MQ = alignment.mapq
+        self.SVPass = TestSVTags(aopt("SV"))
+        if(alignment.is_qcfail or aopt("FP") == 0):
+            self.Pass = False
         self.query_name = PileupRead.name
-        try:
-            self.SVTagString = aopt("SV")
-        except KeyError:
-            self.SVTagString = "NF"
-            # print("Warning: SV Tags unset.")
         self.BaseCall = alignment.query_sequence[
             PileupRead.query_position]
         if(self.BaseCall == "N"):
             self.Pass = False
-        self.BQ = alignment.query_qualities[
-            PileupRead.query_position]
-        self.MQ = alignment.mapq
         self.is_reverse = alignment.is_reverse
         self.is_proper_pair = alignment.is_proper_pair
-        self.read = alignment
         self.ssString = ssStringFromRead(alignment)
         self.query_position = PileupRead.query_position
-        tagsdictkeys = dict(tags).keys()
-        if("FA" in tagsdictkeys):
-            self.FA = int(aopt("FA").split(",")[self.query_position])
-            self.FractionAgreed = self.FA / (1. * self.FM)
+        self.FractionAgreed = self.FA / (1. * self.FM)
+        if(PileupRead.MBQ > 0):
+            self.PVFrac = self.BQ * 1. / PileupRead.MBQ
         else:
-            self.FA = None
-            self.FractionAgreed = None
-        self.PV = -1
-        self.PV_Array = np.array([])
-        self.PVFrac = -1.
-        if("PV" in map(oig0, tags)):
-            # If there are characters beside digits and commas, then it these
-            # values must have been encoded in base 85.
-            PVString = aopt("PV")
-            self.PV_Array = np.array(PVString.split(','),
-                                    dtype=np.int64)
-            self.PV = self.PV_Array[self.query_position]
-            try:
-                self.PVFrac = (1. * self.PV) / nmax(self.PV_Array)
-            except ZeroDivisionError:
-                pl("ZeroDivision error in PRInfo."
-                   "self.PV %s, self.PV_Array %s" % (self.PV, self.PV_Array),
-                   level=logging.DEBUG)
-                self.PVFrac = -1.
-        try:
-            self.ND = aopt("ND")
-        except KeyError:
-            pass
-        try:
-            self.NF = aopt("NF")
-        except KeyError:
-            pass
-    cpdef object opt(self, cystr arg):
-        return self.read.opt(arg)
+            self.PVFrac = 0.
 
 
 @cython.returns(cystr)
-def is_reverse_to_str(cython.bint boolean):
+def is_reverse_to_str(bint boolean):
     if(boolean):
         return "reverse"
     if(boolean is False):
@@ -253,9 +215,6 @@ cdef class AlleleAggregateInfo:
                         rec.FA >= minFA]
         # Check that all alt alleles are identical
         lenR = len(self.recList)
-        if(lenR == 0):
-            self = None
-            return
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
@@ -393,39 +352,42 @@ cdef class PCInfo:
     """
 
     def __init__(self, pPileupColumn_t PileupColumn, int minBQ=0,
-                 int minMQ=0, cython.bint requireDuplex=True,
+                 int minMQ=0, bint requireDuplex=True,
                  float minFracAgreed=0.0, int minFA=0,
                  float minPVFrac=0.66,
                  cystr exclusionSVTags="MDC,LI",
-                 cython.bint FracAlignFilter=False, int primerLen=20,
+                 bint FracAlignFilter=False, int primerLen=20,
                  cystr experiment="", float minAF=0.25,
                  int maxND=10, object oig1=oig1, object oagir=oagir,
                  object oagqp=oagqp):
-        cdef PRInfo_t rec
+        cdef PRInfo_t rec, PRI
         cdef list pileups, fks, svTags, exclusionTagList, discNames
         cdef pPileupRead_t r
         cdef int lenR, rsn
         cdef ndarray[np.float64_t, ndim=1] query_positions
+        cdef pPileupRead_t pileupRead
+        cdef py_array SumArray
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
         # of them has to be wrong!
+        if("amplicon" not in experiment):
+            primerLen = -1
+            # If primerLen < 0, then don't filter by primerLen.
         self.DiscNames = GetDiscReadNames(PileupColumn)
         self.Records = [PRInfo(pileupRead) for
-                        pileupRead in pileups
-                        if(pileupRead.alignment.mapq >= self.minMQ) and
-                        (pileupRead.alignment.query_qualities[
-                            pileupRead.query_position] >= self.minBQ) and
-                        pileupRead.alignment.opt("FP") == 1 and
-                        pileupRead.alignment.opt("FM") >= minFA and
-                        pileupRead.alignment.opt("AF") >= minAF and
-                        pileupRead.alignment.opt("ND") <= maxND and
-                        pileupRead.name not in self.DiscNames]
+                        pileupRead in pileups]
+        SumArray, self.Records = PrunePileupReads(self.Records, minMQ=minMQ,
+                                                  minBQ=minBQ, maxND=maxND,
+                                                  minFA=minFA, minAF=minAF,
+                                                  primerLen=primerLen)
+        self.FailedMQReads = SumArray[0]
+        self.FailedBQReads = SumArray[1]
+        self.FailedFAReads = SumArray[2]
+        self.FailedAFReads = SumArray[3]
+        self.FailedAMPReads = SumArray[4]
+        self.FailedSVReads = SumArray[5]
+        self.FailedQCReads = SumArray[6]
         # Remove discordant read pairs.
-        if("amplicon" in experiment):
-            self.ampliconFailed = sum(r for r in pileups
-                                      if r.query_position <= primerLen)
-            pileups = [r for r in pileups
-                       if r.query_position > primerLen]
         self.experiment = experiment
         self.minMQ = minMQ
         #  pl("minMQ: %s" % minMQ)
@@ -436,32 +398,11 @@ cdef class PCInfo:
         #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
         #  pl("pos: %s" % self.pos)
-        self.FailedQCReads = sum(pileupRead.opt("FP") == 0
-                                 for pileupRead in pileups)
-        self.FailedFMReads = sum(pileupRead.opt("FM") < minFA
-                                 for pileupRead in pileups)
-        self.FailedAFReads = sum(pileupRead.opt("AF") < minAF
-                                 for pileupRead in pileups)
-        self.FailedNDReads = sum(pileupRead.opt("ND") > maxND
-                                 for pileupRead in pileups)
-        self.FailedBQReads = sum(
-            pileupRead.alignment.query_qualities[
-                pileupRead.query_position] < self.minBQ for
-            pileupRead in pileups)
-        self.FailedMQReads = sum(
-            pileupRead.alignment.mapping_quality < self.minMQ
-            for pileupRead in pileups)
         self.PCol = PileupColumn
         self.excludedSVTagStr = exclusionSVTags
         #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
-        svTags = [p.opt("SV") for p in pileups
-                  if p.alignment.has_tag("SV")]
-        exclusionTagList = exclusionSVTags.split(",")
-        svTags = [t for t in svTags if t != "NF" and
-                  sum([exTag in t for exTag in exclusionTagList]) != 0]
-        self.FailedSVReadDict = {tag: sum([tag in svTag for svTag in svTags])
-                                 for tag in exclusionTagList}
-        self.FailedSVReads = len(svTags)
+        self.FailedSVReadDict = {}
+        self.FailedSVReads = 0
         #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
         """
         if(self.FailedMQReads != 0):
@@ -475,7 +416,6 @@ cdef class PCInfo:
               self.FailedMQReads))
         """
 
-        self.Records = filter(oag("Pass"), self.Records)
         lenR = len(self.Records)
         rsn = sum(map(oagir, self.Records))
         if(rsn != lenR and rsn != 0):
@@ -488,18 +428,18 @@ cdef class PCInfo:
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
-        try:
-            self.TotalReads = sum(map(oag("FM"), self.Records))
-        except KeyError:
-            self.TotalReads = self.MergedReads
-        try:
+        self.TotalReads = sum([PRI.FM for PRI in self.Records])
+        if(lenR > 0):
             self.consensus = sorted(cyfreq(
                 map(oagbc, self.Records)).iteritems(),
                 key=oig1)[-1][0]
-        except IndexError:
+        else:
+            self.consensus = "N"
+            '''
             raise AbortMission("No reads at position passing filters."
                                " Move along - these aren't the "
                                "positions you're looking for.")
+            '''
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
                             for alt in set(map(oagbc, self.Records))}
@@ -618,6 +558,77 @@ cdef class PCInfo:
                          alt.AveMQ]).astype(str)) + "\n"
         self.str = outStr
         return self.str
+
+
+@cython.returns(tuple)
+def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
+                     int minFA=0, float minAF=0., int maxND=0,
+                     int primerLen=-1):
+    """
+    Returns an array of length 7 - number of failed MQ, BQ, FA, AF,
+    amplicon, SV, QC, and ND.
+    """
+    raise NotImplementedError("Haven't finished updating these objects.")
+    cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+    cdef pPileupRead_t tpr
+    for tpr in Records:
+        if tpr.MQ < minMQ:
+            retArr[0] += 1
+        if tpr.BQ < minBQ:
+            retArr[1] += 1
+        if tpr.FA < minFA:
+            retArr[2] += 1
+        if tpr.AF < minAF:
+            retArr[3] += 1
+        if tpr.query_position < primerLen:
+            # Defaults to -1. Gets rid of potentially misprimed nucleotides
+            retArr[4] += 1
+        if tpr.SVPass is False:
+            retArr[5] += 1
+        if tpr.Pass is False:
+            retArr[6] += 1
+        if tpr.ND > maxND:
+            retArr[7] += 1
+    Records = [tpr for tpr in Records if tpr.MQ >= minMQ and tpr.BQ >= minBQ
+               and tpr.FA >= minFA and tpr.AF >= minAF and
+               tpr.query_position >= primerLen and tpr.Pass and tpr.SVPass
+               and tpr.ND > maxND]
+    return retArr, Records
+
+
+@cython.returns(tuple)
+def PrunePileupReads(list Records, int minMQ=0, int minBQ=0,
+                     int minFA=0, float minAF=0., int maxND=0,
+                     int primerLen=-1):
+    """
+    Returns an array of length 7 - number of failed MQ, BQ, FA, AF,
+    amplicon, SV, QC, and ND.
+    """
+    cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
+    cdef PRInfo_t tpr
+    for tpr in Records:
+        if tpr.MQ < minMQ:
+            retArr[0] += 1
+        if tpr.BQ < minBQ:
+            retArr[1] += 1
+        if tpr.FA < minFA:
+            retArr[2] += 1
+        if tpr.AF < minAF:
+            retArr[3] += 1
+        if tpr.query_position < primerLen:
+            # Defaults to -1. Gets rid of potentially misprimed nucleotides
+            retArr[4] += 1
+        if tpr.SVPass is False:
+            retArr[5] += 1
+        if tpr.Pass is False:
+            retArr[6] += 1
+        if tpr.ND > maxND:
+            retArr[7] += 1
+    Records = [tpr for tpr in Records if tpr.MQ >= minMQ and tpr.BQ >= minBQ
+               and tpr.FA >= minFA and tpr.AF >= minAF and
+               tpr.query_position >= primerLen and tpr.Pass and tpr.SVPass
+               and tpr.ND > maxND]
+    return retArr, Records
 
 
 class PileupInterval:

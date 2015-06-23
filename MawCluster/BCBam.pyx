@@ -680,7 +680,7 @@ cdef AlignedSegment_t TagAlignedSegment(
     Adds necessary information from a CO: tag to appropriate other tags.
     """
     cdef dict CommentDict
-    cdef int FM, ND
+    cdef int FM, ND, FPInt
     cdef double NF, AF, SF
     cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
     CommentDict = cGetCOTagDict(read)
@@ -691,7 +691,9 @@ cdef AlignedSegment_t TagAlignedSegment(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    read.is_qcfail = 1 if("Pass" in CommentDict["PV"]) else 0
+    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    if(not FPInt):
+        read.flag += 512
     NF = ND * 1. / FM
     AF = getAF(read)
     SF = getSF(read)
@@ -699,7 +701,7 @@ cdef AlignedSegment_t TagAlignedSegment(
                    ("FM", FM, "i"),
                    ("PV", ",".join(PhredQuals.astype(str)), "Z"),
                    ("FA", ",".join(FA.astype(str)), "Z"),
-                   ("FP", read.is_qcfail, "i"),
+                   ("FP", FPInt, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),

@@ -779,7 +779,7 @@ def main():
                               [analysisTag, "bmf", "vcf"])
         else:
             OutVCF = Chapman['outVCF']
-        for pair in Chapman.items():
+        for pair in Chapman.iteritems():
             pl("Chapman entry. Key: %s. Value: %s." % (pair[0], pair[1]),
                level=logging.DEBUG)
         """
@@ -789,8 +789,8 @@ def main():
         pr.enable()
         """
 
-        if("bed" in Chapman.keys()):
-            print("Reference: %s" % Chapman["reference"])
+        if("bed" in Chapman.getkeys()):
+            print("Reference: %s" % Chapman["ref"])
             # OutVCF = SNVCrawler(Chapman['inBAM'], **Chapman)
             OutVCF = SNVCrawler(Chapman['inBAM'],
                                 bed=Chapman["bed"],
@@ -799,7 +799,7 @@ def main():
                                 MaxPValue=Chapman["MaxPValue"],
                                 keepConsensus=Chapman['keepConsensus'],
                                 commandStr=commandStr,
-                                reference=Chapman["reference"],
+                                reference=Chapman["ref"],
                                 reference_is_path=True,
                                 minFracAgreed=Chapman["minFracAgreed"],
                                 minFA=Chapman["minFA"],
@@ -813,7 +813,7 @@ def main():
                                 MaxPValue=Chapman["MaxPValue"],
                                 keepConsensus=Chapman['keepConsensus'],
                                 commandStr=commandStr,
-                                reference=Chapman["reference"],
+                                reference=Chapman["ref"],
                                 reference_is_path=True,
                                 minFracAgreed=Chapman["minFracAgreed"],
                                 OutVCF=OutVCF,

@@ -487,6 +487,26 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
+cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
+
+
+cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt = np.max(qualArr)
+    if(tmpInt < 9001):
+        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
+                                     tmpInt in qualArr]))
+    else:
+        return "|PV=%s" % ",".join(qualArr.astype(str))
+
+
+cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
+                                 tmpInt in qualArr]))
+
+
 def GetDescriptionTagDict(readDesc):
     """Returns a set of key/value pairs in a dictionary for """
     tagSetEntries = [i.strip().split("=") for i in readDesc.split("|")][1:]

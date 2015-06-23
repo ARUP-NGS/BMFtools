@@ -95,3 +95,18 @@ class ArgumentSketcher(object):
     @cython.locals(key=cystr)
     def __call__(self, key):
         return self.config[key]
+
+    def values(self, *args, **kwargs):
+        return self.config.values(*args, **kwargs)
+
+    def itervalues(self, *args, **kwargs):
+        return self.config.itervalues(*args, **kwargs)
+
+    def iteritems(self, *args, **kwargs):
+        return self.config.iteritems(*args, **kwargs)
+
+    def items(self, *args, **kwargs):
+        return self.config.items(*args, **kwargs)
+
+    def getkeys(self, *args, **kwargs):
+        return self.config.keys(*args, **kwargs)
