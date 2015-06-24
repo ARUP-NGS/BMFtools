@@ -320,7 +320,7 @@ cdef class AlleleAggregateInfo:
                                       cyfreq(map(oag("query_name"),
                                                  self.recList)).iteritems()
                                       if i[1] > 1])
-        query_positions = np.array([rec.query_positions for
+        query_positions = np.array([rec.query_position for
                                     rec in self.recList],
                                    dtype=np.float64)
         self.MBP = nmean(query_positions)
@@ -359,6 +359,17 @@ cdef class PCInfo:
     back an invalid object.
     """
 
+    @cython.returns(cystr)
+    def getQCFailString(self):
+        return ("BQ:%s;FA:%s;MQ:%s" % (self.FailedBQReads,
+                                       self.FailedFAReads,
+                                       self.FailedMQReads) +
+                ";ND:%s;AMP:%s;SV:%s" % (self.FailedNDReads,
+                                         self.FailedAMPReads,
+                                         self.FailedSVReads) +
+                ";AF:%s;QC:%s" % (self.FailedAFReads,
+                                  self.FailedQCReads))
+
     def __init__(self, pPileupColumn_t PileupColumn, int minBQ=0,
                  int minMQ=0, bint requireDuplex=True,
                  float minFracAgreed=0.0, int minFA=0,
@@ -374,7 +385,8 @@ cdef class PCInfo:
         cdef int lenR, rsn
         cdef ndarray[np.float64_t, ndim=1] query_positions
         cdef pPileupRead_t pileupRead
-        cdef py_array SumArray
+        cdef ndarray[int, ndim=1] SumArray
+        cdef dict tmpDict
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
         # of them has to be wrong!
@@ -383,11 +395,11 @@ cdef class PCInfo:
             # If primerLen < 0, then don't filter by primerLen.
         self.DiscNames = GetDiscReadNames(PileupColumn)
         self.Records = [PRInfo(pileupRead) for
-                        pileupRead in pileups]
-        SumArray, self.Records = PrunePileupReads(self.Records, minMQ=minMQ,
-                                                  minBQ=minBQ, maxND=maxND,
-                                                  minFA=minFA, minAF=minAF,
-                                                  primerLen=primerLen)
+                        pileupRead in pileups if pileupRead.name not in
+                        self.DiscNames]
+        SumArray, self.Records = PrunePileupReads(
+            self.Records, minMQ=minMQ, minBQ=minBQ, maxND=maxND,
+            minFA=minFA, minAF=minAF, primerLen=primerLen)
         self.FailedMQReads = SumArray[0]
         self.FailedBQReads = SumArray[1]
         self.FailedFAReads = SumArray[2]
@@ -395,44 +407,29 @@ cdef class PCInfo:
         self.FailedAMPReads = SumArray[4]
         self.FailedSVReads = SumArray[5]
         self.FailedQCReads = SumArray[6]
+        self.FailedNDReads = SumArray[7]
         # Remove discordant read pairs.
         self.experiment = experiment
         self.minMQ = minMQ
-        #  pl("minMQ: %s" % minMQ)
         self.minBQ = minBQ
-        #  pl("minBQ: %s" % minBQ)
         self.contig = PysamToChrInline(PileupColumn.reference_id)
         self.minAF = minAF
-        #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
-        #  pl("pos: %s" % self.pos)
         self.PCol = PileupColumn
         self.excludedSVTagStr = exclusionSVTags
-        #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
         self.FailedSVReadDict = {}
         self.FailedSVReads = 0
-        #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
-        """
-        if(self.FailedMQReads != 0):
-            print("Mapping qualities of reads which failed: {}".format(
-                  str([pu.alignment.mapping_quality
-                      for pu in pileups
-                      if pu.alignment.mapping_quality >= self.minMQ])))
-        print("Number of reads failed for BQ < {}: {}".format(self.minBQ,
-              self.FailedBQReads))
-        print("Number of reads failed for MQ < {}: {}".format(self.minMQ,
-              self.FailedMQReads))
-        """
 
         lenR = len(self.Records)
-        rsn = sum(map(oagir, self.Records))
+        if(lenR == 0):
+            print(self.getQCFailString())
+        rsn = sum(rec.is_reverse for rec in self.Records)
         if(rsn != lenR and rsn != 0):
             self.BothStrandAlignment = True
         else:
             self.BothStrandAlignment = False
         try:
-            self.reverseStrandFraction = sum(
-                map(oagir, map(oagread, self.Records))) / (1. * lenR)
+            self.reverseStrandFraction = rsn / (1. * lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
@@ -443,6 +440,7 @@ cdef class PCInfo:
                 key=oig1)[-1][0]
         else:
             self.consensus = "N"
+            pl("Note: Records list empty at position %s" % self.pos)
             '''
             raise AbortMission("No reads at position passing filters."
                                " Move along - these aren't the "
@@ -450,11 +448,10 @@ cdef class PCInfo:
             '''
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
-                            for alt in set(map(oagbc, self.Records))}
+                            for alt in [PRI.BaseCall for PRI in self.Records]}
         query_positions = np.array(map(oagqp, self.Records), dtype=np.float64)
         self.AAMBP = nmean(query_positions)
         self.AABPSD = nstd(query_positions)
-
         self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],
                               consensus=self.consensus,
@@ -567,15 +564,6 @@ cdef class PCInfo:
         self.str = outStr
         return self.str
 
-    @cython.returns(cystr)
-    def getQCFailString(self):
-        return ("BQ:%s;FA:%s;MQ:%s" % (self.FailedBQReads,
-                                       self.FailedFAReads,
-                                       self.FailedMQReads) +
-                ";ND:%s;AMP:%s;SV:%s" % (self.FailedNDReads,
-                                         self.FailedAMPReads,
-                                         self.FailedSVReads) +
-                ";AF:%s" % self.FailedAFReads)
 
 
 @cython.returns(tuple)
@@ -588,7 +576,7 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     """
     raise NotImplementedError("Haven't finished updating these objects.")
     cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-    cdef PFInfo_t tpr
+    cdef PRInfo_t tpr
     for tpr in Records:
         if tpr.MQ < minMQ:
             retArr[0] += 1
@@ -614,38 +602,38 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     return retArr, Records
 
 
-@cython.returns(tuple)
-def PrunePileupReads(list Records, int minMQ=0, int minBQ=0,
-                     int minFA=0, float minAF=0., int maxND=0,
-                     int primerLen=-1):
+cpdef tuple PrunePileupReads(
+        list Records, int minMQ=0, int minBQ=0,
+        int minFA=0, float minAF=0., int maxND=20,
+        int primerLen=-1):
     """
     Returns an array of length 7 - number of failed MQ, BQ, FA, AF,
     amplicon, SV, QC, and ND.
     """
-    cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-    cdef PRInfo_t tpr
-    for tpr in Records:
-        if tpr.MQ < minMQ:
+    cdef ndarray[int, ndim=1] retArr = np.zeros([8], dtype=np.int32)
+    cdef PRInfo_t PRI
+    for PRI in Records:
+        if PRI.MQ < minMQ:
             retArr[0] += 1
-        if tpr.BQ < minBQ:
+        if PRI.BQ < minBQ:
             retArr[1] += 1
-        if tpr.FA < minFA:
+        if PRI.FA < minFA:
             retArr[2] += 1
-        if tpr.AF < minAF:
+        if PRI.AF < minAF:
             retArr[3] += 1
-        if tpr.query_position < primerLen:
+        if PRI.query_position < primerLen:
             # Defaults to -1. Gets rid of potentially misprimed nucleotides
             retArr[4] += 1
-        if tpr.SVPass is False:
+        if PRI.SVPass is False:
             retArr[5] += 1
-        if tpr.Pass is False:
+        if PRI.Pass is False:
             retArr[6] += 1
-        if tpr.ND > maxND:
+        if PRI.ND > maxND:
             retArr[7] += 1
-    Records = [tpr for tpr in Records if tpr.MQ >= minMQ and tpr.BQ >= minBQ
-               and tpr.FA >= minFA and tpr.AF >= minAF and
-               tpr.query_position >= primerLen and tpr.Pass and tpr.SVPass
-               and tpr.ND > maxND]
+    Records = [PRI for PRI in Records if PRI.MQ >= minMQ and PRI.BQ >= minBQ
+               and PRI.FA >= minFA and PRI.AF >= minAF and
+               PRI.query_position >= primerLen and PRI.Pass and PRI.SVPass
+               and PRI.ND > maxND]
     return retArr, Records
 
 

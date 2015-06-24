@@ -232,7 +232,6 @@ cdef class SNVCFLine:
                                        self.ID, self.REF, self.ALT,
                                        self.QUAL, self.FILTER, self.InfoStr,
                                        self.FormatStr]))
-        pl("Just made a new VCF line record. String: %s" % self.str)
         return self.str
 
 
@@ -291,10 +290,6 @@ cdef class VCFPos:
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
         self.EST = PCInfoObject.excludedSVTagStr
-        print("Length of AltAlleleData: %s" % len(PCInfoObject.AltAlleleData))
-        for alt in PCInfoObject.AltAlleleData:
-            print("Total reads for alt allele %s is %s." % (alt.ALT,
-                                                            alt.MergedReads))
         self.VCFLines = [line for line in [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,

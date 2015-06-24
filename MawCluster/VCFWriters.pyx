@@ -127,14 +127,13 @@ def SNVCrawler(inBAM,
         OutVCF = TrimExt(inBAM) + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(OutVCF == "stdout"):
+        pl("Writing to stdout")
         outHandle = sys.stdout
     else:
+        pl("Writing to file %s" % OutVCF)
         outHandle = open(OutVCF, "w")
     pileupCall = inHandle.pileup
-    discPairHandle = pysam.AlignmentFile(
-        TrimExt(inBAM) + ".discReadPairs.bam", "wb", template=inHandle)
     ohw = outHandle.write
-    dpw = discPairHandle.write
     if(writeHeader):
         try:
             ohw(GetVCFHeader(fileFormat=fileFormat, FILTERTags=FILTERTags,
@@ -179,13 +178,7 @@ def SNVCrawler(inBAM,
                     minFracAgreed=minFracAgreed, experiment=experiment,
                     MaxPValue=MaxPValue, refHandle=refHandle,
                     keepConsensus=keepConsensus, reference=reference)
-                if(posStr != "empty"):
-                    print("posStr: '%s'" % posStr)
-                    ohw(posStr + "\n")
-                else:
-                    warnings.warn(
-                        "Empty string at position - go find out why.",
-                        RuntimeWarning)
+                ohw(posStr + "\n")
                 if(pPC.reference_pos > line[2]):
                     pl("Bed region %s complete." % BedListToStr(line))
                     break
@@ -203,7 +196,7 @@ def SNVCrawler(inBAM,
                 pl("Finished iterations.")
                 break
             ohw(VCFString + "\n")
-    discPairHandle.close()
+    outHandle.close()
     return OutVCF
 
 

@@ -659,10 +659,7 @@ def main():
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     # Begin logging
     ## Grabs first non "bmftools" and non-flag field.
-    try:
-        basename = [i for i in sys.argv[2:] if i[0] != "-"][0]
-    except IndexError:
-        basename = "MetasyntacticBasename"
+    basename = "MetasyntacticBasename"
     try:
         logbasename = TrimExt(basename)
     except IndexError:
