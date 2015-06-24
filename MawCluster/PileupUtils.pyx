@@ -225,12 +225,14 @@ cdef class AlleleAggregateInfo:
         self.len = lenR
         # Total Number of Differences
         if(lenR != 0):
+            self.ALT = self.recList[0].BaseCall
             self.TND = sum(map(oag("ND"), self.recList))
             NFList = np.array(map(oag("NF"), self.recList))
             self.MNF = nmean(NFList)
             self.maxNF = nmax(NFList)
             self.NFSD = nstd(NFList)
         else:
+            self.ALT = "N"
             self.TND = -1
             NFList = np.array([])
             self.MNF = -1.
@@ -259,7 +261,6 @@ cdef class AlleleAggregateInfo:
             self.AveBQ = 1. * self.SumBQScore / lenR
         except ZeroDivisionError:
             self.AveBQ = 0
-        self.ALT = self.recList[0].BaseCall
         self.consensus = consensus
         self.minMQ = minMQ
         self.minBQ = minBQ
@@ -397,9 +398,13 @@ cdef class PCInfo:
         self.Records = [PRInfo(pileupRead) for
                         pileupRead in pileups if pileupRead.name not in
                         self.DiscNames]
-        SumArray, self.Records = PrunePileupReads(
+        SumArray = PrunePileupReads(
             self.Records, minMQ=minMQ, minBQ=minBQ, maxND=maxND,
             minFA=minFA, minAF=minAF, primerLen=primerLen)
+        self.Records = [PRI for PRI in self.Records if PRI.MQ >= minMQ and PRI.BQ >= minBQ
+                        and PRI.FA >= minFA and PRI.AF >= minAF and
+                        PRI.query_position >= primerLen and PRI.Pass and PRI.SVPass
+                        and PRI.ND > maxND]
         self.FailedMQReads = SumArray[0]
         self.FailedBQReads = SumArray[1]
         self.FailedFAReads = SumArray[2]
@@ -438,9 +443,12 @@ cdef class PCInfo:
             self.consensus = sorted(cyfreq(
                 map(oagbc, self.Records)).iteritems(),
                 key=oig1)[-1][0]
+            self.maxND = max(pileupRead.alignment.opt("ND") for
+                             pileupRead in pileups)
         else:
             self.consensus = "N"
             pl("Note: Records list empty at position %s" % self.pos)
+            self.maxND = 0
             '''
             raise AbortMission("No reads at position passing filters."
                                " Move along - these aren't the "
@@ -525,8 +533,6 @@ cdef class PCInfo:
                       self.TotalFracStr,
                       self.MergedStrandednessStr,
                       self.TotalStrandednessStr]))
-        self.maxND = max(pileupRead.alignment.opt("ND") for
-                         pileupRead in pileups)
 
     @cython.returns(AlleleAggregateInfo_t)
     def __getitem__(self, int index):
@@ -602,7 +608,7 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     return retArr, Records
 
 
-cpdef tuple PrunePileupReads(
+cpdef py_array PrunePileupReads(
         list Records, int minMQ=0, int minBQ=0,
         int minFA=0, float minAF=0., int maxND=20,
         int primerLen=-1):
@@ -630,11 +636,7 @@ cpdef tuple PrunePileupReads(
             retArr[6] += 1
         if PRI.ND > maxND:
             retArr[7] += 1
-    Records = [PRI for PRI in Records if PRI.MQ >= minMQ and PRI.BQ >= minBQ
-               and PRI.FA >= minFA and PRI.AF >= minAF and
-               PRI.query_position >= primerLen and PRI.Pass and PRI.SVPass
-               and PRI.ND > maxND]
-    return retArr, Records
+    return retArr
 
 
 class PileupInterval:

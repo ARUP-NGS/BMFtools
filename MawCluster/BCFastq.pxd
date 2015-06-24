@@ -41,3 +41,5 @@ cdef inline cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit
         return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
     else:
         return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
+
+cdef public dict Num2NucDict

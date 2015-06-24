@@ -1,3 +1,4 @@
+# cython: boundscheck=False, wraparound=False
 """
 A module composed solely of precomputed inline functions. This way, when the
 modules that these originally came from are modified and rebuilt, at least
@@ -9,8 +10,40 @@ cimport numpy as np
 ctypedef np.int32_t np_int32_t
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
+cdef inline cystr opLenToStr(char op, int opLen):
+    if(op == 68):
+        return "%sD" % opLen
+    elif(op == 77):
+        return "%sM" % opLen
+    elif(op == 73):
+        return "%sI" % opLen
+    elif(op == 83):
+        return "%sS" % opLen
+    else:
+        return ""
+
+
+cdef inline cystr CigarStrInline(char character):
+    if character == 77:
+        return "M"
+    elif character == 73:
+        return "I"
+    elif character == 68:
+        return "D"
+    elif character == 78:
+        return "N"
+    elif character == 83:
+        return "S"
+    elif character == 72:
+        return "H"
+    elif character == 80:
+        return "P"
+    elif character == 61:
+        return "="
+    else:
+        return "X"
+
+
 cdef inline cystr RevCmpChar(cystr character):
     if(character == "A"):
         return "T"
@@ -24,8 +57,6 @@ cdef inline cystr RevCmpChar(cystr character):
         return "N"
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline cystr RevCmpInt(char character):
     if(character == 65):
         return "T"
@@ -39,8 +70,6 @@ cdef inline cystr RevCmpInt(char character):
         return "N"
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline char RevCmpToChar(char character) nogil:
     if(character == 65):
         return 84
@@ -54,8 +83,6 @@ cdef inline char RevCmpToChar(char character) nogil:
         return 78
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline cystr Num2Nuc(int number):
     if(number == 0):
         return "A"
@@ -69,8 +96,6 @@ cdef inline cystr Num2Nuc(int number):
         return "N"
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline char Nuc2Num(char character) nogil:
     if(character == 84):
         return 3
@@ -82,8 +107,6 @@ cdef inline char Nuc2Num(char character) nogil:
         return 0
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline cystr ph2chrInline(np_int32_t phInput):
     if(phInput == 0):
         return '!'
@@ -275,8 +298,6 @@ cdef inline cystr ph2chrInline(np_int32_t phInput):
         return '~'
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline cystr int2strInline(np_int32_t i):
     if(i == 0):
         return '0'
@@ -18284,8 +18305,6 @@ cdef inline cystr int2strInline(np_int32_t i):
         return 'IT\'S OVER 9000'
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline char chr2phInline(cystr character):
     if(character == '$'):
         return 3
@@ -18476,8 +18495,6 @@ cdef inline char chr2phInline(cystr character):
     else:
         return 93
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline char chr2phImplicit(char character):
     if(character == 33):
         return 0
@@ -18669,8 +18686,6 @@ cdef inline char chr2phImplicit(char character):
         return 93
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline cystr chrACGNTInline(char character):
     if(character == 65):
         return "A"
@@ -18686,8 +18701,6 @@ cdef inline cystr chrACGNTInline(char character):
         return "X"
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cdef inline cystr chrInline(char character):
     if(character == 33):
             return '!'

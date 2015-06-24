@@ -79,7 +79,6 @@ char MergeOverlappedLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2){
 
 	// Merge positions where there is an overlap.
 	for(int i = offset; i < AL1.length; i++){
-		printf("Accessing AL1.layout i %d", i);
 		AL1.layouts[i] = cMergeLayoutPositions(AL1.layouts[i], AL2.layouts[i - offset]);
 	}
 	//LayoutOffset_t retValue;

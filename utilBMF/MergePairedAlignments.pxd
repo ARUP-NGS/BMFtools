@@ -11,6 +11,9 @@ from cython cimport bint
 from cpython.array cimport array as py_array
 from libc.stdlib cimport malloc, free, realloc
 from libc.stdint cimport uint16_t
+from utilBMF.Inliners cimport ph2chrInline, int2strInline, chrInline, CigarStrInline, opLenToStr
+from utilBMF.PysamUtils cimport PysamToChrInline
+from MawCluster.Probability cimport c_abs
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef unsigned char uchar
 ctypedef BamTag BamTag_t
@@ -59,8 +62,13 @@ cdef class Layout:
 
     cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout)
     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self)
-    cpdef ndarray[int, ndim=1] getAgreement(self)
-    cdef ndarray[uint16_t, ndim=1] cGetAgreement(self)
+    cpdef ndarray[np.int16_t, ndim=1] getAgreement(self)
+    cdef ndarray[np.int16_t, ndim=1] cGetAgreement(self)
+
+    cpdef cystr getPVString(self)
+    cdef cystr cGetPVString(self)
+    cpdef cystr getFAString(self)
+    cdef cystr cGetFAString(self)
 
     # Utilities for laying out.
     cpdef ndarray[np.int8_t, ndim=1] getOperations(self)
@@ -97,7 +105,7 @@ cdef class Layout:
     cdef set_merge_tags_BT(self)
 
     # Slices
-    cdef ndarray[int, ndim=1] cGetAgreementSlice(self, size_t start=?)
+    cdef ndarray[np.int16_t, ndim=1] cGetAgreementSlice(self, size_t start=?)
     cdef ndarray[int, ndim=1] cGetQualSlice(self, size_t start=?)
     cdef cystr cGetCigarStringSlice(self, size_t start=?)
     cdef ndarray[char] cGetSeqArrSlice(self, size_t start=?)
@@ -105,7 +113,7 @@ cdef class Layout:
     cdef cystr cGetQualStringSlice(self, size_t start=?)
 
 
-cdef public dict chrDict, CigarDict, CigarStrDict
+cdef public dict CigarDict, CigarStrDict
 cdef int getLayoutLen(AlignedSegment_t read)  # Gets layout length
 cpdef cystr FlattenCigarString(cystr cigar)
 cdef cystr cFlattenCigarString(cystr cigar)
@@ -115,16 +123,16 @@ cdef class ListBool:
     cdef list List
     cdef bint Bool
 
-cdef inline cystr opLenToStr(char op, int opLen):
-    if(op == 68):
-        return "D%s" % opLen
-    elif(op == 77):
-        return "M%s" % opLen
-    elif(op == 73):
-        return "I%s" % opLen
-    elif(op == 83):
-        return "S%s" % opLen
-    else:
-        return ""
 
 cdef object oagtag, oig0, oig1
+
+cdef inline bint LayoutsOverlap(Layout_t Layout1, Layout_t Layout2):
+    cdef int end1, end2, start1, start2
+    end1 = Layout1.getLastAlignedRefPos()
+    end2 = Layout2.getLastAlignedRefPos()
+    start1 = Layout1.getFirstAlignedRefPos()
+    start2 = Layout2.getFirstAlignedRefPos()
+    if(start2 > end1 or start1 > end2):
+        return False
+    else:
+        return True

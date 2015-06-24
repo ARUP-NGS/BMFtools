@@ -11,7 +11,7 @@ ctypedef cython.str cystr
 
 from libc.math cimport sqrt as c_sqrt, M_SQRT1_2, log as c_log
 
-cdef inline double square(double input) nogil:
+cdef inline double c_square(double input) nogil:
     return input * input
 
 cdef inline double c_abs(double input) nogil:
@@ -24,5 +24,5 @@ cpdef float64_t HellingerDistance(ndarray[float64_t, ndim=1] array1,
                                   ndarray[float64_t, ndim=1] array2)
 cdef float64_t cHellingerDistance(float64_t* array1,
                                   float64_t* array2,
-                                  size_t length)
-cpdef float64_t HellingDistanceDict(dict dict1, dict dict2)
+                                  size_t length) nogil
+cpdef float64_t HellingerDistanceDict(dict dict1, dict dict2)

@@ -1,4 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: boundscheck=False, wraparound=False
 
 import logging
 import operator
@@ -34,23 +35,6 @@ defaultPValue = 0.05
 PROTOCOLS = ["ffpe", "amplicon", "cf", "other"]
 
 
-cpdef float64_t HellingDistanceDict(dict dict1, dict dict2):
-    cdef cystr key
-    cdef ndarray[float64_t, ndim=1] array1, array2
-    array1 = np.array([dict1[key] for key in
-                       sorted(dict1.iterkeys())])
-    array2 = np.array([dict2[key] for key in
-                       sorted(dict2.iterkeys())])
-    return HellingerDistance(array1, array2)
-
-
-cpdef float64_t HellingerDistance(ndarray[float64_t, ndim=1] array1,
-                                  ndarray[float64_t, ndim=1] array2):
-    cdef size_t length = len(array1)
-    assert length == len(array2)  # Sanity check
-    return cHellingerDistance(&array1[0], &array2[0], length)
-
-
 cpdef float64_t BhattacharyyaDistance(ndarray[float64_t, ndim=1] array1,
                                       ndarray[float64_t, ndim=1] array2):
     cdef size_t length = len(array1)
@@ -75,7 +59,7 @@ cdef float64_t cBhattacharyyaDistance(float64_t* array1,
 
 cdef float64_t cHellingerDistance(float64_t* array1,
                                   float64_t* array2,
-                                  size_t length):
+                                  size_t length) nogil:
     """
     Calculates the Helling Distance between two discrete probability
     distributions, described (each) as a 1-dimensional array.
@@ -84,9 +68,27 @@ cdef float64_t cHellingerDistance(float64_t* array1,
     cdef float64_t tmpFloat
     cdef size_t tmpInt
     for tmpInt in range(length):
-        cumSum += c_abs(c_sqrt(array1[tmpInt]) -
-                        c_sqrt(array2[tmpInt]))
-    return cumSum * M_SQRT1_2
+        tmpFloat = c_abs(c_sqrt(array1[tmpInt]) -
+                         c_sqrt(array2[tmpInt]))
+        cumSum += c_square(tmpFloat)
+    return c_sqrt(cumSum) * M_SQRT1_2
+
+
+cpdef float64_t HellingerDistanceDict(dict dict1, dict dict2):
+    cdef cystr key
+    cdef ndarray[float64_t, ndim=1] array1, array2
+    array1 = np.array([dict1[key] for key in
+                       sorted(dict1.iterkeys())])
+    array2 = np.array([dict2[key] for key in
+                       sorted(dict2.iterkeys())])
+    return HellingerDistance(array1, array2)
+
+
+cpdef float64_t HellingerDistance(ndarray[float64_t, ndim=1] array1,
+                                  ndarray[float64_t, ndim=1] array2):
+    cdef size_t length = len(array1)
+    assert length == len(array2)  # Sanity check
+    return cHellingerDistance(&array1[0], &array2[0], length)
 
 
 @memoize
@@ -109,11 +111,10 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
                             "stats.proportion.")
 
 
-@cython.returns(ndarray)
-def ConfidenceIntervalAI(int Allele1,
-                         int Allele2,
-                         float128_t pVal=defaultPValue,
-                         cystr method="agresti_coull"):
+cpdef ndarray[float128_t, ndim=1] ConfidenceIntervalAI(
+        int Allele1, int Allele2,
+        float128_t pVal=defaultPValue,
+        cystr method="agresti_coull"):
     """
     Returns the confidence interval for an allelic imbalance
     given counts for Allele1 and Allele2, where those are the most common
@@ -151,6 +152,7 @@ def MakeAICall(int Allele1,
     cdef float128_t minorAF
     cdef cython.bint call
     cdef float128_t allelicImbalanceRatio
+    cdef ndarray[float128_t, ndim=1] confInt
     confInt = ConfidenceIntervalAI(Allele1, Allele2, pVal=defaultPValue,
                                    method=method)
     minorAF = nmean(confInt, dtype=np.float128)

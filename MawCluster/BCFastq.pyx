@@ -45,6 +45,8 @@ except ImportError:
     pl("Note: re2 import failed. Fell back to re.", level=logging.DEBUG)
     from re import compile as regex_compile
 
+Num2NucDict = {0: "A", 1: "C", 2: "G", 3: "T"}
+
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
     return ("pr -mts <(cat %s | paste - - - -) <(cat %s | " % (Fq1, Fq2) +
@@ -148,6 +150,18 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
 
 
+cpdef NewSeqDict(ndarray inarray):
+    cdef char tmpChar
+    return "".join([Num2NucDict[tmpChar] for tmpChar in
+                    inarray])
+
+
+cpdef NewSeqInline(ndarray inarray):
+    cdef char tmpChar
+    return "".join([Num2Nuc(tmpChar) for tmpChar in
+                    inarray])
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,
@@ -207,7 +221,8 @@ cdef cystr cCompareFqRecsFast(list R,
     qualTFlat = nsum(qualT, 0, dtype=np.int32)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = np.char.array([Num2Nuc(tmpChar) for tmpChar in npargmax(qualAllSum, 0)]).tostring()
+    newSeq = "".join([Num2Nuc(tmpChar) for tmpChar in
+                      npargmax(qualAllSum, 0)])
     phredQuals = npamax(qualAllSum, 0)  # Avoid calculating twice.
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for

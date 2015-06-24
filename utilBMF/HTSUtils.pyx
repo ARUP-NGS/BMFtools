@@ -2848,7 +2848,7 @@ cdef class BamTag(object):
         In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
         1000000 loops, best of 3: 710 ns per loop
         """
-        self.tag + ":" + self.tagtype + ":%s" % (self.value)
+        return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
 
 cdef class IDVCFLine(object):
