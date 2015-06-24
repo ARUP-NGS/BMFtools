@@ -109,11 +109,21 @@ ncs = nucConverter.str2int
 nucList = ["A", "C", "G", "T"]
 
 
-cpdef list permuteNucleotides(long maxn, object nci=nci):
+cpdef list permuteNucleotides(long maxn, object nci=nci, int kmerLen=-1):
     """
     nci should be set to a numConv object's int2str method call.
     """
-    return map(nci, xrange(maxn))
+    cdef list tmpList
+    cdef size_t tmpInt, strLen
+    if(kmerLen < 0):
+        return [nci(tmpInt) for tmpInt in xrange(maxn)]
+    else:
+        tmpList = [nci(tmpInt) for tmpInt in xrange(maxn)]
+        for tmpInt in range(maxn):
+            strLen = len(tmpList)
+            if strLen < kmerLen:
+                tmpList[tmpInt] = "A" * (kmerLen - strLen) + tmpList[tmpInt]
+        return tmpList
 
 
 @memoize

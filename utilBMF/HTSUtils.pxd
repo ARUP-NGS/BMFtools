@@ -158,7 +158,7 @@ cdef class BamTag(object):
 
 cpdef public cystr RevCmp(cystr seq)
 
-cpdef public list permuteNucleotides(long maxn, object nci=?)
+cpdef public list permuteNucleotides(long maxn, object nci=?, int kmerLen=?)
 
 cpdef bint ReadsOverlap(
         AlignedSegment_t read1,

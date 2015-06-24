@@ -37,7 +37,6 @@ cdef extern from "MPA.h":
         char Success
     ArrayLayoutPos_t cMergeLayoutPositions(ArrayLayoutPos_t L1, ArrayLayoutPos_t L2)
     int getFirstAlignedRefPos(ArrayLayout_t layout)
-    # ArrayLayout_t MergeLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2)
     char MergeOverlappedLayouts(ArrayLayout_t AL1, ArrayLayout_t AL2)
 
 
