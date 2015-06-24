@@ -11,7 +11,7 @@ from cython cimport bint
 from cpython.array cimport array as py_array
 from libc.stdlib cimport malloc, free, realloc
 from libc.stdint cimport uint16_t
-from utilBMF.Inliners cimport ph2chrInline, int2strInline, chrInline, CigarStrInline, opLenToStr
+from utilBMF.Inliners cimport ph2chrInline, chrInline, CigarStrInline, opLenToStr
 from utilBMF.PysamUtils cimport PysamToChrInline
 from MawCluster.Probability cimport c_abs
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t

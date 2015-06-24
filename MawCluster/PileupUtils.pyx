@@ -608,7 +608,7 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     return retArr, Records
 
 
-cpdef py_array PrunePileupReads(
+cpdef ndarray[int, ndim=1] PrunePileupReads(
         list Records, int minMQ=0, int minBQ=0,
         int minFA=0, float minAF=0., int maxND=20,
         int primerLen=-1):

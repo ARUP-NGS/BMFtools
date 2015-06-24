@@ -1,4 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True, profile=True
 from __future__ import division
 
 """
@@ -44,8 +45,6 @@ try:
 except ImportError:
     pl("Note: re2 import failed. Fell back to re.", level=logging.DEBUG)
     from re import compile as regex_compile
-
-Num2NucDict = {0: "A", 1: "C", 2: "G", 3: "T"}
 
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
@@ -150,16 +149,14 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
 
 
-cpdef NewSeqDict(ndarray inarray):
-    cdef char tmpChar
-    return "".join([Num2NucDict[tmpChar] for tmpChar in
-                    inarray])
+cdef ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
+    cdef pFastqProxy_t rec
+    return np.array([cs_to_ia(rec.sequence) for rec in R],
+                    dtype=np.uint8)
 
 
-cpdef NewSeqInline(ndarray inarray):
-    cdef char tmpChar
-    return "".join([Num2Nuc(tmpChar) for tmpChar in
-                    inarray])
+cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
+    return cRecListTo2DCharArray(R)
 
 
 @cython.boundscheck(False)
@@ -171,8 +168,15 @@ cdef cystr cCompareFqRecsFast(list R,
     Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
+    After inlin
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
     """
-    cdef int lenR, ND, lenSeq, tmpInt
+    cdef int lenR, ND, lenSeq, tmpInt, i
     cdef cython.bint Success
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
@@ -181,6 +185,7 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
     cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
     cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[char, ndim=2] seqArray
     # cdef ndarray[char, ndim=1, mode = "c"] newSeq
     cdef pFastqProxy_t rec
     cdef char tmpChar
@@ -196,8 +201,11 @@ cdef cystr cCompareFqRecsFast(list R,
                                           TagString, R[0].sequence,
                                           R[0].quality)
     Success = True
+    '''
     stackArrays = tuple([np.char.array(rec.sequence, itemsize=1) for rec in R])
     seqArray = npvstack(stackArrays)
+    '''
+    seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([rec.getQualArray() for
                       rec in R], dtype=np.int32)
@@ -211,13 +219,13 @@ cdef cystr cCompareFqRecsFast(list R,
     qualC = ccopy(quals)
     qualG = ccopy(quals)
     qualT = ccopy(quals)
-    qualA[seqArray != "A"] = 0
+    qualA[seqArray != 65] = 0
     qualAFlat = nsum(qualA, 0, dtype=np.int32)
-    qualC[seqArray != "C"] = 0
+    qualC[seqArray != 67] = 0
     qualCFlat = nsum(qualC, 0, dtype=np.int32)
-    qualG[seqArray != "G"] = 0
+    qualG[seqArray != 71] = 0
     qualGFlat = nsum(qualG, 0, dtype=np.int32)
-    qualT[seqArray != "T"] = 0
+    qualT[seqArray != 84] = 0
     qualTFlat = nsum(qualT, 0, dtype=np.int32)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
@@ -227,11 +235,6 @@ cdef cystr cCompareFqRecsFast(list R,
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for
                   i in xrange(lenSeq)], dtype=np.int32)
-    '''
-    FA = np.array([sum([rec.sequence[i] == chrACGNTInline(newSeq[i]) for
-                        rec in R]) for
-                  i in xrange(lenSeq)], dtype=np.int32)
-    '''
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
@@ -508,18 +511,11 @@ cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
 
 
 cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt = np.max(qualArr)
-    if(tmpInt < 9001):
-        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
-                                     tmpInt in qualArr]))
-    else:
-        return "|PV=%s" % ",".join(qualArr.astype(str))
+    return "|PV=%s" % ",".join(qualArr.astype(str))
 
 
 cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
+    return "|FA=%s" % ",".join(qualArr.astype(str))
 
 
 def GetDescriptionTagDict(readDesc):

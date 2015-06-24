@@ -281,17 +281,13 @@ cdef class Layout:
         return self.cGetFAString()
 
     cdef cystr cGetFAString(self):
-        cdef int i
-        return ",".join([int2strInline(i) for i in
-                         self.cGetAgreement()])
+        return ",".join(self.cGetAgreement().astype(str))
 
     cpdef cystr getPVString(self):
         return self.cGetPVString()
 
     cdef cystr cGetPVString(self):
-        cdef int i
-        return ",".join([int2strInline(i) for i in
-                         self.cGetQual()])
+        return ",".join(self.cGetQual().astype(str))
 
     def __dealloc__(self):
         free(self.Layout.layouts)
@@ -609,12 +605,14 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
             continue
         print("Tested if it was supp/2nd")
         if(read.is_proper_pair is False):
+            print("Not a proper pair, continuing.")
             # Keep going
             tmpName = read.query_name
+            outHandle.write(read)
             while read.query_name == tmpName:
                 outHandle.write(read)
                 read = inHandle.next()
-        if(read.is_read1):
+        elif(read.is_read1):
             Layout1 = Layout(read)
             # read1 = read
             print("I am now continuing over this record in MPA because it's read1.")
@@ -626,7 +624,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
             tmpName = Layout2.Name
         else:
             print("Read is neither read 1 nor read 2: %s" % (not read.is_read1 and not read.is_read2))
-            raise ThisIsMadness("Read is neither read 1 nor read 2? %s" % read.query_name)
+            sys.exit(1)
 
         try:
             assert(Layout1.Name == Layout2.Name)
@@ -673,6 +671,8 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                     if(not tmpRead.is_supplementary and not tmpRead.is_secondary):
                         tmpRead.set_tag("MP", "F")
                         outHandle.write(tmpRead)
+    if(outHandleMerge != sys.stdout):
+        outHandleMerge.close()
     outHandle.close()
     inHandle.close()
     return outBAM
