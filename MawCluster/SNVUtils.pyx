@@ -290,14 +290,6 @@ cdef class VCFPos:
         self.AABothStrandAlignment = PCInfoObject.BothStrandAlignment
         self.requireDuplex = requireDuplex
         self.EST = PCInfoObject.excludedSVTagStr
-        if(PCInfoObject.AltAlleleData is None or
-           sum(aai.MergedReads for aai in PCInfoObject.AltAlleleData if
-               aai is not None) == 0):
-            self = None
-            return
-            '''
-            raise AbortMission("VCFPos has no reads passing filters.")
-            '''
         self.VCFLines = [line for line in [SNVCFLine(
             alt, TotalCountStr=self.TotalCountStr,
             MergedCountStr=self.MergedCountStr,
@@ -318,7 +310,7 @@ cdef class VCFPos:
             minAF=self.minAF, FailedNDReads=PCInfoObject.FailedNDReads,
             flankingBefore=flankingBefore, flankingAfter=flankingAfter,
             ampliconFailed=ampliconFailed)
-            for alt in PCInfoObject.AltAlleleData] if line is not None]
+            for alt in PCInfoObject.AltAlleleData] if line.InfoFields["AC"] > 0]
         self.keepConsensus = keepConsensus
         if(keepConsensus):
             self.str = "\n".join([str(line)
@@ -337,12 +329,14 @@ cdef class VCFPos:
         self.VCFLines = [tmpLine for tmpLine in self.VCFLines if
                         tmpLine is not None]
         '''
-        if(self.VCFLines is None):
-            return ""
-        for tmpLine in self.VCFLines:
-            tmpLine.update()
-        self.str = "\n".join([str(tmpLine) for tmpLine in self.VCFLines])
-        return self.str
+        if(len(self.VCFLines) > 0):
+            for tmpLine in self.VCFLines:
+                tmpLine.update()
+            return "\n".join([str(tmpLine) for tmpLine in self.VCFLines])
+        print("SNVCFLine at contig %s and position %s" % (self.contig,
+                                                          self.POS) +
+              " is entirely empty.")
+        return "empty"
 
 
 class HeaderFileFormatLine:

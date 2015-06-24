@@ -1051,7 +1051,6 @@ cdef class pPileupRead:
     """
 
     def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
-        print("PV Tag! %s" % PileupRead.alignment.opt("PV"))
         cdef ndarray[np_int32_t, ndim=1] BQs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
@@ -1063,11 +1062,6 @@ cdef class pPileupRead:
             PileupRead.alignment.opt("PV").split(","),
             dtype=np.int32)
         self.AF = PileupRead.alignment.opt("AF")
-        if(np.sum(BQs) == 0):
-            print(str(PileupRead.alignment))
-            print(str(PileupRead.alignment.get_tags()))
-            print("Name: %s" % PileupRead.alignment.query_name)
-            raise Tim
         self.BQ = BQs[self.query_position]
         self.FA = int(self.alignment.opt(
             "FA").split(",")[self.query_position])
@@ -2817,7 +2811,12 @@ cdef class BamTag(object):
         try:
             tagtype = TagTypeDict[tag[0]]
         except KeyError:
-            tagtype = "Z"  # A safer fallback
+            if(isinstance(tag[1], int)):
+                tagtype = "i"
+            elif(isinstance(tag[1], float)):
+                tagtype = "f"
+            else:
+                tagtype = "Z"  # A safer fallback
         return cls(tag[0], tagtype, tag[1])
 
     def __init__(self, cystr tag, cystr tagtype, value):

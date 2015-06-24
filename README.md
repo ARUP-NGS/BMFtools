@@ -284,10 +284,6 @@ Most options are available for command-line as well. If an option is set in both
     4. String handling/other under-the-hood.
     5. Chapman now controls all global arguments.
 
-## TODO:
-1. Coverage metrics/on-target calculation.
-    1. Currently, samtools bedcov is used but that gives up after 8000 reads at a position, which doesn't work for our purposes.
-
 
 ## Style guidelines
 

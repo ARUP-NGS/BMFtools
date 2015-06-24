@@ -59,7 +59,6 @@ cdef class Layout:
     cpdef bint posIsMapped(self, int position)
 
     cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout)
-    cpdef AlignedSegment_t MergeLayoutToAS(self, Layout_t pairedLayout, AlignedSegment_t template)
     cdef ndarray[np.int16_t, ndim=1] getMergedPositions(self)
     cpdef ndarray[int, ndim=1] getAgreement(self)
     cdef ndarray[uint16_t, ndim=1] cGetAgreement(self)
@@ -91,10 +90,8 @@ cdef class Layout:
     cdef ndarray[np.int16_t, ndim=1] getMergeAgreements(self)
 
     # Output objects
-    cpdef cystr __sam__(self, Layout_t pairedLayout,
-                        AlignedSegment_t template=?)
-    cdef cystr __csam__(self, Layout_t pairedLayout,
-                        AlignedSegment_t template=?)
+    cpdef cystr __sam__(self, Layout_t pairedLayout)
+    cdef cystr __csam__(self, Layout_t pairedLayout)
 
     # Updates
     cdef update_read_positions(self)

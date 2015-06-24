@@ -315,7 +315,7 @@ cdef class Layout:
         return "#".join(map(ALPToStr, [ALP for ALP in
                                        self.Layout.layouts[:self.Layout.length]
                                        ]))
-
+    '''
     cpdef AlignedSegment_t MergeLayoutToAS(self, Layout_t pairedLayout,
                                            AlignedSegment_t template):
         cdef size_t tmpInt
@@ -342,6 +342,7 @@ cdef class Layout:
         retAS.reference_id = self.reference_id
         retAS.pos = self.getAlignmentStart()
         return retAS
+    '''
 
     cdef char MergeLayouts_in_place(self, ArrayLayout_t pairedLayout):
         print("Begging MergeLayouts_in_place")
@@ -399,13 +400,11 @@ cdef class Layout:
                 ("ot", self.tlen), ("mp", self.pnext),
                 ("om", self.mapq), ("MP", "T")]
 
-    cpdef cystr __sam__(self, Layout_t pairedLayout,
-                        AlignedSegment_t template=None):
-        return self.__csam__(pairedLayout, template)
+    cpdef cystr __sam__(self, Layout_t pairedLayout):
+        return self.__csam__(pairedLayout)
 
-    cdef cystr __csam__(self, Layout_t pairedLayout,
-                        AlignedSegment_t template=None):
-        """ 
+    cdef cystr __csam__(self, Layout_t pairedLayout):
+        """
         Converts the record into a SAM record.
         Note: the position is incremented by 1 because SAM positions are
         1-based instead of 0-based.
@@ -420,6 +419,8 @@ cdef class Layout:
             "," + ",".join(self.cGetQualSlice(offset).astype(str)))
         self.tagDict["FA"].value += (
             "," + ",".join(self.cGetAgreementSlice(offset).astype(str)))
+        self.tagDict["FM"].value *= 2
+        # Double the number of "family members" to describe merging.
         NewCigarString = FlattenCigarString(
             self.getCigarString + pairedLayout.cGetCigarStringSlice(offset))
         '''
@@ -430,7 +431,7 @@ cdef class Layout:
                       self.tlen, self.getSeq(), self.getQualString()] +
                 self.get_tag_string()))
         '''
-        return ("\t" + self.Name + "\t%s" % self.getFlag() + "\t" + self.contig + 
+        return (self.Name + "\t%s" % self.getFlag() + "\t" + self.contig +
                 "\t%s\t%s" % (self.getAlignmentStart() + 1, self.mapq) +
                 "\t" + NewCigarString +
                 "\t%s\t%s\t%s\t" % (self.rnext, self.pnext + 1, self.tlen) +
@@ -504,7 +505,7 @@ cdef class Layout:
                          tmpLayoutPos.mergeAgreed == 0 and
                          tmpLayoutPos.operation != 66],
                         dtype=np.int16)
-        
+
     cpdef ndarray[int, ndim=1] getAgreement(self):
         """cpdef wrapper of cGetAgreement
         """
@@ -548,7 +549,7 @@ cdef class Layout:
 
 
 def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
-                          bint pipe=False, int readLength=-1,
+                          int readLength=-1,
                           cystr outMerge=None):
     cdef AlignedSegment_t read, read1, read2, newRead
     cdef Layout_t Layout1, Layout2, retLayout
@@ -599,7 +600,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
         Layout2 = Layout(read2)
         print("Merging Layouts")
         if(read1.pos < read2.pos):
-            newReadString = Layout1.__csam__(Layout2, read1)
+            newReadString = Layout1.__csam__(Layout2)
             print("Merging didn't break everything!")
             print(newReadString)
             if(Layout1.MergeSuccess):
@@ -611,7 +612,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                 outHandle.write(read1)
                 outHandle.write(read2)
         else:
-            newReadString = Layout2.__csam__(Layout1, read2)
+            newReadString = Layout2.__csam__(Layout1)
             print("Merging didn't break everything!")
             if(Layout2.MergeSuccess):
                 print("New SAM read: %s" % newReadString)
@@ -644,6 +645,7 @@ cpdef cystr ALPToStr(ArrayLayoutPos_t ALP):
                               ALP.agreement, chr(ALP.operation),
                               chr(ALP.base), ALP.mergeAgreed]))
 
+
 def testLayout(cystr inBAM, cystr outBAM=None):
     cdef AlignedSegment_t read
     cdef Layout_t layout
@@ -668,6 +670,7 @@ cdef list FlattenCigar(list cigar):
         retList.append((k, sum(map(oig1, glist))))
     return retList
 
+
 cpdef cystr FlattenCigarString(cystr cigar):
     return cFlattenCigarString(cigar)
 
@@ -684,8 +687,8 @@ cdef cystr cFlattenCigarString(cystr cigar):
     cdef int cigarOpLen
     cdef int newCigarOpLen
     cdef py_array chars = cs_to_ia("".join(rsplit("[0-9]+", cigar)[1:]))
-    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpItStr in
-                                        rsplit("[A-Z]", cigar)[:len(chars)]))
+    cdef py_array Lengths = array('i', [int(tmpIntStr) for tmpIntStr in
+                                        rsplit("[A-Z]", cigar)[:len(chars)]])
     cdef list outTupleList = []
     '''
     cdef py_array Lengths = array(

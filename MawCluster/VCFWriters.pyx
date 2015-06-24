@@ -5,11 +5,11 @@ import logging
 from operator import attrgetter as oag
 import sys
 from subprocess import CalledProcessError, check_call
+import warnings
 
 # Third party includes
 import pysam
 import cython
-from cytoolz import map as cmap
 
 # local python imports
 cimport MawCluster.PileupUtils as PileupUtils
@@ -46,13 +46,6 @@ ctypedef VCFPos VCFPos_t
 """
 Programs which write VCFs.
 Currently: SNVCrawler.
-
-In development: SV
-
-Settled on two major filters for inclusion in a pileup
-1. Min FA (number of family members agreeing) [int=2] (I just can't get
-   too big a family...)
-2. Min Fraction Agreement Within Family [float=0.6667]
 
 """
 
@@ -134,14 +127,13 @@ def SNVCrawler(inBAM,
         OutVCF = TrimExt(inBAM) + ".bmf.vcf"
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     if(OutVCF == "stdout"):
+        pl("Writing to stdout")
         outHandle = sys.stdout
     else:
+        pl("Writing to file %s" % OutVCF)
         outHandle = open(OutVCF, "w")
     pileupCall = inHandle.pileup
-    discPairHandle = pysam.AlignmentFile(
-        TrimExt(inBAM) + ".discReadPairs.bam", "wb", template=inHandle)
     ohw = outHandle.write
-    dpw = discPairHandle.write
     if(writeHeader):
         try:
             ohw(GetVCFHeader(fileFormat=fileFormat, FILTERTags=FILTERTags,
@@ -178,7 +170,7 @@ def SNVCrawler(inBAM,
                         line))
                     break
                 except ValueError:
-                    pl("Pysam's heinous errors in iteratio.")
+                    pl("Pysam's heinous errors in iteration happened...")
                     pl("Region: %s" % repr(line))
                     raise ValueError(repr(line))
                 posStr = pPileupColToVCFLines(
@@ -204,7 +196,7 @@ def SNVCrawler(inBAM,
                 pl("Finished iterations.")
                 break
             ohw(VCFString + "\n")
-    discPairHandle.close()
+    outHandle.close()
     return OutVCF
 
 
@@ -230,18 +222,18 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     PC = PCInfo(PileupColumn, minMQ=minMQ, minBQ=minBQ,
                 experiment=experiment,
                 minFracAgreed=minFracAgreed, minFA=minFA)
-    if(PC is None):
-        return ""
+    if(PC.MergedReads == 0):
+        print("PC Failure log: %s" % PC.getQCFailString())
+        return "empty"
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,
                  reference=reference,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
                  NDP=len(PC.DiscNames))
-    if(pos is not None):
-        return str(pos)
-    else:
-        return ""
+    if(len(pos.VCFLines) == 0):
+        return "empty"
+    return str(pos)
 
 
 @cython.returns(cystr)
@@ -253,6 +245,9 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                          cython.bint keepConsensus=False,
                          cystr reference="default",
                          pysam.cfaidx.FastaFile refHandle=None):
+    """
+    Returns 'empty' if no positions made it.
+    """
     cdef PCInfo_t PC
     cdef VCFPos_t pos
     if(refHandle is None):
@@ -261,18 +256,15 @@ def pPileupColToVCFLines(pPileupColumn_t PileupColumn,
                 experiment=experiment,
                 minFracAgreed=minFracAgreed, minFA=minFA,
                 experiment=experiment)
-    if(PC is None):
-        return ""
     pos = VCFPos(PC, MaxPValue=MaxPValue,
                  keepConsensus=keepConsensus,
                  reference=reference,
                  minFracAgreed=minFracAgreed,
                  minFA=minFA, refHandle=refHandle,
                  NDP=len(PC.DiscNames))
-    if(pos is not None):
-        return str(pos)
-    else:
-        return ""
+    if(len(pos.VCFLines) == 0):
+        return "empty"
+    return str(pos)
 
 
 @cython.returns(cystr)
@@ -382,12 +374,3 @@ def PSNVCall(inBAM, conf="default", threads=-1, outVCF="default"):
                     outVCF, bedfile=config["bed"])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         return bedFilteredVCF
-
-
-@cython.returns(bint)
-def testPosStr(cystr posStr):
-    if(posStr != "empty"):
-        if(posStr != ""):
-            return True
-        raise ThisIsMadness("Somehow this posStr is just empty... why?")
-    return False

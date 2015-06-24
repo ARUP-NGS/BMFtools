@@ -1,4 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True
 
 from __future__ import division
 import subprocess
@@ -6,6 +7,7 @@ from os import path as ospath
 import shlex
 import logging
 import operator
+import warnings
 from operator import attrgetter as oag
 from operator import itemgetter as oig
 from operator import div as odiv
@@ -27,8 +29,7 @@ from cytoolz import (frequencies as cyfreq,
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness, AbortMission
 from utilBMF.HTSUtils import (ReadPair, printlog as pl, pPileupRead,
-                              PileupReadPair, ssStringFromRead,
-                              cyStdFlt, cyStdInt)
+                              PileupReadPair, ssStringFromRead)
 from utilBMF import HTSUtils
 import utilBMF
 
@@ -131,7 +132,13 @@ cdef class PRInfo:
         self.BQ = PileupRead.BQ
         self.FA = PileupRead.FA
         self.MQ = alignment.mapq
-        self.SVPass = TestSVTags(aopt("SV"))
+        try:
+            self.SVPass = TestSVTags(aopt("SV"))
+        except KeyError:
+            self.SVPass = True
+            warnings.warn(
+                "Note: SV tag not present. All reads "
+                "will pass the SV filter.", RuntimeWarning)
         if(alignment.is_qcfail or aopt("FP") == 0):
             self.Pass = False
         self.query_name = PileupRead.name
@@ -220,24 +227,22 @@ cdef class AlleleAggregateInfo:
         if(lenR != 0):
             self.TND = sum(map(oag("ND"), self.recList))
             NFList = np.array(map(oag("NF"), self.recList))
+            self.MNF = nmean(NFList)
+            self.maxNF = nmax(NFList)
+            self.NFSD = nstd(NFList)
         else:
             self.TND = -1
             NFList = np.array([])
-        try:
-            self.MNF = nmean(NFList)
-            self.maxNF = nmax(NFList)
-            self.NFSD = cyStdFlt(NFList)
-        except ValueError:
-            #  This list must have length zero...
             self.MNF = -1.
             self.maxNF = -1.
             self.NFSD = -1.
-        self.TotalReads = sum(map(oag("FM"), self.recList))
+        self.TotalReads = sum([rec.FM for rec in self.recList])
         self.MergedReads = lenR
-        self.ReverseMergedReads = sum(map(oagir, self.recList))
+        self.ReverseMergedReads = sum([rec.is_reverse for rec in
+                                       self.recList])
         self.ForwardMergedReads = self.MergedReads - self.ReverseMergedReads
-        self.ReverseTotalReads = sum(map(
-            oag("FM"), filter(oagir, self.recList)))
+        self.ReverseTotalReads = sum([rec.FM for rec in self.recList if
+                                      rec.is_reverse])
         self.ForwardTotalReads = self.TotalReads - self.ReverseTotalReads
         try:
             self.AveFamSize = 1. * self.TotalReads / self.MergedReads
@@ -315,11 +320,14 @@ cdef class AlleleAggregateInfo:
                                       cyfreq(map(oag("query_name"),
                                                  self.recList)).iteritems()
                                       if i[1] > 1])
-        query_positions = np.array(map(oagqp, self.recList), dtype=np.float64)
+        query_positions = np.array([rec.query_position for
+                                    rec in self.recList],
+                                   dtype=np.float64)
         self.MBP = nmean(query_positions)
-        self.BPSD = cyStdFlt(query_positions)
+        self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = np.array(map(oag("PVFrac"), self.recList), dtype=np.float64)
+        PVFArray = np.array([rec.PVFrac for rec in  self.recList],
+                            dtype=np.float64)
         #  PVFArray = [rec.PVFrac for rec in self.recList]
 
         if(len(PVFArray) == 0):
@@ -327,7 +335,7 @@ cdef class AlleleAggregateInfo:
             self.PFSD = -1.
         else:
             self.MPF = nmean(PVFArray)
-            self.PFSD = cyStdFlt(PVFArray)
+            self.PFSD = nstd(PVFArray)
         self.maxND = max(rec.opt("ND") for rec in self.recList)
 
 
@@ -351,6 +359,17 @@ cdef class PCInfo:
     back an invalid object.
     """
 
+    @cython.returns(cystr)
+    def getQCFailString(self):
+        return ("BQ:%s;FA:%s;MQ:%s" % (self.FailedBQReads,
+                                       self.FailedFAReads,
+                                       self.FailedMQReads) +
+                ";ND:%s;AMP:%s;SV:%s" % (self.FailedNDReads,
+                                         self.FailedAMPReads,
+                                         self.FailedSVReads) +
+                ";AF:%s;QC:%s" % (self.FailedAFReads,
+                                  self.FailedQCReads))
+
     def __init__(self, pPileupColumn_t PileupColumn, int minBQ=0,
                  int minMQ=0, bint requireDuplex=True,
                  float minFracAgreed=0.0, int minFA=0,
@@ -366,7 +385,8 @@ cdef class PCInfo:
         cdef int lenR, rsn
         cdef ndarray[np.float64_t, ndim=1] query_positions
         cdef pPileupRead_t pileupRead
-        cdef py_array SumArray
+        cdef ndarray[int, ndim=1] SumArray
+        cdef dict tmpDict
         pileups = PileupColumn.pileups
         # Get the read pairs which are discordant and get rid of them - one
         # of them has to be wrong!
@@ -375,11 +395,11 @@ cdef class PCInfo:
             # If primerLen < 0, then don't filter by primerLen.
         self.DiscNames = GetDiscReadNames(PileupColumn)
         self.Records = [PRInfo(pileupRead) for
-                        pileupRead in pileups]
-        SumArray, self.Records = PrunePileupReads(self.Records, minMQ=minMQ,
-                                                  minBQ=minBQ, maxND=maxND,
-                                                  minFA=minFA, minAF=minAF,
-                                                  primerLen=primerLen)
+                        pileupRead in pileups if pileupRead.name not in
+                        self.DiscNames]
+        SumArray, self.Records = PrunePileupReads(
+            self.Records, minMQ=minMQ, minBQ=minBQ, maxND=maxND,
+            minFA=minFA, minAF=minAF, primerLen=primerLen)
         self.FailedMQReads = SumArray[0]
         self.FailedBQReads = SumArray[1]
         self.FailedFAReads = SumArray[2]
@@ -387,44 +407,29 @@ cdef class PCInfo:
         self.FailedAMPReads = SumArray[4]
         self.FailedSVReads = SumArray[5]
         self.FailedQCReads = SumArray[6]
+        self.FailedNDReads = SumArray[7]
         # Remove discordant read pairs.
         self.experiment = experiment
         self.minMQ = minMQ
-        #  pl("minMQ: %s" % minMQ)
         self.minBQ = minBQ
-        #  pl("minBQ: %s" % minBQ)
         self.contig = PysamToChrInline(PileupColumn.reference_id)
         self.minAF = minAF
-        #  pl("Pileup contig: {}".format(self.contig))
         self.pos = PileupColumn.reference_pos
-        #  pl("pos: %s" % self.pos)
         self.PCol = PileupColumn
         self.excludedSVTagStr = exclusionSVTags
-        #  pl("Pileup exclusion SV Tags: {}".format(exclusionSVTags))
         self.FailedSVReadDict = {}
         self.FailedSVReads = 0
-        #  pl("Number of reads failed for SV: %s" % self.FailedSVReads)
-        """
-        if(self.FailedMQReads != 0):
-            print("Mapping qualities of reads which failed: {}".format(
-                  str([pu.alignment.mapping_quality
-                      for pu in pileups
-                      if pu.alignment.mapping_quality >= self.minMQ])))
-        print("Number of reads failed for BQ < {}: {}".format(self.minBQ,
-              self.FailedBQReads))
-        print("Number of reads failed for MQ < {}: {}".format(self.minMQ,
-              self.FailedMQReads))
-        """
 
         lenR = len(self.Records)
-        rsn = sum(map(oagir, self.Records))
+        if(lenR == 0):
+            print(self.getQCFailString())
+        rsn = sum(rec.is_reverse for rec in self.Records)
         if(rsn != lenR and rsn != 0):
             self.BothStrandAlignment = True
         else:
             self.BothStrandAlignment = False
         try:
-            self.reverseStrandFraction = sum(
-                map(oagir, map(oagread, self.Records))) / (1. * lenR)
+            self.reverseStrandFraction = rsn / (1. * lenR)
         except ZeroDivisionError:
             self.reverseStrandFraction = 0.
         self.MergedReads = lenR
@@ -435,6 +440,7 @@ cdef class PCInfo:
                 key=oig1)[-1][0]
         else:
             self.consensus = "N"
+            pl("Note: Records list empty at position %s" % self.pos)
             '''
             raise AbortMission("No reads at position passing filters."
                                " Move along - these aren't the "
@@ -442,11 +448,10 @@ cdef class PCInfo:
             '''
         self.VariantDict = {alt: [rec for rec in self.Records if
                                   rec.BaseCall == alt]
-                            for alt in set(map(oagbc, self.Records))}
+                            for alt in [PRI.BaseCall for PRI in self.Records]}
         query_positions = np.array(map(oagqp, self.Records), dtype=np.float64)
         self.AAMBP = nmean(query_positions)
-        self.AABPSD = cyStdFlt(query_positions)
-
+        self.AABPSD = nstd(query_positions)
         self.AltAlleleData = [AlleleAggregateInfo(
                               self.VariantDict[key],
                               consensus=self.consensus,
@@ -560,6 +565,7 @@ cdef class PCInfo:
         return self.str
 
 
+
 @cython.returns(tuple)
 def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
                      int minFA=0, float minAF=0., int maxND=0,
@@ -570,7 +576,7 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     """
     raise NotImplementedError("Haven't finished updating these objects.")
     cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-    cdef pPileupRead_t tpr
+    cdef PRInfo_t tpr
     for tpr in Records:
         if tpr.MQ < minMQ:
             retArr[0] += 1
@@ -596,38 +602,38 @@ def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
     return retArr, Records
 
 
-@cython.returns(tuple)
-def PrunePileupReads(list Records, int minMQ=0, int minBQ=0,
-                     int minFA=0, float minAF=0., int maxND=0,
-                     int primerLen=-1):
+cpdef tuple PrunePileupReads(
+        list Records, int minMQ=0, int minBQ=0,
+        int minFA=0, float minAF=0., int maxND=20,
+        int primerLen=-1):
     """
     Returns an array of length 7 - number of failed MQ, BQ, FA, AF,
     amplicon, SV, QC, and ND.
     """
-    cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-    cdef PRInfo_t tpr
-    for tpr in Records:
-        if tpr.MQ < minMQ:
+    cdef ndarray[int, ndim=1] retArr = np.zeros([8], dtype=np.int32)
+    cdef PRInfo_t PRI
+    for PRI in Records:
+        if PRI.MQ < minMQ:
             retArr[0] += 1
-        if tpr.BQ < minBQ:
+        if PRI.BQ < minBQ:
             retArr[1] += 1
-        if tpr.FA < minFA:
+        if PRI.FA < minFA:
             retArr[2] += 1
-        if tpr.AF < minAF:
+        if PRI.AF < minAF:
             retArr[3] += 1
-        if tpr.query_position < primerLen:
+        if PRI.query_position < primerLen:
             # Defaults to -1. Gets rid of potentially misprimed nucleotides
             retArr[4] += 1
-        if tpr.SVPass is False:
+        if PRI.SVPass is False:
             retArr[5] += 1
-        if tpr.Pass is False:
+        if PRI.Pass is False:
             retArr[6] += 1
-        if tpr.ND > maxND:
+        if PRI.ND > maxND:
             retArr[7] += 1
-    Records = [tpr for tpr in Records if tpr.MQ >= minMQ and tpr.BQ >= minBQ
-               and tpr.FA >= minFA and tpr.AF >= minAF and
-               tpr.query_position >= primerLen and tpr.Pass and tpr.SVPass
-               and tpr.ND > maxND]
+    Records = [PRI for PRI in Records if PRI.MQ >= minMQ and PRI.BQ >= minBQ
+               and PRI.FA >= minFA and PRI.AF >= minAF and
+               PRI.query_position >= primerLen and PRI.Pass and PRI.SVPass
+               and PRI.ND > maxND]
     return retArr, Records
 
 
@@ -763,3 +769,17 @@ def BamToCoverageBed(inBAM, outbed="default", mincov=0, minMQ=0, minBQ=0):
     inHandle.close()
     outHandle.close()
     pass
+
+'''
+cdef tuple BuildRegionReadDictionaries(AlignmentFile_t handle,
+                                       list interval):
+    """
+    Builds a dictionary from each read in the region for PV and FA.
+    """
+    cdef AlignedSegment_t tmpRead
+    cdef dict PVDict, FADict
+    PVDict = {}
+    FADict = {}
+    for tmpRead in handle.fetch(interval[0], interval[1], interval[2]):
+        PVDict[AS_to_key(tmpRead)] =
+'''
