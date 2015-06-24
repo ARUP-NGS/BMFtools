@@ -1,0 +1,115 @@
+from math import sqrt
+
+
+def HellFn(c, d):
+    """
+    In [20]: HellFn(a, b)
+    Out[20]: 0.027886727209796736
+
+    Naive python calling math, which is a thinly-wrapped C library.
+    10000 loops, best of 3: 61.1 µs per loop
+    """
+    return sqrt(sum([(sqrt(c1) - sqrt(d1))**2 for c1, d1 in zip(c, d)])) / sqrt(2)
+
+
+def HellFn1(c, d, sqrt=sqrt):
+    """
+    In [21]: HellFn1(a, b)
+    Out[21]: 0.027886727209796736
+
+    Naive python calling math, which is a thinly-wrapped C library.
+    In [22]: %timeit HellFn1(a, b)
+    10000 loops, best of 3: 58.4 µs per loop
+
+    In python, local variables are stored by index (e.g., 0, 1, 2), while
+    global ones are stored in a dictionary. This makes it faster to use local
+    variables.
+
+    Because sqrt is a local variable, it is more quickly accessed.
+
+    However, this only gets us ~2% speed increase - not that significant.
+
+    """
+    return sqrt(sum([(sqrt(c1) - sqrt(d1))**2 for c1, d1 in zip(c, d)])) / sqrt(2)
+
+
+def HellFnNP(a, b):
+    """
+    In [33]: HellFnNP(a, b)
+    Out[33]: 0.027886727209796718
+
+    In [34]: %timeit HellFnNP(a, b)
+    100000 loops, best of 3: 9.31 µs per loop
+    ~10x as fast as either python implementation.
+    Much less work than writing it in C.
+    """
+    return sqrt(np.sum(np.power(np.subtract(np.sqrt(a),
+                                           np.sqrt(b)), 2))) / sqrt(2)
+
+
+'''
+
+In [35]: %timeit HellingerDistance(a, b)
+100000 loops, best of 3: 3.08 µs per loop
+
+Note >3x as fast as numpy
+
+## From MawCluster.Probability.pxd
+
+cimport cython
+cimport numpy as np
+from numpy cimport ndarray
+from cpython cimport array as c_array
+ctypedef c_array.array py_array
+ctypedef long double npy_float128
+ctypedef npy_float128   float128_t
+ctypedef double npy_float64
+ctypedef npy_float64   float64_t
+ctypedef cython.str cystr
+
+from libc.math cimport sqrt as c_sqrt, M_SQRT1_2, log as c_log
+
+cdef inline double c_square(double input) nogil:
+    return input * input
+
+cdef inline double c_abs(double input) nogil:
+    if(input < 0):
+        return -1 * input
+    else:
+        return input
+
+## From MawCluster.Probability.pyx
+
+cdef float64_t cHellingerDistance(float64_t* array1,
+                                  float64_t* array2,
+                                  size_t length) nogil:
+    """
+    Calculates the Helling Distance between two discrete probability
+    distributions, described (each) as a 1-dimensional array.
+    """
+    cdef float64_t cumSum = 0.
+    cdef float64_t tmpFloat
+    cdef size_t tmpInt
+    for tmpInt in range(length):
+        tmpFloat = c_abs(c_sqrt(array1[tmpInt]) -
+                         c_sqrt(array2[tmpInt]))
+        cumSum += c_square(tmpFloat)
+    return c_sqrt(cumSum) * M_SQRT1_2
+
+
+cpdef float64_t HellingerDistanceDict(dict dict1, dict dict2):
+    cdef cystr key
+    cdef ndarray[float64_t, ndim=1] array1, array2
+    array1 = np.array([dict1[key] for key in
+                       sorted(dict1.iterkeys())])
+    array2 = np.array([dict2[key] for key in
+                       sorted(dict2.iterkeys())])
+    return HellingerDistance(array1, array2)
+
+
+cpdef float64_t HellingerDistance(ndarray[float64_t, ndim=1] array1,
+                                  ndarray[float64_t, ndim=1] array2):
+    cdef size_t length = len(array1)
+    assert length == len(array2)  # Sanity check
+    return cHellingerDistance(&array1[0], &array2[0], length)
+'''

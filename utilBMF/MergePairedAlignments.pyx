@@ -100,9 +100,7 @@ cdef class Layout:
 
     def __cinit__(self, AlignedSegment_t read):
         cdef int i, x0, x1
-        cdef LayoutLen = 0
-        for x0, x1 in read.cigar:
-            LayoutLen += x1
+        cdef LayoutLen = len(read.aligned_pairs)
         self.Layout = ArrayLayout(layouts=<ArrayLayoutPos_t *>malloc(
             LayoutLen * (sizeof(ArrayLayoutPos_t))), length=LayoutLen)
 
@@ -582,7 +580,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                           cystr outMerge=None):
     cdef AlignedSegment_t read, tmpRead
     # cdef AlignedSegment_t read, read1, read2
-    cdef Layout_t Layout1, Layout2, retLayout
+    cdef Layout_t Layout1, Layout2
     cdef int count = 0
     cdef cystr newSamRead, tmpName
     inHandle = pysam.AlignmentFile(inBAM, "rb")
@@ -613,6 +611,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                 outHandle.write(read)
                 read = inHandle.next()
         elif(read.is_read1):
+            print("Making Layout1 object.")
             Layout1 = Layout(read)
             # read1 = read
             print("I am now continuing over this record in MPA because it's read1.")
@@ -625,6 +624,7 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
         else:
             print("Read is neither read 1 nor read 2: %s" % (not read.is_read1 and not read.is_read2))
             sys.exit(1)
+        print("Layouts made, now trying to merge. About to assert shared names.")
 
         try:
             assert(Layout1.Name == Layout2.Name)
@@ -647,11 +647,11 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
             continue
         print("Merging Layouts")
         if(Layout1.pos < Layout2.pos):
-            newReadString = Layout1.__csam__(Layout2)
+            newSamRead = Layout1.__csam__(Layout2)
             print("Merging didn't break everything!")
-            print(newReadString)
+            print(newSamRead)
             if(Layout1.MergeSuccess):
-                outHandleMerge.write(newReadString)
+                outHandleMerge.write(newSamRead)
             else:
                 print("Bam record merge failed, write original reads to file.")
                 for tmpRead in ReadIndex.find(tmpName):
@@ -659,11 +659,11 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                         tmpRead.set_tag("MP", "F")
                         outHandle.write(tmpRead)
         else:
-            newReadString = Layout2.__csam__(Layout1)
+            newSamRead = Layout2.__csam__(Layout1)
             print("Merging didn't break everything!")
             if(Layout2.MergeSuccess):
-                print("New SAM read: %s" % newReadString)
-                outHandleMerge.write(newReadString)
+                print("New SAM read: %s" % newSamRead)
+                outHandleMerge.write(newSamRead)
                 print("And neither did writing!")
             else:
                 print("Bam record merge failed, write original reads to file.")
@@ -671,11 +671,14 @@ def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
                     if(not tmpRead.is_supplementary and not tmpRead.is_secondary):
                         tmpRead.set_tag("MP", "F")
                         outHandle.write(tmpRead)
+        # Layout1 = None
+        # Layout2 = None
     if(outHandleMerge != sys.stdout):
         outHandleMerge.close()
     outHandle.close()
     inHandle.close()
-    return outBAM
+    print("MPA RAN!")
+    return
 
 
 cdef int getLayoutLen(AlignedSegment_t read):

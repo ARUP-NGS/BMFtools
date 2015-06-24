@@ -4,7 +4,7 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
-from utilBMF.HTSUtils cimport cystr, chr2ph, ph2chrDict, PysamToChrDict, TagTypeDict, BamTag, cReadsOverlap
+from utilBMF.HTSUtils cimport cystr, chr2ph, TagTypeDict, BamTag, cReadsOverlap
 from utilBMF.PysamUtils cimport CopyAlignedSegment
 from utilBMF.cstring cimport cs_to_ia
 from cython cimport bint
