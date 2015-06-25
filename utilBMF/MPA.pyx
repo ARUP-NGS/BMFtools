@@ -284,6 +284,7 @@ cdef class OldLayout(object):
             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
             self.tagDict["MP"] = BamTag("MP", "Z", "T")
             self.tagDict["FM"].value *= 2
+            self.mapq = 255
             self.mergeAdjusted = True
 
     def update(self):
@@ -294,14 +295,7 @@ cdef class OldLayout(object):
             self.tlen = (self.cGetLastRefPos() -
                          self.cGetRefPosForFirstPos() + 1)
             self.pnext = 0
-            # Only change the original mapq to -1 if the tagDict entry om is
-            # present. (Original Mapping)
-            try:
-                self.tagDict["om"]
-                self.mapq = 255
-            except KeyError:
-                self.mapq = -1
-            self.rnext = "*"
+            self.rnext = "="
             self.flag = 2 + (16 if(self.is_reverse) else 32)
             for count, pos in enumerate(self):
                 pos.readPos = count
@@ -331,8 +325,10 @@ cdef class OldLayout(object):
         return self.cGetCigarString()
 
     @cython.returns(list)
-    def get_tags(self, object oagtag=oagtag):
-        return sorted(self.tagDict.itervalues(), key=oagtag)
+    def get_tag_strings(self, object oagtag=oagtag):
+        cdef BamTag_t BT
+        return [str(BT) for BT in sorted(self.tagDict.itervalues(),
+                                         key=oagtag)]
 
     def getFlag(self):
         self.update()
@@ -345,34 +341,20 @@ cdef class OldLayout(object):
         1-based instead of 0-based.
         """
         self.update()
-        return "\t".join(map(
-                str, [self.Name, self.getFlag(), self.contig,
-                      self.getAlignmentStart() + 1, self.mapq,
-                      self.cGetCigarString(), self.rnext, self.pnext + 1,
-                      self.tlen, self.getSeq(), self.getQualString()] +
-                self.get_tags()))
-
-    @cython.returns(AlignedSegment_t)
-    def __read__(self):
-        cdef AlignedSegment_t newRead
-        cdef int i
-        cdef BamTag_t BT
-        newRead = pysam.AlignedSegment()
-        newRead.query_name = self.Name
-        newRead.flag = self.getFlag()
-        newRead.reference_id = ChrToRefIDInline(self.contig)
-        newRead.query_sequence = self.getSeq()
-        newRead.query_qualities = [93 if(i > 92) else i for
-                                   i in self.cGetQual()]
-        newRead.reference_start = self.getAlignmentStart()
-        newRead.cigarstring = self.getCigarString()
-        newRead.tlen = self.tlen
-        newRead.mapq = self.mapq
-        newRead.tags = [(BT.tag, BT.value) for BT in self.tagDict.itervalues()]
-        newRead.next_reference_id = ChrToRefIDInline(self.rnext)
-        newRead.pnext = self.pnext
-        return newRead
-
+        cdef cystr seq, qual
+        seq = self.getSeq()
+        qual = self.getQualString()
+        try:
+            assert len(seq) == len(qual)
+        except AssertionError:
+            raise Tim("Length of seq (%s) is not equal to the length of qual (%s). Abort mission!")
+        return "\t".join(
+                [self.Name, str(self.getFlag()), self.contig,
+                 "%s\t%s" % (self.getAlignmentStart() + 1, self.mapq),
+                 self.cGetCigarString(),
+                 "%s\t%s\t%s" % (self.rnext, self.pnext + 1, self.tlen),
+                 seq, qual] +
+                self.get_tag_strings()) + "\n"
 
     def __init__(self, pysam.calignmentfile.AlignedSegment rec,
                  list layoutPositions, int firstMapped):
@@ -474,11 +456,11 @@ cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     ret = cMergeLayoutsToList(L1, L2)
     if(ret.Bool is False):
         print("Ret's success return is False. Add false tags, return None.")
-        L1.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
-        L2.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
+        L1.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
+        L2.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         return None
     L1.positions = ret.List
-    L1.tagDict["MP"] = BamTag("MP", tagtype="Z", value="T")
+    L1.tagDict["MP"] = BamTag("MP", tagtype="A", value="T")
     L1.isMerged = True
     L1.update()
     return L1
