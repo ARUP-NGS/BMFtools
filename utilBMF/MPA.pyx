@@ -2,10 +2,12 @@
 
 ## Standard library imports
 import logging
+import uuid
 import warnings
 from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
+from subprocess import check_call
 from sys import stdout
 
 ## Third party imports
@@ -565,7 +567,15 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
 
 
 cpdef MPA2stdout(cystr inBAM):
-    inHandle = AlignmentFile(inBAM, "rb")
+    """
+    :param inBAM - path to input bam. Set to "stdin"
+    """
+    if(inBAM == "stdin" or inBAM == "-"):
+        pl("Executing MPA2stdout, reading from stdin.")
+        inHandle = AlignmentFile('-', 'rb')
+    else:
+        pl("Executing MPA2stdout for input bam %s." % inBAM)
+        inHandle = AlignmentFile(inBAM, "rb")
     outHandle = AlignmentFile("-", "w", template=inHandle)
     stdout.write(inHandle.text) # Since pysam seems to not be able to...
     cdef AlignedSegment_t read, read1, read2
@@ -586,13 +596,59 @@ cpdef MPA2stdout(cystr inBAM):
         try:
             assert read1.qname == read2.qname
         except AssertionError:
-            raise AssertionError("Query names %s and %s" % (read1.qname,
-                                                            read2.qname) +
-                                 " for R1 and R2 are different. Abort!"
-                                 " Either this BAM isn't name-sorted or you are "
-                                 "missing a read from a pair.")
+            pl("Query names %s and %s" % (read1.qname,
+                                          read2.qname) +
+               " for R1 and R2 are different. Abort!"
+               " Either this BAM isn't name-sorted or you are "
+               "missing a read from a pair.")
+            return 1
         l1 = PyLayout.fromread(read1)
         l2 = PyLayout.fromread(read2)
         retLayout = MergeLayoutsToLayout(l1, l2)
         stdout.write(str(retLayout))
     return 0
+
+
+cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
+              bint u=False, bint coorsort=False,
+              cystr sortMem="6G"):
+    """
+    :param inBAM - path to input bam
+    :param outBAM - path to output bam. Leave as default or set to stdout
+    to output to stdout.
+    :param u - whether or not to emit uncompressed bams. Set to true
+    for piping for optimal efficiency.
+    :param sortMem - string to pass to samtools sort for memory per thread.
+    :param coorsort - set to true to pipe to samtools sort instead of
+    samtools view
+    """
+    cdef cystr uuidvar
+    uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
+    pl("Now calling MPA2bam. Uncompressed BAM: %s" % u)
+    if(inBAM == "stdin" or inBAM == "-"):
+        inBAM = "-"
+        pl("Now calling MPA2bam, taking input from stdin.")
+    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout; "
+            "sys.exit(MPA2stdout(\"%s\"));'" % inBAM)
+    if(coorsort is False):
+        if(u):
+            cStr += " | samtools view -Sbhu - "
+        else:
+            cStr += " | samtools view -Sbh - "
+    else:
+        compStr = " -l 0 " if(u) else ""
+        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
+                                                              uuidvar,
+                                                              compStr)
+    if(outBAM == "stdout" or outBAM == "-"):
+        pl("Emitting to stdout.")
+        check_call(cStr, shell=True)
+        return outBAM
+    elif(outBAM is None):
+        outBAM = TrimExt(inBAM) + ".merged.bam"
+    else:
+        pass
+    pl("Writing to file (user-specified) %s" % outBAM)
+    cStr += " > %s" % outBAM
+    check_call(cStr, shell=True)
+    return outBAM

@@ -16,17 +16,18 @@
 	2. Check the outputs of that script every ... how often?
 
 ## Analysis
-1. Experimental Design
-	1. Number of Ns needed for a given library diversity.
-		1. We'll want to make a general method for selecting the number of Ns to use from experimental setup.
-		2. We should account for the positional information value. (IE, the smaller the panel, the 
+1. Experimental Design:
+    1. RESOLVED
+	    1. Number of Ns needed for a given library diversity.
+        2. We just decided "As many as we can get." Somewhere 12 <= N <= 16.
 	2. What FM (Family Member size) do we need to naively get the specificity we want?
 		1. We'll get this from the Phage data, hopefully?
 	3. (After VC re-write) - what criteria do we need to make a correct call with the needed specificity?
 		1. Combination of the [buccal/buffy] experiment and the tumor/normal cell line.
 2. Analysis Framework
-	1. Hellinger Distance.
-		3. Compare R1/R2 Hellinger's.
+	1. RESOLVED
+        1. Hellinger Distance - written.
+	2. Compare R1/R2 Hellinger's.
 	2. Test CycleByNucleotide script.
 	
 

@@ -626,17 +626,25 @@ def main():
     MainSubparser.add_argument(
         "--bwapath", help="Path to bwa executable. Default: bwa.")
     MergePairedAlignmentsParser.add_argument(
-        "inBAM", help="Path to input BAM.")
+        "inBAM", help="Path to input BAM. Set to 'stdin' for stdin.")
     MergePairedAlignmentsParser.add_argument(
         "--outBAM", "-o",
-        help=("Path to output BAM. Defaults to a "
-              "variation on the input BAM"))
+        help=("Path to output BAM. Defaults to stdout. "
+              "Set to stdout' to be explicit, otherwise."))
     MergePairedAlignmentsParser.add_argument(
-        "--coorsort", help=("Use flag to turn on coordinate "
-                            "sort the merged pair bam output."),
+        "--coorsort", "-s",
+        help=("Use flag to turn on coordinate "
+              "sort the merged pair bam output."),
         action="store_true")
     MergePairedAlignmentsParser.add_argument(
         "--conf", help="Path to config file for merging read pairs.")
+    MergePairedAlignmentsParser.add_argument(
+        "-u", "--uncompressed-bam",
+        help="Flag to emit uncompressed bam.", action="store_true")
+    MergePairedAlignmentsParser.add_argument(
+        "-m", "--sortMem",
+        help="sortMem string for sorting, if piping "
+        "to a samtools sort. Default: 6G.")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -662,11 +670,8 @@ def main():
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     # Begin logging
     ## Grabs first non "bmftools" and non-flag field.
-    basename = "MetasyntacticBasename"
-    try:
-        logbasename = TrimExt(basename)
-    except IndexError:
-        logbasename = basename
+    basename = "bmftools_%s" % Chapman('bmfsuites')
+    logbasename = basename
     if(Chapman['logfile'] != "default"):
         logfile = Chapman['logfile']
     else:
@@ -676,7 +681,7 @@ def main():
     if(Chapman['file_prefix'] != "default"):
         logfile = os.getcwd() + "/" + Chapman['file_prefix'] + ".log"
     if(os.path.isfile(logfile)):
-        logfile = TrimExt(logfile) + "." + str(uuid.uuid4().get_hex().upper()[0:8]) + ".log"
+        logfile = TrimExt(logfile) + "." + str(uuid.uuid4().get_hex().upper()[0:6]) + ".log"
 
     # Logger which holds both console and file loggers
     Logger.setLevel(logging.DEBUG)
@@ -1027,8 +1032,13 @@ def main():
                                         minMQ=Chapman("minMQ"))
             pl("Last stop! Watch your step.")
     if(subcommand == "mpa"):
-        from utilBMF.MPA import MergePairedAlignments
-        outBAM = MergePairedAlignments(Chapman['inBAM'], outBAM=Chapman['outBAM'])
+        from utilBMF.MPA import MPA2bam
+        if(Chapman('outBAM') is None):
+            Chapman['outBAM'] = "-"  # Prints to stdout.
+        outBAM = MPA2bam(Chapman['inBAM'], outBAM=Chapman['outBAM'],
+                         u=Chapman('uncompressed_bam'),
+                         coorsort=Chapman('coorsort'),
+                         sortMem=Chapman('sortMem'))
     if(subcommand == "pep8"):
         raise NotImplementedError(
             "pep8 subcommand for modified compliance not implemented.")

@@ -85,5 +85,6 @@ defaultConfig = {
                  "review_dir": "default",
                  "single_end": False,
                  "sortMem": "6G",
-                 "threads": 4
+                 "threads": 4,
+                 "uncompressed_bam": False
                  }
