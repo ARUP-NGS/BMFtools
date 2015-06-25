@@ -284,7 +284,7 @@ cdef class PyLayout(object):
             self.tagDict["om"] = BamTag("om", "i", self.mapq)
             # Original mapped position
             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
-            self.tagDict["MP"] = BamTag("MP", "Z", "T")
+            self.tagDict["MP"] = BamTag("MP", "A", "T")
             self.tagDict["FM"].value *= 2
             self.mapq = 255
             self.mergeAdjusted = True

@@ -32,6 +32,9 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    PEP8Parser = subparsers.add_parser(
+        "pep8",
+        description="Command for applying modified PEP8 to this code base.")
     MergePairedAlignmentsParser = subparsers.add_parser(
         "mpa",
         description="Merge duplex read read pairs into a single record each.")
@@ -1024,9 +1027,11 @@ def main():
                                         minMQ=Chapman("minMQ"))
             pl("Last stop! Watch your step.")
     if(subcommand == "mpa"):
-        from utilBMF.MergePairedAlignments import MergePairedAlignments
+        from utilBMF.MPA import MergePairedAlignments
         outBAM = MergePairedAlignments(Chapman['inBAM'], outBAM=Chapman['outBAM'])
-
+    if(subcommand == "pep8"):
+        raise NotImplementedError(
+            "pep8 subcommand for modified compliance not implemented.")
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

@@ -1,9 +1,9 @@
 from math import sqrt
 
 
-def HellFn(c, d):
+def HellingerFn(c, d):
     """
-    In [20]: HellFn(a, b)
+    In [20]: HellingerFn(a, b)
     Out[20]: 0.027886727209796736
 
     Naive python calling math, which is a thinly-wrapped C library.
@@ -12,13 +12,13 @@ def HellFn(c, d):
     return sqrt(sum([(sqrt(c1) - sqrt(d1))**2 for c1, d1 in zip(c, d)])) / sqrt(2)
 
 
-def HellFn1(c, d, sqrt=sqrt):
+def HellingerFn1(c, d, sqrt=sqrt):
     """
-    In [21]: HellFn1(a, b)
+    In [21]: HellingerFn1(a, b)
     Out[21]: 0.027886727209796736
 
     Naive python calling math, which is a thinly-wrapped C library.
-    In [22]: %timeit HellFn1(a, b)
+    In [22]: %timeit HellingerFn1(a, b)
     10000 loops, best of 3: 58.4 µs per loop
 
     In python, local variables are stored by index (e.g., 0, 1, 2), while
@@ -33,12 +33,12 @@ def HellFn1(c, d, sqrt=sqrt):
     return sqrt(sum([(sqrt(c1) - sqrt(d1))**2 for c1, d1 in zip(c, d)])) / sqrt(2)
 
 
-def HellFnNP(a, b):
+def HellingerFnNP(a, b):
     """
-    In [33]: HellFnNP(a, b)
+    In [33]: HellingerFnNP(a, b)
     Out[33]: 0.027886727209796718
 
-    In [34]: %timeit HellFnNP(a, b)
+    In [34]: %timeit HellingerFnNP(a, b)
     100000 loops, best of 3: 9.31 µs per loop
     ~10x as fast as either python implementation.
     Much less work than writing it in C.
