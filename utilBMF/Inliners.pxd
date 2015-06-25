@@ -894,9 +894,9 @@ cdef inline char CigarOpToCigarChar(char character):
     elif(character == 2):
         return 68
     elif(character == 3):
-        return 83
-    elif(character == 4):
         return 78
+    elif(character == 4):
+        return 83
     elif(character == 5):
         return 72
     elif(character == 6):
@@ -910,13 +910,13 @@ cdef inline char CigarOpToCigarChar(char character):
     elif(character == 77):
         return 0
     elif(character == 78):
-        return 4
+        return 3
     elif(character == 80):
         return 6
     elif(character == 72):
         return 5
     elif(character == 83):
-        return 3
+        return 4
     elif(character == 88):
         return 8
     elif(character == 68):

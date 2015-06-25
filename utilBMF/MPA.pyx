@@ -285,7 +285,7 @@ cdef class PyLayout(object):
             # Original mapped position
             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
             self.tagDict["MP"] = BamTag("MP", "A", "T")
-            self.tagDict["FM"].value *= 2
+            # self.tagDict["FM"].value *= 2
             self.mapq = 255
             self.mergeAdjusted = True
 
@@ -312,10 +312,9 @@ cdef class PyLayout(object):
         100000 loops, best of 3: 8.69 us per loop
         """
         cdef LayoutPos_t pos
-        # Skip this operation if the operation is "N"
+        # Skip this operation if the operation is 83"
         return array("B", [pos.operation for pos in
-                           self.positions if
-                           pos.operation != 78])
+                           self.positions])
 
     cdef cystr cGetCigarString(self):
         cdef py_array ops = self.getOperations()
@@ -498,13 +497,8 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                 pos2.quality - pos1.quality, pos2.agreement,
                 merged=True, mergeAgreed=0)
     else:
-        return LayoutPos(pos1.pos, pos1.readPos, 78, pos1.operation, -137,
+        return LayoutPos(pos1.pos, pos1.readPos, 83, pos1.operation, -137,
                          -137, merged=True, mergeAgreed=0)
-
-
-@cython.returns(PyLayout_t)
-def makeLayout(pysam.calignmentfile.AlignedSegment rec):
-    return PyLayout(makeLayoutTuple)
 
 
 @cython.returns(tuple)

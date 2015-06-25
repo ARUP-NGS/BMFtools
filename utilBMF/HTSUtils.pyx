@@ -542,7 +542,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     if(path == "default"):
         path = "bwa"
     if(opts == ""):
-        opts = '-t 4 -v 1 -Y -M -T 0'
+        opts = '-t 4 -v 1 -Y -T 0'
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
