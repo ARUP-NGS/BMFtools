@@ -15,10 +15,11 @@ from utilBMF.PysamUtils cimport PysamToChrInline
 ctypedef cython.str cystr
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 
-ctypedef OldLayout Layout_t
+ctypedef PyLayout PyLayout_t
 ctypedef LayoutPos LayoutPos_t
 ctypedef utilBMF.HTSUtils.BamTag BamTag_t
 
+cpdef MPA2stdout(cystr inBAM)
 
 cdef class LayoutPos:
     cdef public cython.int pos, readPos, quality, agreement
@@ -30,7 +31,7 @@ cdef class LayoutPos:
     cdef bint getMergeSet(self)
 
 
-cdef class OldLayout:
+cdef class PyLayout:
     cdef public list positions
     cdef public dict tagDict
     cdef public cython.int firstMapped, InitPos, flag, pnext, tlen, mapq
@@ -61,7 +62,7 @@ cdef class OldLayout:
     cdef py_array cGetGenomicDiscordantPositions(self)
     cdef py_array cGetReadDiscordantPositions(self)
 
-cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2)
+cpdef bint LayoutsOverlap(PyLayout_t L1, PyLayout_t L2)
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 cdef int getLayoutLen(AlignedSegment_t read)
 

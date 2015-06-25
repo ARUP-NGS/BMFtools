@@ -6,13 +6,15 @@ import warnings
 from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
+from sys import stdout
 
 ## Third party imports
 import numpy as np
 import cython
+from pysam import AlignmentFile
 
 ## BMFTools imports
-from .HTSUtils import TrimExt, printlog as pl, BamTag
+from .HTSUtils import TrimExt, printlog as pl, BamTag, ReadsOverlap
 from .ErrorHandling import ImproperArgumentError, ThisIsMadness as Tim
 
 cimport cython
@@ -72,7 +74,7 @@ cdef class LayoutPos:
             self.quality, self.agreement, self.merged, self.mergeAgreed)
 
 
-cdef class OldLayout(object):
+cdef class PyLayout(object):
     """
     Holds a read and its layout information.
 
@@ -384,66 +386,7 @@ cdef class OldLayout(object):
         self.mergeAdjusted = False
 
 
-def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
-                          bint pipe=False, int readLength=-1):
-    cdef AlignedSegment_t read, read1, read2
-    cdef Layout_t Layout1, Layout2, retLayout
-    cdef int rLen2
-    cdef int count = 0
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    if(readLength < 0):
-        pl("readLength not set - inferring.")
-        readLength = len(inHandle.next().seq)
-        inHandle = pysam.AlignmentFile(inBAM, "rb")
-    rLen2 = 2 * readLength  # If tlen >= rLen2, no overlap.
-    if(outBAM is None):
-        outBAM = TrimExt(inBAM) + ".PairMergeProcessed.bam"
-    if(pipe):
-        outHandle = pysam.AlignmentFile("-", "wb",
-                                        header=inHandle.header)
-    else:
-        outHandle = pysam.AlignmentFile(outBAM, "wb",
-                                        header=inHandle.header)
-    ohw = outHandle.write
-    for read in inHandle:
-        count += 1
-        if(read.is_supplementary or read.is_secondary):
-            ohw(read)
-            continue
-        if(read.is_read1):
-            read1 = read
-            continue
-        read2 = read
-        if((not read1.is_proper_pair) or
-           read1.reference_id != read2.reference_id or
-           read1.is_unmapped or
-           read2.is_unmapped or
-           abs(read1.tlen) >= rLen2):
-            ohw(read1)
-            ohw(read2)
-            continue
-        try:
-            assert(read1.query_name == read2.query_name)
-        except AssertionError:
-            raise ImproperArgumentError(
-                "Bam is either not name sorted or you are missing a read from"
-                " the pair around read # %s in the bam." % count)
-        Layout1 = OldLayout.fromread(read1)
-        Layout2 = OldLayout.fromread(read2)
-        retLayout = MergeLayoutsToLayout(Layout1, Layout2)
-        if(retLayout is None):
-            read1.setTag("MP", "F")
-            read2.setTag("MP", "F")
-            ohw(read1)
-            ohw(read2)
-            continue
-        ohw(retLayout.__read__())
-    outHandle.close()
-    inHandle.close()
-    return outBAM
-
-
-cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
+cpdef PyLayout_t MergeLayoutsToLayout(PyLayout_t L1, PyLayout_t L2):
     """
     Warning: This modifies L1 in-place under the assumption
     that the input arguments are to be ignored. Do not attempt
@@ -466,7 +409,7 @@ cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     return L1
 
 
-cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2):
+cpdef bint LayoutsOverlap(PyLayout_t L1, PyLayout_t L2):
     """
     This should ideally only be called on reads which are already
     established as members in proper pairs.
@@ -474,7 +417,7 @@ cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2):
     cdef int pos1, pos2, readlen, end1, end2
     cdef LayoutPos_t tmpPos
     warnings.warn("LayoutsOverlap deprecated - check if reads overlap"
-                  " before creating OldLayout objects.",
+                  " before creating PyLayout objects.",
                   DeprecationWarning)
     pos1 = L1.getRefPosForFirstPos()
     pos2 = L2.getRefPosForFirstPos()
@@ -486,22 +429,22 @@ cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2):
         return True
 
 
-cdef ListBool cMergeLayoutsToList(Layout_t L1, Layout_t L2):
+cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     """
     Merges two Layouts into a list of layout positions.
 
     First, it takes the positions before the overlap starts.
     Then it merges the overlap position by position.
     Then it takes the positions after the overlap ends.
-    :param Layout_t L1: One Layout object
-    :param Layout_t L2: Another Layout object
+    :param PyLayout_t L1: One Layout object
+    :param PyLayout_t L2: Another Layout object
     :param oagsk: A method caller function. Locally redefined for speed.
 
     :return list Merged Positions
     :return bool Whether the merge was successful
     """
     cdef int offset
-    cdef Layout_t tmpPos
+    cdef PyLayout_t tmpPos
     cdef LayoutPos_t pos1, pos2
     cdef ListBool ret
     '''
@@ -559,9 +502,9 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                          -137, merged=True, mergeAgreed=0)
 
 
-@cython.returns(Layout_t)
+@cython.returns(PyLayout_t)
 def makeLayout(pysam.calignmentfile.AlignedSegment rec):
-    return OldLayout(makeLayoutTuple)
+    return PyLayout(makeLayoutTuple)
 
 
 @cython.returns(tuple)
@@ -625,3 +568,37 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
                       base=68,  # Base set to "D"
                       quality=-1, agreement=-1)
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
+
+
+cpdef MPA2stdout(cystr inBAM):
+    inHandle = AlignmentFile(inBAM, "rb")
+    outHandle = AlignmentFile("-", "w", template=inHandle)
+    stdout.write(inHandle.text) # Since pysam seems to not be able to...
+    cdef AlignedSegment_t read, read1, read2
+    for read in inHandle:
+        if(read.is_secondary or
+           read.is_supplementary or not read.is_proper_pair):
+            outHandle.write(read)
+            continue
+        if(read.is_read1):
+            read1 = read
+            continue
+        if(read.is_read2):
+            read2 = read
+        if(ReadsOverlap(read1, read2) is False):
+            outHandle.write(read1)
+            outHandle.write(read2)
+            continue
+        try:
+            assert read1.qname == read2.qname
+        except AssertionError:
+            raise AssertionError("Query names %s and %s" % (read1.qname,
+                                                            read2.qname) +
+                                 " for R1 and R2 are different. Abort!"
+                                 " Either this BAM isn't name-sorted or you are "
+                                 "missing a read from a pair.")
+        l1 = PyLayout.fromread(read1)
+        l2 = PyLayout.fromread(read2)
+        retLayout = MergeLayoutsToLayout(l1, l2)
+        stdout.write(str(retLayout))
+    return 0
