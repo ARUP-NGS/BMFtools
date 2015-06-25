@@ -224,11 +224,13 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
 def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          bed="default", dbsnp="default"):
     if(ref == "default"):
-        raise MissingExternalTool("Reference file required for Indel Realignment")
+        raise MissingExternalTool("Reference file required"
+                                  " for Indel Realignment")
     if(bed == "default"):
         raise Tim("Bed file required for Indel Realignment")
     if(gatk == "default"):
-        raise MissingExternalTool("Path to GATK Jar required for Indel Realignment")
+        raise MissingExternalTool("Path to GATK Jar required "
+                                  "for Indel Realignment")
     print dbsnp
     if(dbsnp == "default"):
         dbsnpStr = ""

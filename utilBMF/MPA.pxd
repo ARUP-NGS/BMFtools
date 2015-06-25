@@ -10,7 +10,7 @@ from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.Inliners cimport (ph2chrInline, CigarOpToCigarChar, ChrToRefIDInline,
                                chr2phInline, chrInline, opLenToStr)
-from utilBMF.PysamUtils cimport PysamToChrInline 
+from utilBMF.PysamUtils cimport PysamToChrInline
 
 ctypedef cython.str cystr
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
@@ -25,7 +25,7 @@ cdef class LayoutPos:
     cdef public cython.int pos, readPos, quality, agreement
     cdef public char operation, base, mergeAgreed
     cdef bint merged
-    # cdef public cystr 
+    # cdef public cystr
     cpdef bint ismapped(self)
     cdef bint getMergeAgreed(self)
     cdef bint getMergeSet(self)

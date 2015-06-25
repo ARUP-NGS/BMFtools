@@ -326,7 +326,7 @@ cdef class pFastqProxy:
     @classmethod
     def fromFastqProxy(cls, pysam.cfaidx.FastqProxy FastqProxyObj):
         return cls(FastqProxyObj.comment, FastqProxyObj.quality,
-            FastqProxyObj.sequence, FastqProxyObj.name)
+                   FastqProxyObj.sequence, FastqProxyObj.name)
 
     cdef cystr tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
@@ -1268,9 +1268,11 @@ cpdef bint WritePairToHandle(
     except Exception:
         return False
 
+
 @cython.returns(cystr)
 def BedListToStr(list bedlist):
     return bedlist[0] + ":%s-%s" % (bedlist[1], bedlist[2])
+
 
 @cython.returns(list)
 def ParseBed(cystr bedfile):
@@ -2839,7 +2841,7 @@ cdef class BamTag(object):
         """
         In [14]: %timeit c = "PV" + ":" + "Z" + ":%s" % 1337
         10000000 loops, best of 3: 55.7 ns per loop
-    
+
         In [15]: %timeit c = "PV" + ":" + "Z" + ":" +  str(1337)
         1000000 loops, best of 3: 181 ns per loop
 

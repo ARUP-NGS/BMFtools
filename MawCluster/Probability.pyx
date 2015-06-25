@@ -24,7 +24,6 @@ from cytoolz import memoize
 pconfint = proportion.proportion_confint
 
 
-
 """
 Contains probabilistic tools for accurately identifying somatic mutations.
 """
@@ -102,7 +101,7 @@ def ConfidenceIntervalAAF(AC, DOC, pVal=defaultPValue,
     """
     if(method == "scipy"):
         return (np.array(binom.interval(1 - pVal, DOC,
-                                       AC * 1. / DOC)) / DOC).tolist()
+                                        AC * 1. / DOC)) / DOC).tolist()
     try:
         return pconfint(AC, DOC, alpha=pVal, method=method)
     except NotImplementedError:
@@ -127,12 +126,12 @@ cpdef ndarray[float128_t, ndim=1] ConfidenceIntervalAI(
         ratio = 1. * Allele2 / Allele1
     if(method == "scipy"):
         return np.array(binom.interval(1 - pVal,
-                                      Allele1 + Allele2, ratio),
-                       dtype=np.float128)
+                                       Allele1 + Allele2, ratio),
+                        dtype=np.float128)
     try:
         return np.array(pconfint(Allele1, Allele1 + Allele2,
-                                alpha=pVal, method=method),
-                       dtype=np.float128)
+                                 alpha=pVal, method=method),
+                        dtype=np.float128)
     except NotImplementedError:
         raise ThisIsMadness("Confidence interval method `%s` not" % method +
                             " implemented! Check the docs for statsmodels."
@@ -237,7 +236,7 @@ def GetUnscaledProbs(n, p=0.):
     speed, but it's also definitely good enough.
     """
     return np.array([SamplingFrac(n, p=p, k=k) for k in xrange(n + 1)],
-                   dtype=np.float128)
+                    dtype=np.float128)
 
 
 @memoize
@@ -250,7 +249,7 @@ def GetUnscaledProbs_(n, p=0.):
     speed, but it's also definitely good enough.
     """
     return np.array([SamplingFrac_(n, p=p, k=k) for k in xrange(n + 1)],
-                   dtype=np.float128)
+                    dtype=np.float128)
 
 
 @memoize

@@ -57,8 +57,7 @@ cdef cystr RevCmpImplicit(cystr seq):
     memoization than dictionary access.
     """
     cdef char i
-    return "".join([RevCmpInt(i) for i in
-                    <char *>seq])[::-1]
+    return "".join([RevCmpInt(i) for i in <char *>seq])[::-1]
 
 
 @cython.boundscheck(False)

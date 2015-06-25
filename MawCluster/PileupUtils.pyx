@@ -327,7 +327,7 @@ cdef class AlleleAggregateInfo:
         self.MBP = nmean(query_positions)
         self.BPSD = nstd(query_positions)
         self.minPVFrac = minPVFrac
-        PVFArray = np.array([rec.PVFrac for rec in  self.recList],
+        PVFArray = np.array([rec.PVFrac for rec in self.recList],
                             dtype=np.float64)
         #  PVFArray = [rec.PVFrac for rec in self.recList]
 
@@ -401,10 +401,11 @@ cdef class PCInfo:
         SumArray = PrunePileupReads(
             self.Records, minMQ=minMQ, minBQ=minBQ, maxND=maxND,
             minFA=minFA, minAF=minAF, primerLen=primerLen)
-        self.Records = [PRI for PRI in self.Records if PRI.MQ >= minMQ and PRI.BQ >= minBQ
-                        and PRI.FA >= minFA and PRI.AF >= minAF and
-                        PRI.query_position >= primerLen and PRI.Pass and PRI.SVPass
-                        and PRI.ND > maxND]
+        self.Records = [PRI for PRI in self.Records if PRI.MQ >= minMQ and
+                        PRI.BQ >= minBQ and PRI.FA >= minFA and
+                        PRI.AF >= minAF and
+                        PRI.query_position >= primerLen and
+                        PRI.Pass and PRI.SVPass and PRI.ND > maxND]
         self.FailedMQReads = SumArray[0]
         self.FailedBQReads = SumArray[1]
         self.FailedFAReads = SumArray[2]
@@ -569,43 +570,6 @@ cdef class PCInfo:
                          alt.AveMQ]).astype(str)) + "\n"
         self.str = outStr
         return self.str
-
-
-
-@cython.returns(tuple)
-def PrunepPileupReads(list Records, int minMQ=0, int minBQ=0,
-                     int minFA=0, float minAF=0., int maxND=0,
-                     int primerLen=-1):
-    """
-    Returns an array of length 7 - number of failed MQ, BQ, FA, AF,
-    amplicon, SV, QC, and ND.
-    """
-    raise NotImplementedError("Haven't finished updating these objects.")
-    cdef py_array retArr = array('i', [0, 0, 0, 0, 0, 0, 0, 0])
-    cdef PRInfo_t tpr
-    for tpr in Records:
-        if tpr.MQ < minMQ:
-            retArr[0] += 1
-        if tpr.BQ < minBQ:
-            retArr[1] += 1
-        if tpr.FA < minFA:
-            retArr[2] += 1
-        if tpr.AF < minAF:
-            retArr[3] += 1
-        if tpr.query_position < primerLen:
-            # Defaults to -1. Gets rid of potentially misprimed nucleotides
-            retArr[4] += 1
-        if tpr.SVPass is False:
-            retArr[5] += 1
-        if tpr.Pass is False:
-            retArr[6] += 1
-        if tpr.ND > maxND:
-            retArr[7] += 1
-    Records = [tpr for tpr in Records if tpr.MQ >= minMQ and tpr.BQ >= minBQ
-               and tpr.FA >= minFA and tpr.AF >= minAF and
-               tpr.query_position >= primerLen and tpr.Pass and tpr.SVPass
-               and tpr.ND > maxND]
-    return retArr, Records
 
 
 cpdef ndarray[int, ndim=1] PrunePileupReads(

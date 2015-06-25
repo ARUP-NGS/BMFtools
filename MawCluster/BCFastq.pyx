@@ -275,7 +275,7 @@ cdef cystr cCompareFqRecsFast(list R,
     PVString = cQualArr2PVString(phredQuals)
     phredQualsStr = cQualArr2QualStr(phredQuals)
     FAString = cQualArr2FAString(FA)
-    TagString = "|FM=%s|ND=%s"  % (lenR, ND) +  FAString + PVString
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
     '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
@@ -691,7 +691,7 @@ def TrimHomingSingle(
             ew(str(pFastqProxy.fromFastqProxy(read)))
             continue
         tw(SliceFastqProxy(read, firstBase=TotalTrim,
-                              addString="|BS=" + read.sequence[0:bcLen]))
+                           addString="|BS=" + read.sequence[0:bcLen]))
     trimHandle.close()
     errHandle.close()
     return trimfq
@@ -737,9 +737,9 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,
-                               addString="|BS=%s" % barcode))
+                            addString="|BS=%s" % barcode))
         tw2(SliceFastqProxy(read2, firstBase=TotalTrim,
-                               addString="|BS=%s" % barcode))
+                            addString="|BS=%s" % barcode))
     trimHandle1.close()
     trimHandle2.close()
     errHandle.close()

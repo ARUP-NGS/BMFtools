@@ -76,6 +76,7 @@ class ThisIsMadness(Exception):
         super(Exception, self).__init__(message)
         self.message = message
 
+
 class ThisIsHKMadness(Exception):
     """
     Thrown when something just doesn't seem right and existing exceptions
@@ -86,6 +87,7 @@ class ThisIsHKMadness(Exception):
         # Call the base class constructor with the parameters it needs
         super(Exception, self).__init__(message)
         self.message = message
+
 
 class FunctionCallException(Exception):
     """

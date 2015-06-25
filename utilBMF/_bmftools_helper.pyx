@@ -4,8 +4,8 @@ from utilBMF.ErrorHandling import IllegalArgumentError
 
 """
 This module contains default values for each subcommand of bmftools.
-When adding additional subcommands or extending existing ones, there is a simple
-protocol to follow.
+When adding additional subcommands or extending existing ones, there is a
+simple protocol to follow.
 First, write argparse normally, except that no defaults should be set.
 This causes the Namespace to populate None objects, which this defaultConfig
 overrides.

@@ -645,6 +645,11 @@ def main():
         "-m", "--sortMem",
         help="sortMem string for sorting, if piping "
         "to a samtools sort. Default: 6G.")
+    PEP8Parser.add_argument(
+        "--dir",
+        help="Path to directory from which to search "
+        "recursively for .py/.pyx/.pxd files. Defaults to './'.",
+        default="./")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -706,7 +711,7 @@ def main():
     fl.setLevel(logging.DEBUG)
 
     Logger.addHandler(fl)
-    
+
     #### END SETUP LOGGING
 
     print("All logging set up!")
@@ -1040,8 +1045,29 @@ def main():
                          coorsort=Chapman('coorsort'),
                          sortMem=Chapman('sortMem'))
     if(subcommand == "pep8"):
-        raise NotImplementedError(
-            "pep8 subcommand for modified compliance not implemented.")
+        from subprocess import Popen, PIPE
+        from time import sleep
+        if(os.path.isdir(Chapman['dir']) is False):
+            raise ImproperArgumentError(
+                "Directory %s is not a directory. Abort!" % Chapman['dir'])
+        cStr = ("pep8 $(find " + Chapman['dir'] +
+                " -name '*.pyx' -o -name '*.pxd' -o -name '*.py')" +
+                "| grep -v \"missing whitespace\|module level\"")
+        complaints = Popen(cStr, shell=True, stdout=PIPE)
+        count = 0
+        while count < 600:
+            if(complaints.poll() is not None):
+                break
+            sleep(0.5)
+        out, err = complaints.communicate()
+        if(len(out) == 0):
+            pl("No modified pep8 violations. Congrats!")
+            return 0
+        else:
+            pl("Violations found! Consider either changing your modified "
+               "standards or caring more about these violations.")
+            sys.stdout.write(out)
+            return 1
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

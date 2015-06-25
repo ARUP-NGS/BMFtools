@@ -1,6 +1,6 @@
 # cython: boundscheck=False, wraparound=False
 
-## Standard library imports
+# Standard library imports
 import logging
 import uuid
 import warnings
@@ -10,18 +10,18 @@ from operator import attrgetter as oag
 from subprocess import check_call
 from sys import stdout
 
-## Third party imports
+# Third party imports
 import numpy as np
 import cython
 from pysam import AlignmentFile
 
-## BMFTools imports
+# BMFTools imports
 from .HTSUtils import TrimExt, printlog as pl, BamTag, ReadsOverlap
 from .ErrorHandling import ImproperArgumentError, ThisIsMadness as Tim
 
 cimport cython
 
-## DEFINES
+# DEFINES
 oagtag = oag("tag")
 
 
@@ -207,9 +207,8 @@ cdef class PyLayout(object):
         which have been merged.
         """
         cdef LayoutPos_t lpos
-        return array('h',
-                        [lpos.readPos for lpos in self.positions if
-                         lpos.merged and lpos.readPos > -1])
+        return array('h', [lpos.readPos for lpos in self.positions if
+                           lpos.merged and lpos.readPos > -1])
 
     cdef py_array cGetMergeAgreements(self):
         """
@@ -350,7 +349,9 @@ cdef class PyLayout(object):
         try:
             assert len(seq) == len(qual)
         except AssertionError:
-            raise Tim("Length of seq (%s) is not equal to the length of qual (%s). Abort mission!")
+            raise Tim("Length of seq " + str(len(seq)) +
+                      " is not equal to the length of qual " +
+                      str(len(qual)) + ". Abort mission!")
         return "\t".join(
                 [self.Name, str(self.getFlag()), self.contig,
                  "%s\t%s" % (self.getAlignmentStart() + 1, self.mapq),
@@ -460,8 +461,8 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     offset = L2.cGetRefPosForFirstPos() - L1.cGetRefPosForFirstPos()
     ret = ListBool()
     ret.List = (L1[:offset] + [cMergePositions(pos1, pos2) for
-                                    pos1, pos2 in
-                                    izip(L1[offset:], L2)] +
+                               pos1, pos2 in
+                               izip(L1[offset:], L2)] +
                 L2[len(L1) - offset:])
     ret.Bool = True
     return ret
@@ -577,7 +578,7 @@ cpdef MPA2stdout(cystr inBAM):
         pl("Executing MPA2stdout for input bam %s." % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
     outHandle = AlignmentFile("-", "w", template=inHandle)
-    stdout.write(inHandle.text) # Since pysam seems to not be able to...
+    stdout.write(inHandle.text)  # Since pysam seems to not be able to...
     cdef AlignedSegment_t read, read1, read2
     for read in inHandle:
         if(read.is_secondary or
