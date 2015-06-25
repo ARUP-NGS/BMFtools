@@ -9,7 +9,7 @@ from cpython.array cimport array as py_array
 from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.Inliners cimport (ph2chrInline, CigarOpToCigarChar, ChrToRefIDInline,
-                               chr2phInline)
+                               chr2phInline, chrInline, opLenToStr)
 from utilBMF.PysamUtils cimport PysamToChrInline 
 
 ctypedef cython.str cystr
@@ -35,7 +35,8 @@ cdef class OldLayout:
     cdef public dict tagDict
     cdef public cython.int firstMapped, InitPos, flag, pnext, tlen, mapq
     cdef public cystr Name, contig, rnext
-    cdef public bint isMerged, is_reverse
+    cdef public bint isMerged, is_reverse, mergeAdjusted
+    cdef int aend
 
     cpdef cython.int getAlignmentStart(self)
     cpdef cystr getCigarString(self)
@@ -52,14 +53,13 @@ cdef class OldLayout:
     cdef int cGetLastRefPos(self)
     cpdef int getLastRefPos(self)
     cdef cystr cGetCigarString(self)
-    cdef update_tags_(self)
-    cpdef update_tags(self)
-    cdef ndarray[char, ndim=1] cGetMergedPositions(self)
-    cdef ndarray[char, ndim=1] cGetMergeAgreements(self)
-    cpdef ndarray[char, ndim=1] getMergedPositions(self)
-    cpdef ndarray[char, ndim=1] getMergeAgreements(self)
-    cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self)
-    cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self)
+    cdef update_tags(self)
+    cdef py_array cGetMergedPositions(self)
+    cdef py_array cGetMergeAgreements(self)
+    cpdef py_array getMergedPositions(self)
+    cpdef py_array getMergeAgreements(self)
+    cdef py_array cGetGenomicDiscordantPositions(self)
+    cdef py_array cGetReadDiscordantPositions(self)
 
 cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2)
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2)

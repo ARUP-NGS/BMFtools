@@ -1146,7 +1146,7 @@ cdef bint cReadsOverlap(AlignedSegment_t read1,
        read1.reference_start > read2.reference_end or
        read1.reference_end < read2.reference_start):
         return False
-    if(abs(read1.tlen) >= len(read1.seq) + len(read2.seq)):
+    if(read1.aend < read2.pos or read2.aend < read1.pos):
         return False
     return True
 

@@ -1,9 +1,15 @@
 # cython: boundscheck=False, wraparound=False
+
 ## Standard library imports
+import logging
+import warnings
 from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
-import logging
+
+## Third party imports
+import numpy as np
+import cython
 
 ## BMFTools imports
 from .HTSUtils import TrimExt, printlog as pl, BamTag
@@ -144,7 +150,8 @@ cdef class OldLayout(object):
         # pos.base == 66 for "B", which is a blank spot.
         # quality is set to less than 0 for an "N" cigar operation.
         return array('l', [pos.quality for
-                           pos in self.positions if pos.operation != 66])
+                           pos in self.positions if pos.quality > -1 and
+                           pos.operation != 66])
 
     cpdef py_array getQual(self):
         return self.cGetQual()
@@ -176,80 +183,96 @@ cdef class OldLayout(object):
         """
         return self.cGetLastRefPos()
 
-    cpdef ndarray[char, ndim=1] getMergedPositions(self):
+    cpdef py_array getMergedPositions(self):
         """
         Returns the indices of the bases in the merged read
         which have been merged.
         """
         return self.cGetMergedPositions()
 
-    cpdef ndarray[char, ndim=1] getMergeAgreements(self):
+    cpdef py_array getMergeAgreements(self):
         """
         Returns the indices of the bases in the merged read
         which have been merged successfully.
         """
         return self.cGetMergeAgreements()
 
-    cdef ndarray[char, ndim=1] cGetMergedPositions(self):
+    cdef py_array cGetMergedPositions(self):
         """
         Returns the indices of the bases in the merged read
         which have been merged.
         """
         cdef LayoutPos_t lpos
-        return np.array([lpos.readPos for lpos in self.positions if
-                         lpos.merged],
-                        dtype=np.int8)
+        return array('h',
+                        [lpos.readPos for lpos in self.positions if
+                         lpos.merged and lpos.readPos > -1])
 
-    cdef ndarray[char, ndim=1] cGetMergeAgreements(self):
+    cdef py_array cGetMergeAgreements(self):
         """
         Returns the indices of the bases in the merged read
         which have been merged successfully.
         """
         cdef LayoutPos_t lpos
-        return np.array([lpos.readPos for lpos in self.positions if
-                         lpos.getMergeAgreed()],
-                        dtype=np.int8)
+        return array('h',
+                     [lpos.readPos for lpos in self.positions if
+                      lpos.getMergeAgreed() and lpos.readPos > -1])
 
-    cdef ndarray[int, ndim=1] cGetGenomicDiscordantPositions(self):
+    cdef py_array cGetGenomicDiscordantPositions(self):
         """
         Returns a 1-d array of integers for genomic positions which
         were discordant between the pairs.
         """
         cdef LayoutPos_t p
         if(self.isMerged is False):
-            return np.array([], dtype=np.int64)
-        return np.array([p.pos for p in self.positions if
-                         p.mergeAgreed == 0 and p.pos >= 0],
-                        dtype=np.int64)
+            return array('i', [])
+        return array('i',
+                     [p.pos for p in self.positions if
+                      p.mergeAgreed == 0 and p.pos >= 0])
 
-    cdef ndarray[int, ndim=1] cGetReadDiscordantPositions(self):
+    cdef py_array cGetReadDiscordantPositions(self):
         """
         Returns a 1-d array of integers for genomic positions which
         were discordant between the pairs.
         """
         cdef LayoutPos_t p
         if(self.isMerged is False):
-            return np.array([], dtype=np.int64)
-        return np.array([p.readPos for p in self.positions if
-                         p.mergeAgreed == 0 and p.readPos >= 0],
-                        dtype=np.int64)
+            return array('h', [])
+        else:
+            return array('h',
+                         [p.readPos for p in self.positions if
+                          p.mergeAgreed == 0 and p.readPos >= 0])
 
-    cdef update_tags_(self):
+    cdef update_tags(self):
+        cdef np.int16_t tmp16
+        cdef int tmpInt
+        cdef py_array GenDiscPos, MA_Arr, MP_Arr
         self.tagDict["PV"] = BamTag(
-            "PV", "Z", ",".join(self.getQual().astype(str)))
+            "PV", "Z", ",".join([str(tmpInt) for tmpInt in
+                                 self.cGetQual()]))
         self.tagDict["FA"] = BamTag(
-            "FA", "Z", ",".join(self.getAgreement().astype(str)))
-        if(self.isMerged):
-            self.tagDict["PM"] = BamTag(
-                "PM", "Z", ",".join(self.getMergedPositions().astype(str)))
-            self.tagDict["MA"] = BamTag(
-                "MA", "Z", ",".join(self.getMergeAgreements().astype(str)))
-            self.tagDict["DG"] = BamTag(
-                "DG", "Z", ",".join(
-                    self.cGetGenomicDiscordantPositions().astype(str)))
-            self.tagDict["DR"] = BamTag(
-                "DR", "Z", ",".join(
-                    self.cGetReadDiscordantPositions().astype(str)))
+            "FA", "Z", ",".join([str(tmpInt) for tmpInt in
+                                 self.getAgreement()]))
+        if(self.isMerged is True and self.mergeAdjusted is False):
+            MP_Arr = self.getMergedPositions()
+            if(len(MP_Arr) != 0):
+                self.tagDict["PM"] = BamTag(
+                    "PM", "Z", ",".join([str(tmp16) for tmp16 in
+                                         MP_Arr]))
+            MA_Arr = self.getMergeAgreements()
+            if(len(MA_Arr) != 0):
+                self.tagDict["MA"] = BamTag(
+                    "MA", "Z", ",".join([str(tmp16) for tmp16 in
+                                         MA_Arr]))
+            GenDiscPos = self.cGetGenomicDiscordantPositions()
+            if(len(GenDiscPos) != 0):
+                self.tagDict["DG"] = BamTag(
+                    "DG", "Z", ",".join(
+                        [str(tmpInt) for tmpInt in
+                         GenDiscPos]))
+                self.tagDict["DR"] = BamTag(
+                    "DR", "Z", ",".join(
+                        [str(tmp16) for tmp16 in
+                         self.cGetReadDiscordantPositions()]))
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
@@ -260,26 +283,22 @@ cdef class OldLayout(object):
             # Original mapped position
             self.tagDict["op"] = BamTag("op", "i", self.InitPos)
             self.tagDict["MP"] = BamTag("MP", "Z", "T")
-
-    cpdef update_tags(self):
-        self.update_tags_()
+            self.tagDict["FM"].value *= 2
+            self.mergeAdjusted = True
 
     def update(self):
         cdef LayoutPos_t pos
         cdef int count
         self.update_tags()
         if(self.isMerged):
-            raise NotImplementedError(
-                "self.tlen should be set not to the length of seqArr, but to "
-                "the number of cigar operation positions/aligned pairs/layou"
-                "tpos's. Change it!")
-            self.tlen = len(self.getSeqArr())
+            self.tlen = (self.cGetLastRefPos() -
+                         self.cGetRefPosForFirstPos() + 1)
             self.pnext = 0
             # Only change the original mapq to -1 if the tagDict entry om is
             # present. (Original Mapping)
             try:
                 self.tagDict["om"]
-                pass
+                self.mapq = 255
             except KeyError:
                 self.mapq = -1
             self.rnext = "*"
@@ -300,18 +319,19 @@ cdef class OldLayout(object):
         # Skip this operation if the operation is "N"
         return array("B", [pos.operation for pos in
                            self.positions if
-                           pos.operation != 78]).tostring()
+                           pos.operation != 78])
 
     cdef cystr cGetCigarString(self):
-        return "".join([str(len(list(g))) + k for
-                        k, g in groupby(self.getOperations())])
+        cdef py_array ops = self.getOperations()
+        cdef char k
+        return "".join([opLenToStr(k, len(list(g))) for
+                        k, g in groupby(ops)])
 
     cpdef cystr getCigarString(self):
         return self.cGetCigarString()
 
     @cython.returns(list)
     def get_tags(self, object oagtag=oagtag):
-        self.update_tags()
         return sorted(self.tagDict.itervalues(), key=oagtag)
 
     def getFlag(self):
@@ -364,6 +384,7 @@ cdef class OldLayout(object):
         self.Name = rec.query_name
         self.contig = PysamToChrInline(rec.reference_id)
         self.flag = rec.flag
+        self.aend = rec.aend
         # When the get_tags(with_value_type=True) is implemented,
         # then switch the code over.
         # Then I can change the way I make BAM tags, since
@@ -378,6 +399,7 @@ cdef class OldLayout(object):
         self.tlen = rec.tlen
         self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
         self.is_reverse = rec.is_reverse
+        self.mergeAdjusted = False
 
 
 def MergePairedAlignments(cystr inBAM, cystr outBAM=None,
@@ -451,6 +473,7 @@ cpdef Layout_t MergeLayoutsToLayout(Layout_t L1, Layout_t L2):
     cdef ListBool ret
     ret = cMergeLayoutsToList(L1, L2)
     if(ret.Bool is False):
+        print("Ret's success return is False. Add false tags, return None.")
         L1.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
         L2.tagDict["MP"] = BamTag("MP", tagtype="Z", value="F")
         return None
@@ -468,6 +491,9 @@ cpdef bint LayoutsOverlap(Layout_t L1, Layout_t L2):
     """
     cdef int pos1, pos2, readlen, end1, end2
     cdef LayoutPos_t tmpPos
+    warnings.warn("LayoutsOverlap deprecated - check if reads overlap"
+                  " before creating OldLayout objects.",
+                  DeprecationWarning)
     pos1 = L1.getRefPosForFirstPos()
     pos2 = L2.getRefPosForFirstPos()
     end1 = L1.cGetLastRefPos()
@@ -495,17 +521,24 @@ cdef ListBool cMergeLayoutsToList(Layout_t L1, Layout_t L2):
     cdef int offset
     cdef Layout_t tmpPos
     cdef LayoutPos_t pos1, pos2
+    cdef ListBool ret
+    '''
     if(LayoutsOverlap(L1, L2) is False):
+        print("LayoutsOverlap is reported to be False.")
         return ListBool([], False)
+    '''
     if(L1.cGetRefPosForFirstPos() > L2.cGetRefPosForFirstPos()):
         tmpPos = L1
         L1 = L2
         del tmpPos
     offset = L2.cGetRefPosForFirstPos() - L1.cGetRefPosForFirstPos()
-    return ListBool((L1[:offset] + [cMergePositions(pos1, pos2) for
+    ret = ListBool()
+    ret.List = (L1[:offset] + [cMergePositions(pos1, pos2) for
                                     pos1, pos2 in
                                     izip(L1[offset:], L2)] +
-                     L2[len(L1) - offset:]), True)
+                L2[len(L1) - offset:])
+    ret.Bool = True
+    return ret
 
 
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
