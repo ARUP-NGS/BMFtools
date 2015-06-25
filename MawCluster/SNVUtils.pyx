@@ -310,7 +310,8 @@ cdef class VCFPos:
             minAF=self.minAF, FailedNDReads=PCInfoObject.FailedNDReads,
             flankingBefore=flankingBefore, flankingAfter=flankingAfter,
             ampliconFailed=ampliconFailed)
-            for alt in PCInfoObject.AltAlleleData] if line.InfoFields["AC"] > 0]
+            for alt in PCInfoObject.AltAlleleData] if
+                         line.InfoFields["AC"] > 0]
         self.keepConsensus = keepConsensus
         if(keepConsensus):
             self.str = "\n".join([str(line)

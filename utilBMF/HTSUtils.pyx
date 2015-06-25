@@ -109,11 +109,21 @@ ncs = nucConverter.str2int
 nucList = ["A", "C", "G", "T"]
 
 
-cpdef list permuteNucleotides(long maxn, object nci=nci):
+cpdef list permuteNucleotides(long maxn, object nci=nci, int kmerLen=-1):
     """
     nci should be set to a numConv object's int2str method call.
     """
-    return map(nci, xrange(maxn))
+    cdef list tmpList
+    cdef size_t tmpInt, strLen
+    if(kmerLen < 0):
+        return [nci(tmpInt) for tmpInt in xrange(maxn)]
+    else:
+        tmpList = [nci(tmpInt) for tmpInt in xrange(maxn)]
+        for tmpInt in range(maxn):
+            strLen = len(tmpList)
+            if strLen < kmerLen:
+                tmpList[tmpInt] = "A" * (kmerLen - strLen) + tmpList[tmpInt]
+        return tmpList
 
 
 @memoize
@@ -316,7 +326,7 @@ cdef class pFastqProxy:
     @classmethod
     def fromFastqProxy(cls, pysam.cfaidx.FastqProxy FastqProxyObj):
         return cls(FastqProxyObj.comment, FastqProxyObj.quality,
-            FastqProxyObj.sequence, FastqProxyObj.name)
+                   FastqProxyObj.sequence, FastqProxyObj.name)
 
     cdef cystr tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
@@ -532,7 +542,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     if(path == "default"):
         path = "bwa"
     if(opts == ""):
-        opts = '-t 4 -v 1 -Y -M -T 0'
+        opts = '-t 4 -v 1 -Y -T 0'
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
@@ -1136,7 +1146,7 @@ cdef bint cReadsOverlap(AlignedSegment_t read1,
        read1.reference_start > read2.reference_end or
        read1.reference_end < read2.reference_start):
         return False
-    if(abs(read1.tlen) >= len(read1.seq) + len(read2.seq)):
+    if(read1.aend < read2.pos or read2.aend < read1.pos):
         return False
     return True
 
@@ -1258,9 +1268,11 @@ cpdef bint WritePairToHandle(
     except Exception:
         return False
 
+
 @cython.returns(cystr)
 def BedListToStr(list bedlist):
     return bedlist[0] + ":%s-%s" % (bedlist[1], bedlist[2])
+
 
 @cython.returns(list)
 def ParseBed(cystr bedfile):
@@ -2829,7 +2841,7 @@ cdef class BamTag(object):
         """
         In [14]: %timeit c = "PV" + ":" + "Z" + ":%s" % 1337
         10000000 loops, best of 3: 55.7 ns per loop
-    
+
         In [15]: %timeit c = "PV" + ":" + "Z" + ":" +  str(1337)
         1000000 loops, best of 3: 181 ns per loop
 
@@ -2838,7 +2850,7 @@ cdef class BamTag(object):
         In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
         1000000 loops, best of 3: 710 ns per loop
         """
-        self.tag + ":" + self.tagtype + ":%s" % (self.value)
+        return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
 
 cdef class IDVCFLine(object):

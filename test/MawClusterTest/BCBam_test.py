@@ -37,7 +37,7 @@ class MyTestCase(unittest.TestCase):
             4. Manually check that the PV tag matches the quality string.
             I would do
             assert sum(np.array(read.opt("PV").split(","), dtype=np.int32) == read.query_qualities) == len(read.query_qualities)
-            
+
         """
         pass
 

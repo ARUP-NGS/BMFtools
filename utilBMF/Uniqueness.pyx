@@ -11,7 +11,8 @@ from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
-from utilBMF.ErrorHandling import ThisIsMadness, ConsideredHarmful, ThisIsHKMadness
+from utilBMF.ErrorHandling import (ThisIsMadness, ConsideredHarmful,
+                                   ThisIsHKMadness)
 from cytoolz import frequencies as cyfreq
 from itertools import chain
 from functools import partial
@@ -180,18 +181,21 @@ cdef class KmerFetcher(object):
         if(aligner == "mem"):
             return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
         elif(aligner=="bwt"):
-            raise ConsideredHarmful("Use of bowtie for uniqueness calculations is unreliable.")
+            raise ConsideredHarmful("Use of bowtie for uniqueness"
+                                    " calculations is unreliable.")
             return BowtieFqToStr(self.getFastqString(bedline), ref=self.ref,
                                  seed=self.seed, mismatches=self.mismatches)
         else:
-            raise ValueError("Sorry, only bwa mem or bowtie is supported currently.")
+            raise NotImplementedError("Sorry, only bwa mem and bowtie"
+                                      " are supported currently.")
 
     cpdef FillMap(self, list bedline):
-        """Fills a dictionary (keyed by the input bed file 'chr:start:stop') with
-        the list of kmers in that region that uniquely map to the reference."""
+        """Fills a dictionary (keyed by the input bed file 'chr:start:stop')
+        with the list of kmers in that region that map uniquely
+        to the reference.
+        """
         self.HashMap[
             ":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
-
 
     cpdef list GetUniqueKmers(self, list bedline):
         output = self.getOutputString(bedline, aligner=self.aligner)
@@ -316,7 +320,8 @@ def BwaFqToStr(cystr fqStr, cystr ref=None,
     print("Bwa command string: %s" % cStr)
     outStr = check_output(cStr, shell=True)  # Capture output to string
     check_call(["rm", tmpFile])  # Delete the temporary file.
-    print("Returning BwaFqToStr output with " + str(outStr.count("\n")) + " lines.")
+    pl("Returning BwaFqToStr output with %s lines" % outStr.count("\n"),
+       level=logging.INFO)
     return outStr
 
 

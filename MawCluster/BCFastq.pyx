@@ -1,4 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True, profile=True
 from __future__ import division
 
 """
@@ -148,6 +149,47 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
 
 
+cdef ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
+    cdef pFastqProxy_t rec
+    return np.array([cs_to_ia(rec.sequence) for rec in R],
+                    dtype=np.uint8)
+
+
+cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
+    return cRecListTo2DCharArray(R)
+
+
+'''
+
+This method works (change the second argument on amax/argmax calls
+on the output), but it looks like it's slower.
+I might have to do this manually.
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
+                                             ndarray[np_int32_t, ndim=2] quals,
+                                             size_t lenR):
+    cdef size_t readlen = len(seqs[0])
+    cdef size_t read_index, base_index
+    cdef ndarray[np_int32_t, ndim=2] QualSumAll
+    cdef np_int32_t tmpInt
+    QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
+    for read_index in range(lenR):
+        for base_index in range(readlen):
+            tmpInt = seqs[read_index][base_index]
+            if(tmpInt == 84):
+                QualSumAll[base_index][3] += quals[read_index][base_index]
+            elif(tmpInt == 67):
+                QualSumAll[base_index][1] += quals[read_index][base_index]
+            elif(tmpInt == 71):
+                QualSumAll[base_index][2] += quals[read_index][base_index]
+            else:
+                QualSumAll[base_index][0] += quals[read_index][base_index]
+    return QualSumAll
+'''
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,
@@ -157,8 +199,15 @@ cdef cystr cCompareFqRecsFast(list R,
     Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
+    After inlin
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
     """
-    cdef int lenR, ND, lenSeq, tmpInt
+    cdef int lenR, ND, lenSeq, tmpInt, i
     cdef cython.bint Success
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
@@ -167,6 +216,7 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
     cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
     cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[char, ndim=2] seqArray
     # cdef ndarray[char, ndim=1, mode = "c"] newSeq
     cdef pFastqProxy_t rec
     cdef char tmpChar
@@ -182,8 +232,11 @@ cdef cystr cCompareFqRecsFast(list R,
                                           TagString, R[0].sequence,
                                           R[0].quality)
     Success = True
+    '''
     stackArrays = tuple([np.char.array(rec.sequence, itemsize=1) for rec in R])
     seqArray = npvstack(stackArrays)
+    '''
+    seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([rec.getQualArray() for
                       rec in R], dtype=np.int32)
@@ -197,26 +250,22 @@ cdef cystr cCompareFqRecsFast(list R,
     qualC = ccopy(quals)
     qualG = ccopy(quals)
     qualT = ccopy(quals)
-    qualA[seqArray != "A"] = 0
+    qualA[seqArray != 65] = 0
     qualAFlat = nsum(qualA, 0, dtype=np.int32)
-    qualC[seqArray != "C"] = 0
+    qualC[seqArray != 67] = 0
     qualCFlat = nsum(qualC, 0, dtype=np.int32)
-    qualG[seqArray != "G"] = 0
+    qualG[seqArray != 71] = 0
     qualGFlat = nsum(qualG, 0, dtype=np.int32)
-    qualT[seqArray != "T"] = 0
+    qualT[seqArray != 84] = 0
     qualTFlat = nsum(qualT, 0, dtype=np.int32)
     qualAllSum = npvstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = np.char.array([Num2Nuc(tmpChar) for tmpChar in npargmax(qualAllSum, 0)]).tostring()
+    newSeq = "".join([Num2Nuc(tmpChar) for tmpChar in
+                      npargmax(qualAllSum, 0)])
     phredQuals = npamax(qualAllSum, 0)  # Avoid calculating twice.
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for
                   i in xrange(lenSeq)], dtype=np.int32)
-    '''
-    FA = np.array([sum([rec.sequence[i] == chrACGNTInline(newSeq[i]) for
-                        rec in R]) for
-                  i in xrange(lenSeq)], dtype=np.int32)
-    '''
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
@@ -226,7 +275,7 @@ cdef cystr cCompareFqRecsFast(list R,
     PVString = cQualArr2PVString(phredQuals)
     phredQualsStr = cQualArr2QualStr(phredQuals)
     FAString = cQualArr2FAString(FA)
-    TagString = "|FM=%s|ND=%s"  % (lenR, ND) +  FAString + PVString
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
     '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
@@ -493,18 +542,11 @@ cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
 
 
 cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt = np.max(qualArr)
-    if(tmpInt < 9001):
-        return "|PV=%s" % (",".join([int2strInline(tmpInt) for
-                                     tmpInt in qualArr]))
-    else:
-        return "|PV=%s" % ",".join(qualArr.astype(str))
+    return "|PV=%s" % ",".join(qualArr.astype(str))
 
 
 cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
-    cdef np_int32_t tmpInt
-    return "|FA=%s" % (",".join([int2strInline(tmpInt) for
-                                 tmpInt in qualArr]))
+    return "|FA=%s" % ",".join(qualArr.astype(str))
 
 
 def GetDescriptionTagDict(readDesc):
@@ -649,7 +691,7 @@ def TrimHomingSingle(
             ew(str(pFastqProxy.fromFastqProxy(read)))
             continue
         tw(SliceFastqProxy(read, firstBase=TotalTrim,
-                              addString="|BS=" + read.sequence[0:bcLen]))
+                           addString="|BS=" + read.sequence[0:bcLen]))
     trimHandle.close()
     errHandle.close()
     return trimfq
@@ -695,9 +737,9 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,
-                               addString="|BS=%s" % barcode))
+                            addString="|BS=%s" % barcode))
         tw2(SliceFastqProxy(read2, firstBase=TotalTrim,
-                               addString="|BS=%s" % barcode))
+                            addString="|BS=%s" % barcode))
     trimHandle1.close()
     trimHandle2.close()
     errHandle.close()

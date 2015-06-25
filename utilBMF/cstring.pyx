@@ -43,31 +43,33 @@ cpdef print_chars(cystr input_str):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
-cpdef py_array str2intarray2(cystr input_str):
-    """Don't use this function - it is equivalent to str2intarray, but
-    slower than naive python
-    """
-    return <py_array> ps2va(input_str, len(input_str))
-
-
 cdef py_array cs_to_ia(cystr input_str):
     cdef char i
-    return array('B', [i for i in <char *> input_str])
+    return array('B', input_str)
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
 cdef cystr RevCmpImplicit(cystr seq):
     """
     Very quickly reverse complements a string with an inline switch for faster
     memoization than dictionary access.
     """
     cdef char i
-    return "".join([RevCmpInt(i) for i in
-                    <char *>seq])[::-1]
+    return "".join([RevCmpInt(i) for i in <char *>seq])[::-1]
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
 cdef py_array cs_to_ph(cystr input_str):
-    cdef char i
-    return array('B', [i - 33 for i in <char *> input_str])
+    cdef py_array tmpArr
+    cdef size_t index
+    tmpArr = array('B', input_str)
+    for index in range(len(tmpArr)):
+        tmpArr[index] -= 33
+    return tmpArr
 
 
 @cython.boundscheck(False)

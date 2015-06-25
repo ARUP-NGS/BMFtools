@@ -6,13 +6,13 @@ cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
-from utilBMF.cstring cimport cs_to_ph
-from utilBMF.Inliners cimport Num2Nuc, Nuc2Num, ph2chrInline, int2strInline, chr2phInline, chr2phImplicit
+from utilBMF.cstring cimport cs_to_ph, cs_to_ia
+from utilBMF.Inliners cimport Num2Nuc, Nuc2Num, ph2chrInline, chr2phInline, chr2phImplicit
 from numpy cimport ndarray
-from cpython cimport array
+from cpython cimport array as c_array
 import cython.str
 ctypedef cython.str cystr
-ctypedef array.array py_array
+ctypedef c_array.array py_array
 ctypedef np.int32_t np_int32_t
 
 cdef cystr cCompareFqRecsFast(list R, cystr name=?)
@@ -41,3 +41,5 @@ cdef inline cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit
         return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
     else:
         return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
+
+cdef public dict Num2NucDict
