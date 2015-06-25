@@ -159,6 +159,37 @@ cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
 
 
+'''
+
+This method works (change the second argument on amax/argmax calls
+on the output), but it looks like it's slower.
+I might have to do this manually.
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
+                                             ndarray[np_int32_t, ndim=2] quals,
+                                             size_t lenR):
+    cdef size_t readlen = len(seqs[0])
+    cdef size_t read_index, base_index
+    cdef ndarray[np_int32_t, ndim=2] QualSumAll
+    cdef np_int32_t tmpInt
+    QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
+    for read_index in range(lenR):
+        for base_index in range(readlen):
+            tmpInt = seqs[read_index][base_index]
+            if(tmpInt == 84):
+                QualSumAll[base_index][3] += quals[read_index][base_index]
+            elif(tmpInt == 67):
+                QualSumAll[base_index][1] += quals[read_index][base_index]
+            elif(tmpInt == 71):
+                QualSumAll[base_index][2] += quals[read_index][base_index]
+            else:
+                QualSumAll[base_index][0] += quals[read_index][base_index]
+    return QualSumAll
+'''
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,

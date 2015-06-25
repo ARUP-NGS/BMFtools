@@ -1,5 +1,5 @@
 # cython: boundscheck=False, wraparound=False
-# cython: cdivision=True
+# cython: cdivision=True, initializedcheck=False
 """
 A module composed solely of precomputed inline functions. This way, when the
 modules that these originally came from are modified and rebuilt, at least
@@ -884,3 +884,213 @@ cdef inline cystr chrInline(char character):
             return '}'
     else:
             return '~'
+
+
+cdef inline char CigarOpToCigarChar(char character):
+    if(character == 0):
+        return 77
+    elif(character == 1):
+        return 73
+    elif(character == 2):
+        return 68
+    elif(character == 3):
+        return 83
+    elif(character == 4):
+        return 78
+    elif(character == 5):
+        return 72
+    elif(character == 6):
+        return 80
+    elif(character == 7):
+        return 61
+    elif(character == 8):
+        return 88
+    elif(character == 73):
+        return 1
+    elif(character == 77):
+        return 0
+    elif(character == 78):
+        return 4
+    elif(character == 80):
+        return 6
+    elif(character == 72):
+        return 5
+    elif(character == 83):
+        return 3
+    elif(character == 88):
+        return 8
+    elif(character == 68):
+        return 2
+    else:
+        return 7
+
+
+cdef inline char ChrToRefIDInline(cystr contig):
+    if(contig == 'GL000224.1'):
+        return 74
+    elif(contig == 'GL000219.1'):
+        return 73
+    elif(contig == 'GL000205.1'):
+        return 72
+    elif(contig == 'GL000204.1'):
+        return 55
+    elif(contig == 'GL000228.1'):
+        return 60
+    elif(contig == 'GL000198.1'):
+        return 56
+    elif(contig == 'GL000241.1'):
+        return 49
+    elif(contig == 'GL000208.1'):
+        return 57
+    elif(contig == 'GL000212.1'):
+        return 77
+    elif(contig == 'GL000193.1'):
+        return 80
+    elif(contig == 'GL000210.1'):
+        return 29
+    elif(contig == 'GL000239.1'):
+        return 30
+    elif(contig == 'GL000191.1'):
+        return 58
+    elif(contig == 'GL000213.1'):
+        return 66
+    elif(contig == 'GL000220.1'):
+        return 65
+    elif(contig == 'GL000238.1'):
+        return 42
+    elif(contig == 'GL000214.1'):
+        return 61
+    elif(contig == 'GL000194.1'):
+        return 81
+    elif(contig == 'GL000216.1'):
+        return 70
+    elif(contig == 'GL000237.1'):
+        return 53
+    elif(contig == 'GL000243.1'):
+        return 50
+    elif(contig == 'GL000234.1'):
+        return 44
+    elif(contig == '20'):
+        return 19
+    elif(contig == '21'):
+        return 20
+    elif(contig == '22'):
+        return 21
+    elif(contig == 'GL000215.1'):
+        return 71
+    elif(contig == 'GL000196.1'):
+        return 39
+    elif(contig == 'GL000227.1'):
+        return 59
+    elif(contig == 'GL000248.1'):
+        return 40
+    elif(contig == 'GL000197.1'):
+        return 35
+    elif(contig == 'GL000235.1'):
+        return 31
+    elif(contig == 'GL000249.1'):
+        return 38
+    elif(contig == '1'):
+        return 0
+    elif(contig == '3'):
+        return 2
+    elif(contig == '2'):
+        return 1
+    elif(contig == '5'):
+        return 4
+    elif(contig == '4'):
+        return 3
+    elif(contig == '7'):
+        return 6
+    elif(contig == '6'):
+        return 5
+    elif(contig == '9'):
+        return 8
+    elif(contig == '8'):
+        return 7
+    elif(contig == 'GL000199.1'):
+        return 68
+    elif(contig == 'GL000232.1'):
+        return 45
+    elif(contig == 'GL000242.1'):
+        return 51
+    elif(contig == 'GL000236.1'):
+        return 48
+    elif(contig == 'GL000209.1'):
+        return 63
+    elif(contig == 'GL000246.1'):
+        return 37
+    elif(contig == 'GL000244.1'):
+        return 41
+    elif(contig == 'GL000221.1'):
+        return 62
+    elif(contig == 'GL000245.1'):
+        return 34
+    elif(contig == 'GL000203.1'):
+        return 36
+    elif(contig == 'GL000195.1'):
+        return 76
+    elif(contig == 'GL000229.1'):
+        return 27
+    elif(contig == 'GL000226.1'):
+        return 26
+    elif(contig == 'GL000201.1'):
+        return 32
+    elif(contig == 'GL000247.1'):
+        return 33
+    elif(contig == 'Y'):
+        return 23
+    elif(contig == 'X'):
+        return 22
+    elif(contig == 'GL000222.1'):
+        return 78
+    elif(contig == 'GL000202.1'):
+        return 43
+    elif(contig == 'GL000211.1'):
+        return 67
+    elif(contig == '11'):
+        return 10
+    elif(contig == '10'):
+        return 9
+    elif(contig == '13'):
+        return 12
+    elif(contig == '12'):
+        return 11
+    elif(contig == '15'):
+        return 14
+    elif(contig == '14'):
+        return 13
+    elif(contig == '17'):
+        return 16
+    elif(contig == '16'):
+        return 15
+    elif(contig == '19'):
+        return 18
+    elif(contig == '18'):
+        return 17
+    elif(contig == 'GL000231.1'):
+        return 28
+    elif(contig == 'GL000233.1'):
+        return 54
+    elif(contig == 'GL000240.1'):
+        return 47
+    elif(contig == 'GL000200.1'):
+        return 79
+    elif(contig == 'GL000230.1'):
+        return 52
+    elif(contig == 'GL000217.1'):
+        return 69
+    elif(contig == 'MT'):
+        return 24
+    elif(contig == 'GL000223.1'):
+        return 75
+    elif(contig == 'GL000225.1'):
+        return 82
+    elif(contig == 'GL000206.1'):
+        return 46
+    elif(contig == 'GL000218.1'):
+        return 64
+    elif(contig == 'GL000207.1'):
+        return 25
+    else:
+        return 83
