@@ -90,6 +90,16 @@ cpdef float64_t HellingerDistance(ndarray[float64_t, ndim=1] array1,
     return cHellingerDistance(&array1[0], &array2[0], length)
 
 
+cpdef float64_t cHellinger(ndarray[float64_t, ndim=1] array1,
+                           ndarray[float64_t, ndim=1] array2):
+    raise DeprecationWarning(
+        "cHellinger is actually slower than coding it in cython! Use "
+        "cHellingerDistance/HellingerDistance instead.")
+    cdef size_t length = len(array1)
+    assert length == len(array2)  # Sanity check
+    return Hellinger_in_c(&array1[0], &array2[0], length)
+
+
 @memoize
 @cython.locals(DOC=int, pVal=float128_t,
                AC=int)

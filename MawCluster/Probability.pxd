@@ -2,6 +2,9 @@ cimport cython
 cimport numpy as np
 from numpy cimport ndarray
 from cpython cimport array as c_array
+
+from utilBMF.dec cimport Hellinger_in_c
+
 ctypedef c_array.array py_array
 ctypedef long double npy_float128
 ctypedef npy_float128   float128_t
