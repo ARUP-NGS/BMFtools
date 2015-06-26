@@ -5,6 +5,7 @@ import cython
 import ctypes
 from array import array
 
+
 cdef int * to_cstring_array(cystr input_str):
     cdef char *tmp = PyString_AsString(input_str)
     cdef int *ret = <int *>malloc(len(input_str) * sizeof(char *))
@@ -46,6 +47,15 @@ cpdef print_chars(cystr input_str):
 cdef py_array cs_to_ia(cystr input_str):
     cdef char i
     return array('B', input_str)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+cdef inline cystr RevCmpPyArray(cystr seq):
+    cdef char i
+    return array('B', [RevCmpToChar(i) for
+                       i in <char *>seq]).tostring()[::-1]
 
 
 @cython.boundscheck(False)

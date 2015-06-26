@@ -133,7 +133,15 @@ def MemoRevCmp(cystr seq):
 
 
 cpdef cystr RevCmp(cystr seq):
-    return RevCmpImplicit(seq)
+    """
+    Reverse complement quickly
+    In [48]: %timeit qstr.translate(b)[::-1]
+    100000 loops, best of 3: 3.27 us per loop
+    # This RevCmp function was the old implicit.
+    In [49]: %timeit RevCmp(qstr)
+    10000 loops, best of 3: 25.1 us per loop
+    """
+    return seq.translate(DNA_CODON_TABLE)[::-1]
 
 
 PysamToChrDict = {}

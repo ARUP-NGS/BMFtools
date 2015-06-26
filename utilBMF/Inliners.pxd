@@ -79,7 +79,7 @@ cdef inline char RevCmpToChar(char character) nogil:
     elif(character == 84):
         return 65
     elif(character == 71):
-        return 57
+        return 67
     else:
         return 78
 

@@ -351,7 +351,8 @@ cdef class PyLayout(object):
         except AssertionError:
             raise Tim("Length of seq " + str(len(seq)) +
                       " is not equal to the length of qual " +
-                      str(len(qual)) + ". Abort mission!")
+                      str(len(qual)) + ". Abort mission!" +
+                      "Read name: %s" % self.Name)
         return "\t".join(
                 [self.Name, str(self.getFlag()), self.contig,
                  "%s\t%s" % (self.getAlignmentStart() + 1, self.mapq),
@@ -474,21 +475,52 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
     """
     if(pos1.base == pos2.base):
         if(pos2.operation == pos1.operation):
-            return LayoutPos(pos1.pos, pos1.readPos, pos1.base, pos1.operation,
+            print ("Comparing pos1 "
+                   "%s and pos2 %s - agreed on base and op" % (str(pos1),
+                                                               str(pos2)))
+            return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+                             pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement, merged=True,
                              mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
+            print ("Comparing pos1 "
+                   "%s and pos2 %s - agreed on base" % (str(pos1),
+                                                        str(pos2)) +
+                   " but not operation. pos2 was softclipped - falling back "
+                   "to pos1's operation.")
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
+        elif(pos1.operation == 83):
+            print ("Comparing pos1 "
+                   "%s and pos2 %s - agreed on base" % (str(pos1),
+                                                        str(pos2)) +
+                   " but not operation. pos1 was softclipped - falling back "
+                   "to pos2's operation.")
+            return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+                             pos2.operation,
+                             pos1.quality + pos2.quality,
+                             pos1.agreement + pos2.agreement,
+                             merged=True, mergeAgreed=2)
         else:
-            return LayoutPos(pos1.pos, pos1.readPos, 78, pos1.operation,
-                             -137, -137,
-                             merged=True, mergeAgreed=0)
+            print("Giving up on this - 'N' the base")
+            if(pos1.operation != 83):
+                return LayoutPos(pos1.pos, pos1.readPos, 78, pos1.operation,
+                                 -137, -137,
+                                 merged=True, mergeAgreed=0)
+            elif(pos2.operation != 83):
+                return LayoutPos(pos1.pos, pos1.readPos, 78, pos2.operation,
+                                 -137, -137,
+                                 merged=True, mergeAgreed=0)
+            else:
+                return LayoutPos(pos1.pos, pos1.readPos, 78, 77,
+                                 -137, -137,
+                                 merged=True, mergeAgreed=0)
     elif(pos1.operation == pos2.operation):
+        print("Disagreed base with" + str(pos1) + "\t" + str(pos2))
         if(pos1.quality > pos2.quality):
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos1.base, pos1.operation,
