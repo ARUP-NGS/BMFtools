@@ -971,13 +971,15 @@ def main():
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
     elif(subcommand == "rsq"):
-        from MawCluster.BCFastq import RescueShadingWrapper
-        RescueShadingWrapper(Chapman['fastqs'][0],
-                             Chapman['fastqs'][1],
-                             indexFq=Chapman['fastqs'][2],
-                             minFam=Chapman['minFam'],
-                             mm=Chapman['mm'],
-                             head=Chapman['head'])
+        from MawCluster.BCFastq import pairedFastqShades
+        pairedFastqShades(Chapman['fastqs'][0],
+                          Chapman['fastqs'][1],
+                          indexFq=Chapman['fastqs'][2],
+                          minFamRsq=Chapman['minFam'],
+                          mmRsq=Chapman['mm'],
+                          head=Chapman['head'], sortMem=Chapman['sortMem'],
+                          rescue=True, p5Seq=Chapman['p5Seq'],
+                          p3Seq=Chapman['p3Seq'])
     elif(subcommand == "bedcov"):
         # sys.stderr.write("config repr: %s" % repr(Chapman.config))
         from utilBMF.QC import FastDOCBed, ExtendBed

@@ -315,7 +315,6 @@ cdef cystr cCompareFqRecsFast(list R,
     return consolidatedFqStr
 
 
-
 @cython.returns(cystr)
 def CutadaptPaired(cystr fq1, cystr fq2,
                    p3Seq="default", p5Seq="default",
