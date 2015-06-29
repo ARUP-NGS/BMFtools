@@ -6,6 +6,7 @@ from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, DNA_CODON_TABLE
 from cpython cimport array
+from pysam.cfaidx cimport PersistentFastqProxy
 ctypedef array.array py_array
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
@@ -14,6 +15,7 @@ ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef pFastqProxy pFastqProxy_t
+ctypedef pysam.cfaidx.FastqProxy FastqProxy_t
 
 cimport pysam.TabProxies
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
@@ -23,6 +25,8 @@ ctypedef AbstractIndelContainer AbstractIndelContainer_t
 ctypedef IndelQuiver IndelQuiver_t
 ctypedef IDVCFLine IDVCFLine_t
 ctypedef np.int32_t np_int32_t
+
+makeFastqProxy = pysam.cfaidx.makeFastqProxy
 
 cdef class pPileupRead:
     """
@@ -129,20 +133,6 @@ cdef class IDVCFLine(object):
     cdef public bint BothStrandSupport
     cdef public dict InfoFields, FormatFields
 
-cdef class pFastqProxy:
-    """
-    Python container for pysam.cfaidx.FastqProxy with persistence.
-    """
-    cdef public cystr comment, quality, sequence, name
-    cdef cystr cGetBS(self)
-    cpdef cystr getBS(self)
-    cdef cystr tostring(self)
-    cpdef py_array getQualArray(self)
-    cdef int cGetFM(self)
-    cpdef int getFM(self)
-    cpdef cystr getSlice(self, int start=?, int end=?,
-                         cystr addComment=?)
-
 
 cdef class pFastqFile(object):
     cdef public pysam.cfaidx.FastqFile handle
@@ -177,3 +167,14 @@ cdef cystr cGetBS(pFastqProxy_t)
 cdef public dict PysamToChrDict, ph2chrDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
+
+cdef class pFastqProxy:
+    cdef public cystr comment, name, quality, sequence
+    cdef cystr tostring(self)
+    cpdef int getFM(self)
+    cdef int cGetFM(self)
+    cdef cystr cGetBS(self)
+    cpdef cystr getBS(self)
+    cpdef py_array getQualArray(self)
+    cpdef cystr getSlice(self, int start=?, int end=?,
+                         cystr addComment=?)

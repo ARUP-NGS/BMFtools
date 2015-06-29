@@ -446,6 +446,7 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     :return list Merged Positions
     :return bool Whether the merge was successful
     """
+    cdef list MiddleList
     cdef int offset
     cdef PyLayout_t tmpPos
     cdef LayoutPos_t pos1, pos2
@@ -506,18 +507,26 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         else:
-            print("Giving up on this - 'N' the base")
-            if(pos1.operation != 83):
-                return LayoutPos(pos1.pos, pos1.readPos, 78, pos1.operation,
-                                 -137, -137,
-                                 merged=True, mergeAgreed=0)
-            elif(pos2.operation != 83):
-                return LayoutPos(pos1.pos, pos1.readPos, 78, pos2.operation,
+            print("Giving up on this - 'N' the operation to kill ")
+            if(pos1.operation == 68 or pos1.operation == 73):
+                return LayoutPos(pos1.pos, pos1.readPos, 78, 78,
                                  -137, -137,
                                  merged=True, mergeAgreed=0)
             else:
-                return LayoutPos(pos1.pos, pos1.readPos, 78, 77,
+                print("Read 1 not softclipped - going with it.")
+                return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+                                 pos1.operation,
+                                 pos1.quality, pos1.agreement,
+                                 merged=True, mergeAgreed=0)
+            if(pos2.operation == 68 or pos2.operation == 73):
+                return LayoutPos(pos2.pos, pos2.readPos, 78, 78,
                                  -137, -137,
+                                 merged=True, mergeAgreed=0)
+            else:
+                print("Read 2 not softclipped - going with it.")
+                return LayoutPos(pos2.pos, pos2.readPos, pos2.base,
+                                 pos2.operation,
+                                 pos2.quality, pos2.agreement,
                                  merged=True, mergeAgreed=0)
     elif(pos1.operation == pos2.operation):
         print("Disagreed base with" + str(pos1) + "\t" + str(pos2))
@@ -532,7 +541,7 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                 pos2.quality - pos1.quality, pos2.agreement,
                 merged=True, mergeAgreed=0)
     else:
-        return LayoutPos(pos1.pos, pos1.readPos, 83, pos1.operation, -137,
+        return LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137,
                          -137, merged=True, mergeAgreed=0)
 
 
@@ -638,7 +647,8 @@ cpdef MPA2stdout(cystr inBAM):
         l1 = PyLayout.fromread(read1)
         l2 = PyLayout.fromread(read2)
         retLayout = MergeLayoutsToLayout(l1, l2)
-        stdout.write(str(retLayout))
+        if("N" not in retLayout.cGetCigarString()):
+            stdout.write(str(retLayout))
     return 0
 
 

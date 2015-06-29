@@ -332,7 +332,7 @@ cdef class pFastqProxy:
         self.name = name
 
     @classmethod
-    def fromFastqProxy(cls, pysam.cfaidx.FastqProxy FastqProxyObj):
+    def fromFastqProxy(cls, FastqProxy_t FastqProxyObj):
         return cls(FastqProxyObj.comment, FastqProxyObj.quality,
                    FastqProxyObj.sequence, FastqProxyObj.name)
 
@@ -396,7 +396,7 @@ cpdef cystr getBS(pFastqProxy_t read):
 
 
 @cython.returns(cystr)
-def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
+def FastqProxyToStr(FastqProxy_t fqPrx):
     """
     Just makes a string from a FastqProxy object.
     """
@@ -405,7 +405,7 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
 
 
 @cython.returns(cystr)
-def SliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
+def SliceFastqProxy(FastqProxy_t fqPrx,
                     int firstBase=0,
                     int lastBase=-1337,
                     cystr addString=""):
@@ -1682,7 +1682,7 @@ def CalculateFamStats(inFq):
     families of size > 1, and number of singletons.
     """
     inHandle = pysam.FastqFile(inFq)
-    cdef pysam.cfaidx.FastqProxy read
+    cdef FastqProxy_t read
     cdef int famS
     cdef int sumFam
     cdef int numFam
@@ -3061,32 +3061,38 @@ TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
                "PM": "Z", "MA": "Z", "ot": "i", "mp": "i",
                "om": "i"}
 
+
 cdef class pFastqFile(object):
     """
     Contains a handle for a kseq.h wrapper and converts each FastqProxy
     to a pFastqProxy
     """
-    def __init__(self, object Fq):
-        if(isinstance(Fq, str)):
-            self.handle = pysam.FastqFile(Fq)
-        elif(isinstance(Fq, pysam.cfaidx.FastqFile)):
-            self.handle = Fq
+
+    def __init__(self, object arg):
+        if(isinstance(arg, str)):
+            self.handle = pysam.cfaidx.FastqFile(arg, persist=False)
+        elif(isinstance(arg, pysam.cfaidx.FastqFile)):
+            self.handle = pysam.cfaidx.FastqFile(arg.filename, persist=False)
         else:
-            raise Tim("pFastqFile can be initiated by a "
-                      "pysam.cfaidx.FastqFile or a string.")
+            raise IllegalArgumentError(
+                "pFastqFile can only be initialized from a string "
+                "(path to fastq) or a FastqFile object.")
 
     def __iter__(self):
         return self
 
-    @cython.returns(pFastqProxy)
+    @cython.returns(pFastqProxy_t)
     def __next__(self):
-        return pFastqProxy.fromFastqProxy(next(self.handle))
-
-    cpdef close(self):
-        self.handle.close()
+        """
+        python version of next().
+        """
+        return pFastqProxy.fromFastqProxy(self.handle.next())
 
     def refresh(self):
         self.handle = pysam.FastqFile(self.handle.filename)
+
+    cpdef close(self):
+        self.handle.close()
 
 
 cpdef bint ReadsOverlap(

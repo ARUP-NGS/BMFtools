@@ -435,9 +435,9 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
         cString2 = cStringIO.StringIO()
         f1 = gzip.GzipFile(fileobj=cString1, mode="w")
         f2 = gzip.GzipFile(fileobj=cString2, mode="w")
-    inIndex = pysam.FastqFile(indexFq)
+    inIndex = pysam.FastqFile(indexFq, persist=False)
     hpLimit = len(inIndex.next().sequence) * 5 // 6
-    inIndex = pysam.FastqFile(indexFq)
+    inIndex = pysam.FastqFile(indexFq, persist=False)
     ifin = inIndex.next
     outFqSet1 = []
     outFqSet2 = []
