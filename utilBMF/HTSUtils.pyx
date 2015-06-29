@@ -579,6 +579,53 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     return outBAM
 
 
+def PipeAlignTag(R1, R2, ref="default",
+                 outBAM="default", path="default",
+                 bint coorsort=True, bint u=True,
+                 cystr sortMem="6G", cystr opts=""):
+    """
+    :param R1 - string - path to input fastq for read 1
+    :param R2 - string - path to input fastq for read 2
+    :param outBAM - string - path to output bam.
+    Set to 'stdout' to emit to stdout.
+    :param u - emit uncompressed bam.
+    :param coorsort - whether or not to coordinate sort
+    :param path - path to bwa. Override default bwa on path with "path"
+    :param sortMem - string - sort memory limit to provide to samtools
+    :param ref - path to reference index base
+    """
+    if(path == "default"):
+        path = "bwa"
+    if(opts == ""):
+        opts = '-t 4 -v 1 -Y -T 0'
+    if(outBAM == "default"):
+        outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
+    if(ref == "default"):
+        raise Tim("Reference file index required for alignment!")
+    uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
+    opt_concat = ' '.join(opts.split())
+    cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
+    sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\t"
+                 "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+                 "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
+                 "t\n@PG/'")
+    cStr += sedString
+    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcode'
+             'TagCOBam;PipeBarcodeTagCOBam()')
+    if(coorsort):
+        compStr = " -l 0 " if(coorsort) else ""
+        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
+                                                              uuidvar,
+                                                              compStr)
+    else:
+        cStr += (" | samtools view -Sbhu - " if(
+            u) else " | samtools view -Sbh -")
+    if(outBAM != "stdout"):
+        cStr += " > %s" % outBAM
+    check_call(cStr)
+    return outBAM
+
+
 def align_bwa_mem_se(reads, ref, opts, outBAM):
     """Aligns a set of reads to a reference
     with provided options. Defaults to
@@ -2366,16 +2413,21 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
 
 
 @cython.returns(cystr)
-def TrimExt(cystr fname):
+def TrimExt(cystr fname, cystr exclude=""):
     """
     Trims the extension from the filename so that I don't have to type this
     every single time.
+    :param fname - filename to strip
+    :param exclude - string for exclusion.
+    (Any number of comma-separated words may be provided.)
     """
+    cdef cystr tmpStr
     if(fname is not None):
         tmpList = fname.split("/")[-1].split(".")[:-1]
         if(tmpList[-1] == "gz"):
             tmpList = tmpList[:-1]
-        return ".".join(tmpList)
+        return ".".join([tmpStr for tmpStr in tmpList if
+                         tmpStr not in exclude.split(",")])
     else:
         raise Tim("Cannot trim an extension of a None value!")
 

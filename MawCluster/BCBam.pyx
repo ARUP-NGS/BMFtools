@@ -714,6 +714,19 @@ cdef AlignedSegment_t TagAlignedSegment(
     return read
 
 
+def PipeBarcodeTagCOBam():
+    """
+    Takes a SAM input stream, tags the bam, and converts
+    it into a bam, all in one fell swoop!
+    """
+    cdef AlignedSegment_t read
+    inHandle = pysam.AlignmentFile("-", "r")
+    outHandle = pysam.AlignmentFile("-", "wb", template=inHandle)
+    for read in inHandle:
+        outHandle.write(TagAlignedSegment(read))
+    return
+
+
 cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
                             AlignmentFile outbam):
     """In progress

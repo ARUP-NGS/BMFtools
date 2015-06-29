@@ -508,26 +508,12 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                              merged=True, mergeAgreed=2)
         else:
             print("Giving up on this - 'N' the operation to kill ")
-            if(pos1.operation == 68 or pos1.operation == 73):
-                return LayoutPos(pos1.pos, pos1.readPos, 78, 78,
-                                 -137, -137,
-                                 merged=True, mergeAgreed=0)
-            else:
-                print("Read 1 not softclipped - going with it.")
-                return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
-                                 pos1.operation,
-                                 pos1.quality, pos1.agreement,
-                                 merged=True, mergeAgreed=0)
-            if(pos2.operation == 68 or pos2.operation == 73):
-                return LayoutPos(pos2.pos, pos2.readPos, 78, 78,
-                                 -137, -137,
-                                 merged=True, mergeAgreed=0)
-            else:
-                print("Read 2 not softclipped - going with it.")
-                return LayoutPos(pos2.pos, pos2.readPos, pos2.base,
-                                 pos2.operation,
-                                 pos2.quality, pos2.agreement,
-                                 merged=True, mergeAgreed=0)
+            return (LayoutPos(pos1.pos, pos1.readPos, 78, 78,
+                              -137, -137,
+                              merged=True, mergeAgreed=0) if
+                    (pos1.operation != 68 and pos1.operation != 73) else
+                    LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137, -137,
+                              merged=True, mergeAgreed=0))
     elif(pos1.operation == pos2.operation):
         print("Disagreed base with" + str(pos1) + "\t" + str(pos2))
         if(pos1.quality > pos2.quality):
@@ -649,6 +635,9 @@ cpdef MPA2stdout(cystr inBAM):
         retLayout = MergeLayoutsToLayout(l1, l2)
         if("N" not in retLayout.cGetCigarString()):
             stdout.write(str(retLayout))
+        else:
+            outHandle.write(read1)
+            outHandle.write(read2)
     return 0
 
 

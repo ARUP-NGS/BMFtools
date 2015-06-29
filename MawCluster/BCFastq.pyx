@@ -854,9 +854,9 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
     cdef pFastqProxy_t rec1, rec2, index_read
     cdef int bLen, hpLimit
     if(outFq1 is None):
-        outFq1 = TrimExt(inFq1) + ".rescued.shaded.fastq"
+        outFq1 = TrimExt(inFq1, exclude="fastq") + ".rescued.shaded.fastq"
     if(outFq2 is None):
-        outFq2 = TrimExt(inFq2) + ".rescued.shaded.fastq"
+        outFq2 = TrimExt(inFq2, exclude="fastq") + ".rescued.shaded.fastq"
     if(TrueFamDict is None or rescueDict is None):
         raise Tim("TrueFamDict and rescueDict must not be None! Reprs! "
                   "TFD: %s. Rescue: %s." % (repr(TrueFamDict),

@@ -971,7 +971,7 @@ def main():
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
     elif(subcommand == "rsq"):
-        from MawCluster.BCFastq import pairedFastqShades
+        from BMFMain.Workflow import pairedFastqShades
         pairedFastqShades(Chapman['fastqs'][0],
                           Chapman['fastqs'][1],
                           indexFq=Chapman['fastqs'][2],
