@@ -28,10 +28,18 @@ and samtools.
 #  warnings.filterwarnings('error')
 
 
+@cython.locals(bamread=AlignedSegment_t)
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    PipeParser = subparsers.add_parser(
+        "pipe")
+    PipeParser.add_argument(
+        "compressionsetting",
+        help=("First letter determines compression of input."
+             "Second letter determines compression of output."
+             " (s/b for sam/bam)."))
     PEP8Parser = subparsers.add_parser(
         "pep8",
         description="Command for applying modified PEP8 to this code base.")
@@ -1070,6 +1078,19 @@ def main():
                "standards or caring more about these violations.")
             sys.stdout.write(out)
             return 1
+    if(subcommand == "pipe"):
+        from MawCluster.BCBam import PipeBarcodeTagCOBam
+        compressInput = True if(
+            Palin.compressionsetting[0] == "b") else False
+        bamOutput = True if(
+            Palin.compressionsetting[1] == 'b') else False
+        uncompressed_output = (True if(
+            'u' in Palin.compressionsetting) else False)
+        pl("Now piping %s input to %s output" % ("bam" if(
+            compressInput) else "sam",
+                                                 "bam" if(
+            bamOutput) else "sam"))
+        PipeBarcodeTagCOBam(compressInput, bamOutput, uncompressed_output)
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

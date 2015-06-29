@@ -676,6 +676,10 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
+cpdef AlignedSegment_t pTagAlignedSegment(AlignedSegment_t read):
+    return TagAlignedSegment(read)
+
+
 cdef AlignedSegment_t TagAlignedSegment(
         AlignedSegment_t read):
     """
@@ -714,17 +718,68 @@ cdef AlignedSegment_t TagAlignedSegment(
     return read
 
 
-def PipeBarcodeTagCOBam():
+cdef class BamPipe:
+    """
+    Creates a callable function which acts on a BAM stream.
+
+    :param function - callable function which returns an input BAM object.
+    :param bin_input - boolean - true if input is BAM
+    false for TAM/SAM
+    :param bin_output - boolean - true to output in BAM format.
+    :param uncompressed_output - boolean - true to output uncompressed
+    BAM records.
+    """
+    def __init__(self, object function, bint bin_input, bint bin_output,
+                 bint uncompressed_output=False):
+        if(bin_input):
+            self.inHandle = pysam.AlignmentFile("-", "rb")
+        else:
+            self.inHandle = pysam.AlignmentFile("-", "r")
+        if(bin_output):
+            if(uncompressed_output):
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wbu", template=self.inHandle)
+            else:
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wb", template=self.inHandle)
+        assert hasattr("__call__", function)
+        self.function = function
+
+    def write(self):
+        self.outHandle.write(self)
+
+    cpdef process(self):
+        cdef AlignedSegment_t read
+        for read in self.inHandle:
+            self.outHandle.write(self.function(read))
+
+
+cdef class TagBamPipe(BamPipe):
+    def __init__(self, bint bin_input, bint bin_output,
+                 bint uncompressed_output=False):
+        super(BamPipe, self).__init__(TagAlignedSegment, bin_input, bin_output,
+                                      uncompressed_output=uncompressed_output)
+
+
+def PipeBarcodeTagCOBam(bin_input=False, bin_output=False,
+                        uncompressed_output=False):
     """
     Takes a SAM input stream, tags the bam, and converts
     it into a bam, all in one fell swoop!
     """
+    cdef cystr mode
     cdef AlignedSegment_t read
-    inHandle = pysam.AlignmentFile("-", "r")
-    outHandle = pysam.AlignmentFile("-", "wb", template=inHandle)
-    for read in inHandle:
-        outHandle.write(TagAlignedSegment(read))
-    return
+    inHandle = (pysam.AlignmentFile("-", "rb") if(
+        bin_input) else pysam.AlignmentFile("-", "r"))
+    mode = "w"
+    if(bin_output):
+        mode += "b"
+        if(uncompressed_output):
+            mode += "u"
+    outHandle = pysam.AlignmentFile("-", mode,
+                                    template=inHandle)
+    [outHandle.write(TagAlignedSegment(read)) for read in inHandle]
+    return 1
 
 
 cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,

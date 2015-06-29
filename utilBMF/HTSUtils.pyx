@@ -611,7 +611,7 @@ def PipeAlignTag(R1, R2, ref="default",
                  "t\n@PG/'")
     cStr += sedString
     cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcode'
-             'TagCOBam;PipeBarcodeTagCOBam()')
+             'TagCOBam;PipeBarcodeTagCOBam()\'')
     if(coorsort):
         compStr = " -l 0 " if(coorsort) else ""
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
@@ -622,7 +622,9 @@ def PipeAlignTag(R1, R2, ref="default",
             u) else " | samtools view -Sbh -")
     if(outBAM != "stdout"):
         cStr += " > %s" % outBAM
-    check_call(cStr)
+    pl("Command string for ambitious pipe call: %s" % cStr.replace(
+        "\t", "\\t").replace("\n", "\\n"))
+    check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"))
     return outBAM
 
 
