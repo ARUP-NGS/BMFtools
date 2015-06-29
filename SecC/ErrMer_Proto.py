@@ -9,14 +9,14 @@ import operator
 import pysam
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-#cimport pysam.calignmentfile
-#ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
-mcoptBS = operator.methodcaller("opt","BS")
-nucList = ["A","T","C","G","N"]
+# cimport pysam.calignmentfile
+# ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+mcoptBS = operator.methodcaller("opt", "BS")
+nucList = ["A", "T", "C", "G", "N"]
 
 
 def getArgs():
-    parser=argparse.ArgumentParser(description="blah")
+    parser = argparse.ArgumentParser(description="blah")
     parser.add_argument("reads1")
     parser.add_argument("reads2")
     parser.add_argument("consBam")
@@ -24,12 +24,12 @@ def getArgs():
     return parser.parse_args()
 
 
-def HeatMaps(heatedKmers,topKmers):
+def HeatMaps(heatedKmers, topKmers):
     for kmer, wrong in topKmers:
         fig, ax = plt.subplots()
-        plt.suptitle(kmer+"  "+str(wrong),fontsize=24)
+        plt.suptitle(kmer+"  "+str(wrong), fontsize=24)
         data = heatedKmers[kmer]
-        #np.fill_diagonal(data,0)
+        # np.fill_diagonal(data,0)
         heatmap = ax.pcolor(data, cmap=plt.cm.Blues, edgecolors='k')
         ax.set_xticks(np.arange(data.shape[0])+0.5, minor=False)
         ax.set_yticks(np.arange(data.shape[1])+0.5, minor=False)
@@ -45,10 +45,10 @@ def HeatMaps(heatedKmers,topKmers):
         plt.savefig(kmer)
 
 
-def recsConsCompare(recGen,consRead,kmerDict,kmerTotals,k):
+def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, k):
     """Compares read and consensus to build a dictionary of context specific
         errors"""
-    nucIndex = {"A":0,"C":1,"T":2,"G":3}
+    nucIndex = {"A": 0, "C": 1, "T": 2, "G": 3}
     for rec in recGen:
         recSeq = rec.sequence
         if consRead.is_reverse:
@@ -70,8 +70,8 @@ def recsConsCompare(recGen,consRead,kmerDict,kmerTotals,k):
                 kmerDict[recKmer]
                 pass
             except KeyError:
-                kmerDict[recKmer] = np.zeros((4,4), dtype=np.float)
-                kmerTotals[recKmer] = [0,0]
+                kmerDict[recKmer] = np.zeros((4, 4), dtype=np.float)
+                kmerTotals[recKmer] = [0, 0]
             kmerDict[recKmer][nucIndex[consBase]][nucIndex[recBase]] += 1.0
             kmerTotals[recKmer][1] += 1
             if recBase != consBase:
@@ -86,7 +86,7 @@ def ParseMDZ(mdzStr):
     mismatches = []
     lastItem = None
     oper = []
-    counts = [str(i) for i in range(0,10)]+["^"]
+    counts = [str(i) for i in range(0, 10)]+["^"]
     for item in mdzStr:
         curval = item
         if item in nucList:
@@ -100,17 +100,23 @@ def ParseMDZ(mdzStr):
             oper = [item]
 
 
+def GetRefKmers(refSeq):
+    pass
+
+
 def main():
     args = getArgs()
     readsInFq1 = pFastqFile(args.reads1)
     readsInFq2 = pFastqFile(args.reads2)
-    bamGen = groupby(pysam.AlignmentFile(args.consBam),key=mcoptBS)
-    k=int(args.kmerLen)
+    bamGen = groupby(pysam.AlignmentFile(args.consBam), key=mcoptBS)
+    k = int(args.kmerLen)
     bgn = bamGen.next
-    r2GenGen = groupby(readsInFq2,key=getBS)
+    r2GenGen = groupby(readsInFq2, key=getBS)
     r2ggn = r2GenGen.next
-    kmerDict={}
-    kmerTotals={}
+    kmerDict = {}
+    kmerTotals = {}
+    qualDict = {}
+    #refKmers = getRefKmers(args.Ref)
     for bc4fq1, fqRecGen1, in groupby(readsInFq1, key=getBS):
         consBS, consReads = bgn()
         bc4fq2, fqRecGen2 = r2ggn()
@@ -129,19 +135,19 @@ def main():
                 consRead1 = cRead
             if cRead.is_read2:
                 consRead2 = cRead
-        if consRead1 == None or consRead2 == None:
+        if consRead1 is None or consRead2 is None:
             print "Did not find both reads in bam"
         if consRead1.opt("FM") <= 100:
             continue
         recsConsCompare(fqRecGen1, consRead1, kmerDict, kmerTotals, k)
         recsConsCompare(fqRecGen2, consRead2, kmerDict, kmerTotals, k)
-    wrongKmers = {kmer:kmerTotals[kmer][0]/kmerTotals[kmer][1] for kmer
+    wrongKmers = {kmer: kmerTotals[kmer][0]/kmerTotals[kmer][1] for kmer
                   in kmerTotals}
     sortedKmers = sorted(wrongKmers.items(), key=operator.itemgetter(1),
                          reverse=True)
-    heatedKmers = {kmer:kmerDict[kmer]/kmerDict[kmer].sum(axis=0) for kmer in
+    heatedKmers = {kmer: kmerDict[kmer]/kmerDict[kmer].sum(axis=0) for kmer in
                    kmerDict}
-    HeatMaps(heatedKmers,sortedKmers[:10])
+    HeatMaps(heatedKmers, sortedKmers[:10])
 
 
 if __name__ == "__main__":
