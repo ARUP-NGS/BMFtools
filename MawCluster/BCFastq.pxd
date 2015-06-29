@@ -15,7 +15,8 @@ ctypedef cython.str cystr
 ctypedef c_array.array py_array
 ctypedef np.int32_t np_int32_t
 
-cdef cystr cCompareFqRecsFast(list R, cystr name=?)
+cdef cystr cCompareFqRecsFast(list R, cystr name=?, double minPVFrac=?,
+                              double minFAFrac=?, double minMaxFA=?)
 cpdef cystr pCompareFqRecsFast(list R, cystr name=?)
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 
@@ -43,3 +44,5 @@ cdef inline cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit
         return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
 
 cdef public dict Num2NucDict
+
+cdef public cystr ARGMAX_TRANSLATE_STRING

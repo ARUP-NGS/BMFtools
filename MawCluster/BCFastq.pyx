@@ -24,15 +24,13 @@ from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       methodcaller as mc)
 from subprocess import check_call
 from array import array
+from string import maketrans
 
 import cython
 import numpy as np
-from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
-                   multiply as nmul, subtract as nsub, any as npany,
-                   vstack as npvstack, greater as ngreater, less as nless,
-                   divide as ndiv, char as npchar)
 import pysam
 from itertools import groupby
+from numpy import sum as nsum
 
 from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
@@ -45,6 +43,9 @@ try:
 except ImportError:
     pl("Note: re2 import failed. Fell back to re.", level=logging.DEBUG)
     from re import compile as regex_compile
+
+
+ARGMAX_TRANSLATE_STRING = maketrans('\x00\x01\x02\x03', 'ACGT')
 
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
@@ -193,10 +194,12 @@ cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,
-                              cystr name=None):
+                              cystr name=None,
+                              double minPVFrac=0.1,
+                              double minFAFrac=0.2,
+                              double minMaxFA=0.9):
     """
     TODO: Unit test for this function.
-    Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     After inlin
@@ -208,6 +211,7 @@ cdef cystr cCompareFqRecsFast(list R,
 
     """
     cdef int lenR, ND, lenSeq, tmpInt, i
+    cdef double tmpFlt
     cdef cython.bint Success
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
@@ -217,6 +221,7 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
     cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
     cdef ndarray[char, ndim=2] seqArray
+    cdef py_array tmpArr
     # cdef ndarray[char, ndim=1, mode = "c"] newSeq
     cdef pFastqProxy_t rec
     cdef char tmpChar
@@ -234,11 +239,11 @@ cdef cystr cCompareFqRecsFast(list R,
     Success = True
     '''
     stackArrays = tuple([np.char.array(rec.sequence, itemsize=1) for rec in R])
-    seqArray = npvstack(stackArrays)
+    seqArray = np.vstack(stackArrays)
     '''
     seqArray = cRecListTo2DCharArray(R)
 
-    quals = np.array([rec.getQualArray() for
+    quals = np.array([array('B', rec.quality) for
                       rec in R], dtype=np.int32)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
@@ -258,14 +263,27 @@ cdef cystr cCompareFqRecsFast(list R,
     qualGFlat = nsum(qualG, 0, dtype=np.int32)
     qualT[seqArray != 84] = 0
     qualTFlat = nsum(qualT, 0, dtype=np.int32)
-    qualAllSum = npvstack(
+    qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = "".join([Num2Nuc(tmpChar) for tmpChar in
-                      npargmax(qualAllSum, 0)])
-    phredQuals = npamax(qualAllSum, 0)  # Avoid calculating twice.
+    tmpArr = array('B', np.argmax(qualAllSum, 0))
+    newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
+    phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+
+    # Filtering
+    # First, kick out bad/discordant bases
+    tmpFlt = float(np.max(phredQuals))
+    PVFracDivisor = minPVFrac * tmpFlt
+    phredQuals[phredQuals < PVFracDivisor] = 0
+    # Second, flag families which are probably not really "families"
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for
                   i in xrange(lenSeq)], dtype=np.int32)
+    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA):
+        #  If there's any base on which a family agrees less often
+        #  than minFAFrac, nix the whole family.
+        #  Along with that, require that at least one of the bases agree
+        #  to some fraction. I've chosen 0.9 to get rid of junk families.
+        phredQuals[:] = 0
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
@@ -295,6 +313,7 @@ cdef cystr cCompareFqRecsFast(list R,
     if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
+
 
 
 @cython.returns(cystr)
