@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import uuid
+import cython
 
 ## BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
@@ -32,6 +33,15 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    PipeParser = subparsers.add_parser(
+        "pipetagbam",
+        description="Tags a BAM, taking sam/bam input/output.")
+    PipeParser.add_argument(
+        "compression",
+        help=("First letter determines compression of input."
+             "Second letter determines compression of output."
+             " (s/b for sam/bam). Add u to emit"
+             " uncompressed BAM"))
     PEP8Parser = subparsers.add_parser(
         "pep8",
         description="Command for applying modified PEP8 to this code base.")
@@ -971,13 +981,15 @@ def main():
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
     elif(subcommand == "rsq"):
-        from MawCluster.BCFastq import RescueShadingWrapper
-        RescueShadingWrapper(Chapman['fastqs'][0],
-                             Chapman['fastqs'][1],
-                             indexFq=Chapman['fastqs'][2],
-                             minFam=Chapman['minFam'],
-                             mm=Chapman['mm'],
-                             head=Chapman['head'])
+        from BMFMain.Workflow import pairedFastqShades
+        pairedFastqShades(Chapman['fastqs'][0],
+                          Chapman['fastqs'][1],
+                          indexFq=Chapman['fastqs'][2],
+                          minFamRsq=Chapman['minFam'],
+                          mmRsq=Chapman['mm'],
+                          head=Chapman['head'], sortMem=Chapman['sortMem'],
+                          rescue=True, p5Seq=Chapman['p5Seq'],
+                          p3Seq=Chapman['p3Seq'])
     elif(subcommand == "bedcov"):
         # sys.stderr.write("config repr: %s" % repr(Chapman.config))
         from utilBMF.QC import FastDOCBed, ExtendBed
@@ -1068,6 +1080,19 @@ def main():
                "standards or caring more about these violations.")
             sys.stdout.write(out)
             return 1
+    if(subcommand == "pipetagbam"):
+        from MawCluster.BCBam import PipeBarcodeTagCOBam
+        compressInput = True if(
+            Palin.compression[0] == 'b') else False
+        bamOutput = True if(
+            Palin.compression[1] == 'b') else False
+        uncompressed_output = (True if(
+            'u' in Palin.compression) else False)
+        pl("Now piping %s input to %s output" % ("bam" if(
+            compressInput) else "sam",
+                                                 "bam" if(
+            bamOutput) else "sam"))
+        PipeBarcodeTagCOBam(compressInput, bamOutput, uncompressed_output)
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

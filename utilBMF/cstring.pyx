@@ -5,6 +5,7 @@ import cython
 import ctypes
 from array import array
 
+
 cdef int * to_cstring_array(cystr input_str):
     cdef char *tmp = PyString_AsString(input_str)
     cdef int *ret = <int *>malloc(len(input_str) * sizeof(char *))
@@ -51,6 +52,15 @@ cdef py_array cs_to_ia(cystr input_str):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
+cdef inline cystr RevCmpPyArray(cystr seq):
+    cdef char i
+    return array('B', [RevCmpToChar(i) for
+                       i in <char *>seq]).tostring()[::-1]
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
 cdef cystr RevCmpImplicit(cystr seq):
     """
     Very quickly reverse complements a string with an inline switch for faster
@@ -58,18 +68,6 @@ cdef cystr RevCmpImplicit(cystr seq):
     """
     cdef char i
     return "".join([RevCmpInt(i) for i in <char *>seq])[::-1]
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.initializedcheck(False)
-cdef py_array cs_to_ph(cystr input_str):
-    cdef py_array tmpArr
-    cdef size_t index
-    tmpArr = array('B', input_str)
-    for index in range(len(tmpArr)):
-        tmpArr[index] -= 33
-    return tmpArr
 
 
 @cython.boundscheck(False)
@@ -82,3 +80,15 @@ cpdef py_array str2intarray(cystr instr):
 @cython.wraparound(False)
 cpdef py_array str2phredarray(cystr instr):
     return cs_to_ph(instr)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+cdef py_array cs_to_ph(cystr input_str):
+    cdef py_array tmpArr
+    cdef size_t index
+    tmpArr = array('B', input_str)
+    for index in range(len(tmpArr)):
+        tmpArr[index] -= 33
+    return tmpArr
