@@ -11,11 +11,11 @@ from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
-from utilBMF.ErrorHandling import ThisIsMadness
+from utilBMF.ErrorHandling import ThisIsMadness, ThisIsHKMadness
 from cytoolz import frequencies as cyfreq
-from itertools import chain
+from itertools import chain, groupby
 from functools import partial
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 try:
     import re2 as re
 except ImportError:
@@ -81,6 +81,10 @@ cdef class RefKmer(object):
     @cython.returns(cystr)
     def __str__(self):
         return "%s|%s|%s" % (self.contig, self.pos, self.seq)
+
+    cpdef int getSeqLen(self):
+        return len(self.seq)
+
 
 
 cdef class KmerFetcher(object):
@@ -192,10 +196,56 @@ cdef class KmerFetcher(object):
         self.HashMap[
             ":".join(map(str, bedline))] = kmerList
 
+    @cython.returns(list)
+    def GetIntervalsFromMap(self):
+        """Converts a dictionary (keyed by the input bed file 'chr:start:stop') of
+        list of kmer objects into a list of continuous intervals of kmer start positions."""
+        cdef list intervalList
+        # Convert list of Kmers to list of continuous starting positions (kmers all the same length)
+        intervalList = []
+        keyList = self.HashMap.keys()
+        for key in keyList:
+            bedRegionKmerList = self.HashMap[key]
+            if len(set([kMerObj.contig for kMerObj in bedRegionKmerList])) != 1:
+                raise ThisIsHKMadness("Contigs do not match in this bed region, aborting.")
+            else:
+                contig = bedRegionKmerList[0].contig
+            posList = [kMerObj.pos for kMerObj in bedRegionKmerList]
+            for k,g in groupby(enumerate(posList), lambda x:x[0]-x[1]):
+                group = list(g)
+                intervalList.append((contig, group[0][1], group[-1][1]))
+        return sorted(intervalList)
+
+    cpdef ConvertIntervalsToBed(self, list intervalList, cystr outFile):
+        """
+        Converts a list of continuous intervals of kmer start positions (output from
+        GetIntervalsFromMap is (contig, continuousStartIntervalFirst, continuousStartIntervalLast)
+        to a bed file (outFile) with a left open intervals, e.g. (start, stop].
+        """
+        pl("Creating bed file describing regions with unique kmer mappings.")
+        kmer = self.k
+        bedStrList = ["%s\t%s\t%s\n" %(contig, startFirst-1, startLast + kmer -1)
+                          for (contig, startFirst,startLast) in intervalList]
+        #with open("tmp.bed", "w") as f:
+        #    f.write("".join(bedStrList))
+
+        # Sort and Merge bed file
+        #cstr = "cat tmp.bed | bedtools sort | bedtools merge | sort -k1,1 -k2,2n - > " + outFile
+        cstr = "echo " + "".join(bedStrList) + " | bedtools sort | bedtools merge | sort -k1,1 -k2,2n - > " + outFile
+        pl("Command string for sorting and merging bed file is " + cstr)
+        check_call(cstr,shell=True)
+        #pl("Removing temporary files ...")
+        #os.remove("tmp.bed")
+        pl("Final sorted/merged bed file covering unqiue kmers of size " + str(kmer) + " saved to " +
+           outFile)
+
+
+
+
+
 
     cpdef list GetUniqueKmers(self, list bedline):
         output = self.getOutputString(bedline, aligner=self.aligner)
-        print "getOutputString has length of " + str(len(output))
         return GetMQPassRefKmersMem(output,
                                     maxNM=self.mismatches, minMQ=self.minMQ)
 
@@ -354,7 +404,7 @@ def GetMQPassRefKmersMem(cystr bwaStr, int maxNM=2, int minMQ=1):
     cdef list lines, i
     cdef cystr f
     cdef tuple nameCount
-    print "Number of reads is (approximately) " + str(bwaStr.count("\n") - bwaStr.count("@"))
+    pl("Number of reads is (approximately) " + str(bwaStr.count("\n") - bwaStr.count("@")))
 
     return [RefKmer(i[0], contig=i[2],
                     pos=int(i[3])) for i in [f.strip().split("\t") for
