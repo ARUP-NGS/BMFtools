@@ -4,8 +4,8 @@ from utilBMF.ErrorHandling import IllegalArgumentError
 
 """
 This module contains default values for each subcommand of bmftools.
-When adding additional subcommands or extending existing ones, there is a simple
-protocol to follow.
+When adding additional subcommands or extending existing ones, there is a
+simple protocol to follow.
 First, write argparse normally, except that no defaults should be set.
 This causes the Namespace to populate None objects, which this defaultConfig
 overrides.
@@ -28,8 +28,6 @@ parsed in as something other than a string.
 """
 
 
-
-
 defaultConfig = {
                  "abrapath": "default",
                  "aligner": "mem",
@@ -39,6 +37,8 @@ defaultConfig = {
                  "bed_buffer": 0,
                  "bwapath": "bwa",
                  "check_both": True,
+                 "compression": "bb",
+                 "coorsort": False,
                  "experiment": "",
                  "file_prefix": "default",
                  "gatkpath": "default",
@@ -68,6 +68,7 @@ defaultConfig = {
                  "mm": 1,
                  "on_target": 0.25,
                  "opts": "",
+                 "outBAM": None,
                  "outfile": "default",
                  "outfile_handle": sys.stdout,
                  "outTsv": "default",
@@ -85,5 +86,6 @@ defaultConfig = {
                  "review_dir": "default",
                  "single_end": False,
                  "sortMem": "6G",
-                 "threads": 4
+                 "threads": 4,
+                 "uncompressed_bam": False
                  }

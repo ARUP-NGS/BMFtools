@@ -6,12 +6,14 @@ import logging
 import os
 import sys
 import uuid
+import cython
 
 ## BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
 from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
+from utilBMF.QC import GetAllQCMetrics
 from BMFMain import Workflow as wf
 
 from utilBMF.ErrorHandling import ThisIsHKMadness
@@ -31,6 +33,21 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    PipeParser = subparsers.add_parser(
+        "pipetagbam",
+        description="Tags a BAM, taking sam/bam input/output.")
+    PipeParser.add_argument(
+        "compression",
+        help=("First letter determines compression of input."
+             "Second letter determines compression of output."
+             " (s/b for sam/bam). Add u to emit"
+             " uncompressed BAM"))
+    PEP8Parser = subparsers.add_parser(
+        "pep8",
+        description="Command for applying modified PEP8 to this code base.")
+    MergePairedAlignmentsParser = subparsers.add_parser(
+        "mpa",
+        description="Merge duplex read read pairs into a single record each.")
     MainSubparser = subparsers.add_parser(
         "main", description="Run a full pipeline analysis.")
     BedCovParser = subparsers.add_parser(
@@ -591,9 +608,10 @@ def main():
                         "e for inclusion in variant call", type=int)
     MainSubparser.add_argument("--picardpath", help="Path to picard jar. Required fo"
                         "r calling PicardTools.")
-    MainSubparser.add_argument("--indelRealigner", help="Select which indel realigne"
-                        "r you wish to use. Supported: abra, GATK. Set to "
-                        "None to avoid realignment.")
+    MainSubparser.add_argument(
+        "-g", "--realigner",
+        help="Select which indel realigner you wish to use. Supported: abra, "
+        "GATK. Set to None to avoid realignment.")
     MainSubparser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)")
     MainSubparser.add_argument("--readLength", help="Read length",
                         type=int)
@@ -625,6 +643,31 @@ def main():
         help="Set to 'true' to add the rescue step to the family merging.")
     MainSubparser.add_argument(
         "--bwapath", help="Path to bwa executable. Default: bwa.")
+    MergePairedAlignmentsParser.add_argument(
+        "inBAM", help="Path to input BAM. Set to 'stdin' for stdin.")
+    MergePairedAlignmentsParser.add_argument(
+        "--outBAM", "-o",
+        help=("Path to output BAM. Defaults to stdout. "
+              "Set to stdout' to be explicit, otherwise."))
+    MergePairedAlignmentsParser.add_argument(
+        "--coorsort", "-s",
+        help=("Use flag to turn on coordinate "
+              "sort the merged pair bam output."),
+        action="store_true")
+    MergePairedAlignmentsParser.add_argument(
+        "--conf", help="Path to config file for merging read pairs.")
+    MergePairedAlignmentsParser.add_argument(
+        "-u", "--uncompressed-bam",
+        help="Flag to emit uncompressed bam.", action="store_true")
+    MergePairedAlignmentsParser.add_argument(
+        "-m", "--sortMem",
+        help="sortMem string for sorting, if piping "
+        "to a samtools sort. Default: 6G.")
+    PEP8Parser.add_argument(
+        "--dir",
+        help="Path to directory from which to search "
+        "recursively for .py/.pyx/.pxd files. Defaults to './'.",
+        default="./")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -649,15 +692,9 @@ def main():
     # Declare logging style
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     # Begin logging
-    ## Grabs first non "bmftools
-    try:
-        basename = [i for i in sys.argv[2:] if i[0] != "-"][0]
-    except IndexError:
-        basename = "MetasyntacticBasename"
-    try:
-        logbasename = TrimExt(basename)
-    except IndexError:
-        logbasename = basename
+    ## Grabs first non "bmftools" and non-flag field.
+    basename = "bmftools_%s" % Chapman('bmfsuites')
+    logbasename = basename
     if(Chapman['logfile'] != "default"):
         logfile = Chapman['logfile']
     else:
@@ -667,7 +704,7 @@ def main():
     if(Chapman['file_prefix'] != "default"):
         logfile = os.getcwd() + "/" + Chapman['file_prefix'] + ".log"
     if(os.path.isfile(logfile)):
-        logfile = TrimExt(logfile) + "." + str(uuid.uuid4().get_hex().upper()[0:8]) + ".log"
+        logfile = TrimExt(logfile) + "." + str(uuid.uuid4().get_hex().upper()[0:6]) + ".log"
 
     # Logger which holds both console and file loggers
     Logger.setLevel(logging.DEBUG)
@@ -692,7 +729,7 @@ def main():
     fl.setLevel(logging.DEBUG)
 
     Logger.addHandler(fl)
-    
+
     #### END SETUP LOGGING
 
     print("All logging set up!")
@@ -721,7 +758,7 @@ def main():
         if(not Palin.no_strand_correction):
             DesiredInputQty /= 2
         print("Desired input qty: %.8fpg" % DesiredInputQty)
-    if(subcommand == "psnv"):
+    elif(subcommand == "psnv"):
         from utilBMF.HTSUtils import GetBMFsnvPopen, parseConfig
         from utilBMF.ErrorHandling import ThisIsMadness
         from subprocess import check_call
@@ -751,7 +788,7 @@ def main():
                     outVCF, bedfile=conf['bed'])
         pl("Filtered VCF: %s" % bedFilteredVCF)
         sys.exit(0)
-    if(subcommand == "snv"):
+    elif(subcommand == "snv"):
         from MawCluster.VCFWriters import SNVCrawler
         from utilBMF.HTSUtils import parseConfig
         from MawCluster.BCVCF import VCFStats
@@ -770,7 +807,7 @@ def main():
                               [analysisTag, "bmf", "vcf"])
         else:
             OutVCF = Chapman['outVCF']
-        for pair in Chapman.items():
+        for pair in Chapman.iteritems():
             pl("Chapman entry. Key: %s. Value: %s." % (pair[0], pair[1]),
                level=logging.DEBUG)
         """
@@ -780,8 +817,8 @@ def main():
         pr.enable()
         """
 
-        if("bed" in Chapman.keys()):
-            print("Reference: %s" % Chapman["reference"])
+        if("bed" in Chapman.getkeys()):
+            print("Reference: %s" % Chapman["ref"])
             # OutVCF = SNVCrawler(Chapman['inBAM'], **Chapman)
             OutVCF = SNVCrawler(Chapman['inBAM'],
                                 bed=Chapman["bed"],
@@ -790,7 +827,7 @@ def main():
                                 MaxPValue=Chapman["MaxPValue"],
                                 keepConsensus=Chapman['keepConsensus'],
                                 commandStr=commandStr,
-                                reference=Chapman["reference"],
+                                reference=Chapman["ref"],
                                 reference_is_path=True,
                                 minFracAgreed=Chapman["minFracAgreed"],
                                 minFA=Chapman["minFA"],
@@ -804,7 +841,7 @@ def main():
                                 MaxPValue=Chapman["MaxPValue"],
                                 keepConsensus=Chapman['keepConsensus'],
                                 commandStr=commandStr,
-                                reference=Chapman["reference"],
+                                reference=Chapman["ref"],
                                 reference_is_path=True,
                                 minFracAgreed=Chapman["minFracAgreed"],
                                 OutVCF=OutVCF,
@@ -821,11 +858,11 @@ def main():
         open("cProfile.stats.txt", "w").write(s.getvalue())
         """
         sys.exit(0)
-    if(subcommand == "vcfstats"):
+    elif(subcommand == "vcfstats"):
         from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
-    if(subcommand == "dmp"):
+    elif(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
             from BMFMain.Workflow import pairedFastqShades
             OutFastq1, OutFastq2 = pairedFastqShades(
@@ -844,7 +881,7 @@ def main():
                 p3Seq=Chapman['p3Seq'],
                 p5Seq=Chapman['p5Seq'])
             return 0  # sys.exit(main()) returns 0
-    if(subcommand == "sv"):
+    elif(subcommand == "sv"):
         from utilBMF.ErrorHandling import ThisIsMadness
         from utilBMF.HTSUtils import FacePalm
         from MawCluster.TLC import BMFXLC as CallIntraTrans
@@ -862,11 +899,11 @@ def main():
                 ref=Chapman['ref'],
                 insDistance=Chapman['insert_distance'])
         return Output
-    if(subcommand == "sma"):
+    elif(subcommand == "sma"):
         from MawCluster import BCVCF
         Output = BCVCF.ISplitMultipleAlts(Chapman['inVCF'], Chapman['outVCF'])
         sys.exit(0)
-    if(subcommand == "vcfcmp"):
+    elif(subcommand == "vcfcmp"):
         from MawCluster.BCVCF import (CheckStdCallsForVCFCalls,
                                       CheckVCFForStdCalls)
         if(Chapman['check_both']):
@@ -897,7 +934,7 @@ def main():
             CheckVCFForStdCalls(Chapman['queryVCF'], std=Chapman['std'],
                                 outfile=sys.stdout)
         sys.exit(0)
-    if(subcommand == "getuniquekmersbed"):
+    elif(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
         from utilBMF.HTSUtils import ParseBed
         from subprocess import check_call
@@ -917,6 +954,7 @@ def main():
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
                          mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
                          k=Chapman['kmer'], aligner=Chapman['aligner'])
+
         bedlines = ParseBed(Chapman['inbed'])
         for bedlineList in bedlines:
             pl("Analyzing kmers from bed region " + bedlineList[0] + ": " + str(bedlineList[1])
@@ -928,14 +966,14 @@ def main():
         outList = KF.GetIntervalsFromMap()
         KF.ConvertIntervalsToBed(outList, Chapman['outfile'])
 
-    if(subcommand == "famstats"):
+    elif(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(Chapman['inFq'],
                                 outfile=Chapman['outfile_handle'])
-    if(subcommand == "v"):
+    elif(subcommand == "v"):
         from utilBMF.HTSUtils import __version__
         print(__version__)
-    if(subcommand == "tagbam"):
+    elif(subcommand == "tagbam"):
         fastqs = Chapman['fastq']
         if(len(fastqs) == 1):
             singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
@@ -943,7 +981,7 @@ def main():
         elif(len(fastqs) == 2):
             pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
                                  outBAMFile=Chapman['outfile'])
-    if(subcommand == "aligntagbam"):
+    elif(subcommand == "aligntagbam"):
         from BMFMain.Workflow import pairedBamProc
         outBAM = pairedBamProc(
             Chapman['inFqs'][0],
@@ -953,19 +991,21 @@ def main():
             aligner=Chapman['aligner'],
             realigner=Chapman['realigner'],
             abrapath=Chapman['abrapath'],
-            rLen=Chapman['readlength'],
+            rLen=Chapman['readLength'],
             gatkpath=Chapman['gatkpath'])
         pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
         sys.exit(0)
-    if(subcommand == "rsq"):
-        from MawCluster.BCFastq import RescueShadingWrapper
-        RescueShadingWrapper(Chapman['fastqs'][0],
-                             Chapman['fastqs'][1],
-                             indexFq=Chapman['fastqs'][2],
-                             minFam=Chapman['minFam'],
-                             mm=Chapman['mm'],
-                             head=Chapman['head'])
-    if(subcommand == "bedcov"):
+    elif(subcommand == "rsq"):
+        from BMFMain.Workflow import pairedFastqShades
+        pairedFastqShades(Chapman['fastqs'][0],
+                          Chapman['fastqs'][1],
+                          indexFq=Chapman['fastqs'][2],
+                          minFamRsq=Chapman['minFam'],
+                          mmRsq=Chapman['mm'],
+                          head=Chapman['head'], sortMem=Chapman['sortMem'],
+                          rescue=True, p5Seq=Chapman['p5Seq'],
+                          p3Seq=Chapman['p3Seq'])
+    elif(subcommand == "bedcov"):
         # sys.stderr.write("config repr: %s" % repr(Chapman.config))
         from utilBMF.QC import FastDOCBed, ExtendBed
         if(Chapman['bed_buffer'] != 0):
@@ -974,7 +1014,7 @@ def main():
         outbed, fracOnTarget = FastDOCBed(Chapman['inBAM'], bed=Chapman['bed'],
                                           threads=Chapman['threads'],
                                           FastDOCPath=Chapman['FastDOCPath'])
-    if(subcommand == "main"):
+    elif(subcommand == "main"):
         print("Beginning something!")
         if(Chapman['single_end'] is True):
             pl("Single-end analysis chosen.")
@@ -1001,7 +1041,7 @@ def main():
                 picardpath=Chapman['picardpath'],
                 dbsnp=Chapman['dbsnp'],
                 gatkpath=Chapman['gatkpath'],
-                realigner=Chapman['realigner'],
+                realigner=Chapman('realigner'),
                 rLen=Chapman['readLength'],
                 opts=Chapman['opts'],
                 kmers_precomputed=Chapman['kmers_precomputed'],
@@ -1018,8 +1058,56 @@ def main():
                 minFA=Chapman['minFA'], minFracAgreed=Chapman['minFracAgreed'],
                 exp=Chapman['experiment'], conf=Chapman['conf'],
                 parallel=Chapman['parallel'])
-            QCMetrics = GetAllQCMetrics(procSortedBam, bedfile=bed, minFM=Chapman['minFM'])
+            QCMetrics = GetAllQCMetrics(procSortedBam, bedfile=Chapman['bed'],
+                                        minFM=Chapman['minFM'],
+                                        FastDOCPath=Chapman["FastDOCPath"],
+                                        minMQ=Chapman("minMQ"))
             pl("Last stop! Watch your step.")
+    if(subcommand == "mpa"):
+        from utilBMF.MPA import MPA2bam
+        if(Chapman('outBAM') is None):
+            Chapman['outBAM'] = "-"  # Prints to stdout.
+        outBAM = MPA2bam(Chapman['inBAM'], outBAM=Chapman['outBAM'],
+                         u=Chapman('uncompressed_bam'),
+                         coorsort=Chapman('coorsort'),
+                         sortMem=Chapman('sortMem'))
+    if(subcommand == "pep8"):
+        from subprocess import Popen, PIPE
+        from time import sleep
+        if(os.path.isdir(Chapman['dir']) is False):
+            raise ImproperArgumentError(
+                "Directory %s is not a directory. Abort!" % Chapman['dir'])
+        cStr = ("pep8 $(find " + Chapman['dir'] +
+                " -name '*.pyx' -o -name '*.pxd' -o -name '*.py')" +
+                "| grep -v \"missing whitespace\|module level\"")
+        complaints = Popen(cStr, shell=True, stdout=PIPE)
+        count = 0
+        while count < 600:
+            if(complaints.poll() is not None):
+                break
+            sleep(0.5)
+        out, err = complaints.communicate()
+        if(len(out) == 0):
+            pl("No modified pep8 violations. Congrats!")
+            return 0
+        else:
+            pl("Violations found! Consider either changing your modified "
+               "standards or caring more about these violations.")
+            sys.stdout.write(out)
+            return 1
+    if(subcommand == "pipetagbam"):
+        from MawCluster.BCBam import PipeBarcodeTagCOBam
+        compressInput = True if(
+            Palin.compression[0] == 'b') else False
+        bamOutput = True if(
+            Palin.compression[1] == 'b') else False
+        uncompressed_output = (True if(
+            'u' in Palin.compression) else False)
+        pl("Now piping %s input to %s output" % ("bam" if(
+            compressInput) else "sam",
+                                                 "bam" if(
+            bamOutput) else "sam"))
+        PipeBarcodeTagCOBam(compressInput, bamOutput, uncompressed_output)
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

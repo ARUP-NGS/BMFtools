@@ -1,11 +1,12 @@
-try:
-    import re2 as re
-except ImportError:
-    import re
 import subprocess
 import time
 import logging
 from subprocess import check_call, CalledProcessError
+try:
+    from re2 import findall
+except ImportError:
+    print("re2 import failed - falling back to re.")
+    from re import findall
 
 import cython
 import numpy as np
@@ -26,7 +27,6 @@ from MawCluster.BCVCF import VCFStats
                addRG=cython.bint, rLen=int)
 def pairedBamProc(consfq1, consfq2, opts="",
                   bamPrefix="default", ref="default", aligner="default",
-                  barIndex="default",
                   bed="/yggdrasil/workspace/Barcode_Noah/cfDNA_targets.bed",
                   abrapath="default",
                   coverageForAllRegions=False,
@@ -72,7 +72,6 @@ def pairedBamProc(consfq1, consfq2, opts="",
            ", but in case something dies later, this could be responsible",
            level=logging.DEBUG)
 
-    # check_call(["rm", outBAMProperPair])
     pl("Now realigning with: %s" % realigner)
     if("abra" in realigner.lower()):
         if(abrapath == "default"):
@@ -99,13 +98,6 @@ def pairedBamProc(consfq1, consfq2, opts="",
         realignedFull = taggedBAM
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
-    # check_call(["rm", realignedFull])
-    if(barIndex != "default"):
-        p = subprocess.Popen(["wc", "-l", barIndex], stdout=subprocess.PIPE)
-        out, err = p.communicate()
-        pl("Number of families found: {}".format(
-            re.findall(r'\d+', out)[0]))
-        histochart = BCBam.GenerateFamilyHistochart(barIndex)
     tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
     summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])
 

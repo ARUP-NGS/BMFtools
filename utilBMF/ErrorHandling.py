@@ -26,6 +26,14 @@ class ImproperArgumentError(ValueError):
             print("Improper Argument Error: %s" % message)
 
 
+class ConsideredHarmful(ValueError):
+    def __init__(self, message=""):
+        super(ValueError, self).__init__()
+        self.message = message
+        if(message != ""):
+            print(message)
+
+
 class IllegalArgumentError(ValueError):
     def __init__(self, message=""):
         super(ValueError, self).__init__()
@@ -68,6 +76,7 @@ class ThisIsMadness(Exception):
         super(Exception, self).__init__(message)
         self.message = message
 
+
 class ThisIsHKMadness(Exception):
     """
     Thrown when something just doesn't seem right and existing exceptions
@@ -78,6 +87,7 @@ class ThisIsHKMadness(Exception):
         # Call the base class constructor with the parameters it needs
         super(Exception, self).__init__(message)
         self.message = message
+
 
 class FunctionCallException(Exception):
     """
@@ -133,6 +143,7 @@ FPStr = ("............................................________ \n............"
          ".................................`=-,...................,%`>--==`` "
          "\n........................................_..........._,-%.......` "
          "\n...................................,")
+
 
 HKStr = ("\n"
          "   ( )---( )   \n"

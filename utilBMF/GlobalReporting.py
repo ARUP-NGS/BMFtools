@@ -1,6 +1,7 @@
 from utilBMF.ErrorHandling import IllegalArgumentError, MissingGlobalVariable
 from copy import copy as ccopy
 
+
 class LockedDictionary(dict):
 
     KeysetDict = {}
@@ -36,6 +37,7 @@ class LockedDictionary(dict):
 class SampleMetrics(LockedDictionary):
     KeysetDict = {"Name": None, "TotalReadCount": None,
                   "MergedReadCount": None, "MeanFamSize": None}
+
 
 class ReviewDirComponents(LockedDictionary):
     KeysetDict = {"bam": None, "vcf": None}

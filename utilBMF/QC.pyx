@@ -22,7 +22,6 @@ import subprocess
 import sys
 
 
-
 """
 Contains functions and miscellania for QC metrics.
 """
@@ -45,7 +44,7 @@ def ExtendBed(bedfile, buffer=100, outbed="default"):
 
 def FastDOCBed(inBAM, bed="default", outbed="default",
                cystr FastDOCPath="default", int threads=8,
-               int readLen=-1):
+               int readLen=-1, int minMQ=-1):
     """
     Uses samtool bedcov tool.
     Requires samtools >= 1.
@@ -65,13 +64,22 @@ def FastDOCBed(inBAM, bed="default", outbed="default",
                             "utilBMF.QC.FastDOCBed")
     if(outbed == "default"):
         outbed = TrimExt(bed) + "cov.bed"
+    if(minMQ < 0):
+        pl("minMQ was not set for FastDOCBed. Defaulting to 1.")
+        minMQ = 1
     if(FastDOCPath == "default"):
         try:
-            FastDOCPath = globals()['Chapman']['FastDOCPath']
+            print("Getting Chapman object")
+            Chapman = globals()['Chapman']
+            print("Getting FastDOCPath")
+            FastDOCPath = Chapman['FastDOCPath']
         except KeyError:
-            raise MissingExternalTool("FastDOCPath must be set to call FastDOC!")
+            print("globals: %s" % globals())
+            raise MissingExternalTool(
+                "FastDOCPath must be set to call FastDOC!")
     commandStr = ("java -jar %s %s %s " % (FastDOCPath, bed, inBAM) +
-                  " --threads %s --format bed > %s" % (threads, outbed))
+                  " --threads %s --format bed -m %s > " % (threads, minMQ) +
+                  outbed)
     pl("Calculating coverage bed. bed: %s. inBAM: %s. " % (bed, inBAM) +
        "outbed: %s. Command string: %s" % (outbed, commandStr))
     check_call(commandStr, shell=True)
@@ -132,14 +140,13 @@ def InsertSizeArray(cystr inBAM):
     return InsertSizeArray_(inHandle)
 
 
-@cython.locals(min=int, onTargetBuffer=int)
-def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
-                    minFM=2):
+def GetAllQCMetrics(inBAM, bedfile="default", int onTargetBuffer=20,
+                    int minFM=2, FastDOCPath="default", int minMQ=-1):
     cdef int TotalReads, FM, MappedReads, UnmappedReads
     cdef double fracOnTarget, stdInsert, meanInsert
     cdef int MappedFamReads, maxInsert
     cdef int MappedSingletonReads
-    outfile = ".".join(inBAM.split(".")[0:-1] + ["qc", "txt"])
+    outfile = TrimExt(inBAM) + ".qc.txt"
     outHandle = open(outfile, "w")
     pl("GetAllQCMetrics running")
     if(bedfile == "default"):
@@ -165,13 +172,15 @@ def GetAllQCMetrics(inBAM, bedfile="default", onTargetBuffer=20,
     ReadsOnTarget = 0
     ReadsOffTarget = 0
     MappedFamReads = 0
+    covBed, fracOnTarget = FastDOCBed(inBAM, bed=extendedBed,
+                                      FastDOCPath=FastDOCPath,
+                                      minMQ=minMQ)
     if(ospath.isfile(inBAM + ".bai") is False):
         check_call(["samtools", "index", inBAM])
         sys.stderr.write("Fraction on target: %s" % fracOnTarget)
         if(ospath.isfile(inBAM + ".bai") is False):
             pl("Input BAM was not coordinate sorted - doing so now.")
             inBAM = CoorSortAndIndexBam(inBAM)
-    covBed, fracOnTarget = FastDOCBed(inBAM, bed=extendedBed)
     resultsDict["covbed"] = covBed
     resultsDict["fracOnTarget"] = fracOnTarget
     print("About to iterate through alignment file to get more QC metrics.")

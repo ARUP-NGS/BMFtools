@@ -9,7 +9,7 @@ dbsnp|/mounts/genome/dbsnp-current.vcf|s
 FastDOCPath|/yggdrasil/workspace/BMFTools/java/FastDOC.jar|s
 gatkpath|/mounts/bin/GenomeAnalysisTK.jar|s
 head|2|i
-indelRealigner|abra,gatk|s
+realigner|abra,gatk|s
 inline_barcodes|False|b
 kmers_precomputed|true|b
 MaxPValue|1e-30|f
@@ -23,7 +23,7 @@ p5Seq|GATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT|s
 parallel|False|b
 picardpath|/yggdrasil/codeRepository/picard-tools-1.129/picard.jar|s
 readLength|146|i
-ref|/home/daniel/human_g1k_v37.fasta|s
+ref|/dev/shm/human_g1k_v37.fasta|s
 shades|True|b
 sortMem|12G|s
 threads|4|i

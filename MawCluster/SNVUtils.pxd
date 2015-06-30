@@ -1,7 +1,14 @@
 cimport cython
 cimport numpy as np
+cimport pysam.cfaidx
+cimport pysam.calignmentfile
 ctypedef np.longdouble_t dtype128_t
 ctypedef cython.str cystr
+ctypedef SNVCFLine SNVCFLine_t
+from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
+ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
+ctypedef PCInfo PCInfo_t
+ctypedef pysam.calignmentfile.PileupRead PileupRead
 
 
 cdef class SNVCFLine:

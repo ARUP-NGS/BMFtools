@@ -33,14 +33,12 @@ import sys
 import time
 import uuid
 try:
-    import re2 as re
-    from re2 import finditer
+    from re2 import finditer, compile as regex_compile
 except ImportError:
     print("Tried to load re2, a faster version of re. Failed. "
           "Importing regular re.")
     import re
-    from re import finditer
-regexcompile = re.compile
+    from re import finditer, compile as regex_compile
 
 oig1 = oig(1)
 oig0 = oig(0)
@@ -104,8 +102,6 @@ def printlog(string, level=logging.INFO):
 
 pl = printlog
 
-CmpDict = {"A": "T", "C": "G", "G": "C", "T": "A"}
-
 nucConverter = numconv.NumConv(4, "ACGT")  # Used to do permutations
 nci = nucConverter.int2str
 ncs = nucConverter.str2int
@@ -113,23 +109,39 @@ ncs = nucConverter.str2int
 nucList = ["A", "C", "G", "T"]
 
 
-cpdef list permuteNucleotides(long maxn, object nci=nci):
+cpdef list permuteNucleotides(long maxn, object nci=nci, int kmerLen=-1):
     """
     nci should be set to a numConv object's int2str method call.
     """
-    return map(nci, xrange(maxn))
+    cdef list tmpList
+    cdef size_t tmpInt, strLen
+    if(kmerLen < 0):
+        return [nci(tmpInt) for tmpInt in xrange(maxn)]
+    else:
+        tmpList = [nci(tmpInt) for tmpInt in xrange(maxn)]
+        for tmpInt in range(maxn):
+            strLen = len(tmpList)
+            if strLen < kmerLen:
+                tmpList[tmpInt] = "A" * (kmerLen - strLen) + tmpList[tmpInt]
+        return tmpList
 
 
 @memoize
 @cython.returns(cystr)
 def MemoRevCmp(cystr seq):
-    return "".join([CmpDict[i] for i in list(seq)])[::-1]
+    return RevCmp(seq)
 
 
-cpdef cystr RevCmp(cystr seq, dict CmpDict=CmpDict):
-    cdef cystr i
-    return "".join([CmpDict[i] for i in list(seq)])[::-1]
-
+cpdef cystr RevCmp(cystr seq):
+    """
+    Reverse complement quickly
+    In [48]: %timeit qstr.translate(b)[::-1]
+    100000 loops, best of 3: 3.27 us per loop
+    # This RevCmp function was the old implicit.
+    In [49]: %timeit RevCmp(qstr)
+    10000 loops, best of 3: 25.1 us per loop
+    """
+    return seq.translate(DNA_CODON_TABLE)[::-1]
 
 
 PysamToChrDict = {}
@@ -211,7 +223,7 @@ PysamToChrDict["GL000226.1"] = 26
 PysamToChrDict["GL000229.1"] = 27
 PysamToChrDict["GL000231.1"] = 28
 PysamToChrDict["GL000210.1"] = 29
-PysamToChrDict["GL000239.2"] = 30
+PysamToChrDict["GL000239.1"] = 30
 PysamToChrDict["GL000235.1"] = 31
 PysamToChrDict["GL000201.1"] = 32
 PysamToChrDict["GL000247.1"] = 33
@@ -311,11 +323,18 @@ cdef class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
     """
-    def __init__(self, pysam.cfaidx.FastqProxy FastqProxyObj):
-        self.comment = FastqProxyObj.comment
-        self.quality = FastqProxyObj.quality
-        self.sequence = FastqProxyObj.sequence
-        self.name = FastqProxyObj.name
+
+    def __init__(self, cystr comment, cystr quality,
+                 cystr sequence, cystr name):
+        self.comment = comment
+        self.quality = quality
+        self.sequence = sequence
+        self.name = name
+
+    @classmethod
+    def fromFastqProxy(cls, FastqProxy_t FastqProxyObj):
+        return cls(FastqProxyObj.comment, FastqProxyObj.quality,
+                   FastqProxyObj.sequence, FastqProxyObj.name)
 
     cdef cystr tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
@@ -325,14 +344,42 @@ cdef class pFastqProxy:
     def __str__(self):
         return self.tostring()
 
+    cpdef int getFM(self):
+        return self.cGetFM()
+
+    cdef int cGetFM(self):
+        cdef cystr entry, key, value
+        for entry in self.comment.split("|")[1:]:
+            key, value = entry.split("=")
+            if(key == "FM"):
+                return int(value)
+        return -1
+
     cdef cystr cGetBS(self):
-        return self.comment.split("|")[2].split("=")[1]
+        cdef cystr entry, key, value
+        for entry in self.comment.split("|")[1:]:
+            key, value = entry.split("=")
+            if(key == "BS"):
+                return value
+        return ""
 
     cpdef cystr getBS(self):
         return self.cGetBS()
 
-    cpdef carray getQualArray(self):
+    cpdef py_array getQualArray(self):
         return cs_to_ph(self.quality)
+
+    cpdef cystr getSlice(self, int start=0, int end=-1337,
+                         cystr addComment=""):
+        if(end == -1337):
+            return "@%s %s%s\n%s\n+\n%s\n" % (self.name, self.comment,
+                                              addComment,
+                                              self.sequence[start:],
+                                              self.quality[start:])
+        return "@%s %s%s\n%s\n+\n%s\n" % (self.name, self.comment,
+                                          addComment,
+                                          self.sequence[start:end],
+                                          self.quality[start:end])
 
 
 cdef cystr cGetBS(pFastqProxy_t read):
@@ -349,7 +396,7 @@ cpdef cystr getBS(pFastqProxy_t read):
 
 
 @cython.returns(cystr)
-def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
+def FastqProxyToStr(FastqProxy_t fqPrx):
     """
     Just makes a string from a FastqProxy object.
     """
@@ -358,10 +405,10 @@ def FastqProxyToStr(pysam.cfaidx.FastqProxy fqPrx):
 
 
 @cython.returns(cystr)
-def SliceFastqProxy(pysam.cfaidx.FastqProxy fqPrx,
-                       int firstBase=0,
-                       int lastBase=-1337,
-                       cystr addString=""):
+def SliceFastqProxy(FastqProxy_t fqPrx,
+                    int firstBase=0,
+                    int lastBase=-1337,
+                    cystr addString=""):
     if(lastBase == -1337):
         return "@%s %s%s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
                                           addString,
@@ -503,7 +550,7 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     if(path == "default"):
         path = "bwa"
     if(opts == ""):
-        opts = '-t 4 -v 1 -Y -M -T 0'
+        opts = '-t 4 -v 1 -Y -T 0'
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
@@ -529,6 +576,55 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     check_call(command_str.replace("\n", "\\n").replace("\t", "\\t"),
                shell=True)
     printlog("bwa mem aligned output is: %s" %outBAM)
+    return outBAM
+
+
+def PipeAlignTag(R1, R2, ref="default",
+                 outBAM="default", path="default",
+                 bint coorsort=True, bint u=True,
+                 cystr sortMem="6G", cystr opts=""):
+    """
+    :param R1 - string - path to input fastq for read 1
+    :param R2 - string - path to input fastq for read 2
+    :param outBAM - string - path to output bam.
+    Set to 'stdout' to emit to stdout.
+    :param u - emit uncompressed bam.
+    :param coorsort - whether or not to coordinate sort
+    :param path - path to bwa. Override default bwa on path with "path"
+    :param sortMem - string - sort memory limit to provide to samtools
+    :param ref - path to reference index base
+    """
+    if(path == "default"):
+        path = "bwa"
+    if(opts == ""):
+        opts = '-t 4 -v 1 -Y -T 0'
+    if(outBAM == "default"):
+        outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
+    if(ref == "default"):
+        raise Tim("Reference file index required for alignment!")
+    uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
+    opt_concat = ' '.join(opts.split())
+    cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
+    sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\t"
+                 "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+                 "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
+                 "t\n@PG/'")
+    cStr += sedString
+    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcode'
+             'TagCOBam;PipeBarcodeTagCOBam()\'')
+    if(coorsort):
+        compStr = " -l 0 " if(coorsort) else ""
+        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
+                                                              uuidvar,
+                                                              compStr)
+    else:
+        cStr += (" | samtools view -Sbhu - " if(
+            u) else " | samtools view -Sbh -")
+    if(outBAM != "stdout"):
+        cStr += " > %s" % outBAM
+    pl("Command string for ambitious pipe call: %s" % cStr.replace(
+        "\t", "\\t").replace("\n", "\\n"))
+    check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"))
     return outBAM
 
 
@@ -1022,12 +1118,21 @@ cdef class pPileupRead:
     """
 
     def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
+        cdef ndarray[np_int32_t, ndim=1] BQs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
+        BQs = np.array(
+            PileupRead.alignment.opt("PV").split(","),
+            dtype=np.int32)
+        self.AF = PileupRead.alignment.opt("AF")
+        self.BQ = BQs[self.query_position]
+        self.FA = int(self.alignment.opt(
+            "FA").split(",")[self.query_position])
+        self.MBQ = nmax(BQs)
 
     cpdef object opt(self, cystr arg):
         return self.alignment.opt(arg)
@@ -1091,13 +1196,16 @@ def GetReadPair(inHandle):
 
 cdef bint cReadsOverlap(AlignedSegment_t read1,
                         AlignedSegment_t read2):
-    if(read1.reference_id != read2.reference_id):
-        return False
-    if(read1.reference_start > read2.reference_end or
+    # Same strand or different contigs.
+    if(read1.is_unmapped or read2.is_unmapped or
+       read1.reference_id != read2.reference_id or
+       read1.is_reverse == read2.is_reverse or
+       read1.reference_start > read2.reference_end or
        read1.reference_end < read2.reference_start):
         return False
-    else:
-        return True
+    if(read1.aend < read2.pos or read2.aend < read1.pos):
+        return False
+    return True
 
 
 def ReadPairsInsertSizeWithinDistance(ReadPair1, ReadPair2, distance=300):
@@ -1216,6 +1324,11 @@ cpdef bint WritePairToHandle(
         return True
     except Exception:
         return False
+
+
+@cython.returns(cystr)
+def BedListToStr(list bedlist):
+    return bedlist[0] + ":%s-%s" % (bedlist[1], bedlist[2])
 
 
 @cython.returns(list)
@@ -1618,7 +1731,7 @@ def CalculateFamStats(inFq):
     families of size > 1, and number of singletons.
     """
     inHandle = pysam.FastqFile(inFq)
-    cdef pysam.cfaidx.FastqProxy read
+    cdef FastqProxy_t read
     cdef int famS
     cdef int sumFam
     cdef int numFam
@@ -1762,8 +1875,8 @@ def SWRealignAS(AlignedSegment_t read,
                  "Returning original read.", level=logging.INFO)
         return read
     # Now check the cigar string.
-    ra = regexcompile("[A-Z]")
-    rn = regexcompile("[0-9]")
+    ra = regex_compile("[A-Z]")
+    rn = regex_compile("[0-9]")
     letters = [i for i in rn.split(alignedArr[5]) if i != ""]
     numbers = [int(i) for i in ra.split(alignedArr[5])[:-1]]
     # Calculate aligned fraction. Fail realignment if minAF not met.
@@ -2302,16 +2415,21 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
 
 
 @cython.returns(cystr)
-def TrimExt(cystr fname):
+def TrimExt(cystr fname, cystr exclude=""):
     """
     Trims the extension from the filename so that I don't have to type this
     every single time.
+    :param fname - filename to strip
+    :param exclude - string for exclusion.
+    (Any number of comma-separated words may be provided.)
     """
+    cdef cystr tmpStr
     if(fname is not None):
         tmpList = fname.split("/")[-1].split(".")[:-1]
         if(tmpList[-1] == "gz"):
             tmpList = tmpList[:-1]
-        return ".".join(tmpList)
+        return ".".join([tmpStr for tmpStr in tmpList if
+                         tmpStr not in exclude.split(",")])
     else:
         raise Tim("Cannot trim an extension of a None value!")
 
@@ -2767,7 +2885,12 @@ cdef class BamTag(object):
         try:
             tagtype = TagTypeDict[tag[0]]
         except KeyError:
-            tagtype = "Z"  # A safer fallback
+            if(isinstance(tag[1], int)):
+                tagtype = "i"
+            elif(isinstance(tag[1], float)):
+                tagtype = "f"
+            else:
+                tagtype = "Z"  # A safer fallback
         return cls(tag[0], tagtype, tag[1])
 
     def __init__(self, cystr tag, cystr tagtype, value):
@@ -2777,7 +2900,19 @@ cdef class BamTag(object):
 
     @cython.returns(cystr)
     def __str__(self):
-        return "%s:%s:%s" % (self.tag, self.tagtype, self.value)
+        """
+        In [14]: %timeit c = "PV" + ":" + "Z" + ":%s" % 1337
+        10000000 loops, best of 3: 55.7 ns per loop
+
+        In [15]: %timeit c = "PV" + ":" + "Z" + ":" +  str(1337)
+        1000000 loops, best of 3: 181 ns per loop
+
+        In [17]: %timeit c = "%s:%s:%s" % ("PV", "Z", 1337)
+        1000000 loops, best of 3: 270 ns per loop
+        In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
+        1000000 loops, best of 3: 710 ns per loop
+        """
+        return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
 
 cdef class IDVCFLine(object):
@@ -2976,7 +3111,9 @@ TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
                "NF": "f", "NM": "i", "RP": "Z", "SC": "Z",
                "SF": "f", "SV": "Z", "X0": "i", "X1": "i",
                "XM": "i", "YA": "Z", "YM": "i", "YO": "Z",
-               "YQ": "i", "YR": "i", "YX": "i", "MP": "Z"}
+               "YQ": "i", "YR": "i", "YX": "i", "MP": "A",
+               "PM": "Z", "MA": "Z", "ot": "i", "mp": "i",
+               "om": "i"}
 
 
 cdef class pFastqFile(object):
@@ -2984,27 +3121,32 @@ cdef class pFastqFile(object):
     Contains a handle for a kseq.h wrapper and converts each FastqProxy
     to a pFastqProxy
     """
-    def __init__(self, object Fq):
-        if(isinstance(Fq, str)):
-            self.handle = pysam.FastqFile(Fq)
-        elif(isinstance(Fq, pysam.cfaidx.FastqFile)):
-            self.handle = Fq
+
+    def __init__(self, object arg):
+        if(isinstance(arg, str)):
+            self.handle = pysam.cfaidx.FastqFile(arg, persist=False)
+        elif(isinstance(arg, pysam.cfaidx.FastqFile)):
+            self.handle = pysam.cfaidx.FastqFile(arg.filename, persist=False)
         else:
-            raise Tim("pFastqFile can be initiated by a "
-                      "pysam.cfaidx.FastqFile or a string.")
+            raise IllegalArgumentError(
+                "pFastqFile can only be initialized from a string "
+                "(path to fastq) or a FastqFile object.")
 
     def __iter__(self):
         return self
 
-    @cython.returns(pFastqProxy)
+    @cython.returns(pFastqProxy_t)
     def __next__(self):
-        return pFastqProxy(next(self.handle))
-
-    cpdef close(self):
-        self.handle.close()
+        """
+        python version of next().
+        """
+        return pFastqProxy.fromFastqProxy(self.handle.next())
 
     def refresh(self):
         self.handle = pysam.FastqFile(self.handle.filename)
+
+    cpdef close(self):
+        self.handle.close()
 
 
 cpdef bint ReadsOverlap(
@@ -3047,3 +3189,5 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a):
     for i in range(n):
         v += (a[i] - m)**2
     return sqrt(v / n)
+
+PhageRefIDDict = {0: 'gi|215104|gb|J02459.1|LAMCG'}

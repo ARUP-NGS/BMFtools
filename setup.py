@@ -14,7 +14,8 @@ from distutils.core import setup
 
 marchFlag = "-march=native"
 
-compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse"]
+compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse", "-std=c99"]
+
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
@@ -47,11 +48,12 @@ config = {
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.1.0.1beta',
+    'version': '0.1.0.2beta',
     'install_requires': install_requires,
     'packages': ["BMFMain", "utilBMF", "MawCluster", "SecC"],
     'ext_modules': ext,
-    'include_dirs': [np.get_include()] + pysam.get_include(),
+    'include_dirs': ([np.get_include()] + pysam.get_include() +
+                     [os.path.abspath("include")]),
     'scripts': ['utilBMF/bmftools'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '

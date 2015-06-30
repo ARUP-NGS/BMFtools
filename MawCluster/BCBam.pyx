@@ -9,7 +9,7 @@ import logging
 from copy import copy as ccopy
 from os import path
 import operator
-from operator import attrgetter as oag
+from operator import attrgetter as oag, methodcaller as mc
 import string
 import uuid
 import sys
@@ -45,6 +45,8 @@ ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")
+mcoptBS = mc("opt", "BS")
+# BSStringList = map(mcoptBS, readList)
 
 
 def AbraCadabra(inBAM, outBAM="default",
@@ -222,11 +224,13 @@ def mergeBarcodes(reads1, reads2, outfile="default"):
 def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          bed="default", dbsnp="default"):
     if(ref == "default"):
-        raise MissingExternalTool("Reference file required for Indel Realignment")
+        raise MissingExternalTool("Reference file required"
+                                  " for Indel Realignment")
     if(bed == "default"):
         raise Tim("Bed file required for Indel Realignment")
     if(gatk == "default"):
-        raise MissingExternalTool("Path to GATK Jar required for Indel Realignment")
+        raise MissingExternalTool("Path to GATK Jar required "
+                                  "for Indel Realignment")
     print dbsnp
     if(dbsnp == "default"):
         dbsnpStr = ""
@@ -318,11 +322,11 @@ def pairedBarcodeTagging(
             continue
         if(entry.is_read1):
             read1bam = entry
-            pFq1 = pFastqProxy(r1hn())
+            pFq1 = pFastqProxy.fromFastqProxy(r1hn())
             continue
         elif(entry.is_read2):
             read2bam = entry
-            pFq2 = pFastqProxy(r2hn())
+            pFq2 = pFastqProxy.fromFastqProxy(r2hn())
         descDict1 = getdesc(pFq1.comment)
         descDict2 = getdesc(pFq2.comment)
         passing = "Pass" in descDict1["FP"]
@@ -450,7 +454,7 @@ def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
     qualT[seqArray != "T"] = 0
     qualTSum = nsum(qualT, 0)
     qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join([letterNumDict[i] for i in nargmax(qualAllSum, 0)])
+    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
     MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
     phredQuals = nsub(nmul(2, MaxPhredSum),
                       nsum(qualAllSum, 0))
@@ -535,7 +539,7 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
         else:
             try:
                 tempRead = reads.next()
-                FqPrx = pFastqProxy(tempRead)
+                FqPrx = pFastqProxy.fromFastqProxy(tempRead)
             except StopIteration:
                 break
         descDict = getdesc(FqPrx.comment)
@@ -672,13 +676,31 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
+cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read):
+    return TagAlignedSegmentHG37(read)
+
+'''
+@cython.boundscheck(False)
+@cython.wraparound(False)
+'''
+cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=None):
+    return (RefIDDict[read.reference_id] + ":%s," % read.pos +
+            RefIDDict[read.rnext] +
+            ":%s" % read.mpos)
+
+
+'''
+@cython.boundscheck(False)
+@cython.wraparound(False)
+'''
 cdef AlignedSegment_t TagAlignedSegment(
-        AlignedSegment_t read):
+        AlignedSegment_t read, dict RefIDDict=None):
     """
     Adds necessary information from a CO: tag to appropriate other tags.
     """
+    assert RefIDDict is not None
     cdef dict CommentDict
-    cdef int FM, ND
+    cdef int FM, ND, FPInt
     cdef double NF, AF, SF
     cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
     CommentDict = cGetCOTagDict(read)
@@ -689,7 +711,9 @@ cdef AlignedSegment_t TagAlignedSegment(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    read.is_qcfail = 1 if("Pass" in CommentDict["PV"]) else 0
+    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    if(not FPInt):
+        read.flag += 512
     NF = ND * 1. / FM
     AF = getAF(read)
     SF = getSF(read)
@@ -697,14 +721,142 @@ cdef AlignedSegment_t TagAlignedSegment(
                    ("FM", FM, "i"),
                    ("PV", ",".join(PhredQuals.astype(str)), "Z"),
                    ("FA", ",".join(FA.astype(str)), "Z"),
-                   ("FP", read.is_qcfail, "i"),
+                   ("FP", FPInt, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
-                   ("SF", SF, "f")
+                   ("SF", SF, "f"),
+                   ("RP", RPStringNonHG37(read, RefIDDict), "Z")
                    ] + read.get_tags())
     read.set_tag("CO", None)  # Delete the CO tag.
     return read
+
+
+cdef AlignedSegment_t TagAlignedSegmentHG37(
+        AlignedSegment_t read):
+    """
+    Adds necessary information from a CO: tag to appropriate other tags.
+    """
+    cdef dict CommentDict
+    cdef int FM, ND, FPInt
+    cdef double NF, AF, SF
+    cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
+    CommentDict = cGetCOTagDict(read)
+    PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
+    FA = np.array(CommentDict["FA"].split(","), dtype=np.int64)
+    if(read.is_reverse):
+        PhredQuals = PhredQuals[::-1]
+        FA = FA[::-1]
+    ND = int(CommentDict["ND"])
+    FM = int(CommentDict["FM"])
+    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    if(not FPInt):
+        read.flag += 512
+    NF = ND * 1. / FM
+    AF = getAF(read)
+    SF = getSF(read)
+    read.set_tags([("BS", CommentDict["BS"], "Z"),
+                   ("FM", FM, "i"),
+                   ("PV", ",".join(PhredQuals.astype(str)), "Z"),
+                   ("FA", ",".join(FA.astype(str)), "Z"),
+                   ("FP", FPInt, "i"),
+                   ("ND", int(CommentDict["ND"]), "i"),
+                   ("NF", NF, "f"),
+                   ("AF", AF, "f"),
+                   ("SF", SF, "f"),
+                   ("RP", RPString(read), "Z")
+                   ] + read.get_tags())
+    read.set_tag("CO", None)  # Delete the CO tag.
+    return read
+
+
+cdef class BamPipe:
+    """
+    Creates a callable function which acts on a BAM stream.
+
+    :param function - callable function which returns an input BAM object.
+    :param bin_input - boolean - true if input is BAM
+    false for TAM/SAM
+    :param bin_output - boolean - true to output in BAM format.
+    :param uncompressed_output - boolean - true to output uncompressed
+    BAM records.
+    """
+    cpdef process(self):
+        cdef AlignedSegment_t read
+        [self.write(self.function(read)) for read in self.inHandle]
+
+    def __init__(self, object function, bint bin_input, bint bin_output,
+                 bint uncompressed_output=False):
+        if(bin_input):
+            self.inHandle = pysam.AlignmentFile("-", "rb")
+        else:
+            self.inHandle = pysam.AlignmentFile("-", "r")
+        if(bin_output):
+            if(uncompressed_output):
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wbu", template=self.inHandle)
+            else:
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wb", template=self.inHandle)
+        assert hasattr("__call__", function)
+        self.function = function
+
+    cdef write(self, AlignedSegment_t read):
+        self.outHandle.write(read)
+
+
+cdef class TagBamPipe:
+    """
+    Doesn't require a precomputed dictionary, since it builds
+    it from the input stream.
+    """
+    def __init__(self, bint bin_input, bint bin_output,
+                 bint uncompressed_output=False):
+        if(bin_input):
+            self.inHandle = pysam.AlignmentFile("-", "rb")
+        else:
+            self.inHandle = pysam.AlignmentFile("-", "r")
+        if(bin_output):
+            if(uncompressed_output):
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wbu", template=self.inHandle)
+            else:
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wb", template=self.inHandle)
+        self.RefIDDict = dict(enumerate(self.inHandle.references))
+        self.RefIDDict[-1] = "*"
+
+    cdef write(self, AlignedSegment_t read):
+        self.outHandle.write(read)
+
+    cpdef process(self):
+        cdef AlignedSegment_t read
+        [self.write(TagAlignedSegment(
+            read, RefIDDict=self.RefIDDict)) for
+         read in self.inHandle]
+
+cdef class TagBamPipeHG37(BamPipe):
+    """
+    Not unlike TagBamPipe, but memoizes HG37's ref id dictionary and
+    inlines it into switches.
+    """
+    def __init__(self, bint bin_input, bint bin_output,
+                 bint uncompressed_output=False):
+        super(BamPipe, self).__init__(TagAlignedSegmentHG37, bin_input, bin_output,
+                                      uncompressed_output=uncompressed_output)
+
+
+def PipeBarcodeTagCOBam(bin_input=False, bin_output=False,
+                        uncompressed_output=False):
+    """
+    Takes a SAM input stream, tags the bam, and converts
+    it into a bam, all in one fell swoop!
+    """
+    cdef TagBamPipe_t Bombadil
+    Bombadil = TagBamPipe(
+        bin_input, bin_output, uncompressed_output=uncompressed_output)
+    Bombadil.process()
+    return 1
 
 
 cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
@@ -712,8 +864,9 @@ cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
     """In progress
     """
     cdef AlignedSegment_t read
+    cdef dict RefIDDict = dict(enumerate(inbam.references))
     for read in inbam:
-        outbam.write(TagAlignedSegment(read))
+        outbam.write(TagAlignedSegment(read, RefIDDict))
     inbam.close()
     outbam.close()
     return outbam.filename

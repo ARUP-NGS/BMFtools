@@ -1,4 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: cdivision=True, profile=True
 from __future__ import division
 
 """
@@ -22,41 +23,29 @@ from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       mul as omul, add as oadd, attrgetter as oag,
                       methodcaller as mc)
 from subprocess import check_call
+from array import array
+from string import maketrans
 
 import cython
 import numpy as np
-from numpy import (sum as nsum, amax as npamax, argmax as npargmax,
-                   multiply as nmul, subtract as nsub, any as npany,
-                   vstack as npvstack, greater as ngreater, less as nless,
-                   divide as ndiv, char as npchar)
 import pysam
-from cytoolz import memoize
-from functools import partial
 from itertools import groupby
+from numpy import sum as nsum
 
-from utilBMF.HTSUtils import (SliceFastqProxy, ph2chr,
+from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
                               hamming_cousins)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
 try:
-    import re2 as re
+    from re2 import compile as regex_compile
 except ImportError:
-    import re
-oagseq = oag("sequence")
-oagqual = oag("quality")
-npchararray = npchar.array
-partialnpchar = partial(npchararray, itemsize=1)
+    pl("Note: re2 import failed. Fell back to re.", level=logging.DEBUG)
+    from re import compile as regex_compile
 
 
-letterNumDict = {'A': 0, 'C': 0, 'G': 0, 'T': 0,
-                 0: 'A', 1: 'C', 2: 'G', 3: 'T'}
-
-
-@memoize
-def chr2phFunc(x):
-    return chr2ph[x]
+ARGMAX_TRANSLATE_STRING = maketrans('\x00\x01\x02\x03', 'ACGT')
 
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
@@ -137,175 +126,125 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
                 " %s | tr '\t' '\n' > %s" % (mem, outFastq))
 
 
-@cython.boundscheck(False)
-cpdef cystr cFRP_helper(list R, cystr name=None):
-    return compareFqRecsFqPrx(R, name=name)
+cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    """
+    cpdef wrapper for QualArr2QualStr
+
+    Compared speed for a typed list comprehension against that for a map.
+    Results:
+    In [6]: %timeit QualArr2PVString(c)
+    100000 loops, best of 3: 6.49 us per loop
+
+    In [7]: %timeit QualArr2PVStringMap(c)
+    100000 loops, best of 3: 8.9 us per loop
+
+    """
+    return cQualArr2QualStr(qualArr)
 
 
-@cython.boundscheck(False)
-cdef cystr compareFqRecsFqPrx(list R, cystr name=None,
-                              float stringency=0.9,
-                              int famLimit=1000,
-                              cython.bint keepFails=True,
-                              object oagseq=oagseq,
-                              dict chr2ph=chr2ph,
-                              dict ph2chrDict=ph2chrDict,
-                              object ph2chr=ph2chr,
-                              object int2Str=int2Str):
-    """
-    TODO: Unit test for this function.
-    Compares the fastq records to create a consensus sequence (if it
-    passes a filter).
-    If NLowQual is set, all bases with q < 3 are set to N.
-    If hybrid is set, a failure to successfully demultiplex falls back to a
-    base by base comparison.
-    """
-    cdef ndarray[np.int64_t, ndim=1] phredQuals, FA
-    cdef ndarray[char, ndim=1, mode = "c"] finalSeq
-    cdef list seqs
-    cdef cystr seqItem, seq, lenRStr, qual
-    cdef cystr PVString, QualString, TagString, consFqString
-    cdef int lenR, numEq, maxScore
-    cdef cython.bint Success
-    if(name is None):
-        name = R[0].name
-    lenR = len(R)
-    lenRStr = str(lenR)
-    '''
-    if lenR == 1:
-        PVString = "|PV=%s" % ",".join([chr2phStr[i] for i in R[0].quality])
-        TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
-                                                PVString)
-        return "@%s %s%s\n%s\n+\n%s\n" % (R[0].name, R[0].comment,
-                                          TagString, R[0].sequence,
-                                          R[0].quality)
-    '''
-    if(lenR > famLimit):
-        logging.debug(
-            "Read family - {} with {} members was capped at {}. ".format(
-                R[0], lenR, famLimit))
-        R = R[:famLimit]
-    seqs = map(oagseq, R)
-    maxScore = 0
-    Success = False
-    numEq = 0
-    for seq in seqs:
-        numEq = sum([seq == seqItem for seqItem in seqs])
-        if(numEq > maxScore):
-            maxScore = numEq
-            finalSeq = np.array(list(seq))
-    try:
-        frac = numEq * 1. / lenR
-    except ZeroDivisionError:
-        pl("Length of R: {}".format(lenR))
-        pl("numEq: {}".format(numEq))
-    if(frac > stringency):
-        Success = True
-    elif(frac < 0.5):
-        Success = False
-    FA = np.array([sum([seq[i] == finalSeq[i] for seq in seqs]) for i in
-                 xrange(len(finalSeq))], dtype=np.int64)
-    phredQuals = np.array([sum([chr2ph[qual[i]] for
-                               qual in map(oagqual, R) if
-                               seq[i] == finalSeq[i]]) for
-                          i in xrange(len(finalSeq))])
-    # phredQuals[phredQuals < 3] = 0  # Throw array q scores of 2.
-    # finalSeq[phredQuals < 3] = "N"  # Set all bases with q < 3 to N
-    try:
-        QualString = "".join([ph2chrDict[i] for i in phredQuals])
-    except KeyError:
-        QualString = "".join(map(ph2chr, phredQuals))
-    try:
-        PVString = "|PV=%s" % (",".join([int2Str[i] for i in phredQuals]))
-    except KeyError:
-        PVString = "|PV=%s" % (",".join(phredQuals.astype(str)))
-    try:
-        FAString = "|FA=%s" % (",".join([int2Str[i] for i in FA]))
-    except KeyError:
-        FAString = "|FA=%s" % (",".join(FA.astype(str)))
-    TagString = "|FM=%s%s|ND=%s%s" % (
-        lenRStr,  FAString, lenR * len(finalSeq) - nsum(FA), PVString)
-    """
-    try:
-    """
-    consFqString = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
-                                              TagString,
-                                              finalSeq.tostring(), QualString)
-    """
-    Uncomment and add indent the consFqString assignment command
-    for debugging.
-    except TypeError:
-        print("TagString: {}".format(TagString))
-        print("finalSeq: {}".format(finalSeq))
-        print("QualString: {}".format(QualString))
-        print("Name {}".format(R[0].name))
-        print("Comment {}".format(R[0].comment))
-        print("".join(["@", R[0].name, " ", R[0].comment, TagString]))
-        raise Tim("I can't figure out what's going on.")
-    """
-    if(Success is False):
-        return consFqString.replace("Pass", "Fail")
-    return consFqString
+cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+    return cQualArr2PVString(qualArr)
 
+
+cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
+    return cCompareFqRecsFast(R, name)
+
+
+cdef ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
+    cdef pFastqProxy_t rec
+    return np.array([cs_to_ia(rec.sequence) for rec in R],
+                    dtype=np.uint8)
+
+
+cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
+    return cRecListTo2DCharArray(R)
+
+
+'''
+
+This method works (change the second argument on amax/argmax calls
+on the output), but it looks like it's slower.
+I might have to do this manually.
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
-    return cCompareFqRecsFast(R, name=name)
+cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
+                                             ndarray[np_int32_t, ndim=2] quals,
+                                             size_t lenR):
+    cdef size_t readlen = len(seqs[0])
+    cdef size_t read_index, base_index
+    cdef ndarray[np_int32_t, ndim=2] QualSumAll
+    cdef np_int32_t tmpInt
+    QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
+    for read_index in range(lenR):
+        for base_index in range(readlen):
+            tmpInt = seqs[read_index][base_index]
+            if(tmpInt == 84):
+                QualSumAll[base_index][3] += quals[read_index][base_index]
+            elif(tmpInt == 67):
+                QualSumAll[base_index][1] += quals[read_index][base_index]
+            elif(tmpInt == 71):
+                QualSumAll[base_index][2] += quals[read_index][base_index]
+            else:
+                QualSumAll[base_index][0] += quals[read_index][base_index]
+    return QualSumAll
+'''
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,
-                             cystr name=None,
-                             int famLimit=100,
-                             dict chr2ph=chr2ph,
-                             dict letterNumDict=letterNumDict,
-                             dict ph2chrDict=ph2chrDict,
-                             object ccopy=ccopy,
-                             object npchararray=npchararray,
-                             object oagqual=oagqual,
-                             object oagseq=oagseq,
-                             object partialnpchar=partialnpchar,
-                             object ph2chr=ph2chr,
-                             object chr2phStr=chr2phStr,
-                             object int2Str=int2Str):
+                              cystr name=None,
+                              double minPVFrac=0.1,
+                              double minFAFrac=0.2,
+                              double minMaxFA=0.9):
     """
     TODO: Unit test for this function.
-    Also, consider making a cpdef version!
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
+    After inlin
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
     """
-    cdef int lenR, ND, lenSeq
+    cdef int lenR, ND, lenSeq, tmpInt, i
+    cdef double tmpFlt
     cdef cython.bint Success
-    cdef cystr seq, qual, seqItem, qualChar, PVString, TagString
+    cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
-    cdef ndarray[np.int64_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np.int64_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np.int64_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np.int64_t, ndim=1] MaxPhredSum, phredQuals, qualTFlat
-    cdef ndarray[char, ndim=1, mode = "c"] newSeq
+    # cdef char tmpChar
+    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
+    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[char, ndim=2] seqArray
+    cdef py_array tmpArr
+    # cdef ndarray[char, ndim=1, mode = "c"] newSeq
+    cdef pFastqProxy_t rec
+    cdef char tmpChar
     if(name is None):
         name = R[0].name
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        TagString = "|FM=1|ND=0|FA=%s|PV=%s" % (",".join(["1"] * lenSeq),
-                                                ",".join([chr2phStr[i] for
-                                                          i in R[0].quality]))
+        phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                     cQualArr2PVString(phredQuals))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
                                           R[0].quality)
-    elif lenR > famLimit:
-        return compareFqRecsFqPrx(R, name=name)  # Lazy large fams
     Success = True
-    seqs = map(oagseq, R)
-    stackArrays = tuple(map(partialnpchar, seqs))
-    seqArray = npvstack(stackArrays)
+    '''
+    stackArrays = tuple([np.char.array(rec.sequence, itemsize=1) for rec in R])
+    seqArray = np.vstack(stackArrays)
+    '''
+    seqArray = cRecListTo2DCharArray(R)
 
-    # print(repr(seqArray))
-    quals = np.array([[chr2ph[i] for i in qual] for
-                     qual in map(oagqual, R)])
+    quals = np.array([cs_to_ph(rec.quality) for
+                      rec in R], dtype=np.int32)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.
     # quals[quals < 3] = 0
@@ -316,48 +255,61 @@ cdef cystr cCompareFqRecsFast(list R,
     qualC = ccopy(quals)
     qualG = ccopy(quals)
     qualT = ccopy(quals)
-    qualA[seqArray != "A"] = 0
-    qualAFlat = nsum(qualA, 0, dtype=np.int64)
-    qualC[seqArray != "C"] = 0
-    qualCFlat = nsum(qualC, 0, dtype=np.int64)
-    qualG[seqArray != "G"] = 0
-    qualGFlat = nsum(qualG, 0, dtype=np.int64)
-    qualT[seqArray != "T"] = 0
-    qualTFlat = nsum(qualT, 0, dtype=np.int64)
-    qualAllSum = npvstack(
+    qualA[seqArray != 65] = 0
+    qualAFlat = nsum(qualA, 0, dtype=np.int32)
+    qualC[seqArray != 67] = 0
+    qualCFlat = nsum(qualC, 0, dtype=np.int32)
+    qualG[seqArray != 71] = 0
+    qualGFlat = nsum(qualG, 0, dtype=np.int32)
+    qualT[seqArray != 84] = 0
+    qualTFlat = nsum(qualT, 0, dtype=np.int32)
+    qualAllSum = np.vstack(
         [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    newSeq = np.array([letterNumDict[i] for i in npargmax(qualAllSum, 0)])
-    MaxPhredSum = npamax(qualAllSum, 0)  # Avoid calculating twice.
-    FA = np.array([sum([seq[i] == newSeq[i] for
-                       seq in seqs]) for
-                  i in xrange(lenSeq)], dtype=np.int64)
+    tmpArr = array('B', np.argmax(qualAllSum, 0))
+    newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
+    phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+
+    # Filtering
+    # First, kick out bad/discordant bases
+    tmpFlt = float(np.max(phredQuals))
+    PVFracDivisor = minPVFrac * tmpFlt
+    phredQuals[phredQuals < PVFracDivisor] = 0
+    # Second, flag families which are probably not really "families"
+    FA = np.array([sum([rec.sequence[i] == newSeq[i] for
+                        rec in R]) for
+                  i in xrange(lenSeq)], dtype=np.int32)
+    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA):
+        #  If there's any base on which a family agrees less often
+        #  than minFAFrac, nix the whole family.
+        #  Along with that, require that at least one of the bases agree
+        #  to some fraction. I've chosen 0.9 to get rid of junk families.
+        phredQuals[:] = 0
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
-    phredQuals = ndiv(nmul(FA, nsum(np.array([[chr2ph[i] for i in qual] for
-                                             qual in map(oagqual, R)]),
-                                    0)), lenR, dtype=np.int64)
     ND = lenR * lenSeq - nsum(FA)
     # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
-    try:
-        PVString = "|PV=%s" % ",".join([int2Str[i] for i in phredQuals])
-    except KeyError:
-        PVString = "|PV=%s" % ",".join(phredQuals.astype(str))
-    try:
-        phredQualsStr = "".join([ph2chrDict[i] for i in phredQuals])
-    except KeyError:
-        phredQualsStr = "".join(map(ph2chr, phredQuals))
-    try:
-        FAString = "|FA=%s" % ",".join([int2Str[i] for i in FA])
-    except KeyError:
-        FAString = ",".join(FA.astype(str))
-    TagString = "|FM=%s|ND=%s%s%s" % (lenR, ND, FAString,
-                                      PVString)
+    PVString = cQualArr2PVString(phredQuals)
+    phredQualsStr = cQualArr2QualStr(phredQuals)
+    FAString = cQualArr2FAString(FA)
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
+    '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
-                                                   newSeq.tostring(),
+                                                   newSeq,
                                                    phredQualsStr)
+    In [67]: %timeit omgzwtf = "@%s %s%s\n%s\n+\n%s\n" % (name, b.comment,
+                                                          TagString,
+                                                          newSeq,
+                                                          phredQualsStr)
+    1000000 loops, best of 3: 585 ns per loop
+    In [68]: %timeit omgzwtf = ("@" + name + " " + b.comment + TagString +
+                                "\n" + newSeq + "\n+\n%s\n" % phredQualsStr)
+    1000000 loops, best of 3: 512 ns per loop
+    '''
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
     if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
@@ -501,9 +453,9 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
         cString2 = cStringIO.StringIO()
         f1 = gzip.GzipFile(fileobj=cString1, mode="w")
         f2 = gzip.GzipFile(fileobj=cString2, mode="w")
-    inIndex = pysam.FastqFile(indexFq)
+    inIndex = pysam.FastqFile(indexFq, persist=False)
     hpLimit = len(inIndex.next().sequence) * 5 // 6
-    inIndex = pysam.FastqFile(indexFq)
+    inIndex = pysam.FastqFile(indexFq, persist=False)
     ifin = inIndex.next
     outFqSet1 = []
     outFqSet2 = []
@@ -569,8 +521,8 @@ def FastqSingleShading(fq,
     outFqHandle1 = open(outfq, "w")
     inIndex = pysam.FastqFile(indexFq)
     for read1 in inFq1:
-        pIndexRead = pFastqProxy(inIndex.next())
-        pRead1 = pFastqProxy(read1)
+        pIndexRead = pFastqProxy.fromFastqProxy(inIndex.next())
+        pRead1 = pFastqProxy.fromFastqProxy(read1)
         if("N" in pRead1.pIndexRead.sequence):
             read1.comment += "|FP=IndexFail|BS=%" % (read1.sequence[:head] +
                                                      pIndexRead.sequence)
@@ -600,6 +552,19 @@ def GetDescTagValue(readDesc, tag="default"):
         # pl("Tag {} is not available in the description.".format(tag))
         # pl("Description: {}".format(readDesc))
         raise KeyError("Invalid tag: %s" % tag)
+
+
+cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    cdef np_int32_t tmpInt
+    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
+
+
+cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+    return "|PV=%s" % ",".join(qualArr.astype(str))
+
+
+cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+    return "|FA=%s" % ",".join(qualArr.astype(str))
 
 
 def GetDescriptionTagDict(readDesc):
@@ -666,17 +631,13 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
                 cStr, ("Background singleFastqConsolidate took more than an"
                        "hour longer than the other read fastq. Giving up!"),
                 shell=True)
-    print("Consolidation a success for both!")
     return outFq1, outFq2
 
 
 def singleFastqConsolidate(cystr fq, float stringency=0.9,
                            int SetSize=100,
                            cython.bint onlyNumpy=True,
-                           cython.bint skipFails=False,
-                           object fn=pCompareFqRecsFast,
-                           object getBS=getBS,
-                           object groupby=groupby):
+                           cython.bint skipFails=False):
     cdef cystr outFq, bc4fq, ffq
     cdef pFastqFile_t inFq
     cdef list StringList
@@ -694,7 +655,7 @@ def singleFastqConsolidate(cystr fq, float stringency=0.9,
     sla = StringList.append
     for bc4fq, fqRecGen in groupby(inFq, key=getBS):
         pFqPrxList = list(fqRecGen)
-        ffq = fn(pFqPrxList, bc4fq)
+        ffq = cCompareFqRecsFast(pFqPrxList, bc4fq)
         sla(ffq)
         numProc += 1
         TotalCount += len(pFqPrxList)
@@ -745,10 +706,10 @@ def TrimHomingSingle(
         if homing not in homingLoc:
             pl("Homing sequence not in tag. Writing to error file.",
                level=logging.DEBUG)
-            ew(str(pFastqProxy(read)))
+            ew(str(pFastqProxy.fromFastqProxy(read)))
             continue
         tw(SliceFastqProxy(read, firstBase=TotalTrim,
-                              addString="|BS=" + read.sequence[0:bcLen]))
+                           addString="|BS=" + read.sequence[0:bcLen]))
     trimHandle.close()
     errHandle.close()
     return trimfq
@@ -785,18 +746,18 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
     for read1 in InFastq1:
         read2 = fqNext()
         if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy(read1)))
-            ew(str(pFastqProxy(read2)))
+            ew(str(pFastqProxy.fromFastqProxy(read1)))
+            ew(str(pFastqProxy.fromFastqProxy(read2)))
             continue
         if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy(read1)))
-            ew(str(pFastqProxy(read2)))
+            ew(str(pFastqProxy.fromFastqProxy(read1)))
+            ew(str(pFastqProxy.fromFastqProxy(read2)))
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,
-                               addString="|BS=%s" % barcode))
+                            addString="|BS=%s" % barcode))
         tw2(SliceFastqProxy(read2, firstBase=TotalTrim,
-                               addString="|BS=%s" % barcode))
+                            addString="|BS=%s" % barcode))
     trimHandle1.close()
     trimHandle2.close()
     errHandle.close()
@@ -847,7 +808,7 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
         histList = [tuple(tmpStr.split("\t")) for tmpStr in
                     open(tmpFile, "r").read().split("\n") if tmpStr != ""]
     histDict = {y: int(x) for x, y in histList}
-    TrueFamDict = {x: None for x, y1 in histDict.iteritems() if y1 >= minFam}
+    TrueFamDict = {x: x for x, y1 in histDict.iteritems() if y1 >= minFam}
     if(len(TrueFamDict) == 0):
         rescueHistDict = {}
     else:
@@ -856,23 +817,6 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
     if(tmpFile is not None):
         check_call(["rm", tmpFile])
     return rescueHistDict, TrueFamDict
-
-
-cdef bint BarcodePasses(cystr barcode, int hpLimit=-1, bint useRe=True):
-    if(hpLimit < 0):
-        raise Tim("Barcode length must be set to test if it passes!")
-    if(useRe):
-        b = re.compile("(ACGT){%s}" % hpLimit)
-        if b.match(barcode) is not None:
-            return False
-        if("N" in barcode):
-            return False
-    else:
-        if("A" * hpLimit in barcode or "C" * hpLimit in barcode or
-           "G" * hpLimit in barcode or "T" * hpLimit in barcode or
-           "N" in barcode):
-            return False
-    return True
 
 
 def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
@@ -905,14 +849,14 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
     size below the minFam used to create the rescueDict object can be safely
     considered to be a sequencer error.
     """
-    cdef cystr tmpBS, saltedBS, tagStr
+    cdef cystr tmpBS, saltedBS, tagStr, indexSeq
     cdef pFastqFile_t inHandle1, inHandle2, indexHandle
     cdef pFastqProxy_t rec1, rec2, index_read
     cdef int bLen, hpLimit
     if(outFq1 is None):
-        outFq1 = TrimExt(inFq1) + ".rescued.shaded.fastq"
+        outFq1 = TrimExt(inFq1, exclude="fastq") + ".rescued.shaded.fastq"
     if(outFq2 is None):
-        outFq2 = TrimExt(inFq2) + ".rescued.shaded.fastq"
+        outFq2 = TrimExt(inFq2, exclude="fastq") + ".rescued.shaded.fastq"
     if(TrueFamDict is None or rescueDict is None):
         raise Tim("TrueFamDict and rescueDict must not be None! Reprs! "
                   "TFD: %s. Rescue: %s." % (repr(TrueFamDict),
@@ -939,42 +883,35 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
             raise Tim("Index fastq and read fastqs have different sizes. "
                       "Abort!")
         try:
-            TrueFamDict[index_read.sequence]
-            saltedBS = (rec1.sequence[:head] + index_read.sequence +
+            indexSeq = TrueFamDict[index_read.sequence]
+            saltedBS = (rec1.sequence[:head] + indexSeq +
                         rec2.sequence[:head])
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec1))
-            continue
         except KeyError:
             pass
-        try:
-            saltedBS = (rec1.sequence[:head] +
-                        rescueDict[index_read.sequence] +
-                        rec2.sequence[:head])
-            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
-            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec1))
-            continue
-        except KeyError:
-            # This isn't in a true family. Blech!
-            saltedBS = (rec1.sequence[:head] + index_read.sequence +
-                        rec2.sequence[:head])
-            rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
-            rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
-            ohw1(str(rec1))
-            ohw2(str(rec1))
-            continue
+            try:
+                indexSeq = rescueDict[index_read.sequence]
+                saltedBS = (rec1.sequence[:head] +
+                            indexSeq +
+                            rec2.sequence[:head])
+                rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+                rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
+            except KeyError:
+                # This isn't in a true family. Blech!
+                saltedBS = (rec1.sequence[:head] + index_read.sequence +
+                            rec2.sequence[:head])
+                rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
+                rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
+        ohw1(str(rec1))
+        ohw2(str(rec2))
     outHandle1.close()
     outHandle2.close()
     return outFq1, outFq2
 
-cdef cystr cMakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
-    if(BarcodePasses(saltedBS, hpLimit)):
-        return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
-    return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
 
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
+    """
+    Python-visible MakeTagComment.
+    """
     return cMakeTagComment(saltedBS, rec, hpLimit)

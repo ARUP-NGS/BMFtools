@@ -11,17 +11,18 @@ from subprocess import check_output, check_call
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
-from utilBMF.ErrorHandling import ThisIsMadness, ThisIsHKMadness
+from utilBMF.ErrorHandling import (ThisIsMadness, ConsideredHarmful,
+                                   ThisIsHKMadness)
 from cytoolz import frequencies as cyfreq
 from itertools import chain, groupby
 from functools import partial
 from operator import attrgetter, itemgetter
 try:
-    import re2 as re
+    from re2 import compile as regex_compile
 except ImportError:
-    import re
+    from re import compile as regex_compile
 # Dictionary of edit distance flags to the reference (excludes clipping)
-mmDict = {i: re.compile(r'NM:i:[0-%s]' % i) for i in xrange(20)}
+mmDict = {i: regex_compile(r'NM:i:[0-%s]' % i) for i in xrange(20)}
 oagseq = attrgetter("seq")
 cfi = chain.from_iterable
 hammingPt = partial(hamming_cousins, n=1)
@@ -184,17 +185,21 @@ cdef class KmerFetcher(object):
         if(aligner == "mem"):
             return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
         elif(aligner=="bwt"):
+            raise ConsideredHarmful("Use of bowtie for uniqueness"
+                                    " calculations is unreliable.")
             return BowtieFqToStr(self.getFastqString(bedline), ref=self.ref,
                                  seed=self.seed, mismatches=self.mismatches)
         else:
-            raise ValueError("Sorry, only bwa mem or bowtie is supported currently.")
+            raise NotImplementedError("Sorry, only bwa mem and bowtie"
+                                      " are supported currently.")
 
     cpdef FillMap(self, list bedline):
-        """Fills a dictionary (keyed by the input bed file 'chr:start:stop') with
-        the list of kmers in that region that uniquely map to the reference."""
-        kmerList = self.GetUniqueKmers(bedline)
+        """Fills a dictionary (keyed by the input bed file 'chr:start:stop')
+        with the list of kmers in that region that map uniquely
+        to the reference.
+        """
         self.HashMap[
-            ":".join(map(str, bedline))] = kmerList
+            ":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
 
     @cython.returns(list)
     def GetIntervalsFromMap(self):
@@ -366,22 +371,9 @@ def BwaFqToStr(cystr fqStr, cystr ref=None,
     print("Bwa command string: %s" % cStr)
     outStr = check_output(cStr, shell=True)  # Capture output to string
     check_call(["rm", tmpFile])  # Delete the temporary file.
-    print("Returning BwaFqToStr output with " + str(outStr.count("\n")) + " lines.")
+    pl("Returning BwaFqToStr output with %s lines" % outStr.count("\n"),
+       level=logging.INFO)
     return outStr
-
-
-@cython.returns(bint)
-def PassesNM1(cystr rStr, int maxNM=2, dict mmDict=mmDict):
-    """
-    Checks a SAM line to see if its edit distance is below or equal
-    to the maximum.
-    """
-    cdef int i
-    cdef list strList = ["NM:i:%s" % i for i in xrange(maxNM + 1)]
-    for item in strList:
-        if item in rStr:
-            return True
-    return False
 
 
 @cython.returns(bint)
@@ -396,15 +388,17 @@ def PassesNM(cystr rStr, int maxNM=2, dict mmDict=mmDict):
 @cython.returns(list)
 def GetMQPassRefKmersMem(cystr bwaStr, int maxNM=2, int minMQ=1):
     """
-    Takes a string output from bowtie (SAM format) and gets the names of the reads
-    with MQ >= minMQ that are unique alignments. Returns a list of RefKmer objects
-    built from passing bowtie output with unique mappings (no XA:Z or XT:A:R flags or
+    Takes a string output from bowtie (SAM format) and gets the names of the
+    reads with MQ >= minMQ that are unique alignments. Returns a list of
+    RefKmer objects built from passing bowtie output with unique mappings
+    (no XA:Z or XT:A:R flags or
     non-zero mapping qualities).
     """
     cdef list lines, i
     cdef cystr f
     cdef tuple nameCount
-    pl("Number of reads is (approximately) " + str(bwaStr.count("\n") - bwaStr.count("@")))
+    pl("Number of reads is (approximately) " +
+       str(bwaStr.count("\n") - bwaStr.count("@")), level=logging.DEBUG)
 
     return [RefKmer(i[0], contig=i[2],
                     pos=int(i[3])) for i in [f.strip().split("\t") for
