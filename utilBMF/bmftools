@@ -1013,11 +1013,11 @@ def main():
                 Chapman['fq'][0], Chapman['fq'][1],
                 indexFq=Chapman['indexFq'],
                 p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
-                sortMem=Chapman['sortMem'],
                 inline_barcodes=Chapman['inline_barcodes'],
                 homing=Chapman['homing'],
                 bcLen=Chapman['bcLen'], head=Chapman['head'],
-                rescue=Chapman['rescue'])
+                rescue=Chapman['rescue'],
+                sortMem=Chapman['sortMem'])
             procSortedBam = wf.pairedBamProc(
                 trimfq1, trimfq2,
                 aligner=Chapman['aligner'], ref=Chapman['ref'],
@@ -1031,6 +1031,7 @@ def main():
                 opts=Chapman['opts'],
                 kmers_precomputed=Chapman['kmers_precomputed'],
                 intelDeflator=Chapman['intelDeflator'],
+                sortMem=Chapman['sortMem'],
                 bwapath=Chapman['bwapath'])
             VCFOutDict = wf.pairedVCFProc(
                 procSortedBam,

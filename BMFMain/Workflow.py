@@ -17,7 +17,7 @@ from MawCluster.BCFastq import TrimHomingPaired
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
-from utilBMF.HTSUtils import printlog as pl, TrimExt
+from utilBMF.HTSUtils import printlog as pl, TrimExt, PipeAlignTag
 from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from MawCluster.BCVCF import VCFStats
@@ -36,7 +36,8 @@ def pairedBamProc(consfq1, consfq2, opts="",
                   addRG=False,
                   realigner="abra", gatkpath="default", dbsnp="default",
                   rLen=-1, intelDeflator="default",
-                  kmers_precomputed=False):
+                  kmers_precomputed=False,
+                  sortMem="6G"):
     """
     Performs alignment and bam tagging of consolidated fastq files.
     """
@@ -53,8 +54,14 @@ def pairedBamProc(consfq1, consfq2, opts="",
         addRG = True
     if(aligner == "mem"):
         pl("Now aligning with: %s" % aligner)
+        '''
         taggedBAM = BCBam.AlignAndTagMem(
             consfq1, consfq2, ref=ref, opts=opts)
+        '''
+        coorSortFull = PipeAlignTag(consfq1, consfq2, ref=ref,
+                                    path=bwapath,
+                                    coorsort=True, u=False,
+                                    sortMem=sortMem, opts=opts)
     elif(aligner == "aln"):
         outBAMProperPair = HTSUtils.align_bwa_aln(consfq1, consfq2,
                                                   ref=ref, opts=opts,
@@ -62,6 +69,7 @@ def pairedBamProc(consfq1, consfq2, opts="",
         pl("Now tagging BAM with custom SAM tags.")
         taggedBAM = BCBam.pairedBarcodeTagging(
             consfq1, consfq2, outBAMProperPair, realigner=realigner)
+        coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
     else:
         raise ValueError("Sorry, only bwa is supported currently.")
     if(rLen < 0):
@@ -76,7 +84,6 @@ def pairedBamProc(consfq1, consfq2, opts="",
     if("abra" in realigner.lower()):
         if(abrapath == "default"):
             raise Tim("abrapath must be set for abra to be the realigner")
-        coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.AbraCadabra(coorSortFull, ref=ref, bed=bed,
                                           jar=abrapath, rLen=rLen,
                                           intelPath=intelDeflator,
@@ -84,18 +91,16 @@ def pairedBamProc(consfq1, consfq2, opts="",
         if("gatk" in realigner.lower()):
             pl("Realigning around known indels, too. "
                "Lots of steps, hard to know which ones matter.")
-            coorSortFull = HTSUtils.CoorSortAndIndexBam(realignedFull)
             realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,
                                                        bed=bed, gatk=gatkpath,
                                                        dbsnp=dbsnp)
     elif("gatk" in realigner.lower().split(",")):
-        coorSortFull = HTSUtils.CoorSortAndIndexBam(taggedBAM)
         realignedFull = BCBam.GATKIndelRealignment(coorSortFull, ref=ref,
                                                    bed=bed, gatk=gatkpath,
                                                    dbsnp=dbsnp)
     else:
         pl("Skipping realignment.")
-        realignedFull = taggedBAM
+        realignedFull = coorSortFull
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
     tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])

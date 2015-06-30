@@ -823,8 +823,8 @@ cdef class TagBamPipe:
             else:
                 self.outHandle = pysam.AlignmentFile(
                     "-", "wb", template=self.inHandle)
-        self.RefIDDict = dict(enumerate(self.inHandle.references))
-        self.RefIDDict[-1] = "*"
+        self.RefIDDict = dict(list(enumerate(self.inHandle.references)) +
+                                   [(-1, "*")])
 
     cdef write(self, AlignedSegment_t read):
         self.outHandle.write(read)
@@ -864,7 +864,8 @@ cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
     """In progress
     """
     cdef AlignedSegment_t read
-    cdef dict RefIDDict = dict(enumerate(inbam.references))
+    cdef dict RefIDDict = dict(list(enumerate(inbam.references)) +
+                               [(-1, "*")])
     for read in inbam:
         outbam.write(TagAlignedSegment(read, RefIDDict))
     inbam.close()
@@ -886,6 +887,8 @@ cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=None):
 def AlignAndTagMem(cystr fq1, cystr fq2,
                    cystr outBAM="default",
                    ref="default", opts=""):
+    if(outBAM == "default"):
+        outBAM = TrimExt(fq1) + ".alntag.bam"
     FirstBam = align_bwa_mem(fq1, fq2, outBAM=outBAM, addCO=True,
                              ref=ref, opts=opts)
     taggedBAM = pBarcodeTagCOBam(FirstBam, outbam=outBAM)
