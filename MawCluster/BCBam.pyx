@@ -831,9 +831,9 @@ cdef class TagBamPipe:
 
     cpdef process(self):
         cdef AlignedSegment_t read
-        [self.write(TagAlignedSegment(
-            read, RefIDDict=self.RefIDDict)) for
-         read in self.inHandle]
+        for read in self.inHandle:
+            read = TagAlignedSegment(read, RefIDDict=self.RefIDDict)
+            self.write(read)
 
 cdef class TagBamPipeHG37(BamPipe):
     """
@@ -846,16 +846,35 @@ cdef class TagBamPipeHG37(BamPipe):
                                       uncompressed_output=uncompressed_output)
 
 
-def PipeBarcodeTagCOBam(bin_input=False, bin_output=False,
-                        uncompressed_output=False):
+def PipeBarcodeTagCOBam(char flag):
     """
     Takes a SAM input stream, tags the bam, and converts
     it into a bam, all in one fell swoop!
+    Uses a bitwise flag.
+    flag & 4 is true to emit uncompressed
+    flag & 2 is true if input is textual (sam) format
+    flag & 1 is true if output is textual (sam) format
     """
-    cdef TagBamPipe_t Bombadil
-    Bombadil = TagBamPipe(
-        bin_input, bin_output, uncompressed_output=uncompressed_output)
-    Bombadil.process()
+    from sys import stderr
+    cdef AlignmentFile_t inHandle, outHandle
+    cdef AlignedSegment_t read
+    cdef dict RefIDDict
+    cdef cystr input_mode
+    input_mode = "r" if(flag & 2) else "rb"
+    if(flag & 1):
+        output_mode = "w"
+    elif(flag & 4):
+        output_mode = "wbu"
+    else:
+        output_mode = "wb"
+    stderr.write("Now tagging a piped BAM with input mode "
+                 "%s and output mode %s\n" % (input_mode, output_mode))
+    inHandle = pysam.AlignmentFile("-", input_mode)
+    outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
+    RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
+    [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
+    inHandle.close()
+    outHandle.close()
     return 1
 
 

@@ -1093,7 +1093,7 @@ def main():
             compressInput) else "sam",
                                                  "bam" if(
             bamOutput) else "sam"))
-        PipeBarcodeTagCOBam(compressInput, bamOutput, uncompressed_output)
+        PipeBarcodeTagCOBam()
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0
