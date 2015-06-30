@@ -72,18 +72,6 @@ cdef cystr RevCmpImplicit(cystr seq):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-@cython.initializedcheck(False)
-cdef py_array cs_to_ph(cystr input_str):
-    cdef py_array tmpArr
-    cdef size_t index
-    tmpArr = array('B', input_str)
-    for index in range(len(tmpArr)):
-        tmpArr[index] -= 33
-    return tmpArr
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cpdef py_array str2intarray(cystr instr):
     return cs_to_ia(instr)
 
@@ -92,3 +80,15 @@ cpdef py_array str2intarray(cystr instr):
 @cython.wraparound(False)
 cpdef py_array str2phredarray(cystr instr):
     return cs_to_ph(instr)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+cdef py_array cs_to_ph(cystr input_str):
+    cdef py_array tmpArr
+    cdef size_t index
+    tmpArr = array('B', input_str)
+    for index in range(len(tmpArr)):
+        tmpArr[index] -= 33
+    return tmpArr

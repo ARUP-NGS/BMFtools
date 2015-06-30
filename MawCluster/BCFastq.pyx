@@ -243,7 +243,7 @@ cdef cystr cCompareFqRecsFast(list R,
     '''
     seqArray = cRecListTo2DCharArray(R)
 
-    quals = np.array([array('B', rec.quality) for
+    quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
     # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
     # Let's turn them into what they should be: nothing.

@@ -28,7 +28,8 @@ class MyTestCase(unittest.TestCase):
         self.filenames = []
 
     def test_compareFqRecs(self):
-        assert cCompareFqRecsFast(self.prefastqs) == (
+        tmpStr = cCompareFqRecsFast(self.prefastqs)
+        pass_test = cCompareFqRecsFast(self.prefastqs) == (
             '@MISEQ-M00736:68:000000000-A8D2D:1:2117:26553:9909 1:N:0:ACAGTG|'
             'FP=IndexPass|BS=AAAAAATGGACCCATTAACC|FM=3|ND=0|FA=3,3,3,3,3,3,3,'
             '3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,'
@@ -40,6 +41,9 @@ class MyTestCase(unittest.TestCase):
             '114,112,114,113,108,108\nAAATCGGGTCACTCCCACCTGAATACTGCGCTTTTCCGA'
             'TCGGCTTAAAAAATGGCGCACCACGAGATTA\n+\n~~~~~~~~~~~~~~~~~~~~~x~~~~~~'
             '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
+        if not pass_test:
+            raise AssertionError(
+                "Str: '%s' does not match unit test. Abort!" % tmpStr)
 
     def test_pfc(self):
         pairedFastqShades("../data/TinyDemo_R1.fastq.gz",
