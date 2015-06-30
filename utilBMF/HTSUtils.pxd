@@ -167,6 +167,7 @@ cdef cystr cGetBS(pFastqProxy_t)
 cdef public dict PysamToChrDict, ph2chrDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
+cdef public dict PhageRefIDDict
 
 cdef class pFastqProxy:
     cdef public cystr comment, name, quality, sequence

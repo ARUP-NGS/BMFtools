@@ -27,8 +27,7 @@
 1. Probabilistic Merging:
 	1. Add read kickout for > 10% disagreement from consensus for fastq processing.
 2. "Variant Caller"
-    0. Re-write it to not reparse the PV/FA tags each time.
-	1. Re-write it to be faster/better. [Stripped-down C struct flavor]
+    1. A vector of vectors of structs :)
 4. Non-SNV mutations
 	1. Binning
 	2. Assembly

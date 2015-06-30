@@ -676,11 +676,63 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
-cpdef AlignedSegment_t pTagAlignedSegment(AlignedSegment_t read):
-    return TagAlignedSegment(read)
+cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read):
+    return TagAlignedSegmentHG37(read)
+
+'''
+@cython.boundscheck(False)
+@cython.wraparound(False)
+'''
+cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=None):
+    return (RefIDDict[read.reference_id] + ":%s," % read.pos +
+            RefIDDict[read.rnext] +
+            ":%s" % read.mpos)
 
 
+'''
+@cython.boundscheck(False)
+@cython.wraparound(False)
+'''
 cdef AlignedSegment_t TagAlignedSegment(
+        AlignedSegment_t read, dict RefIDDict=None):
+    """
+    Adds necessary information from a CO: tag to appropriate other tags.
+    """
+    assert RefIDDict is not None
+    cdef dict CommentDict
+    cdef int FM, ND, FPInt
+    cdef double NF, AF, SF
+    cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
+    CommentDict = cGetCOTagDict(read)
+    PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
+    FA = np.array(CommentDict["FA"].split(","), dtype=np.int64)
+    if(read.is_reverse):
+        PhredQuals = PhredQuals[::-1]
+        FA = FA[::-1]
+    ND = int(CommentDict["ND"])
+    FM = int(CommentDict["FM"])
+    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    if(not FPInt):
+        read.flag += 512
+    NF = ND * 1. / FM
+    AF = getAF(read)
+    SF = getSF(read)
+    read.set_tags([("BS", CommentDict["BS"], "Z"),
+                   ("FM", FM, "i"),
+                   ("PV", ",".join(PhredQuals.astype(str)), "Z"),
+                   ("FA", ",".join(FA.astype(str)), "Z"),
+                   ("FP", FPInt, "i"),
+                   ("ND", int(CommentDict["ND"]), "i"),
+                   ("NF", NF, "f"),
+                   ("AF", AF, "f"),
+                   ("SF", SF, "f"),
+                   ("RP", RPStringNonHG37(read, RefIDDict), "Z")
+                   ] + read.get_tags())
+    read.set_tag("CO", None)  # Delete the CO tag.
+    return read
+
+
+cdef AlignedSegment_t TagAlignedSegmentHG37(
         AlignedSegment_t read):
     """
     Adds necessary information from a CO: tag to appropriate other tags.
@@ -729,6 +781,10 @@ cdef class BamPipe:
     :param uncompressed_output - boolean - true to output uncompressed
     BAM records.
     """
+    cpdef process(self):
+        cdef AlignedSegment_t read
+        [self.write(self.function(read)) for read in self.inHandle]
+
     def __init__(self, object function, bint bin_input, bint bin_output,
                  bint uncompressed_output=False):
         if(bin_input):
@@ -745,19 +801,48 @@ cdef class BamPipe:
         assert hasattr("__call__", function)
         self.function = function
 
-    def write(self):
-        self.outHandle.write(self)
+    cdef write(self, AlignedSegment_t read):
+        self.outHandle.write(read)
+
+
+cdef class TagBamPipe:
+    """
+    Doesn't require a precomputed dictionary, since it builds
+    it from the input stream.
+    """
+    def __init__(self, bint bin_input, bint bin_output,
+                 bint uncompressed_output=False):
+        if(bin_input):
+            self.inHandle = pysam.AlignmentFile("-", "rb")
+        else:
+            self.inHandle = pysam.AlignmentFile("-", "r")
+        if(bin_output):
+            if(uncompressed_output):
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wbu", template=self.inHandle)
+            else:
+                self.outHandle = pysam.AlignmentFile(
+                    "-", "wb", template=self.inHandle)
+        self.RefIDDict = dict(enumerate(self.inHandle.references))
+        self.RefIDDict[-1] = "*"
+
+    cdef write(self, AlignedSegment_t read):
+        self.outHandle.write(read)
 
     cpdef process(self):
         cdef AlignedSegment_t read
-        for read in self.inHandle:
-            self.outHandle.write(self.function(read))
+        [self.write(TagAlignedSegment(
+            read, RefIDDict=self.RefIDDict)) for
+         read in self.inHandle]
 
-
-cdef class TagBamPipe(BamPipe):
+cdef class TagBamPipeHG37(BamPipe):
+    """
+    Not unlike TagBamPipe, but memoizes HG37's ref id dictionary and
+    inlines it into switches.
+    """
     def __init__(self, bint bin_input, bint bin_output,
                  bint uncompressed_output=False):
-        super(BamPipe, self).__init__(TagAlignedSegment, bin_input, bin_output,
+        super(BamPipe, self).__init__(TagAlignedSegmentHG37, bin_input, bin_output,
                                       uncompressed_output=uncompressed_output)
 
 
@@ -767,18 +852,10 @@ def PipeBarcodeTagCOBam(bin_input=False, bin_output=False,
     Takes a SAM input stream, tags the bam, and converts
     it into a bam, all in one fell swoop!
     """
-    cdef cystr mode
-    cdef AlignedSegment_t read
-    inHandle = (pysam.AlignmentFile("-", "rb") if(
-        bin_input) else pysam.AlignmentFile("-", "r"))
-    mode = "w"
-    if(bin_output):
-        mode += "b"
-        if(uncompressed_output):
-            mode += "u"
-    outHandle = pysam.AlignmentFile("-", mode,
-                                    template=inHandle)
-    [outHandle.write(TagAlignedSegment(read)) for read in inHandle]
+    cdef TagBamPipe_t Bombadil
+    Bombadil = TagBamPipe(
+        bin_input, bin_output, uncompressed_output=uncompressed_output)
+    Bombadil.process()
     return 1
 
 
@@ -787,8 +864,9 @@ cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
     """In progress
     """
     cdef AlignedSegment_t read
+    cdef dict RefIDDict = dict(enumerate(inbam.references))
     for read in inbam:
-        outbam.write(TagAlignedSegment(read))
+        outbam.write(TagAlignedSegment(read, RefIDDict))
     inbam.close()
     outbam.close()
     return outbam.filename

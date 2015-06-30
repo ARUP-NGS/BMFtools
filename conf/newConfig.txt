@@ -23,7 +23,7 @@ p5Seq|GATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT|s
 parallel|False|b
 picardpath|/yggdrasil/codeRepository/picard-tools-1.129/picard.jar|s
 readLength|146|i
-ref|/home/daniel/human_g1k_v37.fasta|s
+ref|/dev/shm/human_g1k_v37.fasta|s
 shades|True|b
 sortMem|12G|s
 threads|4|i

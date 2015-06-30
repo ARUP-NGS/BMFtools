@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import uuid
+import cython
 
 ## BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
@@ -28,18 +29,19 @@ and samtools.
 #  warnings.filterwarnings('error')
 
 
-@cython.locals(bamread=AlignedSegment_t)
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
     PipeParser = subparsers.add_parser(
-        "pipe")
+        "pipetagbam",
+        description="Tags a BAM, taking sam/bam input/output.")
     PipeParser.add_argument(
-        "compressionsetting",
+        "compression",
         help=("First letter determines compression of input."
              "Second letter determines compression of output."
-             " (s/b for sam/bam)."))
+             " (s/b for sam/bam). Add u to emit"
+             " uncompressed BAM"))
     PEP8Parser = subparsers.add_parser(
         "pep8",
         description="Command for applying modified PEP8 to this code base.")
@@ -1078,14 +1080,14 @@ def main():
                "standards or caring more about these violations.")
             sys.stdout.write(out)
             return 1
-    if(subcommand == "pipe"):
+    if(subcommand == "pipetagbam"):
         from MawCluster.BCBam import PipeBarcodeTagCOBam
         compressInput = True if(
-            Palin.compressionsetting[0] == "b") else False
+            Palin.compression[0] == 'b') else False
         bamOutput = True if(
-            Palin.compressionsetting[1] == 'b') else False
+            Palin.compression[1] == 'b') else False
         uncompressed_output = (True if(
-            'u' in Palin.compressionsetting) else False)
+            'u' in Palin.compression) else False)
         pl("Now piping %s input to %s output" % ("bam" if(
             compressInput) else "sam",
                                                  "bam" if(

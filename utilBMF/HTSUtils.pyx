@@ -3189,3 +3189,5 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a):
     for i in range(n):
         v += (a[i] - m)**2
     return sqrt(v / n)
+
+PhageRefIDDict = {0: 'gi|215104|gb|J02459.1|LAMCG'}
