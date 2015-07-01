@@ -10,10 +10,10 @@ ctypedef c_array.array py_array
 ctypedef cython.str cystr
 cimport numpy as np
 
-cdef py_array cs_to_ia(cystr input_str)
 cpdef py_array str2intarray(cystr instr)
-cdef py_array cs_to_ph(cystr input_str)
 
+cdef inline py_array cs_to_ia(cystr input_str)
+cdef inline py_array cs_to_ph(cystr input_str)
 cdef cystr RevCmpImplicit(cystr seq)
 cdef cystr RevCmpPyArray(cystr seq)
 
@@ -38,3 +38,4 @@ cdef public cystr DNA_CODON_TABLE = ('\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x
                                      '\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee'
                                      '\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb'
                                      '\xfc\xfd\xfe\xff')
+cdef public cystr PH2CHR_TRANS

@@ -20,6 +20,8 @@ cdef inline cystr opLenToStr(char op, int opLen):
         return "%sI" % opLen
     elif(op == 83):
         return "%sS" % opLen
+    elif(op == 78):
+        return "%sN" % opLen
     else:
         return ""
 
