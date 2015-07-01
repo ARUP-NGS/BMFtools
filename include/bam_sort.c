@@ -1001,6 +1001,12 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
         else if(a->core.mpos != b->core.mpos){
             return (a->core.mpos < b->core.mpos);
         }
+        else if((a->core.mtid) != (b->core.mtid)) {
+            if(a->core.mtid < b->core.mtid) {
+                return true;
+            }
+            return false;
+        }
         int t = bam_is_r1(a) - bam_is_r1(b);
         if(t != 0) {
             return (t > 0);
