@@ -7,7 +7,7 @@ import cython
 import pysam
 import uuid
 import logging
-from subprocess import check_output, check_call
+from subprocess import check_output, check_call, Popen, PIPE
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
@@ -231,22 +231,22 @@ cdef class KmerFetcher(object):
         kmer = self.k
         bedStrList = ["%s\t%s\t%s\n" %(contig, startFirst-1, startLast + kmer -1)
                           for (contig, startFirst,startLast) in intervalList]
-        #with open("tmp.bed", "w") as f:
-        #    f.write("".join(bedStrList))
+
 
         # Sort and Merge bed file
-        #cstr = "cat tmp.bed | bedtools sort | bedtools merge | sort -k1,1 -k2,2n - > " + outFile
-        cstr = "echo " + "".join(bedStrList) + " | bedtools sort | bedtools merge | sort -k1,1 -k2,2n - > " + outFile
-        pl("Command string for sorting and merging bed file is " + cstr)
-        check_call(cstr,shell=True)
-        #pl("Removing temporary files ...")
-        #os.remove("tmp.bed")
+        pl("Sorting and merging output bed file with bedtools.")
+        echo=Popen(['echo', "".join(bedStrList)], stdout=PIPE)
+        bedsort = Popen(['bedtools', 'sort', '-i', '-'], stdin=echo.stdout,
+                                   stdout=PIPE)
+        merge = Popen(['bedtools', 'merge', '-i', '-'], stdin=bedsort.stdout,
+                                 stdout=PIPE)
+        sortout = Popen(['sort', '-k1,1n', '-k2,2n', '-V','-'], stdin=merge.stdout,
+                                   stdout=PIPE)
+        output=''.join(list(sortout.communicate()[0]))
+        with open(outFile, 'w') as f:
+            f.write(output)
         pl("Final sorted/merged bed file covering unqiue kmers of size " + str(kmer) + " saved to " +
            outFile)
-
-
-
-
 
 
     cpdef list GetUniqueKmers(self, list bedline):

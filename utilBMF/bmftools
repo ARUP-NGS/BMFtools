@@ -940,10 +940,7 @@ def main():
         from subprocess import check_call
         if Chapman['aligner'] == 'bwt':
             raise ThisIsHKMadness("Bowtie not recommended for use due to identified bugs.")
-        if Chapman['aligner'] == 'mem' and 'seed' in Chapman.keys:
-            print Chapman.keys
-            print Chapman.values()
-            print Chapman['seed']
+        if Chapman['aligner'] == 'mem' and 'seed' in Chapman.getkeys():
             pl("WARNING: Bwa mem does not use the seed parameter, ignoring " +
                str(Chapman['seed']) + ".", level=logging.WARNING)
         pl("Grabbing regions in input bed file that contain uniquely mapping kmers.")
