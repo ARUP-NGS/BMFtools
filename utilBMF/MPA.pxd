@@ -20,6 +20,7 @@ ctypedef LayoutPos LayoutPos_t
 ctypedef utilBMF.HTSUtils.BamTag BamTag_t
 
 cpdef MPA2stdout(cystr inBAM)
+cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:
     cdef public cython.int pos, readPos, quality, agreement
@@ -29,6 +30,7 @@ cdef class LayoutPos:
     cpdef bint ismapped(self)
     cdef bint getMergeAgreed(self)
     cdef bint getMergeSet(self)
+    cdef cystr tostring(self)
 
 
 cdef class PyLayout:

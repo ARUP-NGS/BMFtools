@@ -903,15 +903,9 @@ cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=None):
         inHandle, pysam.AlignmentFile(outbam, "wb", template=inHandle))
 
 
-def AlignAndTagMem(cystr fq1, cystr fq2,
-                   cystr outBAM="default",
-                   ref="default", opts=""):
-    if(outBAM == "default"):
-        outBAM = TrimExt(fq1) + ".alntag.bam"
-    FirstBam = align_bwa_mem(fq1, fq2, outBAM=outBAM, addCO=True,
-                             ref=ref, opts=opts)
-    taggedBAM = pBarcodeTagCOBam(FirstBam, outbam=outBAM)
-    return taggedBAM
+def AlignAndTagMem(*args, **kwargs):
+    raise DeprecationWarning("AlignAndTagMem is deprecated. "
+                             "Please use utilBMF.HTSUtils.PipeAlignTag.")
 
 
 @cython.boundscheck(False)

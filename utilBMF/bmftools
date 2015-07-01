@@ -7,6 +7,7 @@ import os
 import sys
 import uuid
 import cython
+from sys import stderr
 
 ## BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
@@ -702,7 +703,7 @@ def main():
     Logger.setLevel(logging.DEBUG)
 
     # Console handler - outputs to console as stderr
-    ch = logging.StreamHandler(stream=sys.stderr)
+    ch = logging.StreamHandler(stream=stderr)
     ch.setLevel(logging.DEBUG)
 
     # create formatter
@@ -720,7 +721,6 @@ def main():
     fl.setFormatter(formatter)
     fl.setLevel(logging.DEBUG)
 
-    Logger.addHandler(fl)
 
     #### END SETUP LOGGING
 
@@ -728,7 +728,13 @@ def main():
 
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
-    print("Now executable bmftools subcommand %s" % subcommand)
+    if(subcommand in ["main", "snv", "psnv", "mpa"] or
+       Chapman['create_log'] is True):
+        Logger.addHandler(fl)
+    else:
+        stderr.write("Logging skipped for subcommand. "
+                     "Override with create_log == True")
+    stderr.write("Now executable bmftools subcommand %s" % subcommand)
     if(subcommand == "qty"):
         templatesOnTarget = Palin.number_of_templates * Palin.on_target
         if(Palin.paired):

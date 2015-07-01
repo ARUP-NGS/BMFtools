@@ -8,7 +8,7 @@ from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
 from subprocess import check_call
-from sys import stdout
+from sys import stderr
 
 # Third party imports
 import numpy as np
@@ -70,10 +70,13 @@ cdef class LayoutPos:
     cdef bint getMergeSet(self):
         return self.mergeAgreed != 1
 
-    def __str__(self):
+    cdef cystr tostring(self):
         return "%s|%s|%s|%s|%s|%s|%s|%s" % (
             self.pos, self.readPos, chr(self.base), chr(self.operation),
             self.quality, self.agreement, self.merged, self.mergeAgreed)
+
+    def __str__(self):
+        return self.tostring()
 
 
 cdef class PyLayout(object):
@@ -400,8 +403,10 @@ cpdef PyLayout_t MergeLayoutsToLayout(PyLayout_t L1, PyLayout_t L2):
     cdef bint Success
     cdef ListBool ret
     ret = cMergeLayoutsToList(L1, L2)
+    from sys import stderr
     if(ret.Bool is False):
-        print("Ret's success return is False. Add false tags, return None.")
+        stderr.write("Ret's success return is False. "
+                     "Add false tags, return None.\n")
         L1.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         L2.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         return None
@@ -470,44 +475,49 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     return ret
 
 
+cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
+    return cMergePositions(pos1, pos2)
+
+
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
     """Merges two positions. Order does matter - pos1 overrides pos2 when
     pos2 is soft-clipped.
     """
     if(pos1.base == pos2.base):
         if(pos2.operation == pos1.operation):
-            print ("Comparing pos1 "
-                   "%s and pos2 %s - agreed on base and op" % (str(pos1),
-                                                               str(pos2)))
+            print("Comparing pos1 "
+                         "%s and pos2 %s, agreed base and op" % (str(pos1),
+                                                                 str(pos2)) +
+                         "\n")
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement, merged=True,
                              mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
-            print ("Comparing pos1 "
-                   "%s and pos2 %s - agreed on base" % (str(pos1),
-                                                        str(pos2)) +
-                   " but not operation. pos2 was softclipped - falling back "
-                   "to pos1's operation.")
+            print("Comparing pos1 "
+                         "%s and pos2 %s - agreed on base" % (str(pos1),
+                                                              str(pos2)) +
+                         " but not operation. pos2 was softclipped - falling back "
+                         "to pos1's operation.\n" )
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
-            print ("Comparing pos1 "
-                   "%s and pos2 %s - agreed on base" % (str(pos1),
-                                                        str(pos2)) +
-                   " but not operation. pos1 was softclipped - falling back "
-                   "to pos2's operation.")
+            print("Comparing pos1 "
+                         "%s and pos2 %s - agreed on base" % (str(pos1),
+                                                              str(pos2)) +
+                         " but not operation. pos1 was softclipped - falling back "
+                         "to pos2's operation.\n")
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos2.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         else:
-            print("Giving up on this - 'N' the operation to kill ")
+            print("Giving up on this - 'N' the operation to kill \n")
             return (LayoutPos(pos1.pos, pos1.readPos, 78, 78,
                               -137, -137,
                               merged=True, mergeAgreed=0) if
@@ -515,7 +525,7 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                     LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137, -137,
                               merged=True, mergeAgreed=0))
     elif(pos1.operation == pos2.operation):
-        print("Disagreed base with" + str(pos1) + "\t" + str(pos2))
+        print("Disagreed base with" + str(pos1) + "\t" + str(pos2) + "\n")
         if(pos1.quality > pos2.quality):
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos1.base, pos1.operation,
@@ -605,6 +615,7 @@ cpdef MPA2stdout(cystr inBAM):
         pl("Executing MPA2stdout for input bam %s." % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
     outHandle = AlignmentFile("-", "w", template=inHandle)
+    from sys import stdout
     stdout.write(inHandle.text)  # Since pysam seems to not be able to...
     cdef AlignedSegment_t read, read1, read2
     for read in inHandle:
