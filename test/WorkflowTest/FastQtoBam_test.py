@@ -3,14 +3,14 @@ import shlex
 import subprocess
 import sys
 import unittest
+import os
 
 from BMFMain.Workflow import pairedFastqShades
-from utilBMF.HTSUtils import pFastqFile
+from utilBMF.HTSUtils import pFastqFile, PipeAlignTag
 from MawCluster.BCFastq import (pCompareFqRecsFast as cCompareFqRecsFast,
                                 pairedFastqConsolidate, singleFastqConsolidate)
 
-__author__ = 'dnephi'
-
+__author__ = "dnephi and BrettKennedy"
 
 class MyTestCase(unittest.TestCase):
     """
@@ -23,12 +23,14 @@ class MyTestCase(unittest.TestCase):
             subprocess.check_call(["rm", filename])
 
     def setUp(self):
-        self.handle = pFastqFile("../data/lambda_test_R1.fastq.gz")
-        self.prefastqs = [i for i in self.handle]
+        self.fastq1 = "../data/lambda_test_R1.fastq.gz"
+        self.fastq2 = "../data/lambda_test_R3.fastq.gz"
+        self.BCindex = "../data/lambda_test_R2.fastq.gz"
         self.filenames = []
 
     def test_compareFqRecs(self):
-        tmpStr = cCompareFqRecsFast(self.prefastqs)
+        handle = pFastqFile(self.fastq1)
+        tmpStr = cCompareFqRecsFast([i for i in handle])
         pass_test = (tmpStr == (
             "@NS500690:24:H5W73BGXX:1:11101:17000:1039 1:N:0:NCAGAGCC|FM=1000|"
             "ND=107584|FA=278,280,261,268,279,211,287,256,263,259,262,279,259,"
@@ -62,52 +64,69 @@ class MyTestCase(unittest.TestCase):
                 "Str: '%s' does not match unit test. Abort!" % tmpStr)
 
     def test_pfc(self):
-        pairedFastqShades("../data/TinyDemo_R1.fastq.gz",
-                          "../data/TinyDemo_R3.fastq.gz",
-                          indexFq="../data/TinyDemo_R2.fastq.gz")
-        cStrToCheck = ("cat TinyDemo_R1.shaded.BS.cons.fastq | paste "
+        pairedFastqShades(self.fastq1, self.fastq2, indexFq=self.BCindex)
+        cStrToCheck = ("cat lambda_test_R1.shaded.BS.cons.fastq | paste "
                        "- - - - | cut -d'|' -f4 | cut -d'=' -f2 | paste -sd+ "
                        "| bc")
-        assert int(subprocess.check_output(cStrToCheck,
-                                           shell=True).strip()) == 25000
-        self.filenames += ["TinyDemo_R1.fastq.famstats.txt",
-                           "TinyDemo_R1.shaded.BS.cons.fastq",
-                           "TinyDemo_R1.shaded.BS.fastq",
-                           "TinyDemo_R1.shaded.fastq",
-                           "TinyDemo_R3.shaded.BS.cons.fastq",
-                           "TinyDemo_R3.shaded.BS.fastq",
-                           "TinyDemo_R3.shaded.fastq"]
+        pass_test = (int(subprocess.check_output(cStrToCheck,
+                                           shell=True).strip()) == 1000)
+        if not pass_test:
+            raise AssertionError("malfunction in pariedFastqShades")
 
-    def test_sfc(self):
-        singleFastqConsolidate("../data/TestR1.fastq")
-        conFq = open("TestR1.cons.fastq")
-        assert conFq.readlines() == ['@AAAAAATGGACCCATTAACC 1:N:0:ACAGTG|FP=I'
-                                     'ndexPass|BS=AAAAAATGGACCCATTAACC|FM=3|N'
-                                     'D=0|FA=3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,'
-                                     '3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3'
-                                     ',3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,'
-                                     '3,3,3,3,3,3,3,3,3,3,3,3,3,3,3|PV=101,10'
-                                     '2,102,101,102,114,111,114,111,113,106,1'
-                                     '13,108,113,114,114,112,113,113,111,113,'
-                                     '87,109,113,112,113,113,113,114,111,114,'
-                                     '113,114,111,113,113,114,113,114,106,113'
-                                     ',112,114,113,103,113,111,113,114,114,11'
-                                     '4,112,110,111,113,113,114,114,110,112,1'
-                                     '13,113,113,114,114,112,114,113,108,108'
-                                     '\n',
-                                     'AAATCGGGTCACTCCCACCTGAATACTGCGCTTTTCCGA'
-                                     'TCGGCTTAAAAAATGGCGCACCACGAGATTA\n',
-                                     '+\n', '~~~~~~~~~~~~~~~~~~~~~x~~~~~~~~'
-                                     '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-                                     '~\n']
-        conFq.close()
-        self.filenames.append("TestR1.cons.fastq")
+        self.filenames += ["lambda_test_R1.fastq.famstats.txt",
+                           "lambda_test_R1.shaded.BS.cons.fastq",
+                           "lambda_test_R1.shaded.BS.fastq",
+                           "lambda_test_R1.shaded.fastq",
+                           "lambda_test_R3.shaded.BS.cons.fastq",
+                           "lambda_test_R3.shaded.BS.fastq",
+                           "lambda_test_R3.shaded.fastq"]
 
     def test_famsizestats(self):
         """
         TODO: Test GetFamSizeStats
         """
+        pass_test = True
+        famStats = open("lambda_test_R1.fastq.famstats.txt").readlines()
+        famStats = [i.strip('\n').split(':') for i in famStats]
+        if famStats[0][1] != "13":
+            pass_test = False
+            fail = famStats[0][0]
+        if famStats[1][1] != "950":
+            pass_test = False
+            fail = famStats[1][0]
+        if famStats[2][1] != "1.03842159917":
+            pass_test = False
+            fail = famStats[2][0]
+        if famStats[3][1] != " 3.84615384615":
+            pass_test = False
+            fail = famStats[3][0]
+        if not pass_test:
+            raise AssertionError("famstats do not match known value,"
+                                 " %s is incorrect" %(fail))
+
+    def test_compareCOBam(self):
+        """
+        TODO: Dummy case for making sure everything happens as it should.
+        Check the following:
+            1. Make sure that the is_qcfail flag is being set for reads
+            with a run of 14 "A"s in a row in the barcode.
+            2. Make sure that the is_qcfail flag is being set for reads
+            with an N in the barcode.
+            3. Make sure that the BS tag matches the read's name.
+            4. Manually check that the PV tag matches the quality string.
+            I would do
+            assert sum(np.array(read.opt("PV").split(","), dtype=np.int32) == read.query_qualities) == len(read.query_qualities)
+        """
+        # taggedBam = AlignAndTagMem("../data/lambda_test_R1", "../data/lambda_test_R2")
         pass
+
+    def test_PipeAlignTag(self):
+        outBam = PipeAlignTag("lambda_test_R1.shaded.BS.cons.fastq",
+                     "lambda_test_R3.shaded.BS.cons.fastq",
+                     ref="../data/lambda_ref/OurPhageLambda.fasta")
+        subprocess.call("samtools flagstat %s > %s.flagstat" %(outBam, outBam),
+                        shell=True)
+
 
 if __name__ == '__main__':
     unittest.main()
