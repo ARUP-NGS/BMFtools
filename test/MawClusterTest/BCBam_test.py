@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/user/bin/env python
 import shlex
 import subprocess
 import sys
@@ -37,8 +37,9 @@ class MyTestCase(unittest.TestCase):
             4. Manually check that the PV tag matches the quality string.
             I would do
             assert sum(np.array(read.opt("PV").split(","), dtype=np.int32) == read.query_qualities) == len(read.query_qualities)
+
         """
-        taggedBam = AlignAndTagMem("../data/TinyDemo_R1", "../data/TinyDemo_R2")
+        
         pass
 
 if __name__ == '__main__':
