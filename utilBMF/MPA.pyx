@@ -607,70 +607,7 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
 
 
-cpdef MPA2TmpSam(cystr inBAM, size_t SetSize=1000):
-    """
-    :param inBAM - path to input bam. Set to "stdin"
-    """
-    cdef size_t read_pair_count = 0
-    cdef size_t success_merged_count = 0
-    cdef size_t failed_to_merge_count = 0
-    cdef AlignedSegment_t read, read1, read2
-
-    if(inBAM == "stdin" or inBAM == "-"):
-        pl("Executing MPA2stdout, reading from stdin.")
-        inHandle = AlignmentFile('-', 'rb')
-    else:
-        pl("Executing MPA2stdout for input bam %s." % inBAM)
-        inHandle = AlignmentFile(inBAM, "rb")
-
-    outHandle = AlignmentFile("-", "w", template=inHandle)
-    shw = stderr.write
-    shw(inHandle.text)  # Since pysam seems to not be able to...
-    for read in inHandle:
-        if(read.is_secondary or
-           read.is_supplementary or not read.is_proper_pair):
-            outHandle.write(read)
-            stderr.write("Reads is supp/secondary/or improper pair!")
-            continue
-        if(read.is_read1):
-            read1 = read
-            continue
-        if(read.is_read2):
-            read2 = read
-        read_pair_count += 1
-        if(ReadsOverlap(read1, read2) is False):
-            stderr.write("Reads don't overlap... skip!")
-            outHandle.write(read1)
-            outHandle.write(read2)
-            continue
-        try:
-            assert read1.qname == read2.qname
-        except AssertionError:
-            pl("Query names %s and %s" % (read1.qname,
-                                          read2.qname) +
-               " for R1 and R2 are different. Abort!"
-               " Either this BAM isn't name-sorted or you are "
-               "missing a read from a pair.")
-            return 1
-        l1 = PyLayout.fromread(read1)
-        l2 = PyLayout.fromread(read2)
-        retLayout = MergeLayoutsToLayout(l1, l2)
-        if(retLayout.test_merge_success()):
-            success_merged_count += 1
-            stdout.flush()
-            stderr.flush()
-            shw(str(retLayout))
-        else:
-            failed_to_merge_count += 1
-            outHandle.write(read1)
-            outHandle.write(read2)
-    stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
-    stderr.write("Successfully merged: %s\n" % (success_merged_count))
-    stderr.write("Tried but failed to merge: %s\n" % (failed_to_merge_count))
-    return 0
-
-
-cpdef MPA2stdout(cystr inBAM, size_t SetSize=1000):
+cpdef MPA2stdout(cystr inBAM):
     """
     :param inBAM - path to input bam. Set to "stdin"
     """
@@ -683,15 +620,15 @@ cpdef MPA2stdout(cystr inBAM, size_t SetSize=1000):
     cdef AlignedSegment_t read, read1, read2
 
     if(inBAM == "stdin" or inBAM == "-"):
-        pl("Executing MPA2stdout, reading from stdin.")
+        stderr.write("Executing MPA2stdout, reading from stdin.")
         inHandle = AlignmentFile('-', 'rb')
     else:
-        pl("Executing MPA2stdout for input bam %s." % inBAM)
+        stderr.write("Executing MPA2stdout for input bam %s." % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
-    stdout.write(inHandle.text)
+    stdout.write(inHandle.text) # Since pysam seems to not be able to...
+    stdout.flush()
     outHandle = AlignmentFile("-", "w", template=inHandle)
     shw = StringHolder.write
-    shw(inHandle.text)  # Since pysam seems to not be able to...
     for read in inHandle:
         read_count += 1
         if(read.is_secondary or
@@ -732,6 +669,7 @@ cpdef MPA2stdout(cystr inBAM, size_t SetSize=1000):
     outHandle.close()
     StringHolder.seek(0)
     stdout.write(StringHolder.read())
+    inHandle.close()
     StringHolder.close()
     stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
     stderr.write("Successfully merged: %s\n" % (success_merged_count))
