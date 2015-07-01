@@ -1,4 +1,4 @@
-# cython: boundscheck=False, wraparound=False
+# cython: boundscheck=False, wraparound=False, initializedcheck=False
 
 # Standard library imports
 import logging
@@ -321,10 +321,10 @@ cdef class PyLayout(object):
                            self.positions])
 
     cdef cystr cGetCigarString(self):
-        cdef py_array ops = self.getOperations()
         cdef char k
+        cdef object g
         return "".join([opLenToStr(k, len(list(g))) for
-                        k, g in groupby(ops)])
+                        k, g in groupby(self.getOperations())])
 
     cpdef cystr getCigarString(self):
         return self.cGetCigarString()
@@ -390,6 +390,15 @@ cdef class PyLayout(object):
         self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
         self.is_reverse = rec.is_reverse
         self.mergeAdjusted = False
+
+    cdef bint test_merge_success(self):
+        cdef char i
+        if(not self.isMerged):
+            return False
+        for char in self.getOperations():
+            if char == 78:
+                return False
+        return True
 
 
 cpdef PyLayout_t MergeLayoutsToLayout(PyLayout_t L1, PyLayout_t L2):
@@ -476,48 +485,36 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
 
 
 cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
+    """Merges two positions. Order does matter - pos1 overrides pos2 when
+    pos2 is soft-clipped.
+    """
     return cMergePositions(pos1, pos2)
 
 
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
-    """Merges two positions. Order does matter - pos1 overrides pos2 when
-    pos2 is soft-clipped.
+    """
+    cdef function wrapped by MergePositions
     """
     if(pos1.base == pos2.base):
         if(pos2.operation == pos1.operation):
-            print("Comparing pos1 "
-                         "%s and pos2 %s, agreed base and op" % (str(pos1),
-                                                                 str(pos2)) +
-                         "\n")
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement, merged=True,
                              mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
-            print("Comparing pos1 "
-                         "%s and pos2 %s - agreed on base" % (str(pos1),
-                                                              str(pos2)) +
-                         " but not operation. pos2 was softclipped - falling back "
-                         "to pos1's operation.\n" )
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
-            print("Comparing pos1 "
-                         "%s and pos2 %s - agreed on base" % (str(pos1),
-                                                              str(pos2)) +
-                         " but not operation. pos1 was softclipped - falling back "
-                         "to pos2's operation.\n")
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos2.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         else:
-            print("Giving up on this - 'N' the operation to kill \n")
             return (LayoutPos(pos1.pos, pos1.readPos, 78, 78,
                               -137, -137,
                               merged=True, mergeAgreed=0) if
@@ -525,7 +522,6 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                     LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137, -137,
                               merged=True, mergeAgreed=0))
     elif(pos1.operation == pos2.operation):
-        print("Disagreed base with" + str(pos1) + "\t" + str(pos2) + "\n")
         if(pos1.quality > pos2.quality):
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos1.base, pos1.operation,
@@ -537,8 +533,14 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                 pos2.quality - pos1.quality, pos2.agreement,
                 merged=True, mergeAgreed=0)
     else:
-        return LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137,
-                         -137, merged=True, mergeAgreed=0)
+        if(pos2.base == 78 or pos2.operation == 83):
+            return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+                             pos1.operation, pos1.quality,
+                             pos1.agreement, merged=True,
+                             mergeAgreed=0)
+        else:
+            return LayoutPos(pos1.pos, pos1.readPos, pos1.base, 78, -137,
+                             -137, merged=True, mergeAgreed=0)
 
 
 @cython.returns(tuple)
@@ -644,7 +646,7 @@ cpdef MPA2stdout(cystr inBAM):
         l1 = PyLayout.fromread(read1)
         l2 = PyLayout.fromread(read2)
         retLayout = MergeLayoutsToLayout(l1, l2)
-        if("N" not in retLayout.cGetCigarString()):
+        if(retLayout.test_merge_success()):
             stdout.write(str(retLayout))
         else:
             outHandle.write(read1)

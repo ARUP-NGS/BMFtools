@@ -1,9 +1,12 @@
-# @cython: c_string_encoding=ascii
+# cython: c_string_encoding=ascii
+# cython: boundscheck=False, wraparound=False
+# cython: cdivision=True, initializedcheck=False
 import numpy as np
 from numpy import frombuffer
 import cython
 import ctypes
 from array import array
+from string import maketrans
 
 
 cdef int * to_cstring_array(cystr input_str):
@@ -40,11 +43,10 @@ cpdef print_chars(cystr input_str):
         ",".join(map(str, arr))
     return
 
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
-cdef py_array cs_to_ia(cystr input_str):
+cdef inline py_array cs_to_ia(cystr input_str):
     cdef char i
     return array('B', input_str)
 
@@ -80,3 +82,19 @@ cpdef py_array str2intarray(cystr instr):
 @cython.wraparound(False)
 cpdef py_array str2phredarray(cystr instr):
     return cs_to_ph(instr)
+
+
+cdef public cystr PH2CHR_TRANS = (maketrans(
+        "".join({chr(x):chr(x + 33) for x in xrange(
+            0, 127 - 33)}.iterkeys()),
+        "".join({chr(x):chr(x + 33) for x in xrange(
+            0, 127 - 33)}.itervalues())))
+
+
+cdef inline py_array cs_to_ph(cystr input_str):
+    cdef py_array tmpArr
+    cdef size_t index
+    tmpArr = array('B', input_str)
+    for index in range(len(tmpArr)):
+        tmpArr[index] -= 33
+    return tmpArr

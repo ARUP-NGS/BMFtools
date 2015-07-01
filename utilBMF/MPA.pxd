@@ -63,6 +63,7 @@ cdef class PyLayout:
     cpdef py_array getMergeAgreements(self)
     cdef py_array cGetGenomicDiscordantPositions(self)
     cdef py_array cGetReadDiscordantPositions(self)
+    cdef bint test_merge_success(self)
 
 cpdef bint LayoutsOverlap(PyLayout_t L1, PyLayout_t L2)
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
@@ -71,3 +72,5 @@ cdef int getLayoutLen(AlignedSegment_t read)
 cdef class ListBool:
     cdef list List
     cdef bint Bool
+
+cdef object oagtag
