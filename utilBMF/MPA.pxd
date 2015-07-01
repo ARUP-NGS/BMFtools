@@ -19,7 +19,7 @@ ctypedef PyLayout PyLayout_t
 ctypedef LayoutPos LayoutPos_t
 ctypedef utilBMF.HTSUtils.BamTag BamTag_t
 
-cpdef MPA2stdout(cystr inBAM, size_t SetSize=?)
+cpdef MPA2stdout(cystr inBAM)
 cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:
