@@ -129,8 +129,8 @@ cdef class PyLayout(object):
         """
         cdef LayoutPos_t i
         cdef int count
-        for count, i in enumerate(self):
-            if(i.operation == "M"):
+        for count, i in enumerate(self.positions):
+            if(i.operation == 77):
                 return i.pos - count
 
     cpdef int getRefPosForFirstPos(self):
