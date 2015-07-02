@@ -690,13 +690,13 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     cdef cystr uuidvar, tfname
     cdef bint nso
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
-    stderr.write("Now calling MPA2bam. Uncompressed BAM: %s" % u)
+    stderr.write("Now calling MPA2Bam. Uncompressed BAM: %s" % u)
     # First: make named pipe - reuse the random string :)
     tamfname = "/dev/shm/%s" % uuidvar  # TAM filename
     mpafname = tamfname + "-mpa"
     if(inBAM == "stdin" or inBAM == "-"):
         inBAM = "-"
-        pl("Now calling MPA2bam, taking input from stdin.")
+        pl("Now calling MPA2Bam, taking input from stdin.")
         try:
             nso = AlignmentFile(
                 "-", "rb").header['HD']['SO'] == 'queryname'
