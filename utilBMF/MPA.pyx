@@ -511,7 +511,7 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
-            return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+            return LayoutPos(pos2.pos, pos1.readPos, pos1.base,
                              pos2.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
@@ -676,7 +676,8 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
 
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
               bint u=False, bint coorsort=False,
-              cystr sortMem="6G", bint assume_sorted=False):
+              cystr sortMem="6G", bint assume_sorted=False,
+              cystr tmpdir="/dev/shm"):
     """
     :param inBAM - path to input bam
     :param outBAM - path to output bam. Leave as default or set to stdout
@@ -690,9 +691,9 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     cdef cystr uuidvar, tfname
     cdef bint nso
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
-    stderr.write("Now calling MPA2Bam. Uncompressed BAM: %s" % u)
+    stderr.write("Now calling MPA2Bam. Uncompressed BAM: %s\n" % u)
     # First: make named pipe - reuse the random string :)
-    tamfname = "/dev/shm/%s" % uuidvar  # TAM filename
+    tamfname = "%s/%s" % (tmpdir, uuidvar)  # TAM filename
     mpafname = tamfname + "-mpa"
     if(inBAM == "stdin" or inBAM == "-"):
         inBAM = "-"
@@ -738,8 +739,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     else:
         compStr = " -l 0 " if(u) else ""
         cStr += "| samtools sort -m %s -O bam -T %s %s - " % (sortMem,
-                                                             uuidvar,
-                                                             compStr)
+                                                              uuidvar,
+                                                              compStr)
     if(outBAM == "stdout" or outBAM == "-"):
         pl("Emitting to stdout.")
         check_call(cStr, shell=True)
@@ -752,7 +753,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                  " %s\n" % cStr)
     stderr.write("Writing to file (user-specified): '%s'" % outBAM)
     cStr += " > %s" % outBAM
-    check_call(cStr, shell=True)
+    check_call(cStr, shell=True, executable="/bin/bash")
     # Delete temporary files
     check_call(["rm", mpafname, tamfname])
     return outBAM
