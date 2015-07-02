@@ -288,7 +288,6 @@ cdef cystr cCompareFqRecsFast(list R,
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
     ND = lenR * lenSeq - nsum(FA)
-    # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
     PVString = cQualArr2PVString(phredQuals)
     phredQualsStr = cQualArr2QualStrUnsafe(phredQuals)

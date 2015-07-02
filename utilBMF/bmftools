@@ -1057,7 +1057,7 @@ def main():
             pl("Last stop! Watch your step.")
     if(subcommand == "mpa"):
         from utilBMF.MPA import MPA2bam
-        if(Chapman('outBAM') is None):
+        if(Chapman('outBAM') in [None, "default", "stdout"]):
             Chapman['outBAM'] = "-"  # Prints to stdout.
         outBAM = MPA2bam(Chapman['inBAM'], outBAM=Chapman['outBAM'],
                          u=Chapman('uncompressed_bam'),

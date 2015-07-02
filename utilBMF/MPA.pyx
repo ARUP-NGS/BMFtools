@@ -10,6 +10,7 @@ from operator import attrgetter as oag
 from subprocess import check_call
 #from sys import __stdout__ as stdout, stderr
 from sys import stdout, stderr
+import sys
 
 # Third party imports
 import numpy as np
@@ -620,10 +621,10 @@ cpdef MPA2stdout(cystr inBAM):
     cdef AlignedSegment_t read, read1, read2
 
     if(inBAM == "stdin" or inBAM == "-"):
-        stderr.write("Executing MPA2stdout, reading from stdin.")
+        stderr.write("Executing MPA2stdout, reading from stdin.\n")
         inHandle = AlignmentFile('-', 'rb')
     else:
-        stderr.write("Executing MPA2stdout for input bam %s." % inBAM)
+        stderr.write("Executing MPA2stdout for input bam %s.\n" % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
     stdout.write(inHandle.text) # Since pysam seems to not be able to...
     stdout.flush()
@@ -634,7 +635,7 @@ cpdef MPA2stdout(cystr inBAM):
         if(read.is_secondary or
            read.is_supplementary or not read.is_proper_pair):
             outHandle.write(read)
-            stderr.write("Reads is supp/secondary/or improper pair!")
+            # stderr.write("Reads is supp/secondary/or improper pair!")
             continue
         if(read.is_read1):
             read1 = read
@@ -643,18 +644,18 @@ cpdef MPA2stdout(cystr inBAM):
             read2 = read
         read_pair_count += 1
         if(ReadsOverlap(read1, read2) is False):
-            stderr.write("Reads don't overlap... skip!")
+            # stderr.write("Reads don't overlap... skip!")
             outHandle.write(read1)
             outHandle.write(read2)
             continue
         try:
             assert read1.qname == read2.qname
         except AssertionError:
-            pl("Query names %s and %s" % (read1.qname,
-                                          read2.qname) +
+            stderr.write("Query names %s and %s" % (read1.qname,
+                                                    read2.qname) +
                " for R1 and R2 are different. Abort!"
                " Either this BAM isn't name-sorted or you are "
-               "missing a read from a pair.")
+               "missing a read from a pair.\n")
             return 1
         l1 = PyLayout.fromread(read1)
         l2 = PyLayout.fromread(read2)
@@ -666,8 +667,8 @@ cpdef MPA2stdout(cystr inBAM):
             failed_to_merge_count += 1
             outHandle.write(read1)
             outHandle.write(read2)
-    outHandle.close()
     StringHolder.seek(0)
+    outHandle.close()
     stdout.write(StringHolder.read())
     inHandle.close()
     StringHolder.close()
@@ -679,7 +680,7 @@ cpdef MPA2stdout(cystr inBAM):
 
 cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
               bint u=False, bint coorsort=False,
-              cystr sortMem="6G"):
+              cystr sortMem="6G", bint assume_sorted=False):
     """
     :param inBAM - path to input bam
     :param outBAM - path to output bam. Leave as default or set to stdout
@@ -691,11 +692,36 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
     samtools view
     """
     cdef cystr uuidvar
+    cdef bint nso
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
     pl("Now calling MPA2bam. Uncompressed BAM: %s" % u)
     if(inBAM == "stdin" or inBAM == "-"):
         inBAM = "-"
         pl("Now calling MPA2bam, taking input from stdin.")
+        try:
+            nso = AlignmentFile(
+                "-", "rb").header['HD']['SO'] == 'queryname'
+        except KeyError:
+            stderr.write("Note: No SO/HD field in the bam header. "
+                         "Assume namesorted, as that is default, and"
+                         " sort commands usually change that field "
+                         "in the header.\n")
+    else:
+        try:
+            nso = AlignmentFile(
+                inBAM, "rb").header['HD']['SO'] == 'queryname'
+        except KeyError:
+            stderr.write("Note: No SO/HD field in the bam header. "
+                         "Assume namesorted, as that is default, and"
+                         " sort commands usually change that field "
+                         "in the header.\n")
+    if(not nso):
+        if not assume_sorted:
+            stderr.write("Input bam is sorted by coordinate, "
+                         "not queryname. Abort!")
+            sys.exit(1)
+        else:
+            stderr.write("")
     cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout; "
             "sys.exit(MPA2stdout(\"%s\"));' " % inBAM)
     if(coorsort is False):
