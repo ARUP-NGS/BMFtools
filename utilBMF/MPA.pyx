@@ -608,28 +608,27 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
 
 
-cpdef MPA2stdout(cystr inBAM):
+cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
     """
     :param inBAM - path to input bam. Set to "stdin"
+    :param tmpFileName - must be provided to facilitate merging streams.
     """
-    from tempfile import TemporaryFile
-    StringHolder = TemporaryFile()
     cdef size_t read_count = 0
     cdef size_t read_pair_count = 0
     cdef size_t success_merged_count = 0
     cdef size_t failed_to_merge_count = 0
     cdef AlignedSegment_t read, read1, read2
-
     if(inBAM == "stdin" or inBAM == "-"):
-        stderr.write("Executing MPA2stdout, reading from stdin.\n")
+        stderr.write("Executing MPA2tmpfile, reading from stdin.\n")
         inHandle = AlignmentFile('-', 'rb')
     else:
-        stderr.write("Executing MPA2stdout for input bam %s.\n" % inBAM)
+        stderr.write("Executing MPA2tmpfile for input bam %s.\n" % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
+    tmpFileHandle = open(tmpFileName, "w")
     stdout.write(inHandle.text) # Since pysam seems to not be able to...
     stdout.flush()
     outHandle = AlignmentFile("-", "w", template=inHandle)
-    shw = StringHolder.write
+    tfw = tmpFileHandle.write
     for read in inHandle:
         read_count += 1
         if(read.is_secondary or
@@ -662,23 +661,20 @@ cpdef MPA2stdout(cystr inBAM):
         retLayout = MergeLayoutsToLayout(l1, l2)
         if(retLayout.test_merge_success()):
             success_merged_count += 1
-            shw(str(retLayout))
+            tfw(str(retLayout))
         else:
             failed_to_merge_count += 1
             outHandle.write(read1)
             outHandle.write(read2)
-    StringHolder.seek(0)
     outHandle.close()
-    stdout.write(StringHolder.read())
     inHandle.close()
-    StringHolder.close()
     stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
     stderr.write("Successfully merged: %s\n" % (success_merged_count))
     stderr.write("Tried but failed to merge: %s\n" % (failed_to_merge_count))
-    return 0
+    return
 
 
-cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
+cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
               bint u=False, bint coorsort=False,
               cystr sortMem="6G", bint assume_sorted=False):
     """
@@ -691,10 +687,13 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
     :param coorsort - set to true to pipe to samtools sort instead of
     samtools view
     """
-    cdef cystr uuidvar
+    cdef cystr uuidvar, tfname
     cdef bint nso
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
-    pl("Now calling MPA2bam. Uncompressed BAM: %s" % u)
+    stderr.write("Now calling MPA2bam. Uncompressed BAM: %s" % u)
+    # First: make named pipe - reuse the random string :)
+    tamfname = "/dev/shm/%s" % uuidvar  # TAM filename
+    mpafname = tamfname + "-mpa"
     if(inBAM == "stdin" or inBAM == "-"):
         inBAM = "-"
         pl("Now calling MPA2bam, taking input from stdin.")
@@ -706,6 +705,7 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
                          "Assume namesorted, as that is default, and"
                          " sort commands usually change that field "
                          "in the header.\n")
+            nso = True
     else:
         try:
             nso = AlignmentFile(
@@ -715,25 +715,31 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
                          "Assume namesorted, as that is default, and"
                          " sort commands usually change that field "
                          "in the header.\n")
-    if(not nso):
+            nso = True
+    if(nso is False):
         if not assume_sorted:
             stderr.write("Input bam is sorted by coordinate, "
                          "not queryname. Abort!")
             sys.exit(1)
         else:
-            stderr.write("")
-    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout; "
-            "sys.exit(MPA2stdout(\"%s\"));' " % inBAM)
+            stderr.write("Sort order unset or set to coordinate. "
+                         "Assuming sorted.")
+    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2tmpfile; "
+            "sys.exit(MPA2tmpfile(\"%s\", " % (inBAM) +
+            "\"%s\"));' > %s " % (mpafname, tamfname))
+    stderr.write("About to call %s to prepare mpa output." % cStr)
+    check_call(cStr, shell=True)
+    cStr = "cat <(cat %s) <(cat %s) " % (tamfname, mpafname)
     if(coorsort is False):
         if(u):
-            cStr += " | samtools view -Sbhu - "
+            cStr += "| samtools view -Sbhu - "
         else:
-            cStr += " | samtools view -Sbh - "
+            cStr += "| samtools view -Sbh - "
     else:
         compStr = " -l 0 " if(u) else ""
-        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
-                                                              uuidvar,
-                                                              compStr)
+        cStr += "| samtools sort -m %s -O bam -T %s %s - " % (sortMem,
+                                                             uuidvar,
+                                                             compStr)
     if(outBAM == "stdout" or outBAM == "-"):
         pl("Emitting to stdout.")
         check_call(cStr, shell=True)
@@ -742,8 +748,11 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
         outBAM = TrimExt(inBAM) + ".merged.bam"
     else:
         pass
-    pl("Writing to file (user-specified) %s" % outBAM)
+    stderr.write("Command string to pass mpa output to bam format:"
+                 " %s\n" % cStr)
+    stderr.write("Writing to file (user-specified): '%s'" % outBAM)
     cStr += " > %s" % outBAM
-    pl("cStr: %s" % cStr)
     check_call(cStr, shell=True)
+    # Delete temporary files
+    check_call(["rm", mpafname, tamfname])
     return outBAM
