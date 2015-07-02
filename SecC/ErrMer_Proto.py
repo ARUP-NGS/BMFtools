@@ -51,7 +51,7 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
     nucIndex = {"A": 0, "C": 1, "T": 2, "G": 3}
     for rec in recGen:
         recSeq = rec.sequence
-        recQual = rec.getQualityArray()
+        recQual = rec.getQualArray()
         if consRead.is_reverse:
             conSeq = RevCmp(consRead.query_sequence)
             conSeq = consRead.query_qualities[::-1]
@@ -76,14 +76,13 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
             except KeyError:
                 kmerDict[recKmer] = np.zeros((4, 4), dtype=np.float)
                 kmerTotals[recKmer] = [0, 0]
-                kmerQuals[recKmer] = [0,0]
+                kmerQuals[recKmer] = np.zeros((4, 4), dtype=np.float)
             kmerDict[recKmer][nucIndex[consBase]][nucIndex[recBase]] += 1.0
-            kmerQuals[recKmer][nucIndex[consBase]][
-                nucIndex[recBase]][0] += conQual
-            kmerQuals[recKmer][nucIndex[consBase]][nucIndex[recBase]][1] += 1
-            kmerTotals[recKmer][1] += 1
+            # kmerQuals[recKmer][nucIndex[consBase]][nucIndex[recBase]][0] += conQual
+            # kmerQuals[recKmer][nucIndex[consBase]][nucIndex[recBase]][1] += 1.0
+            kmerTotals[recKmer][1] += 1.0
             if recBase != consBase:
-                kmerTotals[recKmer][0] += 1
+                kmerTotals[recKmer][0] += 1.0
 
 
 def main():
