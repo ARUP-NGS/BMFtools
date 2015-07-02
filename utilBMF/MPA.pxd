@@ -23,7 +23,7 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName)
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=?,
               bint u=?, bint coorsort=?,
               cystr sortMem=?, bint assume_sorted=?,
-              tmpdir=?)
+              cystr tmpdir=?)
 cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:

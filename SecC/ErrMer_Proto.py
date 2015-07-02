@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
-mcoptBS = operator.methodcaller("opt", "BS")
 nucList = ["A", "T", "C", "G", "N"]
 
 
@@ -89,7 +88,7 @@ def main():
     args = getArgs()
     readsInFq1 = pFastqFile(args.reads1)
     readsInFq2 = pFastqFile(args.reads2)
-    bamGen = groupby(pysam.AlignmentFile(args.consBam), key=mcoptBS)
+    bamGen = groupby(pysam.AlignmentFile(args.consBam), key=GetBS)
     k = int(args.kmerLen)
     bgn = bamGen.next
     r2GenGen = groupby(readsInFq2, key=getBS)
