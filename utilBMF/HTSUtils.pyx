@@ -386,7 +386,12 @@ cdef cystr cGetBS(pFastqProxy_t read):
     """
     Portable function for getting the barcode sequence from a marked BMFastq
     """
-    return read.comment.split("|")[2].split("=")[1]
+    cdef cystr entry, key, value
+    for entry in read.comment.split("|")[1:]:
+        key, value = entry.split("=")
+        if(key == "BS"):
+            return value
+    return ""
 
 
 cpdef cystr getBS(pFastqProxy_t read):
