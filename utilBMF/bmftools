@@ -7,6 +7,7 @@ import os
 import sys
 import uuid
 import cython
+from sys import stderr
 
 ## BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
@@ -702,7 +703,7 @@ def main():
     Logger.setLevel(logging.DEBUG)
 
     # Console handler - outputs to console as stderr
-    ch = logging.StreamHandler(stream=sys.stderr)
+    ch = logging.StreamHandler(stream=stderr)
     ch.setLevel(logging.DEBUG)
 
     # create formatter
@@ -720,7 +721,6 @@ def main():
     fl.setFormatter(formatter)
     fl.setLevel(logging.DEBUG)
 
-    Logger.addHandler(fl)
 
     #### END SETUP LOGGING
 
@@ -728,7 +728,13 @@ def main():
 
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
-    print("Now executable bmftools subcommand %s" % subcommand)
+    if(subcommand in ["main", "snv", "psnv", "mpa"] or
+       Chapman['create_log'] is True):
+        Logger.addHandler(fl)
+    else:
+        stderr.write("Logging skipped for subcommand. "
+                     "Override with create_log == True")
+    stderr.write("Now executable bmftools subcommand %s" % subcommand)
     if(subcommand == "qty"):
         templatesOnTarget = Palin.number_of_templates * Palin.on_target
         if(Palin.paired):
@@ -1013,11 +1019,11 @@ def main():
                 Chapman['fq'][0], Chapman['fq'][1],
                 indexFq=Chapman['indexFq'],
                 p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
-                sortMem=Chapman['sortMem'],
                 inline_barcodes=Chapman['inline_barcodes'],
                 homing=Chapman['homing'],
                 bcLen=Chapman['bcLen'], head=Chapman['head'],
-                rescue=Chapman['rescue'])
+                rescue=Chapman['rescue'],
+                sortMem=Chapman['sortMem'])
             procSortedBam = wf.pairedBamProc(
                 trimfq1, trimfq2,
                 aligner=Chapman['aligner'], ref=Chapman['ref'],
@@ -1031,6 +1037,7 @@ def main():
                 opts=Chapman['opts'],
                 kmers_precomputed=Chapman['kmers_precomputed'],
                 intelDeflator=Chapman['intelDeflator'],
+                sortMem=Chapman['sortMem'],
                 bwapath=Chapman['bwapath'])
             VCFOutDict = wf.pairedVCFProc(
                 procSortedBam,
@@ -1049,10 +1056,10 @@ def main():
                                         minMQ=Chapman("minMQ"))
             pl("Last stop! Watch your step.")
     if(subcommand == "mpa"):
-        from utilBMF.MPA import MPA2bam
-        if(Chapman('outBAM') is None):
+        from utilBMF.MPA import MPA2Bam
+        if(Chapman('outBAM') in [None, "default", "stdout"]):
             Chapman['outBAM'] = "-"  # Prints to stdout.
-        outBAM = MPA2bam(Chapman['inBAM'], outBAM=Chapman['outBAM'],
+        outBAM = MPA2Bam(Chapman['inBAM'], outBAM=Chapman['outBAM'],
                          u=Chapman('uncompressed_bam'),
                          coorsort=Chapman('coorsort'),
                          sortMem=Chapman('sortMem'))
@@ -1092,7 +1099,7 @@ def main():
             compressInput) else "sam",
                                                  "bam" if(
             bamOutput) else "sam"))
-        PipeBarcodeTagCOBam(compressInput, bamOutput, uncompressed_output)
+        PipeBarcodeTagCOBam()
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

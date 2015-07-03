@@ -83,8 +83,7 @@ def SNVCrawler(inBAM,
     cdef pPileupRead_t i
     cdef pysam.calignmentfile.AlignedSegment read
     cdef pPileupColumn_t pPC
-    if(conf != "default"):
-        confDict = parseSketchConfig(conf)
+    confDict = parseSketchConfig(conf) if(conf != "default") else {}
     if(bed != "default"):
         pl("Bed file used: {}".format(bed))
         bedSet = True

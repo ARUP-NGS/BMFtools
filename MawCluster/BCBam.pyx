@@ -823,17 +823,17 @@ cdef class TagBamPipe:
             else:
                 self.outHandle = pysam.AlignmentFile(
                     "-", "wb", template=self.inHandle)
-        self.RefIDDict = dict(enumerate(self.inHandle.references))
-        self.RefIDDict[-1] = "*"
+        self.RefIDDict = dict(list(enumerate(self.inHandle.references)) +
+                                   [(-1, "*")])
 
     cdef write(self, AlignedSegment_t read):
         self.outHandle.write(read)
 
     cpdef process(self):
         cdef AlignedSegment_t read
-        [self.write(TagAlignedSegment(
-            read, RefIDDict=self.RefIDDict)) for
-         read in self.inHandle]
+        for read in self.inHandle:
+            read = TagAlignedSegment(read, RefIDDict=self.RefIDDict)
+            self.write(read)
 
 cdef class TagBamPipeHG37(BamPipe):
     """
@@ -846,16 +846,35 @@ cdef class TagBamPipeHG37(BamPipe):
                                       uncompressed_output=uncompressed_output)
 
 
-def PipeBarcodeTagCOBam(bin_input=False, bin_output=False,
-                        uncompressed_output=False):
+def PipeBarcodeTagCOBam(char flag):
     """
     Takes a SAM input stream, tags the bam, and converts
     it into a bam, all in one fell swoop!
+    Uses a bitwise flag.
+    flag & 4 is true to emit uncompressed
+    flag & 2 is true if input is textual (sam) format
+    flag & 1 is true if output is textual (sam) format
     """
-    cdef TagBamPipe_t Bombadil
-    Bombadil = TagBamPipe(
-        bin_input, bin_output, uncompressed_output=uncompressed_output)
-    Bombadil.process()
+    from sys import stderr
+    cdef AlignmentFile_t inHandle, outHandle
+    cdef AlignedSegment_t read
+    cdef dict RefIDDict
+    cdef cystr input_mode
+    input_mode = "r" if(flag & 2) else "rb"
+    if(flag & 1):
+        output_mode = "w"
+    elif(flag & 4):
+        output_mode = "wbu"
+    else:
+        output_mode = "wb"
+    stderr.write("Now tagging a piped BAM with input mode "
+                 "%s and output mode %s\n" % (input_mode, output_mode))
+    inHandle = pysam.AlignmentFile("-", input_mode)
+    outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
+    RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
+    [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
+    inHandle.close()
+    outHandle.close()
     return 1
 
 
@@ -864,7 +883,8 @@ cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
     """In progress
     """
     cdef AlignedSegment_t read
-    cdef dict RefIDDict = dict(enumerate(inbam.references))
+    cdef dict RefIDDict = dict(list(enumerate(inbam.references)) +
+                               [(-1, "*")])
     for read in inbam:
         outbam.write(TagAlignedSegment(read, RefIDDict))
     inbam.close()
@@ -883,13 +903,9 @@ cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=None):
         inHandle, pysam.AlignmentFile(outbam, "wb", template=inHandle))
 
 
-def AlignAndTagMem(cystr fq1, cystr fq2,
-                   cystr outBAM="default",
-                   ref="default", opts=""):
-    FirstBam = align_bwa_mem(fq1, fq2, outBAM=outBAM, addCO=True,
-                             ref=ref, opts=opts)
-    taggedBAM = pBarcodeTagCOBam(FirstBam, outbam=outBAM)
-    return taggedBAM
+def AlignAndTagMem(*args, **kwargs):
+    raise DeprecationWarning("AlignAndTagMem is deprecated. "
+                             "Please use utilBMF.HTSUtils.PipeAlignTag.")
 
 
 @cython.boundscheck(False)

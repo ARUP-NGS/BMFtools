@@ -39,6 +39,7 @@ defaultConfig = {
                  "check_both": True,
                  "compression": "bb",
                  "coorsort": False,
+                 "create_log": False,
                  "experiment": "",
                  "file_prefix": "default",
                  "gatkpath": "default",

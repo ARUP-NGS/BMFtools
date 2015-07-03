@@ -449,6 +449,7 @@ cdef class PCInfo:
         else:
             self.consensus = "N"
             pl("Note: Records list empty at position %s" % self.pos)
+            pl("Fail string: %s" % self.getQCFailString())
             self.maxND = 0
             '''
             raise AbortMission("No reads at position passing filters."

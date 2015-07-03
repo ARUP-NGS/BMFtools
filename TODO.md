@@ -25,7 +25,9 @@
 
 ## Backend Software Development
 1. Probabilistic Merging:
-	1. Add read kickout for > 10% disagreement from consensus for fastq processing.
+	1. Add read kickout for > 10% disagreement from consensus for fastq processing. (On hold / not in use - patches in places for throwing out reads or bases)
+    2. Finish MPA!!!
+    3. Also, check the BAM for reads with the same start/stop and a barcode within some given number of mismatches, merge the merged reads.
 2. "Variant Caller"
     1. A vector of vectors of structs :)
 4. Non-SNV mutations

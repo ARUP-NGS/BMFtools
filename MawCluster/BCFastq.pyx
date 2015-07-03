@@ -288,10 +288,9 @@ cdef cystr cCompareFqRecsFast(list R,
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
     ND = lenR * lenSeq - nsum(FA)
-    # newSeq[phredQuals == 0] = "N"
     phredQuals[phredQuals < 0] = 0
     PVString = cQualArr2PVString(phredQuals)
-    phredQualsStr = cQualArr2QualStr(phredQuals)
+    phredQualsStr = cQualArr2QualStrUnsafe(phredQuals)
     FAString = cQualArr2FAString(FA)
     TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
     '''
@@ -555,8 +554,25 @@ def GetDescTagValue(readDesc, tag="default"):
 
 
 cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+    """
+    This is the "safe" way to convert ph2chr.
+    """
     cdef np_int32_t tmpInt
-    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
+    return array('B', [tmpInt + 33 if(tmpInt < 94) else
+                       93 for tmpInt in qualArr]).tostring()
+
+
+cdef cystr cQualArr2QualStrUnsafe(ndarray[np_int32_t, ndim=1] qualArr):
+    """
+    Warning! This changes the value of the quality array.
+    This doesn't hurt because I already made the PV string first,
+    but this is a bit of a gotcha. Faster, though.
+    """
+    cdef py_array tmpArr
+    cdef cystr tmpStr
+    qualArr[qualArr > 93] = 93
+    tmpArr = array('B', qualArr)
+    return tmpArr.tostring().translate(PH2CHR_TRANS)
 
 
 cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):

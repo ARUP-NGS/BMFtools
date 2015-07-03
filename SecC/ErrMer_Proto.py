@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
-mcoptBS = operator.methodcaller("opt", "BS")
 nucList = ["A", "T", "C", "G", "N"]
 
 
@@ -45,16 +44,19 @@ def HeatMaps(heatedKmers, topKmers):
         plt.savefig(kmer)
 
 
-def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, k):
+def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
     """Compares read and consensus to build a dictionary of context specific
-        errors"""
+        errors.    SOON TO BE DEPRICATED"""
     nucIndex = {"A": 0, "C": 1, "T": 2, "G": 3}
     for rec in recGen:
         recSeq = rec.sequence
+        recQual = rec.getQualArray()
         if consRead.is_reverse:
             conSeq = RevCmp(consRead.query_sequence)
+            conSeq = consRead.query_qualities[::-1]
         else:
             conSeq = consRead.query_sequence
+            conQual = consRead.query_qualities
         if(recSeq == conSeq):
             continue
         for baseIndex in xrange(len(rec.sequence)-k):
@@ -64,6 +66,7 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, k):
                 continue
             recBase = recSeq[baseIndex+k]
             consBase = conSeq[baseIndex+k]
+            qualScore = conQual
             if recBase == "N":
                 continue
             try:
@@ -72,51 +75,27 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, k):
             except KeyError:
                 kmerDict[recKmer] = np.zeros((4, 4), dtype=np.float)
                 kmerTotals[recKmer] = [0, 0]
+                kmerQuals[recKmer] = np.zeros((4, 4), dtype=np.float)
             kmerDict[recKmer][nucIndex[consBase]][nucIndex[recBase]] += 1.0
-            kmerTotals[recKmer][1] += 1
+            # kmerQuals[recKmer][nucIndex[consBase]][nucIndex[recBase]][0] += conQual
+            # kmerQuals[recKmer][nucIndex[consBase]][nucIndex[recBase]][1] += 1.0
+            kmerTotals[recKmer][1] += 1.0
             if recBase != consBase:
-                kmerTotals[recKmer][0] += 1
-
-
-def ParseMDZ(mdzStr):
-    """
-    Returns the base position of mismatches between the current read and
-    the reference, given the MD Z string and the start position for the read.
-    """
-    mismatches = []
-    lastItem = None
-    oper = []
-    counts = [str(i) for i in range(0, 10)]+["^"]
-    for item in mdzStr:
-        curval = item
-        if item in nucList:
-            itemType = "base"
-        if item in counts:
-            itemType = "count"
-        if itemType == lastItem:
-            oper.append(item)
-            continue
-        else:
-            oper = [item]
-
-
-def GetRefKmers(refSeq):
-    pass
+                kmerTotals[recKmer][0] += 1.0
 
 
 def main():
     args = getArgs()
     readsInFq1 = pFastqFile(args.reads1)
     readsInFq2 = pFastqFile(args.reads2)
-    bamGen = groupby(pysam.AlignmentFile(args.consBam), key=mcoptBS)
+    bamGen = groupby(pysam.AlignmentFile(args.consBam), key=GetBS)
     k = int(args.kmerLen)
     bgn = bamGen.next
     r2GenGen = groupby(readsInFq2, key=getBS)
     r2ggn = r2GenGen.next
     kmerDict = {}
     kmerTotals = {}
-    qualDict = {}
-    #refKmers = getRefKmers(args.Ref)
+    kmerQuals = {}
     for bc4fq1, fqRecGen1, in groupby(readsInFq1, key=getBS):
         consBS, consReads = bgn()
         bc4fq2, fqRecGen2 = r2ggn()
@@ -139,8 +118,10 @@ def main():
             print "Did not find both reads in bam"
         if consRead1.opt("FM") <= 100:
             continue
-        recsConsCompare(fqRecGen1, consRead1, kmerDict, kmerTotals, k)
-        recsConsCompare(fqRecGen2, consRead2, kmerDict, kmerTotals, k)
+        recsConsCompare(fqRecGen1, consRead1, kmerDict, kmerTotals, kmerQuals,
+                        k)
+        recsConsCompare(fqRecGen2, consRead2, kmerDict, kmerTotals, kmerQuals,
+                        k)
     wrongKmers = {kmer: kmerTotals[kmer][0]/kmerTotals[kmer][1] for kmer
                   in kmerTotals}
     sortedKmers = sorted(wrongKmers.items(), key=operator.itemgetter(1),

@@ -6,8 +6,8 @@ cimport utilBMF.HTSUtils
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
-from utilBMF.cstring cimport cs_to_ph, cs_to_ia
-from utilBMF.Inliners cimport Num2Nuc, Nuc2Num, ph2chrInline, chr2phInline, chr2phImplicit
+from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
+from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
 from numpy cimport ndarray
 from cpython cimport array as c_array
 import cython.str
@@ -21,6 +21,7 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=?)
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 
 cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
+cdef cystr cQualArr2QualStrUnsafe(ndarray[np_int32_t, ndim=1] qualArr)
 cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
 
 cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr)

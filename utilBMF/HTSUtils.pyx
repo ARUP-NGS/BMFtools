@@ -32,6 +32,7 @@ import subprocess
 import sys
 import time
 import uuid
+import warnings
 try:
     from re2 import finditer, compile as regex_compile
 except ImportError:
@@ -75,27 +76,22 @@ def LambdaInsertSize(ReadPair_t x):
     return x.insert_size
 
 
-def printlog(string, level=logging.INFO):
+def printlog(message, level=logging.INFO):
+    message = message.replace(
+        "\t", "\\t").replace("'", "\'").replace('"', '\\"')
     Logger = logging.getLogger("Primarylogger")
     if(level == logging.DEBUG):
-        Logger.debug(string.replace(
-            "\t", "\\t").replace(
-                "'", "\'").replace('"', '\\"'))
+        # Doesn't print to stderr if set to debug mode.
+        Logger.debug(message)
         return
-        # Doesn't print to string if set to debug mode.
-    elif(level == logging.INFO):
-        Logger.info(string.replace(
-            "\t", "\\t").replace(
-                "'", "\'").replace('"', '\\"'))
     elif(level == logging.WARNING):
-        Logger.warning(string.replace(
-            "\t", "\\t").replace(
-                "'", "\'").replace('"', '\\"'))
+        Logger.warning(message)
+        warnings.warn(message)
+    elif(level == logging.INFO):
+        Logger.info(message)
     else:
-        Logger.critical(string.replace(
-            "\t", "\\t").replace(
-            "'", "\'").replace('"', '\\"'))
-    sys.stderr.write(string.replace(
+        Logger.critical(message)
+    sys.stderr.write(message.replace(
         "\t", "\\t").replace(
         "'", "\'").replace('"', '\\"') + "\n")
     return
@@ -386,7 +382,12 @@ cdef cystr cGetBS(pFastqProxy_t read):
     """
     Portable function for getting the barcode sequence from a marked BMFastq
     """
-    return read.comment.split("|")[2].split("=")[1]
+    cdef cystr entry, key, value
+    for entry in read.comment.split("|")[1:]:
+        key, value = entry.split("=")
+        if(key == "BS"):
+            return value
+    return ""
 
 
 cpdef cystr getBS(pFastqProxy_t read):
@@ -610,21 +611,24 @@ def PipeAlignTag(R1, R2, ref="default",
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
                  "t\n@PG/'")
     cStr += sedString
-    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcode'
-             'TagCOBam;PipeBarcodeTagCOBam()\'')
+    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcodeTagCOBam as PBT;PBT(6'
+             ')\'')
     if(coorsort):
         compStr = " -l 0 " if(coorsort) else ""
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
                                                               uuidvar,
                                                               compStr)
+        if(outBAM != "stdout"):
+            cStr += " -o %s" % outBAM
     else:
         cStr += (" | samtools view -Sbhu - " if(
             u) else " | samtools view -Sbh -")
-    if(outBAM != "stdout"):
-        cStr += " > %s" % outBAM
+        if(outBAM != "stdout"):
+            cStr += " > %s" % outBAM
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
-    check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"))
+    check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
+               shell=True)
     return outBAM
 
 

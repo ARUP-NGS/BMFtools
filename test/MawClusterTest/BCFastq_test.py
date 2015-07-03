@@ -29,7 +29,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_compareFqRecs(self):
         tmpStr = cCompareFqRecsFast(self.prefastqs)
-        pass_test = cCompareFqRecsFast(self.prefastqs) == (
+        pass_test = (tmpStr == (
             '@MISEQ-M00736:68:000000000-A8D2D:1:2117:26553:9909 1:N:0:ACAGTG|'
             'FP=IndexPass|BS=AAAAAATGGACCCATTAACC|FM=3|ND=0|FA=3,3,3,3,3,3,3,'
             '3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,'
@@ -40,7 +40,7 @@ class MyTestCase(unittest.TestCase):
             '114,114,114,112,110,111,113,113,114,114,110,112,113,113,113,114,'
             '114,112,114,113,108,108\nAAATCGGGTCACTCCCACCTGAATACTGCGCTTTTCCGA'
             'TCGGCTTAAAAAATGGCGCACCACGAGATTA\n+\n~~~~~~~~~~~~~~~~~~~~~x~~~~~~'
-            '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n')
+            '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n'))
         if not pass_test:
             raise AssertionError(
                 "Str: '%s' does not match unit test. Abort!" % tmpStr)

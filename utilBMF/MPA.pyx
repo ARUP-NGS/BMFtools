@@ -1,4 +1,4 @@
-# cython: boundscheck=False, wraparound=False
+# cython: boundscheck=False, wraparound=False, initializedcheck=False
 
 # Standard library imports
 import logging
@@ -8,7 +8,9 @@ from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
 from subprocess import check_call
-from sys import stdout
+#from sys import __stdout__ as stdout, stderr
+from sys import stdout, stderr
+import sys
 
 # Third party imports
 import numpy as np
@@ -70,10 +72,13 @@ cdef class LayoutPos:
     cdef bint getMergeSet(self):
         return self.mergeAgreed != 1
 
-    def __str__(self):
+    cdef cystr tostring(self):
         return "%s|%s|%s|%s|%s|%s|%s|%s" % (
             self.pos, self.readPos, chr(self.base), chr(self.operation),
             self.quality, self.agreement, self.merged, self.mergeAgreed)
+
+    def __str__(self):
+        return self.tostring()
 
 
 cdef class PyLayout(object):
@@ -124,8 +129,8 @@ cdef class PyLayout(object):
         """
         cdef LayoutPos_t i
         cdef int count
-        for count, i in enumerate(self):
-            if(i.operation == "M"):
+        for count, i in enumerate(self.positions):
+            if(i.operation == 77):
                 return i.pos - count
 
     cpdef int getRefPosForFirstPos(self):
@@ -161,8 +166,7 @@ cdef class PyLayout(object):
         return self.cGetQual()
 
     cdef cystr cGetQualString(self):
-        cdef int i
-        return "".join([ph2chrInline(i) for i in self.cGetQual()])
+        return self.cGetQual().tostring().translate(PH2CHR_TRANS)
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()
@@ -318,10 +322,10 @@ cdef class PyLayout(object):
                            self.positions])
 
     cdef cystr cGetCigarString(self):
-        cdef py_array ops = self.getOperations()
         cdef char k
+        cdef object g
         return "".join([opLenToStr(k, len(list(g))) for
-                        k, g in groupby(ops)])
+                        k, g in groupby(self.getOperations())])
 
     cpdef cystr getCigarString(self):
         return self.cGetCigarString()
@@ -388,6 +392,15 @@ cdef class PyLayout(object):
         self.is_reverse = rec.is_reverse
         self.mergeAdjusted = False
 
+    cdef bint test_merge_success(self):
+        cdef char i
+        if(not self.isMerged):
+            return False
+        for char in self.getOperations():
+            if char == 78:
+                return False
+        return True
+
 
 cpdef PyLayout_t MergeLayoutsToLayout(PyLayout_t L1, PyLayout_t L2):
     """
@@ -400,8 +413,10 @@ cpdef PyLayout_t MergeLayoutsToLayout(PyLayout_t L1, PyLayout_t L2):
     cdef bint Success
     cdef ListBool ret
     ret = cMergeLayoutsToList(L1, L2)
+    from sys import stderr
     if(ret.Bool is False):
-        print("Ret's success return is False. Add false tags, return None.")
+        stderr.write("Ret's success return is False. "
+                     "Add false tags, return None.\n")
         L1.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         L2.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         return None
@@ -470,44 +485,37 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     return ret
 
 
-cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
+cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
     """Merges two positions. Order does matter - pos1 overrides pos2 when
     pos2 is soft-clipped.
     """
+    return cMergePositions(pos1, pos2)
+
+
+cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
+    """
+    cdef function wrapped by MergePositions
+    """
     if(pos1.base == pos2.base):
         if(pos2.operation == pos1.operation):
-            print ("Comparing pos1 "
-                   "%s and pos2 %s - agreed on base and op" % (str(pos1),
-                                                               str(pos2)))
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement, merged=True,
                              mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
-            print ("Comparing pos1 "
-                   "%s and pos2 %s - agreed on base" % (str(pos1),
-                                                        str(pos2)) +
-                   " but not operation. pos2 was softclipped - falling back "
-                   "to pos1's operation.")
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
-            print ("Comparing pos1 "
-                   "%s and pos2 %s - agreed on base" % (str(pos1),
-                                                        str(pos2)) +
-                   " but not operation. pos1 was softclipped - falling back "
-                   "to pos2's operation.")
-            return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+            return LayoutPos(pos2.pos, pos1.readPos, pos1.base,
                              pos2.operation,
                              pos1.quality + pos2.quality,
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         else:
-            print("Giving up on this - 'N' the operation to kill ")
             return (LayoutPos(pos1.pos, pos1.readPos, 78, 78,
                               -137, -137,
                               merged=True, mergeAgreed=0) if
@@ -515,7 +523,6 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                     LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137, -137,
                               merged=True, mergeAgreed=0))
     elif(pos1.operation == pos2.operation):
-        print("Disagreed base with" + str(pos1) + "\t" + str(pos2))
         if(pos1.quality > pos2.quality):
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos1.base, pos1.operation,
@@ -527,8 +534,14 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                 pos2.quality - pos1.quality, pos2.agreement,
                 merged=True, mergeAgreed=0)
     else:
-        return LayoutPos(pos1.pos, pos1.readPos, 78, 78, -137,
-                         -137, merged=True, mergeAgreed=0)
+        if(pos2.base == 78 or pos2.operation == 83):
+            return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
+                             pos1.operation, pos1.quality,
+                             pos1.agreement, merged=True,
+                             mergeAgreed=0)
+        else:
+            return LayoutPos(pos1.pos, pos1.readPos, pos1.base, 78, -137,
+                             -137, merged=True, mergeAgreed=0)
 
 
 @cython.returns(tuple)
@@ -594,56 +607,76 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
 
 
-cpdef MPA2stdout(cystr inBAM):
+cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
     """
     :param inBAM - path to input bam. Set to "stdin"
+    :param tmpFileName - must be provided to facilitate merging streams.
     """
+    cdef size_t read_count = 0
+    cdef size_t read_pair_count = 0
+    cdef size_t success_merged_count = 0
+    cdef size_t failed_to_merge_count = 0
+    cdef AlignedSegment_t read, read1, read2
     if(inBAM == "stdin" or inBAM == "-"):
-        pl("Executing MPA2stdout, reading from stdin.")
+        stderr.write("Executing MPA2tmpfile, reading from stdin.\n")
         inHandle = AlignmentFile('-', 'rb')
     else:
-        pl("Executing MPA2stdout for input bam %s." % inBAM)
+        stderr.write("Executing MPA2tmpfile for input bam %s.\n" % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
+    tmpFileHandle = open(tmpFileName, "w")
+    stdout.write(inHandle.text) # Since pysam seems to not be able to...
+    stdout.flush()
     outHandle = AlignmentFile("-", "w", template=inHandle)
-    stdout.write(inHandle.text)  # Since pysam seems to not be able to...
-    cdef AlignedSegment_t read, read1, read2
+    tfw = tmpFileHandle.write
     for read in inHandle:
+        read_count += 1
         if(read.is_secondary or
            read.is_supplementary or not read.is_proper_pair):
             outHandle.write(read)
+            # stderr.write("Reads is supp/secondary/or improper pair!")
             continue
         if(read.is_read1):
             read1 = read
             continue
         if(read.is_read2):
             read2 = read
+        read_pair_count += 1
         if(ReadsOverlap(read1, read2) is False):
+            # stderr.write("Reads don't overlap... skip!")
             outHandle.write(read1)
             outHandle.write(read2)
             continue
         try:
             assert read1.qname == read2.qname
         except AssertionError:
-            pl("Query names %s and %s" % (read1.qname,
-                                          read2.qname) +
+            stderr.write("Query names %s and %s" % (read1.qname,
+                                                    read2.qname) +
                " for R1 and R2 are different. Abort!"
                " Either this BAM isn't name-sorted or you are "
-               "missing a read from a pair.")
+               "missing a read from a pair.\n")
             return 1
         l1 = PyLayout.fromread(read1)
         l2 = PyLayout.fromread(read2)
         retLayout = MergeLayoutsToLayout(l1, l2)
-        if("N" not in retLayout.cGetCigarString()):
-            stdout.write(str(retLayout))
+        if(retLayout.test_merge_success()):
+            success_merged_count += 1
+            tfw(str(retLayout))
         else:
+            failed_to_merge_count += 1
             outHandle.write(read1)
             outHandle.write(read2)
-    return 0
+    outHandle.close()
+    inHandle.close()
+    stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
+    stderr.write("Successfully merged: %s\n" % (success_merged_count))
+    stderr.write("Tried but failed to merge: %s\n" % (failed_to_merge_count))
+    return
 
 
-cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
+cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
               bint u=False, bint coorsort=False,
-              cystr sortMem="6G"):
+              cystr sortMem="6G", bint assume_sorted=False,
+              cystr tmpdir="/dev/shm"):
     """
     :param inBAM - path to input bam
     :param outBAM - path to output bam. Leave as default or set to stdout
@@ -654,22 +687,57 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
     :param coorsort - set to true to pipe to samtools sort instead of
     samtools view
     """
-    cdef cystr uuidvar
+    cdef cystr uuidvar, tfname
+    cdef bint nso
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
-    pl("Now calling MPA2bam. Uncompressed BAM: %s" % u)
+    stderr.write("Now calling MPA2Bam. Uncompressed BAM: %s\n" % u)
+    # First: make named pipe - reuse the random string :)
+    tamfname = "%s/%s" % (tmpdir, uuidvar)  # TAM filename
+    mpafname = tamfname + "-mpa"
     if(inBAM == "stdin" or inBAM == "-"):
         inBAM = "-"
-        pl("Now calling MPA2bam, taking input from stdin.")
-    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout; "
-            "sys.exit(MPA2stdout(\"%s\"));'" % inBAM)
+        pl("Now calling MPA2Bam, taking input from stdin.")
+        try:
+            nso = AlignmentFile(
+                "-", "rb").header['HD']['SO'] == 'queryname'
+        except KeyError:
+            stderr.write("Note: No SO/HD field in the bam header. "
+                         "Assume namesorted, as that is default, and"
+                         " sort commands usually change that field "
+                         "in the header.\n")
+            nso = True
+    else:
+        try:
+            nso = AlignmentFile(
+                inBAM, "rb").header['HD']['SO'] == 'queryname'
+        except KeyError:
+            stderr.write("Note: No SO/HD field in the bam header. "
+                         "Assume namesorted, as that is default, and"
+                         " sort commands usually change that field "
+                         "in the header.\n")
+            nso = True
+    if(nso is False):
+        if not assume_sorted:
+            stderr.write("Input bam is sorted by coordinate, "
+                         "not queryname. Abort!")
+            sys.exit(1)
+        else:
+            stderr.write("Sort order unset or set to coordinate. "
+                         "Assuming sorted.")
+    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2tmpfile; "
+            "sys.exit(MPA2tmpfile(\"%s\", " % (inBAM) +
+            "\"%s\"));' > %s " % (mpafname, tamfname))
+    stderr.write("About to call %s to prepare mpa output." % cStr)
+    check_call(cStr, shell=True)
+    cStr = "cat <(cat %s) <(cat %s) " % (tamfname, mpafname)
     if(coorsort is False):
         if(u):
-            cStr += " | samtools view -Sbhu - "
+            cStr += "| samtools view -Sbhu - "
         else:
-            cStr += " | samtools view -Sbh - "
+            cStr += "| samtools view -Sbh - "
     else:
         compStr = " -l 0 " if(u) else ""
-        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
+        cStr += "| samtools sort -m %s -O bam -T %s %s - " % (sortMem,
                                                               uuidvar,
                                                               compStr)
     if(outBAM == "stdout" or outBAM == "-"):
@@ -680,7 +748,11 @@ cpdef MPA2bam(cystr inBAM, cystr outBAM=None,
         outBAM = TrimExt(inBAM) + ".merged.bam"
     else:
         pass
-    pl("Writing to file (user-specified) %s" % outBAM)
+    stderr.write("Command string to pass mpa output to bam format:"
+                 " %s\n" % cStr)
+    stderr.write("Writing to file (user-specified): '%s'" % outBAM)
     cStr += " > %s" % outBAM
-    check_call(cStr, shell=True)
+    check_call(cStr, shell=True, executable="/bin/bash")
+    # Delete temporary files
+    check_call(["rm", mpafname, tamfname])
     return outBAM
