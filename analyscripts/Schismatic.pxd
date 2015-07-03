@@ -11,4 +11,4 @@ ctypedef cython.str cystr
 cdef inline cystr GetBS(AlignedSegment_t read):
     return read.opt("BS")
 
-cdef public dict int2nuc
+cdef public list int2nuc

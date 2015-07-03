@@ -13,7 +13,7 @@ from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp
 
 
 converter = numconv.NumConv(4, "ACGT")
-int2nuc = {x: converter.int2str(x) for x in xrange(5000)}
+int2nuc = [converter.int2str(x) for x in xrange(5000)]
 
 
 def SplitFastqFamilies(cystr inFq, cystr outfqpath,
