@@ -558,7 +558,8 @@ cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
     This is the "safe" way to convert ph2chr.
     """
     cdef np_int32_t tmpInt
-    return "".join([ph2chrInline(tmpInt) for tmpInt in qualArr])
+    return array('B', [tmpInt + 33 if(tmpInt < 94) else
+                       93 for tmpInt in qualArr]).tostring()
 
 
 cdef cystr cQualArr2QualStrUnsafe(ndarray[np_int32_t, ndim=1] qualArr):

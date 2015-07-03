@@ -32,6 +32,7 @@ import subprocess
 import sys
 import time
 import uuid
+import warnings
 try:
     from re2 import finditer, compile as regex_compile
 except ImportError:
@@ -75,27 +76,22 @@ def LambdaInsertSize(ReadPair_t x):
     return x.insert_size
 
 
-def printlog(string, level=logging.INFO):
+def printlog(message, level=logging.INFO):
+    message = message.replace(
+        "\t", "\\t").replace("'", "\'").replace('"', '\\"')
     Logger = logging.getLogger("Primarylogger")
     if(level == logging.DEBUG):
-        Logger.debug(string.replace(
-            "\t", "\\t").replace(
-                "'", "\'").replace('"', '\\"'))
+        # Doesn't print to stderr if set to debug mode.
+        Logger.debug(message)
         return
-        # Doesn't print to string if set to debug mode.
-    elif(level == logging.INFO):
-        Logger.info(string.replace(
-            "\t", "\\t").replace(
-                "'", "\'").replace('"', '\\"'))
     elif(level == logging.WARNING):
-        Logger.warning(string.replace(
-            "\t", "\\t").replace(
-                "'", "\'").replace('"', '\\"'))
+        Logger.warning(message)
+        warnings.warn(message)
+    elif(level == logging.INFO):
+        Logger.info(message)
     else:
-        Logger.critical(string.replace(
-            "\t", "\\t").replace(
-            "'", "\'").replace('"', '\\"'))
-    sys.stderr.write(string.replace(
+        Logger.critical(message)
+    sys.stderr.write(message.replace(
         "\t", "\\t").replace(
         "'", "\'").replace('"', '\\"') + "\n")
     return

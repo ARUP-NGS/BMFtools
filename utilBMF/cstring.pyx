@@ -53,27 +53,6 @@ cdef inline py_array cs_to_ia(cystr input_str):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-@cython.initializedcheck(False)
-cdef inline cystr RevCmpPyArray(cystr seq):
-    cdef char i
-    return array('B', [RevCmpToChar(i) for
-                       i in <char *>seq]).tostring()[::-1]
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.initializedcheck(False)
-cdef cystr RevCmpImplicit(cystr seq):
-    """
-    Very quickly reverse complements a string with an inline switch for faster
-    memoization than dictionary access.
-    """
-    cdef char i
-    return "".join([RevCmpInt(i) for i in <char *>seq])[::-1]
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
 cpdef py_array str2intarray(cystr instr):
     return cs_to_ia(instr)
 

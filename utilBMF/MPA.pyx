@@ -166,8 +166,7 @@ cdef class PyLayout(object):
         return self.cGetQual()
 
     cdef cystr cGetQualString(self):
-        cdef int i
-        return "".join([ph2chrInline(i) for i in self.cGetQual()])
+        return self.cGetQual().tostring().translate(PH2CHR_TRANS)
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()

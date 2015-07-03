@@ -7,7 +7,7 @@ ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
-from utilBMF.Inliners cimport Num2Nuc, Nuc2Num, ph2chrInline, chr2phInline, chr2phImplicit
+from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
 from numpy cimport ndarray
 from cpython cimport array as c_array
 import cython.str

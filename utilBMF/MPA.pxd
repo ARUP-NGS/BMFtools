@@ -8,9 +8,10 @@ cimport utilBMF.HTSUtils
 from cpython.array cimport array as py_array
 from numpy cimport ndarray
 from cython cimport bint
-from utilBMF.Inliners cimport (ph2chrInline, CigarOpToCigarChar, ChrToRefIDInline,
-                               chr2phInline, chrInline, opLenToStr)
+from utilBMF.Inliners cimport (CigarOpToCigarChar, ChrToRefIDInline,
+                               chrInline, opLenToStr)
 from utilBMF.PysamUtils cimport PysamToChrInline
+from utilBMF.cstring cimport PH2CHR_TRANS 
 
 ctypedef cython.str cystr
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
