@@ -9,6 +9,7 @@ import operator
 import pysam
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+mcoptBS = operator.methodcaller("opt","BS")
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 nucList = ["A", "T", "C", "G", "N"]
@@ -19,8 +20,8 @@ def getArgs():
     parser.add_argument("mode", help="current options: heatmap, cycleError")
     parser.add_argument("reads1")
     parser.add_argument("reads2")
-    parser.add_argument("consBam")
-    parser.add_argument("calMDbam")
+    parser.add_argument("bam", help="aligned bam if calling heater, calMD bam"
+                                     "if calling cycleError")
     parser.add_argument("kmerLen")
     return parser.parse_args()
 
@@ -85,16 +86,68 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
             if recBase != consBase:
                 kmerTotals[recKmer][0] += 1.0
 
+def errorFinder(recGen, mdRead, readError, readObs):
+    print "ding!"
+    for rec in recGen:
+        recSeq = rec.sequence
+        if mdRead.is_reverse:
+            mdSeq = RevCmp(mdRead.query_sequence)
+        else:
+            mdSeq = mdRead.query_sequence
+        for baseIndex in xrange(len(recSeq)):
+            print mdSeq[baseIndex]
+            print recSeq[baseIndex]
+
 def cycleError(args):
+    print "ding!"
     readsInFq1 = pFastqFile(args.reads1)
     readsInFq2 = pFastqFile(args.reads2)
-
-
+    MDbamGen = groupby(pysam.AlignmentFile(args.bam), key=mcoptBS)
+    bgn = MDbamGen.next
+    r2GenGen = groupby(readsInFq2, key=getBS)
+    r2ggn = r2GenGen.next
+    read1error = []
+    read2error = []
+    read1obs = []
+    read2obs = []
+    for bc4fq1, fqRecGen1 in groupby(readsInFq1, key=getBS):
+        MDbs, mdReads = bgn()
+        bc4fq2, fqRecGen2 = r2ggn()
+        mdRead1 = None
+        mdRead2 = None
+        if(bc4fq1 != bc4fq2):
+            raise ThisIsMadness("Fastq barcodes don't match")
+        if(MDbs != bc4fq1):
+            raise ThisIsMadness("Bam Barcode mismatch")
+        for cRead in mdReads:
+            if cRead.is_secondary:
+                continue
+            if cRead.is_supplementary:
+                continue
+            if cRead.is_read1:
+                mdRead1 = cRead
+            if cRead.is_read2:
+                mdRead2 = cRead
+        if mdRead1 is None or mdRead2 is None:
+            print "Did not find both reads in bam"
+            continue
+        if mdRead1.opt("FM") <= 100:
+            continue
+        if mdRead1.mapping_quality <= 20 or mdRead2.mapping_quality <= 20:
+            continue
+        errorFinder(fqRecGen1, mdRead1, read1error, read1obs)
+        errorFinder(fqRecGen2, mdRead2, read2error, read2obs)
+    read1error = np.array(read1error)
+    read1obs = np.array(read1obs)
+    read2error = np.array(read2error)
+    read2obs = np.array(read2obs)
+    read1PropError = read1error/read1obs
+    read2PropError = read2error/read2obs
 
 def heater(args):
     readsInFq1 = pFastqFile(args.reads1)
     readsInFq2 = pFastqFile(args.reads2)
-    bamGen = groupby(pysam.AlignmentFile(args.consBam), key=getBS)
+    bamGen = groupby(pysam.AlignmentFile(args.bam), key=getBS)
     k = int(args.kmerLen)
     bgn = bamGen.next
     r2GenGen = groupby(readsInFq2, key=getBS)
@@ -138,6 +191,7 @@ def heater(args):
 
 
 def main():
+    print "ding!"
     args = getArgs()
     if args.mode not in ["heatmap", "cycleError"]:
         raise ThisIsMadness("invalid mode")
