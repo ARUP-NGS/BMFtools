@@ -2,11 +2,15 @@ cimport cython
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 from cython cimport bint
+from libc.stdint cimport *
+from pysam.chtslib cimport *
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
 from utilBMF.PysamUtils cimport PysamToChrInline
-from utilBMF.cstring cimport struct_str 
+from utilBMF.cstring cimport struct_str
+from pysam.calignmentfile cimport pysam_get_l_qname
+from pysam.csamtools cimport bam1_t
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
@@ -15,6 +19,8 @@ ctypedef TagBamPipeHG37 TagBamPipeHG37_t
 ctypedef TagBamPipe TagBamPipe_t
 ctypedef BamPipe BamPipe_t
 ctypedef struct_str struct_str_t
+
+import cython
 
 
 cdef cystr cBarcodeTagCOBam(pysam.calignmentfile.AlignmentFile bam,
@@ -26,11 +32,27 @@ cdef dict cGetCOTagDict(AlignedSegment_t read)
 
 cpdef dict pGetCOTagDict(AlignedSegment_t read)
 
-cdef char * inline cs_get_bs(AlignedSegment_t read):
-    return <char *>btag = _forceBytes(tag)
-        v = bam_aux_get(self._delegate, btag)
+cdef inline char * get_Z_tag(AlignedSegment_t read, cystr btag):
+    cdef uint8_t * data
+    data = bam_aux_get(read._delegate, btag)
+    return <char*>bam_aux2Z(data)
 
-cdef int8_t StrHD
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+cdef inline int8_t BarcodeHD(bam1_t * query, bam1_t * cmp,
+                             int8_t length) nogil:
+    cdef char* str1
+    cdef char* str2
+    cdef int8_t ret = 0
+    cdef uint8_t index
+    str1 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
+    str2 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
+    for index from 0 <= index < length:
+        if(str1[index] != str2[index]):
+            ret += 1
+    return ret
+
 
 cdef double getAF(AlignedSegment_t read)
 cdef double getSF(AlignedSegment_t read)

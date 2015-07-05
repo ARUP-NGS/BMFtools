@@ -38,5 +38,5 @@ cdef public cystr DNA_CODON_TABLE = ('\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x
 cdef public cystr PH2CHR_TRANS
 
 cdef struct struct_str:
-    cdef char * string
-    cdef size_t size
+    char * string
+    size_t size

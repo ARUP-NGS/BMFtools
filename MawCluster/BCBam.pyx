@@ -15,6 +15,8 @@ import uuid
 import sys
 from subprocess import check_call
 from functools import partial
+from itertools import groupby
+from random import random
 
 import numpy as np
 from numpy import (sum as nsum, multiply as nmul,
@@ -942,19 +944,29 @@ cdef double getAF(AlignedSegment_t read):
 
 cdef BamRescue(AlignmentFile_t input_bam,
                AlignmentFile_t output_bam,
-               char mmlimit):
+               char mmlimit, int8_t bLen):
     cdef AlignedSegment_t query_read, cmp_read
-    cdef generator gen
     cdef ndarray[char, ndim=2] distance_matrix
     cdef list reclist
     cdef size_t size, query_counter, cmp_counter
+    cdef object gen
     for k, gen in groupby(input_bam, RescueFlag):
         reclist = list(gen)
         distance_matrix = np.zeros([size, size], dtype=np.int8)
         cmp_counter = 1
         for query_counter, query_read in enumerate(reclist):
             for cmp_read in reclist[query_counter + 1:]:
-                distance_matrix[query_counter][cmp_counter] = StrHD(
-                        query_read, cmp_read)
-                    
-                
+                distance_matrix[query_counter][cmp_counter] = pBarcodeHD(
+                        query_read, cmp_read, bLen)
+    return
+
+
+cdef pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+    cdef bam1_t * query_src
+    cdef bam1_t * cmp_src
+    query_src = query._delegate
+    cmp_src = cmp._delegate
+    return BarcodeHD(query_src, cmp_src, bLen)
+
+def RescueFlag(AlignedSegment_t read):
+    return random()
