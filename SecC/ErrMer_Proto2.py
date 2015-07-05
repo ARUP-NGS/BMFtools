@@ -113,6 +113,12 @@ def cycleError(args):
             continue
         if read.is_supplementary:
             continue
+	if read.mapping_quality <= 20:
+            continue
+        if read.is_unmapped:
+            continue
+        if not read.is_proper_pair:
+            continue
         if read.is_read1:
             errorFinder(read, read1error, read1obs)
         if read.is_read2:
