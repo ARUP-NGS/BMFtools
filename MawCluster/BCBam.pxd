@@ -96,7 +96,7 @@ cdef inline int REF_ID(AlignedSegment_t read):
 
 
 cdef inline int RNEXT(AlignedSegment_t read):
-    return read.reference_id
+    return read.rnext
 
 
 cdef class BamPipe:
