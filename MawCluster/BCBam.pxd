@@ -6,6 +6,7 @@ from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
 from utilBMF.PysamUtils cimport PysamToChrInline
+from utilBMF.cstring cimport struct_str 
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
@@ -13,6 +14,8 @@ ctypedef cython.str cystr
 ctypedef TagBamPipeHG37 TagBamPipeHG37_t
 ctypedef TagBamPipe TagBamPipe_t
 ctypedef BamPipe BamPipe_t
+ctypedef struct_str struct_str_t
+
 
 cdef cystr cBarcodeTagCOBam(pysam.calignmentfile.AlignmentFile bam,
                       pysam.calignmentfile.AlignmentFile outbam)
@@ -22,6 +25,12 @@ cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=?)
 cdef dict cGetCOTagDict(AlignedSegment_t read)
 
 cpdef dict pGetCOTagDict(AlignedSegment_t read)
+
+cdef char * inline cs_get_bs(AlignedSegment_t read):
+    return <char *>btag = _forceBytes(tag)
+        v = bam_aux_get(self._delegate, btag)
+
+cdef int8_t StrHD
 
 cdef double getAF(AlignedSegment_t read)
 cdef double getSF(AlignedSegment_t read)

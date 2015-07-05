@@ -938,3 +938,23 @@ cdef double getAF(AlignedSegment_t read):
         if(tup[0] == 0):
             sumAligned += tup[1]
     return sumAligned * 1. / sum
+
+
+cdef BamRescue(AlignmentFile_t input_bam,
+               AlignmentFile_t output_bam,
+               char mmlimit):
+    cdef AlignedSegment_t query_read, cmp_read
+    cdef generator gen
+    cdef ndarray[char, ndim=2] distance_matrix
+    cdef list reclist
+    cdef size_t size, query_counter, cmp_counter
+    for k, gen in groupby(input_bam, RescueFlag):
+        reclist = list(gen)
+        distance_matrix = np.zeros([size, size], dtype=np.int8)
+        cmp_counter = 1
+        for query_counter, query_read in enumerate(reclist):
+            for cmp_read in reclist[query_counter + 1:]:
+                distance_matrix[query_counter][cmp_counter] = StrHD(
+                        query_read, cmp_read)
+                    
+                
