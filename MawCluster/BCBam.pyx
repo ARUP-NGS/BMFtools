@@ -15,8 +15,8 @@ import uuid
 import sys
 from subprocess import check_call
 from functools import partial
-from itertools import groupby
-from random import random
+from itertools import groupby, chain
+from array import array
 
 import numpy as np
 from numpy import (sum as nsum, multiply as nmul,
@@ -942,23 +942,62 @@ cdef double getAF(AlignedSegment_t read):
     return sumAligned * 1. / sum
 
 
-cdef BamRescue(AlignmentFile_t input_bam,
-               AlignmentFile_t output_bam,
-               char mmlimit, int8_t bLen):
-    cdef AlignedSegment_t query_read, cmp_read
+cdef cystr BamRescue(cystr inBam,
+                     cystr outBam,
+                     char mmlimit, int8_t bLen):
+    input_bam = pysam.AlignmentFile(inBam, "rb")
+    output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
+    cdef AlignedSegment_t query_read, cmp_read, read
     cdef ndarray[char, ndim=2] distance_matrix
-    cdef list reclist
-    cdef size_t size, query_counter, cmp_counter
+    cdef py_array arr, nr_arr
+    cdef list recList, merging_arr_sets
+    cdef size_t size, query_counter, cmp_counter, t
     cdef object gen
-    for k, gen in groupby(input_bam, RescueFlag):
-        reclist = list(gen)
-        distance_matrix = np.zeros([size, size], dtype=np.int8)
-        cmp_counter = 1
-        for query_counter, query_read in enumerate(reclist):
-            for cmp_read in reclist[query_counter + 1:]:
-                distance_matrix[query_counter][cmp_counter] = pBarcodeHD(
-                        query_read, cmp_read, bLen)
-    return
+    cdef int8_t dist
+    cdef set rescue_indices
+    cdef int RefID, RNext, Pos, MPos
+    cdef bint IsRead1
+    cdef object cfi = chain.from_iterable
+    obw = output_bam.write
+    for RefID, gen in groupby(input_bam, REF_ID):
+        for Pos, gen1 in groupby(gen, POS):
+            for RNext, gen2 in groupby(gen1, RNEXT):
+                for MPos, gen3 in groupby(gen2, MPOS):
+                    for IsRead1, FinalGen in groupby(gen3, IS_READ1):
+                        setsToMerge = {}
+                        recList = list(gen)
+                        size = len(recList)
+                        distance_matrix = np.zeros([size, size], dtype=np.int8)
+                        cmp_counter = 1
+                        for query_counter, query_read in enumerate(recList):
+                            for cmp_read in recList[query_counter + 1:]:
+                                distance_matrix[query_counter][cmp_counter] = pBarcodeHD(
+                                        query_read, cmp_read, bLen)
+                                cmp_counter += 1
+                        cmp_counter = 1
+                        merging_arr_sets = []
+                        rescue_indices = set([])
+                        ria = rescue_indices.add
+                        for query_counter in range(size):
+                            for cmp_counter in range(query_counter + 1):
+                                if(distance_matrix[query_counter][cmp_counter] < mmlimit):
+                                    arr = array('i', [t for t, dist in enumerate(distance_matrix[
+                                        query_counter][:]) if dist < mmlimit and
+                                                      t not in rescue_indices])
+                                    merging_arr_sets.append(arr)
+                                    [ria(t) for t in arr]
+                        rescue_indices = array('i', list(cfi(merging_arr_sets)))
+                        nr_arr = array('i', [t for t in range(size) if t not in rescue_indices])
+                        [obw(recList[t]) for t in range(size) if
+                         t not in rescue_indices]
+                        for arr in merging_arr_sets:
+                            read = BarcodeRescueBam(recList[t] for t in arr)
+                            obw(read)
+    return output_bam.filename
+
+
+cdef BarcodeRescueBam(list recList):
+    return recList[0]
 
 
 cdef pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
@@ -967,6 +1006,3 @@ cdef pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
     query_src = query._delegate
     cmp_src = cmp._delegate
     return BarcodeHD(query_src, cmp_src, bLen)
-
-def RescueFlag(AlignedSegment_t read):
-    return random()

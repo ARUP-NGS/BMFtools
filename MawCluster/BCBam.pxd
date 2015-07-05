@@ -2,6 +2,7 @@ cimport cython
 cimport pysam.calignmentfile
 cimport pysam.cfaidx
 from cython cimport bint
+from cpython cimport array
 from libc.stdint cimport *
 from pysam.chtslib cimport *
 from numpy cimport ndarray
@@ -19,6 +20,7 @@ ctypedef TagBamPipeHG37 TagBamPipeHG37_t
 ctypedef TagBamPipe TagBamPipe_t
 ctypedef BamPipe BamPipe_t
 ctypedef struct_str struct_str_t
+ctypedef array.array py_array
 
 import cython
 
@@ -69,6 +71,33 @@ cdef inline cystr RPString(AlignedSegment_t read):
     return (PysamToChrInline(read.reference_id) + ":%s," % read.pos +
             PysamToChrInline(read.rnext) +
             ":%s" % read.mpos)
+
+
+cdef inline cystr RescueFlag(AlignedSegment_t read):
+    return "%s:%s,%s:%s-%s" % (read.pos, read.reference_id,
+                               read.mpos, read.rnext,
+                               read.is_read1)
+
+
+cdef inline bint IS_READ1(AlignedSegment_t read):
+    return read.is_read1
+
+
+cdef inline int MPOS(AlignedSegment_t read):
+    return read.mpos
+
+
+cdef inline int POS(AlignedSegment_t read):
+    return read.pos
+
+
+cdef inline int REF_ID(AlignedSegment_t read):
+    return read.reference_id
+
+
+cdef inline int RNEXT(AlignedSegment_t read):
+    return read.reference_id
+
 
 cdef class BamPipe:
     """
