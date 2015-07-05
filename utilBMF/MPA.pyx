@@ -8,7 +8,7 @@ from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
 from subprocess import check_call
-#from sys import __stdout__ as stdout, stderr
+# from sys import __stdout__ as stdout, stderr
 from sys import stdout, stderr
 import sys
 
@@ -624,7 +624,7 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
         stderr.write("Executing MPA2tmpfile for input bam %s.\n" % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
     tmpFileHandle = open(tmpFileName, "w")
-    stdout.write(inHandle.text) # Since pysam seems to not be able to...
+    stdout.write(inHandle.text)  # Since pysam seems to not be able to...
     stdout.flush()
     outHandle = AlignmentFile("-", "w", template=inHandle)
     tfw = tmpFileHandle.write
@@ -651,9 +651,9 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
         except AssertionError:
             stderr.write("Query names %s and %s" % (read1.qname,
                                                     read2.qname) +
-               " for R1 and R2 are different. Abort!"
-               " Either this BAM isn't name-sorted or you are "
-               "missing a read from a pair.\n")
+                         " for R1 and R2 are different. Abort!"
+                         " Either this BAM isn't name-sorted or you are "
+                         "missing a read from a pair.\n")
             return 1
         l1 = PyLayout.fromread(read1)
         l2 = PyLayout.fromread(read2)

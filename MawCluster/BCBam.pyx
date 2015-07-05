@@ -826,7 +826,7 @@ cdef class TagBamPipe:
                 self.outHandle = pysam.AlignmentFile(
                     "-", "wb", template=self.inHandle)
         self.RefIDDict = dict(list(enumerate(self.inHandle.references)) +
-                                   [(-1, "*")])
+                              [(-1, "*")])
 
     cdef write(self, AlignedSegment_t read):
         self.outHandle.write(read)

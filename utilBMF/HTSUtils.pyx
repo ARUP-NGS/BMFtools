@@ -611,8 +611,8 @@ def PipeAlignTag(R1, R2, ref="default",
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
                  "t\n@PG/'")
     cStr += sedString
-    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcodeTagCOBam as PBT;PBT(6'
-             ')\'')
+    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcodeTagCO'
+             'Bam as PBT;PBT(6)\'')
     if(coorsort):
         compStr = " -l 0 " if(coorsort) else ""
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,

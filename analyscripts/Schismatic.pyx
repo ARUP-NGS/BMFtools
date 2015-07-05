@@ -1,4 +1,3 @@
-#from __future__ import division
 # cython: cdivision=True
 # Standard library imports
 from itertools import groupby

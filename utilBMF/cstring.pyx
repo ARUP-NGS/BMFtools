@@ -43,6 +43,7 @@ cpdef print_chars(cystr input_str):
         ",".join(map(str, arr))
     return
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
