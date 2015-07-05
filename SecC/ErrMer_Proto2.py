@@ -103,12 +103,12 @@ def errorFinder(read, readErr, readObs):
 
 
 def cycleError(args):
-    rlen = pysam.AlingmentFile(args.bam).next().inferred_length
+    rlen = pysam.AlignmentFile(args.mdBam).next().inferred_length
     read1error = np.zeros(rlen,dtype=np.float)
     read1obs = np.zeros(rlen,dtype=np.float)
     read2error = np.zeros(rlen,dtype=np.float)
     read2obs = np.zeros(rlen,dtype=np.float)
-    for read in pysam.AlignmentFile(args.bam):
+    for read in pysam.AlignmentFile(args.mdBam):
         if read.is_secondary:
             continue
         if read.is_supplementary:
@@ -119,9 +119,9 @@ def cycleError(args):
             errorFinder(read, read2error, read2obs)
     read1prop = read1error/read1obs
     read2prop = read2error/read2obs
-    sys.stdout.write("cycle\tread1\tread2")
-    for index in rlen:
-        sys.stdout.write("%f\t%f4\t%f4" % (index, read1prop[index],
+    sys.stdout.write("cycle\tread1\tread2\n")
+    for index in xrange(rlen):
+        sys.stdout.write("%i\t%f4\t%f4\n" % (index+1, read1prop[index],
                                            read2prop[index]))
 
 
@@ -172,7 +172,6 @@ def heater(args):
 
 
 def main():
-    print "ding!"
     args = getArgs()
     if args.mode not in ["heatmap", "cycleError"]:
         raise ThisIsMadness("invalid mode")
