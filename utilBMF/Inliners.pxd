@@ -15,39 +15,39 @@ from libc.string cimport strcmp
 
 cdef inline cystr opLenToStr(char op, int opLen):
     if(op == 68):
-         return "%sD" % opLen
+        return "%sD" % opLen
     elif(op == 77):
-         return "%sM" % opLen
+        return "%sM" % opLen
     elif(op == 73):
-         return "%sI" % opLen
+        return "%sI" % opLen
     elif(op == 83):
-         return "%sS" % opLen
+        return "%sS" % opLen
     elif(op == 78):
-         return "%sN" % opLen
+        return "%sN" % opLen
     else:
-         return ""
+        return ""
 
 
 cdef inline char * CigarStrInline(char character) nogil:
     cdef char * ret
     if character == 77:
-        ret =  "M"
+        ret = "M"
     elif character == 73:
-        ret =  "I"
+        ret = "I"
     elif character == 68:
-        ret =  "D"
+        ret = "D"
     elif character == 78:
-        ret =  "N"
+        ret = "N"
     elif character == 83:
-        ret =  "S"
+        ret = "S"
     elif character == 72:
-        ret =  "H"
+        ret = "H"
     elif character == 80:
-        ret =  "P"
+        ret = "P"
     elif character == 61:
-        ret =  "="
+        ret = "="
     else:
-        ret =  "X"
+        ret = "X"
     return ret
 
 
