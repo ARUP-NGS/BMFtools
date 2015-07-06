@@ -260,7 +260,7 @@ cdef class PyLayout(object):
     cdef update_tags(self):
         cdef np.int16_t tmp16
         cdef int tmpInt
-        cdef py_array GenDiscPos, MA_Arr, MP_Arr
+        cdef py_array GenDiscPos, MA_Arr, MP_Arr, ReadDiscPos
         self.tagDict["PV"] = BamTag(
             "PV", "Z", ",".join([str(tmpInt) for tmpInt in
                                  self.cGetQual()]))
@@ -279,6 +279,7 @@ cdef class PyLayout(object):
                     "MA", "Z", ",".join([str(tmp16) for tmp16 in
                                          MA_Arr]))
             GenDiscPos = self.cGetGenomicDiscordantPositions()
+            ReadDiscPos = self.cGetReadDiscordantPositions()
             if(len(GenDiscPos) != 0):
                 self.tagDict["DG"] = BamTag(
                     "DG", "Z", ",".join(
@@ -286,7 +287,7 @@ cdef class PyLayout(object):
                          GenDiscPos]))
                 self.tagDict["DR"] = BamTag(
                     "DR", "Z", ",".join([str(tmp16) for tmp16 in
-                                         self.cGetReadDiscordantPositions()]))
+                                         ReadDiscPos]))
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
@@ -468,11 +469,12 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     :return list Merged Positions
     :return bool Whether the merge was successful
     """
-    cdef list MiddleList
+    from sys import stderr
     cdef int offset
     cdef PyLayout_t tmpPos
     cdef LayoutPos_t pos1, pos2
     cdef ListBool ret
+    cdef list MiddleList
     '''
     if(LayoutsOverlap(L1, L2) is False):
         print("LayoutsOverlap is reported to be False.")
@@ -484,10 +486,22 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
         del tmpPos
     offset = L2.cGetRefPosForFirstPos() - L1.cGetRefPosForFirstPos()
     ret = ListBool()
-    ret.List = (L1[:offset] + [cMergePositions(pos1, pos2) for
-                               pos1, pos2 in
-                               izip(L1[offset:], L2)] +
-                L2[len(L1) - offset:])
+    ret.List = L1[:offset]
+    cdef size_t count
+    for pos1 in L1[offset:]:
+      pos2 = L2[count]
+      if(pos1.operation == pos2.operation):
+          ret.List.append(cMergePositions(pos1, pos2))
+          count += 1
+      elif(pos1.operation == 68):
+        ret.List.append(pos1)
+      elif(pos2.operation == 68):
+        ret.List.append(pos2)
+        count += 1
+      else:
+        ret.List.append(cMergePositions(pos1, pos2))
+        count += 1
+    ret.List += L2[count:]
     ret.Bool = True
     return ret
 
@@ -753,7 +767,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         pass
     stderr.write("Command string to pass mpa output to bam format:"
                  " %s\n" % cStr)
-    stderr.write("Writing to file (user-specified): '%s'" % outBAM)
+    stderr.write("Writing to file (user-specified): '%s'\n" % outBAM)
     cStr += " > %s" % outBAM
     check_call(cStr, shell=True, executable="/bin/bash")
     return outBAM
