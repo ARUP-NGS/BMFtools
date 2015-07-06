@@ -844,7 +844,8 @@ cdef class TagBamPipeHG37(BamPipe):
     """
     def __init__(self, bint bin_input, bint bin_output,
                  bint uncompressed_output=False):
-        super(BamPipe, self).__init__(TagAlignedSegmentHG37, bin_input, bin_output,
+        super(BamPipe, self).__init__(TagAlignedSegmentHG37,
+                                      bin_input, bin_output,
                                       uncompressed_output=uncompressed_output)
 
 
@@ -944,17 +945,17 @@ cdef double getAF(AlignedSegment_t read):
 
 cdef cystr BamRescue(cystr inBam,
                      cystr outBam,
-                     char mmlimit, int8_t bLen):
+                     char mmlim, int8_t bLen):
     input_bam = pysam.AlignmentFile(inBam, "rb")
     output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
     cdef AlignedSegment_t query_read, cmp_read, read
-    cdef ndarray[char, ndim=2] distance_matrix
+    cdef ndarray[char, ndim=2] distmtx
     cdef py_array arr, nr_arr
     cdef list recList, merging_arr_sets
-    cdef size_t size, query_counter, cmp_counter, t
+    cdef size_t size, qctr, cmpctr, t
     cdef object gen
     cdef int8_t dist
-    cdef set rescue_indices
+    cdef set rsqidx
     cdef int RefID, RNext, Pos, MPos
     cdef bint IsRead1
     cdef object cfi = chain.from_iterable
@@ -967,29 +968,32 @@ cdef cystr BamRescue(cystr inBam,
                         setsToMerge = {}
                         recList = list(gen)
                         size = len(recList)
-                        distance_matrix = np.zeros([size, size], dtype=np.int8)
-                        cmp_counter = 1
-                        for query_counter, query_read in enumerate(recList):
-                            for cmp_read in recList[query_counter + 1:]:
-                                distance_matrix[query_counter][cmp_counter] = pBarcodeHD(
+                        distmtx = np.zeros([size, size], dtype=np.int8)
+                        cmpctr = 1
+                        for qctr, query_read in enumerate(recList):
+                            for cmp_read in recList[qctr + 1:]:
+                                distmtx[qctr][cmpctr] = pBarcodeHD(
                                         query_read, cmp_read, bLen)
-                                cmp_counter += 1
-                        cmp_counter = 1
+                                cmpctr += 1
+                        cmpctr = 1
                         merging_arr_sets = []
-                        rescue_indices = set([])
-                        ria = rescue_indices.add
-                        for query_counter in range(size):
-                            for cmp_counter in range(query_counter + 1):
-                                if(distance_matrix[query_counter][cmp_counter] < mmlimit):
-                                    arr = array('i', [t for t, dist in enumerate(distance_matrix[
-                                        query_counter][:]) if dist < mmlimit and
-                                                      t not in rescue_indices])
+                        rsqidx = set([])
+                        ria = rsqidx.add
+                        for qctr in range(size):
+                            for cmpctr in range(qctr + 1):
+                                if(distmtx[qctr][cmpctr] < mmlim):
+                                    arr = array('i', [
+                                        t for t, dist in
+                                        enumerate(distmtx[qctr][:]) if
+                                        dist < mmlim and
+                                        t not in rsqidx])
                                     merging_arr_sets.append(arr)
                                     [ria(t) for t in arr]
-                        rescue_indices = array('i', list(cfi(merging_arr_sets)))
-                        nr_arr = array('i', [t for t in range(size) if t not in rescue_indices])
+                        rsqidx = array('i', list(cfi(merging_arr_sets)))
+                        nr_arr = array('i', [t for t in range(size) if
+                                             t not in rsqidx])
                         [obw(recList[t]) for t in range(size) if
-                         t not in rescue_indices]
+                         t not in rsqidx]
                         for arr in merging_arr_sets:
                             read = BarcodeRescueBam(recList[t] for t in arr)
                             obw(read)
