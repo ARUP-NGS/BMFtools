@@ -44,6 +44,7 @@ DEALINGS IN THE SOFTWARE.  */
 
 #define forever for(;;)
 #define bam_is_r1(b) (((b)->core.flag&BAM_FREAD1) != 0)
+#define bam_is_r2(b) (((b)->core.flag&BAM_FREAD2) != 0)
 
 #ifdef NEED_MEMSET_PATTERN4
 void memset_pattern4(void *target, const void *pattern, size_t size) {
@@ -989,6 +990,20 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
         return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
     }
     else{
+        if(a->core.flag & BAM_FUNMAP){
+            if(!(b->core.flag & BAM_FUNMAP)){
+                return true;
+            }
+            else {
+                int cmp = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
+                if(cmp < 0){
+                    return true;
+                }
+                else if(cmp > 0) {
+                    return false;}
+                else {return (bam_is_r2(a) < bam_is_r2(a));}
+            }
+        }
         if((a->core.tid) != (b->core.tid)) {
             if(a->core.tid < b->core.tid) {
                 return true;

@@ -29,7 +29,6 @@ and samtools.
 
 #  warnings.filterwarnings('error')
 
-
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -732,8 +731,8 @@ def main():
         fl.setLevel(logging.DEBUG)
         Logger.addHandler(fl)
     else:
-        stderr.write("Logging skipped for subcommand. "
-                     "Override with create_log == True")
+        stderr.write("Logging skipped for subcommand. Override with create_log"
+                     " == True if you want to create a log next time.\n")
     stderr.write("Now executable bmftools subcommand %s" % subcommand)
     if(subcommand == "qty"):
         templatesOnTarget = Palin.number_of_templates * Palin.on_target

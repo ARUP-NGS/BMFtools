@@ -101,10 +101,11 @@ def BarcodeSortBoth(cystr inFq1, cystr inFq2,
 
 @cython.locals(highMem=cython.bint)
 def BarcodeSort(cystr inFastq, cystr outFastq="default",
-                cystr mem="6G"):
+                cystr mem="6G", int threads=4):
     cdef cystr BSstring
     pl("Sorting {} by barcode sequence.".format(inFastq))
-    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem)
+    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem,
+                                 threads=threads)
     check_call(BSstring, shell=True)
     pl("Barcode Sort shell call: {}".format(BSstring))
     if(outFastq == "default"):  # Added for compatibility with getBSstr
@@ -113,17 +114,21 @@ def BarcodeSort(cystr inFastq, cystr outFastq="default",
 
 
 @cython.returns(cystr)
-def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
+def getBarcodeSortStr(inFastq, outFastq="default", mem="",
+                      int threads=4):
     if(mem != ""):
         mem = " -S " + mem
+    threadStr = ""
+    if(threads != 1):
+        threadStr = " --parallel=%s" % threads
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
         return ("zcat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
-                " %s | tr '\t' '\n' > %s" % (mem, outFastq))
+                " %s %s| tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
     else:
         return ("cat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
-                " %s | tr '\t' '\n' > %s" % (mem, outFastq))
+                " %s %s | tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
 
 
 cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
@@ -480,8 +485,8 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
             numWritten = 0
         read2 = ifn2()
         indexRead = ifin()
-        tempBar = (read1.sequence[:head] + indexRead.sequence +
-                   read2.sequence[:head])
+        tempBar = (read1.sequence[1:head + 1] + indexRead.sequence +
+                   read2.sequence[1:head + 1])
         read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
         read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
         f1.write(str(read1))
@@ -523,12 +528,12 @@ def FastqSingleShading(fq,
         pIndexRead = pFastqProxy.fromFastqProxy(inIndex.next())
         pRead1 = pFastqProxy.fromFastqProxy(read1)
         if("N" in pRead1.pIndexRead.sequence):
-            read1.comment += "|FP=IndexFail|BS=%" % (read1.sequence[:head] +
-                                                     pIndexRead.sequence)
+            read1.comment += "|FP=IndexFail|BS=%" % (
+                read1.sequence[1:head + 1] + pIndexRead.sequence)
             outFqHandle1.write(str(read1))
         else:
-            read1.comment += "|FP=IndexPass|BS=%s" % (read1.sequence[:head] +
-                                                      pIndexRead.sequence)
+            read1.comment += "|FP=IndexPass|BS=%s" % (
+                read1.sequence[1:head + 1] + pIndexRead.sequence)
             outFqHandle1.write(str(read1))
     outFqHandle1.close()
     if(gzip):
@@ -900,23 +905,23 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
                       "Abort!")
         try:
             indexSeq = TrueFamDict[index_read.sequence]
-            saltedBS = (rec1.sequence[:head] + indexSeq +
-                        rec2.sequence[:head])
+            saltedBS = (rec1.sequence[1:head + 1] + indexSeq +
+                        rec2.sequence[1:head + 1])
             rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
             rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
         except KeyError:
             pass
             try:
                 indexSeq = rescueDict[index_read.sequence]
-                saltedBS = (rec1.sequence[:head] +
+                saltedBS = (rec1.sequence[1:head + 1] +
                             indexSeq +
-                            rec2.sequence[:head])
+                            rec2.sequence[1:head + 1])
                 rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
                 rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
             except KeyError:
                 # This isn't in a true family. Blech!
-                saltedBS = (rec1.sequence[:head] + index_read.sequence +
-                            rec2.sequence[:head])
+                saltedBS = (rec1.sequence[1:head + 1] + index_read.sequence +
+                            rec2.sequence[1:head + 1])
                 rec1.comment = cMakeTagComment(saltedBS, rec1, hpLimit)
                 rec2.comment = cMakeTagComment(saltedBS, rec2, hpLimit)
         ohw1(str(rec1))

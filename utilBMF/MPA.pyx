@@ -421,10 +421,7 @@ cpdef PyLayout_t MergeLayoutsToLayout(PyLayout_t L1, PyLayout_t L2):
     cdef bint Success
     cdef ListBool ret
     ret = cMergeLayoutsToList(L1, L2)
-    from sys import stderr
     if(ret.Bool is False):
-        stderr.write("Ret's success return is False. "
-                     "Add false tags, return None.\n")
         L1.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         L2.tagDict["MP"] = BamTag("MP", tagtype="A", value="F")
         return None
@@ -707,10 +704,10 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     :param coorsort - set to true to pipe to samtools sort instead of
     samtools view
     """
-    import warnings
-    from sys import stderr
     cdef cystr uuidvar, tfname
     cdef bint nso
+    import warnings
+    from sys import stderr
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
     stderr.write("Now calling MPA2Bam. Emit uncompressed BAM? - %s\n" % u)
     if(inBAM == "stdin" or inBAM == "-"):
