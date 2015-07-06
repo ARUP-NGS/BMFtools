@@ -469,6 +469,7 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     :return list Merged Positions
     :return bool Whether the merge was successful
     """
+    from sys import stderr
     cdef int offset
     cdef PyLayout_t tmpPos
     cdef LayoutPos_t pos1, pos2
@@ -487,19 +488,20 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     ret = ListBool()
     ret.List = L1[:offset]
     cdef size_t count
-    gnn = iter(L2.positions).next
-    pos2 = gnn()
     for pos1 in L1[offset:]:
+      pos2 = L2[count]
       if(pos1.operation == pos2.operation):
           ret.List.append(cMergePositions(pos1, pos2))
-          pos2 = gnn()
+          count += 1
       elif(pos1.operation == 68):
         ret.List.append(pos1)
       elif(pos2.operation == 68):
         ret.List.append(pos2)
+        count += 1
       else:
         ret.List.append(cMergePositions(pos1, pos2))
-    ret.List += L2[len(L1) - offset:]
+        count += 1
+    ret.List += L2[count:]
     ret.Bool = True
     return ret
 
@@ -765,7 +767,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         pass
     stderr.write("Command string to pass mpa output to bam format:"
                  " %s\n" % cStr)
-    stderr.write("Writing to file (user-specified): '%s'" % outBAM)
+    stderr.write("Writing to file (user-specified): '%s'\n" % outBAM)
     cStr += " > %s" % outBAM
     check_call(cStr, shell=True, executable="/bin/bash")
     return outBAM
