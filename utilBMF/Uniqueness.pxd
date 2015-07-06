@@ -19,7 +19,7 @@ cdef class KmerFetcher(object):
     cpdef cystr getFastqString(self, list)
     cpdef cystr getOutputString(self, list, str aligner=?)
     cpdef public FillMap(self, list)
-    cpdef public ConvertIntervalsToBed(self, list, cystr)
+    cpdef public ConvertIntervalsToBed(self, list, cystr, cystr)
     cpdef public list GetUniqueKmers(self, list)
     cpdef FMfrombed(self, cystr)
 

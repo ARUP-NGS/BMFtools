@@ -221,7 +221,7 @@ cdef class KmerFetcher(object):
                 intervalList.append((contig, group[0][1], group[-1][1]))
         return sorted(intervalList)
 
-    cpdef ConvertIntervalsToBed(self, list intervalList, cystr outFile):
+    cpdef ConvertIntervalsToBed(self, list intervalList, cystr inFile, cystr outFile):
         """
         Converts a list of continuous intervals of kmer start positions (output from
         GetIntervalsFromMap is (contig, continuousStartIntervalFirst, continuousStartIntervalLast)
@@ -237,16 +237,20 @@ cdef class KmerFetcher(object):
         pl("Sorting and merging output bed file with bedtools.")
         echo=Popen(['echo', "".join(bedStrList)], stdout=PIPE)
         bedsort = Popen(['bedtools', 'sort', '-i', '-'], stdin=echo.stdout,
-                                   stdout=PIPE)
+                                  stdout=PIPE)
         merge = Popen(['bedtools', 'merge', '-i', '-'], stdin=bedsort.stdout,
-                                 stdout=PIPE)
+                                  stdout=PIPE)
         sortout = Popen(['sort', '-k1,1n', '-k2,2n', '-V','-'], stdin=merge.stdout,
-                                   stdout=PIPE)
-        output=''.join(list(sortout.communicate()[0]))
+                                  stdout=PIPE)
+        intersect = Popen(['bedtools','intersect','-a',inFile, '-b', '-'], stdin=sortout.stdout,
+                                  stdout=PIPE)
+        sortagain = Popen(['sort', '-k1,1n', '-k2,2n', '-V','-'], stdin=intersect.stdout,
+                                  stdout=PIPE)
+        output=''.join(list(sortagain.communicate()[0]))
         with open(outFile, 'w') as f:
             f.write(output)
-        pl("Final sorted/merged bed file covering unqiue kmers of size " + str(kmer) + " saved to " +
-           outFile)
+        pl("Final sorted merged/intersected bed file covering unqiue kmers of size " + str(kmer)
+           + " saved to " + outFile)
 
 
     cpdef list GetUniqueKmers(self, list bedline):

@@ -959,9 +959,9 @@ def main():
             # Populate unique KmerObjects per region
             KF.FillMap(bedlineList)
 
-        # Convert unique kmers to sorted/merged bedfile
+        # Convert unique kmers to sorted/merged bedfile within the boundaries of the original bed
         outList = KF.GetIntervalsFromMap()
-        KF.ConvertIntervalsToBed(outList, Chapman['outfile'])
+        KF.ConvertIntervalsToBed(outList, inFile=Chapman['inbed'], outFile=Chapman['outfile'])
 
     elif(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
