@@ -717,9 +717,6 @@ def main():
     Logger.addHandler(ch)
 
     # File logger - outputs to log file.
-    fl = logging.FileHandler(filename=logfile)
-    fl.setFormatter(formatter)
-    fl.setLevel(logging.DEBUG)
 
 
     #### END SETUP LOGGING
@@ -728,8 +725,11 @@ def main():
 
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
-    if(subcommand in ["main", "snv", "psnv", "mpa"] or
+    if(subcommand in ["main", "snv", "psnv"] or
        Chapman['create_log'] is True):
+        fl = logging.FileHandler(filename=logfile)
+        fl.setFormatter(formatter)
+        fl.setLevel(logging.DEBUG)
         Logger.addHandler(fl)
     else:
         stderr.write("Logging skipped for subcommand. "

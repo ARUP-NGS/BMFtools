@@ -1211,7 +1211,7 @@ static int sort_usage(FILE *fp, int status)
     return status;
 }
 
-int main(int argc, char *argv[])
+int bam_sort(int argc, char *argv[])
 {
     size_t max_mem = 768<<20; // 512MB
     int c, i, modern, nargs, is_by_qname = 0, is_stdout = 0, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;

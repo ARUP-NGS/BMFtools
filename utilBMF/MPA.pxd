@@ -11,7 +11,8 @@ from cython cimport bint
 from utilBMF.Inliners cimport (CigarOpToCigarChar, ChrToRefIDInline,
                                chrInline, opLenToStr)
 from utilBMF.PysamUtils cimport PysamToChrInline
-from utilBMF.cstring cimport PH2CHR_TRANS 
+from utilBMF.cstring cimport PH2CHR_TRANS
+from MawCluster.BCBam cimport AStostring
 
 ctypedef cython.str cystr
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
@@ -20,7 +21,7 @@ ctypedef PyLayout PyLayout_t
 ctypedef LayoutPos LayoutPos_t
 ctypedef utilBMF.HTSUtils.BamTag BamTag_t
 
-cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName)
+cpdef int MPA2stdout(cystr inBAM)
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=?,
               bint u=?, bint coorsort=?,
               cystr sortMem=?, bint assume_sorted=?,
@@ -69,6 +70,8 @@ cdef class PyLayout:
     cdef py_array cGetGenomicDiscordantPositions(self)
     cdef py_array cGetReadDiscordantPositions(self)
     cdef bint test_merge_success(self)
+    cpdef py_array getReadDiscordantPositions(self)
+    cpdef py_array getGenomicDiscordantPositions(self)
 
 cpdef bint LayoutsOverlap(PyLayout_t L1, PyLayout_t L2)
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2)

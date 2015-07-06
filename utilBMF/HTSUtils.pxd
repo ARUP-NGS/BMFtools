@@ -87,10 +87,12 @@ cdef class AbstractIndelContainer:
     """
     Base class for insertion and deletion container objects.
 
-    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and just insertion)
+    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and
+    just insertion)
     Start and end refer to different things for insertions and deletions.
-    For a deletion, start is the first missing base and end is the last missing
-    reference base position.
+    For a deletion, start is the first missing base and end is the last
+    missing reference base position.
+
     seq should be None for a deletion
     """
     cdef public cystr contig, seq, uniqStr

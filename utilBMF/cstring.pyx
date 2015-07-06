@@ -64,13 +64,6 @@ cpdef py_array str2phredarray(cystr instr):
     return cs_to_ph(instr)
 
 
-cdef public cystr PH2CHR_TRANS = (maketrans(
-        "".join({chr(x):chr(x + 33) for x in xrange(
-            0, 127 - 33)}.iterkeys()),
-        "".join({chr(x):chr(x + 33) for x in xrange(
-            0, 127 - 33)}.itervalues())))
-
-
 cdef inline py_array cs_to_ph(cystr input_str):
     cdef py_array tmpArr
     cdef size_t index

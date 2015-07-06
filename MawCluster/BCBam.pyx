@@ -1,5 +1,6 @@
 #!python
 # cython: c_string_type=str, c_string_encoding=ascii
+# cython: boundscheck=False
 from __future__ import division
 import shlex
 import subprocess

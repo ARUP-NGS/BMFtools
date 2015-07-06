@@ -1,3 +1,4 @@
+# cython: c_string_type=str, c_string_encoding=ascii
 # cython: boundscheck=False, wraparound=False, initializedcheck=False
 
 # Standard library imports
@@ -8,8 +9,6 @@ from itertools import groupby, izip
 from array import array
 from operator import attrgetter as oag
 from subprocess import check_call
-# from sys import __stdout__ as stdout, stderr
-from sys import stdout, stderr
 import sys
 
 # Third party imports
@@ -166,7 +165,10 @@ cdef class PyLayout(object):
         return self.cGetQual()
 
     cdef cystr cGetQualString(self):
-        return self.cGetQual().tostring().translate(PH2CHR_TRANS)
+        cdef py_array tmpArr
+        cdef int i
+        tmpArr = array('B', [i + 33 if(i < 94) else 126 for i in self.cGetQual()])
+        return tmpArr.tostring().translate(PH2CHR_TRANS)
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()
@@ -236,6 +238,12 @@ cdef class PyLayout(object):
                      [p.pos for p in self.positions if
                       p.mergeAgreed == 0 and p.pos >= 0])
 
+    cpdef py_array getReadDiscordantPositions(self):
+        return self.cGetReadDiscordantPositions()
+
+    cpdef py_array getGenomicDiscordantPositions(self):
+        return self.cGetGenomicDiscordantPositions()
+
     cdef py_array cGetReadDiscordantPositions(self):
         """
         Returns a 1-d array of integers for genomic positions which
@@ -277,9 +285,8 @@ cdef class PyLayout(object):
                         [str(tmpInt) for tmpInt in
                          GenDiscPos]))
                 self.tagDict["DR"] = BamTag(
-                    "DR", "Z", ",".join(
-                        [str(tmp16) for tmp16 in
-                         self.cGetReadDiscordantPositions()]))
+                    "DR", "Z", ",".join([str(tmp16) for tmp16 in
+                                         self.cGetReadDiscordantPositions()]))
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
@@ -607,11 +614,12 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
 
 
-cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
+cpdef int MPA2stdout(cystr inBAM):
     """
     :param inBAM - path to input bam. Set to "stdin"
     :param tmpFileName - must be provided to facilitate merging streams.
     """
+    from sys import stdout, stderr
     cdef size_t read_count = 0
     cdef size_t read_pair_count = 0
     cdef size_t success_merged_count = 0
@@ -623,16 +631,14 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
     else:
         stderr.write("Executing MPA2tmpfile for input bam %s.\n" % inBAM)
         inHandle = AlignmentFile(inBAM, "rb")
-    tmpFileHandle = open(tmpFileName, "w")
+
     stdout.write(inHandle.text)  # Since pysam seems to not be able to...
     stdout.flush()
-    outHandle = AlignmentFile("-", "w", template=inHandle)
-    tfw = tmpFileHandle.write
     for read in inHandle:
         read_count += 1
         if(read.is_secondary or
            read.is_supplementary or not read.is_proper_pair):
-            outHandle.write(read)
+            stdout.write(read.tostring(inHandle))
             # stderr.write("Reads is supp/secondary/or improper pair!")
             continue
         if(read.is_read1):
@@ -643,8 +649,8 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
         read_pair_count += 1
         if(ReadsOverlap(read1, read2) is False):
             # stderr.write("Reads don't overlap... skip!")
-            outHandle.write(read1)
-            outHandle.write(read2)
+            stdout.write(read1.tostring(inHandle))
+            stdout.write(read2.tostring(inHandle))
             continue
         try:
             assert read1.qname == read2.qname
@@ -660,17 +666,16 @@ cpdef MPA2tmpfile(cystr inBAM, cystr tmpFileName):
         retLayout = MergeLayoutsToLayout(l1, l2)
         if(retLayout.test_merge_success()):
             success_merged_count += 1
-            tfw(str(retLayout))
+            stdout.write(str(retLayout))
         else:
             failed_to_merge_count += 1
-            outHandle.write(read1)
-            outHandle.write(read2)
-    outHandle.close()
+            stdout.write(read1.tostring(inHandle))
+            stdout.write(read2.tostring(inHandle))
     inHandle.close()
     stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
     stderr.write("Successfully merged: %s\n" % (success_merged_count))
     stderr.write("Tried but failed to merge: %s\n" % (failed_to_merge_count))
-    return
+    return 0
 
 
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
@@ -679,7 +684,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
               cystr tmpdir="/dev/shm"):
     """
     :param inBAM - path to input bam
-    :param outBAM - path to output bam. Leave as default or set to stdout
+    :param outBAM - path to output bam. Leave as default (None)
+    to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
     to output to stdout.
     :param u - whether or not to emit uncompressed bams. Set to true
     for piping for optimal efficiency.
@@ -687,13 +693,12 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     :param coorsort - set to true to pipe to samtools sort instead of
     samtools view
     """
+    import warnings
+    from sys import stderr
     cdef cystr uuidvar, tfname
     cdef bint nso
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
-    stderr.write("Now calling MPA2Bam. Uncompressed BAM: %s\n" % u)
-    # First: make named pipe - reuse the random string :)
-    tamfname = "%s/%s" % (tmpdir, uuidvar)  # TAM filename
-    mpafname = tamfname + "-mpa"
+    stderr.write("Now calling MPA2Bam. Emit uncompressed BAM? - %s\n" % u)
     if(inBAM == "stdin" or inBAM == "-"):
         inBAM = "-"
         pl("Now calling MPA2Bam, taking input from stdin.")
@@ -701,10 +706,11 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
             nso = AlignmentFile(
                 "-", "rb").header['HD']['SO'] == 'queryname'
         except KeyError:
-            stderr.write("Note: No SO/HD field in the bam header. "
-                         "Assume namesorted, as that is default, and"
-                         " sort commands usually change that field "
-                         "in the header.\n")
+            warnings.warn("Note: No SO/HD field in the bam header. "
+                          "Assume namesorted, as that is default, and"
+                          " sort commands usually change that field "
+                          "in the header.\n")
+            stderr.write()
             nso = True
     else:
         try:
@@ -724,12 +730,9 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         else:
             stderr.write("Sort order unset or set to coordinate. "
                          "Assuming sorted.")
-    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2tmpfile; "
-            "sys.exit(MPA2tmpfile(\"%s\", " % (inBAM) +
-            "\"%s\"));' > %s " % (mpafname, tamfname))
+    cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout;"
+            "sys.exit(MPA2stdout(\"%s\"));'" % inBAM)
     stderr.write("About to call %s to prepare mpa output." % cStr)
-    check_call(cStr, shell=True)
-    cStr = "cat <(cat %s) <(cat %s) " % (tamfname, mpafname)
     if(coorsort is False):
         if(u):
             cStr += "| samtools view -Sbhu - "
@@ -753,6 +756,4 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     stderr.write("Writing to file (user-specified): '%s'" % outBAM)
     cStr += " > %s" % outBAM
     check_call(cStr, shell=True, executable="/bin/bash")
-    # Delete temporary files
-    check_call(["rm", mpafname, tamfname])
     return outBAM
