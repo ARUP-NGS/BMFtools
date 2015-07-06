@@ -111,7 +111,7 @@ def cycleError(args):
             continue
         if read.is_supplementary:
             continue
-	if read.mapping_quality <= 20:
+        if read.mapping_quality <= 20:
             continue
         if read.is_unmapped:
             continue
