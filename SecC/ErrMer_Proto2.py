@@ -95,11 +95,9 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
 def errorFinder(read, readErr, readObs):
     seq = read.query_sequence
     for base in range(len(seq)):
-        if seq[base] == '=':
-            readObs[base] += 1
-        if seq[base] != '=':
+        readObs[base] += 1
+        if seq[base] != '=' and seq[base] != "N":
             readErr[base] += 1
-            readObs[base] += 1
 
 
 def cycleError(args):
