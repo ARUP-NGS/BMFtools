@@ -23,14 +23,14 @@ You might have an error claiming that README.md is not in dist/. If necessary, c
 
 ## Use
 
-To run the main program, call the main.py function after installation, or, if installed, run the executable BMFMain.
+To run the main program, call the main.py function after installation, or, if installed, run the executable bmftools main.
 
 ```bash
 python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
 ```bash
-BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
+bmftools main R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
 If using a config file, this is greatly simplified. I recommend having multiple config files, one for each analysis type. (e.g., one for FFPE, one for amplicon, one for each bed file, etc.)
@@ -39,7 +39,7 @@ A sample configuration file can be found in conf/config.txt. Over time, the numb
 In that case, one would call thus:
 
 ```bash
-BMFMain R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
+bmftools main R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
 ```
 
 To use bmftools subcommands, check instructions by executing the following:
