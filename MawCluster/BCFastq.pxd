@@ -28,13 +28,7 @@ cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr)
 cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr)
 
 
-cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
-    if("N" in barcode or "A" * hpLimit in barcode or
-       "C" * hpLimit in barcode or
-       "G" * hpLimit in barcode or "T" * hpLimit in barcode):
-        return False
-    else:
-        return True
+cdef inline bint BarcodePasses(cystr barcode, int hpLimit)
 
 
 cdef inline cystr cMakeTagComment(cystr saltedBS,

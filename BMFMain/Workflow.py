@@ -17,9 +17,10 @@ from MawCluster.BCFastq import TrimHomingPaired
 from utilBMF import HTSUtils
 from MawCluster import PileupUtils
 from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
-from utilBMF.HTSUtils import printlog as pl, TrimExt, PipeAlignTag
-from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
+from utilBMF.HTSUtils import printlog as pl, TrimExt, PipeAlignTag
+from utilBMF.MPA import MPA2Bam
+from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
 from MawCluster.BCVCF import VCFStats
 
 

@@ -281,7 +281,7 @@ cdef cystr cCompareFqRecsFast(list R,
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for
                   i in xrange(lenSeq)], dtype=np.int32)
-    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA):
+    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA * lenR):
         #  If there's any base on which a family agrees less often
         #  than minFAFrac, nix the whole family.
         #  Along with that, require that at least one of the bases agree
@@ -922,3 +922,10 @@ cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
     Python-visible MakeTagComment.
     """
     return cMakeTagComment(saltedBS, rec, hpLimit)
+
+
+
+cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
+    return not ("N" in barcode or "A" * hpLimit in barcode or
+       "C" * hpLimit in barcode or
+       "G" * hpLimit in barcode or "T" * hpLimit in barcode)

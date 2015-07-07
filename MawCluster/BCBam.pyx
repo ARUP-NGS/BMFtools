@@ -681,29 +681,25 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
 cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read):
     return TagAlignedSegmentHG37(read)
 
-'''
 @cython.boundscheck(False)
 @cython.wraparound(False)
-'''
 cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=None):
     return (RefIDDict[read.reference_id] + ":%s," % read.pos +
             RefIDDict[read.rnext] +
             ":%s" % read.mpos)
 
 
-'''
 @cython.boundscheck(False)
 @cython.wraparound(False)
-'''
-cdef AlignedSegment_t TagAlignedSegment(
+cdef inline AlignedSegment_t TagAlignedSegment(
         AlignedSegment_t read, dict RefIDDict=None):
     """
     Adds necessary information from a CO: tag to appropriate other tags.
     """
-    assert RefIDDict is not None
+    # assert RefIDDict is not None  (Maybe just let it die late?)
     cdef dict CommentDict
     cdef int FM, ND, FPInt
-    cdef double NF, AF, SF
+    cdef double NF, AF, SF, FF, PF
     cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
     CommentDict = cGetCOTagDict(read)
     PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
@@ -717,11 +713,14 @@ cdef AlignedSegment_t TagAlignedSegment(
     if(not FPInt):
         read.flag += 512
     NF = ND * 1. / FM
+    FF = np.min(FA) * 1. / FM
+    PF = np.min(PhredQuals) * 1. / np.max(PhredQuals)
     AF = getAF(read)
     SF = getSF(read)
     read.set_tags([("BS", CommentDict["BS"], "Z"),
                    ("FM", FM, "i"),
                    ("PV", ",".join(PhredQuals.astype(str)), "Z"),
+                   ("FF", FF, "f"), ("PF", PF, "f"),
                    ("FA", ",".join(FA.astype(str)), "Z"),
                    ("FP", FPInt, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),

@@ -694,15 +694,16 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
               cystr sortMem="6G", bint assume_sorted=False,
               cystr tmpdir="/dev/shm"):
     """
-    :param inBAM - path to input bam
-    :param outBAM - path to output bam. Leave as default (None)
+    :param inBAM - [cystr/arg] path to input bam
+    :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
     to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
     to output to stdout.
-    :param u - whether or not to emit uncompressed bams. Set to true
-    for piping for optimal efficiency.
-    :param sortMem - string to pass to samtools sort for memory per thread.
-    :param coorsort - set to true to pipe to samtools sort instead of
-    samtools view
+    :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
+    Set to true for piping for optimal efficiency.
+    :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
+    memory per thread.
+    :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
+    instead of samtools view
     """
     cdef cystr uuidvar, tfname
     cdef bint nso
