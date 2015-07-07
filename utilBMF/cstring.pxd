@@ -44,13 +44,11 @@ cdef public cystr DNA_CODON_TABLE = ('\x00\x01\x02\x03\x04\x05\x06\x07\x08\t'
 
 
 '''
-Equivalent to:
-
-cdef public cystr PH2CHR_TRANS = (maketrans(
-        "".join({chr(x):chr(x + 33) for x in xrange(
-            0, 127 - 33)}.iterkeys()),
-        "".join({chr(x):chr(x + 33) for x in xrange(
-            0, 127 - 33)}.itervalues())))
+cdef public cystr PH2CHR_TRANS = maketrans(
+        "".join([chr(x) for x in xrange(
+            0, 127 - 33)].iterkeys()),
+        "".join([chr(x + 33) for x in xrange(
+            0, 127 - 33)]))
 '''
 cdef public cystr PH2CHR_TRANS
 

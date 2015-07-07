@@ -8,10 +8,6 @@ import ctypes
 from array import array
 from string import maketrans
 
-PH2CHR_TRANS = maketrans("".join(
-  [chr(x) for x in xrange(0, 127 - 33)]),
-                         "".join(
-  [chr(x + 33) for x in xrange(0, 127 - 33)]))
 
 cdef int * to_cstring_array(cystr input_str):
     cdef char *tmp = PyString_AsString(input_str)
@@ -21,6 +17,11 @@ cdef int * to_cstring_array(cystr input_str):
 
 # define a function that can deallocate the data (if needed)
 # my_array.callback_free_data = free
+
+PH2CHR_TRANS = maketrans("".join(
+  [chr(x) for x in xrange(0, 127 - 33)]),
+                         "".join(
+  [chr(x + 33) for x in xrange(0, 127 - 33)]))
 
 
 cdef view.array ps2va(char * inArr, size_t size):
