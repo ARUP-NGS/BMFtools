@@ -17,7 +17,8 @@ import cython
 from pysam import AlignmentFile
 
 # BMFTools imports
-from .HTSUtils import TrimExt, printlog as pl, BamTag, ReadsOverlap
+from .HTSUtils import (TrimExt, printlog as pl, BamTag, ReadsOverlap,
+                       PipeAlignTag)
 from .ErrorHandling import ImproperArgumentError, ThisIsMadness as Tim
 
 cimport cython
@@ -692,18 +693,22 @@ cpdef int MPA2stdout(cystr inBAM):
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
               bint u=False, bint coorsort=False,
               cystr sortMem="6G", bint assume_sorted=False,
-              cystr tmpdir="/dev/shm"):
+              bint dry_run=False,
+              cystr prepend=""):
     """
-    :param inBAM - [cystr/arg] path to input bam
-    :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
+    :param inBAM - [cystr/arg] - path to input bam
+    set to "-" or "stdin" to take in stdin. This must be name-sorted.
+    :param outBAM - [cystr/arg] - path to output bam. Leave as default (None)
     to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
     to output to stdout.
-    :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
+    :param u - [bint/kwarg/False] - whether or not to emit uncompressed bams.
     Set to true for piping for optimal efficiency.
-    :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
+    :param sortMem - [cystr/kwarg/"6G"] - string to pass to samtools sort for
     memory per thread.
-    :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
+    :param coorsort - [cystr/kwarg/False] - set to True to pipe to samtools sort
     instead of samtools view
+    :param dry_run - [bint/kwarg/False] - set to True to returnt the command
+    string rather than executing it.
     """
     cdef cystr uuidvar, tfname
     cdef bint nso
@@ -750,6 +755,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
             cStr += "| samtools view -Sbhu - "
         else:
             cStr += "| samtools view -Sbh - "
+
     else:
         compStr = " -l 0 " if(u) else ""
         cStr += "| samtools sort -m %s -O bam -T %s %s - " % (sortMem,
@@ -757,6 +763,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                                                               compStr)
     if(outBAM == "stdout" or outBAM == "-"):
         pl("Emitting to stdout.")
+        if(dry_run):
+          return cStr
         check_call(cStr, shell=True)
         return outBAM
     elif(outBAM is None):
@@ -767,5 +775,35 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                  " %s\n" % cStr)
     stderr.write("Writing to file (user-specified): '%s'\n" % outBAM)
     cStr += " > %s" % outBAM
+    if(dry_run):
+        return cStr
     check_call(cStr, shell=True, executable="/bin/bash")
     return outBAM
+
+
+def PipeAlignTagMPA(R1, R2, ref="default",
+                    outBAM=None, path="default",
+                    bint coorsort=True, bint u=True,
+                    cystr sortMem="6G", cystr opts=None,
+                    cystr tmpdir="/dev/shm"):
+    baseCommandString = PipeAlignTag(
+        R1, R2, ref=ref, outBAM="stdout", path=path, coorsort=False, u=u,
+        sortMem=sortMem, dry_run=True)
+    cStr = MPA2Bam("-", dry_run=True,
+                   prepend="%s | " % baseCommandString,
+                   assume_sorted=True,
+                   outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort)
+    """
+        :param inBAM - [cystr/arg] path to input bam
+        set to "-" or "stdin" to take in stdin. This must be name-sorted.
+        :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
+        to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
+        to output to stdout.
+        :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
+        Set to true for piping for optimal efficiency.
+        :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
+        memory per thread.
+        :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
+        instead of samtools view
+        :param dry_run - [bint/kwarg/False]
+    """

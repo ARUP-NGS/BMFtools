@@ -526,11 +526,11 @@ def FastqSingleShading(fq,
         pIndexRead = pFastqProxy.fromFastqProxy(inIndex.next())
         pRead1 = pFastqProxy.fromFastqProxy(read1)
         if("N" in pRead1.pIndexRead.sequence):
-            read1.comment += "|FP=IndexFail|BS=%" % (
+            read1.comment += "|FP=0|BS=%" % (
                 read1.sequence[1:head + 1] + pIndexRead.sequence)
             outFqHandle1.write(str(read1))
         else:
-            read1.comment += "|FP=IndexPass|BS=%s" % (
+            read1.comment += "|FP=1|BS=%s" % (
                 read1.sequence[1:head + 1] + pIndexRead.sequence)
             outFqHandle1.write(str(read1))
     outFqHandle1.close()

@@ -25,7 +25,8 @@ cpdef int MPA2stdout(cystr inBAM)
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=?,
               bint u=?, bint coorsort=?,
               cystr sortMem=?, bint assume_sorted=?,
-              cystr tmpdir=?)
+              bint dry_run=?,
+              cystr prepend=?)
 cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:

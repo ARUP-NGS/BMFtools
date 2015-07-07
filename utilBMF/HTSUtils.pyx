@@ -579,25 +579,32 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     return outBAM
 
 
+@cython.returns(cystr)
 def PipeAlignTag(R1, R2, ref="default",
                  outBAM="default", path="default",
-                 bint coorsort=True, bint u=True,
-                 cystr sortMem="6G", cystr opts=""):
+                 bint coorsort=True, bint u=False,
+                 cystr sortMem="6G", cystr opts=None,
+                 bint dry_run=False):
     """
-    :param R1 - string - path to input fastq for read 1
-    :param R2 - string - path to input fastq for read 2
-    :param outBAM - string - path to output bam.
+    :param R1 - [cystr/arg] - path to input fastq for read 1
+    :param R2 - [cystr/arg] - path to input fastq for read 2
+    :param ref [cystr/kwarg/"default"] path to reference index base
+    :param outBAM - [cystr/kwarg/"default"] - path to output bam.
     Set to 'stdout' to emit to stdout.
-    :param u - emit uncompressed bam.
-    :param coorsort - whether or not to coordinate sort
-    :param path - path to bwa. Override default bwa on path with "path"
-    :param sortMem - string - sort memory limit to provide to samtools
-    :param ref - path to reference index base
+    :param path - [cystr/kwarg/"default"] - absolute path to bwa executable.
+    :param coorsort [bint/kwarg/True] - whether or not to coordinate sort
+    :param u [bint/kwarg/False] - emit uncompressed bam.
+    Override default bwa path (bwa) if necessary.
+    :param sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
+    :param opts - [cystr/kwarg/"-t 4 -v 1 -Y -T 0"] - optional arguments
+    to provide to bwa for alignment.
+    :param dry_run - [bint/kwarg/False] - flag to return the command string
+    rather than calling it.
     """
+    if(opts is None):
+      opts = "-t 4 -v 1 -Y -T 0"
     if(path == "default"):
         path = "bwa"
-    if(opts == ""):
-        opts = '-t 4 -v 1 -Y -T 0'
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
@@ -626,9 +633,12 @@ def PipeAlignTag(R1, R2, ref="default",
             cStr += " > %s" % outBAM
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
-    check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
-               shell=True)
-    return outBAM
+    if(dry_run):
+        return cStr
+    else:
+        check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
+                 shell=True)
+        return outBAM
 
 
 def align_bwa_mem_se(reads, ref, opts, outBAM):

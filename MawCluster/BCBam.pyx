@@ -709,18 +709,18 @@ cdef inline AlignedSegment_t TagAlignedSegment(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    FPInt = int(CommentDict["FP"])
     if(not FPInt):
         read.flag += 512
     NF = ND * 1. / FM
-    FF = np.min(FA) * 1. / FM
-    PF = np.min(PhredQuals) * 1. / np.max(PhredQuals)
+    # FF = np.min(FA) * 1. / FM
+    # PF = np.min(PhredQuals) * 1. / np.max(PhredQuals)
     AF = getAF(read)
     SF = getSF(read)
     read.set_tags([("BS", CommentDict["BS"], "Z"),
                    ("FM", FM, "i"),
                    ("PV", ",".join(PhredQuals.astype(str)), "Z"),
-                   ("FF", FF, "f"), ("PF", PF, "f"),
+                   #  ("FF", FF, "f"), ("PF", PF, "f"),
                    ("FA", ",".join(FA.astype(str)), "Z"),
                    ("FP", FPInt, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),
