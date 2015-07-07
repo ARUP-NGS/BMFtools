@@ -8,6 +8,10 @@ import ctypes
 from array import array
 from string import maketrans
 
+PH2CHR_TRANS = maketrans("".join(
+  [chr(x) for x in xrange(0, 127 - 33)]),
+                         "".join(
+  [chr(x + 33) for x in xrange(0, 127 - 33)]))
 
 cdef int * to_cstring_array(cystr input_str):
     cdef char *tmp = PyString_AsString(input_str)

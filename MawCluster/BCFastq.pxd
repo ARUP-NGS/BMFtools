@@ -21,7 +21,6 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=?)
 cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int)
 
 cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
-cdef cystr cQualArr2QualStrUnsafe(ndarray[np_int32_t, ndim=1] qualArr)
 cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr)
 
 cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr)
