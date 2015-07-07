@@ -1,6 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 # cython: cdivision=True, profile=True
-from __future__ import division
 
 """
 Contains various utilities for working with barcoded fastq files.

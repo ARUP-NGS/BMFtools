@@ -1,5 +1,4 @@
 # cython: c_string_type=str, c_string_encoding=ascii
-from __future__ import division
 import abc
 from copy import copy as ccopy
 from cytoolz import memoize, frequencies as cyfreq

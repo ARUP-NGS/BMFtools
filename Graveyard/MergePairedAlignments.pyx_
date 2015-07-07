@@ -2,7 +2,6 @@
 # cython: boundscheck=False, wraparound=False
 # distutils: sources="include/MPA.c"
 ## Standard Library module-level imports
-from __future__ import division
 import logging
 import sys
 import uuid

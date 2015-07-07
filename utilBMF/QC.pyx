@@ -1,5 +1,4 @@
 # cython: c_string_type=str, c_string_encoding=ascii
-from __future__ import division
 from operator import attrgetter as oag
 from operator import methodcaller as mc
 from subprocess import check_output, check_call
