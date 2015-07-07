@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-## Standard library imports
+# Standard library imports
 import datetime
 import logging
 import os
@@ -9,7 +9,7 @@ import uuid
 import cython
 from sys import stderr
 
-## BMFTools python imports
+# BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
 from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 from utilBMF.ArgumentSketcher import ArgumentSketcher
@@ -29,6 +29,7 @@ and samtools.
 
 #  warnings.filterwarnings('error')
 
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -39,9 +40,9 @@ def main():
     PipeParser.add_argument(
         "compression",
         help=("First letter determines compression of input."
-             "Second letter determines compression of output."
-             " (s/b for sam/bam). Add u to emit"
-             " uncompressed BAM"))
+              "Second letter determines compression of output."
+              " (s/b for sam/bam). Add u to emit"
+              " uncompressed BAM"))
     PEP8Parser = subparsers.add_parser(
         "pep8",
         description="Command for applying modified PEP8 to this code base.")
@@ -604,21 +605,23 @@ def main():
     MainSubparser.add_argument(
         "--review-dir", help="Prefix for review directory, where important re"
         "sults files will be moved at the end of analysis.")
-    MainSubparser.add_argument("--minFA", help="Minimum family members agreed on bas"
-                        "e for inclusion in variant call", type=int)
-    MainSubparser.add_argument("--picardpath", help="Path to picard jar. Required fo"
-                        "r calling PicardTools.")
+    MainSubparser.add_argument("--minFA", help="Minimum family members agreed "
+                               "on base for inclusion in variant call",
+                               type=int)
+    MainSubparser.add_argument("--picardpath", help="Path to picard jar. "
+                               "Required for calling PicardTools.")
     MainSubparser.add_argument(
         "-g", "--realigner",
         help="Select which indel realigner you wish to use. Supported: abra, "
         "GATK. Set to None to avoid realignment.")
     MainSubparser.add_argument("--gatkpath", help="Path to GATK jar. (v1.6)")
     MainSubparser.add_argument("--readLength", help="Read length",
-                        type=int)
+                               type=int)
     MainSubparser.add_argument("--experiment", "-e",
-                        help="A comma-joined list of strings with extra infor"
-                        "mation for informing analysis. Currently in beta sup"
-                        "port: ffpe, amplicon.")
+                               help="A comma-joined list of strings with "
+                                    "extrainformation for informing "
+                                    "analysis. Currently in beta support: "
+                                    "ffpe, amplicon.")
     MainSubparser.add_argument(
         "--intelDeflator",
         help="Path to intel deflator. Speeds up abra calls.")
@@ -687,12 +690,12 @@ def main():
     global ReviewDirFiles
     ReviewDirFiles = ReviewDirComponents()
 
-    #### BEGIN SETUP LOGGING
+    # BEGIN SETUP LOGGING #
     #
     # Declare logging style
     dateStr = datetime.datetime.now().strftime("%Y-%b-%d,%H-%m-%S")
     # Begin logging
-    ## Grabs first non "bmftools" and non-flag field.
+    # Grabs first non "bmftools" and non-flag field.
     basename = "bmftools_%s" % Chapman('bmfsuites')
     logbasename = basename
     if(Chapman['logfile'] != "default"):
@@ -704,7 +707,8 @@ def main():
     if(Chapman['file_prefix'] != "default"):
         logfile = os.getcwd() + "/" + Chapman['file_prefix'] + ".log"
     if(os.path.isfile(logfile)):
-        logfile = TrimExt(logfile) + "." + str(uuid.uuid4().get_hex().upper()[0:6]) + ".log"
+        logfile = TrimExt(logfile) + "." + \
+                  str(uuid.uuid4().get_hex().upper()[0:6]) + ".log"
 
     # Logger which holds both console and file loggers
     Logger.setLevel(logging.DEBUG)
@@ -725,8 +729,7 @@ def main():
 
     # File logger - outputs to log file.
 
-
-    #### END SETUP LOGGING
+    # END SETUP LOGGING #
 
     print("All logging set up!")
 
@@ -944,29 +947,35 @@ def main():
         from utilBMF.HTSUtils import ParseBed
         from subprocess import check_call
         if Chapman['aligner'] == 'bwt':
-            raise ThisIsHKMadness("Bowtie not recommended for use due to identified bugs.")
+            raise ThisIsHKMadness("Bowtie not recommended for use due to "
+                                  "identified bugs.")
         if Chapman['aligner'] == 'mem' and 'seed' in Chapman.getkeys():
             pl("WARNING: Bwa mem does not use the seed parameter, ignoring " +
                str(Chapman['seed']) + ".", level=logging.WARNING)
-        pl("Grabbing regions in input bed file that contain uniquely mapping kmers.")
-        # Loads unique kmers from each line of the (padded) bed file into a KmerFetcher
-        # HashMap object (key=inbed region, value=list of RefKmer objects) by running
-        # GetUniqueKmers (runs alignment on a fastq file of kmers built from the padded bed
-        # regions & parses its output)
+        pl("Grabbing regions in input bed file that contain uniquely mapping "
+           "kmers.")
+        # Loads unique kmers from each line of the (padded) bed file into a
+        # KmerFetcher HashMap object (key=inbed region, value=list of RefKmer
+        # objects) by running GetUniqueKmers (runs alignment on a fastq file
+        # of kmers built from the padded bed regions & parses its output)
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
-                         mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
-                         k=Chapman['kmer'], aligner=Chapman['aligner'])
+                         mismatches=Chapman['mismatches'],
+                         minMQ=Chapman['minMQ'], k=Chapman['kmer'],
+                         aligner=Chapman['aligner'])
 
         bedlines = ParseBed(Chapman['inbed'])
         for bedlineList in bedlines:
-            pl("Analyzing kmers from bed region " + bedlineList[0] + ": " + str(bedlineList[1])
-               + " - " + str(bedlineList[2]) + " with padding of " + str(Chapman['padding']))
+            pl("Analyzing kmers from bed region " + bedlineList[0] + ": " +
+               str(bedlineList[1]) + " - " + str(bedlineList[2]) +
+               " with padding of " + str(Chapman['padding']))
             # Populate unique KmerObjects per region
             KF.FillMap(bedlineList)
 
-        # Convert unique kmers to sorted/merged bedfile within the boundaries of the original bed
+        # Convert unique kmers to sorted/merged bedfile within the boundaries
+        # of the original bed
         outList = KF.GetIntervalsFromMap()
-        KF.ConvertIntervalsToBed(outList, inFile=Chapman['inbed'], outFile=Chapman['outfile'])
+        KF.ConvertIntervalsToBed(outList, inFile=Chapman['inbed'],
+                                 outFile=Chapman['outfile'])
 
     elif(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
@@ -1011,7 +1020,8 @@ def main():
         # sys.stderr.write("config repr: %s" % repr(Chapman.config))
         from utilBMF.QC import FastDOCBed, ExtendBed
         if(Chapman['bed_buffer'] != 0):
-            Chapman['bed'] = ExtendBed(Chapman['bed'], buffer=Chapman['bed_buffer'])
+            Chapman['bed'] = ExtendBed(Chapman['bed'],
+                                       buffer=Chapman['bed_buffer'])
         pl("Buffering bed by %s" % Chapman['bed_buffer'])
         outbed, fracOnTarget = FastDOCBed(Chapman['inBAM'], bed=Chapman['bed'],
                                           threads=Chapman['threads'],
