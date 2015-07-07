@@ -373,40 +373,48 @@ def main():
         metavar="inbed",
         help=("Path to input bed file defining regions where we are "
               "interested in searching for unique kmers."),
-        type=str)
+        type=str,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
         "--ref", "-r",
         metavar="ref",
         help="Path to reference file. (Must be faidx'd)",
-        type=str)
+        type=str,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
         "--aligner", "-a",
         metavar="aligner",
         help="Aligner program (e.g. takes bwa 'mem' or bowtie 'bwt').",
-        type=str)
+        type=str,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
         "-k", "--kmer", help=("Length of unique sequence groups (kmers) "
                               "to search for in the reference."),
         metavar="kmer",
-        type=int)
+        type=int,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
         "-s", "--seed", help=("Seed length (for bowtie only)"),
         metavar="seed",
-        type=int)
+        type=int,
+        required=False)
     GetUniqueKmerBedParser.add_argument(
         "--padding", "-p",
         help="Distance around the region of interest to pad.",
-        type=int)
+        type=int,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
         "--mismatches", "-m",
         metavar="mismatches",
         help="Number of allowed mismatches.",
-        type=int)
+        type=int,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
-        "--outbed", "-o",
-        metavar="outbed",
+        "--outfile", "-o",
+        metavar="outfile",
         help="Path to output bed file.",
-        type=str)
+        type=str,
+        required=True)
     GetUniqueKmerBedParser.add_argument(
         "--conf", help=("Path to a config file. If set, load arguments from "
                         "this file, overriding the defaults founds in _bmfto"
@@ -934,27 +942,31 @@ def main():
     elif(subcommand == "getuniquekmersbed"):
         from utilBMF.Uniqueness import KmerFetcher
         from utilBMF.HTSUtils import ParseBed
+        from subprocess import check_call
         if Chapman['aligner'] == 'bwt':
             raise ThisIsHKMadness("Bowtie not recommended for use due to identified bugs.")
+        if Chapman['aligner'] == 'mem' and 'seed' in Chapman.getkeys():
+            pl("WARNING: Bwa mem does not use the seed parameter, ignoring " +
+               str(Chapman['seed']) + ".", level=logging.WARNING)
+        pl("Grabbing regions in input bed file that contain uniquely mapping kmers.")
+        # Loads unique kmers from each line of the (padded) bed file into a KmerFetcher
+        # HashMap object (key=inbed region, value=list of RefKmer objects) by running
+        # GetUniqueKmers (runs alignment on a fastq file of kmers built from the padded bed
+        # regions & parses its output)
         KF = KmerFetcher(ref=Chapman['ref'], padding=Chapman['padding'],
-                         mismatches=Chapman['mismatches'], minMQ=Chapman['minMQ'],
-                         k=Chapman['kmer'], seed=Chapman['seed'], aligner=Chapman['aligner'])
+                         mismatches=Chapman['mismatches'],minMQ=Chapman['minMQ'],
+                         k=Chapman['kmer'], aligner=Chapman['aligner'])
 
         bedlines = ParseBed(Chapman['inbed'])
-        # Get's unique kmers in each line of bed file and loading it into the KmerFetcher
-        # HashMap object (key=inbed region, value=Kmer object) by running GetUniqueKmers:
-        # runs alignment on a fastq file of kmers built in the padded bed regions
-        # & parses its output
-        for line in bedlines:
-            KF.FillMap(line)
-        uniquekmerList = KF.keys()
-        print "Keys are"
-        print uniquekmerList #need to convert this to a bed file
-        print "values are"
-        print KF.values()
-        print "First key/value is"
-        print uniquekmerList[0]
-        print KF[uniquekmerList[0]]
+        for bedlineList in bedlines:
+            pl("Analyzing kmers from bed region " + bedlineList[0] + ": " + str(bedlineList[1])
+               + " - " + str(bedlineList[2]) + " with padding of " + str(Chapman['padding']))
+            # Populate unique KmerObjects per region
+            KF.FillMap(bedlineList)
+
+        # Convert unique kmers to sorted/merged bedfile within the boundaries of the original bed
+        outList = KF.GetIntervalsFromMap()
+        KF.ConvertIntervalsToBed(outList, inFile=Chapman['inbed'], outFile=Chapman['outfile'])
 
     elif(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
