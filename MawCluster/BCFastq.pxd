@@ -34,10 +34,10 @@ cdef inline bint BarcodePasses(cystr barcode, int hpLimit)
 cdef inline cystr cMakeTagComment(cystr saltedBS,
                                   pFastqProxy_t rec, int hpLimit):
     cdef bint PASS = BarcodePasses(saltedBS, hpLimit)
-    if(PASS == True):
-        return "~#!#~" + rec.comment + "|FP=IndexPass|BS=" + saltedBS
+    if(PASS):
+        return "~#!#~" + rec.comment + "|FP=0|BS=" + saltedBS
     else:
-        return "~#!#~" + rec.comment + "|FP=IndexFail|BS=" + saltedBS
+        return "~#!#~" + rec.comment + "|FP=1|BS=" + saltedBS
 
 cdef public dict Num2NucDict
 
