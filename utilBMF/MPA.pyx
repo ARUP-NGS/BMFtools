@@ -784,8 +784,22 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
 def PipeAlignTagMPA(R1, R2, ref="default",
                     outBAM=None, path="default",
                     bint coorsort=True, bint u=True,
-                    cystr sortMem="6G", cystr opts=None,
-                    cystr tmpdir="/dev/shm"):
+                    cystr sortMem="6G", cystr opts=None):
+    """
+    :param inBAM - [cystr/arg] path to input bam
+    set to "-" or "stdin" to take in stdin. This must be name-sorted.
+    :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
+    to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
+    to output to stdout.
+    :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
+    Set to true for piping for optimal efficiency.
+    :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
+    memory per thread.
+    :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
+    instead of samtools view
+    :param dry_run - [bint/kwarg/False]
+    """
+    from sys import stderr
     baseCommandString = PipeAlignTag(
         R1, R2, ref=ref, outBAM="stdout", path=path, coorsort=False, u=u,
         sortMem=sortMem, dry_run=True)
@@ -793,17 +807,7 @@ def PipeAlignTagMPA(R1, R2, ref="default",
                    prepend="%s | " % baseCommandString,
                    assume_sorted=True,
                    outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort)
-    """
-        :param inBAM - [cystr/arg] path to input bam
-        set to "-" or "stdin" to take in stdin. This must be name-sorted.
-        :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
-        to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
-        to output to stdout.
-        :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
-        Set to true for piping for optimal efficiency.
-        :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
-        memory per thread.
-        :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
-        instead of samtools view
-        :param dry_run - [bint/kwarg/False]
-    """
+    stderr.write(
+        "Massive piped shell call from dmp'd fastqs to aligned, tagged, mpa'd"
+        ", and sorted (if you want) bam: %s" % cStr)
+    check_call(cStr, shell=True, executable="/bin/bash")
