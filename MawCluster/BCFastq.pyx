@@ -100,7 +100,7 @@ def BarcodeSortBoth(cystr inFq1, cystr inFq2,
 
 @cython.locals(highMem=cython.bint)
 def BarcodeSort(cystr inFastq, cystr outFastq="default",
-                cystr mem="6G", int threads=4):
+                cystr mem="6G", int threads=1):
     cdef cystr BSstring
     pl("Sorting {} by barcode sequence.".format(inFastq))
     BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem,
@@ -114,7 +114,7 @@ def BarcodeSort(cystr inFastq, cystr outFastq="default",
 
 @cython.returns(cystr)
 def getBarcodeSortStr(inFastq, outFastq="default", mem="",
-                      int threads=4):
+                      int threads=1):
     if(mem != ""):
         mem = " -S " + mem
     threadStr = ""
