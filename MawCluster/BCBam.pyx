@@ -750,7 +750,7 @@ cdef AlignedSegment_t TagAlignedSegmentHG37(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    FPInt = int(CommentDict["FP"])
     if(not FPInt):
         read.flag += 512
     NF = ND * 1. / FM
