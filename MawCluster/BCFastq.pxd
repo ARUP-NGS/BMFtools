@@ -35,9 +35,9 @@ cdef inline cystr cMakeTagComment(cystr saltedBS,
                                   pFastqProxy_t rec, int hpLimit):
     cdef bint PASS = BarcodePasses(saltedBS, hpLimit)
     if(PASS):
-        return "~#!#~" + rec.comment + "|FP=0|BS=" + saltedBS
-    else:
         return "~#!#~" + rec.comment + "|FP=1|BS=" + saltedBS
+    else:
+        return "~#!#~" + rec.comment + "|FP=0|BS=" + saltedBS
 
 cdef public dict Num2NucDict
 
