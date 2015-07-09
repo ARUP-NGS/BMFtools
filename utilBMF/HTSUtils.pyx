@@ -13,7 +13,8 @@ from pysam.calignmentfile import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
-                                   IllegalArgumentError, PermissionException)
+                                   IllegalArgumentError, PermissionException,
+                                   UnsetRequiredParameter)
 from collections import deque
 from entropy import shannon_entropy as shen
 import copy
@@ -1361,6 +1362,25 @@ def ParseBed(cystr bedfile):
         line[2] = int(line[2])
     return bed
 
+TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
+
+
+@cython.returns(bint)
+@cython.locals(input_str=cystr)
+def to_bool(input_str):
+    return (input_str.lower() == "true")
+
+
+@cython.locals(lst=list, typechar=cystr,
+               TypeConversionDict=dict)
+def parseTuple(lst, TypeConversionDict=TypeConversionDict):
+    assert(len(lst) == 2)
+    try:
+        typechar = lst[1][0]
+    except IndexError:
+        return lst[0]  # Is a string
+    return TypeConversionDict[typechar](lst[0])
+
 
 @cython.locals(path=cystr, parsedLines=list)
 @cython.returns(dict)
@@ -2432,7 +2452,7 @@ def GetFastqPathsFromDMPCStr(cystr cStr):
     """
     return ",".join([i.replace("'", "").replace(
         "\"", "").replace(".fastq").replace(".dmp.fastq") for
-                     i in b.split(";")[1].split("(")[1].split(",")[:2]])
+                     i in cStr.split(";")[1].split("(")[1].split(",")[:2]])
 
 
 def GetParallelDMPPopen(fqPairList, sortMem=None, threads=-1,
@@ -2440,17 +2460,11 @@ def GetParallelDMPPopen(fqPairList, sortMem=None, threads=-1,
     """
     Makes a PopenDispatcher object for calling these variant callers.
     """
-    if conf == "default":
-        raise Tim("conf file must be set for GetBMFsnvPopen")
     if(threads < 0):
         raise UnsetRequiredParameter("threads must be set for"
                                      " GetParallelDMPopen.")
-    if(parallel is True):
-        SplitBamParallel(bampath, bedpath)
-    else:
-        SplitBamByBedPysam(bampath, bedpath)
-    pl("Dispatching BMF jobs")
-    return PopenDispatcher([SlaveDMPCommandString(*fqPair, head=head
+    pl("Dispatching BMF dmp jobs")
+    return PopenDispatcher([SlaveDMPCommandString(*fqPair, head=head,
                                                   sortMem=sortMem,
                                                   overlapLen=overlapLen) for
                             fqPair in fqPairList],

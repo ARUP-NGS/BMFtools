@@ -7,25 +7,6 @@ from ._bmftools_helper import defaultConfig
 from .HTSUtils import printlog as pl, parseSketchConfig
 
 
-@cython.returns(bint)
-@cython.locals(input_str=cystr)
-def to_bool(input_str):
-    return (input_str.lower() == "true")
-
-TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
-
-
-@cython.locals(lst=list, typechar=cystr,
-               TypeConversionDict=dict)
-def parseTuple(lst, TypeConversionDict=TypeConversionDict):
-    assert(len(lst) == 2)
-    try:
-        typechar = lst[1][0]
-    except IndexError:
-        return lst[0]  # Is a string
-    return TypeConversionDict[typechar](lst[0])
-
-
 class ArgumentSketcher(object):
     """
     Class made for working equally easily with config files
