@@ -538,7 +538,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
         indexRead = ifin()
         tempBar = (read1.sequence[1:head + 1] + indexRead.sequence +
                    read2.sequence[1:head + 1])
-        bin = tempBar[nbases:]
+        bin = tempBar[:nbases]
         read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
         read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
         BarcodeHandleDict1[bin].write(str(read1))

@@ -2439,13 +2439,13 @@ def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
     """
     if(overlapLen is None):
         overlapLen = 6
-    cStr = ("python -c 'from utilBMF.HTSUTils import SlaveDMP;SlaveDMP"
+    cStr = ("python -c 'from utilBMF.HTSUtils import SlaveDMP;SlaveDMP"
             "(\"%s\",\"%s\", sortMem=\"%s\"" % (bsFastq1, bsFastq2, sortMem) +
             ", overlapLen=%s, head=%s)'" % (overlapLen, head))
     FnCall = ("from utilBMF.HTSUtils import SlaveDMP;SlaveDMP("
               "\"%s\",\"%s\", sortMem=\"%s" % (bsFastq1, bsFastq2, sortMem) +
               "\", overlapLen=%s, head=%s)" % (overlapLen, head))
-    return cStr + "#" + FnCall
+    return cStr + "# " + FnCall
 
 
 @cython.returns(cystr)
