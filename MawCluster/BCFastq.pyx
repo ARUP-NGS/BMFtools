@@ -421,7 +421,8 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 
 def DispatchParallelDMP(fq1, fq2, indexFq="default",
                         int head=-1, sortMem=None, overlapLen=None,
-                        int threads=-1, int nbases=-1):
+                        int threads=-1, int nbases=-1,
+                        cystr p3Seq=None, cystr p5Seq=None):
     """
     DispatchParallelDMP prepares a PopenDispatcher instance for demultiplexing
     barcoded molecular families in parallel.
@@ -438,6 +439,8 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     :param threads [int/kwarg/-1] - Required to be > 0
     :param nbases [int/kwarg/-1] - Required to be > 0. Number of initial bases
     used to split reads into fastq files by barcode start.
+    :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
+    :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
     from subprocess import check_call
     if(nbases < 0):
@@ -464,7 +467,8 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     # background jobs.
     Dispatcher = GetParallelDMPPopen(fqPairList, sortMem=sortMem,
                                      threads=threads, head=head,
-                                     overlapLen=overlapLen)
+                                     overlapLen=overlapLen,
+                                     p3Seq=p3Seq, p5Seq=p5Seq)
     Dispatcher.daemon()
     outfqpaths = [(i.split(",")[0], i.split(",")[1]) for
                   i in Dispatcher.outstrs.itervalues()]

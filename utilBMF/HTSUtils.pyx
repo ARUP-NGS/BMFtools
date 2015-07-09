@@ -2433,19 +2433,26 @@ def SlaveDMP(bsFastq1, bsFastq2,
 @cython.returns(cystr)
 def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
                           cystr sortMem=None,
-                          overlapLen=None, head=None):
+                          overlapLen=None, head=None,
+                          p3Seq=None, p5Seq=None):
     """
     Returns a command string for calling bmftools snv
     """
     if(overlapLen is None):
         overlapLen = 6
+    if(p3Seq is None or p5Seq is None):
+        raise UnsetRequiredParameter(
+            "p3Seq and p5Seq must both be set to run SlaveDMPCommandString "
+            "because cutadapt needs this information.")
     cStr = ("python -c 'from utilBMF.HTSUtils import SlaveDMP;SlaveDMP"
             "(\"%s\",\"%s\", sortMem=\"%s\"" % (bsFastq1, bsFastq2, sortMem) +
-            ", overlapLen=%s, head=%s)'" % (overlapLen, head))
+            ", overlapLen=%s, head=%s, p3Seq=%s" % (overlapLen, head, p3Seq) +
+            ", p5Seq=%s)'" % (p3Seq, p5Seq))
     FnCall = ("from utilBMF.HTSUtils import SlaveDMP;SlaveDMP("
               "\"%s\",\"%s\", sortMem=\"%s" % (bsFastq1, bsFastq2, sortMem) +
-              "\", overlapLen=%s, head=%s)" % (overlapLen, head))
-    return cStr + "# " + FnCall
+              "\", overlapLen=%s, head=%s, p3Seq=" % (overlapLen, head) +
+              "%s, p5Seq=%s)" % p3Seq, p5Seq)
+    return cStr + " # " + FnCall
 
 
 @cython.returns(cystr)
@@ -2459,7 +2466,8 @@ def GetFastqPathsFromDMPCStr(cystr cStr):
 
 
 def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
-                        head=None, overlapLen=None):
+                        head=None, overlapLen=None, p3Seq=None,
+                        p5Seq=None):
     """
     Makes a PopenDispatcher object for calling these variant callers.
     """
@@ -2469,7 +2477,8 @@ def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
     pl("Dispatching BMF dmp jobs")
     return PopenDispatcher([SlaveDMPCommandString(*fqPair, head=head,
                                                   sortMem=sortMem,
-                                                  overlapLen=overlapLen) for
+                                                  overlapLen=overlapLen,
+                                                  p3Seq=p3Seq, p5Seq=p5Seq) for
                             fqPair in fqPairList],
                            threads=threads,
                            func=GetFastqPathsFromDMPCStr)

@@ -111,7 +111,7 @@ class FunctionCallException(Exception):
         print("Failed call: %s" % call)
         print("Message: %s" % message)
         print("Was shell: %s" % shell)
-        raise Exception(message)
+        raise self(message)
 
 
 class MissingGlobalVariable(Exception):
