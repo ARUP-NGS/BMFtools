@@ -13,8 +13,8 @@ realigner|abra,gatk|s
 inline_barcodes|False|b
 kmers_precomputed|true|b
 MaxPValue|1e-30|f
-minBQ|90|i
-minFA|4|i
+minBQ|20|i
+minFA|2|i
 minFracAgreed|0.8|f
 minMQ|1|i
 opts|-t 6 -v 1 -Y -M -T 0|s

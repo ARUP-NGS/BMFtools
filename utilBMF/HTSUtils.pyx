@@ -601,6 +601,8 @@ def PipeAlignTag(R1, R2, ref="default",
     to provide to bwa for alignment.
     :param dry_run - [bint/kwarg/False] - flag to return the command string
     rather than calling it.
+    :returns: [cystr] - path to outBAM if writing to file, "stdout" if
+    emitting to stdout.
     """
     if(opts is None):
       opts = "-t 4 -v 1 -Y -T 0"
@@ -610,6 +612,7 @@ def PipeAlignTag(R1, R2, ref="default",
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
         raise Tim("Reference file index required for alignment!")
+    PBTflag = 6 if(u) else 2
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
@@ -619,7 +622,7 @@ def PipeAlignTag(R1, R2, ref="default",
                  "t\n@PG/'")
     cStr += sedString
     cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcodeTagCO'
-             'Bam as PBT;PBT(6)\'')
+             'Bam as PBT;PBT(%s)\'' % PBTflag)
     if(coorsort):
         compStr = " -l 0 " if(u) else ""
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,

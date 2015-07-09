@@ -694,7 +694,7 @@ def main():
         help=("3' primer sequence used by cutadapt (defaults to 'default', "
               "which will not run cutadapt)"))
     SlaveDMPParser.add_argument(
-        "--head", "-h",
+        "--head",
         help=("Number of bases each from read 1 and "
               "read 2 with which to salt the molecular barcode."))
     SlaveDMPParser.add_argument(
