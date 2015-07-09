@@ -624,12 +624,12 @@ def PipeAlignTag(R1, R2, ref="default",
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
                                                               uuidvar,
                                                               compStr)
-        if(outBAM != "stdout"):
+        if(outBAM != "stdout" and outBAM != "-"):
             cStr += " -o %s" % outBAM
     else:
         cStr += (" | samtools view -Sbhu - " if(
             u) else " | samtools view -Sbh -")
-        if(outBAM != "stdout"):
+        if(outBAM != "stdout" and outBAM != "-"):
             cStr += " > %s" % outBAM
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
@@ -638,6 +638,8 @@ def PipeAlignTag(R1, R2, ref="default",
     else:
         check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
                  shell=True)
+        if(coorsort is True and outBAM != "stdout" and outBAM != "-"):
+            check_call(shlex.split("samtools index %s" % outBAM))
         return outBAM
 
 
@@ -1533,10 +1535,6 @@ def CreateIntervalsFromCounter(dict CounterObj, int minPileupLen=0,
     MergedInts.append(intval)
     print("MergedInts={}".format(MergedInts))
     return MergedInts
-
-# Storing the numconv functions for easy application.
-Base64ToInt = numconv.NumConv(64).str2int
-Int2Base64 = numconv.NumConv(64).int2str
 
 ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
 # Pre-computes

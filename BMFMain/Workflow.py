@@ -119,9 +119,55 @@ def pairedBamProc(consfq1, consfq2, opts="",
     return coorSorted
 
 
-@cython.locals(overlapLen=int,
-               stringency=float)
-def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
+def SlaveDMP(bsFastq1, bsFastq2,
+             p3Seq="default", p5Seq="default",
+             overlapLen=6, sortMem="768M", head=0):
+    sortFastq1, sortFastq2 = BCFastq.BarcodeSortBoth(bsFastq1, bsFastq2,
+                                                     sortMem=sortMem)
+    consFastq1, consFastq2 = BCFastq.pairedFastqConsolidate(sortFastq1, sortFastq2)
+    trimFastq1, trimFastq2 = BCFastq.CutadaptPaired(
+            consFastq1, consFastq2, overlapLen=overlapLen,
+            p3Seq=p3Seq, p5Seq=p5Seq)
+    return trimFastq1, trimFastq2
+
+
+def pairedFastqParallel(inFastq1, inFastq2, indexFq="default",
+                        p3Seq="default", p5Seq="default",
+                        overlapLen=6, sortMem="6G",
+                        homing=None, bcLen=-1, head=0, rescue=False,
+                        minFamRsq=10, mmRsq=1,
+                        nucsplitcount=-1):
+    pl("Beginning pairedFastqParallel for {}, {}".format(inFastq1, inFastq2))
+    if(rescue):
+        raise NotImplementedError(
+            "pairedFastqParallel does not yet support"
+            " rescue. Ask me for it!")
+    else:
+        SplitFqSets = BCFastq.PairedShadeSplitter(
+            inFastq1, inFastq2, indexFq=indexFq,
+            head=head, nucsplitcount=nucsplitcount)
+    '''
+    BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
+                                                 sortMem=sortMem)
+    BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
+        BSortFq1, BSortFq2)
+    pl("Parameters for cutadapt are p3Seq={}, p5Seq={}".format(p3Seq, p5Seq))
+    if(p3Seq != "default"):
+        pl("Running cutadapt ...")
+        BConsFastq1, BConsFastq2 = BCFastq.CutadaptPaired(
+            BConsFastq1, BConsFastq2, overlapLen=overlapLen,
+            p3Seq=p3Seq, p5Seq=p5Seq)
+    else:
+        pl("Skipping cutadapt ...")
+    # check_call(["rm", BSortFq1, BSortFq2])
+    famStats = GetFamSizeStats(
+        BConsFastq1,
+        outfile=TrimExt(inFastq1) + ".famstats.txt")
+    '''
+    return SplitFqSets
+
+
+def pairedFastqShades(inFastq1, inFastq2, indexFq="default",
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G", inline_barcodes=False,
                       homing=None, bcLen=-1, head=0, rescue=False,
@@ -144,7 +190,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
                                                  sortMem=sortMem)
     # check_call(["rm", bcFastq1, bcFastq2])
     BConsFastq1, BConsFastq2 = BCFastq.pairedFastqConsolidate(
-        BSortFq1, BSortFq2, stringency=0.9)
+        BSortFq1, BSortFq2)
     pl("Parameters for cutadapt are p3Seq={}, p5Seq={}".format(p3Seq, p5Seq))
     if(p3Seq != "default"):
         pl("Running cutadapt ...")
@@ -160,7 +206,7 @@ def pairedFastqShades(inFastq1, inFastq2, indexFq="default", stringency=0.95,
     return BConsFastq1, BConsFastq2
 
 
-def singleFastqShades(inFastq, indexFq="default", stringency=0.95,
+def singleFastqShades(inFastq, indexFq="default",
                       p3Seq="default", p5Seq="default",
                       overlapLen=6, sortMem="6G",
                       inline_barcodes=False, homing=None,
@@ -172,7 +218,7 @@ def singleFastqShades(inFastq, indexFq="default", stringency=0.95,
     else:
         bcFastq = BCFastq.TrimHomingSingle(inFastq, homing=homing, bcLen=bcLen)
     BSortFq = BCFastq.BarcodeSort(bcFastq, sortMem=sortMem)
-    BConsFastq = BCFastq.singleFastqConsolidate(BSortFq, stringency=0.9)
+    BConsFastq = BCFastq.singleFastqConsolidate(BSortFq)
     pl("Parameters for cutadapt are p3Seq={}, p5Seq".format(p3Seq, p5Seq))
     if(p3Seq != "default"):
         pl("Running cutadapt ...")

@@ -784,20 +784,27 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
 def PipeAlignTagMPA(R1, R2, ref="default",
                     outBAM=None, path="default",
                     bint coorsort=True, bint u=True,
-                    cystr sortMem="6G", cystr opts=None):
+                    cystr sortMem="6G", cystr opts=None,
+                    bint dry_run=False):
     """
-    :param inBAM - [cystr/arg] path to input bam
-    set to "-" or "stdin" to take in stdin. This must be name-sorted.
+    :param R1 - [cystr/arg] path to input R1 consolidated/adapter trimmed
+    fastq
+    :param R2 - [cystr/arg] path to input R2 consolidated/adapter trimmed
+    fastq
     :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
     to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
     to output to stdout.
+    :param ref - [cystr/kwarg/"default"] - path to reference index for
+    alignment.
+    :param path - [cystr/kwarg/"default"] - path to bwa executable for
+    alignment. 
     :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
     Set to true for piping for optimal efficiency.
     :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
     memory per thread.
     :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
     instead of samtools view
-    :param dry_run - [bint/kwarg/False]
+    :param
     """
     from sys import stderr
     baseCommandString = PipeAlignTag(
@@ -810,4 +817,7 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     stderr.write(
         "Massive piped shell call from dmp'd fastqs to aligned, tagged, mpa'd"
         ", and sorted (if you want) bam: %s" % cStr)
+    if(dry_run):
+        return cStr
     check_call(cStr, shell=True, executable="/bin/bash")
+    return outBAM

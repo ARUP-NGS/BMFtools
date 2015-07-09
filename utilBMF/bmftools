@@ -34,6 +34,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    SlaveDMPParser = subparsers.add_parser(
+        "slavedmp")
     PipeParser = subparsers.add_parser(
         "pipetagbam",
         description="Tags a BAM, taking sam/bam input/output.")
@@ -671,6 +673,33 @@ def main():
         help="Path to directory from which to search "
         "recursively for .py/.pyx/.pxd files. Defaults to './'.",
         default="./")
+    SlaveDMPParser.add_argument(
+        "bsFastq1", help="Path to fastq for read 1, barcode-sorted.")
+    SlaveDMPParser.add_argument(
+        "bsFastq2", help="Path to fastq for read 2, barcode-sorted.")
+    SlaveDMPParser.add_argument(
+        "--slave-sort-mem", "-m",
+        help="Sort memory to use for slave process.")
+    SlaveDMPParser.add_argument(
+        "-f",
+        "--p5Seq",
+        metavar="primer5Seq",
+        help=("5' primer sequence used by cutadapt (defaults to 'default', "
+              "which will run cutadapt to only trim the 3' primer sequence, "
+              "if given)"))
+    SlaveDMPParser.add_argument(
+        "-t",
+        "--p3Seq",
+        metavar="primer3Seq",
+        help=("3' primer sequence used by cutadapt (defaults to 'default', "
+              "which will not run cutadapt)"))
+    SlaveDMPParser.add_argument(
+        "--head", "-h",
+        help=("Number of bases each from read 1 and "
+              "read 2 with which to salt the molecular barcode."))
+    SlaveDMPParser.add_argument(
+        "--conf", help=("Path to config file to override default "
+                        "settings for each command-line parameter."))
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -1121,6 +1150,12 @@ def main():
                                                  "bam" if(
             bamOutput) else "sam"))
         PipeBarcodeTagCOBam()
+    if(subcommand == "slavedmp"):
+        from BMFMain.Workflow import SlaveDMP
+        SlaveDMP(Chapman['bsFastq1'], Chapman['bsFastq2'],
+                 p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
+                 sortMem=Chapman['slave_sort_mem'], head=Chapman['head'])
+        return 0
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

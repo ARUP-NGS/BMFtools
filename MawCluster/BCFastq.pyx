@@ -36,7 +36,8 @@ from utilBMF.HTSUtils import (SliceFastqProxy,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
                               hamming_cousins)
 from utilBMF import HTSUtils
-from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
+from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FunctionCallException,
+                                   UnsetRequiredParameter, ImproperArgumentError)
 try:
     from re2 import compile as regex_compile
 except ImportError:
@@ -415,6 +416,68 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
                 fq2Popen.returncode, fq2Str, "Cutadapt failed for read 2!")
 
 
+def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
+                        int head=2, int nucsplitcount=-1):
+    """
+    :param [cystr/arg] fq1 - path to read 1 fastq
+    :param [cystr/arg] fq2 - path to read 2 fastq
+    :param [cystr/kwarg/"default"] indexFq - path to index fastq
+    :param [int/kwarg/2] head - number of bases each from reads 1
+    and 2 with which to salt the barcodes.
+    :param [object/nkwarg/-1] nucsplitcount - number of nucleotides at the
+    beginning of a barcode to include in creating the output handles.
+    """
+    from utiBMF.HTSUtils import nci
+    #  C declarations
+    cdef pFastqProxy_t read1
+    cdef pFastqProxy_t read2
+    cdef pysam.cfaidx.FastqProxy indexRead
+    cdef list bcKeys
+    cdef dict BarcodeHandleDict1, BarcodeHandleDict2
+    cdef int hpLimit
+    if(nucsplitcount < 0):
+        raise UnsetRequiredParameter("nucsplitcount must be set"
+                                     " for PairedShadeSplitter.")
+    elif(nucsplitcount > 2):
+        raise ImproperArgumentError("nucsplitcount is limited to 2")
+    numHandleSets = 4 ** nucsplitcount
+    bcKeys = ["A" * (nucsplitcount - len(nci(i))) + nci(i) for
+              i in range(numHandleSets)]
+    if(indexFq is None):
+        raise UnsetRequiredParameter(
+            "indexFq required for PairedShadeSplitter.")
+    base_outfq1 = TrimExt(fq1).replace(".fastq",
+                                  "").split("/")[-1] + ".shaded."
+    base_outfq2 = TrimExt(fq2).replace(".fastq",
+                                  "").split("/")[-1] + ".shaded."
+    BarcodeHandleDict1 = {key: open(base_outfq1 + key +
+                                    ".fastq", "w") for key in bcKeys}
+    BarcodeHandleDict2 = {key: open(base_outfq2 + key +
+                                    ".fastq", "w") for key in bcKeys}
+    inFq1 = pFastqFile(fq1)
+    inFq2 = pFastqFile(fq2)
+    ifn2 = inFq2.next
+    inIndex = pysam.FastqFile(indexFq, persist=False)
+    hpLimit = len(inIndex.next().sequence) * 3 // 4
+    inIndex = pysam.FastqFile(indexFq, persist=False)
+    ifin = inIndex.next
+    numWritten = 0
+    for read1 in inFq1:
+        read2 = ifn2()
+        indexRead = ifin()
+        tempBar = (read1.sequence[1:head + 1] + indexRead.sequence +
+                   read2.sequence[1:head + 1])
+        bin = tempBar[nucsplitcount:]
+        read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
+        read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
+        BarcodeHandleDict1[bin].write(str(read1))
+        BarcodeHandleDict2[bin].write(str(read2))
+    [outHandle.close() for outHandle in BarcodeHandleDict1.itervalues()]
+    [outHandle.close() for outHandle in BarcodeHandleDict2.itervalues()]
+    return zip([i.name for i in BarcodeHandleDict1.itervalues()],
+               [j.name for j in BarcodeHandleDict2.itervalues()])
+
+
 @cython.locals(useGzip=cython.bint, hpLimit=int)
 def FastqPairedShading(fq1, fq2, indexFq="default",
                        useGzip=False, SetSize=10,
@@ -456,7 +519,7 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
         f1 = gzip.GzipFile(fileobj=cString1, mode="w")
         f2 = gzip.GzipFile(fileobj=cString2, mode="w")
     inIndex = pysam.FastqFile(indexFq, persist=False)
-    hpLimit = len(inIndex.next().sequence) * 5 // 6
+    hpLimit = len(inIndex.next().sequence) * 3 // 4
     inIndex = pysam.FastqFile(indexFq, persist=False)
     ifin = inIndex.next
     outFqSet1 = []
@@ -592,7 +655,7 @@ def GetDescriptionTagDict(readDesc):
     return tagDict
 
 
-def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
+def pairedFastqConsolidate(fq1, fq2,
                            int SetSize=100, bint parallel=True):
     """
     TODO: Unit test for this function.
@@ -605,21 +668,20 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     pl("(What that really means is that I'm running "
        "singleFastqConsolidate twice")
     if(not parallel):
-        outFq1 = singleFastqConsolidate(fq1, stringency=stringency,
+        outFq1 = singleFastqConsolidate(fq1,
                                         SetSize=SetSize)
-        outFq2 = singleFastqConsolidate(fq2, stringency=stringency,
+        outFq2 = singleFastqConsolidate(fq2,
                                         SetSize=SetSize)
     else:
         # Make background process command string
         cStr = ("python -c 'from MawCluster.BCFastq import singleFastqConsoli"
-                "date;singleFastqConsolidate(\"%s\", stringency=" % fq2 +
-                "%s, SetSize=%s);import sys;sys.exit(0)'" % (stringency,
-                                                             SetSize))
+                "date;singleFastqConsolidate(\"%s\"" % fq2 +
+                ", SetSize=%s);import sys;sys.exit(0)'" % SetSize)
         # Submit
         PFC_Call = subprocess.Popen(cStr, stderr=None, shell=True,
                                     stdout=None, stdin=None, close_fds=True)
         # Run foreground job on other read
-        outFq1 = singleFastqConsolidate(fq1, stringency=stringency,
+        outFq1 = singleFastqConsolidate(fq1,
                                         SetSize=SetSize)
         checks = 0
         # Have the other process wait until it's finished.
@@ -641,7 +703,7 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     return outFq1, outFq2
 
 
-def singleFastqConsolidate(cystr fq, float stringency=0.9,
+def singleFastqConsolidate(cystr fq,
                            int SetSize=100,
                            cython.bint onlyNumpy=True,
                            cython.bint skipFails=False):
@@ -879,7 +941,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
     ohw2 = outHandle2.write
     ih2n = inHandle2.next
     bLen = len(indexHandle.next().sequence) + 2 * head
-    hpLimit = bLen * 5 // 6  # Homopolymer limit
+    hpLimit = bLen * 3 // 4  # Homopolymer limit
     indexHandle = pFastqFile(indexFq)
     ihn = indexHandle.next
     for rec1 in inHandle1:
