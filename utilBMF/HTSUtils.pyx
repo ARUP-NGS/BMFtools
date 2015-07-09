@@ -2446,12 +2446,12 @@ def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
             "because cutadapt needs this information.")
     cStr = ("python -c 'from utilBMF.HTSUtils import SlaveDMP;SlaveDMP"
             "(\"%s\",\"%s\", sortMem=\"%s\"" % (bsFastq1, bsFastq2, sortMem) +
-            ", overlapLen=%s, head=%s, p3Seq=%s" % (overlapLen, head, p3Seq) +
-            ", p5Seq=%s)'" % (p3Seq, p5Seq))
+            ", overlapLen=%s, head=%s, p3Seq=\"" % (overlapLen, head, p3Seq) +
+            "\%s\", p5Seq=\"%s\")'" % (p3Seq, p5Seq))
     FnCall = ("from utilBMF.HTSUtils import SlaveDMP;SlaveDMP("
               "\"%s\",\"%s\", sortMem=\"%s" % (bsFastq1, bsFastq2, sortMem) +
               "\", overlapLen=%s, head=%s, p3Seq=" % (overlapLen, head) +
-              "%s, p5Seq=%s)" % p3Seq, p5Seq)
+              "\"%s\", p5Seq=\"%s\")" % (p3Seq, p5Seq))
     return cStr + " # " + FnCall
 
 
