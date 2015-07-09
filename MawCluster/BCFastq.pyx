@@ -436,6 +436,8 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     a None value for overlapLen, it defaults to 6 for the -O option for
     cutadapt.
     :param threads [int/kwarg/-1] - Required to be > 0
+    :param nbases [int/kwarg/-1] - Required to be > 0. Number of initial bases
+    used to split reads into fastq files by barcode start.
     """
     from subprocess import check_call
     if(nbases < 0):
@@ -493,7 +495,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
     beginning of a barcode to include in creating the output handles.
     """
     # Imports
-    from utiBMF.HTSUtils import nci
+    from utilBMF.HTSUtils import nci
     #  C declarations
     cdef pFastqProxy_t read1
     cdef pFastqProxy_t read2
