@@ -420,12 +420,41 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 
 
 def DispatchParallelDMP(fq1, fq2, indexFq="default",
-                        head=None, sortMem=None, overlapLen=None,
-                        threads=-1, nbases=-1):
+                        int head=-1, sortMem=None, overlapLen=None,
+                        int threads=-1, int nbases=-1):
+    """
+    DispatchParallelDMP prepares a PopenDispatcher instance for demultiplexing
+    barcoded molecular families in parallel.
+    :param fq1 [cystr/arg] - Path to read 1 fastq
+    :param fq2 [cystr/arg] - Path to read 2 fastq
+    :param indexFq [cystr/kwarg/"default"] - Path to index fastq
+    :param head [int/kwarg/-1] - Number of bases from each of
+    read 1 and read 2 with which to "salt" the barcode. Required.
+    :param sortMem [cystr/kwarg/None] - sort memory argument for each
+    slave bmftools dmp process. Defaults to 768M
+    :param overlapLen [object/kwarg/None] - If SlaveDMPCommandString receives
+    a None value for overlapLen, it defaults to 6 for the -O option for
+    cutadapt.
+    :param threads [int/kwarg/-1] - Required to be > 0
+    """
     from subprocess import check_call
-    if(threads < -0):
+    if(nbases < 0):
+        raise UnsetRequiredParameter(
+            "nbases required for DispatchParallelDMP.")
+    elif(nbases == 0):
+        raise ImproperArgumentError(
+            "nbases shouldn't be set to 0. Otherwise, we'd just "
+            "do it all in a single thread.")
+    if(head < 0):
+        raise UnsetRequiredParameter(
+            "head required for DispatchParallelDMP.")
+    if(threads < 0):
         raise UnsetRequiredParameter(
             "threads required for DispatchParallelDMP.")
+    elif(threads == 1):
+        raise ImproperArgumentError(
+            "threads shouldn't be set to 0. Otherwise, we'd just "
+            "do it all in a single thread and avoid this Popen rat's nest.")
     # Split the fastqs by the start of the barcode sequence
     fqPairList = PairedShadeSplitter(fq1, fq2, indexFq=indexFq,
                                      head=head, nbases=nbases)
@@ -436,9 +465,10 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
                                      overlapLen=overlapLen)
     Dispatcher.daemon()
     outfqpaths = [(i.split(",")[0], i.split(",")[1]) for
-              i in Dispatcher.outstrs.itervalues()]
+                  i in Dispatcher.outstrs.itervalues()]
     outfq1s = [i[0] for i in outfqpaths]
     outfq2s = [i[1] for i in outfqpaths]
+    del outfqpaths
     outfq1 = TrimExt(fq1) + ".dmp.merged.fastq"
     outfq2 = TrimExt(fq2) + ".dmp.merged.fastq"
     catStr1 = " ".join(["cat"] + outfq1s + [">", outfq1])

@@ -1362,13 +1362,13 @@ def ParseBed(cystr bedfile):
         line[2] = int(line[2])
     return bed
 
-TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
-
 
 @cython.returns(bint)
 @cython.locals(input_str=cystr)
 def to_bool(input_str):
     return (input_str.lower() == "true")
+
+TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
 
 
 @cython.locals(lst=list, typechar=cystr,
@@ -2455,7 +2455,7 @@ def GetFastqPathsFromDMPCStr(cystr cStr):
                      i in cStr.split(";")[1].split("(")[1].split(",")[:2]])
 
 
-def GetParallelDMPPopen(fqPairList, sortMem=None, threads=-1,
+def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
                         head=None, overlapLen=None):
     """
     Makes a PopenDispatcher object for calling these variant callers.
