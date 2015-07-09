@@ -119,24 +119,12 @@ def pairedBamProc(consfq1, consfq2, opts="",
     return coorSorted
 
 
-def SlaveDMP(bsFastq1, bsFastq2,
-             p3Seq="default", p5Seq="default",
-             overlapLen=6, sortMem="768M", head=0):
-    sortFastq1, sortFastq2 = BCFastq.BarcodeSortBoth(bsFastq1, bsFastq2,
-                                                     sortMem=sortMem)
-    consFastq1, consFastq2 = BCFastq.pairedFastqConsolidate(sortFastq1, sortFastq2)
-    trimFastq1, trimFastq2 = BCFastq.CutadaptPaired(
-            consFastq1, consFastq2, overlapLen=overlapLen,
-            p3Seq=p3Seq, p5Seq=p5Seq)
-    return trimFastq1, trimFastq2
-
-
 def pairedFastqParallel(inFastq1, inFastq2, indexFq="default",
                         p3Seq="default", p5Seq="default",
                         overlapLen=6, sortMem="6G",
                         homing=None, bcLen=-1, head=0, rescue=False,
                         minFamRsq=10, mmRsq=1,
-                        nucsplitcount=-1):
+                        nbases=-1):
     pl("Beginning pairedFastqParallel for {}, {}".format(inFastq1, inFastq2))
     if(rescue):
         raise NotImplementedError(
@@ -145,7 +133,7 @@ def pairedFastqParallel(inFastq1, inFastq2, indexFq="default",
     else:
         SplitFqSets = BCFastq.PairedShadeSplitter(
             inFastq1, inFastq2, indexFq=indexFq,
-            head=head, nucsplitcount=nucsplitcount)
+            head=head, nbases=nbases)
     '''
     BSortFq1, BSortFq2 = BCFastq.BarcodeSortBoth(bcFastq1, bcFastq2,
                                                  sortMem=sortMem)

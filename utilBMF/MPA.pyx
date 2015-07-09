@@ -168,8 +168,9 @@ cdef class PyLayout(object):
     cdef cystr cGetQualString(self):
         cdef py_array tmpArr
         cdef int i
-        tmpArr = array('B', [i + 33 if(i < 94) else 126 for i in self.cGetQual()])
-        return tmpArr.tostring().translate(PH2CHR_TRANS)
+        tmpArr = array('B', [i + 33 if(i < 94) else 126 for
+                             i in self.cGetQual()])
+        return tmpArr.tostring()
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()
@@ -797,7 +798,7 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     :param ref - [cystr/kwarg/"default"] - path to reference index for
     alignment.
     :param path - [cystr/kwarg/"default"] - path to bwa executable for
-    alignment. 
+    alignment.
     :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
     Set to true for piping for optimal efficiency.
     :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for

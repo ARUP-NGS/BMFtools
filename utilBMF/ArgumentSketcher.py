@@ -4,7 +4,7 @@ from warnings import warn
 
 from operator import attrgetter as oag
 from ._bmftools_helper import defaultConfig
-from .HTSUtils import printlog as pl
+from .HTSUtils import printlog as pl, parseSketchConfig
 
 
 @cython.returns(bint)
@@ -24,25 +24,6 @@ def parseTuple(lst, TypeConversionDict=TypeConversionDict):
     except IndexError:
         return lst[0]  # Is a string
     return TypeConversionDict[typechar](lst[0])
-
-
-@cython.locals(path=cystr, parsedLines=list)
-@cython.returns(dict)
-def parseSketchConfig(path):
-    """
-    Parses in a file into a dictionary of key value pairs.
-
-    Note: config style is key|value|typechar, where typechar
-    is 'b' for bool, 'f' for float, 's' for string, and 'i' for int.
-    Anything after a # character is ignored.
-    """
-    parsedLines = [l.strip().split("#")[0].split("|") for l in
-                   open(path, "r").readlines()
-                   if l[0] != "#"]
-    # Note that the key is mangled to make the key match up with
-    # argparse's name
-    return {line[0].replace(" ", "_"): parseTuple([line[1], line[2]]) for
-            line in parsedLines}
 
 
 class ArgumentSketcher(object):

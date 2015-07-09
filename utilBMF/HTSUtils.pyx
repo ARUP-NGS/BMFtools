@@ -620,7 +620,7 @@ def PipeAlignTag(R1, R2, ref="default",
     cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcodeTagCO'
              'Bam as PBT;PBT(6)\'')
     if(coorsort):
-        compStr = " -l 0 " if(coorsort) else ""
+        compStr = " -l 0 " if(u) else ""
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
                                                               uuidvar,
                                                               compStr)
@@ -1360,6 +1360,25 @@ def ParseBed(cystr bedfile):
         line[1] = int(line[1])
         line[2] = int(line[2])
     return bed
+
+
+@cython.locals(path=cystr, parsedLines=list)
+@cython.returns(dict)
+def parseSketchConfig(path):
+    """
+    Parses in a file into a dictionary of key value pairs.
+
+    Note: config style is key|value|typechar, where typechar
+    is 'b' for bool, 'f' for float, 's' for string, and 'i' for int.
+    Anything after a # character is ignored.
+    """
+    parsedLines = [l.strip().split("#")[0].split("|") for l in
+                   open(path, "r").readlines()
+                   if l[0] != "#"]
+    # Note that the key is mangled to make the key match up with
+    # argparse's name
+    return {line[0].replace(" ", "_"): parseTuple([line[1], line[2]]) for
+            line in parsedLines}
 
 
 @cython.returns(dict)
@@ -2368,6 +2387,76 @@ def SplitBamByBedPysam(bampath, bedpath):
     return bamlist
 
 
+def SlaveDMP(bsFastq1, bsFastq2,
+             p3Seq="default", p5Seq="default",
+             overlapLen=6, sortMem=None, head=None):
+    from MawCluster import BCFastq
+    outfq1 = TrimExt(bsFastq1) + ".dmp.fastq"
+    outfq2 = TrimExt(bsFastq2) + ".dmp.fastq"
+    if(sortMem is None):
+        sortMem = "768M"
+    if(head is None):
+        head = 4
+    sortFastq1, sortFastq2 = BCFastq.BarcodeSortBoth(bsFastq1, bsFastq2,
+                                                     sortMem=sortMem)
+    consFastq1, consFastq2 = BCFastq.pairedFastqConsolidate(
+        sortFastq1, sortFastq2)
+    trimFastq1, trimFastq2 = BCFastq.CutadaptPaired(
+            consFastq1, consFastq2, overlapLen=overlapLen,
+            p3Seq=p3Seq, p5Seq=p5Seq, outfq1=outfq1, outfq2=outfq2)
+    return trimFastq1, trimFastq2
+
+
+@cython.returns(cystr)
+def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
+                          cystr sortMem=None,
+                          overlapLen=None, head=None):
+    """
+    Returns a command string for calling bmftools snv
+    """
+    if(overlapLen is None):
+        overlapLen = 6
+    cStr = ("python -c 'from utilBMF.HTSUTils import SlaveDMP;SlaveDMP"
+            "(\"%s\",\"%s\", sortMem=\"%s\"" % (bsFastq1, bsFastq2, sortMem) +
+            ", overlapLen=%s, head=%s)'" % (overlapLen, head))
+    FnCall = ("from utilBMF.HTSUtils import SlaveDMP;SlaveDMP("
+              "\"%s\",\"%s\", sortMem=\"%s" % (bsFastq1, bsFastq2, sortMem) +
+              "\", overlapLen=%s, head=%s)" % (overlapLen, head))
+    return cStr + "#" + FnCall
+
+
+@cython.returns(cystr)
+def GetFastqPathsFromDMPCStr(cystr cStr):
+    """
+    Helper function for a PopenDispacher for SlaveDMPCommandString.
+    """
+    return ",".join([i.replace("'", "").replace(
+        "\"", "").replace(".fastq").replace(".dmp.fastq") for
+                     i in b.split(";")[1].split("(")[1].split(",")[:2]])
+
+
+def GetParallelDMPPopen(fqPairList, sortMem=None, threads=-1,
+                        head=None, overlapLen=None):
+    """
+    Makes a PopenDispatcher object for calling these variant callers.
+    """
+    if conf == "default":
+        raise Tim("conf file must be set for GetBMFsnvPopen")
+    if(threads < 0):
+        raise UnsetRequiredParameter("threads must be set for"
+                                     " GetParallelDMPopen.")
+    if(parallel is True):
+        SplitBamParallel(bampath, bedpath)
+    else:
+        SplitBamByBedPysam(bampath, bedpath)
+    pl("Dispatching BMF jobs")
+    return PopenDispatcher([SlaveDMPCommandString(*fqPair, head=head
+                                                  sortMem=sortMem,
+                                                  overlapLen=overlapLen) for
+                            fqPair in fqPairList],
+                           threads=threads,
+                           func=GetFastqPathsFromDMPCStr)
+
 @cython.returns(cystr)
 def BMFsnvCommandString(cystr bampath, cystr conf="default",
                         cystr bed="default"):
@@ -2410,7 +2499,7 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
     Makes a PopenDispatcher object for calling these variant callers.
     """
     if conf == "default":
-        raise Tim("conf file but be set for GetBMFsnvPopen")
+        raise Tim("conf file must be set for GetBMFsnvPopen")
     ziplist = GetBamBedList(bampath, bedpath)
     if(parallel is True):
         SplitBamParallel(bampath, bedpath)
@@ -2530,6 +2619,7 @@ def hamming_cousins(cystr s, int n=0,
     ['aaa', 'aab', 'aba', 'abb', 'baa', 'bab', 'bba']
 
     """
+    cdef int i
     return chain(*(hamming_cousins_exact(s, i, alphabet) for i
                    in range(n + 1)))
 

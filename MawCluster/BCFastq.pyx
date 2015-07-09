@@ -34,7 +34,7 @@ from numpy import sum as nsum
 from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
-                              hamming_cousins)
+                              hamming_cousins, GetParallelDMPPopen)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FunctionCallException,
                                    UnsetRequiredParameter, ImproperArgumentError)
@@ -59,8 +59,10 @@ def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
 @cython.locals(checks=int,
                parallel=cython.bint, sortMem=cystr)
 def BarcodeSortBoth(cystr inFq1, cystr inFq2,
-                    cystr sortMem="6G", cython.bint parallel=False):
+                    cystr sortMem=None, cython.bint parallel=False):
     cdef cystr outFq1, outFq2, highMemStr
+    if(sortMem is None):
+        sortMem = "6G"
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)
@@ -321,16 +323,17 @@ cdef cystr cCompareFqRecsFast(list R,
 @cython.returns(cystr)
 def CutadaptPaired(cystr fq1, cystr fq2,
                    p3Seq="default", p5Seq="default",
-                   int overlapLen=6, cython.bint makeCall=True):
+                   int overlapLen=6, cython.bint makeCall=True,
+                   outfq1=None, outfq2=None):
     """
     Returns a string which can be called for running cutadapt v.1.7.1
     for paired-end reads in a single call.
     """
-    cdef cystr outfq1
-    cdef cystr outfq2
     cdef cystr commandStr
-    outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
-    outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
+    if(outfq1 is None):
+        outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
+    if(outfq2 is None):
+        outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
     if(p3Seq == "default"):
         raise Tim("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
@@ -416,17 +419,50 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
                 fq2Popen.returncode, fq2Str, "Cutadapt failed for read 2!")
 
 
+def DispatchParallelDMP(fq1, fq2, indexFq="default",
+                        head=None, sortMem=None, overlapLen=None,
+                        threads=-1, nbases=-1):
+    from subprocess import check_call
+    if(threads < -0):
+        raise UnsetRequiredParameter(
+            "threads required for DispatchParallelDMP.")
+    # Split the fastqs by the start of the barcode sequence
+    fqPairList = PairedShadeSplitter(fq1, fq2, indexFq=indexFq,
+                                     head=head, nbases=nbases)
+    # Create the PopenDispatcher - this submits both foreground and
+    # background jobs.
+    Dispatcher = GetParallelDMPPopen(fqPairList, sortMem=sortMem,
+                                     threads=threads, head=head,
+                                     overlapLen=overlapLen)
+    Dispatcher.daemon()
+    outfqpaths = [(i.split(",")[0], i.split(",")[1]) for
+              i in Dispatcher.outstrs.itervalues()]
+    outfq1s = [i[0] for i in outfqpaths]
+    outfq2s = [i[1] for i in outfqpaths]
+    outfq1 = TrimExt(fq1) + ".dmp.merged.fastq"
+    outfq2 = TrimExt(fq2) + ".dmp.merged.fastq"
+    catStr1 = " ".join(["cat"] + outfq1s + [">", outfq1])
+    pl("About to clean up my R1 temporary files with command %s." % catStr1)
+    check_call(catStr1, shell=True, executable="/bin/bash")
+    check_call(shlex.split("rm " + " ".join(outfq1s)))
+    pl("About to clean up my R2 temporary files with command %s." % catStr1)
+    catStr2 = " ".join(["cat"] + outfq2s + [">", outfq2])
+    check_call(shlex.split("rm " + " ".join(outfq2s)))
+    return outfq1, outfq2
+
+
 def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
-                        int head=2, int nucsplitcount=-1):
+                        int head=-1, int nbases=-1):
     """
     :param [cystr/arg] fq1 - path to read 1 fastq
     :param [cystr/arg] fq2 - path to read 2 fastq
     :param [cystr/kwarg/"default"] indexFq - path to index fastq
     :param [int/kwarg/2] head - number of bases each from reads 1
     and 2 with which to salt the barcodes.
-    :param [object/nkwarg/-1] nucsplitcount - number of nucleotides at the
+    :param [object/nkwarg/-1] nbases - number of nucleotides at the
     beginning of a barcode to include in creating the output handles.
     """
+    # Imports
     from utiBMF.HTSUtils import nci
     #  C declarations
     cdef pFastqProxy_t read1
@@ -435,13 +471,16 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
     cdef list bcKeys
     cdef dict BarcodeHandleDict1, BarcodeHandleDict2
     cdef int hpLimit
-    if(nucsplitcount < 0):
-        raise UnsetRequiredParameter("nucsplitcount must be set"
+    if(head < 0):
+        raise UnsetRequiredParameter(
+            "PairedShadeSplitting requires that head be set.")
+    if(nbases < 0):
+        raise UnsetRequiredParameter("nbases must be set"
                                      " for PairedShadeSplitter.")
-    elif(nucsplitcount > 2):
-        raise ImproperArgumentError("nucsplitcount is limited to 2")
-    numHandleSets = 4 ** nucsplitcount
-    bcKeys = ["A" * (nucsplitcount - len(nci(i))) + nci(i) for
+    elif(nbases > 2):
+        raise ImproperArgumentError("nbases is limited to 2")
+    numHandleSets = 4 ** nbases
+    bcKeys = ["A" * (nbases - len(nci(i))) + nci(i) for
               i in range(numHandleSets)]
     if(indexFq is None):
         raise UnsetRequiredParameter(
@@ -467,7 +506,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
         indexRead = ifin()
         tempBar = (read1.sequence[1:head + 1] + indexRead.sequence +
                    read2.sequence[1:head + 1])
-        bin = tempBar[nucsplitcount:]
+        bin = tempBar[nbases:]
         read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
         read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
         BarcodeHandleDict1[bin].write(str(read1))

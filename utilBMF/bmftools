@@ -1151,7 +1151,7 @@ def main():
             bamOutput) else "sam"))
         PipeBarcodeTagCOBam()
     if(subcommand == "slavedmp"):
-        from BMFMain.Workflow import SlaveDMP
+        from utilBMF.HTSUtils import SlaveDMP
         SlaveDMP(Chapman['bsFastq1'], Chapman['bsFastq2'],
                  p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
                  sortMem=Chapman['slave_sort_mem'], head=Chapman['head'])
