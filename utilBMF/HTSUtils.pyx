@@ -2461,7 +2461,7 @@ def GetFastqPathsFromDMPCStr(cystr cStr):
     Helper function for a PopenDispacher for SlaveDMPCommandString.
     """
     return ",".join([i.replace("'", "").replace(
-        "\"", "").replace(".fastq").replace(".dmp.fastq") for
+        "\"", "").replace(".fastq", ".dmp.fastq") for
                      i in cStr.split(";")[1].split("(")[1].split(",")[:2]])
 
 

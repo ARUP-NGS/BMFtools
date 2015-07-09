@@ -481,8 +481,9 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     pl("About to clean up my R1 temporary files with command %s." % catStr1)
     check_call(catStr1, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq1s)))
-    pl("About to clean up my R2 temporary files with command %s." % catStr1)
     catStr2 = " ".join(["cat"] + outfq2s + [">", outfq2])
+    pl("About to clean up my R2 temporary files with command %s." % catStr2)
+    check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
     return outfq1, outfq2
 
