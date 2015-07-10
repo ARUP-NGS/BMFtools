@@ -209,7 +209,7 @@ cdef cystr cCompareFqRecsFast(list R,
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
-    After inlin
+    After inlining:
     In [21]: %timeit pCompareFqRecsFast(fam)
    1000 loops, best of 3: 518 us per loop
 
@@ -443,6 +443,8 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
     from subprocess import check_call
+    from itertools import chain
+    cfi = chain.from_iterable
     if(nbases < 0):
         raise UnsetRequiredParameter(
             "nbases required for DispatchParallelDMP.")
@@ -485,6 +487,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     pl("About to clean up my R2 temporary files with command %s." % catStr2)
     check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
+    [check_call(["rm", fqpath]) for fqpath in list(cfi(fqPairList))]
     return outfq1, outfq2
 
 
