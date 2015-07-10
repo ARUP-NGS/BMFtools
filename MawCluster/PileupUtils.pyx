@@ -336,7 +336,8 @@ cdef class AlleleAggregateInfo:
         else:
             self.MPF = nmean(PVFArray)
             self.PFSD = nstd(PVFArray)
-        self.maxND = max(rec.opt("ND") for rec in self.recList)
+        self.maxND = max(rec.opt("ND") for
+                         rec in self.recList) if(lenR != 0) else 0
 
 
 cdef class PCInfo:
