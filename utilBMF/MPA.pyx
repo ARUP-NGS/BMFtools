@@ -728,14 +728,14 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                           "Assume namesorted, as that is default, and"
                           " sort commands usually change that field "
                           "in the header.\n")
-            stderr.write()
             nso = True
+        stderr.write("Okay, I got out of this loop.")
     else:
         try:
             nso = AlignmentFile(
                 inBAM, "rb").header['HD']['SO'] == 'queryname'
         except KeyError:
-            stderr.write("Note: No SO/HD field in the bam header. "
+            warnings.warn("Note: No SO/HD field in the bam header. "
                          "Assume namesorted, as that is default, and"
                          " sort commands usually change that field "
                          "in the header.\n")
@@ -808,9 +808,11 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     :param
     """
     from sys import stderr
+    stderr.write("Getting base string.")
     baseCommandString = PipeAlignTag(
         R1, R2, ref=ref, outBAM="stdout", path=path, coorsort=False, u=u,
         sortMem=sortMem, dry_run=True)
+    stderr.write("Getting mpa string.")
     cStr = MPA2Bam("-", dry_run=True,
                    prepend="%s | " % baseCommandString,
                    assume_sorted=True,

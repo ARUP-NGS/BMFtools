@@ -167,10 +167,10 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 
 
-cdef public dict PysamToChrDict, ph2chrDict
+cdef public dict PysamToChrDict, ph2chrDict, TypeConversionDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
-cdef public dict PhageRefIDDict, TypeConversionDict
+cdef public dict PhageRefIDDict
 
 cdef class pFastqProxy:
     cdef public cystr comment, name, quality, sequence

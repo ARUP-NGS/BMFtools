@@ -4,7 +4,10 @@ from warnings import warn
 
 from operator import attrgetter as oag
 from ._bmftools_helper import defaultConfig
-from .HTSUtils import printlog as pl, parseSketchConfig
+from .HTSUtils import printlog as pl, parseSketchConfig, to_bool
+
+
+
 
 
 class ArgumentSketcher(object):

@@ -46,6 +46,7 @@ except ImportError:
 
 
 ARGMAX_TRANSLATE_STRING = maketrans('\x00\x01\x02\x03', 'ACGT')
+nucs = array('B', [65, 67, 71, 83])
 
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
@@ -157,7 +158,7 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
 
 
-cdef ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
+cdef inline ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
     cdef pFastqProxy_t rec
     return np.array([cs_to_ia(rec.sequence) for rec in R],
                     dtype=np.uint8)
@@ -165,6 +166,22 @@ cdef ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
 
 cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
+
+def InlineFisher(var):
+    return var
+
+
+cdef ndarray[np.int32_t, ndim=1] FisherFlatten(
+        ndarray[np.int32_t, ndim=2] Quals, ndarray[np.int32_t, ndim=2] Seqs,
+        size_t length):
+    cdef size_t i, j
+    cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
+    ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
+    # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 83]], dtype=np.int32)
+    # PhredC = InlineFisher(Quals[Seqs[:,i] == 67,i]])
+    # PhredG = InlineFisher(Quals[Seqs[:,i] == 71, i]])
+    # PhredT = InlineFisher(Quals[Seqs[:,i] == 83, i]])
+    return ret
 
 
 '''
@@ -196,6 +213,125 @@ cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
                 QualSumAll[base_index][0] += quals[read_index][base_index]
     return QualSumAll
 '''
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef cystr FastFisherFlattening(list R,
+                                cystr name=None,
+                                double minPVFrac=0.1,
+                                double minFAFrac=0.2,
+                                double minMaxFA=0.9):
+    """
+    TODO: Unit test for this function.
+    Calculates the most likely nucleotide
+    at each position and returns the joined record string.
+    After inlining:
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
+    """
+    cdef int lenR, ND, lenSeq, tmpInt, i
+    cdef double tmpFlt
+    cdef cython.bint Success
+    cdef cystr PVString, TagString, newSeq
+    cdef cystr consolidatedFqStr
+    # cdef char tmpChar
+    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
+    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[char, ndim=2] seqArray
+    cdef py_array tmpArr
+    cdef pFastqProxy_t rec
+    cdef char tmpChar
+    if(name is None):
+        name = R[0].name
+    lenR = len(R)
+    lenSeq = len(R[0].sequence)
+    if lenR == 1:
+        phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                     cQualArr2PVString(phredQuals))
+        return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
+                                          TagString, R[0].sequence,
+                                          R[0].quality)
+    Success = True
+    seqArray = cRecListTo2DCharArray(R)
+
+    quals = np.array([cs_to_ph(rec.quality) for
+                      rec in R], dtype=np.int32)
+    # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
+    # Let's turn them into what they should be: nothing.
+    # quals[quals < 3] = 0
+    # --- Actually ---,  it seems that the q scores of 2 are higher quality
+    # than Illumina expects them to be, so let's keep them. They should also
+    # ideally be recalibrated.
+    qualA = ccopy(quals)
+    qualC = ccopy(quals)
+    qualG = ccopy(quals)
+    qualT = ccopy(quals)
+    qualA[seqArray != 65] = 0
+    qualAFlat = FisherFlatten(qualA, seqArray, lenSeq)
+    qualAFlat = nsum(qualA, 0, dtype=np.int32)
+    qualC[seqArray != 67] = 0
+    qualCFlat = nsum(qualC, 0, dtype=np.int32)
+    qualG[seqArray != 71] = 0
+    qualGFlat = nsum(qualG, 0, dtype=np.int32)
+    qualT[seqArray != 84] = 0
+    qualTFlat = nsum(qualT, 0, dtype=np.int32)
+    qualAllSum = np.vstack(
+        [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
+    tmpArr = array('B', np.argmax(qualAllSum, 0))
+    newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
+    phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+
+    # Filtering
+    # First, kick out bad/discordant bases
+    tmpFlt = float(np.max(phredQuals))
+    PVFracDivisor = minPVFrac * tmpFlt
+    phredQuals[phredQuals < PVFracDivisor] = 0
+    # Second, flag families which are probably not really "families"
+    FA = np.array([sum([rec.sequence[i] == newSeq[i] for
+                        rec in R]) for
+                  i in xrange(lenSeq)], dtype=np.int32)
+    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA * lenR):
+        #  If there's any base on which a family agrees less often
+        #  than minFAFrac, nix the whole family.
+        #  Along with that, require that at least one of the bases agree
+        #  to some fraction. I've chosen 0.9 to get rid of junk families.
+        phredQuals[:] = 0
+    # Sums the quality score for all bases, then scales it by the number of
+    # agreed bases. There could be more informative ways to do so, but
+    # this is primarily a placeholder.
+    ND = lenR * lenSeq - nsum(FA)
+    phredQuals[phredQuals < 0] = 0
+    PVString = cQualArr2PVString(phredQuals)
+    phredQualsStr = cQualArr2QualStr(phredQuals)
+    FAString = cQualArr2FAString(FA)
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
+    '''
+    consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
+                                                   TagString,
+                                                   newSeq,
+                                                   phredQualsStr)
+    In [67]: %timeit omgzwtf = "@%s %s%s\n%s\n+\n%s\n" % (name, b.comment,
+                                                          TagString,
+                                                          newSeq,
+                                                          phredQualsStr)
+    1000000 loops, best of 3: 585 ns per loop
+    In [68]: %timeit omgzwtf = ("@" + name + " " + b.comment + TagString +
+                                "\n" + newSeq + "\n+\n%s\n" % phredQualsStr)
+    1000000 loops, best of 3: 512 ns per loop
+    '''
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
+    if(not Success):
+        return consolidatedFqStr.replace("Pass", "Fail")
+    return consolidatedFqStr
 
 
 @cython.boundscheck(False)

@@ -42,3 +42,6 @@ cdef inline cystr cMakeTagComment(cystr saltedBS,
 cdef public dict Num2NucDict
 
 cdef public cystr ARGMAX_TRANSLATE_STRING
+
+
+cdef public py_array nucs

@@ -2,4 +2,5 @@ from cython cimport bint
 cimport cython
 ctypedef cython.str cystr
 
-from utilBMF.HTSUtils cimport TypeConversionDict
+# cdef public dict TypeConversionDict
+from utilBMF.HTSUtils cimport TypeConversionDict 
