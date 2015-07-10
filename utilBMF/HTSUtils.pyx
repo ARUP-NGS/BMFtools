@@ -605,7 +605,7 @@ def PipeAlignTag(R1, R2, ref="default",
     emitting to stdout.
     """
     if(opts is None):
-      opts = "-t 4 -v 1 -Y -T 0"
+        opts = "-t 4 -v 1 -Y -T 0"
     if(path == "default"):
         path = "bwa"
     if(outBAM == "default"):
@@ -641,7 +641,7 @@ def PipeAlignTag(R1, R2, ref="default",
         return cStr
     else:
         check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
-                 shell=True)
+                   shell=True, executable="/bin/bash")
         if(coorsort is True and outBAM != "stdout" and outBAM != "-"):
             check_call(shlex.split("samtools index %s" % outBAM))
         return outBAM
@@ -2482,6 +2482,7 @@ def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
                             fqPair in fqPairList],
                            threads=threads,
                            func=GetFastqPathsFromDMPCStr)
+
 
 @cython.returns(cystr)
 def BMFsnvCommandString(cystr bampath, cystr conf="default",

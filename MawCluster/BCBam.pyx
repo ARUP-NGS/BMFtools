@@ -681,6 +681,7 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
 cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read):
     return TagAlignedSegmentHG37(read)
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=None):

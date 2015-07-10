@@ -488,18 +488,18 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     ret.List = L1[:offset]
     cdef size_t count
     for pos1 in L1[offset:]:
-      pos2 = L2[count]
-      if(pos1.operation == pos2.operation):
-          ret.List.append(cMergePositions(pos1, pos2))
-          count += 1
-      elif(pos1.operation == 68):
-        ret.List.append(pos1)
-      elif(pos2.operation == 68):
-        ret.List.append(pos2)
-        count += 1
-      else:
-        ret.List.append(cMergePositions(pos1, pos2))
-        count += 1
+        pos2 = L2[count]
+        if(pos1.operation == pos2.operation):
+            ret.List.append(cMergePositions(pos1, pos2))
+            count += 1
+        elif(pos1.operation == 68):
+            ret.List.append(pos1)
+        elif(pos2.operation == 68):
+            ret.List.append(pos2)
+            count += 1
+        else:
+            ret.List.append(cMergePositions(pos1, pos2))
+            count += 1
     ret.List += L2[count:]
     ret.Bool = True
     return ret
@@ -706,8 +706,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     Set to true for piping for optimal efficiency.
     :param sortMem - [cystr/kwarg/"6G"] - string to pass to samtools sort for
     memory per thread.
-    :param coorsort - [cystr/kwarg/False] - set to True to pipe to samtools sort
-    instead of samtools view
+    :param coorsort - [cystr/kwarg/False] - set to True to pipe to samtools
+    sort instead of samtools view
     :param dry_run - [bint/kwarg/False] - set to True to returnt the command
     string rather than executing it.
     """
@@ -765,7 +765,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     if(outBAM == "stdout" or outBAM == "-"):
         pl("Emitting to stdout.")
         if(dry_run):
-          return cStr
+            return cStr
         check_call(cStr, shell=True)
         return outBAM
     elif(outBAM is None):

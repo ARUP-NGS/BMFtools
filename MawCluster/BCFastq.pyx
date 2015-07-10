@@ -36,8 +36,8 @@ from utilBMF.HTSUtils import (SliceFastqProxy,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
                               hamming_cousins, GetParallelDMPPopen)
 from utilBMF import HTSUtils
-from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FunctionCallException,
-                                   UnsetRequiredParameter, ImproperArgumentError)
+from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
+from utilBMF.ErrorHandling import UnsetRequiredParameter, ImproperArgumentError
 try:
     from re2 import compile as regex_compile
 except ImportError:
@@ -523,9 +523,9 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
         raise UnsetRequiredParameter(
             "indexFq required for PairedShadeSplitter.")
     base_outfq1 = TrimExt(fq1).replace(".fastq",
-                                  "").split("/")[-1] + ".shaded."
+                                       "").split("/")[-1] + ".shaded."
     base_outfq2 = TrimExt(fq2).replace(".fastq",
-                                  "").split("/")[-1] + ".shaded."
+                                       "").split("/")[-1] + ".shaded."
     BarcodeHandleDict1 = {key: open(base_outfq1 + key +
                                     ".fastq", "w") for key in bcKeys}
     BarcodeHandleDict2 = {key: open(base_outfq2 + key +
@@ -1062,8 +1062,7 @@ cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
     return cMakeTagComment(saltedBS, rec, hpLimit)
 
 
-
 cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
     return not ("N" in barcode or "A" * hpLimit in barcode or
-       "C" * hpLimit in barcode or
-       "G" * hpLimit in barcode or "T" * hpLimit in barcode)
+                "C" * hpLimit in barcode or
+                "G" * hpLimit in barcode or "T" * hpLimit in barcode)
