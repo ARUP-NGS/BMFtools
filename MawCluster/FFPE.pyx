@@ -24,10 +24,6 @@ from utilBMF.HTSUtils import (printlog as pl,
                               NameSortAndFixMate, makeinfodict,
                               MakeVCFProxyDeaminationFilter,
                               __version__ as BMFVersion)
-cimport pysam.ctabixproxies
-cimport numpy as np
-cimport cython
-from utilBMF.HTSUtils cimport cystr
 
 
 """

@@ -2,6 +2,8 @@ cimport cython
 cimport pysam.calignmentfile
 cimport pysam.calignedsegment
 cimport pysam.cfaidx
+cimport numpy as np
+cimport utilBMF.HTSUtils
 from cython cimport bint
 from cpython cimport array
 from libc.stdint cimport *
@@ -22,6 +24,7 @@ ctypedef TagBamPipe TagBamPipe_t
 ctypedef BamPipe BamPipe_t
 ctypedef struct_str struct_str_t
 ctypedef array.array py_array
+ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 
 import cython
 

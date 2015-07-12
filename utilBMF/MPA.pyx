@@ -20,8 +20,7 @@ from pysam import AlignmentFile
 from .HTSUtils import (TrimExt, printlog as pl, BamTag, ReadsOverlap,
                        PipeAlignTag)
 from .ErrorHandling import ImproperArgumentError, ThisIsMadness as Tim
-
-cimport cython
+from .ErrorHandling import AbortMission
 
 # DEFINES
 oagtag = oag("tag")
@@ -721,6 +720,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         inBAM = "-"
         pl("Now calling MPA2Bam, taking input from stdin.")
         try:
+            if(assume_sorted):
+                raise AbortMission("Skip this.")
             tmp = AlignmentFile(
                 inBAM, "rb")
             nso = (tmp.header['HD']['SO'] == 'queryname')
@@ -731,9 +732,13 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                           " sort commands usually change that field "
                           "in the header.\n")
             nso = True
+        except AbortMission:
+            nso = True
         stderr.write("Okay, I got out of this loop.")
     else:
         try:
+            if(assume_sorted):
+                raise AbortMission("Skip this.")
             tmp = AlignmentFile(
                 inBAM, "rb")
             nso = (tmp.header['HD']['SO'] == 'queryname')
@@ -743,6 +748,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                          "Assume namesorted, as that is default, and"
                          " sort commands usually change that field "
                          "in the header.\n")
+            nso = True
+        except AbortMission:
             nso = True
     if(nso is False):
         if not assume_sorted:
@@ -819,8 +826,8 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     stderr.write("Getting mpa string.")
     cStr = MPA2Bam("-", dry_run=True,
                    prepend="%s | " % baseCommandString,
-                   assume_sorted=True,
-                   outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort)
+                   outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort,
+                   assume_sorted=True)
     stderr.write(
         "Massive piped shell call from dmp'd fastqs to aligned, tagged, mpa'd"
         ", and sorted (if you want) bam: %s" % cStr)

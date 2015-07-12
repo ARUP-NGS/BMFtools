@@ -1,10 +1,12 @@
-cimport pysam.calignmentfile
+cimport cython
+cimport numpy as np
 cimport pysam.calignedsegment
+cimport pysam.calignmentfile
 cimport pysam.ctabixproxies
 from cpython cimport array
-ctypedef array.array py_array
 from cython cimport bint
 from utilBMF.HTSUtils cimport cystr
+ctypedef array.array py_array
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 
 cdef AlignedSegment_t AmpliconTrimRead(AlignedSegment_t rec, int primerLen)

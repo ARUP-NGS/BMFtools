@@ -39,11 +39,7 @@ from utilBMF import HTSUtils
 from warnings import warn
 import SecC
 
-cimport numpy as np
-cimport cython
 
-cimport utilBMF.HTSUtils
-ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")

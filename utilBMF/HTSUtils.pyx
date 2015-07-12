@@ -9,7 +9,7 @@ from numpy import (any as npany, concatenate as nconcatenate, less as nless,
                    max as nmax, mean as nmean, min as nmin)
 from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from os import path as ospath
-from pysam.calignmentfile import AlignedSegment as pAlignedSegment
+from pysam.calignedsegment import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
