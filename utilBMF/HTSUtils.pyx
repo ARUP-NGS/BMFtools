@@ -638,7 +638,7 @@ def PipeAlignTag(R1, R2, ref="default",
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
     if(dry_run):
-        return cStr
+        return cStr.replace("\n", "\\n").replace("\t", "\\t")
     else:
         check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
                    shell=True, executable="/bin/bash")

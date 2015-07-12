@@ -22,7 +22,7 @@ ctypedef PyLayout PyLayout_t
 ctypedef LayoutPos LayoutPos_t
 ctypedef utilBMF.HTSUtils.BamTag BamTag_t
 
-cpdef int MPA2stdout(cystr inBAM)
+cpdef cystr MPA2stdout(cystr inBAM)
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=?,
               bint u=?, bint coorsort=?,
               cystr sortMem=?, bint assume_sorted=?,

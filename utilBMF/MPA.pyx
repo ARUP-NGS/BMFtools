@@ -626,7 +626,7 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
 
 
-cpdef int MPA2stdout(cystr inBAM):
+cpdef cystr MPA2stdout(cystr inBAM):
     """
     :param inBAM - path to input bam. Set to "stdin"
     :param tmpFileName - must be provided to facilitate merging streams.
@@ -687,7 +687,7 @@ cpdef int MPA2stdout(cystr inBAM):
     stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
     stderr.write("Successfully merged: %s\n" % (success_merged_count))
     stderr.write("Tried but failed to merge: %s\n" % (failed_to_merge_count))
-    return 0
+    return "Success!"
 
 
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
@@ -787,6 +787,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                  " %s\n" % cStr)
     stderr.write("Writing to file (user-specified): '%s'\n" % outBAM)
     cStr += " > %s" % outBAM
+    cStr = prepend + cStr
     if(dry_run):
         return cStr
     check_call(cStr, shell=True, executable="/bin/bash")
