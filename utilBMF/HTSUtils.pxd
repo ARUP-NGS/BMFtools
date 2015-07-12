@@ -17,7 +17,7 @@ ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
 ctypedef pFastqProxy pFastqProxy_t
 ctypedef pysam.cfaidx.FastqProxy FastqProxy_t
 
-cimport pysam.TabProxies
+cimport pysam.ctabixproxies
 ctypedef pysam.calignmentfile.PileupRead cPileupRead
 ctypedef Insertion Insertion_t
 ctypedef Deletion Deletion_t

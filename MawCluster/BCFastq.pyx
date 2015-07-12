@@ -177,10 +177,10 @@ cdef ndarray[np.int32_t, ndim=1] FisherFlatten(
     cdef size_t i, j
     cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
     ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
-    # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 83]], dtype=np.int32)
+    # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 84]], dtype=np.int32)
     # PhredC = InlineFisher(Quals[Seqs[:,i] == 67,i]])
     # PhredG = InlineFisher(Quals[Seqs[:,i] == 71, i]])
-    # PhredT = InlineFisher(Quals[Seqs[:,i] == 83, i]])
+    # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
     return ret
 
 

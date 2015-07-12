@@ -16,6 +16,7 @@ from MawCluster.BCBam cimport AStostring
 
 ctypedef cython.str cystr
 ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 
 ctypedef PyLayout PyLayout_t
 ctypedef LayoutPos LayoutPos_t

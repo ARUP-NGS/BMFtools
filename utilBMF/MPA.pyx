@@ -721,8 +721,10 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         inBAM = "-"
         pl("Now calling MPA2Bam, taking input from stdin.")
         try:
-            nso = AlignmentFile(
-                "-", "rb").header['HD']['SO'] == 'queryname'
+            tmp = AlignmentFile(
+                inBAM, "rb")
+            nso = (tmp.header['HD']['SO'] == 'queryname')
+            tmp.close()
         except KeyError:
             warnings.warn("Note: No SO/HD field in the bam header. "
                           "Assume namesorted, as that is default, and"
@@ -732,8 +734,10 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         stderr.write("Okay, I got out of this loop.")
     else:
         try:
-            nso = AlignmentFile(
-                inBAM, "rb").header['HD']['SO'] == 'queryname'
+            tmp = AlignmentFile(
+                inBAM, "rb")
+            nso = (tmp.header['HD']['SO'] == 'queryname')
+            tmp.close()
         except KeyError:
             warnings.warn("Note: No SO/HD field in the bam header. "
                          "Assume namesorted, as that is default, and"
@@ -748,9 +752,9 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         else:
             stderr.write("Sort order unset or set to coordinate. "
                          "Assuming sorted.")
+    stderr.write("Hey, let's see if testing the stream was the problem.")
     cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout;"
             "sys.exit(MPA2stdout(\"%s\"));'" % inBAM)
-    stderr.write("About to call %s to prepare mpa output." % cStr)
     if(coorsort is False):
         if(u):
             cStr += "| samtools view -Sbhu - "

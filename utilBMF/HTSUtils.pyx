@@ -1963,7 +1963,7 @@ def SWRealignAS(AlignedSegment_t read,
 
 
 @cython.returns(dict)
-def makeinfodict(pysam.TabProxies.VCFProxy rec):
+def makeinfodict(pysam.ctabixproxies.VCFProxy rec):
     """
     Returns a dictionary of info fields for a tabix VCF Proxy
     """
@@ -1971,7 +1971,7 @@ def makeinfodict(pysam.TabProxies.VCFProxy rec):
 
 
 @cython.returns(dict)
-def makeformatdict(pysam.TabProxies.VCFProxy rec):
+def makeformatdict(pysam.ctabixproxies.VCFProxy rec):
     """
     Returns a dictionary of format fields for a tabix VCF Proxy
     """
@@ -1979,7 +1979,7 @@ def makeformatdict(pysam.TabProxies.VCFProxy rec):
 
 
 @cython.returns(bint)
-def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
+def DeaminationConfTest(pysam.ctabixproxies.VCFProxy rec,
                         np.longdouble_t ctfreq=-1., np.longdouble_t conf=1e-3):
     """
     Tests whether or not a given record should pass.
@@ -2046,8 +2046,8 @@ class AbstractVCFProxyFilter(object):
         self.key = key
         self.value = value
 
-    @cython.returns(pysam.TabProxies.VCFProxy)
-    def __call__(self, pysam.TabProxies.VCFProxy rec):
+    @cython.returns(pysam.ctabixproxies.VCFProxy)
+    def __call__(self, pysam.ctabixproxies.VCFProxy rec):
         """
         You can specify multiple info tags with their values
         so long as you have comma-separated fields of equal length

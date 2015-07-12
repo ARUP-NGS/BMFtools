@@ -1,5 +1,6 @@
 cimport cython
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport pysam.cfaidx
 from cython cimport bint
 from cpython cimport array
@@ -10,9 +11,9 @@ from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
 from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport struct_str
-from pysam.calignmentfile cimport pysam_get_l_qname
+from pysam.calignedsegment cimport pysam_get_l_qname
 from pysam.csamtools cimport bam1_t
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 ctypedef cython.str cystr
