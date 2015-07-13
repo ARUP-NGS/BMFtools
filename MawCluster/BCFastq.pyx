@@ -566,7 +566,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 
 def DispatchParallelDMP(fq1, fq2, indexFq="default",
                         int head=-1, sortMem=None, overlapLen=None,
-                        int threads=-1, int nbases=-1,
+                        int threads=-1, int num_nucs=-1,
                         cystr p3Seq=None, cystr p5Seq=None):
     """
     DispatchParallelDMP prepares a PopenDispatcher instance for demultiplexing
@@ -582,7 +582,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     a None value for overlapLen, it defaults to 6 for the -O option for
     cutadapt.
     :param threads [int/kwarg/-1] - Required to be > 0
-    :param nbases [int/kwarg/-1] - Required to be > 0. Number of initial bases
+    :param num_nucs [int/kwarg/-1] - Required to be > 0. Number of initial bases
     used to split reads into fastq files by barcode start.
     :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
@@ -590,12 +590,12 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     from subprocess import check_call
     from itertools import chain
     cfi = chain.from_iterable
-    if(nbases < 0):
+    if(num_nucs < 0):
         raise UnsetRequiredParameter(
-            "nbases required for DispatchParallelDMP.")
-    elif(nbases == 0):
+            "num_nucs required for DispatchParallelDMP.")
+    elif(num_nucs == 0):
         raise ImproperArgumentError(
-            "nbases shouldn't be set to 0. Otherwise, we'd just "
+            "num_nucs shouldn't be set to 0. Otherwise, we'd just "
             "do it all in a single thread.")
     if(head < 0):
         raise UnsetRequiredParameter(
@@ -609,7 +609,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
             "do it all in a single thread and avoid this Popen rat's nest.")
     # Split the fastqs by the start of the barcode sequence
     fqPairList = PairedShadeSplitter(fq1, fq2, indexFq=indexFq,
-                                     head=head, nbases=nbases)
+                                     head=head, num_nucs=num_nucs)
     # Create the PopenDispatcher - this submits both foreground and
     # background jobs.
     Dispatcher = GetParallelDMPPopen(fqPairList, sortMem=sortMem,
@@ -637,14 +637,14 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
 
 
 def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
-                        int head=-1, int nbases=-1):
+                        int head=-1, int num_nucs=-1):
     """
     :param [cystr/arg] fq1 - path to read 1 fastq
     :param [cystr/arg] fq2 - path to read 2 fastq
     :param [cystr/kwarg/"default"] indexFq - path to index fastq
     :param [int/kwarg/2] head - number of bases each from reads 1
     and 2 with which to salt the barcodes.
-    :param [object/nkwarg/-1] nbases - number of nucleotides at the
+    :param [object/nkwarg/-1] num_nucs - number of nucleotides at the
     beginning of a barcode to include in creating the output handles.
     """
     # Imports
@@ -659,13 +659,13 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
     if(head < 0):
         raise UnsetRequiredParameter(
             "PairedShadeSplitting requires that head be set.")
-    if(nbases < 0):
-        raise UnsetRequiredParameter("nbases must be set"
+    if(num_nucs < 0):
+        raise UnsetRequiredParameter("num_nucs must be set"
                                      " for PairedShadeSplitter.")
-    elif(nbases > 2):
-        raise ImproperArgumentError("nbases is limited to 2")
-    numHandleSets = 4 ** nbases
-    bcKeys = ["A" * (nbases - len(nci(i))) + nci(i) for
+    elif(num_nucs > 2):
+        raise ImproperArgumentError("num_nucs is limited to 2")
+    numHandleSets = 4 ** num_nucs
+    bcKeys = ["A" * (num_nucs - len(nci(i))) + nci(i) for
               i in range(numHandleSets)]
     if(indexFq is None):
         raise UnsetRequiredParameter(
@@ -691,7 +691,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
         indexRead = ifin()
         tempBar = (read1.sequence[1:head + 1] + indexRead.sequence +
                    read2.sequence[1:head + 1])
-        bin = tempBar[:nbases]
+        bin = tempBar[:num_nucs]
         read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
         read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
         BarcodeHandleDict1[bin].write(str(read1))
