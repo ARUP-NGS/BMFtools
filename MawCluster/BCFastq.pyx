@@ -171,9 +171,16 @@ def InlineFisher(var):
     return var
 
 
-cdef ndarray[np.int32_t, ndim=1] FisherFlatten(
+cdef class SeqQual:
+    def __init__(self, py_array Seq, py_array Qual):
+        self.Seq = Seq
+        self.Qual = Qual
+
+
+cdef SeqQual_t FisherFlatten(
         ndarray[np.int32_t, ndim=2] Quals, ndarray[np.int32_t, ndim=2] Seqs,
         size_t length):
+    '''
     cdef size_t i, j
     cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
     ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
@@ -182,6 +189,8 @@ cdef ndarray[np.int32_t, ndim=1] FisherFlatten(
     # PhredG = InlineFisher(Quals[Seqs[:,i] == 71, i]])
     # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
     return ret
+    '''
+
 
 
 '''
