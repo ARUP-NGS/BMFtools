@@ -180,6 +180,8 @@ cdef class SeqQual:
 cdef SeqQual_t FisherFlatten(
         ndarray[np.int32_t, ndim=2] Quals, ndarray[np.int32_t, ndim=2] Seqs,
         size_t length):
+    cdef SeqQual_t ret = SeqQual()
+
     '''
     cdef size_t i, j
     cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
@@ -632,7 +634,10 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     pl("About to clean up my R2 temporary files with command %s." % catStr2)
     check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
-    [check_call(["rm", fqpath]) for fqpath in list(cfi(fqPairList))]
+    [check_call(["rm", fqpath]) for fqpath in
+     list(cfi([(fqpath, fqpath.replace(".dmp.fastq", "BS.fastq"),
+                fqpath.replace(".dmp.fastq", "BS.cons.fastq")) for
+               fqpath in list(cfi(fqPairList))]))]
     return outfq1, outfq2
 
 
