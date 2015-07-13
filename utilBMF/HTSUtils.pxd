@@ -19,7 +19,7 @@ ctypedef pFastqProxy pFastqProxy_t
 ctypedef pysam.cfaidx.FastqProxy FastqProxy_t
 
 cimport pysam.ctabixproxies
-ctypedef pysam.calignmentfile.PileupRead cPileupRead
+ctypedef pysam.calignedsegment.PileupRead cPileupRead
 ctypedef Insertion Insertion_t
 ctypedef Deletion Deletion_t
 ctypedef AbstractIndelContainer AbstractIndelContainer_t

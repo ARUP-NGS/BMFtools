@@ -1136,7 +1136,7 @@ cdef class pPileupRead:
     Python container for the PileupRead proxy in pysam
     """
 
-    def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
+    def __init__(self, pysam.calignedsegment.PileupRead PileupRead):
         cdef ndarray[np_int32_t, ndim=1] BQs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel

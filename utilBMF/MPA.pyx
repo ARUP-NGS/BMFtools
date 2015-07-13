@@ -311,11 +311,7 @@ cdef class PyLayout(object):
     @cython.returns(py_array)
     def getOperations(self):
         """
-        In [15]: %timeit [chr(p.operation) for p in l1.positions]
-        100000 loops, best of 3: 9.35 us per loop
-
-        In [16]: %timeit map(chr, [p.operation for p in l1.positions])
-        100000 loops, best of 3: 8.69 us per loop
+        Returns a list of operation objects in a char array.
         """
         cdef LayoutPos_t pos
         # Skip this operation if the operation is 83"
