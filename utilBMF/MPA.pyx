@@ -735,9 +735,9 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
             tmp.close()
         except KeyError:
             warnings.warn("Note: No SO/HD field in the bam header. "
-                         "Assume namesorted, as that is default, and"
-                         " sort commands usually change that field "
-                         "in the header.\n")
+                          "Assume namesorted, as that is default, and"
+                          " sort commands usually change that field "
+                          "in the header.\n")
             nso = True
         except AbortMission:
             nso = True

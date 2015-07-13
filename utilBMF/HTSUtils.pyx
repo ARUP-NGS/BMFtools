@@ -1147,8 +1147,7 @@ cdef class pPileupRead:
         BQs = PileupRead.alignment.opt("PV")
         self.AF = PileupRead.alignment.opt("AF")
         self.BQ = BQs[self.query_position]
-        self.FA = int(self.alignment.opt(
-            "FA").split(",")[self.query_position])
+        self.FA = self.alignment.opt("FA")[self.query_position]
         self.MBQ = nmax(BQs)
 
     cpdef object opt(self, cystr arg):

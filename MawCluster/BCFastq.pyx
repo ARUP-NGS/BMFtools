@@ -582,8 +582,8 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     a None value for overlapLen, it defaults to 6 for the -O option for
     cutadapt.
     :param threads [int/kwarg/-1] - Required to be > 0
-    :param num_nucs [int/kwarg/-1] - Required to be > 0. Number of initial bases
-    used to split reads into fastq files by barcode start.
+    :param num_nucs [int/kwarg/-1] - Required to be > 0. Number of initial
+    bases to use to split reads into fastq files by barcode start.
     :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
