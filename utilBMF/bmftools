@@ -231,16 +231,15 @@ def main():
         "--overlapLen", "-l",
         help="Integer to pass to cutadapt for minimum overlap length. Default: 6"
     )
-    DMultiPlexParser
-    alignTagBamParser.add_argument(
-        "inFqs",
-        nargs="+",
-        help="Input Fastq Files")
     DMultiPlexParser.add_argument(
         "-m", "--slave-sort-mem",
         help=("Memory string to pass to GNU sort for "
               "fastq sorting for slave processes.")
     )
+    alignTagBamParser.add_argument(
+        "inFqs",
+        nargs="+",
+        help="Input Fastq Files")
     alignTagBamParser.add_argument(
         "-b",
         "--bed",
@@ -251,7 +250,7 @@ def main():
         "-r",
         "--ref",
         metavar="ref",
-        help="Reference FASTA to align fastqs to")
+        help="Path to eference FASTA to which to align reads.")
     alignTagBamParser.add_argument(
         "-a",
         "--aligner",
@@ -714,6 +713,28 @@ def main():
     SlaveDMPParser.add_argument(
         "--conf", help=("Path to config file to override default "
                         "settings for each command-line parameter."))
+    PipeAlignTagMergeParser.add_argument(
+        "inFqs",
+        nargs="+",
+        help="Input Fastq Files")
+    PipeAlignTagMergeParser.add_argument(
+        "-o", "--outBAM",
+        help=("Path to output BAM. Leave unset to default to a variation"
+              " on the input fastq names. Set to stdout for stdout.")
+    )
+    PipeAlignTagMergeParser.add_argument(
+        "-r",
+        "--ref",
+        help="Path to reference FASTA to which to align reads.")
+    PipeAlignTagMergeParser.add_argument(
+        "-u",
+        "--uncompressed-bam",
+        help="Set to true to emit uncompressed bam output.",
+        action="store_true")
+    PipeAlignTagMergeParser.add_argument(
+        "--coorsort", "-s",
+        help="Set to true to emit uncompressed bam output.",
+        action="store_true")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -1185,10 +1206,12 @@ def main():
         from utilBMF.MPA import PipeAlignTagMPA
         R1 = Chapman['inFqs'][0]
         R2 = Chapman['inFqs'][1]
-        outBAM = TrimExt(R1) + ".tag.mpa.bam"
-        PipeAlignTagMPA(R1, R2, outBAM=outBAM, coorsort=Chapman['coorsort'],
-                        u=Chapman["uncompressed_bam"], ref=Chapman['ref'])
-
+        outBAM = Chapman['outBAM']
+        outBAM = PipeAlignTagMPA(R1, R2, outBAM=outBAM,
+                                 coorsort=Chapman['coorsort'],
+                                 u=Chapman["uncompressed_bam"],
+                                 ref=Chapman['ref'])
+        return 0
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0
