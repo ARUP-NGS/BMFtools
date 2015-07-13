@@ -1137,7 +1137,7 @@ cdef class pPileupRead:
     """
 
     def __init__(self, pysam.calignedsegment.PileupRead PileupRead):
-        cdef ndarray[np_int32_t, ndim=1] BQs
+        cdef py_array BQs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
         self.level = PileupRead.level
