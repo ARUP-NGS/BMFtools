@@ -3055,7 +3055,7 @@ cdef class IDVCFLine(object):
     support a variant call.
     """
     def __init__(self, AbstractIndelContainer_t IC, IndelQuiver_t quiver=None):
-        cdef pysam.calignmentfile.PileupColumn PileupCol
+        cdef pysam.calignedsegment.PileupColumn PileupCol
         cdef pysam.calignmentfile.IteratorColumnRegion pileupIt
         cdef int tmpCov
         cdef float MDP

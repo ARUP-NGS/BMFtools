@@ -76,7 +76,7 @@ def SNVCrawler(inBAM,
     cdef cystr VCFLineString, VCFString
     cdef pysam.calignmentfile.IteratorColumnRegion ICR
     cdef pysam.calignmentfile.IteratorColumnAllRefs ICAR
-    cdef pysam.calignmentfile.PileupColumn PILEUP_COLUMN
+    cdef pysam.calignedsegment.PileupColumn PILEUP_COLUMN
 #   cdef pysam.calignmentfile.AlignmentFile discPairHandle, inHandle
     cdef pysam.cfaidx.FastaFile refHandle
     cdef list line, discReads, VCFLines, bedlines
@@ -201,7 +201,7 @@ def SNVCrawler(inBAM,
 
 
 @cython.returns(cystr)
-def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
+def PileupItToVCFLines(pysam.calignedsegment.PileupColumn PileupCol,
                        int minMQ=-1, int minBQ=-1,
                        cystr experiment="",
                        int minFA=-1, float minFracAgreed=-1.,
@@ -276,7 +276,7 @@ def IteratorColumnRegionToStr(
         pysam.cfaidx.FastaFile refHandle=None,
         cython.bint keepConsensus=True,
         cystr reference="default"):
-    cdef pysam.calignmentfile.PileupColumn psPileupColumn
+    cdef pysam.calignedsegment.PileupColumn psPileupColumn
     cdef list VCFLines, discReads, allDiscReads
     if(puEnd < 0):
         raise ThisIsMadness("Need final entry in bed line to do ICR->VCF")
