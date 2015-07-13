@@ -91,18 +91,12 @@ cdef class PyLayout(object):
     string agreement.
     Unfortunately, this only works on 64-bit systems, as the hash function
     is different for 32-bit systems.
-    >>> from sys import maxint
-    >>> from pysam import AlignmentFile as af
-    >>> handle = af("utilBMF/example.bam", "rb")
-    >>> returnStr = str(Layout.fromread(handle.next()))
-    >>> hashreturn = -8225309399721982299
-    >>> hash(returnStr)
-    -8225309399721982299
     """
 
     @classmethod
-    def fromread(cls, pysam.calignedsegment.AlignedSegment rec):
-        return cls(*makeLayoutTuple(rec))
+    def fromread(cls, pysam.calignedsegment.AlignedSegment rec,
+                 pysam.calignmentfile.AlignmentFile handle):
+        return cls(*makeLayoutTuple(rec, handle))
 
     def __getitem__(self, index):
         return self.positions[index]
@@ -375,14 +369,15 @@ cdef class PyLayout(object):
                 self.get_tag_strings()) + "\n"
 
     def __init__(self, pysam.calignedsegment.AlignedSegment rec,
-                 list layoutPositions, int firstMapped):
+                 list layoutPositions, int firstMapped,
+                 pysam.calignmentfile.AlignmentFile handle):
         cdef tuple tag
         self.mapq = rec.mapq
         self.positions = layoutPositions
         self.firstMapped = firstMapped
         self.InitPos = rec.pos
         self.Name = rec.query_name
-        self.contig = PysamToChrInline(rec.reference_id)
+        self.contig = handle.getrname(rec.reference_id)
         self.flag = rec.flag
         self.aend = rec.aend
         # When the get_tags(with_value_type=True) is implemented,
@@ -394,7 +389,7 @@ cdef class PyLayout(object):
         # the type beforehand. (IE, get rid of the type dict)
         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
                         in rec.get_tags() if tag[0] not in ["PV", "FA"]}
-        self.rnext = PysamToChrInline(rec.mrnm)
+        self.rnext = handle.getrname(rec.mrnm)
         self.pnext = rec.mpos
         self.tlen = rec.tlen
         self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
@@ -564,7 +559,8 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
 
 
 @cython.returns(tuple)
-def makeLayoutTuple(pysam.calignedsegment.AlignedSegment rec):
+def makeLayoutTuple(pysam.calignedsegment.AlignedSegment rec,
+                    pysam.calignmentfile.AlignmentFile handle):
     cdef tuple pair
     cdef int offset, firstMapped, i
     cdef list PosList
@@ -576,7 +572,7 @@ def makeLayoutTuple(pysam.calignedsegment.AlignedSegment rec):
         if(pair[0] == 0 and firstMapped < 0):  # 0->"M"
             firstMapped = offset  # Facilitates coordinating merging pairs.
         offset += pair[1]
-    return (rec, PosList, firstMapped)
+    return (rec, PosList, firstMapped, handle)
 
 
 @cython.boundscheck(False)
@@ -673,8 +669,8 @@ cpdef cystr MPA2stdout(cystr inBAM):
                          " Either this BAM isn't name-sorted or you are "
                          "missing a read from a pair.\n")
             return 1
-        l1 = PyLayout.fromread(read1)
-        l2 = PyLayout.fromread(read2)
+        l1 = PyLayout.fromread(read1, inHandle)
+        l2 = PyLayout.fromread(read2, inHandle)
         retLayout = MergeLayoutsToLayout(l1, l2)
         if(retLayout.test_merge_success()):
             success_merged_count += 1
