@@ -871,6 +871,7 @@ def PipeBarcodeTagCOBam(char flag):
     inHandle = pysam.AlignmentFile("-", input_mode)
     outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
     RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
+    stderr.write("repr for RefIDDict: %s\n" % RefIDDict)
     [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
     inHandle.close()
     outHandle.close()

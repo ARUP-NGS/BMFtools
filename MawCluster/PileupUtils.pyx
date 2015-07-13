@@ -119,7 +119,7 @@ cdef class PRInfo:
         return self.read.opt(arg)
 
     def __init__(self, pPileupRead_t PileupRead):
-        cdef pysam.calignmentfile.AlignedSegment alignment
+        cdef pysam.calignedsegment.AlignedSegment alignment
         alignment = PileupRead.alignment
         aopt = alignment.opt
         self.Pass = True

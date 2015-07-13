@@ -124,7 +124,7 @@ def CountNumReads(inBAM):
 
 cdef ndarray[np.float64_t, ndim=1] InsertSizeArray_(
         pysam.calignmentfile.AlignmentFile handle):
-    cdef pysam.calignmentfile.AlignedSegment i
+    cdef pysam.calignedsegment.AlignedSegment i
     return np.absolute(np.array([i.tlen for i in handle], dtype=np.float64))
 
 
@@ -133,7 +133,7 @@ def InsertSizeArray(cystr inBAM):
     """
     Returns an array of insert sizes for the sample.
     """
-    cdef pysam.calignmentfile.AlignedSegment i
+    cdef pysam.calignedsegment.AlignedSegment i
     cdef pysam.calignmentfile.AlignmentFile inHandle
     inHandle = pysam.AlignmentFile(inBAM, "rb")
     return InsertSizeArray_(inHandle)

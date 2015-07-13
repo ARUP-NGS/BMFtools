@@ -1,5 +1,6 @@
 cimport cython
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
@@ -13,7 +14,7 @@ ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pFastqProxy pFastqProxy_t
 ctypedef pysam.cfaidx.FastqProxy FastqProxy_t
 

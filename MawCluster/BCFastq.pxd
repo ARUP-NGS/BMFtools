@@ -45,3 +45,9 @@ cdef public cystr ARGMAX_TRANSLATE_STRING
 
 
 cdef public py_array nucs
+
+cdef class SeqQual:
+    cdef public py_array seq
+    cdef public py_array qual
+
+ctypedef SeqQual SeqQual_t

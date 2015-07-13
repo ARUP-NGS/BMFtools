@@ -1,10 +1,11 @@
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport cython
 from cpython cimport array
 ctypedef array.array py_array
 ctypedef cython.str cystr
 
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 
 cdef AlignedSegment_t CopyAlignedSegment(AlignedSegment_t template)
