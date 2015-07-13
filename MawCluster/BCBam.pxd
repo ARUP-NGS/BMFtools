@@ -13,8 +13,7 @@ from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
 from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport struct_str
-from pysam.calignedsegment cimport pysam_get_l_qname
-from pysam.csamtools cimport bam1_t
+from pysam.calignedsegment cimport pysam_get_l_qname, bam1_t
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t

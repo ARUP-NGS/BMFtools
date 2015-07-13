@@ -33,8 +33,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
-    SlaveDMPParser = subparsers.add_parser(
-        "slavedmp")
+    PipeAlignTagMergeParser = subparsers.add_parser("aligntagmerge")
+    SlaveDMPParser = subparsers.add_parser("slavedmp")
     PipeParser = subparsers.add_parser(
         "pipetagbam",
         description="Tags a BAM, taking sam/bam input/output.")
@@ -1181,6 +1181,14 @@ def main():
                  p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
                  sortMem=Chapman['slave_sort_mem'], head=Chapman['head'])
         return 0
+    if(subcommand == "aligntagmerge"):
+        from utilBMF.MPA import PipeAlignTagMPA
+        R1 = Chapman['inFqs'][0]
+        R2 = Chapman['inFqs'][1]
+        outBAM = TrimExt(R1) + ".tag.mpa.bam"
+        PipeAlignTagMPA(R1, R2, outBAM=outBAM, coorsort=Chapman['coorsort'],
+                        u=Chapman["uncompressed_bam"], ref=Chapman['ref'])
+
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0
