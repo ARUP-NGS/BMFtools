@@ -589,8 +589,9 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
-    from subprocess import check_call
+    from subprocess import check_call, CalledProcessError
     from itertools import chain
+    from sys import stderr
     cfi = chain.from_iterable
     if(num_nucs < 0):
         raise UnsetRequiredParameter(
@@ -634,10 +635,15 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     pl("About to clean up my R2 temporary files with command %s." % catStr2)
     check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
-    [check_call(["rm", fqpath]) for fqpath in
-     list(cfi([(fqpath, fqpath.replace(".dmp.fastq", "BS.fastq"),
-                fqpath.replace(".dmp.fastq", "BS.cons.fastq")) for
-               fqpath in list(cfi(fqPairList))]))]
+    paths = [f for f in cfi([(fp, fp.replace(".fastq", ".BS.fastq"),
+                                  fp.replace(".fastq", ".BS.cons.fastq")) for
+                                 fp in list(cfi(fqPairList))])]
+    for path in paths:
+        try:
+            stderr.write("Now calling 'rm %s'\n" % path)
+            check_call(["rm", path])
+        except CalledProcessError:
+            raise Exception("Path attempting to remove: %s\n" % path)
     return outfq1, outfq2
 
 
