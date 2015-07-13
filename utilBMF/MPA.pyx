@@ -485,7 +485,7 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     offset = L2.cGetRefPosForFirstPos() - L1.cGetRefPosForFirstPos()
     ret = ListBool()
     ret.List = L1[:offset]
-    cdef size_t count
+    cdef size_t count = 0
     for pos1 in L1[offset:]:
         pos2 = L2[count]
         if(pos1.operation == pos2.operation):
