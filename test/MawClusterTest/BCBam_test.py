@@ -39,7 +39,7 @@ class MyTestCase(unittest.TestCase):
             assert sum(np.array(read.opt("PV").split(","), dtype=np.int32) == read.query_qualities) == len(read.query_qualities)
 
         """
-        
+
         pass
 
 if __name__ == '__main__':
