@@ -101,7 +101,7 @@ cdef class PyLayout(object):
     """
 
     @classmethod
-    def fromread(cls, pysam.calignmentfile.AlignedSegment rec):
+    def fromread(cls, pysam.calignedsegment.AlignedSegment rec):
         return cls(*makeLayoutTuple(rec))
 
     def __getitem__(self, index):
@@ -374,7 +374,7 @@ cdef class PyLayout(object):
                  seq, qual] +
                 self.get_tag_strings()) + "\n"
 
-    def __init__(self, pysam.calignmentfile.AlignedSegment rec,
+    def __init__(self, pysam.calignedsegment.AlignedSegment rec,
                  list layoutPositions, int firstMapped):
         cdef tuple tag
         self.mapq = rec.mapq
@@ -389,7 +389,7 @@ cdef class PyLayout(object):
         # then switch the code over.
         # Then I can change the way I make BAM tags, since
         # with_value_type is the optional argument to add to get_tags
-        # on a pysam.calignmentfile.AlignedSegment object.
+        # on a pysam.calignedsegment.AlignedSegment object.
         # This will ensure that I don't need to already know
         # the type beforehand. (IE, get rid of the type dict)
         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
@@ -564,7 +564,7 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
 
 
 @cython.returns(tuple)
-def makeLayoutTuple(pysam.calignmentfile.AlignedSegment rec):
+def makeLayoutTuple(pysam.calignedsegment.AlignedSegment rec):
     cdef tuple pair
     cdef int offset, firstMapped, i
     cdef list PosList
@@ -586,7 +586,7 @@ cdef int getLayoutLen(AlignedSegment_t read):
 
 
 cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
-                                 pysam.calignmentfile.AlignedSegment rec):
+                                 pysam.calignedsegment.AlignedSegment rec):
     cdef object x0, x1
     cdef char CigarChar
     cdef ndarray[long, ndim=1] quals, agrees

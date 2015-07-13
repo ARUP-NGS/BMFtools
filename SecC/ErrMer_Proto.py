@@ -10,7 +10,7 @@ import pysam
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 # cimport pysam.calignmentfile
-# ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+# ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 nucList = ["A", "T", "C", "G", "N"]
 
 

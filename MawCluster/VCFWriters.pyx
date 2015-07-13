@@ -81,7 +81,7 @@ def SNVCrawler(inBAM,
     cdef pysam.cfaidx.FastaFile refHandle
     cdef list line, discReads, VCFLines, bedlines
     cdef pPileupRead_t i
-    cdef pysam.calignmentfile.AlignedSegment read
+    cdef pysam.calignedsegment.AlignedSegment read
     cdef pPileupColumn_t pPC
     confDict = parseSketchConfig(conf) if(conf != "default") else {}
     if(bed != "default"):
@@ -212,7 +212,7 @@ def PileupItToVCFLines(pysam.calignmentfile.PileupColumn PileupCol,
     cdef pPileupColumn_t PileupColumn
     cdef PCInfo_t PC
     cdef list DiscRPs, reads, discReads, DiscRPNames
-    cdef pysam.calignmentfile.AlignedSegment read
+    cdef pysam.calignedsegment.AlignedSegment read
     cdef pPileupRead_t i
     cdef VCFPos_t pos
     cdef int NumDiscordantPairs

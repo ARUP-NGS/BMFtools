@@ -1,6 +1,6 @@
 cimport cython
-cimport pysam.calignmentfile
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+cimport pysam.calignedsegment
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef cython.str cystr
 
 cdef inline cystr GetBS(AlignedSegment_t read):
