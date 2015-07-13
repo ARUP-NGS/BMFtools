@@ -18,7 +18,6 @@ ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 ctypedef cython.str cystr
-ctypedef TagBamPipeHG37 TagBamPipeHG37_t
 ctypedef TagBamPipe TagBamPipe_t
 ctypedef BamPipe BamPipe_t
 ctypedef struct_str struct_str_t
@@ -30,7 +29,6 @@ import cython
 
 cdef cystr cBarcodeTagCOBam(pysam.calignmentfile.AlignmentFile bam,
                             pysam.calignmentfile.AlignmentFile outbam)
-cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read)
 cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=?)
 
 cdef dict cGetCOTagDict(AlignedSegment_t read)
@@ -65,16 +63,8 @@ cdef double getSF(AlignedSegment_t read)
 # cpdef AlignedSegment_t TagAlignedSegment(AlignedSegment_t read)
 cdef AlignedSegment_t TagAlignedSegment(
         AlignedSegment_t read, dict RefIDDict=?)
-cdef AlignedSegment_t TagAlignedSegmentHG37(
-        AlignedSegment_t read)
 
-cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=?)
-
-
-cdef inline cystr RPString(AlignedSegment_t read):
-    return (PysamToChrInline(read.reference_id) + ":%s," % read.pos +
-            PysamToChrInline(read.rnext) +
-            ":%s" % read.mpos)
+cdef cystr RPString(AlignedSegment_t read, dict RefIDDict=?)
 
 
 cdef inline cystr RescueFlag(AlignedSegment_t read):
@@ -119,10 +109,6 @@ cdef class BamPipe:
     cdef public AlignmentFile_t inHandle, outHandle
     cpdef process(self)
     cdef write(self, AlignedSegment_t read)
-
-
-cdef class TagBamPipeHG37(BamPipe):
-    pass
 
 
 cdef class TagBamPipe:

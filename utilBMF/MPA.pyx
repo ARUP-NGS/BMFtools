@@ -257,11 +257,9 @@ cdef class PyLayout(object):
         cdef int tmpInt
         cdef py_array GenDiscPos, MA_Arr, MP_Arr, ReadDiscPos
         self.tagDict["PV"] = BamTag(
-            "PV", "Z", ",".join([str(tmpInt) for tmpInt in
-                                 self.cGetQual()]))
+            "PV", "B", self.cGetQual())
         self.tagDict["FA"] = BamTag(
-            "FA", "Z", ",".join([str(tmpInt) for tmpInt in
-                                 self.getAgreement()]))
+            "FA", "B", self.cGetAgreement())
         if(self.isMerged is True and self.mergeAdjusted is False):
             MP_Arr = self.getMergedPositions()
             if(len(MP_Arr) != 0):

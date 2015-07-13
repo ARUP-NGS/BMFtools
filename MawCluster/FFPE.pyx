@@ -32,8 +32,8 @@ Contains utilities relating to FFPE and amplicon sequencing
 
 cdef AlignedSegment_t AmpliconTrimRead(AlignedSegment_t rec, int primerLen):
     cdef cystr tempQual
-    rec.setTag("PV", rec.opt("PV").split(",")[primerLen:], "Z")
-    rec.setTag("FA", rec.opt("FA").split(",")[primerLen:], "Z")
+    rec.setTag("PV", rec.opt("PV")[primerLen:])
+    rec.setTag("FA", rec.opt("FA")[primerLen:])
     tempQual = rec.qual[primerLen:]
     rec.seq = rec.seq[primerLen:]
     rec.qual = tempQual

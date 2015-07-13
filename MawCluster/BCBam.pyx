@@ -376,8 +376,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", passing, "i"),
-                               ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
-                               ("FA", ",".join(FA1.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals1)),
+                               ("FA", array('i', FA1)),
                                ("ND", ND1, "i"),
                                ("NF", ND1 * 1. / FM, "f"),
                                ("RG", "default", "Z"),
@@ -388,8 +388,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", passing, "i"),
-                               ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
-                               ("FA", ",".join(FA2.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals2)),
+                               ("FA", array('i', FA2)),
                                ("ND", ND2, "i"),
                                ("NF", ND2 * 1. / float(FM), "f"),
                                ("RG", "default", "Z"),
@@ -401,8 +401,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
-                               ("FA", ",".join(FA1.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals1)),
+                               ("FA", array('i', FA1)),
                                ("ND", ND1, "i"),
                                ("NF", 1. * ND1 / FM, "f"),
                                ("AF", r1FracAlign, "f"),
@@ -412,8 +412,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
-                               ("FA", ",".join(FA2.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals2)),
+                               ("FA", array('i', FA2)),
                                ("ND", ND2, "i"),
                                ("NF", 1. * ND2 / FM, "f"),
                                ("AF", r2FracAlign, "f"),
@@ -428,42 +428,6 @@ def pairedBarcodeTagging(
     outBAM.close()
     postFilterBAM.close()
     return outBAMFile
-
-
-def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
-    Success = True
-    seqs = map(oagseq, RecordList)
-    seqs = [str(record.seq) for record in RecordList]
-    stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
-    seqArray = nvstack(stackArrays)
-    # print(repr(seqArray))
-
-    quals = np.array(map(oagqqual, RecordList))
-    qualA = ccopy(quals)
-    qualC = ccopy(quals)
-    qualG = ccopy(quals)
-    qualT = ccopy(quals)
-    qualA[seqArray != "A"] = 0
-    qualASum = nsum(qualA, 0)
-    qualC[seqArray != "C"] = 0
-    qualCSum = nsum(qualC, 0)
-    qualG[seqArray != "G"] = 0
-    qualGSum = nsum(qualG, 0)
-    qualT[seqArray != "T"] = 0
-    qualTSum = nsum(qualT, 0)
-    qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = nsub(nmul(2, MaxPhredSum),
-                      nsum(qualAllSum, 0))
-    phredQuals[phredQuals < 0] = 0
-    outRec = RecordList[0]
-    outRec.seq = newSeq
-    if(np.any(np.greater(phredQuals, 93))):
-        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
-    phredQuals[phredQuals > 93] = 93
-    outRec.query_qualities = phredQuals
-    return outRec, Success
 
 
 def ConsolidateInferred(inBAM, outBAM="default"):
@@ -674,13 +638,45 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
-cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read):
-    return TagAlignedSegmentHG37(read)
+def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
+    Success = True
+    seqs = map(oagseq, RecordList)
+    seqs = [str(record.seq) for record in RecordList]
+    stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
+    seqArray = nvstack(stackArrays)
+    # print(repr(seqArray))
+
+    quals = np.array(map(oagqqual, RecordList))
+    qualA = ccopy(quals)
+    qualC = ccopy(quals)
+    qualG = ccopy(quals)
+    qualT = ccopy(quals)
+    qualA[seqArray != "A"] = 0
+    qualASum = nsum(qualA, 0)
+    qualC[seqArray != "C"] = 0
+    qualCSum = nsum(qualC, 0)
+    qualG[seqArray != "G"] = 0
+    qualGSum = nsum(qualG, 0)
+    qualT[seqArray != "T"] = 0
+    qualTSum = nsum(qualT, 0)
+    qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
+    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
+    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
+    phredQuals = nsub(nmul(2, MaxPhredSum),
+                      nsum(qualAllSum, 0))
+    phredQuals[phredQuals < 0] = 0
+    outRec = RecordList[0]
+    outRec.seq = newSeq
+    if(np.any(np.greater(phredQuals, 93))):
+        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
+    phredQuals[phredQuals > 93] = 93
+    outRec.query_qualities = phredQuals
+    return outRec, Success
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=None):
+cdef cystr RPString(AlignedSegment_t read, dict RefIDDict=None):
     return (RefIDDict[read.reference_id] + ":%s," % read.pos +
             RefIDDict[read.rnext] +
             ":%s" % read.mpos)
@@ -716,53 +712,15 @@ cdef inline AlignedSegment_t TagAlignedSegment(
     SF = getSF(read)
     read.set_tags([("BS", CommentDict["BS"], "Z"),
                    ("FM", FM, "i"),
-                   ("PV", ",".join(PhredQuals.astype(str)), "Z"),
+                   ("PV", array('i', PhredQuals)),
                    ("FF", FF, "f"), ("PF", PF, "f"),
-                   ("FA", ",".join(FA.astype(str)), "Z"),
+                   ("FA", array('i', FA)),
                    ("FP", FPInt, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
                    ("SF", SF, "f"),
-                   ("RP", RPStringNonHG37(read, RefIDDict), "Z")
-                   ] + read.get_tags())
-    read.set_tag("CO", None)  # Delete the CO tag.
-    return read
-
-
-cdef AlignedSegment_t TagAlignedSegmentHG37(
-        AlignedSegment_t read):
-    """
-    Adds necessary information from a CO: tag to appropriate other tags.
-    """
-    cdef dict CommentDict
-    cdef int FM, ND, FPInt
-    cdef double NF, AF, SF
-    cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
-    CommentDict = cGetCOTagDict(read)
-    PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
-    FA = np.array(CommentDict["FA"].split(","), dtype=np.int64)
-    if(read.is_reverse):
-        PhredQuals = PhredQuals[::-1]
-        FA = FA[::-1]
-    ND = int(CommentDict["ND"])
-    FM = int(CommentDict["FM"])
-    FPInt = int(CommentDict["FP"])
-    if(not FPInt):
-        read.flag += 512
-    NF = ND * 1. / FM
-    AF = getAF(read)
-    SF = getSF(read)
-    read.set_tags([("BS", CommentDict["BS"], "Z"),
-                   ("FM", FM, "i"),
-                   ("PV", ",".join(PhredQuals.astype(str)), "Z"),
-                   ("FA", ",".join(FA.astype(str)), "Z"),
-                   ("FP", FPInt, "i"),
-                   ("ND", int(CommentDict["ND"]), "i"),
-                   ("NF", NF, "f"),
-                   ("AF", AF, "f"),
-                   ("SF", SF, "f"),
-                   ("RP", RPString(read), "Z")
+                   ("RP", RPString(read, RefIDDict), "Z")
                    ] + read.get_tags())
     read.set_tag("CO", None)  # Delete the CO tag.
     return read
@@ -832,17 +790,6 @@ cdef class TagBamPipe:
         for read in self.inHandle:
             read = TagAlignedSegment(read, RefIDDict=self.RefIDDict)
             self.write(read)
-
-cdef class TagBamPipeHG37(BamPipe):
-    """
-    Not unlike TagBamPipe, but memoizes HG37's ref id dictionary and
-    inlines it into switches.
-    """
-    def __init__(self, bint bin_input, bint bin_output,
-                 bint uncompressed_output=False):
-        super(BamPipe, self).__init__(TagAlignedSegmentHG37,
-                                      bin_input, bin_output,
-                                      uncompressed_output=uncompressed_output)
 
 
 def PipeBarcodeTagCOBam(char flag):

@@ -1144,9 +1144,7 @@ cdef class pPileupRead:
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
-        BQs = np.array(
-            PileupRead.alignment.opt("PV").split(","),
-            dtype=np.int32)
+        BQs = PileupRead.alignment.opt("PV")
         self.AF = PileupRead.alignment.opt("AF")
         self.BQ = BQs[self.query_position]
         self.FA = int(self.alignment.opt(
@@ -3039,7 +3037,13 @@ cdef class BamTag(object):
         In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
         1000000 loops, best of 3: 710 ns per loop
         """
-        return self.tag + ":" + self.tagtype + ":%s" % (self.value)
+        if(self.tagtype == "B"):
+            if(isinstance(self.value, float)):
+                return self.tag + ":B:f%s" % (",".join(self.value))
+            else:
+                return self.tag + ":B:i%s" % (",".join(self.value))
+        else:
+            return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
 
 cdef class IDVCFLine(object):
@@ -3233,7 +3237,7 @@ def GetBamTagTypeDict(cystr bamfile):
             i in [f.split(":") for
                   f in GetBamTagTypes(bamfile)]}
 
-TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
+TagTypeDict = {"PV": "B", "AF": "f", "BS": "Z", "FA": "B",
                "FM": "i", "FP": "i", "MQ": "i", "ND": "i",
                "NF": "f", "NM": "i", "RP": "Z", "SC": "Z",
                "SF": "f", "SV": "Z", "X0": "i", "X1": "i",
