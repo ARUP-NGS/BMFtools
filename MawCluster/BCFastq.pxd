@@ -47,6 +47,7 @@ cdef inline bint BarcodePasses(cystr barcode, int hpLimit)
 
 cdef extern from "igam.c" nogil:
     double igamc(double a, double x)
+    double MAXLOG, MACHEP
 
 
 @cython.boundscheck(False)

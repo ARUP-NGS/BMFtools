@@ -190,16 +190,18 @@ cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
     cdef size_t chisum_index = 0
     cdef size_t ndIndex = 0
     cdef size_t numbases = rLen * nRecs
+    cdef size_t rLen2 = 2 * rLen
+    cdef size_t rLen3 = 3 * rLen
     while query_index < numbases:
         if(Seqs[query_index] == 67):
             ndIndex = query_index % rLen + rLen
             # case "C"
         elif(Seqs[query_index] == 71):
             # case "G"
-            ndIndex = query_index % rLen + 2 * rLen
+            ndIndex = query_index % rLen + rLen2
         elif(Seqs[query_index] == 84):
             # case "T"
-            ndIndex = query_index % rLen + 3 * rLen
+            ndIndex = query_index % rLen + rLen3
         elif(Seqs[query_index] == 78):
             # case "N"
             pass
@@ -213,16 +215,20 @@ cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
     while query_index < rLen:
         argmax_arr[query_index] = argmax4(chiSums[query_index],
                                           chiSums[query_index + rLen],
-                                          chiSums[query_index + 2 * rLen],
-                                          chiSums[query_index + 3 * rLen])
+                                          chiSums[query_index + rLen2],
+                                          chiSums[query_index + rLen3])
         retSeq[query_index] = ARGMAX_CONV(argmax_arr[query_index])
         ndIndex = query_index + argmax_arr[query_index] * rLen
         retQual[query_index] = <int32_t> (- 10 * c_log10(
             igamc_pvalues(counts[ndIndex], chiSums[ndIndex])) + 0.5)
-        # aretAgree[query_index] ^sdfgasdfasd
+        retAgree[query_index] = counts[query_index + rLen * argmax_arr[query_index]]
         query_index += 1
     free(counts)
-    ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
+    free(argmax_arr)
+    free(chiSums)
+    ret.Qual = retQual
+    ret.Seq = retSeq
+    ret.Agree = retAgree
     return ret
 
 
@@ -241,22 +247,6 @@ cdef SeqQual_t FisherFlatten(
     """
     cdef SeqQual_t ret = cFisherFlatten(
         &Quals[0,0], &Seqs[0,0], rLen, nRecs)
-    '''
-
-    Math in pseudocode:
-        New P Value = chi2.sf(-2 * np.sum(np.log(i) for i in pValues), len(pValues) * 2)
-        x = -2 * np.sum(np.log(i) for i in pValues)
-        df = len(pValues * 2)
-        chi2.sf = chtdrc(df, x)
-        chtdrc(df, x) = 1.0 if(x) < 0 else igamc(df / 2.0, x / 2.0)
-
-        New P Value =
-
-    cdef float chi2sum =  -2 * np.sum(np.log(i) for i in pValues)
-    return 1.0 if(chi2sum < 0) else igamc(df / 2.0, chi2sum / 2.0)
-    return 1.0 if(chi2sum < 0) else igamc(len(pValues) * 1., chi2sum / 2.0)
-
-    '''
     return ret
 
 
@@ -291,13 +281,14 @@ cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 '''
 
 
+cpdef cystr FastFisherFlattening(list R, cystr name=None):
+    return cFastFisherFlattening(R, name=name)
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef cystr FastFisherFlattening(list R,
-                                cystr name=None,
-                                double minPVFrac=0.1,
-                                double minFAFrac=0.2,
-                                double minMaxFA=0.9):
+cdef cystr cFastFisherFlattening(list R,
+                                 cystr name=None):
     """
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
