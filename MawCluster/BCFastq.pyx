@@ -171,52 +171,64 @@ cdef inline ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
 cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
 
-def InlineFisher(var):
-    return var
 
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, np.int8_t * Quals,
+cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
                                      size_t rLen, size_t nRecs) nogil:
     # C Definitions
     # Return
     cdef SeqQual_t ret
     # Return Struct Attributes
-    cdef np.int8_t * retSeq = <np.int8_t *>malloc(rLen)
+    cdef int8_t * retSeq = <int8_t *>malloc(rLen)
     cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
     cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
     # Temporary data structures
+    cdef int32_t * counts = <int32_t *>malloc(rLen * size32)
     cdef np.double_t * chiSums = <np.double_t *> malloc(
         rLen * 4 * sizedouble)
+    cdef int8_t * argmax_arr = <int8_t *> malloc(rLen)
     cdef size_t query_index = 0
     cdef size_t chisum_index = 0
+    cdef size_t ndIndex = 0
     cdef size_t numbases = rLen * nRecs
     while query_index < numbases:
         if(Seqs[query_index] == 67):
+            ndIndex = query_index % rLen + rLen
             # case "C"
-            chiSums[query_index % rLen + rLen] += CHI2_FROM_PHRED(Quals[query_index])
         elif(Seqs[query_index] == 71):
             # case "G"
-            chiSums[query_index % rLen + 2 * rLen] += CHI2_FROM_PHRED(Quals[query_index])
+            ndIndex = query_index % rLen + 2 * rLen
         elif(Seqs[query_index] == 84):
             # case "T"
-            chiSums[query_index % rLen + 3 * rLen] += CHI2_FROM_PHRED(Quals[query_index])
+            ndIndex = query_index % rLen + 3 * rLen
+        elif(Seqs[query_index] == 78):
+            # case "N"
+            pass
         else:
             # case "A"
-            chiSums[query_index % rLen] += CHI2_FROM_PHRED(Quals[query_index])
-    # CHI2_FROM_PHRED
-    '''Pseudocode
-
-    chi2sum = (
-    '''
+            ndIndex = query_index % rLen
+        chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+        counts[ndIndex] += 1
+        query_index += 1
+    query_index = 0
+    while query_index < rLen:
+        argmax_arr[query_index] = argmax4(chiSums[query_index],
+                                          chiSums[query_index + rLen],
+                                          chiSums[query_index + 2 * rLen],
+                                          chiSums[query_index + 3 * rLen])
+        retSeq[query_index] = ARGMAX_CONV(argmax_arr[query_index])
+        ndIndex = query_index + argmax_arr[query_index] * rLen
+        retQual[query_index] = <int32_t> (- 10 * c_log10(
+            igamc_pvalues(counts[ndIndex], chiSums[ndIndex])) + 0.5)
+        # aretAgree[query_index] ^sdfgasdfasd
+        query_index += 1
+    free(counts)
     ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
     return ret
 
 
 cdef SeqQual_t FisherFlatten(
         ndarray[int32_t, ndim=2, mode="c"] Quals,
-        ndarray[np.int8_t, ndim=2, mode="c"] Seqs,
+        ndarray[int8_t, ndim=2, mode="c"] Seqs,
         size_t rLen, size_t nRecs):
     """
     :param Quals: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
@@ -244,14 +256,6 @@ cdef SeqQual_t FisherFlatten(
     return 1.0 if(chi2sum < 0) else igamc(df / 2.0, chi2sum / 2.0)
     return 1.0 if(chi2sum < 0) else igamc(len(pValues) * 1., chi2sum / 2.0)
 
-    cdef size_t i, j
-    cdef ndarray[int32_t, ndim=1] ret, tmpArr
-    ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
-    # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 84]], dtype=np.int32)
-    # PhredC = InlineFisher(Quals[Seqs[:,i] == 67,i]])
-    # PhredG = InlineFisher(Quals[Seqs[:,i] == 71, i]])
-    # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
-    return ret
     '''
     return ret
 
@@ -916,7 +920,7 @@ cdef cystr PyArr2QualStr(py_array qualArr):
     :return: [cystr]
     """
     cdef size_t length = len(qualArr)
-    cdef char * ptr = AdjustQualArr(&qualArr.data.as_ints[0], length)
+    cdef char * ptr = AdjustQualArr(<int32_t *>&qualArr.data.as_ints[0], length)
     cdef cystr ret = ptr
     free(ptr)
     return ret

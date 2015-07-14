@@ -1,6 +1,8 @@
-/*                                                     mconf.h
+#ifndef __MCONF_H
+#define __MCONF_H
+/*							mconf.h
  *
- *     Common include file for math routines
+ *	Common include file for math routines
  *
  *
  *
@@ -27,23 +29,17 @@
  * of octal integers to eliminate decimal to binary conversion
  * errors that might be introduced by the compiler.
  *
- * For little-endian computers, such as IBM PC, that follow the
- * IEEE Standard for Binary Floating Point Arithmetic (ANSI/IEEE
+ * For computers, such as IBM PC, that follow the IEEE 
+ * Standard for Binary Floating Point Arithmetic (ANSI/IEEE
  * Std 754-1985), the symbol IBMPC should be defined.  These
  * numbers have 53-bit significands.  In this mode, constants
  * are provided as arrays of hexadecimal 16 bit integers.
- *
- * Big-endian IEEE format is denoted MIEEE.  On some RISC
- * systems such as Sun SPARC, double precision constants
- * must be stored on 8-byte address boundaries.  Since integer
- * arrays may be aligned differently, the MIEEE configuration
- * may fail on such machines.
  *
  * To accommodate other types of computer arithmetic, all
  * constants are also provided in a normal decimal radix
  * which one can hope are correctly converted to a suitable
  * format by the available C language compiler.  To invoke
- * this mode, define the symbol UNK.
+ * this mode, the symbol UNK is defined.
  *
  * An important difference among these modes is a predefined
  * set of machine arithmetic constants for each.  The numbers
@@ -52,25 +48,13 @@
  * the configuration symbol.  Check the file const.c to
  * ensure that these values are correct for your computer.
  *
- * Configurations NANS, INFINITIES, MINUSZERO, and DENORMAL
- * may fail on many systems.  Verify that they are supposed
- * to work on your computer.
  */
 
 /*
- * Cephes Math Library Release 2.3:  June, 1995
- * Copyright 1984, 1987, 1989, 1995 by Stephen L. Moshier
- */
+Cephes Math Library Release 2.3:  March, 1995
+Copyright 1984, 1987, 1989, 1995 by Stephen L. Moshier
+*/
 
-#ifndef CEPHES_MCONF_H
-#define CEPHES_MCONF_H
-
-#include <Python.h>
-#include <numpy/npy_math.h>
-
-#include "cephes_names.h"
-#include "protos.h"
-#include "polevl.h"
 
 /* Constant definitions for math error conditions
  */
@@ -81,22 +65,41 @@
 #define UNDERFLOW	4	/* underflow range error */
 #define TLOSS		5	/* total loss of precision */
 #define PLOSS		6	/* partial loss of precision */
-#define TOOMANY         7	/* too many iterations */
-#define MAXITER        500
 
 #define EDOM		33
 #define ERANGE		34
 
+/* Complex numeral.  */
+typedef struct
+	{
+	double r;
+	double i;
+	}cmplx;
+
 /* Long double complex numeral.  */
-/*
- * typedef struct
- * {
- * long double r;
- * long double i;
- * } cmplxl;
- */
+/* Comment out if your compiler does not have long double.  */
+#if 1
+typedef struct
+	{
+	long double r;
+	long double i;
+	}cmplxl;
+#endif
 
 /* Type of computer arithmetic */
+
+/* PDP-11, Pro350, VAX:
+ */
+/* #define DEC 1 */
+
+/* Intel IEEE, low order words come first:
+ */
+#define IBMPC 1
+
+/* Motorola IEEE, high order words come first
+ * (Sun 680x0 workstation):
+ */
+/* #define MIEEE 1 */
 
 /* UNKnown arithmetic, invokes coefficients given in
  * normal decimal format.  Beware of range boundary
@@ -104,12 +107,10 @@
  * roundoff problems in pow.c:
  * (Sun SPARCstation)
  */
+/* #define UNK 1 */
 
-/* SciPy note: by defining UNK, we prevent the compiler from
- * casting integers to floating point numbers.  If the Endianness
- * is detected incorrectly, this causes problems on some platforms.
- */
-#define UNK 1
+/* If you define UNK, then be sure to set BIGENDIAN properly. */
+#define BIGENDIAN 0
 
 /* Define this `volatile' if your compiler thinks
  * that floating point arithmetic obeys the associative
@@ -132,36 +133,46 @@
  */
 #define XPD 0,
 
+
+/* Define to ask for infinity support, else undefine. */
+/* #define INFINITIES 1 */
+
+/* Define to ask for support of numbers that are Not-a-Number,
+   else undefine.  This may automatically define INFINITY in some files. */
+/* #define NANS 1 */
+
 /* Define to support tiny denormal numbers, else undefine. */
-#define DENORMAL 1
+/* #define DENORMAL 1 */
 
 /* Define to distinguish between -0.0 and +0.0.  */
-#define MINUSZERO 1
+/* #define MINUSZERO 1 */
 
 /* Define 1 for ANSI C atan2() function
- * See atan.c and clog.c. */
+   See atan.c and clog.c. */
 #define ANSIC 1
+
+/* Get definitions of QELT, etc.  */
+#ifndef __QHEAD_H
+#include "qhead.h"
+#endif
+
+/* Get ANSI function prototypes, if you want them. */
+#ifdef __STDC__
+/* #if 1 */
+/* #if 0 */
+#define ANSIPROT
+#include "protos.h"
+#include "qprotos.h"
+#else
+int mtherr();
+int qadd(), qsub(), qmul(), qdiv(), qmuli(), qsqrt(), qlog(), qexp();
+int ltoq(), qifrac(), etoq(), qtoe();
+int qfloor(), qabs(), qneg(), qinfin();
+int qsin(), qcos(), qatn();
+int qcmp(), qclear(), qmov();
+#endif
 
 /* Variable for error reporting.  See mtherr.c.  */
 extern int merror;
+#endif /* __MCONF_H */
 
-#define gamma Gamma
-
-/*
- * Enable loop unrolling on GCC and use faster isnan et al.
- */
-#if !defined(__clang__) && defined(__GNUC__) && defined(__GNUC_MINOR__)
-#if __GNUC__ >= 5 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4)
-#pragma GCC optimize("unroll-loops")
-#define cephes_isnan(x) __builtin_isnan(x)
-#define cephes_isinf(x) __builtin_isinf(x)
-#define cephes_isfinite(x) __builtin_isfinite(x)
-#endif
-#endif
-#ifndef cephes_isnan
-#define cephes_isnan(x) npy_isnan(x)
-#define cephes_isinf(x) npy_isinf(x)
-#define cephes_isfinite(x) npy_isfinite(x)
-#endif
-
-#endif				/* CEPHES_MCONF_H */
