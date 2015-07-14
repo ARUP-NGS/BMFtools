@@ -138,7 +138,7 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
                 " %s %s | tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
 
 
-cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+cpdef cystr QualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     """
     cpdef wrapper for QualArr2QualStr
 
@@ -154,7 +154,7 @@ cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2QualStr(qualArr)
 
 
-cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+cpdef cystr QualArr2PVString(ndarray[int32_t, ndim=1] qualArr):
     return cQualArr2PVString(qualArr)
 
 
@@ -177,30 +177,34 @@ def InlineFisher(var):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline SeqQual_t cFisherFlatten(np.int32_t * Seqs, np.int8_t * Quals,
+cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, np.int8_t * Quals,
                                      size_t rLen, size_t nRecs) nogil:
     # C Definitions
     cdef SeqQual_t ret
+    cdef char size32 = sizeof(int32_t)
+    cdef char sizedouble = sizeof(np.double_t)
     cdef np.int8_t * retSeq = <np.int8_t *>malloc(rLen)
-    cdef np.int32_t * retQual = <np.int32_t *>malloc(rLen * 4)
-    cdef np.longdouble_t * chiSums = <np.longdouble_t *> malloc(rLen * 4 * sizeof(np.longdouble_t))
+    cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
+    cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
+    cdef np.double_t * chiSums = <np.double_t *> malloc(
+        rLen * 4 * sizeof(np.double_t))
     '''
     cdef py_array retQual = array('i')
     cdef py_array retSeq = array('B')
     cdef SeqQual_t ret = SeqQual(retQual, retSeq)
     '''
-    # ret.Qual, ret.Seq = retQual, retSeq
+    ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
     return ret
 
 
 cdef SeqQual_t FisherFlatten(
-        ndarray[np.int32_t, ndim=2, mode="c"] Quals,
+        ndarray[int32_t, ndim=2, mode="c"] Quals,
         ndarray[np.int8_t, ndim=2, mode="c"] Seqs,
         size_t rLen, size_t nRecs):
     """
-    :param Quals: [ndarray[np.int32_t, ndim=2]/arg] - numpy 2D-array for
+    :param Quals: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
     holding the qualities for a set of reads.
-    :param Seqs: [ndarray[np.int32_t, ndim=2]/arg] - numpy 2D-array for
+    :param Seqs: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
     holding the sequences for a set of reads.
     :param rLen:
     :param nRecs:
@@ -224,7 +228,7 @@ cdef SeqQual_t FisherFlatten(
     return 1.0 if(chi2sum < 0) else igamc(len(pValues) * 1., chi2sum / 2.0)
 
     cdef size_t i, j
-    cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
+    cdef ndarray[int32_t, ndim=1] ret, tmpArr
     ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
     # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 84]], dtype=np.int32)
     # PhredC = InlineFisher(Quals[Seqs[:,i] == 67,i]])
@@ -243,13 +247,13 @@ I might have to do this manually.
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
-                                             ndarray[np_int32_t, ndim=2] quals,
+cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
+                                             ndarray[int32_t, ndim=2] quals,
                                              size_t lenR):
     cdef size_t readlen = len(seqs[0])
     cdef size_t read_index, base_index
-    cdef ndarray[np_int32_t, ndim=2] QualSumAll
-    cdef np_int32_t tmpInt
+    cdef ndarray[int32_t, ndim=2] QualSumAll
+    cdef int32_t tmpInt
     QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
     for read_index in range(lenR):
         for base_index in range(readlen):
@@ -291,12 +295,14 @@ cdef cystr FastFisherFlattening(list R,
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
     # cdef char tmpChar
-    cdef ndarray[np_int32_t, ndim=2] quals
+    cdef ndarray[int32_t, ndim=2] quals
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
     cdef char tmpChar
     cdef SeqQual_t ret
+    cdef char size32 = sizeof(int32_t)
+    cdef char sizedouble = sizeof(np.double_t)
     if(name is None):
         name = R[0].name
     lenR = len(R)
@@ -323,6 +329,15 @@ cdef cystr FastFisherFlattening(list R,
     memcpy(tmpArr.data.as_voidptr, <uint8_t*> ret.Seq, lenSeq)
     free(ret.Seq)
     newSeq = tmpArr.tostring()
+    tmpArr = array('i')
+    c_array.resize(tmpArr, lenSeq * size32)
+    memcpy(tmpArr.data.as_voidptr, <uint8_t*> ret.Qual, lenSeq * size32)
+    phredQualsStr = PyArr2QualStr(tmpArr)
+    PVString = cQualArr2PVString(tmpArr)
+    TagString = "" + PVString
+    free(ret.Qual)
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
     '''
     newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
     phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
@@ -397,10 +412,10 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
     # cdef char tmpChar
-    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[int32_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[int32_t, ndim=2] qualT, qualAllSum
+    cdef ndarray[int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[int32_t, ndim=1] phredQuals, qualTFlat
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
@@ -881,21 +896,45 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
-cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+cdef cystr PyArr2QualStr(py_array qualArr):
+    """
+    :param qualArr: [py_array/arg] Expects a 32-bit integer array
+    :return: [cystr]
+    """
+    cdef size_t length = len(qualArr)
+    return AdjustQualArr(&qualArr.data.as_ints[0], length)
+
+
+cdef char * AdjustQualArr(int32_t* qualPtr, size_t length) nogil:
+    cdef size_t index = 0
+    cdef char * ret
+    realloc(ret, length)
+    while index < length:
+        if(qualPtr[index] > 93):
+            ret[index] = 93
+        elif(qualPtr[index] < 0):
+            ret[index] = 0
+        else:
+            ret[index] = qualPtr[index]
+    return ret
+
+
+
+cdef cystr cQualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     """
     This is the "safe" way to convert ph2chr.
     """
-    cdef np_int32_t tmpInt
+    cdef int32_t tmpInt
     return array('B', [
         tmpInt if(tmpInt < 94) else
         93 for tmpInt in qualArr]).tostring().translate(PH2CHR_TRANS)
 
 
-cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+cdef cystr cQualArr2PVString(ndarray[int32_t, ndim=1] qualArr):
     return "|PV=%s" % ",".join(qualArr.astype(str))
 
 
-cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+cdef cystr cQualArr2FAString(ndarray[int32_t, ndim=1] qualArr):
     return "|FA=%s" % ",".join(qualArr.astype(str))
 
 

@@ -12,7 +12,6 @@ from utilBMF.Inliners cimport CigarOpToCigarChar, ChrToRefIDInline
 from utilBMF.Inliners cimport chrInline, opLenToStr
 from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport PH2CHR_TRANS
-from MawCluster.BCBam cimport AStostring
 
 ctypedef cython.str cystr
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
