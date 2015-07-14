@@ -71,8 +71,11 @@ cpdef py_array str2phredarray(cystr instr):
 
 cdef inline py_array cs_to_ph(cystr input_str):
     cdef py_array tmpArr
-    cdef size_t index
-    tmpArr = array('B', input_str)
+    cdef size_t index, length
+    tmpArr = array('B')
+    length = len(input_str)
+    c_array.resize(tmpArr, length)
+    memcpy(tmpArr.data.as_voidptr, <uint8_t*>input_str, length)
     for index in range(len(tmpArr)):
         tmpArr[index] -= 33
     return tmpArr

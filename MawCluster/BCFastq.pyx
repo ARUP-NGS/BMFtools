@@ -123,7 +123,11 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
         mem = " -S " + mem
     threadStr = ""
     if(threads != 1):
-        threadStr = " --parallel=%s" % threads
+        import warnings
+        warnings.warn("Note: getBarcodeSortStr is being given a threads argum"
+                      "ent. This is deprecated for uniformity between linux "
+                      "distributions. Parameter simply being ignored.",
+                      DeprecationWarning)
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
@@ -134,7 +138,7 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
                 " %s %s | tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
 
 
-cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+cpdef cystr QualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     """
     cpdef wrapper for QualArr2QualStr
 
@@ -150,7 +154,7 @@ cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2QualStr(qualArr)
 
 
-cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+cpdef cystr QualArr2PVString(ndarray[int32_t, ndim=1] qualArr):
     return cQualArr2PVString(qualArr)
 
 
@@ -171,18 +175,59 @@ def InlineFisher(var):
     return var
 
 
-cdef class SeqQual:
-    def __init__(self, py_array Seq, py_array Qual):
-        self.Seq = Seq
-        self.Qual = Qual
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, np.int8_t * Quals,
+                                     size_t rLen, size_t nRecs) nogil:
+    # C Definitions
+    # Return
+    cdef SeqQual_t ret
+    # Return Struct Attributes
+    cdef np.int8_t * retSeq = <np.int8_t *>malloc(rLen)
+    cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
+    cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
+    # Temporary data structures
+    cdef np.double_t * chiSums = <np.double_t *> malloc(
+        rLen * 4 * sizedouble)
+    '''Pseudocode
+
+    '''
+    ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
+    return ret
 
 
 cdef SeqQual_t FisherFlatten(
-        ndarray[np.int32_t, ndim=2] Quals, ndarray[np.int32_t, ndim=2] Seqs,
-        size_t length):
+        ndarray[int32_t, ndim=2, mode="c"] Quals,
+        ndarray[np.int8_t, ndim=2, mode="c"] Seqs,
+        size_t rLen, size_t nRecs):
+    """
+    :param Quals: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
+    holding the qualities for a set of reads.
+    :param Seqs: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
+    holding the sequences for a set of reads.
+    :param rLen:
+    :param nRecs:
+    :return: [SeqQual_t] An array of sequence and an array of qualities after flattening.
+    """
+    cdef SeqQual_t ret = cFisherFlatten(
+        &Quals[0,0], &Seqs[0,0], rLen, nRecs)
     '''
+
+    Math in pseudocode:
+        New P Value = chi2.sf(-2 * np.sum(np.log(i) for i in pValues), len(pValues) * 2)
+        x = -2 * np.sum(np.log(i) for i in pValues)
+        df = len(pValues * 2)
+        chi2.sf = chtdrc(df, x)
+        chtdrc(df, x) = 1.0 if(x) < 0 else igamc(df / 2.0, x / 2.0)
+
+        New P Value =
+
+    cdef float chi2sum =  -2 * np.sum(np.log(i) for i in pValues)
+    return 1.0 if(chi2sum < 0) else igamc(df / 2.0, chi2sum / 2.0)
+    return 1.0 if(chi2sum < 0) else igamc(len(pValues) * 1., chi2sum / 2.0)
+
     cdef size_t i, j
-    cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
+    cdef ndarray[int32_t, ndim=1] ret, tmpArr
     ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
     # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 84]], dtype=np.int32)
     # PhredC = InlineFisher(Quals[Seqs[:,i] == 67,i]])
@@ -190,7 +235,7 @@ cdef SeqQual_t FisherFlatten(
     # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
     return ret
     '''
-
+    return ret
 
 
 '''
@@ -201,13 +246,13 @@ I might have to do this manually.
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
-                                             ndarray[np_int32_t, ndim=2] quals,
+cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
+                                             ndarray[int32_t, ndim=2] quals,
                                              size_t lenR):
     cdef size_t readlen = len(seqs[0])
     cdef size_t read_index, base_index
-    cdef ndarray[np_int32_t, ndim=2] QualSumAll
-    cdef np_int32_t tmpInt
+    cdef ndarray[int32_t, ndim=2] QualSumAll
+    cdef int32_t tmpInt
     QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
     for read_index in range(lenR):
         for base_index in range(readlen):
@@ -243,58 +288,55 @@ cdef cystr FastFisherFlattening(list R,
     1000 loops, best of 3: 947 us per loop
 
     """
-    cdef int lenR, ND, lenSeq, tmpInt, i
+    cdef int lenR, ND, lenSeq
     cdef double tmpFlt
-    cdef cython.bint Success
-    cdef cystr PVString, TagString, newSeq
+    cdef cystr PVString, TagString, newSeq, phredQualsStr
     cdef cystr consolidatedFqStr
-    # cdef char tmpChar
-    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[int32_t, ndim=2] quals
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
-    cdef char tmpChar
+    cdef SeqQual_t ret
     if(name is None):
         name = R[0].name
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
-        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
-                     cQualArr2PVString(phredQuals))
-        return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
-                                          TagString, R[0].sequence,
-                                          R[0].quality)
-    Success = True
+        return ""
+    '''
+    phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
+    TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                 cQualArr2PVString(phredQuals))
+    return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
+                                      TagString, R[0].sequence,
+                                      R[0].quality)
+    '''
     seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
-    # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
-    # Let's turn them into what they should be: nothing.
-    # quals[quals < 3] = 0
-    # --- Actually ---,  it seems that the q scores of 2 are higher quality
-    # than Illumina expects them to be, so let's keep them. They should also
-    # ideally be recalibrated.
-    qualA = ccopy(quals)
-    qualC = ccopy(quals)
-    qualG = ccopy(quals)
-    qualT = ccopy(quals)
-    qualA[seqArray != 65] = 0
-    qualAFlat = FisherFlatten(qualA, seqArray, lenSeq)
-    qualAFlat = nsum(qualA, 0, dtype=np.int32)
-    qualC[seqArray != 67] = 0
-    qualCFlat = nsum(qualC, 0, dtype=np.int32)
-    qualG[seqArray != 71] = 0
-    qualGFlat = nsum(qualG, 0, dtype=np.int32)
-    qualT[seqArray != 84] = 0
-    qualTFlat = nsum(qualT, 0, dtype=np.int32)
-    qualAllSum = np.vstack(
-        [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    tmpArr = array('B', np.argmax(qualAllSum, 0))
+    # TODO: Speed up this copying by switching to memcpy.
+    ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
+    tmpArr = array('B')
+    c_array.resize(tmpArr, lenSeq)
+    memcpy(tmpArr.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
+    free(ret.Seq)
+    newSeq = tmpArr.tostring()
+    tmpArr = array('i')
+    c_array.resize(tmpArr, lenSeq * size32)
+    memcpy(tmpArr.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
+    phredQualsStr = PyArr2QualStr(tmpArr)
+    PVString = PyArr2PVString(tmpArr)
+    free(ret.Qual)
+    tmpArr = array('i')
+    c_array.resize(tmpArr, lenSeq * size32)
+    memcpy(tmpArr.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
+    free(ret.Agree)
+    ND = lenR * lenSeq - nsum(tmpArr)
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
+    '''
     newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
     phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
 
@@ -322,7 +364,6 @@ cdef cystr FastFisherFlattening(list R,
     phredQualsStr = cQualArr2QualStr(phredQuals)
     FAString = cQualArr2FAString(FA)
     TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
-    '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
                                                    newSeq,
@@ -335,11 +376,10 @@ cdef cystr FastFisherFlattening(list R,
     In [68]: %timeit omgzwtf = ("@" + name + " " + b.comment + TagString +
                                 "\n" + newSeq + "\n+\n%s\n" % phredQualsStr)
     1000000 loops, best of 3: 512 ns per loop
-    '''
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
-    if(not Success):
-        return consolidatedFqStr.replace("Pass", "Fail")
+    return consolidatedFqStr
+    '''
     return consolidatedFqStr
 
 
@@ -368,10 +408,10 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
     # cdef char tmpChar
-    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[int32_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[int32_t, ndim=2] qualT, qualAllSum
+    cdef ndarray[int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[int32_t, ndim=1] phredQuals, qualTFlat
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
@@ -587,8 +627,10 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
-    from subprocess import check_call
+    cdef cystr path
+    from subprocess import check_call, CalledProcessError
     from itertools import chain
+    from sys import stderr
     cfi = chain.from_iterable
     if(num_nucs < 0):
         raise UnsetRequiredParameter(
@@ -632,7 +674,14 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     pl("About to clean up my R2 temporary files with command %s." % catStr2)
     check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
-    [check_call(["rm", fqpath]) for fqpath in list(cfi(fqPairList))]
+    for path in cfi([(fp, fp.replace(".fastq", ".BS.fastq"),
+                      fp.replace(".fastq", ".BS.cons.fastq")) for
+                     fp in list(cfi(fqPairList))]):
+        try:
+            stderr.write("Now calling 'rm %s'\n" % path)
+            check_call(["rm", path])
+        except CalledProcessError:
+            raise Exception("Path attempting to remove: %s\n" % path)
     return outfq1, outfq2
 
 
@@ -843,21 +892,52 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
-cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+cdef cystr PyArr2QualStr(py_array qualArr):
+    """
+    :param qualArr: [py_array/arg] Expects a 32-bit integer array
+    :return: [cystr]
+    """
+    cdef size_t length = len(qualArr)
+    cdef char * ptr = AdjustQualArr(&qualArr.data.as_ints[0], length)
+    cdef cystr ret = ptr
+    free(ptr)
+    return ret
+
+
+cdef inline char * AdjustQualArr(int32_t* qualPtr, size_t length) nogil:
+    cdef size_t index = 0
+    cdef char * ret = <char *> malloc(length)
+    while index < length:
+        if(qualPtr[index] > 93):
+            ret[index] = 93
+        elif(qualPtr[index] < 0):
+            ret[index] = 0
+        else:
+            ret[index] = qualPtr[index]
+    return ret
+
+
+
+cdef cystr cQualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     """
     This is the "safe" way to convert ph2chr.
     """
-    cdef np_int32_t tmpInt
+    cdef int32_t tmpInt
     return array('B', [
         tmpInt if(tmpInt < 94) else
         93 for tmpInt in qualArr]).tostring().translate(PH2CHR_TRANS)
 
 
-cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+cdef inline cystr PyArr2PVString(py_array qualArr):
+    cdef int32_t i
+    return "|PV=%s" % ",".join([str(i) for i in qualArr])
+
+
+cdef cystr cQualArr2PVString(ndarray[int32_t, ndim=1] qualArr):
     return "|PV=%s" % ",".join(qualArr.astype(str))
 
 
-cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+cdef cystr cQualArr2FAString(ndarray[int32_t, ndim=1] qualArr):
     return "|FA=%s" % ",".join(qualArr.astype(str))
 
 

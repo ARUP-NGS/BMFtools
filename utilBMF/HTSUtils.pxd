@@ -6,9 +6,9 @@ cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, DNA_CODON_TABLE
-from cpython cimport array
+from cpython cimport array as c_array
 from pysam.cfaidx cimport PersistentFastqProxy
-ctypedef array.array py_array
+ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t

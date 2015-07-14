@@ -3036,11 +3036,14 @@ cdef class BamTag(object):
         In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
         1000000 loops, best of 3: 710 ns per loop
         """
+        cdef cystr ret
         if(self.tagtype == "B"):
             if(isinstance(self.value, float)):
-                return self.tag + ":B:f%s" % (",".join(self.value))
+                ret = self.tag + ":B:f%s" % ",".join(map(str, self.value))
             else:
-                return self.tag + ":B:i%s" % (",".join(self.value))
+                ret = self.tag + ":B:i%s" % ",".join(map(str, self.value))
+            return ret if(len(self.value) > 1) else ret + ","
+
         else:
             return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 

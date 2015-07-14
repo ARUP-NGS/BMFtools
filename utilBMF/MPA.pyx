@@ -263,24 +263,15 @@ cdef class PyLayout(object):
         if(self.isMerged is True and self.mergeAdjusted is False):
             MP_Arr = self.getMergedPositions()
             if(len(MP_Arr) != 0):
-                self.tagDict["PM"] = BamTag(
-                    "PM", "Z", ",".join([str(tmp16) for tmp16 in
-                                         MP_Arr]))
+                self.tagDict["PM"] = BamTag("PM", "B", MP_Arr)
             MA_Arr = self.getMergeAgreements()
             if(len(MA_Arr) != 0):
-                self.tagDict["MA"] = BamTag(
-                    "MA", "Z", ",".join([str(tmp16) for tmp16 in
-                                         MA_Arr]))
+                self.tagDict["MA"] = BamTag("MA", "B", MA_Arr)
             GenDiscPos = self.cGetGenomicDiscordantPositions()
             ReadDiscPos = self.cGetReadDiscordantPositions()
             if(len(GenDiscPos) != 0):
-                self.tagDict["DG"] = BamTag(
-                    "DG", "Z", ",".join(
-                        [str(tmpInt) for tmpInt in
-                         GenDiscPos]))
-                self.tagDict["DR"] = BamTag(
-                    "DR", "Z", ",".join([str(tmp16) for tmp16 in
-                                         ReadDiscPos]))
+                self.tagDict["DG"] = BamTag("DG", "B", GenDiscPos)
+                self.tagDict["DR"] = BamTag("DR", "B", ReadDiscPos)
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
@@ -579,7 +570,7 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
                                  pysam.calignedsegment.AlignedSegment rec):
     cdef object x0, x1
     cdef char CigarChar
-    cdef ndarray[long, ndim=1] quals, agrees
+    cdef py_array quals, agrees
     '''
     First case - 'M'
     Second case - 'I'
@@ -588,16 +579,16 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
     '''
     CigarChar = CigarOpToCigarChar(cigarOp)
     try:
-        quals = np.array(rec.opt("PV").split(","), dtype=np.int64)
+        quals = rec.opt("PV")
     except KeyError:
         pl("Watch out - PV tag not set.", level=logging.DEBUG)
-        quals = np.array(rec.query_qualities, dtype=np.int64)
+        quals = rec.query_qualities
         # Let's make sure that these don't need reversal, too!
     try:
-        agrees = np.array(rec.opt("FA").split(","), dtype=np.int64)
+        agrees = rec.opt("FA")
     except KeyError:
         pl("Watch out - FA tag not set.", level=logging.DEBUG)
-        agrees = np.array([1] * len(rec.sequence), dtype=np.int64)
+        agrees = array('i', [1] * len(rec.sequence))
     return [LayoutPos(pos=x1, readPos=x0, operation=77,
                       base=ord(rec.seq[x0]), quality=quals[x0],
                       agreement=agrees[x0]) if
@@ -636,6 +627,7 @@ cpdef cystr MPA2stdout(cystr inBAM):
 
     stdout.write(inHandle.text)  # Since pysam seems to not be able to...
     stdout.flush()
+    PLFR = PyLayout.fromread
     for read in inHandle:
         read_count += 1
         if(read.is_secondary or
@@ -663,8 +655,8 @@ cpdef cystr MPA2stdout(cystr inBAM):
                          " Either this BAM isn't name-sorted or you are "
                          "missing a read from a pair.\n")
             return 1
-        l1 = PyLayout.fromread(read1, inHandle)
-        l2 = PyLayout.fromread(read2, inHandle)
+        l1 = PLFR(read1, inHandle)
+        l2 = PLFR(read2, inHandle)
         retLayout = MergeLayoutsToLayout(l1, l2)
         if(retLayout.test_merge_success()):
             success_merged_count += 1
@@ -807,7 +799,7 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     memory per thread.
     :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
     instead of samtools view
-    :param
+
     """
     from sys import stderr
     stderr.write("Getting base string.")

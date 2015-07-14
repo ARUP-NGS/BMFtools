@@ -117,22 +117,3 @@ cdef class TagBamPipe:
     cdef write(self, AlignedSegment_t read)
     cdef public dict RefIDDict
     cpdef process(self)
-
-
-cdef inline cystr AStostring(AlignedSegment_t read, AlignmentFile_t handle):
-    cdef cython.str cigarstring, mate_ref, ref
-    if(read.is_unmapped):
-        ref = "*"
-    else:
-        ref = handle.getrname(read.reference_id)
-    if(read.mate_is_unmapped):
-        mate_ref = "*"
-    else:
-        mate_ref = handle.getrname(read.rnext) if(
-            read.rnext != read.reference_id and read.rnext != -1) else "="
-    cigarstring = read.cigarstring if(
-        read.cigarstring is not None) else "*"
-    return "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
-        read.query_name, read.flag, ref,
-        read.pos + 1, read.mapq, cigarstring, mate_ref, read.mpos + 1,
-        read.template_length, read.seq, read.qual, read.get_tag_string())

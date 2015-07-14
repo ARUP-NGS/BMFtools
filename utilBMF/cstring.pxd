@@ -1,5 +1,5 @@
 from libc.stdlib cimport malloc, free
-from libc.string cimport strcmp
+from libc.string cimport strcmp, memcpy
 from cpython.string cimport PyString_AsString
 cimport cython
 from cython cimport view
