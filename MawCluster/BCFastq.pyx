@@ -175,18 +175,21 @@ def InlineFisher(var):
     return var
 
 
-cdef class SeqQual:
-    def __init__(self, py_array Seq, py_array Qual):
-        self.Seq = Seq
-        self.Qual = Qual
-
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef inline SeqQual_t cFisherFlatten(np.int32_t * Seqs, np.int8_t * Quals,
-                           size_t rLen, size_t nRecs):
-    cdef py_array retQual = array('B')
+                                     size_t rLen, size_t nRecs) nogil:
+    # C Definitions
+    cdef SeqQual_t ret
+    cdef np.int8_t * retSeq = <np.int8_t *>malloc(rLen)
+    cdef np.int32_t * retQual = <np.int32_t *>malloc(rLen * 4)
+    cdef np.longdouble_t * chiSums = <np.longdouble_t *> malloc(rLen * 4 * sizeof(np.longdouble_t))
+    '''
+    cdef py_array retQual = array('i')
     cdef py_array retSeq = array('B')
-    cdef SeqQual_t ret = SeqQual()
-    ret.Qual, ret.Seq = retQual, retSeq
+    cdef SeqQual_t ret = SeqQual(retQual, retSeq)
+    '''
+    # ret.Qual, ret.Seq = retQual, retSeq
     return ret
 
 
@@ -204,7 +207,7 @@ cdef SeqQual_t FisherFlatten(
     :return: [SeqQual_t] An array of sequence and an array of qualities after flattening.
     """
     cdef SeqQual_t ret = cFisherFlatten(
-        <np.int32_t *>Quals.data, <np.int8_t *>Seqs.data, rLen, nRecs)
+        &Quals[0,0], &Seqs[0,0], rLen, nRecs)
     '''
 
     Math in pseudocode:
@@ -288,52 +291,37 @@ cdef cystr FastFisherFlattening(list R,
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
     # cdef char tmpChar
-    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[np_int32_t, ndim=2] quals
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
     cdef char tmpChar
+    cdef SeqQual_t ret
     if(name is None):
         name = R[0].name
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
-        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
-                     cQualArr2PVString(phredQuals))
-        return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
-                                          TagString, R[0].sequence,
-                                          R[0].quality)
+        return ""
+    '''
+    phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
+    TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                 cQualArr2PVString(phredQuals))
+    return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
+                                      TagString, R[0].sequence,
+                                      R[0].quality)
+    '''
     Success = True
     seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
-    # Qualities of 2 are placeholders and mean nothing in Illumina sequencing.
-    # Let's turn them into what they should be: nothing.
-    # quals[quals < 3] = 0
-    # --- Actually ---,  it seems that the q scores of 2 are higher quality
-    # than Illumina expects them to be, so let's keep them. They should also
-    # ideally be recalibrated.
-    qualA = ccopy(quals)
-    qualC = ccopy(quals)
-    qualG = ccopy(quals)
-    qualT = ccopy(quals)
-    qualA[seqArray != 65] = 0
-    qualAFlat = FisherFlatten(qualA, seqArray, lenSeq, lenR)
-    qualAFlat = nsum(qualA, 0, dtype=np.int32)
-    qualC[seqArray != 67] = 0
-    qualCFlat = nsum(qualC, 0, dtype=np.int32)
-    qualG[seqArray != 71] = 0
-    qualGFlat = nsum(qualG, 0, dtype=np.int32)
-    qualT[seqArray != 84] = 0
-    qualTFlat = nsum(qualT, 0, dtype=np.int32)
-    qualAllSum = np.vstack(
-        [qualAFlat, qualCFlat, qualGFlat, qualTFlat])
-    tmpArr = array('B', np.argmax(qualAllSum, 0))
+    # TODO: Speed up this copying by switching to memcpy.
+    ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
+    tmpArr = array('B')
+    c_array.resize(tmpArr, lenSeq)
+    memcpy(tmpArr.data.as_voidptr, <uint8_t*> ret.Seq, lenSeq)
+    '''
     newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
     phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
 
@@ -361,7 +349,6 @@ cdef cystr FastFisherFlattening(list R,
     phredQualsStr = cQualArr2QualStr(phredQuals)
     FAString = cQualArr2FAString(FA)
     TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
-    '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
                                                    newSeq,
@@ -374,12 +361,13 @@ cdef cystr FastFisherFlattening(list R,
     In [68]: %timeit omgzwtf = ("@" + name + " " + b.comment + TagString +
                                 "\n" + newSeq + "\n+\n%s\n" % phredQualsStr)
     1000000 loops, best of 3: 512 ns per loop
-    '''
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
     if(not Success):
         return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
+    '''
+    return ""
 
 
 @cython.boundscheck(False)
