@@ -19,6 +19,16 @@ ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 ctypedef int int32_t
 
 
+# CONSTANTS
+cdef public dict Num2NucDict
+cdef public cystr ARGMAX_TRANSLATE_STRING
+cdef public py_array nucs
+cdef char size32 = 4
+cdef char sizedouble = 8
+cdef double LOG10E = 0.43429448190325182765
+cdef double LOG10E_X5 = 2.1714724095162592
+cdef double LOG10E_X5_INV = 0.46051701859880917  # Multiply a phred score by this to convert
+
 # METHODS
 cdef cystr cCompareFqRecsFast(list R, cystr name=?, double minPVFrac=?,
                               double minFAFrac=?, double minMaxFA=?)
@@ -44,13 +54,8 @@ cdef inline cystr cMakeTagComment(cystr saltedBS,
     else:
         return "~#!#~" + rec.comment + "|FP=0|BS=" + saltedBS
 
-
-# CONSTANTS
-cdef public dict Num2NucDict
-cdef public cystr ARGMAX_TRANSLATE_STRING
-cdef public py_array nucs
-cdef char size32 = 4
-cdef char sizedouble = 8
+cdef inline double CHI2_FROM_PHRED(int32_t phredInt) nogil:
+    return phredInt * LOG10E_X5_INV
 
 # STRUCTS
 cdef struct SeqQual:

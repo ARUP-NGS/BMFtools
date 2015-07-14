@@ -189,8 +189,26 @@ cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, np.int8_t * Quals,
     # Temporary data structures
     cdef np.double_t * chiSums = <np.double_t *> malloc(
         rLen * 4 * sizedouble)
+    cdef size_t query_index = 0
+    cdef size_t chisum_index = 0
+    cdef size_t numbases = rLen * nRecs
+    while query_index < numbases:
+        if(Seqs[query_index] == 67):
+            # case "C"
+            chiSums[query_index % rLen + rLen] += CHI2_FROM_PHRED(Quals[query_index])
+        elif(Seqs[query_index] == 71):
+            # case "G"
+            chiSums[query_index % rLen + 2 * rLen] += CHI2_FROM_PHRED(Quals[query_index])
+        elif(Seqs[query_index] == 84):
+            # case "T"
+            chiSums[query_index % rLen + 3 * rLen] += CHI2_FROM_PHRED(Quals[query_index])
+        else:
+            # case "A"
+            chiSums[query_index % rLen] += CHI2_FROM_PHRED(Quals[query_index])
+    # CHI2_FROM_PHRED
     '''Pseudocode
 
+    chi2sum = (
     '''
     ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
     return ret
