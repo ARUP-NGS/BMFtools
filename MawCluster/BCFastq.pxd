@@ -12,6 +12,7 @@ from numpy cimport ndarray, uint8_t
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
 from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
+from utilBMF.dec cimport igamc
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef SeqQual SeqQual_t
@@ -44,10 +45,6 @@ cdef cystr cQualArr2FAString(ndarray[int32_t, ndim=1] qualArr)
 
 
 cdef inline bint BarcodePasses(cystr barcode, int hpLimit)
-
-cdef extern from "igam.c" nogil:
-    double igamc(double a, double x)
-    double MAXLOG, MACHEP
 
 
 @cython.boundscheck(False)
