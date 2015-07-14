@@ -3038,9 +3038,9 @@ cdef class BamTag(object):
         """
         if(self.tagtype == "B"):
             if(isinstance(self.value, float)):
-                return self.tag + ":B:f%s" % (",".join(self.value))
+                return self.tag + ":B:f%s" % (",".join(map(str, self.value)))
             else:
-                return self.tag + ":B:i%s" % (",".join(self.value))
+                return self.tag + ":B:i%s" % (",".join(map(str, self.value)))
         else:
             return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 

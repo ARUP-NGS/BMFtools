@@ -321,6 +321,8 @@ cdef cystr FastFisherFlattening(list R,
     tmpArr = array('B')
     c_array.resize(tmpArr, lenSeq)
     memcpy(tmpArr.data.as_voidptr, <uint8_t*> ret.Seq, lenSeq)
+    free(ret.Seq)
+    newSeq = tmpArr.tostring()
     '''
     newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
     phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
