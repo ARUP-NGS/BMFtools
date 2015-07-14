@@ -123,7 +123,11 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
         mem = " -S " + mem
     threadStr = ""
     if(threads != 1):
-        threadStr = " --parallel=%s" % threads
+        import warnings
+        warnings.warn("Note: getBarcodeSortStr is being given a threads argum"
+                      "ent. This is deprecated for uniformity between linux "
+                      "distributions. Parameter simply being ignored.",
+                      DeprecationWarning)
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
@@ -180,9 +184,21 @@ cdef class SeqQual:
 cdef SeqQual_t FisherFlatten(
         ndarray[np.int32_t, ndim=2] Quals, ndarray[np.int32_t, ndim=2] Seqs,
         size_t length):
-    cdef SeqQual_t ret = SeqQual()
-
     '''
+
+    Math in pseudocode:
+        New P Value = chi2.sf(-2 * np.sum(np.log(i) for i in pValues), len(pValues) * 2)
+        x = -2 * np.sum(np.log(i) for i in pValues)
+        df = len(pValues * 2)
+        chi2.sf = chtdrc(df, x)
+        chtdrc(df, x) = 1.0 if(x) < 0 else igamc(df / 2.0, x / 2.0)
+
+        New P Value =
+
+    cdef float chi2sum =  -2 * np.sum(np.log(i) for i in pValues)
+    return 1.0 if(chi2sum < 0) else igamc(df / 2.0, chi2sum / 2.0)
+    return 1.0 if(chi2sum < 0) else igamc(len(pValues) * 1., chi2sum / 2.0)
+
     cdef size_t i, j
     cdef ndarray[np.int32_t, ndim=1] ret, tmpArr
     ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
@@ -192,6 +208,8 @@ cdef SeqQual_t FisherFlatten(
     # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
     return ret
     '''
+    cdef SeqQual_t ret = SeqQual()
+
 
 
 
@@ -589,6 +607,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
+    cdef cystr path
     from subprocess import check_call, CalledProcessError
     from itertools import chain
     from sys import stderr
@@ -635,10 +654,9 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     pl("About to clean up my R2 temporary files with command %s." % catStr2)
     check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
-    paths = [f for f in cfi([(fp, fp.replace(".fastq", ".BS.fastq"),
-                                  fp.replace(".fastq", ".BS.cons.fastq")) for
-                                 fp in list(cfi(fqPairList))])]
-    for path in paths:
+    for path in cfi([(fp, fp.replace(".fastq", ".BS.fastq"),
+                      fp.replace(".fastq", ".BS.cons.fastq")) for
+                     fp in list(cfi(fqPairList))]):
         try:
             stderr.write("Now calling 'rm %s'\n" % path)
             check_call(["rm", path])
