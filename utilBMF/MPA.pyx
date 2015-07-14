@@ -263,24 +263,15 @@ cdef class PyLayout(object):
         if(self.isMerged is True and self.mergeAdjusted is False):
             MP_Arr = self.getMergedPositions()
             if(len(MP_Arr) != 0):
-                self.tagDict["PM"] = BamTag(
-                    "PM", "Z", ",".join([str(tmp16) for tmp16 in
-                                         MP_Arr]))
+                self.tagDict["PM"] = BamTag("PM", "B", MP_Arr)
             MA_Arr = self.getMergeAgreements()
             if(len(MA_Arr) != 0):
-                self.tagDict["MA"] = BamTag(
-                    "MA", "Z", ",".join([str(tmp16) for tmp16 in
-                                         MA_Arr]))
+                self.tagDict["MA"] = BamTag("MA", "Z", MA_Arr)
             GenDiscPos = self.cGetGenomicDiscordantPositions()
             ReadDiscPos = self.cGetReadDiscordantPositions()
             if(len(GenDiscPos) != 0):
-                self.tagDict["DG"] = BamTag(
-                    "DG", "Z", ",".join(
-                        [str(tmpInt) for tmpInt in
-                         GenDiscPos]))
-                self.tagDict["DR"] = BamTag(
-                    "DR", "Z", ",".join([str(tmp16) for tmp16 in
-                                         ReadDiscPos]))
+                self.tagDict["DG"] = BamTag("DG", "Z", GenDiscPos)
+                self.tagDict["DR"] = BamTag("DR", "B", ReadDiscPos)
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
