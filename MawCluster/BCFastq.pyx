@@ -180,18 +180,17 @@ def InlineFisher(var):
 cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, np.int8_t * Quals,
                                      size_t rLen, size_t nRecs) nogil:
     # C Definitions
+    # Return
     cdef SeqQual_t ret
-    cdef char size32 = sizeof(int32_t)
-    cdef char sizedouble = sizeof(np.double_t)
+    # Return Struct Attributes
     cdef np.int8_t * retSeq = <np.int8_t *>malloc(rLen)
     cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
     cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
+    # Temporary data structures
     cdef np.double_t * chiSums = <np.double_t *> malloc(
-        rLen * 4 * sizeof(np.double_t))
-    '''
-    cdef py_array retQual = array('i')
-    cdef py_array retSeq = array('B')
-    cdef SeqQual_t ret = SeqQual(retQual, retSeq)
+        rLen * 4 * sizedouble)
+    '''Pseudocode
+
     '''
     ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
     return ret
@@ -289,20 +288,15 @@ cdef cystr FastFisherFlattening(list R,
     1000 loops, best of 3: 947 us per loop
 
     """
-    cdef int lenR, ND, lenSeq, tmpInt, i
+    cdef int lenR, ND, lenSeq
     cdef double tmpFlt
-    cdef cython.bint Success
-    cdef cystr PVString, TagString, newSeq
+    cdef cystr PVString, TagString, newSeq, phredQualsStr
     cdef cystr consolidatedFqStr
-    # cdef char tmpChar
     cdef ndarray[int32_t, ndim=2] quals
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
-    cdef char tmpChar
     cdef SeqQual_t ret
-    cdef char size32 = sizeof(int32_t)
-    cdef char sizedouble = sizeof(np.double_t)
     if(name is None):
         name = R[0].name
     lenR = len(R)
@@ -317,7 +311,6 @@ cdef cystr FastFisherFlattening(list R,
                                       TagString, R[0].sequence,
                                       R[0].quality)
     '''
-    Success = True
     seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([cs_to_ph(rec.quality) for
@@ -326,16 +319,21 @@ cdef cystr FastFisherFlattening(list R,
     ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
     tmpArr = array('B')
     c_array.resize(tmpArr, lenSeq)
-    memcpy(tmpArr.data.as_voidptr, <uint8_t*> ret.Seq, lenSeq)
+    memcpy(tmpArr.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
     free(ret.Seq)
     newSeq = tmpArr.tostring()
     tmpArr = array('i')
     c_array.resize(tmpArr, lenSeq * size32)
-    memcpy(tmpArr.data.as_voidptr, <uint8_t*> ret.Qual, lenSeq * size32)
+    memcpy(tmpArr.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
     phredQualsStr = PyArr2QualStr(tmpArr)
-    PVString = cQualArr2PVString(tmpArr)
-    TagString = "" + PVString
+    PVString = PyArr2PVString(tmpArr)
     free(ret.Qual)
+    tmpArr = array('i')
+    c_array.resize(tmpArr, lenSeq * size32)
+    memcpy(tmpArr.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
+    free(ret.Agree)
+    ND = lenR * lenSeq - nsum(tmpArr)
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
     '''
@@ -380,11 +378,9 @@ cdef cystr FastFisherFlattening(list R,
     1000000 loops, best of 3: 512 ns per loop
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
-    if(not Success):
-        return consolidatedFqStr.replace("Pass", "Fail")
     return consolidatedFqStr
     '''
-    return ""
+    return consolidatedFqStr
 
 
 @cython.boundscheck(False)
@@ -902,13 +898,15 @@ cdef cystr PyArr2QualStr(py_array qualArr):
     :return: [cystr]
     """
     cdef size_t length = len(qualArr)
-    return AdjustQualArr(&qualArr.data.as_ints[0], length)
+    cdef char * ptr = AdjustQualArr(&qualArr.data.as_ints[0], length)
+    cdef cystr ret = ptr
+    free(ptr)
+    return ret
 
 
-cdef char * AdjustQualArr(int32_t* qualPtr, size_t length) nogil:
+cdef inline char * AdjustQualArr(int32_t* qualPtr, size_t length) nogil:
     cdef size_t index = 0
-    cdef char * ret
-    realloc(ret, length)
+    cdef char * ret = <char *> malloc(length)
     while index < length:
         if(qualPtr[index] > 93):
             ret[index] = 93
@@ -928,6 +926,11 @@ cdef cystr cQualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     return array('B', [
         tmpInt if(tmpInt < 94) else
         93 for tmpInt in qualArr]).tostring().translate(PH2CHR_TRANS)
+
+
+cdef inline cystr PyArr2PVString(py_array qualArr):
+    cdef int32_t i
+    return "|PV=%s" % ",".join([str(i) for i in qualArr])
 
 
 cdef cystr cQualArr2PVString(ndarray[int32_t, ndim=1] qualArr):

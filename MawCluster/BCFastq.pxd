@@ -5,6 +5,7 @@ cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from cpython cimport array as c_array
 from libc.stdlib cimport malloc, free, realloc
+from libc.stdint cimport int8_t
 from libc.string cimport memcpy
 from numpy cimport ndarray, uint8_t
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
@@ -48,6 +49,8 @@ cdef inline cystr cMakeTagComment(cystr saltedBS,
 cdef public dict Num2NucDict
 cdef public cystr ARGMAX_TRANSLATE_STRING
 cdef public py_array nucs
+cdef char size32 = 4
+cdef char sizedouble = 8
 
 # STRUCTS
 cdef struct SeqQual:
