@@ -1,3 +1,4 @@
+
 #ifndef __QHEAD_H
 #define __QHEAD_H
 

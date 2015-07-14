@@ -49,7 +49,6 @@
  * ensure that these values are correct for your computer.
  *
  */
-
 /*
 Cephes Math Library Release 2.3:  March, 1995
 Copyright 1984, 1987, 1989, 1995 by Stephen L. Moshier
