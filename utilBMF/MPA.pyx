@@ -798,7 +798,7 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     memory per thread.
     :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
     instead of samtools view
-    :param
+
     """
     from sys import stderr
     stderr.write("Getting base string.")

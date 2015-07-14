@@ -5,7 +5,7 @@ cimport pysam.cfaidx
 
 cimport utilBMF.HTSUtils
 
-from cpython.array cimport array as py_array
+from cpython cimport array as c_array
 from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.Inliners cimport CigarOpToCigarChar, ChrToRefIDInline
@@ -17,6 +17,7 @@ from MawCluster.BCBam cimport AStostring
 ctypedef cython.str cystr
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
+ctypedef c_array.array py_array
 
 ctypedef PyLayout PyLayout_t
 ctypedef LayoutPos LayoutPos_t

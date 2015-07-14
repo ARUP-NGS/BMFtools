@@ -181,9 +181,30 @@ cdef class SeqQual:
         self.Qual = Qual
 
 
+cdef inline SeqQual_t cFisherFlatten(np.int32_t * Seqs, np.int8_t * Quals,
+                           size_t rLen, size_t nRecs):
+    cdef py_array retQual = array('B')
+    cdef py_array retSeq = array('B')
+    cdef SeqQual_t ret = SeqQual()
+    ret.Qual, ret.Seq = retQual, retSeq
+    return ret
+
+
 cdef SeqQual_t FisherFlatten(
-        ndarray[np.int32_t, ndim=2] Quals, ndarray[np.int32_t, ndim=2] Seqs,
-        size_t length):
+        ndarray[np.int32_t, ndim=2, mode="c"] Quals,
+        ndarray[np.int8_t, ndim=2, mode="c"] Seqs,
+        size_t rLen, size_t nRecs):
+    """
+    :param Quals: [ndarray[np.int32_t, ndim=2]/arg] - numpy 2D-array for
+    holding the qualities for a set of reads.
+    :param Seqs: [ndarray[np.int32_t, ndim=2]/arg] - numpy 2D-array for
+    holding the sequences for a set of reads.
+    :param rLen:
+    :param nRecs:
+    :return: [SeqQual_t] An array of sequence and an array of qualities after flattening.
+    """
+    cdef SeqQual_t ret = cFisherFlatten(
+        <np.int32_t *>Quals.data, <np.int8_t *>Seqs.data, rLen, nRecs)
     '''
 
     Math in pseudocode:
@@ -208,9 +229,7 @@ cdef SeqQual_t FisherFlatten(
     # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
     return ret
     '''
-    cdef SeqQual_t ret = SeqQual()
-
-
+    return ret
 
 
 '''
@@ -304,7 +323,7 @@ cdef cystr FastFisherFlattening(list R,
     qualG = ccopy(quals)
     qualT = ccopy(quals)
     qualA[seqArray != 65] = 0
-    qualAFlat = FisherFlatten(qualA, seqArray, lenSeq)
+    qualAFlat = FisherFlatten(qualA, seqArray, lenSeq, lenR)
     qualAFlat = nsum(qualA, 0, dtype=np.int32)
     qualC[seqArray != 67] = 0
     qualCFlat = nsum(qualC, 0, dtype=np.int32)
