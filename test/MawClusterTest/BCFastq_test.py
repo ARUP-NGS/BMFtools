@@ -9,7 +9,7 @@ from utilBMF.HTSUtils import pFastqFile
 from MawCluster.BCFastq import (pCompareFqRecsFast as cCompareFqRecsFast,
                                 pairedFastqConsolidate, singleFastqConsolidate)
 
-__author__ = 'dnephi'
+__author__ = 'dnephi and BrettKennedy'
 
 
 class MyTestCase(unittest.TestCase):
