@@ -200,7 +200,7 @@ cdef class SumArraySet:
         free(self.argmax_arr)
 
 
-cdef SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
+cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
                               size_t rLen, size_t nRecs):
     cdef SeqQual_t ret
     cdef SumArraySet_t Sums
@@ -215,25 +215,26 @@ cdef SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
     cdef size_t rLen2 = 2 * rLen
     cdef size_t rLen3 = 3 * rLen
     while query_index < numbases:
+        print("Repr of Seqs: %s" % Seqs[query_index])
         if(Seqs[query_index] == 67):
-            sys.stderr.write("Base %s is C" % (query_index))
+            sys.stderr.write("Base %s is C\n" % (query_index))
             ndIndex = query_index % rLen + rLen
             # case "C"
         elif(Seqs[query_index] == 71):
             # case "G"
-            sys.stderr.write("Base %s is G" % (query_index))
+            sys.stderr.write("Base %s is G\n" % (query_index))
             ndIndex = query_index % rLen + rLen2
         elif(Seqs[query_index] == 84):
             # case "T"
-            sys.stderr.write("Base %s is T" % (query_index))
+            sys.stderr.write("Base %s is T\n" % (query_index))
             ndIndex = query_index % rLen + rLen3
         elif(Seqs[query_index] == 78):
             # case "N"
-            sys.stderr.write("Base %s is N" % (query_index))
+            sys.stderr.write("Base %s is N\n" % (query_index))
             pass
         else:
             # case "A"
-            sys.stderr.write("Base %s is A" % (query_index))
+            sys.stderr.write("Base %s is A\n" % (query_index))
             ndIndex = query_index % rLen
         assert ndIndex <= rLen * 4
         Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
@@ -257,8 +258,8 @@ cdef SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
 
 
 cpdef SeqQual_t FisherFlatten(
-        ndarray[int32_t, ndim=2, mode="c"] Quals,
         ndarray[int8_t, ndim=2, mode="c"] Seqs,
+        ndarray[int32_t, ndim=2, mode="c"] Quals,
         size_t rLen, size_t nRecs):
     """
     :param Quals: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
@@ -269,7 +270,7 @@ cpdef SeqQual_t FisherFlatten(
     :param nRecs: [size_t/arg] Number of records to flatten
     :return: [SeqQual_t] An array of sequence and an array of qualities after flattening.
     """
-    return cFisherFlatten(&Quals[0,0], &Seqs[0,0], rLen, nRecs)
+    return cFisherFlatten(&Seqs[0,0], &Quals[0,0], rLen, nRecs)
 
 
 '''
@@ -352,7 +353,7 @@ cdef cystr cFastFisherFlattening(list R,
                       rec in R], dtype=np.int32)
     # TODO: Speed up this copying by switching to memcpy
     # Flatten with Fisher.
-    ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
+    ret = FisherFlatten(seqArray, quals, lenSeq, lenR)
     # Copy out results to python arrays
     # Seq
     Seq = array('B')
@@ -904,7 +905,7 @@ cdef inline cystr PyArr2QualStr(py_array qualArr):
     :return: [cystr]
     """
     cdef size_t i
-    cdef py_array ret = array("B", [i if(i < 94) else 93 for i in qualArr])
+    cdef py_array ret = array("B", [i if(i < 127) else 126 for i in qualArr])
     return ret.tostring()
 
 
