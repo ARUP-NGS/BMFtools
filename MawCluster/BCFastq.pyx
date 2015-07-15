@@ -162,22 +162,21 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
 
 
-cdef inline ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
+cdef inline ndarray[int8_t, ndim=2] cRecListTo2DCharArray(list R):
     cdef pFastqProxy_t rec
     return np.array([cs_to_ia(rec.sequence) for rec in R],
-                    dtype=np.uint8)
+                    dtype=np.int8)
 
 
 cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
 
 
-cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
-                                     size_t rLen, size_t nRecs) nogil:
+cdef cFisherFlatten(int32_t * Seqs, int8_t * Quals,
+                    size_t rLen, size_t nRecs):
     # C Definitions
-    # Return
-    cdef SeqQual_t ret
-    # Return Struct Attributes
+    cdef py_array Seq, Qual, Agree
+    # Return values
     cdef int8_t * retSeq = <int8_t *>malloc(rLen)
     cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
     cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
@@ -223,16 +222,34 @@ cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
             igamc_pvalues(counts[ndIndex], chiSums[ndIndex])) + 0.5)
         retAgree[query_index] = counts[query_index + rLen * argmax_arr[query_index]]
         query_index += 1
+
+    # Free temporary variables
     free(counts)
     free(argmax_arr)
     free(chiSums)
-    ret.Qual = retQual
-    ret.Seq = retSeq
-    ret.Agree = retAgree
-    return ret
+
+    # Copy out results to python arrays
+    # Seq
+    Seq = array('B')
+    c_array.resize(Seq, rLen)
+    memcpy(Seq.data.as_voidptr, <int8_t*> retSeq, rLen)
+    free(retSeq)
+
+    # Qual
+    Qual = array('i')
+    c_array.resize(Qual, rLen * size32)
+    memcpy(Qual.data.as_voidptr, <int32_t*> retQual, rLen * size32)
+    free(retQual)
+
+    # Agree
+    Agree = array('i')
+    c_array.resize(Agree, rLen * size32)
+    memcpy(Agree.data.as_voidptr, <int32_t*> retAgree, rLen * size32)
+    free(retAgree)
+    return Seq, Qual, Agree
 
 
-cdef SeqQual_t FisherFlatten(
+cpdef FisherFlatten(
         ndarray[int32_t, ndim=2, mode="c"] Quals,
         ndarray[int8_t, ndim=2, mode="c"] Seqs,
         size_t rLen, size_t nRecs):
@@ -241,13 +258,11 @@ cdef SeqQual_t FisherFlatten(
     holding the qualities for a set of reads.
     :param Seqs: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
     holding the sequences for a set of reads.
-    :param rLen:
-    :param nRecs:
+    :param rLen: [size_t/arg] Read length
+    :param nRecs: [size_t/arg] Number of records to flatten
     :return: [SeqQual_t] An array of sequence and an array of qualities after flattening.
     """
-    cdef SeqQual_t ret = cFisherFlatten(
-        &Quals[0,0], &Seqs[0,0], rLen, nRecs)
-    return ret
+    return cFisherFlatten(&Quals[0,0], &Seqs[0,0], rLen, nRecs)
 
 
 '''
@@ -303,11 +318,11 @@ cdef cystr cFastFisherFlattening(list R,
     """
     cdef int lenR, ND, lenSeq
     cdef double tmpFlt
-    cdef cystr PVString, TagString, newSeq, phredQualsStr
+    cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
     cdef cystr consolidatedFqStr
-    cdef ndarray[int32_t, ndim=2] quals
-    cdef ndarray[char, ndim=2] seqArray
-    cdef py_array tmpArr
+    cdef ndarray[int32_t, ndim=2, mode="c"] quals
+    cdef ndarray[int8_t, ndim=2, mode="c"] seqArray
+    cdef py_array Seq, Qual, Agree
     cdef pFastqProxy_t rec
     cdef SeqQual_t ret
     if(name is None):
@@ -321,77 +336,29 @@ cdef cystr cFastFisherFlattening(list R,
     TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
                  cQualArr2PVString(phredQuals))
     return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
-                                      TagString, R[0].sequence,
+              , mode="c"                        TagString, R[0].sequence,
                                       R[0].quality)
     '''
     seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
-    # TODO: Speed up this copying by switching to memcpy.
-    ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
-    tmpArr = array('B')
-    c_array.resize(tmpArr, lenSeq)
-    memcpy(tmpArr.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
-    free(ret.Seq)
-    newSeq = tmpArr.tostring()
-    tmpArr = array('i')
-    c_array.resize(tmpArr, lenSeq * size32)
-    memcpy(tmpArr.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
-    phredQualsStr = PyArr2QualStr(tmpArr)
-    PVString = PyArr2PVString(tmpArr)
-    free(ret.Qual)
-    tmpArr = array('i')
-    c_array.resize(tmpArr, lenSeq * size32)
-    memcpy(tmpArr.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
-    free(ret.Agree)
-    ND = lenR * lenSeq - nsum(tmpArr)
-    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString
+    # TODO: Speed up this copying by switching to memc
+    # Flatten with Fisher.
+    Seq, Qual, Agree = FisherFlatten(quals, seqArray, lenSeq, lenR)
+    # Get seq string
+    newSeq = Seq.tostring()
+    # Get quality strings (both for PV tag and quality field)
+    phredQualsStr = PyArr2QualStr(Qual)
+    PVString = PyArr2PVString(Qual)
+    # Use the number agreed
+    FAString = PyArr2FAString(Qual)
+    ND = lenR * lenSeq - nsum(Agree)
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString + FAString
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
     '''
-    newSeq = tmpArr.tostring().translate(ARGMAX_TRANSLATE_STRING)
-    phredQuals = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-
-    # Filtering
-    # First, kick out bad/discordant bases
-    tmpFlt = float(np.max(phredQuals))
-    PVFracDivisor = minPVFrac * tmpFlt
-    phredQuals[phredQuals < PVFracDivisor] = 0
-    # Second, flag families which are probably not really "families"
-    FA = np.array([sum([rec.sequence[i] == newSeq[i] for
-                        rec in R]) for
-                  i in xrange(lenSeq)], dtype=np.int32)
-    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA * lenR):
-        #  If there's any base on which a family agrees less often
-        #  than minFAFrac, nix the whole family.
-        #  Along with that, require that at least one of the bases agree
-        #  to some fraction. I've chosen 0.9 to get rid of junk families.
-        phredQuals[:] = 0
-    # Sums the quality score for all bases, then scales it by the number of
-    # agreed bases. There could be more informative ways to do so, but
-    # this is primarily a placeholder.
-    ND = lenR * lenSeq - nsum(FA)
-    phredQuals[phredQuals < 0] = 0
-    PVString = cQualArr2PVString(phredQuals)
-    phredQualsStr = cQualArr2QualStr(phredQuals)
-    FAString = cQualArr2FAString(FA)
-    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
-    consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
-                                                   TagString,
-                                                   newSeq,
-                                                   phredQualsStr)
-    In [67]: %timeit omgzwtf = "@%s %s%s\n%s\n+\n%s\n" % (name, b.comment,
-                                                          TagString,
-                                                          newSeq,
-                                                          phredQualsStr)
-    1000000 loops, best of 3: 585 ns per loop
-    In [68]: %timeit omgzwtf = ("@" + name + " " + b.comment + TagString +
-                                "\n" + newSeq + "\n+\n%s\n" % phredQualsStr)
-    1000000 loops, best of 3: 512 ns per loop
-    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
-                         newSeq + "\n+\n%s\n" % phredQualsStr)
-    return consolidatedFqStr
+    Whatever else
     '''
     return consolidatedFqStr
 
@@ -939,6 +906,11 @@ cdef cystr cQualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     return array('B', [
         tmpInt if(tmpInt < 94) else
         93 for tmpInt in qualArr]).tostring().translate(PH2CHR_TRANS)
+
+
+cdef inline cystr PyArr2FAString(py_array agreeArr):
+    cdef int32_t i
+    return "|FA=%s" % ",".join([str(i) for i in agreeArr])
 
 
 cdef inline cystr PyArr2PVString(py_array qualArr):

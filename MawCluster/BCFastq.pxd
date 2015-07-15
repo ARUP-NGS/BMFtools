@@ -111,4 +111,3 @@ cdef struct SeqQual:
     int8_t * Seq
     int32_t * Agree
     int32_t * Qual
-    size_t length
