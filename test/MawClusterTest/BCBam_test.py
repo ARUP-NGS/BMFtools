@@ -3,7 +3,8 @@ import shlex
 import subprocess
 import sys
 import unittest
-
+import pysam
+import numpy as np
 from BMFMain.Workflow import pairedFastqShades
 from utilBMF.HTSUtils import pFastqFile, PipeAlignTag
 from MawCluster.BCFastq import (pCompareFqRecsFast as cCompareFqRecsFast,
@@ -24,28 +25,40 @@ class MyTestCase(unittest.TestCase):
             subprocess.check_call(["rm", filename])
 
     def setUp(self):
-        bam = "../data/Tiny.bam"
+        self.fq1 = "../data/lambdaTest_R1.shaded.BS.cons.fastq.gz"
+        self.fq2 = "../data/lambdaTest_R3.shaded.BS.cons.fastq.gz"
+        self.ref = "../data/OurPhageRef/OurPhageLambda.fasta"
+        self.badBC = ['A'*16, 'G'*16, 'C'*16, 'T'*16]
         self.filenames = []
 
     def test_compareCOBam(self):
-            "../data/lamda-50div_S4_L001_R1_001.rescued.shaded.BS.cons.fastq.gz",
-            "../data/lamda-50div_S4_L001_R3_001.rescued.shaded.BS.cons.fastq.gz",
-            ref="")
-        """
-        TODO: Dummy case for making sure everything happens as it should.
-        Check the following:
-            1. Make sure that the is_qcfail flag is being set for reads
-            with a run of 14 "A"s in a row in the barcode.
-            2. Make sure that the is_qcfail flag is being set for reads
-            with an N in the barcode.
-            3. Make sure that the BS tag matches the read's name.
-            4. Manually check that the PV tag matches the quality string.
-            I would do
-            assert sum(np.array(read.opt("PV").split(","), dtype=np.int32) == read.query_qualities) == len(read.query_qualities)
-
-        """
-
-        pass
+        PipeAlignTag(self.fq1, self.fq2, ref=self.ref)
+        bam = pysam.AlignmentFile(
+            "../data/lambdaTest_R1.shaded.BS.cons.fastq.mem.bam")
+        self.filenames += ([
+            "../data/lambdaTest_R1.shaded.BS.cons.fastq.mem.bam",
+            "../data/lambdaTest_R1.shaded.BS.cons.fastq.mem.bam.bai",])
+        for read in bam:
+            if read.qname in self.badBC:
+                if not read.is_qcfail:
+                    raise AssertionError(
+                            "BS: %s does not properly fail QC" % (read.qname))
+            if 'N' in read.qname:
+                if not read.is_qcfail:
+                    raise AssertionError(
+                            "BS: %s does not properly fail QC" % (read.qname))
+            if read.qname != read.opt('BS'):
+                raise AssertionError("Read: %s has mismatch in name and BS"
+                                     " tag" % (read.qname))
+            if read.opt('PV') != read.query_qualities:
+                pv = [i if(i < 94) else(93) for i in  read.opt('PV')]
+                if pv != list(read.query_qualities):
+                    raise AssertionError("Read: %s has mismatched quality"
+                                         " array and PV tag\nPV Tag:\n%s\n"
+                                         "query_qualities: %s" % (
+                                            read.qname,
+                                            pv,
+                                            read.query_qualities))
 
 if __name__ == '__main__':
     unittest.main()
