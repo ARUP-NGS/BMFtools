@@ -5,9 +5,10 @@ import sys
 import unittest
 
 from BMFMain.Workflow import pairedFastqShades
-from utilBMF.HTSUtils import pFastqFile
+from utilBMF.HTSUtils import pFastqFile, PipeAlignTag
 from MawCluster.BCFastq import (pCompareFqRecsFast as cCompareFqRecsFast,
                                 pairedFastqConsolidate, singleFastqConsolidate)
+
 
 __author__ = 'dnephi'
 
@@ -23,9 +24,13 @@ class MyTestCase(unittest.TestCase):
             subprocess.check_call(["rm", filename])
 
     def setUp(self):
+        bam = "../data/Tiny.bam"
         self.filenames = []
 
     def test_compareCOBam(self):
+            "../data/lamda-50div_S4_L001_R1_001.rescued.shaded.BS.cons.fastq.gz",
+            "../data/lamda-50div_S4_L001_R3_001.rescued.shaded.BS.cons.fastq.gz",
+            ref="")
         """
         TODO: Dummy case for making sure everything happens as it should.
         Check the following:

@@ -132,7 +132,8 @@ def cycleError(args):
         if read.is_read2:
             rc += 1
             errorFinder(read, read2error, read2obs)
-    sys.stdout.write("Family Size Range: %i-%i\n" % (fam_range))
+    sys.stdout.write("Family Size Range: %i-%i\n" % (fam_range[0],
+                                                     fam_range[1]))
     sys.stdout.write("Reads Analyzed: %i\n" % (rc))
     sys.stdout.write("Reads QC Filtered: %i\n" % (qc))
     if fam_range:
