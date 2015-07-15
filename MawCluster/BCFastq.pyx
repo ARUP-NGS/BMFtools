@@ -171,34 +171,70 @@ cdef inline ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
 cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
 
-def InlineFisher(var):
-    return var
 
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, np.int8_t * Quals,
+cdef inline SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
                                      size_t rLen, size_t nRecs) nogil:
     # C Definitions
     # Return
     cdef SeqQual_t ret
     # Return Struct Attributes
-    cdef np.int8_t * retSeq = <np.int8_t *>malloc(rLen)
+    cdef int8_t * retSeq = <int8_t *>malloc(rLen)
     cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
     cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
     # Temporary data structures
+    cdef int32_t * counts = <int32_t *>malloc(rLen * size32)
     cdef np.double_t * chiSums = <np.double_t *> malloc(
         rLen * 4 * sizedouble)
-    '''Pseudocode
-
-    '''
-    ret.Qual, ret.Seq, ret.Agree = retQual, retSeq, retAgree
+    cdef int8_t * argmax_arr = <int8_t *> malloc(rLen)
+    cdef size_t query_index = 0
+    cdef size_t chisum_index = 0
+    cdef size_t ndIndex = 0
+    cdef size_t numbases = rLen * nRecs
+    cdef size_t rLen2 = 2 * rLen
+    cdef size_t rLen3 = 3 * rLen
+    while query_index < numbases:
+        if(Seqs[query_index] == 67):
+            ndIndex = query_index % rLen + rLen
+            # case "C"
+        elif(Seqs[query_index] == 71):
+            # case "G"
+            ndIndex = query_index % rLen + rLen2
+        elif(Seqs[query_index] == 84):
+            # case "T"
+            ndIndex = query_index % rLen + rLen3
+        elif(Seqs[query_index] == 78):
+            # case "N"
+            pass
+        else:
+            # case "A"
+            ndIndex = query_index % rLen
+        chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+        counts[ndIndex] += 1
+        query_index += 1
+    query_index = 0
+    while query_index < rLen:
+        argmax_arr[query_index] = argmax4(chiSums[query_index],
+                                          chiSums[query_index + rLen],
+                                          chiSums[query_index + rLen2],
+                                          chiSums[query_index + rLen3])
+        retSeq[query_index] = ARGMAX_CONV(argmax_arr[query_index])
+        ndIndex = query_index + argmax_arr[query_index] * rLen
+        retQual[query_index] = <int32_t> (- 10 * c_log10(
+            igamc_pvalues(counts[ndIndex], chiSums[ndIndex])) + 0.5)
+        retAgree[query_index] = counts[query_index + rLen * argmax_arr[query_index]]
+        query_index += 1
+    free(counts)
+    free(argmax_arr)
+    free(chiSums)
+    ret.Qual = retQual
+    ret.Seq = retSeq
+    ret.Agree = retAgree
     return ret
 
 
 cdef SeqQual_t FisherFlatten(
         ndarray[int32_t, ndim=2, mode="c"] Quals,
-        ndarray[np.int8_t, ndim=2, mode="c"] Seqs,
+        ndarray[int8_t, ndim=2, mode="c"] Seqs,
         size_t rLen, size_t nRecs):
     """
     :param Quals: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
@@ -211,30 +247,6 @@ cdef SeqQual_t FisherFlatten(
     """
     cdef SeqQual_t ret = cFisherFlatten(
         &Quals[0,0], &Seqs[0,0], rLen, nRecs)
-    '''
-
-    Math in pseudocode:
-        New P Value = chi2.sf(-2 * np.sum(np.log(i) for i in pValues), len(pValues) * 2)
-        x = -2 * np.sum(np.log(i) for i in pValues)
-        df = len(pValues * 2)
-        chi2.sf = chtdrc(df, x)
-        chtdrc(df, x) = 1.0 if(x) < 0 else igamc(df / 2.0, x / 2.0)
-
-        New P Value =
-
-    cdef float chi2sum =  -2 * np.sum(np.log(i) for i in pValues)
-    return 1.0 if(chi2sum < 0) else igamc(df / 2.0, chi2sum / 2.0)
-    return 1.0 if(chi2sum < 0) else igamc(len(pValues) * 1., chi2sum / 2.0)
-
-    cdef size_t i, j
-    cdef ndarray[int32_t, ndim=1] ret, tmpArr
-    ret = [[InlineFisher(Quals[tmpArr, i]) for i in xrange(length)] for tmpArr in [Seqs[:,i] == j for j in nucs]]
-    # np.array([[InlineFisher(Quals[Seqs[:,i] == j,i]) for i in xrange(length)] for j in [65, 67, 71, 84]], dtype=np.int32)
-    # PhredC = InlineFisher(Quals[Seqs[:,i] == 67,i]])
-    # PhredG = InlineFisher(Quals[Seqs[:,i] == 71, i]])
-    # PhredT = InlineFisher(Quals[Seqs[:,i] == 84, i]])
-    return ret
-    '''
     return ret
 
 
@@ -269,13 +281,14 @@ cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 '''
 
 
+cpdef cystr FastFisherFlattening(list R, cystr name=None):
+    return cFastFisherFlattening(R, name=name)
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef cystr FastFisherFlattening(list R,
-                                cystr name=None,
-                                double minPVFrac=0.1,
-                                double minFAFrac=0.2,
-                                double minMaxFA=0.9):
+cdef cystr cFastFisherFlattening(list R,
+                                 cystr name=None):
     """
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
@@ -898,7 +911,7 @@ cdef cystr PyArr2QualStr(py_array qualArr):
     :return: [cystr]
     """
     cdef size_t length = len(qualArr)
-    cdef char * ptr = AdjustQualArr(&qualArr.data.as_ints[0], length)
+    cdef char * ptr = AdjustQualArr(<int32_t *>&qualArr.data.as_ints[0], length)
     cdef cystr ret = ptr
     free(ptr)
     return ret
