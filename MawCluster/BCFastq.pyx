@@ -202,7 +202,6 @@ cdef class SumArraySet:
 
 cdef SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
                               size_t rLen, size_t nRecs):
-    sys.stderr.write("About to allocate memory.")
     cdef SeqQual_t ret
     cdef SumArraySet_t Sums
     ret = SeqQual(rLen)
@@ -215,29 +214,32 @@ cdef SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
     cdef size_t numbases = rLen * nRecs
     cdef size_t rLen2 = 2 * rLen
     cdef size_t rLen3 = 3 * rLen
-    sys.stderr.write("About to go through arrays.")
     while query_index < numbases:
         if(Seqs[query_index] == 67):
+            sys.stderr.write("Base %s is C" % (query_index))
             ndIndex = query_index % rLen + rLen
             # case "C"
         elif(Seqs[query_index] == 71):
             # case "G"
+            sys.stderr.write("Base %s is G" % (query_index))
             ndIndex = query_index % rLen + rLen2
         elif(Seqs[query_index] == 84):
             # case "T"
+            sys.stderr.write("Base %s is T" % (query_index))
             ndIndex = query_index % rLen + rLen3
         elif(Seqs[query_index] == 78):
             # case "N"
+            sys.stderr.write("Base %s is N" % (query_index))
             pass
         else:
             # case "A"
+            sys.stderr.write("Base %s is A" % (query_index))
             ndIndex = query_index % rLen
         assert ndIndex <= rLen * 4
         Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
         Sums.counts[ndIndex] += 1
         query_index += 1
     query_index = 0
-    sys.stderr.write("About to go through 2nd array pass.")
     while query_index < rLen:
         assert query_index + rLen3 < rLen * 4
         Sums.argmax_arr[query_index] = argmax4(Sums.chiSums[query_index],
@@ -351,7 +353,6 @@ cdef cystr cFastFisherFlattening(list R,
     # TODO: Speed up this copying by switching to memcpy
     # Flatten with Fisher.
     ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
-
     # Copy out results to python arrays
     # Seq
     Seq = array('B')
@@ -360,14 +361,17 @@ cdef cystr cFastFisherFlattening(list R,
 
     # Qual
     Qual = array('i')
-    c_array.resize(Qual, lenSeq * size32)
+    c_array.resize(Qual, lenSeq)
     memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
 
     # Agree
     Agree = array('i')
-    c_array.resize(Agree, lenSeq * size32)
+    c_array.resize(Agree, lenSeq)
     memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
     # Get seq string
+    sys.stderr.write("Repr of Seq: %s\n" % Seq)
+    sys.stderr.write("Repr of Agree: %s\n" % Agree)
+    sys.stderr.write("Repr of Qual: %s\n" % Qual)
     newSeq = Seq.tostring()
     # Get quality strings (both for PV tag and quality field)
     phredQualsStr = PyArr2QualStr(Qual)
@@ -381,6 +385,7 @@ cdef cystr cFastFisherFlattening(list R,
     '''
     Whatever else
     '''
+    sys.stderr.write("Now returning output string.")
     return consolidatedFqStr
 
 
@@ -893,22 +898,13 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
-cdef cystr PyArr2QualStr(py_array qualArr):
+cdef inline cystr PyArr2QualStr(py_array qualArr):
     """
     :param qualArr: [py_array/arg] Expects a 32-bit integer array
     :return: [cystr]
     """
-    cdef size_t index = 0
-    cdef py_array ret = array("B")
-    cdef size_t length = len(qualArr)
-    c_array.resize(ret, length)
-    while index < length:
-        if(qualArr[index] > 93):
-            ret[index] = 93
-        elif(qualArr[index] < 0):
-            ret[index] = 0
-        else:
-            ret[index] = qualArr[index]
+    cdef size_t i
+    cdef py_array ret = array("B", [i if(i < 94) else 93 for i in qualArr])
     return ret.tostring()
 
 
