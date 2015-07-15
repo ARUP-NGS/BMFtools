@@ -4,21 +4,13 @@ import subprocess
 import sys
 import unittest
 import pysam
-import numpy as np
-from BMFMain.Workflow import pairedFastqShades
-from utilBMF.HTSUtils import pFastqFile, PipeAlignTag
-from MawCluster.BCFastq import (pCompareFqRecsFast as cCompareFqRecsFast,
-                                pairedFastqConsolidate, singleFastqConsolidate)
+from utilBMF.HTSUtils import PipeAlignTag
+from utilBMF.MPA import MPA2Bam
 
-
-__author__ = 'dnephi'
+__author__ = 'dnephi and BrettKennedy'
 
 
 class MyTestCase(unittest.TestCase):
-    """
-    TODO: Add a unit test to assert that the sum of the sizes of merged
-    families equals the number of pre-merged reads.
-    """
 
     def tearDown(self):
         for filename in self.filenames:
@@ -59,6 +51,10 @@ class MyTestCase(unittest.TestCase):
                                             read.qname,
                                             pv,
                                             read.query_qualities))
+
+    def test_MPA2Bam(self):
+        PipeAlignTag(self.fq1, self.fq2, ref=self.ref)
+
 
 if __name__ == '__main__':
     unittest.main()
