@@ -8,6 +8,3 @@ ctypedef cython.str cystr
 cdef extern from "Hellinger.c":
     cdef float64_t Hellinger_in_c(
         float64_t* arr1, float64_t* arr2, size_t length)
-
-cdef extern from "igam.c" nogil:
-    double igamc(double a, double x)
