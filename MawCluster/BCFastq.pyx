@@ -214,45 +214,64 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
     cdef size_t numbases = rLen * nRecs
     cdef size_t rLen2 = 2 * rLen
     cdef size_t rLen3 = 3 * rLen
+    cdef size_t offset = 0
+    cdef double_t invchi
     while query_index < numbases:
-        print("Repr of Seqs: %s" % Seqs[query_index])
+        offset = query_index % rLen
         if(Seqs[query_index] == 67):
-            sys.stderr.write("Base %s is C\n" % (query_index))
-            ndIndex = query_index % rLen + rLen
+            # Add in the chiSum for the observed base
+            ndIndex = offset + rLen
+            Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            # Add in thi CHI2 sum contribution for the bases that weren't observed.
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset] += invchi
+            Sums.chiSums[offset + rLen2] +=  invchi
+            Sums.chiSums[offset + rLen3] +=  invchi
             # case "C"
         elif(Seqs[query_index] == 71):
             # case "G"
-            sys.stderr.write("Base %s is G\n" % (query_index))
-            ndIndex = query_index % rLen + rLen2
+            ndIndex = offset + rLen2
+            Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset] += invchi
+            Sums.chiSums[offset + rLen] += invchi
+            Sums.chiSums[offset + rLen3] += invchi
         elif(Seqs[query_index] == 84):
             # case "T"
-            sys.stderr.write("Base %s is T\n" % (query_index))
-            ndIndex = query_index % rLen + rLen3
-        elif(Seqs[query_index] == 78):
-            # case "N"
-            sys.stderr.write("Base %s is N\n" % (query_index))
-            pass
-        else:
+            ndIndex = offset + rLen3
+            Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset] += invchi
+            Sums.chiSums[offset + rLen] += invchi
+            Sums.chiSums[offset + rLen2] += invchi
+        elif(Seqs[query_index] == 65):
             # case "A"
-            sys.stderr.write("Base %s is A\n" % (query_index))
-            ndIndex = query_index % rLen
-        assert ndIndex <= rLen * 4
-        Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            ndIndex = offset
+            Sums.chiSums[offset] += CHI2_FROM_PHRED(Quals[query_index])
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset + rLen] += invchi
+            Sums.chiSums[offset + rLen2] += invchi
+            Sums.chiSums[offset + rLen3] += invchi
+        else:
+            # case "N"
+            pass
         Sums.counts[ndIndex] += 1
         query_index += 1
     query_index = 0
     while query_index < rLen:
-        assert query_index + rLen3 < rLen * 4
+        # Find the most probable base
         Sums.argmax_arr[query_index] = argmax4(Sums.chiSums[query_index],
-                                          Sums.chiSums[query_index + rLen],
-                                          Sums.chiSums[query_index + rLen2],
-                                          Sums.chiSums[query_index + rLen3])
+                                               Sums.chiSums[query_index + rLen],
+                                               Sums.chiSums[query_index + rLen2],
+                                               Sums.chiSums[query_index + rLen3])
+        # Convert the argmaxes to letters
         ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
         ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
         # Round
         ret.Qual[query_index] = <int32_t> (- 10 * c_log10(
             igamc_pvalues(Sums.counts[ndIndex], Sums.chiSums[ndIndex])) + 0.5)
-        ret.Agree[query_index] = Sums.counts[query_index + rLen * Sums.argmax_arr[query_index]]
+        # Count agreement
+        ret.Agree[query_index] = Sums.counts[ndIndex]
         query_index += 1
     return ret
 
@@ -338,15 +357,13 @@ cdef cystr cFastFisherFlattening(list R,
     lenR = len(R)
     lenSeq = len(R[0].sequence)
     if lenR == 1:
-        return ""
-    '''
-    phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
-    TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
-                 cQualArr2PVString(phredQuals))
-    return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
-              , mode="c"                        TagString, R[0].sequence,
-                                      R[0].quality)
-    '''
+        rec = R[0]
+        phredQuals = np.array(rec.getQualArray(), dtype=np.int32)
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                     cQualArr2PVString(phredQuals))
+        return "@%s %s%s\n%s\n+\n%s\n" % (name, rec.comment,
+                                          TagString, rec.sequence,
+                                          rec.quality)
     seqArray = cRecListTo2DCharArray(R)
 
     quals = np.array([cs_to_ph(rec.quality) for
@@ -378,7 +395,7 @@ cdef cystr cFastFisherFlattening(list R,
     phredQualsStr = PyArr2QualStr(Qual)
     PVString = PyArr2PVString(Qual)
     # Use the number agreed
-    FAString = PyArr2FAString(Qual)
+    FAString = PyArr2FAString(Agree)
     ND = lenR * lenSeq - nsum(Agree)
     TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString + FAString
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
@@ -905,7 +922,7 @@ cdef inline cystr PyArr2QualStr(py_array qualArr):
     :return: [cystr]
     """
     cdef size_t i
-    cdef py_array ret = array("B", [i if(i < 127) else 126 for i in qualArr])
+    cdef py_array ret = array("B", [i + 33 if(i < 94) else 126 for i in qualArr])
     return ret.tostring()
 
 
