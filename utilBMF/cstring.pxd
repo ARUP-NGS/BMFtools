@@ -42,16 +42,9 @@ cdef public cystr DNA_CODON_TABLE = ('\x00\x01\x02\x03\x04\x05\x06\x07\x08\t'
                                      '\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd'
                                      '\xfe\xff')
 
-
-'''
-cdef public cystr PH2CHR_TRANS = maketrans(
-        "".join([chr(x) for x in xrange(
-            0, 127 - 33)].iterkeys()),
-        "".join([chr(x + 33) for x in xrange(
-            0, 127 - 33)]))
-'''
 cdef public cystr PH2CHR_TRANS
 
 cdef struct struct_str:
     char * string
     size_t size
+

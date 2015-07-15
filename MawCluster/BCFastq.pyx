@@ -47,6 +47,8 @@ except ImportError:
 
 ARGMAX_TRANSLATE_STRING = maketrans('\x00\x01\x02\x03', 'ACGT')
 nucs = array('B', [65, 67, 71, 83])
+DEF size32 = 4
+DEF sizedouble = 8
 
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
@@ -172,20 +174,41 @@ cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
 
 
-cdef cFisherFlatten(int32_t * Seqs, int8_t * Quals,
-                    size_t rLen, size_t nRecs):
-    # C Definitions
-    cdef py_array Seq, Qual, Agree
-    # Return values
+cdef class SeqQual:
+    def __cinit__(self, size_t length):
+        self.Seq = <int8_t *>malloc(length)
+        self.Agree = <int32_t *>malloc(length * size32)
+        self.Qual = <int32_t *>malloc(length * size32)
+        self.length = length
+
+    def __dealloc__(self):
+        free(self.Seq)
+        free(self.Agree)
+        free(self.Qual)
+
+
+cdef class SumArraySet:
+    def __cinit__(self, size_t length):
+        self.length = length
+        self.counts = <int32_t *>calloc(length * 4, size32)
+        self.chiSums = <double_t *>calloc(length * 4, sizedouble)
+        self.argmax_arr = <int8_t *>malloc(length)
+
+    def __dealloc__(self):
+        free(self.counts)
+        free(self.chiSums)
+        free(self.argmax_arr)
+
+
+cdef SeqQual_t cFisherFlatten(int32_t * Seqs, int8_t * Quals,
+                              size_t rLen, size_t nRecs):
     sys.stderr.write("About to allocate memory.")
-    cdef int8_t * retSeq = <int8_t *>malloc(rLen)
-    cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
-    cdef int32_t * retAgree = <int32_t *>malloc(rLen  * size32)
+    cdef SeqQual_t ret
+    cdef SumArraySet_t Sums
+    ret = SeqQual(rLen)
+    Sums = SumArraySet(rLen)
+    cdef py_array Seq, Qual, Agree
     # Temporary data structures
-    cdef int32_t * counts = <int32_t *>malloc(rLen * size32)
-    cdef np.double_t * chiSums = <np.double_t *> malloc(
-        rLen * 4 * sizedouble)
-    cdef int8_t * argmax_arr = <int8_t *> malloc(rLen * 1)
     cdef size_t query_index = 0
     cdef size_t chisum_index = 0
     cdef size_t ndIndex = 0
@@ -209,53 +232,29 @@ cdef cFisherFlatten(int32_t * Seqs, int8_t * Quals,
         else:
             # case "A"
             ndIndex = query_index % rLen
-        chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
-        counts[ndIndex] += 1
+        assert ndIndex <= rLen * 4
+        Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+        Sums.counts[ndIndex] += 1
         query_index += 1
     query_index = 0
     sys.stderr.write("About to go through 2nd array pass.")
     while query_index < rLen:
-        argmax_arr[query_index] = argmax4(chiSums[query_index],
-                                          chiSums[query_index + rLen],
-                                          chiSums[query_index + rLen2],
-                                          chiSums[query_index + rLen3])
-        retSeq[query_index] = ARGMAX_CONV(argmax_arr[query_index])
-        ndIndex = query_index + argmax_arr[query_index] * rLen
-        retQual[query_index] = <int32_t> (- 10 * c_log10(
-            igamc_pvalues(counts[ndIndex], chiSums[ndIndex])) + 0.5)
-        retAgree[query_index] = counts[query_index + rLen * argmax_arr[query_index]]
+        assert query_index + rLen3 < rLen * 4
+        Sums.argmax_arr[query_index] = argmax4(Sums.chiSums[query_index],
+                                          Sums.chiSums[query_index + rLen],
+                                          Sums.chiSums[query_index + rLen2],
+                                          Sums.chiSums[query_index + rLen3])
+        ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
+        ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
+        # Round
+        ret.Qual[query_index] = <int32_t> (- 10 * c_log10(
+            igamc_pvalues(Sums.counts[ndIndex], Sums.chiSums[ndIndex])) + 0.5)
+        ret.Agree[query_index] = Sums.counts[query_index + rLen * Sums.argmax_arr[query_index]]
         query_index += 1
-
-    # Free temporary variables
-    sys.stderr.write("About to free counts.")
-    free(counts)
-    sys.stderr.write("About to free argmax.")
-    free(argmax_arr)
-    sys.stderr.write("About to free chiSums.")
-    free(chiSums)
-
-    # Copy out results to python arrays
-    # Seq
-    Seq = array('B')
-    c_array.resize(Seq, rLen)
-    memcpy(Seq.data.as_voidptr, <int8_t*> retSeq, rLen)
-    free(retSeq)
-
-    # Qual
-    Qual = array('i')
-    c_array.resize(Qual, rLen * size32)
-    memcpy(Qual.data.as_voidptr, <int32_t*> retQual, rLen * size32)
-    free(retQual)
-
-    # Agree
-    Agree = array('i')
-    c_array.resize(Agree, rLen * size32)
-    memcpy(Agree.data.as_voidptr, <int32_t*> retAgree, rLen * size32)
-    free(retAgree)
-    return Seq, Qual, Agree
+    return ret
 
 
-cpdef FisherFlatten(
+cpdef SeqQual_t FisherFlatten(
         ndarray[int32_t, ndim=2, mode="c"] Quals,
         ndarray[int8_t, ndim=2, mode="c"] Seqs,
         size_t rLen, size_t nRecs):
@@ -323,7 +322,7 @@ cdef cystr cFastFisherFlattening(list R,
 
     """
     cdef int lenR, ND, lenSeq
-    cdef double tmpFlt
+    cdef double_t tmpFlt
     cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
     cdef cystr consolidatedFqStr
     cdef ndarray[int32_t, ndim=2, mode="c"] quals
@@ -349,9 +348,25 @@ cdef cystr cFastFisherFlattening(list R,
 
     quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
-    # TODO: Speed up this copying by switching to memc
+    # TODO: Speed up this copying by switching to memcpy
     # Flatten with Fisher.
-    Seq, Qual, Agree = FisherFlatten(quals, seqArray, lenSeq, lenR)
+    ret = FisherFlatten(quals, seqArray, lenSeq, lenR)
+
+    # Copy out results to python arrays
+    # Seq
+    Seq = array('B')
+    c_array.resize(Seq, lenSeq)
+    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
+
+    # Qual
+    Qual = array('i')
+    c_array.resize(Qual, lenSeq * size32)
+    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
+
+    # Agree
+    Agree = array('i')
+    c_array.resize(Agree, lenSeq * size32)
+    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
     # Get seq string
     newSeq = Seq.tostring()
     # Get quality strings (both for PV tag and quality field)
@@ -373,9 +388,9 @@ cdef cystr cFastFisherFlattening(list R,
 @cython.wraparound(False)
 cdef cystr cCompareFqRecsFast(list R,
                               cystr name=None,
-                              double minPVFrac=0.1,
-                              double minFAFrac=0.2,
-                              double minMaxFA=0.9):
+                              double_t minPVFrac=0.1,
+                              double_t minFAFrac=0.2,
+                              double_t minMaxFA=0.9):
     """
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
@@ -389,7 +404,7 @@ cdef cystr cCompareFqRecsFast(list R,
 
     """
     cdef int lenR, ND, lenSeq, tmpInt, i
-    cdef double tmpFlt
+    cdef double_t tmpFlt
     cdef cython.bint Success
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr

@@ -16,19 +16,19 @@ from MawCluster.Math cimport igamc
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef SeqQual SeqQual_t
+ctypedef SumArraySet SumArraySet_t
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
+ctypedef double double_t
 
 
 # CONSTANTS
 cdef public dict Num2NucDict
 cdef public cystr ARGMAX_TRANSLATE_STRING
 cdef public py_array nucs
-cdef char size32 = 4
-cdef char sizedouble = 8
-cdef double LOG10E = 0.43429448190325182765
-cdef double LOG10E_X5 = 2.1714724095162592
-cdef double LOG10E_X5_INV = 0.46051701859880917  # Multiply a phred score by this to convert
+DEF LOG10E = 0.43429448190325182765
+DEF LOG10E_X5 = 2.1714724095162592
+DEF LOG10E_X5_INV = 0.46051701859880917  # Multiply a phred score by this to convert
 
 # METHODS
 cdef cystr cCompareFqRecsFast(list R, cystr name=?, double minPVFrac=?,
@@ -68,15 +68,15 @@ cdef inline double CHI2_FROM_PHRED(int32_t phredInt) nogil:
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
-cdef inline np.double_t c_max(np.double_t a, np.double_t b) nogil:
+cdef inline double_t c_max(double_t a, double_t b) nogil:
     return a if(a > b) else b
 
 
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
-cdef inline int8_t argmax4(np.double_t a, np.double_t c, np.double_t g,
-                           np.double_t t) nogil:
+cdef inline int8_t argmax4(double_t a, double_t c, double_t g,
+                           double_t t) nogil:
     if t > c and t > g and  t > a:
         return 3
     elif g > c and g > a:
@@ -100,6 +100,7 @@ cdef inline int8_t ARGMAX_CONV(int8_t index) nogil:
     else:
         return 67
 
+
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
@@ -107,7 +108,15 @@ cdef inline double igamc_pvalues(int num_pvalues, double x) nogil:
     return 1.0 if(x < 0) else igamc(num_pvalues * 1., x / 2.0)
 
 # STRUCTS
-cdef struct SeqQual:
-    int8_t * Seq
-    int32_t * Agree
-    int32_t * Qual
+cdef class SeqQual:
+    cdef int8_t * Seq
+    cdef int32_t * Agree
+    cdef int32_t * Qual
+    cdef public size_t length
+
+
+cdef class SumArraySet:
+    cdef public size_t length
+    cdef int32_t * counts
+    cdef int8_t * argmax_arr
+    cdef double_t * chiSums
