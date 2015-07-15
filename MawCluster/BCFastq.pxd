@@ -5,7 +5,7 @@ cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from cpython cimport array as c_array
 from libc.math cimport log10 as c_log10
-from libc.stdlib cimport malloc, free, realloc
+from libc.stdlib cimport malloc, free, realloc, calloc
 from libc.stdint cimport int8_t, int32_t
 from libc.string cimport memcpy
 from numpy cimport ndarray, uint8_t

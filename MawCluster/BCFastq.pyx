@@ -177,20 +177,22 @@ cdef cFisherFlatten(int32_t * Seqs, int8_t * Quals,
     # C Definitions
     cdef py_array Seq, Qual, Agree
     # Return values
+    sys.stderr.write("About to allocate memory.")
     cdef int8_t * retSeq = <int8_t *>malloc(rLen)
     cdef int32_t * retQual = <int32_t *>malloc(rLen * size32)
-    cdef int32_t * retAgree = <int32_t *>malloc(rLen * size32)
+    cdef int32_t * retAgree = <int32_t *>malloc(rLen  * size32)
     # Temporary data structures
     cdef int32_t * counts = <int32_t *>malloc(rLen * size32)
     cdef np.double_t * chiSums = <np.double_t *> malloc(
         rLen * 4 * sizedouble)
-    cdef int8_t * argmax_arr = <int8_t *> malloc(rLen)
+    cdef int8_t * argmax_arr = <int8_t *> malloc(rLen * 1)
     cdef size_t query_index = 0
     cdef size_t chisum_index = 0
     cdef size_t ndIndex = 0
     cdef size_t numbases = rLen * nRecs
     cdef size_t rLen2 = 2 * rLen
     cdef size_t rLen3 = 3 * rLen
+    sys.stderr.write("About to go through arrays.")
     while query_index < numbases:
         if(Seqs[query_index] == 67):
             ndIndex = query_index % rLen + rLen
@@ -211,6 +213,7 @@ cdef cFisherFlatten(int32_t * Seqs, int8_t * Quals,
         counts[ndIndex] += 1
         query_index += 1
     query_index = 0
+    sys.stderr.write("About to go through 2nd array pass.")
     while query_index < rLen:
         argmax_arr[query_index] = argmax4(chiSums[query_index],
                                           chiSums[query_index + rLen],
@@ -224,8 +227,11 @@ cdef cFisherFlatten(int32_t * Seqs, int8_t * Quals,
         query_index += 1
 
     # Free temporary variables
+    sys.stderr.write("About to free counts.")
     free(counts)
+    sys.stderr.write("About to free argmax.")
     free(argmax_arr)
+    sys.stderr.write("About to free chiSums.")
     free(chiSums)
 
     # Copy out results to python arrays
@@ -877,25 +883,18 @@ cdef cystr PyArr2QualStr(py_array qualArr):
     :param qualArr: [py_array/arg] Expects a 32-bit integer array
     :return: [cystr]
     """
-    cdef size_t length = len(qualArr)
-    cdef char * ptr = AdjustQualArr(<int32_t *>&qualArr.data.as_ints[0], length)
-    cdef cystr ret = ptr
-    free(ptr)
-    return ret
-
-
-cdef inline char * AdjustQualArr(int32_t* qualPtr, size_t length) nogil:
     cdef size_t index = 0
-    cdef char * ret = <char *> malloc(length)
+    cdef py_array ret = array("B")
+    cdef size_t length = len(qualArr)
+    c_array.resize(ret, length)
     while index < length:
-        if(qualPtr[index] > 93):
+        if(qualArr[index] > 93):
             ret[index] = 93
-        elif(qualPtr[index] < 0):
+        elif(qualArr[index] < 0):
             ret[index] = 0
         else:
-            ret[index] = qualPtr[index]
-    return ret
-
+            ret[index] = qualArr[index]
+    return ret.tostring()
 
 
 cdef cystr cQualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
