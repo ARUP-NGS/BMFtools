@@ -235,11 +235,12 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
             # Add in the chiSum for the observed base
             ndIndex = offset + rLen
             Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
-            # Add in thi CHI2 sum contribution for the bases that weren't observed.
+            # Add in thi CHI2 sum contribution for the bases that
+            # weren't observed.
             invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
             Sums.chiSums[offset] += invchi
-            Sums.chiSums[offset + rLen2] +=  invchi
-            Sums.chiSums[offset + rLen3] +=  invchi
+            Sums.chiSums[offset + rLen2] += invchi
+            Sums.chiSums[offset + rLen3] += invchi
             # case "C"
         elif(Seqs[query_index] == 71):
             # case "G"
@@ -273,16 +274,18 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
     query_index = 0
     while query_index < rLen:
         # Find the most probable base
-        Sums.argmax_arr[query_index] = argmax4(Sums.chiSums[query_index],
-                                               Sums.chiSums[query_index + rLen],
-                                               Sums.chiSums[query_index + rLen2],
-                                               Sums.chiSums[query_index + rLen3])
+        Sums.argmax_arr[query_index] = argmax4(
+            Sums.chiSums[query_index],
+            Sums.chiSums[query_index + rLen],
+            Sums.chiSums[query_index + rLen2],
+            Sums.chiSums[query_index + rLen3])
         # Convert the argmaxes to letters
         ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
         ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
         # Round
         ret.Qual[query_index] = <int32_t> (- 10 * c_log10(
-            igamc_pvalues(Sums.counts[ndIndex], Sums.chiSums[ndIndex])) + 0.5)
+            igamc_pvalues(Sums.counts[ndIndex],
+                          Sums.chiSums[ndIndex])) + 0.5)
         # Count agreement
         ret.Agree[query_index] = Sums.counts[ndIndex]
         query_index += 1
@@ -300,7 +303,8 @@ cpdef SeqQual_t FisherFlatten(
     holding the sequences for a set of reads.
     :param rLen: [size_t/arg] Read length
     :param nRecs: [size_t/arg] Number of records to flatten
-    :return: [SeqQual_t] An array of sequence and an array of qualities after flattening.
+    :return: [SeqQual_t] An array of sequence and an array of qualities
+    after flattening.
     """
     return cFisherFlatten(&Seqs[0,0], &Quals[0,0], rLen, nRecs)
 
@@ -338,23 +342,26 @@ cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline int32_t RESCALE_QUALITY(int8_t qual, int32_t * RescalingArray) nogil:
+cdef inline int32_t RESCALE_QUALITY(
+        int8_t qual, int32_t * RescalingArray) nogil:
     return RescalingArray[qual - 2]
 
 
-cdef ndarray[int32_t, ndim=2, mode="c"] ParseAndRescaleQuals(list R, size_t rLen,
-                                                             size_t nRecs,
-                                                             py_array RescalingArray):
+cdef ndarray[int32_t, ndim=2, mode="c"] ParseAndRescaleQuals(
+        list R, size_t rLen, size_t nRecs, py_array RescalingArray):
     cdef pFastqProxy_t rec
     cdef py_array qual_fetcher
-    cdef ndarray[int32_t, ndim=2, mode="c"] ret = np.zeros([nRecs, rLen], dtype=np.int32)
-    cdef Qual2DArray_t Rescaler = Qual2DArray(nRecs, rLen)
+    cdef ndarray[int32_t, ndim=2, mode="c"] ret
+    cdef Qual2DArray_t Rescaler
     cdef size_t offset = 0
     cdef size_t i
+    Rescaler = Qual2DArray(nRecs, rLen)
+    ret = np.zeros([nRecs, rLen], dtype=np.int32)
     for rec in R:
         qual_fetcher = cs_to_ph(rec.quality)
         for i in range(rLen):
-            Rescaler.qualities[i + offset] = RESCALE_QUALITY(qual_fetcher[i], <int32_t *> RescalingArray.data.as_ints)
+            Rescaler.qualities[i + offset] = RESCALE_QUALITY(
+                qual_fetcher[i], <int32_t *> RescalingArray.data.as_ints)
         offset += rLen
     memcpy(&ret[0,0], &Rescaler.qualities, size32 * rLen * nRecs)
     return ret
@@ -1062,7 +1069,8 @@ cdef inline cystr PyArr2QualStr(py_array qualArr):
     :return: [cystr]
     """
     cdef size_t i
-    cdef py_array ret = array("B", [i + 33 if(i < 94) else 126 for i in qualArr])
+    cdef py_array ret = array("B", [
+        i + 33 if(i < 94) else 126 for i in qualArr])
     return ret.tostring()
 
 

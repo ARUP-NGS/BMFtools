@@ -72,7 +72,7 @@ cdef inline double_t c_max(double_t a, double_t b) nogil:
 @cython.wraparound(False)
 cdef inline int8_t argmax4(double_t a, double_t c, double_t g,
                            double_t t) nogil:
-    if t > c and t > g and  t > a:
+    if t > c and t > g and t > a:
         return 3
     elif g > c and g > a:
         return 2

@@ -992,7 +992,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
     else{
         if(a->core.flag & BAM_FUNMAP){
             if(!(b->core.flag & BAM_FUNMAP)){
-                return true;
+                return false;
             }
             else {
                 int cmp = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
@@ -1012,6 +1012,9 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
         }
         else if(a->core.pos != b->core.pos){
             return (a->core.pos < b->core.pos);
+        }
+        else if(bam_endpos(a) < bam_endpos(b)){
+            return true;
         }
         else if((a->core.mtid) != (b->core.mtid)) {
             if(a->core.mtid < b->core.mtid) {
