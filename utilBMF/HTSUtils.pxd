@@ -8,6 +8,7 @@ from cython cimport bint
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, DNA_CODON_TABLE
 from cpython cimport array as c_array
 from pysam.cfaidx cimport PersistentFastqProxy
+from libc.stdint cimport int8_t
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t

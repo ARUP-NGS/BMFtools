@@ -2408,7 +2408,8 @@ def SplitBamByBedPysam(bampath, bedpath):
 
 def SlaveDMP(bsFastq1, bsFastq2,
              p3Seq="default", p5Seq="default",
-             overlapLen=6, sortMem=None, head=None):
+             overlapLen=6, sortMem=None, head=None,
+             int8_t cap=38, bint cap_quality=False):
     from MawCluster import BCFastq
     outfq1 = TrimExt(bsFastq1) + ".dmp.fastq"
     outfq2 = TrimExt(bsFastq2) + ".dmp.fastq"
@@ -2419,7 +2420,7 @@ def SlaveDMP(bsFastq1, bsFastq2,
     sortFastq1, sortFastq2 = BCFastq.BarcodeSortBoth(bsFastq1, bsFastq2,
                                                      sortMem=sortMem)
     consFastq1, consFastq2 = BCFastq.pairedFastqConsolidate(
-        sortFastq1, sortFastq2)
+        sortFastq1, sortFastq2, cap=cap, cap_quality=cap_quality)
     trimFastq1, trimFastq2 = BCFastq.CutadaptPaired(
             consFastq1, consFastq2, overlapLen=overlapLen,
             p3Seq=p3Seq, p5Seq=p5Seq, outfq1=outfq1, outfq2=outfq2)
@@ -2430,7 +2431,8 @@ def SlaveDMP(bsFastq1, bsFastq2,
 def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
                           cystr sortMem=None,
                           overlapLen=None, head=None,
-                          p3Seq=None, p5Seq=None):
+                          p3Seq=None, p5Seq=None,
+                          int8_t cap=38, bint cap_quality=False):
     """
     Returns a command string for calling bmftools snv
     """
@@ -2443,11 +2445,13 @@ def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
     cStr = ("python -c 'from utilBMF.HTSUtils import SlaveDMP;SlaveDMP"
             "(\"%s\",\"%s\", sortMem=\"%s\"" % (bsFastq1, bsFastq2, sortMem) +
             ", overlapLen=%s, head=%s, p3Seq=\"" % (overlapLen, head) +
-            "\%s\", p5Seq=\"%s\")'" % (p3Seq, p5Seq))
+            "\%s\", p5Seq=\"%s\", cap=%s, cap_quality" % (p3Seq, p5Seq, cap) +
+            "=%s)'" % cap_quality)
     FnCall = ("from utilBMF.HTSUtils import SlaveDMP;SlaveDMP("
               "\"%s\",\"%s\", sortMem=\"%s" % (bsFastq1, bsFastq2, sortMem) +
               "\", overlapLen=%s, head=%s, p3Seq=" % (overlapLen, head) +
-              "\"%s\", p5Seq=\"%s\")" % (p3Seq, p5Seq))
+              "\"%s\", p5Seq=\"%s\", cap=%s, cap_qual" % (p3Seq, p5Seq, cap) +
+              "ity=%s)" % cap_quality)
     return cStr + " #" + FnCall
 
 
@@ -2463,7 +2467,7 @@ def GetFastqPathsFromDMPCStr(cystr cStr):
 
 def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
                         head=None, overlapLen=None, p3Seq=None,
-                        p5Seq=None):
+                        p5Seq=None, int8_t cap=38, bint cap_quality=False):
     """
     Makes a PopenDispatcher object for calling these variant callers.
     """
@@ -2474,7 +2478,9 @@ def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
     return PopenDispatcher([SlaveDMPCommandString(*fqPair, head=head,
                                                   sortMem=sortMem,
                                                   overlapLen=overlapLen,
-                                                  p3Seq=p3Seq, p5Seq=p5Seq) for
+                                                  p3Seq=p3Seq, p5Seq=p5Seq,
+                                                  cap=cap,
+                                                  cap_quality=cap_quality) for
                             fqPair in fqPairList],
                            threads=threads,
                            func=GetFastqPathsFromDMPCStr)

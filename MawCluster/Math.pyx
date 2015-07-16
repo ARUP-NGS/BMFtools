@@ -1,3 +1,4 @@
+# cython: boundscheck=False, wraparound=False, initializedcheck=False
 """
 Port of gamma functions for calculating Fisher scores.
 """
@@ -13,6 +14,7 @@ DEF MAXLOG = 8.8029691931113054295988E1
 DEF MACHEP =  1.11022302462515654042E-16
 DEF big = 4.503599627370496e15
 DEF biginv =  2.22044604925031308085e-16
+DEF LOG10E_X5_INV = 0.46051701859880917  # Multiply a phred score by this to convert
 
 
 cdef double_t[5] A = [8.11614167470508450300E-4,
@@ -189,3 +191,11 @@ cdef inline double_t igamc(double_t a, double_t x) nogil:
             qkm2 *= biginv
             qkm1 *= biginv
     return( ans * ax )
+
+
+cdef inline double_t CHI2_FROM_PHRED(int32_t phredInt) nogil:
+    return phredInt * LOG10E_X5_INV
+
+
+cdef inline double_t INV_CHI2_FROM_PHRED(int32_t phredInt) nogil:
+    return -2 * c_log(1 - c_pow(10, (phredInt * -1.)))

@@ -36,6 +36,7 @@ defaultConfig = {
                  "bed": "default",
                  "bed_buffer": 0,
                  "bwapath": "bwa",
+                 "cap": None,
                  "check_both": True,
                  "compression": "bb",
                  "coorsort": False,

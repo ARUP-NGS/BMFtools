@@ -4,7 +4,7 @@ cimport pysam.calignmentfile
 cimport pysam.cfaidx
 cimport utilBMF.HTSUtils
 from cpython cimport array as c_array
-from libc.math cimport log10 as c_log10, pow, log as c_log
+from libc.math cimport log10 as c_log10, pow
 from libc.stdlib cimport malloc, free, realloc, calloc
 from libc.stdint cimport int8_t, int32_t
 from libc.string cimport memcpy
@@ -12,7 +12,7 @@ from numpy cimport ndarray, uint8_t
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
 from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
-from MawCluster.Math cimport igamc
+from MawCluster.Math cimport igamc, CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef SeqQual SeqQual_t
@@ -28,7 +28,7 @@ cdef public cystr ARGMAX_TRANSLATE_STRING
 cdef public py_array nucs
 DEF LOG10E = 0.43429448190325182765
 DEF LOG10E_X5 = 2.1714724095162592
-DEF LOG10E_X5_INV = 0.46051701859880917  # Multiply a phred score by this to convert
+
 
 # METHODS
 cdef cystr cCompareFqRecsFast(list R, cystr name=?, double minPVFrac=?,
@@ -57,20 +57,6 @@ cdef inline cystr cMakeTagComment(cystr saltedBS,
         return "~#!#~" + rec.comment + "|FP=1|BS=" + saltedBS
     else:
         return "~#!#~" + rec.comment + "|FP=0|BS=" + saltedBS
-
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.wraparound(False)
-cdef inline double INV_CHI2_FROM_PHRED(int32_t phredInt) nogil:
-    # This now holds log10(1 - pValue)
-    # I need to adjust this to a CHI2
-    return -2 * c_log(1 - pow(10, (phredInt * -1.)))
-
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.wraparound(False)
-cdef inline double CHI2_FROM_PHRED(int32_t phredInt) nogil:
-    return phredInt * LOG10E_X5_INV
 
 
 @cython.boundscheck(False)

@@ -83,14 +83,7 @@ cdef class LayoutPos:
 cdef class PyLayout(object):
     """
     Holds a read and its layout information.
-
-    This doctest was written so that it would load in one read,
-    make the string, and then hash that value. Since it wouldn't
-    match the interpreter's output to have a gigantic line and it would have
-    to violate pep8, I decided to test the value by its hash rather than by
-    string agreement.
-    Unfortunately, this only works on 64-bit systems, as the hash function
-    is different for 32-bit systems.
+    The recommended method for initialization is PyLayout.fromread.
     """
 
     @classmethod
@@ -499,19 +492,19 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
         if(pos2.operation == pos1.operation):
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
-                             pos1.quality + pos2.quality,
+                             MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement, merged=True,
                              mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
-                             pos1.quality + pos2.quality,
+                             MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
             return LayoutPos(pos2.pos, pos1.readPos, pos1.base,
                              pos2.operation,
-                             pos1.quality + pos2.quality,
+                             MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         else:
@@ -525,12 +518,12 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
         if(pos1.quality > pos2.quality):
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos1.base, pos1.operation,
-                pos1.quality - pos2.quality, pos1.agreement,
+                MergeDiscQualities(pos1.quality, pos2.quality), pos1.agreement,
                 merged=True, mergeAgreed=0)
         else:
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos2.base, pos1.operation,
-                pos2.quality - pos1.quality, pos2.agreement,
+                MergeDiscQualities(pos2.quality, pos1.quality), pos2.agreement,
                 merged=True, mergeAgreed=0)
     else:
         if(pos2.base == 78 or pos2.operation == 83):

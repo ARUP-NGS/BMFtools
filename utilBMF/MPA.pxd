@@ -12,6 +12,8 @@ from utilBMF.Inliners cimport CigarOpToCigarChar, ChrToRefIDInline
 from utilBMF.Inliners cimport chrInline, opLenToStr
 from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport PH2CHR_TRANS
+from MawCluster.Math cimport CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED, igamc
+from libc.math cimport log10 as c_log10
 
 ctypedef cython.str cystr
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
@@ -31,7 +33,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=?,
 cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:
-    cdef public cython.int pos, readPos, quality, agreement
+    cdef public int pos, readPos, quality, agreement
     cdef public char operation, base, mergeAgreed
     cdef bint merged
     # cdef public cystr
@@ -44,12 +46,12 @@ cdef class LayoutPos:
 cdef class PyLayout:
     cdef public list positions
     cdef public dict tagDict
-    cdef public cython.int firstMapped, InitPos, flag, pnext, tlen, mapq
+    cdef public int firstMapped, InitPos, flag, pnext, tlen, mapq
     cdef public cystr Name, contig, rnext
     cdef public bint isMerged, is_reverse, mergeAdjusted
     cdef int aend
 
-    cpdef cython.int getAlignmentStart(self)
+    cpdef int getAlignmentStart(self)
     cpdef cystr getCigarString(self)
     cpdef cystr getSeq(self)
     cdef py_array getSeqArr(self)
@@ -84,3 +86,18 @@ cdef class ListBool:
     cdef bint Bool
 
 cdef object oagtag
+
+
+cdef inline int MergeAgreedQualities(int q1, int q2) nogil:
+    return <int>(-10 * c_log10(igamc(2., CHI2_FROM_PHRED(q1) +
+                                     CHI2_FROM_PHRED(q2) / 2.0)) + 0.5)
+
+
+cdef inline int MergeDiscQualities(int q1, int q2) nogil:
+    if(q1 > q2):
+        return <int>(- 10 * c_log10(igamc(2., INV_CHI2_FROM_PHRED(q2) +
+                                          CHI2_FROM_PHRED(q1))) + 0.5)
+    else:
+        return <int>(- 10 * c_log10(igamc(2., INV_CHI2_FROM_PHRED(q1) +
+                                          CHI2_FROM_PHRED(q2))) + 0.5)
+
