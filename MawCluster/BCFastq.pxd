@@ -20,6 +20,7 @@ ctypedef SumArraySet SumArraySet_t
 ctypedef utilBMF.HTSUtils.pFastqFile pFastqFile_t
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 ctypedef double double_t
+ctypedef Qual2DArray Qual2DArray_t
 
 
 # CONSTANTS
@@ -114,3 +115,9 @@ cdef class SumArraySet:
     cdef int32_t * counts
     cdef int8_t * argmax_arr
     cdef double_t * chiSums
+
+
+cdef class Qual2DArray:
+    cdef int32_t * qualities
+    cdef size_t nRecs
+    cdef size_t rLen

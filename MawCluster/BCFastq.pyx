@@ -24,6 +24,9 @@ from operator import (add as oadd, le as ole, ge as oge, div as odiv,
 from subprocess import check_call
 from array import array
 from string import maketrans
+from numpy.core.multiarray import int_asbuffer
+from cPickle import load
+import ctypes
 
 import cython
 import numpy as np
@@ -172,6 +175,16 @@ cdef inline ndarray[int8_t, ndim=2] cRecListTo2DCharArray(list R):
 
 cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
+
+
+cdef class Qual2DArray:
+    def __cinit__(self, size_t nRecs, size_t rLen):
+        self.nRecs = nRecs
+        self.rLen = rLen
+        self.qualities = <int32_t *>malloc(nRecs * rLen * size32)
+
+    def __dealloc__(self):
+        free(self.qualities)
 
 
 cdef class SeqQual:
@@ -323,11 +336,117 @@ cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 '''
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline int32_t RESCALE_QUALITY(int8_t qual, int32_t * RescalingArray) nogil:
+    return RescalingArray[qual - 2]
+
+
+cdef ndarray[int32_t, ndim=2, mode="c"] ParseAndRescaleQuals(list R, size_t rLen,
+                                                             size_t nRecs,
+                                                             py_array RescalingArray):
+    cdef pFastqProxy_t rec
+    cdef py_array qual_fetcher
+    cdef ndarray[int32_t, ndim=2, mode="c"] ret = np.zeros([nRecs, rLen], dtype=np.int32)
+    cdef Qual2DArray_t Rescaler = Qual2DArray(nRecs, rLen)
+    cdef size_t offset = 0
+    cdef size_t i
+    for rec in R:
+        qual_fetcher = cs_to_ph(rec.quality)
+        for i in range(rLen):
+            Rescaler.qualities[i + offset] = RESCALE_QUALITY(qual_fetcher[i], <int32_t *> RescalingArray.data.as_ints)
+        offset += rLen
+    memcpy(&ret[0,0], &Rescaler.qualities, size32 * rLen * nRecs)
+    return ret
+
+
 cpdef cystr FastFisherFlattening(list R, cystr name=None,
                                  bint cap_quality=False,
                                  int8_t cap=38):
     return cFastFisherFlattening(R, name=name, cap_quality=cap_quality,
                                  cap=cap)
+
+
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
+                                     cystr name=None):
+    """
+    TODO: Unit test for this function.
+    Calculates the most likely nucleotide
+    at each position and returns the joined record string.
+    After inlining:
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
+    """
+    cdef int lenR, ND, lenSeq
+    cdef double_t tmpFlt
+    cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
+    cdef cystr consolidatedFqStr
+    cdef ndarray[int32_t, ndim=2, mode="c"] quals
+    cdef ndarray[int8_t, ndim=2, mode="c"] seqArray
+    cdef py_array Seq, Qual, Agree
+    cdef pFastqProxy_t rec
+    cdef SeqQual_t ret
+    if(name is None):
+        name = R[0].name
+    lenR = len(R)
+    lenSeq = len(R[0].sequence)
+    if lenR == 1:
+        rec = R[0]
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+                     PyArr2PVString(rec.getQualArray()))
+        return "@%s %s%s\n%s\n+\n%s\n" % (name, rec.comment,
+                                          TagString, rec.sequence,
+                                          rec.quality)
+    seqArray = cRecListTo2DCharArray(R)
+
+    quals = ParseAndRescaleQuals(R, lenSeq, lenR, RescalingArray)
+    '''
+    quals = np.array([cs_to_ph(rec.quality) for
+                      rec in R], dtype=np.int32)
+    '''
+    # TODO: Speed up this copying by switching to memcpy
+    # Flatten with Fisher.
+    ret = FisherFlatten(seqArray, quals, lenSeq, lenR)
+    # Copy out results to python arrays
+    # Seq
+    Seq = array('B')
+    c_array.resize(Seq, lenSeq)
+    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
+
+    # Qual
+    Qual = array('i')
+    c_array.resize(Qual, lenSeq)
+    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
+
+    # Agree
+    Agree = array('i')
+    c_array.resize(Agree, lenSeq)
+    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
+    # Get seq string
+    '''
+    For debugging.
+    sys.stderr.write("Repr of Seq: %s\n" % Seq)
+    sys.stderr.write("Repr of Agree: %s\n" % Agree)
+    sys.stderr.write("Repr of Qual: %s\n" % Qual)
+    '''
+    newSeq = Seq.tostring()
+    # Get quality strings (both for PV tag and quality field)
+    phredQualsStr = PyArr2QualStr(Qual)
+    PVString = PyArr2PVString(Qual)
+    # Use the number agreed
+    FAString = PyArr2FAString(Agree)
+    ND = lenR * lenSeq - nsum(Agree)
+    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString + FAString
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
+    return consolidatedFqStr
 
 
 @cython.boundscheck(False)
@@ -371,6 +490,9 @@ cdef cystr cFastFisherFlattening(list R,
                                           rec.quality)
     seqArray = cRecListTo2DCharArray(R)
 
+    '''
+    quals = ParseAndRescaleQuals(R)
+    '''
     quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
     # TODO: Speed up this copying by switching to memcpy
@@ -1039,6 +1161,57 @@ def pairedFastqConsolidate(fq1, fq2,
                        "hour longer than the other read fastq. Giving up!"),
                 shell=True)
     return outFq1, outFq2
+
+
+def singleFqConsRescale(cystr fq,
+                        cystr RescaleData,
+                        int SetSize=100):
+    """
+    Takes the path to a python pickle for the rescaling array.
+    :param fq:
+    :param SetSize:
+    :param RescaleData:
+    :return:
+    """
+    cdef cystr outFq, bc4fq, ffq
+    cdef pFastqFile_t inFq
+    cdef list StringList, pFqPrxList
+    cdef int numproc, TotalCount, MergedCount
+    cdef py_array RescalingArray
+
+    from sys import stderr
+
+    pl("Now running singleFastqConsolidate on {}.".format(fq))
+    RescalingArray = load(open(RescaleData, "rb"))
+    outFq = TrimExt(fq) + ".cons.fastq"
+    inFq = pFastqFile(fq)
+    outputHandle = open(outFq, 'w')
+    StringList = []
+    numproc = 0
+    TotalCount = 0
+    ohw = outputHandle.write
+    sla = StringList.append
+    for bc4fq, fqRecGen in groupby(inFq, key=getBS):
+        pFqPrxList = list(fqRecGen)
+        ffq = cFastFisherFlattenRescale(pFqPrxList, bc4fq, RescalingArray)
+        sla(ffq)
+        numproc += 1
+        TotalCount += len(pFqPrxList)
+        MergedCount += 1
+        if not (numproc % SetSize):
+            ohw("".join(StringList))
+            StringList = []
+            sla = StringList.append
+            continue
+    ohw("".join(StringList))
+    outputHandle.flush()
+    inFq.close()
+    outputHandle.close()
+    if("SampleMetrics" in globals()):
+        globals()['SampleMetrics']['TotalReadCount'] = TotalCount
+        globals()['SampleMetrics']['MergedReadCount'] = MergedCount
+    stderr.write("Consolidation a success for inFq: %s!\n" % fq)
+    return outFq
 
 
 def singleFastqConsolidate(cystr fq,
