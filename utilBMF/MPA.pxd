@@ -100,4 +100,3 @@ cdef inline int MergeDiscQualities(int q1, int q2) nogil:
     else:
         return <int>(- 10 * c_log10(igamc(2., INV_CHI2_FROM_PHRED(q1) +
                                           CHI2_FROM_PHRED(q2))) + 0.5)
-

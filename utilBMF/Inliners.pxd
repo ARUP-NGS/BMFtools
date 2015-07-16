@@ -11,6 +11,7 @@ cimport numpy as np
 ctypedef np.int32_t np_int32_t
 
 from libc.string cimport strcmp
+from libc.stdint cimport int8_t
 
 
 cdef inline cystr opLenToStr(char op, int opLen):
@@ -495,3 +496,40 @@ cdef inline char ChrToRefIDInline(char * contig) nogil:
         return 82
     else:
         return 83
+
+
+cdef inline int8_t CONTEXT_TO_ARRAY_POS(char * context) nogil:
+    if(strcmp(context, 'AA') == 0):
+        return 0
+    elif(strcmp(context, 'AC') == 0):
+        return 1
+    elif(strcmp(context, 'AG') == 0):
+        return 2
+    elif(strcmp(context, 'AT') == 0):
+        return 3
+    elif(strcmp(context, 'CA') == 0):
+        return 4
+    elif(strcmp(context, 'CC') == 0):
+        return 5
+    elif(strcmp(context, 'CG') == 0):
+        return 6
+    elif(strcmp(context, 'CT') == 0):
+        return 7
+    elif(strcmp(context, 'GA') == 0):
+        return 8
+    elif(strcmp(context, 'GC') == 0):
+        return 9
+    elif(strcmp(context, 'GG') == 0):
+        return 10
+    elif(strcmp(context, 'GT') == 0):
+        return 11
+    elif(strcmp(context, 'TA') == 0):
+        return 12
+    elif(strcmp(context, 'TC') == 0):
+        return 13
+    elif(strcmp(context, 'TG') == 0):
+        return 14
+    elif(strcmp(context, 'TT') == 0):
+        return 15
+    else:
+        return -1

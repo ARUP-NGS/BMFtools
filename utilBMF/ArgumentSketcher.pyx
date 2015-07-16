@@ -7,9 +7,6 @@ from ._bmftools_helper import defaultConfig
 from .HTSUtils import printlog as pl, parseSketchConfig, to_bool
 
 
-
-
-
 class ArgumentSketcher(object):
     """
     Class made for working equally easily with config files

@@ -1370,6 +1370,7 @@ def to_bool(input_str):
 
 TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
 
+
 @cython.locals(lst=list, typechar=cystr,
                TypeConversionDict=dict)
 def parseTuple(lst, TypeConversionDict=TypeConversionDict):
