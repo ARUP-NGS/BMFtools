@@ -1,6 +1,6 @@
 from __future__ import division
 import numpy as np
-from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp
+from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
 from MawCluster.BCFastq import GetDescTagValue
@@ -27,6 +27,8 @@ def getArgs():
     parser_cycle.add_argument("-cycleheat", default=False, action='store_true')
     parser_cycle.add_argument("--minFM", default=1, type=int)
     parser_cycle.add_argument("--maxFM", default=1000, type=int)
+    parser_cycle.add_argument("--pickle-path", type=str)
+    parser_cycle.add_argument("--table-prefix", type=str)
     parser_heatmap = subparsers.add_parser('heatmap', help='blah')
     parser_heatmap.add_argument("reads2", help="non-consensus fastq of read2")
     parser_heatmap.add_argument("bam", help="alignment of consensus reads")
@@ -96,28 +98,64 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
 
 
 cdef errorTracker(AlignedSegment_t read,
-                  ndarray[int32_t, ndim=3, mode="c"] readErr,
-                  ndarray[int32_t, ndim=3, mode="c"] readObs):
+                  ndarray[int64_t, ndim=3, mode="c"] readErr,
+                  ndarray[int64_t, ndim=3, mode="c"] readObs):
     cdef int32_t index, start, end
-    cdef cystr seq
-    seq = read.query_sequence
+    cdef cystr context
+    cdef char base
+    cdef int8_t phred_index
+    cdef int16_t context_index
     for index in xrange(read.qstart, read.qend):
-        readObs[index][read.query_qualities[index] - 2] += 1
-        if read.seq[index] != '=' and read.seq[index] != 'N':
-            readErr[index] += 1
+        if(index < 1):
+            # Don't sweat it
+            continue
+        context = read.query_sequence[index - 1: index + 1]
+        context_index = CONTEXT_TO_ARRAY_POS(<char *>context)
+        if(context_index < 0):
+            # Don't sweat it - there was an N in the context
+            continue
+        phred_index = read.query_qualities[index] - 2
+        readObs[index][phred_index][context_index] += 1
+        base = read.seq[index]
+        if base == 61:
+            continue
+        elif base == 78:
+            continue
+        readErr[index][phred_index][context_index] += 1
 
 
 def calculateError(args):
-    cdef size_t rLen
-    cdef int32_t fam_range, qcfail, rc, fmc, FM
-    cdef ndarray[int32_t, ndim=2, mode="c"] read1error, read1obs
-    cdef ndarray[int32_t, ndim=2, mode="c"] read2error, read2obs
+    from sys import stderr
+    from cPickle import dump
+    cdef size_t rLen, index, read_index, qual_index, context_index
+    cdef int64_t fam_range, qcfail, rc, fmc, FM
+    cdef double_t read1mean, read2mean
+    cdef ndarray[int64_t, ndim=3, mode="c"] read1error, read1obs
+    cdef ndarray[int64_t, ndim=3, mode="c"] read2error, read2obs
+    cdef ndarray[double_t, ndim=3, mode="c"] read1frac, read2frac
+    cdef ndarray[double_t, ndim=1, mode="c"] read1cyclemeans, read2cyclemeans
+    cdef ndarray[double_t, ndim=1, mode="c"] read1qualmeans, read2qualmeans
+    cdef ndarray[double_t, ndim=1, mode="c"] read1contextmeans, read2contextmeans
     cdef AlignedSegment_t read
+    cdef AlignmentFile_t mdBam
+    if(args.pickle_path is None):
+        pickle_path = TrimExt(args.mdBam) + ".errorprofile.pyd"
+    else:
+        pickle_path = args.pickle_path
+    if(args.table_prefix is None):
+        table_prefix = TrimExt(args.mdBam)
+    else:
+        table_prefix = args.table_prefix
+    table_prefix += ".out."
+    FullTableHandle = open(table_prefix + "full.tsv", "w")
+    CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
+    PhredTableHandle = open(table_prefix + "phred.tsv", "w")
+    ContextTableHandle = open(table_prefix + "context.tsv", "w")
     rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
-    read1error = np.zeros([rLen, 37, 16],dtype=np.int32)
-    read1obs = np.zeros([rLen, 37, 16],dtype=np.int32)
-    read2error = np.zeros([rLen, 37, 16],dtype=np.int32)
-    read2obs = np.zeros([rLen, 37, 16],dtype=np.int32)
+    read1error = np.zeros([rLen, 37, 16], dtype=np.int64)
+    read1obs = np.zeros([rLen, 37, 16], dtype=np.int64)
+    read2error = np.zeros([rLen, 37, 16], dtype=np.int64)
+    read2obs = np.zeros([rLen, 37, 16], dtype=np.int64)
     qcfail = 0
     fmc = 0
     rc = 0
@@ -147,28 +185,64 @@ def calculateError(args):
         else:
             pass
         rc += 1
-    sys.stdout.write("Family Size Range: %i-%i\n" % (minFM, maxFM))
-    sys.stdout.write("Reads Analyzed: %i\n" % (rc))
-    sys.stdout.write("Reads QC Filtered: %i\n" % (qcfail))
-    if fam_range:
-        sys.stdout.write("Reads Family Size Filtered: %i\n" % (fmc))
-    read1prop = read1error/read1obs
-    read2prop = read2error/read2obs
-    read1mean = np.mean(read1prop)
-    read2mean = np.mean(read2prop)
-    sys.stdout.write("cycle\tread1\tread2\tread count\n")
-    for index in xrange(rLen):
-        sys.stdout.write("%i\t%f\t%f\t%i\n" % (index+1, read1prop[index],
-                                             read2prop[index], rc))
-    sys.stdout.write("%i\t%f\t%f\t%i\n" % (minFM, read1mean, read2mean,
-                                           rc))
-    if args.cycleheat:
-        cycleHeater(read1prop, read2prop, rLen)
+    stderr.write("Family Size Range: %i-%i\n" % (minFM, maxFM))
+    stderr.write("Reads Analyzed: %i\n" % (rc))
+    stderr.write("Reads QC Filtered: %i\n" % (qcfail))
+    stderr.write("Reads Family Size Filtered: %i\n" % (fmc))
+    read1frac = read1error / read1obs
+    read2frac = read2error / read2obs
+    pickleHandle = open(pickle_path, "wb")
+    dump(read1frac, pickleHandle)
+    dump(read2frac, pickleHandle)
+    pickleHandle.close()
+    read1mean = np.mean(read1frac)
+    read2mean = np.mean(read2frac)
+    read1cyclemeans = np.mean(np.mean(read1frac, axis=2, dtype=np.float64),
+                              axis=1, dtype=np.float64)
+    read2cyclemeans = np.mean(np.mean(read2frac, axis=2, dtype=np.float64),
+                              axis=1, dtype=np.float64)
+    read1qualmeans = np.mean(np.mean(read1frac, axis=0, dtype=np.float64),
+                              axis=1, dtype=np.float64)
+    read2qualmeans = np.mean(np.mean(read2frac, axis=0, dtype=np.float64),
+                              axis=1, dtype=np.float64)
+    read1contextmeans = np.mean(np.mean(read1frac, axis=0, dtype=np.float64),
+                             axis=0, dtype=np.float64)
+    read2contextmeans = np.mean(np.mean(read2frac, axis=0, dtype=np.float64),
+                             axis=0, dtype=np.float64)
+    CycleTableHandle.write("#Cycle\tRead1 mean error\tRead2 mean error\tread count\n")
+    for index in xrange(1, rLen):
+        CycleTableHandle.write(
+            "%i\t%f\t%f\t%i\n" % (index+1, read1cyclemeans[index],
+                                  read2cyclemeans[index], rc))
+    CycleTableHandle.close()
+    PhredTableHandle.write("#Quality Score\tread1 mean error\tread2 mean error\n")
+    for index in xrange(37):
+        PhredTableHandle.write(
+            "%i\t%f\t%f\n" % (index+2, read1qualmeans[index],
+                              read2qualmeans[index]))
+    PhredTableHandle.close()
+    ContextTableHandle.write("#Context ID\tRead 1 mean error\tRead 2 mean error\n")
+    for index in xrange(16):
+        ContextTableHandle.write(
+            "%i\t%f\t%f\n" % (index, read1contextmeans[index],
+                              read2contextmeans[index]))
+    ContextTableHandle.close()
+    FullTableHandle.write(
+        "#Cycle\tQuality Score\tContext ID\tRead "
+        "1 mean error\tRead 2 mean error\n")
+    for read_index in xrange(rLen):
+        for qual_index in xrange(37):
+            for context_index in xrange(16):
+                FullTableHandle.write(
+                    "%i\t%i\t%i\t%f\t%f\n" % (read_index + 1, qual_index + 2, context_index,
+                                              read1frac[read_index][qual_index][context_index],
+                                              read2frac[read_index][qual_index][context_index]))
+    FullTableHandle.close()
+    return 0
 
-
-def cycleHeater(read1prop, read2prop, rLen):
+def cycleHeater(read1frac, read2frac, rLen):
     fig, ax = plt.subplots()
-    data = np.array([read1prop, read2prop])
+    data = np.array([read1frac, read2frac])
     heatmap = ax.pcolor(data, cmap=plt.cm.Reds)
     colorb = plt.colorbar(heatmap)
     plt.show()
@@ -217,6 +291,7 @@ def heater(args):
     heatedKmers = {kmer: kmerDict[kmer]/kmerDict[kmer].sum(axis=0) for kmer in
                    kmerDict}
     HeatMaps(heatedKmers, sortedKmers[:10])
+    return 0
 
 
 def main():
@@ -224,10 +299,10 @@ def main():
     if args.mode not in ["heatmap", "calculateError"]:
         raise ImproperArgumentError("invalid subcommand")
     if args.mode == "heater":
-        heater(args)
+        return heater(args)
     if args.mode == "calculateError":
-        calculateError(args)
+        return calculateError(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

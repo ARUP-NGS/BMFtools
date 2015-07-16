@@ -229,6 +229,7 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
     cdef size_t rLen3 = 3 * rLen
     cdef size_t offset = 0
     cdef double_t invchi
+    cdef int32_t tmpQual
     while query_index < numbases:
         offset = query_index % rLen
         if(Seqs[query_index] == 67):
@@ -283,9 +284,10 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
         ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
         ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
         # Round
-        ret.Qual[query_index] = <int32_t> (- 10 * c_log10(
+        tmpQual =  <int32_t> (- 10 * c_log10(
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
+        ret.Qual[query_index] = tmpQual if(tmpQual > -1) else 0
         # Count agreement
         ret.Agree[query_index] = Sums.counts[ndIndex]
         query_index += 1

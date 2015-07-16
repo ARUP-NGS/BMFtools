@@ -11,7 +11,7 @@ cimport numpy as np
 ctypedef np.int32_t np_int32_t
 
 from libc.string cimport strcmp
-from libc.stdint cimport int8_t
+from libc.stdint cimport int8_t, int16_t
 
 
 cdef inline cystr opLenToStr(char op, int opLen):
@@ -498,7 +498,7 @@ cdef inline char ChrToRefIDInline(char * contig) nogil:
         return 83
 
 
-cdef inline int8_t CONTEXT_TO_ARRAY_POS(char * context) nogil:
+cdef inline int16_t CONTEXT_TO_ARRAY_POS(char * context) nogil:
     if(strcmp(context, 'AA') == 0):
         return 0
     elif(strcmp(context, 'AC') == 0):
