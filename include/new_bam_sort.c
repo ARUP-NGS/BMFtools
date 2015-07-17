@@ -45,6 +45,8 @@ DEALINGS IN THE SOFTWARE.  */
 #define forever for(;;)
 #define bam_is_r1(b) (((b)->core.flag&BAM_FREAD1) != 0)
 #define bam_is_r2(b) (((b)->core.flag&BAM_FREAD2) != 0)
+typedef unsigned __int128 uint128_t;
+
 
 #ifdef NEED_MEMSET_PATTERN4
 void memset_pattern4(void *target, const void *pattern, size_t size) {
@@ -59,6 +61,7 @@ void memset_pattern4(void *target, const void *pattern, size_t size) {
         memcpy(target_iter, pattern, size%4);
 }
 #endif
+
 
 KHASH_INIT(c2c, char*, char*, 1, kh_str_hash_func, kh_str_hash_equal)
 KHASH_MAP_INIT_STR(c2i, int)
@@ -990,48 +993,14 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
         return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
     }
     else{
-        if(a->core.flag & BAM_FUNMAP){
-            if(!(b->core.flag & BAM_FUNMAP)){
-                return false;
-            }
-            else {
-                int cmp = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-                if(cmp < 0){
-                    return true;
-                }
-                else if(cmp > 0) {
-                    return false;}
-                else {return (bam_is_r2(a) < bam_is_r2(a));}
-            }
-        }
-        if((a->core.tid) != (b->core.tid)) {
-            if(a->core.tid < b->core.tid) {
-                return true;
-            }
-            return false;
-        }
-        else if(a->core.pos != b->core.pos){
-            return (a->core.pos < b->core.pos);
-        }
-        else if(bam_endpos(a) < bam_endpos(b)){
-            return true;
-        }
-        else if((a->core.mtid) != (b->core.mtid)) {
-            if(a->core.mtid < b->core.mtid) {
-                return true;
-            }
-            return false;
-        }
-        else if(a->core.mpos != b->core.mpos){
-            return (a->core.mpos < b->core.mpos);
-        }
-        int t = bam_is_r1(a) - bam_is_r1(b);
-        if(t != 0) {
-            return (t > 0);
-        }
-        t = bam_is_rev(a) - bam_is_rev(b);
-        if(t != 0) {return (t < 0);}
-        return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
+        uint64_t cmp = ((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) - ((uint64_t)b->core.tid<<32|(b->core.pos+1));
+        if(cmp < 0){ return true;}
+        else if(cmp > 0){return false;}
+        uint64_t cmp2 = ((uint64_t)a->core.mtid<<34|a->core.mpos<<2|bam_is_rev(a)<<1|bam_is_r1(a)) -
+                         ((uint64_t)b->core.mtid<<34|b->core.mpos<<2|bam_is_rev(b)<<1|bam_is_r1(b));
+        if(cmp2 < 0) {return true;}
+        else if(cmp2 > 0) {return false;}
+        else {return strnum_cmp(bam_get_qname(a), bam_get_qname(b)) < 0;}
     }
 }
 KSORT_INIT(sort, bam1_p, bam1_lt)

@@ -430,51 +430,6 @@ def pairedBarcodeTagging(
     return outBAMFile
 
 
-def ConsolidateInferred(inBAM, outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.AlignmentFile(inBAM, 'rb')
-    outputHandle = pysam.AlignmentFile(outBAM, 'wb', template=inputHandle)
-    workBC1 = ""
-    workBC2 = ""
-    Set1 = []
-    Set2 = []
-    for record in inputHandle:
-        if(record.is_read1):
-            barcodeRecord1 = record.opt("RP")
-            if(workBC1 == ""):
-                workBC1 = barcodeRecord1
-                Set1 = []
-                Set1.append(record)
-            elif(workBC1 == barcodeRecord1):
-                Set1.append(record)
-            else:
-                mergeRec1, success = compareRecs(Set1)
-                if(success is False):
-                    mergeRec1.setTag("FP", 0)
-                outputHandle.write(mergeRec1)
-                Set1 = [record]
-                workBC1 = barcodeRecord1
-        if(record.is_read2):
-            barcodeRecord2 = record.opt("RP")
-            if(workBC2 == ""):
-                workBC2 = barcodeRecord2
-                Set2 = []
-                Set2.append(record)
-            elif(workBC2 == barcodeRecord2):
-                Set2.append(record)
-            else:
-                mergeRec2, success = compareRecs(Set2)
-                if(success is False):
-                    mergeRec2.setTag("FP", 0)
-                outputHandle.write(mergeRec2)
-                Set2 = [record]
-                workBC2 = barcodeRecord2
-    inputHandle.close()
-    outputHandle.close()
-    return outBAM
-
-
 def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
                          cystr suppBam="default"):
     cdef pFastqProxy_t FqPrx
@@ -638,40 +593,14 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
-def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
-    Success = True
-    seqs = map(oagseq, RecordList)
-    seqs = [str(record.seq) for record in RecordList]
-    stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
-    seqArray = nvstack(stackArrays)
-    # print(repr(seqArray))
-
-    quals = np.array(map(oagqqual, RecordList))
-    qualA = ccopy(quals)
-    qualC = ccopy(quals)
-    qualG = ccopy(quals)
-    qualT = ccopy(quals)
-    qualA[seqArray != "A"] = 0
-    qualASum = nsum(qualA, 0)
-    qualC[seqArray != "C"] = 0
-    qualCSum = nsum(qualC, 0)
-    qualG[seqArray != "G"] = 0
-    qualGSum = nsum(qualG, 0)
-    qualT[seqArray != "T"] = 0
-    qualTSum = nsum(qualT, 0)
-    qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = nsub(nmul(2, MaxPhredSum),
-                      nsum(qualAllSum, 0))
-    phredQuals[phredQuals < 0] = 0
-    outRec = RecordList[0]
-    outRec.seq = newSeq
-    if(np.any(np.greater(phredQuals, 93))):
-        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
-    phredQuals[phredQuals > 93] = 93
-    outRec.query_qualities = phredQuals
-    return outRec, Success
+@cython.wraparound(False)
+cdef inline char * cRPString(bam1_t * src, bam_hdr_t * hdr) nogil:
+    cdef char[100] buffer
+    cdef size_t length
+    length = sprintf("%s:%i,%s:%i", buffer, hdr.target_name[src.core.tid],
+                     src.core.pos, hdr.target_name[src.core.mtid],
+                     src.core.mpos)
+    return buffer
 
 
 @cython.boundscheck(False)
@@ -689,7 +618,6 @@ cdef inline AlignedSegment_t TagAlignedSegment(
     """
     Adds necessary information from a CO: tag to appropriate other tags.
     """
-    # assert RefIDDict is not None  (Maybe just let it die late?)
     cdef dict CommentDict
     cdef int FM, ND, FPInt
     cdef double NF, AF, SF, FF, PF
@@ -822,7 +750,40 @@ def PipeBarcodeTagCOBam(char flag):
     [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
     inHandle.close()
     outHandle.close()
-    return 1
+    return 0
+
+
+def PipeBarcodeTagCOBam(char flag):
+    """
+    Takes a SAM input stream, tags the bam, and converts
+    it into a bam, all in one fell swoop!
+    Uses a bitwise flag.
+    flag & 4 is true to emit uncompressed
+    flag & 2 is true if input is textual (sam) format
+    flag & 1 is true if output is textual (sam) format
+    """
+    from sys import stderr
+    cdef AlignmentFile_t inHandle, outHandle
+    cdef AlignedSegment_t read
+    cdef dict RefIDDict
+    cdef cystr input_mode
+    input_mode = "r" if(flag & 2) else "rb"
+    if(flag & 1):
+        output_mode = "w"
+    elif(flag & 4):
+        output_mode = "wbu"
+    else:
+        output_mode = "wb"
+    stderr.write("Now tagging a piped BAM with input mode "
+                 "%s and output mode %s\n" % (input_mode, output_mode))
+    inHandle = pysam.AlignmentFile("-", input_mode)
+    outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
+    RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
+    stderr.write("repr for RefIDDict: %s\n" % RefIDDict)
+    [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
+    inHandle.close()
+    outHandle.close()
+    return 0
 
 
 cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
