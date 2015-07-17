@@ -8,8 +8,8 @@ from MawCluster.BCFastq import GetDescTagValue
 import argparse
 import operator
 import pysam
-import sys
 import matplotlib.pyplot as plt
+from sys import maxint
 from matplotlib.backends.backend_pdf import PdfPages
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
@@ -45,8 +45,7 @@ cdef errorTracker(AlignedSegment_t read,
 
 
 def calculateError(args):
-    from sys import stderr
-    from cPickle import dump
+
     cdef size_t rLen, index, read_index, qual_index, context_index
     cdef int64_t fam_range, qcfail, rc, fmc, FM
     cdef double_t read1mean, read2mean
@@ -58,6 +57,10 @@ def calculateError(args):
     cdef ndarray[double_t, ndim=1, mode="c"] read1contextmeans, read2contextmeans
     cdef AlignedSegment_t read
     cdef AlignmentFile_t mdBam
+
+    from sys import stderr
+    from cPickle import dump
+
     if(args.pickle_path is None):
         pickle_path = TrimExt(args.mdBam) + ".errorprofile.pyd"
     else:
@@ -67,18 +70,22 @@ def calculateError(args):
     else:
         table_prefix = args.table_prefix
     table_prefix += ".out."
+
     FullTableHandle = open(table_prefix + "full.tsv", "w")
     CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
     PhredTableHandle = open(table_prefix + "phred.tsv", "w")
     ContextTableHandle = open(table_prefix + "context.tsv", "w")
+
     rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
     read1error = np.zeros([rLen, 37, 16], dtype=np.int64)
     read1obs = np.zeros([rLen, 37, 16], dtype=np.int64)
     read2error = np.zeros([rLen, 37, 16], dtype=np.int64)
     read2obs = np.zeros([rLen, 37, 16], dtype=np.int64)
+
     qcfail = 0
     fmc = 0
     rc = 0
+
     minFM, maxFM = args.minFM, args.maxFM
     mdBam = pysam.AlignmentFile(args.mdBam, "rb")
     for read in mdBam:
@@ -111,10 +118,8 @@ def calculateError(args):
     stderr.write("Reads Family Size Filtered: %i\n" % (fmc))
     read1frac = read1error / read1obs
     read2frac = read2error / read2obs
-    pickleHandle = open(pickle_path, "wb")
-    dump(read1frac, pickleHandle)
-    dump(read2frac, pickleHandle)
-    pickleHandle.close()
+    with open(pickle_path, "wb") as pickleHandle:
+        dump((read1frac, read2frac), pickleHandle)
     read1mean = np.mean(read1frac)
     read2mean = np.mean(read2frac)
     read1cyclemeans = np.mean(np.mean(read1frac, axis=2, dtype=np.float64),
@@ -160,3 +165,94 @@ def calculateError(args):
     FullTableHandle.close()
     return 0
 
+
+
+cdef errorFinder(AlignedSegment_t read,
+                 ndarray[int64_t, ndim=1] readErr,
+                 ndarray[int64_t, ndim=1] readObs):
+    cdef size_t read_index
+    cdef char base
+    cdef cystr seq
+    seq = read.query_sequence
+    for read_index in xrange(read.qstart, read.qend):
+        readObs[read_index] += 1
+        base = seq[read_index]
+        if base == 61:
+            # case "="
+            return
+        elif base == 78:
+            # case "N"
+            return
+        else:
+            readErr[read_index] += 1
+            return
+
+
+def cCycleError(args):
+    cdef size_t rLen, minFM, maxFM, qc, rc, fmc, index, FM
+    cdef double_t read1mean, read2mean
+    cdef ndarray[int64_t, ndim=1, mode="c"] read1error, read1obs
+    cdef ndarray[int64_t, ndim=1, mode="c"] read2error, read2obs
+    cdef ndarray[double_t, ndim=1, mode="c"] read1prop, read2prop
+    cdef AlignedSegment_t read
+    cdef AlignmentFile_t mdBam
+    from sys import stdout, stderr
+    if(args.family_size is None):
+        minFM = 0
+        maxFM = maxint
+    else:
+        minFM, maxFM = map(int(args.family_size.split(",")))
+    rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
+    read1error = np.zeros(rLen, dtype=np.int64)
+    read1obs = np.zeros(rLen, dtype=np.int64)
+    read2error = np.zeros(rLen, dtype=np.int64)
+    read2obs = np.zeros(rLen, dtype=np.int64)
+    qc = 0
+    fmc = 0
+    rc = 0
+    mdBam = pysam.AlignmentFile(args.mdBam)
+    for read in mdBam:
+        if read.flag & 2820:
+            qc += 1
+            continue
+        elif not (read.flag & 2):
+            qc += 1
+            continue
+        FM = read.opt("FM")
+        if(FM < minFM or FM > maxFM):
+                fmc += 1
+                continue
+        if read.flag & 64:
+            errorFinder(read, read1error, read1obs)
+        elif read.flag & 128:
+            errorFinder(read, read2error, read2obs)
+        else:
+            pass
+        rc += 1
+    stdout.write("Family Size Range: %i-%i\n" % (minFM,
+                                                     maxFM))
+    stdout.write("Reads Analyzed: %i\n" % (rc))
+    stdout.write("Reads QC Filtered: %i\n" % (qc))
+    if args.family_size is not None:
+        stdout.write("Reads Family Size Filtered: %i\n" % (fmc))
+    read1prop = read1error / read1obs
+    read2prop = read2error / read2obs
+    read1mean = np.mean(read1prop)
+    read2mean = np.mean(read2prop)
+    stdout.write("cycle\tread1\tread2\tread count\n")
+    for index in xrange(rLen):
+        stdout.write("%i\t%f\t%f\t%i\n" % (index + 1,
+                                           read1prop[index],
+                                           read2prop[index], rc))
+    stdout.write("%i\t%f\t%f\t%i\n" % (maxFM, read1mean, read2mean,
+                                       rc))
+    if args.cycleheat is not None:
+        cycleHeater(read1prop, read2prop, rLen)
+
+
+def cycleHeater(read1prop, read2prop, rLen):
+    fig, ax = plt.subplots()
+    data = np.array([read1prop, read2prop])
+    heatmap = ax.pcolor(data, cmap=plt.cm.Reds)
+    colorb = plt.colorbar(heatmap)
+    plt.show()

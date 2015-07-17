@@ -3,7 +3,7 @@ import numpy as np
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
-from SecC.CerrMerr import calculateError
+from SecC._EMG import calculateError, cycleHeater, errorFinder, cCycleError
 from MawCluster.BCFastq import GetDescTagValue
 import argparse
 import operator
@@ -33,6 +33,8 @@ def getArgs():
                                             "command")
     parser_cycle.add_argument("-cycleheat", default=False, action='store_true')
     parser_cycle.add_argument("-family_size", default=None)
+    parser_cycle.add_argument("-c", "--use-c-error-finder",
+                              action="store_true", default=False)
     parser_heatmap = subparsers.add_parser('heatmap', help='blah')
     parser_heatmap.add_argument("reads2", help="non-consensus fastq of read2")
     parser_heatmap.add_argument("bam", help="alignment of consensus reads")
@@ -101,17 +103,9 @@ def recsConsCompare(recGen, consRead, kmerDict, kmerTotals, kmerQuals, k):
                 kmerTotals[recKmer][0] += 1.0
 
 
-def errorFinder(read, readErr, readObs):
-    seq = read.query_sequence
-    start = read.qstart
-    end = read.qend
-    for base in xrange(start,end):
-        readObs[base] += 1
-        if seq[base] != '=' and seq[base] != 'N':
-            readErr[base] += 1
-
-
 def cycleError(args):
+    if(args.use_c_error_finder):
+        return cCycleError(args)
     rlen = pysam.AlignmentFile(args.mdBam).next().inferred_length
     #rlen = 146
     read1error = np.zeros(rlen,dtype=np.int)
@@ -158,13 +152,6 @@ def cycleError(args):
     if args.cycleheat:
         cycleHeater(read1prop, read2prop, rlen)
 
-
-def cycleHeater(read1prop, read2prop, rlen):
-    fig, ax = plt.subplots()
-    data = np.array([read1prop, read2prop])
-    heatmap = ax.pcolor(data, cmap=plt.cm.Reds)
-    colorb = plt.colorbar(heatmap)
-    plt.show()
 
 def heater(args):
     readsInFq1 = pFastqFile(args.reads1)
