@@ -59,7 +59,7 @@ config = {
     'ext_modules': ext,
     'include_dirs': ([np.get_include()] + pysam.get_include() +
                      [os.path.abspath("include")]),
-    'scripts': ['utilBMF/bmftools'],
+    'scripts': ['utilBMF/bmftools', 'include/dnbtools'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

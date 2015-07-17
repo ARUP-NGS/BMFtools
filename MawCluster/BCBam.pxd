@@ -53,7 +53,7 @@ cdef inline int8_t BarcodeHD(bam1_t * query, bam1_t * cmp,
     cdef uint8_t index
     str1 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
     str2 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
-    for index from 0 <= index < length:
+    for index in xrange(length):
         if(str1[index] != str2[index]):
             ret += 1
     return ret

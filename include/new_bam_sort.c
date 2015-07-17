@@ -45,7 +45,6 @@ DEALINGS IN THE SOFTWARE.  */
 #define forever for(;;)
 #define bam_is_r1(b) (((b)->core.flag&BAM_FREAD1) != 0)
 #define bam_is_r2(b) (((b)->core.flag&BAM_FREAD2) != 0)
-typedef unsigned __int128 uint128_t;
 
 
 #ifdef NEED_MEMSET_PATTERN4

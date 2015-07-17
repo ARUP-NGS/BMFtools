@@ -862,7 +862,7 @@ cdef cystr BamRescue(cystr inBam,
     cdef int8_t dist
     cdef set rsqidx
     cdef int RefID, RNext, Pos, MPos
-    cdef bint IsRead1
+    cdef int IsRead1
     cdef object cfi = chain.from_iterable
     obw = output_bam.write
     for RefID, gen in groupby(input_bam, REF_ID):
@@ -909,9 +909,5 @@ cdef BarcodeRescueBam(list recList):
     return recList[0]
 
 
-cdef pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
-    cdef bam1_t * query_src
-    cdef bam1_t * cmp_src
-    query_src = query._delegate
-    cmp_src = cmp._delegate
-    return BarcodeHD(query_src, cmp_src, bLen)
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+    return BarcodeHD(query._delegate, cmp._delegate, bLen)
