@@ -1,5 +1,4 @@
 # distutils: language = c++
-import scipy
 import numpy as np
 import operator
 import os
