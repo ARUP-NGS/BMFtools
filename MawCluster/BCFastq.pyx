@@ -287,7 +287,8 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
         tmpQual =  <int32_t> (- 10 * c_log10(
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
-        ret.Qual[query_index] = tmpQual if(tmpQual > -1) else 0
+        # Eliminate underflow p values
+        ret.Qual[query_index] = tmpQual
         # Count agreement
         ret.Agree[query_index] = Sums.counts[ndIndex]
         query_index += 1
@@ -439,16 +440,12 @@ cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
     c_array.resize(Agree, lenSeq)
     memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
     # Get seq string
-    '''
-    For debugging.
-    sys.stderr.write("Repr of Seq: %s\n" % Seq)
-    sys.stderr.write("Repr of Agree: %s\n" % Agree)
-    sys.stderr.write("Repr of Qual: %s\n" % Qual)
-    '''
+
     newSeq = Seq.tostring()
     # Get quality strings (both for PV tag and quality field)
     phredQualsStr = PyArr2QualStr(Qual)
     PVString = PyArr2PVString(Qual)
+
     # Use the number agreed
     FAString = PyArr2FAString(Agree)
     ND = lenR * lenSeq - nsum(Agree)
@@ -523,14 +520,20 @@ cdef cystr cFastFisherFlattening(list R,
     c_array.resize(Agree, lenSeq)
     memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
     # Get seq string
-    '''
-    For debugging.
-    sys.stderr.write("Repr of Seq: %s\n" % Seq)
-    sys.stderr.write("Repr of Agree: %s\n" % Agree)
-    sys.stderr.write("Repr of Qual: %s\n" % Qual)
-    '''
     newSeq = Seq.tostring()
     # Get quality strings (both for PV tag and quality field)
+    '''
+    # For debugging.
+    '''
+    cdef int32_t tmp
+    for tmp in Qual:
+        if(tmp < 0):
+            sys.stderr.write("Repr of Seq: %s\n" % Seq)
+            sys.stderr.write("Str of a read: %s\n" % str(R[0]))
+            sys.stderr.write("Repr of Agree: %s\n" % Agree)
+            sys.stderr.write("Repr of Qual: %s\n" % Qual)
+    '''
+    '''
     phredQualsStr = PyArr2QualStr(Qual) if(
         not cap_quality) else CappedPyArr2QualStr(Qual, cap=cap)
     PVString = PyArr2PVString(Qual)
@@ -788,7 +791,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
     :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
     """
-    cdef cystr path
+    cdef cystr path, pathBS, pathCons
     from subprocess import check_call, CalledProcessError
     from itertools import chain
     from sys import stderr
@@ -837,14 +840,16 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     check_call(catStr2, shell=True, executable="/bin/bash")
     check_call(shlex.split("rm " + " ".join(outfq2s)))
     for path in cfi(fqPairList):
+        pathBS = path.replace(".fastq", ".BS.fastq")
+        pathCons = path.replace(".fastq", ".BS.cons.fastq")
         try:
-            stderr.write("Now calling 'rm %s'\n" % path)
-            check_call(["rm", path, path.replace(".fastq", ".BS.fastq"),
-                        path.replace(".fastq", ".BS.cons.fastq")])
+            stderr.write("Now calling 'rm %s %s %s'\n" % path, pathBS, pathCons)
+            check_call(["rm", path, pathBS, pathCons])
         except CalledProcessError:
             raise Exception("Path attempting to remove: %s\n" % path)
     return outfq1, outfq2
 
+REMOVE_NS = maketrans("N", "A")
 
 def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
                         int head=-1, int num_nucs=-1):
@@ -870,8 +875,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
         raise UnsetRequiredParameter(
             "PairedShadeSplitting requires that head be set.")
     if(num_nucs < 0):
-        raise UnsetRequiredParameter("num_nucs must be set"
-                                     " for PairedShadeSplitter.")
+        raise UnsetRequiredParameter("num_nucs must be set")
     elif(num_nucs > 2):
         raise ImproperArgumentError("num_nucs is limited to 2")
     numHandleSets = 4 ** num_nucs
@@ -904,8 +908,8 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
         bin = tempBar[:num_nucs]
         read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
         read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
-        BarcodeHandleDict1[bin].write(str(read1))
-        BarcodeHandleDict2[bin].write(str(read2))
+        BarcodeHandleDict1[bin.translate(REMOVE_NS)].write(str(read1))
+        BarcodeHandleDict2[bin.translate(REMOVE_NS)].write(str(read2))
     [outHandle.close() for outHandle in BarcodeHandleDict1.itervalues()]
     [outHandle.close() for outHandle in BarcodeHandleDict2.itervalues()]
     return zip([i.name for i in BarcodeHandleDict1.itervalues()],

@@ -809,8 +809,6 @@ def main():
 
     # END SETUP LOGGING #
 
-    print("All logging set up!")
-
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
     if(subcommand in ["main", "snv", "psnv"] or

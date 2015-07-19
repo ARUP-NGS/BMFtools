@@ -121,3 +121,5 @@ cdef class Qual2DArray:
     cdef int32_t * qualities
     cdef size_t nRecs
     cdef size_t rLen
+
+cdef public cystr REMOVE_NS
