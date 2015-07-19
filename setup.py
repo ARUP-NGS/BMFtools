@@ -1,4 +1,5 @@
 # distutils: language = c++
+import scipy
 import numpy as np
 import operator
 import os
@@ -47,6 +48,8 @@ install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
                     're2']
 
+includes = [np.get_include(), os.path.abspath("include"), "../../codeRepository/scipy/scipy/special/"] + pysam.get_include()
+
 config = {
     'description': '',
     'author': 'Daniel Baker',
@@ -57,8 +60,7 @@ config = {
     'packages': ["BMFMain", "utilBMF", "MawCluster",
                  "SecC", "analyscripts"],
     'ext_modules': ext,
-    'include_dirs': ([np.get_include()] + pysam.get_include() +
-                     [os.path.abspath("include")]),
+    'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'include/dnbtools'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
