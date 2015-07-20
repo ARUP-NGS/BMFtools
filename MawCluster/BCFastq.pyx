@@ -288,7 +288,7 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
         # Eliminate underflow p values
-        ret.Qual[query_index] = tmpQual
+        ret.Qual[query_index] = tmpQual if(tmpQual > 0) else 3114
         # Count agreement
         ret.Agree[query_index] = Sums.counts[ndIndex]
         query_index += 1
