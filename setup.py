@@ -37,10 +37,10 @@ ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
-    '''
     if(x.name == 'MawCluster.BCFastq'):
-        x.sources += ["include/igam.c"]
-    '''
+        x.sources += ["include/cephes/igam.c", "include/cephes/const.c",
+                      "include/cephes/gamma.c", "include/cephes/mtherr.c",
+                      "include/cephes/sf_error.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',

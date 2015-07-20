@@ -343,6 +343,13 @@ cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 '''
 
 
+cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
+    cdef py_array ret = array('B')
+    c_array.resize(ret, rLen)
+    arrmax(arr2D, <int8_t *>ret.data.as_shorts, nRecs, rLen)
+    return ret
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef inline int32_t RESCALE_QUALITY(
@@ -517,19 +524,7 @@ cdef cystr cFastFisherFlattening(list R,
     # Get seq string
     newSeq = Seq.tostring()
     # Get quality strings (both for PV tag and quality field)
-    '''
-    # For debugging.
-    '''
-    cdef int32_t tmp
-    for tmp in Qual:
-        if(tmp < 0):
-            sys.stderr.write("Repr of Seq: %s\n" % Seq)
-            sys.stderr.write("Str of a read: %s\n" % str(R[0]))
-            sys.stderr.write("Repr of Agree: %s\n" % Agree)
-            sys.stderr.write("Repr of Qual: %s\n" % Qual)
-    '''
-    '''
-    phredQualsStr = PyArr2QualStr(Qual)
+    phredQualsStr = MaxOriginalQuals(&quals[0,0], lenR, lenSeq).tostring()
     PVString = PyArr2PVString(Qual)
     # Use the number agreed
     FAString = PyArr2FAString(Agree)
