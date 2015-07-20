@@ -2552,8 +2552,11 @@ def TrimExt(cystr fname, cystr exclude=""):
         tmpList = fname.split("/")[-1].split(".")[:-1]
         if(tmpList[-1] == "gz"):
             tmpList = tmpList[:-1]
-        return ".".join([tmpStr for tmpStr in tmpList if
-                         tmpStr not in exclude.split(",")])
+        try:
+            return ".".join([tmpStr for tmpStr in tmpList if
+                             tmpStr not in exclude.split(",")])
+        except IndexError:
+            return tmpList[0]
     else:
         raise Tim("Cannot trim an extension of a None value!")
 

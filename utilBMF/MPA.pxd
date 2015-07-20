@@ -38,7 +38,6 @@ cdef class LayoutPos:
     cdef public char operation, base, mergeAgreed
     cdef int8_t oqual
     cdef bint merged
-    # cdef public cystr
     cpdef bint ismapped(self)
     cdef bint getMergeAgreed(self)
     cdef bint getMergeSet(self)
@@ -49,7 +48,7 @@ cdef class PyLayout:
     cdef public list positions
     cdef public dict tagDict
     cdef public int firstMapped, InitPos, flag, pnext, tlen, mapq
-    cdef public cystr Name, contig, rnext
+    cdef public cystr Name, contig, rnext, OriginalMD
     cdef public bint isMerged, is_reverse, mergeAdjusted
     cdef int aend
 
@@ -79,6 +78,7 @@ cdef class PyLayout:
     cdef bint test_merge_success(self)
     cpdef py_array getReadDiscordantPositions(self)
     cpdef py_array getGenomicDiscordantPositions(self)
+    cdef cystr cGetMDTag(self)
 
 cpdef bint LayoutsOverlap(PyLayout_t L1, PyLayout_t L2)
 cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2)

@@ -1,4 +1,5 @@
 #!/user/bin/env python
+import os
 import shlex
 import subprocess
 import sys
@@ -51,6 +52,13 @@ class MyTestCase(unittest.TestCase):
                                             read.qname,
                                             pv,
                                             read.query_qualities))
+
+    def test_MPA(self):
+        from utilBMF.MPA import PipeAlignTagMPA
+        PipeAlignTagMPA(self.fq1, self.fq2, ref=self.ref,
+                        sortMem="6G", coorsort=True, outBAM="lambdaTest_R1.shaded.BS.cons.mem.mpa.cso.bam")
+        subprocess.check_call(["samtools", "index", "lambdaTest_R1.shaded.BS.cons.mem.mpa.cso.bam"])
+        assert os.path.isfile("lambdaTest_R1.shaded.BS.cons.mem.mpa.cso.bam.bai")
 
     def test_MPA2Bam(self):
         PipeAlignTag(self.fq1, self.fq2, ref=self.ref)

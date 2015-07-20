@@ -110,7 +110,8 @@ cdef class PyLayout(object):
         cdef LayoutPos_t pos
         return array('B', [pos.base for pos in self.positions if
                            pos.operation != 68 and
-                           pos.agreement > -1])
+                           pos.agreement > -1 and
+                           pos.oqual > 0])
 
     cpdef cystr getSeq(self):
         return self.getSeqArr().tostring()
@@ -160,6 +161,9 @@ cdef class PyLayout(object):
         cdef LayoutPos_t pos
         return array('B', [pos.oqual + 33 for pos in
                            self.positions if pos.oqual > 0])
+
+    cdef cystr cGetMDTag(self):
+        return ""
 
     cdef cystr cGetQualString(self):
         return self.getQualStringScores().tostring()
@@ -306,7 +310,7 @@ cdef class PyLayout(object):
         cdef LayoutPos_t pos
         # Skip this operation if the operation is 83"
         return array("B", [pos.operation for pos in
-                           self.positions])
+                           self.positions and pos.oqual > 0])
 
     cdef cystr cGetCigarString(self):
         cdef char k
@@ -364,6 +368,7 @@ cdef class PyLayout(object):
         self.contig = handle.getrname(rec.reference_id)
         self.flag = rec.flag
         self.aend = rec.aend
+        self.OriginalMD = rec.opt("MD")
         # When the get_tags(with_value_type=True) is implemented,
         # then switch the code over.
         # Then I can change the way I make BAM tags, since
@@ -784,9 +789,9 @@ def PipeAlignTagMPA(R1, R2, ref="default",
                     cystr sortMem="6G", cystr opts=None,
                     bint dry_run=False):
     """
-    :param R1 - [cystr/arg] path to input R1 consolidated/adapter trimmed
+    :param R1 - [cystr/arg] - path to input R1 consolidated/adapter trimmed
     fastq
-    :param R2 - [cystr/arg] path to input R2 consolidated/adapter trimmed
+    :param R2 - [cystr/arg] - path to input R2 consolidated/adapter trimmed
     fastq
     :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
     to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
@@ -795,27 +800,28 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     alignment.
     :param path - [cystr/kwarg/"default"] - path to bwa executable for
     alignment.
-    :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
+    :param u - [bint/kwarg/False] - whether or not to emit uncompressed bams.
     Set to true for piping for optimal efficiency.
-    :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
+    :param sortMem - [cystr/kwarg/"6G"] - string to pass to samtools sort for
     memory per thread.
-    :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
+    :param coorsort - [cystr/kwarg/False] - set to true to pipe to samtools sort
     instead of samtools view
-
+    :param opts - [cystr/kwarg/None] - Additional optiosn to pass to bwa.
+    :param dry_run - [bint/kwarg/False] - Return a string which can be
+    executed. Primarily for debugging.
     """
-    from sys import stderr
-    stderr.write("Getting base string.")
+    sys.stderr.write("Getting base string.")
     baseCommandString = PipeAlignTag(
         R1, R2, ref=ref, outBAM="stdout", path=path, coorsort=False, u=u,
-        sortMem=sortMem, dry_run=True)
-    stderr.write("Getting mpa string.")
+        sortMem=sortMem, dry_run=True, opts=opts)
+    sys.stderr.write("Getting mpa string.")
     cStr = MPA2Bam("-", dry_run=True,
                    prepend="%s | " % baseCommandString,
                    outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort,
                    assume_sorted=True)
-    stderr.write(
+    sys.stderr.write(
         "Massive piped shell call from dmp'd fastqs to aligned, tagged, mpa'd"
-        ", and sorted (if you want) bam: %s" % cStr)
+        ", and sorted (if you want) bam: %s\n" % cStr)
     if(dry_run):
         return cStr
     check_call(cStr, shell=True, executable="/bin/bash")
