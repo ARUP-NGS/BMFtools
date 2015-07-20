@@ -34,7 +34,7 @@ cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:
     cdef public int pos, readPos, quality, agreement
-    cdef public char operation, base, mergeAgreed
+    cdef public char operation, base, mergeAgreed, oqual
     cdef bint merged
     # cdef public cystr
     cpdef bint ismapped(self)
@@ -51,6 +51,7 @@ cdef class PyLayout:
     cdef public bint isMerged, is_reverse, mergeAdjusted
     cdef int aend
 
+    cdef py_array getQualStringScores(self)
     cpdef int getAlignmentStart(self)
     cpdef cystr getCigarString(self)
     cpdef cystr getSeq(self)
@@ -100,3 +101,6 @@ cdef inline int MergeDiscQualities(int q1, int q2) nogil:
     else:
         return <int>(- 10 * c_log10(igamc(2., INV_CHI2_FROM_PHRED(q1) +
                                           CHI2_FROM_PHRED(q2))) + 0.5)
+
+cdef inline char c_max(char i, char j) nogil:
+    return i if(i > j) else j

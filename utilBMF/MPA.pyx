@@ -52,7 +52,8 @@ cdef class LayoutPos:
     def __init__(self, int pos=-1, int readPos=-1,
                  char base=-1, char operation=-1,
                  int quality=-1, int agreement=-1,
-                 bint merged=False, char mergeAgreed=1):
+                 bint merged=False, char mergeAgreed=1,
+                 char oqual=-1):
         self.pos = pos
         self.readPos = readPos
         self.operation = operation
@@ -61,6 +62,11 @@ cdef class LayoutPos:
         self.agreement = agreement
         self.merged = merged
         self.mergeAgreed = mergeAgreed
+        if(oqual < 0):
+            self.oqual = self.quality
+        else:
+            self.oqual = oqual
+        assert self.oqual > 0
 
     cpdef bint ismapped(self):
         return self.operation == 77  # 77 == "M"
@@ -151,12 +157,13 @@ cdef class PyLayout(object):
     cpdef py_array getQual(self):
         return self.cGetQual()
 
+    cdef py_array getQualStringScores(self):
+        cdef char oqual
+        cdef LayoutPos_t pos
+        return array('B', [pos.oqual for pos in self.positions])
+
     cdef cystr cGetQualString(self):
-        cdef py_array tmpArr
-        cdef int i
-        tmpArr = array('B', [i + 33 if(i < 94) else 126 for
-                             i in self.cGetQual()])
-        return tmpArr.tostring()
+        return self.getQualStringScores().tostring()
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()
@@ -494,19 +501,22 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                              pos1.operation,
                              MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement, merged=True,
-                             mergeAgreed=2)
+                             mergeAgreed=2,
+                             oqual=c_max(pos1.oqual, pos2.oqual))
         elif(pos2.operation == 83):  # if pos2.operation is "S"
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
-                             merged=True, mergeAgreed=2)
+                             merged=True, mergeAgreed=2,
+                             oqual=c_max(pos1.oqual, pos2.oqual))
         elif(pos1.operation == 83):
             return LayoutPos(pos2.pos, pos1.readPos, pos1.base,
                              pos2.operation,
                              MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
-                             merged=True, mergeAgreed=2)
+                             merged=True, mergeAgreed=2,
+                             oqual=c_max(pos1.oqual, pos2.oqual))
         else:
             return (LayoutPos(pos1.pos, pos1.readPos, 78, 78,
                               -137, -137,
