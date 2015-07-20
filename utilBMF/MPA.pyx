@@ -53,7 +53,7 @@ cdef class LayoutPos:
                  char base=-1, char operation=-1,
                  int quality=-1, int agreement=-1,
                  bint merged=False, char mergeAgreed=1,
-                 char oqual=-1):
+                 int8_t oqual=-1):
         self.pos = pos
         self.readPos = readPos
         self.operation = operation
@@ -66,7 +66,6 @@ cdef class LayoutPos:
             self.oqual = self.quality
         else:
             self.oqual = oqual
-        assert self.oqual > 0
 
     cpdef bint ismapped(self):
         return self.operation == 77  # 77 == "M"
@@ -158,9 +157,9 @@ cdef class PyLayout(object):
         return self.cGetQual()
 
     cdef py_array getQualStringScores(self):
-        cdef char oqual
         cdef LayoutPos_t pos
-        return array('B', [pos.oqual for pos in self.positions])
+        return array('B', [pos.oqual + 33 for pos in
+                           self.positions if pos.oqual > 0])
 
     cdef cystr cGetQualString(self):
         return self.getQualStringScores().tostring()

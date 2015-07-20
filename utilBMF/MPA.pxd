@@ -14,6 +14,7 @@ from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport PH2CHR_TRANS
 from MawCluster.Math cimport CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED, igamc
 from libc.math cimport log10 as c_log10
+from libc.stdint cimport int8_t
 
 ctypedef cython.str cystr
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
@@ -34,7 +35,8 @@ cpdef LayoutPos_t MergePositions(LayoutPos_t pos1, LayoutPos_t pos2)
 
 cdef class LayoutPos:
     cdef public int pos, readPos, quality, agreement
-    cdef public char operation, base, mergeAgreed, oqual
+    cdef public char operation, base, mergeAgreed
+    cdef int8_t oqual
     cdef bint merged
     # cdef public cystr
     cpdef bint ismapped(self)
