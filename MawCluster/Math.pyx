@@ -15,7 +15,7 @@ cdef inline double_t INV_CHI2_FROM_PHRED(int32_t phredInt) nogil:
 
 
 cdef int8_t * arrmax(int32_t * quals, int8_t * ret,
-            size_t nRecs, size_t rLen) nogil:
+                     size_t nRecs, size_t rLen) nogil:
     """
     :param quals: [int32_t **/arg] two-dimensional array of
     32-bit quality scores. First dimension, read, second dimension, cycle
@@ -29,6 +29,6 @@ cdef int8_t * arrmax(int32_t * quals, int8_t * ret,
     for index1 in range(nRecs):
         for index2 in range(rLen):
             if quals[index2 + index1 * rLen] > ret[index2]:
-                ret[index2] = quals[index2 + index1 * rLen]
+                ret[index2] = quals[index2 + index1 * rLen] + 33
     return ret
 

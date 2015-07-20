@@ -166,10 +166,9 @@ def calculateError(args):
     return 0
 
 
-
-cdef errorFinder(AlignedSegment_t read,
-                 ndarray[int64_t, ndim=1] readErr,
-                 ndarray[int64_t, ndim=1] readObs):
+cpdef errorFinder(AlignedSegment_t read,
+                  ndarray[int64_t, ndim=1] readErr,
+                  ndarray[int64_t, ndim=1] readObs):
     cdef size_t read_index
     cdef char base
     cdef cystr seq
