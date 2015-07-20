@@ -322,13 +322,13 @@ I might have to do this manually.
 @cython.wraparound(False)
 cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
                                              ndarray[int32_t, ndim=2] quals,
-                                             size_t lenR):
+                                             size_t nRecs):
     cdef size_t readlen = len(seqs[0])
     cdef size_t read_index, base_index
     cdef ndarray[int32_t, ndim=2] QualSumAll
     cdef int32_t tmpInt
     QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
-    for read_index in range(lenR):
+    for read_index in range(nRecs):
         for base_index in range(readlen):
             tmpInt = seqs[read_index][base_index]
             if(tmpInt == 84):
@@ -345,7 +345,10 @@ cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 
 cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
     cdef py_array ret = array('B')
+    cdef int8_t * ptr
     c_array.resize(ret, rLen)
+    ptr = <int8_t *>ret.data.as_shorts
+    memset(ptr, 0, rLen)
     arrmax(arr2D, <int8_t *>ret.data.as_shorts, nRecs, rLen)
     return ret
 
@@ -398,7 +401,7 @@ cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
     1000 loops, best of 3: 947 us per loop
 
     """
-    cdef int lenR, ND, lenSeq
+    cdef int nRecs, ND, rLen
     cdef double_t tmpFlt
     cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
     cdef cystr consolidatedFqStr
@@ -409,40 +412,40 @@ cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
     cdef SeqQual_t ret
     if(name is None):
         name = R[0].name
-    lenR = len(R)
-    lenSeq = len(R[0].sequence)
-    if lenR == 1:
+    nRecs = len(R)
+    rLen = len(R[0].sequence)
+    if nRecs == 1:
         rec = R[0]
-        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (rLen - 1)) +
                      PyArr2PVString(rec.getQualArray()))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, rec.comment,
                                           TagString, rec.sequence,
                                           rec.quality)
     seqArray = cRecListTo2DCharArray(R)
 
-    quals = ParseAndRescaleQuals(R, lenSeq, lenR, RescalingArray)
+    quals = ParseAndRescaleQuals(R, rLen, nRecs, RescalingArray)
     '''
     quals = np.array([cs_to_ph(rec.quality) for
                       rec in R], dtype=np.int32)
     '''
     # TODO: Speed up this copying by switching to memcpy
     # Flatten with Fisher.
-    ret = FisherFlatten(seqArray, quals, lenSeq, lenR)
+    ret = FisherFlatten(seqArray, quals, rLen, nRecs)
     # Copy out results to python arrays
     # Seq
     Seq = array('B')
-    c_array.resize(Seq, lenSeq)
-    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
+    c_array.resize(Seq, rLen)
+    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, rLen)
 
     # Qual
     Qual = array('i')
-    c_array.resize(Qual, lenSeq)
-    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
+    c_array.resize(Qual, rLen)
+    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, rLen * size32)
 
     # Agree
     Agree = array('i')
-    c_array.resize(Agree, lenSeq)
-    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
+    c_array.resize(Agree, rLen)
+    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, rLen * size32)
     # Get seq string
 
     newSeq = Seq.tostring()
@@ -452,8 +455,8 @@ cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
 
     # Use the number agreed
     FAString = PyArr2FAString(Agree)
-    ND = lenR * lenSeq - nsum(Agree)
-    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString + FAString
+    ND = nRecs * rLen - nsum(Agree)
+    TagString = "|FM=%s|ND=%s" % (nRecs, ND) + PVString + FAString
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
     return consolidatedFqStr
@@ -476,7 +479,7 @@ cdef cystr cFastFisherFlattening(list R,
     1000 loops, best of 3: 947 us per loop
 
     """
-    cdef int lenR, ND, lenSeq
+    cdef int nRecs, ND, rLen
     cdef double_t tmpFlt
     cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
     cdef cystr consolidatedFqStr
@@ -487,11 +490,11 @@ cdef cystr cFastFisherFlattening(list R,
     cdef SeqQual_t ret
     if(name is None):
         name = R[0].name
-    lenR = len(R)
-    lenSeq = len(R[0].sequence)
-    if lenR == 1:
+    nRecs = len(R)
+    rLen = len(R[0].sequence)
+    if nRecs == 1:
         rec = R[0]
-        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (rLen - 1)) +
                      PyArr2PVString(rec.getQualArray()))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, rec.comment,
                                           TagString, rec.sequence,
@@ -505,31 +508,31 @@ cdef cystr cFastFisherFlattening(list R,
                       rec in R], dtype=np.int32)
     # TODO: Speed up this copying by switching to memcpy
     # Flatten with Fisher.
-    ret = FisherFlatten(seqArray, quals, lenSeq, lenR)
+    ret = FisherFlatten(seqArray, quals, rLen, nRecs)
     # Copy out results to python arrays
     # Seq
     Seq = array('B')
-    c_array.resize(Seq, lenSeq)
-    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, lenSeq)
+    c_array.resize(Seq, rLen)
+    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, rLen)
 
     # Qual
     Qual = array('i')
-    c_array.resize(Qual, lenSeq)
-    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, lenSeq * size32)
+    c_array.resize(Qual, rLen)
+    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, rLen * size32)
 
     # Agree
     Agree = array('i')
-    c_array.resize(Agree, lenSeq)
-    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, lenSeq * size32)
+    c_array.resize(Agree, rLen)
+    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, rLen * size32)
     # Get seq string
     newSeq = Seq.tostring()
     # Get quality strings (both for PV tag and quality field)
-    phredQualsStr = MaxOriginalQuals(&quals[0,0], lenR, lenSeq).tostring()
+    phredQualsStr = MaxOriginalQuals(&quals[0,0], nRecs, rLen).tostring()
     PVString = PyArr2PVString(Qual)
     # Use the number agreed
     FAString = PyArr2FAString(Agree)
-    ND = lenR * lenSeq - nsum(Agree)
-    TagString = "|FM=%s|ND=%s" % (lenR, ND) + PVString + FAString
+    ND = nRecs * rLen - nsum(Agree)
+    TagString = "|FM=%s|ND=%s" % (nRecs, ND) + PVString + FAString
     consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
                          newSeq + "\n+\n%s\n" % phredQualsStr)
     return consolidatedFqStr
@@ -554,7 +557,7 @@ cdef cystr cCompareFqRecsFast(list R,
     1000 loops, best of 3: 947 us per loop
 
     """
-    cdef int lenR, ND, lenSeq, tmpInt, i
+    cdef int nRecs, ND, rLen, tmpInt, i
     cdef double_t tmpFlt
     cdef cython.bint Success
     cdef cystr PVString, TagString, newSeq
@@ -570,11 +573,11 @@ cdef cystr cCompareFqRecsFast(list R,
     cdef char tmpChar
     if(name is None):
         name = R[0].name
-    lenR = len(R)
-    lenSeq = len(R[0].sequence)
-    if lenR == 1:
+    nRecs = len(R)
+    rLen = len(R[0].sequence)
+    if nRecs == 1:
         phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
-        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (rLen - 1)) +
                      cQualArr2PVString(phredQuals))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
@@ -620,8 +623,8 @@ cdef cystr cCompareFqRecsFast(list R,
     # Second, flag families which are probably not really "families"
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for
-                  i in xrange(lenSeq)], dtype=np.int32)
-    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA * lenR):
+                  i in xrange(rLen)], dtype=np.int32)
+    if(np.min(FA) < minFAFrac * nRecs or np.max(FA) < minMaxFA * nRecs):
         #  If there's any base on which a family agrees less often
         #  than minFAFrac, nix the whole family.
         #  Along with that, require that at least one of the bases agree
@@ -630,12 +633,12 @@ cdef cystr cCompareFqRecsFast(list R,
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
-    ND = lenR * lenSeq - nsum(FA)
+    ND = nRecs * rLen - nsum(FA)
     phredQuals[phredQuals < 0] = 0
     PVString = cQualArr2PVString(phredQuals)
     phredQualsStr = cQualArr2QualStr(phredQuals)
     FAString = cQualArr2FAString(FA)
-    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
+    TagString = "|FM=%s|ND=%s" % (nRecs, ND) + FAString + PVString
     '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,

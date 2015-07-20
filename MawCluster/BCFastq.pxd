@@ -7,7 +7,7 @@ from cpython cimport array as c_array
 from libc.math cimport log10 as c_log10, pow
 from libc.stdlib cimport malloc, free, realloc, calloc
 from libc.stdint cimport int8_t, int32_t
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 from numpy cimport ndarray, uint8_t
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
