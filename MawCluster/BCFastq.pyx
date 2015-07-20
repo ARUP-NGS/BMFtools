@@ -288,7 +288,7 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
         # Eliminate underflow p values
-        ret.Qual[query_index] = tmpQual
+        ret.Qual[query_index] = tmpQual if(tmpQual > 0) else 3114
         # Count agreement
         ret.Agree[query_index] = Sums.counts[ndIndex]
         query_index += 1
@@ -370,11 +370,8 @@ cdef ndarray[int32_t, ndim=2, mode="c"] ParseAndRescaleQuals(
     return ret
 
 
-cpdef cystr FastFisherFlattening(list R, cystr name=None,
-                                 bint cap_quality=False,
-                                 int8_t cap=38):
-    return cFastFisherFlattening(R, name=name, cap_quality=cap_quality,
-                                 cap=cap)
+cpdef cystr FastFisherFlattening(list R, cystr name=None):
+    return cFastFisherFlattening(R, name=name)
 
 
 @cython.boundscheck(False)
@@ -459,9 +456,7 @@ cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
 @cython.initializedcheck(False)
 @cython.wraparound(False)
 cdef cystr cFastFisherFlattening(list R,
-                                 cystr name=None,
-                                 bint cap_quality=False,
-                                 int8_t cap=38):
+                                 cystr name=None):
     """
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
@@ -534,8 +529,7 @@ cdef cystr cFastFisherFlattening(list R,
             sys.stderr.write("Repr of Qual: %s\n" % Qual)
     '''
     '''
-    phredQualsStr = PyArr2QualStr(Qual) if(
-        not cap_quality) else CappedPyArr2QualStr(Qual, cap=cap)
+    phredQualsStr = PyArr2QualStr(Qual)
     PVString = PyArr2PVString(Qual)
     # Use the number agreed
     FAString = PyArr2FAString(Agree)
@@ -770,8 +764,7 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
 def DispatchParallelDMP(fq1, fq2, indexFq="default",
                         int head=-1, sortMem=None, overlapLen=None,
                         int threads=-1, int num_nucs=-1,
-                        cystr p3Seq=None, cystr p5Seq=None,
-                        bint cap_quality=False, int8_t cap=38):
+                        cystr p3Seq=None, cystr p5Seq=None):
     """
     DispatchParallelDMP prepares a PopenDispatcher instance for demultiplexing
     barcoded molecular families in parallel.
@@ -821,8 +814,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
     Dispatcher = GetParallelDMPPopen(fqPairList, sortMem=sortMem,
                                      threads=threads, head=head,
                                      overlapLen=overlapLen,
-                                     p3Seq=p3Seq, p5Seq=p5Seq,
-                                     cap=cap, cap_quality=cap_quality)
+                                     p3Seq=p3Seq, p5Seq=p5Seq)
     Dispatcher.daemon()
     outfqpaths = [(i.split(",")[0], i.split(",")[1]) for
                   i in Dispatcher.outstrs.itervalues()]
@@ -1057,18 +1049,6 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
-cdef inline cystr CappedPyArr2QualStr(py_array qualArr, int8_t cap=38):
-    """
-    :param qualArr: [py_array/arg] Expects a 32-bit integer array
-    :return: [cystr]
-    """
-    cdef size_t i
-    cdef int8_t cap_plus_33 = cap + 33
-    cdef py_array ret = array("B", [i + 33 if(i < cap) else cap_plus_33 for
-                                    i in qualArr])
-    return ret.tostring()
-
-
 cdef inline cystr PyArr2QualStr(py_array qualArr):
     """
     :param qualArr: [py_array/arg] Expects a 32-bit integer array
@@ -1127,9 +1107,7 @@ def GetDescriptionTagDict(readDesc):
 
 
 def pairedFastqConsolidate(fq1, fq2,
-                           int SetSize=100, bint parallel=True,
-                           bint cap_quality=False,
-                           int8_t cap=38):
+                           int SetSize=100, bint parallel=True):
     """
     TODO: Unit test for this function.
     Also, it would be nice to do a groupby() that separates read 1 and read
@@ -1149,14 +1127,13 @@ def pairedFastqConsolidate(fq1, fq2,
         # Make background process command string
         cStr = ("python -c 'from MawCluster.BCFastq import singleFastqConsoli"
                 "date;singleFastqConsolidate(\"%s\", SetSize=" % fq2 +
-                "%s, cap_quality=%s, cap=%s);" % (SetSize, cap_quality, cap) +
+                "%s);" % (SetSize) +
                 "import sys;sys.exit(0)'")
         # Submit
         PFC_Call = subprocess.Popen(cStr, stderr=None, shell=True,
                                     stdout=None, stdin=None, close_fds=True)
         # Run foreground job on other read
-        outFq1 = singleFastqConsolidate(fq1, SetSize=SetSize,
-                                        cap_quality=cap_quality, cap=cap)
+        outFq1 = singleFastqConsolidate(fq1, SetSize=SetSize)
         checks = 0
         # Have the other process wait until it's finished.
         while PFC_Call.poll() is None and checks < 3600:
@@ -1229,9 +1206,7 @@ def singleFqConsRescale(cystr fq,
 
 
 def singleFastqConsolidate(cystr fq,
-                           int SetSize=100,
-                           bint cap_quality=False,
-                           int8_t cap=38):
+                           int SetSize=100):
     cdef cystr outFq, bc4fq, ffq
     cdef pFastqFile_t inFq
     cdef list StringList, pFqPrxList
@@ -1248,8 +1223,7 @@ def singleFastqConsolidate(cystr fq,
     sla = StringList.append
     for bc4fq, fqRecGen in groupby(inFq, key=getBS):
         pFqPrxList = list(fqRecGen)
-        ffq = cFastFisherFlattening(pFqPrxList, bc4fq,
-                                    cap_quality=cap_quality, cap=cap)
+        ffq = cFastFisherFlattening(pFqPrxList, bc4fq)
         sla(ffq)
         numproc += 1
         TotalCount += len(pFqPrxList)

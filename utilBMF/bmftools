@@ -241,12 +241,6 @@ def main():
               "fastq sorting for slave processes.")
     )
     DMultiPlexParser.add_argument(
-        "-c", "--cap",
-        help=("Quality score at which to cap quality scores. Leave as None"
-              " to use calculated p values. Provide either a character in phr"
-              "ed encoding or an integer.")
-    )
-    DMultiPlexParser.add_argument(
         "--threads", "-p",
         help="Number of read-pair sets of demultiplexing."
     )
@@ -947,30 +941,6 @@ def main():
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
     elif(subcommand == "dmp"):
-        ChapCap = Chapman['cap']
-        if(ChapCap is None):
-            cap_quality = False
-            cap = 0  # Just to make sure it's initialized
-        elif(isinstance(ChapCap, int)):
-            cap_quality = True
-            cap = ChapCap
-        elif(isinstance(ChapCap, str)):
-            if(len(ChapCap) == 1):
-                cap_quality = True
-                cap = ord(ChapCap) - 33
-            else:
-                try:
-                    cap = int(ChapCap)
-                    cap_quality = True
-                    if(cap >= 93):
-                        raise ImproperArgumentError(
-                            "Quality cap must be less than 93, as that is the"
-                            " cap for the phred format.")
-                except ValueError:
-                    raise ImproperArgumentError(
-                        "cap parameter for bmftools dmp was not None, an "
-                        "integer, a character, or an integer as a string. "
-                        "Abort!")
         if(len(Chapman['inFqs']) == 2):
             if(Chapman['num_nucs'] is None):
                 from numpy import log2
@@ -992,8 +962,7 @@ def main():
                 threads=int(Chapman['threads']),
                 overlapLen=int(Chapman['overlapLen']),
                 sortMem=Chapman['slave_sort_mem'],
-                head=int(Chapman['head']),
-                cap_quality=cap_quality, cap=cap)
+                head=int(Chapman['head']))
             return 0  # sys.exit(main()) returns 0
         elif(len(Chapman['inFqs']) == 1):
             from BMFMain.Workflow import singleFastqShades
