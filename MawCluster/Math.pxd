@@ -10,6 +10,7 @@ ctypedef double double_t
 # FUNCTIONS
 cdef inline double_t CHI2_FROM_PHRED(int32_t phredInt) nogil
 cdef inline double_t INV_CHI2_FROM_PHRED(int32_t phredInt) nogil
+cdef inline double igamc_pvalues(int num_pvalues, double x) nogil
 
 
 cdef extern from "cephes.h":

@@ -12,7 +12,7 @@ from numpy cimport ndarray, uint8_t
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
 from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
 from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
-from MawCluster.Math cimport igamc, CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED
+from MawCluster.Math cimport igamc_pvalues, CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef SeqQual SeqQual_t
@@ -95,12 +95,6 @@ cdef inline int8_t ARGMAX_CONV(int8_t index) nogil:
     else:
         return 65
 
-
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.wraparound(False)
-cdef inline double igamc_pvalues(int num_pvalues, double x) nogil:
-    return 1.0 if(x < 0) else igamc(num_pvalues * 1., x / 2.0)
 
 # STRUCTS
 cdef class SeqQual:
