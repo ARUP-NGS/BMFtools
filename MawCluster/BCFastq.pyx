@@ -679,7 +679,7 @@ def CutadaptPaired(cystr fq1, cystr fq2,
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards"
-                      "-a {} -o {} -p {} -O {} {} {}".format(p3Seq,
+                      " -a {} -o {} -p {} -O {} {} {}".format(p3Seq,
                                                              outfq1,
                                                              outfq2,
                                                              overlapLen,
