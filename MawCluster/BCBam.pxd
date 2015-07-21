@@ -5,32 +5,29 @@ cimport pysam.cfaidx
 cimport numpy as np
 cimport utilBMF.HTSUtils
 from cython cimport bint
-from cpython cimport array
+from cpython cimport array as c_array
 from libc.stdint cimport *
 from libc.stdio cimport sprintf
+from libc.string cimport memcpy
 from pysam.chtslib cimport *
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
 from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport struct_str
+from utilBMF.MPA cimport MergeAgreedQualities, MergeDiscQualities
 from pysam.calignedsegment cimport pysam_get_l_qname, bam1_t
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 ctypedef cython.str cystr
-ctypedef TagBamPipe TagBamPipe_t
 ctypedef BamPipe BamPipe_t
 ctypedef struct_str struct_str_t
-ctypedef array.array py_array
+ctypedef c_array.array py_array
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 
 import cython
 
-
-cdef cystr cBarcodeTagCOBam(pysam.calignmentfile.AlignmentFile bam,
-                            pysam.calignmentfile.AlignmentFile outbam)
-cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=?)
 
 cdef dict cGetCOTagDict(AlignedSegment_t read)
 
@@ -40,6 +37,23 @@ cdef inline char * get_Z_tag(AlignedSegment_t read, cystr btag):
     cdef uint8_t * data
     data = bam_aux_get(read._delegate, btag)
     return <char*>bam_aux2Z(data)
+
+
+cdef inline bint c_argmax32i(int32_t q, int32_t r) nogil:
+    return 0 if(q > r) else 1
+
+
+cdef inline int32_t getFMFromAS(AlignedSegment_t read):
+    return getFMFast(read._delegate)
+
+
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+cdef inline int32_t getFMFast(bam1_t * src) nogil:
+    cdef uint8_t * data
+    data = bam_aux_get(src, "FM")
+    return <int32_t> data
 
 
 @cython.boundscheck(False)
@@ -59,19 +73,8 @@ cdef inline int8_t BarcodeHD(bam1_t * query, bam1_t * cmp,
     return ret
 
 
-cdef double getAF(AlignedSegment_t read)
-cdef double getSF(AlignedSegment_t read)
-# cpdef AlignedSegment_t TagAlignedSegment(AlignedSegment_t read)
-cdef AlignedSegment_t TagAlignedSegment(
-        AlignedSegment_t read, dict RefIDDict=?)
-
-cdef cystr RPString(AlignedSegment_t read, dict RefIDDict=?)
-
-
-cdef inline cystr RescueFlag(AlignedSegment_t read):
-    return "%s:%s,%s:%s-%s" % (read.pos, read.reference_id,
-                               read.mpos, read.rnext,
-                               read.is_read1)
+cdef inline bint IS_REV(AlignedSegment_t read):
+    return read.is_reverse
 
 
 cdef inline bint IS_READ1(AlignedSegment_t read):
@@ -111,10 +114,3 @@ cdef class BamPipe:
     cpdef process(self)
     cdef write(self, AlignedSegment_t read)
 
-
-cdef class TagBamPipe:
-    cdef public bint bin_input, bin_output, uncompressed_output
-    cdef public AlignmentFile_t inHandle, outHandle
-    cdef write(self, AlignedSegment_t read)
-    cdef public dict RefIDDict
-    cpdef process(self)
