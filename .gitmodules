@@ -1,3 +1,0 @@
-[submodule "include/htslib"]
-	path = include/htslib
-	url = https://github.com/samtools/htslib/
