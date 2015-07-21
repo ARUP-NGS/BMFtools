@@ -944,7 +944,7 @@ def main():
         if(len(Chapman['inFqs']) == 2):
             if(Chapman['num_nucs'] is None):
                 from numpy import log2
-                num_nucs = int(log2(Chapman['threads']) // 2) + 1
+                num_nucs = int(log2(int(Chapman['threads'])) // 2) + 1
                 sys.stderr.write("num_nucs not set. Defaulting to "
                                  "log2(threads) // 2 + 1: %s.\n" % num_nucs)
                 # IE, if unset, defaults to the minimum needed to have at

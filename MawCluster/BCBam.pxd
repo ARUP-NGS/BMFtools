@@ -9,7 +9,7 @@ from cpython cimport array as c_array
 from libc.stdint cimport *
 from libc.stdio cimport sprintf
 from libc.string cimport memcpy
-from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq, bam_aux_get
+from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
@@ -27,19 +27,14 @@ ctypedef c_array.array py_array
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 
 import cython
-
-cdef extern from "zlib.h":
-
-
+'''
+cdef extern from "zlib.h" nogil:
+    int inflate(ztream_p, int)
+'''
 
 cdef dict cGetCOTagDict(AlignedSegment_t read)
 
 cpdef dict pGetCOTagDict(AlignedSegment_t read)
-
-cdef inline char * get_Z_tag(AlignedSegment_t read, cystr btag):
-    cdef uint8_t * data
-    data = bam_aux_get(read._delegate, btag)
-    return <char*>bam_aux2Z(data)
 
 
 cdef inline bint c_argmax32i(int32_t q, int32_t r) nogil:
@@ -47,29 +42,16 @@ cdef inline bint c_argmax32i(int32_t q, int32_t r) nogil:
 
 
 cdef inline int32_t getFMFromAS(AlignedSegment_t read):
-    return getFMFast(read._delegate)
+    return <int32_t> read.opt("FM")
 
 
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
-cdef inline int32_t getFMFast(bam1_t * src) nogil:
-    cdef uint8_t * data
-    data = bam_aux_get(src, "FM")
-    return <int32_t> data
-
-
-@cython.boundscheck(False)
-@cython.initializedcheck(False)
-@cython.wraparound(False)
-cdef inline int8_t BarcodeHD(bam1_t * query, bam1_t * cmp,
+cdef inline int8_t BarcodeHD(char * str1, char * str2,
                              int8_t length) nogil:
-    cdef char* str1
-    cdef char* str2
     cdef int8_t ret = 0
-    cdef uint8_t index
-    str1 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
-    str2 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
+    cdef uint16_t index
     for index in xrange(length):
         if(str1[index] != str2[index]):
             ret += 1

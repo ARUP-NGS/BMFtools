@@ -763,4 +763,5 @@ cdef cystr BamRescue(cystr inBam,
 
 
 cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
-    return BarcodeHD(query._delegate, cmp._delegate, bLen)
+    return BarcodeHD(<char *> query.query_sequence,
+                     <char *>cmp.query_sequence, bLen)
