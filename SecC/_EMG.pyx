@@ -1,5 +1,4 @@
 # cython: boundscheck=False, wraparound=False
-from __future__ import division
 import numpy as np
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 from itertools import groupby
