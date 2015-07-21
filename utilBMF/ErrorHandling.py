@@ -26,6 +26,14 @@ class ImproperArgumentError(ValueError):
             print("Improper Argument Error: %s" % message)
 
 
+class UnsetRequiredParameter(ValueError):
+    def __init__(self, message=""):
+        super(ValueError, self).__init__()
+        self.message = message
+        if(message != ""):
+            print(message)
+
+
 class ConsideredHarmful(ValueError):
     def __init__(self, message=""):
         super(ValueError, self).__init__()
@@ -103,7 +111,6 @@ class FunctionCallException(Exception):
         print("Failed call: %s" % call)
         print("Message: %s" % message)
         print("Was shell: %s" % shell)
-        raise Exception(message)
 
 
 class MissingGlobalVariable(Exception):

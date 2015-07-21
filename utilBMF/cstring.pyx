@@ -18,6 +18,11 @@ cdef int * to_cstring_array(cystr input_str):
 # define a function that can deallocate the data (if needed)
 # my_array.callback_free_data = free
 
+PH2CHR_TRANS = maketrans("".join(
+  [chr(x) for x in xrange(0, 127 - 33)]),
+                         "".join(
+  [chr(x + 33) for x in xrange(0, 127 - 33)]))
+
 
 cdef view.array ps2va(char * inArr, size_t size):
     """This code is here until I figure out how to work with the string's values
@@ -43,6 +48,7 @@ cpdef print_chars(cystr input_str):
         ",".join(map(str, arr))
     return
 
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
@@ -63,17 +69,13 @@ cpdef py_array str2phredarray(cystr instr):
     return cs_to_ph(instr)
 
 
-cdef public cystr PH2CHR_TRANS = (maketrans(
-        "".join({chr(x):chr(x + 33) for x in xrange(
-            0, 127 - 33)}.iterkeys()),
-        "".join({chr(x):chr(x + 33) for x in xrange(
-            0, 127 - 33)}.itervalues())))
-
-
 cdef inline py_array cs_to_ph(cystr input_str):
     cdef py_array tmpArr
-    cdef size_t index
-    tmpArr = array('B', input_str)
+    cdef size_t index, length
+    tmpArr = array('B')
+    length = len(input_str)
+    c_array.resize(tmpArr, length)
+    memcpy(tmpArr.data.as_voidptr, <uint8_t*>input_str, length)
     for index in range(len(tmpArr)):
         tmpArr[index] -= 33
     return tmpArr

@@ -1,5 +1,16 @@
 # TODO
 
+## Crunch time
+1. Presentation 7/8:
+    1. Presentation
+        1. Make PPT
+    1. Analysis
+        2. Re-run pipeline to generate the Lambda Phage Data
+        3. Show error rate by cycle with different procedures
+    1. Dev
+        2. Unit test for BAM QC failure for homopolymers.
+    1. Make conclusion RE: platform - how to be "diplomatic"
+
 ## Software Development Housekeeping
 1. Unit tests:
 	1. MawCluster

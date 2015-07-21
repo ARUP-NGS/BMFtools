@@ -2,6 +2,7 @@ cimport cython
 from cython cimport bint
 cimport numpy as np
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr, nucList, PysamToChrDict
@@ -16,8 +17,8 @@ ctypedef PileupReadPair PileupReadPair_t
 ctypedef pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef PRInfo PRInfo_t
-ctypedef pysam.calignmentfile.PileupRead PileupRead_t
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.PileupRead PileupRead_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 
 
@@ -47,10 +48,11 @@ cdef class AlleleAggregateInfo:
     cdef public long SumMQScore
     cdef public long FSR
     cdef public long NumberDuplexReads, maxND
-    cdef public cython.float MNF, maxNF, NFSD, AveFamSize, AveMQ, AveBQ, minMQ, minBQ
-    cdef public cython.float minFA, MFractionAgreed, reverseStrandFraction, MFA
-    cdef public cython.float minFrac, TotalAlleleFrequency, MergedAlleleFrequency
+    cdef public cython.float MNF, maxNF, NFSD, AveFamSize, AveMQ, AveBQ
+    cdef public cython.float minFA, MFractionAgreed, reverseStrandFraction
+    cdef public cython.float minFrac, TotalAlleleFrequency, MFA
     cdef public cython.float minPVFrac, AABPSD, AAMBP, MBP, BPSD, PFSD, MPF
+    cdef public cython.float minBQ, minMQ, MergedAlleleFrequency
     cdef public list recList
     cdef public dict TotalAlleleDict, StrandCountsDict, StrandCountsTotalDict
     cdef public dict strandedTransitionDict
@@ -75,8 +77,9 @@ cdef class PRInfo:
     a pPileupRead.
     Holds family size, SV tags, base quality, mapping quality, and base.
     If any of the "finicky" fields aren't filled (e.g., if BAMs are not
-    produced using BMFTools), they are set to None. Check to see if an attribute
-    is None first if you'd like to save yourself some headaches.
+    produced using BMFTools), they are set to None. Check to see
+    if an attribute is None first if you'd like to save yourself some
+    headaches.
     """
     cdef public bint Pass, is_reverse, is_proper_pair
     cdef public bint SVPass
@@ -105,8 +108,8 @@ cdef class PCInfo:
     """
     cdef public cystr experiment, excludedSVTagStr, consensus, TotalFracStr
     cdef public cystr MergedFracStr, MergedCountStr, TotalCountStr, str
-    cdef public cystr MergedStrandednessStr, TotalStrandednessStr, AlleleFreqStr
-    cdef public cystr contig
+    cdef public cystr MergedStrandednessStr, TotalStrandednessStr
+    cdef public cystr contig, AlleleFreqStr
     cdef public long minMQ, minBQ, pos, FailedQCReads, FailedFAReads
     cdef public long FailedBQReads, FailedAFReads, FailedMQReads, FailedNDReads
     cdef public long FailedAMPReads

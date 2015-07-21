@@ -37,11 +37,17 @@ ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
 # Insist on -O3 optimization
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
+    if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA']):
+        x.sources += ["include/cephes/igam.c", "include/cephes/const.c",
+                      "include/cephes/gamma.c", "include/cephes/mtherr.c",
+                      "include/cephes/sf_error.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
                     're2']
+
+includes = [np.get_include(), os.path.abspath("include"), os.path.abspath("include/cephes")] + pysam.get_include()
 
 config = {
     'description': '',
@@ -53,9 +59,8 @@ config = {
     'packages': ["BMFMain", "utilBMF", "MawCluster",
                  "SecC", "analyscripts"],
     'ext_modules': ext,
-    'include_dirs': ([np.get_include()] + pysam.get_include() +
-                     [os.path.abspath("include")]),
-    'scripts': ['utilBMF/bmftools'],
+    'include_dirs': includes,
+    'scripts': ['utilBMF/bmftools', 'include/dnbtools'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

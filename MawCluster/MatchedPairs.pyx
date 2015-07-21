@@ -12,7 +12,7 @@ import sys
 import logging
 from math import sqrt as msqrt
 asVCF = pysam.asVCF()
-cimport pysam.TabProxies
+cimport pysam.ctabixproxies
 cimport numpy as np
 cimport cython
 from utilBMF.HTSUtils cimport cystr
@@ -49,8 +49,8 @@ def TestTumorVsNormal(int tAC, int tDOC,
 
 
 @cython.returns(cython.bint)
-def TumorVNormalVCFProxy(pysam.TabProxies.VCFProxy tumor,
-                         pysam.TabProxies.VCFProxy normal=None):
+def TumorVNormalVCFProxy(pysam.ctabixproxies.VCFProxy tumor,
+                         pysam.ctabixproxies.VCFProxy normal=None):
     """
     Tests if a variant in a tumor should be filtered out or not given
     evidence from a paired normal.
@@ -75,7 +75,7 @@ def FilterTumorCallsByNormalAAF(tumor, normal="default", outVCF="default",
     "--min-alternate-fraction 0" and --pooled-continuous.
     (Will require a different function, actually.)
     """
-    cdef pysam.TabProxies.VCFProxy rec, nRec, i
+    cdef pysam.ctabixproxies.VCFProxy rec, nRec, i
     cdef int nDOC, nAC, nAllelesAtPos
     cdef np.longdouble_t nMaxAAF
     cdef cystr f

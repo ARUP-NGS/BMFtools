@@ -8,7 +8,7 @@ ctypedef SNVCFLine SNVCFLine_t
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PCInfo PCInfo_t
-ctypedef pysam.calignmentfile.PileupRead PileupRead
+ctypedef pysam.calignedsegment.PileupRead PileupRead
 
 
 cdef class SNVCFLine:
@@ -21,14 +21,14 @@ cdef class SNVCFLine:
     minNumSS is the minumum number of start/stop combinations required to
     support a variant call.
     """
-    cdef public cystr REF, CHROM, CONS, ALT, ID, FILTER, InfoStr, FormatStr, str
+    cdef public cystr REF, CHROM, CONS, ALT, ID, FILTER, InfoStr, FormatStr
+    cdef public cystr str
     cdef public cystr FormatKey, FormatValue
     cdef public cystr flankingBefore, flankingAfter
     cdef public long NumStartStops, POS
     cdef public cython.bint BothStrandSupport, AABothStrandAlignment
     cdef public dtype128_t reverseStrandFraction, QUAL
     cdef public dict InfoFields, FormatFields
-
 
 
 cdef class VCFPos:

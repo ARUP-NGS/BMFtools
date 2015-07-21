@@ -1,6 +1,6 @@
 #!python
 # cython: c_string_type=str, c_string_encoding=ascii
-from __future__ import division
+# cython: boundscheck=False
 import shlex
 import subprocess
 import os
@@ -15,6 +15,8 @@ import uuid
 import sys
 from subprocess import check_call
 from functools import partial
+from itertools import groupby, chain
+from array import array
 
 import numpy as np
 from numpy import (sum as nsum, multiply as nmul,
@@ -37,11 +39,7 @@ from utilBMF import HTSUtils
 from warnings import warn
 import SecC
 
-cimport numpy as np
-cimport cython
 
-cimport utilBMF.HTSUtils
-ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 npchararray = char.array
 oagseq = oag("seq")
 oagqqual = oag("query_qualities")
@@ -378,8 +376,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", passing, "i"),
-                               ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
-                               ("FA", ",".join(FA1.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals1)),
+                               ("FA", array('i', FA1)),
                                ("ND", ND1, "i"),
                                ("NF", ND1 * 1. / FM, "f"),
                                ("RG", "default", "Z"),
@@ -390,8 +388,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", passing, "i"),
-                               ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
-                               ("FA", ",".join(FA2.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals2)),
+                               ("FA", array('i', FA2)),
                                ("ND", ND2, "i"),
                                ("NF", ND2 * 1. / float(FM), "f"),
                                ("RG", "default", "Z"),
@@ -403,8 +401,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", ",".join(PhredQuals1.astype(str)), "Z"),
-                               ("FA", ",".join(FA1.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals1)),
+                               ("FA", array('i', FA1)),
                                ("ND", ND1, "i"),
                                ("NF", 1. * ND1 / FM, "f"),
                                ("AF", r1FracAlign, "f"),
@@ -414,8 +412,8 @@ def pairedBarcodeTagging(
                                ("FM", FM, "i"),
                                ("BS", descDict1["BS"], "Z"),
                                ("FP", int("Pass" in descDict1["FP"]), "i"),
-                               ("PV", ",".join(PhredQuals2.astype(str)), "Z"),
-                               ("FA", ",".join(FA2.astype(str)), "Z"),
+                               ("PV", array('i', PhredQuals2)),
+                               ("FA", array('i', FA2)),
                                ("ND", ND2, "i"),
                                ("NF", 1. * ND2 / FM, "f"),
                                ("AF", r2FracAlign, "f"),
@@ -430,87 +428,6 @@ def pairedBarcodeTagging(
     outBAM.close()
     postFilterBAM.close()
     return outBAMFile
-
-
-def compareRecs(RecordList, oagseq=oagseq, oagqqual=oagqqual):
-    Success = True
-    seqs = map(oagseq, RecordList)
-    seqs = [str(record.seq) for record in RecordList]
-    stackArrays = tuple([npchararray(s, itemsize=1) for s in seqs])
-    seqArray = nvstack(stackArrays)
-    # print(repr(seqArray))
-
-    quals = np.array(map(oagqqual, RecordList))
-    qualA = ccopy(quals)
-    qualC = ccopy(quals)
-    qualG = ccopy(quals)
-    qualT = ccopy(quals)
-    qualA[seqArray != "A"] = 0
-    qualASum = nsum(qualA, 0)
-    qualC[seqArray != "C"] = 0
-    qualCSum = nsum(qualC, 0)
-    qualG[seqArray != "G"] = 0
-    qualGSum = nsum(qualG, 0)
-    qualT[seqArray != "T"] = 0
-    qualTSum = nsum(qualT, 0)
-    qualAllSum = nvstack([qualASum, qualCSum, qualGSum, qualTSum])
-    newSeq = "".join(map(Num2Nuc, nargmax(qualAllSum, 0)))
-    MaxPhredSum = np.amax(qualAllSum, 0)  # Avoid calculating twice.
-    phredQuals = nsub(nmul(2, MaxPhredSum),
-                      nsum(qualAllSum, 0))
-    phredQuals[phredQuals < 0] = 0
-    outRec = RecordList[0]
-    outRec.seq = newSeq
-    if(np.any(np.greater(phredQuals, 93))):
-        outRec.setTag("PV", ",".join(phredQuals.astype(str)))
-    phredQuals[phredQuals > 93] = 93
-    outRec.query_qualities = phredQuals
-    return outRec, Success
-
-
-def ConsolidateInferred(inBAM, outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(inBAM.split('.')[0:-1]) + "consolidated.bam"
-    inputHandle = pysam.AlignmentFile(inBAM, 'rb')
-    outputHandle = pysam.AlignmentFile(outBAM, 'wb', template=inputHandle)
-    workBC1 = ""
-    workBC2 = ""
-    Set1 = []
-    Set2 = []
-    for record in inputHandle:
-        if(record.is_read1):
-            barcodeRecord1 = record.opt("RP")
-            if(workBC1 == ""):
-                workBC1 = barcodeRecord1
-                Set1 = []
-                Set1.append(record)
-            elif(workBC1 == barcodeRecord1):
-                Set1.append(record)
-            else:
-                mergeRec1, success = compareRecs(Set1)
-                if(success is False):
-                    mergeRec1.setTag("FP", 0)
-                outputHandle.write(mergeRec1)
-                Set1 = [record]
-                workBC1 = barcodeRecord1
-        if(record.is_read2):
-            barcodeRecord2 = record.opt("RP")
-            if(workBC2 == ""):
-                workBC2 = barcodeRecord2
-                Set2 = []
-                Set2.append(record)
-            elif(workBC2 == barcodeRecord2):
-                Set2.append(record)
-            else:
-                mergeRec2, success = compareRecs(Set2)
-                if(success is False):
-                    mergeRec2.setTag("FP", 0)
-                outputHandle.write(mergeRec2)
-                Set2 = [record]
-                workBC2 = barcodeRecord2
-    inputHandle.close()
-    outputHandle.close()
-    return outBAM
 
 
 def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
@@ -676,32 +593,34 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read):
     return cGetCOTagDict(read)
 
 
-cpdef AlignedSegment_t pTagAlignedSegmentHG37(AlignedSegment_t read):
-    return TagAlignedSegmentHG37(read)
+@cython.wraparound(False)
+cdef inline char * cRPString(bam1_t * src, bam_hdr_t * hdr) nogil:
+    cdef char[100] buffer
+    cdef size_t length
+    length = sprintf("%s:%i,%s:%i", buffer, hdr.target_name[src.core.tid],
+                     src.core.pos, hdr.target_name[src.core.mtid],
+                     src.core.mpos)
+    return buffer
 
-'''
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-'''
-cdef cystr RPStringNonHG37(AlignedSegment_t read, dict RefIDDict=None):
+cdef cystr RPString(AlignedSegment_t read, dict RefIDDict=None):
     return (RefIDDict[read.reference_id] + ":%s," % read.pos +
             RefIDDict[read.rnext] +
             ":%s" % read.mpos)
 
 
-'''
 @cython.boundscheck(False)
 @cython.wraparound(False)
-'''
-cdef AlignedSegment_t TagAlignedSegment(
+cdef inline AlignedSegment_t TagAlignedSegment(
         AlignedSegment_t read, dict RefIDDict=None):
     """
     Adds necessary information from a CO: tag to appropriate other tags.
     """
-    assert RefIDDict is not None
     cdef dict CommentDict
     cdef int FM, ND, FPInt
-    cdef double NF, AF, SF
+    cdef double NF, AF, SF, FF, PF
     cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
     CommentDict = cGetCOTagDict(read)
     PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
@@ -711,60 +630,25 @@ cdef AlignedSegment_t TagAlignedSegment(
         FA = FA[::-1]
     ND = int(CommentDict["ND"])
     FM = int(CommentDict["FM"])
-    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
+    FPInt = int(CommentDict["FP"])
     if(not FPInt):
         read.flag += 512
     NF = ND * 1. / FM
+    FF = np.min(FA) * 1. / FM
+    PF = np.min(PhredQuals) * 1. / np.max(PhredQuals)
     AF = getAF(read)
     SF = getSF(read)
     read.set_tags([("BS", CommentDict["BS"], "Z"),
                    ("FM", FM, "i"),
-                   ("PV", ",".join(PhredQuals.astype(str)), "Z"),
-                   ("FA", ",".join(FA.astype(str)), "Z"),
+                   ("PV", array('i', PhredQuals)),
+                   ("FF", FF, "f"), ("PF", PF, "f"),
+                   ("FA", array('i', FA)),
                    ("FP", FPInt, "i"),
                    ("ND", int(CommentDict["ND"]), "i"),
                    ("NF", NF, "f"),
                    ("AF", AF, "f"),
                    ("SF", SF, "f"),
-                   ("RP", RPStringNonHG37(read, RefIDDict), "Z")
-                   ] + read.get_tags())
-    read.set_tag("CO", None)  # Delete the CO tag.
-    return read
-
-
-cdef AlignedSegment_t TagAlignedSegmentHG37(
-        AlignedSegment_t read):
-    """
-    Adds necessary information from a CO: tag to appropriate other tags.
-    """
-    cdef dict CommentDict
-    cdef int FM, ND, FPInt
-    cdef double NF, AF, SF
-    cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
-    CommentDict = cGetCOTagDict(read)
-    PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
-    FA = np.array(CommentDict["FA"].split(","), dtype=np.int64)
-    if(read.is_reverse):
-        PhredQuals = PhredQuals[::-1]
-        FA = FA[::-1]
-    ND = int(CommentDict["ND"])
-    FM = int(CommentDict["FM"])
-    FPInt = 1 if("Pass" in CommentDict["FP"]) else 0
-    if(not FPInt):
-        read.flag += 512
-    NF = ND * 1. / FM
-    AF = getAF(read)
-    SF = getSF(read)
-    read.set_tags([("BS", CommentDict["BS"], "Z"),
-                   ("FM", FM, "i"),
-                   ("PV", ",".join(PhredQuals.astype(str)), "Z"),
-                   ("FA", ",".join(FA.astype(str)), "Z"),
-                   ("FP", FPInt, "i"),
-                   ("ND", int(CommentDict["ND"]), "i"),
-                   ("NF", NF, "f"),
-                   ("AF", AF, "f"),
-                   ("SF", SF, "f"),
-                   ("RP", RPString(read), "Z")
+                   ("RP", RPString(read, RefIDDict), "Z")
                    ] + read.get_tags())
     read.set_tag("CO", None)  # Delete the CO tag.
     return read
@@ -824,7 +708,7 @@ cdef class TagBamPipe:
                 self.outHandle = pysam.AlignmentFile(
                     "-", "wb", template=self.inHandle)
         self.RefIDDict = dict(list(enumerate(self.inHandle.references)) +
-                                   [(-1, "*")])
+                              [(-1, "*")])
 
     cdef write(self, AlignedSegment_t read):
         self.outHandle.write(read)
@@ -834,16 +718,6 @@ cdef class TagBamPipe:
         for read in self.inHandle:
             read = TagAlignedSegment(read, RefIDDict=self.RefIDDict)
             self.write(read)
-
-cdef class TagBamPipeHG37(BamPipe):
-    """
-    Not unlike TagBamPipe, but memoizes HG37's ref id dictionary and
-    inlines it into switches.
-    """
-    def __init__(self, bint bin_input, bint bin_output,
-                 bint uncompressed_output=False):
-        super(BamPipe, self).__init__(TagAlignedSegmentHG37, bin_input, bin_output,
-                                      uncompressed_output=uncompressed_output)
 
 
 def PipeBarcodeTagCOBam(char flag):
@@ -872,10 +746,44 @@ def PipeBarcodeTagCOBam(char flag):
     inHandle = pysam.AlignmentFile("-", input_mode)
     outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
     RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
+    stderr.write("repr for RefIDDict: %s\n" % RefIDDict)
     [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
     inHandle.close()
     outHandle.close()
-    return 1
+    return 0
+
+
+def PipeBarcodeTagCOBam(char flag):
+    """
+    Takes a SAM input stream, tags the bam, and converts
+    it into a bam, all in one fell swoop!
+    Uses a bitwise flag.
+    flag & 4 is true to emit uncompressed
+    flag & 2 is true if input is textual (sam) format
+    flag & 1 is true if output is textual (sam) format
+    """
+    from sys import stderr
+    cdef AlignmentFile_t inHandle, outHandle
+    cdef AlignedSegment_t read
+    cdef dict RefIDDict
+    cdef cystr input_mode
+    input_mode = "r" if(flag & 2) else "rb"
+    if(flag & 1):
+        output_mode = "w"
+    elif(flag & 4):
+        output_mode = "wbu"
+    else:
+        output_mode = "wb"
+    stderr.write("Now tagging a piped BAM with input mode "
+                 "%s and output mode %s\n" % (input_mode, output_mode))
+    inHandle = pysam.AlignmentFile("-", input_mode)
+    outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
+    RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
+    stderr.write("repr for RefIDDict: %s\n" % RefIDDict)
+    [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
+    inHandle.close()
+    outHandle.close()
+    return 0
 
 
 cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
@@ -938,3 +846,68 @@ cdef double getAF(AlignedSegment_t read):
         if(tup[0] == 0):
             sumAligned += tup[1]
     return sumAligned * 1. / sum
+
+
+cdef cystr BamRescue(cystr inBam,
+                     cystr outBam,
+                     char mmlim, int8_t bLen):
+    input_bam = pysam.AlignmentFile(inBam, "rb")
+    output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
+    cdef AlignedSegment_t query_read, cmp_read, read
+    cdef ndarray[char, ndim=2] distmtx
+    cdef py_array arr, nr_arr
+    cdef list recList, merging_arr_sets
+    cdef size_t size, qctr, cmpctr, t
+    cdef object gen
+    cdef int8_t dist
+    cdef set rsqidx
+    cdef int RefID, RNext, Pos, MPos
+    cdef int IsRead1
+    cdef object cfi = chain.from_iterable
+    obw = output_bam.write
+    for RefID, gen in groupby(input_bam, REF_ID):
+        for Pos, gen1 in groupby(gen, POS):
+            for RNext, gen2 in groupby(gen1, RNEXT):
+                for MPos, gen3 in groupby(gen2, MPOS):
+                    for IsRead1, FinalGen in groupby(gen3, IS_READ1):
+                        setsToMerge = {}
+                        recList = list(gen)
+                        size = len(recList)
+                        distmtx = np.zeros([size, size], dtype=np.int8)
+                        cmpctr = 1
+                        for qctr, query_read in enumerate(recList):
+                            for cmp_read in recList[qctr + 1:]:
+                                distmtx[qctr][cmpctr] = pBarcodeHD(
+                                        query_read, cmp_read, bLen)
+                                cmpctr += 1
+                        cmpctr = 1
+                        merging_arr_sets = []
+                        rsqidx = set([])
+                        ria = rsqidx.add
+                        for qctr in range(size):
+                            for cmpctr in range(qctr + 1):
+                                if(distmtx[qctr][cmpctr] < mmlim):
+                                    arr = array('i', [
+                                        t for t, dist in
+                                        enumerate(distmtx[qctr][:]) if
+                                        dist < mmlim and
+                                        t not in rsqidx])
+                                    merging_arr_sets.append(arr)
+                                    [ria(t) for t in arr]
+                        rsqidx = array('i', list(cfi(merging_arr_sets)))
+                        nr_arr = array('i', [t for t in range(size) if
+                                             t not in rsqidx])
+                        [obw(recList[t]) for t in range(size) if
+                         t not in rsqidx]
+                        for arr in merging_arr_sets:
+                            read = BarcodeRescueBam(recList[t] for t in arr)
+                            obw(read)
+    return output_bam.filename
+
+
+cdef BarcodeRescueBam(list recList):
+    return recList[0]
+
+
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+    return BarcodeHD(query._delegate, cmp._delegate, bLen)

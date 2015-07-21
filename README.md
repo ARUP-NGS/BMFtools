@@ -5,7 +5,7 @@
 ###What is BMF?
 >BMF is a promiscuous acronym with multiple appropriate meanings. Primarily:
 
-|By __Reference__| By __Value__ | 
+|By __Reference__| By __Value__ |
 |---------------|-----------|
 |_**B**arcoded **M**olecular **F**amilies_ | _**B**arcode **M**anipulation and **F**actorization_ |
 ######[Cf. Nicklaus Wirth]
@@ -23,14 +23,14 @@ You might have an error claiming that README.md is not in dist/. If necessary, c
 
 ## Use
 
-To run the main program, call the main.py function after installation, or, if installed, run the executable BMFMain.
+To run the main program, call the main.py function after installation, or, if installed, run the executable bmftools main.
 
 ```bash
 python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
 ```bash
-BMFMain R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
+bmftools main R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
 ```
 
 If using a config file, this is greatly simplified. I recommend having multiple config files, one for each analysis type. (e.g., one for FFPE, one for amplicon, one for each bed file, etc.)
@@ -39,7 +39,7 @@ A sample configuration file can be found in conf/config.txt. Over time, the numb
 In that case, one would call thus:
 
 ```bash
-BMFMain R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
+bmftools main R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
 ```
 
 To use bmftools subcommands, check instructions by executing the following:
@@ -106,14 +106,16 @@ BS | Barcode Sequence | String. Regex: [ATGCN]+ |
 CC | Cluster Count | Integer |
 DP | Discordant Read Pair information. | String |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
+FF | Minimum value for Fraction of FA for a base in a condensed read. | Float [0-1] | Regex: [0-9\.]+ |
+PF | Ratio of minimum and maximum PV values for bases in a condensed read. | Float [0-1] | Regex: [0-9\.]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 ND | Number of Differences in a family of reads from the consensus read. | Integer from Z+ |
 NF | ND fraction (mean ND per read in family) | Float |
 PV | Phred Values for a read which has saturated the phred scoring system | String, in the form of a comma-joined list of integers. Regex: ASCII|
 RA | Realigned due to a failure to map appropriately, either as too small a fraction aligned or a mapping quality of 0. | String: aligned. Current Regex: [a-z]|
-RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9.]+:[0-9]+,[GLXYMT0-9.]+[0-9]+ |
-SC | Contig Set | String. Regex: [GLXYMT0-9.]+,[GLXYMT0-9]+ |
+RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9\.]+:[0-9]+,[GLXYMT0-9\.]+[0-9]+ |
+SC | Contig Set | String. Regex: [GLXYMT0-9\.]+,[GLXYMT0-9]+ |
 SF | Soft-Clipped Fraction | Float |
 SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 

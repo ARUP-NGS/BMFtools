@@ -1,18 +1,25 @@
 '''
 Unexpected procotols...
 
-To get the number of non-reference mapped bases from a VCF, do these two things! :)
+To get the number of non-reference mapped bases from a VCF,
+do these two things! :)
 
 ```bash
-grep -v ^# $Infile| cut -f8 | grep -v 'INDEL' | cut -d';' -f2 | cut -d'=' -f2 | cut -d',' -f3,4 | sort | uniq -c
+grep -v ^# $Infile| cut -f8 | grep -v 'INDEL' | \
+cut -d';' -f2 | cut -d'=' -f2 | cut -d',' -f3,4 | sort | uniq -c
 ```
-sum(int(k[0]) * sum(map(int, k[1].split(","))) for k in [i.strip().split() for i in open("NoBMF.nonref.hist", "r").read().split("\n") if i != ''] if sum(map(int, k[1].split(","))) < 100)
+sum(int(k[0]) * sum(map(int, k[1].split(","))) for k in [
+    i.strip().split() for i in
+    open("NoBMF.nonref.hist", "r").read().split("\n") if i != '']
+    if sum(map(int, k[1].split(","))) < 100)
 
 If doing it with python after tabixing:
-np.sum(np.array(list(cfi([dict(tup.split("=") for tup in i.info.split(";"))['I16'].split(",")[2:4] for i in inHandle if "INDEL" not in i.info])), dtype=np.int))
+np.sum(np.array(list(cfi([
+    dict(tup.split("=") for tup in
+    i.info.split(";"))['I16'].split(",")[2:4] for i in
+    inHandle if "INDEL" not in i.info])), dtype=np.int))
 
 '''
-
 
 
 def GetSumOfDifferencesFromTheReference(vcfpath):
@@ -33,11 +40,13 @@ def GetSumOfDifferencesFromTheReference(vcfpath):
     tabixhandle = pysam.tabix_iterator(infh, pysam.asVCF())
     return np.sum(np.array(list(cfi([dict(tup.split("=") for
                                           tup in i.info.split(";"))[
-        'I16'].split(",")[2:4] for
-                                     i in tabixhandle if
+        'I16'].split(",")[2:4] for i in tabixhandle if
                                      "INDEL" not in i.info])), dtype=np.int64))
 
 
 if __name__ == "__main__":
-    from sys import argv, stdout
-    stdout.write("Total non-reference aligned bases: %s\n" % GetSumOfDifferencesFromTheReference(argv[-1]))
+    import sys
+    msg = ("Total non-reference aligned bases:"
+           " %s\n" % GetSumOfDifferencesFromTheReference(sys.argv[-1]))
+    sys.stdout.write(msg)
+    sys.exit(0)

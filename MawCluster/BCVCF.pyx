@@ -1,5 +1,4 @@
 # cython: c_string_type=str, c_string_encoding=ascii
-from __future__ import division
 from itertools import tee
 from operator import methodcaller as mc
 from subprocess import CalledProcessError
@@ -23,7 +22,7 @@ from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from . import SNVUtils
 
 cimport cython
-cimport pysam.TabProxies
+cimport pysam.ctabixproxies
 ctypedef cython.str cystr
 
 """
@@ -750,7 +749,7 @@ def CheckVCFForStdCalls(inVCF, std="default", outfile="default"):
     """
     Verifies the absence or presence of variants that should be in a VCF.
     """
-    cdef pysam.TabProxies.VCFProxy rec, qRec, i
+    cdef pysam.ctabixproxies.VCFProxy rec, qRec, i
     if(std == "default"):
         raise Tim("Standard file (must be CHR/POS/ID/REF/ALT), vari"
                   "able name 'std', must be set to CompareVCFToStan"
@@ -826,7 +825,7 @@ def CheckStdCallsForVCFCalls(inVCF, std="default", outfile=sys.stdout,
     Iterates through an input VCF to find variants without any filters outside
     of "acceptableFilters". (which should be a comma-separated list of strings)
     """
-    cdef pysam.TabProxies.VCFProxy rec, qRec, i
+    cdef pysam.ctabixproxies.VCFProxy rec, qRec, i
     cdef int lRefRecs
     if(std == "default"):
         raise Tim("Standard file (must be CHR/POS/ID/REF/ALT), vari"

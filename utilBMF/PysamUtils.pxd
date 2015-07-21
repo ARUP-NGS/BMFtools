@@ -1,10 +1,11 @@
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport cython
-from cpython cimport array
-ctypedef array.array py_array
+from cpython cimport array as c_array
+ctypedef c_array.array py_array
 ctypedef cython.str cystr
 
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 
 cdef AlignedSegment_t CopyAlignedSegment(AlignedSegment_t template)
@@ -12,172 +13,257 @@ cdef AlignedSegment_t CopyAlignedSegment(AlignedSegment_t template)
 cdef class PairwiseAlignmentFile:
     cdef public AlignmentFile_t handle
 
-cdef inline cystr PysamToChrInline(char RefID):
+cdef inline char * PysamToChrInline(char RefID) nogil:
+    cdef char * ret
     if RefID == 0:
-        return '1'
+        ret = '1'
+        return ret
     elif RefID == 1:
-        return '2'
+        ret = '2'
+        return ret
     elif RefID == 2:
-        return '3'
+        ret = '3'
+        return ret
     elif RefID == 3:
-        return '4'
+        ret = '4'
+        return ret
     elif RefID == 4:
-        return '5'
+        ret = '5'
+        return ret
     elif RefID == 5:
-        return '6'
+        ret = '6'
+        return ret
     elif RefID == 6:
-        return '7'
+        ret = '7'
+        return ret
     elif RefID == 7:
-        return '8'
+        ret = '8'
+        return ret
     elif RefID == 8:
-        return '9'
+        ret = '9'
+        return ret
     elif RefID == 9:
-        return '10'
+        ret = '10'
+        return ret
     elif RefID == 10:
-        return '11'
+        ret = '11'
+        return ret
     elif RefID == 11:
-        return '12'
+        ret = '12'
+        return ret
     elif RefID == 12:
-        return '13'
+        ret = '13'
+        return ret
     elif RefID == 13:
-        return '14'
+        ret = '14'
+        return ret
     elif RefID == 14:
-        return '15'
+        ret = '15'
+        return ret
     elif RefID == 15:
-        return '16'
+        ret = '16'
+        return ret
     elif RefID == 16:
-        return '17'
+        ret = '17'
+        return ret
     elif RefID == 17:
-        return '18'
+        ret = '18'
+        return ret
     elif RefID == 18:
-        return '19'
+        ret = '19'
+        return ret
     elif RefID == 19:
-        return '20'
+        ret = '20'
+        return ret
     elif RefID == 20:
-        return '21'
+        ret = '21'
+        return ret
     elif RefID == 21:
-        return '22'
+        ret = '22'
+        return ret
     elif RefID == 22:
-        return 'X'
+        ret = 'X'
+        return ret
     elif RefID == 23:
-        return 'Y'
+        ret = 'Y'
+        return ret
     elif RefID == 24:
-        return 'MT'
+        ret = 'MT'
+        return ret
     elif RefID == 25:
-        return 'GL000207.1'
+        ret = 'GL000207.1'
+        return ret
     elif RefID == 26:
-        return 'GL000226.1'
+        ret = 'GL000226.1'
+        return ret
     elif RefID == 27:
-        return 'GL000229.1'
+        ret = 'GL000229.1'
+        return ret
     elif RefID == 28:
-        return 'GL000231.1'
+        ret = 'GL000231.1'
+        return ret
     elif RefID == 29:
-        return 'GL000210.1'
+        ret = 'GL000210.1'
+        return ret
     elif RefID == 30:
-        return 'GL000239.1'
+        ret = 'GL000239.1'
+        return ret
     elif RefID == 31:
-        return 'GL000235.1'
+        ret = 'GL000235.1'
+        return ret
     elif RefID == 32:
-        return 'GL000201.1'
+        ret = 'GL000201.1'
+        return ret
     elif RefID == 33:
-        return 'GL000247.1'
+        ret = 'GL000247.1'
+        return ret
     elif RefID == 34:
-        return 'GL000245.1'
+        ret = 'GL000245.1'
+        return ret
     elif RefID == 35:
-        return 'GL000197.1'
+        ret = 'GL000197.1'
+        return ret
     elif RefID == 36:
-        return 'GL000203.1'
+        ret = 'GL000203.1'
+        return ret
     elif RefID == 37:
-        return 'GL000246.1'
+        ret = 'GL000246.1'
+        return ret
     elif RefID == 38:
-        return 'GL000249.1'
+        ret = 'GL000249.1'
+        return ret
     elif RefID == 39:
-        return 'GL000196.1'
+        ret = 'GL000196.1'
+        return ret
     elif RefID == 40:
-        return 'GL000248.1'
+        ret = 'GL000248.1'
+        return ret
     elif RefID == 41:
-        return 'GL000244.1'
+        ret = 'GL000244.1'
+        return ret
     elif RefID == 42:
-        return 'GL000238.1'
+        ret = 'GL000238.1'
+        return ret
     elif RefID == 43:
-        return 'GL000202.1'
+        ret = 'GL000202.1'
+        return ret
     elif RefID == 44:
-        return 'GL000234.1'
+        ret = 'GL000234.1'
+        return ret
     elif RefID == 45:
-        return 'GL000232.1'
+        ret = 'GL000232.1'
+        return ret
     elif RefID == 46:
-        return 'GL000206.1'
+        ret = 'GL000206.1'
+        return ret
     elif RefID == 47:
-        return 'GL000240.1'
+        ret = 'GL000240.1'
+        return ret
     elif RefID == 48:
-        return 'GL000236.1'
+        ret = 'GL000236.1'
+        return ret
     elif RefID == 49:
-        return 'GL000241.1'
+        ret = 'GL000241.1'
+        return ret
     elif RefID == 50:
-        return 'GL000243.1'
+        ret = 'GL000243.1'
+        return ret
     elif RefID == 51:
-        return 'GL000242.1'
+        ret = 'GL000242.1'
+        return ret
     elif RefID == 52:
-        return 'GL000230.1'
+        ret = 'GL000230.1'
+        return ret
     elif RefID == 53:
-        return 'GL000237.1'
+        ret = 'GL000237.1'
+        return ret
     elif RefID == 54:
-        return 'GL000233.1'
+        ret = 'GL000233.1'
+        return ret
     elif RefID == 55:
-        return 'GL000204.1'
+        ret = 'GL000204.1'
+        return ret
     elif RefID == 56:
-        return 'GL000198.1'
+        ret = 'GL000198.1'
+        return ret
     elif RefID == 57:
-        return 'GL000208.1'
+        ret = 'GL000208.1'
+        return ret
     elif RefID == 58:
-        return 'GL000191.1'
+        ret = 'GL000191.1'
+        return ret
     elif RefID == 59:
-        return 'GL000227.1'
+        ret = 'GL000227.1'
+        return ret
     elif RefID == 60:
-        return 'GL000228.1'
+        ret = 'GL000228.1'
+        return ret
     elif RefID == 61:
-        return 'GL000214.1'
+        ret = 'GL000214.1'
+        return ret
     elif RefID == 62:
-        return 'GL000221.1'
+        ret = 'GL000221.1'
+        return ret
     elif RefID == 63:
-        return 'GL000209.1'
+        ret = 'GL000209.1'
+        return ret
     elif RefID == 64:
-        return 'GL000218.1'
+        ret = 'GL000218.1'
+        return ret
     elif RefID == 65:
-        return 'GL000220.1'
+        ret = 'GL000220.1'
+        return ret
     elif RefID == 66:
-        return 'GL000213.1'
+        ret = 'GL000213.1'
+        return ret
     elif RefID == 67:
-        return 'GL000211.1'
+        ret = 'GL000211.1'
+        return ret
     elif RefID == 68:
-        return 'GL000199.1'
+        ret = 'GL000199.1'
+        return ret
     elif RefID == 69:
-        return 'GL000217.1'
+        ret = 'GL000217.1'
+        return ret
     elif RefID == 70:
-        return 'GL000216.1'
+        ret = 'GL000216.1'
+        return ret
     elif RefID == 71:
-        return 'GL000215.1'
+        ret = 'GL000215.1'
+        return ret
     elif RefID == 72:
-        return 'GL000205.1'
+        ret = 'GL000205.1'
+        return ret
     elif RefID == 73:
-        return 'GL000219.1'
+        ret = 'GL000219.1'
+        return ret
     elif RefID == 74:
-        return 'GL000224.1'
+        ret = 'GL000224.1'
+        return ret
     elif RefID == 75:
-        return 'GL000223.1'
+        ret = 'GL000223.1'
+        return ret
     elif RefID == 76:
-        return 'GL000195.1'
+        ret = 'GL000195.1'
+        return ret
     elif RefID == 77:
-        return 'GL000212.1'
+        ret = 'GL000212.1'
+        return ret
     elif RefID == 78:
-        return 'GL000222.1'
+        ret = 'GL000222.1'
+        return ret
     elif RefID == 79:
-        return 'GL000200.1'
+        ret = 'GL000200.1'
+        return ret
     elif RefID == 80:
-        return 'GL000193.1'
+        ret = 'GL000193.1'
+        return ret
     elif RefID == 81:
-        return 'GL000194.1'
+        ret = 'GL000194.1'
+        return ret
     elif RefID == 82:
-        return 'GL000225.1'
+        ret = 'GL000225.1'
+        return ret
     else:
-        return 'GL000192.1'
+        ret = 'GL000192.1'
+        return ret

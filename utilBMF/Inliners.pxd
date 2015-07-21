@@ -11,43 +11,45 @@ cimport numpy as np
 ctypedef np.int32_t np_int32_t
 
 from libc.string cimport strcmp
+from libc.stdint cimport int8_t, int16_t
+from libc.stdio cimport sprintf
 
 
-cdef inline cystr opLenToStr(char op, int opLen):
+cdef inline char * opLenToStr(char op, int opLen) nogil:
+    cdef char[5] ret
     if(op == 68):
-         return "%sD" % opLen
+        sprintf("%iD", ret, opLen)
     elif(op == 77):
-         return "%sM" % opLen
+        sprintf("%iM", ret, opLen)
     elif(op == 73):
-         return "%sI" % opLen
+        sprintf("%iI", ret, opLen)
     elif(op == 83):
-         return "%sS" % opLen
-    elif(op == 78):
-         return "%sN" % opLen
+        sprintf("%iS", ret, opLen)
     else:
-         return ""
+        sprintf("%iN", ret, opLen)
+    return ret
 
 
 cdef inline char * CigarStrInline(char character) nogil:
     cdef char * ret
     if character == 77:
-        ret =  "M"
+        ret = "M"
     elif character == 73:
-        ret =  "I"
+        ret = "I"
     elif character == 68:
-        ret =  "D"
+        ret = "D"
     elif character == 78:
-        ret =  "N"
+        ret = "N"
     elif character == 83:
-        ret =  "S"
+        ret = "S"
     elif character == 72:
-        ret =  "H"
+        ret = "H"
     elif character == 80:
-        ret =  "P"
+        ret = "P"
     elif character == 61:
-        ret =  "="
+        ret = "="
     else:
-        ret =  "X"
+        ret = "X"
     return ret
 
 
@@ -495,3 +497,40 @@ cdef inline char ChrToRefIDInline(char * contig) nogil:
         return 82
     else:
         return 83
+
+
+cdef inline int16_t CONTEXT_TO_ARRAY_POS(char * context) nogil:
+    if(strcmp(context, 'AA') == 0):
+        return 0
+    elif(strcmp(context, 'AC') == 0):
+        return 1
+    elif(strcmp(context, 'AG') == 0):
+        return 2
+    elif(strcmp(context, 'AT') == 0):
+        return 3
+    elif(strcmp(context, 'CA') == 0):
+        return 4
+    elif(strcmp(context, 'CC') == 0):
+        return 5
+    elif(strcmp(context, 'CG') == 0):
+        return 6
+    elif(strcmp(context, 'CT') == 0):
+        return 7
+    elif(strcmp(context, 'GA') == 0):
+        return 8
+    elif(strcmp(context, 'GC') == 0):
+        return 9
+    elif(strcmp(context, 'GG') == 0):
+        return 10
+    elif(strcmp(context, 'GT') == 0):
+        return 11
+    elif(strcmp(context, 'TA') == 0):
+        return 12
+    elif(strcmp(context, 'TC') == 0):
+        return 13
+    elif(strcmp(context, 'TG') == 0):
+        return 14
+    elif(strcmp(context, 'TT') == 0):
+        return 15
+    else:
+        return -1

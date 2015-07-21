@@ -19,6 +19,7 @@ cdef class KmerFetcher(object):
     cpdef cystr getFastqString(self, list)
     cpdef cystr getOutputString(self, list, str aligner=?)
     cpdef public FillMap(self, list)
+    cpdef public ConvertIntervalsToBed(self, list, cystr, cystr)
     cpdef public list GetUniqueKmers(self, list)
     cpdef FMfrombed(self, cystr)
 
@@ -26,6 +27,7 @@ cdef class KmerFetcher(object):
 cdef class RefKmer(object):
     cdef readonly cystr contig, seq
     cdef readonly cython.int len, pos
+    cpdef cython.int getSeqLen(self)
 
 cpdef cystr SequenceToFakeFq(cystr seq)
 cpdef list GetKmersToCheck(cystr ref, int k=?, list bedline=?,

@@ -1,24 +1,26 @@
 cimport cython
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, DNA_CODON_TABLE
-from cpython cimport array
+from cpython cimport array as c_array
 from pysam.cfaidx cimport PersistentFastqProxy
-ctypedef array.array py_array
+from libc.stdint cimport int8_t
+ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef ReadPair ReadPair_t
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pFastqProxy pFastqProxy_t
 ctypedef pysam.cfaidx.FastqProxy FastqProxy_t
 
-cimport pysam.TabProxies
-ctypedef pysam.calignmentfile.PileupRead cPileupRead
+cimport pysam.ctabixproxies
+ctypedef pysam.calignedsegment.PileupRead cPileupRead
 ctypedef Insertion Insertion_t
 ctypedef Deletion Deletion_t
 ctypedef AbstractIndelContainer AbstractIndelContainer_t
@@ -87,10 +89,12 @@ cdef class AbstractIndelContainer:
     """
     Base class for insertion and deletion container objects.
 
-    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and just insertion)
+    Type can be -1, 0, or 1. (Deletion, deletion and insertion, and
+    just insertion)
     Start and end refer to different things for insertions and deletions.
-    For a deletion, start is the first missing base and end is the last missing
-    reference base position.
+    For a deletion, start is the first missing base and end is the last
+    missing reference base position.
+
     seq should be None for a deletion
     """
     cdef public cystr contig, seq, uniqStr
@@ -159,12 +163,13 @@ cdef bint cReadsOverlap(
         AlignedSegment_t read1,
         AlignedSegment_t read2)
 
-cpdef bint WritePairToHandle(ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
+cpdef bint WritePairToHandle(
+    ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 
 
-cdef public dict PysamToChrDict, ph2chrDict
+cdef public dict PysamToChrDict, ph2chrDict, TypeConversionDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
 cdef public dict PhageRefIDDict

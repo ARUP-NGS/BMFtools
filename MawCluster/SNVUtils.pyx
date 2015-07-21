@@ -1,5 +1,4 @@
 # cython: boundscheck=False, c_string_type=str, c_string_encoding=ascii
-from __future__ import division
 from collections import defaultdict
 import operator
 from operator import methodcaller as mc, attrgetter as oag

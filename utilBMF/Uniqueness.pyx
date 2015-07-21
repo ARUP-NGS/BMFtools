@@ -7,16 +7,16 @@ import cython
 import pysam
 import uuid
 import logging
-from subprocess import check_output, check_call
+from subprocess import check_output, check_call, Popen, PIPE
 from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
                               printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
 from utilBMF.ErrorHandling import (ThisIsMadness, ConsideredHarmful,
                                    ThisIsHKMadness)
 from cytoolz import frequencies as cyfreq
-from itertools import chain
+from itertools import chain, groupby
 from functools import partial
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 try:
     from re2 import compile as regex_compile
 except ImportError:
@@ -82,6 +82,9 @@ cdef class RefKmer(object):
     @cython.returns(cystr)
     def __str__(self):
         return "%s|%s|%s" % (self.contig, self.pos, self.seq)
+
+    cpdef int getSeqLen(self):
+        return len(self.seq)
 
 
 cdef class KmerFetcher(object):
@@ -180,7 +183,7 @@ cdef class KmerFetcher(object):
     cpdef cystr getOutputString(self, list bedline, cystr aligner="mem"):
         if(aligner == "mem"):
             return BwaFqToStr(self.getFastqString(bedline), ref=self.ref)
-        elif(aligner=="bwt"):
+        elif(aligner == "bwt"):
             raise ConsideredHarmful("Use of bowtie for uniqueness"
                                     " calculations is unreliable.")
             return BowtieFqToStr(self.getFastqString(bedline), ref=self.ref,
@@ -197,9 +200,67 @@ cdef class KmerFetcher(object):
         self.HashMap[
             ":".join(map(str, bedline))] = self.GetUniqueKmers(bedline)
 
+    @cython.returns(list)
+    def GetIntervalsFromMap(self):
+        """
+        Converts a dictionary (keyed by the input bed file 'chr:start:stop') of
+        list of kmer objects into a list of continuous intervals of kmer start
+        positions.
+        """
+        cdef list intervalList
+        # Convert list of Kmers to list of continuous starting positions (kmers
+        # all the same length)
+        intervalList = []
+        keyList = self.HashMap.keys()
+        for key in keyList:
+            bedRegionKmerList = self.HashMap[key]
+            if len(set([kMerObj.contig for kMerObj in
+                   bedRegionKmerList])) != 1:
+                raise ThisIsHKMadness("Contigs do not match in this bed "
+                                      "region, aborting.")
+            else:
+                contig = bedRegionKmerList[0].contig
+            posList = [kMerObj.pos for kMerObj in bedRegionKmerList]
+            for k, g in groupby(enumerate(posList), lambda x: x[0]-x[1]):
+                group = list(g)
+                intervalList.append((contig, group[0][1], group[-1][1]))
+        return sorted(intervalList)
+
+    cpdef ConvertIntervalsToBed(self, list intervalList, cystr inFile,
+                                cystr outFile):
+        """
+        Converts a list of continuous intervals of kmer start positions
+        (output from GetIntervalsFromMap is (contig,
+        continuousStartIntervalFirst, continuousStartIntervalLast)
+        to a bed file (outFile) with a left open intervals, e.g. (start, stop].
+        """
+        pl("Creating bed file describing regions with unique kmer mappings.")
+        kmer = self.k
+        bedStrList = ["%s\t%s\t%s\n" % (contig, startFirst-1, startLast +
+                                        kmer - 1)
+                      for (contig, startFirst, startLast) in intervalList]
+
+        # Sort and Merge bed file
+        pl("Sorting and merging output bed file with bedtools.")
+        echo = Popen(['echo', "".join(bedStrList)], stdout=PIPE)
+        bedsort = Popen(['bedtools', 'sort', '-i', '-'], stdin=echo.stdout,
+                        stdout=PIPE)
+        merge = Popen(['bedtools', 'merge', '-i', '-'], stdin=bedsort.stdout,
+                      stdout=PIPE)
+        sortout = Popen(['sort', '-k1,1n', '-k2,2n', '-V', '-'],
+                        stdin=merge.stdout, stdout=PIPE)
+        intersect = Popen(['bedtools', 'intersect', '-a', inFile, '-b', '-'],
+                          stdin=sortout.stdout, stdout=PIPE)
+        sortagain = Popen(['sort', '-k1,1n', '-k2,2n', '-V', '-'],
+                          stdin=intersect.stdout, stdout=PIPE)
+        output = ''.join(list(sortagain.communicate()[0]))
+        with open(outFile, 'w') as f:
+            f.write(output)
+        pl("Final sorted merged/intersected bed file covering unqiue kmers of "
+           "size " + str(kmer) + " saved to " + outFile)
+
     cpdef list GetUniqueKmers(self, list bedline):
         output = self.getOutputString(bedline, aligner=self.aligner)
-        print "getOutputString has length of " + str(len(output))
         return GetMQPassRefKmersMem(output,
                                     maxNM=self.mismatches, minMQ=self.minMQ)
 
