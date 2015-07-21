@@ -951,6 +951,7 @@ def main():
                 # least one file for each slave job.
             else:
                 num_nucs = int(Chapman['num_nucs'])
+            threads = int(Chapman['threads']) // 2
             from MawCluster.BCFastq import DispatchParallelDMP as pDMP
             OutFastq1, OutFastq2 = pDMP(
                 Chapman['inFqs'][0],
@@ -959,7 +960,7 @@ def main():
                 p3Seq=Chapman['p3Seq'],
                 p5Seq=Chapman['p5Seq'],
                 num_nucs=num_nucs,
-                threads=int(Chapman['threads']),
+                threads=threads,
                 overlapLen=int(Chapman['overlapLen']),
                 sortMem=Chapman['slave_sort_mem'],
                 head=int(Chapman['head']))
