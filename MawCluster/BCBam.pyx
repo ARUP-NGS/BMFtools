@@ -40,13 +40,6 @@ from warnings import warn
 import SecC
 
 
-npchararray = char.array
-oagseq = oag("seq")
-oagqqual = oag("query_qualities")
-mcoptBS = mc("opt", "BS")
-# BSStringList = map(mcoptBS, readList)
-
-
 def AbraCadabra(inBAM, outBAM="default",
                 jar="default", memStr="default", ref="default",
                 threads="4", bed="default", working="default",
@@ -603,57 +596,6 @@ cdef inline char * cRPString(bam1_t * src, bam_hdr_t * hdr) nogil:
     return buffer
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef cystr RPString(AlignedSegment_t read, dict RefIDDict=None):
-    return (RefIDDict[read.reference_id] + ":%s," % read.pos +
-            RefIDDict[read.rnext] +
-            ":%s" % read.mpos)
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef inline AlignedSegment_t TagAlignedSegment(
-        AlignedSegment_t read, dict RefIDDict=None):
-    """
-    Adds necessary information from a CO: tag to appropriate other tags.
-    """
-    cdef dict CommentDict
-    cdef int FM, ND, FPInt
-    cdef double NF, AF, SF, FF, PF
-    cdef ndarray[np.int64_t, ndim=1] PhredQuals, FA
-    CommentDict = cGetCOTagDict(read)
-    PhredQuals = np.array(CommentDict["PV"].split(","), dtype=np.int64)
-    FA = np.array(CommentDict["FA"].split(","), dtype=np.int64)
-    if(read.is_reverse):
-        PhredQuals = PhredQuals[::-1]
-        FA = FA[::-1]
-    ND = int(CommentDict["ND"])
-    FM = int(CommentDict["FM"])
-    FPInt = int(CommentDict["FP"])
-    if(not FPInt):
-        read.flag += 512
-    NF = ND * 1. / FM
-    FF = np.min(FA) * 1. / FM
-    PF = np.min(PhredQuals) * 1. / np.max(PhredQuals)
-    AF = getAF(read)
-    SF = getSF(read)
-    read.set_tags([("BS", CommentDict["BS"], "Z"),
-                   ("FM", FM, "i"),
-                   ("PV", array('i', PhredQuals)),
-                   ("FF", FF, "f"), ("PF", PF, "f"),
-                   ("FA", array('i', FA)),
-                   ("FP", FPInt, "i"),
-                   ("ND", int(CommentDict["ND"]), "i"),
-                   ("NF", NF, "f"),
-                   ("AF", AF, "f"),
-                   ("SF", SF, "f"),
-                   ("RP", RPString(read, RefIDDict), "Z")
-                   ] + read.get_tags())
-    read.set_tag("CO", None)  # Delete the CO tag.
-    return read
-
-
 cdef class BamPipe:
     """
     Creates a callable function which acts on a BAM stream.
@@ -689,133 +631,6 @@ cdef class BamPipe:
         self.outHandle.write(read)
 
 
-cdef class TagBamPipe:
-    """
-    Doesn't require a precomputed dictionary, since it builds
-    it from the input stream.
-    """
-    def __init__(self, bint bin_input, bint bin_output,
-                 bint uncompressed_output=False):
-        if(bin_input):
-            self.inHandle = pysam.AlignmentFile("-", "rb")
-        else:
-            self.inHandle = pysam.AlignmentFile("-", "r")
-        if(bin_output):
-            if(uncompressed_output):
-                self.outHandle = pysam.AlignmentFile(
-                    "-", "wbu", template=self.inHandle)
-            else:
-                self.outHandle = pysam.AlignmentFile(
-                    "-", "wb", template=self.inHandle)
-        self.RefIDDict = dict(list(enumerate(self.inHandle.references)) +
-                              [(-1, "*")])
-
-    cdef write(self, AlignedSegment_t read):
-        self.outHandle.write(read)
-
-    cpdef process(self):
-        cdef AlignedSegment_t read
-        for read in self.inHandle:
-            read = TagAlignedSegment(read, RefIDDict=self.RefIDDict)
-            self.write(read)
-
-
-def PipeBarcodeTagCOBam(char flag):
-    """
-    Takes a SAM input stream, tags the bam, and converts
-    it into a bam, all in one fell swoop!
-    Uses a bitwise flag.
-    flag & 4 is true to emit uncompressed
-    flag & 2 is true if input is textual (sam) format
-    flag & 1 is true if output is textual (sam) format
-    """
-    from sys import stderr
-    cdef AlignmentFile_t inHandle, outHandle
-    cdef AlignedSegment_t read
-    cdef dict RefIDDict
-    cdef cystr input_mode
-    input_mode = "r" if(flag & 2) else "rb"
-    if(flag & 1):
-        output_mode = "w"
-    elif(flag & 4):
-        output_mode = "wbu"
-    else:
-        output_mode = "wb"
-    stderr.write("Now tagging a piped BAM with input mode "
-                 "%s and output mode %s\n" % (input_mode, output_mode))
-    inHandle = pysam.AlignmentFile("-", input_mode)
-    outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
-    RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
-    stderr.write("repr for RefIDDict: %s\n" % RefIDDict)
-    [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
-    inHandle.close()
-    outHandle.close()
-    return 0
-
-
-def PipeBarcodeTagCOBam(char flag):
-    """
-    Takes a SAM input stream, tags the bam, and converts
-    it into a bam, all in one fell swoop!
-    Uses a bitwise flag.
-    flag & 4 is true to emit uncompressed
-    flag & 2 is true if input is textual (sam) format
-    flag & 1 is true if output is textual (sam) format
-    """
-    from sys import stderr
-    cdef AlignmentFile_t inHandle, outHandle
-    cdef AlignedSegment_t read
-    cdef dict RefIDDict
-    cdef cystr input_mode
-    input_mode = "r" if(flag & 2) else "rb"
-    if(flag & 1):
-        output_mode = "w"
-    elif(flag & 4):
-        output_mode = "wbu"
-    else:
-        output_mode = "wb"
-    stderr.write("Now tagging a piped BAM with input mode "
-                 "%s and output mode %s\n" % (input_mode, output_mode))
-    inHandle = pysam.AlignmentFile("-", input_mode)
-    outHandle = pysam.AlignmentFile("-", output_mode, template=inHandle)
-    RefIDDict = dict(list(enumerate(inHandle.references)) + [(-1, "*")])
-    stderr.write("repr for RefIDDict: %s\n" % RefIDDict)
-    [outHandle.write(TagAlignedSegment(read, RefIDDict)) for read in inHandle]
-    inHandle.close()
-    outHandle.close()
-    return 0
-
-
-cdef cystr cBarcodeTagCOBam(AlignmentFile inbam,
-                            AlignmentFile outbam):
-    """In progress
-    """
-    cdef AlignedSegment_t read
-    cdef dict RefIDDict = dict(list(enumerate(inbam.references)) +
-                               [(-1, "*")])
-    for read in inbam:
-        outbam.write(TagAlignedSegment(read, RefIDDict))
-    inbam.close()
-    outbam.close()
-    return outbam.filename
-
-
-cpdef cystr pBarcodeTagCOBam(cystr bam, cystr outbam=None):
-    """In progress
-    """
-    pl("Tagging BAM with barcode tags in CO field ...")
-    cdef AlignmentFile inHandle
-    inHandle = pysam.AlignmentFile(bam, "rb")
-    outbam = ".".join(bam.split(".")[:-1]) + ".tagged.bam"
-    return cBarcodeTagCOBam(
-        inHandle, pysam.AlignmentFile(outbam, "wb", template=inHandle))
-
-
-def AlignAndTagMem(*args, **kwargs):
-    raise DeprecationWarning("AlignAndTagMem is deprecated. "
-                             "Please use utilBMF.HTSUtils.PipeAlignTag.")
-
-
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef double getSF(AlignedSegment_t read):
@@ -848,66 +663,105 @@ cdef double getAF(AlignedSegment_t read):
     return sumAligned * 1. / sum
 
 
+cdef inline void CompareSeqQual(int32_t * template_quality,
+                                int32_t * cmp_quality,
+                                int8_t * seq1, int8_t * seq2,
+                                int32_t rLen) nogil:
+    cdef size_t index
+    for index in range(rLen):
+        if(seq1[index] == seq2[index]):
+            template_quality[index] = MergeAgreedQualities(
+                <int>template_quality[index], <int>cmp_quality[index]
+            )
+        else:
+            if(template_quality[index] < cmp_quality[index]):
+                seq1[index] = seq2[index]
+            template_quality[index] = MergeDiscQualities(
+                <int>template_quality[index], <int>cmp_quality[index]
+            )
+    return
+
+
+cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
+                                   AlignedSegment_t cmp):
+    cdef py_array qual1, qual2, seq1, seq2
+    qual1 = template.opt("PV")
+    qual2 = cmp.opt("PV")
+    seq1 = array('B')
+    seq2 = array('B')
+    c_array.resize(seq1, template._delegate.core.l_qseq)
+    c_array.resize(seq2, template._delegate.core.l_qseq)
+    memcpy(seq1.data.as_shorts, bam_get_seq(template._delegate),
+           template._delegate.core.l_qseq)
+    memcpy(seq2.data.as_shorts, bam_get_seq(cmp._delegate),
+           template._delegate.core.l_qseq)
+    CompareSeqQual(<int32_t *>qual1.data.as_ints, <int32_t *>qual2.data.as_ints,
+                   <int8_t *>seq1.data.as_shorts, <int8_t *>seq2.data.as_shorts,
+                   template._delegate.core.l_qseq)
+    template.set_tag("PV", qual1, "B")
+    template.query_sequence = seq1.tostring()
+    return template
+
+
+cdef list BFF(list recs, int8_t bLen, char mmlim):
+    cdef AlignedSegment_t qrec, cmprec
+    cdef int count, cmpcount, nRecs, nIndices
+    cdef int8_t HD
+    cdef int32_t FM1, FM2
+    cdef py_array indices
+    nRecs = len(recs)
+    indices = array('i')
+    for count, qrec in enumerate(recs):
+        cmpcount = count + 1
+        for cmprec in recs[count + 1:]:
+            HD = pBarcodeHD(qrec, cmprec, bLen)
+            if HD < mmlim:
+                FM1 = getFMFromAS(qrec)
+                FM2 = getFMFromAS(cmprec)
+                if FM1 > FM2:
+                    qrec = MergeBamRecs(qrec, cmprec)
+                else:
+                    qrec = MergeBamRecs(cmprec, qrec)
+                indices.append(cmpcount)
+                cmpcount += 1
+    nIndices = len(indices)
+    for cmpcount in range(nIndices, 0, -1):
+        del recs[indices[cmpcount]]
+    return recs
+
+
+cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
+                       char mmlim, int8_t bLen):
+    return BamRescue(inBam, outBam, mmlim, bLen)
+
+
 cdef cystr BamRescue(cystr inBam,
                      cystr outBam,
                      char mmlim, int8_t bLen):
     input_bam = pysam.AlignmentFile(inBam, "rb")
     output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
-    cdef AlignedSegment_t query_read, cmp_read, read
-    cdef ndarray[char, ndim=2] distmtx
-    cdef py_array arr, nr_arr
-    cdef list recList, merging_arr_sets
-    cdef size_t size, qctr, cmpctr, t
-    cdef object gen
-    cdef int8_t dist
-    cdef set rsqidx
+    cdef AlignedSegment_t read
+    cdef list recList
     cdef int RefID, RNext, Pos, MPos
-    cdef int IsRead1
-    cdef object cfi = chain.from_iterable
+    cdef bint IsRead1, IsRev
     obw = output_bam.write
     for RefID, gen in groupby(input_bam, REF_ID):
         for Pos, gen1 in groupby(gen, POS):
             for RNext, gen2 in groupby(gen1, RNEXT):
                 for MPos, gen3 in groupby(gen2, MPOS):
-                    for IsRead1, FinalGen in groupby(gen3, IS_READ1):
-                        setsToMerge = {}
-                        recList = list(gen)
-                        size = len(recList)
-                        distmtx = np.zeros([size, size], dtype=np.int8)
-                        cmpctr = 1
-                        for qctr, query_read in enumerate(recList):
-                            for cmp_read in recList[qctr + 1:]:
-                                distmtx[qctr][cmpctr] = pBarcodeHD(
-                                        query_read, cmp_read, bLen)
-                                cmpctr += 1
-                        cmpctr = 1
-                        merging_arr_sets = []
-                        rsqidx = set([])
-                        ria = rsqidx.add
-                        for qctr in range(size):
-                            for cmpctr in range(qctr + 1):
-                                if(distmtx[qctr][cmpctr] < mmlim):
-                                    arr = array('i', [
-                                        t for t, dist in
-                                        enumerate(distmtx[qctr][:]) if
-                                        dist < mmlim and
-                                        t not in rsqidx])
-                                    merging_arr_sets.append(arr)
-                                    [ria(t) for t in arr]
-                        rsqidx = array('i', list(cfi(merging_arr_sets)))
-                        nr_arr = array('i', [t for t in range(size) if
-                                             t not in rsqidx])
-                        [obw(recList[t]) for t in range(size) if
-                         t not in rsqidx]
-                        for arr in merging_arr_sets:
-                            read = BarcodeRescueBam(recList[t] for t in arr)
-                            obw(read)
+                    for IsRead1, gen4 in groupby(gen3, IS_READ1):
+                        for IsRev, FinalGen in groupby(gen4, IS_REV):
+                            recList = list(FinalGen)
+                            if len(recList) == 1:
+                                obw(recList[0])
+                                continue
+                            recList = BFF(recList, bLen, mmlim)
+                            [obw(read) for read in recList]
+    input_bam.close()
+    output_bam.close()
     return output_bam.filename
 
 
-cdef BarcodeRescueBam(list recList):
-    return recList[0]
-
-
 cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
-    return BarcodeHD(query._delegate, cmp._delegate, bLen)
+    return BarcodeHD(<char *> query.query_sequence,
+                     <char *>cmp.query_sequence, bLen)
