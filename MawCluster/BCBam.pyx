@@ -691,10 +691,13 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
     seq2 = array('B')
     c_array.resize(seq1, template._delegate.core.l_qseq)
     c_array.resize(seq2, template._delegate.core.l_qseq)
-    memcpy(seq1.data.as_shorts, bam_get_seq(template._delegate), template._delegate.core.l_qseq)
-    memcpy(seq2.data.as_shorts, bam_get_seq(cmp._delegate), template._delegate.core.l_qseq)
+    memcpy(seq1.data.as_shorts, bam_get_seq(template._delegate),
+           template._delegate.core.l_qseq)
+    memcpy(seq2.data.as_shorts, bam_get_seq(cmp._delegate),
+           template._delegate.core.l_qseq)
     CompareSeqQual(<int32_t *>qual1.data.as_ints, <int32_t *>qual2.data.as_ints,
-                   seq1, seq2, template._delegate.core.l_qseq)
+                   <int8_t *>seq1.data.as_shorts, <int8_t *>seq2.data.as_shorts,
+                   template._delegate.core.l_qseq)
     template.set_tag("PV", qual1, "B")
     template.query_sequence = seq1.tostring()
     return template
@@ -702,10 +705,14 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
 
 cdef list BFF(list recs, int8_t bLen, char mmlim):
     cdef AlignedSegment_t qrec, cmprec
-    cdef int count
+    cdef int count, cmpcount, nRecs, nIndices
     cdef int8_t HD
     cdef int32_t FM1, FM2
+    cdef py_array indices
+    nRecs = len(recs)
+    indices = array('i')
     for count, qrec in enumerate(recs):
+        cmpcount = count + 1
         for cmprec in recs[count + 1:]:
             HD = pBarcodeHD(qrec, cmprec, bLen)
             if HD < mmlim:
@@ -715,9 +722,17 @@ cdef list BFF(list recs, int8_t bLen, char mmlim):
                     qrec = MergeBamRecs(qrec, cmprec)
                 else:
                     qrec = MergeBamRecs(cmprec, qrec)
-
-
+                indices.append(cmpcount)
+                cmpcount += 1
+    nIndices = len(indices)
+    for cmpcount in range(nIndices, 0, -1):
+        del recs[indices[cmpcount]]
     return recs
+
+
+cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
+                       char mmlim, int8_t bLen):
+    return BamRescue(inBam, outBam, mmlim, bLen)
 
 
 cdef cystr BamRescue(cystr inBam,
@@ -745,10 +760,6 @@ cdef cystr BamRescue(cystr inBam,
     input_bam.close()
     output_bam.close()
     return output_bam.filename
-
-
-cdef BarcodeRescueBam(list recList):
-    return recList[0]
 
 
 cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):

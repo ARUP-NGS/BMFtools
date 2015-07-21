@@ -41,13 +41,18 @@ for x in ext:
         x.sources += ["include/cephes/igam.c", "include/cephes/const.c",
                       "include/cephes/gamma.c", "include/cephes/mtherr.c",
                       "include/cephes/sf_error.c"]
+    elif(x.name == "MawCluster.BCBam"):
+        x.sources += ["include/htslib/sam.c", "include/htslib/hts.c",
+                      "include/htslib/hfile.c", "include/htslib/bgzf.c",
+                      "include/htslib/bgzip.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
                     're2']
 
-includes = [np.get_include(), os.path.abspath("include"), os.path.abspath("include/cephes")] + pysam.get_include()
+includes = [np.get_include(), os.path.abspath("include"), os.path.abspath("include/cephes"),
+            "include/htslib/"] + pysam.get_include()
 
 config = {
     'description': '',

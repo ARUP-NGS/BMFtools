@@ -9,7 +9,7 @@ from cpython cimport array as c_array
 from libc.stdint cimport *
 from libc.stdio cimport sprintf
 from libc.string cimport memcpy
-from pysam.chtslib cimport *
+from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq, bam_aux_get
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
@@ -27,6 +27,9 @@ ctypedef c_array.array py_array
 ctypedef utilBMF.HTSUtils.pFastqProxy pFastqProxy_t
 
 import cython
+
+cdef extern from "zlib.h":
+
 
 
 cdef dict cGetCOTagDict(AlignedSegment_t read)
