@@ -866,7 +866,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
             "PairedShadeSplitting requires that head be set.")
     if(num_nucs < 0):
         raise UnsetRequiredParameter("num_nucs must be set")
-    elif(num_nucs > 2):
+    elif(num_nucs > 3):
         raise ImproperArgumentError("num_nucs is limited to 2")
     numHandleSets = 4 ** num_nucs
     bcKeys = ["A" * (num_nucs - len(nci(i))) + nci(i) for

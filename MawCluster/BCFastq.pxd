@@ -25,7 +25,6 @@ ctypedef Qual2DArray Qual2DArray_t
 
 # CONSTANTS
 cdef public dict Num2NucDict
-cdef public cystr ARGMAX_TRANSLATE_STRING
 cdef public py_array nucs
 DEF LOG10E = 0.43429448190325182765
 DEF LOG10E_X5 = 2.1714724095162592
