@@ -833,7 +833,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
         pathBS = path.replace(".fastq", ".BS.fastq")
         pathCons = path.replace(".fastq", ".BS.cons.fastq")
         try:
-            stderr.write("Now calling 'rm %s %s %s'\n" % path, pathBS, pathCons)
+            stderr.write("Now calling 'rm %s %s %s'\n" % (path, pathBS, pathCons))
             check_call(["rm", path, pathBS, pathCons])
         except CalledProcessError:
             raise Exception("Path attempting to remove: %s\n" % path)
