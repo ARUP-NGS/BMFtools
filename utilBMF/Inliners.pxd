@@ -12,21 +12,22 @@ ctypedef np.int32_t np_int32_t
 
 from libc.string cimport strcmp
 from libc.stdint cimport int8_t, int16_t
+from libc.stdio cimport sprintf
 
 
-cdef inline cystr opLenToStr(char op, int opLen):
+cdef inline char * opLenToStr(char op, int opLen) nogil:
+    cdef char[5] ret
     if(op == 68):
-        return "%sD" % opLen
+        sprintf("%iD", ret, opLen)
     elif(op == 77):
-        return "%sM" % opLen
+        sprintf("%iM", ret, opLen)
     elif(op == 73):
-        return "%sI" % opLen
+        sprintf("%iI", ret, opLen)
     elif(op == 83):
-        return "%sS" % opLen
-    elif(op == 78):
-        return "%sN" % opLen
+        sprintf("%iS", ret, opLen)
     else:
-        return ""
+        sprintf("%iN", ret, opLen)
+    return ret
 
 
 cdef inline char * CigarStrInline(char character) nogil:

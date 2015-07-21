@@ -52,8 +52,7 @@ cdef class LayoutPos:
     def __init__(self, int pos=-1, int readPos=-1,
                  char base=-1, char operation=-1,
                  int quality=-1, int agreement=-1,
-                 bint merged=False, char mergeAgreed=1,
-                 int8_t oqual=-1):
+                 bint merged=False, char mergeAgreed=1):
         self.pos = pos
         self.readPos = readPos
         self.operation = operation
@@ -62,10 +61,6 @@ cdef class LayoutPos:
         self.agreement = agreement
         self.merged = merged
         self.mergeAgreed = mergeAgreed
-        if(oqual < 0):
-            self.oqual = self.quality
-        else:
-            self.oqual = oqual
 
     cpdef bint ismapped(self):
         return self.operation == 77  # 77 == "M"
@@ -110,8 +105,7 @@ cdef class PyLayout(object):
         cdef LayoutPos_t pos
         return array('B', [pos.base for pos in self.positions if
                            pos.operation != 68 and
-                           pos.agreement > -1 and
-                           pos.oqual > 0])
+                           pos.agreement > -1])
 
     cpdef cystr getSeq(self):
         return self.getSeqArr().tostring()
@@ -157,16 +151,12 @@ cdef class PyLayout(object):
     cpdef py_array getQual(self):
         return self.cGetQual()
 
-    cdef py_array getQualStringScores(self):
-        cdef LayoutPos_t pos
-        return array('B', [pos.oqual + 33 for pos in
-                           self.positions if pos.oqual > 0])
-
-    cdef cystr cGetMDTag(self):
-        return ""
-
     cdef cystr cGetQualString(self):
-        return self.getQualStringScores().tostring()
+        cdef py_array tmpArr
+        cdef int i
+        tmpArr = array('B', [i + 33 if(i < 94) else 126 for
+                             i in self.cGetQual()])
+        return tmpArr.tostring()
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()
@@ -288,6 +278,7 @@ cdef class PyLayout(object):
             # self.tagDict["FM"].value *= 2
             self.mapq = 255
             self.mergeAdjusted = True
+            PyDict_DelItemString(self.tagDict, "MD")
 
     def update(self):
         cdef LayoutPos_t pos
@@ -310,7 +301,7 @@ cdef class PyLayout(object):
         cdef LayoutPos_t pos
         # Skip this operation if the operation is 83"
         return array("B", [pos.operation for pos in
-                           self.positions and pos.oqual > 0])
+                           self.positions])
 
     cdef cystr cGetCigarString(self):
         cdef char k
@@ -368,7 +359,6 @@ cdef class PyLayout(object):
         self.contig = handle.getrname(rec.reference_id)
         self.flag = rec.flag
         self.aend = rec.aend
-        self.OriginalMD = rec.opt("MD")
         # When the get_tags(with_value_type=True) is implemented,
         # then switch the code over.
         # Then I can change the way I make BAM tags, since
@@ -505,22 +495,19 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
                              pos1.operation,
                              MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement, merged=True,
-                             mergeAgreed=2,
-                             oqual=c_max(pos1.oqual, pos2.oqual))
+                             mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
                              MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
-                             merged=True, mergeAgreed=2,
-                             oqual=c_max(pos1.oqual, pos2.oqual))
+                             merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
             return LayoutPos(pos2.pos, pos1.readPos, pos1.base,
                              pos2.operation,
                              MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
-                             merged=True, mergeAgreed=2,
-                             oqual=c_max(pos1.oqual, pos2.oqual))
+                             merged=True, mergeAgreed=2)
         else:
             return (LayoutPos(pos1.pos, pos1.readPos, 78, 78,
                               -137, -137,
@@ -789,9 +776,9 @@ def PipeAlignTagMPA(R1, R2, ref="default",
                     cystr sortMem="6G", cystr opts=None,
                     bint dry_run=False):
     """
-    :param R1 - [cystr/arg] - path to input R1 consolidated/adapter trimmed
+    :param R1 - [cystr/arg] path to input R1 consolidated/adapter trimmed
     fastq
-    :param R2 - [cystr/arg] - path to input R2 consolidated/adapter trimmed
+    :param R2 - [cystr/arg] path to input R2 consolidated/adapter trimmed
     fastq
     :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
     to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
@@ -800,28 +787,27 @@ def PipeAlignTagMPA(R1, R2, ref="default",
     alignment.
     :param path - [cystr/kwarg/"default"] - path to bwa executable for
     alignment.
-    :param u - [bint/kwarg/False] - whether or not to emit uncompressed bams.
+    :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
     Set to true for piping for optimal efficiency.
-    :param sortMem - [cystr/kwarg/"6G"] - string to pass to samtools sort for
+    :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
     memory per thread.
-    :param coorsort - [cystr/kwarg/False] - set to true to pipe to samtools sort
+    :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
     instead of samtools view
-    :param opts - [cystr/kwarg/None] - Additional optiosn to pass to bwa.
-    :param dry_run - [bint/kwarg/False] - Return a string which can be
-    executed. Primarily for debugging.
+
     """
-    sys.stderr.write("Getting base string.")
+    from sys import stderr
+    stderr.write("Getting base string.")
     baseCommandString = PipeAlignTag(
         R1, R2, ref=ref, outBAM="stdout", path=path, coorsort=False, u=u,
-        sortMem=sortMem, dry_run=True, opts=opts)
-    sys.stderr.write("Getting mpa string.")
+        sortMem=sortMem, dry_run=True)
+    stderr.write("Getting mpa string.")
     cStr = MPA2Bam("-", dry_run=True,
                    prepend="%s | " % baseCommandString,
                    outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort,
                    assume_sorted=True)
-    sys.stderr.write(
+    stderr.write(
         "Massive piped shell call from dmp'd fastqs to aligned, tagged, mpa'd"
-        ", and sorted (if you want) bam: %s\n" % cStr)
+        ", and sorted (if you want) bam: %s" % cStr)
     if(dry_run):
         return cStr
     check_call(cStr, shell=True, executable="/bin/bash")
