@@ -698,40 +698,45 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
     CompareSeqQual(<int32_t *>qual1.data.as_ints, <int32_t *>qual2.data.as_ints,
                    <int8_t *>seq1.data.as_shorts, <int8_t *>seq2.data.as_shorts,
                    template._delegate.core.l_qseq)
-    template.set_tag("PV", qual1, "B")
+    template.set_tag("PV", qual1)
     template.query_sequence = seq1.tostring()
     return template
 
 
 cdef list BFF(list recs, int8_t bLen, char mmlim):
+    sys.stderr.write("Now attempting to flatten two records which share coordinates.\n")
     cdef AlignedSegment_t qrec, cmprec
-    cdef int count, cmpcount, nRecs, nIndices
+    cdef int count, nRecs
     cdef int8_t HD
     cdef int32_t FM1, FM2
-    cdef py_array indices
     nRecs = len(recs)
-    indices = array('i')
     for count, qrec in enumerate(recs):
-        cmpcount = count + 1
         for cmprec in recs[count + 1:]:
             HD = pBarcodeHD(qrec, cmprec, bLen)
             if HD < mmlim:
+                sys.stderr.write("Now trying to flatten these records.\n")
                 FM1 = getFMFromAS(qrec)
                 FM2 = getFMFromAS(cmprec)
                 if FM1 > FM2:
                     qrec = MergeBamRecs(qrec, cmprec)
                 else:
                     qrec = MergeBamRecs(cmprec, qrec)
-                indices.append(cmpcount)
-                cmpcount += 1
-    nIndices = len(indices)
-    for cmpcount in range(nIndices, 0, -1):
-        del recs[indices[cmpcount]]
+                recs.remove(cmprec)
+            else:
+                recs.append(qrec)
+    sys.stderr.write("Now returning my list of records to write.\n")
     return recs
 
 
 cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
-                       char mmlim, int8_t bLen):
+                              char mmlim, int8_t bLen):
+    """
+    :param inBam: [cystr/arg] - path to input bam
+    :param outBam: [cystr/arg] - path to output bam
+    :param mmlim: [char/arg] - mismatch limit
+    :param bLen: [int8_t/arg] - barcode length
+    :return: [cystr]
+    """
     return BamRescue(inBam, outBam, mmlim, bLen)
 
 
@@ -755,6 +760,7 @@ cdef cystr BamRescue(cystr inBam,
                             if len(recList) == 1:
                                 obw(recList[0])
                                 continue
+                            sys.stderr.write("Read names for this: %s\n" % map(str, [rec.qname for rec in recList]))
                             recList = BFF(recList, bLen, mmlim)
                             [obw(read) for read in recList]
     input_bam.close()
