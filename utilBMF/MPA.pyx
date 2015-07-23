@@ -20,8 +20,7 @@ from pysam import AlignmentFile
 from .HTSUtils import (TrimExt, printlog as pl, BamTag, ReadsOverlap,
                        PipeAlignTag)
 from .ErrorHandling import ImproperArgumentError, ThisIsMadness as Tim
-
-cimport cython
+from .ErrorHandling import AbortMission
 
 # DEFINES
 oagtag = oag("tag")
@@ -84,26 +83,13 @@ cdef class LayoutPos:
 cdef class PyLayout(object):
     """
     Holds a read and its layout information.
-
-    This doctest was written so that it would load in one read,
-    make the string, and then hash that value. Since it wouldn't
-    match the interpreter's output to have a gigantic line and it would have
-    to violate pep8, I decided to test the value by its hash rather than by
-    string agreement.
-    Unfortunately, this only works on 64-bit systems, as the hash function
-    is different for 32-bit systems.
-    >>> from sys import maxint
-    >>> from pysam import AlignmentFile as af
-    >>> handle = af("utilBMF/example.bam", "rb")
-    >>> returnStr = str(Layout.fromread(handle.next()))
-    >>> hashreturn = -8225309399721982299
-    >>> hash(returnStr)
-    -8225309399721982299
+    The recommended method for initialization is PyLayout.fromread.
     """
 
     @classmethod
-    def fromread(cls, pysam.calignmentfile.AlignedSegment rec):
-        return cls(*makeLayoutTuple(rec))
+    def fromread(cls, pysam.calignedsegment.AlignedSegment rec,
+                 pysam.calignmentfile.AlignmentFile handle):
+        return cls(*makeLayoutTuple(rec, handle))
 
     def __getitem__(self, index):
         return self.positions[index]
@@ -168,8 +154,9 @@ cdef class PyLayout(object):
     cdef cystr cGetQualString(self):
         cdef py_array tmpArr
         cdef int i
-        tmpArr = array('B', [i + 33 if(i < 94) else 126 for i in self.cGetQual()])
-        return tmpArr.tostring().translate(PH2CHR_TRANS)
+        tmpArr = array('B', [i + 33 if(i < 94) else 126 for
+                             i in self.cGetQual()])
+        return tmpArr.tostring()
 
     cpdef cystr getQualString(self):
         return self.cGetQualString()
@@ -263,32 +250,21 @@ cdef class PyLayout(object):
         cdef int tmpInt
         cdef py_array GenDiscPos, MA_Arr, MP_Arr, ReadDiscPos
         self.tagDict["PV"] = BamTag(
-            "PV", "Z", ",".join([str(tmpInt) for tmpInt in
-                                 self.cGetQual()]))
+            "PV", "B", self.cGetQual())
         self.tagDict["FA"] = BamTag(
-            "FA", "Z", ",".join([str(tmpInt) for tmpInt in
-                                 self.getAgreement()]))
+            "FA", "B", self.cGetAgreement())
         if(self.isMerged is True and self.mergeAdjusted is False):
             MP_Arr = self.getMergedPositions()
             if(len(MP_Arr) != 0):
-                self.tagDict["PM"] = BamTag(
-                    "PM", "Z", ",".join([str(tmp16) for tmp16 in
-                                         MP_Arr]))
+                self.tagDict["PM"] = BamTag("PM", "B", MP_Arr)
             MA_Arr = self.getMergeAgreements()
             if(len(MA_Arr) != 0):
-                self.tagDict["MA"] = BamTag(
-                    "MA", "Z", ",".join([str(tmp16) for tmp16 in
-                                         MA_Arr]))
+                self.tagDict["MA"] = BamTag("MA", "B", MA_Arr)
             GenDiscPos = self.cGetGenomicDiscordantPositions()
             ReadDiscPos = self.cGetReadDiscordantPositions()
             if(len(GenDiscPos) != 0):
-                self.tagDict["DG"] = BamTag(
-                    "DG", "Z", ",".join(
-                        [str(tmpInt) for tmpInt in
-                         GenDiscPos]))
-                self.tagDict["DR"] = BamTag(
-                    "DR", "Z", ",".join([str(tmp16) for tmp16 in
-                                         ReadDiscPos]))
+                self.tagDict["DG"] = BamTag("DG", "B", GenDiscPos)
+                self.tagDict["DR"] = BamTag("DR", "B", ReadDiscPos)
             # Update it for the merged world!
             # Original template length
             self.tagDict["ot"] = BamTag("ot", "i", self.tlen)
@@ -302,6 +278,7 @@ cdef class PyLayout(object):
             # self.tagDict["FM"].value *= 2
             self.mapq = 255
             self.mergeAdjusted = True
+            PyDict_DelItemString(self.tagDict, "MD")
 
     def update(self):
         cdef LayoutPos_t pos
@@ -319,11 +296,7 @@ cdef class PyLayout(object):
     @cython.returns(py_array)
     def getOperations(self):
         """
-        In [15]: %timeit [chr(p.operation) for p in l1.positions]
-        100000 loops, best of 3: 9.35 us per loop
-
-        In [16]: %timeit map(chr, [p.operation for p in l1.positions])
-        100000 loops, best of 3: 8.69 us per loop
+        Returns a list of operation objects in a char array.
         """
         cdef LayoutPos_t pos
         # Skip this operation if the operation is 83"
@@ -374,27 +347,28 @@ cdef class PyLayout(object):
                  seq, qual] +
                 self.get_tag_strings()) + "\n"
 
-    def __init__(self, pysam.calignmentfile.AlignedSegment rec,
-                 list layoutPositions, int firstMapped):
+    def __init__(self, pysam.calignedsegment.AlignedSegment rec,
+                 list layoutPositions, int firstMapped,
+                 pysam.calignmentfile.AlignmentFile handle):
         cdef tuple tag
         self.mapq = rec.mapq
         self.positions = layoutPositions
         self.firstMapped = firstMapped
         self.InitPos = rec.pos
         self.Name = rec.query_name
-        self.contig = PysamToChrInline(rec.reference_id)
+        self.contig = handle.getrname(rec.reference_id)
         self.flag = rec.flag
         self.aend = rec.aend
         # When the get_tags(with_value_type=True) is implemented,
         # then switch the code over.
         # Then I can change the way I make BAM tags, since
         # with_value_type is the optional argument to add to get_tags
-        # on a pysam.calignmentfile.AlignedSegment object.
+        # on a pysam.calignedsegment.AlignedSegment object.
         # This will ensure that I don't need to already know
         # the type beforehand. (IE, get rid of the type dict)
         self.tagDict = {tag[0]: BamTag.fromtuple(tag) for tag
                         in rec.get_tags() if tag[0] not in ["PV", "FA"]}
-        self.rnext = PysamToChrInline(rec.mrnm)
+        self.rnext = handle.getrname(rec.mrnm)
         self.pnext = rec.mpos
         self.tlen = rec.tlen
         self.isMerged = (rec.has_tag("MP") and rec.opt("MP") == "T")
@@ -485,20 +459,20 @@ cdef ListBool cMergeLayoutsToList(PyLayout_t L1, PyLayout_t L2):
     offset = L2.cGetRefPosForFirstPos() - L1.cGetRefPosForFirstPos()
     ret = ListBool()
     ret.List = L1[:offset]
-    cdef size_t count
+    cdef size_t count = 0
     for pos1 in L1[offset:]:
-      pos2 = L2[count]
-      if(pos1.operation == pos2.operation):
-          ret.List.append(cMergePositions(pos1, pos2))
-          count += 1
-      elif(pos1.operation == 68):
-        ret.List.append(pos1)
-      elif(pos2.operation == 68):
-        ret.List.append(pos2)
-        count += 1
-      else:
-        ret.List.append(cMergePositions(pos1, pos2))
-        count += 1
+        pos2 = L2[count]
+        if(pos1.operation == pos2.operation):
+            ret.List.append(cMergePositions(pos1, pos2))
+            count += 1
+        elif(pos1.operation == 68):
+            ret.List.append(pos1)
+        elif(pos2.operation == 68):
+            ret.List.append(pos2)
+            count += 1
+        else:
+            ret.List.append(cMergePositions(pos1, pos2))
+            count += 1
     ret.List += L2[count:]
     ret.Bool = True
     return ret
@@ -519,19 +493,19 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
         if(pos2.operation == pos1.operation):
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
-                             pos1.quality + pos2.quality,
+                             MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement, merged=True,
                              mergeAgreed=2)
         elif(pos2.operation == 83):  # if pos2.operation is "S"
             return LayoutPos(pos1.pos, pos1.readPos, pos1.base,
                              pos1.operation,
-                             pos1.quality + pos2.quality,
+                             MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         elif(pos1.operation == 83):
             return LayoutPos(pos2.pos, pos1.readPos, pos1.base,
                              pos2.operation,
-                             pos1.quality + pos2.quality,
+                             MergeAgreedQualities(pos1.quality, pos2.quality),
                              pos1.agreement + pos2.agreement,
                              merged=True, mergeAgreed=2)
         else:
@@ -545,12 +519,12 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
         if(pos1.quality > pos2.quality):
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos1.base, pos1.operation,
-                pos1.quality - pos2.quality, pos1.agreement,
+                MergeDiscQualities(pos1.quality, pos2.quality), pos1.agreement,
                 merged=True, mergeAgreed=0)
         else:
             return LayoutPos(
                 pos1.pos, pos1.readPos, pos2.base, pos1.operation,
-                pos2.quality - pos1.quality, pos2.agreement,
+                MergeDiscQualities(pos2.quality, pos1.quality), pos2.agreement,
                 merged=True, mergeAgreed=0)
     else:
         if(pos2.base == 78 or pos2.operation == 83):
@@ -564,7 +538,8 @@ cdef LayoutPos_t cMergePositions(LayoutPos_t pos1, LayoutPos_t pos2):
 
 
 @cython.returns(tuple)
-def makeLayoutTuple(pysam.calignmentfile.AlignedSegment rec):
+def makeLayoutTuple(pysam.calignedsegment.AlignedSegment rec,
+                    pysam.calignmentfile.AlignmentFile handle):
     cdef tuple pair
     cdef int offset, firstMapped, i
     cdef list PosList
@@ -576,7 +551,7 @@ def makeLayoutTuple(pysam.calignmentfile.AlignedSegment rec):
         if(pair[0] == 0 and firstMapped < 0):  # 0->"M"
             firstMapped = offset  # Facilitates coordinating merging pairs.
         offset += pair[1]
-    return (rec, PosList, firstMapped)
+    return (rec, PosList, firstMapped, handle)
 
 
 @cython.boundscheck(False)
@@ -586,10 +561,10 @@ cdef int getLayoutLen(AlignedSegment_t read):
 
 
 cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
-                                 pysam.calignmentfile.AlignedSegment rec):
+                                 pysam.calignedsegment.AlignedSegment rec):
     cdef object x0, x1
     cdef char CigarChar
-    cdef ndarray[long, ndim=1] quals, agrees
+    cdef py_array quals, agrees
     '''
     First case - 'M'
     Second case - 'I'
@@ -598,16 +573,16 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
     '''
     CigarChar = CigarOpToCigarChar(cigarOp)
     try:
-        quals = np.array(rec.opt("PV").split(","), dtype=np.int64)
+        quals = rec.opt("PV")
     except KeyError:
         pl("Watch out - PV tag not set.", level=logging.DEBUG)
-        quals = np.array(rec.query_qualities, dtype=np.int64)
+        quals = rec.query_qualities
         # Let's make sure that these don't need reversal, too!
     try:
-        agrees = np.array(rec.opt("FA").split(","), dtype=np.int64)
+        agrees = rec.opt("FA")
     except KeyError:
         pl("Watch out - FA tag not set.", level=logging.DEBUG)
-        agrees = np.array([1] * len(rec.sequence), dtype=np.int64)
+        agrees = array('i', [1] * len(rec.sequence))
     return [LayoutPos(pos=x1, readPos=x0, operation=77,
                       base=ord(rec.seq[x0]), quality=quals[x0],
                       agreement=agrees[x0]) if
@@ -626,7 +601,7 @@ cdef list CigarOpToLayoutPosList(int offset, int cigarOp, int cigarLen,
             for x0, x1 in rec.aligned_pairs[offset:offset + cigarLen]]
 
 
-cpdef int MPA2stdout(cystr inBAM):
+cpdef cystr MPA2stdout(cystr inBAM):
     """
     :param inBAM - path to input bam. Set to "stdin"
     :param tmpFileName - must be provided to facilitate merging streams.
@@ -646,6 +621,7 @@ cpdef int MPA2stdout(cystr inBAM):
 
     stdout.write(inHandle.text)  # Since pysam seems to not be able to...
     stdout.flush()
+    PLFR = PyLayout.fromread
     for read in inHandle:
         read_count += 1
         if(read.is_secondary or
@@ -673,8 +649,8 @@ cpdef int MPA2stdout(cystr inBAM):
                          " Either this BAM isn't name-sorted or you are "
                          "missing a read from a pair.\n")
             return 1
-        l1 = PyLayout.fromread(read1)
-        l2 = PyLayout.fromread(read2)
+        l1 = PLFR(read1, inHandle)
+        l2 = PLFR(read2, inHandle)
         retLayout = MergeLayoutsToLayout(l1, l2)
         if(retLayout.test_merge_success()):
             success_merged_count += 1
@@ -687,7 +663,7 @@ cpdef int MPA2stdout(cystr inBAM):
     stderr.write("Processed %s pairs of reads.\n" % (read_pair_count))
     stderr.write("Successfully merged: %s\n" % (success_merged_count))
     stderr.write("Tried but failed to merge: %s\n" % (failed_to_merge_count))
-    return 0
+    return "Success!"
 
 
 cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
@@ -705,8 +681,8 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     Set to true for piping for optimal efficiency.
     :param sortMem - [cystr/kwarg/"6G"] - string to pass to samtools sort for
     memory per thread.
-    :param coorsort - [cystr/kwarg/False] - set to True to pipe to samtools sort
-    instead of samtools view
+    :param coorsort - [cystr/kwarg/False] - set to True to pipe to samtools
+    sort instead of samtools view
     :param dry_run - [bint/kwarg/False] - set to True to returnt the command
     string rather than executing it.
     """
@@ -720,24 +696,36 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         inBAM = "-"
         pl("Now calling MPA2Bam, taking input from stdin.")
         try:
-            nso = AlignmentFile(
-                "-", "rb").header['HD']['SO'] == 'queryname'
+            if(assume_sorted):
+                raise AbortMission("Skip this.")
+            tmp = AlignmentFile(
+                inBAM, "rb")
+            nso = (tmp.header['HD']['SO'] == 'queryname')
+            tmp.close()
         except KeyError:
             warnings.warn("Note: No SO/HD field in the bam header. "
                           "Assume namesorted, as that is default, and"
                           " sort commands usually change that field "
                           "in the header.\n")
-            stderr.write()
             nso = True
+        except AbortMission:
+            nso = True
+        stderr.write("Okay, I got out of this loop.")
     else:
         try:
-            nso = AlignmentFile(
-                inBAM, "rb").header['HD']['SO'] == 'queryname'
+            if(assume_sorted):
+                raise AbortMission("Skip this.")
+            tmp = AlignmentFile(
+                inBAM, "rb")
+            nso = (tmp.header['HD']['SO'] == 'queryname')
+            tmp.close()
         except KeyError:
-            stderr.write("Note: No SO/HD field in the bam header. "
-                         "Assume namesorted, as that is default, and"
-                         " sort commands usually change that field "
-                         "in the header.\n")
+            warnings.warn("Note: No SO/HD field in the bam header. "
+                          "Assume namesorted, as that is default, and"
+                          " sort commands usually change that field "
+                          "in the header.\n")
+            nso = True
+        except AbortMission:
             nso = True
     if(nso is False):
         if not assume_sorted:
@@ -747,9 +735,9 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
         else:
             stderr.write("Sort order unset or set to coordinate. "
                          "Assuming sorted.")
+    stderr.write("Hey, let's see if testing the stream was the problem.")
     cStr = ("python -c 'import sys;from utilBMF.MPA import MPA2stdout;"
             "sys.exit(MPA2stdout(\"%s\"));'" % inBAM)
-    stderr.write("About to call %s to prepare mpa output." % cStr)
     if(coorsort is False):
         if(u):
             cStr += "| samtools view -Sbhu - "
@@ -764,7 +752,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
     if(outBAM == "stdout" or outBAM == "-"):
         pl("Emitting to stdout.")
         if(dry_run):
-          return cStr
+            return cStr
         check_call(cStr, shell=True)
         return outBAM
     elif(outBAM is None):
@@ -775,6 +763,7 @@ cpdef MPA2Bam(cystr inBAM, cystr outBAM=None,
                  " %s\n" % cStr)
     stderr.write("Writing to file (user-specified): '%s'\n" % outBAM)
     cStr += " > %s" % outBAM
+    cStr = prepend + cStr
     if(dry_run):
         return cStr
     check_call(cStr, shell=True, executable="/bin/bash")
@@ -785,25 +774,41 @@ def PipeAlignTagMPA(R1, R2, ref="default",
                     outBAM=None, path="default",
                     bint coorsort=True, bint u=True,
                     cystr sortMem="6G", cystr opts=None,
-                    cystr tmpdir="/dev/shm"):
+                    bint dry_run=False):
+    """
+    :param R1 - [cystr/arg] path to input R1 consolidated/adapter trimmed
+    fastq
+    :param R2 - [cystr/arg] path to input R2 consolidated/adapter trimmed
+    fastq
+    :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
+    to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
+    to output to stdout.
+    :param ref - [cystr/kwarg/"default"] - path to reference index for
+    alignment.
+    :param path - [cystr/kwarg/"default"] - path to bwa executable for
+    alignment.
+    :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
+    Set to true for piping for optimal efficiency.
+    :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
+    memory per thread.
+    :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
+    instead of samtools view
+
+    """
+    from sys import stderr
+    stderr.write("Getting base string.")
     baseCommandString = PipeAlignTag(
         R1, R2, ref=ref, outBAM="stdout", path=path, coorsort=False, u=u,
         sortMem=sortMem, dry_run=True)
+    stderr.write("Getting mpa string.")
     cStr = MPA2Bam("-", dry_run=True,
                    prepend="%s | " % baseCommandString,
-                   assume_sorted=True,
-                   outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort)
-    """
-        :param inBAM - [cystr/arg] path to input bam
-        set to "-" or "stdin" to take in stdin. This must be name-sorted.
-        :param outBAM - [cystr/arg] path to output bam. Leave as default (None)
-        to output to `TrimExt(inBAM) + .merged.bam` or set to stdout or '-'
-        to output to stdout.
-        :param u - [bint/kwarg/False] whether or not to emit uncompressed bams.
-        Set to true for piping for optimal efficiency.
-        :param sortMem - [cystr/kwarg/"6G"] string to pass to samtools sort for
-        memory per thread.
-        :param coorsort - [cystr/kwarg/False] set to true to pipe to samtools sort
-        instead of samtools view
-        :param dry_run - [bint/kwarg/False]
-    """
+                   outBAM=outBAM, u=u, sortMem=sortMem, coorsort=coorsort,
+                   assume_sorted=True)
+    stderr.write(
+        "Massive piped shell call from dmp'd fastqs to aligned, tagged, mpa'd"
+        ", and sorted (if you want) bam: %s" % cStr)
+    if(dry_run):
+        return cStr
+    check_call(cStr, shell=True, executable="/bin/bash")
+    return outBAM

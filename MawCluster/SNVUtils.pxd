@@ -8,7 +8,7 @@ ctypedef SNVCFLine SNVCFLine_t
 from MawCluster.PileupUtils cimport AlleleAggregateInfo, PCInfo
 ctypedef AlleleAggregateInfo AlleleAggregateInfo_t
 ctypedef PCInfo PCInfo_t
-ctypedef pysam.calignmentfile.PileupRead PileupRead
+ctypedef pysam.calignedsegment.PileupRead PileupRead
 
 
 cdef class SNVCFLine:

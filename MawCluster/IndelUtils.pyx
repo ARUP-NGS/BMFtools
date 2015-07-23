@@ -48,7 +48,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
     """
     cdef int idrel
     cdef int idirl
-    cdef pysam.calignmentfile.AlignedSegment read1, read2, entry
+    cdef pysam.calignedsegment.AlignedSegment read1, read2, entry
     if(indelOutputBAM == "default"):
         indelOutputBAM = ".".join(inBAM.split(".")[0:-1] + ["indRel", "bam"])
     if(otherOutputBAM == "default"):
@@ -86,7 +86,7 @@ def FilterByIndelRelevance(inBAM, indelOutputBAM="default",
 
 @cython.returns(cython.bint)
 def IsIndelRelevant(
-        pysam.calignmentfile.AlignedSegment read, int minFam=2,
+        pysam.calignedsegment.AlignedSegment read, int minFam=2,
         float minSF=0.6, cython.bint keepUnmapped=False):
     """
     True if considered relevant to indels.
@@ -191,7 +191,7 @@ def FillIndelQuiverRegion(inBAM, int minPairs=2,
     with reads not satisfying minMQ and minFM.
     """
     cdef IndelQuiver_t Quiver
-    cdef pysam.calignmentfile.AlignedSegment rec
+    cdef pysam.calignedsegment.AlignedSegment rec
     cdef pysam.calignmentfile.AlignmentFile inHandle
     cdef int end
     Quiver = IndelQuiver(ref=ref, window=window, minFM=minFM, minMQ=minMQ,

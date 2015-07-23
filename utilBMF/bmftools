@@ -7,7 +7,6 @@ import os
 import sys
 import uuid
 import cython
-from sys import stderr
 
 # BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
@@ -17,7 +16,7 @@ from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from utilBMF.QC import GetAllQCMetrics
 from BMFMain import Workflow as wf
 
-from utilBMF.ErrorHandling import ThisIsHKMadness
+from utilBMF.ErrorHandling import ImproperArgumentError, ThisIsHKMadness
 
 global ReferenceDict
 
@@ -34,6 +33,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    PipeAlignTagMergeParser = subparsers.add_parser("aligntagmerge")
+    SlaveDMPParser = subparsers.add_parser("slavedmp")
     PipeParser = subparsers.add_parser(
         "pipetagbam",
         description="Tags a BAM, taking sam/bam input/output.")
@@ -193,6 +194,10 @@ def main():
         nargs="+",
         help="Input Fastq Files")
     DMultiPlexParser.add_argument(
+        "--head",
+        help=("Number of bases from each read with "
+              "which to salt the barcode."))
+    DMultiPlexParser.add_argument(
         "-i",
         "--indexFq",
         metavar="indexFastq",
@@ -221,6 +226,24 @@ def main():
                         "this file, overriding the defaults founds in _bmftoo"
                         "ls_helper. Any command-line arguments override this "
                         "config file as well."))
+    DMultiPlexParser.add_argument(
+        "-n", "--num-nucs",
+        help=("Number of initial nucleotides to use for initial "
+              "binning of reads by barcodes.")
+    )
+    DMultiPlexParser.add_argument(
+        "--overlapLen", "-l",
+        help="Integer to pass to cutadapt for minimum overlap length. Default: 6"
+    )
+    DMultiPlexParser.add_argument(
+        "-m", "--slave-sort-mem",
+        help=("Memory string to pass to GNU sort for "
+              "fastq sorting for slave processes.")
+    )
+    DMultiPlexParser.add_argument(
+        "--threads", "-p",
+        help="Number of read-pair sets of demultiplexing."
+    )
     alignTagBamParser.add_argument(
         "inFqs",
         nargs="+",
@@ -235,7 +258,7 @@ def main():
         "-r",
         "--ref",
         metavar="ref",
-        help="Reference FASTA to align fastqs to")
+        help="Path to eference FASTA to which to align reads.")
     alignTagBamParser.add_argument(
         "-a",
         "--aligner",
@@ -671,6 +694,55 @@ def main():
         help="Path to directory from which to search "
         "recursively for .py/.pyx/.pxd files. Defaults to './'.",
         default="./")
+    SlaveDMPParser.add_argument(
+        "bsFastq1", help="Path to fastq for read 1, barcode-sorted.")
+    SlaveDMPParser.add_argument(
+        "bsFastq2", help="Path to fastq for read 2, barcode-sorted.")
+    SlaveDMPParser.add_argument(
+        "--slave-sort-mem", "-m",
+        help="Sort memory to use for slave process.")
+    SlaveDMPParser.add_argument(
+        "-f",
+        "--p5Seq",
+        metavar="primer5Seq",
+        help=("5' primer sequence used by cutadapt (defaults to 'default', "
+              "which will run cutadapt to only trim the 3' primer sequence, "
+              "if given)"))
+    SlaveDMPParser.add_argument(
+        "-t",
+        "--p3Seq",
+        metavar="primer3Seq",
+        help=("3' primer sequence used by cutadapt (defaults to 'default', "
+              "which will not run cutadapt)"))
+    SlaveDMPParser.add_argument(
+        "--head",
+        help=("Number of bases each from read 1 and "
+              "read 2 with which to salt the molecular barcode."))
+    SlaveDMPParser.add_argument(
+        "--conf", help=("Path to config file to override default "
+                        "settings for each command-line parameter."))
+    PipeAlignTagMergeParser.add_argument(
+        "inFqs",
+        nargs="+",
+        help="Input Fastq Files")
+    PipeAlignTagMergeParser.add_argument(
+        "-o", "--outBAM",
+        help=("Path to output BAM. Leave unset to default to a variation"
+              " on the input fastq names. Set to stdout for stdout.")
+    )
+    PipeAlignTagMergeParser.add_argument(
+        "-r",
+        "--ref",
+        help="Path to reference FASTA to which to align reads.")
+    PipeAlignTagMergeParser.add_argument(
+        "-u",
+        "--uncompressed-bam",
+        help="Set to true to emit uncompressed bam output.",
+        action="store_true")
+    PipeAlignTagMergeParser.add_argument(
+        "--coorsort", "-s",
+        help="Set to true to emit uncompressed bam output.",
+        action="store_true")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -714,7 +786,7 @@ def main():
     Logger.setLevel(logging.DEBUG)
 
     # Console handler - outputs to console as stderr
-    ch = logging.StreamHandler(stream=stderr)
+    ch = logging.StreamHandler(stream=sys.stderr)
     ch.setLevel(logging.DEBUG)
 
     # create formatter
@@ -731,8 +803,6 @@ def main():
 
     # END SETUP LOGGING #
 
-    print("All logging set up!")
-
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
     if(subcommand in ["main", "snv", "psnv", "getuniquekmersbed"] or
@@ -742,9 +812,9 @@ def main():
         fl.setLevel(logging.DEBUG)
         Logger.addHandler(fl)
     else:
-        stderr.write("Logging skipped for subcommand. Override with create_log"
+        sys.stderr.write("Logging skipped for subcommand. Override with create_log"
                      " == True if you want to create a log next time.\n")
-    stderr.write("Now executable bmftools subcommand %s" % subcommand)
+    sys.stderr.write("Now executable bmftools subcommand %s\n" % subcommand)
     if(subcommand == "qty"):
         templatesOnTarget = Palin.number_of_templates * Palin.on_target
         if(Palin.paired):
@@ -872,14 +942,28 @@ def main():
         sys.exit(0)
     elif(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
-            from BMFMain.Workflow import pairedFastqShades
-            OutFastq1, OutFastq2 = pairedFastqShades(
+            if(Chapman['num_nucs'] is None):
+                from numpy import log2
+                num_nucs = int(log2(int(Chapman['threads'])) // 2) + 1
+                sys.stderr.write("num_nucs not set. Defaulting to "
+                                 "log2(threads) // 2 + 1: %s.\n" % num_nucs)
+                # IE, if unset, defaults to the minimum needed to have at
+                # least one file for each slave job.
+            else:
+                num_nucs = int(Chapman['num_nucs'])
+            threads = int(Chapman['threads']) // 2
+            from MawCluster.BCFastq import DispatchParallelDMP as pDMP
+            OutFastq1, OutFastq2 = pDMP(
                 Chapman['inFqs'][0],
                 Chapman['inFqs'][1],
                 indexFq=Chapman['indexFq'],
                 p3Seq=Chapman['p3Seq'],
                 p5Seq=Chapman['p5Seq'],
-                rescue=Chapman['rescue'])
+                num_nucs=num_nucs,
+                threads=threads,
+                overlapLen=int(Chapman['overlapLen']),
+                sortMem=Chapman['slave_sort_mem'],
+                head=int(Chapman['head']))
             return 0  # sys.exit(main()) returns 0
         elif(len(Chapman['inFqs']) == 1):
             from BMFMain.Workflow import singleFastqShades
@@ -991,10 +1075,10 @@ def main():
         from utilBMF.QC import GetFamSizeStats
         Stats = GetFamSizeStats(Chapman['inFq'],
                                 outfile=Chapman['outfile_handle'])
-    elif(subcommand == "v"):
+    elif subcommand == "v":
         from utilBMF.HTSUtils import __version__
         print(__version__)
-    elif(subcommand == "tagbam"):
+    elif subcommand == "tagbam":
         fastqs = Chapman['fastq']
         if(len(fastqs) == 1):
             singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
@@ -1131,6 +1215,22 @@ def main():
                                                  "bam" if(
             bamOutput) else "sam"))
         PipeBarcodeTagCOBam()
+    if(subcommand == "slavedmp"):
+        from utilBMF.HTSUtils import SlaveDMP
+        SlaveDMP(Chapman['bsFastq1'], Chapman['bsFastq2'],
+                 p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
+                 sortMem=Chapman['slave_sort_mem'], head=Chapman['head'])
+        return 0
+    if(subcommand == "aligntagmerge"):
+        from utilBMF.MPA import PipeAlignTagMPA
+        R1 = Chapman['inFqs'][0]
+        R2 = Chapman['inFqs'][1]
+        outBAM = Chapman['outBAM']
+        outBAM = PipeAlignTagMPA(R1, R2, outBAM=outBAM,
+                                 coorsort=Chapman['coorsort'],
+                                 u=Chapman["uncompressed_bam"],
+                                 ref=Chapman['ref'])
+        return 0
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

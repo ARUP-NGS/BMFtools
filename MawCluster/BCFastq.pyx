@@ -24,6 +24,9 @@ from operator import (add as oadd, le as ole, ge as oge, div as odiv,
 from subprocess import check_call
 from array import array
 from string import maketrans
+from numpy.core.multiarray import int_asbuffer
+from cPickle import load
+import ctypes
 
 import cython
 import numpy as np
@@ -34,9 +37,10 @@ from numpy import sum as nsum
 from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
                               pFastqProxy, TrimExt, pFastqFile, getBS,
-                              hamming_cousins)
+                              hamming_cousins, GetParallelDMPPopen)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
+from utilBMF.ErrorHandling import UnsetRequiredParameter, ImproperArgumentError
 try:
     from re2 import compile as regex_compile
 except ImportError:
@@ -45,6 +49,9 @@ except ImportError:
 
 
 ARGMAX_TRANSLATE_STRING = maketrans('\x00\x01\x02\x03', 'ACGT')
+nucs = array('B', [65, 67, 71, 83])
+DEF size32 = 4
+DEF sizedouble = 8
 
 
 def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
@@ -58,8 +65,10 @@ def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
 @cython.locals(checks=int,
                parallel=cython.bint, sortMem=cystr)
 def BarcodeSortBoth(cystr inFq1, cystr inFq2,
-                    cystr sortMem="6G", cython.bint parallel=False):
+                    cystr sortMem=None, cython.bint parallel=False):
     cdef cystr outFq1, outFq2, highMemStr
+    if(sortMem is None):
+        sortMem = "6G"
     if(parallel is False):
         pl("Parallel barcode sorting is set to false. Performing serially.")
         return BarcodeSort(inFq1), BarcodeSort(inFq2)
@@ -119,7 +128,11 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
         mem = " -S " + mem
     threadStr = ""
     if(threads != 1):
-        threadStr = " --parallel=%s" % threads
+        import warnings
+        warnings.warn("Note: getBarcodeSortStr is being given a threads argum"
+                      "ent. This is deprecated for uniformity between linux "
+                      "distributions. Parameter simply being ignored.",
+                      DeprecationWarning)
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
@@ -130,7 +143,7 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
                 " %s %s | tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
 
 
-cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+cpdef cystr QualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     """
     cpdef wrapper for QualArr2QualStr
 
@@ -146,7 +159,7 @@ cpdef cystr QualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
     return cQualArr2QualStr(qualArr)
 
 
-cpdef cystr QualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+cpdef cystr QualArr2PVString(ndarray[int32_t, ndim=1] qualArr):
     return cQualArr2PVString(qualArr)
 
 
@@ -154,14 +167,149 @@ cpdef cystr pCompareFqRecsFast(list R, cystr name=None):
     return cCompareFqRecsFast(R, name)
 
 
-cdef ndarray[char, ndim=2] cRecListTo2DCharArray(list R):
+cdef inline ndarray[int8_t, ndim=2] cRecListTo2DCharArray(list R):
     cdef pFastqProxy_t rec
     return np.array([cs_to_ia(rec.sequence) for rec in R],
-                    dtype=np.uint8)
+                    dtype=np.int8)
 
 
 cpdef ndarray[char, ndim=2] RecListTo2DCharArray(list R):
     return cRecListTo2DCharArray(R)
+
+
+cdef class Qual2DArray:
+    def __cinit__(self, size_t nRecs, size_t rLen):
+        self.nRecs = nRecs
+        self.rLen = rLen
+        self.qualities = <int32_t *>malloc(nRecs * rLen * size32)
+
+    def __dealloc__(self):
+        free(self.qualities)
+
+
+cdef class SeqQual:
+    def __cinit__(self, size_t length):
+        self.Seq = <int8_t *>malloc(length)
+        self.Agree = <int32_t *>malloc(length * size32)
+        self.Qual = <int32_t *>malloc(length * size32)
+        self.length = length
+
+    def __dealloc__(self):
+        free(self.Seq)
+        free(self.Agree)
+        free(self.Qual)
+
+
+cdef class SumArraySet:
+    def __cinit__(self, size_t length):
+        self.length = length
+        self.counts = <int32_t *>calloc(length * 4, size32)
+        self.chiSums = <double_t *>calloc(length * 4, sizedouble)
+        self.argmax_arr = <int8_t *>malloc(length)
+
+    def __dealloc__(self):
+        free(self.counts)
+        free(self.chiSums)
+        free(self.argmax_arr)
+
+
+cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
+                              size_t rLen, size_t nRecs):
+    cdef SeqQual_t ret
+    cdef SumArraySet_t Sums
+    ret = SeqQual(rLen)
+    Sums = SumArraySet(rLen)
+    cdef py_array Seq, Qual, Agree
+    # Temporary data structures
+    cdef size_t query_index = 0
+    cdef size_t chisum_index = 0
+    cdef size_t ndIndex = 0
+    cdef size_t numbases = rLen * nRecs
+    cdef size_t rLen2 = 2 * rLen
+    cdef size_t rLen3 = 3 * rLen
+    cdef size_t offset = 0
+    cdef double_t invchi
+    cdef int32_t tmpQual
+    while query_index < numbases:
+        offset = query_index % rLen
+        if(Seqs[query_index] == 67):
+            # Add in the chiSum for the observed base
+            ndIndex = offset + rLen
+            Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            # Add in thi CHI2 sum contribution for the bases that
+            # weren't observed.
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset] += invchi
+            Sums.chiSums[offset + rLen2] += invchi
+            Sums.chiSums[offset + rLen3] += invchi
+            # case "C"
+        elif(Seqs[query_index] == 71):
+            # case "G"
+            ndIndex = offset + rLen2
+            Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset] += invchi
+            Sums.chiSums[offset + rLen] += invchi
+            Sums.chiSums[offset + rLen3] += invchi
+        elif(Seqs[query_index] == 84):
+            # case "T"
+            ndIndex = offset + rLen3
+            Sums.chiSums[ndIndex] += CHI2_FROM_PHRED(Quals[query_index])
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset] += invchi
+            Sums.chiSums[offset + rLen] += invchi
+            Sums.chiSums[offset + rLen2] += invchi
+        elif(Seqs[query_index] == 65):
+            # case "A"
+            ndIndex = offset
+            Sums.chiSums[offset] += CHI2_FROM_PHRED(Quals[query_index])
+            invchi = INV_CHI2_FROM_PHRED(Quals[query_index])
+            Sums.chiSums[offset + rLen] += invchi
+            Sums.chiSums[offset + rLen2] += invchi
+            Sums.chiSums[offset + rLen3] += invchi
+        else:
+            # case "N"
+            pass
+        Sums.counts[ndIndex] += 1
+        query_index += 1
+    query_index = 0
+    while query_index < rLen:
+        # Find the most probable base
+        Sums.argmax_arr[query_index] = argmax4(
+            Sums.chiSums[query_index],
+            Sums.chiSums[query_index + rLen],
+            Sums.chiSums[query_index + rLen2],
+            Sums.chiSums[query_index + rLen3])
+        # Convert the argmaxes to letters
+        ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
+        ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
+        # Round
+        tmpQual =  <int32_t> (- 10 * c_log10(
+            igamc_pvalues(Sums.counts[ndIndex],
+                          Sums.chiSums[ndIndex])) + 0.5)
+        # Eliminate underflow p values
+        ret.Qual[query_index] = tmpQual if(tmpQual > 0) else 3114
+        # Count agreement
+        ret.Agree[query_index] = Sums.counts[ndIndex]
+        query_index += 1
+    return ret
+
+
+cpdef SeqQual_t FisherFlatten(
+        ndarray[int8_t, ndim=2, mode="c"] Seqs,
+        ndarray[int32_t, ndim=2, mode="c"] Quals,
+        size_t rLen, size_t nRecs):
+    """
+    :param Quals: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
+    holding the qualities for a set of reads.
+    :param Seqs: [ndarray[int32_t, ndim=2]/arg] - numpy 2D-array for
+    holding the sequences for a set of reads.
+    :param rLen: [size_t/arg] Read length
+    :param nRecs: [size_t/arg] Number of records to flatten
+    :return: [SeqQual_t] An array of sequence and an array of qualities
+    after flattening.
+    """
+    return cFisherFlatten(&Seqs[0,0], &Quals[0,0], rLen, nRecs)
 
 
 '''
@@ -172,15 +320,15 @@ I might have to do this manually.
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
-                                             ndarray[np_int32_t, ndim=2] quals,
-                                             size_t lenR):
+cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
+                                             ndarray[int32_t, ndim=2] quals,
+                                             size_t nRecs):
     cdef size_t readlen = len(seqs[0])
     cdef size_t read_index, base_index
-    cdef ndarray[np_int32_t, ndim=2] QualSumAll
-    cdef np_int32_t tmpInt
+    cdef ndarray[int32_t, ndim=2] QualSumAll
+    cdef int32_t tmpInt
     QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
-    for read_index in range(lenR):
+    for read_index in range(nRecs):
         for base_index in range(readlen):
             tmpInt = seqs[read_index][base_index]
             if(tmpInt == 84):
@@ -195,18 +343,57 @@ cdef ndarray[np_int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
 '''
 
 
+cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
+    cdef py_array ret = array('B')
+    cdef int8_t * ptr
+    c_array.resize(ret, rLen)
+    ptr = <int8_t *>ret.data.as_shorts
+    memset(ptr, 0, rLen)
+    arrmax(arr2D, <int8_t *>ret.data.as_shorts, nRecs, rLen)
+    return ret
+
+
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef cystr cCompareFqRecsFast(list R,
-                              cystr name=None,
-                              double minPVFrac=0.1,
-                              double minFAFrac=0.2,
-                              double minMaxFA=0.9):
+cdef inline int32_t RESCALE_QUALITY(
+        int8_t qual, int32_t * RescalingArray) nogil:
+    return RescalingArray[qual - 2]
+
+
+cdef ndarray[int32_t, ndim=2, mode="c"] ParseAndRescaleQuals(
+        list R, size_t rLen, size_t nRecs, py_array RescalingArray):
+    cdef pFastqProxy_t rec
+    cdef py_array qual_fetcher
+    cdef ndarray[int32_t, ndim=2, mode="c"] ret
+    cdef Qual2DArray_t Rescaler
+    cdef size_t offset = 0
+    cdef size_t i
+    Rescaler = Qual2DArray(nRecs, rLen)
+    ret = np.zeros([nRecs, rLen], dtype=np.int32)
+    for rec in R:
+        qual_fetcher = cs_to_ph(rec.quality)
+        for i in range(rLen):
+            Rescaler.qualities[i + offset] = RESCALE_QUALITY(
+                qual_fetcher[i], <int32_t *> RescalingArray.data.as_ints)
+        offset += rLen
+    memcpy(&ret[0,0], &Rescaler.qualities, size32 * rLen * nRecs)
+    return ret
+
+
+cpdef cystr FastFisherFlattening(list R, cystr name=None):
+    return cFastFisherFlattening(R, name=name)
+
+
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+cdef cystr cFastFisherFlattenRescale(list R, py_array RescalingArray,
+                                     cystr name=None):
     """
     TODO: Unit test for this function.
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
-    After inlin
+    After inlining:
     In [21]: %timeit pCompareFqRecsFast(fam)
    1000 loops, best of 3: 518 us per loop
 
@@ -214,27 +401,183 @@ cdef cystr cCompareFqRecsFast(list R,
     1000 loops, best of 3: 947 us per loop
 
     """
-    cdef int lenR, ND, lenSeq, tmpInt, i
-    cdef double tmpFlt
+    cdef int nRecs, ND, rLen
+    cdef double_t tmpFlt
+    cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
+    cdef cystr consolidatedFqStr
+    cdef ndarray[int32_t, ndim=2, mode="c"] quals
+    cdef ndarray[int8_t, ndim=2, mode="c"] seqArray
+    cdef py_array Seq, Qual, Agree
+    cdef pFastqProxy_t rec
+    cdef SeqQual_t ret
+    if(name is None):
+        name = R[0].name
+    nRecs = len(R)
+    rLen = len(R[0].sequence)
+    if nRecs == 1:
+        rec = R[0]
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (rLen - 1)) +
+                     PyArr2PVString(rec.getQualArray()))
+        return "@%s %s%s\n%s\n+\n%s\n" % (name, rec.comment,
+                                          TagString, rec.sequence,
+                                          rec.quality)
+    seqArray = cRecListTo2DCharArray(R)
+
+    quals = ParseAndRescaleQuals(R, rLen, nRecs, RescalingArray)
+    '''
+    quals = np.array([cs_to_ph(rec.quality) for
+                      rec in R], dtype=np.int32)
+    '''
+    # TODO: Speed up this copying by switching to memcpy
+    # Flatten with Fisher.
+    ret = FisherFlatten(seqArray, quals, rLen, nRecs)
+    # Copy out results to python arrays
+    # Seq
+    Seq = array('B')
+    c_array.resize(Seq, rLen)
+    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, rLen)
+
+    # Qual
+    Qual = array('i')
+    c_array.resize(Qual, rLen)
+    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, rLen * size32)
+
+    # Agree
+    Agree = array('i')
+    c_array.resize(Agree, rLen)
+    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, rLen * size32)
+    # Get seq string
+
+    newSeq = Seq.tostring()
+    # Get quality strings (both for PV tag and quality field)
+    phredQualsStr = PyArr2QualStr(Qual)
+    PVString = PyArr2PVString(Qual)
+
+    # Use the number agreed
+    FAString = PyArr2FAString(Agree)
+    ND = nRecs * rLen - nsum(Agree)
+    TagString = "|FM=%s|ND=%s" % (nRecs, ND) + PVString + FAString
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
+    return consolidatedFqStr
+
+
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+cdef cystr cFastFisherFlattening(list R,
+                                 cystr name=None):
+    """
+    TODO: Unit test for this function.
+    Calculates the most likely nucleotide
+    at each position and returns the joined record string.
+    After inlining:
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
+    """
+    cdef int nRecs, ND, rLen
+    cdef double_t tmpFlt
+    cdef cystr PVString, TagString, newSeq, phredQualsStr, FAString
+    cdef cystr consolidatedFqStr
+    cdef ndarray[int32_t, ndim=2, mode="c"] quals
+    cdef ndarray[int8_t, ndim=2, mode="c"] seqArray
+    cdef py_array Seq, Qual, Agree
+    cdef pFastqProxy_t rec
+    cdef SeqQual_t ret
+    if(name is None):
+        name = R[0].name
+    nRecs = len(R)
+    rLen = len(R[0].sequence)
+    if nRecs == 1:
+        rec = R[0]
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (rLen - 1)) +
+                     PyArr2PVString(rec.getQualArray()))
+        return "@%s %s%s\n%s\n+\n%s\n" % (name, rec.comment,
+                                          TagString, rec.sequence,
+                                          rec.quality)
+    seqArray = cRecListTo2DCharArray(R)
+
+    '''
+    quals = ParseAndRescaleQuals(R)
+    '''
+    quals = np.array([cs_to_ph(rec.quality) for
+                      rec in R], dtype=np.int32)
+    # TODO: Speed up this copying by switching to memcpy
+    # Flatten with Fisher.
+    ret = FisherFlatten(seqArray, quals, rLen, nRecs)
+    # Copy out results to python arrays
+    # Seq
+    Seq = array('B')
+    c_array.resize(Seq, rLen)
+    memcpy(Seq.data.as_voidptr, <int8_t*> ret.Seq, rLen)
+
+    # Qual
+    Qual = array('i')
+    c_array.resize(Qual, rLen)
+    memcpy(Qual.data.as_voidptr, <int32_t*> ret.Qual, rLen * size32)
+
+    # Agree
+    Agree = array('i')
+    c_array.resize(Agree, rLen)
+    memcpy(Agree.data.as_voidptr, <int32_t*> ret.Agree, rLen * size32)
+    # Get seq string
+    newSeq = Seq.tostring()
+    # Get quality strings (both for PV tag and quality field)
+    phredQualsStr = MaxOriginalQuals(&quals[0,0], nRecs, rLen).tostring()
+    PVString = PyArr2PVString(Qual)
+    # Use the number agreed
+    FAString = PyArr2FAString(Agree)
+    ND = nRecs * rLen - nsum(Agree)
+    TagString = "|FM=%s|ND=%s" % (nRecs, ND) + PVString + FAString
+    consolidatedFqStr = ("@" + name + " " + R[0].comment + TagString + "\n" +
+                         newSeq + "\n+\n%s\n" % phredQualsStr)
+    return consolidatedFqStr
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef cystr cCompareFqRecsFast(list R,
+                              cystr name=None,
+                              double_t minPVFrac=0.1,
+                              double_t minFAFrac=0.2,
+                              double_t minMaxFA=0.9):
+    """
+    TODO: Unit test for this function.
+    Calculates the most likely nucleotide
+    at each position and returns the joined record string.
+    After inlining:
+    In [21]: %timeit pCompareFqRecsFast(fam)
+   1000 loops, best of 3: 518 us per loop
+
+    In [22]: %timeit cFRF_helper(fam)
+    1000 loops, best of 3: 947 us per loop
+
+    """
+    cdef int nRecs, ND, rLen, tmpInt, i
+    cdef double_t tmpFlt
     cdef cython.bint Success
     cdef cystr PVString, TagString, newSeq
     cdef cystr consolidatedFqStr
     # cdef char tmpChar
-    cdef ndarray[np_int32_t, ndim=2] quals, qualA, qualC, qualG
-    cdef ndarray[np_int32_t, ndim=2] qualT, qualAllSum
-    cdef ndarray[np_int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
-    cdef ndarray[np_int32_t, ndim=1] phredQuals, qualTFlat
+    cdef ndarray[int32_t, ndim=2] quals, qualA, qualC, qualG
+    cdef ndarray[int32_t, ndim=2] qualT, qualAllSum
+    cdef ndarray[int32_t, ndim=1] qualAFlat, qualCFlat, qualGFlat, FA
+    cdef ndarray[int32_t, ndim=1] phredQuals, qualTFlat
     cdef ndarray[char, ndim=2] seqArray
     cdef py_array tmpArr
     cdef pFastqProxy_t rec
     cdef char tmpChar
     if(name is None):
         name = R[0].name
-    lenR = len(R)
-    lenSeq = len(R[0].sequence)
-    if lenR == 1:
+    nRecs = len(R)
+    rLen = len(R[0].sequence)
+    if nRecs == 1:
         phredQuals = np.array(R[0].getQualArray(), dtype=np.int32)
-        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (lenSeq - 1)) +
+        TagString = ("|FM=1|ND=0|FA=" + "1" + "".join([",1"] * (rLen - 1)) +
                      cQualArr2PVString(phredQuals))
         return "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                           TagString, R[0].sequence,
@@ -280,8 +623,8 @@ cdef cystr cCompareFqRecsFast(list R,
     # Second, flag families which are probably not really "families"
     FA = np.array([sum([rec.sequence[i] == newSeq[i] for
                         rec in R]) for
-                  i in xrange(lenSeq)], dtype=np.int32)
-    if(np.min(FA) < minFAFrac * lenR or np.max(FA) < minMaxFA * lenR):
+                  i in xrange(rLen)], dtype=np.int32)
+    if(np.min(FA) < minFAFrac * nRecs or np.max(FA) < minMaxFA * nRecs):
         #  If there's any base on which a family agrees less often
         #  than minFAFrac, nix the whole family.
         #  Along with that, require that at least one of the bases agree
@@ -290,12 +633,12 @@ cdef cystr cCompareFqRecsFast(list R,
     # Sums the quality score for all bases, then scales it by the number of
     # agreed bases. There could be more informative ways to do so, but
     # this is primarily a placeholder.
-    ND = lenR * lenSeq - nsum(FA)
+    ND = nRecs * rLen - nsum(FA)
     phredQuals[phredQuals < 0] = 0
     PVString = cQualArr2PVString(phredQuals)
     phredQualsStr = cQualArr2QualStr(phredQuals)
     FAString = cQualArr2FAString(FA)
-    TagString = "|FM=%s|ND=%s" % (lenR, ND) + FAString + PVString
+    TagString = "|FM=%s|ND=%s" % (nRecs, ND) + FAString + PVString
     '''
     consolidatedFqStr = "@%s %s%s\n%s\n+\n%s\n" % (name, R[0].comment,
                                                    TagString,
@@ -320,22 +663,23 @@ cdef cystr cCompareFqRecsFast(list R,
 @cython.returns(cystr)
 def CutadaptPaired(cystr fq1, cystr fq2,
                    p3Seq="default", p5Seq="default",
-                   int overlapLen=6, cython.bint makeCall=True):
+                   int overlapLen=6, cython.bint makeCall=True,
+                   outfq1=None, outfq2=None):
     """
     Returns a string which can be called for running cutadapt v.1.7.1
     for paired-end reads in a single call.
     """
-    cdef cystr outfq1
-    cdef cystr outfq2
     cdef cystr commandStr
-    outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
-    outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
+    if(outfq1 is None):
+        outfq1 = ".".join(fq1.split('.')[0:-1] + ["cutadapt", "fastq"])
+    if(outfq2 is None):
+        outfq2 = ".".join(fq2.split('.')[0:-1] + ["cutadapt", "fastq"])
     if(p3Seq == "default"):
         raise Tim("3-prime primer sequence required for cutadapt!")
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards"
-                      "-a {} -o {} -p {} -O {} {} {}".format(p3Seq,
+                      " -a {} -o {} -p {} -O {} {} {}".format(p3Seq,
                                                              outfq1,
                                                              outfq2,
                                                              overlapLen,
@@ -415,6 +759,153 @@ def CallCutadaptBoth(fq1, fq2, p3Seq="default", p5Seq="default", overlapLen=6):
                 fq2Popen.returncode, fq2Str, "Cutadapt failed for read 2!")
 
 
+def DispatchParallelDMP(fq1, fq2, indexFq="default",
+                        int head=-1, sortMem=None, overlapLen=None,
+                        int threads=-1, int num_nucs=-1,
+                        cystr p3Seq=None, cystr p5Seq=None):
+    """
+    DispatchParallelDMP prepares a PopenDispatcher instance for demultiplexing
+    barcoded molecular families in parallel.
+    :param fq1 [cystr/arg] - Path to read 1 fastq
+    :param fq2 [cystr/arg] - Path to read 2 fastq
+    :param indexFq [cystr/kwarg/"default"] - Path to index fastq
+    :param head [int/kwarg/-1] - Number of bases from each of
+    read 1 and read 2 with which to "salt" the barcode. Required.
+    :param sortMem [cystr/kwarg/None] - sort memory argument for each
+    slave bmftools dmp process. Defaults to 768M
+    :param overlapLen [object/kwarg/None] - If SlaveDMPCommandString receives
+    a None value for overlapLen, it defaults to 6 for the -O option for
+    cutadapt.
+    :param threads [int/kwarg/-1] - Required to be > 0
+    :param num_nucs [int/kwarg/-1] - Required to be > 0. Number of initial
+    bases to use to split reads into fastq files by barcode start.
+    :param p3Seq [cystr/kwarg/None] - 3' adapter sequence
+    :param p5Seq [cystr/kwarg/None] - 5' adapter sequence
+    """
+    cdef cystr path, pathBS, pathCons
+    from subprocess import check_call, CalledProcessError
+    from itertools import chain
+    from sys import stderr
+    cfi = chain.from_iterable
+    if(num_nucs < 0):
+        raise UnsetRequiredParameter(
+            "num_nucs required for DispatchParallelDMP.")
+    elif(num_nucs == 0):
+        raise ImproperArgumentError(
+            "num_nucs shouldn't be set to 0. Otherwise, we'd just "
+            "do it all in a single thread.")
+    if(head < 0):
+        raise UnsetRequiredParameter(
+            "head required for DispatchParallelDMP.")
+    if(threads < 0):
+        raise UnsetRequiredParameter(
+            "threads required for DispatchParallelDMP.")
+    elif(threads == 1):
+        raise ImproperArgumentError(
+            "threads shouldn't be set to 0. Otherwise, we'd just "
+            "do it all in a single thread and avoid this Popen rat's nest.")
+    # Split the fastqs by the start of the barcode sequence
+    fqPairList = PairedShadeSplitter(fq1, fq2, indexFq=indexFq,
+                                     head=head, num_nucs=num_nucs)
+    # Create the PopenDispatcher - this submits both foreground and
+    # background jobs.
+    Dispatcher = GetParallelDMPPopen(fqPairList, sortMem=sortMem,
+                                     threads=threads, head=head,
+                                     overlapLen=overlapLen,
+                                     p3Seq=p3Seq, p5Seq=p5Seq)
+    Dispatcher.daemon()
+    outfqpaths = [(i.split(",")[0], i.split(",")[1]) for
+                  i in Dispatcher.outstrs.itervalues()]
+    outfq1s = [i[0] for i in outfqpaths]
+    outfq2s = [i[1] for i in outfqpaths]
+    del outfqpaths
+    outfq1 = TrimExt(fq1) + ".dmp.merged.fastq"
+    outfq2 = TrimExt(fq2) + ".dmp.merged.fastq"
+    catStr1 = " ".join(["cat"] + outfq1s + [">", outfq1])
+    pl("About to clean up my R1 temporary files with command %s." % catStr1)
+    check_call(catStr1, shell=True, executable="/bin/bash")
+    check_call(shlex.split("rm " + " ".join(outfq1s)))
+    catStr2 = " ".join(["cat"] + outfq2s + [">", outfq2])
+    pl("About to clean up my R2 temporary files with command %s." % catStr2)
+    check_call(catStr2, shell=True, executable="/bin/bash")
+    check_call(shlex.split("rm " + " ".join(outfq2s)))
+    for path in cfi(fqPairList):
+        pathBS = path.replace(".fastq", ".BS.fastq")
+        pathCons = path.replace(".fastq", ".BS.cons.fastq")
+        try:
+            stderr.write("Now calling 'rm %s %s %s'\n" % (path, pathBS, pathCons))
+            check_call(["rm", path, pathBS, pathCons])
+        except CalledProcessError:
+            raise Exception("Path attempting to remove: %s\n" % path)
+    return outfq1, outfq2
+
+REMOVE_NS = maketrans("N", "A")
+
+def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
+                        int head=-1, int num_nucs=-1):
+    """
+    :param [cystr/arg] fq1 - path to read 1 fastq
+    :param [cystr/arg] fq2 - path to read 2 fastq
+    :param [cystr/kwarg/"default"] indexFq - path to index fastq
+    :param [int/kwarg/2] head - number of bases each from reads 1
+    and 2 with which to salt the barcodes.
+    :param [object/nkwarg/-1] num_nucs - number of nucleotides at the
+    beginning of a barcode to include in creating the output handles.
+    """
+    # Imports
+    from utilBMF.HTSUtils import nci
+    #  C declarations
+    cdef pFastqProxy_t read1
+    cdef pFastqProxy_t read2
+    cdef pysam.cfaidx.FastqProxy indexRead
+    cdef list bcKeys
+    cdef dict BarcodeHandleDict1, BarcodeHandleDict2
+    cdef int hpLimit
+    if(head < 0):
+        raise UnsetRequiredParameter(
+            "PairedShadeSplitting requires that head be set.")
+    if(num_nucs < 0):
+        raise UnsetRequiredParameter("num_nucs must be set")
+    elif(num_nucs > 3):
+        raise ImproperArgumentError("num_nucs is limited to 2")
+    numHandleSets = 4 ** num_nucs
+    bcKeys = ["A" * (num_nucs - len(nci(i))) + nci(i) for
+              i in range(numHandleSets)]
+    if(indexFq is None):
+        raise UnsetRequiredParameter(
+            "indexFq required for PairedShadeSplitter.")
+    base_outfq1 = TrimExt(fq1).replace(".fastq",
+                                       "").split("/")[-1] + ".shaded."
+    base_outfq2 = TrimExt(fq2).replace(".fastq",
+                                       "").split("/")[-1] + ".shaded."
+    BarcodeHandleDict1 = {key: open(base_outfq1 + key +
+                                    ".fastq", "w") for key in bcKeys}
+    BarcodeHandleDict2 = {key: open(base_outfq2 + key +
+                                    ".fastq", "w") for key in bcKeys}
+    inFq1 = pFastqFile(fq1)
+    inFq2 = pFastqFile(fq2)
+    ifn2 = inFq2.next
+    inIndex = pysam.FastqFile(indexFq, persist=False)
+    hpLimit = len(inIndex.next().sequence) * 3 // 4
+    inIndex = pysam.FastqFile(indexFq, persist=False)
+    ifin = inIndex.next
+    numWritten = 0
+    for read1 in inFq1:
+        read2 = ifn2()
+        indexRead = ifin()
+        tempBar = (read1.sequence[1:head + 1] + indexRead.sequence +
+                   read2.sequence[1:head + 1])
+        bin = tempBar[:num_nucs]
+        read1.comment = cMakeTagComment(tempBar, read1, hpLimit)
+        read2.comment = cMakeTagComment(tempBar, read2, hpLimit)
+        BarcodeHandleDict1[bin.translate(REMOVE_NS)].write(str(read1))
+        BarcodeHandleDict2[bin.translate(REMOVE_NS)].write(str(read2))
+    [outHandle.close() for outHandle in BarcodeHandleDict1.itervalues()]
+    [outHandle.close() for outHandle in BarcodeHandleDict2.itervalues()]
+    return zip([i.name for i in BarcodeHandleDict1.itervalues()],
+               [j.name for j in BarcodeHandleDict2.itervalues()])
+
+
 @cython.locals(useGzip=cython.bint, hpLimit=int)
 def FastqPairedShading(fq1, fq2, indexFq="default",
                        useGzip=False, SetSize=10,
@@ -456,7 +947,7 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
         f1 = gzip.GzipFile(fileobj=cString1, mode="w")
         f2 = gzip.GzipFile(fileobj=cString2, mode="w")
     inIndex = pysam.FastqFile(indexFq, persist=False)
-    hpLimit = len(inIndex.next().sequence) * 5 // 6
+    hpLimit = len(inIndex.next().sequence) * 3 // 4
     inIndex = pysam.FastqFile(indexFq, persist=False)
     ifin = inIndex.next
     outFqSet1 = []
@@ -556,21 +1047,42 @@ def GetDescTagValue(readDesc, tag="default"):
         raise KeyError("Invalid tag: %s" % tag)
 
 
-cdef cystr cQualArr2QualStr(ndarray[np_int32_t, ndim=1] qualArr):
+cdef inline cystr PyArr2QualStr(py_array qualArr):
+    """
+    :param qualArr: [py_array/arg] Expects a 32-bit integer array
+    :return: [cystr]
+    """
+    cdef size_t i
+    cdef py_array ret = array("B", [
+        i + 33 if(i < 94) else 126 for i in qualArr])
+    return ret.tostring()
+
+
+cdef cystr cQualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
     """
     This is the "safe" way to convert ph2chr.
     """
-    cdef np_int32_t tmpInt
+    cdef int32_t tmpInt
     return array('B', [
         tmpInt if(tmpInt < 94) else
         93 for tmpInt in qualArr]).tostring().translate(PH2CHR_TRANS)
 
 
-cdef cystr cQualArr2PVString(ndarray[np_int32_t, ndim=1] qualArr):
+cdef inline cystr PyArr2FAString(py_array agreeArr):
+    cdef int32_t i
+    return "|FA=%s" % ",".join([str(i) for i in agreeArr])
+
+
+cdef inline cystr PyArr2PVString(py_array qualArr):
+    cdef int32_t i
+    return "|PV=%s" % ",".join([str(i) for i in qualArr])
+
+
+cdef cystr cQualArr2PVString(ndarray[int32_t, ndim=1] qualArr):
     return "|PV=%s" % ",".join(qualArr.astype(str))
 
 
-cdef cystr cQualArr2FAString(ndarray[np_int32_t, ndim=1] qualArr):
+cdef cystr cQualArr2FAString(ndarray[int32_t, ndim=1] qualArr):
     return "|FA=%s" % ",".join(qualArr.astype(str))
 
 
@@ -592,35 +1104,34 @@ def GetDescriptionTagDict(readDesc):
     return tagDict
 
 
-def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
+def pairedFastqConsolidate(fq1, fq2,
                            int SetSize=100, bint parallel=True):
     """
     TODO: Unit test for this function.
     Also, it would be nice to do a groupby() that separates read 1 and read
     2 records so that it's more pythonic, but that's a hassle.
     """
-    cdef cystr outFq1, outFq2
-    cdef cython.int checks
+    cdef cystr outFq1, outFq2, cStr
+    cdef int checks
     pl("Now running pairedFastqConsolidate on {} and {}.".format(fq1, fq2))
     pl("(What that really means is that I'm running "
        "singleFastqConsolidate twice")
     if(not parallel):
-        outFq1 = singleFastqConsolidate(fq1, stringency=stringency,
+        outFq1 = singleFastqConsolidate(fq1,
                                         SetSize=SetSize)
-        outFq2 = singleFastqConsolidate(fq2, stringency=stringency,
+        outFq2 = singleFastqConsolidate(fq2,
                                         SetSize=SetSize)
     else:
         # Make background process command string
         cStr = ("python -c 'from MawCluster.BCFastq import singleFastqConsoli"
-                "date;singleFastqConsolidate(\"%s\", stringency=" % fq2 +
-                "%s, SetSize=%s);import sys;sys.exit(0)'" % (stringency,
-                                                             SetSize))
+                "date;singleFastqConsolidate(\"%s\", SetSize=" % fq2 +
+                "%s);" % (SetSize) +
+                "import sys;sys.exit(0)'")
         # Submit
         PFC_Call = subprocess.Popen(cStr, stderr=None, shell=True,
                                     stdout=None, stdin=None, close_fds=True)
         # Run foreground job on other read
-        outFq1 = singleFastqConsolidate(fq1, stringency=stringency,
-                                        SetSize=SetSize)
+        outFq1 = singleFastqConsolidate(fq1, SetSize=SetSize)
         checks = 0
         # Have the other process wait until it's finished.
         while PFC_Call.poll() is None and checks < 3600:
@@ -641,37 +1152,45 @@ def pairedFastqConsolidate(fq1, fq2, float stringency=0.9,
     return outFq1, outFq2
 
 
-def singleFastqConsolidate(cystr fq, float stringency=0.9,
-                           int SetSize=100,
-                           cython.bint onlyNumpy=True,
-                           cython.bint skipFails=False):
+def singleFqConsRescale(cystr fq,
+                        cystr RescaleData,
+                        int SetSize=100):
+    """
+    Takes the path to a python pickle for the rescaling array.
+    :param fq:
+    :param SetSize:
+    :param RescaleData:
+    :return:
+    """
     cdef cystr outFq, bc4fq, ffq
     cdef pFastqFile_t inFq
-    cdef list StringList
-    cdef int numProc, TotalCount, MergedCount
-    cdef list pFqPrxList
-    outFq = TrimExt(fq) + ".cons.fastq"
+    cdef list StringList, pFqPrxList
+    cdef int numproc, TotalCount, MergedCount
+    cdef py_array RescalingArray
+
+    from sys import stderr
+
     pl("Now running singleFastqConsolidate on {}.".format(fq))
+    RescalingArray = load(open(RescaleData, "rb"))
+    outFq = TrimExt(fq) + ".cons.fastq"
     inFq = pFastqFile(fq)
     outputHandle = open(outFq, 'w')
     StringList = []
-    workingBarcode = ""
-    numProc = 0
+    numproc = 0
     TotalCount = 0
     ohw = outputHandle.write
     sla = StringList.append
     for bc4fq, fqRecGen in groupby(inFq, key=getBS):
         pFqPrxList = list(fqRecGen)
-        ffq = cCompareFqRecsFast(pFqPrxList, bc4fq)
+        ffq = cFastFisherFlattenRescale(pFqPrxList, bc4fq, RescalingArray)
         sla(ffq)
-        numProc += 1
+        numproc += 1
         TotalCount += len(pFqPrxList)
         MergedCount += 1
-        if (numProc == SetSize):
+        if not (numproc % SetSize):
             ohw("".join(StringList))
             StringList = []
             sla = StringList.append
-            numProc = 0
             continue
     ohw("".join(StringList))
     outputHandle.flush()
@@ -680,7 +1199,46 @@ def singleFastqConsolidate(cystr fq, float stringency=0.9,
     if("SampleMetrics" in globals()):
         globals()['SampleMetrics']['TotalReadCount'] = TotalCount
         globals()['SampleMetrics']['MergedReadCount'] = MergedCount
-    print("Consolidation a success for inFq: %s!" % fq)
+    stderr.write("Consolidation a success for inFq: %s!\n" % fq)
+    return outFq
+
+
+def singleFastqConsolidate(cystr fq,
+                           int SetSize=100):
+    cdef cystr outFq, bc4fq, ffq
+    cdef pFastqFile_t inFq
+    cdef list StringList, pFqPrxList
+    cdef int numproc, TotalCount, MergedCount
+    from sys import stderr
+    outFq = TrimExt(fq) + ".cons.fastq"
+    pl("Now running singleFastqConsolidate on {}.".format(fq))
+    inFq = pFastqFile(fq)
+    outputHandle = open(outFq, 'w')
+    StringList = []
+    numproc = 0
+    TotalCount = 0
+    ohw = outputHandle.write
+    sla = StringList.append
+    for bc4fq, fqRecGen in groupby(inFq, key=getBS):
+        pFqPrxList = list(fqRecGen)
+        ffq = cFastFisherFlattening(pFqPrxList, bc4fq)
+        sla(ffq)
+        numproc += 1
+        TotalCount += len(pFqPrxList)
+        MergedCount += 1
+        if not (numproc % SetSize):
+            ohw("".join(StringList))
+            StringList = []
+            sla = StringList.append
+            continue
+    ohw("".join(StringList))
+    outputHandle.flush()
+    inFq.close()
+    outputHandle.close()
+    if("SampleMetrics" in globals()):
+        globals()['SampleMetrics']['TotalReadCount'] = TotalCount
+        globals()['SampleMetrics']['MergedReadCount'] = MergedCount
+    stderr.write("Consolidation a success for inFq: %s!\n" % fq)
     return outFq
 
 
@@ -879,7 +1437,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
     ohw2 = outHandle2.write
     ih2n = inHandle2.next
     bLen = len(indexHandle.next().sequence) + 2 * head
-    hpLimit = bLen * 5 // 6  # Homopolymer limit
+    hpLimit = bLen * 3 // 4  # Homopolymer limit
     indexHandle = pFastqFile(indexFq)
     ihn = indexHandle.next
     for rec1 in inHandle1:
@@ -924,8 +1482,7 @@ cpdef cystr MakeTagComment(cystr saltedBS, pFastqProxy_t rec, int hpLimit):
     return cMakeTagComment(saltedBS, rec, hpLimit)
 
 
-
 cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
     return not ("N" in barcode or "A" * hpLimit in barcode or
-       "C" * hpLimit in barcode or
-       "G" * hpLimit in barcode or "T" * hpLimit in barcode)
+                "C" * hpLimit in barcode or
+                "G" * hpLimit in barcode or "T" * hpLimit in barcode)

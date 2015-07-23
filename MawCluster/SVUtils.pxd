@@ -4,7 +4,7 @@ cimport pysam.calignmentfile
 from cython cimport bint
 from utilBMF.HTSUtils cimport PysamToChrDict, cystr
 
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 
 cpdef bint DSD_SV_Tag_Condition(AlignedSegment_t read1,
                                 AlignedSegment_t read2,

@@ -2,6 +2,7 @@ cimport cython
 from cython cimport bint
 cimport numpy as np
 cimport pysam.calignmentfile
+cimport pysam.calignedsegment
 cimport utilBMF.HTSUtils
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport cystr, nucList, PysamToChrDict
@@ -16,8 +17,8 @@ ctypedef PileupReadPair PileupReadPair_t
 ctypedef pPileupColumn pPileupColumn_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef PRInfo PRInfo_t
-ctypedef pysam.calignmentfile.PileupRead PileupRead_t
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.PileupRead PileupRead_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile_t
 
 

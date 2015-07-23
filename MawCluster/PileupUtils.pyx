@@ -88,7 +88,7 @@ cdef class pPileupColumn:
     """
     Python container for the PileupColumn proxy in pysam.
     """
-    def __cinit__(self, pysam.calignmentfile.PileupColumn PileupColumn):
+    def __cinit__(self, pysam.calignedsegment.PileupColumn PileupColumn):
         cdef PileupRead_t p
         self.pileups = [pPileupRead(p) for p in PileupColumn.pileups if not
                         p.is_del and not p.is_refskip]
@@ -119,7 +119,7 @@ cdef class PRInfo:
         return self.read.opt(arg)
 
     def __init__(self, pPileupRead_t PileupRead):
-        cdef pysam.calignmentfile.AlignedSegment alignment
+        cdef pysam.calignedsegment.AlignedSegment alignment
         alignment = PileupRead.alignment
         aopt = alignment.opt
         self.Pass = True
@@ -336,7 +336,8 @@ cdef class AlleleAggregateInfo:
         else:
             self.MPF = nmean(PVFArray)
             self.PFSD = nstd(PVFArray)
-        self.maxND = max(rec.opt("ND") for rec in self.recList)
+        self.maxND = max(rec.opt("ND") for
+                         rec in self.recList) if(lenR != 0) else 0
 
 
 cdef class PCInfo:

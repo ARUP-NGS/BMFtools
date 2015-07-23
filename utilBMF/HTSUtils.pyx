@@ -9,11 +9,12 @@ from numpy import (any as npany, concatenate as nconcatenate, less as nless,
                    max as nmax, mean as nmean, min as nmin)
 from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from os import path as ospath
-from pysam.calignmentfile import AlignedSegment as pAlignedSegment
+from pysam.calignedsegment import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
-                                   IllegalArgumentError, PermissionException)
+                                   IllegalArgumentError, PermissionException,
+                                   UnsetRequiredParameter)
 from collections import deque
 from entropy import shannon_entropy as shen
 import copy
@@ -600,44 +601,49 @@ def PipeAlignTag(R1, R2, ref="default",
     to provide to bwa for alignment.
     :param dry_run - [bint/kwarg/False] - flag to return the command string
     rather than calling it.
+    :returns: [cystr] - path to outBAM if writing to file, "stdout" if
+    emitting to stdout.
     """
     if(opts is None):
-      opts = "-t 4 -v 1 -Y -T 0"
+        opts = "-t 4 -v 1 -Y -T 0"
     if(path == "default"):
         path = "bwa"
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
         raise Tim("Reference file index required for alignment!")
+    PBTflag = 6 if(u) else 2
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\t"
+    sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]*\|/\t"
                  "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
-                 "t\n@PG/'")
+                 "t\n@PG/' -e 's/\|FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
+                 "'s/\|FM=/\tFM:i:/' -e 's/\|ND=/\tND:i:/' -e 's/\|FA=/\t"
+                 "FA:B:i,/' -e 's/\|PV=/\tPV:B:i,/'")
     cStr += sedString
-    cStr += (' | python -c \'from MawCluster.BCBam import PipeBarcodeTagCO'
-             'Bam as PBT;PBT(6)\'')
     if(coorsort):
-        compStr = " -l 0 " if(coorsort) else ""
+        compStr = " -l 0 " if(u) else ""
         cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
                                                               uuidvar,
                                                               compStr)
-        if(outBAM != "stdout"):
+        if(outBAM != "stdout" and outBAM != "-"):
             cStr += " -o %s" % outBAM
     else:
         cStr += (" | samtools view -Sbhu - " if(
             u) else " | samtools view -Sbh -")
-        if(outBAM != "stdout"):
+        if(outBAM != "stdout" and outBAM != "-"):
             cStr += " > %s" % outBAM
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
     if(dry_run):
-        return cStr
+        return cStr.replace("\n", "\\n").replace("\t", "\\t")
     else:
         check_call(cStr.replace("\t", "\\t").replace("\n", "\\n"),
-                 shell=True)
+                   shell=True, executable="/bin/bash")
+        if(coorsort is True and outBAM != "stdout" and outBAM != "-"):
+            check_call(shlex.split("samtools index %s" % outBAM))
         return outBAM
 
 
@@ -1130,21 +1136,18 @@ cdef class pPileupRead:
     Python container for the PileupRead proxy in pysam
     """
 
-    def __init__(self, pysam.calignmentfile.PileupRead PileupRead):
-        cdef ndarray[np_int32_t, ndim=1] BQs
+    def __init__(self, pysam.calignedsegment.PileupRead PileupRead):
+        cdef py_array BQs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
-        BQs = np.array(
-            PileupRead.alignment.opt("PV").split(","),
-            dtype=np.int32)
+        BQs = PileupRead.alignment.opt("PV")
         self.AF = PileupRead.alignment.opt("AF")
         self.BQ = BQs[self.query_position]
-        self.FA = int(self.alignment.opt(
-            "FA").split(",")[self.query_position])
+        self.FA = self.alignment.opt("FA")[self.query_position]
         self.MBQ = nmax(BQs)
 
     cpdef object opt(self, cystr arg):
@@ -1360,6 +1363,44 @@ def ParseBed(cystr bedfile):
     return bed
 
 
+@cython.returns(bint)
+@cython.locals(input_str=cystr)
+def to_bool(input_str):
+    return (input_str.lower() == "true")
+
+TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
+
+
+@cython.locals(lst=list, typechar=cystr,
+               TypeConversionDict=dict)
+def parseTuple(lst, TypeConversionDict=TypeConversionDict):
+    assert(len(lst) == 2)
+    try:
+        typechar = lst[1][0]
+    except IndexError:
+        return lst[0]  # Is a string
+    return TypeConversionDict[typechar](lst[0])
+
+
+@cython.locals(path=cystr, parsedLines=list)
+@cython.returns(dict)
+def parseSketchConfig(path):
+    """
+    Parses in a file into a dictionary of key value pairs.
+
+    Note: config style is key|value|typechar, where typechar
+    is 'b' for bool, 'f' for float, 's' for string, and 'i' for int.
+    Anything after a # character is ignored.
+    """
+    parsedLines = [l.strip().split("#")[0].split("|") for l in
+                   open(path, "r").readlines()
+                   if l[0] != "#"]
+    # Note that the key is mangled to make the key match up with
+    # argparse's name
+    return {line[0].replace(" ", "_"): parseTuple([line[1], line[2]]) for
+            line in parsedLines}
+
+
 @cython.returns(dict)
 def parseConfig(cystr string):
     """
@@ -1533,10 +1574,6 @@ def CreateIntervalsFromCounter(dict CounterObj, int minPileupLen=0,
     MergedInts.append(intval)
     print("MergedInts={}".format(MergedInts))
     return MergedInts
-
-# Storing the numconv functions for easy application.
-Base64ToInt = numconv.NumConv(64).str2int
-Int2Base64 = numconv.NumConv(64).int2str
 
 ph2chrDict = {i: chr(i + 33) if i < 94 else "~" for i in xrange(100000)}
 # Pre-computes
@@ -1924,7 +1961,7 @@ def SWRealignAS(AlignedSegment_t read,
 
 
 @cython.returns(dict)
-def makeinfodict(pysam.TabProxies.VCFProxy rec):
+def makeinfodict(pysam.ctabixproxies.VCFProxy rec):
     """
     Returns a dictionary of info fields for a tabix VCF Proxy
     """
@@ -1932,7 +1969,7 @@ def makeinfodict(pysam.TabProxies.VCFProxy rec):
 
 
 @cython.returns(dict)
-def makeformatdict(pysam.TabProxies.VCFProxy rec):
+def makeformatdict(pysam.ctabixproxies.VCFProxy rec):
     """
     Returns a dictionary of format fields for a tabix VCF Proxy
     """
@@ -1940,7 +1977,7 @@ def makeformatdict(pysam.TabProxies.VCFProxy rec):
 
 
 @cython.returns(bint)
-def DeaminationConfTest(pysam.TabProxies.VCFProxy rec,
+def DeaminationConfTest(pysam.ctabixproxies.VCFProxy rec,
                         np.longdouble_t ctfreq=-1., np.longdouble_t conf=1e-3):
     """
     Tests whether or not a given record should pass.
@@ -2007,8 +2044,8 @@ class AbstractVCFProxyFilter(object):
         self.key = key
         self.value = value
 
-    @cython.returns(pysam.TabProxies.VCFProxy)
-    def __call__(self, pysam.TabProxies.VCFProxy rec):
+    @cython.returns(pysam.ctabixproxies.VCFProxy)
+    def __call__(self, pysam.ctabixproxies.VCFProxy rec):
         """
         You can specify multiple info tags with their values
         so long as you have comma-separated fields of equal length
@@ -2370,6 +2407,80 @@ def SplitBamByBedPysam(bampath, bedpath):
     return bamlist
 
 
+def SlaveDMP(bsFastq1, bsFastq2,
+             p3Seq="default", p5Seq="default",
+             overlapLen=6, sortMem=None, head=None):
+    from MawCluster import BCFastq
+    outfq1 = TrimExt(bsFastq1) + ".dmp.fastq"
+    outfq2 = TrimExt(bsFastq2) + ".dmp.fastq"
+    if(sortMem is None):
+        sortMem = "768M"
+    if(head is None):
+        head = 4
+    sortFastq1, sortFastq2 = BCFastq.BarcodeSortBoth(bsFastq1, bsFastq2,
+                                                     sortMem=sortMem)
+    consFastq1, consFastq2 = BCFastq.pairedFastqConsolidate(
+        sortFastq1, sortFastq2)
+    trimFastq1, trimFastq2 = BCFastq.CutadaptPaired(
+            consFastq1, consFastq2, overlapLen=overlapLen,
+            p3Seq=p3Seq, p5Seq=p5Seq, outfq1=outfq1, outfq2=outfq2)
+    return trimFastq1, trimFastq2
+
+
+@cython.returns(cystr)
+def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
+                          cystr sortMem=None,
+                          overlapLen=None, head=None,
+                          p3Seq=None, p5Seq=None):
+    """
+    Returns a command string for calling bmftools snv
+    """
+    if(overlapLen is None):
+        overlapLen = 6
+    if(p3Seq is None or p5Seq is None):
+        raise UnsetRequiredParameter(
+            "p3Seq and p5Seq must both be set to run SlaveDMPCommandString "
+            "because cutadapt needs this information.")
+    cStr = ("python -c 'from utilBMF.HTSUtils import SlaveDMP;SlaveDMP"
+            "(\"%s\",\"%s\", sortMem=\"%s\"" % (bsFastq1, bsFastq2, sortMem) +
+            ", overlapLen=%s, head=%s, p3Seq=\"" % (overlapLen, head) +
+            "\%s\", p5Seq=\"%s\")'" % (p3Seq, p5Seq))
+    FnCall = ("from utilBMF.HTSUtils import SlaveDMP;SlaveDMP("
+              "\"%s\",\"%s\", sortMem=\"%s" % (bsFastq1, bsFastq2, sortMem) +
+              "\", overlapLen=%s, head=%s, p3Seq=" % (overlapLen, head) +
+              "\"%s\", p5Seq=\"%s\")" % (p3Seq, p5Seq))
+    return cStr + " #" + FnCall
+
+
+@cython.returns(cystr)
+def GetFastqPathsFromDMPCStr(cystr cStr):
+    """
+    Helper function for a PopenDispacher for SlaveDMPCommandString.
+    """
+    return ",".join([i.replace("'", "").replace(
+        "\"", "").replace(".fastq", ".dmp.fastq") for
+                     i in cStr.split(";")[1].split("(")[1].split(",")[:2]])
+
+
+def GetParallelDMPPopen(fqPairList, sortMem=None, int threads=-1,
+                        head=None, overlapLen=None, p3Seq=None,
+                        p5Seq=None):
+    """
+    Makes a PopenDispatcher object for calling these variant callers.
+    """
+    if(threads < 0):
+        raise UnsetRequiredParameter("threads must be set for"
+                                     " GetParallelDMPopen.")
+    pl("Dispatching BMF dmp jobs")
+    return PopenDispatcher([SlaveDMPCommandString(*fqPair, head=head,
+                                                  sortMem=sortMem,
+                                                  overlapLen=overlapLen,
+                                                  p3Seq=p3Seq, p5Seq=p5Seq) for
+                            fqPair in fqPairList],
+                           threads=threads,
+                           func=GetFastqPathsFromDMPCStr)
+
+
 @cython.returns(cystr)
 def BMFsnvCommandString(cystr bampath, cystr conf="default",
                         cystr bed="default"):
@@ -2412,7 +2523,7 @@ def GetBMFsnvPopen(bampath, bedpath, conf="default", threads=4,
     Makes a PopenDispatcher object for calling these variant callers.
     """
     if conf == "default":
-        raise Tim("conf file but be set for GetBMFsnvPopen")
+        raise Tim("conf file must be set for GetBMFsnvPopen")
     ziplist = GetBamBedList(bampath, bedpath)
     if(parallel is True):
         SplitBamParallel(bampath, bedpath)
@@ -2441,8 +2552,11 @@ def TrimExt(cystr fname, cystr exclude=""):
         tmpList = fname.split("/")[-1].split(".")[:-1]
         if(tmpList[-1] == "gz"):
             tmpList = tmpList[:-1]
-        return ".".join([tmpStr for tmpStr in tmpList if
-                         tmpStr not in exclude.split(",")])
+        try:
+            return ".".join([tmpStr for tmpStr in tmpList if
+                             tmpStr not in exclude.split(",")])
+        except IndexError:
+            return tmpList[0]
     else:
         raise Tim("Cannot trim an extension of a None value!")
 
@@ -2532,6 +2646,7 @@ def hamming_cousins(cystr s, int n=0,
     ['aaa', 'aab', 'aba', 'abb', 'baa', 'bab', 'bba']
 
     """
+    cdef int i
     return chain(*(hamming_cousins_exact(s, i, alphabet) for i
                    in range(n + 1)))
 
@@ -2925,7 +3040,16 @@ cdef class BamTag(object):
         In [19]: %timeit c = ":".join(map(str, ["PV", "Z", 1337]))
         1000000 loops, best of 3: 710 ns per loop
         """
-        return self.tag + ":" + self.tagtype + ":%s" % (self.value)
+        cdef cystr ret
+        if(self.tagtype == "B"):
+            if(isinstance(self.value, float)):
+                ret = self.tag + ":B:f%s" % ",".join(map(str, self.value))
+            else:
+                ret = self.tag + ":B:i%s" % ",".join(map(str, self.value))
+            return ret if(len(self.value) > 1) else ret + ","
+
+        else:
+            return self.tag + ":" + self.tagtype + ":%s" % (self.value)
 
 
 cdef class IDVCFLine(object):
@@ -2937,7 +3061,7 @@ cdef class IDVCFLine(object):
     support a variant call.
     """
     def __init__(self, AbstractIndelContainer_t IC, IndelQuiver_t quiver=None):
-        cdef pysam.calignmentfile.PileupColumn PileupCol
+        cdef pysam.calignedsegment.PileupColumn PileupCol
         cdef pysam.calignmentfile.IteratorColumnRegion pileupIt
         cdef int tmpCov
         cdef float MDP
@@ -3119,7 +3243,7 @@ def GetBamTagTypeDict(cystr bamfile):
             i in [f.split(":") for
                   f in GetBamTagTypes(bamfile)]}
 
-TagTypeDict = {"PV": "Z", "AF": "f", "BS": "Z", "FA": "Z",
+TagTypeDict = {"PV": "B", "AF": "f", "BS": "Z", "FA": "B",
                "FM": "i", "FP": "i", "MQ": "i", "ND": "i",
                "NF": "f", "NM": "i", "RP": "Z", "SC": "Z",
                "SF": "f", "SV": "Z", "X0": "i", "X1": "i",

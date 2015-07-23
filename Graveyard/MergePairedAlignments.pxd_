@@ -14,7 +14,7 @@ from libc.stdint cimport uint16_t
 from utilBMF.Inliners cimport ph2chrInline, chrInline, CigarStrInline, opLenToStr
 from utilBMF.PysamUtils cimport PysamToChrInline
 from MawCluster.Probability cimport c_abs
-ctypedef pysam.calignmentfile.AlignedSegment AlignedSegment_t
+ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef unsigned char uchar
 ctypedef BamTag BamTag_t
 ctypedef Layout Layout_t

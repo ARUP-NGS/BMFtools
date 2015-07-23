@@ -24,10 +24,6 @@ from utilBMF.HTSUtils import (printlog as pl,
                               NameSortAndFixMate, makeinfodict,
                               MakeVCFProxyDeaminationFilter,
                               __version__ as BMFVersion)
-cimport pysam.TabProxies
-cimport numpy as np
-cimport cython
-from utilBMF.HTSUtils cimport cystr
 
 
 """
@@ -36,8 +32,8 @@ Contains utilities relating to FFPE and amplicon sequencing
 
 cdef AlignedSegment_t AmpliconTrimRead(AlignedSegment_t rec, int primerLen):
     cdef cystr tempQual
-    rec.setTag("PV", rec.opt("PV").split(",")[primerLen:], "Z")
-    rec.setTag("FA", rec.opt("FA").split(",")[primerLen:], "Z")
+    rec.setTag("PV", rec.opt("PV")[primerLen:])
+    rec.setTag("FA", rec.opt("FA")[primerLen:])
     tempQual = rec.qual[primerLen:]
     rec.seq = rec.seq[primerLen:]
     rec.qual = tempQual
@@ -77,7 +73,7 @@ def PrefilterAmpliconSequencing(cystr inBAM, int primerLen=20,
 
 
 @cython.returns(double)
-def getFreq(pysam.TabProxies.VCFProxy rec, cystr base="d"):
+def getFreq(pysam.ctabixproxies.VCFProxy rec, cystr base="d"):
     """
     Returns allele frequency for a tabix VCF Proxy made from SNVCrawler.
     """
@@ -85,7 +81,7 @@ def getFreq(pysam.TabProxies.VCFProxy rec, cystr base="d"):
                        makeinfodict(rec)["MAFS"].split(",")])[base])
 
 
-cdef dict getFreqDict(pysam.TabProxies.VCFProxy rec):
+cdef dict getFreqDict(pysam.ctabixproxies.VCFProxy rec):
     cdef cystr i, x, y
     return {x: float(y) for x, y in i.split(">") for
             i in makeinfodict(rec)["MAFS"].split(",")}
@@ -111,7 +107,7 @@ def GetTabixDeamFreq(cystr inVCF):
     ablated by family demultiplexing are due to formalin fixation.
     """
     cdef int atCounts, gcCounts
-    cdef pysam.TabProxies.VCFProxy rec
+    cdef pysam.ctabixproxies.VCFProxy rec
     cdef double freq
     cdef dict mid, freqDict, countDict
     atCounts = 0
