@@ -735,7 +735,7 @@ def main():
 
     commandStr = " ".join(sys.argv)
     subcommand = Chapman['bmfsuites']
-    if(subcommand in ["main", "snv", "psnv"] or
+    if(subcommand in ["main", "snv", "psnv", "getuniquekmersbed"] or
        Chapman['create_log'] is True):
         fl = logging.FileHandler(filename=logfile)
         fl.setFormatter(formatter)
@@ -973,9 +973,19 @@ def main():
 
         # Convert unique kmers to sorted/merged bedfile within the boundaries
         # of the original bed
-        outList = KF.GetIntervalsFromMap()
+        outList = KF.GetIntervalsFromMap() #This returns continuous starts
+        # Create the kmer start positions only bed file
+        pl("Converting " + str(len(outList)) + " continuous intervals into  bed "
+                                               "files.")
         KF.ConvertIntervalsToBed(outList, inFile=Chapman['inbed'],
-                                 outFile=Chapman['outfile'])
+                                 outFile=Chapman['outfile'][:-3] +
+                                         "KmerStarts.bed",
+                                 startsOnly=True)
+        # Create the full kmer region bed file
+        KF.ConvertIntervalsToBed(outList, inFile=Chapman['inbed'],
+                                 outFile=Chapman['outfile'][:-3] +
+                                         "fullKmer.bed",
+                                 startsOnly=False)
 
     elif(subcommand == "famstats"):
         from utilBMF.QC import GetFamSizeStats
