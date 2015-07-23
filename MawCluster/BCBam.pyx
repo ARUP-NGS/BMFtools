@@ -796,8 +796,5 @@ cdef cystr BamRescue(cystr inBam,
     return output_bam.filename
 
 
-cdef inline pBarcodeHD(AlignedSegment_t qrec, AlignedSegment_t cmprec, int8_t bLen):
-    cdef cystr qBS, cBS
-    qBS = qrec.opt("BS")
-    cBS = cmprec.opt("BS")
-    return BarcodeHD(<char *>qBS, <char *>cBS, bLen)
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+    return BarcodeHD(query._delegate, cmp_src._delegate, bLen)

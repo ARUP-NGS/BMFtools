@@ -312,37 +312,6 @@ cpdef SeqQual_t FisherFlatten(
     return cFisherFlatten(&Seqs[0,0], &Quals[0,0], rLen, nRecs)
 
 
-'''
-
-This method works (change the second argument on amax/argmax calls
-on the output), but it looks like it's slower.
-I might have to do this manually.
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
-                                             ndarray[int32_t, ndim=2] quals,
-                                             size_t nRecs):
-    cdef size_t readlen = len(seqs[0])
-    cdef size_t read_index, base_index
-    cdef ndarray[int32_t, ndim=2] QualSumAll
-    cdef int32_t tmpInt
-    QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
-    for read_index in range(nRecs):
-        for base_index in range(readlen):
-            tmpInt = seqs[read_index][base_index]
-            if(tmpInt == 84):
-                QualSumAll[base_index][3] += quals[read_index][base_index]
-            elif(tmpInt == 67):
-                QualSumAll[base_index][1] += quals[read_index][base_index]
-            elif(tmpInt == 71):
-                QualSumAll[base_index][2] += quals[read_index][base_index]
-            else:
-                QualSumAll[base_index][0] += quals[read_index][base_index]
-    return QualSumAll
-'''
-
-
 cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
     cdef py_array ret = array('B')
     cdef int8_t * ptr

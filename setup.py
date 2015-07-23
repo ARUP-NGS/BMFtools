@@ -44,6 +44,7 @@ for x in ext:
                       "include/cephes/sf_error.c"]
     if(x.name == "MawCluster.BCBam"):
         x.libraries.append("z")
+
     x.extra_compile_args += compilerList
     x.define_macros += [('_FILE_OFFSET_BITS', '64'),
                         ('_USE_KNETFILE', ''),
