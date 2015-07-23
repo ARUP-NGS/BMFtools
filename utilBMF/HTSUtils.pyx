@@ -49,7 +49,7 @@ mcgroup = mc("group", 0)
 
 global __version__
 
-__version__ = "0.1.0.2beta"
+__version__ = "0.1.1"
 
 
 def l1(x):

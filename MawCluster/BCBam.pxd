@@ -40,7 +40,7 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read)
 cdef inline int32_t getFMFromAS(AlignedSegment_t read):
     return <int32_t> read.opt("FM")
 
-
+'''
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
@@ -56,6 +56,7 @@ cdef inline int8_t BarcodeHD(bam1_t * query, bam1_t * cmp,
         if(str1[index] != str2[index]):
             ret += 1
     return ret
+'''
 
 
 cdef inline bint IS_REV(AlignedSegment_t read):

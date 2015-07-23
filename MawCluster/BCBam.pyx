@@ -796,5 +796,22 @@ cdef cystr BamRescue(cystr inBam,
     return output_bam.filename
 
 
+cdef inline int8_t StringHD(char * str1, char * str2, int8_t bLen) nogil:
+    cdef size_t index
+    cdef int8_t ret = 0
+    for index in range(bLen):
+        if(str1[index] != str2[index]):
+            ret += 1
+    return ret
+
+
 cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
-    return BarcodeHD(query._delegate, cmp_src._delegate, bLen)
+    cdef cystr BC1, BC2
+    BC1 = query.query_name
+    BC2 = cmp.query_name
+    return StringHD(<char*> BC1, <char*> BC2, bLen)
+
+'''
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+    return BarcodeHD(query._delegate, cmp._delegate, bLen)
+'''
