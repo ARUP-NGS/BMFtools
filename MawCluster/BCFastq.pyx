@@ -679,7 +679,7 @@ def CutadaptPaired(cystr fq1, cystr fq2,
     if(p5Seq == "default"):
         pl("No 5' sequence provided for cutadapt. Only trimming 3'.")
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards"
-                      "-a {} -o {} -p {} -O {} {} {}".format(p3Seq,
+                      " -a {} -o {} -p {} -O {} {} {}".format(p3Seq,
                                                              outfq1,
                                                              outfq2,
                                                              overlapLen,
@@ -833,7 +833,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
         pathBS = path.replace(".fastq", ".BS.fastq")
         pathCons = path.replace(".fastq", ".BS.cons.fastq")
         try:
-            stderr.write("Now calling 'rm %s %s %s'\n" % path, pathBS, pathCons)
+            stderr.write("Now calling 'rm %s %s %s'\n" % (path, pathBS, pathCons))
             check_call(["rm", path, pathBS, pathCons])
         except CalledProcessError:
             raise Exception("Path attempting to remove: %s\n" % path)

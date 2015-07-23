@@ -37,10 +37,6 @@ cdef dict cGetCOTagDict(AlignedSegment_t read)
 cpdef dict pGetCOTagDict(AlignedSegment_t read)
 
 
-cdef inline bint c_argmax32i(int32_t q, int32_t r) nogil:
-    return 0 if(q > r) else 1
-
-
 cdef inline int32_t getFMFromAS(AlignedSegment_t read):
     return <int32_t> read.opt("FM")
 
@@ -80,6 +76,12 @@ cdef inline int REF_ID(AlignedSegment_t read):
 
 cdef inline int RNEXT(AlignedSegment_t read):
     return read.rnext
+
+cdef inline bint SKIP_READS(AlignedSegment_t read):
+    if read.flag & 2820:
+        return True
+    else:
+        return False
 
 
 cdef class BamPipe:

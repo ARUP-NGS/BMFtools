@@ -213,7 +213,7 @@ def cCycleError(args):
         if read.flag & 2820:
             qc += 1
             continue
-        elif not (read.flag & 2):
+        elif ~ read.flag & 2:
             qc += 1
             continue
         FM = read.opt("FM")

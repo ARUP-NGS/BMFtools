@@ -1,4 +1,3 @@
-# distutils: language = c++
 import numpy as np
 import operator
 import os
@@ -23,19 +22,22 @@ compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
                 "-fprefetch-loop-arrays", "-floop-strip-mine", "-flto"]
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
-                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
-                "-fprefetch-loop-arrays", "-floop-strip-mine", "-flto"]
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine", "-flto"]
 print("Removing all .c files - this is "
-      "important for making sure things get rebuilt.")
+      "important for making sure things get rebuilt."
+      "Especially if you're using -flto")
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
+compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
+                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
+                "-fivopts", "-ftree-loop-im",
+                "-fprefetch-loop-arrays", "-floop-strip-mine"]
 """
+
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
+
+
 ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
 
-# Insist on -O3 optimization
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
     if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam']):
@@ -61,10 +63,12 @@ config = {
     'author': 'Daniel Baker',
     'url': 'https://github.com/ARUP-NGS/BMFTools',
     'author_email': 'daniel.baker@aruplab.com',
-    'version': '0.1.0.2beta',
-    'install_requires': install_requires,
+    'version': '0.1.1alpha',
     'packages': ["BMFMain", "utilBMF", "MawCluster",
                  "SecC", "analyscripts"],
+    'install_requires': ['pysam', 'biopython', 'cytoolz', 'matplotlib',
+                         'cython', 'cutadapt', 'lxml', 'scipy', 'entropy'],
+    'packages': ['BMFMain', 'utilBMF', 'MawCluster', 'SecC'],
     'ext_modules': ext,
     'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'include/dnbtools'],
@@ -72,7 +76,7 @@ config = {
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
     'include': 'README.md',
-    'package_data': {'': ['README.md']},
+    'package_data': {'': ['README.md']}
 }
 
 

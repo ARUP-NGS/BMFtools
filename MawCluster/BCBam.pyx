@@ -22,6 +22,7 @@ import numpy as np
 from numpy import (sum as nsum, multiply as nmul,
                    subtract as nsub, argmax as nargmax,
                    vstack as nvstack, char)
+from cytoolz import frequencies as cyfreq
 import pysam
 import cython
 
@@ -698,40 +699,69 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
     CompareSeqQual(<int32_t *>qual1.data.as_ints, <int32_t *>qual2.data.as_ints,
                    <int8_t *>seq1.data.as_shorts, <int8_t *>seq2.data.as_shorts,
                    template._delegate.core.l_qseq)
-    template.set_tag("PV", qual1, "B")
+    template.set_tag("PV", qual1)
     template.query_sequence = seq1.tostring()
     return template
 
 
 cdef list BFF(list recs, int8_t bLen, char mmlim):
+
+    # C definitions
     cdef AlignedSegment_t qrec, cmprec
-    cdef int count, cmpcount, nRecs, nIndices
-    cdef int8_t HD
-    cdef int32_t FM1, FM2
-    cdef py_array indices
-    nRecs = len(recs)
-    indices = array('i')
-    for count, qrec in enumerate(recs):
-        cmpcount = count + 1
-        for cmprec in recs[count + 1:]:
-            HD = pBarcodeHD(qrec, cmprec, bLen)
-            if HD < mmlim:
-                FM1 = getFMFromAS(qrec)
-                FM2 = getFMFromAS(cmprec)
-                if FM1 > FM2:
-                    qrec = MergeBamRecs(qrec, cmprec)
-                else:
-                    qrec = MergeBamRecs(cmprec, qrec)
-                indices.append(cmpcount)
-                cmpcount += 1
-    nIndices = len(indices)
-    for cmpcount in range(nIndices, 0, -1):
-        del recs[indices[cmpcount]]
-    return recs
+    cdef size_t size, qcount, ccount
+    cdef list ret, merging_sets
+    cdef ndarray[int8_t, ndim=2] distmtx
+    cdef py_array mergeidx
+    cdef int8_t i
+
+    # Debug message
+    sys.stderr.write("Now attempting to flatten this set of records which share coordinates.\n")
+
+    # Setup
+    size = len(recs)
+    mergeidx = array('B')
+    c_array.resize(mergeidx, size)
+    distmtx = np.zeros([size, size], dtype=np.int8)
+
+    # Calculate the hamming distances. No way around that.
+    for qcount, qrec in enumerate(recs):
+        # Note that I'm zeroing this array, as I hadn't made sure it was
+        # clear when resizing.
+        mergeidx[qcount] = 0
+        ccount = qcount + 1
+        for cmprec in recs[ccount:]:
+            i = pBarcodeHD(qrec, cmprec, bLen)
+            distmtx[qcount,ccount] = i
+            if i <= mmlim:
+                mergeidx[qcount] = 1
+            ccount += 1
+
+    # "Map" out which sets of reads need to be flattened.
+    # Currently, mergeidx is true every place that should be flattened with
+    # someone, though that's not been sorted out.
+    merging_sets = []
+    #    size = len(recs)
+    # Do this a bunch of times
+    for qcount in range(size):
+        for ccount in range(qcount + 1, size):
+            if distmtx[qcount,ccount] < mmlim:
+                pass
+
+    # "Reduce" by flattening those sets into the most established family.
+    ret = []
+    sys.stderr.write("Now returning my list of records to write.\n")
+    return ret
 
 
 cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
-                       char mmlim, int8_t bLen):
+                              char mmlim, int8_t bLen):
+    """
+    :param inBam: [cystr/arg] - path to input bam
+    :param outBam: [cystr/arg] - path to output bam
+    :param mmlim: [char/arg] - mismatch limit
+    :param bLen: [int8_t/arg] - barcode length
+    :return: [cystr]
+    """
     return BamRescue(inBam, outBam, mmlim, bLen)
 
 
@@ -743,25 +773,31 @@ cdef cystr BamRescue(cystr inBam,
     cdef AlignedSegment_t read
     cdef list recList
     cdef int RefID, RNext, Pos, MPos
-    cdef bint IsRead1, IsRev
+    cdef bint IsRead1, IsRev, Pass
     obw = output_bam.write
-    for RefID, gen in groupby(input_bam, REF_ID):
-        for Pos, gen1 in groupby(gen, POS):
-            for RNext, gen2 in groupby(gen1, RNEXT):
-                for MPos, gen3 in groupby(gen2, MPOS):
-                    for IsRead1, gen4 in groupby(gen3, IS_READ1):
-                        for IsRev, FinalGen in groupby(gen4, IS_REV):
-                            recList = list(FinalGen)
-                            if len(recList) == 1:
-                                obw(recList[0])
-                                continue
-                            recList = BFF(recList, bLen, mmlim)
-                            [obw(read) for read in recList]
+    for Pass, gen in groupby(input_bam, SKIP_READS):
+        if not Pass:
+            [obw(read) for read in gen]
+            continue
+        for RefID, gen1 in groupby(input_bam, REF_ID):
+            for Pos, gen2 in groupby(gen1, POS):
+                for RNext, gen3 in groupby(gen2, RNEXT):
+                    for MPos, gen4 in groupby(gen3, MPOS):
+                        for IsRead1, gen5 in groupby(gen4, IS_READ1):
+                            for IsRev, FinalGen in groupby(gen5, IS_REV):
+                                recList = list(FinalGen)
+                                if len(recList) == 1:
+                                    obw(recList[0])
+                                    continue
+                                recList = BFF(recList, bLen, mmlim)
+                                [obw(read) for read in recList]
     input_bam.close()
     output_bam.close()
     return output_bam.filename
 
 
-cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
-    return BarcodeHD(<char *> query.query_sequence,
-                     <char *>cmp.query_sequence, bLen)
+cdef inline pBarcodeHD(AlignedSegment_t qrec, AlignedSegment_t cmprec, int8_t bLen):
+    cdef cystr qBS, cBS
+    qBS = qrec.opt("BS")
+    cBS = cmprec.opt("BS")
+    return BarcodeHD(<char *>qBS, <char *>cBS, bLen)
