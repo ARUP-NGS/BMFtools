@@ -2244,7 +2244,7 @@ class PopenDispatcher(object):
                 print("Command String: %s" % submitted.commandString)
                 self.dispatches.append(submitted)
             else:
-                print("All jobs submitted - check in later.")
+                #print("All jobs submitted - check in later.")
                 pass
 
     def _check(self):
