@@ -13,8 +13,8 @@ from distutils.core import setup
 
 marchFlag = "-march=native"
 
-compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse", "-std=c99", "-DSAMTOOLS=1",
-                "-Wno-error=declaration-after-statement"]
+compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-std=c99", "-DSAMTOOLS=1",
+                "-Wno-error=declaration-after-statement", "-funroll-loops"]
 
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
@@ -33,7 +33,7 @@ compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
                 "-fprefetch-loop-arrays", "-floop-strip-mine"]
 """
 
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
+#compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops"]
 
 
 ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
