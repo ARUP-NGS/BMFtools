@@ -31,4 +31,3 @@ cdef int8_t * arrmax(int32_t * quals, int8_t * ret,
             if quals[index2 + index1 * rLen] > ret[index2]:
                 ret[index2] = quals[index2 + index1 * rLen] + 33
     return ret
-

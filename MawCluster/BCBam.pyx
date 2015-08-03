@@ -696,8 +696,10 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
            template._delegate.core.l_qseq)
     memcpy(seq2.data.as_shorts, bam_get_seq(cmp._delegate),
            template._delegate.core.l_qseq)
-    CompareSeqQual(<int32_t *>qual1.data.as_ints, <int32_t *>qual2.data.as_ints,
-                   <int8_t *>seq1.data.as_shorts, <int8_t *>seq2.data.as_shorts,
+    CompareSeqQual(<int32_t *>qual1.data.as_ints,
+                   <int32_t *>qual2.data.as_ints,
+                   <int8_t *>seq1.data.as_shorts,
+                   <int8_t *>seq2.data.as_shorts,
                    template._delegate.core.l_qseq)
     template.set_tag("PV", qual1)
     template.query_sequence = seq1.tostring()
@@ -734,7 +736,8 @@ cdef list BFF(list recs, int8_t bLen, char mmlim):
     cdef int8_t i
 
     # Debug message
-    sys.stderr.write("Now attempting to flatten this set of records which share coordinates.\n")
+    sys.stderr.write("Now attempting to flatten this set of"
+                     " records which share coordinates.\n")
 
     # Setup
     size = len(recs)
@@ -864,7 +867,8 @@ cdef inline int8_t StringHD(char * str1, char * str2, int8_t bLen) nogil:
     return ret
 
 
-cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
+                       int8_t bLen):
     cdef cystr BC1, BC2
     BC1 = query.query_name
     BC2 = cmp.query_name
@@ -874,6 +878,7 @@ cdef AlignedSegment_t MergeBamRecList(list recList):
     return recList[0]
 
 '''
-cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp, int8_t bLen):
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
+                       int8_t bLen):
     return BarcodeHD(query._delegate, cmp._delegate, bLen)
 '''

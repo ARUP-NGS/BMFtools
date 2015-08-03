@@ -284,7 +284,7 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
         ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
         ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
         # Round
-        tmpQual =  <int32_t> (- 10 * c_log10(
+        tmpQual = <int32_t> (- 10 * c_log10(
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
         # Eliminate underflow p values
