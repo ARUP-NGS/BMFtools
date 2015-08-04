@@ -619,7 +619,7 @@ def PipeAlignTag(R1, R2, ref="default",
     sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]*\|/\t"
                  "RG:Z:default\t/' -e 's/^@PG/@RG\tID:default\tPL:"
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
-                 "t\n@PG/' -e 's/\|FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
+                 "t\n@PG/' -e 's/FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
                  "'s/\|FM=/\tFM:i:/' -e 's/\|ND=/\tND:i:/' -e 's/\|FA=/\t"
                  "FA:B:i,/' -e 's/\|PV=/\tPV:B:i,/'")
     cStr += sedString
