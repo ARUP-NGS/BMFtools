@@ -168,13 +168,13 @@ def calculateError(args):
 cpdef errorFinder(AlignedSegment_t read,
                   ndarray[int64_t, ndim=1] readErr,
                   ndarray[int64_t, ndim=1] readObs):
-    cdef size_t read_index
+    cdef size_t offset_index, qstart
     cdef char base
     cdef cystr seq
     seq = read.query_sequence
-    for read_index in xrange(read.qstart, read.qend):
-        readObs[read_index] += 1
-        base = seq[read_index]
+    qstart = read.qstart
+    for offset_index, base in enumerate(seq[read.qstart:read.qend]):
+        readObs[offset_index + qstart] += 1
         if base == 61:
             # case "="
             return
@@ -182,7 +182,7 @@ cpdef errorFinder(AlignedSegment_t read,
             # case "N"
             return
         else:
-            readErr[read_index] += 1
+            readErr[offset_index + qstart] += 1
             return
 
 
