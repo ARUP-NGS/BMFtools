@@ -168,13 +168,13 @@ def calculateError(args):
 cpdef errorFinder(AlignedSegment_t read,
                   ndarray[int64_t, ndim=1] readErr,
                   ndarray[int64_t, ndim=1] readObs):
-    cdef size_t offset_index, qstart
+    cdef size_t offset_index
     cdef char base
-    cdef cystr seq
+    cdef char * seq
     seq = read.query_sequence
-    qstart = read.qstart
-    for offset_index, base in enumerate(seq[read.qstart:read.qend]):
-        readObs[offset_index + qstart] += 1
+    for read_index in xrange(read.qstart, read.qend):
+        readObs[read_index] += 1
+        base = seq[read_index]
         if base == 61:
             # case "="
             return
@@ -182,7 +182,7 @@ cpdef errorFinder(AlignedSegment_t read,
             # case "N"
             return
         else:
-            readErr[offset_index + qstart] += 1
+            readErr[read_index] += 1
             return
 
 
@@ -233,8 +233,8 @@ def cCycleError(args):
     stdout.write("Reads QC Filtered: %i\n" % (qc))
     if args.family_size is not None:
         stdout.write("Reads Family Size Filtered: %i\n" % (fmc))
-    read1prop = read1error / read1obs
-    read2prop = read2error / read2obs
+    read1prop = np.true_divide(read1error.astype(np.double), read1obs)
+    read2prop = np.true_divide(read2error.astype(np.double), read2obs)
     read1mean = np.mean(read1prop)
     read2mean = np.mean(read2prop)
     stdout.write("cycle\tread1\tread2\tread count\n")
