@@ -617,7 +617,7 @@ def PipeAlignTag(R1, R2, ref="default",
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]*\|/\t"
-                 "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+                 "RG:Z:default\t/' -e 's/^@PG/@RG\tID:default\tPL:"
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
                  "t\n@PG/' -e 's/\|FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
                  "'s/\|FM=/\tFM:i:/' -e 's/\|ND=/\tND:i:/' -e 's/\|FA=/\t"
