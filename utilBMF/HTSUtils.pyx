@@ -585,7 +585,7 @@ def PipeAlignTag(R1, R2, ref="default",
                  outBAM="default", path="default",
                  bint coorsort=True, bint u=False,
                  cystr sortMem="6G", cystr opts=None,
-                 bint dry_run=False):
+                 bint dry_run=False, bint sam=False):
     """
     :param R1 - [cystr/arg] - path to input fastq for read 1
     :param R2 - [cystr/arg] - path to input fastq for read 2
@@ -623,18 +623,21 @@ def PipeAlignTag(R1, R2, ref="default",
                  "'s/\|FM=/\tFM:i:/' -e 's/\|ND=/\tND:i:/' -e 's/\|FA=/\t"
                  "FA:B:i,/' -e 's/\|PV=/\tPV:B:i,/'")
     cStr += sedString
-    if(coorsort):
-        compStr = " -l 0 " if(u) else ""
-        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
-                                                              uuidvar,
-                                                              compStr)
-        if(outBAM != "stdout" and outBAM != "-"):
-            cStr += " -o %s" % outBAM
+    if(sam is False):
+        if(coorsort):
+            compStr = " -l 0 " if(u) else ""
+            cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
+                                                                  uuidvar,
+                                                                  compStr)
+            if(outBAM != "stdout" and outBAM != "-"):
+                cStr += " -o %s" % outBAM
+        else:
+            cStr += (" | samtools view -Sbhu - " if(
+                u) else " | samtools view -Sbh -")
+            if(outBAM != "stdout" and outBAM != "-"):
+                cStr += " > %s" % outBAM
     else:
-        cStr += (" | samtools view -Sbhu - " if(
-            u) else " | samtools view -Sbh -")
-        if(outBAM != "stdout" and outBAM != "-"):
-            cStr += " > %s" % outBAM
+        cStr += " > %s" % outBAM.replace(".bam", ".sam")
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
     if(dry_run):
