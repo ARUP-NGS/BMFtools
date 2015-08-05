@@ -170,7 +170,7 @@ cpdef errorFinder(AlignedSegment_t read,
                   ndarray[int64_t, ndim=1] readObs):
     cdef size_t read_index
     cdef char base
-    cdef cystr seq
+    cdef char * seq
     seq = read.query_sequence
     for read_index in xrange(read.qstart, read.qend):
         readObs[read_index] += 1

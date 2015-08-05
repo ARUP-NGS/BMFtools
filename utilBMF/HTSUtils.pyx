@@ -2155,7 +2155,7 @@ def MultiCore(string):
     subprocess.call(string, shell=True)
 
 def DevNullPopen(string):
-    handle = Process(target=MultiCore)
+    handle = Process(target=MultiCore(string))
     handle.start()
     return handle
 
@@ -2166,9 +2166,7 @@ class PopenCall(object):
     def __init__(self, string, maxresubs=10):
         self.commandString = string
         self.popen = DevNullPopen(string)
-        #self.poll = self.popen.poll
         self.poll = self.popen.exitcode
-        self.communicate = self.popen.communicate
         self.resubmissions = 0
         self.maxresubs = maxresubs
 
