@@ -878,7 +878,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
 @cython.locals(useGzip=cython.bint, hpLimit=int)
 def FastqPairedShading(fq1, fq2, indexFq="default",
                        useGzip=False, SetSize=10,
-                       int head=2):
+                       int head=0):
     """
     TODO: Unit test for this function.
     Tags fastqs with barcodes from an index fastq.
@@ -1354,7 +1354,7 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
 
 
 def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
-                         int minFam=10, int mm=1, int head=2):
+                         int minFam=10, int mm=1, int head=0):
     cdef dict rescueDict, TrueFamDict
     cdef cystr tmpFilename
     tmpFilename = str(uuid.uuid4().get_hex()[0:8]) + ".tmp"
@@ -1376,7 +1376,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
                              cystr indexFq,
                              dict rescueDict=None, dict TrueFamDict=None,
                              cystr outFq1=None, cystr outFq2=None,
-                             int head=2):
+                             int head=0):
     """Rescues orphans from a barcode rescue.
     Works under the assumption that the number of random nucleotides used
     as molecular barcodes is sufficiently high that any read "family" with
