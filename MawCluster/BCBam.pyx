@@ -696,61 +696,123 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
            template._delegate.core.l_qseq)
     memcpy(seq2.data.as_shorts, bam_get_seq(cmp._delegate),
            template._delegate.core.l_qseq)
-    CompareSeqQual(<int32_t *>qual1.data.as_ints, <int32_t *>qual2.data.as_ints,
-                   <int8_t *>seq1.data.as_shorts, <int8_t *>seq2.data.as_shorts,
+    CompareSeqQual(<int32_t *>qual1.data.as_ints,
+                   <int32_t *>qual2.data.as_ints,
+                   <int8_t *>seq1.data.as_shorts,
+                   <int8_t *>seq2.data.as_shorts,
                    template._delegate.core.l_qseq)
     template.set_tag("PV", qual1)
     template.query_sequence = seq1.tostring()
     return template
 
 
+cdef size_t build_dist_mtx(list recs, ndarray[int8_t, ndim=2] distmtx,
+                           int8_t bLen):
+    cdef size_t qcount, ccount, size, maxfm, FM, idxmaxfm
+    cdef AlignedSegment_t qrec, cmprec
+    size = len(recs)
+    distmtx = np.zeros([size, size], dtype=np.int8)
+    maxfm = 0
+    for qcount, qrec in enumerate(recs):
+        FM = qrec.opt("FM")
+        if FM > maxfm:
+            maxfm = FM
+            idxmaxfm = qcount
+        ccount = qcount + 1
+        for cmprec in recs[ccount:]:
+            distmtx[qcount,ccount] = pBarcodeHD(qrec, cmprec, bLen)
+            ccount += 1
+    return idxmaxfm
+
+
 cdef list BFF(list recs, int8_t bLen, char mmlim):
 
     # C definitions
     cdef AlignedSegment_t qrec, cmprec
-    cdef size_t size, qcount, ccount
-    cdef list ret, merging_sets
+    cdef size_t size, qcount, ccount, idxmaxfm, FM, maxfm
+    cdef list ret, merging_sets, sublist
     cdef ndarray[int8_t, ndim=2] distmtx
-    cdef py_array mergeidx
+    cdef py_array mergeidx, fms
     cdef int8_t i
 
     # Debug message
-    sys.stderr.write("Now attempting to flatten this set of records which share coordinates.\n")
+    sys.stderr.write("Now attempting to flatten this set of"
+                     " records which share coordinates.\n")
 
     # Setup
     size = len(recs)
     mergeidx = array('B')
+    fms = array('i')
     c_array.resize(mergeidx, size)
+    c_array.resize(fms, size)
     distmtx = np.zeros([size, size], dtype=np.int8)
 
     # Calculate the hamming distances. No way around that.
+    idxmaxfm = 0
+    maxfm = 0
     for qcount, qrec in enumerate(recs):
-        # Note that I'm zeroing this array, as I hadn't made sure it was
-        # clear when resizing.
+        # Note that I need to initialize these arrays, as I didn't set them
+        # as clear when resizing.
+        FM = qrec.opt("FM")
+        fms[qcount] = FM
+        if FM > maxfm:
+            maxfm = FM
+            idxmaxfm = qcount
         mergeidx[qcount] = 0
         ccount = qcount + 1
+
         for cmprec in recs[ccount:]:
-            i = pBarcodeHD(qrec, cmprec, bLen)
-            distmtx[qcount,ccount] = i
-            if i <= mmlim:
+            distmtx[qcount,ccount] = pBarcodeHD(qrec, cmprec, bLen)
+            if distmtx[qcount,ccount] <= mmlim:
                 mergeidx[qcount] = 1
             ccount += 1
 
-    # "Map" out which sets of reads need to be flattened.
-    # Currently, mergeidx is true every place that should be flattened with
-    # someone, though that's not been sorted out.
-    merging_sets = []
-    #    size = len(recs)
-    # Do this a bunch of times
-    for qcount in range(size):
-        for ccount in range(qcount + 1, size):
-            if distmtx[qcount,ccount] < mmlim:
-                pass
-
-    # "Reduce" by flattening those sets into the most established family.
+    # Remove the ones which don't need to be flattened.
     ret = []
+    qcount = size
+    for qrec in recs[size:0:-1]:
+        if not mergeidx[qcount]:
+            ret.append(qrec)
+            recs.remove(qrec)
+        qcount -= 1
+
+    # "Map" out which sets of reads need to be flattened into eah other.
+    # First, get the one with the largest family size, then lump it into
+    # a merging_sets sublist to be flattened.
+    # and all within mmlim of it into a single record.
+    merging_sets = []
+    while True:
+        size = len(recs)
+        if size == 0:
+            break
+        idxmaxfm = build_dist_mtx(recs, distmtx, bLen)
+        FilterSet(recs, distmtx, merging_sets, idxmaxfm, mmlim)
+
+    ret += [MergeBamRecList(sublist) for sublist in merging_sets]
     sys.stderr.write("Now returning my list of records to write.\n")
     return ret
+
+
+cdef void FilterSet(list recs,
+                    ndarray[int8_t, ndim=1, mode="c"] distmtx,
+                    list merging_sets, size_t idxmaxfm, char mmlim):
+    # FilterSet needs to add the relevant reads to a new list in
+    # merging_sets, and remove the relevant records from recs
+    cdef size_t index
+    cdef AlignedSegment_t rec
+    cdef py_array indices
+    cdef list to_append
+    indices = array('i')
+    to_append = []
+    for index, rec in enumerate(recs):
+        if idxmaxfm == index or distmtx[idxmaxfm,index] < mmlim:
+            indices.append(index)
+    for index in range(len(indices), 0, -1):
+        rec = recs[index]
+        to_append.append(rec)
+        recs.remove(rec)
+    merging_sets.append(to_append)
+    return
 
 
 cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
@@ -796,8 +858,27 @@ cdef cystr BamRescue(cystr inBam,
     return output_bam.filename
 
 
-cdef inline pBarcodeHD(AlignedSegment_t qrec, AlignedSegment_t cmprec, int8_t bLen):
-    cdef cystr qBS, cBS
-    qBS = qrec.opt("BS")
-    cBS = cmprec.opt("BS")
-    return BarcodeHD(<char *>qBS, <char *>cBS, bLen)
+cdef inline int8_t StringHD(char * str1, char * str2, int8_t bLen) nogil:
+    cdef size_t index
+    cdef int8_t ret = 0
+    for index in range(bLen):
+        if(str1[index] != str2[index]):
+            ret += 1
+    return ret
+
+
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
+                       int8_t bLen):
+    cdef cystr BC1, BC2
+    BC1 = query.query_name
+    BC2 = cmp.query_name
+    return StringHD(<char*> BC1, <char*> BC2, bLen)
+
+cdef AlignedSegment_t MergeBamRecList(list recList):
+    return recList[0]
+
+'''
+cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
+                       int8_t bLen):
+    return BarcodeHD(query._delegate, cmp._delegate, bLen)
+'''

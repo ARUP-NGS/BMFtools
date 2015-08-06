@@ -49,7 +49,7 @@ mcgroup = mc("group", 0)
 
 global __version__
 
-__version__ = "0.1.0.2beta"
+__version__ = "0.1.1"
 
 
 def l1(x):
@@ -585,7 +585,7 @@ def PipeAlignTag(R1, R2, ref="default",
                  outBAM="default", path="default",
                  bint coorsort=True, bint u=False,
                  cystr sortMem="6G", cystr opts=None,
-                 bint dry_run=False):
+                 bint dry_run=False, bint sam=False):
     """
     :param R1 - [cystr/arg] - path to input fastq for read 1
     :param R2 - [cystr/arg] - path to input fastq for read 2
@@ -617,24 +617,27 @@ def PipeAlignTag(R1, R2, ref="default",
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
     sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]*\|/\t"
-                 "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
+                 "RG:Z:default\t/' -e 's/^@PG/@RG\tID:default\tPL:"
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
-                 "t\n@PG/' -e 's/\|FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
+                 "t\n@PG/' -e 's/FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
                  "'s/\|FM=/\tFM:i:/' -e 's/\|ND=/\tND:i:/' -e 's/\|FA=/\t"
                  "FA:B:i,/' -e 's/\|PV=/\tPV:B:i,/'")
     cStr += sedString
-    if(coorsort):
-        compStr = " -l 0 " if(u) else ""
-        cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
-                                                              uuidvar,
-                                                              compStr)
-        if(outBAM != "stdout" and outBAM != "-"):
-            cStr += " -o %s" % outBAM
+    if(sam is False):
+        if(coorsort):
+            compStr = " -l 0 " if(u) else ""
+            cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
+                                                                  uuidvar,
+                                                                  compStr)
+            if(outBAM != "stdout" and outBAM != "-"):
+                cStr += " -o %s" % outBAM
+        else:
+            cStr += (" | samtools view -Sbhu - " if(
+                u) else " | samtools view -Sbh -")
+            if(outBAM != "stdout" and outBAM != "-"):
+                cStr += " > %s" % outBAM
     else:
-        cStr += (" | samtools view -Sbhu - " if(
-            u) else " | samtools view -Sbh -")
-        if(outBAM != "stdout" and outBAM != "-"):
-            cStr += " > %s" % outBAM
+        cStr += " > %s" % outBAM.replace(".bam", ".sam")
     pl("Command string for ambitious pipe call: %s" % cStr.replace(
         "\t", "\\t").replace("\n", "\\n"))
     if(dry_run):
