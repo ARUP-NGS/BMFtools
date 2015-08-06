@@ -1074,66 +1074,6 @@ def GetOverlappingBases(ReadPair_t pair):
     return []
 
 
-@cython.returns(dict)
-def AlignPairDict(AlignedSegment_t read):
-    return {x: y for y, x in read.aligned_pairs}
-
-
-@cython.returns(AlignedSegment_t)
-def CollapseReadPair(ReadPair_t pair, bint BMFTags=True,
-                     int minQualDiff=3):
-    """
-    minQualDiff is the minimum difference between the quality
-    scores in the case of disagreement.
-    """
-    cdef AlignedSegment_t read1, read2, newread
-    cdef int i
-    if(not pair.SameContig or pair.SameStrand):
-        return None  # Nothing to collapse!
-    read1, read2 = pair.getReads()
-    overlap = GetOverlappingBases(pair)
-    r1matchdict = AlignPairDict(pair.read1)
-    r2matchdict = AlignPairDict(pair.read2)
-    r1positions = [r1matchdict[i] for i in overlap]
-    r2positions = [r2matchdict[i] for i in overlap]
-    r1baseTuples = [(i, read1.seq[i], read1.query_qualities[i]) for
-                    i in r1positions]
-    r2baseTuples = [(i, read2.seq[i], read2.query_qualities[i]) for
-                    i in r2positions]
-    CollapsedSeq = ""
-    CollapsedNewQuals = []
-    newread = pysam.AlignedSegment()
-    newread.qname = read1.qname + "Combined"
-    newread.is_reverse = read1.is_reverse
-    newread.reference_id = read1.reference_id
-    newread.pos = min([read1.pos, read2.pos])
-    newread.mapq = max([read1.mapq, read2.mapq])
-    newread.tlen = read1.tlen
-    newread.set_tags(read1.get_tags())
-    read1First = (read1.pos > read2.pos)
-    if(not BMFTags):
-        for r1tup, r2tup in zip(r1baseTuples, r2baseTuples):
-            if(r1tup[1] == r2tup[1]):
-                CollapsedSeq += r1tup[1]
-            else:
-                if(r2tup[2] - r1tup[2] > minQualDiff):
-                    CollapsedSeq += r2tup[1]
-                    CollapsedNewQuals.append(r2tup[2] - r1tup[2])
-                elif(r1tup[2] - r2tup[2] > minQualDiff):
-                    CollapsedSeq += r1tup[1]
-                    CollapsedNewQuals.append(r1tup[2] - r2tup[2])
-                else:
-                    CollapsedSeq += "N"
-                    CollapsedNewQuals.append(0)
-    if(read1First):
-        raise Tim("Sorry, I just have other things to finish now.")
-
-
-def CollapseR1R2(AlignedSegment_t R1,
-                 AlignedSegment_t R2):
-    return CollapseReadPair(ReadPair(R1, R2))
-
-
 cdef class pPileupRead:
     """
     Python container for the PileupRead proxy in pysam
@@ -1201,20 +1141,6 @@ cdef class PileupReadPair:
         self.MarkReads()
 
 
-def GetReadPair(inHandle):
-    """
-    Simply contains both pairs of reads in an object
-    """
-    read1 = inHandle.next()
-    read2 = inHandle.next()
-    try:
-        assert read1.query_name == read2.query_name
-    except AssertionError:
-        raise Tim("These two reads have "
-                  "different query names. Abort!")
-    return ReadPair(read1, read2)
-
-
 cdef bint cReadsOverlap(AlignedSegment_t read1,
                         AlignedSegment_t read2):
     # Same strand or different contigs.
@@ -1265,86 +1191,6 @@ def ReadPairPassesMinQ(Pair, minMQ=0, minBQ=0):
         return False
     else:
         return True
-
-
-def LoadReadsFromFile(inBAM, SVTag="default", minMQ=0,
-                      minFamSize="default"):
-    RecordsArray = []
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    while True:
-        try:
-            RecordsArray.append(inHandle.next())
-        except StopIteration:
-            break
-    RecordsArray = [rec for rec in RecordsArray if rec.mapq >= minMQ]
-    if(SVTag != "default"):
-        for tag in SVTag.split(','):
-            RecordsArray = [rec for rec in RecordsArray if tag
-                            in rec.opt("SV")]
-    if(minFamSize != "default"):
-        try:
-            minFamSize = int(minFamSize)
-        except ValueError:
-            raise Tim("Minimum family size must be castable to int!")
-        RecordsArray = [rec for rec in RecordsArray if
-                        rec.opt("FM") >= minFamSize]
-    inHandle.close()
-    return RecordsArray
-
-
-def LoadReadPairsFromFile(inBAM, SVTag="default",
-                          minMQ=0, minBQ=0,
-                          LambdaInsertSize=LambdaInsertSize):
-    """
-    Loads all pairs of reads from a name-sorted paired-end
-    bam file into ReadPair objects. If SVTag is specified,
-    then check that all entries in SVTag.split(",") are in
-    the tags
-    """
-    RecordsArray = []
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    tags = SVTag.split(',')
-    print("Tags: {}".format(repr(tags)))
-    if(SVTag != "default"):
-        while True:
-            try:
-                read1 = inHandle.next()
-                read2 = inHandle.next()
-                WorkingReadPair = ReadPair(read1, read2)
-                if(WorkingReadPair.read1.mapq >= minMQ and
-                   WorkingReadPair.read2.mapq >= minMQ and
-                   sum([tag in WorkingReadPair.SVTags
-                        for tag in tags]) == len(tags)):
-                    RecordsArray.append(WorkingReadPair)
-                else:
-                    pass
-            except StopIteration:
-                # print("Stopping iterations...")
-                break
-    else:
-        while True:
-            try:
-                RecordsArray.append(GetReadPair(inHandle))
-            except StopIteration:
-                break
-    if("LI" in tags):
-        return sorted(RecordsArray, key=LambdaInsertSize)
-    else:
-        return RecordsArray
-
-
-cpdef bint WritePairToHandle(
-        ReadPair_t pair,
-        pysam.calignmentfile.AlignmentFile handle=None):
-    """
-    Writes a pair to a file handle.
-    """
-    try:
-        handle.write(ReadPair.read1)
-        handle.write(ReadPair.read2)
-        return True
-    except Exception:
-        return False
 
 
 @cython.returns(cystr)

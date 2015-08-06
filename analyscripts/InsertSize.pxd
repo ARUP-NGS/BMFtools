@@ -27,11 +27,15 @@ ctypedef pPileupRead pPileupRead_t
 cdef class SNVAlleleWrangler:
     cdef AlignmentFile_t handle
     cdef public PileupColumn_t column
-    cdef public int32_t reference_id
-    cdef public int32_t pos
-    cdef public dict alleles
+    cdef public int32_t reference_id, pos, max_insert_size
+    cdef public list alleles
+    cdef public set insert_sizes
+    cdef public dict insert_size_dict
     cdef py_array_t filter_cnf
 
     cdef inline bint pass_record(self, pPileupRead_t PR, int nuc_index)
     cdef inline void populate(self)
     cdef inline void fast_forward(self)
+
+cdef inline int iabs(int integer) nogil:
+    return integer if(integer > 0) else -1 * integer
