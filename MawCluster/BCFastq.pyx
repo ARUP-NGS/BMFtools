@@ -841,6 +841,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
 
 REMOVE_NS = maketrans("N", "A")
 
+
 def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
                         int head=-1, int num_nucs=-1):
     """
@@ -1308,15 +1309,13 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
     tw1 = trimHandle1.write
     tw2 = trimHandle2.write
     ew = errHandle.write
+    ffp = pFastqProxy.fromFastqProxy
     for read1 in InFastq1:
         read2 = fqNext()
-        if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy.fromFastqProxy(read1)))
-            ew(str(pFastqProxy.fromFastqProxy(read2)))
-            continue
-        if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy.fromFastqProxy(read1)))
-            ew(str(pFastqProxy.fromFastqProxy(read2)))
+        if (homing not in read1.sequence[bcLen:bcLen + HomingLen] or
+            homing not in read2.sequence[bcLen:bcLen + HomingLen]):
+            ew(str(ffp(read1)))
+            ew(str(ffp(read2)))
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,

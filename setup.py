@@ -13,8 +13,8 @@ from distutils.core import setup
 
 marchFlag = "-march=native"
 
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-std=c99", "-DSAMTOOLS=1",
-                "-Wno-error=declaration-after-statement", "-funroll-loops"]
+compilerList = ["-pipe", marchFlag, "-mfpmath=sse", "-std=c99", "-DSAMTOOLS=1",
+                "-Wno-error=declaration-after-statement"]
 
 """
 compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",

@@ -1136,6 +1136,9 @@ cdef class pPileupRead:
     Python container for the PileupRead proxy in pysam
     """
 
+    cpdef opt(self, cystr arg):
+        return self.alignment.opt(arg)
+
     def __init__(self, pysam.calignedsegment.PileupRead PileupRead):
         cdef py_array BQs
         self.alignment = PileupRead.alignment
@@ -1144,14 +1147,13 @@ cdef class pPileupRead:
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
-        BQs = PileupRead.alignment.opt("PV")
-        self.AF = PileupRead.alignment.opt("AF")
+        BQs = self.alignment.opt("PV")
         self.BQ = BQs[self.query_position]
-        self.FA = self.alignment.opt("FA")[self.query_position]
         self.MBQ = nmax(BQs)
-
-    cpdef object opt(self, cystr arg):
-        return self.alignment.opt(arg)
+        BQs = self.alignment.opt("FA")
+        self.FA = BQs[self.query_position]
+        self.FM = self.alignment.opt("FM")
+        self.MQ = self.alignment.mapping_quality
 
 
 cdef class PileupReadPair:
