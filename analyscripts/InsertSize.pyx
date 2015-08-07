@@ -6,9 +6,11 @@ support.
 import cython
 import numpy as np
 import pysam
-from utilBMF.HTSUtils import pPileupRead
+from utilBMF.HTSUtils import pPileupRead, TrimExt
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, ImproperArgumentError
 from array import array
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 cdef class SNVAlleleWrangler:
@@ -41,20 +43,48 @@ cdef class SNVAlleleWrangler:
     cdef inline void get_insert_sizes(self):
         cdef pPileupRead_t PR
         self.insert_sizes = array(
-            'i', sorted(set(PR.alignment.template_length for
+            'i', sorted(set(iabs(PR.alignment.template_length) for
                             PR in self.alleles)))
 
-    cdef ndarray[int32_t, ndim=2] get_allele_counts(self, dict insert_size_dict):
+    cdef ndarray[int32_t, ndim=2] c_get_allele_counts(self, dict insert_size_dict):
         cdef ndarray[int32_t, ndim=2] ret
         cdef size_t length, tlen, index
         cdef pPileupRead_t PR
+        cdef py_array_t lengths
         length = len(insert_size_dict)
         ret = np.zeros([length, 5], dtype=np.int32)
+        lengths = array('i')
+        c_array.resize(lengths, length)
+        for index in xrange(length):
+            lengths[index] = 0
 
         for index, tlen in enumerate(self.insert_sizes):
             for PR in insert_size_dict[tlen]:
-                ret[index][Nuc2NumN(PR.BaseCall)] += 1
+                ret[index][Nuc2NumN(<char>ord(PR.BaseCall[0]))] += 1
+                lengths[index] += 1
+        self.lengths = lengths
         return ret
+
+    @cython.locals(counts=ndarray, ratios=ndarray)
+    def plot(self, base, otherbase):
+        counts = self.get_allele_counts()
+        ratios = counts[:,base].astype(np.double) / counts[:,otherbase]
+        with PdfPages(TrimExt(self.handle.filename) + ".analysis.pdf") as pdf:
+            fig, ax1 = plt.subplots()
+            ax1.set_xlabel("Insert size (nucleotides)")
+            ax1.set_ylabel("Number of reads", color="g")
+            ax1.plot(self.insert_sizes, self.lengths, "g_")
+            for tl in ax1.get_yticklabels():
+                tl.set_color('g')
+            ax2 = ax1.twinx()
+            ax2.plot(self.insert_sizes, self.ratios, "r-")
+            ax2.set_ylabel("Ratio (variant / reference)")
+            for tl in ax2.get_yticklabels():
+                tl.set_color("r")
+            pdf.savefig()
+
+    cpdef ndarray[int32_t, ndim=2] get_allele_counts(self):
+        return self.c_get_allele_counts(self.insert_size_dict)
 
     cdef inline void fast_forward(self):
         """Move forward until we arrive at the correct position"""

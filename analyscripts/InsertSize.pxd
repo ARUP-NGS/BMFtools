@@ -36,13 +36,14 @@ cdef class SNVAlleleWrangler:
     cdef public py_array_t insert_sizes
     cdef public dict insert_size_dict
     cdef public cystr ref
-    cdef py_array_t filter_cnf
+    cdef py_array_t filter_cnf, lengths
 
     cdef inline bint pass_record(self, pPileupRead_t PR)
     cdef inline void fast_forward(self)
     cdef inline void build_insert_size_dict(self)
     cdef inline void get_insert_sizes(self)
-    cdef ndarray[int32_t, ndim=2] get_allele_counts(self, dict insert_size_dict)
+    cdef ndarray[int32_t, ndim=2] c_get_allele_counts(self, dict insert_size_dict)
+    cpdef ndarray[int32_t, ndim=2] get_allele_counts(self)
 
 cdef inline int iabs(int integer) nogil:
     return integer if(integer > 0) else -1 * integer
