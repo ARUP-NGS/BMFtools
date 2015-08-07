@@ -55,7 +55,7 @@ def main():
     BedCovParser = subparsers.add_parser(
         "bedcov", description="Calls FastDepthOfCoverage.")
     alignTagBamParser = subparsers.add_parser(
-        "aligntagbam", description=("Performs alignment and sam tagging of"
+        "pat", description=("Performs alignment and sam tagging of"
                                     " consolidated fastq files to generate "
                                     "a tagged bam."))
     TagBamParser = subparsers.add_parser(
@@ -1086,20 +1086,19 @@ def main():
         elif(len(fastqs) == 2):
             pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
                                  outBAMFile=Chapman['outfile'])
-    elif(subcommand == "aligntagbam"):
-        from BMFMain.Workflow import pairedBamProc
-        outBAM = pairedBamProc(
+    elif(subcommand == "pat"):
+        from utilBMF.HTSUtils import PipeAlignTag
+        outBAM = PipeAlignTag(
             Chapman['inFqs'][0],
             Chapman['inFqs'][1],
             ref=Chapman['ref'],
-            bed=Chapman['bed'],
-            aligner=Chapman['aligner'],
-            realigner=Chapman['realigner'],
-            abrapath=Chapman['abrapath'],
-            rLen=Chapman['readLength'],
-            gatkpath=Chapman['gatkpath'])
-        pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
-        sys.exit(0)
+            sortMem=Chapman['sortMem'],
+            outBAM=Chapman['outBAM'],
+            coorsort=Chapman['coorsort'],
+            u=Chapman['u'],
+            opts=Chapman['opts'])
+        pl("pat (PipeAlignTag) completed succesfully! Final bam is : " + outBAM)
+        return 0
     elif(subcommand == "rsq"):
         from BMFMain.Workflow import pairedFastqShades
         pairedFastqShades(Chapman['fastqs'][0],

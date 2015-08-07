@@ -1214,44 +1214,6 @@ def ParseBed(cystr bedfile):
     return bed
 
 
-@cython.returns(bint)
-@cython.locals(input_str=cystr)
-def to_bool(input_str):
-    return (input_str.lower() == "true")
-
-TypeConversionDict = {"s": str, "i": int, "f": float, "b": to_bool}
-
-
-@cython.locals(lst=list, typechar=cystr,
-               TypeConversionDict=dict)
-def parseTuple(lst, TypeConversionDict=TypeConversionDict):
-    assert(len(lst) == 2)
-    try:
-        typechar = lst[1][0]
-    except IndexError:
-        return lst[0]  # Is a string
-    return TypeConversionDict[typechar](lst[0])
-
-
-@cython.locals(path=cystr, parsedLines=list)
-@cython.returns(dict)
-def parseSketchConfig(path):
-    """
-    Parses in a file into a dictionary of key value pairs.
-
-    Note: config style is key|value|typechar, where typechar
-    is 'b' for bool, 'f' for float, 's' for string, and 'i' for int.
-    Anything after a # character is ignored.
-    """
-    parsedLines = [l.strip().split("#")[0].split("|") for l in
-                   open(path, "r").readlines()
-                   if l[0] != "#"]
-    # Note that the key is mangled to make the key match up with
-    # argparse's name
-    return {line[0].replace(" ", "_"): parseTuple([line[1], line[2]]) for
-            line in parsedLines}
-
-
 @cython.returns(dict)
 def parseConfig(cystr string):
     """
@@ -1261,11 +1223,10 @@ def parseConfig(cystr string):
     Any further values are ignored.
     New with BMFTools v0.0.5.2 (or so?): # comment the rest of a line out.
     """
-    parsedLines = [l.strip().split("#")[0] for l in
-                   open(string, "r").readlines()
-                   if l[0] != "#"]
     return {line.split("=")[0].strip(): line.split("=")[1].strip() for
-            line in parsedLines}
+            line in [l.strip().split("#")[0] for l in
+                     open(string, "r").readlines()
+                     if l[0] != "#"]}
 
 
 @cython.returns(dict)

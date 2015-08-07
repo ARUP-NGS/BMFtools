@@ -162,8 +162,6 @@ cdef bint cReadsOverlap(
         AlignedSegment_t read1,
         AlignedSegment_t read2)
 
-cpdef bint WritePairToHandle(
-    ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 

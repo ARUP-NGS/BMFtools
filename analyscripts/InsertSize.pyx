@@ -23,7 +23,7 @@ cdef class SNVAlleleWrangler:
             return False
         return True
 
-    cdef inline bint build_insert_size_dict(self):
+    cdef inline void build_insert_size_dict(self):
         cdef int insert_size
         cdef pPileupRead_t PR
         for PR in self.alleles:
@@ -32,7 +32,7 @@ cdef class SNVAlleleWrangler:
             except KeyError:
                 self.insert_size_dict[iabs(PR.alignment._delegate.core.isize)] = [PR]
 
-    cdef inline get_insert_sizes(self):
+    cdef inline void get_insert_sizes(self):
         cdef pPileupRead_t PR
         self.insert_sizes = set(PR.alignment._delegate.core.isize for
                                 PR in self.alleles)
