@@ -98,12 +98,15 @@ defaultConfig = {
                  }
 '''
 
-cdef inline GetArgumentType(cystr key):
+def GetArgumentType(cystr key):
     try:
-        return DefaultConfig[key][1][0]
+        return DefaultConfig[key][1]
     except KeyError:
-        raise ImproperArgumentError("Key not found in _bmftools"
+        return 's'
+        '''
+        raise ImproperArgumentError("Key %s not found in _bmftools" % key +
                                     "_helper. Invalid argument!")
+        '''
 
 
 DefaultConfig = {
@@ -114,6 +117,7 @@ DefaultConfig = {
                  "bed": ("default", 's'),
                  "bed_buffer": (0, 'i'),
                  "bwapath": ("bwa", 'i'),
+                 "bowtie": ("bowtie", "s"),
                  "check_both": (True, 'b'),
                  "compression": ("bb", 's'),
                  "coorsort": (False, 'b'),

@@ -81,7 +81,8 @@ class ArgumentSketcher(object):
         except TypeError:
             pl("No config path provided - skipping.", level=logging.DEBUG)
             tmpConfDict = {}
-        self.config = copy(tmpConfDict)
+        for key, value in tmpConfDict.iteritems():
+            self.config[key] = value
         self.args = args
         self.keys = [i for i in dir(args) if i[0] != "_"]
         self.arbitrate()
