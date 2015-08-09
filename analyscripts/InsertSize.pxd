@@ -38,12 +38,33 @@ cdef class SNVAlleleWrangler:
     cdef public cystr ref
     cdef py_array_t filter_cnf, lengths
 
-    cdef inline bint pass_record(self, pPileupRead_t PR)
-    cdef inline void fast_forward(self)
-    cdef inline void build_insert_size_dict(self)
-    cdef inline void get_insert_sizes(self)
+    cdef bint pass_record(self, pPileupRead_t PR)
+    cdef void fast_forward(self)
+    cdef void build_insert_size_dict(self)
+    cdef void get_insert_sizes(self)
     cdef ndarray[int32_t, ndim=2] c_get_allele_counts(self, dict insert_size_dict)
     cpdef ndarray[int32_t, ndim=2] get_allele_counts(self)
 
 cdef inline int iabs(int integer) nogil:
     return integer if(integer > 0) else -1 * integer
+
+cdef inline int iabsmod(int integer) nogil:
+    return integer // 10 if(integer > 0) else (-1 * integer // 10)
+
+cdef class CoarseSNVWrangler:
+    cdef AlignmentFile_t handle
+    cdef public int32_t reference_id, pos, max_insert_size
+    cdef public list alleles
+    cdef public py_array_t insert_sizes
+    cdef public dict insert_size_dict
+    cdef public cystr ref
+    cdef py_array_t filter_cnf, lengths
+
+    cdef bint pass_record(self, pPileupRead_t PR)
+    cdef void fast_forward(self)
+    cdef void build_insert_size_dict(self)
+    cdef void get_insert_sizes(self)
+    cdef ndarray[int32_t, ndim=2] c_get_allele_counts(self, dict insert_size_dict)
+    cpdef ndarray[int32_t, ndim=2] get_allele_counts(self)
+    cdef void get_insert_sizes(self)
+    cdef void build_insert_size_dict(self)
