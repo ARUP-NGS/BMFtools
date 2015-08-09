@@ -54,12 +54,52 @@ DEF size32 = 4
 DEF sizedouble = 8
 
 
-def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
-    return ("pr -mts <(cat %s | paste - - - -) <(cat %s | " % (Fq1, Fq2) +
-            "paste - - - -) <(cat %s | paste - - - -) | awk" % IndexFq +
-            "'BEGIN {{FS=OFS=\"\t\"}};{{BS=\"|BS=\"$10\"\"substr($2,"
-            "0,2)\"\"substr($6,0,2); print $1\"\"BS, $2, $3, $4, $5\"\"BS, "
-            "$6, $7, $8}}' | sort -t\"|\" -k2,2 -k1,1 | tr '\t' '\n'")
+cpdef cystr SortAndMarkFastqsCommand(cystr Fq1, cystr IndexFq,
+                                     bint zcat=False, int8_t hpLimit=10):
+    """
+
+    :param Fq1: [cystr/arg] Path to input fastq
+    :param IndexFq: [cystr/arg] Path to index fastq
+    :param zcat: [bint/kwarg/False] Whether to zcat vs. cat.
+    :param hpLimit: [int8_t/kwarg/10] Length of homopolymer run needed
+    to fail a family of reads.
+    :return: cystr
+    """
+    cdef cystr As, Cs, Gs, Ts
+    As = "A" * hpLimit
+    Cs = "C" * hpLimit
+    Gs = "G" * hpLimit
+    Ts = "T" * hpLimit
+    if zcat:
+        return ("pr -mts <(zcat %s | paste - - - - "  % Fq1 +
+                ") <(zcat %s | paste - - - -) | awk" % IndexFq +
+                " 'BEGIN {{FS=OFS=\"\t\"}}; $6 !~ /'%s'/" % As +
+                " && $6 !~ /'%s'/ && $6 !~ /'%s'/ &&  $6 !~ " % (Cs, Gs) +
+                "/'%s'/ {{;split($1, a, \" \"); print a[1]\" |FP=1|B" % Ts +
+                "S=\"$6, $2, $3, $4}}' | tr '\t' '\n'")
+    else:
+        return ("pr -mts <(cat %s | paste - - - - "  % Fq1 +
+                ") <(cat %s | paste - - - -) | awk" % IndexFq +
+                " 'BEGIN {{FS=OFS=\"\t\"}}; $6 !~ /'%s'/" % As +
+                " && $6 !~ /'%s'/ && $6 !~ /'%s'/ &&  $6 !~ " % (Cs, Gs) +
+                "/'%s'/ {{;split($1, a, \" \"); print a[1]\" |FP=1|B" % Ts +
+                "S=\"$6, $2, $3, $4}}' | tr '\t' '\n'")
+
+
+cpdef cystr SortMarkToStdoutFastq(cystr Fq1, cystr Fq2, cystr IndexFq, bint zcat=False,
+                                  int8_t hpLimit=10):
+    return "pr -mts'\n' <(%s) <(%s)" % (SortAndMarkFastqsCommand(
+        Fq1, IndexFq, zcat=zcat, hpLimit=hpLimit),
+                                        SortAndMarkFastqsCommand(
+        Fq2, IndexFq, zcat=zcat, hpLimit=hpLimit))
+
+
+cpdef cystr GetMarkAndSortCommandString(cystr Fq1, cystr Fq2, cystr IndexFq, bint zcat=False,
+                                        int8_t hpLimit=10):
+    cdef cystr ret
+    ret = (SortMarkToStdoutFastq(Fq1, Fq2, IndexFq, zcat=zcat,
+                                hpLimit=hpLimit) + " | " +
+           BarcodeSortPipeStr(outFastq="default", mem=""))
 
 
 @cython.locals(checks=int,
@@ -121,12 +161,18 @@ def BarcodeSort(cystr inFastq, cystr outFastq="default",
     return outFastq
 
 
+def BarcodeSortPipeStr(outFastq="default",
+                       mem=""):
+    if mem != "":
+        mem = " -S " + mem
+    return "paste - - - - | sort -t'|' -k3,3 -k1,1" \
+           " %s | tr '\t' '\n' > %s" % (mem, outFastq)
+
+
 @cython.returns(cystr)
-def getBarcodeSortStr(inFastq, outFastq="default", mem="",
-                      int threads=1):
+def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
     if(mem != ""):
         mem = " -S " + mem
-    threadStr = ""
     if(threads != 1):
         import warnings
         warnings.warn("Note: getBarcodeSortStr is being given a threads argum"
@@ -136,11 +182,9 @@ def getBarcodeSortStr(inFastq, outFastq="default", mem="",
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
-        return ("zcat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
-                " %s %s| tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
+        return "zcat %s | " % inFastq + BarcodeSortPipeStr(outFastq, mem)
     else:
-        return ("cat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
-                " %s %s | tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
+        return "cat %s | " % inFastq + BarcodeSortPipeStr(outFastq, mem)
 
 
 cpdef cystr QualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
