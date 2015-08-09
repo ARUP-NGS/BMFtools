@@ -173,12 +173,6 @@ def BarcodeSortPipeStr(outFastq="default",
 def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
     if(mem != ""):
         mem = " -S " + mem
-    if(threads != 1):
-        import warnings
-        warnings.warn("Note: getBarcodeSortStr is being given a threads argum"
-                      "ent. This is deprecated for uniformity between linux "
-                      "distributions. Parameter simply being ignored.",
-                      DeprecationWarning)
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
