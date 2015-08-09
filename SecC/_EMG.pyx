@@ -203,9 +203,12 @@ cdef inline bint TEST_ERROR(char character) nogil:
 cpdef errorFinder(AlignedSegment_t read,
                   ndarray[int64_t, ndim=1] readErr,
                   ndarray[int64_t, ndim=1] readObs):
-    cdef size_t offset_index
+    cdef size_t read_index
+    cdef char base
     cdef char * seq
+    cdef size_t offset_index
     cdef bint err
+
     seq = read.query_sequence
     for read_index in xrange(read.qstart, read.qend):
         readObs[read_index] += 1

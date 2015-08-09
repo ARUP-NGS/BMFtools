@@ -11,6 +11,7 @@ from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from os import path as ospath
 from pysam.calignedsegment import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
+from multiprocessing import Process
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
                                    IllegalArgumentError, PermissionException,
@@ -1961,9 +1962,14 @@ def MergeBamList(bamlist, picardpath="default", memStr="-Xmx6G",
     return outbam
 
 
-def DevNullPopen(string):
-    return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
+def MultiCore(string):
+    #return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
+    subprocess.call(string, shell=True)
 
+def DevNullPopen(string):
+    handle = Process(target=MultiCore(string))
+    handle.start()
+    return handle
 
 class PopenCall(object):
     """
@@ -1972,8 +1978,7 @@ class PopenCall(object):
     def __init__(self, string, maxresubs=10):
         self.commandString = string
         self.popen = DevNullPopen(string)
-        self.poll = self.popen.poll
-        self.communicate = self.popen.communicate
+        self.poll = self.popen.exitcode
         self.resubmissions = 0
         self.maxresubs = maxresubs
 
