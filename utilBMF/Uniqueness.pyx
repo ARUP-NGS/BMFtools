@@ -240,11 +240,11 @@ cdef class KmerFetcher(object):
         kmer = self.k
         if startsOnly:
             bedStrList = ["%s\t%s\t%s\n" % (contig, startFirst-1, startLast)
-                      for (contig, startFirst, startLast) in intervalList]
+                          for (contig, startFirst, startLast) in intervalList]
         else:
-            bedStrList = ["%s\t%s\t%s\n" % (contig, startFirst-1, startLast +
-                                        kmer - 1)
-                      for (contig, startFirst, startLast) in intervalList]
+            bedStrList = ["%s\t%s\t%s\n" % (contig, startFirst-1,
+                                            startLast + kmer - 1)
+                          for (contig, startFirst, startLast) in intervalList]
         # Sort and Merge bed file
         pl("Sorting and merging output bed file with bedtools.")
         echo = Popen(['echo', "".join(bedStrList)], stdout=PIPE)

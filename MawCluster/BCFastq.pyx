@@ -284,7 +284,7 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
         ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
         ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
         # Round
-        tmpQual =  <int32_t> (- 10 * c_log10(
+        tmpQual = <int32_t> (- 10 * c_log10(
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
         # Eliminate underflow p values
@@ -310,37 +310,6 @@ cpdef SeqQual_t FisherFlatten(
     after flattening.
     """
     return cFisherFlatten(&Seqs[0,0], &Quals[0,0], rLen, nRecs)
-
-
-'''
-
-This method works (change the second argument on amax/argmax calls
-on the output), but it looks like it's slower.
-I might have to do this manually.
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
-                                             ndarray[int32_t, ndim=2] quals,
-                                             size_t nRecs):
-    cdef size_t readlen = len(seqs[0])
-    cdef size_t read_index, base_index
-    cdef ndarray[int32_t, ndim=2] QualSumAll
-    cdef int32_t tmpInt
-    QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
-    for read_index in range(nRecs):
-        for base_index in range(readlen):
-            tmpInt = seqs[read_index][base_index]
-            if(tmpInt == 84):
-                QualSumAll[base_index][3] += quals[read_index][base_index]
-            elif(tmpInt == 67):
-                QualSumAll[base_index][1] += quals[read_index][base_index]
-            elif(tmpInt == 71):
-                QualSumAll[base_index][2] += quals[read_index][base_index]
-            else:
-                QualSumAll[base_index][0] += quals[read_index][base_index]
-    return QualSumAll
-'''
 
 
 cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
@@ -841,6 +810,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
 
 REMOVE_NS = maketrans("N", "A")
 
+
 def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
                         int head=-1, int num_nucs=-1):
     """
@@ -909,7 +879,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
 @cython.locals(useGzip=cython.bint, hpLimit=int)
 def FastqPairedShading(fq1, fq2, indexFq="default",
                        useGzip=False, SetSize=10,
-                       int head=2):
+                       int head=0):
     """
     TODO: Unit test for this function.
     Tags fastqs with barcodes from an index fastq.
@@ -1308,15 +1278,13 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
     tw1 = trimHandle1.write
     tw2 = trimHandle2.write
     ew = errHandle.write
+    ffp = pFastqProxy.fromFastqProxy
     for read1 in InFastq1:
         read2 = fqNext()
-        if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy.fromFastqProxy(read1)))
-            ew(str(pFastqProxy.fromFastqProxy(read2)))
-            continue
-        if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy.fromFastqProxy(read1)))
-            ew(str(pFastqProxy.fromFastqProxy(read2)))
+        if (homing not in read1.sequence[bcLen:bcLen + HomingLen] or
+            homing not in read2.sequence[bcLen:bcLen + HomingLen]):
+            ew(str(ffp(read1)))
+            ew(str(ffp(read2)))
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,
@@ -1385,7 +1353,7 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
 
 
 def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
-                         int minFam=10, int mm=1, int head=2):
+                         int minFam=10, int mm=1, int head=0):
     cdef dict rescueDict, TrueFamDict
     cdef cystr tmpFilename
     tmpFilename = str(uuid.uuid4().get_hex()[0:8]) + ".tmp"
@@ -1407,7 +1375,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
                              cystr indexFq,
                              dict rescueDict=None, dict TrueFamDict=None,
                              cystr outFq1=None, cystr outFq2=None,
-                             int head=2):
+                             int head=0):
     """Rescues orphans from a barcode rescue.
     Works under the assumption that the number of random nucleotides used
     as molecular barcodes is sufficiently high that any read "family" with

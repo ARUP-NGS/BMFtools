@@ -68,6 +68,32 @@ cdef inline char * Num2Nuc(int number) nogil:
     return ret
 
 
+cdef inline char Num2NucN(int number) nogil:
+    if number == 0:
+        return 65
+    elif number == 1:
+        return 67
+    elif number == 2:
+        return 71
+    elif number == 3:
+        return 84
+    else:
+        return 78
+
+
+cdef inline char Nuc2NumN(char character) nogil:
+    if(character == 84):
+        return 3
+    elif(character == 71):
+        return 2
+    elif(character == 67):
+        return 1
+    elif character == 65:
+        return 0
+    else:
+        return 4
+
+
 cdef inline char Nuc2Num(char character) nogil:
     if(character == 84):
         return 3

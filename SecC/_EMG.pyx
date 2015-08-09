@@ -1,15 +1,16 @@
 # cython: boundscheck=False, wraparound=False
-import numpy as np
-from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 from itertools import groupby
-from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
+from matplotlib.backends.backend_pdf import PdfPages
 from MawCluster.BCFastq import GetDescTagValue
+from sys import maxint
+from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
+from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 import operator
 import pysam
-import matplotlib.pyplot as plt
-from sys import maxint
-from matplotlib.backends.backend_pdf import PdfPages
+import cython
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 
@@ -22,6 +23,8 @@ cdef errorTracker(AlignedSegment_t read,
     cdef char base
     cdef int8_t phred_index
     cdef int16_t context_index
+    cdef char * seq
+    seq = read.query_sequence
     for index in xrange(read.qstart, read.qend):
         if(index < 1):
             # Don't sweat it
@@ -33,7 +36,7 @@ cdef errorTracker(AlignedSegment_t read,
             continue
         phred_index = read.query_qualities[index] - 2
         readObs[index][phred_index][context_index] += 1
-        base = read.seq[index]
+        base = <char>seq[index]
         # Note if/elses with same predicate --> switch
         if base == 61:
             continue
@@ -43,7 +46,7 @@ cdef errorTracker(AlignedSegment_t read,
             readErr[index][phred_index][context_index] += 1
 
 
-def calculateError(args):
+def GetErrorArrays(args):
 
     cdef size_t rLen, index, read_index, qual_index, context_index
     cdef int64_t fam_range, qcfail, rc, fmc, FM
@@ -57,8 +60,8 @@ def calculateError(args):
     cdef AlignedSegment_t read
     cdef AlignmentFile_t mdBam
 
-    from sys import stderr
     from cPickle import dump
+    from sys import stderr
 
     if(args.pickle_path is None):
         pickle_path = TrimExt(args.mdBam) + ".errorprofile.pyd"
@@ -70,16 +73,11 @@ def calculateError(args):
         table_prefix = args.table_prefix
     table_prefix += ".out."
 
-    FullTableHandle = open(table_prefix + "full.tsv", "w")
-    CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
-    PhredTableHandle = open(table_prefix + "phred.tsv", "w")
-    ContextTableHandle = open(table_prefix + "context.tsv", "w")
-
     rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
-    read1error = np.zeros([rLen, 37, 16], dtype=np.int64)
-    read1obs = np.zeros([rLen, 37, 16], dtype=np.int64)
-    read2error = np.zeros([rLen, 37, 16], dtype=np.int64)
-    read2obs = np.zeros([rLen, 37, 16], dtype=np.int64)
+    read1error = np.zeros([rLen, 39, 16], dtype=np.int64)
+    read1obs = np.zeros([rLen, 39, 16], dtype=np.int64)
+    read2error = np.zeros([rLen, 39, 16], dtype=np.int64)
+    read2obs = np.zeros([rLen, 39, 16], dtype=np.int64)
 
     qcfail = 0
     fmc = 0
@@ -133,14 +131,39 @@ def calculateError(args):
                              axis=0, dtype=np.float64)
     read2contextmeans = np.mean(np.mean(read2frac, axis=0, dtype=np.float64),
                              axis=0, dtype=np.float64)
+    return {"r1cm": read1cyclemeans, "r2cm": read2cyclemeans,
+            "r1qm": read1qualmeans, "r2qm": read2qualmeans,
+            "r1conm": read1contextmeans, "r2conm": read2contextmeans,
+            "r1f": read1frac, "r2f": read2frac, "r1m": read1mean,
+            "r2m": read2mean, "r1e": read1error, "r2e": read2error}
+
+
+def calculateError(args):
+
+    cdef dict data
+    from sys import stderr
+
+    if(args.table_prefix is None):
+        table_prefix = TrimExt(args.mdBam)
+    else:
+        table_prefix = args.table_prefix
+    table_prefix += ".out."
+
+    FullTableHandle = open(table_prefix + "full.tsv", "w")
+    CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
+    PhredTableHandle = open(table_prefix + "phred.tsv", "w")
+    ContextTableHandle = open(table_prefix + "context.tsv", "w")
+
+    data = GetErrorArrays(args)
+    '''
     CycleTableHandle.write("#Cycle\tRead1 mean error\tRead2 mean error\tread count\n")
     for index in xrange(1, rLen):
         CycleTableHandle.write(
-            "%i\t%f\t%f\t%i\n" % (index+1, read1cyclemeans[index],
+            "%i\t%f\t%f\t%i\n" % (index+1, [index],
                                   read2cyclemeans[index], rc))
     CycleTableHandle.close()
     PhredTableHandle.write("#Quality Score\tread1 mean error\tread2 mean error\n")
-    for index in xrange(37):
+    for index in xrange(39):
         PhredTableHandle.write(
             "%i\t%f\t%f\n" % (index+2, read1qualmeans[index],
                               read2qualmeans[index]))
@@ -155,14 +178,26 @@ def calculateError(args):
         "#Cycle\tQuality Score\tContext ID\tRead "
         "1 mean error\tRead 2 mean error\n")
     for read_index in xrange(rLen):
-        for qual_index in xrange(37):
+        for qual_index in xrange(39):
             for context_index in xrange(16):
                 FullTableHandle.write(
                     "%i\t%i\t%i\t%f\t%f\n" % (read_index + 1, qual_index + 2, context_index,
                                               read1frac[read_index][qual_index][context_index],
                                               read2frac[read_index][qual_index][context_index]))
     FullTableHandle.close()
+    '''
     return 0
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline bint TEST_ERROR(char character) nogil:
+    if character == 61:
+        return 0
+    elif character == 78:
+        return 0
+    else:
+        return 1
 
 
 cpdef errorFinder(AlignedSegment_t read,
@@ -171,21 +206,22 @@ cpdef errorFinder(AlignedSegment_t read,
     cdef size_t read_index
     cdef char base
     cdef char * seq
+    cdef size_t offset_index
+    cdef bint err
+
     seq = read.query_sequence
     for read_index in xrange(read.qstart, read.qend):
         readObs[read_index] += 1
-        base = seq[read_index]
-        if base == 61:
-            # case "="
-            return
-        elif base == 78:
-            # case "N"
+        err = TEST_ERROR(<char>seq[read_index])
+        if not err:
+            # case "=" or "N"
             return
         else:
             readErr[read_index] += 1
             return
 
 
+@cython.returns(dict)
 def cCycleError(args):
     cdef size_t rLen, minFM, maxFM, qc, rc, fmc, index, FM
     cdef double_t read1mean, read2mean
@@ -210,10 +246,7 @@ def cCycleError(args):
     rc = 0
     mdBam = pysam.AlignmentFile(args.mdBam)
     for read in mdBam:
-        if read.flag & 2820:
-            qc += 1
-            continue
-        elif ~ read.flag & 2:
+        if read.flag & 2820 or ~ read.flag & 2:
             qc += 1
             continue
         FM = read.opt("FM")
@@ -233,8 +266,8 @@ def cCycleError(args):
     stdout.write("Reads QC Filtered: %i\n" % (qc))
     if args.family_size is not None:
         stdout.write("Reads Family Size Filtered: %i\n" % (fmc))
-    read1prop = read1error / read1obs
-    read2prop = read2error / read2obs
+    read1prop = np.divide(read1error.astype(np.double), read1obs)
+    read2prop = np.divide(read2error.astype(np.double), read2obs)
     read1mean = np.mean(read1prop)
     read2mean = np.mean(read2prop)
     stdout.write("cycle\tread1\tread2\tread count\n")
@@ -246,6 +279,9 @@ def cCycleError(args):
                                        rc))
     if args.cycleheat is not None:
         cycleHeater(read1prop, read2prop, rLen)
+    return {"r1e": read1error, "r1o": read1obs, "r2e": read2error,
+            "r2o": read2obs, "r1p": read1prop, "r2p": read2prop,
+            "r1m": read1mean, "r2m": read2mean}
 
 
 def cycleHeater(read1prop, read2prop, rLen):

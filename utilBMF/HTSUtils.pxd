@@ -39,10 +39,9 @@ cdef class pPileupRead:
     cdef public long level
     cdef public long indel
     cdef public long query_position
-    cdef public float AF
     cdef public cystr name, str
     cdef public AlignedSegment_t alignment
-    cdef public np_int32_t BQ, FA, MBQ
+    cdef public np_int32_t BQ, FA, MBQ, FM, MQ
     cpdef object opt(self, cystr arg)
 
 cdef class PileupReadPair:
@@ -163,8 +162,6 @@ cdef bint cReadsOverlap(
         AlignedSegment_t read1,
         AlignedSegment_t read2)
 
-cpdef bint WritePairToHandle(
-    ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
 cdef cystr cGetBS(pFastqProxy_t)
 
