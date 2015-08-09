@@ -14,10 +14,14 @@ from utilBMF.HTSUtils import TrimExt
 from entropy import shannon_entropy as shen
 
 
+cdef inline cystr GetKeyForRead(AlignedSegment_t read):
+    return read.query_name + "_R1" if(read & 64) else read.query_name + "_R2"
+
+
 cdef inline dict BuildDict(AlignmentFile_t handle, int32_t minFM):
     cdef dict ret
     cdef AlignedSegment_t read
-    ret = {read.query_name: (read.opt("FM"), read.query_sequence) for
+    ret = {GetKeyForRead(read) : (read.opt("FM"), read.query_sequence) for
            read in handle if read.opt("FM") >= minFM}
     return ret
 
@@ -79,3 +83,4 @@ cpdef void WriteDiscToDisk(cystr bam1, cystr bam2, cystr output=None,
             outHandle.write(MakeDiscLine(key, cons1, cons2,
                                          FM1, FM2, shen(key)))
     outHandle.close()
+    return
