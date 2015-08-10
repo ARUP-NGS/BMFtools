@@ -184,8 +184,6 @@ cpdef cystr MarkSortFq(cystr Fq1, cystr IndexFq, cystr outFastq,
                 " -k3,3 -k1,1 %s | tr '\t' '\n' > %s" % (sortMem, outFastq))
 
 
-@cython.locals(checks=int,
-               parallel=cython.bint, sortMem=cystr)
 def BarcodeSortBoth(cystr inFq1, cystr inFq2,
                     cystr sortMem=None, cython.bint parallel=False):
     cdef cystr outFq1, outFq2, highMemStr

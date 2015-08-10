@@ -141,181 +141,6 @@ cpdef cystr RevCmp(cystr seq):
     return seq.translate(DNA_CODON_TABLE)[::-1]
 
 
-PysamToChrDict = {}
-for i in xrange(22):
-    PysamToChrDict[i] = str(i + 1)
-PysamToChrDict[-1] = "*"
-PysamToChrDict[22] = "X"
-PysamToChrDict[23] = "Y"
-PysamToChrDict[24] = "MT"
-PysamToChrDict[25] = "GL000207.1"
-PysamToChrDict[26] = "GL000226.1"
-PysamToChrDict[27] = "GL000229.1"
-PysamToChrDict[28] = "GL000231.1"
-PysamToChrDict[29] = "GL000210.1"
-PysamToChrDict[30] = "GL000239.1"
-PysamToChrDict[31] = "GL000235.1"
-PysamToChrDict[32] = "GL000201.1"
-PysamToChrDict[33] = "GL000247.1"
-PysamToChrDict[34] = "GL000245.1"
-PysamToChrDict[35] = "GL000197.1"
-PysamToChrDict[36] = "GL000203.1"
-PysamToChrDict[37] = "GL000246.1"
-PysamToChrDict[38] = "GL000249.1"
-PysamToChrDict[39] = "GL000196.1"
-PysamToChrDict[40] = "GL000248.1"
-PysamToChrDict[41] = "GL000244.1"
-PysamToChrDict[42] = "GL000238.1"
-PysamToChrDict[43] = "GL000202.1"
-PysamToChrDict[44] = "GL000234.1"
-PysamToChrDict[45] = "GL000232.1"
-PysamToChrDict[46] = "GL000206.1"
-PysamToChrDict[47] = "GL000240.1"
-PysamToChrDict[48] = "GL000236.1"
-PysamToChrDict[49] = "GL000241.1"
-PysamToChrDict[50] = "GL000243.1"
-PysamToChrDict[51] = "GL000242.1"
-PysamToChrDict[52] = "GL000230.1"
-PysamToChrDict[53] = "GL000237.1"
-PysamToChrDict[54] = "GL000233.1"
-PysamToChrDict[55] = "GL000204.1"
-PysamToChrDict[56] = "GL000198.1"
-PysamToChrDict[57] = "GL000208.1"
-PysamToChrDict[58] = "GL000191.1"
-PysamToChrDict[59] = "GL000227.1"
-PysamToChrDict[60] = "GL000228.1"
-PysamToChrDict[61] = "GL000214.1"
-PysamToChrDict[62] = "GL000221.1"
-PysamToChrDict[63] = "GL000209.1"
-PysamToChrDict[64] = "GL000218.1"
-PysamToChrDict[65] = "GL000220.1"
-PysamToChrDict[66] = "GL000213.1"
-PysamToChrDict[67] = "GL000211.1"
-PysamToChrDict[68] = "GL000199.1"
-PysamToChrDict[69] = "GL000217.1"
-PysamToChrDict[70] = "GL000216.1"
-PysamToChrDict[71] = "GL000215.1"
-PysamToChrDict[72] = "GL000205.1"
-PysamToChrDict[73] = "GL000219.1"
-PysamToChrDict[74] = "GL000224.1"
-PysamToChrDict[75] = "GL000223.1"
-PysamToChrDict[76] = "GL000195.1"
-PysamToChrDict[77] = "GL000212.1"
-PysamToChrDict[78] = "GL000222.1"
-PysamToChrDict[79] = "GL000200.1"
-PysamToChrDict[80] = "GL000193.1"
-PysamToChrDict[81] = "GL000194.1"
-PysamToChrDict[82] = "GL000225.1"
-PysamToChrDict[83] = "GL000192.1"
-# PysamToChrDict[84] = "gi|9626372|ref|NC_001422.1|"
-
-for i in xrange(22):
-    PysamToChrDict[str(i + 1)] = i
-PysamToChrDict["*"] = -1
-PysamToChrDict["X"] = 22
-PysamToChrDict["Y"] = 23
-PysamToChrDict["MT"] = 24
-PysamToChrDict["GL000207.1"] = 25
-PysamToChrDict["GL000226.1"] = 26
-PysamToChrDict["GL000229.1"] = 27
-PysamToChrDict["GL000231.1"] = 28
-PysamToChrDict["GL000210.1"] = 29
-PysamToChrDict["GL000239.1"] = 30
-PysamToChrDict["GL000235.1"] = 31
-PysamToChrDict["GL000201.1"] = 32
-PysamToChrDict["GL000247.1"] = 33
-PysamToChrDict["GL000245.1"] = 34
-PysamToChrDict["GL000197.1"] = 35
-PysamToChrDict["GL000203.1"] = 36
-PysamToChrDict["GL000246.1"] = 37
-PysamToChrDict["GL000249.1"] = 38
-PysamToChrDict["GL000196.1"] = 39
-PysamToChrDict["GL000248.1"] = 40
-PysamToChrDict["GL000244.1"] = 41
-PysamToChrDict["GL000238.1"] = 42
-PysamToChrDict["GL000202.1"] = 43
-PysamToChrDict["GL000234.1"] = 44
-PysamToChrDict["GL000232.1"] = 45
-PysamToChrDict["GL000206.1"] = 46
-PysamToChrDict["GL000240.1"] = 47
-PysamToChrDict["GL000236.1"] = 48
-PysamToChrDict["GL000241.1"] = 49
-PysamToChrDict["GL000243.1"] = 50
-PysamToChrDict["GL000242.1"] = 51
-PysamToChrDict["GL000230.1"] = 52
-PysamToChrDict["GL000237.1"] = 53
-PysamToChrDict["GL000233.1"] = 54
-PysamToChrDict["GL000204.1"] = 55
-PysamToChrDict["GL000198.1"] = 56
-PysamToChrDict["GL000208.1"] = 57
-PysamToChrDict["GL000191.1"] = 58
-PysamToChrDict["GL000227.1"] = 59
-PysamToChrDict["GL000228.1"] = 60
-PysamToChrDict["GL000214.1"] = 61
-PysamToChrDict["GL000221.1"] = 62
-PysamToChrDict["GL000209.1"] = 63
-PysamToChrDict["GL000218.1"] = 64
-PysamToChrDict["GL000220.1"] = 65
-PysamToChrDict["GL000213.1"] = 66
-PysamToChrDict["GL000211.1"] = 67
-PysamToChrDict["GL000199.1"] = 68
-PysamToChrDict["GL000217.1"] = 69
-PysamToChrDict["GL000216.1"] = 70
-PysamToChrDict["GL000215.1"] = 71
-PysamToChrDict["GL000205.1"] = 72
-PysamToChrDict["GL000219.1"] = 73
-PysamToChrDict["GL000224.1"] = 74
-PysamToChrDict["GL000223.1"] = 75
-PysamToChrDict["GL000195.1"] = 76
-PysamToChrDict["GL000212.1"] = 77
-PysamToChrDict["GL000222.1"] = 78
-PysamToChrDict["GL000200.1"] = 79
-PysamToChrDict["GL000193.1"] = 80
-PysamToChrDict["GL000194.1"] = 81
-PysamToChrDict["GL000225.1"] = 82
-PysamToChrDict["GL000192.1"] = 83
-# PysamToChrDict["gi|9626372|ref|NC_001422.1|"] = 84
-
-
-def BuildRefIDDict(cystr bam):
-    """
-    TODO: Switch over to this vs. the PysamToChrDict usage.
-    This way, it defaults to the hard-coded, but automatically
-    builds it from the BAM file.
-    """
-    global ReferenceDict
-    ReferenceDict = GetPysamToChrDictFromAlignmentFile(
-        pysam.AlignmentFile(bam, "rb"))
-
-
-@cython.returns(dict)
-def getRefIDConversionDict():
-    if("ReferenceDict" in globals()):
-        return globals()["ReferenceDict"]
-    else:
-        return PysamToChrDict
-
-
-@cython.returns(dict)
-def GetPysamToChrDictFromAlignmentFile(
-        pysam.calignmentfile.AlignmentFile alignmentfileObj):
-    """
-    Returns a dictionary of pysam reference numbers to contig names.
-    """
-    return dict(list(enumerate(alignmentfileObj.references)))
-
-
-@cython.returns(dict)
-def GetBidirectionalPysamChrDict(
-        pysam.calignmentfile.AlignmentFile alignmentfileObj):
-    """
-    Returns a dictionary of contig names to pysam reference numbers
-    and vice versa - bi-directional.
-    """
-    refList = list(enumerate(alignmentfileObj.references))
-    return dict(map(lreverse, refList) + refList)
-
-
 cdef class pFastqProxy:
     """
     Python container for pysam.cfaidx.FastqProxy with persistence.
@@ -581,11 +406,10 @@ def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
     return outBAM
 
 
-@cython.returns(cystr)
 def PipeAlignTag(R1, R2, ref="default",
                  outBAM="default", path="default",
                  bint coorsort=True, bint u=False,
-                 cystr sortMem="6G", cystr opts=None,
+                 sortMem="6G", cystr opts=None,
                  bint dry_run=False, bint sam=False):
     """
     :param R1 - [cystr/arg] - path to input fastq for read 1
@@ -941,7 +765,6 @@ def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
     return outBAM
 
 
-@cython.locals(sortAndIndex=bint)
 def NameSortAndFixMate(inBAM, outBAM="default", prefix="MetasyntacticVar",
                        uuid="true", threads="4", sortMem="4G",
                        sortAndIndex=False, deleteIntermediate=True):
@@ -1944,7 +1767,6 @@ def SplitBed(cystr bedpath):
                      contig in contigs])
 
 
-@cython.returns(cystr)
 def MergeBamList(bamlist, picardpath="default", sortMem="-Xmx6G",
                  outbam="default"):
     """
@@ -2246,9 +2068,8 @@ def SlaveDMP(bsFastq1, bsFastq2,
     return trimFastq1, trimFastq2
 
 
-@cython.returns(cystr)
 def SlaveDMPCommandString(cystr bsFastq1, cystr bsFastq2,
-                          cystr sortMem=None,
+                          sortMem=None,
                           overlapLen=None, head=None,
                           p3Seq=None, p5Seq=None):
     """
