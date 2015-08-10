@@ -132,7 +132,9 @@ def cycleError(args):
         if read.is_read2:
             rc += 1
             errorFinder(read, read2error, read2obs)
-    sys.stdout.write("Family Size Range: %i-%i\n" % (fam_range))
+    if fam_range:
+        sys.stdout.write("Family Size Range: %i-%i\n" % (fam_range[0],
+                                                         fam_range[1]))
     sys.stdout.write("Reads Analyzed: %i\n" % (rc))
     sys.stdout.write("Reads QC Filtered: %i\n" % (qc))
     if fam_range:
@@ -145,7 +147,11 @@ def cycleError(args):
     for index in xrange(rlen):
         sys.stdout.write("%i\t%f\t%f\t%i\n" % (index+1, read1prop[index],
                                              read2prop[index], rc))
-    sys.stdout.write("%i\t%f\t%f\t%i\n" % (fam_range[1], read1mean, read2mean,
+    if not fam_range:
+        size = "all"
+    else:
+        size = str(fam_range[1])
+    sys.stdout.write("%s\t%f\t%f\t%i\n" % (size, read1mean, read2mean,
                                            rc))
     if args.cycleheat:
         cycleHeater(read1prop, read2prop, rlen)
