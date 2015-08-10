@@ -149,11 +149,10 @@ def BarcodeSortBoth(cystr inFq1, cystr inFq2,
 
 @cython.locals(highMem=cython.bint)
 def BarcodeSort(cystr inFastq, cystr outFastq="default",
-                cystr mem="6G", int threads=1):
+                cystr mem="6G"):
     cdef cystr BSstring
     pl("Sorting {} by barcode sequence.".format(inFastq))
-    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem,
-                                 threads=threads)
+    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem)
     check_call(BSstring, shell=True)
     pl("Barcode Sort shell call: {}".format(BSstring))
     if(outFastq == "default"):  # Added for compatibility with getBSstr
@@ -874,8 +873,9 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
             "PairedShadeSplitting requires that head be set.")
     if(num_nucs < 0):
         raise UnsetRequiredParameter("num_nucs must be set")
-    elif(num_nucs > 3):
-        raise ImproperArgumentError("num_nucs is limited to 2")
+    elif(num_nucs > 6):
+        raise ImproperArgumentError("num_nucs is limited to 6. "
+                                    "Why? I felt like it.")
     numHandleSets = 4 ** num_nucs
     bcKeys = ["A" * (num_nucs - len(nci(i))) + nci(i) for
               i in range(numHandleSets)]

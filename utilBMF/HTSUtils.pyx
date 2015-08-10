@@ -1978,9 +1978,11 @@ class PopenCall(object):
     def __init__(self, string, maxresubs=10):
         self.commandString = string
         self.popen = DevNullPopen(string)
-        self.poll = self.popen.exitcode
         self.resubmissions = 0
         self.maxresubs = maxresubs
+
+    def poll(self):
+        return self.popen.exitcode
 
     def resubmit(self):
         if(self.resubmissions >= self.maxresubs):
