@@ -54,8 +54,60 @@ DEF size32 = 4
 DEF sizedouble = 8
 
 
-cpdef cystr SortAndMarkFastqsCommand(cystr Fq1, cystr IndexFq,
-                                     bint zcat=False, int8_t hpLimit=10):
+cpdef tuple MarkSortDMP(cystr Fq1, cystr Fq2, cystr IndexFq,
+                        cystr outFastq1=None, cystr outFastq2=None,
+                        bint zcat=False, int8_t hpLimit=10,
+                        cystr sortMem=None):
+    """
+    :param Fq1: [cystr/arg] Path to input fastq for read 1.
+    :param Fq2: [cystr/arg] Path to input fastq for read 2.
+    :param IndexFq: [cystr/arg] Path to index fastq
+    :param outFastq1: [cystr/kwarg/None] Path for output fastq for read 1.
+    :param outFastq2: [cystr/kwarg/None] Path for output fastq for read 2.
+    :param zcat: [bint/kwarg/False] Whether to zcat vs. cat.
+    :param hpLimit: [int8_t/kwarg/10] Length of homopolymer run needed
+    :param sortMem: [cystr/kwarg/None] memory string to pass to gnu sort.
+    :return: Path to output fastq.
+    """
+    cdef cystr MFC1, MFC2
+    cdef size_t checks
+
+    from subprocess import check_call, Popen, CalledProcessError
+
+    if outFastq1 is None:
+        outFastq1 = TrimExt(Fq1) + ".mark.BS.fastq"
+    if outFastq2 is None:
+        outFastq2 = TrimExt(Fq2) + ".mark.BS.fastq"
+    MFC1 = MarkSortFq(Fq1, IndexFq, outFastq1, sortMem=sortMem,
+                      zcat=zcat, hpLimit=hpLimit)
+    MFC2 = MarkSortFq(Fq1, IndexFq, outFastq2, sortMem=sortMem,
+                      zcat=zcat, hpLimit=hpLimit)
+    Call1 = Popen(MFC1, stderr=None, shell=True,
+                  stdout=None, stdin=None, close_fds=True)
+    check_call(MFC2)
+    Call1.poll()
+    checks = 0
+    if(Call1.returncode == 0):
+        return outFastq1, outFastq2
+    elif(Call1.returncode is not None):
+        raise subprocess.CalledProcessError("Shell call failed for read 1."
+                                            " Call: {}".format(MFC1))
+    else:
+        while checks < 1800:
+            checks = 0
+            time.sleep(1)
+            Call1.poll()
+            if(Call1.returncode == 0):
+                return outFastq1, outFastq2
+            else:
+                checks += 1
+        raise CalledProcessError("Piped fastq marking  seems to have taken l"
+                                 "onger than expected - took more than 30 minu"
+                                 "tes longer than the second read's processing.")
+
+
+cpdef cystr MarkFastqsCommand(cystr Fq1, cystr IndexFq,
+                              bint zcat=False, int8_t hpLimit=10):
     """
 
     :param Fq1: [cystr/arg] Path to input fastq
@@ -75,31 +127,61 @@ cpdef cystr SortAndMarkFastqsCommand(cystr Fq1, cystr IndexFq,
                 ") <(zcat %s | paste - - - -) | awk" % IndexFq +
                 " 'BEGIN {{FS=OFS=\"\t\"}}; $6 !~ /'%s'/" % As +
                 " && $6 !~ /'%s'/ && $6 !~ /'%s'/ &&  $6 !~ " % (Cs, Gs) +
-                "/'%s'/ {{;split($1, a, \" \"); print a[1]\" |FP=1|B" % Ts +
-                "S=\"$6, $2, $3, $4}}' | tr '\t' '\n'")
+                "/'%s'/ {{split($1, a, \" \"); print a[1]\" ~#!#~|" % Ts +
+                "FP=1|BS=\"$6, $2, $3, $4}}' | tr '\t' '\n'")
     else:
         return ("pr -mts <(cat %s | paste - - - - "  % Fq1 +
                 ") <(cat %s | paste - - - -) | awk" % IndexFq +
                 " 'BEGIN {{FS=OFS=\"\t\"}}; $6 !~ /'%s'/" % As +
                 " && $6 !~ /'%s'/ && $6 !~ /'%s'/ &&  $6 !~ " % (Cs, Gs) +
-                "/'%s'/ {{;split($1, a, \" \"); print a[1]\" |FP=1|B" % Ts +
-                "S=\"$6, $2, $3, $4}}' | tr '\t' '\n'")
+                "/'%s'/ {{split($1, a, \" \"); print a[1]\" ~#!#~" % Ts +
+                "|FP=1|BS=\"$6, $2, $3, $4}}' | tr '\t' '\n'")
 
 
 cpdef cystr SortMarkToStdoutFastq(cystr Fq1, cystr Fq2, cystr IndexFq, bint zcat=False,
                                   int8_t hpLimit=10):
-    return "pr -mts'\n' <(%s) <(%s)" % (SortAndMarkFastqsCommand(
+    return "pr -mts'\n' <(%s) <(%s)" % (MarkFastqsCommand(
         Fq1, IndexFq, zcat=zcat, hpLimit=hpLimit),
-                                        SortAndMarkFastqsCommand(
+                                        MarkFastqsCommand(
         Fq2, IndexFq, zcat=zcat, hpLimit=hpLimit))
 
 
-cpdef cystr GetMarkAndSortCommandString(cystr Fq1, cystr Fq2, cystr IndexFq, bint zcat=False,
-                                        int8_t hpLimit=10):
-    cdef cystr ret
-    ret = (SortMarkToStdoutFastq(Fq1, Fq2, IndexFq, zcat=zcat,
-                                hpLimit=hpLimit) + " | " +
-           BarcodeSortPipeStr(outFastq="default", mem=""))
+cpdef cystr MarkSortFq(cystr Fq1, cystr IndexFq, cystr outFastq,
+                       bint zcat=False,
+                       int8_t hpLimit=10, cystr sortMem=None):
+    """
+    :param Fq1: [cystr/arg] - Path to initial fastq
+    :param IndexFq: [cystr/arg] - Path to index fastq
+    :param outFastq: [cystr/arg] - Path for output fastq. Set to 'stdout' to pipe.
+    :param zcat: [bint/kwarg/False] - Whether to zcat rather than cat.
+    :param hpLimit: [int8_t/kwarg/10] - Length of homopolyer run required to fail
+    family.
+    :param sortMem: [cystr/kwarg/None] - memory string to pass to sort.
+    :return:
+    """
+    cdef cystr As, Cs, Gs, Ts
+    As = "A" * hpLimit
+    Cs = "C" * hpLimit
+    Gs = "G" * hpLimit
+    Ts = "T" * hpLimit
+    if outFastq == "default":
+        outFastq = TrimExt(Fq1) + ".mark.sort.fastq"
+    if zcat:
+        return ("pr -mts <(zcat %s | paste - - - - "  % Fq1 +
+                ") <(zcat %s | paste - - - -) | awk" % IndexFq +
+                " 'BEGIN {{FS=OFS=\"\t\"}}; $6 !~ /'%s'/" % As +
+                " && $6 !~ /'%s'/ && $6 !~ /'%s'/ &&  $6 !~ " % (Cs, Gs) +
+                "/'%s'/ {{split($1, a, \" \"); print a[1]\" |FP=1|B" % Ts +
+                "S=\"$6, $2, $3, $4}}' | tr '\t' '\n' | sort -t'|'"
+                " -k3,3 -k1,1 %s | tr '\t' '\n' > %s" % (sortMem, outFastq))
+    else:
+        return ("pr -mts <(cat %s | paste - - - - "  % Fq1 +
+                ") <(cat %s | paste - - - -) | awk" % IndexFq +
+                " 'BEGIN {{FS=OFS=\"\t\"}}; $6 !~ /'%s'/" % As +
+                " && $6 !~ /'%s'/ && $6 !~ /'%s'/ &&  $6 !~ " % (Cs, Gs) +
+                "/'%s'/ {{split($1, a, \" \"); print a[1]\" |FP=1|B" % Ts +
+                "S=\"$6, $2, $3, $4}}' | sort -t'|'"
+                " -k3,3 -k1,1 %s | tr '\t' '\n' > %s" % (sortMem, outFastq))
 
 
 @cython.locals(checks=int,
@@ -160,18 +242,28 @@ def BarcodeSort(cystr inFastq, cystr outFastq="default",
     return outFastq
 
 
-def BarcodeSortPipeStr(outFastq="default",
-                       mem=""):
+def BarcodeSortPipeStr(outFastq="stdout",
+                       mem=None):
+    """
+    :param outFastq: [cystr/arg] Path to output fastq.
+    :param mem:
+    :return:
+    """
+    if mem is None:
+        mem = "6G"
     if mem != "":
         mem = " -S " + mem
-    return "paste - - - - | sort -t'|' -k3,3 -k1,1" \
-           " %s | tr '\t' '\n' > %s" % (mem, outFastq)
+    if outFastq != "stdout":
+        return "paste - - - - | sort -t'|' -k3,3 -k1,1" \
+               " %s | tr '\t' '\n' > %s" % (mem, outFastq)
+    else:
+        return "paste - - - - | sort -t'|' -k3,3 -k1,1" \
+               " %s | tr '\t' '\n'" % mem
+
 
 
 @cython.returns(cystr)
-def getBarcodeSortStr(inFastq, outFastq="default", mem=""):
-    if(mem != ""):
-        mem = " -S " + mem
+def getBarcodeSortStr(inFastq, outFastq="default", mem=None):
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):

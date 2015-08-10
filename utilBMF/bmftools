@@ -1180,7 +1180,7 @@ def main():
     if(subcommand == "pep8"):
         from subprocess import Popen, PIPE
         from time import sleep
-        if(os.path.isdir(Chapman['dir']) is False):
+        if os.path.isdir(Chapman['dir']) is False:
             raise ImproperArgumentError(
                 "Directory %s is not a directory. Abort!" % Chapman['dir'])
         cStr = ("pep8 $(find " + Chapman['dir'] +
@@ -1189,11 +1189,11 @@ def main():
         complaints = Popen(cStr, shell=True, stdout=PIPE)
         count = 0
         while count < 600:
-            if(complaints.poll() is not None):
+            if complaints.poll() is not None:
                 break
             sleep(0.5)
         out, err = complaints.communicate()
-        if(len(out) == 0):
+        if len(out) == 0:
             pl("No modified pep8 violations. Congrats!")
             return 0
         else:

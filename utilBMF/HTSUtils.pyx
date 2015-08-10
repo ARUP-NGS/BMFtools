@@ -617,7 +617,7 @@ def PipeAlignTag(R1, R2, ref="default",
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]*\|/\t"
+    sedString = (" | sed -r -e 's/\t~#!#~\|/\t"
                  "RG:Z:default\t/' -e 's/^@PG/@RG\tID:default\tPL:"
                  "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
                  "t\n@PG/' -e 's/FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
@@ -900,7 +900,7 @@ def BedtoolsBamToBed(inBAM, outbed="default", ref="default"):
 
 def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
                         outBAM="default",
-                        uuid="true", memStr="4G",
+                        uuid="true", sortMem="4G",
                         threads="4", delete=False):
     '''
     Uses samtools >= 1.0.0 to coordinate sort and index a bam file.
@@ -913,7 +913,7 @@ def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.CoorSort.bam'
     CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outBAM) +
-                  " -@ {} {} -m {}".format(threads, inBAM, memStr))
+                  " -@ {} {} -m {}".format(threads, inBAM, sortMem))
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Now indexing.")
@@ -925,7 +925,7 @@ def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
 
 
 def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
-             uuid="true", threads="4", memStr="4G"):
+             uuid="true", threads="4", sortMem="4G"):
     # If uuid is either a boolean true or is a string containing true,
     # then a random string is generated for the output
     if(str(uuid).lower() == "true"):
@@ -934,7 +934,7 @@ def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
     if(outBAM == "default"):
         outBAM = '.'.join(inBAM.split('.')[0:-1]) + '.NameSort.bam'
     CommandStr = ("samtools sort -T {} -O bam -o {}".format(prefix, outBAM) +
-                  " -@ {} -m {} -n {}".format(threads, memStr, inBAM))
+                  " -@ {} -m {} -n {}".format(threads, sortMem, inBAM))
     printlog("About to call sort command: {}".format(CommandStr))
     subprocess.check_call(shlex.split(CommandStr))
     printlog("Namesort successful, sorted bam available at: {}".format(outBAM))
@@ -943,7 +943,7 @@ def NameSort(inBAM, outBAM="default", prefix="MetasyntacticVar",
 
 @cython.locals(sortAndIndex=bint)
 def NameSortAndFixMate(inBAM, outBAM="default", prefix="MetasyntacticVar",
-                       uuid="true", threads="4", memStr="4G",
+                       uuid="true", threads="4", sortMem="4G",
                        sortAndIndex=False, deleteIntermediate=True):
     """
     If uuid is either a boolean true or is a string containing true,
@@ -1945,7 +1945,7 @@ def SplitBed(cystr bedpath):
 
 
 @cython.returns(cystr)
-def MergeBamList(bamlist, picardpath="default", memStr="-Xmx6G",
+def MergeBamList(bamlist, picardpath="default", sortMem="-Xmx6G",
                  outbam="default"):
     """
     Merges a list of BAMs. Used for merging discordant read bams for
@@ -1955,7 +1955,7 @@ def MergeBamList(bamlist, picardpath="default", memStr="-Xmx6G",
         bamlist = bamlist.split(":")
     if(outbam == "default"):
         outbam = bamlist[0].split(".")[0:-1] + ".merged.bam"
-    commandStr = "java %s -jar %s AS=true" % (memStr, picardpath)
+    commandStr = "java %s -jar %s AS=true" % (sortMem, picardpath)
     commandStr += " I=" + " I=".join(bamlist)
     commandStr += " O=%s" % outbam
     check_call(shlex.split(commandStr))

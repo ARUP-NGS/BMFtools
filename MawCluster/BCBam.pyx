@@ -42,7 +42,7 @@ import SecC
 
 
 def AbraCadabra(inBAM, outBAM="default",
-                jar="default", memStr="default", ref="default",
+                jar="default", sortMem="default", ref="default",
                 threads="4", bed="default", working="default",
                 log="default", bint fixMate=True, tempPrefix="tmpPref",
                 rLen=-1, intelPath="default", bint leftAlign=True,
@@ -63,11 +63,11 @@ def AbraCadabra(inBAM, outBAM="default",
         raise MissingExternalTool("Required: Path to abra jar!")
     else:
         pl("Non-default abra jar used: " + jar)
-    if(memStr == "default"):
-        memStr = "-Xmx16G"
-        pl("Default memory string used: " + memStr)
+    if(sortMem == "default"):
+        sortMem = "-Xmx16G"
+        pl("Default memory string used: " + sortMem)
     else:
-        pl("Non-default memory string used: " + memStr)
+        pl("Non-default memory string used: " + sortMem)
     if(ref == "default"):
         raise ValueError("Reference fasta must be provided!")
     if(ref.split(".")[-1] == "gz"):
@@ -94,7 +94,7 @@ def AbraCadabra(inBAM, outBAM="default",
         "AbraCadabra(\"{}\", outBAM=\"{}\", jar=\"{}\", ".format(inBAM,
                                                                  outBAM,
                                                                  jar) +
-        "memStr=\"{}\", ref=\"{}\", threads=\"{}\", ".format(memStr,
+        "sortMem=\"{}\", ref=\"{}\", threads=\"{}\", ".format(sortMem,
                                                              ref, threads) +
         "bed=\"{}\", working=\"{}\", log=\"{}\")".format(bed, working, log)))
     if(path.isdir(working)):
@@ -109,7 +109,7 @@ def AbraCadabra(inBAM, outBAM="default",
         check_call(['samtools', 'index', inBAM])
         if(path.isfile(inBAM + ".bai") is False):
             inBAM = HTSUtils.CoorSortAndIndexBam(inBAM, outBAM, uuid=True)
-    command = ("java {} -jar {} --in {}".format(memStr, jar, inBAM) +
+    command = ("java {} -jar {} --in {}".format(sortMem, jar, inBAM) +
                " --out {} --ref {} --targets".format(outBAM, ref) +
                " {} --threads {} ".format(bed, threads) +
                "--working %s --mbq 200 --mer 0.0025 --mad 20000" % working)
