@@ -26,7 +26,6 @@ Contains functions and miscellania for QC metrics.
 """
 
 
-@cython.locals(buffer=int)
 def ExtendBed(bedfile, buffer=100, outbed="default"):
     """
     """
@@ -95,7 +94,6 @@ def FastDOCBed(inBAM, bed="default", outbed="default",
     return outbed, fracOnTarget
 
 
-@cython.locals(buffer=int)
 def FracOnTarget(inBAM, bed="default", buffer=20,
                  cystr FastDOCPath="default", int threads=8):
     """

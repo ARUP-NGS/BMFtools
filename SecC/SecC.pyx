@@ -49,7 +49,6 @@ def GetRawInfo(xmlObj, runXmlDict=-1, lane=-1, tile=-1):
     pass
 
 
-@cython.locals(i=cython.int)
 def BuildRunDict(xmlPath, makeGlobal=True):
     """
     Written to take xmlObj as the output of ConversionStatsToLaneElements.

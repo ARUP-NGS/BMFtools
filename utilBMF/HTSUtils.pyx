@@ -1354,29 +1354,10 @@ def FractionAligned(AlignedSegment_t read):
     return FractionAlignedCigar(read.cigar)
 
 
-def AddReadGroupsPicard(inBAM, RG="default", SM="default",
-                        PL="ILLUMINA", CN="default", picardpath="default",
-                        outBAM="default", ID="default", LB="default",
-                        PU="default"):
-    if(picardpath == "default"):
-        raise Tim("picardpath required to call PicardTools!")
-    if(outBAM == "default"):
-        outBAM = ".".join(inBAM.split(".")[:-1] + ["addRG", "bam"])
-    commandStr = ("java -jar %s AddOrReplaceReadGroups I=" % picardpath +
-                  "%s O=%s VALIDATION_STRINGENCY=SILENT " % (inBAM, outBAM) +
-                  " CN=%s PL=%s SM=%s ID=%s LB=%s PU=%s" % (CN, PL,
-                                                            SM, ID, LB,
-                                                            PU))
-    printlog("AddReadGroupsPicard commandStr: %s" % commandStr)
-    subprocess.check_call(shlex.split(commandStr))
-    return outBAM
-
-
-@cython.locals(outliers_fraction=np.longdouble_t,
-               contamination=np.longdouble_t,
-               window=int)
-def BuildEEModels(f1, f2, outliers_fraction=0.1, contamination=0.005,
-                  window=20):
+def BuildEEModels(cystr f1, cystr f2,
+                  np.longdouble_t outliers_fraction=0.1,
+                  np.longdouble_t contamination=0.005,
+                  int window=20):
     from sklearn.covariance import EllipticEnvelope
     cdef ndarray[np.longdouble_t, ndim=1] GAFreqNP = f1
     cdef ndarray[np.longdouble_t, ndim=1] CTFreqNP = f2
@@ -1450,16 +1431,6 @@ def CalculateFamStats(inFq):
     return numSing, numFam, meanFamAll, meanRealFam
 
 
-@cython.locals(n=int)
-@cython.returns(list)
-def bitfield(n):
-    """
-    Parses a bitwise flag into an array of 0s and 1s.
-    No need - use the & or | tools for working with bitwise flags.
-    """
-    return [1 if digit == '1' else 0 for digit in bin(n)[2:]]
-
-
 @cython.returns(cystr)
 def ASToFastqSingle(AlignedSegment_t read):
     """
@@ -1488,21 +1459,6 @@ def ASToFastqSingle(AlignedSegment_t read):
         return ("@" + read.query_name + "\n" + read.seq +
                 "\n+\n" +
                 "".join([ph2chrDict[i] for i in read.query_qualities]))
-
-
-@cython.locals(alignmentfileObj=pysam.calignmentfile.AlignmentFile)
-@cython.returns(cystr)
-def ASToFastqPaired(AlignedSegment_t read,
-                    alignmentfileObj):
-    """
-    Works for coordinate-sorted and indexed BAM files, but throws
-    an error if the mate is unmapped.
-    """
-    FastqStr1 = ASToFastqSingle(read)
-    FastqStr2 = ASToFastqSingle(alignmentfileObj.mate(read))
-    if(read.is_read1):
-        return FastqStr1 + "\n" + FastqStr2
-    return FastqStr2 + "\n" + FastqStr1
 
 
 @cython.returns(pysam.calignmentfile.AlignmentFile)
@@ -1687,6 +1643,7 @@ class AbstractVCFProxyFilter(object):
         so long as you have comma-separated fields of equal length
         between "key" and "value".
         """
+        cdef cystr key, value
         if(not self.func(rec)):
             if(rec.filter == "PASS"):
                 rec.filter = self.filterStr
