@@ -353,59 +353,6 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
     return outBAM
 
 
-def align_bwa_mem(R1, R2, ref="default", opts="", outBAM="default",
-                  path="default",
-                  bint addCO=True, bint fqCO=True):
-    """
-    Aligns a set of paired-end
-    reads to a reference
-    with provided options using bwa mem.
-    Defaults to 4 threads, silent alignment, listing
-    supplementary alignments, and
-    writing each reads' alignment,
-    regardless of mapping quality.
-    In addition, adds an RG header line for "default",
-    primarily for compatibility with GATK/Picard.
-    :param cystr R1 - Path to Fq 1
-    :param cystr R2 - Path to Fq 2
-    :param cystr ref - Path to reference
-    :param cystr opts - Options to pass to bwa
-    :param bint addCO - Whether or not to use the -C option.
-    :param bint fqCO - True if the fastq comment section has
-    had CO: prepended to it.
-    """
-    if(path == "default"):
-        path = "bwa"
-    if(opts == ""):
-        opts = '-t 4 -v 1 -Y -T 0'
-    if(outBAM == "default"):
-        outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
-    if(ref == "default"):
-        raise Tim("Reference file index required for alignment!")
-    opt_concat = ' '.join(opts.split())
-    baseString = "%s mem %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    if(addCO):
-        baseString = baseString.replace("%s mem" % path, "%s mem -C" % path)
-        sedString = (" | sed -r -e 's/\t~#!#~[1-4]:[A-Z]:[0-9]+:[AGCNT]+\|/\t"
-                     "RG:Z:default\tCO:Z:|/' -e 's/^@PG/@RG\tID:default\tPL:"
-                     "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
-                     "t\n@PG/'")
-        baseString += sedString
-    if(path == "default"):
-        command_str = baseString + " | samtools view -Sbh - > %s" % outBAM
-    else:
-        command_str = "%s%s | samtools view -Sbh - > %s" % (path,
-                                                            baseString[3:],
-                                                            outBAM)
-    # command_list = command_str.split(' ')
-    printlog("bwa mem command string with RG/CO additions"
-             ": %s" % command_str)
-    check_call(command_str.replace("\n", "\\n").replace("\t", "\\t"),
-               shell=True)
-    printlog("bwa mem aligned output is: %s" %outBAM)
-    return outBAM
-
-
 def PipeAlignTag(R1, R2, ref="default",
                  outBAM="default", path="default",
                  bint coorsort=True, bint u=False,

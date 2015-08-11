@@ -50,7 +50,7 @@ for (int i = 0; i < var.n_handles; i++) {\
     case 'G' : increment = 2; break;\
     case 'T' : increment = 3; break;\
     default: increment = 0; break;\
-    }\
+    }
 
 #define FIND_BIN(binner, bin) bin = 0;\
     size_t length_##binner = strlen(binner);\
@@ -60,7 +60,7 @@ for (int i = 0; i < var.n_handles; i++) {\
     while (i_##binner){\
         char_to_num(binner[--i_##binner], inc_##binner);\
         bin += inc_##binner;\
-    }\
+    }
 
   
 // Functions
