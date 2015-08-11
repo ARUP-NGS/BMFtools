@@ -7,8 +7,6 @@ KSEQ_INIT(gzFile, gzread)
 
 #define KSEQ_TO_STRING(handle, read, index, pass) fprintf(handle, "%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n", read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 
-#define test_hp(read, regex)
-
 int main(int argc, char *argv[])
 {
     FILE *outHandle;
@@ -28,7 +26,7 @@ int main(int argc, char *argv[])
     regex_t regex;
     int reti;
 
-    reti = regcomp(&regex, buffer, 0);
+    reti = regcomp(&regex, buffer, REG_EXTENDED);
     if(reti) {
         fprintf(stderr, "Could not compile regular expression '%s'.\n", buffer);
         exit(1);

@@ -1100,28 +1100,25 @@ def FastqSingleShading(fq,
     """
     Unit test done. Marks a single fastq with its index fq string.
     """
-    cdef pysam.cfaidx.FastqProxy read1
     cdef pFastqProxy_t pRead1, pIndexRead
-    cdef pysam.cfaidx.FastqFile inFq1, inIndex
     pl("Now beginning fastq marking: Pass/Fail and Barcode")
     if(indexFq == "default"):
         raise ValueError("For an i5/i7 index ")
     if(outfq == "default"):
         outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
-    inFq1 = pysam.FastqFile(fq)
+    inFq1 = pFastqFile(fq)
     outFqHandle1 = open(outfq, "w")
-    inIndex = pysam.FastqFile(indexFq)
-    for read1 in inFq1:
-        pIndexRead = pFastqProxy.fromFastqProxy(inIndex.next())
-        pRead1 = pFastqProxy.fromFastqProxy(read1)
-        if("N" in pRead1.pIndexRead.sequence):
-            read1.comment += "|FP=0|BS=%" % (
-                read1.sequence[1:head + 1] + pIndexRead.sequence)
-            outFqHandle1.write(str(read1))
+    inIndex = pFastqFile(indexFq)
+    for pRead1 in inFq1:
+        pIndexRead = inIndex.next()
+        if("N" in pRead1.sequence):
+            pRead1.comment += "|FP=0|BS=%s" % (
+                pRead1.sequence[1:head + 1] + pIndexRead.sequence)
+            outFqHandle1.write(str(pRead1))
         else:
-            read1.comment += "|FP=1|BS=%s" % (
-                read1.sequence[1:head + 1] + pIndexRead.sequence)
-            outFqHandle1.write(str(read1))
+            pRead1.comment += "|FP=1|BS=%s" % (
+                pRead1.sequence[1:head + 1] + pIndexRead.sequence)
+            outFqHandle1.write(str(pRead1))
     outFqHandle1.close()
     if(gzip):
         check_call(['gzip', fq], shell=False)
