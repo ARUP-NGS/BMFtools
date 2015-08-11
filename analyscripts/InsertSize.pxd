@@ -66,5 +66,3 @@ cdef class CoarseSNVWrangler:
     cdef void get_insert_sizes(self)
     cdef ndarray[int32_t, ndim=2] c_get_allele_counts(self, dict insert_size_dict)
     cpdef ndarray[int32_t, ndim=2] get_allele_counts(self)
-    cdef void get_insert_sizes(self)
-    cdef void build_insert_size_dict(self)
