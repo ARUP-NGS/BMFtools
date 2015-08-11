@@ -44,6 +44,15 @@ for (int i = 0; i < var.n_handles; i++) {\
     free(var.out_handles);
 // Select which FILE ** index should be used to write this read from a char *.
 
+inline int char_to_num(char character){
+    switch(character) {
+        case 'C': return 1;
+        case 'G': return 2;
+        case 'T': return 3;
+        default: return 0;
+    }
+}
+
 #define char_to_num(character, increment) switch(character) {\
     case 'C' : increment = 1; break;\
     case 'G' : increment = 2; break;\
@@ -98,7 +107,7 @@ void print_usage(char *argv[])
         fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.seq>"
                         "\nFlags:\n"
                         "-f: Write each record as a single line. Default: True.\n"
-                        "-h: Homopolymer failure threshold. A molecular barcode with"
+                        "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
                         "-o: Output basename. Currently required, as string "
@@ -142,24 +151,33 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Hey, I started parsing my options.\n");
     while ((c = getopt(argc, argv, "fh:o:i:n:")) > -1) {
         switch(c) {
-            case 'f': settings.single_line = 0; fprintf(stderr, "Hey I'm not dead with f"); break;
-            case 'n': settings.n_nucs = atoi(optarg); fprintf(stderr, "Hey I'm not dead with n"); break;
-            case 'h': settings.hp_threshold = atoi(optarg); fprintf(stderr, "Hey I'm not dead with h"); break;
-            case 'o': settings.output_basename = strdup(optarg);fprintf(stderr, "Hey I'm not dead with o");  break;
-            case 'i': settings.index_fq_path = strdup(optarg); fprintf(stderr, "Hey I'm not dead with i"); break;
+            case 'f': settings.single_line = 0; break;
+            case 'n': settings.n_nucs = atoi(optarg); break;
+            case 't': settings.hp_threshold = atoi(optarg); break;
+            case 'o': settings.output_basename = strdup(optarg);break;
+            case 'i': settings.index_fq_path = strdup(optarg); break;
+            case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv);
         }
     }
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
+
     if(!settings.index_fq_path) {
         fprintf(stderr, "Index fastq required. See usage.\n");
         print_usage(argv);
         return 1;
     }
-    fprintf(stderr, "Hey, I parsed my options.\n");
+
+    if(!settings.index_fq_path) {
+        fprintf(stderr, "Index fastq required. See usage.\n");
+        print_usage(argv);
+        return 1;
+    }
+
+    //fprintf(stderr, "Hey, I parsed my options.\n");
 
     int numHandles = ipow(4, settings.n_nucs);
-    fprintf(stderr, "Hey, i have %i nucs set.", settings.n_nucs);
+    //fprintf(stderr, "Hey, i have %i nucs set.", settings.n_nucs);
 
     markfastq_settings_t *settings_p = &settings;
     // Build file handle struct
@@ -180,7 +198,7 @@ int main(int argc, char *argv[])
     fp_index = gzopen(settings.index_fq_path, "r");
     seq = kseq_init(fp_read);
     seq_index = kseq_init(fp_index);
-    char * binner = malloc((settings.n_nucs + 1) * sizeof(char));
+    char binner [10];
     while ((l = kseq_read(seq)) >= 0) {
         // Iterate through second fastq file.
         l_index = kseq_read(seq_index);
@@ -195,7 +213,8 @@ int main(int argc, char *argv[])
             printf("Is this right? Should string %s have been failed?\n", seq_index->qual);
             return 1;
         }
-        memcpy(binner, &seq_index->seq.s, 2);
+        strncpy(binner, seq_index->seq.s, settings.n_nucs);
+        binner[settings.n_nucs] = '\0';
         int bin_num;
         FIND_BIN(binner, bin_num)
         write_kseq(splitter.out_handles[bin_num],
