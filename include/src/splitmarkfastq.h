@@ -6,7 +6,6 @@ KSEQ_INIT(gzFile, gzread)
 typedef struct markfastq_settings {
     int single_line;
     int hp_threshold;
-    int write_to_stdout;
     int n_nucs;
     char * output_basename;
     char * index_fq_path;

@@ -35,7 +35,6 @@ for (int i = 0; i < var.n_handles; i++) {\
     var.out_handles[i] = fopen(var.fnames[i], "w");\
 }
 
-
 // Close file handles, then free the malloc'd array.
 #define FREE_SPLITTER(var) for(int i = 0; i < var.n_handles; i++) \
     {\
@@ -57,10 +56,15 @@ for (int i = 0; i < var.n_handles; i++) {\
     int inc_##binner;\
     int i_##binner = length_##binner;\
     char tmpchar;\
-    while (i_##binner){\
-        char_to_num(binner[--i_##binner], inc_##binner);\
-        bin += inc_##binner;\
+    size_t count = 0;\
+    for(i_##binner = length_##binner;i_##binner > 0;i_##binner--){\
+        char_to_num(binner[i_##binner - 1], inc_##binner);\
+        bin += (ipow(4, count) * inc_##binner);\
+        count++;\
     }
+
+#define FREE_SETTINGS(settings) free(settings.output_basename);\
+    free(settings.index_fq_path);
 
   
 // Functions
@@ -92,7 +96,7 @@ int ipow(int base, int exp)
 void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.seq>"
-                        "\nFlags:\n-s: Write to stdout. Conflicts with n != 0.\n"
+                        "\nFlags:\n"
                         "-f: Write each record as a single line. Default: True.\n"
                         "-h: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
@@ -118,46 +122,49 @@ int main(int argc, char *argv[])
     gzFile fp_read, fp_index;
     kseq_t *seq;
     kseq_t *seq_index;
-    char * pch;
     int l;
     int l_index;
     int pass;
     char buffer [20];
-    char basename_buffer [100];
+    char input_fastq_buffer [100];
+    fprintf(stderr, "Hey, I started going in main.\n");
 
     // Build settings struct
     markfastq_settings_t settings = {
         .single_line = 1,
         .hp_threshold = 10,
-        .write_to_stdout = 0,
-        .n_nucs = 0,
+        .n_nucs = 1,
         .index_fq_path = NULL,
         .output_basename = NULL,
     };
     // Parse in command-line options.
     int c;
-    while ((c = getopt(argc, argv, "sfnph:")) > -1) {
+    fprintf(stderr, "Hey, I started parsing my options.\n");
+    while ((c = getopt(argc, argv, "fh:o:i:n:")) > -1) {
         switch(c) {
-            case 's': settings.write_to_stdout = 1; break;
-            case 'f': settings.single_line = 0; break;
-            case 'n': settings.n_nucs = atoi(optarg); break;
-            case 'h': settings.hp_threshold = atoi(optarg); break;
-            case 'o': strcpy(settings.output_basename, optarg); break;
-            case 'i': strcpy(settings.index_fq_path, optarg); break;
+            case 'f': settings.single_line = 0; fprintf(stderr, "Hey I'm not dead with f"); break;
+            case 'n': settings.n_nucs = atoi(optarg); fprintf(stderr, "Hey I'm not dead with n"); break;
+            case 'h': settings.hp_threshold = atoi(optarg); fprintf(stderr, "Hey I'm not dead with h"); break;
+            case 'o': settings.output_basename = strdup(optarg);fprintf(stderr, "Hey I'm not dead with o");  break;
+            case 'i': settings.index_fq_path = strdup(optarg); fprintf(stderr, "Hey I'm not dead with i"); break;
             default: print_opt_err(argv);
         }
     }
+    fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
     if(!settings.index_fq_path) {
         fprintf(stderr, "Index fastq required. See usage.\n");
         print_usage(argv);
+        return 1;
     }
+    fprintf(stderr, "Hey, I parsed my options.\n");
 
     int numHandles = ipow(4, settings.n_nucs);
+    fprintf(stderr, "Hey, i have %i nucs set.", settings.n_nucs);
 
     markfastq_settings_t *settings_p = &settings;
     // Build file handle struct
     INIT_SPLITTER(splitter, settings_p)
-
+    fprintf(stderr, "Hey, I initialized my file handles.\n");
     // Build regex
     sprintf(buffer, "([ACTG])\1{%i,}", settings.hp_threshold);
     regex_t regex;
@@ -168,9 +175,9 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not compile regular expression '%s'.\n", buffer);
         exit(1);
     }
-
-    fp_read = gzopen(argv[1], "r");
-    fp_index = gzopen(argv[2], "r");
+    strcpy(input_fastq_buffer, argv[optind]);
+    fp_read = gzopen(input_fastq_buffer, "r");
+    fp_index = gzopen(settings.index_fq_path, "r");
     seq = kseq_init(fp_read);
     seq_index = kseq_init(fp_index);
     char * binner = malloc((settings.n_nucs + 1) * sizeof(char));
@@ -196,6 +203,7 @@ int main(int argc, char *argv[])
     }
     kseq_destroy(seq);
     gzclose(fp_read);
-    FREE_SPLITTER(splitter);
+    FREE_SPLITTER(splitter)
+    FREE_SETTINGS(settings)
     return 0;
 }
