@@ -7,6 +7,7 @@
 #include <string.h>
 #include "kseq.h"
 #include "splitmarkfastq.h"
+#include "lh3sort.c"
 
 
 
@@ -43,15 +44,6 @@ for (int i = 0; i < var.n_handles; i++) {\
     }\
     free(var.out_handles);
 // Select which FILE ** index should be used to write this read from a char *.
-
-inline int char_to_num(char character){
-    switch(character) {
-        case 'C': return 1;
-        case 'G': return 2;
-        case 'T': return 3;
-        default: return 0;
-    }
-}
 
 #define char_to_num(character, increment) switch(character) {\
     case 'C' : increment = 1; break;\
@@ -101,6 +93,18 @@ int ipow(int base, int exp)
 
     return result;
 }
+
+#define lh3_sort_call(fname, retvar)\
+    int ret_lh3_sort_##fname;\
+    char **lh3_argv_##fname = (char **)malloc(4 * sizeof(char *));\
+    lh3_argv_##fname[1] = strdup("-t\'|\'");\
+    lh3_argv_##fname[2] = strdup("-k3,3");\
+    lh3_argv_##fname[3] = strdup(fname);\
+    retvar = lh3_sort_main(4, lh3_argv_##fname);\
+    free(lh3_argv_##fname[1]);\
+    free(lh3_argv_##fname[2]);\
+    free(lh3_argv_##fname[3]);\
+    free(lh3_argv_##fname);
 
 void print_usage(char *argv[])
 {
