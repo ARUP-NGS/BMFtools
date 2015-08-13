@@ -32,10 +32,9 @@ from utilBMF.HTSUtils import (printlog as pl,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead, BedtoolsBam2Fq,
                               BwaswCall, samtoolsMergeBam, pFastqProxy,
-                              TrimExt, align_bwa_mem)
+                              TrimExt)
 from utilBMF.ErrorHandling import (IllegalArgumentError, ThisIsMadness as Tim,
                                    MissingExternalTool)
-from .SVUtils import returnDefault
 from utilBMF import HTSUtils
 from warnings import warn
 import SecC
@@ -465,116 +464,6 @@ def singleBarcodeTagging(cystr fastq, cystr bam, cystr outputBAM="default",
     outBAM.close()
     postFilterBAM.close()
     return outputBAM
-
-
-@cython.returns(bint)
-def FracSoftclippedTest(AlignedSegment_t rec,
-                        double maxFracSoftClipped=0.25):
-    if(FractionSoftClipped(rec) >= maxFracSoftClipped):
-        return False
-    return True
-
-
-def GetFracSCPartial(double maxFracSoftClipped):
-    """
-    Returns a partial for FracSoftclippedTest so that it can
-    be passed into AbstractBamFilter.
-    """
-    return partial(FracSoftclippedTest,
-                   maxFracSoftClipped=maxFracSoftClipped)
-
-
-def AbstractBamFilter(inBAM, failBAM="default", passBAM="default",
-                      func=returnDefault, appendStr=""):
-    cdef AlignedSegment_t rec, r1, r2
-    cdef AlignmentFile inHandle, raHandle, nrHandle
-    if(failBAM == "default"):
-        failBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Fail", "bam"])
-    if(passBAM == "default"):
-        passBAM = ".".join(inBAM.split(".")[:-1] + [appendStr, "Pass", "bam"])
-    inHandle = pysam.AlignmentFile(inBAM, "rb")
-    raHandle = pysam.AlignmentFile(failBAM, "wb", template=inHandle)
-    nrHandle = pysam.AlignmentFile(passBAM, "wb", template=inHandle)
-    pl("Got all handles. Now filtering!")
-    for rec in inHandle:
-        if(rec.is_read1):
-            r1 = rec
-            continue
-        elif(rec.is_read2):
-            r2 = rec
-        if(func(r1) or func(r2)):
-            raHandle.write(r1)
-            raHandle.write(r2)
-        else:
-            nrHandle.write(r1)
-            nrHandle.write(r2)
-    return passBAM, failBAM
-
-
-def GetSoftClips(inBAM, failBAM="default", passBAM="default",
-                 double maxFracSoftClipped=0.5):
-    """
-    Uses the AbstractBamFilter to get reads with Softclipped Fraction >= 0.25
-    """
-    return AbstractBamFilter(inBAM, failBAM=failBAM, passBAM=passBAM,
-                             func=GetFracSCPartial(maxFracSoftClipped),
-                             appendStr="SFlt%s" % maxFracSoftClipped)
-
-
-def AddRATag(inBAM, inplace=False, outBAM="default", RATag="bwasw"):
-    """
-    Uses sed and samtools view to append a tag to each line of the file
-    not in the header.
-    """
-    tmpfile = str(uuid.uuid4().get_hex()[0:8]) + '.bam'
-    tag = "RA:Z:" + RATag
-    if(inplace):
-        pl("Adding RA Tag 'in-place'.")
-    else:
-        if(outBAM == "default"):
-            outBAM = ".".join(outBAM.split("."))[:-1] + "."
-    pl("Adding RA:z:bwasw tag.")
-    cStr = ("samtools view -h %s | " % inBAM +
-            "awk 'FS=OFS=\"\t\" {{if($1 !~ \"^@\") {{print $0, "
-            "\"RA:Z:bwasw\"}} else {{print $0}}}}'"
-            " | samtools view -Sbh - > %s" % (tag, tmpfile))
-
-    check_call(cStr, shell=True)
-    if(inplace):
-        check_call(["mv", tmpfile, inBAM])
-        return inBAM
-    else:
-        check_call(["mv", tmpfile, outBAM])
-        return outBAM
-
-
-def RealignSFReads(inBAM, double maxFracSoftClipped=0.5,
-                   ref="default", outBAM="default"):
-    """
-    Realigns reads which have a Softclipped Fraction that is above
-    maxFracSoftClipped
-    """
-    if(outBAM == "default"):
-        outBAM = ".".join(inBAM.split()[:-1]) + ".SWRealigned.bam"
-    if(ref == "default"):
-        raise Tim("ref required for bwasw alignment.")
-    print("Getting soft-clipped reads for bwasw realignment")
-    NoRealign, Realign = GetSoftClips(
-        inBAM, maxFracSoftClipped=maxFracSoftClipped)
-    pl("Now converting bam to fastq")
-    ReadFastq1, ReadFastq2 = BedtoolsBam2Fq(Realign)
-    pl("bwasw call!")
-    RealignedBAM = BwaswCall(ReadFastq1, ReadFastq2, ref=ref)
-    pl("Sorting the unrealigned bam!")
-    SortNoRealign = HTSUtils.CoorSortAndIndexBam(NoRealign, delete=True)
-    pl("Sorting the realigned bam!")
-    SortRealign = HTSUtils.CoorSortAndIndexBam(Realign, delete=True)
-    pl("Merging the bams!")
-    samtoolsMergeBam([SortNoRealign, SortRealign],
-                     outBAM=outBAM)
-    pl("Adding the RA tag")
-    AddRATag(outBAM, inplace=True, RATag="bwasw")
-    return outBAM
 
 
 cdef dict cGetCOTagDict(AlignedSegment_t read):
