@@ -87,7 +87,7 @@ for (int i = 0; i < var.n_handles; i++) {\
   
 // Functions
 
-void write_kseq(FILE *handle, kseq_t *read, kseq_t *index, int pass, markfastq_settings_t *settings)
+inline void write_kseq(FILE *handle, kseq_t *read, kseq_t *index, int pass, markfastq_settings_t *settings)
 {
     if(settings->single_line) {
         KSEQ_TO_SINGLE_LINE(handle, read, index, pass);

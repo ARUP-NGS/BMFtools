@@ -6,6 +6,7 @@ import pysam
 import shlex
 import subprocess
 import sys
+from sys import stderr
 from itertools import chain
 from Cython.Build import cythonize
 # from setuptools import setup
@@ -68,6 +69,6 @@ config = {
 
 setup(**config)
 
-print("Installation successful!")
+stderr.write("Installation successful!\n")
 
 sys.exit(0)
