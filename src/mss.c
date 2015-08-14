@@ -252,9 +252,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    //fprintf(stderr, "Hey, I parsed my options.\n");
-
-    int numHandles = ipow(4, settings.n_nucs);
     //fprintf(stderr, "Hey, i have %i nucs set.", settings.n_nucs);
 
     mss_settings_t *settings_p = &settings;
