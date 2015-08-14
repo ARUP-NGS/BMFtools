@@ -6,50 +6,53 @@
 #include <math.h>
 #include <string.h>
 #include <omp.h>
-#include "kseq.h"
-#include "splitmarkfastq.h"
-#include "smsfq.h"
-#include "lh3sort.c"
+#include "include/kseq.h"
+#include "mss.h"
+#include "include/sort/lh3sort.c"
 
 
 
 // Pre-macro definitions
 
+// Typedefs
+typedef struct mss_settings {
+    int hp_threshold;
+    int n_nucs;
+    char * output_basename;
+    int threads;
+    char * index_fq_path;
+} mss_settings_t;
+
+typedef struct mark_splitter {
+    FILE **tmp_out_handles;
+    int n_nucs;
+    int n_handles;
+    char **fnames;
+} mark_splitter_t;
+
+typedef struct sort_overlord {
+    mark_splitter_t *splitter;
+    FILE **sort_out_handles;
+    char **out_fnames;
+} sort_overlord_t;
+
 
 // Macros
-#define RANDOM_STRING_LENGTH = 30
 
-#include "kseq.h"                                                                                                
-                                                                                                                 
-KSEQ_INIT(gzFile, gzread)                                                                                        
-                                                                                                                 
-// Typedefs                                                                                                      
-typedef struct mss_settings {                                                                                    
-    int single_line;                                                                                             
-    int hp_threshold;                                                                                            
-    int n_nucs;                                                                                                  
-    char * output_basename;                                                                                      
-    int threads;                                                                                                 
-    char * index_fq_path;                                                                                        
-} mss_settings_t;                                                                                                
-                                                                                                                 
-typedef struct mark_splitter {                                                                                   
-    FILE **tmp_out_handles;                                                                                      
-    int n_nucs;                                                                                                  
-    int n_handles;                                                                                               
-    char **fnames;                                                                                               
-} mark_splitter_t;                                                                                               
-                                                                                                                 
-typedef struct sort_overlord {                                                                                   
-    mark_splitter_t splitter;                                                                                    
-                                                                                                                 
-    char **out_fnames;                                                                                           
-} sort_overlord_t;                                                                                               
-                                                                                                                 
+#ifndef RANDOM_STRING_LENGTH
+#define RANDOM_STRING_LENGTH = 30
+#endif
+#ifndef MAX_BARCODE_PREFIX_LENGTH
+#define MAX_BARCODE_PREFIX_LENGTH = 12
+#endif
+
+
 // Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for use cases involving GNU sort.)
+#ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
         "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
-    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)    
+    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
+#endif
 
 // Random string generator
 
@@ -75,7 +78,7 @@ static char *rand_string_plus_append(char *str, size_t size, int index)
 
 // Allocate file handle array memory, open file handles.
 #define INIT_SPLITTER(var, settings_ptr) mark_splitter_t var = {\
-    .out_handles = (FILE **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(FILE *)),\
+    .tmp_out_handles = (FILE **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(FILE *)),\
     .n_handles = ipow(4, settings_ptr->n_nucs),\
     .fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
     .n_nucs = settings_ptr->n_nucs,\
@@ -84,9 +87,11 @@ char tmp_##var##_buffer [100];\
 for (int i = 0; i < var.n_handles; i++) {\
     rand_string_plus_append(tmp_##var##_buffer, RANDOM_STRING_LENGTH, i);\
     var.fnames[i] = strdup(tmp_##var##_buffer);\
-    var.out_handles[i] = fopen(var.fnames[i], "w");\
+    var.tmp_out_handles[i] = fopen(var.fnames[i], "w");\
 }
 
+/*
+ * Not done yet - will be back!
 #define INIT_FINAL_OUTPUT(var, settings_ptr) \
 char tmp_##var##_buffer [100];\
 for (int i = 0; i < var.n_handles; i++) {\
@@ -94,22 +99,42 @@ for (int i = 0; i < var.n_handles; i++) {\
     size_t length = strlen(tmp_##var##_buffer);\
     var.fnames[i] = (char *)malloc((strlen(tmp_##var##_buffer) + 1) * sizeof(char));\
     strcpy(var.fnames[i], tmp_##var##_buffer);\
-    var.out_handles[i] = fopen(var.fnames[i], "w");\
+    var.tmp_out_handles[i] = fopen(var.fnames[i], "w");\
 }
+*/
 
 // Close file handles, then free the malloc'd array.
 #define FREE_SPLITTER(var) for(int i = 0; i < var.n_handles; i++) \
     {\
-        fclose(var.out_handles[i]);\
+        fclose(var.tmp_out_handles[i]);\
         free(var.fnames[i]);\
     }\
-    free(var.out_handles);
+    free(var.tmp_out_handles);
 
-#define SWITCH_FMODE_SPLITTER(var) for (int i = 0; i < var.n_handles; i++) \
-    {\
-        fclose(var.out_handles[i]);\
-        var.out_handles[i] = fopen(var.fnames[i], "r");\
+
+#define INIT_MP_SORTER(var, splitter_ptr, settings_ptr) \
+    var = {\
+        .splitter = splitter_ptr,\
+        .sort_out_handles = (FILE **)malloc(splitter_ptr->n_handles * sizeof(FILE *));\
+        .fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
     }\
+\
+char tmp_##var##_buffer [100];\
+for (int i = 0; i < splitter->n_handles; i++) {\
+    sprintf(tmp_##var##_buffer, "%s.%i.sort.fastq", settings_ptr->output_basename, i);\
+    size_t length = strlen(tmp_##var##_buffer);\
+    var.out_fnames[i] = strdup(tmp_##var##_buffer);\
+    var.sort_out_handles[i] = fopen(var.fnames[i], "w");\
+}
+
+#define FREE_MP_SORTER(var) \
+    for (int i = 0; i < var->splitter.n_handles; i++) {\
+        fclose(var.sort_out_handles[i]);\
+        free(var.out_fnames[i]);\
+    }\
+    free(var.sort_out_handles);\
+    free(out_fnames);\
+    FREE_SPLITTER(var->splitter);   
 
 
 // Select which FILE ** index should be used to write this read from a char *.
@@ -136,23 +161,23 @@ for (int i = 0; i < var.n_handles; i++) {\
 #define FREE_SETTINGS(settings) free(settings.output_basename);\
     free(settings.index_fq_path);
 
-inline int lh3_sort_call(char *fname, char *outfname)                                                            
-{                                                                                                                
+inline int lh3_sort_call(char *fname, char *outfname)
+{
     int retvar;
-    char **lh3_argv = (char **)malloc(6 * sizeof(char *));                                               
+    char **lh3_argv = (char **)malloc(6 * sizeof(char *));
     lh3_argv[1] = strdup("-t\'|\'");
     lh3_argv[2] = strdup("-k2,2");
-    lh3_argv[3] = strdup("-o");                                                                          
-    lh3_argv[4] = strdup(outfname);                                                                      
-    lh3_argv[5] = strdup(fname);                                                                         
-    retvar = lh3_sort_main(6, lh3_argv);                                                                 
+    lh3_argv[3] = strdup("-o");
+    lh3_argv[4] = strdup(outfname);
+    lh3_argv[5] = strdup(fname);
+    retvar = lh3_sort_main(6, lh3_argv);
     for(int i = 1; i < 6; i++) {
         free(lh3_argv[i]);
     }
-    free(lh3_argv);                                                                                      
-    return retvar;                                                                                               
-}       
-  
+    free(lh3_argv);
+    return retvar;
+}
+
 // Functions
 
 inline int ipow(int base, int exp)
@@ -169,17 +194,18 @@ inline int ipow(int base, int exp)
     return result;
 }
 
-inline void apply_lh3_sorts(mark_splitter_t *splitter, markfastq_settings_t *settings)
-{   
+inline void apply_lh3_sorts(sort_overlord_t *dispatcher, markfastq_settings_t *settings)
+{
     omp_set_num_threads(settings->threads);
     #pragma omp parallel for
-    for(int i = 0; i < splitter->n_handles; i++) {
+    for(int i = 0; i < dispatcher->splitter.n_handles; i++) {
         int ret;
-        ret = lh3_sort_call(splitter->fnames[i])
+        ret = lh3_sort_call(dispatcher->splitter.fnames[i], dispatcher->sort_out_fnames[i]);
         if(!ret) {
             fprintf(stderr,
                     "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
                     splitter->fnames[i]);
+                    FREE_MP_SORTER(dispatcher); // Delete allocated memory.
             return 1;
         }
     }
@@ -225,7 +251,6 @@ int main(int argc, char *argv[])
 
     // Build settings struct
     markfastq_settings_t settings = {
-        .single_line = 1,
         .hp_threshold = 10,
         .n_nucs = 1,
         .index_fq_path = NULL,
@@ -235,9 +260,8 @@ int main(int argc, char *argv[])
     // Parse in command-line options.
     int c;
     fprintf(stderr, "Hey, I started parsing my options.\n");
-    while ((c = getopt(argc, argv, "fh:o:i:n:p:")) > -1) {
+    while ((c = getopt(argc, argv, "t:h:o:i:n:p:")) > -1) {
         switch(c) {
-            case 'f': settings.single_line = 0; break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg);break;
@@ -285,7 +309,7 @@ int main(int argc, char *argv[])
     fp_index = gzopen(settings.index_fq_path, "r");
     seq = kseq_init(fp_read);
     seq_index = kseq_init(fp_index);
-    char binner [10];
+    char binner [MAX_BARCODE_PREFIX_LENGTH];
     int bin_num;
     while ((l = kseq_read(seq)) >= 0) {
         // Iterate through second fastq file.
@@ -293,24 +317,29 @@ int main(int argc, char *argv[])
         if (l_index < 0) {
             fprintf(stderr, "Index return value for kseq_read less than "
                             "0. Are the fastqs different sizes? Abort!\n");
+            FREE_SPLITTER(splitter);
+            FREE_SETTINGS(settings);
             return 1;
         }
         // Set pass or fail for record.
         reti = regexec(&regex, seq_index->seq.s, 0, NULL, 0);
         pass = (!reti);
         if(!pass){
-            printf("Is this right? Should string %s have been failed?\n", seq_index->qual);
+            fprintf(stderr, "Is this right? Should string %s have been failed?\n", seq_index->qual);
+            FREE_SPLITTER(splitter);
+            FREE_SETTINGS(settings);
             return 1;
         }
         strncpy(binner, seq_index->seq.s, settings.n_nucs);
         binner[settings.n_nucs] = '\0';
         FIND_BIN(binner, bin_num)
-        KSEQ_TO_SINGLE_LINE(splitter.out_handles[bin_num], &seq, &seq_index, pass);
+        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles[bin_num], &seq, &seq_index, pass);
     }
     kseq_destroy(seq);
     gzclose(fp_read);
-    SWITCH_FMODE_SPLITTER(splitter)
-    apply_lh3_sorts(splitter, markfastq_settings_t *settings);
+    sort_overlord_t dispatcher;
+    INIT_MP_SORTER(dispatcher, &splitter, settings_p)
+    apply_lh3_sorts(dispatcher, settings_p);
     FREE_SETTINGS(settings)
     return 0;
 }

@@ -36,16 +36,16 @@ for x in ext:
     x.extra_link_args += pysam.get_libraries()
     x.define_macros += pysam.get_defines()
     if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam']):
-        x.sources += ["include/cephes/igam.c", "include/cephes/const.c",
-                      "include/cephes/gamma.c", "include/cephes/mtherr.c",
-                      "include/cephes/sf_error.c"]
+        x.sources += ["src/include/cephes/igam.c", "src/include/cephes/const.c",
+                      "src/include/cephes/gamma.c", "src/include/cephes/mtherr.c",
+                      "src/include/cephes/sf_error.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
                     're2']
 
-includes = [np.get_include(), os.path.abspath("include"), os.path.abspath("include/cephes")] + pysam.get_include()
+includes = [np.get_include(), os.path.abspath("include"), os.path.abspath("src/include/cephes")] + pysam.get_include()
 
 config = {
     'description': '',
@@ -58,7 +58,7 @@ config = {
                  "SecC", "analyscripts"],
     'ext_modules': ext,
     'include_dirs': includes,
-    'scripts': ['utilBMF/bmftools', 'include/dnbtools'],
+    'scripts': ['utilBMF/bmftools'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
