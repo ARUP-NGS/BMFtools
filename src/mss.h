@@ -1,4 +1,4 @@
-#include "kseq.h"
+#include "include/kseq.h"
 
 KSEQ_INIT(gzFile, gzread)
                                                                                                                 
@@ -6,9 +6,9 @@ KSEQ_INIT(gzFile, gzread)
 typedef struct mss_settings {                                                                                    
     int hp_threshold;                                                                                            
     int n_nucs;                                                                                                  
-    char * output_basename;                                                                                      
+    char *output_basename;                                                                                      
     int threads;                                                                                                 
-    char * index_fq_path;                                                                                        
+    char *index_fq_path;                                                                                        
 } mss_settings_t;                                                                                                
                                                                                                                  
 typedef struct mark_splitter {                                                                                   
@@ -19,14 +19,14 @@ typedef struct mark_splitter {
 } mark_splitter_t;                                                                                               
                                                                                                                  
 typedef struct sort_overlord {                                                                                   
-    mark_splitter_t *splitter;                                                                                   
+    mark_splitter_t splitter;
     FILE **sort_out_handles;                                                                                     
-    char **out_fnames;                                                                                           
+    char **out_fnames;
 } sort_overlord_t;
 
 inline int ipow(int base, int exp);
 
-inline int lh3_sort_call(char *fname, char *outfname)
+inline int lh3_sort_call(char *fname, char *outfname);
 
 // Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for use cases involving GNU sort.)
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\

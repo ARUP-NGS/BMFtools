@@ -6,75 +6,26 @@
 #include <math.h>
 #include <string.h>
 #include <omp.h>
-#include "include/kseq.h"
 #include "mss.h"
 #include "include/sort/lh3sort.c"
-
-
-
-// Pre-macro definitions
-
-// Typedefs
-typedef struct mss_settings {
-    int hp_threshold;
-    int n_nucs;
-    char * output_basename;
-    int threads;
-    char * index_fq_path;
-} mss_settings_t;
-
-typedef struct mark_splitter {
-    FILE **tmp_out_handles;
-    int n_nucs;
-    int n_handles;
-    char **fnames;
-} mark_splitter_t;
-
-typedef struct sort_overlord {
-    mark_splitter_t *splitter;
-    FILE **sort_out_handles;
-    char **out_fnames;
-} sort_overlord_t;
 
 
 // Macros
 
 #ifndef RANDOM_STRING_LENGTH
-#define RANDOM_STRING_LENGTH = 30
+#define RANDOM_STRING_LENGTH 30
 #endif
 #ifndef MAX_BARCODE_PREFIX_LENGTH
-#define MAX_BARCODE_PREFIX_LENGTH = 12
+#define MAX_BARCODE_PREFIX_LENGTH 12
 #endif
 
 
-// Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for use cases involving GNU sort.)
+// Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for cases involving GNU sort.)
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
         "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
-    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
+    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s);
 #endif
-
-// Random string generator
-
-static char *rand_string_plus_append(char *str, size_t size, int index)
-{
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV1234567890";
-    char append_buffer [30];
-    sprintf(append_buffer, ".%i.fastq", index);
-    append_len = strlen(append_buffer);
-    realloc(str, (size + append_len + 1) * sizeof(char));
-    int charset_size_m1 = sizeof(charset) - 1
-    if (size) {
-        --size;
-        for (size_t n = 0; n < size; n++) {
-            int key = rand() % (int) (charset_size_m1);
-            str[n] = charset[key];
-        }
-    }
-    memcpy(str[size], append_buffer, append_len);
-    str[size + append_len] = '\0';
-    return str;
-}
 
 // Allocate file handle array memory, open file handles.
 #define INIT_SPLITTER(var, settings_ptr) mark_splitter_t var = {\
@@ -104,37 +55,37 @@ for (int i = 0; i < var.n_handles; i++) {\
 */
 
 // Close file handles, then free the malloc'd array.
-#define FREE_SPLITTER(var) for(int i = 0; i < var.n_handles; i++) \
-    {\
-        fclose(var.tmp_out_handles[i]);\
-        free(var.fnames[i]);\
-    }\
+inline void FREE_SPLITTER(mark_splitter_t var){
+    for(int i = 0; i < var.n_handles; i++)
+    {
+        fclose(var.tmp_out_handles[i]);
+        free(var.fnames[i]);
+    }
     free(var.tmp_out_handles);
+}
 
-
-#define INIT_MP_SORTER(var, splitter_ptr, settings_ptr) \
-    var = {\
-        .splitter = splitter_ptr,\
-        .sort_out_handles = (FILE **)malloc(splitter_ptr->n_handles * sizeof(FILE *));\
-        .fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
-    }\
+#define INIT_MP_SORTER(var, splitter_var, settings_ptr) sort_overlord_t var = {\
+        .splitter = splitter_var,\
+        .sort_out_handles = (FILE **)malloc(splitter_var->n_handles * sizeof(FILE *)),\
+        .out_fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
+    };\
 \
 char tmp_##var##_buffer [100];\
-for (int i = 0; i < splitter->n_handles; i++) {\
+for (int i = 0; i < splitter_var->n_handles; i++) {\
     sprintf(tmp_##var##_buffer, "%s.%i.sort.fastq", settings_ptr->output_basename, i);\
     size_t length = strlen(tmp_##var##_buffer);\
     var.out_fnames[i] = strdup(tmp_##var##_buffer);\
-    var.sort_out_handles[i] = fopen(var.fnames[i], "w");\
+    var.sort_out_handles[i] = fopen(var.out_fnames[i], "w");\
 }
 
 #define FREE_MP_SORTER(var) \
     for (int i = 0; i < var->splitter.n_handles; i++) {\
-        fclose(var.sort_out_handles[i]);\
-        free(var.out_fnames[i]);\
+        fclose(var->sort_out_handles[i]);\
+        free(var->out_fnames[i]);\
     }\
-    free(var.sort_out_handles);\
-    free(out_fnames);\
-    FREE_SPLITTER(var->splitter);   
+    free(var->sort_out_handles);\
+    free(var->out_fnames);\
+    FREE_SPLITTER(var->splitter);
 
 
 // Select which FILE ** index should be used to write this read from a char *.
@@ -161,6 +112,8 @@ for (int i = 0; i < splitter->n_handles; i++) {\
 #define FREE_SETTINGS(settings) free(settings.output_basename);\
     free(settings.index_fq_path);
 
+
+// Functions
 inline int lh3_sort_call(char *fname, char *outfname)
 {
     int retvar;
@@ -178,36 +131,64 @@ inline int lh3_sort_call(char *fname, char *outfname)
     return retvar;
 }
 
-// Functions
+// Random string generator
 
-inline int ipow(int base, int exp)
+static char *rand_string_plus_append(char *str, size_t size, int index)
 {
-    int result = 1;
-    while (exp)
-    {
-        if (exp & 1)
-            result *= base;
-        exp >>= 1;
-        base *= base;
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV1234567890";
+    char append_buffer [30];
+    sprintf(append_buffer, ".%i.fastq", index);
+    size_t append_len = strlen(append_buffer);
+    str = realloc(str, (size + append_len + 1) * sizeof(char));
+    int charset_size_m1 = sizeof(charset) - 1;
+    if (size) {
+        --size;
+        for (size_t n = 0; n < size; n++) {
+            int key = rand() % (int) (charset_size_m1);
+            str[n] = charset[key];
+        }
     }
-
-    return result;
+    memcpy((char *)str + size, append_buffer, append_len);
+    str[size + append_len] = '\0';
+    return str;
 }
 
-inline void apply_lh3_sorts(sort_overlord_t *dispatcher, markfastq_settings_t *settings)
+int ipow(int base, int exp)                                                                                      
+{                                                                                                                
+    int result = 1;                                                                                              
+    while (exp)                                                                                                  
+    {                                                                                                            
+        if (exp & 1)                                                                                             
+            result *= base;                                                                                      
+        exp >>= 1;                                                                                               
+        base *= base;                                                                                            
+    }                                                                                                            
+                                                                                                                 
+    return result;                                                                                               
+}                       
+
+inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
 {
+    int abort = 0;
+    int index = -1;
     omp_set_num_threads(settings->threads);
     #pragma omp parallel for
     for(int i = 0; i < dispatcher->splitter.n_handles; i++) {
-        int ret;
-        ret = lh3_sort_call(dispatcher->splitter.fnames[i], dispatcher->sort_out_fnames[i]);
+        #pragma omp flush(abort)
+        int ret = lh3_sort_call(dispatcher->splitter.fnames[i], dispatcher->out_fnames[i]);
         if(!ret) {
-            fprintf(stderr,
-                    "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
-                    splitter->fnames[i]);
-                    FREE_MP_SORTER(dispatcher); // Delete allocated memory.
-            return 1;
+            abort = 1;
+            index = i;
+            #pragma omp flush (abort)
+            #pragma omp flush (index)
         }
+    }
+    if(abort) {
+        fprintf(stderr,
+                "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
+                dispatcher->splitter.fnames[index]);
+                FREE_MP_SORTER(&dispatcher) // Delete allocated memory.
+        exit(EXIT_FAILURE);
     }
     return;
 }
@@ -250,7 +231,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Hey, I started going in main.\n");
 
     // Build settings struct
-    markfastq_settings_t settings = {
+    mss_settings_t settings = {
         .hp_threshold = 10,
         .n_nucs = 1,
         .index_fq_path = NULL,
@@ -290,9 +271,9 @@ int main(int argc, char *argv[])
     int numHandles = ipow(4, settings.n_nucs);
     //fprintf(stderr, "Hey, i have %i nucs set.", settings.n_nucs);
 
-    markfastq_settings_t *settings_p = &settings;
+    mss_settings_t *settings_p = &settings;
     // Build file handle struct
-    INIT_SPLITTER(splitter, settings_p)
+    INIT_SPLITTER(splitter_var, settings_p)
     fprintf(stderr, "Hey, I initialized my file handles.\n");
     // Build regex
     sprintf(buffer, "([ACTG])\1{%i,}", settings.hp_threshold);
@@ -317,7 +298,7 @@ int main(int argc, char *argv[])
         if (l_index < 0) {
             fprintf(stderr, "Index return value for kseq_read less than "
                             "0. Are the fastqs different sizes? Abort!\n");
-            FREE_SPLITTER(splitter);
+            FREE_SPLITTER(splitter_var);
             FREE_SETTINGS(settings);
             return 1;
         }
@@ -326,20 +307,21 @@ int main(int argc, char *argv[])
         pass = (!reti);
         if(!pass){
             fprintf(stderr, "Is this right? Should string %s have been failed?\n", seq_index->qual);
-            FREE_SPLITTER(splitter);
+            FREE_SPLITTER(splitter_var);
             FREE_SETTINGS(settings);
             return 1;
         }
         strncpy(binner, seq_index->seq.s, settings.n_nucs);
         binner[settings.n_nucs] = '\0';
         FIND_BIN(binner, bin_num)
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles[bin_num], &seq, &seq_index, pass);
+        KSEQ_TO_SINGLE_LINE(splitter_var.tmp_out_handles[bin_num], &seq, &seq_index, pass);
     }
     kseq_destroy(seq);
     gzclose(fp_read);
-    sort_overlord_t dispatcher;
-    INIT_MP_SORTER(dispatcher, &splitter, settings_p)
-    apply_lh3_sorts(dispatcher, settings_p);
+    mark_splitter_t *splitter_ptr = &splitter_var;
+    INIT_MP_SORTER(dispatcher, splitter_ptr, settings_p)
+    apply_lh3_sorts(&dispatcher, settings_p);
     FREE_SETTINGS(settings)
+    FREE_MP_SORTER(&dispatcher)
     return 0;
 }
