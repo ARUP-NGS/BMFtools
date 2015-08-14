@@ -9,7 +9,6 @@
 #include "mss.h"
 #include "include/sort/lh3sort.c"
 
-
 // Macros
 
 #ifndef RANDOM_STRING_LENGTH
@@ -54,38 +53,30 @@ for (int i = 0; i < var.n_handles; i++) {\
 }
 */
 
-// Close file handles, then free the malloc'd array.
-inline void FREE_SPLITTER(mark_splitter_t var){
-    for(int i = 0; i < var.n_handles; i++)
-    {
-        fclose(var.tmp_out_handles[i]);
-        free(var.fnames[i]);
-    }
-    free(var.tmp_out_handles);
-}
-
 #define INIT_MP_SORTER(var, splitter_var, settings_ptr) sort_overlord_t var = {\
         .splitter = splitter_var,\
-        .sort_out_handles = (FILE **)malloc(splitter_var->n_handles * sizeof(FILE *)),\
+        .sort_out_handles = (FILE **)malloc(splitter_var.n_handles * sizeof(FILE *)),\
         .out_fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
     };\
 \
 char tmp_##var##_buffer [100];\
-for (int i = 0; i < splitter_var->n_handles; i++) {\
+for (int i = 0; i < splitter_var.n_handles; i++) {\
     sprintf(tmp_##var##_buffer, "%s.%i.sort.fastq", settings_ptr->output_basename, i);\
     size_t length = strlen(tmp_##var##_buffer);\
     var.out_fnames[i] = strdup(tmp_##var##_buffer);\
     var.sort_out_handles[i] = fopen(var.out_fnames[i], "w");\
 }
 
-#define FREE_MP_SORTER(var) \
-    for (int i = 0; i < var->splitter.n_handles; i++) {\
-        fclose(var->sort_out_handles[i]);\
-        free(var->out_fnames[i]);\
-    }\
-    free(var->sort_out_handles);\
-    free(var->out_fnames);\
-    FREE_SPLITTER(var->splitter);
+void FREE_MP_SORTER(sort_overlord_t var){
+    for (int i = 0; i < var.splitter.n_handles; i++) {
+        fclose(var.sort_out_handles[i]);
+        free(var.out_fnames[i]);
+    }
+    free(var.sort_out_handles);
+    free(var.out_fnames);
+    FREE_SPLITTER(var.splitter);
+    return;
+}
 
 
 // Select which FILE ** index should be used to write this read from a char *.
@@ -114,7 +105,7 @@ for (int i = 0; i < splitter_var->n_handles; i++) {\
 
 
 // Functions
-inline int lh3_sort_call(char *fname, char *outfname)
+int lh3_sort_call(char *fname, char *outfname)
 {
     int retvar;
     char **lh3_argv = (char **)malloc(6 * sizeof(char *));
@@ -129,6 +120,42 @@ inline int lh3_sort_call(char *fname, char *outfname)
     }
     free(lh3_argv);
     return retvar;
+}
+
+void FREE_SPLITTER(mark_splitter_t var){
+    for(int i = 0; i < var.n_handles; i++)
+    {
+        fclose(var.tmp_out_handles[i]);
+        free(var.fnames[i]);
+    }
+    free(var.tmp_out_handles);
+    return;
+}
+
+void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
+{
+    int abort = 0;
+    int index = -1;
+    omp_set_num_threads(settings->threads);
+    #pragma omp parallel for
+    for(int i = 0; i < dispatcher->splitter.n_handles; i++) {
+        #pragma omp flush(abort)
+        int ret = lh3_sort_call(dispatcher->splitter.fnames[i], dispatcher->out_fnames[i]);
+        if(!ret) {
+            abort = 1;
+            index = i;
+            #pragma omp flush (abort)
+            #pragma omp flush (index)
+        }
+    }
+    if(abort) {
+        fprintf(stderr,
+                "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
+                dispatcher->splitter.fnames[index]);
+                FREE_MP_SORTER(*dispatcher); // Delete allocated memory.
+        exit(EXIT_FAILURE);
+    }
+    return;
 }
 
 // Random string generator
@@ -152,47 +179,6 @@ static char *rand_string_plus_append(char *str, size_t size, int index)
     str[size + append_len] = '\0';
     return str;
 }
-
-int ipow(int base, int exp)                                                                                      
-{                                                                                                                
-    int result = 1;                                                                                              
-    while (exp)                                                                                                  
-    {                                                                                                            
-        if (exp & 1)                                                                                             
-            result *= base;                                                                                      
-        exp >>= 1;                                                                                               
-        base *= base;                                                                                            
-    }                                                                                                            
-                                                                                                                 
-    return result;                                                                                               
-}                       
-
-inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
-{
-    int abort = 0;
-    int index = -1;
-    omp_set_num_threads(settings->threads);
-    #pragma omp parallel for
-    for(int i = 0; i < dispatcher->splitter.n_handles; i++) {
-        #pragma omp flush(abort)
-        int ret = lh3_sort_call(dispatcher->splitter.fnames[i], dispatcher->out_fnames[i]);
-        if(!ret) {
-            abort = 1;
-            index = i;
-            #pragma omp flush (abort)
-            #pragma omp flush (index)
-        }
-    }
-    if(abort) {
-        fprintf(stderr,
-                "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
-                dispatcher->splitter.fnames[index]);
-                FREE_MP_SORTER(&dispatcher) // Delete allocated memory.
-        exit(EXIT_FAILURE);
-    }
-    return;
-}
-
 
 void print_usage(char *argv[])
 {
@@ -318,10 +304,9 @@ int main(int argc, char *argv[])
     }
     kseq_destroy(seq);
     gzclose(fp_read);
-    mark_splitter_t *splitter_ptr = &splitter_var;
-    INIT_MP_SORTER(dispatcher, splitter_ptr, settings_p)
+    INIT_MP_SORTER(dispatcher, splitter_var, settings_p)
     apply_lh3_sorts(&dispatcher, settings_p);
     FREE_SETTINGS(settings)
-    FREE_MP_SORTER(&dispatcher)
+    FREE_MP_SORTER(dispatcher);
     return 0;
 }
