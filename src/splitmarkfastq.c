@@ -6,9 +6,8 @@
 #include <math.h>
 #include <string.h>
 #include <omp.h>
-#include "kseq.h"
 #include "splitmarkfastq.h"
-#include "lh3sort.c"
+#include "include/sort/lh3sort.c"
 
 
 

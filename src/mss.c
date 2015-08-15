@@ -14,9 +14,14 @@
 #ifndef RANDOM_STRING_LENGTH
 #define RANDOM_STRING_LENGTH 30
 #endif
+#ifndef METASYNTACTIC_FNAME_BUFLEN
+#define METASYNTACTIC_FNAME_BUFLEN 100
+#endif
 #ifndef MAX_BARCODE_PREFIX_LENGTH
 #define MAX_BARCODE_PREFIX_LENGTH 12
 #endif
+
+#define RAND_CHAR_SET "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV1234567890WTFWTFWTF"
 
 
 // Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for cases involving GNU sort.)
@@ -33,7 +38,7 @@
     .fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
     .n_nucs = settings_ptr->n_nucs,\
 };\
-char tmp_##var##_buffer [100];\
+char tmp_##var##_buffer [METASYNTACTIC_FNAME_BUFLEN];\
 for (int i = 0; i < var.n_handles; i++) {\
     rand_string_plus_append(tmp_##var##_buffer, RANDOM_STRING_LENGTH, i);\
     var.fnames[i] = strdup(tmp_##var##_buffer);\
@@ -43,7 +48,7 @@ for (int i = 0; i < var.n_handles; i++) {\
 /*
  * Not done yet - will be back!
 #define INIT_FINAL_OUTPUT(var, settings_ptr) \
-char tmp_##var##_buffer [100];\
+char tmp_##var##_buffer [METASYNTACTIC_FNAME_BUFLEN];\
 for (int i = 0; i < var.n_handles; i++) {\
     sprintf(tmp_##var##_buffer, "%s.%i.dmp.fastq", settings_ptr->output_basename, i);\
     size_t length = strlen(tmp_##var##_buffer);\
@@ -59,7 +64,7 @@ for (int i = 0; i < var.n_handles; i++) {\
         .out_fnames = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),\
     };\
 \
-char tmp_##var##_buffer [100];\
+char tmp_##var##_buffer [METASYNTACTIC_FNAME_BUFLEN];\
 for (int i = 0; i < splitter_var.n_handles; i++) {\
     sprintf(tmp_##var##_buffer, "%s.%i.sort.fastq", settings_ptr->output_basename, i);\
     size_t length = strlen(tmp_##var##_buffer);\
@@ -162,21 +167,18 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
 
 static char *rand_string_plus_append(char *str, size_t size, int index)
 {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV1234567890";
-    char append_buffer [30];
-    sprintf(append_buffer, ".%i.fastq", index);
-    size_t append_len = strlen(append_buffer);
-    str = realloc(str, (size + append_len + 1) * sizeof(char));
-    int charset_size_m1 = sizeof(charset) - 1;
+    int charset_size_m1 = sizeof(RAND_CHAR_SET) - 1;
     if (size) {
         --size;
         for (size_t n = 0; n < size; n++) {
             int key = rand() % (int) (charset_size_m1);
-            str[n] = charset[key];
+            str[n] = RAND_CHAR_SET[key];
         }
     }
-    memcpy((char *)str + size, append_buffer, append_len);
-    str[size + append_len] = '\0';
+    str[size] = '\0'; // Since this string might have been uninitialized, null-terminate manually.
+    char append_buffer [17];
+    sprintf(append_buffer, ".%i.fastq", index); // Nice thing about sprintf is that it null-terminates for you.
+    strcat(str, append_buffer);
     return str;
 }
 
@@ -213,7 +215,7 @@ int main(int argc, char *argv[])
     int l_index;
     int pass;
     char buffer [20];
-    char input_fastq_buffer [100];
+    char input_fastq_buffer [METASYNTACTIC_FNAME_BUFLEN];
     fprintf(stderr, "Hey, I started going in main.\n");
 
     // Build settings struct
@@ -275,8 +277,12 @@ int main(int argc, char *argv[])
     seq_index = kseq_init(fp_index);
     char binner [MAX_BARCODE_PREFIX_LENGTH];
     int bin_num;
+    fprintf(stderr, "Hey, I am about to start parsing the fastqs.\n");
+    l = kseq_read(seq);
+    fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq->seq.s, seq->qual.s, l);
     while ((l = kseq_read(seq)) >= 0) {
         // Iterate through second fastq file.
+        fprintf(stderr, "Hey, I am iterating through a fastq line.\n");
         l_index = kseq_read(seq_index);
         if (l_index < 0) {
             fprintf(stderr, "Index return value for kseq_read less than "
@@ -286,6 +292,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         // Set pass or fail for record.
+        fprintf(stderr, "Executed regex.\n");
         reti = regexec(&regex, seq_index->seq.s, 0, NULL, 0);
         pass = (!reti);
         if(!pass){
@@ -296,9 +303,13 @@ int main(int argc, char *argv[])
         }
         strncpy(binner, seq_index->seq.s, settings.n_nucs);
         binner[settings.n_nucs] = '\0';
+        fprintf(stderr, "Made binner.\n");
         FIND_BIN(binner, bin_num)
+        fprintf(stderr, "Found bin.\n");
+        KSEQ_TO_SINGLE_LINE(stderr, &seq, &seq_index, pass);
         KSEQ_TO_SINGLE_LINE(splitter_var.tmp_out_handles[bin_num], &seq, &seq_index, pass);
     }
+      fprintf(stderr, "Loop exited.\n");
     kseq_destroy(seq);
     gzclose(fp_read);
     INIT_MP_SORTER(dispatcher, splitter_var, settings_p)

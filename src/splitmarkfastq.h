@@ -1,4 +1,4 @@
-#include "kseq.h"
+#include "include/kseq.h"
 
 KSEQ_INIT(gzFile, gzread)
 
