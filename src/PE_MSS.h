@@ -15,21 +15,6 @@
 
 KSEQ_INIT(gzFile, gzread)
 
-#ifndef KSEQ_TO_SINGLE_LINE
-#define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
-    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
-#endif
-
-
-#ifndef FREE_SETTINGS
-#define FREE_SETTINGS(settings) free(settings.output_basename);\
-    free(settings.index_fq_path);\
-    free(settings.input_r1_path);\
-    free(settings.input_r2_path);\
-    free(settings.tmp_split_basename)
-#endif
-
 
 typedef struct mss_settings {
     int hp_threshold;
@@ -55,12 +40,69 @@ typedef struct mark_splitter {
 
 
 typedef struct sort_overlord {
-    mark_splitter_t splitter;
+    mark_splitter_t *splitter;
     FILE **sort_out_handles_r1;
     FILE **sort_out_handles_r2;
     char **out_fnames_r1;
     char **out_fnames_r2;
 } sort_overlord_t;
+
+int ipow(int base, int exp);
+void FREE_SPLITTER(mark_splitter_t var);
+void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
+
+#ifndef KSEQ_TO_SINGLE_LINE
+#define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
+        "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
+    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
+#endif
+
+
+#ifndef FREE_SETTINGS
+#define FREE_SETTINGS(settings) free(settings.output_basename);\
+    free(settings.index_fq_path);\
+    free(settings.input_r1_path);\
+    free(settings.input_r2_path);\
+    free(settings.tmp_split_basename)
+#endif
+
+inline sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
+{
+    sort_overlord_t ret = {
+            .splitter = splitter_ptr,
+            .sort_out_handles_r1 = (FILE **)malloc(splitter_ptr->n_handles * sizeof(FILE *)),
+            .sort_out_handles_r2 = (FILE **)malloc(splitter_ptr->n_handles * sizeof(FILE *)),
+            .out_fnames_r1 = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),
+            .out_fnames_r2 = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *))
+        };
+    char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+    size_t length;
+    for (int i = 0; i < splitter_ptr->n_handles; i++) {
+        sprintf(tmp_buffer, "%s.R1.%i.sort.fastq", settings_ptr->output_basename, i);
+        length = strlen(tmp_buffer);
+        ret.out_fnames_r1[i] = strdup(tmp_buffer);
+        ret.sort_out_handles_r1[i] = fopen(ret.out_fnames_r1[i], "w");
+        sprintf(tmp_buffer, "%s.R2.%i.sort.fastq", settings_ptr->output_basename, i);
+        ret.out_fnames_r2[i] = strdup(tmp_buffer);
+        ret.sort_out_handles_r2[i] = fopen(ret.out_fnames_r2[i], "w");
+    }
+    return ret;
+}
+
+inline void free_mp_sorter(sort_overlord_t var){
+    for (int i = 0; i < var.splitter->n_handles; i++) {
+        fclose(var.sort_out_handles_r1[i]);
+        fclose(var.sort_out_handles_r2[i]);
+        free(var.out_fnames_r1[i]);
+        free(var.out_fnames_r2[i]);
+    }
+    free(var.sort_out_handles_r1);
+    free(var.sort_out_handles_r2);
+    free(var.out_fnames_r1);
+    free(var.out_fnames_r2);
+    FREE_SPLITTER(*var.splitter);
+    return;
+}
 
 
 // Functions
@@ -115,9 +157,9 @@ inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *setting
     int index = -1;
     omp_set_num_threads(settings->threads);
     #pragma omp parallel for
-    for(int i = 0; i < dispatcher->splitter.n_handles; i++) {
+    for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
         #pragma omp flush(abort)
-        int ret = lh3_sort_call(dispatcher->splitter.fnames_r1[i], dispatcher->out_fnames_r1[i]);
+        int ret = lh3_sort_call(dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
         if(!ret) {
             abort = 1;
             index = i;
@@ -128,17 +170,17 @@ inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *setting
     if(abort) {
         fprintf(stderr,
                 "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
-                dispatcher->splitter.fnames_r1[index]);
-                //FREE_MP_SORTER(*dispatcher); // Delete allocated memory.
+                dispatcher->splitter->fnames_r1[index]);
+                //free_mp_sorter(*dispatcher); // Delete allocated memory.
                 // Will need to rewrite this for paired-end.
         exit(EXIT_FAILURE);
     }
     abort = 0;
     index = -1;
     #pragma omp parallel for
-    for(int i = 0; i < dispatcher->splitter.n_handles; i++) {
+    for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
         #pragma omp flush(abort)
-        int ret = lh3_sort_call(dispatcher->splitter.fnames_r2[i], dispatcher->out_fnames_r2[i]);
+        int ret = lh3_sort_call(dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
         if(!ret) {
             abort = 1;
             index = i;
@@ -149,14 +191,13 @@ inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *setting
     if(abort) {
         fprintf(stderr,
                 "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
-                dispatcher->splitter.fnames_r2[index]);
-                //FREE_MP_SORTER(*dispatcher); // Delete allocated memory.
+                dispatcher->splitter->fnames_r2[index]);
+                //free_mp_sorter(*dispatcher); // Delete allocated memory.
                 // Will need to rewrite this for paired-end.
         exit(EXIT_FAILURE);
     }
     return;
 }
-
 
 #define char_to_num(character, increment) switch(character) {\
     case 'C' : increment = 1; break;\

@@ -18,7 +18,8 @@ mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
 void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 				    mss_settings_t settings, mark_splitter_t splitter);
-
+sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
+void free_mp_sorter(sort_overlord_t var);
 
 // Macros
 
@@ -118,6 +119,7 @@ int main(int argc, char *argv[])
         print_usage(argv);
         return 1;
     }
+    fprintf(stderr, "About to get the read paths.\n");
     char r1_fq_buf[100];
     char r2_fq_buf[100];
     if(argc - 1 != optind + 1) {
@@ -140,14 +142,18 @@ int main(int argc, char *argv[])
     seq2 = kseq_init(fp_read2);
     seq_index = kseq_init(fp_index);
     mark_splitter_t splitter = init_splitter(settings_ptr);
+    mark_splitter_t *splitter_ptr = &splitter;
 /*
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
     splitmark_core(seq1, seq2, seq_index,
     			   settings, splitter);
+    //apply_lh3_sorts(&splitter, &settings);
+    sort_overlord_t dispatcher = build_mp_sorter(splitter_ptr, settings_ptr);
+    apply_lh3_sorts(&dispatcher, settings_ptr);
+    free_mp_sorter(dispatcher);
     FREE_SETTINGS(settings);
     FREE_SPLITTER(splitter);
     return 0;
 }
-
