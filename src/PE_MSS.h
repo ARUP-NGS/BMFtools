@@ -124,6 +124,7 @@ inline int lh3_sort_call(char *fname, char *outfname)
 {
     int retvar;
     char **lh3_argv = (char **)malloc(6 * sizeof(char *));
+    lh3_argv[0] = strdup("lh3sort");
     lh3_argv[1] = strdup("-t\'|\'");
     lh3_argv[2] = strdup("-k2,2");
     lh3_argv[3] = strdup("-o");
