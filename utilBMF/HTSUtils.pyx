@@ -11,7 +11,6 @@ from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from os import path as ospath
 from pysam.calignedsegment import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
-from multiprocessing import Process
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
                                    IllegalArgumentError, PermissionException,
@@ -23,6 +22,7 @@ import cStringIO
 import cython
 import logging
 import MawCluster
+import multiprocessing as mp
 import numconv
 import numpy as np
 import operator
@@ -1962,14 +1962,11 @@ def MergeBamList(bamlist, picardpath="default", memStr="-Xmx6G",
     return outbam
 
 
-def MultiCore(string):
-    #return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
-    subprocess.call(string, shell=True)
+def MultiProcessingDispatcher():
+    """
+        Dispatches jobs to a job pool, or something
+    """
 
-def DevNullPopen(string):
-    handle = Process(target=MultiCore(string))
-    handle.start()
-    return handle
 
 class PopenCall(object):
     """
