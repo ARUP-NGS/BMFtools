@@ -16,10 +16,11 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
 int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
+void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
+				    mss_settings_t settings, mark_splitter_t splitter);
+
 
 // Macros
-
-KSEQ_INIT(gzFile, gzread)
 
 
 // Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for cases involving GNU sort.)
@@ -28,13 +29,6 @@ KSEQ_INIT(gzFile, gzread)
         "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
-
-
-#define FREE_SETTINGS(settings) free(settings.output_basename);\
-    free(settings.index_fq_path);\
-    free(settings.input_r1_path);\
-    free(settings.input_r2_path);\
-    free(settings.tmp_split_basename)
 
 // Allocate file handle array memory, open file handles.
 
@@ -67,13 +61,14 @@ void print_usage(char *argv[])
                         "manipulation that doesn't add to the code base.\n"
                         "-i: Index fastq path. Required.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
-                        "-T: Temporary split fastq basename.\n", argv[0]);
+                        "-T: Temporary split fastq basename.\n"
+                        "-p: Number of threads to allocate to OpenMP. Default: 4.\n", argv[0]);
 }
 
-void print_opt_err(char *argv[])
+void print_opt_err(char *argv[], char *optarg)
 {
     print_usage(argv);
-    fprintf(stderr, "Unrecognized option. Abort!\n");
+    fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
     exit(1);
 }
 
@@ -90,16 +85,16 @@ int main(int argc, char *argv[])
         .n_nucs = 4,
         .index_fq_path = NULL,
         .output_basename = NULL,
-        .threads = 1,
+        .threads = 4,
         .input_r1_path = NULL,
         .input_r2_path = NULL,
         .tmp_split_basename = strdup(default_basename),
         .n_handles = 0,
-        .notification_interval = 500000
+        .notification_interval = 100000
     };
     settings.n_handles = ipow(4, settings.n_nucs);
     int c;
-    while ((c = getopt(argc, argv, "t:h:o:i:n:p:")) > -1) {
+    while ((c = getopt(argc, argv, "t:h:o:i:n:p:T:")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
@@ -108,7 +103,7 @@ int main(int argc, char *argv[])
             case 'p': settings.threads = atoi(optarg); break;
             case 'h': print_usage(argv); return 0;
             case 'T': settings.tmp_split_basename = strdup(optarg);
-            default: print_opt_err(argv);
+            default: print_opt_err(argv, optarg);
         }
     }
 
@@ -149,37 +144,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
-    char binner [MAX_BARCODE_PREFIX_LENGTH];
-    int bin;
-    while ((l1 = kseq_read(seq1)) >= 0) {
-        // Iterate through second fastq file.
-        l_index = kseq_read(seq_index);
-        l2 = kseq_read(seq2);
-        if (l_index < 0) {
-            fprintf(stderr, "Index return value for kseq_read less than "
-                            "0. Are the fastqs different sizes? Abort!\n");
-            FREE_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            return 1;
-        }
-        if (l2 < 0) {
-            fprintf(stderr, "Read 2 return value for kseq_read less than "
-                            "0. Are the fastqs different sizes? Abort!\n");
-            FREE_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            return 1;
-        }
-        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        memcpy(binner, seq_index->seq.s, settings.n_nucs);
-        binner[settings.n_nucs] = '\0';
-        bin = get_binner(binner, settings.n_nucs);
-        if (bin < 0){
-            continue;
-            // "N" in barcode.
-        }
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, 1);
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, 1);
-    }
+    splitmark_core(seq1, seq2, seq_index,
+    			   settings, splitter);
     FREE_SETTINGS(settings);
     FREE_SPLITTER(splitter);
     return 0;

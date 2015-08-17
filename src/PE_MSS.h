@@ -12,11 +12,22 @@
 #ifndef METASYNTACTIC_FNAME_BUFLEN
 #define METASYNTACTIC_FNAME_BUFLEN 100
 #endif
-#ifndef RANDOM_STRING_LENGTH
-#define RANDOM_STRING_LENGTH 30
+
+KSEQ_INIT(gzFile, gzread)
+
+#ifndef KSEQ_TO_SINGLE_LINE
+#define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
+        "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
+    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
-#ifndef MAX_BARCODE_PREFIX_LENGTH
-#define MAX_BARCODE_PREFIX_LENGTH 12
+
+
+#ifndef FREE_SETTINGS
+#define FREE_SETTINGS(settings) free(settings.output_basename);\
+    free(settings.index_fq_path);\
+    free(settings.input_r1_path);\
+    free(settings.input_r2_path);\
+    free(settings.tmp_split_basename)
 #endif
 
 
@@ -156,12 +167,12 @@ inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *setting
     }
 
 
-inline int get_binner(char binner[], int length) {
+inline int get_binner(char *barcode, int length) {
     int bin = 0;
     int inc_binner;
     size_t count = 0;
     for(int i = length;i > 0;i--){
-        char_to_num(binner[i - 1], inc_binner);
+        char_to_num(barcode[i - 1], inc_binner);
         bin += (ipow(4, count) * inc_binner);
         count++;
     }
@@ -193,4 +204,43 @@ inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
         ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
     }
     return ret;
+}
+
+
+inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
+				    mss_settings_t settings, mark_splitter_t splitter)
+{
+	int l1, l2, l_index, bin;
+	int count = 0;
+    while ((l1 = kseq_read(seq1)) >= 0) {
+        count += 1;
+        if(!(count % settings.notification_interval)) {
+            fprintf(stderr, "Number of records processed: %i.\n", count);
+        }
+        // Iterate through second fastq file.
+        l_index = kseq_read(seq_index);
+        l2 = kseq_read(seq2);
+        if (l_index < 0) {
+            fprintf(stderr, "Index return value for kseq_read less than "
+                            "0. Are the fastqs different sizes? Abort!\n");
+            FREE_SETTINGS(settings);
+            FREE_SPLITTER(splitter);
+            exit(EXIT_FAILURE);
+        }
+        if (l2 < 0) {
+            fprintf(stderr, "Read 2 return value for kseq_read less than "
+                            "0. Are the fastqs different sizes? Abort!\n");
+            FREE_SETTINGS(settings);
+            FREE_SPLITTER(splitter);
+            exit(EXIT_FAILURE);
+        }
+        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
+        bin = get_binner(seq_index->seq.s, settings.n_nucs);
+        if (bin < 0){
+            continue;
+            // "N" in barcode.
+        }
+        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, 1);
+        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, 1);
+    }
 }
