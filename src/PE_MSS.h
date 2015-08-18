@@ -100,7 +100,7 @@ inline void free_mp_sorter(sort_overlord_t var){
     free(var.sort_out_handles_r2);
     free(var.out_fnames_r1);
     free(var.out_fnames_r2);
-    FREE_SPLITTER(*var.splitter);
+    //FREE_SPLITTER(*var.splitter);
     return;
 }
 
@@ -125,11 +125,12 @@ inline int lh3_sort_call(char *fname, char *outfname)
     int retvar;
     char **lh3_argv = (char **)malloc(6 * sizeof(char *));
     lh3_argv[0] = strdup("lh3sort");
-    lh3_argv[1] = strdup("-t\'|\'");
+    lh3_argv[1] = strdup("-t|");
     lh3_argv[2] = strdup("-k2,2");
     lh3_argv[3] = strdup("-o");
     lh3_argv[4] = strdup(outfname);
     lh3_argv[5] = strdup(fname);
+    fprintf(stderr, "Command: %s %s %s %s %s %s\n", lh3_argv[0], lh3_argv[1], lh3_argv[2], lh3_argv[3], lh3_argv[4], lh3_argv[5]);
     retvar = lh3_sort_main(6, lh3_argv);
     for(int i = 1; i < 6; i++) {
         free(lh3_argv[i]);
@@ -152,20 +153,25 @@ inline void FREE_SPLITTER(mark_splitter_t var){
     return;
 }
 
-inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
+void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
 {
     int abort = 0;
     int index = -1;
     omp_set_num_threads(settings->threads);
-    #pragma omp parallel for
+    fprintf(stderr, "Number of threads: %i.\n", settings->threads);
+    fprintf(stderr, "Number of : handles %i.\n", dispatcher->splitter->n_handles * 4);
+    //#pragma omp parallel for
     for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
-        #pragma omp flush(abort)
+    	fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
+        //#pragma omp flush(abort)
+		fprintf(stderr, "About to try opening file %s.\n", dispatcher->out_fnames_r1[i]);
         int ret = lh3_sort_call(dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
-        if(!ret) {
+        fprintf(stderr, "lh3_sort_call return value: %i.\n", ret);
+        if(ret) {
             abort = 1;
             index = i;
-            #pragma omp flush (abort)
-            #pragma omp flush (index)
+            //#pragma omp flush (abort)
+            //#pragma omp flush (index)
         }
     }
     if(abort) {
@@ -178,15 +184,16 @@ inline void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *setting
     }
     abort = 0;
     index = -1;
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
-        #pragma omp flush(abort)
+        //#pragma omp flush(abort)
+    	fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
         int ret = lh3_sort_call(dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
-        if(!ret) {
+        if(ret) {
             abort = 1;
             index = i;
-            #pragma omp flush (abort)
-            #pragma omp flush (index)
+            //#pragma omp flush (abort)
+            //#pragma omp flush (index)
         }
     }
     if(abort) {

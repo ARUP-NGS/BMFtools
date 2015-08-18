@@ -39,6 +39,7 @@
 #define _GNU_SOURCE
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <stdio.h>
 #ifndef ENABLE_ASSERTIONS
@@ -47,6 +48,9 @@
 #include <assert.h>
 #include "system.h"
 #include "error.h"
+#ifndef O_RDRW
+#define O_RDRW 00000002
+#endif
 
 #ifdef HAVE_LIMITS_H
 #include <limits.h>
@@ -299,6 +303,13 @@ static void cleanup(void)
 
 /* Allocate N bytes of memory dynamically, with error checking.  */
 
+
+static void key_init(struct keyfield * key)
+{
+	memset(key, 0, sizeof(*key));
+	key->eword = -1;
+}
+
 static char *xmalloc(unsigned int n)
 {
 	char *p;
@@ -348,9 +359,13 @@ static FILE *xtmpfopen(const char *file)
 static FILE *xfopen(const char *file, const char *how)
 {
 	FILE *fp;
+	int fd;
 	if (strcmp(file, "-") == 0) fp = stdin;
 	else {
-		if ((fp = fopen(file, how)) == NULL) {
+		if ((fd = open(file, O_RDRW, 0777)) >= 0)
+		    fp = fdopen(fd, how);
+		else {
+			fprintf(stderr, "Attempt to open file handle failed.\n");
 			error(0, errno, "%s", file);
 			cleanup();
 			exit(SORT_FAILURE);
@@ -372,7 +387,7 @@ static void xfclose(FILE * fp)
 			exit(SORT_FAILURE);
 		}
 	} else {
-		if (fclose(fp) != 0) {
+		if (close(fileno(fp)) != 0) {
 			error(0, errno, _("error closing file"));
 			cleanup();
 			exit(SORT_FAILURE);
@@ -1400,7 +1415,7 @@ static void merge(char **files, int nfiles, FILE * ofp)
 
 /* Sort NFILES FILES onto OFP. */
 
-static void sort(char **files, int nfiles, FILE *ofp)
+int lh3_sort(char **files, int nfiles, FILE *ofp, char delim)
 {
 	struct buffer   buf;
 	struct lines    lines;
@@ -1410,6 +1425,8 @@ static void sort(char **files, int nfiles, FILE *ofp)
 	struct tempnode *node;
 	int             n_temp_files = 0;
 	char          **tempfiles;
+	tab = delim;
+	struct keyfield * key;
 
 	initbuf(&buf, sortalloc);
 	initlines(&lines, sortalloc / linelength + 1, LINEALLOC / sizeof(struct line));
@@ -1452,6 +1469,7 @@ static void sort(char **files, int nfiles, FILE *ofp)
 		merge(tempfiles, n_temp_files, ofp);
 		free((char *) tempfiles);
 	}
+	return 0;
 }
 
 /* Insert key KEY at the end of the list (`keyhead'). */
@@ -1519,11 +1537,6 @@ static char *set_ordering(register const char *s, struct keyfield * key,
 	return (char *) s;
 }
 
-static void key_init(struct keyfield * key)
-{
-	memset(key, 0, sizeof(*key));
-	key->eword = -1;
-}
 
 int lh3_sort_main(int argc, char **argv)
 {
@@ -1739,6 +1752,7 @@ int lh3_sort_main(int argc, char **argv)
 			}
 		} else {	/* Not an option. */
 			files[nfiles++] = argv[i];
+			fprintf(stderr, "Adding file to list of inputs %s.\n", files[0]);
 		}
 outer:	;
 	}
@@ -1835,10 +1849,14 @@ outer:	;
 			}
 		}
 		ofp = xfopen(outfile, "w");
-	} else ofp = stdout;
+	} else  {
+		ofp = stdout;
+	}
 
+	//fprintf(stderr, "Input file: %s", files[0]);
+	int ret;
 	if (mergeonly) merge(files, nfiles, ofp);
-	else sort(files, nfiles, ofp);
+	else ret = lh3_sort(files, nfiles, ofp, tab);
 	cleanup();
 
 	/*
@@ -1848,11 +1866,30 @@ outer:	;
 	 * SunOS, Solaris, Ultrix, and Irix.  This premature fflush makes
 	 * the output reappear. --karl@cs.umb.edu
 	 */
-	if (fflush(ofp) < 0) error(SORT_FAILURE, errno, _("%s: write error"), outfile);
+	if (fflush(ofp) < 0) {
+		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
+	}
+	/*
+	else {
+		fprintf(stderr, "Hey, it looks like fflush didn't fail for some reason.\n");
+		return EXIT_SUCCESS;
+	}
+	*/
 
 	if (have_read_stdin && fclose(stdin) == EOF) error(SORT_FAILURE, errno, outfile);
-	if (ferror(stdout) || fclose(stdout) == EOF)
+	/*
+	if (ferror(stdout) || fclose(stdout) == EOF) {
+		fprintf(stderr, "ferror(stdout)?\n");
 		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
+	}
+	*/
+	if (ferror(stdout)) {
+		fprintf(stderr, "ferror(stdout) is being thrown?\n");
+		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
+	} else if (fclose(stdout) == EOF){
+		fprintf(stderr, "fclose(stdout) == EOF is being thrown?\n");
+		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
+	}
 
-	exit(EXIT_SUCCESS);
+	return EXIT_SUCCESS;
 }
