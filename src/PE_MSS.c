@@ -28,7 +28,7 @@ void free_mp_sorter(sort_overlord_t var);
 // Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for cases involving GNU sort.)
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "%s FP:i:%i_BS:Z:%s\t%s\t+\t%s\n",\
+        "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
@@ -76,14 +76,6 @@ void print_opt_err(char *argv[], char *optarg)
 
 int main(int argc, char *argv[])
 {
-	  struct rlimit limit;
-
-	  limit.rlim_cur = 65535;
-	  limit.rlim_max = 65535;
-	  if (setrlimit(RLIMIT_NOFILE, &limit) != 0) {
-	    printf("setrlimit() failed with errno=%d\n", errno);
-	    return 1;
-	  }
     // Build settings struct
     int hp_threshold;
     int n_nucs;
@@ -159,9 +151,11 @@ int main(int argc, char *argv[])
     splitmark_core(seq1, seq2, seq_index,
     			   settings, splitter);
     //apply_lh3_sorts(&splitter, &settings);
+    /*
     sort_overlord_t dispatcher = build_mp_sorter(splitter_ptr, settings_ptr);
     apply_lh3_sorts(&dispatcher, settings_ptr);
     free_mp_sorter(dispatcher);
+    */
     FREE_SETTINGS(settings);
     FREE_SPLITTER(splitter);
     return 0;

@@ -53,7 +53,7 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
 
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "%s FP:i:%i_BS:Z:%s\t%s\t+\t%s\n",\
+        "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
@@ -126,7 +126,7 @@ inline int lh3_sort_call(char *fname, char *outfname)
     int retvar;
     char **lh3_argv = (char **)malloc(6 * sizeof(char *));
     lh3_argv[0] = strdup("lh3sort");
-    lh3_argv[1] = strdup("-t'_'");
+    lh3_argv[1] = strdup("-t'|'");
     lh3_argv[2] = strdup("-k2,2");
     lh3_argv[3] = strdup("-o");
     lh3_argv[4] = strdup(outfname);
