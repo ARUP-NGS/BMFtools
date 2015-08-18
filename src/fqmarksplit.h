@@ -215,7 +215,6 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     case 'C' : increment = 1; break;\
     case 'G' : increment = 2; break;\
     case 'T' : increment = 3; break;\
-    case 'N' : increment = -65535; break;\
     default: increment = 0; break;\
     }
 
@@ -260,11 +259,32 @@ inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
 }
 
 
+inline int test_hp(kseq_t *seq, int threshold)
+{
+	int run = 0;
+	char last = '\0';
+	for(int i = 0; i < seq->seq.l; i++){
+		if(seq->seq.s[i] == 'N') {
+			return 0;
+		}
+		if(seq->seq.s[i] == last) {
+			run += 1;
+		}
+		else {
+			run = 0;
+			last = seq->seq.s[i];
+		}
+	}
+	return (run < threshold);
+}
+
+
 inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 				    mss_settings_t settings, mark_splitter_t splitter)
 {
 	int l1, l2, l_index, bin;
 	int count = 0;
+	int pass;
     while ((l1 = kseq_read(seq1)) >= 0) {
         count += 1;
         if(!(count % settings.notification_interval)) {
@@ -287,13 +307,10 @@ inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
             FREE_SPLITTER(splitter);
             exit(EXIT_FAILURE);
         }
+        pass = test_hp(seq_index, settings.hp_threshold);
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(seq_index->seq.s, settings.n_nucs);
-        if (bin < 0){
-            continue;
-            // "N" in barcode.
-        }
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, 1);
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, 1);
+        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass);
+        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass);
     }
 }

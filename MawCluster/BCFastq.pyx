@@ -1574,3 +1574,23 @@ cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
     return not ("N" in barcode or "A" * hpLimit in barcode or
                 "C" * hpLimit in barcode or
                 "G" * hpLimit in barcode or "T" * hpLimit in barcode)
+
+
+def GenerateFilenames(cystr Fq1, int n_nucs):
+    cdef int n_handles = 4 ** n_nucs
+    outBasename = TrimExt(Fq1) + ".split"
+    return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
+             i in xrange(n_handles)],
+            ["%s.tmp.%i.R2.fastq" % (outBasename, i) for
+             i in xrange(n_handles)])
+
+
+def Callfqmarkplit(cystr Fq1, cystr Fq2, cystr indexFq,
+                   int hpThreshold, int n_nucs):
+    cdef cystr outBasename
+    outBasename = TrimExt(Fq1) + ".split"
+    cStr = ("fqmarksplit -t %i -n %i -i %s " % (hpThreshold, n_nucs,
+                                                indexFq) +
+            "-o %s %s %s" % (outBasename, Fq1, Fq2))
+    check_call(cStr, shell=True)
+    return GenerateFilenames(Fq1, n_nucs)

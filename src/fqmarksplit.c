@@ -21,6 +21,7 @@ void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 				    mss_settings_t settings, mark_splitter_t splitter);
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 void free_mp_sorter(sort_overlord_t var);
+int test_hp(kseq_t *seq, int threshold);
 
 // Macros
 
@@ -53,7 +54,6 @@ void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
                         "\nFlags:\n"
-                        "-f: Write each record as a single line. Default: True.\n"
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
@@ -62,9 +62,7 @@ void print_usage(char *argv[])
                         "time building code than messing around with string "
                         "manipulation that doesn't add to the code base.\n"
                         "-i: Index fastq path. Required.\n"
-                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
-                        "-T: Temporary split fastq basename.\n"
-                        "-p: Number of threads to allocate to OpenMP. Default: 4.\n", argv[0]);
+                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n", argv[0]);
 }
 
 void print_opt_err(char *argv[], char *optarg)
@@ -96,15 +94,13 @@ int main(int argc, char *argv[])
     };
     settings.n_handles = ipow(4, settings.n_nucs);
     int c;
-    while ((c = getopt(argc, argv, "t:h:o:i:n:p:T:")) > -1) {
+    while ((c = getopt(argc, argv, "t:h:o:i:n:")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg);break;
             case 'i': settings.index_fq_path = strdup(optarg); break;
-            case 'p': settings.threads = atoi(optarg); break;
             case 'h': print_usage(argv); return 0;
-            case 'T': settings.tmp_split_basename = strdup(optarg);
             default: print_opt_err(argv, optarg);
         }
     }

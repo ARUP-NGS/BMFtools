@@ -14,6 +14,7 @@ from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
 from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
 from MawCluster.Math cimport igamc, CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED
 from MawCluster.Math cimport arrmax
+from pysam.cfaidx cimport kstream_t, kseq_t, gzopen, kseq_init, kseq_read, kseq_destroy, gzclose, ks_init, ks_destroy, ks_getuntil
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef SeqQual SeqQual_t
