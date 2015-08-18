@@ -7,6 +7,7 @@ import pysam
 
 import argparse
 
+
 class shepard(object):
     """
     pushes stuff around
@@ -62,19 +63,17 @@ def worker(Fastq, IndexFq, prefix):
             try:
                 bcHash[BC].append(shadeRead(read, BC))
             except KeyError:
-                bcHash[BC]=[shadeRead(read, BC)]
+                bcHash[BC] = [shadeRead(read, BC)]
     fqname = Fastq.split('.')[0]
     output = open(fqname+"."+prefix+".fastq",'w')
-    for barcode in bcHash.keys():
+    for barcode in bcHash.iterkeys():
         output.write(FastFisherFlattening(bcHash[barcode], barcode))
     output.close()
-    if bcHash:
-        numBC = len(bcHash.keys())
-    else:
-        numBC = 0
+    numBC = len(bcHash)  # returns 0 if uninitialized, length otherwise.
     del bcHash
     print("prefix %s complete" % (prefix))
     return numBC
+
 
 def getArgs():
     parser = argparse.ArgumentParser()
@@ -90,8 +89,8 @@ def getArgs():
 if __name__ == '__main__':
     args = getArgs()
     pool = mp.Pool(processes=args.ncpus)
-    allPrefixes = permuteNucleotides(4**args.lenPrefix,kmerLen=args.lenPrefix)
+    allPrefixes = permuteNucleotides(4**args.lenPrefix, kmerLen=args.lenPrefix)
     results = [pool.apply_async(worker, args=(args.Fastq1, args.IndexFq, p, ))
-                for p in allPrefixes]
+               for p in allPrefixes]
     things = [p.get() for p in results]
     print things
