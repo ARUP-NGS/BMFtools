@@ -7,7 +7,6 @@
 #include <string.h>
 #include <omp.h>
 #include "include/kseq.h"
-#include "include/sort/lh3sort.c"
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN
 #define METASYNTACTIC_FNAME_BUFLEN 100
@@ -49,7 +48,7 @@ typedef struct sort_overlord {
 
 int ipow(int base, int exp);
 void FREE_SPLITTER(mark_splitter_t var);
-void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
+//void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
 
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
@@ -119,7 +118,7 @@ inline int ipow(int base, int exp)
 
     return result;
 }
-
+/*
 inline int lh3_sort_call(char *fname, char *outfname)
 {
 	char buffer[200];
@@ -141,6 +140,7 @@ inline int lh3_sort_call(char *fname, char *outfname)
     free(lh3_argv);
     return retvar;
 }
+*/
 
 
 inline void FREE_SPLITTER(mark_splitter_t var){
@@ -155,7 +155,7 @@ inline void FREE_SPLITTER(mark_splitter_t var){
     free(var.tmp_out_handles_r2);
     return;
 }
-
+/*
 void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
 {
     int abort = 0;
@@ -209,6 +209,7 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     }
     return;
 }
+*/
 
 #define char_to_num(character, increment) switch(character) {\
     case 'C' : increment = 1; break;\

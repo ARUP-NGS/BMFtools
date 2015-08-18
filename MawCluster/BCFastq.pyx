@@ -568,11 +568,6 @@ cdef cystr cFastFisherFlattening(list R,
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     After inlining:
-    In [21]: %timeit pCompareFqRecsFast(fam)
-   1000 loops, best of 3: 518 us per loop
-
-    In [22]: %timeit cFRF_helper(fam)
-    1000 loops, best of 3: 947 us per loop
 
     """
     cdef int nRecs, ND, rLen

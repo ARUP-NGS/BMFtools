@@ -8,12 +8,12 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "PE_MSS.h"
+#include "fqmarksplit.h"
 
 // Inline function declarations
-int lh3_sort_call(char *fname, char *outfname);
+//int lh3_sort_call(char *fname, char *outfname);
 void FREE_SPLITTER(mark_splitter_t var);
-void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
+//void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
 int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
