@@ -18,6 +18,7 @@ import time
 import cStringIO
 import operator
 import uuid
+import multiprocessing as mp
 from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       mul as omul, add as oadd, attrgetter as oag,
                       methodcaller as mc)
@@ -1243,14 +1244,21 @@ def singleFqConsRescale(cystr fq,
     return outFq
 
 
-def singleFastqConsolidate(cystr fq,
+def singleFastqConsolidate(cystr fq, cystr outFq=None,
                            int SetSize=100):
-    cdef cystr outFq, bc4fq, ffq
+    """
+    :param fq [cystr/arg] Path to input fastq.
+    :param outFq [cystr/kwarg/None] Path to output Fq.
+    Defaults to TrimExt(fq) + ".cons.fastq" if None.
+    :param SetSize [int/kwarg/100] Number of records to write to file at once.
+    :return outFq - Path to output fastq
+    """
+    cdef cystr bc4fq, ffq
     cdef pFastqFile_t inFq
     cdef list StringList, pFqPrxList
     cdef int numproc, TotalCount, MergedCount
     from sys import stderr
-    outFq = TrimExt(fq) + ".cons.fastq"
+    outFq = TrimExt(fq) + ".cons.fastq" if(outFq is None) else outFq
     pl("Now running singleFastqConsolidate on {}.".format(fq))
     inFq = pFastqFile(fq)
     outputHandle = open(outFq, 'w')
@@ -1544,6 +1552,15 @@ def GenerateTmpFilenames(cystr Fq1, int n_nucs):
              i in xrange(n_handles)])
 
 
+def GenerateFinalTmpFilenames(cystr Fq1, int n_nucs):
+    cdef int n_handles = 4 ** n_nucs
+    outBasename = TrimExt(Fq1) + ".dmp"
+    return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
+             i in xrange(n_handles)],
+            ["%s.tmp.%i.R2.fastq" % (outBasename, i) for
+             i in xrange(n_handles)])
+
+
 @cython.returns(dict)
 def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
                     int hpThreshold, int n_nucs):
@@ -1558,7 +1575,7 @@ def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
     outBasename = TrimExt(Fq1) + ".split"
     cStr = ("fqmarksplit -t %i -n %i -i %s " % (hpThreshold, n_nucs,
                                                 indexFq) +
-            "-o %s %s         jobs.append(p)%s" % (outBasename, Fq1, Fq2))
+            "-o %s %s %s" % (outBasename, Fq1, Fq2))
     sys.stderr.write(cStr + "\n")
     check_call(cStr, shell=True)
     return {"mark": GenerateTmpFilenames(Fq1, n_nucs),
@@ -1572,7 +1589,6 @@ def call_lh3_sort(tmpFname, sortFname):
 
 
 def dispatch_lh3_sorts(tmpFnames, sortFnames, threads):
-    import multiprocessing as mp
     pool = mp.Pool(processes=threads)
     bothFnames = tmpFnames[0] + tmpFnames[1]
     bothSortFnames = sortFnames[0] + sortFnames[1]
@@ -1581,14 +1597,59 @@ def dispatch_lh3_sorts(tmpFnames, sortFnames, threads):
     return zip(sortFnames[0], sortFnames[1])
 
 
+def dispatch_sfc(sortFnames, finalFnames, threads):
+    pool = mp.Pool(processes=threads)
+    bothSortFnames = sortFnames[0] + sortFnames[1]
+    bothFinalFnames = finalFnames[0] + finalFnames[1]
+    results = [pool.apply_async(singleFastqConsolidate,
+                                (sFname,),
+                                dict(outFq=fFname))
+               for sFname, fFname in zip(bothSortFnames, bothFinalFnames)]
+    return finalFnames
+
+
 def split_and_sort(cystr Fq1, cystr Fq2, cystr indexFq,
                    int hpThreshold, int n_nucs,
                    int threads=8):
-    cdef list tmpFnames, sortFnames
+    """
+    :param Fq1 [cystr/arg] Path to read 1 fastq.
+    :param Fq2 [cystr/arg] Path to read 2 fastq.
+    :param indexFq [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold for homopolymer length to QC fail.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the
+    initial fastq.
+    :param threads [int/kwarg/8] Number of threads to instruct MP to use.
+    :return List of tuples for read1/read2 read sets.
+    """
+    cdef dict fqmarksplit_retdict
+    fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
+                                          hpThreshold, n_nucs)
+    tmpFnames = fqmarksplit_retdict['mark']
+    sortFnames = fqmarksplit_retdict['sort']
+    finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
+    sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
+    return sorted_split_files
+
+
+def split_sort_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
+                   int hpThreshold, int n_nucs,
+                   int threads=8):
+    """
+    :param Fq1 [cystr/arg] Path to read 1 fastq.
+    :param Fq2 [cystr/arg] Path to read 2 fastq.
+    :param indexFq [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold for homopolymer length to QC fail.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the
+    initial fastq.
+    :param threads [int/kwarg/8] Number of threads to instruct MP to use.
+    :return List of tuples for read1/read2 read sets.
+    """
     cdef dict fqmarksplit_retdict
     fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
                                           hpThreshold, n_nucs)
     tmpFnames = fqmarksplit_retdict['mark']
     sortFnames = fqmarksplit_retdict['sort']
     sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
-    return sorted_split_files
+    finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
+    dispatch_sfc(sortFnames, finalTmpFnames, threads)
+    return
