@@ -1,40 +1,11 @@
+from MawCluster.BCFastq import FastFisherFlattening, MakeTagComment
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, permuteNucleotides
-from MawCluster.BCFastq import FastFisherFlattening
 
 import numpy as np
 import multiprocessing as mp
-import pysam
 
 import argparse
-
-class shepard(object):
-    """
-    pushes stuff around
-    """
-
-    def __init__(self, fastq, indexFq, bsPrefix):
-        self.prefix=bsPrefix
-        self.prefixLen=len(bsPrefix)
-        self.Fq=fastq
-        self.iFq=indexFq
-        self.jobComplete=False
-        self.fqRecords={}
-
-    def _run(self):
-        """
-        1. get all records with same barcode into dict
-        2. Mark all records with BS sequence
-        3. Sort records by BS sequence (groupby?)
-        4. Consolidate records with the same sequence
-        5. Print records to a temp file with the prefix sequence
-        6. Delete fqRecords dictionary
-        """
-        pass
-
-    def _finish(self):
-        self.jobComplete=True
-        self.fqRecords={}
-
+import pysam
 
 def shadeRead(read, BC, head=0):
     if("N" in BC):
@@ -43,7 +14,7 @@ def shadeRead(read, BC, head=0):
         read.comment += "|FP=1|BS=%s" % (read.sequence[1:head + 1] + BC)
     return read
 
-def worker(Fastq, IndexFq, prefix):
+def worker(Fastq, IndexFq, bcLen, prefix, head=0):
     """
     class based implementation above probably won't work.  switching
     to a function-based one, using a worker function.  I should probably
@@ -90,8 +61,9 @@ def getArgs():
 if __name__ == '__main__':
     args = getArgs()
     pool = mp.Pool(processes=args.ncpus)
+    bcLen = len(pFastqFile(args.IndexFq).next().sequence)
     allPrefixes = permuteNucleotides(4**args.lenPrefix,kmerLen=args.lenPrefix)
-    results = [pool.apply_async(worker, args=(args.Fastq1, args.IndexFq, p, ))
-                for p in allPrefixes]
+    results = [pool.apply_async(worker, args=(args.Fastq1, args.IndexFq, bcLen,
+                p)) for p in allPrefixes]
     things = [p.get() for p in results]
     print things
