@@ -1454,6 +1454,7 @@ int lh3_sort(char **files, int nfiles, FILE *ofp, char delim)
 				}
 			if (tfp != ofp) xfclose(tfp);
 		}
+		fflush(fp);
 		xfclose(fp);
 	}
 
@@ -1867,14 +1868,14 @@ outer:	;
 	 * the output reappear. --karl@cs.umb.edu
 	 */
 	if (fflush(ofp) < 0) {
+		fprintf(stderr, "fflush died!\n");
 		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
 	}
-	/*
 	else {
+		fclose(ofp);
 		fprintf(stderr, "Hey, it looks like fflush didn't fail for some reason.\n");
 		return EXIT_SUCCESS;
 	}
-	*/
 
 	if (have_read_stdin && fclose(stdin) == EOF) error(SORT_FAILURE, errno, outfile);
 	/*
@@ -1883,11 +1884,11 @@ outer:	;
 		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
 	}
 	*/
-	if (ferror(stdout)) {
-		fprintf(stderr, "ferror(stdout) is being thrown?\n");
+	if (fclose(stdout) == EOF) {
+		fprintf(stderr, "fclose(stdout) == EOF is being thrown.\n");
 		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
-	} else if (fclose(stdout) == EOF){
-		fprintf(stderr, "fclose(stdout) == EOF is being thrown?\n");
+	} else if (ferror(stdout)){
+		fprintf(stderr, "ferror(stdout) is being thrown?\n");
 		error(SORT_FAILURE, errno, _("%s: write error"), outfile);
 	}
 
