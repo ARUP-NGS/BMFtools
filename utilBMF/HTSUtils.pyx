@@ -117,7 +117,7 @@ cpdef list permuteNucleotides(long maxn, object nci=nci, int kmerLen=-1):
     else:
         tmpList = [nci(tmpInt) for tmpInt in xrange(maxn)]
         for tmpInt in range(maxn):
-            strLen = len(tmpList)
+            strLen = len(tmpList[tmpInt])
             if strLen < kmerLen:
                 tmpList[tmpInt] = "A" * (kmerLen - strLen) + tmpList[tmpInt]
         return tmpList
@@ -1966,7 +1966,10 @@ def MultiProcessingDispatcher():
     """
         Dispatches jobs to a job pool, or something
     """
+    pass
 
+def DevNullPopen(string):
+    return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
 
 class PopenCall(object):
     """
