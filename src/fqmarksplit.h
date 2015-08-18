@@ -25,7 +25,6 @@ typedef struct mss_settings {
     char *index_fq_path;
     char *input_r1_path;
     char *input_r2_path;
-    char *tmp_split_basename;
 } mss_settings_t;
 
 typedef struct mark_splitter {
@@ -52,7 +51,7 @@ void FREE_SPLITTER(mark_splitter_t var);
 
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "%s FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
+        "%s ~#!#~|FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
@@ -61,8 +60,7 @@ void FREE_SPLITTER(mark_splitter_t var);
 #define FREE_SETTINGS(settings) free(settings.output_basename);\
     free(settings.index_fq_path);\
     free(settings.input_r1_path);\
-    free(settings.input_r2_path);\
-    free(settings.tmp_split_basename)
+    free(settings.input_r2_path);
 #endif
 
 inline sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
@@ -248,9 +246,9 @@ inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
     ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
     char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
     for (int i = 0; i < ret.n_handles; i++) {
-        sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_split_basename, i);
+        sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);
         ret.fnames_r1[i] = strdup(tmp_buffer);
-        sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_split_basename, i);
+        sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
         ret.fnames_r2[i] = strdup(tmp_buffer);
         ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
         ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");

@@ -1087,56 +1087,6 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
     return outfq1, outfq2
 
 
-def FastqSingleShading(fq,
-                       indexFq="default",
-                       outfq="default",
-                       cython.bint gzip=False,
-                       int head=0):
-    """
-    Unit test done. Marks a single fastq with its index fq string.
-    """
-    cdef pFastqProxy_t pRead1, pIndexRead
-    pl("Now beginning fastq marking: Pass/Fail and Barcode")
-    if(indexFq == "default"):
-        raise ValueError("For an i5/i7 index ")
-    if(outfq == "default"):
-        outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
-    inFq1 = pFastqFile(fq)
-    outFqHandle1 = open(outfq, "w")
-    inIndex = pFastqFile(indexFq)
-    for pRead1 in inFq1:
-        pIndexRead = inIndex.next()
-        if("N" in pRead1.sequence):
-            pRead1.comment += "|FP=0|BS=%s" % (
-                pRead1.sequence[1:head + 1] + pIndexRead.sequence)
-            outFqHandle1.write(str(pRead1))
-        else:
-            pRead1.comment += "|FP=1|BS=%s" % (
-                pRead1.sequence[1:head + 1] + pIndexRead.sequence)
-            outFqHandle1.write(str(pRead1))
-    outFqHandle1.close()
-    if(gzip):
-        check_call(['gzip', fq], shell=False)
-    return
-
-
-@cython.returns(cystr)
-def GetDescTagValue(readDesc, tag="default"):
-    """
-    Gets the value associated with a given tag.
-    of read description (string), then the seq
-    attribute is used instead of the description.
-    """
-    if(tag == "default"):
-        raise ValueError("A tag must be specified!")
-    try:
-        return GetDescriptionTagDict(readDesc)[tag]
-    except KeyError:
-        # pl("Tag {} is not available in the description.".format(tag))
-        # pl("Description: {}".format(readDesc))
-        raise KeyError("Invalid tag: %s" % tag)
-
-
 cdef inline cystr PyArr2QualStr(py_array qualArr):
     """
     :param qualArr: [py_array/arg] Expects a 32-bit integer array
@@ -1576,7 +1526,16 @@ cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
                 "G" * hpLimit in barcode or "T" * hpLimit in barcode)
 
 
-def GenerateFilenames(cystr Fq1, int n_nucs):
+def GenerateSortFilenames(cystr Fq1, int n_nucs):
+    cdef int n_handles = 4 ** n_nucs
+    outBasename = TrimExt(Fq1) + ".sort"
+    return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
+             i in xrange(n_handles)],
+            ["%s.tmp.%i.R2.fastq" % (outBasename, i) for
+             i in xrange(n_handles)])
+
+
+def GenerateTmpFilenames(cystr Fq1, int n_nucs):
     cdef int n_handles = 4 ** n_nucs
     outBasename = TrimExt(Fq1) + ".split"
     return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
@@ -1585,12 +1544,51 @@ def GenerateFilenames(cystr Fq1, int n_nucs):
              i in xrange(n_handles)])
 
 
-def Callfqmarkplit(cystr Fq1, cystr Fq2, cystr indexFq,
-                   int hpThreshold, int n_nucs):
+@cython.returns(dict)
+def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
+                    int hpThreshold, int n_nucs):
+    """
+    :param Fq1- [cystr/arg] Path to read 1 fastq
+    :param Fq2- [cystr/arg] Path to read 2 fastq
+    :param indexFq- [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold to fail a homopolymer.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the files.
+    """
     cdef cystr outBasename
     outBasename = TrimExt(Fq1) + ".split"
     cStr = ("fqmarksplit -t %i -n %i -i %s " % (hpThreshold, n_nucs,
                                                 indexFq) +
-            "-o %s %s %s" % (outBasename, Fq1, Fq2))
+            "-o %s %s         jobs.append(p)%s" % (outBasename, Fq1, Fq2))
+    sys.stderr.write(cStr + "\n")
     check_call(cStr, shell=True)
-    return GenerateFilenames(Fq1, n_nucs)
+    return {"mark": GenerateTmpFilenames(Fq1, n_nucs),
+            "sort": GenerateSortFilenames(Fq1, n_nucs)}
+
+
+def call_lh3_sort(tmpFname, sortFname):
+    cStr = "lh3sort -t'|' -k3,3 -o %s %s" % (sortFname, tmpFname)
+    check_call(cStr, shell=True)
+    return
+
+
+def dispatch_lh3_sorts(tmpFnames, sortFnames, threads):
+    import multiprocessing as mp
+    pool = mp.Pool(processes=threads)
+    bothFnames = tmpFnames[0] + tmpFnames[1]
+    bothSortFnames = sortFnames[0] + sortFnames[1]
+    results = [pool.apply_async(call_lh3_sort, args=(tmpF, tmpS,))
+               for tmpF, tmpS in zip(bothFnames, bothSortFnames)]
+    return zip(sortFnames[0], sortFnames[1])
+
+
+def split_and_sort(cystr Fq1, cystr Fq2, cystr indexFq,
+                   int hpThreshold, int n_nucs,
+                   int threads=8):
+    cdef list tmpFnames, sortFnames
+    cdef dict fqmarksplit_retdict
+    fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
+                                          hpThreshold, n_nucs)
+    tmpFnames = fqmarksplit_retdict['mark']
+    sortFnames = fqmarksplit_retdict['sort']
+    sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
+    return sorted_split_files
