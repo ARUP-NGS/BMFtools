@@ -48,6 +48,7 @@ install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
 includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("src/include/cephes")] + pysam.get_include()
 
 subprocess.check_call('gcc src/fqmarksplit.c -I src/. -lz -o src/fqmarksplit -fopenmp', shell=True)
+subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
 
 config = {
     'description': '',
@@ -60,7 +61,7 @@ config = {
                  "SecC", "analyscripts"],
     'ext_modules': ext,
     'include_dirs': includes,
-    'scripts': ['utilBMF/bmftools', 'src/fqmarksplit'],
+    'scripts': ['utilBMF/bmftools', 'src/fqmarksplit', 'src/sort/lh3sort'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

@@ -1,8 +1,8 @@
 CC=			gcc
 CFLAGS=		-g -Wall -O2
 DFLAGS=		-DHAVE_CONFIG_H
-OBJS=		error.o sort.o
-PROG=		sort
+OBJS=		error.o lh3sort.o
+PROG=		lh3sort
 LIBS=		
 
 .SUFFIXES:.c .o
