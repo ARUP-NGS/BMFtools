@@ -1583,7 +1583,7 @@ def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
 
 
 def call_lh3_sort(tmpFname, sortFname):
-    cStr = "lh3sort -t'|' -k3,3 -o %s %s" % (sortFname, tmpFname)
+    cStr = "lh3sort -t'|' -k3,3 %s | tr '\t' '\n' > %s" % (sortFname, tmpFname)
     check_call(cStr, shell=True)
     return
 

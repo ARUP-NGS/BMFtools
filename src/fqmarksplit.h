@@ -51,7 +51,7 @@ void FREE_SPLITTER(mark_splitter_t var);
 
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "%s ~#!#~|FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
+        "@%s ~#!#~|FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
@@ -62,6 +62,25 @@ void FREE_SPLITTER(mark_splitter_t var);
     free(settings.input_r1_path);\
     free(settings.input_r2_path);
 #endif
+
+inline int test_hp(kseq_t *seq, int threshold)
+{
+	int run = 0;
+	char last = '\0';
+	for(int i = 0; i < seq->seq.l; i++){
+		if(seq->seq.s[i] == 'N') {
+			return 0;
+		}
+		if(seq->seq.s[i] == last) {
+			run += 1;
+		}
+		else {
+			run = 0;
+			last = seq->seq.s[i];
+		}
+	}
+	return (run < threshold);
+}
 
 inline sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
 {
@@ -254,26 +273,6 @@ inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
         ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
     }
     return ret;
-}
-
-
-inline int test_hp(kseq_t *seq, int threshold)
-{
-	int run = 0;
-	char last = '\0';
-	for(int i = 0; i < seq->seq.l; i++){
-		if(seq->seq.s[i] == 'N') {
-			return 0;
-		}
-		if(seq->seq.s[i] == last) {
-			run += 1;
-		}
-		else {
-			run = 0;
-			last = seq->seq.s[i];
-		}
-	}
-	return (run < threshold);
 }
 
 
