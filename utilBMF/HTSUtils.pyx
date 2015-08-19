@@ -72,11 +72,6 @@ def linsertsize(x):
     return x.insert_size
 
 
-@cython.returns(int)
-def LambdaInsertSize(ReadPair_t x):
-    return x.insert_size
-
-
 def printlog(message, level=logging.INFO):
     message = message.replace(
         "\t", "\\t").replace("'", "\'").replace('"', '\\"')
@@ -204,6 +199,14 @@ cdef class pFastqProxy:
                                           self.quality[start:end])
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cpdef cystr getBS(pFastqProxy_t read):
+    return cGetBS(read)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef cystr cGetBS(pFastqProxy_t read):
     """
     Portable function for getting the barcode sequence from a marked BMFastq
@@ -214,21 +217,6 @@ cdef cystr cGetBS(pFastqProxy_t read):
         if(key == "BS"):
             return value
     return ""
-
-
-cpdef cystr getBS(pFastqProxy_t read):
-    """cpdef wrapper of cGetBS
-    """
-    return cGetBS(read)
-
-
-@cython.returns(cystr)
-def FastqProxyToStr(FastqProxy_t fqPrx):
-    """
-    Just makes a string from a FastqProxy object.
-    """
-    return "@%s %s\n%s\n+\n%s\n" % (fqPrx.name, fqPrx.comment,
-                                    fqPrx.sequence, fqPrx.quality)
 
 
 @cython.returns(cystr)
@@ -247,10 +235,6 @@ def SliceFastqProxy(FastqProxy_t fqPrx,
                                       fqPrx.quality[firstBase:lastBase])
 
 
-def FacePalm(string, art=FPStr):
-    raise Tim("WHAT YOU SAY")
-
-
 @cython.returns(bint)
 def is_read_softclipped(read):
     """
@@ -263,32 +247,6 @@ def is_read_softclipped(read):
     return False
 
 
-@cython.returns(bint)
-def ReadPairIsDuplex(readPair, minShare="default"):
-    """
-    If minShare is an integer, require that many nucleotides
-    overlapping to count it as duplex.
-    Defaults to sharing at least half.
-    """
-    cdef int minLen
-    if(readPair.read1_contig != readPair.read2_contig):
-        return False
-    if(isinstance(minShare, int)):
-        minLen = minShare
-    elif(isinstance(minShare, float)):
-        minLen = int(minShare * readPair.read1.query_length)
-    elif(minShare == "default"):
-        minLen = readPair.read1.query_length // 2
-    else:
-        raise Tim("minShare parameter required. Integer for an absolute "
-                  "number of bases overlapped required, float for a frac"
-                  "tion of read length.")
-    return sum([x == 2 for x in
-                cyfreq(readPair.read1.get_reference_positions() +
-                       readPair.read2.get_reference_positions()).values()]
-               ) >= minLen
-
-
 def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
     if(ref == "default"):
         raise Tim("ref required to call bwasw.")
@@ -299,20 +257,6 @@ def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
     pl("About to call bwasw. Command string: %s" % cStr)
     check_call(cStr, shell=True)
     return outBAM
-
-
-def BedtoolsBam2Fq(BAM, outfq1="default", outfq2="default"):
-    """
-    Converts a BAM to 2 fastq files.
-    """
-    if(outfq1 == "default"):
-        outfq1 = ".".join(BAM.split(".")[:-1] + ["bam2fq.R1.fastq"])
-    if(outfq2 == "default"):
-        outfq2 = ".".join(BAM.split(".")[:-1] + ["bam2fq.R2.fastq"])
-    commandString = "bedtools bamtofastq -i %s -fq %s -fq2 %s" % (
-        BAM, outfq1, outfq2)
-    check_call(shlex.split(commandString))
-    return outfq1, outfq2
 
 
 def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
@@ -422,38 +366,6 @@ def PipeAlignTag(R1, R2, ref="default",
         return outBAM
 
 
-def align_bwa_mem_se(reads, ref, opts, outBAM):
-    """Aligns a set of reads to a reference
-    with provided options. Defaults to
-    4 threads, silent alignment, listing
-    supplementary alignments, and
-    writing each reads' alignment,
-    regardless of mapping quality.
-    """
-    if(opts == ""):
-        opts = '-t 4 -v 1 -Y -T 0'
-    opt_concat = ' '.join(opts.split())
-    command_str = ('bwa mem {} {} {}'.format(opt_concat, ref, reads) +
-                   " | samtools view -Sbh - > {}".format(outBAM))
-    # command_list = command_str.split(' ')
-    printlog(command_str)
-    check_call(command_str, shell=True)
-    return outBAM, command_str
-
-
-def align_snap(R1, R2, ref, opts, outBAM):
-    opt_concat = " ".join(opts.split())
-    command_str = "snap paired {} {} {} -o {} {}".format(
-        ref,
-        R1,
-        R2,
-        outBAM,
-        opt_concat)
-    printlog(command_str)
-    subprocess.check_call(shlex.split(command_str), shell=False)
-    return(command_str)
-
-
 def CustomRefBowtiePaired(mergedFq,
                           ref,
                           output="default",
@@ -496,90 +408,6 @@ def has_elements(iterable):
         return False, iterable
 
 
-def IntervalOverlapsBed(queryInterval, bedIntervals, bedDist=0):
-    """
-    Requires bedIntervals in the form of the output of ParseBed
-    Returns True or False as to whether or not an overlap exists
-    for this interval in the bed file.
-    Now expanded to create an allowance for distance from bed regions.
-    Default behavior has an bedDist of 0, equivalent to the original
-    function.
-    """
-    if(queryInterval[1] > queryInterval[2]):
-        newInt = copy.copy(queryInterval)
-        newInt[1] = copy.copy(queryInterval[2])
-        newInt[2] = copy.copy(queryInterval[1])
-        queryInterval = newInt
-    for interval in bedIntervals:
-        if(queryInterval[0] == interval[0]):
-            if(queryInterval[1] > interval[2] - 1 + bedDist or
-               queryInterval[2] < interval[1] - 1 + bedDist):
-                continue
-            else:
-                return True
-        else:
-            continue
-    return False
-
-
-def ReadWithinDistOfBedInterval(samRecord, bedLine="default", dist=70):
-    """
-    Checks to see if a samRecord is contained in a bedfile.
-    bedLine must be a list, where list[0] is a string and
-    list[1] and list[2] are integers. ParseBed returns a list of such objects.
-    """
-    try:
-        contig = PysamToChrDict[samRecord.reference_id]
-    except KeyError:
-        # Read most likely unmapped.
-        return False
-    if(contig == bedLine[0]):
-        if((samRecord.reference_start > bedLine[2] - 1 + dist) or
-           (samRecord.reference_end < bedLine[1] - 1 - dist)):
-            return False
-        else:
-            return True
-    else:
-        return False
-
-
-def ReadOverlapsBed(samRecord, bedRef="default"):
-    """
-    Checks to see if a samRecord is contained in a bedfile.
-    bedRef must be a tab-delimited list of lists, where
-    line[1] and line[2] are integers. ParseBed returns such an object.
-    """
-    # if(isinstance(bedRef, str)):
-    #     bedRef = ParseBed(bedRef)
-    assert isinstance(bedRef[0][0], str) and isinstance(bedRef[0][1], int)
-    for line in bedRef:
-        """
-        try:
-            assert isinstance(line, list)
-        except AssertionError:
-            print(repr(line))
-            raise Tim("OMGZ")
-        """
-        try:
-            contig = PysamToChrDict[samRecord.reference_id]
-        except KeyError:
-            # Read most likely unmapped.
-            return False
-        if(contig == line[0]):
-            if((samRecord.reference_start > line[2] - 1) or
-               (samRecord.reference_end < line[1] - 1)):
-                continue
-            else:
-                # print("Read {} was contained in bed file".format(
-                #       samRecord.query_name))
-                return True
-        else:
-            continue
-    # print("Read {} which was not contained in bed file".format(
-    #       samRecord.query_name))
-    return False
-
-
 def VCFLineContainedInBed(VCFLineObject, bedRef="default"):
     """
     Checks to see if a VCF Line is contained in a bedfile.
@@ -603,70 +431,6 @@ def VCFLineContainedInBed(VCFLineObject, bedRef="default"):
         else:
             continue
     return False
-
-
-def PosContainedInBed(contig, pos, bedRef="default"):
-    """
-    Checks to see if a position is contained in a bedfile.
-    0-based
-    """
-    if(isinstance(bedRef, str)):
-        pl("Bed file being parsed for each call of PosContainedInBed: "
-           "WARNING!")
-        bedRef = ParseBed(bedRef)
-    for line in bedRef:
-        if(contig == line[0]):
-            if(pos >= line[2] or pos <= line[1]):
-                continue
-            else:
-                return True
-        else:
-            continue
-    # print("Read {} which was not contained in bed file".format(
-    #       samRecord.query_name))
-    return False
-
-
-def indexBowtie(fasta):
-    subprocess.check_call('bowtie-build {0} {0}'.format(fasta), shell=True)
-    return
-
-
-def BedtoolsGenomeCov(inBAM, ref="default", outfile="default"):
-    if(ref == "default"):
-        raise Tim("A reference file path must be provided!")
-    if(outfile == "default"):
-        outfile = inBAM[0:-3] + ".doc.txt"
-    outfileHandle = open(outfile, "w")
-    subprocess.check_call(
-        (shlex.split("bedtools genomecov -ibam {}".format(inBAM) +
-                     " -dz -g {}").format(ref)), stdout=outfileHandle)
-    outfileHandle.close()
-    return outfile
-
-
-def BedtoolsBamToBed(inBAM, outbed="default", ref="default"):
-    if(ref == "default"):
-        raise Tim("A reference file path must be provided!")
-    if(outbed == "default"):
-        outbed = inBAM[0:-4] + ".doc.bed"
-    outfile = BedtoolsGenomeCov(inBAM, ref=ref)
-    OutbedAppendingList = []
-    lastPos = 0
-    outbedHandle = open(outbed, "w")
-    for line in [l.strip().split(
-                 '\t') for l in open(outfile, "r").readlines()]:
-        if(len(OutbedAppendingList) == 0):
-            OutbedAppendingList = [line[0], line[1], "unset"]
-            lastPos = int(line[1])
-        if(int(line[1]) - lastPos == 1):
-            lastPos += 1
-        else:
-            OutbedAppendingList[2] = int(line[1]) + 1
-            outbedHandle.write("\t".join(OutbedAppendingList) + "\n")
-            OutbedAppendingList = []
-    outbedHandle.close()
-    return outbed
 
 
 def CoorSortAndIndexBam(inBAM, prefix="MetasyntacticVar",
@@ -730,21 +494,6 @@ def NameSortAndFixMate(inBAM, outBAM="default", prefix="MetasyntacticVar",
     return outBAM
 
 
-def mergeBamPicardOld(
-        samList, memoryStr="-XmX16",
-        MergeJar="/mounts/bin/picard-tools/MergeSamFiles.jar",
-        outBAM="default"):
-    if(outBAM == "default"):
-        outBAM = '.'.join(samList[0].split('.')[0:-1]) + '.merged.bam'
-    cStr = ("java -jar " + MergeJar + " " + memoryStr + " I=" +
-            " I=".join(samList) + " O=" + outBAM + " MSD=True " +
-            "AS=True SO=coordinate"
-            )
-    printlog("About to merge bams. Command string: " + cStr)
-    subprocess.check_call(shlex.split(cStr))
-    return outBAM
-
-
 def samtoolsMergeBam(bamlist, outBAM="default", NameSort=True):
     if(outBAM == "default"):
         outBAM = ".".join(bamlist[0].split(".")[:-1]) + ".merged.bam"
@@ -758,91 +507,6 @@ def samtoolsMergeBam(bamlist, outBAM="default", NameSort=True):
     pl("Merge bams command: %s" % (cStr))
     check_output(cStr)
     return outBAM
-
-
-cdef class ReadPair:
-
-    """
-    Holds both bam record objects in a pair.
-    Currently, one read unmapped and one read soft-clipped are
-    both marked as soft-clipped reads.
-    """
-
-    def __init__(self, AlignedSegment_t read1,
-                 AlignedSegment_t read2):
-        self.read1 = read1
-        self.read2 = read2
-        try:
-            self.SVTags = read1.opt("SV").split(',')
-        except KeyError:
-            self.SVTags = None
-        self.insert_size = abs(read1.tlen)
-        if(read1.is_unmapped):
-            self.read1_is_unmapped = True
-            self.read1_soft_clipped = True
-        else:
-            self.read1_is_unmapped = False
-            if("S" in read1.cigarstring):
-                self.read1_soft_clipped = True
-            else:
-                self.read1_soft_clipped = False
-        if(read2.is_unmapped):
-            self.read2_is_unmapped = True
-            self.read2_soft_clipped = True
-        else:
-            self.read2_is_unmapped = False
-            if("S" in read2.cigarstring):
-                self.read2_soft_clipped = True
-            else:
-                self.read2_soft_clipped = False
-        if(self.read1_is_unmapped):
-            self.read1_contig = "*"
-        else:
-            self.read1_contig = PysamToChrDict[read1.reference_id]
-        if(self.read2_is_unmapped):
-            self.read2_contig = "*"
-        else:
-            self.read2_contig = PysamToChrDict[read2.reference_id]
-        self.SameContig = (read1.reference_id == read2.reference_id)
-        self.ContigString = ",".join(sorted([self.read1_contig,
-                                             self.read2_contig]))
-        self.SameStrand = (self.SameContig and
-                           (read1.is_reverse == read2.is_reverse))
-
-    @cython.returns(int)
-    def NumOverlappingBed(self, list bedLines=[]):
-        try:
-            assert isinstance(bedLines[0], str) and isinstance(
-                bedLines[1], int)
-        except AssertionError:
-            raise Tim("Sorry, bedLines must be in ParseBed format.")
-        if(self.read1_is_unmapped is False):
-            self.read1_in_bed = ReadOverlapsBed(self.read1, bedLines)
-        else:
-            self.read1_in_bed = False
-        if(self.read2_is_unmapped is False):
-            self.read2_in_bed = ReadOverlapsBed(self.read2, bedLines)
-        else:
-            self.read2_in_bed = False
-        return sum([self.read2_in_bed, self.read1_in_bed])
-
-    @cython.returns(list)
-    def getReads(self):
-        return [self.read1, self.read2]
-
-
-@cython.returns(list)
-def GetOverlappingBases(ReadPair_t pair):
-    """
-    Returns the bases of the reference to which both reads in the pair
-    are aligned.
-    """
-    if(pair.SameContig):
-        return [i[0] for i in
-                cyfreq([pair.read1.aligned_pairs +
-                        pair.read2.aligned_pairs]).iteritems() if
-                i[1] == 1 and i[0] != None]
-    return []
 
 
 cdef class pPileupRead:
@@ -870,48 +534,6 @@ cdef class pPileupRead:
         self.MQ = self.alignment.mapping_quality
 
 
-cdef class PileupReadPair:
-
-    """
-    Holds both bam record objects in a pair of pileup reads.
-    Currently, one read unmapped and one read soft-clipped are
-    both marked as soft-clipped reads.
-    Accepts a list of length two as input.
-    """
-
-    def MarkReads(self):
-        for read in self.RP.getReads():
-            read.set_tag("DP", self.RP.discordanceString, "Z")
-
-    def __cinit__(self, tuple readlist):
-        cdef pPileupRead_t read1
-        cdef pPileupRead_t read2
-        read1, read2 = readlist[0], readlist[1]
-        try:
-            assert len(readlist) == 2
-        except AssertionError:
-            pl("repr(readlist): %s" % repr(readlist))
-            raise Tim(
-                "readlist must be of length two to make a PileupReadPair!")
-        self.RP = ReadPair(read1.alignment, read2.alignment)
-        self.read1 = read1
-        self.read2 = read2
-        self.discordant = (read1.BaseCall != read2.BaseCall)
-        self.name = read1.alignment.query_name
-        if(self.discordant):
-            if(read1.alignment.is_reverse):
-                self.discordanceString = (self.RP.read1_contig + "," +
-                                          str(self.read1.alignment.pos -
-                                              self.read1.query_position))
-            else:
-                self.discordanceString = (self.RP.read1_contig + "," +
-                                          str(self.read1.alignment.pos +
-                                              self.read1.query_position))
-        else:
-            self.discordanceString = ""
-        self.MarkReads()
-
-
 cdef bint cReadsOverlap(AlignedSegment_t read1,
                         AlignedSegment_t read2):
     # Same strand or different contigs.
@@ -924,44 +546,6 @@ cdef bint cReadsOverlap(AlignedSegment_t read1,
     if(read1.aend < read2.pos or read2.aend < read1.pos):
         return False
     return True
-
-
-def ReadPairsInsertSizeWithinDistance(ReadPair1, ReadPair2, distance=300):
-    if(abs(ReadPair1.insert_size - ReadPair2.insert_size <= distance)):
-        return True
-    return False
-
-
-def ReadPairsOverlap(ReadPair1, ReadPair2):
-    if(ReadsOverlap(ReadPair1.read1, ReadPair2.read1) or
-       ReadsOverlap(ReadPair1.read2, ReadPair2.read2) or
-       ReadsOverlap(ReadPair1.read1, ReadPair2.read2) or
-       ReadsOverlap(ReadPair1.read2, ReadPair2.read1)):
-        return True
-    else:
-        return False
-
-
-def ReadPairsWithinDistance(ReadPair1, ReadPair2, distance=300):
-    if(sum(
-        [abs(ReadPair1.read1.pos - ReadPair2.read1.pos) < distance,
-         abs(ReadPair1.read1.pos - ReadPair2.read2.pos) < distance,
-         abs(ReadPair1.read2.pos - ReadPair2.read1.pos) < distance,
-         abs(ReadPair1.read2.pos - ReadPair2.read2.pos) < distance]) > 0):
-        return True
-    else:
-        return False
-
-
-def ReadPairPassesMinQ(Pair, minMQ=0, minBQ=0):
-    assert isinstance(Pair, ReadPair)
-    if(Pair.read1.mapq < minMQ or Pair.read2.mapq < minMQ):
-        return False
-    if(npany(nless(Pair.read1.query_qualities, minBQ)) or
-       npany(nless(Pair.read2.query_qualities, minBQ))):
-        return False
-    else:
-        return True
 
 
 @cython.returns(cystr)
@@ -1009,35 +593,6 @@ def ReadListToCovCounter(reads, int minClustDepth=3,
     """
     return cyfreq(reduce(lambda x, y: x + y,
                          [r.get_reference_positions() for r in reads]))
-
-
-@cython.returns(dict)
-def ReadPairListToCovCounter(list ReadPairList, int minClustDepth=5,
-                             int minPileupLen=10):
-    """
-    Makes a Counter object of positions covered by a set of read pairs.
-    Only safe at this point for intrachromosomal rearrangements!
-    We discount the "duplex" positions because we want to look for pileups of
-    read pairs (ultimately, for supporting a structural variant).
-    """
-    cdef dict PosCounts
-    posList = []
-    posListDuplex = []
-    for pair in ReadPairList:
-        R1Pos = pair.read1.get_reference_positions()
-        R2Pos = pair.read2.get_reference_positions()
-        oia(posList, R1Pos)
-        oia(posList, R2Pos)
-        oia(posListDuplex, [pos for pos in R1Pos if pos in R2Pos])
-    PosCounts = cyfreq(posList)
-    PosDuplexCounts = cyfreq(posListDuplex)
-    # decrement the counts for each position to account for
-    # both reads in a pair mapping to the same location.
-    for key in PosDuplexCounts.iterkeys():
-        PosCounts[key] -= PosDuplexCounts[key]
-    PosCounts = dict([i for i in PosCounts.iteritems()
-                      if i[1] >= minClustDepth])
-    return PosCounts
 
 
 class SoftClippedSeq:
@@ -2870,8 +2425,6 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a):
     for i in range(n):
         v += (a[i] - m)**2
     return sqrt(v / n)
-
-PhageRefIDDict = {0: 'gi|215104|gb|J02459.1|LAMCG'}
 
 
 cdef inline bint TestBarcode(char *BS, int8_t hpLimit, int bLen) nogil:

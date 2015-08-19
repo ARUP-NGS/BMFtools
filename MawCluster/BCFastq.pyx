@@ -37,7 +37,7 @@ from numpy import sum as nsum
 
 from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
-                              pFastqProxy, TrimExt, pFastqFile, getBS,
+                              pFastqProxy, TrimExt, pFastqFile,
                               hamming_cousins, GetParallelDMPPopen)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
@@ -1518,6 +1518,7 @@ def split_sort_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
     cdef dict fqmarksplit_retdict
     fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
                                           hpThreshold, n_nucs)
+    return
     tmpFnames = fqmarksplit_retdict['mark']
     sortFnames = fqmarksplit_retdict['sort']
     sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
