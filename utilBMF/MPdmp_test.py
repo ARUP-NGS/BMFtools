@@ -1,44 +1,11 @@
 from MawCluster.BCFastq import FastFisherFlattening, MakeTagComment
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, permuteNucleotides
+from utilBMF.DMPUtils import pairedDMPWorker
 
 import numpy as np
 import multiprocessing as mp
 
 import argparse
-<<<<<<< HEAD
-import pysam
-=======
-
-
-class shepard(object):
-    """
-    pushes stuff around
-    """
-
-    def __init__(self, fastq, indexFq, bsPrefix):
-        self.prefix=bsPrefix
-        self.prefixLen=len(bsPrefix)
-        self.Fq=fastq
-        self.iFq=indexFq
-        self.jobComplete=False
-        self.fqRecords={}
-
-    def _run(self):
-        """
-        1. get all records with same barcode into dict
-        2. Mark all records with BS sequence
-        3. Sort records by BS sequence (groupby?)
-        4. Consolidate records with the same sequence
-        5. Print records to a temp file with the prefix sequence
-        6. Delete fqRecords dictionary
-        """
-        pass
-
-    def _finish(self):
-        self.jobComplete=True
-        self.fqRecords={}
-
->>>>>>> bbd9a28459ffcf98639bda160e42fdf9e99a5266
 
 def shadeRead(read, BC, head=0):
     if("N" in BC):
@@ -92,15 +59,9 @@ def getArgs():
 if __name__ == '__main__':
     args = getArgs()
     pool = mp.Pool(processes=args.ncpus)
-<<<<<<< HEAD
-    bcLen = len(pFastqFile(args.IndexFq).next().sequence)
-    allPrefixes = permuteNucleotides(4**args.lenPrefix,kmerLen=args.lenPrefix)
-    results = [pool.apply_async(worker, args=(args.Fastq1, args.IndexFq, bcLen,
-                p)) for p in allPrefixes]
-=======
     allPrefixes = permuteNucleotides(4**args.lenPrefix, kmerLen=args.lenPrefix)
-    results = [pool.apply_async(worker, args=(args.Fastq1, args.IndexFq, p, ))
+    results = [pool.apply_async(pairedDMPWorker, args=(args.Fastq1,
+                args.Fastq2, args.IndexFq, 16, p, 16))
                for p in allPrefixes]
->>>>>>> bbd9a28459ffcf98639bda160e42fdf9e99a5266
     things = [p.get() for p in results]
     print things
