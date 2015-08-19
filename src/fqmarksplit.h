@@ -51,7 +51,7 @@ void FREE_SPLITTER(mark_splitter_t var);
 
 #ifndef KSEQ_TO_SINGLE_LINE
 #define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "@%s ~#!#~|FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
+        "@%s ~#!#~|FP=%i|BS=%s\t%s\t+\t%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
 

@@ -2872,3 +2872,18 @@ cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a):
     return sqrt(v / n)
 
 PhageRefIDDict = {0: 'gi|215104|gb|J02459.1|LAMCG'}
+
+
+cdef inline bint TestBarcode(char *BS, int8 hpLimit, int bLen) nogil:
+    cdef char nuc, last
+    cdef int run
+    last = 0
+    run = 0
+    for nuc in BS[:bLen]:
+        if nuc == 78:
+            return False
+        if nuc == last:
+            run += 1
+        else:
+            run = 0
+    return run < hpLimit

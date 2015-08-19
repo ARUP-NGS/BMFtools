@@ -26,12 +26,6 @@ int test_hp(kseq_t *seq, int threshold);
 // Macros
 
 
-// Print fastq record in single line format. (1 line per record, fields separated by tabs. Used for cases involving GNU sort.)
-#ifndef KSEQ_TO_SINGLE_LINE
-#define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "%s ~#!#~|FP:i:%i|BS:Z:%s\t%s\t+\t%s\n",\
-    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
-#endif
 
 // Allocate file handle array memory, open file handles.
 
