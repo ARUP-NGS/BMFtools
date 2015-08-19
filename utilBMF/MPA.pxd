@@ -11,7 +11,6 @@ from numpy cimport ndarray
 from cython cimport bint
 from utilBMF.Inliners cimport CigarOpToCigarChar, ChrToRefIDInline
 from utilBMF.Inliners cimport chrInline, opLenToStr
-from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport PH2CHR_TRANS
 from MawCluster.Math cimport CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED, igamc
 from libc.math cimport log10 as c_log10

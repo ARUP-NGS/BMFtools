@@ -1,5 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
-# cython: cdivision=True, profile=True
+# cython: cdivision=True
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -1461,11 +1461,9 @@ def call_lh3_sort(tmpFname, sortFname):
 
 def dispatch_lh3_sorts(tmpFnames, sortFnames, threads):
     pool = mp.Pool(processes=threads)
-    bothFnames = tmpFnames[0] + tmpFnames[1]
-    bothSortFnames = sortFnames[0] + sortFnames[1]
-    results = [pool.apply_async(call_lh3_sort, args=(tmpF, tmpS,))
-               for tmpF, tmpS in zip(bothFnames, bothSortFnames)]
-    return zip(sortFnames[0], sortFnames[1])
+    results = [pool.apply_async(call_lh3_sort, args=(tmpFname, sortFname,))
+               for tmpFname, sortFname in zip(tmpFnames, sortFnames)]
+    return sortFnames[0], sortFnames[1]
 
 
 def dispatch_sfc(sortFnames, finalFnames, threads):
@@ -1518,10 +1516,17 @@ def split_sort_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
     cdef dict fqmarksplit_retdict
     fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
                                           hpThreshold, n_nucs)
-    return
     tmpFnames = fqmarksplit_retdict['mark']
+    marker1 = tmpFnames[0]
+    marker2 = tmpFnames[1]
+    del tmpFnames
     sortFnames = fqmarksplit_retdict['sort']
-    sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
+    sorter1 = sortFnames[0]
+    sorter2 = sortFnames[1]
+    del sortFnames
+    sorted_split_files1 = dispatch_lh3_sorts(marker1, sorter1, threads)
+    sorted_split_files2 = dispatch_lh3_sorts(marker2, sorter2, threads)
+    return
     finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
     dispatch_sfc(sortFnames, finalTmpFnames, threads)
     return

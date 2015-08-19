@@ -13,7 +13,6 @@ from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq, bam_get_aux
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
-from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport struct_str
 from utilBMF.MPA cimport MergeAgreedQualities, MergeDiscQualities
 from pysam.calignedsegment cimport pysam_get_l_qname, bam1_t
