@@ -100,10 +100,14 @@ def main():
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
                                            "ansitions.")
-    DMultiPlexParser = subparsers.add_parser("dmp",
+    DMultiPlexParser = subparsers.add_parser("stdmp",
                                              description="Marks, combines, and"
                                              " processes a dataset of fastqs f"
-                                             "or further analysis.")
+                                             "or further analysis. This is the"
+                                             "old, depricated version use dmp")
+    MPdemultiplexParser = subparsers.add_parser("dmp", description="Marks,"
+                                          "combines, and processes barcoded"
+                                          " FASTQs.")
     SNVParser = subparsers.add_parser("snv", description="Call SNVs. Assumes "
                                       "that reads have been collapsed from a "
                                       "family size of at least 2")
@@ -243,6 +247,10 @@ def main():
     DMultiPlexParser.add_argument(
         "--threads", "-p",
         help="Number of read-pair sets of demultiplexing."
+    )
+    MPdemultiplexParser.add_argument(
+
+
     )
     alignTagBamParser.add_argument(
         "inFqs",
@@ -940,12 +948,40 @@ def main():
         from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
-    elif(subcomment == "multidmp"):
+    elif(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
             if(Chapman['num_nucs'] is None):
-                num_nucs = 3
-            num_nucs = Chapman['num_nucs']
-    elif(subcommand == "dmp"):
+                from numpy import log2
+                num_nucs = int(log2(int(Chapman['threads'])) // 2) + 1
+                sys.stderr.write("num_nucs not set. Defaulting to "
+                                 "log2(threads) // 2 + 1: %s.\n" % num_nucs)
+                # IE, if unset, defaults to the minimum needed to have at
+                # least one file for each slave job.
+            else:
+                num_nucs = int(Chapman['num_nucs'])
+            threads = int(Chapman['threads']) // 2
+            from MawCluster.BCFastq import DispatchParallelDMP as pDMP
+            OutFastq1, OutFastq2 = pDMP(
+                Chapman['inFqs'][0],
+                Chapman['inFqs'][1],
+                indexFq=Chapman['indexFq'],
+                p3Seq=Chapman['p3Seq'],
+                p5Seq=Chapman['p5Seq'],
+                num_nucs=num_nucs,
+                threads=threads,
+                overlapLen=int(Chapman['overlapLen']),
+                sortMem=Chapman['slave_sort_mem'],
+                head=int(Chapman['head']))
+            return 0  # sys.exit(main()) returns 0
+        elif(len(Chapman['inFqs']) == 1):
+            from BMFMain.Workflow import singleFastqShades
+            OutFastq = singleFastqShades(
+                Chapman['inFqs'][0],
+                indexFq=Chapman['indexFq'],
+                p3Seq=Chapman['p3Seq'],
+                p5Seq=Chapman['p5Seq'])
+            return 0  # sys.exit(main()) returns 0
+    elif(subcommand == "stdmp"):
         if(len(Chapman['inFqs']) == 2):
             if(Chapman['num_nucs'] is None):
                 from numpy import log2

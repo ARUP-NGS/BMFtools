@@ -20,16 +20,17 @@ def singleDMPWorker(Fastq, IndexFq, bcLen, Prefix, hpLimit, Head=0):
     pass
 
 
-def pairedDMPWorker(Fastq1, Fastq2, IndexFq, bcLen, Prefix, hpLimit, Head=0,
-                    cutAdapt=False, p3Seq="default", p5Seq="default"):
+def pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
+                    hpLimit=100, int Head=0, cutAdapt=False,
+                    p3Seq="default", p5Seq="default"):
     """
     dmpWorker function, pulls a bunch of reads into memory based on their
-    BC prefix marks then consolidates them
+    BC prefix marks then consolidates them.
     """
     cdef int lenPrefix
     cdef pFastqFile_t fq1, fq2, indexFq
     cdef pFastqProxy_t read1, read2
-    cdef cystr BC, bin
+    cdef cystr BC, bin, fq1name, fq2name
     cdef dict bcHash1, bcHash2
     fq1 = pFastqFile(Fastq1)
     fq2 = pFastqFile(Fastq2)
@@ -66,9 +67,11 @@ def pairedDMPWorker(Fastq1, Fastq2, IndexFq, bcLen, Prefix, hpLimit, Head=0,
             output2.write(FastFisherFlattening(bcHash2[barcode], barcode))
     if cutAdapt:
         cafq1, cafq2 = CutadaptPaired(fq1name, fq2name, p3Seq, p5Seq)
-        pl("runnning cutadapt on temporary fastqs with prefix %s" %(Prefix))
-        subprocess.check_call("rm", fq1name)
-        subprocess.check_call("rm", fq2name)
+        pl("runnning cutadapt on temporary fastq with prefix %s" %(Prefix))
+        subprocess.check_call(["rm", fq1name])
+        subprocess.check_call(["rm", fq2name])
+        pl("completed dmp on prefix %s" % (Prefix))
+        return cafq1, cafq2
     pl("completed dmp on prefix %s" % (Prefix))
     return fq1name, fq2name
 
@@ -76,7 +79,7 @@ def pairedDMPWorker(Fastq1, Fastq2, IndexFq, bcLen, Prefix, hpLimit, Head=0,
 def get_uncompressed_size(file):
     """
     Used to get uncompressed Fastq file sizes
-    possibly ineffiecent, not currently Used
+    possibly ineffiecent, not currently Used.
     """
     fileobj = open(file, 'r')
     fileobj.seek(-8, 2)
@@ -104,8 +107,14 @@ def calcMaxRam(maxRam, ncpus, fastq):
     return lprefix
 
 
-def multiProcessingDemulitplex(inFqs, bcLen, indexFq="default", int head=-1,
-                                int ncpus=1, int num_nucs=3, hpLimit=1):
+def deleter(fname):
+    subprocess.check_call(["rm", fname])
+
+
+def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
+                                int ncpus=1, int len_prefix=3, bcLen="default",
+                                double hpLimit=0.8, cutAdapt=False, p3Seq=None,
+                                p5Seq=None):
     """
     Args I need:
         1. In Fastq, 1 or 2 fastqs in a list, call worker based on number
@@ -115,20 +124,73 @@ def multiProcessingDemulitplex(inFqs, bcLen, indexFq="default", int head=-1,
         5. Runnign cut adapt? True/False
         6. if above true, p3Seq, p5Seq, and overlap len
         7. number of CPUS to run across
-        8.
     Similar to DispatchParallelDMP, but redesigned for multiprocessing
-    of the DMP process, however, here we do not call to cutadapt,
-    that will be handled downstream.
+     of the DMP process.
     """
-    if num_nucs != 3:
+    if len_prefix != 3:
         pl("using custom number of nucleotides for splitting temporary files"
-        ", recommended value is 3, used here %s" % (num_nucs))
+        ", recommended value is 3, used here %s" % (len_prefix))
     if indexFq == "default":
         raise UnsetRequiredParameter("Index fastq with barcodes is required")
     if head < 0:
         raise UnsetRequiredParameter("Improper or unset head value defaulting"
                                      "to 0")
         head = 0
+    if(len(inFqs) > 2 or len(inFqs) < 1):
+        raise UnsetRequiredParameter("Improper number of Fastqs specified,"
+            "How did you even do this?")
+    if(cutAdapt == False):
+        pl("Running without cutadapt calls, DMP'd reads will not be adapter"
+           " trimmed.")
+    if(cutAdapt == True):
+        if not p3Seq or not p5Seq:
+            raise UnsetRequiredParameter("Must specifiy adapter sequence,"
+            " to run cutadapt")
+        pl("DMP will be followed by cut adapt on temporary fastq files,"
+           " slightly less IO efficent because cutadapt can't be run in buffer")
+    allPrefixes = permuteNucleotides(4**len_prefix, kmerLen=len_prefix)
+    if(bcLen == "default"):
+        bcLen = len(pFastqFile(indexFq).next().sequence)
+        pl("inferred barcode length is %s" % (bcLen))
+    hpLimit = int(hpLimit * bcLen)
+    pl("length of homopolymer for barcode be be marked QC fail: %s" % (hpLimit))
+    kwargsDict = {
+    'IndexFq': indexFq,
+    'Head': head,
+    'hpLimit': hpLimit,
+    'cutAdapt': cutAdapt,
+    'p3Seq': p3Seq,
+    'p5Seq': p5Seq}
     pl("running multiprocessed DMP using %s CPUs" % (ncpus))
-    allPrefixe = permuteNucleotides(4**num_nucs, kmerLen=num_nucs)
-    pass
+    pool = mp.Pool(processes=ncpus)
+    """
+    Need to return all the names of teh Fastqs that are created.  These
+    Will be system called to cat (using mp?), then remove the temp fastqs, and
+    gzip the combined fastq.
+    """
+    if(len(inFqs) == 2):
+        outFq1 = inFqs[0].split('.')[0]+".dmp.fastq"
+        outFq2 = inFqs[1].split('.')[0]+".dmp.fastq"
+        if cutAdapt:
+            outFq1 = outFq1.split('.fastq')[0]+"cutadapt.fastq"
+            outFq2 = outFq2.split('.fastq')[0]+"cutadapt.fastq"
+        tmpFqs = [pool.apply_async(pairedDMPWorker, args=(inFqs[0],
+            inFqs[1], prefix, bcLen), kwds=kwargsDict) for prefix
+            in allPrefixes]
+        fq1List = [p.get()[0] for p in tmpFqs]
+        fq2List = [p.get()[1] for p in tmpFqs]
+        pl("Demultiplexing complete, concatenating temp files...")
+        subprocess.check_call("cat %s > %s" % (" ".join(fq1List), outFq1),
+                                shell=True)
+        subprocess.check_call("cat %s > %s" % (" ".join(fq2List), outFq2),
+                                shell=True)
+        pl("concatination complete, gzipping fastq and deleting temp files")
+        check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
+        empty = [p.get() for p in check]
+        subprocess.check_call(["gzip", outFq1])
+        subprocess.check_call(["gzip", outFq2])
+        pl("Demultiplexing, marking, consildating, and compression complete"
+            "new fastqs are %s and %s" % (outFq1, outFq2))
+    if(len(inFqs) == 1):
+        raise Tim("There is no one here.  Go away! (single fastq DMP not yet"
+                  "implemented")
