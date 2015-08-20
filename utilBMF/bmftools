@@ -941,6 +941,14 @@ def main():
         sys.exit(0)
     elif(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
+            if Chapman['rescue'] is True:
+                # Avoid "parallel" dmp if rescue is activated.
+                from MawCluster.BCFastq import RescueShadingWrapper
+                RescueShadingWrapper(Chapman['inFqs'][0],
+                Chapman['inFqs'][1],
+                indexFq=Chapman['indexFq'],
+                minFam=10, mm=2, head=int(Chapman['head']))
+                return 0
             if(Chapman['num_nucs'] is None):
                 from numpy import log2
                 num_nucs = int(log2(int(Chapman['threads'])) // 2) + 1
