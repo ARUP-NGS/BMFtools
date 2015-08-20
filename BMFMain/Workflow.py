@@ -11,17 +11,13 @@ except ImportError:
 import cython
 import numpy as np
 
-from MawCluster import BCBam, VCFWriters, BCVCF
-from MawCluster import BCFastq
+from MawCluster import BCBam, BCFastq
 from MawCluster.BCFastq import TrimHomingPaired
 from utilBMF import HTSUtils
-from MawCluster import PileupUtils
-from MawCluster.SVUtils import GetSVRelevantRecordsPaired as SVRP
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from utilBMF.HTSUtils import printlog as pl, TrimExt, PipeAlignTag
 from utilBMF.MPA import MPA2Bam
 from utilBMF.QC import GetAllQCMetrics, GetFamSizeStats
-from MawCluster.BCVCF import VCFStats
 
 
 @cython.locals(calcCoverage=cython.bint, coverageForAllRegions=cython.bint,
@@ -104,18 +100,10 @@ def pairedBamProc(consfq1, consfq2, opts="",
         realignedFull = coorSortFull
         # realignedFull = BCBam.AbraCadabra(taggedBAM, ref=ref, bed=bed)
     namesortedRealignedFull = HTSUtils.NameSort(realignedFull, uuid=True)
-    tempBAMPrefix = '.'.join(namesortedRealignedFull.split('.')[0:-1])
-    summary = ".".join(namesortedRealignedFull.split('.') + ['SV', 'txt'])
 
-    MarkedFamilies = SVRP(namesortedRealignedFull,
-                          bedfile=bed,
-                          tempBAMPrefix=tempBAMPrefix,
-                          summary=summary)
-    pl("SV Marked BAM: %s" % MarkedFamilies)
     # SVOutputFile = BCBam.CallTranslocations(SVBam, bedfile=bed)
+    coorSorted = HTSUtils.CoorSortAndIndexBam(namesortedRealignedFull)
     check_call(["rm", namesortedRealignedFull])
-    coorSorted = HTSUtils.CoorSortAndIndexBam(MarkedFamilies)
-    check_call(["rm", MarkedFamilies])
     return coorSorted
 
 
@@ -219,74 +207,3 @@ def singleFastqShades(inFastq, indexFq="default",
         BConsFastq,
         outfile=TrimExt(inFastq) + ".famstats.txt")
     return BConsFastq
-
-
-@cython.locals(minMQ=int, minBQ=int, MakeVCF=cython.bint,
-               MakeCoverageBed=cython.bint, MakePileupTsv=cython.bint,
-               minFA=int, minFracAgreed=float,
-               deaminationPVal=float)
-def pairedVCFProc(consMergeSortBAM,
-                  ref="default",
-                  opts="",
-                  bed="default",
-                  minMQ=10,
-                  minBQ=20,
-                  MakePileupTsv=False,
-                  MakeVCF=True,
-                  MakeCoverageBed=False,
-                  commandStr="default",
-                  minFA=2, minFracAgreed=0.667,
-                  exp="", deaminationPVal=0.05,
-                  conf="default", parallel=True):
-    """
-    Lumps together VCF processing.
-    exp is a string from a comma-joined list of strings.
-    If "ffpe" is in exp.lower(), then an FFPE deamination step will
-    be run to filter out those artefacts.
-    """
-    if(bed == "default"):
-        try:
-            bed = globals()['Chapman']['bed']
-        except KeyError:
-            raise ValueError("Bed file location must be set!")
-    if(conf == "default"):
-        raise ValueError("config file location must be set!")
-    if(ref == "default"):
-        raise ValueError("Reference index location must be set!")
-    # Consolidating families into single reads
-    # Variant Calling Step using MPileup
-    # print("Now filtering for reads with NM > 0 only if you want to.")
-    Results = {}
-    if(MakeCoverageBed):
-        OutBed = PileupUtils.CalcWithinBedCoverage(consMergeSortBAM,
-                                                   bed=bed,
-                                                   minMQ=minMQ,
-                                                   minBQ=minBQ)
-        Results["bed"] = OutBed
-    if(MakePileupTsv):
-        PileupTSV = PileupUtils.CustomPileupToTsv(consMergeSortBAM,
-                                                  bedfile=bed,
-                                                  minMQ=minMQ,
-                                                  minBQ=minBQ)
-        pl("PileupTSV: {}".format(PileupTSV))
-        Results["tsv"] = PileupTSV
-    if(MakeVCF):
-        if(parallel):
-            CleanedVCF = VCFWriters.PSNVCall(consMergeSortBAM,
-                                             conf=conf)
-        else:
-            CleanedVCF = VCFWriters.SNVCrawler(consMergeSortBAM, conf=conf)
-        if("ffpe" in exp.lower()):
-            raise NotImplementedError("This has been recoded/reworked, "
-                                      "but not re-implemented.")
-        else:
-            finalVCF = CleanedVCF
-        pl("SNP VCF: {}".format(finalVCF))
-        Results["vcf"] = finalVCF
-        VCFStatsFile = VCFStats(finalVCF)
-        Results["vcfstats"] = VCFStatsFile
-    # AlleleFreqTSV = PileupUtils.AlleleFrequenciesByBase(consMergeSortBAM,
-    #                                                     bedfile=bed)
-    # This is probably useless given that I'm doing this "manually",
-    # but I'm keeping this in here for good measure.
-    return Results

@@ -9,7 +9,6 @@ from .HTSUtils import (ParseBed, printlog as pl, CoorSortAndIndexBam,
                        pFastqFile, cyStdFlt, cyStdInt, TrimExt)
 from MawCluster.BCFastq import GetDescriptionTagDict as descDict
 from .ErrorHandling import ThisIsMadness, MissingExternalTool
-from MawCluster.PileupUtils import pPileupColumn
 from os import path as ospath
 import cython
 import logging

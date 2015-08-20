@@ -30,7 +30,7 @@ from .BCFastq import GetDescriptionTagDict as getdesc
 from . import BCFastq
 from utilBMF.HTSUtils import (printlog as pl,
                               FractionAligned, FractionSoftClipped,
-                              SWRealignAS, pPileupRead, BedtoolsBam2Fq,
+                              SWRealignAS, pPileupRead,
                               BwaswCall, samtoolsMergeBam, pFastqProxy,
                               TrimExt)
 from utilBMF.ErrorHandling import (IllegalArgumentError, ThisIsMadness as Tim,

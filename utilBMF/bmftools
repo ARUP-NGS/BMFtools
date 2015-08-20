@@ -10,7 +10,6 @@ import cython
 
 # BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
-from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from utilBMF.QC import GetAllQCMetrics
@@ -1079,13 +1078,7 @@ def main():
         from utilBMF.HTSUtils import __version__
         print(__version__)
     elif subcommand == "tagbam":
-        fastqs = Chapman['fastq']
-        if(len(fastqs) == 1):
-            singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
-                                 outputBAM=Chapman['outfile'])
-        elif(len(fastqs) == 2):
-            pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
-                                 outBAMFile=Chapman['outfile'])
+        raise DeprecationWarning("tagbam is deprecated.")
     elif(subcommand == "pat"):
         from utilBMF.HTSUtils import PipeAlignTag
         outBAM = PipeAlignTag(
