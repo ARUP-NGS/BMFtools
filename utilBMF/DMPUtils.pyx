@@ -112,7 +112,7 @@ def deleter(fname):
 
 
 def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
-                                int ncpus=1, int len_prefix=3, bcLen="default",
+                                int ncpus=1, int len_prefix=3,
                                 double hpLimit=0.8, cutAdapt=False, p3Seq=None,
                                 p5Seq=None):
     """
@@ -149,9 +149,8 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
         pl("DMP will be followed by cut adapt on temporary fastq files,"
            " slightly less IO efficent because cutadapt can't be run in buffer")
     allPrefixes = permuteNucleotides(4**len_prefix, kmerLen=len_prefix)
-    if(bcLen == "default"):
-        bcLen = len(pFastqFile(indexFq).next().sequence)
-        pl("inferred barcode length is %s" % (bcLen))
+    bcLen = len(pFastqFile(indexFq).next().sequence)
+    pl("inferred barcode length is %s" % (bcLen))
     hpLimit = int(hpLimit * bcLen)
     pl("length of homopolymer for barcode be be marked QC fail: %s" % (hpLimit))
     kwargsDict = {
@@ -194,3 +193,4 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
     if(len(inFqs) == 1):
         raise Tim("There is no one here.  Go away! (single fastq DMP not yet"
                   "implemented")
+    return outFq1, outFq2

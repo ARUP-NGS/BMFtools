@@ -10,7 +10,7 @@ import cython
 
 # BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
-from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
+# from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from utilBMF.QC import GetAllQCMetrics
@@ -249,8 +249,72 @@ def main():
         help="Number of read-pair sets of demultiplexing."
     )
     MPdemultiplexParser.add_argument(
-
-
+        "inFqs",
+        nargs="+",
+        help="Input fastq files"
+    )
+    MPdemultiplexParser.add_argument(
+        "--head",
+        help=("Number of bases from each read to add to the barcode to"
+              "increase the specificity of the family, defaults to 0"),
+        default=0,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "-i",
+        "--indexFq",
+        metavar="IndexFastq",
+        help="Index Fastq containing barcode sequence",
+        required=True
+    )
+    MPdemultiplexParser.add_argument(
+        "--cutAdapt",
+        help="calls cutAdapt on temporary fastqs after marking and"
+        " consolidation",
+        default=False,
+        action="store_true"
+    )
+    MPdemultiplexParser.add_argument(
+        "-f",
+        "--p5Seq",
+        help="5' primer sequence used by cutadapt (defaults to 'default', "
+              "which will run cutadapt to only trim the 3' primer sequence, "
+              "if given)"
+    )
+    MPdemultiplexParser.add_argument(
+        "-t",
+        "--p3Seq",
+        help="3' primer sequence used by cutadapt (defaults to 'default', "
+              "which will not run cutadapt)"
+    )
+    MPdemultiplexParser.add_argument(
+        "--conf",
+        help="Path to a config file. If set, load arguments from "
+                "this file, overriding the defaults founds in _bmftoo"
+                "ls_helper. Any command-line arguments override this "
+                "config file as well."
+    )
+    MPdemultiplexParser.add_argument(
+        "--len_prefix",
+        help="Number of nucleotides to use in for splitting reads from"
+             " original fastqs, the higher the value, the more temp files"
+             " defaults to 3, but try 4 if RAM is a problem.  warning: "
+             " this can slow the overall runtime considerably",
+        default=3,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "--hpLimit",
+        help="proportion of read which consistes of a single nuceltide above"
+             " which the read will be marked as QC failed.  defaults to .9",
+        default=0.9,
+        type=float
+    )
+    MPdemultiplexParser.add_argument(
+        "--ncpus",
+        help="number of processors to use",
+        type=int,
+        required=True
     )
     alignTagBamParser.add_argument(
         "inFqs",
@@ -949,38 +1013,19 @@ def main():
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
     elif(subcommand == "dmp"):
-        if(len(Chapman['inFqs']) == 2):
-            if(Chapman['num_nucs'] is None):
-                from numpy import log2
-                num_nucs = int(log2(int(Chapman['threads'])) // 2) + 1
-                sys.stderr.write("num_nucs not set. Defaulting to "
-                                 "log2(threads) // 2 + 1: %s.\n" % num_nucs)
-                # IE, if unset, defaults to the minimum needed to have at
-                # least one file for each slave job.
-            else:
-                num_nucs = int(Chapman['num_nucs'])
-            threads = int(Chapman['threads']) // 2
-            from MawCluster.BCFastq import DispatchParallelDMP as pDMP
-            OutFastq1, OutFastq2 = pDMP(
-                Chapman['inFqs'][0],
-                Chapman['inFqs'][1],
-                indexFq=Chapman['indexFq'],
-                p3Seq=Chapman['p3Seq'],
-                p5Seq=Chapman['p5Seq'],
-                num_nucs=num_nucs,
-                threads=threads,
-                overlapLen=int(Chapman['overlapLen']),
-                sortMem=Chapman['slave_sort_mem'],
-                head=int(Chapman['head']))
-            return 0  # sys.exit(main()) returns 0
-        elif(len(Chapman['inFqs']) == 1):
-            from BMFMain.Workflow import singleFastqShades
-            OutFastq = singleFastqShades(
-                Chapman['inFqs'][0],
-                indexFq=Chapman['indexFq'],
-                p3Seq=Chapman['p3Seq'],
-                p5Seq=Chapman['p5Seq'])
-            return 0  # sys.exit(main()) returns 0
+        from utilBMF.DMPUtils import multiProcessingDemulitplex as DMP
+        outFq1, outFq2 = DMP(
+            Chapman['inFqs'],
+            indexFq=Chapman['indexFq'],
+            p3Seq=Chapman['p3Seq'],
+            p5Seq=Chapman['p5Seq'],
+            len_prefix=Chapman['len_prefix'],
+            hpLimit=Chapman['hpLimit'],
+            ncpus=Chapman['ncpus'],
+            head=Chapman['head'])
+        pl("Demultiplexing, marking, consildating, and compression complete"
+            "new fastqs are %s and %s" % (outFq1, outFq2))
+        return 0  # sys.exit(main()) returns 0
     elif(subcommand == "stdmp"):
         if(len(Chapman['inFqs']) == 2):
             if(Chapman['num_nucs'] is None):
