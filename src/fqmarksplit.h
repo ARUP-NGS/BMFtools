@@ -276,7 +276,7 @@ inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
 }
 
 
-inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
+static inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 				    mss_settings_t settings, mark_splitter_t splitter)
 {
 	int l1, l2, l_index, bin;
