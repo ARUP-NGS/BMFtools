@@ -940,6 +940,11 @@ def main():
         from MawCluster.BCVCF import VCFStats
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
+    elif(subcomment == "multidmp"):
+        if(len(Chapman['inFqs']) == 2):
+            if(Chapman['num_nucs'] is None):
+                num_nucs = 3
+            num_nucs = Chapman['num_nucs']
     elif(subcommand == "dmp"):
         if(len(Chapman['inFqs']) == 2):
             if(Chapman['num_nucs'] is None):

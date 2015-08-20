@@ -51,6 +51,8 @@ def getArgs():
     parser.add_argument("Fastq2", help="Fastq2", type=str)
     parser.add_argument("IndexFq", help="Barcode Fastq", type=str)
     parser.add_argument("ncpus", help="number of cpus", type=int)
+    parser.add_argument("p3Seq")
+    parser.add_argument("p5Seq")
     parser.add_argument("lenPrefix", help="hacky, temporary length of prefix"
                         " by which we will split the jobs",
                         type=int)
@@ -59,9 +61,9 @@ def getArgs():
 if __name__ == '__main__':
     args = getArgs()
     pool = mp.Pool(processes=args.ncpus)
+    #remember to apply the kwards junk to pool.apply_async
     allPrefixes = permuteNucleotides(4**args.lenPrefix, kmerLen=args.lenPrefix)
     results = [pool.apply_async(pairedDMPWorker, args=(args.Fastq1,
-                args.Fastq2, args.IndexFq, 16, p, 16))
-               for p in allPrefixes]
+                args.Fastq2, args.IndexFq, 16, p, 12)) for p in allPrefixes]
     things = [p.get() for p in results]
     print things

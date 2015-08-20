@@ -1,10 +1,10 @@
-
 import logging
 import gzip
-import time
 import os
+import subprocess
+import time
 
-from MawCluster.BCFastq import FastFisherFlattening
+from MawCluster.BCFastq import FastFisherFlattening, CutadaptPaired
 from utilBMF.HTSUtils import (pFastqProxy, pFastqFile, permuteNucleotides,
                                 printlog as pl, getBS)
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
@@ -20,7 +20,8 @@ def singleDMPWorker(Fastq, IndexFq, bcLen, Prefix, hpLimit, Head=0):
     pass
 
 
-def pairedDMPWorker(Fastq1, Fastq2, IndexFq, bcLen, Prefix, hpLimit, Head=0):
+def pairedDMPWorker(Fastq1, Fastq2, IndexFq, bcLen, Prefix, hpLimit, Head=0,
+                    cutAdapt=False, p3Seq="default", p5Seq="default"):
     """
     dmpWorker function, pulls a bunch of reads into memory based on their
     BC prefix marks then consolidates them
@@ -63,6 +64,11 @@ def pairedDMPWorker(Fastq1, Fastq2, IndexFq, bcLen, Prefix, hpLimit, Head=0):
         for barcode in bcHash1.keys():
             output1.write(FastFisherFlattening(bcHash1[barcode], barcode))
             output2.write(FastFisherFlattening(bcHash2[barcode], barcode))
+    if cutAdapt:
+        cafq1, cafq2 = CutadaptPaired(fq1name, fq2name, p3Seq, p5Seq)
+        pl("runnning cutadapt on temporary fastqs with prefix %s" %(Prefix))
+        subprocess.check_call("rm", fq1name)
+        subprocess.check_call("rm", fq2name)
     pl("completed dmp on prefix %s" % (Prefix))
     return fq1name, fq2name
 
@@ -81,25 +87,35 @@ def get_uncompressed_size(file):
 
 
 def calcMaxRam(maxRam, ncpus, fastq):
+    """
+    Someday I will use this to estimate the proper prefix length
+    for splitting a fastq based on desired maxRam and nCPUs.
+    Today is not that day.
+    """
     cdef long fqSize, mRam
     cdef int lprefix
     mRam = maxRam*1000000000
     fqSize = get_uncompressed_size(fastq)*2
-    print fqSize
     for x in range(3,10):
         topRam = (fqSize/(4**x))*ncpus
-        print "fqsize %s / 4^%s * %s" % (fqSize, x, ncpus)
-        print topRam, mRam
         if topRam < mRam:
             lprefix = x
             break
-    print "boom:", lprefix
     return lprefix
 
 
-def multiProcessingDemulitplex(inFqs, indexFq="default", int head=-1,
+def multiProcessingDemulitplex(inFqs, bcLen, indexFq="default", int head=-1,
                                 int ncpus=1, int num_nucs=3, hpLimit=1):
     """
+    Args I need:
+        1. In Fastq, 1 or 2 fastqs in a list, call worker based on number
+        2. Index fastq containing barcodes
+        3. amount of sequence to salt into barcode (head) default = 0
+        4. homopolymer proportion (default 80%) to fail reads
+        5. Runnign cut adapt? True/False
+        6. if above true, p3Seq, p5Seq, and overlap len
+        7. number of CPUS to run across
+        8.
     Similar to DispatchParallelDMP, but redesigned for multiprocessing
     of the DMP process, however, here we do not call to cutadapt,
     that will be handled downstream.
@@ -107,11 +123,12 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=-1,
     if num_nucs != 3:
         pl("using custom number of nucleotides for splitting temporary files"
         ", recommended value is 3, used here %s" % (num_nucs))
-
     if indexFq == "default":
         raise UnsetRequiredParameter("Index fastq with barcodes is required")
     if head < 0:
         raise UnsetRequiredParameter("Improper or unset head value defaulting"
                                      "to 0")
         head = 0
+    pl("running multiprocessed DMP using %s CPUs" % (ncpus))
+    allPrefixe = permuteNucleotides(4**num_nucs, kmerLen=num_nucs)
     pass
