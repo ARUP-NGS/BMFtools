@@ -130,6 +130,8 @@ def cycleError(args):
                 fmc += 1
                 continue
         if flag & 64:
+            """
+            """
             rc += 1
             errorFinder(read, read1error, read1obs)
         if flag & 128:
