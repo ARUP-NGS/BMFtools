@@ -16,3 +16,6 @@ cdef int8_t * arrmax(int32_t * quals, int8_t * ret,
 
 cdef extern from "cephes.h":
     cdef double igamc(double, double) nogil
+
+cpdef inline double_t pigamc(double a, double b):
+    return igamc(a, b)
