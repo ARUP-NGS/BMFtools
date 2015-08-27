@@ -35,7 +35,7 @@ ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
 for x in ext:
     x.extra_link_args += pysam.get_libraries()
     x.define_macros += pysam.get_defines()
-    if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam']):
+    if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam', 'MawCluster.Math']):
         x.sources += ["src/include/cephes/igam.c", "src/include/cephes/const.c",
                       "src/include/cephes/gamma.c", "src/include/cephes/mtherr.c",
                       "src/include/cephes/sf_error.c"]
@@ -49,7 +49,7 @@ includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("s
 
 subprocess.check_call('gcc src/fqmarksplit.c -I src/. -lz -o src/fqmarksplit -fopenmp -std=c99', shell=True)
 subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
-subprocess.check_call('cd src/dmp; gcc -g -Wall -O2 dmp.c cephes_ll/mtherr.c cephes_ll/polevll.c cephes_ll/gammal.c -o omgz -fopenmp -I cephes_ll/ -lm; cd ../..', shell=True)
+#subprocess.check_call('cd src/dmp; gcc -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o igamc -fopenmp -lm -std=c99; cd ../..', shell=True)
 
 config = {
     'description': '',
