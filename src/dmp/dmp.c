@@ -20,7 +20,9 @@ int main(int argc, char* argv[]) {
             default: print_opt_err(argv, optarg);
         }
     }
-    fprintf(stderr, "IGAMC_PVALUES: %.12Lf\n", igamc_pvalues((longdouble_t)n, (longdouble_t)f));
+#if !NDEBUG
+    fprintf(stderr, "IGAMC_PVALUES: %.30Lf\n", igamc_pvalues((longdouble_t)n, (longdouble_t)f));
     fprintf(stderr, "degrees of freedom:  %i. Chi2 sum: %f. Chi2 sum as a string: %s.\n", n, f, argv[2]);
+#endif
     return 0;
 }

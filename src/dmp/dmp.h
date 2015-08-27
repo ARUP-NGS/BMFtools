@@ -4,7 +4,8 @@
 #include <math.h>
 #include <stdint.h>
 
-typedef long double longdouble_t;
+#include "dmp_utils.h"
+
 
 #define LOG10E_X5_INV 0.4605170185988091368035982909368728415202202977257545952066655801935145219354704960471994410179196596683935568084572497266819050930165613513332L
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
