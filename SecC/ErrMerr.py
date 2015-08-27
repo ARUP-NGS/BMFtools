@@ -3,16 +3,12 @@ import numpy as np
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp
 from itertools import groupby
 from utilBMF.ErrorHandling import ThisIsMadness
-from MawCluster.BCFastq import GetDescTagValue
 import argparse
 import operator
 import pysam
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-mcoptBS = operator.methodcaller("opt","BS")
-# cimport pysam.calignmentfile
-# ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 nucList = ["A", "T", "C", "G", "N"]
 
 
@@ -26,6 +22,7 @@ def getArgs():
                                             "command")
     parser_cycle.add_argument("-cycleheat", default=False, action='store_true')
     parser_cycle.add_argument("-family_size", default=None)
+#    parser_cycle.add_argument("--ignore-fm-tag", "-i", default=False, action='store_true')
     parser_heatmap = subparsers.add_parser('heatmap', help='blah')
     parser_heatmap.add_argument("reads2", help="non-consensus fastq of read2")
     parser_heatmap.add_argument("bam", help="alignment of consensus reads")
@@ -118,18 +115,24 @@ def cycleError(args):
     if fam_range:
         fam_range = [int(i) for i in fam_range.split(',')]
     for read in pysam.AlignmentFile(args.mdBam):
+        flag = read.flag
+        if flag & 2820:
+            continue
+        """
+        Equivalent to:
         if(read.is_secondary or read.is_supplementary or
            read.is_unmapped or read.is_qcfail):
             qc += 1
-            continue
+        """
         if fam_range:
-            if(read.opt('FM') < fam_range[0] or read.opt('FM') > fam_range[1]):
+            FM = read.opt('FM')
+            if(FM < fam_range[0] or FM > fam_range[1]):
                 fmc += 1
                 continue
-        if read.is_read1:
+        if flag & 64:
             rc += 1
             errorFinder(read, read1error, read1obs)
-        if read.is_read2:
+        if flag & 128:
             rc += 1
             errorFinder(read, read2error, read2obs)
     if fam_range:
@@ -146,7 +149,7 @@ def cycleError(args):
     sys.stdout.write("cycle\tread1\tread2\tread count\n")
     for index in xrange(rlen):
         sys.stdout.write("%i\t%f\t%f\t%i\n" % (index+1, read1prop[index],
-                                             read2prop[index], rc))
+                                               read2prop[index], rc))
     if not fam_range:
         size = "all"
     else:
