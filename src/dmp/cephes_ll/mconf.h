@@ -65,8 +65,8 @@
 #ifndef CEPHES_MCONF_H
 #define CEPHES_MCONF_H
 
-#include <Python.h>
-#include <numpy/npy_math.h>
+//#include <Python.h> Just removed Python.h
+//#include <numpy/npy_math.h>
 
 #include "cephes_names.h"
 #include "protos.h"

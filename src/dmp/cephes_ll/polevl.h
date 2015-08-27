@@ -53,9 +53,8 @@
 #define CEPHES_POLEV
 
 #include "protos.h"
-#include <numpy/npy_common.h>
 
-static NPY_INLINE double polevl(double x, double coef[], int N)
+static inline double polevl(double x, double coef[], int N)
 {
     double ans;
     int i;
@@ -78,7 +77,7 @@ static NPY_INLINE double polevl(double x, double coef[], int N)
  * Otherwise same as polevl.
  */
 
-static NPY_INLINE double p1evl(double x, double coef[], int N)
+static inline double p1evl(double x, double coef[], int N)
 {
     double ans;
     double *p;

@@ -1,6 +1,4 @@
-#include <omp.h>
-#include <stdio.h>
-#include "lh3sort.c"
+#include "call_lh3_sort.h"
 
 // Set global parameters as needed.
 
@@ -31,18 +29,5 @@ void init_lh3sort_key() {
     keyhead.next = key;
 }
 
-//static void sort(char **files, int nfiles, FILE *ofp)
-
-static inline void apply_parallel_lh3sort(char **filenames, int nfilenames,
-										  FILE **ofps, int nthreads) {
-	omp_set_num_threads(nthreads);
-	fprintf(stderr, "Applying parallel lh3sort. Number of threads: %i.\n", nthreads);
-	int i;
-    #pragma omp parallel for if(parallelism_enabled)
-	for(i = 0; i < nfilenames; i++){
-		FILE * ofp = ofps[i];
-		char **tmpfile_arr = malloc(sizeof(char *));
-		tmpfile_arr[0] = strdup(filenames[i]);
-		sort(tmpfile_arr, 1, ofp);
-	}
-}
+void apply_parallel_lh3sort(char **filenames, int nfilenames,
+										  FILE **ofps, int nthreads);
