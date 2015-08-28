@@ -1,6 +1,6 @@
-/*							isnanl()
- *							isfinitel()
- *							signbitl()
+/*							isnanf128()
+ *							isfinitef128()
+ *							signbitf128()
  *
  *	Floating point IEEE special number tests
  *
@@ -8,12 +8,12 @@
  *
  * SYNOPSIS:
  *
- * int signbitl(), isnanl(), isfinitel();
+ * int signbitf128(), isnanf128(), isfinitef128();
  * float128_t x, y;
  *
- * n = signbitl(x);
- * n = isnanl(x);
- * n = isfinitel(x);
+ * n = signbitf128(x);
+ * n = isnanf128(x);
+ * n = isfinitef128(x);
  *
  *
  *
@@ -54,8 +54,7 @@ typedef __float128 float128_t;
 
 /* Return 1 if the sign bit of x is 1, else 0.  */
 
-int signbitl(x)
-float128_t x;
+int signbitf128(float128_t x)
 {
 union
 	{
@@ -89,7 +88,7 @@ else
 
 /* Return 1 if x is a number that is Not a Number, else return 0.  */
 
-int isnanl(float128_t x)
+int isnanf128(float128_t x)
 {
 #ifdef NANS
 union
@@ -143,7 +142,7 @@ return(0);
 
 /* Return 1 if x is not infinite and is not a NaN.  */
 
-int isfinitel(float128_t x)
+int isfinitef128(float128_t x)
 {
 #ifdef INFINITIES
 union

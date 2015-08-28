@@ -146,8 +146,8 @@ static float128_t stirf(float128_t);
 float128_t polevll(float128_t x, void *p, int n);
 float128_t p1evll(float128_t x, void *p, int n);
 
-extern int isnanl(float128_t x);
-extern int isfinitel(float128_t x);
+extern int isnanf128(float128_t x);
+extern int isfinitef128(float128_t x);
 
 float128_t imgamil(float128_t a, float128_t y0)
 {
@@ -841,7 +841,7 @@ static long Q3[21] = {
  * See the header file igamc_cephes.h for the implementation of ndtril.
  */
 
-/*							gammal.c
+/*							gammaf128.c
  *
  *	Gamma function
  *
@@ -849,10 +849,10 @@ static long Q3[21] = {
  *
  * SYNOPSIS:
  *
- * float128_t x, y, gammal();
+ * float128_t x, y, gammaf128();
  * extern int sgngam;
  *
- * y = gammal(x);
+ * y = gammaf128(x);
  *
  *
  *
@@ -1226,14 +1226,14 @@ return(y);
 
 
 
-float128_t gammal(float128_t x)
+float128_t gammaf128(float128_t x)
 {
 float128_t p, q, z;
 int i;
 
 sgngaml = 1;
 #ifdef NANS
-if(isnanl(x))
+if(isnanf128(x))
 	return(NANL);
 #endif
 #ifdef INFINITIES
@@ -1257,7 +1257,7 @@ if(q > 13.0L)
 			{
 gamnan:
 #ifdef NANS
-			mtherr("gammal", DOMAIN);
+			mtherr("gammaf128", DOMAIN);
 			return (NANL);
 #else
 			goto goverf;
@@ -1280,7 +1280,7 @@ goverf:
 #ifdef INFINITIES
 			return(sgngaml * INFINITYL);
 #else
-			mtherr("gammal", OVERFLOW);
+			mtherr("gammaf128", OVERFLOW);
 			return(sgngaml * MAXNUML);
 #endif
 			}
@@ -1470,11 +1470,11 @@ int i;
 
 sgngaml = 1;
 #ifdef NANS
-if(isnanl(x))
+if(isnanf128(x))
 	return(NANL);
 #endif
 #ifdef INFINITIES
-if(!isfinitel(x))
+if(!isfinitef128(x))
 	return(INFINITYL);
 #endif
 if(x < -34.0L)

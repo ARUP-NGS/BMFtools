@@ -42,10 +42,10 @@ int main(int argc, char* argv[]) {
 
 int bmftools_dmp_wrapper(char *input_path, char *output_path,
                          int readlen, int blen) {
-	/*
-	 * Set output_path to NULL to write to stdout.
-	 * Set input_path to "-" or NULL to read from stdin.
-	 */
+    /*
+     * Set output_path to NULL to write to stdout.
+     * Set input_path to "-" or NULL to read from stdin.
+     */
     FILE *in_handle;
     FILE *out_handle;
     if(input_path[0] == '-' || !input_path) in_handle = stdin;
@@ -62,36 +62,48 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path,
 }
 
 
-void dmp_process_write(KingFisher_t *kfp, FILE *handle) {
-	//Make the strings to write to handle
-	//Write the strings to handle
-	return;
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
+    //Make the strings to write to handle
+    //Write the strings to handle
+    return;
 }
 
 
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int readlen, int blen) {
-	int l;
-	int *nuc_indices = malloc(2 * sizeof(int));
-	char *current_barcode = (char *)calloc(blen + 1, 1);
-	KingFisher_t Holloway = init_kf(readlen);
-	KingFisher_t *Hook = &Holloway;
-	l = kseq_read(seq);
-	if(l < 0) {
-		fprintf(stderr, "Could not open input fastq. Abort!\n");
-		exit(1);
-	}
-	char *bs_ptr = barcode_mem_view(seq); //Note: NOT null-terminated at the end of the barcode.
-	memcpy(current_barcode, bs_ptr, blen);
-	pushback_kseq(Hook, seq, nuc_indices);
-	while ((l = kseq_read(seq)) >= 0) {
-		if(memcmp(bs_ptr, current_barcode, blen) == 0) {
-			pushback_kseq(Hook, seq, nuc_indices);
-		}
-		else {
-			dmp_process_write(Hook, out_handle);
-			clear_kf(Hook);
-		}
-	}
+    int l;
+    int *nuc_indices = malloc(2 * sizeof(int));
+    char *current_barcode = (char *)calloc(blen + 1, 1);
+    KingFisher_t Holloway = init_kf(readlen);
+    KingFisher_t *Hook = &Holloway;
+    l = kseq_read(seq);
+    if(l < 0) {
+        fprintf(stderr, "Could not open input fastq. Abort!\n");
+        exit(1);
+    }
+    char *bs_ptr = barcode_mem_view(seq); //Note: NOT null-terminated at the end of the barcode.
+    memcpy(current_barcode, bs_ptr, blen);
+    pushback_kseq(Hook, seq, nuc_indices); // Initialize Hook with
+    while ((l = kseq_read(seq)) >= 0) {
+        bs_ptr = barcode_mem_view(seq);
+#if !NDEBUG
+        if(!bs_ptr) { // bs_ptr is NULL
+            fprintf(stderr, "Malformed fastq comment field - missing the second delimiter. Abort!\n");
+            exit(1);
+        }
+#endif
+        if(memcmp(bs_ptr, current_barcode, blen) == 0) {
+            pushback_kseq(Hook, seq, nuc_indices);
+        }
+        else {
+            dmp_process_write(Hook, out_handle, bs_ptr, blen);
+            clear_kf(Hook);
+            pushback_kseq(Hook, seq, nuc_indices);
+        }
+    }
+    if(Hook->length) { // If length is not 0
+        dmp_process_write(Hook, out_handle, bs_ptr, blen);
+    }
+    destroy_kf(Hook);
 
-	return 0;
+    return 0;
 }

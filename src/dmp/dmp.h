@@ -46,13 +46,13 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
 }
 
 #define NUC_TO_POS(character, nuc_indices)                            \
-	switch(character) {                                               \
-    	case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; break;      \
-    	case 'C': nuc_indices[0] = 1; nuc_indices[1] = 1; break;      \
-    	case 'G': nuc_indices[0] = 2; nuc_indices[1] = 2; break;      \
-    	case 'T': nuc_indices[0] = 3; nuc_indices[1] = 3; break;      \
+    switch(character) {                                               \
+        case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; break;      \
+        case 'C': nuc_indices[0] = 1; nuc_indices[1] = 1; break;      \
+        case 'G': nuc_indices[0] = 2; nuc_indices[1] = 2; break;      \
+        case 'T': nuc_indices[0] = 3; nuc_indices[1] = 3; break;      \
         default: nuc_indices[0] = 0; nuc_indices[1] = 4; break;       \
-	}
+    }
 
 
 /*
@@ -65,7 +65,6 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
  */
 
 typedef struct KingFisher {
-    char *barcode; // Barcode for the family
     int **nuc_counts; // Count of nucleotides of this form
     float128_t **chi2sums; // Sums of -2ln(p-value)
     int length; // Number of reads in family
@@ -80,7 +79,6 @@ inline KingFisher_t init_kf(size_t readlen) {
         chi2sums[i] = (float128_t *)calloc(4, sizeof(float128_t)); // One for each nucleotide
     }
     KingFisher_t fisher = {
-        .barcode = NULL,
         .nuc_counts = nuc_counts,
         .chi2sums = chi2sums,
         .length = 0,
@@ -94,7 +92,6 @@ inline void destroy_kf(KingFisher_t *kfp) {
         free(kfp->nuc_counts[i]);
         free(kfp->chi2sums[i]);
     }
-    free(kfp->barcode);
     free(kfp->nuc_counts);
     free(kfp->chi2sums);
 }
@@ -132,16 +129,16 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
  * No guarantee that this is a properly null-terminated string.
  */
 inline char *barcode_mem_view(kseq_t *seq) {
-	int hits = 0;
-	for(int i = 0; i < seq->comment.l; i++) {
-		if(seq->comment.s[i] == '|') {
-			if(!hits) {
-				hits += 1;
-			}
-			else {
-				return (char *)(seq->comment.s + i + 1);
-			}
-		}
-	}
-	return NULL;
+    int hits = 0;
+    for(int i = 0; i < seq->comment.l; i++) {
+        if(seq->comment.s[i] == '|') {
+            if(!hits) {
+                hits += 1;
+            }
+            else {
+                return (char *)(seq->comment.s + i + 1);
+            }
+        }
+    }
+    return NULL;
 }
