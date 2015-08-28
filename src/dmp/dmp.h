@@ -1,16 +1,23 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <zlib.h>
+#include <stddef.h>
+#include <quadmath.h>
+#include "include/kseq.h"
 
-#include "dmp_utils.h"
+// Force declaration of all of kseq's types.
+KSEQ_INIT(gzFile, gzread)
+
+typedef __float128 float128_t;
 
 
 #define LOG10E_X5_INV 0.4605170185988091368035982909368728415202202977257545952066655801935145219354704960471994410179196596683935568084572497266819050930165613513332L
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
 //such as in the following macro:
-#define LOG10_TO_CHI2(x) (x) * LOG10_X5_INV
+#define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
 
 #define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10, log10int))
 /*
@@ -20,6 +27,7 @@ inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
     return -2 * log(1 - pow(10, log10int));
 }
 */
+
 
 extern float128_t igamcl(float128_t a, float128_t x);
 
@@ -35,4 +43,91 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
 #endif
         return igamcl(num_pvalues * 1., x / 2.0);
     }
+}
+
+typedef struct intpair {
+	int i1;
+	int i2;
+} intpair_t;
+
+
+inline intpair_t NUC_TO_POS(char character) {
+	switch(character) {
+	case 'A': return (intpair_t){.i1 = 0, .i2 = 0};
+	case 'C': return (intpair_t){.i1 = 1, .i2 = 1};
+	case 'G': return (intpair_t){.i1 = 2, .i2 = 2};
+	case 'T': return (intpair_t){.i1 = 3, .i2 = 3};
+	default: return (intpair_t){.i1 = 0, .i2 = 4};
+	}
+}
+
+/*
+ * TODO: KingFisher finishing work.
+ * A destructor for KingFisher.
+ * Fill in the pushback_kseq function.
+ * Rewrite the cFastFisherFlattening array work in C rather than Cython from MawCluster/BCFastq.pyx.
+ * Use that array work to fill in the update_kf method.
+ */
+
+typedef struct KingFisher {
+	char *barcode; // Barcode for the family
+	int **nuc_counts; // Count of nucleotides of this form
+	float128_t **chi2sums; // Sums of -2ln(p-value)
+	int length; // Number of reads in family
+	int readlen; // Length of reads
+} KingFisher_t;
+
+inline KingFisher_t init_kf(int max, size_t readlen) {
+	int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
+	float128_t **chi2sums = (float128_t **)malloc(sizeof(float128_t *) * 4);
+	for(int i = 0; i < readlen; i++) {
+		nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One for A, C, G, T, and N
+		chi2sums[i] = (float128_t *)calloc(4, sizeof(float128_t)); // One for each nucleotide
+	}
+	KingFisher_t fisher = {
+		.barcode = NULL,
+		.nuc_counts = nuc_counts,
+		.chi2sums = chi2sums,
+		.length = 0,
+		.readlen = readlen
+	};
+	return fisher;
+}
+
+inline void destroy_kf(KingFisher_t *kfp) {
+	for(int i = 0; i < kfp->readlen; i++) {
+		free(kfp->nuc_counts[i]);
+		free(kfp->chi2sums[i]);
+	}
+	free(kfp->barcode);
+	free(kfp->nuc_counts);
+	free(kfp->chi2sums);
+}
+
+inline void clear_kf(KingFisher_t *kfp) {
+	for(int i = 0; i < kfp->readlen; i++) {
+		memset(kfp->chi2sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
+		memset(kfp->nuc_counts[i], 0, 5 * sizeof(int));
+	}
+	kfp->length = 0;
+	return;
+}
+/*
+inline void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
+
+	fprintf(stderr, "update_kf for updating KingFisher_t is unimplemented. Abort!\n");
+	exit(1);
+	return;
+}
+*/
+
+inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq) {
+	intpair_t nuc_indices;
+	for(int i = 0; i < kfp->readlen; i++) {
+		nuc_indices = NUC_TO_POS((seq->seq.s[i]));
+		kfp->nuc_counts[i][nuc_indices.i2] += 1;
+		kfp->chi2sums[i][nuc_indices.i1] += LOG10_TO_CHI2((seq->qual.s[i] - 33));
+	}
+	kfp->length++; // Increment
+	return;
 }
