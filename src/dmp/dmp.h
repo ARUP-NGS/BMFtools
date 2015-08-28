@@ -69,6 +69,7 @@ typedef struct KingFisher {
     float128_t **chi2sums; // Sums of -2ln(p-value)
     int length; // Number of reads in family
     int readlen; // Length of reads
+    char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 } KingFisher_t;
 
 inline KingFisher_t init_kf(size_t readlen) {
@@ -82,7 +83,8 @@ inline KingFisher_t init_kf(size_t readlen) {
         .nuc_counts = nuc_counts,
         .chi2sums = chi2sums,
         .length = 0,
-        .readlen = readlen
+        .readlen = readlen,
+        .max_phreds = (char *)calloc(readlen + 1, 1) // Keep track of the maximum phred score observed at position.
     };
     return fisher;
 }
@@ -94,6 +96,7 @@ inline void destroy_kf(KingFisher_t *kfp) {
     }
     free(kfp->nuc_counts);
     free(kfp->chi2sums);
+    free(kfp->max_phreds);
 }
 
 inline void clear_kf(KingFisher_t *kfp) {
@@ -101,6 +104,7 @@ inline void clear_kf(KingFisher_t *kfp) {
         memset(kfp->chi2sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
     }
+    memset(kfp->max_phreds, 0, kfp->readlen); //Turn it back into an array of nulls.
     kfp->length = 0;
     return;
 }
@@ -118,7 +122,16 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
-        kfp->chi2sums[i][nuc_indices[1]] += LOG10_TO_CHI2((seq->qual.s[i] - 33));
+        for(int j = 0; j < 4; j++) {
+            if(j == nuc_indices[1])
+            kfp->chi2sums[i][j] += LOG10_TO_CHI2((seq->qual.s[i] - 33));
+            else {
+                kfp->chi2sums[i][j] += INV_CHI2_FROM_LOG10((seq->qual.s[i] - 33)); // Make sure we decrease our confidence in other base calls as well.
+            }
+        }
+        if(seq->seq.s[i] > kfp->max_phreds[i]) {
+            kfp->max_phreds[i] = seq->seq.s[i];
+        }
     }
     kfp->length++; // Increment
     return;
@@ -126,7 +139,7 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
 
 /*
  * Warning: returns a NULL upon not finding a second pipe symbol.
- * No guarantee that this is a properly null-terminated string.
+ * This is *NOT* a properly null-terminated string.
  */
 inline char *barcode_mem_view(kseq_t *seq) {
     int hits = 0;
@@ -141,4 +154,36 @@ inline char *barcode_mem_view(kseq_t *seq) {
         }
     }
     return NULL;
+}
+
+
+inline int ARRG_MAX(KingFisher_t *kfp, int index) {
+    if(kfp->chi2sums[index][3] > kfp->chi2sums[index][2] &&
+       kfp->chi2sums[index][3] > kfp->chi2sums[index][1] &&
+       kfp->chi2sums[index][3] > kfp->chi2sums[index][0]) {
+        return 3;
+    }
+    else if(kfp->chi2sums[index][2] > kfp->chi2sums[index][1] &&
+            kfp->chi2sums[index][2] > kfp->chi2sums[index][0]) {
+        return 2;
+    }
+    else if(kfp->chi2sums[index][1] > kfp->chi2sums[index][0]) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+inline char ARRG_MAX_TO_NUC(int argmaxret) {
+	switch (argmaxret) {
+        case 1: return 'C';
+        case 2: return 'G';
+        case 3: return 'T';
+        default: return 'A';
+	}
+}
+
+inline int64_t pvalue_to_phred(float128_t pvalue) {
+	return (int64_t)(-10 * log10(pvalue));
 }
