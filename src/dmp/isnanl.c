@@ -9,7 +9,7 @@
  * SYNOPSIS:
  *
  * int signbitl(), isnanl(), isfinitel();
- * long double x, y;
+ * float128_t x, y;
  *
  * n = signbitl(x);
  * n = isnanl(x);
@@ -35,6 +35,8 @@ Copyright 1992, 1998 by Stephen L. Moshier
 
 
 #include "mconf.h"
+#include <quadmath.h>
+typedef __float128 float128_t;
 
 /* This is defined in mconf.h. */
 /* #define DENORMAL 1 */
@@ -53,11 +55,11 @@ Copyright 1992, 1998 by Stephen L. Moshier
 /* Return 1 if the sign bit of x is 1, else 0.  */
 
 int signbitl(x)
-long double x;
+float128_t x;
 {
 union
 	{
-	long double d;
+	float128_t d;
 	short s[6];
 	int i[3];
 	} u;
@@ -87,12 +89,12 @@ else
 
 /* Return 1 if x is a number that is Not a Number, else return 0.  */
 
-int isnanl(long double x)
+int isnanl(float128_t x)
 {
 #ifdef NANS
 union
 	{
-	long double d;
+	float128_t d;
 	unsigned short s[6];
 	unsigned int i[3];
 	} u;
@@ -141,12 +143,12 @@ return(0);
 
 /* Return 1 if x is not infinite and is not a NaN.  */
 
-int isfinitel(long double x)
+int isfinitel(float128_t x)
 {
 #ifdef INFINITIES
 union
 	{
-	long double d;
+	float128_t d;
 	unsigned short s[6];
 	unsigned int i[3];
 	} u;

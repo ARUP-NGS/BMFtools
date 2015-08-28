@@ -15,16 +15,16 @@
 #define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10, log10int))
 /*
  * Equivalent to the following, but type-general:
-inline longdouble_t INV_CHI2_FROM_LOG10(int32_t log10int)
+inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
 {
     return -2 * log(1 - pow(10, log10int));
 }
 */
 
-extern long double igamcl(long double a, long double x);
+extern float128_t igamcl(float128_t a, float128_t x);
 
 // Converts a 
-inline longdouble_t igamc_pvalues(int num_pvalues, longdouble_t x)
+inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
 {
     if(x < 0) {
         return 1.0;
