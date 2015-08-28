@@ -45,23 +45,15 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
     }
 }
 
-typedef struct intpair {
-    int i1;
-    int i2;
-} intpair_t;
+#define NUC_TO_POS(character, nuc_indices)                            \
+	switch(character) {                                               \
+    	case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; break;      \
+    	case 'C': nuc_indices[0] = 1; nuc_indices[1] = 1; break;      \
+    	case 'G': nuc_indices[0] = 2; nuc_indices[1] = 2; break;      \
+    	case 'T': nuc_indices[0] = 3; nuc_indices[1] = 3; break;      \
+        default: nuc_indices[0] = 0; nuc_indices[1] = 4; break;       \
+	}
 
-
-inline intpair_t NUC_TO_POS(char character) {
-    intpair_t ret;
-    switch(character) {
-        case 'A': ret.i1 = 0; ret.i2 = 0; break;
-        case 'C': ret.i1 = 1; ret.i2 = 1; break;
-        case 'G': ret.i1 = 2; ret.i2 = 2; break;
-        case 'T': ret.i1 = 3; ret.i2 = 3; break;
-        default: ret.i1 = 0; ret.i2 = 4; break;
-    }
-    return ret;
-}
 
 /*
  * TODO: KingFisher finishing work.
@@ -80,7 +72,7 @@ typedef struct KingFisher {
     int readlen; // Length of reads
 } KingFisher_t;
 
-inline KingFisher_t init_kf(int max, size_t readlen) {
+inline KingFisher_t init_kf(size_t readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
     float128_t **chi2sums = (float128_t **)malloc(sizeof(float128_t *) * 4);
     for(int i = 0; i < readlen; i++) {
@@ -125,13 +117,31 @@ inline void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
 }
 */
 
-inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq) {
-    intpair_t nuc_indices;
+inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
     for(int i = 0; i < kfp->readlen; i++) {
-        nuc_indices = NUC_TO_POS((seq->seq.s[i]));
-        kfp->nuc_counts[i][nuc_indices.i2] += 1;
-        kfp->chi2sums[i][nuc_indices.i1] += LOG10_TO_CHI2((seq->qual.s[i] - 33));
+        NUC_TO_POS((seq->seq.s[i]), nuc_indices);
+        kfp->nuc_counts[i][nuc_indices[0]] += 1;
+        kfp->chi2sums[i][nuc_indices[1]] += LOG10_TO_CHI2((seq->qual.s[i] - 33));
     }
     kfp->length++; // Increment
     return;
+}
+
+/*
+ * Warning: returns a NULL upon not finding a second pipe symbol.
+ * No guarantee that this is a properly null-terminated string.
+ */
+inline char *barcode_mem_view(kseq_t *seq) {
+	int hits = 0;
+	for(int i = 0; i < seq->comment.l; i++) {
+		if(seq->comment.s[i] == '|') {
+			if(!hits) {
+				hits += 1;
+			}
+			else {
+				return (char *)(seq->comment.s + i + 1);
+			}
+		}
+	}
+	return NULL;
 }
