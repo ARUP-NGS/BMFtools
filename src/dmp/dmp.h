@@ -184,16 +184,25 @@ inline char ARRG_MAX_TO_NUC(int argmaxret) {
 	}
 }
 
-inline int64_t pvalue_to_phred(float128_t pvalue) {
-	return (int64_t)(-10 * log10(pvalue));
+inline int pvalue_to_phred(float128_t pvalue) {
+	return (int)(-10 * log10(pvalue));
 }
 
-inline void fill_fm_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
+inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
 	char tmpbuf[10];
-	sprintf(buffer, "FM:i:%i", agrees[0]);
-	for(int i = 1; i < kfp->readlen; i++) {
-		sprintf(tmpbuf, ",%i", agrees[i]);
+	sprintf(buffer, prefix);
+	for(int i = 0; i < readlen; i++) {
+		sprintf(tmpbuf, ",%i", arr[i]);
 		strcat(buffer, tmpbuf);
 	}
+}
+
+inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
+	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:i:");
+	return;
+}
+
+inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
+	fill_csv_buffer(kfp->readlen, agrees, buffer, "FM:i:");
 	return;
 }

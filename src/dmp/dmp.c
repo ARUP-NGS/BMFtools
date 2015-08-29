@@ -9,8 +9,8 @@ void pushback_kseq(KingFisher_t *fisher, kseq_t *seq, int *nuc_indices);
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int readlen, int blen);
 int ARRG_MAX(KingFisher_t *kfp, int index);
 char ARRG_MAX_TO_NUC(int argmaxret);
-int64_t pvalue_to_phred(float128_t pvalue);
-void fill_fm_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
+int pvalue_to_phred(float128_t pvalue);
+void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 
 void print_usage() {
     fprintf(stderr, "This isn't ready to do anything yet. Oops.\n");
@@ -70,7 +70,7 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) 
     //1. Argmax on the chi2sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
     //buffer[0] = '@'; Set this later?
-    int64_t *cons_quals = (int64_t *)malloc((kfp->readlen) * sizeof(int64_t));
+    int *cons_quals = (int *)malloc((kfp->readlen) * sizeof(int));
     int *agrees = (int *)malloc((kfp->readlen) * sizeof(int));
     cons_seq[kfp->readlen] = '\0'; // Null-terminate it.
     int argmaxret;
@@ -80,8 +80,10 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) 
         cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, kfp->chi2sums[i][argmaxret]));
         agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
-    char FMBuffer[1000];
-    fill_fm_buffer(kfp, agrees, FMBuffer);
+    char FABuffer[1000];
+    fill_fa_buffer(kfp, agrees, FABuffer);
+    char PVBuffer[1000];
+    fill_pv_buffer(kfp, cons_quals, PVBuffer);
 
 
     //Make the strings to write to handle
@@ -117,7 +119,8 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int readlen, int blen) {
         }
         else {
             dmp_process_write(Hook, out_handle, bs_ptr, blen);
-            clear_kf(Hook);
+            clear_kf(Hook); // Reset Holloway
+            memcpy(current_barcode, bs_ptr, blen * sizeof(char)); // Update working barcode.
             pushback_kseq(Hook, seq, nuc_indices);
         }
     }
