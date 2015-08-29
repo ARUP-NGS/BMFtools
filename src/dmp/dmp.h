@@ -29,6 +29,8 @@ inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
 */
 #define INV_LOG10_FROM_LOG10(log10int) -10 * log10(1 - pow(10, log10int))
 
+#define MAX_BARCODE_LENGTH 36
+
 
 extern float128_t igamcl(float128_t a, float128_t x);
 
@@ -207,7 +209,6 @@ inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
     fill_csv_buffer(kfp->readlen, agrees, buffer, "FM:i:");
     return;
 }
-
 
 
 inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
