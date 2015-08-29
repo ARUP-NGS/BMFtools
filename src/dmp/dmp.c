@@ -89,9 +89,10 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path,
     }
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
-    return bmftools_dmp_core(seq, out_handle, blen);
+    int retcode = bmftools_dmp_core(seq, out_handle, blen);
+    kseq_destroy(seq);
+    return retcode;
 }
-
 
 
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int blen) {
@@ -113,6 +114,7 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int blen) {
         bs_ptr = barcode_mem_view(seq);
 #if !NDEBUG
         if(!bs_ptr) { // bs_ptr is NULL
+            destroy_kf(Hook);
             fprintf(stderr, "Malformed fastq comment field - missing the second delimiter. Abort!\n");
             return 1;
         }
@@ -131,7 +133,5 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int blen) {
         dmp_process_write(Hook, out_handle, bs_ptr, blen);
     }
     destroy_kf(Hook);
-    kseq_destroy(seq);
-
     return 0;
 }

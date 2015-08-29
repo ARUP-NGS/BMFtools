@@ -27,6 +27,7 @@ inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
     return -2 * log(1 - pow(10, log10int));
 }
 */
+#define INV_LOG10_FROM_LOG10(log10int) -10 * log10(1 - pow(10, log10int))
 
 
 extern float128_t igamcl(float128_t a, float128_t x);
@@ -66,7 +67,7 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
 
 typedef struct KingFisher {
     int **nuc_counts; // Count of nucleotides of this form
-    float128_t **chi2sums; // Sums of -2ln(p-value)
+    float128_t **phred_sums; // Sums of -10log10(p-value)
     int length; // Number of reads in family
     int readlen; // Length of reads
     char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
@@ -74,14 +75,14 @@ typedef struct KingFisher {
 
 inline KingFisher_t init_kf(size_t readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
-    float128_t **chi2sums = (float128_t **)malloc(sizeof(float128_t *) * 4);
+    float128_t **phred_sums = (float128_t **)malloc(sizeof(float128_t *) * 4);
     for(int i = 0; i < readlen; i++) {
         nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
-        chi2sums[i] = (float128_t *)calloc(4, sizeof(float128_t)); // One for each nucleotide
+        phred_sums[i] = (float128_t *)calloc(4, sizeof(float128_t)); // One for each nucleotide
     }
     KingFisher_t fisher = {
         .nuc_counts = nuc_counts,
-        .chi2sums = chi2sums,
+        .phred_sums = phred_sums,
         .length = 0,
         .readlen = readlen,
         .max_phreds = (char *)calloc(readlen + 1, 1) // Keep track of the maximum phred score observed at position.
@@ -92,16 +93,16 @@ inline KingFisher_t init_kf(size_t readlen) {
 inline void destroy_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
         free(kfp->nuc_counts[i]);
-        free(kfp->chi2sums[i]);
+        free(kfp->phred_sums[i]);
     }
     free(kfp->nuc_counts);
-    free(kfp->chi2sums);
+    free(kfp->phred_sums);
     free(kfp->max_phreds);
 }
 
 inline void clear_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
-        memset(kfp->chi2sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
+        memset(kfp->phred_sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
     }
     memset(kfp->max_phreds, 0, kfp->readlen); //Turn it back into an array of nulls.
@@ -124,9 +125,9 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
         for(int j = 0; j < 4; j++) {
             if(j == nuc_indices[1])
-            kfp->chi2sums[i][j] += LOG10_TO_CHI2((seq->qual.s[i] - 33));
+            kfp->phred_sums[i][j] += (seq->qual.s[i] - 33);
             else {
-                kfp->chi2sums[i][j] += INV_CHI2_FROM_LOG10((seq->qual.s[i] - 33)); // Make sure we decrease our confidence in other base calls as well.
+                kfp->phred_sums[i][j] += INV_LOG10_FROM_LOG10((seq->qual.s[i] - 33)); // Make sure we decrease our confidence in other base calls as well.
             }
         }
         if(seq->seq.s[i] > kfp->max_phreds[i]) {
@@ -158,16 +159,16 @@ inline char *barcode_mem_view(kseq_t *seq) {
 
 
 inline int ARRG_MAX(KingFisher_t *kfp, int index) {
-    if(kfp->chi2sums[index][3] > kfp->chi2sums[index][2] &&
-       kfp->chi2sums[index][3] > kfp->chi2sums[index][1] &&
-       kfp->chi2sums[index][3] > kfp->chi2sums[index][0]) {
+    if(kfp->phred_sums[index][3] > kfp->phred_sums[index][2] &&
+       kfp->phred_sums[index][3] > kfp->phred_sums[index][1] &&
+       kfp->phred_sums[index][3] > kfp->phred_sums[index][0]) {
         return 3;
     }
-    else if(kfp->chi2sums[index][2] > kfp->chi2sums[index][1] &&
-            kfp->chi2sums[index][2] > kfp->chi2sums[index][0]) {
+    else if(kfp->phred_sums[index][2] > kfp->phred_sums[index][1] &&
+            kfp->phred_sums[index][2] > kfp->phred_sums[index][0]) {
         return 2;
     }
-    else if(kfp->chi2sums[index][1] > kfp->chi2sums[index][0]) {
+    else if(kfp->phred_sums[index][1] > kfp->phred_sums[index][0]) {
         return 1;
     }
     else {
@@ -212,7 +213,7 @@ inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
 inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
     int pass;
     char name_buffer[120];
-    //1. Argmax on the chi2sums arrays, using that to fill in the new seq and
+    //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
     //buffer[0] = '@'; Set this later?
     int *cons_quals = (int *)malloc((kfp->readlen) * sizeof(int));
@@ -222,7 +223,7 @@ inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int
     for(int i = 0; i < kfp->readlen; i++) {
         argmaxret = ARRG_MAX(kfp, i);
         cons_seq[i] = ARRG_MAX_TO_NUC(argmaxret);
-        cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, kfp->chi2sums[i][argmaxret]));
+        cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
         agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
     cons_seq[kfp->readlen] = '\0'; // Null-terminal cons_seq.
