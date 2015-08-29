@@ -176,33 +176,79 @@ inline int ARRG_MAX(KingFisher_t *kfp, int index) {
 }
 
 inline char ARRG_MAX_TO_NUC(int argmaxret) {
-	switch (argmaxret) {
+    switch (argmaxret) {
         case 1: return 'C';
         case 2: return 'G';
         case 3: return 'T';
         default: return 'A';
-	}
+    }
 }
 
 inline int pvalue_to_phred(float128_t pvalue) {
-	return (int)(-10 * log10(pvalue));
+    return (int)(-10 * log10(pvalue));
 }
 
 inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
-	char tmpbuf[10];
-	sprintf(buffer, prefix);
-	for(int i = 0; i < readlen; i++) {
-		sprintf(tmpbuf, ",%i", arr[i]);
-		strcat(buffer, tmpbuf);
-	}
+    char tmpbuf[10];
+    sprintf(buffer, prefix);
+    for(int i = 0; i < readlen; i++) {
+        sprintf(tmpbuf, ",%i", arr[i]);
+        strcat(buffer, tmpbuf);
+    }
 }
 
 inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
-	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:i:");
-	return;
+    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:i:");
+    return;
 }
 
 inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
-	fill_csv_buffer(kfp->readlen, agrees, buffer, "FM:i:");
-	return;
+    fill_csv_buffer(kfp->readlen, agrees, buffer, "FM:i:");
+    return;
+}
+
+
+
+inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
+    int pass;
+    char name_buffer[120];
+    //1. Argmax on the chi2sums arrays, using that to fill in the new seq and
+    char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
+    //buffer[0] = '@'; Set this later?
+    int *cons_quals = (int *)malloc((kfp->readlen) * sizeof(int));
+    int *agrees = (int *)malloc((kfp->readlen) * sizeof(int));
+    cons_seq[kfp->readlen] = '\0'; // Null-terminate it.
+    int argmaxret;
+    for(int i = 0; i < kfp->readlen; i++) {
+        argmaxret = ARRG_MAX(kfp, i);
+        cons_seq[i] = ARRG_MAX_TO_NUC(argmaxret);
+        cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, kfp->chi2sums[i][argmaxret]));
+        agrees[i] = kfp->nuc_counts[i][argmaxret];
+    }
+    cons_seq[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+    char FABuffer[1000];
+    fill_fa_buffer(kfp, agrees, FABuffer);
+    char PVBuffer[1000];
+    fill_pv_buffer(kfp, cons_quals, PVBuffer);
+    pass = (int)*(bs_ptr - 5); // 5 for |BS=[ACTG]
+#if !NDEBUG
+    if(pass != 0 && pass != 1) {
+        char buf[20];
+        memcpy(buf, (bs_ptr - 5), 5 + blen + 1);
+        buf[5 + blen + 1] = '\0';
+        fprintf(stderr, buf);
+        exit(1);
+    }
+#endif
+    char FPBuffer[7];
+    sprintf(FPBuffer, "FP:i:%i", pass);
+    name_buffer[0] = '@';
+    strncpy((char *)(name_buffer + 1), bs_ptr, blen);
+    name_buffer[1 + blen] = '\0';
+    char arr_tag_buffer[2000];
+    sprintf(arr_tag_buffer, "%s\t%s\t%s\n%s\n+\n%s\n", FABuffer, PVBuffer, FPBuffer, cons_seq, kfp->max_phreds);
+    fprintf(handle, "%s %s", name_buffer, arr_tag_buffer);
+    //Make the strings to write to handle
+    //Write the strings to handle
+    return;
 }
