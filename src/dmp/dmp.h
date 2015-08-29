@@ -187,3 +187,13 @@ inline char ARRG_MAX_TO_NUC(int argmaxret) {
 inline int64_t pvalue_to_phred(float128_t pvalue) {
 	return (int64_t)(-10 * log10(pvalue));
 }
+
+inline void fill_fm_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
+	char tmpbuf[10];
+	sprintf(buffer, "FM:i:%i", agrees[0]);
+	for(int i = 1; i < kfp->readlen; i++) {
+		sprintf(tmpbuf, ",%i", agrees[i]);
+		strcat(buffer, tmpbuf);
+	}
+	return;
+}

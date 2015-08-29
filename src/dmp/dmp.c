@@ -10,6 +10,7 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle, int readlen, int blen);
 int ARRG_MAX(KingFisher_t *kfp, int index);
 char ARRG_MAX_TO_NUC(int argmaxret);
 int64_t pvalue_to_phred(float128_t pvalue);
+void fill_fm_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 
 void print_usage() {
     fprintf(stderr, "This isn't ready to do anything yet. Oops.\n");
@@ -68,14 +69,21 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path,
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
     //1. Argmax on the chi2sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
+    //buffer[0] = '@'; Set this later?
     int64_t *cons_quals = (int64_t *)malloc((kfp->readlen) * sizeof(int64_t));
+    int *agrees = (int *)malloc((kfp->readlen) * sizeof(int));
     cons_seq[kfp->readlen] = '\0'; // Null-terminate it.
     int argmaxret;
     for(int i = 0; i < kfp->readlen; i++) {
         argmaxret = ARRG_MAX(kfp, i);
         cons_seq[i] = ARRG_MAX_TO_NUC(argmaxret);
         cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, kfp->chi2sums[i][argmaxret]));
+        agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
+    char FMBuffer[1000];
+    fill_fm_buffer(kfp, agrees, FMBuffer);
+
+
     //Make the strings to write to handle
     //Write the strings to handle
     return;
