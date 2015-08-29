@@ -149,7 +149,7 @@ inline char *barcode_mem_view(kseq_t *seq) {
                 hits += 1;
             }
             else {
-                return (char *)(seq->comment.s + i + 1);
+                return (char *)(seq->comment.s + i + 4); // 4 for "|BS="
             }
         }
     }

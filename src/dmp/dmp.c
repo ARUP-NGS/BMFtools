@@ -67,6 +67,8 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path,
 
 
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
+	int pass;
+	char name_buffer[120];
     //1. Argmax on the chi2sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
     //buffer[0] = '@'; Set this later?
@@ -80,12 +82,20 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) 
         cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, kfp->chi2sums[i][argmaxret]));
         agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
+    cons_seq[kfp->readlen] = '\0'; // Null-terminal cons_seq.
     char FABuffer[1000];
     fill_fa_buffer(kfp, agrees, FABuffer);
     char PVBuffer[1000];
     fill_pv_buffer(kfp, cons_quals, PVBuffer);
-
-
+    pass = (int)*(bs_ptr - 2);
+    char FPBuffer[7];
+    sprintf(FPBuffer, "FP:i:%i", pass);
+    name_buffer[0] = '@';
+    strncpy((char *)(name_buffer + 1), bs_ptr, blen);
+    name_buffer[1 + blen] = '\0';
+    char arr_tag_buffer[2000];
+    sprintf(arr_tag_buffer, "%s\t%s\t%s\n%s\n+\n%s\n", FABuffer, PVBuffer, FPBuffer, cons_seq, kfp->max_phreds);
+    fprintf(handle, "%s %s", name_buffer, arr_tag_buffer);
     //Make the strings to write to handle
     //Write the strings to handle
     return;
