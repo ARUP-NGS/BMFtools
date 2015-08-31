@@ -99,10 +99,14 @@ def main():
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
                                            "ansitions.")
-    DMultiPlexParser = subparsers.add_parser("dmp",
+    DMultiPlexParser = subparsers.add_parser("stdmp",
                                              description="Marks, combines, and"
                                              " processes a dataset of fastqs f"
-                                             "or further analysis.")
+                                             "or further analysis. This is the"
+                                             "old, depricated version use dmp")
+    MPdemultiplexParser = subparsers.add_parser("dmp", description="Marks,"
+                                          "combines, and processes barcoded"
+                                          " FASTQs.")
     SNVParser = subparsers.add_parser("snv", description="Call SNVs. Assumes "
                                       "that reads have been collapsed from a "
                                       "family size of at least 2")
@@ -242,6 +246,80 @@ def main():
     DMultiPlexParser.add_argument(
         "--threads", "-p",
         help="Number of read-pair sets of demultiplexing."
+    )
+    MPdemultiplexParser.add_argument(
+        "inFqs",
+        nargs="+",
+        help="Input fastq files"
+    )
+    MPdemultiplexParser.add_argument(
+        "--head",
+        help=("Number of bases from each read to add to the barcode to"
+              "increase the specificity of the family, defaults to 0"),
+        default=0,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "-i",
+        "--indexFq",
+        metavar="IndexFastq",
+        help="Index Fastq containing barcode sequence",
+        required=True
+    )
+    MPdemultiplexParser.add_argument(
+        "--cutAdapt",
+        help="calls cutAdapt on temporary fastqs after marking and"
+        " consolidation",
+        default=False,
+        action="store_true"
+    )
+    MPdemultiplexParser.add_argument(
+        "-f",
+        "--p5Seq",
+        help="5' primer sequence used by cutadapt (defaults to 'default', "
+              "which will run cutadapt to only trim the 3' primer sequence, "
+              "if given)"
+    )
+    MPdemultiplexParser.add_argument(
+        "-t",
+        "--p3Seq",
+        help="3' primer sequence used by cutadapt (defaults to 'default', "
+              "which will not run cutadapt)"
+    )
+    MPdemultiplexParser.add_argument(
+        "--conf",
+        help="Path to a config file. If set, load arguments from "
+                "this file, overriding the defaults founds in _bmftoo"
+                "ls_helper. Any command-line arguments override this "
+                "config file as well."
+    )
+    MPdemultiplexParser.add_argument(
+        "--len_prefix",
+        help="Number of nucleotides to use in for splitting reads from"
+             " original fastqs, the higher the value, the more temp files"
+             " defaults to 3, but try 4 if RAM is a problem.  warning: "
+             " this can slow the overall runtime considerably",
+        default=3,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "--hpLimit",
+        help="proportion of read which consistes of a single nuceltide above"
+             " which the read will be marked as QC failed.  defaults to .9",
+        default=0.9,
+        type=float
+    )
+    MPdemultiplexParser.add_argument(
+        "--ncpus",
+        help="number of processors to use",
+        type=int,
+        required=True
+    )
+    MPdemultiplexParser.add_argument(
+        "--profile",
+        help="profile the process, creating a profile text file",
+        default=False,
+        action="store_true"
     )
     alignTagBamParser.add_argument(
         "inFqs",
@@ -940,6 +1018,21 @@ def main():
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
     elif(subcommand == "dmp"):
+        from utilBMF.DMPUtils import multiProcessingDemulitplex as DMP
+        outFq1, outFq2 = DMP(
+            Chapman['inFqs'],
+            indexFq=Chapman['indexFq'],
+            p3Seq=Chapman['p3Seq'],
+            p5Seq=Chapman['p5Seq'],
+            len_prefix=Chapman['len_prefix'],
+            hpLimit=Chapman['hpLimit'],
+            ncpus=Chapman['ncpus'],
+            head=Chapman['head'],
+            profile=Chapman['profile'])
+        pl("Demultiplexing, marking, consildating, and compression complete"
+            "new fastqs are %s and %s" % (outFq1, outFq2))
+        return 0  # sys.exit(main()) returns 0
+    elif(subcommand == "stdmp"):
         if(len(Chapman['inFqs']) == 2):
             if Chapman['rescue'] is True:
                 # Avoid "parallel" dmp if rescue is activated.

@@ -11,7 +11,6 @@ from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from os import path as ospath
 from pysam.calignedsegment import AlignedSegment as pAlignedSegment
 from subprocess import check_output, check_call, CalledProcessError
-from multiprocessing import Process
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
                                    IllegalArgumentError, PermissionException,
@@ -23,6 +22,7 @@ import cStringIO
 import cython
 import logging
 import MawCluster
+import multiprocessing as mp
 import numconv
 import numpy as np
 import operator
@@ -112,7 +112,7 @@ cpdef list permuteNucleotides(long maxn, object nci=nci, int kmerLen=-1):
     else:
         tmpList = [nci(tmpInt) for tmpInt in xrange(maxn)]
         for tmpInt in range(maxn):
-            strLen = len(tmpList)
+            strLen = len(tmpList[tmpInt])
             if strLen < kmerLen:
                 tmpList[tmpInt] = "A" * (kmerLen - strLen) + tmpList[tmpInt]
         return tmpList
@@ -1243,14 +1243,14 @@ def MergeBamList(bamlist, picardpath="default", sortMem="-Xmx6G",
     return outbam
 
 
-def MultiCore(string):
-    #return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
-    subprocess.call(string, shell=True)
+def MultiProcessingDispatcher():
+    """
+        Dispatches jobs to a job pool, or something
+    """
+    pass
 
 def DevNullPopen(string):
-    handle = Process(target=MultiCore(string))
-    handle.start()
-    return handle
+    return subprocess.Popen(string, shell=True, stdout=open(os.devnull, 'w'))
 
 class PopenCall(object):
     """
