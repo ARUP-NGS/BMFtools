@@ -647,7 +647,7 @@ def CutadaptPaired(cystr fq1, cystr fq2,
                                                              fq1, fq2))
     else:
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
-                      "{} -g {} -o {} -p".format(p3Seq, p5Seq, outfq1) +
+                      "{} -A {} -o {} -p".format(p3Seq, p5Seq, outfq1) +
                       " {} -O {} {} {}".format(outfq2, overlapLen, fq1, fq2))
     pl("Cutadapt command string: {}".format(commandStr))
     if(makeCall):
@@ -671,7 +671,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
             "--match-read-wildcards", p3Seq, outfq, overlapLen, fq)
     else:
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
-                      "{} -g {} -o {} -O {} {}".format(p3Seq, p5Seq, outfq,
+                      "{} -A {} -o {} -O {} {}".format(p3Seq, p5Seq, outfq,
                                                        overlapLen, fq))
     pl("Cutadapt command string: {}".format(commandStr))
     return commandStr, outfq
