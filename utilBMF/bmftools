@@ -316,6 +316,12 @@ def main():
         type=int,
         required=True
     )
+    MPdemultiplexParser.add_argument(
+        "--profile",
+        help="profile the process, creating a profile text file",
+        default=False,
+        action="store_true"
+    )
     alignTagBamParser.add_argument(
         "inFqs",
         nargs="+",
@@ -1022,7 +1028,8 @@ def main():
             len_prefix=Chapman['len_prefix'],
             hpLimit=Chapman['hpLimit'],
             ncpus=Chapman['ncpus'],
-            head=Chapman['head'])
+            head=Chapman['head'],
+            profile=Chapman['profile'])
         pl("Demultiplexing, marking, consildating, and compression complete"
             "new fastqs are %s and %s" % (outFq1, outFq2))
         return 0  # sys.exit(main()) returns 0

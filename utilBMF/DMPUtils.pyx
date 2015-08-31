@@ -3,6 +3,8 @@ import gzip
 import os
 import subprocess
 import time
+import cProfile
+import cStringIO
 
 from MawCluster.BCFastq import FastFisherFlattening, CutadaptPaired
 from utilBMF.HTSUtils import (pFastqProxy, pFastqFile, permuteNucleotides,
@@ -11,6 +13,7 @@ from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from utilBMF.ErrorHandling import UnsetRequiredParameter, ImproperArgumentError
 
 import multiprocessing as mp
+
 
 def singleDMPWorker(Fastq, IndexFq, bcLen, Prefix, hpLimit, Head=0):
     """
@@ -21,12 +24,17 @@ def singleDMPWorker(Fastq, IndexFq, bcLen, Prefix, hpLimit, Head=0):
 
 
 def pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
-                    hpLimit=100, int Head=0, cutAdapt=False,
-                    p3Seq="default", p5Seq="default"):
+                    int hpLimit=100, int Head=0, cutAdapt=False,
+                    p3Seq="default", p5Seq="default", profile=False):
     """
     dmpWorker function, pulls a bunch of reads into memory based on their
     BC prefix marks then consolidates them.
     """
+    if(profile):
+        import cProfile
+        import pstats
+        pr = cProfile.Profile()
+        pr.enable()
     cdef int lenPrefix
     cdef pFastqFile_t fq1, fq2, indexFq
     cdef pFastqProxy_t read1, read2
@@ -35,28 +43,30 @@ def pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
     fq1 = pFastqFile(Fastq1)
     fq2 = pFastqFile(Fastq2)
     indexFq = pFastqFile(IndexFq)
-    ifn = indexFq.next
+    ifq1n = fq1.next
     ifq2n = fq2.next
     bcHash1 = {}
     bcHash2 = {}
     lenPrefix = len(Prefix)
     pl("now starting dmp on prefix %s" % (Prefix))
-    for read1 in fq1:
-        BC = ifn().sequence
+    for bcRead in indexFq:
+        read1 = ifq1n()
         read2 = ifq2n()
+        BC = bcRead.sequence
         if Head:
             BC = (read1.sequence[1:Head + 1] + BC +
                        read2.sequence[1:Head + 1])
         bin = BC[:lenPrefix]
-        if Prefix == bin:
-            read1.comment = cMakeTagComment(BC, read1, hpLimit)
-            read2.comment = cMakeTagComment(BC, read2, hpLimit)
-            try:
-                bcHash1[BC].append(read1)
-                bcHash2[BC].append(read2)
-            except KeyError:
-                bcHash1[BC]=[read1]
-                bcHash2[BC]=[read2]
+        if Prefix != bin:
+            continue
+        read1.comment = cMakeTagComment(BC, read1, hpLimit)
+        read2.comment = cMakeTagComment(BC, read2, hpLimit)
+        try:
+            bcHash1[BC].append(read1)
+            bcHash2[BC].append(read2)
+        except KeyError:
+            bcHash1[BC]=[read1]
+            bcHash2[BC]=[read2]
     fq1name = Fastq1.split(".")[0]+"."+Prefix+".fastq"
     fq2name = Fastq2.split(".")[0]+"."+Prefix+".fastq"
     output1 = open(fq1name,'w')
@@ -71,8 +81,22 @@ def pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
         subprocess.check_call(["rm", fq1name])
         subprocess.check_call(["rm", fq2name])
         pl("completed dmp on prefix %s" % (Prefix))
+        if(profile):
+            s = cStringIO.StringIO()
+            pr.disable()
+            sortby = "cumulative"
+            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            ps.print_stats()
+            open("cProfile.stats.%s.txt" % Prefix, "w").write(s.getvalue())
         return cafq1, cafq2
     pl("completed dmp on prefix %s" % (Prefix))
+    if(profile):
+        s = cStringIO.StringIO()
+        pr.disable()
+        sortby = "cumulative"
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        open("cProfile.stats.%s.txt" % Prefix, "w").write(s.getvalue())
     return fq1name, fq2name
 
 
@@ -111,10 +135,19 @@ def deleter(fname):
     subprocess.check_call(["rm", fname])
 
 
+def profile_worker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
+                    int hpLimit=100, int Head=0, cutAdapt=False,
+                    p3Seq="default", p5Seq="default"):
+    impFqs = cProfile.runctx("pairedDMPWorker(Fastq1, Fastq2, Prefix, bcLen, IndexFq, "
+                        "hpLimit, Head, cutAdapt, p3Seq, p5Seq)", globals(),
+                         locals(), 'profile-%s.out' %Prefix)
+    return impFqs
+
+
 def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
                                 int ncpus=1, int len_prefix=3,
                                 double hpLimit=0.8, cutAdapt=False, p3Seq=None,
-                                p5Seq=None):
+                                p5Seq=None, profile=False):
     """
     Args I need:
         1. In Fastq, 1 or 2 fastqs in a list, call worker based on number
@@ -159,7 +192,8 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
     'hpLimit': hpLimit,
     'cutAdapt': cutAdapt,
     'p3Seq': p3Seq,
-    'p5Seq': p5Seq}
+    'p5Seq': p5Seq,
+    'profile': profile}
     pl("running multiprocessed DMP using %s CPUs" % (ncpus))
     pool = mp.Pool(processes=ncpus)
     """
@@ -173,6 +207,10 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
         if cutAdapt:
             outFq1 = outFq1.split('.fastq')[0]+"cutadapt.fastq"
             outFq2 = outFq2.split('.fastq')[0]+"cutadapt.fastq"
+        #if profile:
+        #    tmpFqs = [pool.apply_async(profile_worker, args=(inFqs[0],
+        #        inFqs[1], prefix, bcLen), kwds=kwargsDict) for prefix
+        #        in allPrefixes]
         tmpFqs = [pool.apply_async(pairedDMPWorker, args=(inFqs[0],
             inFqs[1], prefix, bcLen), kwds=kwargsDict) for prefix
             in allPrefixes]
@@ -188,8 +226,6 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
         empty = [p.get() for p in check]
         subprocess.check_call(["gzip", outFq1])
         subprocess.check_call(["gzip", outFq2])
-        pl("Demultiplexing, marking, consildating, and compression complete"
-            "new fastqs are %s and %s" % (outFq1, outFq2))
     if(len(inFqs) == 1):
         raise Tim("There is no one here.  Go away! (single fastq DMP not yet"
                   "implemented")
