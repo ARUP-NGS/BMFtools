@@ -29,7 +29,7 @@ inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
 */
 
 inline float128_t invlog10_from_log10(int log10int) {
-	return -10 * log10(1 - pow(10.0L, - 0.1 * (float128_t)log10int));
+    return -10 * log10(1 - pow(10.0L, - 0.1 * (float128_t)log10int));
 }
 
 #define MAX_BARCODE_LENGTH 36
@@ -134,8 +134,8 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
                 kfp->phred_sums[i][j] += invlog10_from_log10(seq->qual.s[i] - 33); // Make sure we decrease our confidence in other base calls as well.
             }
         }
-        if(seq->seq.s[i] > kfp->max_phreds[i]) {
-            kfp->max_phreds[i] = seq->seq.s[i];
+        if(seq->qual.s[i] > kfp->max_phreds[i]) {
+            kfp->max_phreds[i] = seq->qual.s[i];
         }
     }
     kfp->length++; // Increment
@@ -163,11 +163,13 @@ inline char *barcode_mem_view(kseq_t *seq) {
 
 
 inline int ARRG_MAX(KingFisher_t *kfp, int index) {
+    /*
     fprintf(stderr, "Current values of phred_sums: %f,%f,%f,%f\n",
                     (double)kfp->phred_sums[index][0],
                     (double)kfp->phred_sums[index][1],
                     (double)kfp->phred_sums[index][2],
                     (double)kfp->phred_sums[index][3]);
+    */
     if(kfp->phred_sums[index][3] > kfp->phred_sums[index][2] &&
        kfp->phred_sums[index][3] > kfp->phred_sums[index][1] &&
        kfp->phred_sums[index][3] > kfp->phred_sums[index][0]) {
@@ -217,7 +219,6 @@ inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
     return;
 }
 
-
 inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
     char pass;
     char name_buffer[120];
@@ -233,15 +234,11 @@ inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int
         cons_seq[i] = ARRG_MAX_TO_NUC(argmaxret);
         cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
         agrees[i] = kfp->nuc_counts[i][argmaxret];
-        for(int j = 0; j < 5; j++) {
-            fprintf(stderr, "Argmaxret is %i. kfp->phred_sums[%i] is %f.\n", argmaxret, j, (float)kfp->phred_sums[i][j]);
-            fprintf(stderr, "Argmaxret is %i. kfp->nuc_counts[%i] is %i.\n", argmaxret, j, kfp->nuc_counts[i][j]);
-        }
     }
     cons_seq[kfp->readlen] = '\0'; // Null-terminal cons_seq.
     char FABuffer[1000];
     fill_fa_buffer(kfp, agrees, FABuffer);
-    fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+    //fprintf(stderr, "FA buffer: %s.\n", FABuffer);
     char PVBuffer[1000];
     fill_pv_buffer(kfp, cons_quals, PVBuffer);
     pass = (char)*(bs_ptr - 5); // 5 for |BS=[ACTG]
@@ -259,12 +256,10 @@ inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int
     name_buffer[0] = '@';
     strncpy((char *)(name_buffer + 1), bs_ptr, blen);
     name_buffer[1 + blen] = '\0';
-    fprintf(stderr, "Name buffer: %s\n", name_buffer);
+    //fprintf(stderr, "Name buffer: %s\n", name_buffer);
     char arr_tag_buffer[2000];
     sprintf(arr_tag_buffer, "%s\t%s\t%s\n%s\n+\n%s\n", FABuffer, PVBuffer, FPBuffer, cons_seq, kfp->max_phreds);
-    fprintf(stderr, "Output result: %s %s", name_buffer, arr_tag_buffer);
+    //fprintf(stderr, "Output result: %s %s", name_buffer, arr_tag_buffer);
     fprintf(handle, "%s %s", name_buffer, arr_tag_buffer);
-    //Make the strings to write to handle
-    //Write the strings to handle
     return;
 }
