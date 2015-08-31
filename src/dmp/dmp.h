@@ -17,7 +17,6 @@ KSEQ_INIT(gzFile, gzread)
 //such as in the following macro:
 #define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
 
-#define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10.0, -0.1 * log10int))
 /*
  * Equivalent to the following, but type-general:
 inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
@@ -55,15 +54,6 @@ inline double igamc_pvalues(int num_pvalues, double x)
         default: nuc_indices[0] = 0; nuc_indices[1] = 4; break;       \
     }
 
-
-/*
- * TODO: KingFisher finishing work.
- * A destructor for KingFisher.
- * FFF core.
- * Output result:
- * Rewrite the cFastFisherFlattening array work in C rather than Cython from MawCluster/BCFastq.pyx.
- * Use that array work to fill in the update_kf method.
- */
 
 typedef struct KingFisher {
     int **nuc_counts; // Count of nucleotides of this form
@@ -200,12 +190,12 @@ inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
 }
 
 inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
-    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:i:");
+    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:");
     return;
 }
 
 inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
-    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:i:");
+    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:");
     return;
 }
 

@@ -49,9 +49,9 @@ int ipow(int base, int exp);
 void FREE_SPLITTER(mark_splitter_t var);
 //void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
 
-#ifndef KSEQ_TO_SINGLE_LINE
-#define KSEQ_TO_SINGLE_LINE(handle, read, index, pass) fprintf(handle,\
-        "@%s ~#!#~|FP=%i|BS=%s\t%s\t+\t%s\n",\
+#ifndef KSEQ_2_FQ
+#define KSEQ_2_FQ(handle, read, index, pass) fprintf(handle,\
+        "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
     read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
@@ -81,7 +81,7 @@ inline int test_hp(kseq_t *seq, int threshold)
 	}
 	return (run < threshold);
 }
-
+/*
 inline sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
 {
     sort_overlord_t ret = {
@@ -119,6 +119,7 @@ inline void free_mp_sorter(sort_overlord_t var){
     //FREE_SPLITTER(*var.splitter);
     return;
 }
+*/
 
 
 // Functions
@@ -307,7 +308,7 @@ static inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
         pass = test_hp(seq_index, settings.hp_threshold);
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(seq_index->seq.s, settings.n_nucs);
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass);
-        KSEQ_TO_SINGLE_LINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass);
+        KSEQ_2_FQ(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass);
+        KSEQ_2_FQ(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass);
     }
 }
