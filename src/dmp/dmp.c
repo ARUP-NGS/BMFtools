@@ -29,7 +29,6 @@ void print_opt_err(char *argv[], char optarg[]) {
 // TODO: Use open_memstream to parallelize DMP and merge without a cat!
 
 int main(int argc, char* argv[]) {
-    int blen = 0;
 #ifdef BMF_THREADS
     int threads = 0;
 #endif
@@ -46,25 +45,26 @@ int main(int argc, char* argv[]) {
 #endif
     while ((c = getopt(argc, argv, "l:o:t:")) > -1) {
         switch(c) {
-            case 'l': blen = atoi(optarg); break;
 #ifdef BMF_THREADS
             case 't': threads = atoi(optarg); break;
+#else
+            case 't': fprintf(stderr, "bmftools_dmp was compiled without BMF_THREADS. Invalid option!\n"); return 1;
 #endif
             case 'o': outfname = strdup(optarg); break;
             default: print_opt_err(argv, optarg);
         }
     }
+    int fnames_count = 0;
+    fprintf(stderr, "Entry at optind %i: %s\n", optind, argv[optind]);
     for(int i = optind; i < argc; i++) {
-        infnames[i] = strdup(argv[optind]);
-    }
-    if(!blen) {
-        fprintf(stderr, "-l option (barcode length) required for bmftools_dmp.\n See usage.\n");
-        return 1;
+        infnames[fnames_count] = strdup(argv[optind]);
+        fnames_count++;
     }
     int abort = 0;
     int retcode;
     int index;
-    for(index = 0; index < (argc - 3); index++) {
+    for(index = 0; index < fnames_count; index++) {
+        fprintf(stderr, "About to call bmftools_dmp_wrapper for input %s and output %s.\n", infnames[index], outfname);
         retcode = bmftools_dmp_wrapper(infnames[index], outfname);
         if(retcode) {
             abort = 1;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     if(abort) {
         fprintf(stderr, "bmftools_dmp_wrapper and bmftools_dmp_core returned a non-zero exit status. (EXIT_FAILURE). Abort!\n");
     }
-    for(int i = 0; i < (argc - 3); i++) {
+    for(int i = 0; i < fnames_count; i++) {
         free(infnames[i]);
     }
     free(infnames);
@@ -91,6 +91,7 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
      * Set output_path to NULL to write to stdout.
      * Set input_path to "-" or NULL to read from stdin.
      */
+    fprintf(stderr, "Starting bmftools_dmp_wrapper.\n");
     FILE *in_handle;
     FILE *out_handle;
     if(input_path[0] == '-' || !input_path) in_handle = stdin;
@@ -99,10 +100,11 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
     }
     if(!output_path) out_handle = stdout;
     else {
-        out_handle = fopen(output_path, "w");
+        out_handle = fopen(output_path, "a");
     }
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
+    fprintf(stderr, "Opened file handles, initiated kseq parser.\n");
     int retcode = bmftools_dmp_core(seq, out_handle);
     kseq_destroy(seq);
     return retcode;
@@ -124,17 +126,25 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
     int l, readlen;
     int *nuc_indices = malloc(2 * sizeof(int));
     l = kseq_read(seq);
+    fprintf(stderr, "Starting bmftools_dmp_core.\n");
     if(l < 0) {
         fprintf(stderr, "Could not open input fastq. Abort!\n");
         exit(1);
     }
     readlen = strlen(seq->seq.s);
+    fprintf(stderr, "read length (inferred): %i\n", readlen);
     KingFisher_t Holloway = init_kf(readlen);
     KingFisher_t *Hook = &Holloway;
     char *bs_ptr = barcode_mem_view(seq); //Note: NOT null-terminated at the end of the barcode.
     int blen = infer_barcode_length(bs_ptr);
+#if !NDDEBUG
+    fprintf(stderr, "Barcode length (inferred): %i\n", blen);
+#endif
     char *current_barcode = (char *)calloc(blen + 1, 1);
     memcpy(current_barcode, bs_ptr, blen);
+#if !NDDEBUG
+    fprintf(stderr, "Current barcode: %s.\n", current_barcode);
+#endif
     pushback_kseq(Hook, seq, nuc_indices); // Initialize Hook with
     while ((l = kseq_read(seq)) >= 0) {
         bs_ptr = barcode_mem_view(seq);
@@ -146,9 +156,11 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
         }
 #endif
         if(memcmp(bs_ptr, current_barcode, blen) == 0) {
+            fprintf(stderr, "Same barcode. Continue pushing back.\n");
             pushback_kseq(Hook, seq, nuc_indices);
         }
         else {
+            fprintf(stderr, "Different barcode. Write out result.\n");
             dmp_process_write(Hook, out_handle, bs_ptr, blen);
             clear_kf(Hook); // Reset Holloway
             memcpy(current_barcode, bs_ptr, blen * sizeof(char)); // Update working barcode.

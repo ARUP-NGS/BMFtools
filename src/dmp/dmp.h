@@ -19,7 +19,7 @@ typedef __float128 float128_t;
 //such as in the following macro:
 #define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
 
-#define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10, log10int))
+#define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10.0L, -0.1 * ((float128_t)log10int)))
 /*
  * Equivalent to the following, but type-general:
 inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
@@ -27,7 +27,10 @@ inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
     return -2 * log(1 - pow(10, log10int));
 }
 */
-#define INV_LOG10_FROM_LOG10(log10int) -10 * log10(1 - pow(10, log10int))
+
+inline float128_t invlog10_from_log10(int log10int) {
+	return -10 * log10(1 - pow(10.0L, - 0.1 * (float128_t)log10int));
+}
 
 #define MAX_BARCODE_LENGTH 36
 
@@ -41,9 +44,6 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
         return 1.0;
     }
     else {
-#if !NDEBUG
-        fprintf(stderr, "Now calling igamcl.\n");
-#endif
         return igamcl(num_pvalues * 1., x / 2.0);
     }
 }
@@ -77,7 +77,7 @@ typedef struct KingFisher {
 
 inline KingFisher_t init_kf(size_t readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
-    float128_t **phred_sums = (float128_t **)malloc(sizeof(float128_t *) * 4);
+    float128_t **phred_sums = (float128_t **)malloc(sizeof(float128_t *) * readlen);
     for(int i = 0; i < readlen; i++) {
         nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
         phred_sums[i] = (float128_t *)calloc(4, sizeof(float128_t)); // One for each nucleotide
@@ -104,8 +104,8 @@ inline void destroy_kf(KingFisher_t *kfp) {
 
 inline void clear_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
-        memset(kfp->phred_sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
+        memset(kfp->phred_sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
     }
     memset(kfp->max_phreds, 0, kfp->readlen); //Turn it back into an array of nulls.
     kfp->length = 0;
@@ -126,10 +126,12 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
         for(int j = 0; j < 4; j++) {
-            if(j == nuc_indices[1])
-            kfp->phred_sums[i][j] += (seq->qual.s[i] - 33);
+            //fprintf(stderr, "Attempting to update quality information for elements i (%i) and j (%i).\n", i, j);
+            if(j == nuc_indices[1]) {
+                kfp->phred_sums[i][j] += seq->qual.s[i] - 33;
+            }
             else {
-                kfp->phred_sums[i][j] += INV_LOG10_FROM_LOG10((seq->qual.s[i] - 33)); // Make sure we decrease our confidence in other base calls as well.
+                kfp->phred_sums[i][j] += invlog10_from_log10(seq->qual.s[i] - 33); // Make sure we decrease our confidence in other base calls as well.
             }
         }
         if(seq->seq.s[i] > kfp->max_phreds[i]) {
@@ -161,6 +163,11 @@ inline char *barcode_mem_view(kseq_t *seq) {
 
 
 inline int ARRG_MAX(KingFisher_t *kfp, int index) {
+    fprintf(stderr, "Current values of phred_sums: %f,%f,%f,%f\n",
+                    (double)kfp->phred_sums[index][0],
+                    (double)kfp->phred_sums[index][1],
+                    (double)kfp->phred_sums[index][2],
+                    (double)kfp->phred_sums[index][3]);
     if(kfp->phred_sums[index][3] > kfp->phred_sums[index][2] &&
        kfp->phred_sums[index][3] > kfp->phred_sums[index][1] &&
        kfp->phred_sums[index][3] > kfp->phred_sums[index][0]) {
@@ -206,13 +213,13 @@ inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
 }
 
 inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
-    fill_csv_buffer(kfp->readlen, agrees, buffer, "FM:i:");
+    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:i:");
     return;
 }
 
 
 inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen) {
-    int pass;
+    char pass;
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
@@ -226,15 +233,20 @@ inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int
         cons_seq[i] = ARRG_MAX_TO_NUC(argmaxret);
         cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
         agrees[i] = kfp->nuc_counts[i][argmaxret];
+        for(int j = 0; j < 5; j++) {
+            fprintf(stderr, "Argmaxret is %i. kfp->phred_sums[%i] is %f.\n", argmaxret, j, (float)kfp->phred_sums[i][j]);
+            fprintf(stderr, "Argmaxret is %i. kfp->nuc_counts[%i] is %i.\n", argmaxret, j, kfp->nuc_counts[i][j]);
+        }
     }
     cons_seq[kfp->readlen] = '\0'; // Null-terminal cons_seq.
     char FABuffer[1000];
     fill_fa_buffer(kfp, agrees, FABuffer);
+    fprintf(stderr, "FA buffer: %s.\n", FABuffer);
     char PVBuffer[1000];
     fill_pv_buffer(kfp, cons_quals, PVBuffer);
-    pass = (int)*(bs_ptr - 5); // 5 for |BS=[ACTG]
+    pass = (char)*(bs_ptr - 5); // 5 for |BS=[ACTG]
 #if !NDEBUG
-    if(pass != 0 && pass != 1) {
+    if(pass != '0' && pass != '1') {
         char buf[20];
         memcpy(buf, (bs_ptr - 5), 5 + blen + 1);
         buf[5 + blen + 1] = '\0';
@@ -243,12 +255,14 @@ inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int
     }
 #endif
     char FPBuffer[7];
-    sprintf(FPBuffer, "FP:i:%i", pass);
+    sprintf(FPBuffer, "FP:i:%c", pass);
     name_buffer[0] = '@';
     strncpy((char *)(name_buffer + 1), bs_ptr, blen);
     name_buffer[1 + blen] = '\0';
+    fprintf(stderr, "Name buffer: %s\n", name_buffer);
     char arr_tag_buffer[2000];
     sprintf(arr_tag_buffer, "%s\t%s\t%s\n%s\n+\n%s\n", FABuffer, PVBuffer, FPBuffer, cons_seq, kfp->max_phreds);
+    fprintf(stderr, "Output result: %s %s", name_buffer, arr_tag_buffer);
     fprintf(handle, "%s %s", name_buffer, arr_tag_buffer);
     //Make the strings to write to handle
     //Write the strings to handle
