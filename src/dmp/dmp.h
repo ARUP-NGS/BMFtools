@@ -11,15 +11,13 @@
 // Force declaration of all of kseq's types.
 KSEQ_INIT(gzFile, gzread)
 
-typedef __float128 float128_t;
 
-
-#define LOG10E_X5_INV 0.4605170185988091368035982909368728415202202977257545952066655801935145219354704960471994410179196596683935568084572497266819050930165613513332L
+#define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
 //such as in the following macro:
 #define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
 
-#define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10.0L, -0.1 * ((float128_t)log10int)))
+#define INV_CHI2_FROM_LOG10(log10int) -2 * log(1 - pow(10.0, -0.1 * log10int))
 /*
  * Equivalent to the following, but type-general:
 inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
@@ -28,23 +26,23 @@ inline float128_t INV_CHI2_FROM_LOG10(int32_t log10int)
 }
 */
 
-inline float128_t invlog10_from_log10(int log10int) {
-    return -10 * log10(1 - pow(10.0L, - 0.1 * (float128_t)log10int));
+double invlog10_from_log10(int log10int) {
+    return -10 * log10(1 - pow(10.0, - 0.1 * log10int));
 }
 
 #define MAX_BARCODE_LENGTH 36
 
 
-extern float128_t igamcl(float128_t a, float128_t x);
+extern double igamc(double a, double x);
 
 // Converts a 
-inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
+inline double igamc_pvalues(int num_pvalues, double x)
 {
     if(x < 0) {
         return 1.0;
     }
     else {
-        return igamcl(num_pvalues * 1., x / 2.0);
+        return igamc((double)num_pvalues, x / 2.0);
     }
 }
 
@@ -69,18 +67,18 @@ inline float128_t igamc_pvalues(int num_pvalues, float128_t x)
 
 typedef struct KingFisher {
     int **nuc_counts; // Count of nucleotides of this form
-    float128_t **phred_sums; // Sums of -10log10(p-value)
+    double **phred_sums; // Sums of -10log10(p-value)
     int length; // Number of reads in family
     int readlen; // Length of reads
     char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 } KingFisher_t;
 
-inline KingFisher_t init_kf(size_t readlen) {
+KingFisher_t init_kf(size_t readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
-    float128_t **phred_sums = (float128_t **)malloc(sizeof(float128_t *) * readlen);
+    double **phred_sums = (double **)malloc(sizeof(double *) * readlen);
     for(int i = 0; i < readlen; i++) {
         nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
-        phred_sums[i] = (float128_t *)calloc(4, sizeof(float128_t)); // One for each nucleotide
+        phred_sums[i] = (double *)calloc(4, sizeof(double)); // One for each nucleotide
     }
     KingFisher_t fisher = {
         .nuc_counts = nuc_counts,
@@ -105,7 +103,7 @@ inline void destroy_kf(KingFisher_t *kfp) {
 inline void clear_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
-        memset(kfp->phred_sums[i], 0, 4 * sizeof(float128_t)); // Sets these to 0.
+        memset(kfp->phred_sums[i], 0, 4 * sizeof(double)); // Sets these to 0.
     }
     memset(kfp->max_phreds, 0, kfp->readlen); //Turn it back into an array of nulls.
     kfp->length = 0;
@@ -125,15 +123,7 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices) {
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
-        for(int j = 0; j < 4; j++) {
-            //fprintf(stderr, "Attempting to update quality information for elements i (%i) and j (%i).\n", i, j);
-            if(j == nuc_indices[1]) {
-                kfp->phred_sums[i][j] += seq->qual.s[i] - 33;
-            }
-            else {
-                kfp->phred_sums[i][j] += invlog10_from_log10(seq->qual.s[i] - 33); // Make sure we decrease our confidence in other base calls as well.
-            }
-        }
+        kfp->phred_sums[i][nuc_indices[1]] += seq->qual.s[i] - 33;
         if(seq->qual.s[i] > kfp->max_phreds[i]) {
             kfp->max_phreds[i] = seq->qual.s[i];
         }
@@ -196,7 +186,7 @@ inline char ARRG_MAX_TO_NUC(int argmaxret) {
     }
 }
 
-inline int pvalue_to_phred(float128_t pvalue) {
+inline int pvalue_to_phred(double pvalue) {
     return (int)(-10 * log10(pvalue));
 }
 

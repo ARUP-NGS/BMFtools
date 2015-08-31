@@ -3,27 +3,12 @@ Flat profile:
 Each sample counts as 0.01 seconds.
   %   cumulative   self              self     total           
  time   seconds   seconds    calls  ms/call  ms/call  name    
- 22.64      0.46     0.46                             __multf3
- 21.89      0.90     0.44                             __divtf3
- 15.92      1.22     0.32                             __addtf3
- 11.69      1.45     0.24                             __subtf3
-  4.98      1.55     0.10                             __trunctfdf2
-  4.48      1.64     0.09                             __trunctfxf2
-  3.48      1.71     0.07                             __extenddftf2
-  2.99      1.77     0.06                             __extendxftf2
-  2.49      1.82     0.05        1    50.01    90.02  bmftools_dmp_core
-  1.99      1.86     0.04                             __floatsitf
-  1.99      1.90     0.04                             __gttf2
-  1.99      1.94     0.04                             __letf2
-  1.00      1.96     0.02                             __sfp_handle_exceptions
-  0.50      1.97     0.01   868490     0.00     0.00  igamcl
-  0.50      1.98     0.01   868490     0.00     0.00  isfinitef128
-  0.50      1.99     0.01   868490     0.00     0.00  lgaml
-  0.50      2.00     0.01   160000     0.00     0.00  ks_getuntil2
-  0.50      2.01     0.01                             __eqtf2
-  0.00      2.01     0.00   868490     0.00     0.00  isnanf128
-  0.00      2.01     0.00    40001     0.00     0.00  kseq_read
-  0.00      2.01     0.00    12834     0.00     0.00  igaml
+ 37.52      0.03     0.03   160000     0.00     0.00  ks_getuntil2
+ 37.52      0.06     0.03        1    30.01    80.04  bmftools_dmp_core
+ 25.01      0.08     0.02   868490     0.00     0.00  igamc
+  0.00      0.08     0.00   868490     0.00     0.00  lgam
+  0.00      0.08     0.00    40001     0.00     0.00  kseq_read
+  0.00      0.08     0.00    12834     0.00     0.00  igaml
 
  %         the percentage of the total running time of the
 time       program used by this function.
@@ -61,84 +46,37 @@ notice and this notice are preserved.
 		     Call graph (explanation follows)
 
 
-granularity: each sample hit covers 2 byte(s) for 0.50% of 2.01 seconds
+granularity: each sample hit covers 2 byte(s) for 12.49% of 0.08 seconds
 
 index % time    self  children    called     name
-                                                 <spontaneous>
-[1]     22.6    0.46    0.00                 __multf3 [1]
+                0.03    0.05       1/1           bmftools_dmp_wrapper [2]
+[1]    100.0    0.03    0.05       1         bmftools_dmp_core [1]
+                0.00    0.03   40001/40001       kseq_read [4]
+                0.02    0.00  868490/868490      igamc [5]
 -----------------------------------------------
                                                  <spontaneous>
-[2]     21.9    0.44    0.00                 __divtf3 [2]
+[2]    100.0    0.00    0.08                 bmftools_dmp_wrapper [2]
+                0.03    0.05       1/1           bmftools_dmp_core [1]
 -----------------------------------------------
-                                                 <spontaneous>
-[3]     15.9    0.32    0.00                 __addtf3 [3]
+                0.03    0.00  160000/160000      kseq_read [4]
+[3]     37.5    0.03    0.00  160000         ks_getuntil2 [3]
 -----------------------------------------------
-                                                 <spontaneous>
-[4]     11.7    0.24    0.00                 __subtf3 [4]
+                0.00    0.03   40001/40001       bmftools_dmp_core [1]
+[4]     37.5    0.00    0.03   40001         kseq_read [4]
+                0.03    0.00  160000/160000      ks_getuntil2 [3]
 -----------------------------------------------
-                                                 <spontaneous>
-[5]      5.0    0.10    0.00                 __trunctfdf2 [5]
+                0.02    0.00  868490/868490      bmftools_dmp_core [1]
+[5]     25.0    0.02    0.00  868490         igamc [5]
+                0.00    0.00  855656/868490      lgam [6]
+                0.00    0.00   12834/12834       igaml [7]
 -----------------------------------------------
-                0.05    0.04       1/1           bmftools_dmp_wrapper [7]
-[6]      4.5    0.05    0.04       1         bmftools_dmp_core [6]
-                0.01    0.02  868490/868490      igamcl [14]
-                0.00    0.01   40001/40001       kseq_read [19]
+                0.00    0.00   12834/868490      igaml [7]
+                0.00    0.00  855656/868490      igamc [5]
+[6]      0.0    0.00    0.00  868490         lgam [6]
 -----------------------------------------------
-                                                 <spontaneous>
-[7]      4.5    0.00    0.09                 bmftools_dmp_wrapper [7]
-                0.05    0.04       1/1           bmftools_dmp_core [6]
------------------------------------------------
-                                                 <spontaneous>
-[8]      4.5    0.09    0.00                 __trunctfxf2 [8]
------------------------------------------------
-                                                 <spontaneous>
-[9]      3.5    0.07    0.00                 __extenddftf2 [9]
------------------------------------------------
-                                                 <spontaneous>
-[10]     3.0    0.06    0.00                 __extendxftf2 [10]
------------------------------------------------
-                                                 <spontaneous>
-[11]     2.0    0.04    0.00                 __floatsitf [11]
------------------------------------------------
-                                                 <spontaneous>
-[12]     2.0    0.04    0.00                 __gttf2 [12]
------------------------------------------------
-                                                 <spontaneous>
-[13]     2.0    0.04    0.00                 __letf2 [13]
------------------------------------------------
-                0.01    0.02  868490/868490      bmftools_dmp_core [6]
-[14]     1.5    0.01    0.02  868490         igamcl [14]
-                0.01    0.01  855656/868490      lgaml [15]
-                0.00    0.00   12834/12834       igaml [21]
------------------------------------------------
-                0.00    0.00   12834/868490      igaml [21]
-                0.01    0.01  855656/868490      igamcl [14]
-[15]     1.0    0.01    0.01  868490         lgaml [15]
-                0.01    0.00  868490/868490      isfinitef128 [17]
-                0.00    0.00  868490/868490      isnanf128 [22]
------------------------------------------------
-                                                 <spontaneous>
-[16]     1.0    0.02    0.00                 __sfp_handle_exceptions [16]
------------------------------------------------
-                0.01    0.00  868490/868490      lgaml [15]
-[17]     0.5    0.01    0.00  868490         isfinitef128 [17]
------------------------------------------------
-                0.01    0.00  160000/160000      kseq_read [19]
-[18]     0.5    0.01    0.00  160000         ks_getuntil2 [18]
------------------------------------------------
-                0.00    0.01   40001/40001       bmftools_dmp_core [6]
-[19]     0.5    0.00    0.01   40001         kseq_read [19]
-                0.01    0.00  160000/160000      ks_getuntil2 [18]
------------------------------------------------
-                                                 <spontaneous>
-[20]     0.5    0.01    0.00                 __eqtf2 [20]
------------------------------------------------
-                0.00    0.00   12834/12834       igamcl [14]
-[21]     0.0    0.00    0.00   12834         igaml [21]
-                0.00    0.00   12834/868490      lgaml [15]
------------------------------------------------
-                0.00    0.00  868490/868490      lgaml [15]
-[22]     0.0    0.00    0.00  868490         isnanf128 [22]
+                0.00    0.00   12834/12834       igamc [5]
+[7]      0.0    0.00    0.00   12834         igaml [7]
+                0.00    0.00   12834/868490      lgam [6]
 -----------------------------------------------
 
  This table describes the call tree of the program, and was sorted by
@@ -231,10 +169,5 @@ notice and this notice are preserved.
 
 Index by function name
 
-   [3] __addtf3               [13] __letf2                [14] igamcl
-   [2] __divtf3                [1] __multf3               [21] igaml
-  [20] __eqtf2                [16] __sfp_handle_exceptions [17] isfinitef128
-   [9] __extenddftf2           [4] __subtf3               [22] isnanf128
-  [10] __extendxftf2           [5] __trunctfdf2           [18] ks_getuntil2 (dmp.h)
-  [11] __floatsitf             [8] __trunctfxf2           [19] kseq_read (dmp.h)
-  [12] __gttf2                 [6] bmftools_dmp_core      [15] lgaml
+   [1] bmftools_dmp_core       [7] igaml                   [4] kseq_read (dmp.h)
+   [5] igamc                   [3] ks_getuntil2 (dmp.h)    [6] lgam

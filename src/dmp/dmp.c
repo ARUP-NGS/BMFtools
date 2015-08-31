@@ -3,13 +3,13 @@
 #include "dmp.h"
 
 //Function definitions
-float128_t igamc_pvalues(int num_pvalues, float128_t x);
+double igamc_pvalues(int num_pvalues, double x);
 KingFisher_t init_kf(size_t readlen);
 void pushback_kseq(KingFisher_t *fisher, kseq_t *seq, int *nuc_indices);
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle);
 int ARRG_MAX(KingFisher_t *kfp, int index);
 char ARRG_MAX_TO_NUC(int argmaxret);
-int pvalue_to_phred(float128_t pvalue);
+int pvalue_to_phred(double pvalue);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen);
 int bmftools_dmp_wrapper(char *input_path, char *output_path);
