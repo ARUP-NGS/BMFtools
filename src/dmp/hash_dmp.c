@@ -3,7 +3,7 @@
 #include "fqmarksplit.h"
 
 
-// k must be a khiter_t object.
+// k must be a khiter_t object in scope.
 // shorthand way to get the key from hashtable or defVal if not found
 #define kh_get_val(kname, hash, key, defVal) ({k=kh_get(kname, hash, key);(k!=kh_end(hash)?kh_val(hash,k):defVal);})
 
@@ -18,15 +18,55 @@ extern int get_binner(char *barcode, int length); // From fqmarksplit.h
 extern char *barcode_mem_view(kseq_t *seq); // from dmp.h
 extern void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices);
 
-int main(int argc, char *argv[]){
-	khiter_t k;
-	khash_t(fisher) *h = kh_init(khStrInt);
+void print_usage(char *argv[]) {
+	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.");
 }
 
-void hash_dmp_core(khash_t(fisher) *hash_table, FILE *handle, kseq_t *seq, int blen, int readlen) {
+int main(int argc, char *argv[]){
+    char *outfname = NULL;
+    char *infname = NULL;
+    int c;
+    while ((c = getopt(argc, argv, "h:o:")) > -1) {
+        switch(c) {
+            case 'o': outfname = strdup(optarg);break;
+            case 'h': print_usage(argv); return 0;
+            default: print_opt_err(argv, optarg);
+        }
+    }
+    FILE *in_handle;
+    FILE *out_handle;
+    infname = strdup(argv[optind]);
+    if(infname[0] == '-' || !infname) in_handle = stdin;
+    else {
+        in_handle = fopen(input_path, "r");
+    }
+    if(!outfname) out_handle = stdout;
+    else {
+        out_handle = fopen(output_path, "w");
+    }
+    gzFile fp = gzdopen(fileno(in_handle), "r");
+    kseq_t *seq = kseq_init(fp);
+    fprintf(stderr, "Opened file handles, initiated kseq parser.\n");
+	khiter_t k;
+	khash_t(fisher) *hash_table = kh_init(fisher);
+	hash_dmp_core(hash_table, out_handle, seq, k);
+	kh_destroy(fisher, hash_table);
+	kseq_destroy(seq);
+	return 0;
+}
+
+void hash_dmp_core(khash_t(fisher) *hash_table, FILE *handle, kseq_t *seq, khiter_t k) {
 	int *nuc_indices = malloc(2 * sizeof(int));
-	char *bs_ptr;
-	int l;
+	char *bs_ptr = barcode_mem_view(seq);
+    int blen = infer_barcode_length(bs_ptr);
+	int l = kseq_read(seq);
+	int readlen = strlen(seq->seq.s);
+	fprintf(stderr, "read length (inferred): %i\n", readlen);
+	if(l < 0) {
+		fprintf(stderr, "Could not open fastq file. Abort mission!\n");
+		exit(1);
+	}
+    pushback_hash(hash_table, seq, bs_ptr, blen, readlen, nuc_indices);
 	while ((l = kseq_read(seq)) >= 0) {
 		bs_ptr = barcode_mem_view(seq);
 		pushback_hash(hash_table, seq, bs_ptr, blen, readlen, nuc_indices);

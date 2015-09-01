@@ -63,9 +63,10 @@ int main(int argc, char* argv[]) {
     int abort = 0;
     int retcode;
     int index;
+    char *mode = (fnames_count == 1) ? "w": "a"; // Append to the file in the case of looping
     for(index = 0; index < fnames_count; index++) {
         fprintf(stderr, "About to call bmftools_dmp_wrapper for input %s and output %s.\n", infnames[index], outfname);
-        retcode = bmftools_dmp_wrapper(infnames[index], outfname);
+        retcode = bmftools_dmp_wrapper(infnames[index], outfname, mode);
         if(retcode) {
             abort = 1;
             break;
@@ -86,7 +87,7 @@ int main(int argc, char* argv[]) {
 }
 
 
-int bmftools_dmp_wrapper(char *input_path, char *output_path) {
+int bmftools_dmp_wrapper(char *input_path, char *output_path, char *mode) {
     /*
      * Set output_path to NULL to write to stdout.
      * Set input_path to "-" or NULL to read from stdin.
@@ -100,7 +101,7 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
     }
     if(!output_path) out_handle = stdout;
     else {
-        out_handle = fopen(output_path, "w");
+        out_handle = fopen(output_path, mode);
     }
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
