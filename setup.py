@@ -50,6 +50,8 @@ subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/. -lz -o src/dmp/fqmarks
 subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
 #subprocess.check_call('cd src/dmp; gcc -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o igamc -fopenmp -lm -std=c99; cd ../..', shell=True)
 #gcc  -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o omgz -fopenmp -lm -lz -std=gnu99
+#gcc -I. -o hash_dmp hash_dmp.c igamc_cephes.c -lz -lm -std=gnu11
+#gcc -I. -o dmp dmp.c igamc_cephes.c -lz -lm -std=gnu11
 
 config = {
     'description': '',

@@ -1,18 +1,22 @@
-#include <getopt.h>
-#include <quadmath.h>
-#include "dmp.h"
+#include "dmp_interface.h"
 
 //Function definitions
 double igamc_pvalues(int num_pvalues, double x);
 KingFisher_t init_kf(size_t readlen);
-void pushback_kseq(KingFisher_t *fisher, kseq_t *seq, int *nuc_indices);
+void pushback_kseq(KingFisher_t *fisher, kseq_t *seq, int *nuc_indices, int blen);
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle);
 int ARRG_MAX(KingFisher_t *kfp, int index);
 char ARRG_MAX_TO_NUC(int argmaxret);
 int pvalue_to_phred(double pvalue);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, char *bs_ptr, int blen);
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen);
 int bmftools_dmp_wrapper(char *input_path, char *output_path);
+int infer_barcode_length(char *bs_ptr);
+void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix);
+void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
+void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
+void destroy_kf(KingFisher_t *kfp);
+void clear_kf(KingFisher_t *kfp);
 
 void print_usage(char *argv[]) {
     fprintf(stderr, "Usage: %s -o <output_path> <input_path> (<optional other input_paths>)\n"
@@ -66,7 +70,7 @@ int main(int argc, char* argv[]) {
     char *mode = (fnames_count == 1) ? "w": "a"; // Append to the file in the case of looping
     for(index = 0; index < fnames_count; index++) {
         fprintf(stderr, "About to call bmftools_dmp_wrapper for input %s and output %s.\n", infnames[index], outfname);
-        retcode = bmftools_dmp_wrapper(infnames[index], outfname, mode);
+        retcode = bmftools_dmp_wrapper(infnames[index], outfname);
         if(retcode) {
             abort = 1;
             break;
@@ -87,7 +91,7 @@ int main(int argc, char* argv[]) {
 }
 
 
-int bmftools_dmp_wrapper(char *input_path, char *output_path, char *mode) {
+int bmftools_dmp_wrapper(char *input_path, char *output_path) {
     /*
      * Set output_path to NULL to write to stdout.
      * Set input_path to "-" or NULL to read from stdin.
@@ -101,7 +105,7 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path, char *mode) {
     }
     if(!output_path) out_handle = stdout;
     else {
-        out_handle = fopen(output_path, mode);
+        out_handle = fopen(output_path, "w");
     }
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
@@ -109,17 +113,6 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path, char *mode) {
     int retcode = bmftools_dmp_core(seq, out_handle);
     kseq_destroy(seq);
     return retcode;
-}
-
-int infer_barcode_length(char *bs_ptr) {
-    int ret = 0;
-    for (;;ret++) {
-        if(bs_ptr[ret] == '\0') return ret;
-        if(ret > MAX_BARCODE_LENGTH) {
-            fprintf(stderr, "Inferred barcode length greater than max (%i). Abort!\n", MAX_BARCODE_LENGTH);
-            exit(1);
-        }
-    }
 }
 
 
@@ -134,7 +127,10 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
     }
     readlen = strlen(seq->seq.s);
     fprintf(stderr, "read length (inferred): %i\n", readlen);
+    INIT_KF(Holloway, readlen)
+    /*
     KingFisher_t Holloway = init_kf(readlen);
+    */
     KingFisher_t *Hook = &Holloway;
     char *bs_ptr = barcode_mem_view(seq); //Note: NOT null-terminated at the end of the barcode.
     int blen = infer_barcode_length(bs_ptr);
@@ -146,7 +142,7 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
 #if !NDEBUG
     fprintf(stderr, "Current barcode: %s.\n", current_barcode);
 #endif
-    pushback_kseq(Hook, seq, nuc_indices); // Initialize Hook with
+    pushback_kseq(Hook, seq, nuc_indices, blen); // Initialize Hook with
     while ((l = kseq_read(seq)) >= 0) {
         bs_ptr = barcode_mem_view(seq);
 #if !NDEBUG
@@ -160,20 +156,20 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
 #if !NDEBUG
             fprintf(stderr, "Same barcode. Continue pushing back.\n");
 #endif
-            pushback_kseq(Hook, seq, nuc_indices);
+            pushback_kseq(Hook, seq, nuc_indices, blen);
         }
         else {
 #if !NDEBUG
             fprintf(stderr, "Different barcode. Write out result.\n");
 #endif
-            dmp_process_write(Hook, out_handle, bs_ptr, blen);
+            dmp_process_write(Hook, out_handle, blen);
             clear_kf(Hook); // Reset Holloway
             memcpy(current_barcode, bs_ptr, blen * sizeof(char)); // Update working barcode.
-            pushback_kseq(Hook, seq, nuc_indices);
+            pushback_kseq(Hook, seq, nuc_indices, blen);
         }
     }
     if(Hook->length) { // If length is not 0
-        dmp_process_write(Hook, out_handle, bs_ptr, blen);
+        dmp_process_write(Hook, out_handle, blen);
     }
     destroy_kf(Hook);
     return 0;
