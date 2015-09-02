@@ -14,19 +14,21 @@ KSEQ_INIT(gzFile, gzread)
 char *barcode_mem_view(kseq_t *seq);
 
 
-#define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
+#define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
 //such as in the following macro:
 #define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
+
+// Throws an error when inferring barcode length.
 #define MAX_BARCODE_LENGTH 30
 
 
 // Calls incomplete gamma complement from CEPHES.
-extern double igamc(double a, double x);
+extern double igamc(double x, double y);
 
 
 // Converts a chi2 sum into a p value.
-inline double igamc_pvalues(int num_pvalues, double x)
+double igamc_pvalues(int num_pvalues, double x)
 {
     if(x < 0) {
         return 1.0;
@@ -58,7 +60,7 @@ typedef struct KingFisher {
     int pass;
 } KingFisher_t;
 
-
+/*
 #define INIT_KF(var, readlen)                                                \
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));              \
     double **phred_sums = (double **)malloc(sizeof(double *) * readlen);     \
@@ -67,18 +69,18 @@ typedef struct KingFisher {
         nuc_counts[i] = (int *)calloc(5, sizeof(int));                       \
         phred_sums[i] = (double *)calloc(4, sizeof(double));                 \
     }                                                                        \
-	KingFisher_t var = {                                                     \
+    KingFisher_t var = {                                                     \
         .nuc_counts = nuc_counts,                                            \
         .phred_sums = phred_sums,                                            \
         .length = 0,                                                         \
         .readlen = readlen,                                                  \
         .max_phreds = max_phreds,                                            \
-		.pass = 0,                                                           \
-		.barcode = NULL                                                      \
+        .pass = 0,                                                           \
+        .barcode = NULL                                                      \
     };
+*/
 
-/*
- * Above macro is equivalent to this function.
+
 KingFisher_t init_kf(size_t readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
     double **phred_sums = (double **)malloc(sizeof(double *) * readlen);
@@ -95,19 +97,22 @@ KingFisher_t init_kf(size_t readlen) {
     };
     return fisher;
 }
-*/
 
-inline void destroy_kf(KingFisher_t *kfp) {
+void destroy_kf(KingFisher_t *kfp) {
+    fprintf(stderr, "Starting to destroy kfp with readlen %i.\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; ++i) {
+        fprintf(stderr, "Starting to destroy.\n");
+        fprintf(stderr, "Freeing nuc_counts and phred_sums %i.", i);
         free(kfp->nuc_counts[i]);
         free(kfp->phred_sums[i]);
     }
     free(kfp->nuc_counts);
     free(kfp->phred_sums);
     free(kfp->max_phreds);
+    free(kfp->barcode);
 }
 
-inline void clear_kf(KingFisher_t *kfp) {
+void clear_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
         memset(kfp->phred_sums[i], 0, 4 * sizeof(double)); // Sets these to 0.
@@ -118,7 +123,7 @@ inline void clear_kf(KingFisher_t *kfp) {
 }
 
 /*
-inline void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
+void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
 
     fprintf(stderr, "update_kf for updating KingFisher_t is unimplemented. Abort!\n");
     exit(1);
@@ -126,7 +131,8 @@ inline void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
 }
 */
 
-inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
+void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
+    fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
@@ -135,13 +141,14 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
             kfp->max_phreds[i] = seq->qual.s[i];
         }
     }
-    if(!kfp->length) {
-    	char *bs_ptr = barcode_mem_view(seq);
-    	kfp->pass = (char)*(bs_ptr- 5);
-    	kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
-    	memcpy(kfp->barcode, bs_ptr, blen);
+    if(kfp->length == 0) {
+        char *bs_ptr = barcode_mem_view(seq);
+        kfp->pass = (char)*(bs_ptr- 5);
+        kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
+        memcpy(kfp->barcode, bs_ptr, blen);
     }
     kfp->length++; // Increment
+    fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
     return;
 }
 
@@ -149,7 +156,7 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
  * Warning: returns a NULL upon not finding a second pipe symbol.
  * This is *NOT* a properly null-terminated string.
  */
-inline char *barcode_mem_view(kseq_t *seq) {
+char *barcode_mem_view(kseq_t *seq) {
     int hits = 0;
     for(int i = 0; i < seq->comment.l; i++) {
         if(seq->comment.s[i] == '|') {
@@ -165,7 +172,7 @@ inline char *barcode_mem_view(kseq_t *seq) {
 }
 
 
-inline int ARRG_MAX(KingFisher_t *kfp, int index) {
+int ARRG_MAX(KingFisher_t *kfp, int index) {
     /*
     fprintf(stderr, "Current values of phred_sums: %f,%f,%f,%f\n",
                     (double)kfp->phred_sums[index][0],
@@ -190,7 +197,7 @@ inline int ARRG_MAX(KingFisher_t *kfp, int index) {
     }
 }
 
-inline char ARRG_MAX_TO_NUC(int argmaxret) {
+char ARRG_MAX_TO_NUC(int argmaxret) {
     switch (argmaxret) {
         case 1: return 'C';
         case 2: return 'G';
@@ -199,11 +206,11 @@ inline char ARRG_MAX_TO_NUC(int argmaxret) {
     }
 }
 
-inline int pvalue_to_phred(double pvalue) {
+int pvalue_to_phred(double pvalue) {
     return (int)(-10 * log10(pvalue));
 }
 
-inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
+void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
     char tmpbuf[10];
     sprintf(buffer, prefix);
     for(int i = 0; i < readlen; i++) {
@@ -212,17 +219,17 @@ inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
     }
 }
 
-inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
+void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
     fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:");
     return;
 }
 
-inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
+void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
     fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:");
     return;
 }
 
-inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
     char pass;
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
@@ -310,26 +317,26 @@ void FREE_SPLITTER(mark_splitter_t var);
     free(settings.input_r2_path);
 #endif
 
-inline int test_hp(kseq_t *seq, int threshold)
+int test_hp(kseq_t *seq, int threshold)
 {
-	int run = 0;
-	char last = '\0';
-	for(int i = 0; i < seq->seq.l; i++){
-		if(seq->seq.s[i] == 'N') {
-			return 0;
-		}
-		if(seq->seq.s[i] == last) {
-			run += 1;
-		}
-		else {
-			run = 0;
-			last = seq->seq.s[i];
-		}
-	}
-	return (run < threshold);
+    int run = 0;
+    char last = '\0';
+    for(int i = 0; i < seq->seq.l; i++){
+        if(seq->seq.s[i] == 'N') {
+            return 0;
+        }
+        if(seq->seq.s[i] == last) {
+            run += 1;
+        }
+        else {
+            run = 0;
+            last = seq->seq.s[i];
+        }
+    }
+    return (run < threshold);
 }
 /*
-inline sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
+sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
 {
     sort_overlord_t ret = {
             .splitter = splitter_ptr,
@@ -352,7 +359,7 @@ inline sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settin
     return ret;
 }
 
-inline void free_mp_sorter(sort_overlord_t var){
+void free_mp_sorter(sort_overlord_t var){
     for (int i = 0; i < var.splitter->n_handles; i++) {
         //fclose(var.sort_out_handles_r1[i]);
         //fclose(var.sort_out_handles_r2[i]);
@@ -370,7 +377,7 @@ inline void free_mp_sorter(sort_overlord_t var){
 
 
 // Functions
-inline int ipow(int base, int exp)
+int ipow(int base, int exp)
 {
     int result = 1;
     while (exp)
@@ -384,9 +391,9 @@ inline int ipow(int base, int exp)
     return result;
 }
 /*
-inline int lh3_sort_call(char *fname, char *outfname)
+int lh3_sort_call(char *fname, char *outfname)
 {
-	char buffer[200];
+    char buffer[200];
     int retvar;
     char **lh3_argv = (char **)malloc(6 * sizeof(char *));
     lh3_argv[0] = strdup("lh3sort");
@@ -408,7 +415,7 @@ inline int lh3_sort_call(char *fname, char *outfname)
 */
 
 
-inline void FREE_SPLITTER(mark_splitter_t var){
+void FREE_SPLITTER(mark_splitter_t var){
     for(int i = 0; i < var.n_handles; i++)
     {
         fclose(var.tmp_out_handles_r1[i]);
@@ -430,9 +437,9 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     fprintf(stderr, "Number of : handles %i.\n", dispatcher->splitter->n_handles * 4);
     #pragma omp parallel for
     for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
-    	fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
+        fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
         #pragma omp flush(abort)
-		fprintf(stderr, "About to try opening file %s.\n", dispatcher->out_fnames_r1[i]);
+        fprintf(stderr, "About to try opening file %s.\n", dispatcher->out_fnames_r1[i]);
         int ret = lh3_sort_call(dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
         fprintf(stderr, "lh3_sort_call return value: %i.\n", ret);
         if(ret) {
@@ -455,7 +462,7 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     #pragma omp parallel for
     for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
         #pragma omp flush(abort)
-    	fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
+        fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
         int ret = lh3_sort_call(dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
         if(ret) {
             abort = 1;
@@ -484,7 +491,7 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     }
 
 
-inline int get_binner(char *barcode, int length) {
+int get_binner(char *barcode, int length) {
     int bin = 0;
     int inc_binner;
     size_t count = 0;
@@ -497,7 +504,7 @@ inline int get_binner(char *barcode, int length) {
 }
 
 
-inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
+mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
 {
     mark_splitter_t ret = {
         .n_handles = ipow(4, settings_ptr->n_nucs),
@@ -525,12 +532,12 @@ inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
 }
 
 
-static inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
-				    mss_settings_t settings, mark_splitter_t splitter)
+static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
+                    mss_settings_t settings, mark_splitter_t splitter)
 {
-	int l1, l2, l_index, bin;
-	int count = 0;
-	int pass;
+    int l1, l2, l_index, bin;
+    int count = 0;
+    int pass;
     while ((l1 = kseq_read(seq1)) >= 0) {
         count += 1;
         if(!(count % settings.notification_interval)) {
@@ -562,13 +569,15 @@ static inline void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 }
 
 
-inline int infer_barcode_length(char *bs_ptr) {
+int infer_barcode_length(char *bs_ptr) {
     int ret = 0;
     for (;;ret++) {
         if(bs_ptr[ret] == '\0') return ret;
+#if !NDEBUG
         if(ret > MAX_BARCODE_LENGTH) {
             fprintf(stderr, "Inferred barcode length greater than max (%i). Abort!\n", MAX_BARCODE_LENGTH);
             exit(1);
         }
+#endif
     }
 }
