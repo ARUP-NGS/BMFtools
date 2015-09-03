@@ -81,7 +81,7 @@ typedef struct KingFisher {
 */
 
 
-KingFisher_t init_kf(size_t readlen) {
+KingFisher_t init_kf(int readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
     double **phred_sums = (double **)malloc(sizeof(double *) * readlen);
     for(int i = 0; i < readlen; i++) {
@@ -96,6 +96,13 @@ KingFisher_t init_kf(size_t readlen) {
         .max_phreds = (char *)calloc(readlen + 1, 1) // Keep track of the maximum phred score observed at position.
     };
     return fisher;
+}
+
+
+KingFisher_t *init_kfp(int readlen) {
+	KingFisher_t ret_val = init_kf(readlen);
+	KingFisher_t *ret_ptr = &ret_val;
+	return ret_ptr;
 }
 
 void destroy_kf(KingFisher_t *kfp) {
@@ -489,6 +496,19 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     case 'T' : increment = 3; break;\
     default: increment = 0; break;\
     }
+
+
+uint64_t get_binnerl(char *barcode, int length) {
+    uint64_t bin = 0;
+    int inc_binner;
+    size_t count = 0;
+    for(int i = length;i > 0;i--){
+        char_to_num(barcode[i - 1], inc_binner);
+        bin += (ipow(4, count) * inc_binner);
+        count++;
+    }
+    return bin;
+}
 
 
 int get_binner(char *barcode, int length) {
