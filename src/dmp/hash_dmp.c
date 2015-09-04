@@ -28,9 +28,15 @@ typedef struct Outpost {
     khiter_t k; // The return variable for kh_get
     kseq_t *seq; // The fastq handle
     FILE *out_handle; // The output handle
+    int blen; // Barcode length;
+    int l; // The kseq iterator integer
+    int ret; // The khash return integer
+    char *bs_ptr; // The pointer to the Barcode Sequence
+    int *nuc_indices; // Temporary variable for storing indices for accessing the KingFisher arrays
+    uint64_t bin; // bin to place the index in
 } Outpost_t;
 
-Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle, int readlen) {
+Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle, int readlen, int blen) {
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
     khash_t(fisher) *hash = kh_init(fisher);
@@ -45,7 +51,13 @@ Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle, int readlen) {
         .length = 0,
         .k = 0,
         .seq = seq,
-        .out_handle = out_handle
+        .out_handle = out_handle,
+        .l = 0,
+        .ret = 0,
+        .bs_ptr = NULL,
+        .blen = blen,
+        .nuc_indices = (int *)malloc(2 * sizeof(int)),
+        .bin = 0
     };
     Outpost_t *ret_ptr = &ret;
     return ret_ptr;
@@ -53,15 +65,42 @@ Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle, int readlen) {
 
 void RESIZE_OUTPOST(Outpost_t *outpost) {
     outpost->max += EXPEDITION_INC_SIZE;
+
     outpost->Expedition = (KingFisher_t **)realloc(outpost->Expedition, outpost->max * sizeof(KingFisher_t *));
     if(!outpost->Expedition) { // Realloc failed!
         fprintf(stderr, "Reallocating memory for Outpost to final size %i failed. Abort!\n", outpost->max);
         exit(1);
     }
     for(int i = outpost->max - EXPEDITION_INC_SIZE; i < outpost->max; ++i) {
-        outpost->Expedition[i] = init_kfp(readlen);
+        outpost->Expedition[i] = init_kfp(outpost->Expedition[0]->readlen);
     }
     return;
+}
+/*
+ * @returns: 1 upon success, 0 upon end of file.
+ */
+int PUSHBACK_OUTPOST(Outpost_t *outpost) {
+    outpost->bs_ptr = barcode_mem_view(outpost->seq);
+    outpost->l = kseq_read(outpost->seq);
+    if(outpost->l < 0) return 0;
+    outpost->bin = get_binnerl(outpost->bs_ptr, outpost->blen);
+    outpost->k = kh_get(fisher, outpost->hash, outpost->bin);
+    if(outpost->k == kh_end(outpost->hash)) {
+        outpost->k = kh_put(fisher, outpost->hash, outpost->bin, &(outpost->ret));
+        kh_value(outpost->hash, outpost->k) = outpost->length;
+        pushback_kseq(outpost->Expedition[outpost->length - 1], outpost->seq,
+                      outpost->nuc_indices, outpost->blen);
+        outpost->length++;
+        if(outpost->length == outpost->max) {
+            RESIZE_OUTPOST(outpost);
+        }
+    }
+    else {
+        pushback_kseq(outpost->Expedition[kh_value(outpost->hash, outpost->k)],
+                      outpost->seq,
+                      outpost->nuc_indices, outpost->blen);
+    }
+    return 1;
 }
 
 /*
@@ -69,7 +108,6 @@ int outpost_dmp_core(Outpost_t *outpost, )
 */
 
 //TODO: - to fix this attempted khash use.
-// 1. Write a resize.
 // 2. Write a pushback.
 // 3. Write a macro each for doing the full put/get in one command.
 // 4. Use the old pushback code.
