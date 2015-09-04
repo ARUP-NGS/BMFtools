@@ -28,7 +28,7 @@ extern double igamc(double x, double y);
 
 
 // Converts a chi2 sum into a p value.
-double igamc_pvalues(int num_pvalues, double x)
+static inline double igamc_pvalues(int num_pvalues, double x)
 {
     if(x < 0) {
         return 1.0;
@@ -57,7 +57,7 @@ typedef struct KingFisher {
     int readlen; // Length of reads
     char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
     char *barcode;
-    int pass;
+    int pass_fail;
 } KingFisher_t;
 
 /*
@@ -75,13 +75,13 @@ typedef struct KingFisher {
         .length = 0,                                                         \
         .readlen = readlen,                                                  \
         .max_phreds = max_phreds,                                            \
-        .pass = 0,                                                           \
+        .pass_fail = 0,                                                           \
         .barcode = NULL                                                      \
     };
 */
 
 
-KingFisher_t init_kf(int readlen) {
+inline KingFisher_t init_kf(int readlen) {
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
     double **phred_sums = (double **)malloc(sizeof(double *) * readlen);
     for(int i = 0; i < readlen; i++) {
@@ -99,12 +99,6 @@ KingFisher_t init_kf(int readlen) {
 }
 
 
-KingFisher_t *init_kfp(int readlen) {
-	KingFisher_t ret_val = init_kf(readlen);
-	KingFisher_t *ret_ptr = &ret_val;
-	return ret_ptr;
-}
-
 void destroy_kf(KingFisher_t *kfp) {
     fprintf(stderr, "Starting to destroy kfp with readlen %i.\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; ++i) {
@@ -118,6 +112,7 @@ void destroy_kf(KingFisher_t *kfp) {
     free(kfp->max_phreds);
     free(kfp->barcode);
 }
+
 
 void clear_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
@@ -150,7 +145,7 @@ void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
     }
     if(kfp->length == 0) {
         char *bs_ptr = barcode_mem_view(seq);
-        kfp->pass = (char)*(bs_ptr- 5);
+        kfp->pass_fail = (char)*(bs_ptr- 5);
         kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
         memcpy(kfp->barcode, bs_ptr, blen);
     }
@@ -237,7 +232,7 @@ void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
 }
 
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
-    char pass;
+    char pass_fail;
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
@@ -259,7 +254,7 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
     char PVBuffer[1000];
     fill_pv_buffer(kfp, cons_quals, PVBuffer);
     char FPBuffer[7];
-    sprintf(FPBuffer, "FP:i:%c", kfp->pass);
+    sprintf(FPBuffer, "FP:i:%c", kfp->pass_fail);
     name_buffer[0] = '@';
     memcpy((char *)(name_buffer + 1), kfp->barcode, blen);
     name_buffer[1 + blen] = '\0';
@@ -311,9 +306,9 @@ void FREE_SPLITTER(mark_splitter_t var);
 
 
 #ifndef KSEQ_2_FQ
-#define KSEQ_2_FQ(handle, read, index, pass) fprintf(handle,\
+#define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle,\
         "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
-    read->name.s, pass, index->seq.s, read->seq.s, read->qual.s)
+    read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
 
@@ -557,7 +552,7 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 {
     int l1, l2, l_index, bin;
     int count = 0;
-    int pass;
+    int pass_fail;
     while ((l1 = kseq_read(seq1)) >= 0) {
         count += 1;
         if(!(count % settings.notification_interval)) {
@@ -580,11 +575,11 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
             FREE_SPLITTER(splitter);
             exit(EXIT_FAILURE);
         }
-        pass = test_hp(seq_index, settings.hp_threshold);
+        pass_fail = test_hp(seq_index, settings.hp_threshold);
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(seq_index->seq.s, settings.n_nucs);
-        KSEQ_2_FQ(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass);
-        KSEQ_2_FQ(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass);
+        KSEQ_2_FQ(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass_fail);
+        KSEQ_2_FQ(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass_fail);
     }
 }
 

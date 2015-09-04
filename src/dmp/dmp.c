@@ -1,7 +1,7 @@
 #include "dmp_interface.h"
 
 //Function definitions
-double igamc_pvalues(int num_pvalues, double x);
+static double igamc_pvalues(int num_pvalues, double x);
 KingFisher_t init_kf(size_t readlen);
 void pushback_kseq(KingFisher_t *fisher, kseq_t *seq, int *nuc_indices, int blen);
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle);
