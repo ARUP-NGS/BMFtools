@@ -17,8 +17,6 @@ void FREE_SPLITTER(mark_splitter_t var);
 int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
-void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
-				    mss_settings_t settings, mark_splitter_t splitter);
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 void free_mp_sorter(sort_overlord_t var);
 int test_hp(kseq_t *seq, int threshold);
@@ -44,6 +42,19 @@ int test_hp(kseq_t *seq, int threshold);
 */
 
 
+typedef struct mssi_settings_t {
+    int hp_threshold;
+    int n_nucs;
+    char *output_basename;
+    char *input_r1_path;
+    char *input_r2_path;
+    char *homing_sequence;
+    int n_handles;
+    int notification_interval;
+    int blen; // Length of sequence to trim off from start to finish.
+};
+
+
 void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
@@ -56,7 +67,7 @@ void print_usage(char *argv[])
                         "time building code than messing around with string "
                         "manipulation that doesn't add to the code base.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
-        				"-s: homing sequence. ", argv[0]);
+                        "-s: homing sequence. ", argv[0]);
 }
 
 void print_opt_err(char *argv[], char *optarg)
@@ -94,16 +105,35 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
     return ret;
 }
 
-typedef struct mssi_settings_t {
-	int hp_threshold;
-	int n_nucs;
-	char *output_basename;
-	char *input_r1_path;
-	char *input_r2_path;
-	char *homing_sequence;
-	int n_handles;
-	int notification_interval;
-};
+
+static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
+                                  mssi_settings_t settings, mark_splitter_t splitter)
+{
+    int l1, l2, bin;
+    int count = 0;
+    int pass_fail;
+    while ((l1 = kseq_read(seq1)) >= 0) {
+        count += 1;
+        if(!(count % settings.notification_interval)) {
+            fprintf(stderr, "Number of records processed: %i.\n", count);
+        }
+        // Iterate through second fastq file.
+        l2 = kseq_read(seq2);
+        if (l2 < 0) {
+            fprintf(stderr, "Read 2 return value for kseq_read less than "
+                            "0. Are the fastqs different sizes? Abort!\n");
+            FREE_SETTINGS(settings);
+            FREE_SPLITTER(splitter);
+            exit(EXIT_FAILURE);
+        }
+        pass_fail = test_hp(seq_index, settings.hp_threshold);
+        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
+        bin = get_binner(seq_index->seq.s, settings.n_nucs);
+        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass_fail);
+        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass_fail);
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -120,7 +150,7 @@ int main(int argc, char *argv[])
         .threads = 4,
         .input_r1_path = NULL,
         .input_r2_path = NULL,
-		.homing_sequence = NULL,
+        .homing_sequence = NULL,
         .n_handles = 0,
         .notification_interval = 100000
     };
@@ -155,25 +185,22 @@ int main(int argc, char *argv[])
     strcpy(r1_fq_buf, argv[optind]);
     strcpy(r2_fq_buf, argv[optind + 1]);
     mssi_settings_t *settings_ptr = &settings;
-    gzFile fp_read1, fp_read2, fp_index;
+    gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1_fq_buf, "r");
     fp_read2 = gzopen(r2_fq_buf, "r");
-    fp_index = gzopen(settings.index_fq_path, "r");
     kseq_t *seq1;
     kseq_t *seq2;
-    kseq_t *seq_index;
     int l1, l2, l_index;
     seq1 = kseq_init(fp_read1);
     seq2 = kseq_init(fp_read2);
-    seq_index = kseq_init(fp_index);
     mark_splitter_t splitter = init_splitter(settings_ptr);
     mark_splitter_t *splitter_ptr = &splitter;
 /*
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
-    splitmark_core(seq1, seq2, seq_index,
-    			   settings, splitter);
+    splitmark_core_inline(seq1, seq2,
+                          settings, splitter);
     //apply_lh3_sorts(&splitter, &settings);
     /*
     sort_overlord_t dispatcher = build_mp_sorter(splitter_ptr, settings_ptr);
