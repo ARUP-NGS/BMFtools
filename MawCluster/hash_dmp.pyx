@@ -9,7 +9,7 @@ cdef class KFWrapper:
 
     def __dealloc__(self):
         destroy_kf(self.src)
-
+'''
 cdef hash_dmp_write(cython.str infname, cython.str outfname):
     fprintf(stderr, "You're using code that doesn't work written by "
                     "someone who isn't excited about it. Abort mission!\n")
@@ -71,3 +71,4 @@ cdef hash_dmp_write(cython.str infname, cython.str outfname):
 cpdef hash_in_a_tin(cython.str infname, cython.str outfname):
     hash_dmp_write(infname, outfname)
     return
+'''

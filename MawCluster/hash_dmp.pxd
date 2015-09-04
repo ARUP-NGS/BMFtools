@@ -3,7 +3,6 @@ from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 from libc.stdlib cimport malloc, calloc, realloc, free, exit
 from libc.string cimport memcpy, memcmp, strncpy, strlen, strdup
 from libc.stdio cimport FILE, printf, sprintf, fprintf, stdin, stdout, fopen, fclose, stderr
-from posix.stdio cimport fdopen, fileno
 cimport cython
 
 
