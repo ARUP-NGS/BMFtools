@@ -21,32 +21,52 @@ const int fisher = 137; // I just picked a number
 KHASH_MAP_INIT_INT64(fisher, uint64_t) // Set up khash with 64-bit integer keys and uint64_t payload
 
 typedef struct Outpost {
-	KingFisher_t **Expedition; // The KingFishers.
-	uint64_t max; // The maximum number of KingFisher_t * objects that can be held before resizing.
-	uint64_t length; // The number of KingFisher_t * objects currently filled
-	khash_t(fisher) *hash; // My hash table with int64 keys and uint64_t payloads.
-	khiter_t k; // The return variable for kh_get
-	kseq_t *seq; // The fastq handle
+    KingFisher_t **Expedition; // The KingFishers.
+    uint64_t max; // The maximum number of KingFisher_t * objects that can be held before resizing.
+    uint64_t length; // The number of KingFisher_t * objects currently filled
+    khash_t(fisher) *hash; // My hash table with int64 keys and uint64_t payloads.
+    khiter_t k; // The return variable for kh_get
+    kseq_t *seq; // The fastq handle
+    FILE *out_handle; // The output handle
 } Outpost_t;
 
-Outpost_t *INIT_OUTPOST(FILE *in_handle, int readlen) {
-	gzFile fp = gzdopen(fileno(in_handle), "r");
-	kseq_t *seq = kseq_init(fp);
-	khash_t(fisher) *hash = kh_init(fisher);
-	KingFisher_t **Expedition = (KingFisher_t **)malloc(EXPEDITION_INC_SIZE * sizeof(KingFisher_t *));
-	for(int i = 0; i < EXPEDITION_INC_SIZE; ++i) {
-		Expedition[0] = init_kfp(readlen);
-	}
-	Outpost_t ret = {
-		.Expedition = Expedition,
-		.max = EXPEDITION_INC_SIZE,
-		.hash = hash,
-		.length = 0,
-		.k = 0,
-		.seq = seq
-	};
-	return ret;
+Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle, int readlen) {
+    gzFile fp = gzdopen(fileno(in_handle), "r");
+    kseq_t *seq = kseq_init(fp);
+    khash_t(fisher) *hash = kh_init(fisher);
+    KingFisher_t **Expedition = (KingFisher_t **)malloc(EXPEDITION_INC_SIZE * sizeof(KingFisher_t *));
+    for(int i = 0; i < EXPEDITION_INC_SIZE; ++i) {
+        Expedition[0] = init_kfp(readlen);
+    }
+    Outpost_t ret = {
+        .Expedition = Expedition,
+        .max = EXPEDITION_INC_SIZE,
+        .hash = hash,
+        .length = 0,
+        .k = 0,
+        .seq = seq,
+        .out_handle = out_handle
+    };
+    Outpost_t *ret_ptr = &ret;
+    return ret_ptr;
 }
+
+void RESIZE_OUTPOST(Outpost_t *outpost) {
+    outpost->max += EXPEDITION_INC_SIZE;
+    outpost->Expedition = (KingFisher_t **)realloc(outpost->Expedition, outpost->max * sizeof(KingFisher_t *));
+    if(!outpost->Expedition) { // Realloc failed!
+        fprintf(stderr, "Reallocating memory for Outpost to final size %i failed. Abort!\n", outpost->max);
+        exit(1);
+    }
+    for(int i = outpost->max - EXPEDITION_INC_SIZE; i < outpost->max; ++i) {
+        outpost->Expedition[i] = init_kfp(readlen);
+    }
+    return;
+}
+
+/*
+int outpost_dmp_core(Outpost_t *outpost, )
+*/
 
 //TODO: - to fix this attempted khash use.
 // 1. Write a resize.
@@ -62,8 +82,8 @@ void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen);
 
 void print_usage(char *argv[]) {
     fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
-    				"Set input_filename to \"-\" to select to stdout.\n"
-    				"Leave output_filename unset to select stdin.\n", argv[0]);
+                    "Set input_filename to \"-\" to select to stdout.\n"
+                    "Leave output_filename unset to select stdin.\n", argv[0]);
 }
 
 void print_opt_err(char *argv[], char *optarg) {
@@ -138,12 +158,11 @@ void hash_dmp_core(khash_t(fisher) *hash, FILE *handle, kseq_t *seq, khiter_t k)
     int ret;
     uint64_t bin = get_binnerl(bs_ptr, blen);
     k = kh_put(fisher, hash, get_binnerl(bs_ptr, blen), &ret);
-    kh_value(hash, k) = &Holloway;
     /*
+    kh_value(hash, k) = &Holloway;
     char *first_barcode = (char *)malloc((blen + 1) * sizeof(char));
     memcpy(first_barcode, bs_ptr, blen);
     first_barcode[blen] = '\0';
-    */
     //pushback_hash(hash, seq, bs_ptr, blen, readlen, nuc_indices, k);
     // Delete every between here and "int l" when done.
     fprintf(stderr, "Holloway's current length: %i. Barcode: %s. Pointer to Holloway: %p.\n", Holloway.length, Holloway.barcode, &Holloway);
@@ -155,8 +174,10 @@ void hash_dmp_core(khash_t(fisher) *hash, FILE *handle, kseq_t *seq, khiter_t k)
     k = kh_get(fisher, hash, bin);
     KingFisher_t *omgz = kh_value(hash, k);
     fprintf(stderr, "First barcode's info %i. Barcode: %s. Pointer to Holloway: %p.\n", omgz->length, omgz->barcode, omgz);
+    */
     int barcode_counter = 0;
     khint_t _i;
+    /*
     for(_i = kh_begin(hash); _i != kh_end(hash); ++_i) {
         if(!kh_exist(hash, _i)) continue;
         fprintf(stderr, "Just got the Hook for the KingFisher_t object.\n");
@@ -165,6 +186,7 @@ void hash_dmp_core(khash_t(fisher) *hash, FILE *handle, kseq_t *seq, khiter_t k)
         //destroy_kf(Hook);
         barcode_counter++;
     }
+    */
     fprintf(stderr, "Number of unique barcode: %i\n", barcode_counter);
     //dmp_process_write(Hook, handle, bs_ptr, blen)
     free(nuc_indices);
@@ -174,8 +196,8 @@ void hash_dmp_core(khash_t(fisher) *hash, FILE *handle, kseq_t *seq, khiter_t k)
 
 void pushback_hash(khash_t(fisher) *hash, kseq_t *seq, char *bs_ptr, int blen, int readlen, int *nuc_indices, khiter_t k) {
     //KingFisher_t *Hook = kh_get_val(fisher, hash, get_binner(bs_ptr, blen), NULL, k);
-	/*
-	fprintf(stderr, "Read length: %i.\n", readlen);
+    /*
+    fprintf(stderr, "Read length: %i.\n", readlen);
     int ret;
     k = kh_get(fisher, hash, get_binner(bs_ptr, blen));
     if(k == kh_end(hash)) {
