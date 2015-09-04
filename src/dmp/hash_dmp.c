@@ -50,10 +50,19 @@ Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle) {
     char *bs_ptr = barcode_mem_view(seq);
     int blen = infer_barcode_length(bs_ptr);
     khash_t(fisher) *hash = kh_init(fisher);
+    fprintf(stderr, "kseq initiated, hash table initiated\n");
     KingFisher_t **Expedition = (KingFisher_t **)malloc(EXPEDITION_INC_SIZE * sizeof(KingFisher_t *));
+    fprintf(stderr, "Started Expedition!\n");
+    KingFisher_t tmp;
     for(int i = 0; i < EXPEDITION_INC_SIZE; ++i) {
-        Expedition[0] = init_kfp(readlen);
+        tmp = init_kf(readlen);
+        Expedition[i] = &tmp;
+        //tmp = init_kf(readlen);
+        /*
+         * Fall back to this if the previous change doesn't fix things.
+        */
     }
+    fprintf(stderr, "Finished Expedition initialization!\n");
     Outpost_t ret = {
         .Expedition = Expedition,
         .max = EXPEDITION_INC_SIZE,
@@ -66,10 +75,12 @@ Outpost_t *INIT_OUTPOST(FILE *in_handle, FILE *out_handle) {
         .ret = 0,
         .bs_ptr = NULL,
         .blen = blen,
-        .nuc_indices = (int *)malloc(2 * sizeof(int)),
+        .nuc_indices = (int *)calloc(2, sizeof(int)),
         .bin = 0
     };
+    fprintf(stderr, "Finished Outpost_t initialization!\n");
     Outpost_t *ret_ptr = &ret;
+    fprintf(stderr, "Finished Outpost_t *initialization!\n");
     return ret_ptr;
 }
 
@@ -95,13 +106,21 @@ void RESIZE_OUTPOST(Outpost_t *outpost) {
  */
 void PUSHBACK_OUTPOST(Outpost_t *outpost) {
     outpost->bs_ptr = barcode_mem_view(outpost->seq);
+    outpost->blen = infer_barcode_length(outpost->bs_ptr);
     outpost->bin = get_binnerl(outpost->bs_ptr, outpost->blen);
     outpost->k = kh_get(fisher, outpost->hash, outpost->bin);
     if(outpost->k == kh_end(outpost->hash)) {
+#if !NDEBUG
+          fprintf(stderr, "Bin #%i is empty. Now filling entry %i. Inferred blen: %i\n", outpost->bin, outpost->length, outpost->blen);
+#endif
         outpost->k = kh_put(fisher, outpost->hash, outpost->bin, &(outpost->ret));
         kh_value(outpost->hash, outpost->k) = outpost->length;
-        pushback_kseq(outpost->Expedition[outpost->length - 1], outpost->seq,
-                      outpost->nuc_indices, outpost->blen);
+        KingFisher_t *tmpfisher = outpost->Expedition[outpost->length];
+        fprintf(stderr, "Got the right k: %i. The outpost index that bin #%i got put into was %i.\n", outpost->k, outpost->bin, outpost->length);
+        fprintf(stderr, "Nuc_indices values: %i, %i.\n", outpost->nuc_indices[0], outpost->nuc_indices[1]);
+        //pushback_kseq(outpost->Expedition[outpost->length], outpost->seq,
+        //              outpost->nuc_indices, outpost->blen);
+        fprintf(stderr, "Hey, did I manage to push back?\n");
         outpost->length++;
         if(outpost->length == outpost->max) {
             RESIZE_OUTPOST(outpost);
@@ -112,6 +131,7 @@ void PUSHBACK_OUTPOST(Outpost_t *outpost) {
                       outpost->seq,
                       outpost->nuc_indices, outpost->blen);
     }
+      fprintf(stderr, "Returning from PUSHBACK_OUTPOST. Size: %i.\n", outpost->length);
     return;
 }
 
@@ -141,10 +161,20 @@ void write_expedition_results(Outpost_t *outpost) {
 }
 
 void outpost_dmp_core(FILE *in_handle, FILE *out_handle) {
+    fprintf(stderr, "Now beginning outpost_dmp_core.\n");
     Outpost_t *outpost = INIT_OUTPOST(in_handle, out_handle);
+    fprintf(stderr, "Successfully initialized Outpost_t *.\n");
     PUSHBACK_OUTPOST(outpost); // Run this just once before the loop, as I've iterated through it once to get read length and barcod length.
+    fprintf(stderr, "Now pushing back first seq.\n");
+#if !NDEBUG
+    int k = 0;
+#endif
     while((outpost->l = kseq_read(outpost->seq)) >= 0) {
         PUSHBACK_OUTPOST(outpost);
+#if !NDEBUG
+        fprintf(stderr, "Now pushing back seq #%i.\n", k);
+        k++;
+#endif
     }
     write_expedition_results(outpost);
     destroy_outpost(outpost);
@@ -187,13 +217,15 @@ int main(int argc, char *argv[]){
     FILE *in_handle;
     FILE *out_handle;
     infname = strdup(argv[optind]);
-    if(infname[0] == '-' || !infname) in_handle = stdin;
+    if(infname[0] == '-' || !infname) {in_handle = stdin; fprintf(stderr, "Now reading from stdin.\n");}
     else {
         in_handle = fopen(infname, "r");
+        fprintf(stderr, "Opening %s for reading.\n", infname);
     }
-    if(!outfname) out_handle = stdout;
+    if(!outfname) {out_handle = stdout; fprintf(stderr, "Now writing to stdout.\n");}
     else {
         out_handle = fopen(outfname, "w");
+        fprintf(stderr, "Opening %s for writing.\n", outfname);
     }
     outpost_dmp_core(in_handle, out_handle);
     fprintf(stderr, "Returned from outpost_dmp_core.\n");
