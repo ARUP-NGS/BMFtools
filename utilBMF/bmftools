@@ -1028,6 +1028,7 @@ def main():
             hpLimit=Chapman['hpLimit'],
             ncpus=Chapman['ncpus'],
             head=Chapman['head'],
+            cutAdapt=Chapman['cutAdapt'],
             profile=Chapman['profile'])
         pl("Demultiplexing, marking, consildating, and compression complete"
             "new fastqs are %s and %s" % (outFq1, outFq2))
