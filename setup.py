@@ -28,7 +28,7 @@ print("Removing all .c files - this is "
 subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
 
 """
-ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', '*/*.py'])))
+ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
 
 # If more complex optimizations fail, fall back to -O2
 for x in ext:

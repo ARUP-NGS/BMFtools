@@ -1,8 +1,8 @@
 from libc.stdint cimport int8_t, int16_t, int32_t, int64_t
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
-from libc.stdlib cimport malloc, calloc, realloc, free
+from libc.stdlib cimport malloc, calloc, realloc, free, exit
 from libc.string cimport memcpy, memcmp, strncpy, strlen, strdup
-from libc.stdio cimport FILE, printf, sprintf, fprintf, stdin, stdout, fopen, fclose
+from libc.stdio cimport FILE, printf, sprintf, fprintf, stdin, stdout, fopen, fclose, stderr
 from posix.stdio cimport fdopen, fileno
 cimport cython
 
@@ -51,6 +51,7 @@ cdef extern from "../src/dmp/dmp_interface.h" nogil:
     char *barcode_mem_view(kseq_t *seq)
     int infer_barcode_length(char *bs_ptr)
     uint64_t get_binnerl(char *barcode, int length)
+    void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
 
 cdef class KFWrapper:
     """
