@@ -1018,7 +1018,7 @@ def main():
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
     elif(subcommand == "dmp"):
-        from utilBMF.DMPUtils import multiProcessingDemulitplex as DMP
+        from utilBMF.DMPUtils import splitMPdmp as DMP
         outFq1, outFq2 = DMP(
             Chapman['inFqs'],
             indexFq=Chapman['indexFq'],
