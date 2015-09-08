@@ -233,6 +233,8 @@ cpdef splitMPdmpWorker(cystr Fastq1, cystr Fastq2, cutAdapt=False,
             bcHash2[BC] = [read2]
     fq1name = Fastq1.strip('fastqgz')
     fq2name = Fastq2.strip('fastqgz')
+    fq1name = fq1name+"cons.fastq"
+    fq2name = fq2name+"cons.fastq"
     with open(fq1name, 'w') as output1, open(fq2name, 'w') as output2:
         for barcode in bcHash1.keys():
             output1.write(FastFisherFlattening(bcHash1[barcode], barcode))
