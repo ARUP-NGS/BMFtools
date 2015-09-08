@@ -306,6 +306,7 @@ static const double __ac_HASH_UPPER = 0.77;
 	}																	\
 	SCOPE khint_t kh_put_##name(kh_##name##_t *h, khkey_t key, int *ret) \
 	{																	\
+        fprintf(stderr, "Now adding key string (if string) %s, int (if int) %i to hashtable.\n", key, key); \
 		khint_t x;														\
 		if (h->n_occupied >= h->upper_bound) { /* update the hash table */ \
 			if (h->n_buckets > (h->size<<1)) {							\
