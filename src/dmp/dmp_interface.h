@@ -306,14 +306,14 @@ void FREE_SPLITTER(mark_splitter_t var);
 
 
 #ifndef KSEQ_2_FQ_INLINE
-#define KSEQ_2_FQ_INLINE(handle, read, barcode, pass_fail) fprintf(handle,\
+#define KSEQ_2_FQ_INLINE(handle, read, barcode, pass_fail) fprintf(handle, \
         "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
     read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
 #endif
 
 
 #ifndef KSEQ_2_FQ
-#define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle,\
+#define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
         "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
     read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
 #endif

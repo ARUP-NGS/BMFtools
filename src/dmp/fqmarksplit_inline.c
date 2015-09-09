@@ -54,12 +54,13 @@ typedef struct mssi_settings {
     int n_handles;
     int notification_interval;
     int blen; // Length of sequence to trim off from start to finish.
+    int offset_by_1;
 } mssi_settings_t;
 
 
 void print_usage(char *argv[])
 {
-        fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
+        fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
                         "\nFlags:\n"
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
@@ -69,9 +70,10 @@ void print_usage(char *argv[])
                         "time building code than messing around with string "
                         "manipulation that doesn't add to the code base.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
+                        "-m: Flag -- Mask first nucleotide in read for barcode given its higher error rates.\n"
                         "-l: Number of nucleotides at the beginning of each read to "
                         "use for barcode. Final barcode length is twice this.\n"
-                        "-s: homing sequence. If not provided, %s will not look for it.", argv[0], argv[0]);
+                        "-s: homing sequence. If not provided, %s will not look for it.\n", argv[0], argv[0]);
 }
 
 void print_opt_err(char *argv[], char *optarg)
@@ -83,17 +85,17 @@ void print_opt_err(char *argv[], char *optarg)
 
 
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr) {
-	if(!settings_ptr->homing_sequence) {
-		return 1;
-	}
-	else {
+    if(!settings_ptr->homing_sequence) {
+        return 1;
+    }
+    else {
         return (memcmp(seq1 + (settings_ptr->blen / 2),
                        settings_ptr->homing_sequence,
                        settings_ptr->homing_sequence_length) == 0 &&
                 memcmp(seq2 + (settings_ptr->blen / 2),
                        settings_ptr->homing_sequence,
                        settings_ptr->homing_sequence_length) == 0);
-	}
+    }
 }
 
 
@@ -149,8 +151,8 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
             FREE_SPLITTER(splitter);
             exit(EXIT_FAILURE);
         }
-        memcpy(barcode, seq1->seq.s, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
-        memcpy(barcode + blen1_2, seq2->seq.s,
+        memcpy(barcode, seq1->seq.s + settings.offset_by_1, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
+        memcpy(barcode + blen1_2, seq2->seq.s + offset_by_1,
                blen1_2 * sizeof(char));
         pass_fail = (test_hp_inline(barcode, settings.blen, settings.hp_threshold) &&
                      test_homing_seq(seq1, seq2, &settings));
@@ -180,16 +182,18 @@ int main(int argc, char *argv[])
         .n_handles = 0,
         .notification_interval = 100000,
         .blen = 0,
-        .homing_sequence_length = 0
+        .homing_sequence_length = 0,
+        .offset_by_1 = 0
     };
     int c;
-    while ((c = getopt(argc, argv, "t:h:o:n:s:l:")) > -1) {
+    while ((c = getopt(argc, argv, "t:h:o:n:s:l:m")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg); break;
             case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
             case 'l': settings.blen = 2 * atoi(optarg); break;
+            case 'm': settings.offset_by_1 = 1; break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
@@ -201,8 +205,12 @@ int main(int argc, char *argv[])
                         "Reads will not be QC failed for its absence.\n");
     }
     if(!settings.blen) {
-        fprintf(stderr, "Homing sequence not provided. Will not check for it. "
+        fprintf(stderr, "Barcode length not provided. Will not check for it. "
                         "Reads will not be QC failed for its absence.\n");
+    }
+
+    if(settings.offset_by_1) {
+        settings.blen -= 2;
     }
 
     if(!settings.output_basename) {
