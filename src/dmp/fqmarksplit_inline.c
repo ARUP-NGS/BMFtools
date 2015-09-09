@@ -13,12 +13,13 @@
 // Inline function declarations
 //int lh3_sort_call(char *fname, char *outfname);
 void FREE_SPLITTER(mark_splitter_t var);
+
 //void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
 int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
-void free_mp_sorter(sort_overlord_t var);
+int test_hp_inline(char *barcode, int length, int threshold);
 int test_hp(kseq_t *seq, int threshold);
 
 // Macros
@@ -42,17 +43,18 @@ int test_hp(kseq_t *seq, int threshold);
 */
 
 
-typedef struct mssi_settings_t {
+typedef struct mssi_settings {
     int hp_threshold;
     int n_nucs;
     char *output_basename;
     char *input_r1_path;
     char *input_r2_path;
     char *homing_sequence;
+    int homing_sequence_length;
     int n_handles;
     int notification_interval;
     int blen; // Length of sequence to trim off from start to finish.
-};
+} mssi_settings_t;
 
 
 void print_usage(char *argv[])
@@ -67,7 +69,9 @@ void print_usage(char *argv[])
                         "time building code than messing around with string "
                         "manipulation that doesn't add to the code base.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
-                        "-s: homing sequence. ", argv[0]);
+                        "-l: Number of nucleotides at the beginning of each read to "
+                        "use for barcode. Final barcode length is twice this.\n"
+                        "-s: homing sequence. If not provided, %s will not look for it.", argv[0], argv[0]);
 }
 
 void print_opt_err(char *argv[], char *optarg)
@@ -75,6 +79,21 @@ void print_opt_err(char *argv[], char *optarg)
     print_usage(argv);
     fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
     exit(1);
+}
+
+
+int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr) {
+	if(!settings_ptr->homing_sequence) {
+		return 1;
+	}
+	else {
+        return (memcmp(seq1 + (settings_ptr->blen / 2),
+                       settings_ptr->homing_sequence,
+                       settings_ptr->homing_sequence_length) == 0 &&
+                memcmp(seq2 + (settings_ptr->blen / 2),
+                       settings_ptr->homing_sequence,
+                       settings_ptr->homing_sequence_length) == 0);
+	}
 }
 
 
@@ -112,6 +131,10 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     int l1, l2, bin;
     int count = 0;
     int pass_fail;
+    char * barcode;
+    int blen1_2 = settings.blen / 2;
+    barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
+    barcode[settings.blen] = '\0'; // Null-terminate
     while ((l1 = kseq_read(seq1)) >= 0) {
         count += 1;
         if(!(count % settings.notification_interval)) {
@@ -122,15 +145,19 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
         if (l2 < 0) {
             fprintf(stderr, "Read 2 return value for kseq_read less than "
                             "0. Are the fastqs different sizes? Abort!\n");
-            FREE_SETTINGS(settings);
+            FREE_MSSI_SETTINGS(settings);
             FREE_SPLITTER(splitter);
             exit(EXIT_FAILURE);
         }
-        pass_fail = test_hp(seq_index, settings.hp_threshold);
+        memcpy(barcode, seq1->seq.s, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
+        memcpy(barcode + blen1_2, seq2->seq.s,
+               blen1_2 * sizeof(char));
+        pass_fail = (test_hp_inline(barcode, settings.blen, settings.hp_threshold) &&
+                     test_homing_seq(seq1, seq2, &settings));
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        bin = get_binner(seq_index->seq.s, settings.n_nucs);
-        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass_fail);
-        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass_fail);
+        bin = get_binner(barcode, settings.n_nucs);
+        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
+        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail);
     }
 }
 
@@ -147,27 +174,36 @@ int main(int argc, char *argv[])
         .hp_threshold = 10,
         .n_nucs = 4,
         .output_basename = NULL,
-        .threads = 4,
         .input_r1_path = NULL,
         .input_r2_path = NULL,
         .homing_sequence = NULL,
         .n_handles = 0,
-        .notification_interval = 100000
+        .notification_interval = 100000,
+        .blen = 0,
+        .homing_sequence_length = 0
     };
     int c;
-    while ((c = getopt(argc, argv, "t:h:o:n:s:")) > -1) {
+    while ((c = getopt(argc, argv, "t:h:o:n:s:l:")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
-            case 'o': settings.output_basename = strdup(optarg);break;
-            case 's': settings.homing_sequence = strdup(optarg);break;
+            case 'o': settings.output_basename = strdup(optarg); break;
+            case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
+            case 'l': settings.blen = 2 * atoi(optarg); break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
     }
     settings.n_handles = ipow(4, settings.n_nucs);
 
-    if(!settings.homing_sequence)
+    if(!settings.homing_sequence) {
+        fprintf(stderr, "Homing sequence not provided. Will not check for it. "
+                        "Reads will not be QC failed for its absence.\n");
+    }
+    if(!settings.blen) {
+        fprintf(stderr, "Homing sequence not provided. Will not check for it. "
+                        "Reads will not be QC failed for its absence.\n");
+    }
 
     if(!settings.output_basename) {
         fprintf(stderr, "Output basename required. See usage.\n");
@@ -193,7 +229,7 @@ int main(int argc, char *argv[])
     int l1, l2, l_index;
     seq1 = kseq_init(fp_read1);
     seq2 = kseq_init(fp_read2);
-    mark_splitter_t splitter = init_splitter(settings_ptr);
+    mark_splitter_t splitter = init_splitter_inline(settings_ptr);
     mark_splitter_t *splitter_ptr = &splitter;
 /*
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
@@ -207,7 +243,7 @@ int main(int argc, char *argv[])
     apply_lh3_sorts(&dispatcher, settings_ptr);
     free_mp_sorter(dispatcher);
     */
-    FREE_SETTINGS(settings);
+    FREE_MSSI_SETTINGS(settings);
     FREE_SPLITTER(splitter);
     return 0;
 }

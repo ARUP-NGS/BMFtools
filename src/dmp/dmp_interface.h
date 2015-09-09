@@ -99,7 +99,7 @@ inline KingFisher_t init_kf(int readlen) {
 }
 
 
-void destroy_kf(KingFisher_t *kfp) {
+inline void destroy_kf(KingFisher_t *kfp) {
     fprintf(stderr, "Starting to destroy kfp with readlen %i.\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; ++i) {
         fprintf(stderr, "Starting to destroy.\n");
@@ -114,7 +114,7 @@ void destroy_kf(KingFisher_t *kfp) {
 }
 
 
-void clear_kf(KingFisher_t *kfp) {
+inline void clear_kf(KingFisher_t *kfp) {
     for(int i = 0; i < kfp->readlen; i++) {
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
         memset(kfp->phred_sums[i], 0, 4 * sizeof(double)); // Sets these to 0.
@@ -125,7 +125,7 @@ void clear_kf(KingFisher_t *kfp) {
 }
 
 /*
-void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
+inline void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
 
     fprintf(stderr, "update_kf for updating KingFisher_t is unimplemented. Abort!\n");
     exit(1);
@@ -133,7 +133,7 @@ void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
 }
 */
 
-void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
+inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
@@ -174,7 +174,7 @@ char *barcode_mem_view(kseq_t *seq) {
 }
 
 
-int ARRG_MAX(KingFisher_t *kfp, int index) {
+inline int ARRG_MAX(KingFisher_t *kfp, int index) {
     /*
     fprintf(stderr, "Current values of phred_sums: %f,%f,%f,%f\n",
                     (double)kfp->phred_sums[index][0],
@@ -208,11 +208,11 @@ char ARRG_MAX_TO_NUC(int argmaxret) {
     }
 }
 
-int pvalue_to_phred(double pvalue) {
+inline int pvalue_to_phred(double pvalue) {
     return (int)(-10 * log10(pvalue));
 }
 
-void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
+inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
     char tmpbuf[10];
     sprintf(buffer, prefix);
     for(int i = 0; i < readlen; i++) {
@@ -221,17 +221,17 @@ void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
     }
 }
 
-void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
+inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
     fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:");
     return;
 }
 
-void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
+inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
     fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:");
     return;
 }
 
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
+static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
     char pass_fail;
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
@@ -305,6 +305,13 @@ int ipow(int base, int exp);
 void FREE_SPLITTER(mark_splitter_t var);
 
 
+#ifndef KSEQ_2_FQ_INLINE
+#define KSEQ_2_FQ_INLINE(handle, read, barcode, pass_fail) fprintf(handle,\
+        "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
+    read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
+#endif
+
+
 #ifndef KSEQ_2_FQ
 #define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle,\
         "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
@@ -319,7 +326,34 @@ void FREE_SPLITTER(mark_splitter_t var);
     free(settings.input_r2_path);
 #endif
 
-int test_hp(kseq_t *seq, int threshold)
+
+#ifndef FREE_MSSI_SETTINGS
+#define FREE_MSSI_SETTINGS(settings) free(settings.output_basename);\
+    free(settings.input_r1_path);\
+    free(settings.input_r2_path);
+#endif
+
+
+inline int test_hp_inline(char *barcode, int length, int threshold)
+{
+    int run = 0;
+    char last = '\0';
+    for(int i = 0; i < length; i++){
+        if(barcode[i] == 'N') {
+            return 0;
+        }
+        if(barcode[i] == last) {
+            run += 1;
+        }
+        else {
+            run = 0;
+            last = barcode[i];
+        }
+    }
+    return (run < threshold);
+}
+
+inline int test_hp(kseq_t *seq, int threshold)
 {
     int run = 0;
     char last = '\0';
@@ -379,7 +413,7 @@ void free_mp_sorter(sort_overlord_t var){
 
 
 // Functions
-int ipow(int base, int exp)
+inline int ipow(int base, int exp)
 {
     int result = 1;
     while (exp)
@@ -493,7 +527,7 @@ void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
     }
 
 
-uint64_t get_binnerl(char *barcode, int length) {
+inline uint64_t get_binnerl(char *barcode, int length) {
     uint64_t bin = 0;
     int inc_binner;
     size_t count = 0;
@@ -506,7 +540,7 @@ uint64_t get_binnerl(char *barcode, int length) {
 }
 
 
-int get_binner(char *barcode, int length) {
+inline int get_binner(char *barcode, int length) {
     int bin = 0;
     int inc_binner;
     size_t count = 0;
@@ -584,7 +618,7 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 }
 
 
-int infer_barcode_length(char *bs_ptr) {
+inline int infer_barcode_length(char *bs_ptr) {
     int ret = 0;
     for (;;ret++) {
         if(bs_ptr[ret] == '\0') return ret;
