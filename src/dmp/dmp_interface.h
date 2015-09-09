@@ -57,7 +57,7 @@ typedef struct KingFisher {
     int readlen; // Length of reads
     char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
     char *barcode;
-    int pass_fail;
+    char pass_fail;
 } KingFisher_t;
 
 /*
@@ -306,15 +306,16 @@ void FREE_SPLITTER(mark_splitter_t var);
 
 
 #ifndef KSEQ_2_FQ_INLINE
-#define KSEQ_2_FQ_INLINE(handle, read, barcode, pass_fail) fprintf(handle, \
-        "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
-    read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
+#define KSEQ_2_FQ_INLINE(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) memcpy(tmp_n_str, read->seq.s, n_len * sizeof(char));\
+        memset(tmp_n_str, 78, n_len);\
+        fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
+                read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s)
 #endif
 
 
 #ifndef KSEQ_2_FQ
 #define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
-        "@%s ~#!#~|FP=%i|BS=%s\n%s\n+\n%s\n",\
+        "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
     read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
@@ -334,13 +335,13 @@ void FREE_SPLITTER(mark_splitter_t var);
 #endif
 
 
-inline int test_hp_inline(char *barcode, int length, int threshold)
+inline char test_hp_inline(char *barcode, int length, int threshold)
 {
     int run = 0;
     char last = '\0';
     for(int i = 0; i < length; i++){
         if(barcode[i] == 'N') {
-            return 0;
+            return '0';
         }
         if(barcode[i] == last) {
             run += 1;
@@ -350,16 +351,16 @@ inline int test_hp_inline(char *barcode, int length, int threshold)
             last = barcode[i];
         }
     }
-    return (run < threshold);
+    return (run < threshold) ? '1': '0';
 }
 
-inline int test_hp(kseq_t *seq, int threshold)
+inline char test_hp(kseq_t *seq, int threshold)
 {
     int run = 0;
     char last = '\0';
     for(int i = 0; i < seq->seq.l; i++){
         if(seq->seq.s[i] == 'N') {
-            return 0;
+            return '0';
         }
         if(seq->seq.s[i] == last) {
             run += 1;
@@ -369,7 +370,7 @@ inline int test_hp(kseq_t *seq, int threshold)
             last = seq->seq.s[i];
         }
     }
-    return (run < threshold);
+    return (run < threshold) ? '1': '0';
 }
 /*
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
@@ -586,7 +587,7 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 {
     int l1, l2, l_index, bin;
     int count = 0;
-    int pass_fail;
+    char pass_fail;
     while ((l1 = kseq_read(seq1)) >= 0) {
         count += 1;
         if(!(count % settings.notification_interval)) {
