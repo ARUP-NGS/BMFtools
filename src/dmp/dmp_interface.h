@@ -631,3 +631,8 @@ inline int infer_barcode_length(char *bs_ptr) {
 #endif
     }
 }
+
+
+inline int rescale_qscore(int qscore, int cycle, char base, int ***rescaler) {
+	return rescaler[cycle][qscore][base];
+}
