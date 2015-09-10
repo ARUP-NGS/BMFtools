@@ -11,10 +11,8 @@ from pysam.cfaidx cimport PersistentFastqProxy
 from libc.stdint cimport int8_t
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
-ctypedef PileupReadPair PileupReadPair_t
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
-ctypedef ReadPair ReadPair_t
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pFastqProxy pFastqProxy_t
 ctypedef pysam.cfaidx.FastqProxy FastqProxy_t
@@ -39,50 +37,10 @@ cdef class pPileupRead:
     cdef public long level
     cdef public long indel
     cdef public long query_position
-    cdef public float AF
     cdef public cystr name, str
     cdef public AlignedSegment_t alignment
-    cdef public np_int32_t BQ, FA, MBQ
+    cdef public np_int32_t BQ, FA, MBQ, FM, MQ
     cpdef object opt(self, cystr arg)
-
-cdef class PileupReadPair:
-
-    """
-    Holds both bam record objects in a pair of pileup reads.
-    Currently, one read unmapped and one read soft-clipped are
-    both marked as soft-clipped reads.
-    Accepts a list of length two as input.
-    """
-
-    cdef public pPileupRead_t read1
-    cdef public pPileupRead_t read2
-    cdef public ReadPair_t RP
-    cdef public bint discordant
-    cdef public cystr discordanceString
-    cdef public cystr name
-
-
-cdef class ReadPair:
-
-    """
-    Holds both bam record objects in a pair.
-    Currently, one read unmapped and one read soft-clipped are
-    both marked as soft-clipped reads.
-    """
-    cdef public AlignedSegment_t read1
-    cdef public AlignedSegment_t read2
-    cdef public list SVTags
-    cdef public bint read1_is_unmapped
-    cdef public bint read1_soft_clipped
-    cdef public bint read2_is_unmapped
-    cdef public bint read2_soft_clipped
-    cdef public bint SameContig
-    cdef public cystr read1_contig
-    cdef public cystr read2_contig
-    cdef public cystr ContigString
-    cdef public long insert_size
-    cdef public bint read1_in_bed
-    cdef public bint read2_in_bed, SameStrand
 
 
 cdef class AbstractIndelContainer:
@@ -163,10 +121,8 @@ cdef bint cReadsOverlap(
         AlignedSegment_t read1,
         AlignedSegment_t read2)
 
-cpdef bint WritePairToHandle(
-    ReadPair_t pair, pysam.calignmentfile.AlignmentFile handle=?)
 cdef double cyOptStdDev_(ndarray[np.float64_t, ndim=1] a)
-cdef cystr cGetBS(pFastqProxy_t)
+cdef public cystr cGetBS(pFastqProxy_t)
 
 
 cdef public dict PysamToChrDict, ph2chrDict, TypeConversionDict

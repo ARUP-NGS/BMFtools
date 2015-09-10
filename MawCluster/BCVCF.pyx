@@ -19,7 +19,6 @@ from utilBMF.HTSUtils import (printlog as pl,
                               SortBgzipAndTabixVCF, is_reverse_to_str)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
-from . import SNVUtils
 
 cimport cython
 cimport pysam.ctabixproxies
@@ -436,29 +435,6 @@ def VCFStats(inVCF, TransCountsTable="default"):
     return TransCountsTable
 
 
-def FilterVCFFileByBed(inVCF, bedfile="default", outVCF="default"):
-    if(outVCF == "default"):
-        outVCF = inVCF[0:-4] + ".bedfilter.vcf"
-    print("bedfile used: {}".format(bedfile))
-    bed = HTSUtils.ParseBed(bedfile)
-    outHandle = open(outVCF, "w")
-    count = 0
-    cStr = "cat %s | head -n 1000 | grep '^#'" % inVCF
-    print("Get header string: %s" % (cStr))
-    header = check_output(cStr, shell=True).split("\n")
-    header.insert(-1, str(SNVUtils.HeaderCustomLine(
-        customKey="FilterVCFFileByBed", customValue=bedfile)))
-    outHandle.write("\n".join(header))
-    inVCF = ParseVCF(inVCF)
-    for line in inVCF.Records:
-        if(HTSUtils.VCFLineContainedInBed(line, bedRef=bed)):
-            outHandle.write(str(line) + "\n")
-        else:
-            pass
-    outHandle.close()
-    return outVCF
-
-
 def FilterGZVCFByBed(inVCF, bedfile="default", outVCF="default"):
     if(inVCF[:-3] == "vcf"):
         pl("vcf file not bgzipped - sorting, bgzipping and tabixing.")
@@ -470,90 +446,6 @@ def FilterGZVCFByBed(inVCF, bedfile="default", outVCF="default"):
         outVCF = inVCF[0:-7] + ".bedfilter.vcf.gz"
     print("bedfile used: {}".format(bedfile))
     check_call("bcftools -R %s %s -O z > %s" % (bedfile, inVCF, outVCF))
-    return outVCF
-
-
-def FilterVCFFileByINFOgt(inVCF, INFOTag="default", negation=False,
-                          outVCF="default", Type=str,
-                          referenceValue="default"):
-    """
-    Filter a VCF File by whether or not a given INFO tag is great than or
-    to a query value. You must specify the type. Additionally, if you want
-    to negate the condition, you can set negation to True.
-    Written to (hopefully) be quite flexible.
-    """
-    if(outVCF == "default"):
-        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.InfGt.vcf'
-    if(INFOTag == "default"):
-        raise Tim("INFO tag required!")
-    if(referenceValue == "default"):
-        raise Tim("A query value required!")
-    try:
-        assert isinstance(referenceValue, Type)
-    except AssertionError:
-        raise Tim("The query value and the INFOTag's type must agree."
-                  " How else could they be reasonably compared?")
-    inVCF = ParseVCF(inVCF)
-    outHandle = open(outVCF, "w")
-    count = 0
-    for line in inVCF.header:
-        if(count == 1):
-                outHandle.write(SNVUtils.HeaderFilterINFOGtLine(
-                    negation=negation, referenceValue=referenceValue,
-                    referenceType=Type,
-                    INFOTag=INFOTag))
-        outHandle.write(line + "\n")
-        count += 1
-    passRecord = [False] * len(inVCF.Records)
-    for pf, line in zip(passRecord, inVCF.Records):
-        pf = (Type(line.InfoArrayDict[INFOTag]) > referenceValue)
-        if(negation):
-            pf = not pf
-        if(pf):
-            outHandle.write(line.__str__() + "\n")
-    outHandle.close()
-    return outVCF
-
-
-def FilterVCFFileByINFOEquals(inVCF, INFOTag="default", negation=False,
-                              outVCF="default", Type=str,
-                              referenceValue="default"):
-    """
-    Filter a VCF File by whether or not a given INFO tag is equal to a
-    query value. You must specify the type. Additionally, if you want
-    to negate the condition, you can set negation to True.
-    Written to (hopefully) be quite flexible.
-    """
-    if(outVCF == "default"):
-        outVCF = '.'.join(inVCF.split('.')[0:-1]) + '.InfEq.vcf'
-    if(INFOTag == "default"):
-        raise Tim("INFO tag required!")
-    if(referenceValue == "default"):
-        raise Tim("A query value required!")
-    try:
-        assert isinstance(referenceValue, Type)
-    except AssertionError:
-        raise Tim("The query value and the INFOTag's type must agree."
-                  " How else could they be reasonably compared?")
-    inVCF = ParseVCF(inVCF)
-    outHandle = open(outVCF, "w")
-    count = 0
-    for line in inVCF.header:
-        if(count == 1):
-            outHandle.write(SNVUtils.HeaderFilterINFOEqLine(
-                negation=negation, referenceValue=referenceValue,
-                referenceType=Type,
-                INFOTag=INFOTag) + "\n")
-        outHandle.write(line + "\n")
-        count += 1
-    passRecord = [False] * len(inVCF.Records)
-    for pf, line in zip(passRecord, inVCF.Records):
-        pf = (Type(line.InfoArrayDict[INFOTag]) == referenceValue)
-        if(negation):
-            pf = not pf
-        if(pf):
-            outHandle.write(line.__str__() + "\n")
-    outHandle.close()
     return outVCF
 
 

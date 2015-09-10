@@ -10,9 +10,11 @@ from libc.stdint cimport int8_t, int32_t
 from libc.string cimport memcpy, memset
 from numpy cimport ndarray, uint8_t
 from utilBMF.cstring cimport cs_to_ph, cs_to_ia, PH2CHR_TRANS
-from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict
+from utilBMF.HTSUtils cimport chr2ph, chr2phStr, int2Str, ph2chrDict, cGetBS as getBS
 from utilBMF.Inliners cimport Num2Nuc, Nuc2Num
-from MawCluster.Math cimport igamc, CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED, arrmax
+from MawCluster.Math cimport igamc, CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED
+from MawCluster.Math cimport arrmax
+from pysam.cfaidx cimport kstream_t, kseq_t, gzopen, kseq_init, kseq_read, kseq_destroy, gzclose, ks_init, ks_destroy, ks_getuntil
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef SeqQual SeqQual_t
@@ -54,9 +56,9 @@ cdef inline cystr cMakeTagComment(cystr saltedBS,
                                   pFastqProxy_t rec, int hpLimit):
     cdef bint PASS = BarcodePasses(saltedBS, hpLimit)
     if(PASS):
-        return "~#!#~" + rec.comment + "|FP=1|BS=" + saltedBS
+        return "~#!#~|FP=1|BS=" + saltedBS
     else:
-        return "~#!#~" + rec.comment + "|FP=0|BS=" + saltedBS
+        return "~#!#~|FP=0|BS=" + saltedBS
 
 
 @cython.boundscheck(False)

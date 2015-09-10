@@ -1,64 +1,63 @@
 # cython: boundscheck=False, wraparound=False
-import numpy as np
-from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 from itertools import groupby
-from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
+from matplotlib.backends.backend_pdf import PdfPages
 from MawCluster.BCFastq import GetDescTagValue
+from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
+from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 import argparse
+import matplotlib.pyplot as plt
+import numpy as np
 import operator
 import pysam
-import matplotlib.pyplot as plt
-from sys import maxint
-from matplotlib.backends.backend_pdf import PdfPages
+import cython
+from array import array
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 
 
 cdef errorTracker(AlignedSegment_t read,
-                  ndarray[int64_t, ndim=3, mode="c"] readErr,
-                  ndarray[int64_t, ndim=3, mode="c"] readObs):
-    cdef int32_t index, start, end
-    cdef cystr context
+                  ndarray[uint64_t, ndim=3, mode="c"] readErr,
+                  ndarray[uint64_t, ndim=3, mode="c"] readObs,
+                  py_array tmpArr):
+    cdef int32_t index = 0
+    cdef int32_t start, end
     cdef char base
-    cdef int8_t phred_index
-    cdef int16_t context_index
-    for index in xrange(read.qstart, read.qend):
-        if(index < 1):
-            # Don't sweat it
+    cdef int8_t phred_index, char_index
+    tmpArr = array('B', read.query_sequence)
+    index = read.qstart
+    for index, base in enumerate(tmpArr[read.qstart:read.qend],
+                                 start=read.qstart):
+        if base == 78:  # base is '=' or 'N'
             continue
-        context = read.query_sequence[index - 1: index + 1]
-        context_index = CONTEXT_TO_ARRAY_POS(<char *>context)
-        if(context_index < 0):
-            # Don't sweat it - there was an N in the context
-            continue
+        fprintf(c_stderr,
+                "Hey this is base %c with numeric"
+                " value %hi and int value %i.",
+                base, base, base)
+        char_index = NUC_TO_ARRAY(base)
         phred_index = read.query_qualities[index] - 2
-        readObs[index][phred_index][context_index] += 1
-        base = read.seq[index]
         # Note if/elses with same predicate --> switch
-        if base == 61:
-            continue
-        elif base == 78:
-            continue
-        else:
-            readErr[index][phred_index][context_index] += 1
+        if base != 61:
+            readObs[index][phred_index][char_index] += 1
+            readErr[index][phred_index][char_index] += 1
 
 
-def calculateError(args):
+def MakeErrorArray(args):
 
     cdef size_t rLen, index, read_index, qual_index, context_index
-    cdef int64_t fam_range, qcfail, rc, fmc, FM
-    cdef double_t read1mean, read2mean
-    cdef ndarray[int64_t, ndim=3, mode="c"] read1error, read1obs
-    cdef ndarray[int64_t, ndim=3, mode="c"] read2error, read2obs
-    cdef ndarray[double_t, ndim=3, mode="c"] read1frac, read2frac
-    cdef ndarray[double_t, ndim=1, mode="c"] read1cyclemeans, read2cyclemeans
-    cdef ndarray[double_t, ndim=1, mode="c"] read1qualmeans, read2qualmeans
-    cdef ndarray[double_t, ndim=1, mode="c"] read1contextmeans, read2contextmeans
+    cdef uint64_t fam_range, qcfail, ReadCount, FamSizeFamCount, FM
+    cdef double_t r1mean, r2mean
+    cdef ndarray[uint64_t, ndim=3, mode="c"] r1error, r1obs
+    cdef ndarray[uint64_t, ndim=3, mode="c"] r2error, r2obs
+    cdef ndarray[double_t, ndim=3, mode="c"] r1frac, r2frac
+    cdef ndarray[double_t, ndim=1, mode="c"] r1cyclemeans, r2cyclemeans
+    cdef ndarray[double_t, ndim=1, mode="c"] r1qualmeans, r2qualmeans
+    cdef ndarray[double_t, ndim=1, mode="c"] r1nucmeans, r2nucmeans
     cdef AlignedSegment_t read
     cdef AlignmentFile_t mdBam
+    cdef py_array tmpArr
 
-    from sys import stderr
     from cPickle import dump
+    from sys import stderr
 
     if(args.pickle_path is None):
         pickle_path = TrimExt(args.mdBam) + ".errorprofile.pyd"
@@ -70,20 +69,17 @@ def calculateError(args):
         table_prefix = args.table_prefix
     table_prefix += ".out."
 
-    FullTableHandle = open(table_prefix + "full.tsv", "w")
-    CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
-    PhredTableHandle = open(table_prefix + "phred.tsv", "w")
-    ContextTableHandle = open(table_prefix + "context.tsv", "w")
-
     rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
-    read1error = np.zeros([rLen, 37, 16], dtype=np.int64)
-    read1obs = np.zeros([rLen, 37, 16], dtype=np.int64)
-    read2error = np.zeros([rLen, 37, 16], dtype=np.int64)
-    read2obs = np.zeros([rLen, 37, 16], dtype=np.int64)
+    tmpArr = array('B')
+    c_array.resize(tmpArr, rLen)
+    r1error = np.zeros([rLen, 39, 4], dtype=np.uint64)
+    r1obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
+    r2error = np.zeros([rLen, 39, 4], dtype=np.uint64)
+    r2obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
 
     qcfail = 0
-    fmc = 0
-    rc = 0
+    FamSizeFamCount = 0
+    ReadCount = 0
 
     minFM, maxFM = args.minFM, args.maxFM
     mdBam = pysam.AlignmentFile(args.mdBam, "rb")
@@ -94,163 +90,197 @@ def calculateError(args):
                read.is_unmapped or read.is_qcfail):
         Second if is equivalent to not (read.is_proper_pair)
         '''
-        if read.flag & 2820:
-            qcfail += 1
-            continue
-        elif not (read.flag & 2):
+        if read.flag & 2820 or not (read.flag & 2):
             qcfail += 1
             continue
         FM = read.opt("FM")
         if(FM < minFM or FM > maxFM):
-                fmc += 1
+                FamSizeFamCount += 1
                 continue
         if read.flag & 64:
-            errorTracker(read, read1error, read1obs)
+            errorTracker(read, r1error, r1obs, tmpArr)
         elif read.flag & 128:
-            errorTracker(read, read2error, read2obs)
+            errorTracker(read, r2error, r2obs, tmpArr)
         else:
             pass
-        rc += 1
+        ReadCount += 1
     stderr.write("Family Size Range: %i-%i\n" % (minFM, maxFM))
-    stderr.write("Reads Analyzed: %i\n" % (rc))
+    stderr.write("Reads Analyzed: %i\n" % (ReadCount))
     stderr.write("Reads QC Filtered: %i\n" % (qcfail))
-    stderr.write("Reads Family Size Filtered: %i\n" % (fmc))
-    read1frac = read1error / read1obs
-    read2frac = read2error / read2obs
-    with open(pickle_path, "wb") as pickleHandle:
-        dump((read1frac, read2frac), pickleHandle)
-    read1mean = np.mean(read1frac)
-    read2mean = np.mean(read2frac)
-    read1cyclemeans = np.mean(np.mean(read1frac, axis=2, dtype=np.float64),
-                              axis=1, dtype=np.float64)
-    read2cyclemeans = np.mean(np.mean(read2frac, axis=2, dtype=np.float64),
-                              axis=1, dtype=np.float64)
-    read1qualmeans = np.mean(np.mean(read1frac, axis=0, dtype=np.float64),
-                              axis=1, dtype=np.float64)
-    read2qualmeans = np.mean(np.mean(read2frac, axis=0, dtype=np.float64),
-                              axis=1, dtype=np.float64)
-    read1contextmeans = np.mean(np.mean(read1frac, axis=0, dtype=np.float64),
-                             axis=0, dtype=np.float64)
-    read2contextmeans = np.mean(np.mean(read2frac, axis=0, dtype=np.float64),
-                             axis=0, dtype=np.float64)
+    stderr.write("Reads Family Size Filtered: %i\n" % (FamSizeFamCount))
+    r1frac = np.divide(r1error, r1obs)  # Now r1frac holds error / obs
+    r2frac = np.divide(r2error, r2obs)  # Now r2frac holds error / obs
+    r1mean = np.mean(r1frac)
+    r2mean = np.mean(r2frac)
+    r1cyclemeans = np.mean(np.mean(r1frac, axis=2, dtype=np.float64),
+                           axis=1, dtype=np.float64)
+    r2cyclemeans = np.mean(np.mean(r2frac, axis=2, dtype=np.float64),
+                           axis=1, dtype=np.float64)
+    r1qualmeans = np.mean(np.mean(r1frac, axis=0, dtype=np.float64),
+                          axis=1, dtype=np.float64)
+    r2qualmeans = np.mean(np.mean(r2frac, axis=0, dtype=np.float64),
+                          axis=1, dtype=np.float64)
+    return {"r1cm": r1cyclemeans, "r2cm": r2cyclemeans,
+            "r1qm": r1qualmeans, "r2qm": r2qualmeans,
+            "r1f": r1frac, "r2f": r2frac, "r1m": r1mean,
+            "r2m": r2mean, "r1e": r1error, "r2e": r2error}
+
+
+def calculateError(args):
+
+    cdef dict data
+    from sys import stderr
+
+    if(args.table_prefix is None):
+        table_prefix = TrimExt(args.mdBam)
+    else:
+        table_prefix = args.table_prefix
+    table_prefix += ".out."
+
+    FullTableHandle = open(table_prefix + "full.tsv", "w")
+    CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
+    PhredTableHandle = open(table_prefix + "phred.tsv", "w")
+    ContextTableHandle = open(table_prefix + "context.tsv", "w")
+
+    data = MakeErrorArray(args)
+    '''
     CycleTableHandle.write("#Cycle\tRead1 mean error\tRead2 mean error\tread count\n")
     for index in xrange(1, rLen):
         CycleTableHandle.write(
-            "%i\t%f\t%f\t%i\n" % (index+1, read1cyclemeans[index],
-                                  read2cyclemeans[index], rc))
+            "%i\t%f\t%f\t%i\n" % (index+1, [index],
+                                  r2cyclemeans[index], ReadCount))
     CycleTableHandle.close()
-    PhredTableHandle.write("#Quality Score\tread1 mean error\tread2 mean error\n")
-    for index in xrange(37):
+    PhredTableHandle.write("#Quality Score\tr1 mean error\tr2 mean error\n")
+    for index in xrange(39):
         PhredTableHandle.write(
-            "%i\t%f\t%f\n" % (index+2, read1qualmeans[index],
-                              read2qualmeans[index]))
+            "%i\t%f\t%f\n" % (index+2, r1qualmeans[index],
+                              r2qualmeans[index]))
     PhredTableHandle.close()
     ContextTableHandle.write("#Context ID\tRead 1 mean error\tRead 2 mean error\n")
     for index in xrange(16):
         ContextTableHandle.write(
-            "%i\t%f\t%f\n" % (index, read1contextmeans[index],
-                              read2contextmeans[index]))
+            "%i\t%f\t%f\n" % (index, r1contextmeans[index],
+                              r2contextmeans[index]))
     ContextTableHandle.close()
     FullTableHandle.write(
         "#Cycle\tQuality Score\tContext ID\tRead "
         "1 mean error\tRead 2 mean error\n")
     for read_index in xrange(rLen):
-        for qual_index in xrange(37):
+        for qual_index in xrange(39):
             for context_index in xrange(16):
                 FullTableHandle.write(
                     "%i\t%i\t%i\t%f\t%f\n" % (read_index + 1, qual_index + 2, context_index,
-                                              read1frac[read_index][qual_index][context_index],
-                                              read2frac[read_index][qual_index][context_index]))
+                                              r1frac[read_index][qual_index][context_index],
+                                              r2frac[read_index][qual_index][context_index]))
     FullTableHandle.close()
+    '''
     return 0
 
 
+@cython.initializedcheck(False)
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline bint TEST_ERROR(char character) nogil:
+    if character == 61:  # '='
+        return 0
+    elif character == 78:  # 'N'
+        return 0
+    else:
+        return 1
+
+
 cpdef errorFinder(AlignedSegment_t read,
-                  ndarray[int64_t, ndim=1] readErr,
-                  ndarray[int64_t, ndim=1] readObs):
+                  ndarray[uint64_t, ndim=1] readErr,
+                  ndarray[uint64_t, ndim=1] readObs):
+    '''
     cdef size_t read_index
     cdef char base
-    cdef cystr seq
+    cdef char * seq
+    cdef size_t offset_index
+    cdef bint err
+
     seq = read.query_sequence
     for read_index in xrange(read.qstart, read.qend):
         readObs[read_index] += 1
-        base = seq[read_index]
-        if base == 61:
-            # case "="
-            return
-        elif base == 78:
-            # case "N"
+        err = TEST_ERROR(<char>seq[read_index])
+        if not err:
+            # case "=" or "N"
             return
         else:
             readErr[read_index] += 1
             return
+    '''
 
 
+@cython.returns(dict)
 def cCycleError(args):
-    cdef size_t rLen, minFM, maxFM, qc, rc, fmc, index, FM
-    cdef double_t read1mean, read2mean
-    cdef ndarray[int64_t, ndim=1, mode="c"] read1error, read1obs
-    cdef ndarray[int64_t, ndim=1, mode="c"] read2error, read2obs
-    cdef ndarray[double_t, ndim=1, mode="c"] read1prop, read2prop
+    cdef uint64_t rLen, minFM, maxFM, QCFailCount, ReadCount, FamSizeFamCount, index, FM
+    cdef double_t r1mean, r2mean
     cdef AlignedSegment_t read
     cdef AlignmentFile_t mdBam
-    from sys import stdout, stderr
-    if(args.family_size is None):
+    from sys import stdout, stderr, maxint
+    from operator import itemgetter
+    cdef ndarray[uint64_t, ndim=1, mode="c"] r1error
+    cdef ndarray[uint64_t, ndim=1, mode="c"] r1obs
+    cdef ndarray[uint64_t, ndim=1, mode="c"] r2error
+    cdef ndarray[uint64_t, ndim=1, mode="c"] r2obs
+    rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
+    r1error = np.zeros(rLen, dtype=np.uint64)
+    r1obs = np.zeros(rLen, dtype=np.uint64)
+    r2error = np.zeros(rLen, dtype=np.uint64)
+    r2obs = np.zeros(rLen, dtype=np.uint64)
+
+    if(not args.family_size):  # args.family_size is None
         minFM = 0
         maxFM = maxint
     else:
-        minFM, maxFM = map(int(args.family_size.split(",")))
-    rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
-    read1error = np.zeros(rLen, dtype=np.int64)
-    read1obs = np.zeros(rLen, dtype=np.int64)
-    read2error = np.zeros(rLen, dtype=np.int64)
-    read2obs = np.zeros(rLen, dtype=np.int64)
-    qc = 0
-    fmc = 0
-    rc = 0
+        minFM, maxFM = itemgetter(0, -1)(args.family_size.split(","))
+    QCFailCount = 0
+    FamSizeFamCount = 0
+    ReadCount = 0
     mdBam = pysam.AlignmentFile(args.mdBam)
     for read in mdBam:
-        if read.flag & 2820:
-            qc += 1
-            continue
-        elif ~ read.flag & 2:
-            qc += 1
+        if read.flag & 2820 or (~read.flag) & 2:
+            QCFailCount += 1
             continue
         FM = read.opt("FM")
         if(FM < minFM or FM > maxFM):
-                fmc += 1
+                FamSizeFamCount += 1
                 continue
         if read.flag & 64:
-            errorFinder(read, read1error, read1obs)
+            errorFinder(read, r1error, r1obs)
         elif read.flag & 128:
-            errorFinder(read, read2error, read2obs)
+            errorFinder(read, r2error, r2obs)
         else:
             pass
-        rc += 1
+        ReadCount += 1
     stdout.write("Family Size Range: %i-%i\n" % (minFM,
-                                                     maxFM))
-    stdout.write("Reads Analyzed: %i\n" % (rc))
-    stdout.write("Reads QC Filtered: %i\n" % (qc))
+                                                 maxFM))
+    stdout.write("Reads Analyzed: %i\n" % (ReadCount))
+    stdout.write("Reads QC Filtered: %i\n" % (QCFailCount))
     if args.family_size is not None:
-        stdout.write("Reads Family Size Filtered: %i\n" % (fmc))
-    read1prop = read1error / read1obs
-    read2prop = read2error / read2obs
-    read1mean = np.mean(read1prop)
-    read2mean = np.mean(read2prop)
-    stdout.write("cycle\tread1\tread2\tread count\n")
+        stdout.write("Reads Family Size Filtered: %i\n" % (FamSizeFamCount))
+    r1prop = np.divide(r1error.astype(np.double), r1obs)
+    r2prop = np.divide(r2error.astype(np.double), r2obs)
+    r1mean = np.mean(r1prop)
+    r2mean = np.mean(r2prop)
+    stdout.write("cycle\tr1\tr2\tread count\n")
     for index in xrange(rLen):
         stdout.write("%i\t%f\t%f\t%i\n" % (index + 1,
-                                           read1prop[index],
-                                           read2prop[index], rc))
-    stdout.write("%i\t%f\t%f\t%i\n" % (maxFM, read1mean, read2mean,
-                                       rc))
+                                           r1prop[index],
+                                           r2prop[index], ReadCount))
+    stdout.write("%i\t%f\t%f\t%i\n" % (maxFM, r1mean, r2mean,
+                                       ReadCount))
     if args.cycleheat is not None:
-        cycleHeater(read1prop, read2prop, rLen)
+        cycleHeater(r1prop, r2prop, rLen)
+    return {"r1e": r1error, "r1o": r1obs, "r2e": r2error,
+            "r2o": r2obs, "r1p": r1prop, "r2p": r2prop,
+            "r1m": r1mean, "r2m": r2mean}
 
 
-def cycleHeater(read1prop, read2prop, rLen):
+def cycleHeater(r1prop, r2prop, rLen):
     fig, ax = plt.subplots()
-    data = np.array([read1prop, read2prop])
+    data = np.array([r1prop, r2prop])
     heatmap = ax.pcolor(data, cmap=plt.cm.Reds)
     colorb = plt.colorbar(heatmap)
     plt.show()

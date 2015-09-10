@@ -1,5 +1,5 @@
 # cython: c_string_type=str, c_string_encoding=ascii
-# cython: cdivision=True, profile=True
+# cython: cdivision=True
 
 """
 Contains various utilities for working with barcoded fastq files.
@@ -18,6 +18,7 @@ import time
 import cStringIO
 import operator
 import uuid
+import multiprocessing as mp
 from operator import (add as oadd, le as ole, ge as oge, div as odiv,
                       mul as omul, add as oadd, attrgetter as oag,
                       methodcaller as mc)
@@ -36,7 +37,7 @@ from numpy import sum as nsum
 
 from utilBMF.HTSUtils import (SliceFastqProxy,
                               printlog as pl,
-                              pFastqProxy, TrimExt, pFastqFile, getBS,
+                              pFastqProxy, TrimExt, pFastqFile,
                               hamming_cousins, GetParallelDMPPopen)
 from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import ThisIsMadness as Tim, FunctionCallException
@@ -54,16 +55,6 @@ DEF size32 = 4
 DEF sizedouble = 8
 
 
-def SortAndMarkFastqsCommand(Fq1, Fq2, IndexFq):
-    return ("pr -mts <(cat %s | paste - - - -) <(cat %s | " % (Fq1, Fq2) +
-            "paste - - - -) <(cat %s | paste - - - -) | awk" % IndexFq +
-            "'BEGIN {{FS=OFS=\"\t\"}};{{BS=\"|BS=\"$10\"\"substr($2,"
-            "0,2)\"\"substr($6,0,2); print $1\"\"BS, $2, $3, $4, $5\"\"BS, "
-            "$6, $7, $8}}' | sort -t\"|\" -k2,2 -k1,1 | tr '\t' '\n'")
-
-
-@cython.locals(checks=int,
-               parallel=cython.bint, sortMem=cystr)
 def BarcodeSortBoth(cystr inFq1, cystr inFq2,
                     cystr sortMem=None, cython.bint parallel=False):
     cdef cystr outFq1, outFq2, highMemStr
@@ -109,11 +100,10 @@ def BarcodeSortBoth(cystr inFq1, cystr inFq2,
 
 @cython.locals(highMem=cython.bint)
 def BarcodeSort(cystr inFastq, cystr outFastq="default",
-                cystr mem="6G", int threads=1):
+                cystr mem="6G"):
     cdef cystr BSstring
     pl("Sorting {} by barcode sequence.".format(inFastq))
-    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem,
-                                 threads=threads)
+    BSstring = getBarcodeSortStr(inFastq, outFastq=outFastq, mem=mem)
     check_call(BSstring, shell=True)
     pl("Barcode Sort shell call: {}".format(BSstring))
     if(outFastq == "default"):  # Added for compatibility with getBSstr
@@ -121,26 +111,33 @@ def BarcodeSort(cystr inFastq, cystr outFastq="default",
     return outFastq
 
 
-@cython.returns(cystr)
-def getBarcodeSortStr(inFastq, outFastq="default", mem="",
-                      int threads=1):
-    if(mem != ""):
+def BarcodeSortPipeStr(outFastq="stdout",
+                       mem=None):
+    """
+    :param outFastq: [cystr/arg] Path to output fastq.
+    :param mem:
+    :return:
+    """
+    if mem is None:
+        mem = "6G"
+    if mem != "":
         mem = " -S " + mem
-    threadStr = ""
-    if(threads != 1):
-        import warnings
-        warnings.warn("Note: getBarcodeSortStr is being given a threads argum"
-                      "ent. This is deprecated for uniformity between linux "
-                      "distributions. Parameter simply being ignored.",
-                      DeprecationWarning)
+    if outFastq != "stdout":
+        return "paste - - - - | sort -t'|' -k3,3 -k1,1" \
+               " %s | tr '\t' '\n' > %s" % (mem, outFastq)
+    else:
+        return "paste - - - - | sort -t'|' -k3,3 -k1,1" \
+               " %s | tr '\t' '\n'" % mem
+
+
+@cython.returns(cystr)
+def getBarcodeSortStr(inFastq, outFastq="default", mem=None):
     if(outFastq == "default"):
         outFastq = '.'.join(inFastq.split('.')[0:-1] + ["BS", "fastq"])
     if(inFastq.endswith(".gz")):
-        return ("zcat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
-                " %s %s| tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
+        return "zcat %s | " % inFastq + BarcodeSortPipeStr(outFastq, mem)
     else:
-        return ("cat %s | paste - - - - | sort -t'|' -k3,3 -k1,1" % inFastq +
-                " %s %s | tr '\t' '\n' > %s" % (mem, threadStr, outFastq))
+        return "cat %s | " % inFastq + BarcodeSortPipeStr(outFastq, mem)
 
 
 cpdef cystr QualArr2QualStr(ndarray[int32_t, ndim=1] qualArr):
@@ -284,7 +281,7 @@ cdef SeqQual_t cFisherFlatten(int8_t * Seqs, int32_t * Quals,
         ret.Seq[query_index] = ARGMAX_CONV(Sums.argmax_arr[query_index])
         ndIndex = query_index + Sums.argmax_arr[query_index] * rLen
         # Round
-        tmpQual =  <int32_t> (- 10 * c_log10(
+        tmpQual = <int32_t> (- 10 * c_log10(
             igamc_pvalues(Sums.counts[ndIndex],
                           Sums.chiSums[ndIndex])) + 0.5)
         # Eliminate underflow p values
@@ -310,37 +307,6 @@ cpdef SeqQual_t FisherFlatten(
     after flattening.
     """
     return cFisherFlatten(&Seqs[0,0], &Quals[0,0], rLen, nRecs)
-
-
-'''
-
-This method works (change the second argument on amax/argmax calls
-on the output), but it looks like it's slower.
-I might have to do this manually.
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef ndarray[int32_t, ndim=2] FlattenSeqs(ndarray[char, ndim=2] seqs,
-                                             ndarray[int32_t, ndim=2] quals,
-                                             size_t nRecs):
-    cdef size_t readlen = len(seqs[0])
-    cdef size_t read_index, base_index
-    cdef ndarray[int32_t, ndim=2] QualSumAll
-    cdef int32_t tmpInt
-    QualSumAll = np.zeros([readlen, 4], dtype=np.int32)
-    for read_index in range(nRecs):
-        for base_index in range(readlen):
-            tmpInt = seqs[read_index][base_index]
-            if(tmpInt == 84):
-                QualSumAll[base_index][3] += quals[read_index][base_index]
-            elif(tmpInt == 67):
-                QualSumAll[base_index][1] += quals[read_index][base_index]
-            elif(tmpInt == 71):
-                QualSumAll[base_index][2] += quals[read_index][base_index]
-            else:
-                QualSumAll[base_index][0] += quals[read_index][base_index]
-    return QualSumAll
-'''
 
 
 cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
@@ -472,11 +438,6 @@ cdef cystr cFastFisherFlattening(list R,
     Calculates the most likely nucleotide
     at each position and returns the joined record string.
     After inlining:
-    In [21]: %timeit pCompareFqRecsFast(fam)
-   1000 loops, best of 3: 518 us per loop
-
-    In [22]: %timeit cFRF_helper(fam)
-    1000 loops, best of 3: 947 us per loop
 
     """
     cdef int nRecs, ND, rLen
@@ -686,7 +647,7 @@ def CutadaptPaired(cystr fq1, cystr fq2,
                                                              fq1, fq2))
     else:
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
-                      "{} -g {} -o {} -p".format(p3Seq, p5Seq, outfq1) +
+                      "{} -A {} -o {} -p".format(p3Seq, p5Seq, outfq1) +
                       " {} -O {} {} {}".format(outfq2, overlapLen, fq1, fq2))
     pl("Cutadapt command string: {}".format(commandStr))
     if(makeCall):
@@ -710,7 +671,7 @@ def CutadaptString(fq, p3Seq="default", p5Seq="default", overlapLen=6):
             "--match-read-wildcards", p3Seq, outfq, overlapLen, fq)
     else:
         commandStr = ("cutadapt --mask-adapter --match-read-wildcards -a "
-                      "{} -g {} -o {} -O {} {}".format(p3Seq, p5Seq, outfq,
+                      "{} -A {} -o {} -O {} {}".format(p3Seq, p5Seq, outfq,
                                                        overlapLen, fq))
     pl("Cutadapt command string: {}".format(commandStr))
     return commandStr, outfq
@@ -841,6 +802,7 @@ def DispatchParallelDMP(fq1, fq2, indexFq="default",
 
 REMOVE_NS = maketrans("N", "A")
 
+
 def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
                         int head=-1, int num_nucs=-1):
     """
@@ -866,8 +828,9 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
             "PairedShadeSplitting requires that head be set.")
     if(num_nucs < 0):
         raise UnsetRequiredParameter("num_nucs must be set")
-    elif(num_nucs > 3):
-        raise ImproperArgumentError("num_nucs is limited to 2")
+    elif(num_nucs > 6):
+        raise ImproperArgumentError("num_nucs is limited to 6. "
+                                    "Why? I felt like it.")
     numHandleSets = 4 ** num_nucs
     bcKeys = ["A" * (num_nucs - len(nci(i))) + nci(i) for
               i in range(numHandleSets)]
@@ -909,7 +872,7 @@ def PairedShadeSplitter(cystr fq1, cystr fq2, cystr indexFq="default",
 @cython.locals(useGzip=cython.bint, hpLimit=int)
 def FastqPairedShading(fq1, fq2, indexFq="default",
                        useGzip=False, SetSize=10,
-                       int head=2):
+                       int head=0):
     """
     TODO: Unit test for this function.
     Tags fastqs with barcodes from an index fastq.
@@ -992,59 +955,6 @@ def FastqPairedShading(fq1, fq2, indexFq="default",
     outFqHandle1.close()
     outFqHandle2.close()
     return outfq1, outfq2
-
-
-def FastqSingleShading(fq,
-                       indexFq="default",
-                       outfq="default",
-                       cython.bint gzip=False,
-                       int head=0):
-    """
-    Unit test done. Marks a single fastq with its index fq string.
-    """
-    cdef pysam.cfaidx.FastqProxy read1
-    cdef pFastqProxy_t pRead1, pIndexRead
-    cdef pysam.cfaidx.FastqFile inFq1, inIndex
-    pl("Now beginning fastq marking: Pass/Fail and Barcode")
-    if(indexFq == "default"):
-        raise ValueError("For an i5/i7 index ")
-    if(outfq == "default"):
-        outfq = '.'.join(fq.split('.')[0:-1]) + '.shaded.fastq'
-    inFq1 = pysam.FastqFile(fq)
-    outFqHandle1 = open(outfq, "w")
-    inIndex = pysam.FastqFile(indexFq)
-    for read1 in inFq1:
-        pIndexRead = pFastqProxy.fromFastqProxy(inIndex.next())
-        pRead1 = pFastqProxy.fromFastqProxy(read1)
-        if("N" in pRead1.pIndexRead.sequence):
-            read1.comment += "|FP=0|BS=%" % (
-                read1.sequence[1:head + 1] + pIndexRead.sequence)
-            outFqHandle1.write(str(read1))
-        else:
-            read1.comment += "|FP=1|BS=%s" % (
-                read1.sequence[1:head + 1] + pIndexRead.sequence)
-            outFqHandle1.write(str(read1))
-    outFqHandle1.close()
-    if(gzip):
-        check_call(['gzip', fq], shell=False)
-    return
-
-
-@cython.returns(cystr)
-def GetDescTagValue(readDesc, tag="default"):
-    """
-    Gets the value associated with a given tag.
-    of read description (string), then the seq
-    attribute is used instead of the description.
-    """
-    if(tag == "default"):
-        raise ValueError("A tag must be specified!")
-    try:
-        return GetDescriptionTagDict(readDesc)[tag]
-    except KeyError:
-        # pl("Tag {} is not available in the description.".format(tag))
-        # pl("Description: {}".format(readDesc))
-        raise KeyError("Invalid tag: %s" % tag)
 
 
 cdef inline cystr PyArr2QualStr(py_array qualArr):
@@ -1203,14 +1113,21 @@ def singleFqConsRescale(cystr fq,
     return outFq
 
 
-def singleFastqConsolidate(cystr fq,
+def singleFastqConsolidate(cystr fq, cystr outFq=None,
                            int SetSize=100):
-    cdef cystr outFq, bc4fq, ffq
+    """
+    :param fq [cystr/arg] Path to input fastq.
+    :param outFq [cystr/kwarg/None] Path to output Fq.
+    Defaults to TrimExt(fq) + ".cons.fastq" if None.
+    :param SetSize [int/kwarg/100] Number of records to write to file at once.
+    :return outFq - Path to output fastq
+    """
+    cdef cystr bc4fq, ffq
     cdef pFastqFile_t inFq
     cdef list StringList, pFqPrxList
     cdef int numproc, TotalCount, MergedCount
     from sys import stderr
-    outFq = TrimExt(fq) + ".cons.fastq"
+    outFq = TrimExt(fq) + ".cons.fastq" if(outFq is None) else outFq
     pl("Now running singleFastqConsolidate on {}.".format(fq))
     inFq = pFastqFile(fq)
     outputHandle = open(outFq, 'w')
@@ -1308,15 +1225,13 @@ def TrimHomingPaired(inFq1, inFq2, int bcLen=12,
     tw1 = trimHandle1.write
     tw2 = trimHandle2.write
     ew = errHandle.write
+    ffp = pFastqProxy.fromFastqProxy
     for read1 in InFastq1:
         read2 = fqNext()
-        if homing not in read1.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy.fromFastqProxy(read1)))
-            ew(str(pFastqProxy.fromFastqProxy(read2)))
-            continue
-        if homing not in read2.sequence[bcLen:bcLen + HomingLen]:
-            ew(str(pFastqProxy.fromFastqProxy(read1)))
-            ew(str(pFastqProxy.fromFastqProxy(read2)))
+        if (homing not in read1.sequence[bcLen:bcLen + HomingLen] or
+            homing not in read2.sequence[bcLen:bcLen + HomingLen]):
+            ew(str(ffp(read1)))
+            ew(str(ffp(read2)))
             continue
         barcode = read1.sequence[0:bcLen] + read2.sequence[0:bcLen]
         tw1(SliceFastqProxy(read1, firstBase=TotalTrim,
@@ -1385,7 +1300,7 @@ def BarcodeRescueDicts(cystr indexFqPath, int minFam=10, int n=1,
 
 
 def RescueShadingWrapper(cystr inFq1, cystr inFq2, cystr indexFq=None,
-                         int minFam=10, int mm=1, int head=2):
+                         int minFam=10, int mm=1, int head=0):
     cdef dict rescueDict, TrueFamDict
     cdef cystr tmpFilename
     tmpFilename = str(uuid.uuid4().get_hex()[0:8]) + ".tmp"
@@ -1407,7 +1322,7 @@ def RescuePairedFastqShading(cystr inFq1, cystr inFq2,
                              cystr indexFq,
                              dict rescueDict=None, dict TrueFamDict=None,
                              cystr outFq1=None, cystr outFq2=None,
-                             int head=2):
+                             int head=0):
     """Rescues orphans from a barcode rescue.
     Works under the assumption that the number of random nucleotides used
     as molecular barcodes is sufficiently high that any read "family" with
@@ -1486,3 +1401,132 @@ cdef inline bint BarcodePasses(cystr barcode, int hpLimit):
     return not ("N" in barcode or "A" * hpLimit in barcode or
                 "C" * hpLimit in barcode or
                 "G" * hpLimit in barcode or "T" * hpLimit in barcode)
+
+
+def GenerateSortFilenames(cystr Fq1, int n_nucs):
+    cdef int n_handles = 4 ** n_nucs
+    outBasename = TrimExt(Fq1) + ".sort"
+    return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
+             i in xrange(n_handles)],
+            ["%s.tmp.%i.R2.fastq" % (outBasename, i) for
+             i in xrange(n_handles)])
+
+
+def GenerateTmpFilenames(cystr Fq1, int n_nucs):
+    cdef int n_handles = 4 ** n_nucs
+    outBasename = TrimExt(Fq1) + ".split"
+    return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
+             i in xrange(n_handles)],
+            ["%s.tmp.%i.R2.fastq" % (outBasename, i) for
+             i in xrange(n_handles)])
+
+
+def GenerateFinalTmpFilenames(cystr Fq1, int n_nucs):
+    cdef int n_handles = 4 ** n_nucs
+    outBasename = TrimExt(Fq1) + ".dmp"
+    return (["%s.tmp.%i.R1.fastq" % (outBasename, i) for
+             i in xrange(n_handles)],
+            ["%s.tmp.%i.R2.fastq" % (outBasename, i) for
+             i in xrange(n_handles)])
+
+
+def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
+                    int hpThreshold, int n_nucs,
+                    bint dry_run=False):
+    """
+    :param Fq1- [cystr/arg] Path to read 1 fastq
+    :param Fq2- [cystr/arg] Path to read 2 fastq
+    :param indexFq- [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold to fail a homopolymer.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the files.
+    """
+    cdef cystr outBasename
+    outBasename = TrimExt(Fq1) + ".split"
+    cStr = ("fqmarksplit -t %i -n %i -i %s " % (hpThreshold, n_nucs,
+                                                indexFq) +
+            "-o %s %s %s" % (outBasename, Fq1, Fq2))
+    sys.stderr.write(cStr + "\n")
+    if dry_run:
+        return cStr
+    check_call(cStr, shell=True)
+    return {"mark": GenerateTmpFilenames(Fq1, n_nucs),
+            "sort": GenerateSortFilenames(Fq1, n_nucs)}
+
+
+def call_lh3_sort(tmpFname, sortFname):
+    cStr = "lh3sort -t'|' -k3,3 %s | tr '\t' '\n' > %s" % (sortFname, tmpFname)
+    check_call(cStr, shell=True)
+    return
+
+
+def dispatch_lh3_sorts(tmpFnames, sortFnames, threads):
+    pool = mp.Pool(processes=threads)
+    results = [pool.apply_async(call_lh3_sort, args=(tmpFname, sortFname,))
+               for tmpFname, sortFname in zip(tmpFnames, sortFnames)]
+    return sortFnames[0], sortFnames[1]
+
+
+def dispatch_sfc(sortFnames, finalFnames, threads):
+    pool = mp.Pool(processes=threads)
+    bothSortFnames = sortFnames[0] + sortFnames[1]
+    bothFinalFnames = finalFnames[0] + finalFnames[1]
+    results = [pool.apply_async(singleFastqConsolidate,
+                                (sFname,),
+                                dict(outFq=fFname))
+               for sFname, fFname in zip(bothSortFnames, bothFinalFnames)]
+    return finalFnames
+
+
+def split_and_sort(cystr Fq1, cystr Fq2, cystr indexFq,
+                   int hpThreshold, int n_nucs,
+                   int threads=8):
+    """
+    :param Fq1 [cystr/arg] Path to read 1 fastq.
+    :param Fq2 [cystr/arg] Path to read 2 fastq.
+    :param indexFq [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold for homopolymer length to QC fail.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the
+    initial fastq.
+    :param threads [int/kwarg/8] Number of threads to instruct MP to use.
+    :return List of tuples for read1/read2 read sets.
+    """
+    cdef dict fqmarksplit_retdict
+    fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
+                                          hpThreshold, n_nucs)
+    tmpFnames = fqmarksplit_retdict['mark']
+    sortFnames = fqmarksplit_retdict['sort']
+    finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
+    sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
+    return sorted_split_files
+
+
+def split_sort_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
+                   int hpThreshold, int n_nucs,
+                   int threads=8):
+    """
+    :param Fq1 [cystr/arg] Path to read 1 fastq.
+    :param Fq2 [cystr/arg] Path to read 2 fastq.
+    :param indexFq [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold for homopolymer length to QC fail.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the
+    initial fastq.
+    :param threads [int/kwarg/8] Number of threads to instruct MP to use.
+    :return List of tuples for read1/read2 read sets.
+    """
+    cdef dict fqmarksplit_retdict
+    fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
+                                          hpThreshold, n_nucs)
+    tmpFnames = fqmarksplit_retdict['mark']
+    marker1 = tmpFnames[0]
+    marker2 = tmpFnames[1]
+    del tmpFnames
+    sortFnames = fqmarksplit_retdict['sort']
+    sorter1 = sortFnames[0]
+    sorter2 = sortFnames[1]
+    del sortFnames
+    sorted_split_files1 = dispatch_lh3_sorts(marker1, sorter1, threads)
+    sorted_split_files2 = dispatch_lh3_sorts(marker2, sorter2, threads)
+    return
+    finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
+    dispatch_sfc(sortFnames, finalTmpFnames, threads)
+    return

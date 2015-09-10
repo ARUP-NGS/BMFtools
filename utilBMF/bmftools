@@ -10,7 +10,6 @@ import cython
 
 # BMFTools python imports
 from utilBMF.HTSUtils import printlog as pl, TrimExt
-from MawCluster.BCBam import pairedBarcodeTagging, singleBarcodeTagging
 from utilBMF.ArgumentSketcher import ArgumentSketcher
 from utilBMF.GlobalReporting import SampleMetrics, ReviewDirComponents
 from utilBMF.QC import GetAllQCMetrics
@@ -55,7 +54,7 @@ def main():
     BedCovParser = subparsers.add_parser(
         "bedcov", description="Calls FastDepthOfCoverage.")
     alignTagBamParser = subparsers.add_parser(
-        "aligntagbam", description=("Performs alignment and sam tagging of"
+        "pat", description=("Performs alignment and sam tagging of"
                                     " consolidated fastq files to generate "
                                     "a tagged bam."))
     TagBamParser = subparsers.add_parser(
@@ -100,10 +99,14 @@ def main():
                                            description="Gets counts and"
                                            " frequencies for all SNV tr"
                                            "ansitions.")
-    DMultiPlexParser = subparsers.add_parser("dmp",
+    DMultiPlexParser = subparsers.add_parser("stdmp",
                                              description="Marks, combines, and"
                                              " processes a dataset of fastqs f"
-                                             "or further analysis.")
+                                             "or further analysis. This is the"
+                                             "old, depricated version use dmp")
+    MPdemultiplexParser = subparsers.add_parser("dmp", description="Marks,"
+                                          "combines, and processes barcoded"
+                                          " FASTQs.")
     SNVParser = subparsers.add_parser("snv", description="Call SNVs. Assumes "
                                       "that reads have been collapsed from a "
                                       "family size of at least 2")
@@ -243,6 +246,80 @@ def main():
     DMultiPlexParser.add_argument(
         "--threads", "-p",
         help="Number of read-pair sets of demultiplexing."
+    )
+    MPdemultiplexParser.add_argument(
+        "inFqs",
+        nargs="+",
+        help="Input fastq files"
+    )
+    MPdemultiplexParser.add_argument(
+        "--head",
+        help=("Number of bases from each read to add to the barcode to"
+              "increase the specificity of the family, defaults to 0"),
+        default=0,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "-i",
+        "--indexFq",
+        metavar="IndexFastq",
+        help="Index Fastq containing barcode sequence",
+        required=True
+    )
+    MPdemultiplexParser.add_argument(
+        "--cutAdapt",
+        help="calls cutAdapt on temporary fastqs after marking and"
+        " consolidation",
+        default=False,
+        action="store_true"
+    )
+    MPdemultiplexParser.add_argument(
+        "-f",
+        "--p5Seq",
+        help="5' primer sequence used by cutadapt (defaults to 'default', "
+              "which will run cutadapt to only trim the 3' primer sequence, "
+              "if given)"
+    )
+    MPdemultiplexParser.add_argument(
+        "-t",
+        "--p3Seq",
+        help="3' primer sequence used by cutadapt (defaults to 'default', "
+              "which will not run cutadapt)"
+    )
+    MPdemultiplexParser.add_argument(
+        "--conf",
+        help="Path to a config file. If set, load arguments from "
+                "this file, overriding the defaults founds in _bmftoo"
+                "ls_helper. Any command-line arguments override this "
+                "config file as well."
+    )
+    MPdemultiplexParser.add_argument(
+        "--len_prefix",
+        help="Number of nucleotides to use in for splitting reads from"
+             " original fastqs, the higher the value, the more temp files"
+             " defaults to 3, but try 4 if RAM is a problem.  warning: "
+             " this can slow the overall runtime considerably",
+        default=3,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "--hpLimit",
+        help="proportion of read which consistes of a single nuceltide above"
+             " which the read will be marked as QC failed.  defaults to .9",
+        default=0.9,
+        type=float
+    )
+    MPdemultiplexParser.add_argument(
+        "--ncpus",
+        help="number of processors to use",
+        type=int,
+        required=True
+    )
+    MPdemultiplexParser.add_argument(
+        "--profile",
+        help="profile the process, creating a profile text file",
+        default=False,
+        action="store_true"
     )
     alignTagBamParser.add_argument(
         "inFqs",
@@ -941,7 +1018,31 @@ def main():
         OutTable = VCFStats(Chapman['inVCF'])
         sys.exit(0)
     elif(subcommand == "dmp"):
+        from utilBMF.DMPUtils import splitMPdmp as DMP
+        outFq1, outFq2 = DMP(
+            Chapman['inFqs'],
+            indexFq=Chapman['indexFq'],
+            p3Seq=Chapman['p3Seq'],
+            p5Seq=Chapman['p5Seq'],
+            len_prefix=Chapman['len_prefix'],
+            hpLimit=Chapman['hpLimit'],
+            ncpus=Chapman['ncpus'],
+            head=Chapman['head'],
+            cutAdapt=Chapman['cutAdapt'],
+            profile=Chapman['profile'])
+        pl("Demultiplexing, marking, consildating, and compression complete"
+            "new fastqs are %s and %s" % (outFq1, outFq2))
+        return 0  # sys.exit(main()) returns 0
+    elif(subcommand == "stdmp"):
         if(len(Chapman['inFqs']) == 2):
+            if Chapman['rescue'] is True:
+                # Avoid "parallel" dmp if rescue is activated.
+                from MawCluster.BCFastq import RescueShadingWrapper
+                RescueShadingWrapper(Chapman['inFqs'][0],
+                Chapman['inFqs'][1],
+                indexFq=Chapman['indexFq'],
+                minFam=10, mm=2, head=int(Chapman['head']))
+                return 0
             if(Chapman['num_nucs'] is None):
                 from numpy import log2
                 num_nucs = int(log2(int(Chapman['threads'])) // 2) + 1
@@ -1079,27 +1180,20 @@ def main():
         from utilBMF.HTSUtils import __version__
         print(__version__)
     elif subcommand == "tagbam":
-        fastqs = Chapman['fastq']
-        if(len(fastqs) == 1):
-            singleBarcodeTagging(fastqs[0], Chapman['inBAM'],
-                                 outputBAM=Chapman['outfile'])
-        elif(len(fastqs) == 2):
-            pairedBarcodeTagging(fastqs[0], fastqs[1], Chapman['inBAM'],
-                                 outBAMFile=Chapman['outfile'])
-    elif(subcommand == "aligntagbam"):
-        from BMFMain.Workflow import pairedBamProc
-        outBAM = pairedBamProc(
+        raise DeprecationWarning("tagbam is deprecated.")
+    elif(subcommand == "pat"):
+        from utilBMF.HTSUtils import PipeAlignTag
+        outBAM = PipeAlignTag(
             Chapman['inFqs'][0],
             Chapman['inFqs'][1],
             ref=Chapman['ref'],
-            bed=Chapman['bed'],
-            aligner=Chapman['aligner'],
-            realigner=Chapman['realigner'],
-            abrapath=Chapman['abrapath'],
-            rLen=Chapman['readLength'],
-            gatkpath=Chapman['gatkpath'])
-        pl("aligntagbam completed succesfully! Final bam is : " + outBAM)
-        sys.exit(0)
+            sortMem=Chapman['sortMem'],
+            outBAM=Chapman['outBAM'],
+            coorsort=Chapman['coorsort'],
+            u=Chapman['u'],
+            opts=Chapman['opts'])
+        pl("pat (PipeAlignTag) completed succesfully! Final bam is : " + outBAM)
+        return 0
     elif(subcommand == "rsq"):
         from BMFMain.Workflow import pairedFastqShades
         pairedFastqShades(Chapman['fastqs'][0],
@@ -1181,7 +1275,7 @@ def main():
     if(subcommand == "pep8"):
         from subprocess import Popen, PIPE
         from time import sleep
-        if(os.path.isdir(Chapman['dir']) is False):
+        if os.path.isdir(Chapman['dir']) is False:
             raise ImproperArgumentError(
                 "Directory %s is not a directory. Abort!" % Chapman['dir'])
         cStr = ("pep8 $(find " + Chapman['dir'] +
@@ -1190,11 +1284,11 @@ def main():
         complaints = Popen(cStr, shell=True, stdout=PIPE)
         count = 0
         while count < 600:
-            if(complaints.poll() is not None):
+            if complaints.poll() is not None:
                 break
             sleep(0.5)
         out, err = complaints.communicate()
-        if(len(out) == 0):
+        if len(out) == 0:
             pl("No modified pep8 violations. Congrats!")
             return 0
         else:

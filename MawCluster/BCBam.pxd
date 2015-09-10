@@ -9,11 +9,10 @@ from cpython cimport array as c_array
 from libc.stdint cimport *
 from libc.stdio cimport sprintf
 from libc.string cimport memcpy
-from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq
+from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq, bam_get_aux
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
-from utilBMF.PysamUtils cimport PysamToChrInline
 from utilBMF.cstring cimport struct_str
 from utilBMF.MPA cimport MergeAgreedQualities, MergeDiscQualities
 from pysam.calignedsegment cimport pysam_get_l_qname, bam1_t
@@ -40,18 +39,23 @@ cpdef dict pGetCOTagDict(AlignedSegment_t read)
 cdef inline int32_t getFMFromAS(AlignedSegment_t read):
     return <int32_t> read.opt("FM")
 
-
+'''
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
-cdef inline int8_t BarcodeHD(char * str1, char * str2,
+cdef inline int8_t BarcodeHD(bam1_t * query, bam1_t * cmp,
                              int8_t length) nogil:
+    cdef char* str1
+    cdef char* str2
     cdef int8_t ret = 0
-    cdef uint16_t index
-    for index in xrange(length):
+    cdef uint8_t index
+    str1 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
+    str2 = <char*>bam_aux2Z(bam_aux_get(query, "BS"))
+    for index from 0 <= index < length:
         if(str1[index] != str2[index]):
             ret += 1
     return ret
+'''
 
 
 cdef inline bint IS_REV(AlignedSegment_t read):
@@ -100,4 +104,3 @@ cdef class BamPipe:
     cdef public AlignmentFile_t inHandle, outHandle
     cpdef process(self)
     cdef write(self, AlignedSegment_t read)
-

@@ -35,6 +35,6 @@ def SplitFastqFamilies(cystr inFq, cystr outfqpath,
             read.comment = read.comment.replace(
                 "BS=" + barcode, "BS=" + barcode + int2nuc[SubFamilyCount])
             ohw(str(read))
-            if(MemberCount % FamilyCap == 0):
+            if not MemberCount % FamilyCap:
                 SubFamilyCount += 1
     return outfqpath

@@ -1,0 +1,5 @@
+A Unix sort supporting alphanumerical sorting, ported from GNU textutils 1.22.
+Examples:
+
+  sort -N input.txt
+  sort -k2,2N input.txt

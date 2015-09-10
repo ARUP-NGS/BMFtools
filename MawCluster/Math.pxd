@@ -11,8 +11,11 @@ ctypedef double double_t
 cdef inline double_t CHI2_FROM_PHRED(int32_t phredInt) nogil
 cdef inline double_t INV_CHI2_FROM_PHRED(int32_t phredInt) nogil
 cdef int8_t * arrmax(int32_t * quals, int8_t * ret,
-            size_t nRecs, size_t rLen) nogil
+                     size_t nRecs, size_t rLen) nogil
 
 
 cdef extern from "cephes.h":
     cdef double igamc(double, double) nogil
+
+cpdef inline double_t pigamc(double a, double b):
+    return igamc(a, b)
