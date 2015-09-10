@@ -11,28 +11,29 @@
 #include "fqmarksplit.h"
 
 // Inline function declarations
-//int lh3_sort_call(char *fname, char *outfname);
+int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
+void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 void FREE_SPLITTER(mark_splitter_t var);
-
-//void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings);
-int ipow(int base, int exp);
-mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
+mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp);
+mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
+mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
+int ipow(int base, int exp);
+void mseq_destroy(mseq_t *mvar);
+void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp);
+int nuc2num(char character);
+int nuc_cmp(char forward, char reverse);
+char ***parse_rescaler(char *qual_rescale_fname);
+int rescale_qscore(int qscore, int cycle, char base, char ***rescaler);
+void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
+int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
-void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
-mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp);
-void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp);
-int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
-int nuc_cmp(char forward, char reverse);
-int rescale_qscore(int qscore, int cycle, char base, char ***rescaler);
+void tmp_mseq_destroy(tmp_mseq_t mvar);
 void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp);
-void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
-int nuc2num(char character);
-char ***parse_rescaler(char *qual_rescale_fname);
-void mseq_destroy(mseq_t *mvar);
-mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
+void char_to_num(char character, int increment);
+void nuc_cmpl(char character, char ret);
+void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail, int n_len);
 
 // Macros
 
@@ -123,12 +124,11 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     // Get first barcode.
     set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
     pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-    bin = get_binner(barcode, settings.n_nucs);
     mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings.rescaler, &tmp);
     mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings.rescaler, &tmp);
     bin = get_binner(barcode, settings.n_nucs);
-    MSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail, n_len);
-    MSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail, n_len);
+    mseq2fq_inline(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail, n_len);
+    mseq2fq_inline(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail, n_len);
     do {
         count += 1;
         if(!(count % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
@@ -139,10 +139,10 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
         update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp);
         update_mseq(&mvar2, barcode, seq2, settings.rescaler, &tmp);
         bin = get_binner(barcode, settings.n_nucs);
-        MSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail, n_len);
-        MSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail, n_len);
+        mseq2fq_inline(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail, n_len);
+        mseq2fq_inline(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail, n_len);
     } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
-    destroy_tmp_mseq(tmp);
+    tmp_mseq_destroy(tmp);
     mseq_destroy(&mvar1);
     mseq_destroy(&mvar2);
     free(barcode);

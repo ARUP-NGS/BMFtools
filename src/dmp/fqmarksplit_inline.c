@@ -18,10 +18,13 @@ void FREE_SPLITTER(mark_splitter_t var);
 int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
-sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
+void kseq2fq_inline(FILE *handle, kseq_t *read,
+		                     char *barcode, char pass_fail, char *tmp_n_str,
+							 int readlen, int n_len);
+void char_to_num(char character, int increment);
 
 // Macros
 
@@ -142,8 +145,8 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
         pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(barcode, settings.n_nucs);
-        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
-        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
+        kseq2fq_inline(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
+        kseq2fq_inline(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
     }
     while ((l1 = kseq_read(seq1)) >= 0);
 }
@@ -217,10 +220,9 @@ int main(int argc, char *argv[])
     gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1_fq_buf, "r");
     fp_read2 = gzopen(r2_fq_buf, "r");
-    kseq_t *seq1;
-    kseq_t *seq2;
     int l1, l2, l_index;
-    seq1 = kseq_init(fp_read1);
+    kseq_t *seq1 = kseq_init(fp_read1);
+    kseq_t *seq2 = kseq_init(fp_read2);
     seq2 = kseq_init(fp_read2);
     mark_splitter_t splitter = init_splitter_inline(settings_ptr);
     mark_splitter_t *splitter_ptr = &splitter;

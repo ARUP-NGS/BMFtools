@@ -90,14 +90,16 @@ static inline double igamc_pvalues(int num_pvalues, double x)
 
 
 //Converts a nucleotide in a char * into an index for the phred_sums and nuc_counts arrays.
-#define NUC_TO_POS(character, nuc_indices)                                   \
-    switch(character) {                                                      \
-        case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; break;             \
-        case 'C': nuc_indices[0] = 1; nuc_indices[1] = 1; break;             \
-        case 'G': nuc_indices[0] = 2; nuc_indices[1] = 2; break;             \
-        case 'T': nuc_indices[0] = 3; nuc_indices[1] = 3; break;             \
-        default: nuc_indices[0] = 0; nuc_indices[1] = 4; break;              \
+inline void nuc_to_pos(char character, int *nuc_indices)
+{
+    switch(character) {
+        case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; return;
+        case 'C': nuc_indices[0] = 1; nuc_indices[1] = 1; return;
+        case 'G': nuc_indices[0] = 2; nuc_indices[1] = 2; return;
+        case 'T': nuc_indices[0] = 3; nuc_indices[1] = 3; return;
+        default: nuc_indices[0] = 0; nuc_indices[1] = 4; return;
     }
+}
 
 
 inline int nuc2num(char character)
@@ -173,7 +175,7 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
 {
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
-        NUC_TO_POS((seq->seq.s[i]), nuc_indices);
+        nuc_to_pos((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
         kfp->phred_sums[i][nuc_indices[1]] += seq->qual.s[i] - 33;
         if(seq->qual.s[i] > kfp->max_phreds[i]) {
@@ -238,7 +240,7 @@ inline int ARRG_MAX(KingFisher_t *kfp, int index)
     }
 }
 
-char ARRG_MAX_TO_NUC(int argmaxret)
+inline char ARRG_MAX_TO_NUC(int argmaxret)
 {
     switch (argmaxret) {
         case 1: return 'C';
@@ -318,13 +320,16 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
 int ipow(int base, int exp);
 void FREE_SPLITTER(mark_splitter_t var);
 
-
-#ifndef KSEQ_2_FQ_INLINE
-#define KSEQ_2_FQ_INLINE(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) memcpy(tmp_n_str, read->seq.s, n_len * sizeof(char));\
-        memset(tmp_n_str, 78, n_len);\
-        fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-                read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s)
-#endif
+inline void kseq2fq_inline(FILE *handle, kseq_t *read,
+                           char *barcode, char pass_fail, char *tmp_n_str,
+                           int readlen, int n_len)
+{
+    memcpy(tmp_n_str, read->seq.s, n_len * sizeof(char));
+    memset(tmp_n_str, 78, n_len);
+    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
+    read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
+    return;
+}
 
 
 #ifndef KSEQ_2_FQ
@@ -429,12 +434,14 @@ void FREE_SPLITTER(mark_splitter_t var)
     return;
 }
 
-#define char_to_num(character, increment) switch(character) {\
-    case 'C' : increment = 1; break;\
-    case 'G' : increment = 2; break;\
-    case 'T' : increment = 3; break;\
-    default: increment = 0; break;\
-    }
+inline void char_to_num(char character, int increment) {
+	switch(character) {
+        case 'C' : increment = 1; return;
+        case 'G' : increment = 2; return;
+        case 'T' : increment = 3; return;
+        default: increment = 0; return;
+	}
+}
 
 
 inline uint64_t get_binnerl(char *barcode, int length)
@@ -535,16 +542,16 @@ inline int infer_barcode_length(char *bs_ptr)
     int ret = 0;
     for (;;ret++) {
         if(bs_ptr[ret] == '\0') return ret;
+/*
 #if !NDEBUG
         if(ret > MAX_BARCODE_LENGTH) {
             fprintf(stderr, "Inferred barcode length greater than max (%i). Abort!\n", MAX_BARCODE_LENGTH);
             exit(1);
         }
 #endif
+*/
     }
 }
-
-#define rescaling_test(settings_ptr) (settings_ptr->rescaler_path)
 
 inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler)
 {
@@ -556,7 +563,7 @@ inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ***resca
 {
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
-        NUC_TO_POS((seq->seq.s[i]), nuc_indices);
+        nuc_to_pos((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
         kfp->phred_sums[i][nuc_indices[1]] += rescale_qscore(seq->qual.s[i] - 33, i, seq->seq.s[i], rescaler);
         if(seq->qual.s[i] > kfp->max_phreds[i]) {
@@ -596,19 +603,21 @@ typedef struct mseq {
 } mseq_t;
 
 
-#define NUC_CMPL(character, ret) \
-    switch(character) {\
-        case 'A': ret = 'T'; break;\
-        case 'C': ret = 'G'; break;\
-        case 'G': ret = 'C'; break;\
-        case 'T': ret = 'A'; break;\
-        default: ret = 'N'; break;\
+inline void nuc_cmpl(char character, char ret) {
+    switch(character) {
+        case 'A': ret = 'T'; return;
+        case 'C': ret = 'G'; return;
+        case 'G': ret = 'C'; return;
+        case 'T': ret = 'A'; return;
+        default: ret = 'N'; return;
     }
+}
+
 
 inline int nuc_cmp(char forward, char reverse)
 {
     char tmpchar;
-    NUC_CMPL(reverse, tmpchar)
+    nuc_cmpl(reverse, tmpchar);
     return forward - reverse;
 }
 
@@ -661,7 +670,7 @@ tmp_mseq_t init_tmp_mseq(int readlen, int blen)
 }
 
 
-void destroy_tmp_mseq(tmp_mseq_t mvar)
+void tmp_mseq_destroy(tmp_mseq_t mvar)
 {
     free(mvar.tmp_seq);
     free(mvar.tmp_qual);
@@ -670,25 +679,24 @@ void destroy_tmp_mseq(tmp_mseq_t mvar)
     mvar.blen = 0;
 }
 
-
-
-#ifndef MSEQ_2_FQ_INLINE
-#define MSEQ_2_FQ_INLINE(handle, mvar, pass_fail, n_len) \
-        memset(mvar.seq, 78, n_len);\
-        fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-                mvar.name, pass_fail, mvar.barcode, mvar.seq, mvar.qual);
-#endif
+inline void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail, int n_len)
+{
+	memset(mvar.seq, 78, n_len);
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
+	        mvar.name, pass_fail, mvar.barcode, mvar.seq, mvar.qual);
+	return;
+}
 
 
 inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 {
     if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) return;
     for(int i = 0; i < tmp->readlen; i++) {
-        NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i]);
+        nuc_cmpl(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i]);
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
     }
     for(int i = 0; i < tmp->blen; i++) {
-        NUC_CMPL(mvar->seq[tmp->blen - i - 1], tmp->tmp_barcode[i]);
+        nuc_cmpl(mvar->seq[tmp->blen - i - 1], tmp->tmp_barcode[i]);
     }
     memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
     memcpy(mvar->seq, tmp->tmp_seq, tmp->readlen * sizeof(char));
