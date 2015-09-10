@@ -43,21 +43,6 @@ char test_hp(kseq_t *seq, int threshold);
 */
 
 
-typedef struct mssi_settings {
-    int hp_threshold;
-    int n_nucs;
-    char *output_basename;
-    char *input_r1_path;
-    char *input_r2_path;
-    char *homing_sequence;
-    int homing_sequence_length;
-    int n_handles;
-    int notification_interval;
-    int blen; // Length of sequence to trim off from start to finish.
-    int offset;
-} mssi_settings_t;
-
-
 void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
@@ -168,8 +153,7 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
         memcpy(barcode, seq1->seq.s + settings.offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
         memcpy(barcode + blen1_2, seq2->seq.s + settings.offset,
                blen1_2 * sizeof(char));
-        pass_fail = ((test_hp_inline(barcode, settings.blen, settings.hp_threshold) == '1') &&
-                     (test_homing_seq(seq1, seq2, &settings) == '1')) ? '1': '0';
+        pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(barcode, settings.n_nucs);
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);

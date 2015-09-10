@@ -134,21 +134,71 @@ void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
         memcpy(barcode, seq1->seq.s + settings.offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
         memcpy(barcode + blen1_2, seq2->seq.s + settings.offset,
                blen1_2 * sizeof(char));
-        pass_fail = ((test_hp_inline(barcode, settings.blen, settings.hp_threshold) == '1') &&
-                     (test_homing_seq(seq1, seq2, &settings) == '1')) ? '1': '0';
+        pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(barcode, settings.n_nucs);
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
-    }
-    while ((l1 = kseq_read(seq1)) >= 0);
+    } while ((l1 = kseq_read(seq1)) >= 0);
+    free(barcode);
+    free(tmp_n_str);
 }
 
 // Rescaling
 // TODO:
-// 1. Write the CRC (ConditionalRevCmp).
-// 2. Add rescaling into KSEQ_2_FQ_INLINE (Change output style).
-// 3. Add parser for recalibrated quality scores.
+// 1. Write modified splitmark_core_inline
+// 2. Add parser for recalibrated quality scores.
+
+
+void splitmarkrecalibratecrc_inline(kseq_t *seq1, kseq_t *seq2,
+                                    mssi_settings_t settings, mark_splitter_t splitter)
+{
+    int l1, l2, bin;
+    int count = 0;
+    char pass_fail;
+    int readlen = 0;
+    int n_len = settings.blen + settings.homing_sequence_length;
+    char * barcode;
+    char * tmp_n_str;
+    int blen1_2 = settings.blen / 2;
+    barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
+    barcode[settings.blen] = '\0'; // Null-terminate
+    l1 = kseq_read(seq1);
+    if(l1 < 0) {
+            fprintf(stderr, "Could not open fastq for reading. Abort!\n");
+            FREE_MSSI_SETTINGS(settings);
+            FREE_SPLITTER(splitter);
+            exit(EXIT_FAILURE);
+    }
+    readlen = strlen(seq1->seq.s);
+    tmp_n_str = (char *)malloc((readlen + 1) * sizeof(char));
+    tmp_n_str[readlen] = '\0';
+    do {
+        count += 1;
+        if(!(count % settings.notification_interval)) {
+            fprintf(stderr, "Number of records processed: %i.\n", count);
+        }
+        // Iterate through second fastq file.
+        l2 = kseq_read(seq2);
+        if (l2 < 0) {
+            fprintf(stderr, "Read 2 return value for kseq_read less than "
+                            "0. Are the fastqs different sizes? Abort!\n");
+            FREE_MSSI_SETTINGS(settings);
+            FREE_SPLITTER(splitter);
+            exit(EXIT_FAILURE);
+        }
+        memcpy(barcode, seq1->seq.s + settings.offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
+        memcpy(barcode + blen1_2, seq2->seq.s + settings.offset,
+               blen1_2 * sizeof(char));
+        pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
+        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
+        bin = get_binner(barcode, settings.n_nucs);
+        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
+        KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
+    } while ((l1 = kseq_read(seq1)) >= 0);
+    free(barcode);
+    free(tmp_n_str);
+}
 
 
 int main(int argc, char *argv[])
@@ -236,5 +286,7 @@ int main(int argc, char *argv[])
                           settings, splitter);
     free_mssi_settings(settings);
     FREE_SPLITTER(splitter);
+    kseq_destroy(seq1);
+    kseq_destroy(seq2);
     return 0;
 }

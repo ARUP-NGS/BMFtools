@@ -254,7 +254,6 @@ inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
 }
 
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
-    char pass_fail;
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
@@ -638,6 +637,15 @@ void destroy_tmp_mseq(tmp_mseq_t mvar) {
 }
 
 
+
+#ifndef MSEQ_2_FQ_INLINE
+#define MSEQ_2_FQ_INLINE(handle, mvar, pass_fail, n_len) \
+        memset(mvar->seq, 78, n_len);\
+        fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
+                mvar->name, pass_fail, mvar->barcode, mvar->seq, mvar->qual);
+#endif
+
+
 inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 {
     if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) return;
@@ -675,7 +683,6 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_ms
     crc_mseq(ret, tmp);
 }
 
-
 inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp) {
     mseq_t ret = {
             .name = NULL,
@@ -696,6 +703,7 @@ inline void mseq_free(mseq_t *mvar) {
     free(mvar->comment);
     free(mvar->seq);
     free(mvar->qual);
+    // Note: do not free barcode, as that is owned by another.
     mvar->l = 0;
     mvar->blen = 0;
     return;
