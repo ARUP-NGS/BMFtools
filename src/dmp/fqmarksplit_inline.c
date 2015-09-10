@@ -21,6 +21,7 @@ int get_binner(char binner[], int length);
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
+int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 
 // Macros
 
@@ -67,21 +68,6 @@ void print_opt_err(char *argv[], char *optarg)
     print_usage(argv);
     fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
     exit(1);
-}
-
-
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr) {
-    if(!settings_ptr->homing_sequence) {
-        return 1;
-    }
-    else {
-        return (memcmp(seq1 + (settings_ptr->blen / 2),
-                       settings_ptr->homing_sequence,
-                       settings_ptr->homing_sequence_length) == 0 &&
-                memcmp(seq2 + (settings_ptr->blen / 2),
-                       settings_ptr->homing_sequence,
-                       settings_ptr->homing_sequence_length) == 0);
-    }
 }
 
 
