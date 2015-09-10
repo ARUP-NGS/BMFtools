@@ -19,6 +19,7 @@ void destroy_kf(KingFisher_t *kfp);
 void clear_kf(KingFisher_t *kfp);
 int rescale_qscore(int qscore, int cycle, char base, int ***rescaler);
 int bmftools_dmp_recal_core(kseq_t *seq, FILE *out_handle, int ***rescaler);
+void pushback_rescaled_kseq(KingFisher_t *fisher, kseq_t *seq, int ***rescaler, int *nuc_indices, int blen);
 
 void print_usage(char *argv[]) {
     fprintf(stderr, "Usage: %s -o <output_path> <input_path> (<optional other input_paths>)\n"
@@ -30,32 +31,6 @@ void print_opt_err(char *argv[], char optarg[]) {
     fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
     print_usage(argv);
     exit(1);
-}
-
-void pushback_rescaled_kseq(KingFisher_t *fisher, kseq_t *seq, int ***rescaler, int *nuc_indices, int blen) {
-    fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
-    for(int i = 0; i < kfp->readlen; i++) {
-        NUC_TO_POS((seq->seq.s[i]), nuc_indices);
-        kfp->nuc_counts[i][nuc_indices[0]] += 1;
-        kfp->phred_sums[i][nuc_indices[1]] += rescale_qscore(seq->qual.s[i] - 33, i, seq->seq.s[i], rescaler);
-        if(seq->qual.s[i] > kfp->max_phreds[i]) {
-            kfp->max_phreds[i] = seq->qual.s[i];
-        }
-    }
-    if(kfp->length == 0) {
-        char *bs_ptr = barcode_mem_view(seq);
-        kfp->pass_fail = (char)*(bs_ptr- 5);
-        kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
-        memcpy(kfp->barcode, bs_ptr, blen);
-    }
-    kfp->length++; // Increment
-    fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
-    return;
-}
-
-int ***parse_rescaler(char *qual_rescale_fname) {
-    int ***omgz = NULL;
-    return omgz
 }
 
 

@@ -283,6 +283,23 @@ typedef struct mss_settings {
     char *input_r2_path;
 } mss_settings_t;
 
+
+typedef struct mssi_settings {
+    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
+    int n_nucs; // Number of nucleotides to split by.
+    char *output_basename;
+    char *input_r1_path;
+    char *input_r2_path;
+    char *homing_sequence; // Homing sequence...
+    int homing_sequence_length; // Length of homing sequence, should it be used.
+    int n_handles; // Number of handles
+    int notification_interval; // How many sets of records do you want to process between progress reports?
+    int blen; // Length of sequence to trim off from start to finish.
+    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
+    char ***rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+    char *rescaler_path; // Path to rescaler for
+} mssi_settings_t;
+
 typedef struct mark_splitter {
     FILE **tmp_out_handles_r1;
     FILE **tmp_out_handles_r2;
@@ -331,7 +348,9 @@ void FREE_SPLITTER(mark_splitter_t var);
 #ifndef FREE_MSSI_SETTINGS
 #define FREE_MSSI_SETTINGS(settings) free(settings.output_basename);\
     free(settings.input_r1_path);\
-    free(settings.input_r2_path);
+    free(settings.input_r2_path);\
+    if(settings.rescaler_path) free(settings.rescaler_path);\
+    if(settings.rescaler) free(settings.rescaler);
 #endif
 
 
@@ -632,7 +651,177 @@ inline int infer_barcode_length(char *bs_ptr) {
     }
 }
 
+#define rescaling_test(settings_ptr) (settings_ptr->rescaler_path)
 
-inline int rescale_qscore(int qscore, int cycle, char base, int ***rescaler) {
-	return rescaler[cycle][qscore][base];
+inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler) {
+    return rescaler[cycle][qscore - 2][base];
+}
+
+
+inline void pushback_rescaled_kseq(KingFisher_t *fisher, kseq_t *seq, char ***rescaler, int *nuc_indices, int blen) {
+    fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
+    for(int i = 0; i < kfp->readlen; i++) {
+        NUC_TO_POS((seq->seq.s[i]), nuc_indices);
+        kfp->nuc_counts[i][nuc_indices[0]] += 1;
+        kfp->phred_sums[i][nuc_indices[1]] += rescale_qscore(seq->qual.s[i] - 33, i, seq->seq.s[i], rescaler);
+        if(seq->qual.s[i] > kfp->max_phreds[i]) {
+            kfp->max_phreds[i] = seq->qual.s[i];
+        }
+    }
+    if(kfp->length == 0) {
+        char *bs_ptr = barcode_mem_view(seq);
+        kfp->pass_fail = (char)*(bs_ptr- 5);
+        kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
+        memcpy(kfp->barcode, bs_ptr, blen);
+    }
+    kfp->length++; // Increment
+    fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
+    return;
+}
+
+inline char ***parse_rescaler(char *qual_rescale_fname) {
+    char ***omgz = NULL;
+    fprintf(stderr, "raise NotImplementedError('Hey, where do you think you're going? You're going NOWHERE. I gotchu foh 3 minutes. 3 minutes of playtime!')\n");
+    exit(137);
+    return omgz
+}
+
+
+// mseq is a mutable struct holding kseq's information.
+
+typedef struct mseq {
+    char *name;
+    char *comment;
+    char *seq;
+    char *qual;
+    int l;
+} mseq_t;
+
+
+#define NUC_CMPL(character, ret) \
+    switch(character) {\
+    case 'A': ret = 'T'; break;\
+    case 'C': ret = 'G'; break;\
+    case 'G': ret = 'C'; break;\
+    case 'T': ret = 'A'; break;\
+    default: ret = 'N'; break;
+
+inline int nuc_cmp(char forward, char reverse) {
+    char tmpchar;
+    NUC_CMPL(reverse, tmpchar)
+    return forward - reverse;
+}
+
+
+inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen) {
+    int cmp_ret;
+    for(int i = 0; i < blen; ++i) {
+        cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);
+        if(cmp_ret < 0) {
+            return 0; // It's lexicographically lower as is. Don't flip!
+        }
+        else if(cmp_ret > 0) {
+            return 1; // It's not lexicographically lower as it is. Flip!
+        }
+    }
+    for(int i = 0; i < readlen; ++i) {
+        cmp_ret = nuc_cmp(barcode[i], barcode[readlen - i - 1]);
+        if(cmp_ret < 0) {
+            return 0; // It's lexicographically lower as is. Don't flip!
+        }
+        else if(cmp_ret > 0) {
+            return 1; // It's not lexicographically lower as it is. Flip!
+        }
+    }
+    return 0; // Both barcode and read are lexicographically identical forward and reverse... is that possible? Eh. Don't flip.
+}
+
+typedef struct tmp_mseq {
+    char *tmp_seq;
+    char *tmp_qual;
+    char *tmp_barcode;
+    int readlen;
+    int blen;
+} tmp_mseq_t;
+
+tmp_mseq_t init_tmp_mseq(int readlen, int blen) {
+    tmp_mseq ret = {
+        .tmp_seq = (char *)malloc(readlen);
+        .tmp_qual = (char *)malloc(readlen);
+        .tmp_barcode = (char *)malloc(blen);
+        .readlen = readlen;
+        .blen = blen;
+    };
+    return ret;
+}
+
+
+void destroy_tmp_mseq(tmp_mseq mvar) {
+    free(mvar.tmp_seq);
+    free(mvar.tmp_qual);
+    free(mvar.tmp_barcode);
+    mvar.readlen = 0;
+    mvar.blen = 0;
+}
+
+
+inline void crc_mseq(mseq_t *mvar, char *barcode, tmp_mseq_t *tmp) {
+    if(!crc_flip(mvar, barcode, tmp->blen, tmp->readlen)) return;
+    for(int i = 0; i < tmp->readlen; i++) {
+        NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i]);
+        tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
+    }
+    for(int i = 0; i < tmp->blen; i++) {
+        NUC_CMPL(mvar->seq[settings->blen - i - 1], tmp->tmp_barcode[i]);
+    }
+    memcpy(mvar->qual, tmp->tmp_qual, settings->readlen * sizeof(char));
+    memcpy(mvar->seq, tmp->tmp_seq, settings->readlen * sizeof(char));
+    memcpy(mvar->barcode, tmp->tmp_barcode, settings->blen * sizeof(char));
+    return;
+}
+
+
+inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, char *barcode, tmp_mseq_t *tmp) {
+    /*
+    if(!seq) {
+        ret = NULL;
+        return;
+    }
+    */
+    ret->name = strdup(seq->name.s);
+    ret->comment = strdup(seq->comment.s);
+    ret->seq = strdup(seq->seq.s);
+    if(!rescaler) ret->qual = strdup(seq->qual.s);
+    else {
+        ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
+        ret->qual[seq->seq.l] = '\0'; // Null-terminate this string.
+        for(int i = 0; i < seq->seq.l; i++) {
+            ret->qual[i] = rescale_qscore(ret->qual[i], i, ret->seq[i], rescaler);
+        }
+    }
+    ret->l = seq->seq.l;
+    crc_mseq(ret, barcode, tmp);
+    return ret;
+}
+
+
+inline mseq_t *new_mseq_rescale(kseq_t *seq, char ***rescaler) {
+    mseq_t ret = {
+            .name = NULL,
+            .comment = NULL,
+            .seq = NULL,
+            .qual = NULL,
+            .l = 0
+    };
+    mseq_rescale_init(seq, &ret, rescaler);
+}
+
+
+inline void mseq_free(mseq_t *mvar) {
+    free(mvar->name);
+    free(mvar->comment);
+    free(mvar->seq);
+    free(mvar->qual);
+    mvar.l = 0;
+    return;
 }
