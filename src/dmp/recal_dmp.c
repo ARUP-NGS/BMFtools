@@ -18,6 +18,7 @@ void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void destroy_kf(KingFisher_t *kfp);
 void clear_kf(KingFisher_t *kfp);
 int rescale_qscore(int qscore, int cycle, char base, int ***rescaler);
+int bmftools_dmp_recal_core(kseq_t *seq, FILE *out_handle, int ***rescaler);
 
 void print_usage(char *argv[]) {
     fprintf(stderr, "Usage: %s -o <output_path> <input_path> (<optional other input_paths>)\n"
@@ -52,12 +53,18 @@ void pushback_rescaled_kseq(KingFisher_t *fisher, kseq_t *seq, int ***rescaler, 
     return;
 }
 
+int ***parse_rescaler(char *qual_rescale_fname) {
+    int ***omgz = NULL;
+    return omgz
+}
+
 
 int main(int argc, char* argv[]) {
 #ifdef BMF_THREADS
     int threads = 0;
 #endif
     char *outfname = NULL;
+    char *qual_rescale_fname = NULL;
     int c;
     char **infnames = (char **)malloc((argc - 3) * sizeof(char *));
     if(argc < 4) {
@@ -68,7 +75,7 @@ int main(int argc, char* argv[]) {
 #ifdef BMF_THREADS
     while ((c = getopt(argc, argv, "l:o:t:")) > -1) {
 #endif
-    while ((c = getopt(argc, argv, "l:o:t:")) > -1) {
+    while ((c = getopt(argc, argv, "l:o:t:r:")) > -1) {
         switch(c) {
 #ifdef BMF_THREADS
             case 't': threads = atoi(optarg); break;
@@ -76,9 +83,11 @@ int main(int argc, char* argv[]) {
             case 't': fprintf(stderr, "bmftools_dmp was compiled without BMF_THREADS. Invalid option!\n"); return 1;
 #endif
             case 'o': outfname = strdup(optarg); break;
+            case 'r': qual_rescale_fname = strdup(optarg); break;
             default: print_opt_err(argv, optarg);
         }
     }
+    int ***rescaler = parse_rescaler(qual_rescale_fname);
     int fnames_count = 0;
     fprintf(stderr, "Entry at optind %i: %s\n", optind, argv[optind]);
     for(int i = optind; i < argc; i++) {
@@ -91,7 +100,7 @@ int main(int argc, char* argv[]) {
     char *mode = (fnames_count == 1) ? "w": "a"; // Append to the file in the case of looping
     for(index = 0; index < fnames_count; index++) {
         fprintf(stderr, "About to call bmftools_dmp_wrapper for input %s and output %s.\n", infnames[index], outfname);
-        retcode = bmftools_dmp_wrapper(infnames[index], outfname);
+        retcode = bmftools_dmp_recal_wrapper(infnames[index], outfname, rescaler);
         if(retcode) {
             abort = 1;
             break;
@@ -112,12 +121,15 @@ int main(int argc, char* argv[]) {
 }
 
 
-int bmftools_dmp_wrapper(char *input_path, char *output_path) {
+int bmftools_dmp_recal_wrapper(char *input_path, char *output_path, int ***rescaler) {
     /*
      * Set output_path to NULL to write to stdout.
      * Set input_path to "-" or NULL to read from stdin.
      */
     fprintf(stderr, "Starting bmftools_dmp_wrapper.\n");
+    if(!rescaler) {
+        fprintf(stderr, "Rescaler is null. Abort!\n");
+    }
     FILE *in_handle;
     FILE *out_handle;
     if(input_path[0] == '-' || !input_path) in_handle = stdin;
@@ -131,7 +143,7 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
     fprintf(stderr, "Opened file handles, initiated kseq parser.\n");
-    int retcode = bmftools_dmp_recal_core(seq, out_handle);
+    int retcode = bmftools_dmp_recal_core(seq, out_handle, int ***rescaler);
     kseq_destroy(seq);
     return retcode;
 }
