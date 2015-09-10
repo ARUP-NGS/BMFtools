@@ -658,7 +658,7 @@ inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler) {
 }
 
 
-inline void pushback_rescaled_kseq(KingFisher_t *fisher, kseq_t *seq, char ***rescaler, int *nuc_indices, int blen) {
+inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ***rescaler, int *nuc_indices, int blen) {
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
@@ -683,7 +683,7 @@ inline char ***parse_rescaler(char *qual_rescale_fname) {
     char ***omgz = NULL;
     fprintf(stderr, "raise NotImplementedError('Hey, where do you think you're going? You're going NOWHERE. I gotchu foh 3 minutes. 3 minutes of playtime!')\n");
     exit(137);
-    return omgz
+    return omgz;
 }
 
 
@@ -694,7 +694,9 @@ typedef struct mseq {
     char *comment;
     char *seq;
     char *qual;
+    char *barcode;
     int l;
+    int blen;
 } mseq_t;
 
 
@@ -745,18 +747,21 @@ typedef struct tmp_mseq {
 } tmp_mseq_t;
 
 tmp_mseq_t init_tmp_mseq(int readlen, int blen) {
-    tmp_mseq ret = {
-        .tmp_seq = (char *)malloc(readlen);
-        .tmp_qual = (char *)malloc(readlen);
-        .tmp_barcode = (char *)malloc(blen);
-        .readlen = readlen;
-        .blen = blen;
+	char *tmp_seq = (char *)malloc(readlen);
+	char *tmp_qual = (char *)malloc(readlen);
+	char *tmp_barcode = (char *)malloc(blen);
+    tmp_mseq_t ret = {
+        .tmp_seq = tmp_seq,
+        .tmp_qual = tmp_qual,
+        .tmp_barcode = tmp_barcode,
+        .readlen = readlen,
+        .blen = blen
     };
     return ret;
 }
 
 
-void destroy_tmp_mseq(tmp_mseq mvar) {
+void destroy_tmp_mseq(tmp_mseq_t mvar) {
     free(mvar.tmp_seq);
     free(mvar.tmp_qual);
     free(mvar.tmp_barcode);
@@ -772,16 +777,16 @@ inline void crc_mseq(mseq_t *mvar, char *barcode, tmp_mseq_t *tmp) {
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
     }
     for(int i = 0; i < tmp->blen; i++) {
-        NUC_CMPL(mvar->seq[settings->blen - i - 1], tmp->tmp_barcode[i]);
+        NUC_CMPL(mvar->seq[tmp->blen - i - 1], tmp->tmp_barcode[i]);
     }
-    memcpy(mvar->qual, tmp->tmp_qual, settings->readlen * sizeof(char));
-    memcpy(mvar->seq, tmp->tmp_seq, settings->readlen * sizeof(char));
-    memcpy(mvar->barcode, tmp->tmp_barcode, settings->blen * sizeof(char));
+    memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
+    memcpy(mvar->seq, tmp->tmp_seq, tmp->readlen * sizeof(char));
+    memcpy(mvar->barcode, tmp->tmp_barcode, tmp->blen * sizeof(char));
     return;
 }
 
 
-inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, char *barcode, tmp_mseq_t *tmp) {
+inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp) {
     /*
     if(!seq) {
         ret = NULL;
@@ -801,19 +806,21 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, char *
     }
     ret->l = seq->seq.l;
     crc_mseq(ret, barcode, tmp);
-    return ret;
+    return;
 }
 
 
-inline mseq_t *new_mseq_rescale(kseq_t *seq, char ***rescaler) {
+inline mseq_t *new_mseq_rescale(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp) {
     mseq_t ret = {
             .name = NULL,
             .comment = NULL,
             .seq = NULL,
             .qual = NULL,
-            .l = 0
+			.barcode = barcode, // barcode still belongs to the argument variable!
+            .l = 0,
+			.blen = 0
     };
-    mseq_rescale_init(seq, &ret, rescaler);
+    mseq_rescale_init(seq, &ret, rescaler, tmp);
 }
 
 
@@ -822,6 +829,7 @@ inline void mseq_free(mseq_t *mvar) {
     free(mvar->comment);
     free(mvar->seq);
     free(mvar->qual);
-    mvar.l = 0;
+    mvar->l = 0;
+    mvar->blen = 0;
     return;
 }

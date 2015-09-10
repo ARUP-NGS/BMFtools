@@ -18,31 +18,11 @@ void FREE_SPLITTER(mark_splitter_t var);
 int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
-sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
 
 // Macros
 
-
-
-// Allocate file handle array memory, open file handles.
-
-/*
-#define FREE_SPLITTER(var) \
-    for(int i_##var_tmp = 0; i_##var_tmp < var.n_handles; i_##var_tmp++) {\
-        fclose(var.tmp_out_handles_r1[i_##var_tmp]);\
-        fclose(var.tmp_out_handles_r2[i_##var_tmp]);\
-        free(var.fnames_r1);\
-        free(var.fnames_r2);\
-    }\
-    free(var.tmp_out_handles_r1);\
-    free(var.tmp_out_handles_r2);\
-    free(var.fnames_r1);\
-    free(var.fnames_r2);
-*/
-
-#define rescaling_test(settings_ptr) (settings_ptr->rescaler_path)
 
 
 void print_usage(char *argv[])
@@ -115,8 +95,8 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 }
 
 
-static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
-                                  mssi_settings_t settings, mark_splitter_t splitter)
+void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
+                           mssi_settings_t settings, mark_splitter_t splitter)
 {
     int l1, l2, bin;
     int count = 0;
@@ -253,18 +233,8 @@ int main(int argc, char *argv[])
     seq2 = kseq_init(fp_read2);
     mark_splitter_t splitter = init_splitter_inline(settings_ptr);
     mark_splitter_t *splitter_ptr = &splitter;
-/*
-    fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
-    fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
-*/
     splitmark_core_inline(seq1, seq2,
                           settings, splitter);
-    //apply_lh3_sorts(&splitter, &settings);
-    /*
-    sort_overlord_t dispatcher = build_mp_sorter(splitter_ptr, settings_ptr);
-    apply_lh3_sorts(&dispatcher, settings_ptr);
-    free_mp_sorter(dispatcher);
-    */
     FREE_MSSI_SETTINGS(settings);
     FREE_SPLITTER(splitter);
     return 0;
