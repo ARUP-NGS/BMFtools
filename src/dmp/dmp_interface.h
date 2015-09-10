@@ -100,6 +100,16 @@ static inline double igamc_pvalues(int num_pvalues, double x)
     }
 
 
+inline int nuc2num(char character) {
+    switch(character) {
+        case 'C': return 1; break;
+        case 'G': return 2; break;
+        case 'T': return 3; break;
+        default: return 0; break; // 'A'
+    }
+}
+
+
 typedef struct KingFisher {
     int **nuc_counts; // Count of nucleotides of this form
     double **phred_sums; // Sums of -10log10(p-value)
@@ -520,7 +530,7 @@ inline int infer_barcode_length(char *bs_ptr) {
 #define rescaling_test(settings_ptr) (settings_ptr->rescaler_path)
 
 inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler) {
-    return rescaler[cycle][qscore - 2][base];
+    return rescaler[cycle][qscore - 2][nuc2num(base)];
 }
 
 
@@ -614,9 +624,9 @@ typedef struct tmp_mseq {
 } tmp_mseq_t;
 
 tmp_mseq_t init_tmp_mseq(int readlen, int blen) {
-	char *tmp_seq = (char *)malloc(readlen);
-	char *tmp_qual = (char *)malloc(readlen);
-	char *tmp_barcode = (char *)malloc(blen);
+    char *tmp_seq = (char *)malloc(readlen);
+    char *tmp_qual = (char *)malloc(readlen);
+    char *tmp_barcode = (char *)malloc(blen);
     tmp_mseq_t ret = {
         .tmp_seq = tmp_seq,
         .tmp_qual = tmp_qual,
@@ -683,15 +693,28 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_ms
     crc_mseq(ret, tmp);
 }
 
+inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp) {
+    memcpy(mvar->name, seq->name.s, seq->name.l * sizeof(char)); // Update name
+    memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
+    if(!rescaler) memcpy(mvar->qual, seq->qual.s, seq->qual.l * sizeof(char));
+    else {
+        for(int i = 0; i < seq->seq.l; i++) {
+            // Leave quality scores alone for bases which are N. Otherwise
+            mvar->qual[i] = (mvar->seq[i] == 'N') ? 2 : rescale_qscore(mvar->qual[i], i, mvar->seq[i], rescaler);
+        }
+    }
+    mvar->barcode = barcode;
+}
+
 inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp) {
     mseq_t ret = {
             .name = NULL,
             .comment = NULL,
             .seq = NULL,
             .qual = NULL,
-			.barcode = barcode, // barcode still belongs to the argument variable!
+            .barcode = barcode, // barcode still belongs to the argument variable!
             .l = 0,
-			.blen = 0
+            .blen = 0
     };
     mseq_rescale_init(seq, &ret, rescaler, tmp);
     return ret;

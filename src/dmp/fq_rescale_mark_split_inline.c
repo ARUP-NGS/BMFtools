@@ -117,6 +117,8 @@ void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     readlen = strlen(seq1->seq.s);
     tmp_n_str = (char *)malloc((readlen + 1) * sizeof(char));
     tmp_n_str[readlen] = '\0';
+    tmp_mseq_t tmp = init_tmp_mseq(readlen, settings.blen);
+    mseq_t tmp_mseq;
     do {
         count += 1;
         if(!(count % settings.notification_interval)) {
@@ -137,11 +139,14 @@ void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
         pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(barcode, settings.n_nucs);
+
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
     } while ((l1 = kseq_read(seq1)) >= 0);
+    destroy_tmp_mseq(tmp);
     free(barcode);
     free(tmp_n_str);
+
 }
 
 // Rescaling
@@ -150,8 +155,8 @@ void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
 // 2. Add parser for recalibrated quality scores.
 
 
-void splitmarkrecalibratecrc_inline(kseq_t *seq1, kseq_t *seq2,
-                                    mssi_settings_t settings, mark_splitter_t splitter)
+void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
+                     mssi_settings_t settings, mark_splitter_t splitter)
 {
     int l1, l2, bin;
     int count = 0;
