@@ -100,7 +100,8 @@ static inline double igamc_pvalues(int num_pvalues, double x)
     }
 
 
-inline int nuc2num(char character) {
+inline int nuc2num(char character)
+{
     switch(character) {
         case 'C': return 1; break;
         case 'G': return 2; break;
@@ -122,7 +123,8 @@ typedef struct KingFisher {
 
 
 
-inline KingFisher_t init_kf(int readlen) {
+inline KingFisher_t init_kf(int readlen)
+{
     int **nuc_counts = (int **)malloc(readlen * sizeof(int *));
     double **phred_sums = (double **)malloc(sizeof(double *) * readlen);
     for(int i = 0; i < readlen; i++) {
@@ -140,7 +142,8 @@ inline KingFisher_t init_kf(int readlen) {
 }
 
 
-inline void destroy_kf(KingFisher_t *kfp) {
+inline void destroy_kf(KingFisher_t *kfp)
+{
     fprintf(stderr, "Starting to destroy kfp with readlen %i.\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; ++i) {
         fprintf(stderr, "Starting to destroy.\n");
@@ -155,7 +158,8 @@ inline void destroy_kf(KingFisher_t *kfp) {
 }
 
 
-inline void clear_kf(KingFisher_t *kfp) {
+inline void clear_kf(KingFisher_t *kfp)
+{
     for(int i = 0; i < kfp->readlen; i++) {
         memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
         memset(kfp->phred_sums[i], 0, 4 * sizeof(double)); // Sets these to 0.
@@ -165,7 +169,8 @@ inline void clear_kf(KingFisher_t *kfp) {
     return;
 }
 
-inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
+inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
+{
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
@@ -190,7 +195,8 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
  * Warning: returns a NULL upon not finding a second pipe symbol.
  * This is *NOT* a properly null-terminated string.
  */
-char *barcode_mem_view(kseq_t *seq) {
+char *barcode_mem_view(kseq_t *seq)
+{
     int hits = 0;
     for(int i = 0; i < seq->comment.l; i++) {
         if(seq->comment.s[i] == '|') {
@@ -206,7 +212,8 @@ char *barcode_mem_view(kseq_t *seq) {
 }
 
 
-inline int ARRG_MAX(KingFisher_t *kfp, int index) {
+inline int ARRG_MAX(KingFisher_t *kfp, int index)
+{
     /*
     fprintf(stderr, "Current values of phred_sums: %f,%f,%f,%f\n",
                     (double)kfp->phred_sums[index][0],
@@ -231,7 +238,8 @@ inline int ARRG_MAX(KingFisher_t *kfp, int index) {
     }
 }
 
-char ARRG_MAX_TO_NUC(int argmaxret) {
+char ARRG_MAX_TO_NUC(int argmaxret)
+{
     switch (argmaxret) {
         case 1: return 'C';
         case 2: return 'G';
@@ -240,11 +248,13 @@ char ARRG_MAX_TO_NUC(int argmaxret) {
     }
 }
 
-inline int pvalue_to_phred(double pvalue) {
+inline int pvalue_to_phred(double pvalue)
+{
     return (int)(-10 * log10(pvalue));
 }
 
-inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
+inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix)
+{
     char tmpbuf[10];
     sprintf(buffer, prefix);
     for(int i = 0; i < readlen; i++) {
@@ -253,17 +263,20 @@ inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix) {
     }
 }
 
-inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer) {
+inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer)
+{
     fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:");
     return;
 }
 
-inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer) {
+inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
+{
     fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:");
     return;
 }
 
-static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) {
+static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
+{
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
@@ -329,8 +342,8 @@ void FREE_SPLITTER(mark_splitter_t var);
 #endif
 
 
-
-inline void free_mssi_settings(mssi_settings_t settings) {
+inline void free_mssi_settings(mssi_settings_t settings)
+{
     free(settings.output_basename);
     free(settings.input_r1_path);
     free(settings.input_r2_path);
@@ -403,7 +416,8 @@ inline int ipow(int base, int exp)
 }
 
 
-void FREE_SPLITTER(mark_splitter_t var){
+void FREE_SPLITTER(mark_splitter_t var)
+{
     for(int i = 0; i < var.n_handles; i++) {
         fclose(var.tmp_out_handles_r1[i]);
         fclose(var.tmp_out_handles_r2[i]);
@@ -423,7 +437,8 @@ void FREE_SPLITTER(mark_splitter_t var){
     }
 
 
-inline uint64_t get_binnerl(char *barcode, int length) {
+inline uint64_t get_binnerl(char *barcode, int length)
+{
     uint64_t bin = 0;
     int inc_binner;
     size_t count = 0;
@@ -436,7 +451,8 @@ inline uint64_t get_binnerl(char *barcode, int length) {
 }
 
 
-inline int get_binner(char *barcode, int length) {
+inline int get_binner(char *barcode, int length)
+{
     int bin = 0;
     int inc_binner;
     size_t count = 0;
@@ -514,7 +530,8 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 }
 
 
-inline int infer_barcode_length(char *bs_ptr) {
+inline int infer_barcode_length(char *bs_ptr)
+{
     int ret = 0;
     for (;;ret++) {
         if(bs_ptr[ret] == '\0') return ret;
@@ -529,12 +546,14 @@ inline int infer_barcode_length(char *bs_ptr) {
 
 #define rescaling_test(settings_ptr) (settings_ptr->rescaler_path)
 
-inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler) {
+inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler)
+{
     return rescaler[cycle][qscore - 2][nuc2num(base)];
 }
 
 
-inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ***rescaler, int *nuc_indices, int blen) {
+inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ***rescaler, int *nuc_indices, int blen)
+{
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
     for(int i = 0; i < kfp->readlen; i++) {
         NUC_TO_POS((seq->seq.s[i]), nuc_indices);
@@ -555,7 +574,8 @@ inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ***resca
     return;
 }
 
-inline char ***parse_rescaler(char *qual_rescale_fname) {
+inline char ***parse_rescaler(char *qual_rescale_fname)
+{
     char ***omgz = NULL;
     fprintf(stderr, "raise NotImplementedError('Hey, where do you think you're going? You're going NOWHERE. I gotchu foh 3 minutes. 3 minutes of playtime!')\n");
     exit(137);
@@ -585,14 +605,16 @@ typedef struct mseq {
         default: ret = 'N'; break;\
     }
 
-inline int nuc_cmp(char forward, char reverse) {
+inline int nuc_cmp(char forward, char reverse)
+{
     char tmpchar;
     NUC_CMPL(reverse, tmpchar)
     return forward - reverse;
 }
 
 
-inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen) {
+inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
+{
     int cmp_ret;
     for(int i = 0; i < blen; ++i) {
         cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);
@@ -623,7 +645,8 @@ typedef struct tmp_mseq {
     int blen;
 } tmp_mseq_t;
 
-tmp_mseq_t init_tmp_mseq(int readlen, int blen) {
+tmp_mseq_t init_tmp_mseq(int readlen, int blen)
+{
     char *tmp_seq = (char *)malloc(readlen);
     char *tmp_qual = (char *)malloc(readlen);
     char *tmp_barcode = (char *)malloc(blen);
@@ -638,7 +661,8 @@ tmp_mseq_t init_tmp_mseq(int readlen, int blen) {
 }
 
 
-void destroy_tmp_mseq(tmp_mseq_t mvar) {
+void destroy_tmp_mseq(tmp_mseq_t mvar)
+{
     free(mvar.tmp_seq);
     free(mvar.tmp_qual);
     free(mvar.tmp_barcode);
@@ -650,9 +674,9 @@ void destroy_tmp_mseq(tmp_mseq_t mvar) {
 
 #ifndef MSEQ_2_FQ_INLINE
 #define MSEQ_2_FQ_INLINE(handle, mvar, pass_fail, n_len) \
-        memset(mvar->seq, 78, n_len);\
+        memset(mvar.seq, 78, n_len);\
         fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-                mvar->name, pass_fail, mvar->barcode, mvar->seq, mvar->qual);
+                mvar.name, pass_fail, mvar.barcode, mvar.seq, mvar.qual);
 #endif
 
 
@@ -673,7 +697,8 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 }
 
 
-inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp) {
+inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp)
+{
     if(!seq) {
         ret = NULL;
         return;
@@ -693,7 +718,9 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_ms
     crc_mseq(ret, tmp);
 }
 
-inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp) {
+
+inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp)
+{
     memcpy(mvar->name, seq->name.s, seq->name.l * sizeof(char)); // Update name
     memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
     if(!rescaler) memcpy(mvar->qual, seq->qual.s, seq->qual.l * sizeof(char));
@@ -704,9 +731,11 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescal
         }
     }
     mvar->barcode = barcode;
+    crc_mseq(mvar, tmp);
 }
 
-inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp) {
+inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp)
+{
     mseq_t ret = {
             .name = NULL,
             .comment = NULL,
@@ -721,7 +750,8 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***resca
 }
 
 
-inline void mseq_free(mseq_t *mvar) {
+inline void mseq_destroy(mseq_t *mvar)
+{
     free(mvar->name);
     free(mvar->comment);
     free(mvar->seq);
@@ -730,4 +760,30 @@ inline void mseq_free(mseq_t *mvar) {
     mvar->l = 0;
     mvar->blen = 0;
     return;
+}
+
+
+inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
+{
+    memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
+    memcpy(barcode + blen1_2, seq2->seq.s + offset,
+           blen1_2 * sizeof(char));
+    return;
+}
+
+
+
+inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+{
+    if(!settings_ptr->homing_sequence) {
+        return 1;
+    }
+    else {
+        return (memcmp(seq1 + (settings_ptr->blen / 2),
+                       settings_ptr->homing_sequence,
+                       settings_ptr->homing_sequence_length) == 0 &&
+                memcmp(seq2 + (settings_ptr->blen / 2),
+                       settings_ptr->homing_sequence,
+                       settings_ptr->homing_sequence_length) == 0);
+    }
 }
