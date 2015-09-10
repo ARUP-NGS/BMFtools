@@ -121,18 +121,8 @@ void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     mseq_t tmp_mseq;
     do {
         count += 1;
-        if(!(count % settings.notification_interval)) {
-            fprintf(stderr, "Number of records processed: %i.\n", count);
-        }
+        if(!(count % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
         // Iterate through second fastq file.
-        l2 = kseq_read(seq2);
-        if (l2 < 0) {
-            fprintf(stderr, "Read 2 return value for kseq_read less than "
-                            "0. Are the fastqs different sizes? Abort!\n");
-            FREE_MSSI_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            exit(EXIT_FAILURE);
-        }
         memcpy(barcode, seq1->seq.s + settings.offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
         memcpy(barcode + blen1_2, seq2->seq.s + settings.offset,
                blen1_2 * sizeof(char));
@@ -142,7 +132,7 @@ void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
 
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
         KSEQ_2_FQ_INLINE(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
-    } while ((l1 = kseq_read(seq1)) >= 0);
+    } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
     destroy_tmp_mseq(tmp);
     free(barcode);
     free(tmp_n_str);
