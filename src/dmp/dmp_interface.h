@@ -11,8 +11,58 @@
 
 KSEQ_INIT(gzFile, gzread)
 
-char *barcode_mem_view(kseq_t *seq);
 
+typedef struct mss_settings {
+    int hp_threshold;
+    int n_nucs;
+    int n_handles;
+    char *output_basename;
+    int threads;
+    int notification_interval;
+    char *index_fq_path;
+    char *input_r1_path;
+    char *input_r2_path;
+} mss_settings_t;
+
+
+typedef struct mssi_settings {
+    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
+    int n_nucs; // Number of nucleotides to split by.
+    char *output_basename;
+    char *input_r1_path;
+    char *input_r2_path;
+    char *homing_sequence; // Homing sequence...
+    int homing_sequence_length; // Length of homing sequence, should it be used.
+    int n_handles; // Number of handles
+    int notification_interval; // How many sets of records do you want to process between progress reports?
+    int blen; // Length of sequence to trim off from start to finish.
+    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
+    char ***rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+    char *rescaler_path; // Path to rescaler for
+} mssi_settings_t;
+
+typedef struct mark_splitter {
+    FILE **tmp_out_handles_r1;
+    FILE **tmp_out_handles_r2;
+    int n_nucs;
+    int n_handles;
+    char **fnames_r1;
+    char **fnames_r2;
+} mark_splitter_t;
+
+
+typedef struct sort_overlord {
+    mark_splitter_t *splitter;
+    //FILE **sort_out_handles_r1;
+    //FILE **sort_out_handles_r2;
+    char **out_fnames_r1;
+    char **out_fnames_r2;
+} sort_overlord_t;
+
+
+char *barcode_mem_view(kseq_t *seq);
+char ***parse_rescaler(char *qual_rescale_fname);
+void free_mssi_settings(mssi_settings_t settings);
 
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
 #define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
@@ -60,25 +110,6 @@ typedef struct KingFisher {
     char pass_fail;
 } KingFisher_t;
 
-/*
-#define INIT_KF(var, readlen)                                                \
-    int **nuc_counts = (int **)malloc(readlen * sizeof(int *));              \
-    double **phred_sums = (double **)malloc(sizeof(double *) * readlen);     \
-    char * max_phreds = (char *)calloc(readlen + 1, 1);                      \
-    for(int i = 0; i < readlen; i++) {                                       \
-        nuc_counts[i] = (int *)calloc(5, sizeof(int));                       \
-        phred_sums[i] = (double *)calloc(4, sizeof(double));                 \
-    }                                                                        \
-    KingFisher_t var = {                                                     \
-        .nuc_counts = nuc_counts,                                            \
-        .phred_sums = phred_sums,                                            \
-        .length = 0,                                                         \
-        .readlen = readlen,                                                  \
-        .max_phreds = max_phreds,                                            \
-        .pass_fail = 0,                                                           \
-        .barcode = NULL                                                      \
-    };
-*/
 
 
 inline KingFisher_t init_kf(int readlen) {
@@ -123,15 +154,6 @@ inline void clear_kf(KingFisher_t *kfp) {
     kfp->length = 0;
     return;
 }
-
-/*
-inline void update_nuc_counts(KingFisher_t *fisher, kseq_t *seq){
-
-    fprintf(stderr, "update_kf for updating KingFisher_t is unimplemented. Abort!\n");
-    exit(1);
-    return;
-}
-*/
 
 inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen) {
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
@@ -271,53 +293,6 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen) 
 #define METASYNTACTIC_FNAME_BUFLEN 100
 #endif
 
-typedef struct mss_settings {
-    int hp_threshold;
-    int n_nucs;
-    int n_handles;
-    char *output_basename;
-    int threads;
-    int notification_interval;
-    char *index_fq_path;
-    char *input_r1_path;
-    char *input_r2_path;
-} mss_settings_t;
-
-
-typedef struct mssi_settings {
-    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
-    int n_nucs; // Number of nucleotides to split by.
-    char *output_basename;
-    char *input_r1_path;
-    char *input_r2_path;
-    char *homing_sequence; // Homing sequence...
-    int homing_sequence_length; // Length of homing sequence, should it be used.
-    int n_handles; // Number of handles
-    int notification_interval; // How many sets of records do you want to process between progress reports?
-    int blen; // Length of sequence to trim off from start to finish.
-    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char ***rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
-    char *rescaler_path; // Path to rescaler for
-} mssi_settings_t;
-
-typedef struct mark_splitter {
-    FILE **tmp_out_handles_r1;
-    FILE **tmp_out_handles_r2;
-    int n_nucs;
-    int n_handles;
-    char **fnames_r1;
-    char **fnames_r2;
-} mark_splitter_t;
-
-
-typedef struct sort_overlord {
-    mark_splitter_t *splitter;
-    //FILE **sort_out_handles_r1;
-    //FILE **sort_out_handles_r2;
-    char **out_fnames_r1;
-    char **out_fnames_r2;
-} sort_overlord_t;
-
 int ipow(int base, int exp);
 void FREE_SPLITTER(mark_splitter_t var);
 
@@ -344,6 +319,16 @@ void FREE_SPLITTER(mark_splitter_t var);
     free(settings.input_r2_path);
 #endif
 
+
+
+inline void free_mssi_settings(mssi_settings_t settings) {
+    free(settings.output_basename);
+    free(settings.input_r1_path);
+    free(settings.input_r2_path);
+    if(settings.rescaler_path) free(settings.rescaler_path);
+    if(settings.rescaler) free(settings.rescaler);
+    return;
+}
 
 #ifndef FREE_MSSI_SETTINGS
 #define FREE_MSSI_SETTINGS(settings) free(settings.output_basename);\
@@ -391,45 +376,6 @@ inline char test_hp(kseq_t *seq, int threshold)
     }
     return (run < threshold) ? '1': '0';
 }
-/*
-sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr)
-{
-    sort_overlord_t ret = {
-            .splitter = splitter_ptr,
-            //.sort_out_handles_r1 = (FILE **)malloc(splitter_ptr->n_handles * sizeof(FILE *)),
-            //.sort_out_handles_r2 = (FILE **)malloc(splitter_ptr->n_handles * sizeof(FILE *)),
-            .out_fnames_r1 = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *)),
-            .out_fnames_r2 = (char **)malloc(ipow(4, settings_ptr->n_nucs) * sizeof(char *))
-        };
-    char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-    size_t length;
-    for (int i = 0; i < splitter_ptr->n_handles; i++) {
-        sprintf(tmp_buffer, "%s.R1.%i.sort.fastq", settings_ptr->output_basename, i);
-        length = strlen(tmp_buffer);
-        ret.out_fnames_r1[i] = strdup(tmp_buffer);
-        //ret.sort_out_handles_r1[i] = fopen(ret.out_fnames_r1[i], "w");
-        sprintf(tmp_buffer, "%s.R2.%i.sort.fastq", settings_ptr->output_basename, i);
-        ret.out_fnames_r2[i] = strdup(tmp_buffer);
-        //ret.sort_out_handles_r2[i] = fopen(ret.out_fnames_r2[i], "w");
-    }
-    return ret;
-}
-
-void free_mp_sorter(sort_overlord_t var){
-    for (int i = 0; i < var.splitter->n_handles; i++) {
-        //fclose(var.sort_out_handles_r1[i]);
-        //fclose(var.sort_out_handles_r2[i]);
-        free(var.out_fnames_r1[i]);
-        free(var.out_fnames_r2[i]);
-    }
-    //free(var.sort_out_handles_r1);
-    //free(var.sort_out_handles_r2);
-    free(var.out_fnames_r1);
-    free(var.out_fnames_r2);
-    //FREE_SPLITTER(*var.splitter);
-    return;
-}
-*/
 
 
 // Functions
@@ -446,34 +392,10 @@ inline int ipow(int base, int exp)
 
     return result;
 }
-/*
-int lh3_sort_call(char *fname, char *outfname)
-{
-    char buffer[200];
-    int retvar;
-    char **lh3_argv = (char **)malloc(6 * sizeof(char *));
-    lh3_argv[0] = strdup("lh3sort");
-    lh3_argv[1] = strdup("-t'|'");
-    lh3_argv[2] = strdup("-k2,2");
-    lh3_argv[3] = strdup("-o");
-    lh3_argv[4] = strdup(outfname);
-    lh3_argv[5] = strdup(fname);
-    sprintf(buffer, "%s %s %s %s %s %s", lh3_argv[0], lh3_argv[1], lh3_argv[2], lh3_argv[3], lh3_argv[4], lh3_argv[5]);
-    fprintf(stderr, buffer + '\n');
-    system(buffer);
-    //retvar = lh3_sort_main(6, lh3_argv);
-    for(int i = 1; i < 6; i++) {
-        free(lh3_argv[i]);
-    }
-    free(lh3_argv);
-    return retvar;
-}
-*/
 
 
 void FREE_SPLITTER(mark_splitter_t var){
-    for(int i = 0; i < var.n_handles; i++)
-    {
+    for(int i = 0; i < var.n_handles; i++) {
         fclose(var.tmp_out_handles_r1[i]);
         fclose(var.tmp_out_handles_r2[i]);
         free(var.fnames_r1[i]);
@@ -483,61 +405,6 @@ void FREE_SPLITTER(mark_splitter_t var){
     free(var.tmp_out_handles_r2);
     return;
 }
-/*
-void apply_lh3_sorts(sort_overlord_t *dispatcher, mss_settings_t *settings)
-{
-    int abort = 0;
-    int index = -1;
-    omp_set_num_threads(settings->threads);
-    fprintf(stderr, "Number of threads: %i.\n", settings->threads);
-    fprintf(stderr, "Number of : handles %i.\n", dispatcher->splitter->n_handles * 4);
-    #pragma omp parallel for
-    for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
-        fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
-        #pragma omp flush(abort)
-        fprintf(stderr, "About to try opening file %s.\n", dispatcher->out_fnames_r1[i]);
-        int ret = lh3_sort_call(dispatcher->splitter->fnames_r1[i], dispatcher->out_fnames_r1[i]);
-        fprintf(stderr, "lh3_sort_call return value: %i.\n", ret);
-        if(ret) {
-            abort = 1;
-            index = i;
-            #pragma omp flush (abort)
-            #pragma omp flush (index)
-        }
-    }
-    if(abort) {
-        fprintf(stderr,
-                "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
-                dispatcher->splitter->fnames_r1[index]);
-                //free_mp_sorter(*dispatcher); // Delete allocated memory.
-                // Will need to rewrite this for paired-end.
-        exit(EXIT_FAILURE);
-    }
-    abort = 0;
-    index = -1;
-    #pragma omp parallel for
-    for(int i = 0; i < dispatcher->splitter->n_handles; i++) {
-        #pragma omp flush(abort)
-        fprintf(stderr, "Now about to call an lh3 sort # %i. Input: %s. Output: %s.\n", i, dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
-        int ret = lh3_sort_call(dispatcher->splitter->fnames_r2[i], dispatcher->out_fnames_r2[i]);
-        if(ret) {
-            abort = 1;
-            index = i;
-            #pragma omp flush (abort)
-            #pragma omp flush (index)
-        }
-    }
-    if(abort) {
-        fprintf(stderr,
-                "lh3 sort call failed for file handle %s. (Non-zero exit status). Abort!",
-                dispatcher->splitter->fnames_r2[index]);
-                //free_mp_sorter(*dispatcher); // Delete allocated memory.
-                // Will need to rewrite this for paired-end.
-        exit(EXIT_FAILURE);
-    }
-    return;
-}
-*/
 
 #define char_to_num(character, increment) switch(character) {\
     case 'C' : increment = 1; break;\
@@ -702,11 +569,12 @@ typedef struct mseq {
 
 #define NUC_CMPL(character, ret) \
     switch(character) {\
-    case 'A': ret = 'T'; break;\
-    case 'C': ret = 'G'; break;\
-    case 'G': ret = 'C'; break;\
-    case 'T': ret = 'A'; break;\
-    default: ret = 'N'; break;
+        case 'A': ret = 'T'; break;\
+        case 'C': ret = 'G'; break;\
+        case 'G': ret = 'C'; break;\
+        case 'T': ret = 'A'; break;\
+        default: ret = 'N'; break;\
+    }
 
 inline int nuc_cmp(char forward, char reverse) {
     char tmpchar;
@@ -770,8 +638,9 @@ void destroy_tmp_mseq(tmp_mseq_t mvar) {
 }
 
 
-inline void crc_mseq(mseq_t *mvar, char *barcode, tmp_mseq_t *tmp) {
-    if(!crc_flip(mvar, barcode, tmp->blen, tmp->readlen)) return;
+inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
+{
+    if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) return;
     for(int i = 0; i < tmp->readlen; i++) {
         NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i]);
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
@@ -787,12 +656,10 @@ inline void crc_mseq(mseq_t *mvar, char *barcode, tmp_mseq_t *tmp) {
 
 
 inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp) {
-    /*
     if(!seq) {
         ret = NULL;
         return;
     }
-    */
     ret->name = strdup(seq->name.s);
     ret->comment = strdup(seq->comment.s);
     ret->seq = strdup(seq->seq.s);
@@ -805,12 +672,11 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_ms
         }
     }
     ret->l = seq->seq.l;
-    crc_mseq(ret, barcode, tmp);
-    return;
+    crc_mseq(ret, tmp);
 }
 
 
-inline mseq_t *new_mseq_rescale(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp) {
+inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp) {
     mseq_t ret = {
             .name = NULL,
             .comment = NULL,
@@ -821,6 +687,7 @@ inline mseq_t *new_mseq_rescale(kseq_t *seq, char *barcode, char ***rescaler, tm
 			.blen = 0
     };
     mseq_rescale_init(seq, &ret, rescaler, tmp);
+    return ret;
 }
 
 

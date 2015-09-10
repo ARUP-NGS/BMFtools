@@ -94,7 +94,6 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
     return ret;
 }
 
-
 void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
                            mssi_settings_t settings, mark_splitter_t splitter)
 {
@@ -235,7 +234,7 @@ int main(int argc, char *argv[])
     mark_splitter_t *splitter_ptr = &splitter;
     splitmark_core_inline(seq1, seq2,
                           settings, splitter);
-    FREE_MSSI_SETTINGS(settings);
+    free_mssi_settings(settings);
     FREE_SPLITTER(splitter);
     return 0;
 }
