@@ -51,7 +51,6 @@ def MakeErrorArray(args):
     cdef ndarray[double_t, ndim=3, mode="c"] r1frac, r2frac
     cdef ndarray[double_t, ndim=1, mode="c"] r1cyclemeans, r2cyclemeans
     cdef ndarray[double_t, ndim=1, mode="c"] r1qualmeans, r2qualmeans
-    cdef ndarray[double_t, ndim=1, mode="c"] r1nucmeans, r2nucmeans
     cdef AlignedSegment_t read
     cdef AlignmentFile_t mdBam
     cdef py_array tmpArr

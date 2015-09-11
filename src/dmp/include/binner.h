@@ -41,13 +41,20 @@ inline uint64_t get_binnerl(char *barcode, int length)
 
 inline int get_binner(char *barcode, int length)
 {
+    fprintf(stderr, "Get bin.\n");
+	char *omgz = (char *)malloc((length + 1) * sizeof(char));
+	omgz[length] = '\0';
+	memcpy(omgz, barcode, length);
     int bin = 0;
     int inc_binner;
-    size_t count = 0;
-    for(int i = length; i; --i){
+    size_t count = 1;
+    for(int i = length; i; i--){
         char_to_num(barcode[i - 1], inc_binner);
+        fprintf(stderr, "inc_binner is %i.\n", inc_binner);
         bin += ( (count << 2) * inc_binner);
         count++;
     }
+    fprintf(stderr, "substr: %s. length: %i.\n", omgz, length);
+    free(omgz);
     return bin;
 }
