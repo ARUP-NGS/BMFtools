@@ -37,7 +37,6 @@ char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
 void tmp_mseq_destroy(tmp_mseq_t mvar);
 void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp, int n_len);
-void char_to_num(char character, int increment);
 void nuc_cmpl(char character, char ret);
 void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail);
 int count_lines(char *fname);
@@ -112,10 +111,10 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     int count = 0;
     char pass_fail;
     int readlen = 0;
-    int n_len = settings.blen + settings.homing_sequence_length + settings.offset;
     char * barcode;
     char * tmp_n_str;
     int blen1_2 = settings.blen / 2;
+    int n_len = blen1_2 + settings.homing_sequence_length + settings.offset;
     barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
     barcode[settings.blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);

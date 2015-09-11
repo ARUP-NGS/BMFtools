@@ -17,14 +17,12 @@ inline int ipow(int base, int exp)
 }
 
 
-inline void char_to_num(char character, int increment) {
-    switch(character) {
-        case 'C' : increment = 1; return;
-        case 'G' : increment = 2; return;
-        case 'T' : increment = 3; return;
-        default: increment = 0; return;
+#define char_to_num(character, increment) switch(character) {\
+        case 'C' : increment = 1; break;\
+        case 'G' : increment = 2; break;\
+        case 'T' : increment = 3; break;\
+        default: increment = 0; break;\
     }
-}
 
 
 inline uint64_t get_binnerl(char *barcode, int length)
@@ -34,7 +32,7 @@ inline uint64_t get_binnerl(char *barcode, int length)
     size_t count = 0;
     for(int i = length;i > 0;i--){
         char_to_num(barcode[i - 1], inc_binner);
-        bin += (ipow(4, count) * inc_binner);
+        bin += ((count << 2) * inc_binner);
         count++;
     }
     return bin;
@@ -46,9 +44,10 @@ inline int get_binner(char *barcode, int length)
     int bin = 0;
     int inc_binner;
     size_t count = 0;
-    for(int i = length;i > 0;i--){
+    for(int i = length; i; --i){
         char_to_num(barcode[i - 1], inc_binner);
-        bin += (ipow(4, count) * inc_binner);
+        fprintf(stderr, "Char: %c. inc_binner: %i.\n", barcode[i-1], inc_binner);
+        bin += ( (count << 2) * inc_binner);
         count++;
     }
     return bin;
