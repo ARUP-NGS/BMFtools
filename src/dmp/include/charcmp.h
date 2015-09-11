@@ -12,13 +12,13 @@ inline int nuc2num(char character)
     }
 }
 
-inline void nuc_cmpl(char character, char ret) {
+inline char nuc_cmpl(char character) {
     switch(character) {
-        case 'A': ret = 'T'; return;
-        case 'C': ret = 'G'; return;
-        case 'G': ret = 'C'; return;
-        case 'T': ret = 'A'; return;
-        default: ret = 'N'; return;
+        case 'A': return 'T';
+        case 'C': return 'G';
+        case 'G': return 'C';
+        case 'T': return 'A';
+        default: return character;
     }
 }
 

@@ -6,7 +6,7 @@
  */
 KSEQ_INIT(gzFile, gzread)
 
-void nuc_cmpl(char character, char ret);
+char nuc_cmpl(char character);
 int nuc_cmp(char forward, char reverse);
 int rescale_qscore(int qscore, int cycle, char base, char ***rescaler);
 
@@ -82,9 +82,9 @@ inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 
 tmp_mseq_t init_tmp_mseq(int readlen, int blen)
 {
-    char *tmp_seq = (char *)malloc(readlen);
-    char *tmp_qual = (char *)malloc(readlen);
-    char *tmp_barcode = (char *)malloc(blen);
+    char *tmp_seq = (char *)malloc(readlen * sizeof(char));
+    char *tmp_qual = (char *)malloc(readlen * sizeof(char));
+    char *tmp_barcode = (char *)malloc(blen * sizeof(char));
     tmp_mseq_t ret = {
         .tmp_seq = tmp_seq,
         .tmp_qual = tmp_qual,
@@ -105,10 +105,10 @@ void tmp_mseq_destroy(tmp_mseq_t mvar)
     mvar.blen = 0;
 }
 
-inline void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail)
+inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
 {
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
-            mvar.name, pass_fail, mvar.barcode, mvar.seq, mvar.qual);
+            mvar->name, pass_fail, mvar->barcode, mvar->seq, mvar->qual);
     return;
 }
 
@@ -117,12 +117,27 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 {
     if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) return;
     for(int i = 0; i < tmp->readlen; i++) {
-        nuc_cmpl(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i]);
+        tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
     }
     for(int i = 0; i < tmp->blen; i++) {
-        nuc_cmpl(mvar->seq[tmp->blen - i - 1], tmp->tmp_barcode[i]);
+        if(mvar->barcode[tmp->blen - i - 1] == 'N') {
+            fprintf(stderr, "Current mvar barcode: %s.\n", mvar->barcode);
+        }
+        tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
     }
+#if !NDEBUG
+    char *omgzwtf = (char *)malloc(tmp->readlen + 1);
+    omgzwtf[tmp->readlen] = '\0';
+    memcpy(omgzwtf, tmp->tmp_seq, tmp->readlen);
+    //fprintf(stderr, "Current tmp_seq: %s.\n", omgzwtf);
+    free(omgzwtf);
+    omgzwtf = (char *)malloc(tmp->blen + 1);
+    omgzwtf[tmp->blen] = '\0';
+    memcpy(omgzwtf, tmp->tmp_barcode, tmp->blen);
+    fprintf(stderr, "Current tmp_barcode: %s.\n", omgzwtf);
+    free(omgzwtf);
+#endif
     memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
     memcpy(mvar->seq, tmp->tmp_seq, tmp->readlen * sizeof(char));
     memcpy(mvar->barcode, tmp->tmp_barcode, tmp->blen * sizeof(char));
@@ -168,6 +183,7 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescal
         }
     }
     mvar->barcode = barcode;
+    fprintf(stderr, "mvar's barcode: %s.\n", mvar->barcode);
     crc_mseq(mvar, tmp);
 }
 
@@ -228,6 +244,10 @@ inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, i
     memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
     memcpy(barcode + blen1_2, seq2->seq.s + offset,
            blen1_2 * sizeof(char));
+    char *omgzwtf = (char *)malloc((blen1_2 * 2 + 1) * sizeof(char));
+    omgzwtf[blen1_2 * 2] = '\0';
+    memcpy(omgzwtf, barcode, blen1_2 * 2);
+    free(omgzwtf);
     return;
 }
 
