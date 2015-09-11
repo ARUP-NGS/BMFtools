@@ -108,6 +108,7 @@ inline char *trim_ext(char *fname) {
     ptrdiff_t pos = strrchr(fname, '.') - fname; // Find the position in the read where the last '.' is.
     memcpy(buf, fname, pos * sizeof(char));
     buf[pos] = '\0';
+    fprintf(stderr, "tmp buffer: %s.\n", buf);
     return buf;
 }
 
@@ -121,8 +122,9 @@ inline char *make_default_outfname(char *fname, const char *suffix) {
     int crms_suf_len = strlen(suffix);
     int final_fname_len = prefix_len + crms_suf_len;
     char *ret = (char *)malloc((final_fname_len + 1) * sizeof(char));
+    ret[final_fname_len] = '\0';
     memcpy(ret, prefix, prefix_len);
-    ret = strcat(ret, crms_suffix);
+    memcpy(ret + prefix_len, crms_suffix, crms_suf_len);
     free(prefix);
     return ret;
 }

@@ -25,7 +25,5 @@ inline void nuc_cmpl(char character, char ret) {
 
 inline int nuc_cmp(char forward, char reverse)
 {
-    char tmpchar;
-    nuc_cmpl(reverse, tmpchar);
     return forward - reverse;
 }

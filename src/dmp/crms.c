@@ -163,7 +163,10 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
 
 int main(int argc, char *argv[])
 {
-    if(argc < 5) print_usage(argv); exit(1);
+    fprintf(stderr, "Starting main.\n");
+    if(argc < 5) {
+    	print_usage(argv); exit(1);
+    }
     // Build settings struct
     int hp_threshold;
     int n_nucs;
@@ -185,6 +188,7 @@ int main(int argc, char *argv[])
         .rescaler = NULL,
         .rescaler_path = NULL
     };
+    fprintf(stderr, "Parsing args.\n");
     int c;
     while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:")) > -1) {
         switch(c) {
@@ -240,10 +244,6 @@ int main(int argc, char *argv[])
     kseq_t *seq2 = kseq_init(fp_read2);
     mark_splitter_t splitter = init_splitter_inline(settings_ptr);
     pp_split_inline(seq1,seq2, settings, splitter);
-    /*
-    splitmark_core_inline(seq1, seq2,
-                          settings, splitter);
-    */
     if(settings.rescaler) {
         int readlen = count_lines(settings.rescaler_path);
         for(int i = 0; i < readlen; i++) {

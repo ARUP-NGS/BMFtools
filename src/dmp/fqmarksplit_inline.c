@@ -62,19 +62,17 @@ void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
                         "\nFlags:\n"
-                        "-h: Print usage.\n"
+                        "-l: Number of nucleotides at the beginning of each read to "
+                        "use for barcode. Final barcode length is twice this. REQUIRED.\n"
+                        "-s: homing sequence. If not provided, %s will not look for it.\n"
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
-                        "-o: Output basename. Currently required, as string "
-                        "manipulation in C is a bit of work and I'd rather spend my "
-                        "time building code than messing around with string "
-                        "manipulation that doesn't add to the code base.\n"
+                        "-o: Output basename. Currently default to a variation on read 1's filename.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
-                        "-l: Number of nucleotides at the beginning of each read to "
-                        "use for barcode. Final barcode length is twice this.\n"
-                        "-s: homing sequence. If not provided, %s will not look for it.\n", argv[0], argv[0]);
+                        "-h: Print usage.\n", argv[0], argv[0]);
+
 }
 
 void print_opt_err(char *argv[], char *optarg)
