@@ -144,8 +144,8 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
         memcpy(barcode, seq1->seq.s + settings.offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
         memcpy(barcode + blen1_2, seq2->seq.s + settings.offset,
                blen1_2 * sizeof(char));
-        pass_fail = test_hp_inline(barcode, settings.blen, settings.hp_threshold);
-        //pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
+        //pass_fail = test_hp_inline(barcode, settings.blen, settings.hp_threshold);
+        pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         bin = get_binner(barcode, settings.n_nucs);
         kseq2fq_inline(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
         kseq2fq_inline(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
