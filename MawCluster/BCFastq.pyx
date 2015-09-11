@@ -1453,6 +1453,22 @@ def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
             "sort": GenerateSortFilenames(Fq1, n_nucs)}
 
 
+def Callfqmarksplit_inline(cystr Fq1, cystr Fq2, int hpThreshold,
+                           int n_nucs, int skipNucs, int bcLen,
+                           cystr homingSeq, bint dry_run=False):
+    cdef cystr outBasename
+    outBasename = TrimExt(Fq1) + ".split"
+    cStr = ("fqmarksplit_inline -t %i -n %i -m %i -l %i -s %s" % (
+            hpThreshold, n_nucs, skipNucs, bcLen, homingSeq) +
+            " -o %s %s %s" % (outBasename, Fq1, Fq2))
+    sys.stderr.write(cStr + "\n")
+    if dry_run:
+        return cStr
+    check_call(cStr, shell=True)
+    return {"mark": GenerateTmpFilenames(Fq1, n_nucs),
+            "sort": GenerateSortFilenames(Fq1, n_nucs)}
+
+
 def call_lh3_sort(tmpFname, sortFname):
     cStr = "lh3sort -t'|' -k3,3 %s | tr '\t' '\n' > %s" % (sortFname, tmpFname)
     check_call(cStr, shell=True)
