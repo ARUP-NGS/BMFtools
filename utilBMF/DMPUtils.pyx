@@ -339,8 +339,8 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         subprocess.check_call("cat %s > %s" % (" ".join(fq2List), outFq2),
                                 shell=True)
         pl("concatination complete, gzipping fastq and deleting temp files")
-        #check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
-        #empty = [p.get() for p in check]
+        check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
+        empty = [p.get() for p in check]
         subprocess.check_call(["gzip", outFq1])
         subprocess.check_call(["gzip", outFq2])
         return outFq1, outFq2
