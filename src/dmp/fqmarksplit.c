@@ -23,6 +23,7 @@ sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *s
 void free_mp_sorter(sort_overlord_t var);
 char test_hp(kseq_t *seq, int threshold);
 void char_to_num(char character, int increment);
+int count_lines(char *fname);
 
 // Macros
 

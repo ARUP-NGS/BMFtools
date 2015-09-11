@@ -8,7 +8,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "fqmarksplit.h"
+#include "dmp_interface.h"
 
 // Inline function declarations
 //int lh3_sort_call(char *fname, char *outfname);
@@ -25,6 +25,7 @@ void kseq2fq_inline(FILE *handle, kseq_t *read,
 		                     char *barcode, char pass_fail, char *tmp_n_str,
 							 int readlen, int n_len);
 void char_to_num(char character, int increment);
+int count_lines(char *fname);
 
 // Macros
 

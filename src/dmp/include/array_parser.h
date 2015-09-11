@@ -13,9 +13,9 @@ typedef unsigned long count_t; /* counter type */
 
 inline int count_lines(char *fname) {
 	int ret = 0;
-	FILE *fp = fopen(fname);
+	FILE *fp = fopen(fname, "r");
 	if(!fp) {
-		fprintf(stdrr, "Could not open file %s. Abort mission!\n", qual_rescale_fname);
+		fprintf(stderr, "Could not open file %s. Abort mission!\n", fname);
 		exit(EXIT_FAILURE);
 	}
 	char c;
@@ -31,12 +31,12 @@ inline int count_lines(char *fname) {
 inline char ***parse_rescaler(char *qual_rescale_fname)
 {
 	int n_cycles = count_lines(qual_rescale_fname);
+	FILE *fp = fopen(qual_rescale_fname, "r");
 	if(!fp) {
-		fprintf(stdrr, "Could not open file %s. Abort mission!\n", qual_rescale_fname);
+		fprintf(stderr, "Could not open file %s. Abort mission!\n", qual_rescale_fname);
 		exit(EXIT_FAILURE);
 	}
 	char ***ret = (char ***)malloc(n_cycles * sizeof(char **));
-	FILE *fp = fopen(qual_rescale_fname, "r");
 	char *line = NULL;
 	size_t len = 0;
 	ssize_t line_length;
@@ -46,5 +46,5 @@ inline char ***parse_rescaler(char *qual_rescale_fname)
 	}
 	if(line) free(line);
     fclose(fp);
-	return rescaler;
+	return ret;
 }

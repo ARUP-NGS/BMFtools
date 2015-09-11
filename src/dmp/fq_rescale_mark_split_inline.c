@@ -34,6 +34,9 @@ void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp
 void char_to_num(char character, int increment);
 void nuc_cmpl(char character, char ret);
 void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail);
+char ***parse_rescaler(char *qual_rescale_fname);
+int count_lines(char *fname);
+void FREE_SPLITTER(mark_splitter_t var);
 
 // Macros
 
