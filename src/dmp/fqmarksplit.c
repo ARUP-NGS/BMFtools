@@ -8,7 +8,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "fqmarksplit.h"
+#include "dmp_interface.h"
 
 // Inline function declarations
 //int lh3_sort_call(char *fname, char *outfname);
@@ -22,6 +22,8 @@ void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 void free_mp_sorter(sort_overlord_t var);
 char test_hp(kseq_t *seq, int threshold);
+void char_to_num(char character, int increment);
+int count_lines(char *fname);
 
 // Macros
 
@@ -147,5 +149,7 @@ int main(int argc, char *argv[])
     */
     FREE_SETTINGS(settings);
     FREE_SPLITTER(splitter);
+    kseq_destroy(seq1);
+    kseq_destroy(seq2);
     return 0;
 }
