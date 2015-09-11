@@ -435,12 +435,12 @@ void FREE_SPLITTER(mark_splitter_t var)
 }
 
 inline void char_to_num(char character, int increment) {
-	switch(character) {
+    switch(character) {
         case 'C' : increment = 1; return;
         case 'G' : increment = 2; return;
         case 'T' : increment = 3; return;
         default: increment = 0; return;
-	}
+    }
 }
 
 
@@ -679,12 +679,11 @@ void tmp_mseq_destroy(tmp_mseq_t mvar)
     mvar.blen = 0;
 }
 
-inline void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail, int n_len)
+inline void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail)
 {
-	memset(mvar.seq, 78, n_len);
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
-	        mvar.name, pass_fail, mvar.barcode, mvar.seq, mvar.qual);
-	return;
+    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
+            mvar.name, pass_fail, mvar.barcode, mvar.seq, mvar.qual);
+    return;
 }
 
 
@@ -705,7 +704,7 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 }
 
 
-inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp)
+inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp, int n_len)
 {
     if(!seq) {
         ret = NULL;
@@ -714,6 +713,7 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_ms
     ret->name = strdup(seq->name.s);
     ret->comment = strdup(seq->comment.s);
     ret->seq = strdup(seq->seq.s);
+    memset(ret->seq, 78, n_len); // Set the beginning of the read to Ns.
     if(!rescaler) ret->qual = strdup(seq->qual.s);
     else {
         ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
@@ -727,13 +727,16 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_ms
 }
 
 
-inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp)
+inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp, int n_len)
 {
     memcpy(mvar->name, seq->name.s, seq->name.l * sizeof(char)); // Update name
     memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-    if(!rescaler) memcpy(mvar->qual, seq->qual.s, seq->qual.l * sizeof(char));
+    memset(mvar->seq, 78, n_len);
+    if(!rescaler) {
+        memcpy(mvar->qual, seq->qual.s, seq->qual.l * sizeof(char));
+    }
     else {
-        for(int i = 0; i < seq->seq.l; i++) {
+        for(int i = n_len; i < seq->seq.l; i++) {
             // Leave quality scores alone for bases which are N. Otherwise
             mvar->qual[i] = (mvar->seq[i] == 'N') ? 2 : rescale_qscore(mvar->qual[i], i, mvar->seq[i], rescaler);
         }
@@ -742,7 +745,7 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescal
     crc_mseq(mvar, tmp);
 }
 
-inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp)
+inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp, int n_len)
 {
     mseq_t ret = {
             .name = NULL,
@@ -753,7 +756,7 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***resca
             .l = 0,
             .blen = 0
     };
-    mseq_rescale_init(seq, &ret, rescaler, tmp);
+    mseq_rescale_init(seq, &ret, rescaler, tmp, n_len);
     return ret;
 }
 

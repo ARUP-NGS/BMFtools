@@ -15,12 +15,12 @@ int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 void FREE_SPLITTER(mark_splitter_t var);
 int get_binner(char binner[], int length);
-mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp);
+mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ***rescaler, tmp_mseq_t *tmp, int n_len);
 mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int ipow(int base, int exp);
 void mseq_destroy(mseq_t *mvar);
-void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp);
+void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ***rescaler, tmp_mseq_t *tmp, int n_len);
 int nuc2num(char character);
 int nuc_cmp(char forward, char reverse);
 char ***parse_rescaler(char *qual_rescale_fname);
@@ -30,10 +30,10 @@ int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
 void tmp_mseq_destroy(tmp_mseq_t mvar);
-void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp);
+void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp_mseq_t *tmp, int n_len);
 void char_to_num(char character, int increment);
 void nuc_cmpl(char character, char ret);
-void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail, int n_len);
+void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail);
 
 // Macros
 
@@ -124,11 +124,11 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     // Get first barcode.
     set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
     pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings.rescaler, &tmp);
-    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings.rescaler, &tmp);
+    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings.rescaler, &tmp, n_len);
+    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings.rescaler, &tmp, n_len);
     bin = get_binner(barcode, settings.n_nucs);
-    mseq2fq_inline(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail, n_len);
-    mseq2fq_inline(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail, n_len);
+    mseq2fq_inline(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail);
+    mseq2fq_inline(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail);
     do {
         count += 1;
         if(!(count % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
@@ -136,11 +136,11 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
         set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
         pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp);
-        update_mseq(&mvar2, barcode, seq2, settings.rescaler, &tmp);
+        update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp, n_len);
+        update_mseq(&mvar2, barcode, seq2, settings.rescaler, &tmp, n_len);
         bin = get_binner(barcode, settings.n_nucs);
-        mseq2fq_inline(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail, n_len);
-        mseq2fq_inline(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail, n_len);
+        mseq2fq_inline(splitter.tmp_out_handles_r1[bin], mvar1, pass_fail);
+        mseq2fq_inline(splitter.tmp_out_handles_r2[bin], mvar2, pass_fail);
     } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
     tmp_mseq_destroy(tmp);
     mseq_destroy(&mvar1);
