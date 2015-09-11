@@ -268,7 +268,7 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
                                 int ncpus=1, int prefixLength=3,
                                 double hpLimit=0.8, cutadapt=False, p3Seq=None,
                                 p5Seq=None, inline=False, bcLen=None,
-                                skipNucs=0, profile=False, homingSeq=None):
+                                skipNucs=0, profile=False, homing=None):
     if(prefixLength != 3):
         pl("using custom number of nucleotides for splitting temporary files"
         ", recommended value is 3, used here %s" % (prefixLength))
@@ -316,7 +316,7 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         if inline:
             splitFastqs = Callfqmarksplit_inline(inFqs[0], inFqs[1], hpLimit,
                                             prefixLength, skipNucs, bcLen,
-                                            homingSeq)
+                                            homing)
         else:
             splitFastqs = Callfqmarksplit(inFqs[0], inFqs[1], indexFq, hpLimit,
                                       prefixLength)

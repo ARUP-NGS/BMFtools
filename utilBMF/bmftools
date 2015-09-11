@@ -339,7 +339,7 @@ def main():
         action="store_true"
     )
     MPdemultiplexParser.add_argument(
-        "--homingSeq",
+        "--homing",
         help="Homing sequence for inline barcodes (not necessariy if using"
         " index fastq)",
         type=str
@@ -1061,7 +1061,7 @@ def main():
             bcLen=Chapman['bcLen'],
             inline=Chapman['inline'],
             skipNucs=Chapman['skipNucs'],
-            homingSeq=Chapman['homingSeq'],
+            homing=Chapman['homing'],
             profile=Chapman['profile'])
         pl("Demultiplexing, marking, consildating, and compression complete"
             "new fastqs are %s and %s" % (outFq1, outFq2))
