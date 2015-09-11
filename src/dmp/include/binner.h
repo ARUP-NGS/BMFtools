@@ -46,7 +46,6 @@ inline int get_binner(char *barcode, int length)
     size_t count = 0;
     for(int i = length; i; --i){
         char_to_num(barcode[i - 1], inc_binner);
-        fprintf(stderr, "Char: %c. inc_binner: %i.\n", barcode[i-1], inc_binner);
         bin += ( (count << 2) * inc_binner);
         count++;
     }

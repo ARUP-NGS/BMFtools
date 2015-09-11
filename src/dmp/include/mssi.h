@@ -48,12 +48,9 @@ inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
         return 1;
     }
     else {
-        return (memcmp(seq1 + (settings_ptr->blen / 2),
+        return memcmp(seq1 + (settings_ptr->blen / 2 + settings_ptr->offset),
                        settings_ptr->homing_sequence,
-                       settings_ptr->homing_sequence_length) == 0 &&
-                memcmp(seq2 + (settings_ptr->blen / 2),
-                       settings_ptr->homing_sequence,
-                       settings_ptr->homing_sequence_length) == 0);
+                       settings_ptr->homing_sequence_length) == 0;
     }
 }
 
