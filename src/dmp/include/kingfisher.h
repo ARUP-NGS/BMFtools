@@ -1,5 +1,7 @@
 #include "stdio.h"
 #include "math.h"
+#include "charcmp.h"
+int nuc2num(char character);
 
 extern double igamc(double x, double y);
 
@@ -100,28 +102,6 @@ inline void clear_kf(KingFisher_t *kfp)
     return;
 }
 
-inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
-{
-    fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
-    for(int i = 0; i < kfp->readlen; i++) {
-        nuc_to_pos((seq->seq.s[i]), nuc_indices);
-        kfp->nuc_counts[i][nuc_indices[0]] += 1;
-        kfp->phred_sums[i][nuc_indices[1]] += seq->qual.s[i] - 33;
-        if(seq->qual.s[i] > kfp->max_phreds[i]) {
-            kfp->max_phreds[i] = seq->qual.s[i];
-        }
-    }
-    if(kfp->length == 0) {
-        char *bs_ptr = barcode_mem_view(seq);
-        kfp->pass_fail = (char)*(bs_ptr- 5);
-        kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
-        memcpy(kfp->barcode, bs_ptr, blen);
-    }
-    kfp->length++; // Increment
-    fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
-    return;
-}
-
 
 inline int ARRG_MAX(KingFisher_t *kfp, int index)
 {
@@ -217,3 +197,8 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
     return;
 }
 
+
+inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler)
+{
+    return rescaler[cycle][qscore - 2][nuc2num(base)];
+}

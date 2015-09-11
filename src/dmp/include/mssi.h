@@ -30,7 +30,6 @@ inline void free_mssi_settings(mssi_settings_t settings)
     free(settings.input_r1_path);
     free(settings.input_r2_path);
     if(settings.rescaler_path) free(settings.rescaler_path);
-    if(settings.rescaler) free(settings.rescaler);
     return;
 }
 

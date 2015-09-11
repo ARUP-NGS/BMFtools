@@ -8,7 +8,8 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "fqmarksplit.h"
+#include "dmp_interface.h"
+#include "include/array_parser.h"
 
 // Inline function declarations
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
@@ -34,9 +35,9 @@ void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescaler, tmp
 void char_to_num(char character, int increment);
 void nuc_cmpl(char character, char ret);
 void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail);
-char ***parse_rescaler(char *qual_rescale_fname);
 int count_lines(char *fname);
 void FREE_SPLITTER(mark_splitter_t var);
+char *** parse_rescaler(char *qual_rescale_fname);
 
 // Macros
 
@@ -242,6 +243,15 @@ int main(int argc, char *argv[])
     splitmark_core_inline(seq1, seq2,
                           settings, splitter);
     */
+    if(settings.rescaler) {
+        int readlen = count_lines(settings.rescaler_path);
+        for(int i = 0; i < readlen; i++) {
+            for(int j = 0; j < 39; j++) {
+                free(settings.rescaler[i][j]);
+            }
+            free(settings.rescaler[i]);
+        }
+    }
     free_mssi_settings(settings);
     FREE_SPLITTER(splitter);
     kseq_destroy(seq1);

@@ -8,7 +8,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "fqmarksplit.h"
+#include "dmp_interface.h"
 
 // Inline function declarations
 //int lh3_sort_call(char *fname, char *outfname);
