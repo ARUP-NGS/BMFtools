@@ -8,7 +8,7 @@ import cStringIO
 
 from itertools import groupby
 from MawCluster.BCFastq import (FastFisherFlattening, CutadaptPaired,
-                                Callfqmarksplit)
+                                Callfqmarksplit, Callfqmarksplit_inline)
 from utilBMF.HTSUtils import (pFastqProxy, pFastqFile, permuteNucleotides,
                                 printlog as pl, getBS)
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
@@ -25,8 +25,8 @@ def singleDMPWorker(Fastq, IndexFq, bcLen, Prefix, hpLimit, Head=0):
     pass
 
 
-def pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
-                    int hpLimit=100, int Head=0, cutAdapt=False,
+cpdef pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
+                    int hpLimit=100, int Head=0, cutadapt=False,
                     p3Seq="default", p5Seq="default", profile=False):
     """
     dmpWorker function, pulls a bunch of reads into memory based on their
@@ -75,7 +75,7 @@ def pairedDMPWorker(Fastq1, Fastq2, cystr Prefix, int bcLen, IndexFq="default",
         for barcode in bcHash1.keys():
             output1.write(FastFisherFlattening(bcHash1[barcode], barcode))
             output2.write(FastFisherFlattening(bcHash2[barcode], barcode))
-    if cutAdapt:
+    if cutadapt:
         cafq1, cafq2 = CutadaptPaired(fq1name, fq2name, p3Seq, p5Seq)
         pl("runnning cutadapt on temporary fastq with prefix %s" %(Prefix))
         subprocess.check_call(["rm", fq1name])
@@ -136,16 +136,16 @@ def deleter(fname):
 
 
 def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
-                                int ncpus=1, int len_prefix=3,
-                                double hpLimit=0.8, cutAdapt=False, p3Seq=None,
+                                int ncpus=1, int prefixLength=3,
+                                double hpLimit=0.8, cutadapt=False, p3Seq=None,
                                 p5Seq=None, profile=False):
     """
     Similar to DispatchParallelDMP, but redesigned for multiprocessing
      of the DMP process.
     """
-    if len_prefix != 3:
+    if prefixLength != 3:
         pl("using custom number of nucleotides for splitting temporary files"
-        ", recommended value is 3, used here %s" % (len_prefix))
+        ", recommended value is 3, used here %s" % (prefixLength))
     if indexFq == "default":
         raise UnsetRequiredParameter("Index fastq with barcodes is required")
     if head < 0:
@@ -155,16 +155,16 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
     if(len(inFqs) > 2 or len(inFqs) < 1):
         raise UnsetRequiredParameter("Improper number of Fastqs specified,"
             "How did you even do this?")
-    if(cutAdapt == False):
+    if(cutadapt == False):
         pl("Running without cutadapt calls, DMP'd reads will not be adapter"
            " trimmed.")
-    if(cutAdapt == True):
+    if(cutadapt == True):
         if not p3Seq or not p5Seq:
             raise UnsetRequiredParameter("Must specifiy adapter sequence,"
             " to run cutadapt")
         pl("DMP will be followed by cut adapt on temporary fastq files,"
            " slightly less IO efficent because cutadapt can't be run in buffer")
-    allPrefixes = permuteNucleotides(4**len_prefix, kmerLen=len_prefix)
+    allPrefixes = permuteNucleotides(4**prefixLength, kmerLen=prefixLength)
     bcLen = len(pFastqFile(indexFq).next().sequence)
     pl("inferred barcode length is %s" % (bcLen))
     hpLimit = int(hpLimit * bcLen)
@@ -173,7 +173,7 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
     'IndexFq': indexFq,
     'Head': head,
     'hpLimit': hpLimit,
-    'cutAdapt': cutAdapt,
+    'cutadapt': cutadapt,
     'p3Seq': p3Seq,
     'p5Seq': p5Seq,
     'profile': profile}
@@ -182,7 +182,7 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
     if(len(inFqs) == 2):
         outFq1 = inFqs[0].split('.')[0]+".dmp.fastq"
         outFq2 = inFqs[1].split('.')[0]+".dmp.fastq"
-        if cutAdapt:
+        if cutadapt:
             outFq1 = outFq1.split('.fastq')[0]+"cutadapt.fastq"
             outFq2 = outFq2.split('.fastq')[0]+"cutadapt.fastq"
         tmpFqs = [pool.apply_async(pairedDMPWorker, args=(inFqs[0],
@@ -206,7 +206,7 @@ def multiProcessingDemulitplex(inFqs, indexFq="default", int head=0,
     return outFq1, outFq2
 
 
-cpdef splitMPdmpWorker(cystr Fastq1, cystr Fastq2, cutAdapt=False,
+cpdef splitMPdmpWorker(cystr Fastq1, cystr Fastq2, cutadapt=False,
                      p3Seq="default", p5Seq="default", profile=False):
     if(profile):
         import cProfile
@@ -239,7 +239,7 @@ cpdef splitMPdmpWorker(cystr Fastq1, cystr Fastq2, cutAdapt=False,
         for barcode in bcHash1.keys():
             output1.write(FastFisherFlattening(bcHash1[barcode], barcode))
             output2.write(FastFisherFlattening(bcHash2[barcode], barcode))
-    if cutAdapt:
+    if cutadapt:
         cafq1, cafq2 = CutadaptPaired(fq1name, fq2name, p3Seq, p5Seq)
         pl("runnning cutadapt on temporary fastqs %s %s" % (fq1name, fq2name))
         subprocess.check_call(["rm", fq1name])
@@ -265,36 +265,43 @@ cpdef splitMPdmpWorker(cystr Fastq1, cystr Fastq2, cutAdapt=False,
 
 
 def splitMPdmp(inFqs, indexFq="default", int head=0,
-                                int ncpus=1, int len_prefix=3,
-                                double hpLimit=0.8, cutAdapt=False, p3Seq=None,
-                                p5Seq=None, profile=False):
-    if len_prefix != 3:
+                                int ncpus=1, int prefixLength=3,
+                                double hpLimit=0.8, cutadapt=False, p3Seq=None,
+                                p5Seq=None, inline=False, bcLen=None,
+                                skipNucs=0, profile=False, homingSeq=None):
+    if(prefixLength != 3):
         pl("using custom number of nucleotides for splitting temporary files"
-        ", recommended value is 3, used here %s" % (len_prefix))
-    if indexFq == "default":
-        raise UnsetRequiredParameter("Index fastq with barcodes is required")
-    if head < 0:
+        ", recommended value is 3, used here %s" % (prefixLength))
+    if(indexFq == "default" and not inline):
+        raise UnsetRequiredParameter("Index fastq with barcodes is required"
+                            " unless --inline is specified")
+    if(head < 0):
         raise UnsetRequiredParameter("Improper or unset head value defaulting"
                                      "to 0")
         head = 0
     if(len(inFqs) > 2 or len(inFqs) < 1):
         raise UnsetRequiredParameter("Improper number of Fastqs specified,"
             "How did you even do this?")
-    if(cutAdapt == False):
+    if(cutadapt == False):
         pl("Running without cutadapt calls, DMP'd reads will not be adapter"
            " trimmed.")
-    if(cutAdapt == True):
-        if not p3Seq or not p5Seq:
+    if(cutadapt == True):
+        if(not p3Seq or not p5Seq):
             raise UnsetRequiredParameter("Must specifiy adapter sequence,"
             " to run cutadapt")
         pl("DMP will be followed by cut adapt on temporary fastq files,"
            " slightly less IO efficent because cutadapt can't be run in buffer")
-    bcLen = len(pFastqFile(indexFq).next().sequence)
-    pl("inferred barcode length is %s" % (bcLen))
+    if(not bcLen):
+        if(not inline):
+            bcLen = len(pFastqFile(indexFq).next().sequence)
+            pl("inferred barcode length is %s" % (bcLen))
+        else:
+            raise UnsetRequiredParameter("For inline barcodes, length must"
+                  " be specified by user")
     hpLimit = int(hpLimit * bcLen)
     pl("length of homopolymer for barcode be be marked QC fail: %s" % (hpLimit))
     kwargsDict = {
-        'cutAdapt': cutAdapt,
+        'cutadapt': cutadapt,
         'p3Seq': p3Seq,
         'p5Seq': p5Seq,
         'profile': profile}
@@ -303,11 +310,16 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
     if(len(inFqs) == 2):
         outFq1 = inFqs[0].split('.')[0]+".dmp.fastq"
         outFq2 = inFqs[1].split('.')[0]+".dmp.fastq"
-        if cutAdapt:
+        if cutadapt:
             outFq1 = outFq1.split('.fastq')[0]+"cutadapt.fastq"
             outFq2 = outFq2.split('.fastq')[0]+"cutadapt.fastq"
-        splitFastqs = Callfqmarksplit(inFqs[0], inFqs[1], indexFq, hpLimit,
-                                      len_prefix)
+        if inline:
+            splitFastqs = Callfqmarksplit_inline(inFqs[0], inFqs[1], hpLimit,
+                                            prefixLength, skipNucs, bcLen,
+                                            homingSeq)
+        else:
+            splitFastqs = Callfqmarksplit(inFqs[0], inFqs[1], indexFq, hpLimit,
+                                      prefixLength)
         pairedFastqs = []
         for rec in range(len(splitFastqs['mark'][0])):
             fq1 = splitFastqs['mark'][0][rec]
@@ -327,8 +339,8 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         subprocess.check_call("cat %s > %s" % (" ".join(fq2List), outFq2),
                                 shell=True)
         pl("concatination complete, gzipping fastq and deleting temp files")
-        check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
-        empty = [p.get() for p in check]
+        #check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
+        #empty = [p.get() for p in check]
         subprocess.check_call(["gzip", outFq1])
         subprocess.check_call(["gzip", outFq2])
         return outFq1, outFq2
