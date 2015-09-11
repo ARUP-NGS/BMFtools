@@ -1,3 +1,8 @@
+/*
+ * Conditional reverse complement Rescale Mark Split
+ * For inline Loeb adapters only.
+ */
+
 #include <zlib.h>
 #include <stdio.h>
 #include <stdint.h>

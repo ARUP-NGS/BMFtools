@@ -40,7 +40,7 @@ inline void kseq2fq_inline(FILE *handle, kseq_t *read,
                            char *barcode, char pass_fail, char *tmp_n_str,
                            int readlen, int n_len)
 {
-    memcpy(tmp_n_str, read->seq.s, n_len * sizeof(char));
+    memcpy(tmp_n_str, read->seq.s, readlen * sizeof(char));
     memset(tmp_n_str, 78, n_len);
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
     read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);

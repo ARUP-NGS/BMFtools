@@ -110,10 +110,14 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     int count = 0;
     char pass_fail;
     int readlen = 0;
-    int n_len = settings.blen + settings.homing_sequence_length;
     char * barcode;
     char * tmp_n_str;
     int blen1_2 = settings.blen / 2;
+    int n_len = blen1_2 + settings.homing_sequence_length;
+#if !NDEBUG
+    fprintf(stderr, "Now beginning splitmark_core_inline");
+    fprintf(stderr, "N length: %i. blen1_2: %i\n", n_len, blen1_2);
+#endif
     barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
     barcode[settings.blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);
