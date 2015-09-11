@@ -42,28 +42,25 @@ void mseq2fq_inline(FILE *handle, mseq_t mvar, char pass_fail);
 int count_lines(char *fname);
 void FREE_SPLITTER(mark_splitter_t var);
 char *** parse_rescaler(char *qual_rescale_fname);
-
-// Macros
-
+char *trim_ext(char *fname);
+char *make_default_outfname(char *fname, const char *suffix);
+char *mark_crms_outfname(char *fname);
 
 
 void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
                         "\nFlags:\n"
-                        "-h: Print usage.\n"
+                        "-l: Number of nucleotides at the beginning of each read to "
+                        "use for barcode. Final barcode length is twice this. REQUIRED.\n"
+                        "-o: Output basename. Defaults to a variation on input filename.\n"
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
-                        "-o: Output basename. Currently required, as string "
-                        "manipulation in C is a bit of work and I'd rather spend my "
-                        "time building code than messing around with string "
-                        "manipulation that doesn't add to the code base.\n"
-                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
+                        "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
-                        "-l: Number of nucleotides at the beginning of each read to "
-                        "use for barcode. Final barcode length is twice this.\n"
-                        "-s: homing sequence. If not provided, %s will not look for it.\n", argv[0], argv[0]);
+                        "-s: homing sequence. If not provided, %s will not look for it.\n"
+                        "-h: Print usage.\n", argv[0], argv[0]);
 }
 
 void print_opt_err(char *argv[], char *optarg)
@@ -166,6 +163,7 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
 
 int main(int argc, char *argv[])
 {
+    if(argc < 5) print_usage(argv); exit(1);
     // Build settings struct
     int hp_threshold;
     int n_nucs;
@@ -208,7 +206,7 @@ int main(int argc, char *argv[])
                         "Reads will not be QC failed for its absence.\n");
     }
     if(!settings.blen) {
-        fprintf(stderr, "Barcode length not provided. Required. Abort!\n.");
+        fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -217,12 +215,6 @@ int main(int argc, char *argv[])
     }
     if(settings.rescaler_path) {
         settings.rescaler = parse_rescaler(settings.rescaler_path);
-    }
-
-    if(!settings.output_basename) {
-        fprintf(stderr, "Output basename required. See usage.\n");
-        print_usage(argv);
-        return 1;
     }
     fprintf(stderr, "About to get the read paths.\n");
     char r1_fq_buf[100];
@@ -234,6 +226,11 @@ int main(int argc, char *argv[])
     }
     strcpy(r1_fq_buf, argv[optind]);
     strcpy(r2_fq_buf, argv[optind + 1]);
+
+    if(!settings.output_basename) {
+        settings.output_basename = mark_crms_outfname(r1_fq_buf);
+        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.", settings.output_basename);
+    }
     mssi_settings_t *settings_ptr = &settings;
     gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1_fq_buf, "r");

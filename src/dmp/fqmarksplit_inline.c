@@ -25,6 +25,10 @@ void kseq2fq_inline(FILE *handle, kseq_t *read,
                              char *barcode, char pass_fail, char *tmp_n_str,
                              int readlen, int n_len);
 int count_lines(char *fname);
+char *trim_ext(char *fname);
+char *make_default_outfname(char *fname, const char *suffix);
+
+const char *fms_suffix = ".fms.split";
 
 
 #define kseq2fq_inline(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) \
@@ -203,11 +207,6 @@ int main(int argc, char *argv[])
         settings.blen -= 2;
     }
 
-    if(!settings.output_basename) {
-        fprintf(stderr, "Output basename required. See usage.\n");
-        print_usage(argv);
-        return 1;
-    }
     fprintf(stderr, "About to get the read paths.\n");
     char r1_fq_buf[100];
     char r2_fq_buf[100];
@@ -218,6 +217,10 @@ int main(int argc, char *argv[])
     }
     strcpy(r1_fq_buf, argv[optind]);
     strcpy(r2_fq_buf, argv[optind + 1]);
+    if(!settings.output_basename) {
+        settings.output_basename = make_default_outfname(r1_fq_buf, fms_suffix);
+        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.", settings.output_basename);
+    }
     mssi_settings_t *settings_ptr = &settings;
     gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1_fq_buf, "r");
@@ -241,6 +244,7 @@ int main(int argc, char *argv[])
     */
     FREE_MSSI_SETTINGS(settings);
     FREE_SPLITTER(splitter);
+    fprintf(stderr, "Successfully completed fqmarksplit_inline. Huzzah!\n");
     return 0;
 }
 
