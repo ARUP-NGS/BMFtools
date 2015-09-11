@@ -8,6 +8,7 @@
 #include <string.h>
 #include <zlib.h>
 #include "include/kseq.h"
+#include "include/array_parser.h"
 
 KSEQ_INIT(gzFile, gzread)
 
@@ -579,14 +580,6 @@ inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ***resca
     kfp->length++; // Increment
     fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
     return;
-}
-
-inline char ***parse_rescaler(char *qual_rescale_fname)
-{
-    char ***omgz = NULL;
-    fprintf(stderr, "raise NotImplementedError('Hey, where do you think you're going? You're going NOWHERE. I gotchu foh 3 minutes. 3 minutes of playtime!')\n");
-    exit(137);
-    return omgz;
 }
 
 

@@ -10,7 +10,7 @@ from itertools import groupby
 from MawCluster.BCFastq import (FastFisherFlattening, CutadaptPaired,
                                 Callfqmarksplit)
 from utilBMF.HTSUtils import (pFastqProxy, pFastqFile, permuteNucleotides,
-                                printlog as pl, getBS)
+                              printlog as pl, getBS)
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from utilBMF.ErrorHandling import UnsetRequiredParameter, ImproperArgumentError
 
@@ -285,8 +285,8 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
            " trimmed.")
     if(cutAdapt == True):
         if not p3Seq or not p5Seq:
-            raise UnsetRequiredParameter("Must specifiy adapter sequence,"
-            " to run cutadapt")
+            raise UnsetRequiredParameter("Must specifiy adapter sequence"
+                                         " to run cutadapt")
         pl("DMP will be followed by cut adapt on temporary fastq files,"
            " slightly less IO efficent because cutadapt can't be run in buffer")
     bcLen = len(pFastqFile(indexFq).next().sequence)
@@ -312,7 +312,7 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         for rec in range(len(splitFastqs['mark'][0])):
             fq1 = splitFastqs['mark'][0][rec]
             fq2 = splitFastqs['mark'][1][rec]
-            pairedFastqs.append([fq1,fq2])
+            pairedFastqs.append([fq1, fq2])
         tmpFqs = [pool.apply_async(splitMPdmpWorker, args=(fq[0], fq[1]),
                   kwds=kwargsDict) for fq in pairedFastqs]
         fq1List = [p.get()[0] for p in tmpFqs]
