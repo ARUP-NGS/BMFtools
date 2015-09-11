@@ -10,7 +10,7 @@ from itertools import groupby
 from MawCluster.BCFastq import (FastFisherFlattening, CutadaptPaired,
                                 Callfqmarksplit, Callfqmarksplit_inline)
 from utilBMF.HTSUtils import (pFastqProxy, pFastqFile, permuteNucleotides,
-                                printlog as pl, getBS)
+                              printlog as pl, getBS)
 from utilBMF.ErrorHandling import ThisIsMadness as Tim
 from utilBMF.ErrorHandling import UnsetRequiredParameter, ImproperArgumentError
 
@@ -324,7 +324,7 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         for rec in range(len(splitFastqs['mark'][0])):
             fq1 = splitFastqs['mark'][0][rec]
             fq2 = splitFastqs['mark'][1][rec]
-            pairedFastqs.append([fq1,fq2])
+            pairedFastqs.append([fq1, fq2])
         tmpFqs = [pool.apply_async(splitMPdmpWorker, args=(fq[0], fq[1]),
                   kwds=kwargsDict) for fq in pairedFastqs]
         fq1List = [p.get()[0] for p in tmpFqs]
