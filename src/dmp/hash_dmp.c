@@ -13,12 +13,12 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen);
 void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void hash_dmp_core(armada_t Navy, FILE *handle);
+void hash_dmp_core(outpost_t Navy, FILE *handle);
 void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen);
 KingFisher_t init_kf(int readlen);
 void nuc_to_pos(char character, int *nuc_indices);
 char test_hp(kseq_t *seq, int threshold);
-void pushback_hash(armada_t Navy);
+void pushback_hash(outpost_t Navy);
 int get_binner(char *barcode, int length);
 
 
@@ -37,17 +37,17 @@ int main(int argc, char *argv[]){
     char *outfname = NULL;
     char *infname = NULL;
     int c;
-    if(argc < 4) {
-        fprintf(stderr, "Required arguments missing. See usage.\n");
-        print_usage(argv);
-        exit(1);
-    }
     while ((c = getopt(argc, argv, "h:o:")) > -1) {
         switch(c) {
             case 'o': outfname = strdup(optarg);break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
+    }
+    if(argc < 4) {
+        fprintf(stderr, "Required arguments missing. See usage.\n");
+        print_usage(argv);
+        exit(1);
     }
     FILE *in_handle;
     FILE *out_handle;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]){
     khiter_t k;
     khash_t(fisher) *hash = kh_init(fisher);
     fprintf(stderr, "Initiated hash table.\n");
-    armada_t Navy = {
+    outpost_t Navy = {
             .hash = hash,
             .seq = seq,
             .bs_ptr = bs_ptr,
@@ -94,19 +94,17 @@ int main(int argc, char *argv[]){
 }
 
 
-void hash_dmp_core(armada_t Navy, FILE *handle) {
+void hash_dmp_core(outpost_t Navy, FILE *handle) {
     fprintf(stderr, "Now beginning hash_dmp_core.\n");
     if(!Navy.bs_ptr) {
         fprintf(stderr, "Locating barcode failed. seq's comment: %s.\n", Navy.seq->comment.s);
         exit(1);
     }
-    KingFisher_t Holloway = init_kf(Navy.seq->seq.l);
-    //fprintf(stderr, "Holloway's current length: %i. Barcode: %s. Pointer to Holloway: %p.\n", Holloway.length, Holloway.barcode, &Holloway);
-    pushback_kseq(&Holloway, Navy.seq, Navy.nuc_indices, Navy.blen);
     int ret;
     int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
-    Navy.k = kh_put(fisher, Navy.hash, get_binnerl(Navy.bs_ptr, Navy.blen), &ret);
-    kh_value(Navy.hash, Navy.k) = Holloway;
+    Navy.k = kh_put(fisher, Navy.hash, bin, &ret);
+    kh_value(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
+    pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
     /*
     char *first_barcode = (char *)malloc((Navy.blen + 1) * sizeof(char));
     memcpy(first_barcode, Navy.bs_ptr, Navy.blen);
@@ -114,7 +112,7 @@ void hash_dmp_core(armada_t Navy, FILE *handle) {
     */
     //pushback_hash(hash, Navy.seq, Navy.bs_ptr, Navy.blen, readlen, nuc_indices, k);
     // Delete every between here and "int l" when done.
-    fprintf(stderr, "Holloway's current length: %i. Barcode: %s. Pointer to Holloway: %p.\n", Holloway.length, Holloway.barcode, &Holloway);
+    fprintf(stderr, "Holloway's current length: %i. Barcode: %s. Pointer to Holloway: %p.\n", kh_value(Navy.hash, Navy.k).length, kh_value(Navy.hash, Navy.k).barcode, &kh_value(Navy.hash, Navy.k));
     int l;
     while ((l = kseq_read(Navy.seq)) >= 0) {
         pushback_hash(Navy);

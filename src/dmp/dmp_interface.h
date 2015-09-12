@@ -52,26 +52,25 @@ int ipow(int base, int exp);
 #endif
 
 
-typedef struct armada {
-	khash_t(fisher) *hash;
-	kseq_t *seq;
-	char *bs_ptr;
-	int blen;
-	//int readlen; - Don't need readlen - already available as seq->seq.l;
-	int *nuc_indices;
-	khiter_t k;
-} armada_t;
+typedef struct outpost {
+    khash_t(fisher) *hash;
+    kseq_t *seq;
+    char *bs_ptr;
+    int blen;
+    //int readlen; - Don't need readlen - already available as seq->seq.l;
+    int *nuc_indices;
+    khiter_t k;
+} outpost_t;
 
 
-static inline void pushback_hash(armada_t Navy)
+static inline void pushback_hash(outpost_t Navy)
 {
     Navy.bs_ptr = barcode_mem_view(Navy.seq);
-    KingFisher_t Holloway;
     Navy.k=kh_get(fisher, Navy.hash,
                   get_binner(Navy.bs_ptr, Navy.blen));
     if(Navy.k==kh_end(Navy.hash)) {
-        Holloway = init_kf(Navy.seq->seq.l);
-        pushback_kseq(&Holloway, Navy.seq, Navy.nuc_indices, Navy.blen);
+        kh_value(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
+        pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
     }
     else {
         pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
