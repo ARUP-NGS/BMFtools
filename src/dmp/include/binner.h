@@ -54,15 +54,33 @@ inline uint64_t ulpow(uint64_t base, uint64_t exp)
     return result;
 }
 
+#define POW4MULT(count, inc_binner, ret)                   \
+		ret = inc_binner >> (count * 2);
 
-inline uint64_t get_binnerl(char *barcode, uint64_t length)
+
+inline int64_t get_binnerl(char *barcode, int length)
+{
+    int64_t bin = 0;
+    size_t count = 0;
+    int64_t inc_binner;
+    for(int i = length; i; --i){
+        char_to_num(barcode[i - 1], inc_binner);
+        POW4MULT(count, inc_binner, bin)
+        count++;
+    }
+    return bin;
+}
+
+
+
+inline uint64_t get_binnerul(char *barcode, int length)
 {
     uint64_t bin = 0;
     size_t count = 0;
     int inc_binner;
     for(int i = length; i; --i){
         char_to_num(barcode[i - 1], inc_binner);
-        bin += ( ulpow(4, count) * inc_binner);
+        POW4MULT(count, inc_binner, bin)
         count++;
     }
     return bin;

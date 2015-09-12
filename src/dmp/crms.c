@@ -139,7 +139,6 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
         if(!(count % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
-        fprintf(stderr, "Hey, this is my barcode %s!\n", barcode);
         pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp, n_len);

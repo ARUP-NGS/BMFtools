@@ -1,10 +1,26 @@
+#pragma once
+
 #include "stdio.h"
 #include "math.h"
 #include "charcmp.h"
+#include "khash.h"
+
+
+typedef struct KingFisher {
+    int **nuc_counts; // Count of nucleotides of this form
+    double **phred_sums; // Sums of -10log10(p-value)
+    int length; // Number of reads in family
+    int readlen; // Length of reads
+    char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
+    char *barcode;
+    char pass_fail;
+} KingFisher_t;
+
+
+KHASH_MAP_INIT_INT64(fisher, KingFisher_t) // Initialize a hashmap with int64 keys and KingFisher_t payload.
 int nuc2num(char character);
 
 extern double igamc(double x, double y);
-
 
 
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
@@ -29,31 +45,6 @@ static inline double igamc_pvalues(int num_pvalues, double x)
         return igamc((double)num_pvalues, x / 2.0);
     }
 }
-
-
-//Converts a nucleotide in a char * into an index for the phred_sums and nuc_counts arrays.
-inline void nuc_to_pos(char character, int *nuc_indices)
-{
-    switch(character) {
-        case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; return;
-        case 'C': nuc_indices[0] = 1; nuc_indices[1] = 1; return;
-        case 'G': nuc_indices[0] = 2; nuc_indices[1] = 2; return;
-        case 'T': nuc_indices[0] = 3; nuc_indices[1] = 3; return;
-        default: nuc_indices[0] = 0; nuc_indices[1] = 4; return;
-    }
-}
-
-
-typedef struct KingFisher {
-    int **nuc_counts; // Count of nucleotides of this form
-    double **phred_sums; // Sums of -10log10(p-value)
-    int length; // Number of reads in family
-    int readlen; // Length of reads
-    char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
-    char *barcode;
-    char pass_fail;
-} KingFisher_t;
-
 
 
 inline KingFisher_t init_kf(int readlen)

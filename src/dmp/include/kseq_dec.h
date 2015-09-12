@@ -1,3 +1,4 @@
+#pragma once
 #include "kseq.h"
 #include "kingfisher.h"
 #include <zlib.h>
@@ -121,21 +122,16 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
     }
     for(int i = 0; i < tmp->blen; i++) {
-        if(mvar->barcode[tmp->blen - i - 1] == 'N') {
-            fprintf(stderr, "Current mvar barcode: %s.\n", mvar->barcode);
-        }
         tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
     }
 #if !NDEBUG
     char *omgzwtf = (char *)malloc(tmp->readlen + 1);
     omgzwtf[tmp->readlen] = '\0';
     memcpy(omgzwtf, tmp->tmp_seq, tmp->readlen);
-    //fprintf(stderr, "Current tmp_seq: %s.\n", omgzwtf);
     free(omgzwtf);
     omgzwtf = (char *)malloc(tmp->blen + 1);
     omgzwtf[tmp->blen] = '\0';
     memcpy(omgzwtf, tmp->tmp_barcode, tmp->blen);
-    fprintf(stderr, "Current tmp_barcode: %s.\n", omgzwtf);
     free(omgzwtf);
 #endif
     memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
@@ -183,7 +179,6 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ***rescal
         }
     }
     mvar->barcode = barcode;
-    fprintf(stderr, "mvar's barcode: %s.\n", mvar->barcode);
     crc_mseq(mvar, tmp);
 }
 
