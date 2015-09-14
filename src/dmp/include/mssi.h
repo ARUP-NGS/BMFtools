@@ -48,12 +48,9 @@ inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
         return 1;
     }
     else {
-        return (memcmp(seq1 + (settings_ptr->blen / 2),
+        return memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),
                        settings_ptr->homing_sequence,
-                       settings_ptr->homing_sequence_length) == 0 &&
-                memcmp(seq2 + (settings_ptr->blen / 2),
-                       settings_ptr->homing_sequence,
-                       settings_ptr->homing_sequence_length) == 0);
+                       settings_ptr->homing_sequence_length) == 0;
     }
 }
 
@@ -97,4 +94,39 @@ inline char test_hp(kseq_t *seq, int threshold)
         }
     }
     return (run < threshold) ? '1': '0';
+}
+
+
+const char *crms_suffix = ".crms.split";
+
+/*
+ * Returns a null-terminated string with the extension and terminal period removed.
+ * Warning: Must be freed!
+ */
+inline char *trim_ext(char *fname) {
+    char *buf = malloc((strlen(fname) + 1) * sizeof(char ));
+    ptrdiff_t pos = strrchr(fname, '.') - fname; // Find the position in the read where the last '.' is.
+    memcpy(buf, fname, pos * sizeof(char));
+    buf[pos] = '\0';
+    return buf;
+}
+
+/*
+ * Returns a null-terminated string with the default outfname.
+ * Warning: Must be freed!
+ */
+inline char *make_default_outfname(char *fname, const char *suffix) {
+    char *prefix = trim_ext(fname);
+    int prefix_len = strlen(prefix);
+    int crms_suf_len = strlen(suffix);
+    int final_fname_len = prefix_len + crms_suf_len;
+    char *ret = (char *)malloc((final_fname_len + 1) * sizeof(char));
+    memcpy(ret, prefix, prefix_len);
+    ret = strcat(ret, crms_suffix);
+    free(prefix);
+    return ret;
+}
+
+inline char *mark_crms_outfname(char *fname) {
+	return make_default_outfname(fname, crms_suffix);
 }

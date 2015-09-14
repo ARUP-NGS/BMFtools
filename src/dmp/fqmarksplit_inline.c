@@ -22,10 +22,20 @@ char test_hp_inline(char *barcode, int length, int threshold);
 char test_hp(kseq_t *seq, int threshold);
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 void kseq2fq_inline(FILE *handle, kseq_t *read,
-		                     char *barcode, char pass_fail, char *tmp_n_str,
-							 int readlen, int n_len);
-void char_to_num(char character, int increment);
+                             char *barcode, char pass_fail, char *tmp_n_str,
+                             int readlen, int n_len);
 int count_lines(char *fname);
+char *trim_ext(char *fname);
+char *make_default_outfname(char *fname, const char *suffix);
+
+const char *fms_suffix = ".fms.split";
+
+
+#define kseq2fq_inline(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) \
+    memcpy(tmp_n_str, read->seq.s, read->seq.l * sizeof(char));\
+    memset(tmp_n_str, 78, n_len);\
+    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
+            read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
 
 // Macros
 
@@ -85,6 +95,7 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
         .tmp_out_handles_r1 = NULL,
         .tmp_out_handles_r2 = NULL
     };
+    fprintf(stderr, "n handles: %i. n nucs: %i.\n", ret.n_handles, settings_ptr->n_nucs);
     // Avoid passing more variables.
     ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
     ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
@@ -109,26 +120,24 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     int l1, l2, bin;
     int count = 0;
     char pass_fail;
-    int readlen = 0;
     char * barcode;
     char * tmp_n_str;
     int blen1_2 = settings.blen / 2;
     int n_len = blen1_2 + settings.homing_sequence_length;
-#if !NDEBUG
-    fprintf(stderr, "Now beginning splitmark_core_inline");
-    fprintf(stderr, "N length: %i. blen1_2: %i\n", n_len, blen1_2);
-#endif
     barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
+    memset(barcode, 78, settings.blen); // Set to all N
     barcode[settings.blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);
+    l2 = kseq_read(seq2);
     if(l1 < 0) {
             fprintf(stderr, "Could not open fastq for reading. Abort!\n");
             FREE_MSSI_SETTINGS(settings);
             FREE_SPLITTER(splitter);
             exit(EXIT_FAILURE);
     }
-    readlen = strlen(seq1->seq.s);
+    int readlen = strlen(seq1->seq.s);
     tmp_n_str = (char *)malloc((readlen + 1) * sizeof(char));
+    memset(tmp_n_str, 78, readlen);
     tmp_n_str[readlen] = '\0';
     do {
         count += 1;
@@ -136,24 +145,16 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
             fprintf(stderr, "Number of records processed: %i.\n", count);
         }
         // Iterate through second fastq file.
-        l2 = kseq_read(seq2);
-        if (l2 < 0) {
-            fprintf(stderr, "Read 2 return value for kseq_read less than "
-                            "0. Are the fastqs different sizes? Abort!\n");
-            FREE_MSSI_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            exit(EXIT_FAILURE);
-        }
         memcpy(barcode, seq1->seq.s + settings.offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
         memcpy(barcode + blen1_2, seq2->seq.s + settings.offset,
                blen1_2 * sizeof(char));
+        //pass_fail = test_hp_inline(barcode, settings.blen, settings.hp_threshold);
         pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(barcode, settings.n_nucs);
         kseq2fq_inline(splitter.tmp_out_handles_r1[bin], seq1, barcode, pass_fail, tmp_n_str, readlen, n_len);
         kseq2fq_inline(splitter.tmp_out_handles_r2[bin], seq2, barcode, pass_fail, tmp_n_str, readlen, n_len);
     }
-    while ((l1 = kseq_read(seq1)) >= 0);
+    while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
 }
 
 
@@ -206,11 +207,6 @@ int main(int argc, char *argv[])
         settings.blen -= 2;
     }
 
-    if(!settings.output_basename) {
-        fprintf(stderr, "Output basename required. See usage.\n");
-        print_usage(argv);
-        return 1;
-    }
     fprintf(stderr, "About to get the read paths.\n");
     char r1_fq_buf[100];
     char r2_fq_buf[100];
@@ -221,6 +217,10 @@ int main(int argc, char *argv[])
     }
     strcpy(r1_fq_buf, argv[optind]);
     strcpy(r2_fq_buf, argv[optind + 1]);
+    if(!settings.output_basename) {
+        settings.output_basename = make_default_outfname(r1_fq_buf, fms_suffix);
+        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.", settings.output_basename);
+    }
     mssi_settings_t *settings_ptr = &settings;
     gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1_fq_buf, "r");
@@ -230,7 +230,6 @@ int main(int argc, char *argv[])
     kseq_t *seq2 = kseq_init(fp_read2);
     seq2 = kseq_init(fp_read2);
     mark_splitter_t splitter = init_splitter_inline(settings_ptr);
-    mark_splitter_t *splitter_ptr = &splitter;
 /*
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
@@ -245,5 +244,24 @@ int main(int argc, char *argv[])
     */
     FREE_MSSI_SETTINGS(settings);
     FREE_SPLITTER(splitter);
+    fprintf(stderr, "Successfully completed fqmarksplit_inline. Huzzah!\n");
     return 0;
 }
+
+/*
+void kseq2fq_inline(FILE *handle, kseq_t *read,
+                    char *barcode, char pass_fail, char *tmp_n_str,
+                    int readlen, int n_len)
+{
+    fprintf(stderr, "Did I get into this function at all?\n");
+    fprintf(stderr, "About to access unmodified tmp_n_str.\n");
+    fprintf(stderr, "Accessing unmodified tmp_n_str %i.", strlen(tmp_n_str));
+    memcpy(tmp_n_str, read->seq.s, read->seq.l * sizeof(char));
+    fprintf(stderr, "Copied seq over: %i. Value: %s.\n", strlen(tmp_n_str), tmp_n_str);
+    memset(tmp_n_str, 78, n_len);
+    fprintf(stderr, "N'd Value: %s.\n", tmp_n_str);
+    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
+            read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
+    return;
+}
+*/

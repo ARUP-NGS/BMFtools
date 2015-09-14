@@ -268,7 +268,7 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
                                 int ncpus=1, int prefixLength=3,
                                 double hpLimit=0.8, cutadapt=False, p3Seq=None,
                                 p5Seq=None, inline=False, bcLen=None,
-                                skipNucs=0, profile=False, homingSeq=None):
+                                skipNucs=0, profile=False, homing=None):
     if(prefixLength != 3):
         pl("using custom number of nucleotides for splitting temporary files"
         ", recommended value is 3, used here %s" % (prefixLength))
@@ -316,7 +316,7 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         if inline:
             splitFastqs = Callfqmarksplit_inline(inFqs[0], inFqs[1], hpLimit,
                                             prefixLength, skipNucs, bcLen,
-                                            homingSeq)
+                                            homing)
         else:
             splitFastqs = Callfqmarksplit(inFqs[0], inFqs[1], indexFq, hpLimit,
                                       prefixLength)
@@ -339,8 +339,8 @@ def splitMPdmp(inFqs, indexFq="default", int head=0,
         subprocess.check_call("cat %s > %s" % (" ".join(fq2List), outFq2),
                                 shell=True)
         pl("concatination complete, gzipping fastq and deleting temp files")
-        #check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
-        #empty = [p.get() for p in check]
+        check = [pool.apply_async(deleter, args=(f, )) for f in fq1List+fq2List]
+        empty = [p.get() for p in check]
         subprocess.check_call(["gzip", outFq1])
         subprocess.check_call(["gzip", outFq2])
         return outFq1, outFq2
