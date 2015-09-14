@@ -62,13 +62,16 @@ typedef struct outpost {
     khiter_t k;
 } outpost_t;
 
-
+/*
 static inline void pushback_hash(outpost_t Navy)
 {
     Navy.bs_ptr = barcode_mem_view(Navy.seq);
+    int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
+    fprintf(stderr, "Bin for pushing back hash: %i.", bin);
     Navy.k=kh_get(fisher, Navy.hash,
                   get_binner(Navy.bs_ptr, Navy.blen));
     if(Navy.k==kh_end(Navy.hash)) {
+        fprintf(stderr, "New barcode! %s, %i.", Navy.bs_ptr, bin);
         kh_value(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
         pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
     }
@@ -77,3 +80,4 @@ static inline void pushback_hash(outpost_t Navy)
     }
     return;
 }
+*/

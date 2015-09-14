@@ -23,6 +23,8 @@ sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *s
 void free_mp_sorter(sort_overlord_t var);
 char test_hp(kseq_t *seq, int threshold);
 int count_lines(char *fname);
+void u32toa_branchlut(uint32_t value, char* buffer);
+void i32toa_branchlut(int32_t value, char* buffer);
 
 // Macros
 

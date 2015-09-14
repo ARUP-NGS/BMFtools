@@ -27,6 +27,8 @@ void kseq2fq_inline(FILE *handle, kseq_t *read,
 int count_lines(char *fname);
 char *trim_ext(char *fname);
 char *make_default_outfname(char *fname, const char *suffix);
+void u32toa_branchlut(uint32_t value, char* buffer);
+void i32toa_branchlut(int32_t value, char* buffer);
 
 const char *fms_suffix = ".fms.split";
 

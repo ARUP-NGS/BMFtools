@@ -18,8 +18,9 @@ void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen);
 KingFisher_t init_kf(int readlen);
 void nuc_to_pos(char character, int *nuc_indices);
 char test_hp(kseq_t *seq, int threshold);
-void pushback_hash(outpost_t Navy);
+static void pushback_hash(outpost_t Navy);
 int get_binner(char *barcode, int length);
+int64_t lpow(int64_t base, int64_t exp);
 
 
 
@@ -28,9 +29,27 @@ void print_usage(char *argv[]) {
 }
 
 void print_opt_err(char *argv[], char *optarg) {
-    fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
+    fprintf(stderr, "Invalid argument %c. See usage.\n", optarg);
     print_usage(argv);
     exit(1);
+}
+
+static void pushback_hash(outpost_t Navy)
+{
+    Navy.bs_ptr = barcode_mem_view(Navy.seq);
+    int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
+    fprintf(stderr, "Bin for pushing back hash: %i.", bin);
+    Navy.k=kh_get(fisher, Navy.hash,
+                  get_binner(Navy.bs_ptr, Navy.blen));
+    if(Navy.k==kh_end(Navy.hash)) {
+    	fprintf(stderr, "New barcode! %s, %i.", Navy.bs_ptr, bin);
+        *kh_val(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
+        pushback_kseq(kh_val(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
+    }
+    else {
+        pushback_kseq(kh_val(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
+    }
+    return;
 }
 
 int main(int argc, char *argv[]){
@@ -76,7 +95,9 @@ int main(int argc, char *argv[]){
     int *nuc_indices = (int *)calloc(2, sizeof(int));
     khiter_t k;
     khash_t(fisher) *hash = kh_init(fisher);
-    fprintf(stderr, "Initiated hash table.\n");
+    int ret = -1;
+    fprintf(stderr, "Trying to start hash table.\n");
+    k = kh_put(fisher, hash, 133, &ret);
     outpost_t Navy = {
             .hash = hash,
             .seq = seq,
@@ -95,16 +116,21 @@ int main(int argc, char *argv[]){
 
 
 void hash_dmp_core(outpost_t Navy, FILE *handle) {
+	khint_t k;
+    int ret = 0;
+    int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
     fprintf(stderr, "Now beginning hash_dmp_core.\n");
+    k = kh_put(fisher, Navy.hash, bin, &ret);
+    fprintf(stderr, "New KingFisher_t! Barcode: %s. Bin: %i.", kh_val(Navy.hash, k)->barcode, bin);
     if(!Navy.bs_ptr) {
         fprintf(stderr, "Locating barcode failed. seq's comment: %s.\n", Navy.seq->comment.s);
         exit(1);
     }
-    int ret;
-    int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
-    Navy.k = kh_put(fisher, Navy.hash, bin, &ret);
-    kh_value(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
-    pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
+    k = kh_put(fisher, Navy.hash, bin, &ret);
+    fprintf(stderr, "New bin %s.\n", k);
+    *kh_val(Navy.hash, k) = init_kf(Navy.seq->seq.l);
+    fprintf(stderr, "New KingFisher_t! Barcode: %s. Bin: %i.", kh_val(Navy.hash, k)->barcode, bin);
+    pushback_kseq(kh_val(Navy.hash, k), Navy.seq, Navy.nuc_indices, Navy.blen);
     /*
     char *first_barcode = (char *)malloc((Navy.blen + 1) * sizeof(char));
     memcpy(first_barcode, Navy.bs_ptr, Navy.blen);
@@ -112,7 +138,6 @@ void hash_dmp_core(outpost_t Navy, FILE *handle) {
     */
     //pushback_hash(hash, Navy.seq, Navy.bs_ptr, Navy.blen, readlen, nuc_indices, k);
     // Delete every between here and "int l" when done.
-    fprintf(stderr, "Holloway's current length: %i. Barcode: %s. Pointer to Holloway: %p.\n", kh_value(Navy.hash, Navy.k).length, kh_value(Navy.hash, Navy.k).barcode, &kh_value(Navy.hash, Navy.k));
     int l;
     while ((l = kseq_read(Navy.seq)) >= 0) {
         pushback_hash(Navy);
@@ -121,10 +146,14 @@ void hash_dmp_core(outpost_t Navy, FILE *handle) {
     khint_t _i;
     for(_i = kh_begin(Navy.hash); _i != kh_end(Navy.hash); ++_i) {
         if(!kh_exist(Navy.hash, _i)) continue;
+        fprintf(stderr, "Barcode for this KingFisher_t: %s.\n", kh_val(Navy.hash, _i)->barcode);
         fprintf(stderr, "Just got the Hook for the KingFisher_t object.\n");
-        dmp_process_write(&kh_val(Navy.hash, _i), handle, Navy.blen);
         fprintf(stderr, "Now let's just destroy Hook.\n");
-        //destroy_kf(Hook);
+    }
+    for(_i = kh_begin(Navy.hash); _i != kh_end(Navy.hash); ++_i) {
+        if(!kh_exist(Navy.hash, _i)) continue;
+        dmp_process_write(kh_val(Navy.hash, _i), handle, Navy.blen);
+        destroy_kf(kh_val(Navy.hash, _i));
         barcode_counter++;
     }
     fprintf(stderr, "Number of unique barcodes: %i\n", barcode_counter);

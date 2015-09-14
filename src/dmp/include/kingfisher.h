@@ -17,10 +17,11 @@ typedef struct KingFisher {
 } KingFisher_t;
 
 
-KHASH_MAP_INIT_INT64(fisher, KingFisher_t) // Initialize a hashmap with int64 keys and KingFisher_t payload.
+KHASH_MAP_INIT_INT64(fisher, KingFisher_t *) // Initialize a hashmap with int64 keys and KingFisher_t payload.
 int nuc2num(char character);
 
 extern double igamc(double x, double y);
+extern void comma_i32toa(int32_t value, char *buffer);
 
 
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
@@ -155,6 +156,9 @@ inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
 
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
 {
+#if !NDEBUG
+    fprintf(stderr, "Hey, just got to dpw.\n");
+#endif
     char name_buffer[120];
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     char *cons_seq = (char *)malloc((kfp->readlen + 1) * sizeof(char));
@@ -182,6 +186,9 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
     name_buffer[1 + blen] = '\0';
     //fprintf(stderr, "Name buffer: %s\n", name_buffer);
     char arr_tag_buffer[2000];
+#if !NDEBUG
+    fprintf(stderr, "Hey, I'm about to make the final string. cons_seq: %s.\n", cons_seq);
+#endif
     sprintf(arr_tag_buffer, "%s\t%s\t%s\n%s\n+\n%s\n", FABuffer, PVBuffer, FPBuffer, cons_seq, kfp->max_phreds);
     //fprintf(stderr, "Output result: %s %s", name_buffer, arr_tag_buffer);
     fprintf(handle, "%s %s", name_buffer, arr_tag_buffer);

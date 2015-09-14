@@ -1,4 +1,5 @@
 #include "stdint.h"
+#include "inttypes.h"
 
 
 // Functions
@@ -25,7 +26,6 @@ inline int ipow(int base, int exp)
     }
 
 
-
 inline int get_binner(char *barcode, int length)
 {
     int bin = 0;
@@ -37,6 +37,21 @@ inline int get_binner(char *barcode, int length)
         count++;
     }
     return bin;
+}
+
+
+inline int64_t lpow(int64_t base, int64_t exp)
+{
+    int64_t result = 1;
+    while (exp)
+    {
+        if (exp & 1)
+            result *= base;
+        exp >>= 1;
+        base *= base;
+    }
+
+    return result;
 }
 
 
@@ -54,9 +69,6 @@ inline uint64_t ulpow(uint64_t base, uint64_t exp)
     return result;
 }
 
-#define POW4MULT(count, inc_binner, ret)                   \
-		ret = inc_binner >> (count * 2);
-
 
 inline int64_t get_binnerl(char *barcode, int length)
 {
@@ -65,9 +77,10 @@ inline int64_t get_binnerl(char *barcode, int length)
     int64_t inc_binner;
     for(int i = length; i; --i){
         char_to_num(barcode[i - 1], inc_binner);
-        POW4MULT(count, inc_binner, bin)
+        bin += lpow(4, count) * inc_binner;
         count++;
     }
+    fprintf(stderr, "Bin: %i.\n", bin);
     return bin;
 }
 
@@ -80,7 +93,7 @@ inline uint64_t get_binnerul(char *barcode, int length)
     int inc_binner;
     for(int i = length; i; --i){
         char_to_num(barcode[i - 1], inc_binner);
-        POW4MULT(count, inc_binner, bin)
+        bin += ulpow(4, count) * inc_binner;
         count++;
     }
     return bin;

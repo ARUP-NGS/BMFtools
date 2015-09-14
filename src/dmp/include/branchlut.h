@@ -1,3 +1,4 @@
+#pragma once
 #include "stdint.h"
 #include "digitslut.h"
 //#include "test.h"
@@ -54,7 +55,7 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
             *buffer++ = gDigitsLut[i + 1];
         }
         else
-            *buffer++ = '0' + static_cast<char>(a);
+            *buffer++ = '0' + (char)(a);
 
         const uint32_t b = value / 10000; // 0 to 9999
         const uint32_t c = value % 10000; // 0 to 9999
@@ -78,7 +79,7 @@ inline void u32toa_branchlut(uint32_t value, char* buffer) {
 }
 
 inline void i32toa_branchlut(int32_t value, char* buffer) {
-    uint32_t u = static_cast<uint32_t>(value);
+    uint32_t u = (uint32_t)(value);
     if (value < 0) {
         *buffer++ = '-';
         u = ~u + 1;
@@ -89,7 +90,7 @@ inline void i32toa_branchlut(int32_t value, char* buffer) {
 
 inline void u64toa_branchlut(uint64_t value, char* buffer) {
     if (value < 100000000) {
-        uint32_t v = static_cast<uint32_t>(value);
+        uint32_t v = (uint32_t)(value);
         if (v < 10000) {
             const uint32_t d1 = (v / 100) << 1;
             const uint32_t d2 = (v % 100) << 1;
@@ -128,8 +129,8 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
         }
     }
     else if (value < 10000000000000000) {
-        const uint32_t v0 = static_cast<uint32_t>(value / 100000000);
-        const uint32_t v1 = static_cast<uint32_t>(value % 100000000);
+        const uint32_t v0 = (uint32_t)(value / 100000000);
+        const uint32_t v1 = (uint32_t)(value % 100000000);
         
         const uint32_t b0 = v0 / 10000;
         const uint32_t c0 = v0 % 10000;
@@ -176,18 +177,18 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
         *buffer++ = gDigitsLut[d8 + 1];
     }
     else {
-        const uint32_t a = static_cast<uint32_t>(value / 10000000000000000); // 1 to 1844
+        const uint32_t a = (uint32_t)(value / 10000000000000000); // 1 to 1844
         value %= 10000000000000000;
         
         if (a < 10)
-            *buffer++ = '0' + static_cast<char>(a);
+            *buffer++ = '0' + (char)(a);
         else if (a < 100) {
             const uint32_t i = a << 1;
             *buffer++ = gDigitsLut[i];
             *buffer++ = gDigitsLut[i + 1];
         }
         else if (a < 1000) {
-            *buffer++ = '0' + static_cast<char>(a / 100);
+            *buffer++ = '0' + (char)(a / 100);
             
             const uint32_t i = (a % 100) << 1;
             *buffer++ = gDigitsLut[i];
@@ -202,8 +203,8 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
             *buffer++ = gDigitsLut[j + 1];
         }
         
-        const uint32_t v0 = static_cast<uint32_t>(value / 100000000);
-        const uint32_t v1 = static_cast<uint32_t>(value % 100000000);
+        const uint32_t v0 = (uint32_t)(value / 100000000);
+        const uint32_t v1 = (uint32_t)(value % 100000000);
         
         const uint32_t b0 = v0 / 10000;
         const uint32_t c0 = v0 % 10000;
@@ -245,7 +246,7 @@ inline void u64toa_branchlut(uint64_t value, char* buffer) {
 }
 
 inline void i64toa_branchlut(int64_t value, char* buffer) {
-    uint64_t u = static_cast<uint64_t>(value);
+    uint64_t u = (uint64_t)(value);
     if (value < 0) {
         *buffer++ = '-';
         u = ~u + 1;

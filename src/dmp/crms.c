@@ -45,6 +45,8 @@ char *** parse_rescaler(char *qual_rescale_fname);
 char *trim_ext(char *fname);
 char *make_default_outfname(char *fname, const char *suffix);
 char *mark_crms_outfname(char *fname);
+void u32toa_branchlut(uint32_t value, char* buffer);
+void i32toa_branchlut(int32_t value, char* buffer);
 
 
 void print_usage(char *argv[])

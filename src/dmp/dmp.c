@@ -2,7 +2,7 @@
 
 //Function definitions
 static double igamc_pvalues(int num_pvalues, double x);
-KingFisher_t init_kf(size_t readlen);
+KingFisher_t init_kf(int readlen);
 void pushback_kseq(KingFisher_t *fisher, kseq_t *seq, int *nuc_indices, int blen);
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle);
 int ARRG_MAX(KingFisher_t *kfp, int index);
@@ -17,6 +17,11 @@ void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void destroy_kf(KingFisher_t *kfp);
 void clear_kf(KingFisher_t *kfp);
+void u32toa_branchlut(uint32_t value, char* buffer);
+void i32toa_branchlut(int32_t value, char* buffer);
+int get_binner(char *barcode, int length);
+void nuc_to_pos(char character, int *nuc_indices);
+char test_hp(kseq_t *seq, int threshold);
 
 void print_usage(char *argv[]) {
     fprintf(stderr, "Usage: %s -o <output_path> <input_path> (<optional other input_paths>)\n"
@@ -127,7 +132,7 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
     }
     readlen = strlen(seq->seq.s);
     fprintf(stderr, "read length (inferred): %i\n", readlen);
-    INIT_KF(Holloway, readlen)
+    KingFisher_t Holloway = init_kf(readlen);
     /*
     KingFisher_t Holloway = init_kf(readlen);
     */
