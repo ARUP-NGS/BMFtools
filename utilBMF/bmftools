@@ -263,12 +263,12 @@ def main():
         "-i",
         "--indexFq",
         metavar="IndexFastq",
-        help="Index Fastq containing barcode sequence",
-        required=True
+        default="default",
+        help="Index Fastq containing barcode sequence"
     )
     MPdemultiplexParser.add_argument(
-        "--cutAdapt",
-        help="calls cutAdapt on temporary fastqs after marking and"
+        "--cutadapt",
+        help="calls cutadapt on temporary fastqs after marking and"
         " consolidation",
         default=False,
         action="store_true"
@@ -294,7 +294,7 @@ def main():
                 "config file as well."
     )
     MPdemultiplexParser.add_argument(
-        "--len_prefix",
+        "--prefixLength",
         help="Number of nucleotides to use in for splitting reads from"
              " original fastqs, the higher the value, the more temp files"
              " defaults to 3, but try 4 if RAM is a problem.  warning: "
@@ -303,9 +303,25 @@ def main():
         type=int
     )
     MPdemultiplexParser.add_argument(
+        "--bcLen",
+        "-bc",
+        help="Length of the barcode, required for inline barcodes, can be"
+             "infered from an index fastq",
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
+        "--skipNucs",
+        "-m",
+        help="Mask first n nucleotides in read for barcode. Useful if first base or"
+        " two in a read are known to be low quality Default: 0. "
+        "Recommended: 1.",
+        default=0,
+        type=int
+    )
+    MPdemultiplexParser.add_argument(
         "--hpLimit",
         help="proportion of read which consistes of a single nuceltide above"
-             " which the read will be marked as QC failed.  defaults to .9",
+             " which the read will be marked as QC failed.  defaults to 0.9",
         default=0.9,
         type=float
     )
@@ -314,6 +330,19 @@ def main():
         help="number of processors to use",
         type=int,
         required=True
+    )
+    MPdemultiplexParser.add_argument(
+        "--inline",
+        help="if reads contain inline barcodes, set this option.  -i is then"
+             " no longer required, but --bcLen is.",
+        default=False,
+        action="store_true"
+    )
+    MPdemultiplexParser.add_argument(
+        "--homing",
+        help="Homing sequence for inline barcodes (not necessariy if using"
+        " index fastq)",
+        type=str
     )
     MPdemultiplexParser.add_argument(
         "--profile",
@@ -1024,11 +1053,15 @@ def main():
             indexFq=Chapman['indexFq'],
             p3Seq=Chapman['p3Seq'],
             p5Seq=Chapman['p5Seq'],
-            len_prefix=Chapman['len_prefix'],
+            prefixLength=Chapman['prefixLength'],
             hpLimit=Chapman['hpLimit'],
             ncpus=Chapman['ncpus'],
             head=Chapman['head'],
-            cutAdapt=Chapman['cutAdapt'],
+            cutadapt=Chapman['cutadapt'],
+            bcLen=Chapman['bcLen'],
+            inline=Chapman['inline'],
+            skipNucs=Chapman['skipNucs'],
+            homing=Chapman['homing'],
             profile=Chapman['profile'])
         pl("Demultiplexing, marking, consildating, and compression complete"
             "new fastqs are %s and %s" % (outFq1, outFq2))

@@ -48,6 +48,9 @@ includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("s
 
 subprocess.check_call('gcc src/dmp/fqmarksplit.c src/dmp/igamc_cephes.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11', shell=True)
 subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
+subprocess.check_call('cd src/dmp;gcc fqmarksplit_inline.c -o fqmarksplit_inline -lm -lz -std=gnu11;cd ../..', shell=True)
+subprocess.check_call('cd src/dmp;gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -std=gnu11;cd ../..', shell=True)
+subprocess.check_call('cd src/dmp;gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp  -std=gnu11;cd ../..', shell=True)
 #subprocess.check_call('cd src/dmp; gcc -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o igamc -fopenmp -lm -std=c99; cd ../..', shell=True)
 #gcc  -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o omgz -fopenmp -lm -lz -std=gnu99
 #gcc -I. -o hash_dmp hash_dmp.c igamc_cephes.c -lz -lm -std=gnu11
@@ -64,7 +67,8 @@ config = {
                  "SecC", "analyscripts"],
     'ext_modules': ext,
     'include_dirs': includes,
-    'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/sort/lh3sort'],
+    'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/dmp/fqmarksplit_inline', 'src/sort/lh3sort',
+                'src/dmp/bmf_crms'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
