@@ -49,9 +49,9 @@ typedef struct {
 } lib_aux_t;
 KHASH_MAP_INIT_STR(lib, lib_aux_t)
 
+// This holds the bam1_t objects that need to be written as fastqs and realigned.
 typedef struct rescue_aux{
-    uint64_t n_checked, n_removed;
-    khash_t(rescue) *best_hash;
+    khash_t(rescue) *hash;
 } rescue_aux_t;
 
 typedef struct {
@@ -59,7 +59,17 @@ typedef struct {
     bam1_t **a;
 } tmp_stack_t;
 
-static inline void set_key(bam1_t *b, uint64_t ret) {
+#define REVMREVTIDPOS(bam) (uint64_t)(IS_REVERSE(b) >> 63 | IS_MATE_REVERSE(b) >> 62| bam->core.pos >> 34 | bam->core.mpos >> 6 | bam->tid)
+
+// assume that no contig is longer than human chr1 (249e6)
+// Additionally, requires that key be pre-allocated to avoid segfaults.
+static inline void set_key(bam1_t *b, char *key) {
+    uint8_t *tag_val = bam_aux_get(bam_line, "BS");
+    if(!tag_val) {
+        fprintf(stderr, "Required BS tag not found. Abort mission!\n");
+        exit(EXIT_FAILURE);
+    }
+    sprintf(key, "%i%c%s", REVMREVTIDPOS(b), b->core.mtid + 33, bam_aux2Z(tag_val));
     return;
 }
 
@@ -179,7 +189,8 @@ void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
         }
         if (!(c->flag&BAM_FPAIRED) || (c->flag&(BAM_FUNMAP|BAM_FMUNMAP)) || (c->mtid >= 0 && c->tid != c->mtid)) {
             sam_write1(out, hdr, b);
-        } else if (c->isize > 0) { // paired, head
+        } else { // paired, head
+            int pass = 1; // For a missing BS tag.
             uint64_t key = (uint64_t)c->pos<<32 | c->isize;
             const char *lib;
             lib_aux_t *q;
@@ -191,22 +202,39 @@ void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
             if (ret == 0) { // found in best_hash
                 bam1_t *p = kh_val(q->best_hash, k);
                 ++q->n_removed;
-                if (sum_qual(p) < sum_qual(b)) { // the current alignment is better; this can be accelerated in principle
-                    kh_put(name, del_set, strdup(bam_get_qname(p)), &ret); // p will be removed
-                    bam_copy1(p, b); // replaced as b
-                } else kh_put(name, del_set, strdup(bam_get_qname(b)), &ret); // b will be removed
+
+                uint8_t *cp = bam_aux_get(p, "BS");
+                uint8_t *cb = bam_aux_get(b, "BS");
+                if(!cp) {
+                    fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(p), p->core.flag);
+                    pass = 0;
+                }
+                if(!cb) {
+                    fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(b), p->core.flag);
+                    pass = 0;
+                }
+                if(!pass) {
+                    fprintf(stderr, "BS tag missing for at least one read. Required field. Abort mission!\n");
+                    exit(EXIT_FAILURE);
+                }
+                if(hamming_dist(cp, cb, strlen(<char *>cp)) < HD_THRESHOLD) {
+                    kh_put(name, del_set, strdup(bam_get_qname(b)), &ret);
+                    uint8_t *pPVptr = bam_aux_get(p, "PV");
+                    uint8_t *bPVptr = bam_aux_get(b, "PV");
+                    if(!bPVptr || !pPVptr) {
+                        fprintf(stderr, "Required PV tag not found. Abort mission!\n");
+                        exit(EXIT_FAILURE);
+                    }
+                    int *bPV = (int *)bPVptr; // Length of this should be b->l_qseq
+                    int *pPV = (int *)pPVptr; // Length of this should be p->l_qseq
+                }
                 if (ret == 0)
                     fprintf(stderr, "[bam_rmdup_core] inconsistent BAM file for pair '%s'. Continue anyway.\n", bam_get_qname(b));
             } else { // not found in best_hash
+                k = kh_put(
                 kh_val(q->best_hash, k) = bam_dup1(b);
                 stack_insert(&stack, kh_val(q->best_hash, k));
             }
-        } else { // paired, tail
-            k = kh_get(name, del_set, bam_get_qname(b));
-            if (k != kh_end(del_set)) {
-                free((char*)kh_key(del_set, k));
-                kh_del(name, del_set, k);
-            } else sam_write1(out, hdr, b);
         }
         last_pos = c->pos;
     }
