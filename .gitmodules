@@ -1,0 +1,3 @@
+[submodule "htslib"]
+	path = src/holloway/include/htslib
+	url = https://github.com/samtools/htslib
