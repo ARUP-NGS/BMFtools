@@ -258,11 +258,12 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
             kfp->max_phreds[i] = seq->qual.s[i];
         }
     }
-    if(kfp->length == 0) {
+    if(!kfp->length) { // Empty KingFisher
         char *bs_ptr = barcode_mem_view(seq);
         kfp->pass_fail = (char)*(bs_ptr- 5);
-        kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
+        kfp->barcode = (char *)malloc((blen + 1) * sizeof(char));
         memcpy(kfp->barcode, bs_ptr, blen);
+        kfp->barcode[blen] = '\0';
     }
     kfp->length++; // Increment
     fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);

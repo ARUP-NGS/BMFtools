@@ -34,6 +34,7 @@ void print_opt_err(char *argv[], char *optarg) {
     exit(1);
 }
 
+
 static void pushback_hash(outpost_t Navy)
 {
     Navy.bs_ptr = barcode_mem_view(Navy.seq);
@@ -43,7 +44,7 @@ static void pushback_hash(outpost_t Navy)
                   get_binner(Navy.bs_ptr, Navy.blen));
     if(Navy.k==kh_end(Navy.hash)) {
     	fprintf(stderr, "New barcode! %s, %i.", Navy.bs_ptr, bin);
-        *kh_val(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
+        set_kf(Navy.seq->seq.l, *kh_val(Navy.hash, Navy.k));
         pushback_kseq(kh_val(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
     }
     else {

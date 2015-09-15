@@ -117,14 +117,11 @@ inline char *trim_ext(char *fname) {
  * Warning: Must be freed!
  */
 inline char *make_default_outfname(char *fname, const char *suffix) {
+	char buf[200];
     char *prefix = trim_ext(fname);
-    int prefix_len = strlen(prefix);
-    int crms_suf_len = strlen(suffix);
-    int final_fname_len = prefix_len + crms_suf_len;
-    char *ret = (char *)malloc((final_fname_len + 1) * sizeof(char));
-    ret[final_fname_len] = '\0';
-    memcpy(ret, prefix, prefix_len);
-    memcpy(ret + prefix_len, crms_suffix, crms_suf_len);
+    strcpy(buf, prefix);
+    strcat(buf, suffix);
+    char *ret = strdup(buf);
     free(prefix);
     return ret;
 }

@@ -39,6 +39,13 @@ const char *fms_suffix = ".fms.split";
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
             read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
 
+
+#define kseq2slfq_inline(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) \
+    memcpy(tmp_n_str, read->seq.s, read->seq.l * sizeof(char));\
+    memset(tmp_n_str, 78, n_len);\
+    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\t%s\t+\t%s\n",\
+            read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
+
 // Macros
 
 
@@ -88,14 +95,16 @@ void print_opt_err(char *argv[], char *optarg)
 mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 {
     mark_splitter_t ret = {
-        .n_handles = ipow(4, settings_ptr->n_nucs),
+        .n_handles = settings_ptr->n_handles,
         .n_nucs = settings_ptr->n_nucs,
         .fnames_r1 = NULL,
         .fnames_r2 = NULL,
         .tmp_out_handles_r1 = NULL,
         .tmp_out_handles_r2 = NULL
     };
+#if !NDEBUG
     fprintf(stderr, "n handles: %i. n nucs: %i.\n", ret.n_handles, settings_ptr->n_nucs);
+#endif
     // Avoid passing more variables.
     ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
     ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
@@ -107,6 +116,7 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
         ret.fnames_r1[i] = strdup(tmp_buffer);
         sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
         ret.fnames_r2[i] = strdup(tmp_buffer);
+        //fprintf(stderr, "Now opening handle for fiename %s and number %i.\n", ret.fnames_r1[i], i);
         ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
         ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
     }
@@ -219,7 +229,7 @@ int main(int argc, char *argv[])
     strcpy(r2_fq_buf, argv[optind + 1]);
     if(!settings.output_basename) {
         settings.output_basename = make_default_outfname(r1_fq_buf, fms_suffix);
-        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.", settings.output_basename);
+        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
     mssi_settings_t *settings_ptr = &settings;
     gzFile fp_read1, fp_read2;
