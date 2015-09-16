@@ -70,7 +70,7 @@ static inline int arr_cmp(char *arr1, char *arr2) {
 #define ARR_SETKEY(bam, buf) buf = {(uint64_t)(IS_REVERSE(bam) >> 59 | IS_MATE_REVERSE(bam) >> 57|                       \
                                                IS_READ1(bam) >> 55 | IS_READ2(bam) >> 53 |                               \
                                                bam->core.mtid >> 44 | bam->core.tid >> 28)                               \
-                                    , (uint64_t)(bam->core.pos >> 32 | bam->core.mpos)};
+                                    , (uint64_t)(bam->core.pos >> 32 | bam->core.mpos)}
 #endif
 
 
@@ -108,25 +108,21 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out)
 
     while (sam_read1(in, hdr, b) >= 0) {
         bam1_core_t *c = &b->core;
-        if (c->tid != last_tid || last_pos != c->pos) {
+        ARR_SETKEY(b, current_arr);
+        if (!ARR_CMP(last_arr, current_arr)) {
             write_stack(&stack, out, hdr); // write the result
-            clear_best(aux, BUFFER_SIZE);
-            if (c->tid != last_tid) {
-                clear_best(aux, 0);
-                if (kh_size(del_set)) { // check
-                    fprintf(stderr, "[bam_rescue_core] %llu unmatched pairs\n", (long long)kh_size(del_set));
-                    clear_del_set(del_set);
-                }
                 if ((int)c->tid == -1) { // append unmapped reads
                     sam_write1(out, hdr, b);
                     while (sam_read1(in, hdr, b) >= 0) sam_write1(out, hdr, b);
                     break;
                 }
-                last_tid = c->tid;
-                fprintf(stderr, "[bam_rescue_core] processing reference %s...\n", hdr->target_name[c->tid]);
+                if(last_tid != c->tid) {
+                    last_tid = c->tid;
+                    fprintf(stderr, "[bam_rescue_core] processing reference %s...\n", hdr->target_name[c->tid]);
+                }
             }
         }
-        if (!(c->flag&BAM_FPAIRED) || (c->flag&(BAM_FUNMAP|BAM_FMUNMAP)) || (c->mtid >= 0 && c->tid != c->mtid)) {
+        if (!(c->flag&BAM_FPAIRED)) {
             sam_write1(out, hdr, b);
         } else { // paired, head
             int pass = 1; // For a missing BS tag.
