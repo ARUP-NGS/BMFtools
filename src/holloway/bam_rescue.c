@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/sam.h"
 #include "sam_opts.h"
 #include "bam.h" // for bam_get_library
+#include "kingsfisher.h" // For igamc/igamc_pvalues
 
 typedef bam1_t *bam1_p;
 
@@ -57,7 +58,7 @@ typedef struct tmp_stack {
 
 // arr1 and arr2 should each be a uint64_t buf[2] or a malloc'd char * of size 2.
 static inline int arr_cmp(char *arr1, char *arr2) {
-	return (arr1[0] == arr2[0] && arr1[1] == arr2[1]);
+    return (arr1[0] == arr2[0] && arr1[1] == arr2[1]);
 }
 
 #ifndef ARR_CMP
@@ -87,18 +88,119 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr)
 {
     int i;
     for (i = 0; i != stack->n; ++i) {
-    	if(stack->a[i]) { // Since I'll be clearing out the values after updating, I am checking to see if it's not NULL first.
+        if(stack->a[i]) { // Since I'll be clearing out the values after updating, I am checking to see if it's not NULL first.
             sam_write1(out, hdr, stack->a[i]);
             bam_destroy1(stack->a[i]);
-    	}
+        }
     }
     stack->n = 0;
 }
 
-void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out)
+static inline int hamming_dist_test(char *bs1, char *bs2, int len, int hd_thresh)
 {
-    bam1_t *b;
-    int last_tid = -1, last_pos = -1;
+    int mm = 0;
+    for(int i = 0; i < len; ++i) {
+        if(bs1[i] != bs2[i]) {
+            ++mm;
+            if(!(mm - hd_thresh)) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static inline void update_bam1(bam1_t *p, bam1_t *b)
+{
+    int realign = 0;
+    uint8_t *pPVptr = bam_aux_get(p, "PV");
+    uint8_t *bPVptr = bam_aux_get(b, "PV");
+#if !NDEBUG
+    if(!bPVptr || !pPVptr) {
+        fprintf(stderr, "Required PV tag not found. Abort mission!\n");
+        exit(EXIT_FAILURE);
+    }
+#endif
+    int *bPV = (int *)bPVptr; // Length of this should be b->l_qseq
+    int *pPV = (int *)pPVptr; // Length of this should be p->l_qseq
+    char *bSeq = (char *)bam_get_seq(b);
+    char *pSeq = (char *)bam_get_seq(p);
+    for(int i = 0; i < p->core.l_qseq; ++i) {
+        if(bSeq[i] == pSeq[i]) {
+            pPV[i] = igamc((double)2, LOG10_TO_CHI2(pPV[i] + bPV[i]) / 2.0);
+        }
+        else {
+            if(pPV[i] > bPV[i]) {
+                pPV[i] -= bPV[i];
+            }
+            else {
+                pSeq[i] = bSeq[i];
+                pPV[i] = bPV[i] - pPV[i];
+                realign = 1;
+            }
+            if(pPV[i] < 3) {
+                pSeq[i] = 'N';
+                realign = 1;
+            }
+        }
+
+        // TODO: Check for a merged tag.
+        // Add if not present.
+        if(realign) {
+            // TODO: Check for a realign tag.
+            fprintf(stderr, "Not implemented yet!\n");
+            exit(EXIT_FAILURE);
+            //bam_aux_append(b, "RA", )
+        }
+        bam_destroy1(b);
+        b = NULL;
+    }
+}
+
+static inline void flatten_stack(tmp_stack_t *stack, int len, int hd_thresh)
+{
+    int pass;
+    bam1_t *b, bam1_t *p;
+    for(int i = 0; i < stack->n, ++i) {
+        b = stack->a[i];
+        uint8_t *cb = bam_aux_get(b, "BS");
+#if !NDEBUG
+        pass = 1;
+        if(!cb) {
+            fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(b), b->core.flag);
+            pass = 0;
+        }
+#endif
+        for(int j = i + 1; j < stack->n; ++i) {
+            p = stack->a[j];
+            uint8_t *cp = bam_aux_get(p, "BS");
+#if !NDEBUG
+            if(!cp) {
+                fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(p), p->core.flag);
+                pass = 0;
+            }
+            if(!pass) {
+                exit(EXIT_FAILURE);
+            }
+#endif
+
+        }
+    }
+    if(hamming_dist_test(cp, cb, len, hd_thresh)) {
+        update_bam1(p, b); // Update record p with b
+    }
+    return;
+}
+
+typedef struct rescue_settings {
+    int len;
+    int hd_thresh;
+} rescue_settings_t;
+
+void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_t *settings)
+{
+    bam1_t *b, *tmpb;
+    int last_tid = -1;
     tmp_stack_t stack;
     uint64_t last_arr[2] = {0, 0};
     uint64_t current_arr[2] = {0, 0};
@@ -110,6 +212,7 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out)
         bam1_core_t *c = &b->core;
         ARR_SETKEY(b, current_arr);
         if (!ARR_CMP(last_arr, current_arr)) {
+            flatten_stack(&stack, settings->len, settings->hd_thresh);
             write_stack(&stack, out, hdr); // write the result
                 if ((int)c->tid == -1) { // append unmapped reads
                     sam_write1(out, hdr, b);
@@ -121,57 +224,19 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out)
                     fprintf(stderr, "[bam_rescue_core] processing reference %s...\n", hdr->target_name[c->tid]);
                 }
             }
-        }
         if (!(c->flag&BAM_FPAIRED)) {
             sam_write1(out, hdr, b);
         } else { // paired, head
             int pass = 1; // For a missing BS tag.
-            uint64_t key = (uint64_t)c->pos<<32 | c->isize;
-            const char *lib;
-            lib_aux_t *q;
-            int ret;
-            lib = bam_get_library(hdr, b);
-            q = lib? get_aux(aux, lib) : get_aux(aux, "\t");
-            ++q->n_checked;
-            k = kh_put(pos, q->best_hash, key, &ret);
-            if (ret == 0) { // found in best_hash
-                bam1_t *p = kh_val(q->best_hash, k);
-                ++q->n_removed;
-
-                uint8_t *cp = bam_aux_get(p, "BS");
-                uint8_t *cb = bam_aux_get(b, "BS");
-                if(!cp) {
-                    fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(p), p->core.flag);
-                    pass = 0;
-                }
-                if(!cb) {
-                    fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(b), p->core.flag);
-                    pass = 0;
-                }
-                if(!pass) {
-                    fprintf(stderr, "BS tag missing for at least one read. Required field. Abort mission!\n");
-                    exit(EXIT_FAILURE);
-                }
-                if(hamming_dist(cp, cb, strlen(<char *>cp)) < HD_THRESHOLD) {
-                    kh_put(name, del_set, strdup(bam_get_qname(b)), &ret);
-                    uint8_t *pPVptr = bam_aux_get(p, "PV");
-                    uint8_t *bPVptr = bam_aux_get(b, "PV");
-                    if(!bPVptr || !pPVptr) {
-                        fprintf(stderr, "Required PV tag not found. Abort mission!\n");
-                        exit(EXIT_FAILURE);
-                    }
-                    int *bPV = (int *)bPVptr; // Length of this should be b->l_qseq
-                    int *pPV = (int *)pPVptr; // Length of this should be p->l_qseq
-                }
+            /*
+             * OKAY, NOW MY CODE
+             */
                 if (ret == 0)
                     fprintf(stderr, "[bam_rescue_core] inconsistent BAM file for pair '%s'. Continue anyway.\n", bam_get_qname(b));
             } else { // not found in best_hash
-                k = kh_put(
-                kh_val(q->best_hash, k) = bam_dup1(b);
-                stack_insert(&stack, kh_val(q->best_hash, k));
+                tmpb = bam_dup1(b);
+                stack_insert(&stack, tmpb);
             }
-        }
-        last_pos = c->pos;
     }
 
     for (k = kh_begin(aux); k != kh_end(aux); ++k) {
@@ -194,8 +259,8 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out)
 
 void bam_rescue_se_core(samFile *in, bam_hdr_t *hdr, samFile *out, int force_se)
 {
-	fprintf(stderr, "Single-end rescue not implemented. Abort mission! (Or you could code it -- let me know!)\n");
-	exit(EXIT_FAILURE);
+    fprintf(stderr, "Single-end rescue not implemented. Abort mission! (Or you could code it -- let me know!)\n");
+    exit(EXIT_FAILURE);
 }
 
 static int rescue_usage(void) {
