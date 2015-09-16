@@ -116,7 +116,7 @@ int main(int argc, char *argv[]){
     current_entry->id = bin;
     *current_entry->value = init_kf(readlen);
     fprintf(stderr, "Now about to add a value to my hash.\n");
-    pushback_kseq(&(current_entry->value), seq, tmp.nuc_indices, blen);
+    pushback_kseq(current_entry->value, seq, tmp.nuc_indices, blen);
     fprintf(stderr, "Pushed back kseq.\n");
     HASH_ADD(hh, hash, id, sizeof(int64_t), current_entry);
     fprintf(stderr, "Initiated hash table.\n");

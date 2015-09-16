@@ -1,11 +1,13 @@
 #pragma once
-#include "branchlut.h"
-
+//#include "branchlut.h"
+/*
+ * This is broken.
 inline void comma_i32toa(int32_t value, char *buffer)
 {
 	*buffer++ = ',';
 	i32toa_branchlut(value, buffer);
 }
+*/
 /*
  * Small character comparison or conversion utilities.
  */
