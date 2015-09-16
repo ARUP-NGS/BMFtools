@@ -1,4 +1,4 @@
-/*  bam_rmdup.c -- duplicate read detection.
+/*  bam_rescue.c -- duplicate read detection.
 
     Copyright (C) 2009, 2015 Genome Research Ltd.
     Portions copyright (C) 2009 Broad Institute.
@@ -49,29 +49,29 @@ typedef struct {
 } lib_aux_t;
 KHASH_MAP_INIT_STR(lib, lib_aux_t)
 
-// This holds the bam1_t objects that need to be written as fastqs and realigned.
-typedef struct rescue_aux{
-    khash_t(rescue) *hash;
-} rescue_aux_t;
-
-typedef struct {
+typedef struct tmp_stack {
     int n, max;
     bam1_t **a;
 } tmp_stack_t;
 
-#define REVMREVTIDPOS(bam) (uint64_t)(IS_REVERSE(b) >> 63 | IS_MATE_REVERSE(b) >> 62| bam->core.pos >> 34 | bam->core.mpos >> 6 | bam->tid)
 
-// assume that no contig is longer than human chr1 (249e6)
-// Additionally, requires that key be pre-allocated to avoid segfaults.
-static inline void set_key(bam1_t *b, char *key) {
-    uint8_t *tag_val = bam_aux_get(bam_line, "BS");
-    if(!tag_val) {
-        fprintf(stderr, "Required BS tag not found. Abort mission!\n");
-        exit(EXIT_FAILURE);
-    }
-    sprintf(key, "%i%c%s", REVMREVTIDPOS(b), b->core.mtid + 33, bam_aux2Z(tag_val));
-    return;
+// arr1 and arr2 should each be a uint64_t buf[2] or a malloc'd char * of size 2.
+static inline int arr_cmp(char *arr1, char *arr2) {
+	return (arr1[0] == arr2[0] && arr1[1] == arr2[1]);
 }
+
+#ifndef ARR_CMP
+#define ARR_CMP(arr1, arr2) (arr1[0] == arr2[0] && arr1[1] == arr2[1])
+#endif
+
+
+// buf should be a uint64_t buf[2] or a malloc'd char * of size 2.
+#ifndef ARR_SETKEY
+#define ARR_SETKEY(bam, buf) buf = {(uint64_t)(IS_REVERSE(bam) >> 59 | IS_MATE_REVERSE(bam) >> 57|                       \
+                                               IS_READ1(bam) >> 55 | IS_READ2(bam) >> 53 |                               \
+                                               bam->core.mtid >> 44 | bam->core.tid >> 28)                               \
+                                    , (uint64_t)(bam->core.pos >> 32 | bam->core.mpos)};
+#endif
 
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
@@ -83,99 +83,38 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
     stack->a[stack->n++] = b;
 }
 
-static inline void dump_best(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr)
+static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr)
 {
     int i;
     for (i = 0; i != stack->n; ++i) {
-        sam_write1(out, hdr, stack->a[i]);
-        bam_destroy1(stack->a[i]);
+    	if(stack->a[i]) { // Since I'll be clearing out the values after updating, I am checking to see if it's not NULL first.
+            sam_write1(out, hdr, stack->a[i]);
+            bam_destroy1(stack->a[i]);
+    	}
     }
     stack->n = 0;
 }
 
-static void clear_del_set(khash_t(name) *del_set)
-{
-    khint_t k;
-    for (k = kh_begin(del_set); k < kh_end(del_set); ++k)
-        if (kh_exist(del_set, k))
-            free((char*)kh_key(del_set, k));
-    kh_clear(name, del_set);
-}
-
-static rescue_aux_t *get_rescue_aux(khash_t(lib) *aux, const char *lib)
-{
-    khint_t k = kh_get(lib, aux, lib);
-    if (k == kh_end(aux)) {
-        int ret;
-        char *p = strdup(lib);
-        rescue_aux_t *q;
-        k = kh_put(lib, aux, p, &ret);
-        q = &kh_val(aux, k);
-        q->n_checked = q->n_removed = 0;
-        q->best_hash = kh_init(rescue);
-        return q;
-    } else return &kh_val(aux, k);
-}
-
-static lib_aux_t *get_aux(khash_t(lib) *aux, const char *lib)
-{
-    khint_t k = kh_get(lib, aux, lib);
-    if (k == kh_end(aux)) {
-        int ret;
-        char *p = strdup(lib);
-        lib_aux_t *q;
-        k = kh_put(lib, aux, p, &ret);
-        q = &kh_val(aux, k);
-        q->n_checked = q->n_removed = 0;
-        q->best_hash = kh_init(pos);
-        return q;
-    } else return &kh_val(aux, k);
-}
-
-static void clear_best(khash_t(lib) *aux, int max)
-{
-    khint_t k;
-    for (k = kh_begin(aux); k != kh_end(aux); ++k) {
-        if (kh_exist(aux, k)) {
-            lib_aux_t *q = &kh_val(aux, k);
-            if (kh_size(q->best_hash) >= max)
-                kh_clear(pos, q->best_hash);
-        }
-    }
-}
-
-static inline int sum_qual(const bam1_t *b)
-{
-    int i, q;
-    uint8_t *qual = bam_get_qual(b);
-    for (i = q = 0; i < b->core.l_qseq; ++i) q += qual[i];
-    return q; 
-}
-
-void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
+void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out)
 {
     bam1_t *b;
     int last_tid = -1, last_pos = -1;
     tmp_stack_t stack;
-    khint_t k;
-    khash_t(lib) *aux;
-    khash_t(name) *del_set;
+    uint64_t last_arr[2] = {0, 0};
+    uint64_t current_arr[2] = {0, 0};
 
-    aux = kh_init(lib);
-    del_set = kh_init(name);
     b = bam_init1();
     memset(&stack, 0, sizeof(tmp_stack_t));
 
-    kh_resize(name, del_set, 4 * BUFFER_SIZE);
     while (sam_read1(in, hdr, b) >= 0) {
         bam1_core_t *c = &b->core;
         if (c->tid != last_tid || last_pos != c->pos) {
-            dump_best(&stack, out, hdr); // write the result
+            write_stack(&stack, out, hdr); // write the result
             clear_best(aux, BUFFER_SIZE);
             if (c->tid != last_tid) {
                 clear_best(aux, 0);
                 if (kh_size(del_set)) { // check
-                    fprintf(stderr, "[bam_rmdup_core] %llu unmatched pairs\n", (long long)kh_size(del_set));
+                    fprintf(stderr, "[bam_rescue_core] %llu unmatched pairs\n", (long long)kh_size(del_set));
                     clear_del_set(del_set);
                 }
                 if ((int)c->tid == -1) { // append unmapped reads
@@ -184,7 +123,7 @@ void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
                     break;
                 }
                 last_tid = c->tid;
-                fprintf(stderr, "[bam_rmdup_core] processing reference %s...\n", hdr->target_name[c->tid]);
+                fprintf(stderr, "[bam_rescue_core] processing reference %s...\n", hdr->target_name[c->tid]);
             }
         }
         if (!(c->flag&BAM_FPAIRED) || (c->flag&(BAM_FUNMAP|BAM_FMUNMAP)) || (c->mtid >= 0 && c->tid != c->mtid)) {
@@ -229,7 +168,7 @@ void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
                     int *pPV = (int *)pPVptr; // Length of this should be p->l_qseq
                 }
                 if (ret == 0)
-                    fprintf(stderr, "[bam_rmdup_core] inconsistent BAM file for pair '%s'. Continue anyway.\n", bam_get_qname(b));
+                    fprintf(stderr, "[bam_rescue_core] inconsistent BAM file for pair '%s'. Continue anyway.\n", bam_get_qname(b));
             } else { // not found in best_hash
                 k = kh_put(
                 kh_val(q->best_hash, k) = bam_dup1(b);
@@ -242,8 +181,8 @@ void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
     for (k = kh_begin(aux); k != kh_end(aux); ++k) {
         if (kh_exist(aux, k)) {
             lib_aux_t *q = &kh_val(aux, k);
-            dump_best(&stack, out, hdr);
-            fprintf(stderr, "[bam_rmdup_core] %lld / %lld = %.4lf in library '%s'\n", (long long)q->n_removed,
+            write_stack(&stack, out, hdr);
+            fprintf(stderr, "[bam_rescue_core] %lld / %lld = %.4lf in library '%s'\n", (long long)q->n_removed,
                     (long long)q->n_checked, (double)q->n_removed/q->n_checked, kh_key(aux, k));
             kh_destroy(pos, q->best_hash);
             free((char*)kh_key(aux, k));
@@ -257,19 +196,23 @@ void bam_rmdup_core(samFile *in, bam_hdr_t *hdr, samFile *out)
     bam_destroy1(b);
 }
 
-void bam_rmdupse_core(samFile *in, bam_hdr_t *hdr, samFile *out, int force_se);
+void bam_rescue_se_core(samFile *in, bam_hdr_t *hdr, samFile *out, int force_se)
+{
+	fprintf(stderr, "Single-end rescue not implemented. Abort mission! (Or you could code it -- let me know!)\n");
+	exit(EXIT_FAILURE);
+}
 
-static int rmdup_usage(void) {
+static int rescue_usage(void) {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  samtools rmdup [-sS] <input.srt.bam> <output.bam>\n\n");
-    fprintf(stderr, "Option: -s    rmdup for SE reads\n");
-    fprintf(stderr, "        -S    treat PE reads as SE in rmdup (force -s)\n");
+    fprintf(stderr, "Usage:  samtools rescue [-sS] <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Option: -s    rescue for SE reads\n");
+    fprintf(stderr, "        -S    treat PE reads as SE in rescue (force -s)\n");
 
     sam_global_opt_help(stderr, "-....");
     return 1;
 }
 
-int bam_rmdup(int argc, char *argv[])
+int bam_rescue(int argc, char *argv[])
 {
     int c, is_se = 0, force_se = 0;
     samFile *in, *out;
@@ -288,29 +231,29 @@ int bam_rmdup(int argc, char *argv[])
         case 'S': force_se = is_se = 1; break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
-        case '?': return rmdup_usage();
+        case '?': return rescue_usage();
         }
     }
     if (optind + 2 > argc)
-        return rmdup_usage();
+        return rescue_usage();
 
     in = sam_open_format(argv[optind], "r", &ga.in);
     header = sam_hdr_read(in);
     if (header == NULL || header->n_targets == 0) {
-        fprintf(stderr, "[bam_rmdup] input SAM does not have header. Abort!\n");
+        fprintf(stderr, "[bam_rescue] input SAM does not have header. Abort!\n");
         return 1;
     }
 
     sam_open_mode(wmode+1, argv[optind+1], NULL);
     out = sam_open_format(argv[optind+1], wmode, &ga.out);
     if (in == 0 || out == 0) {
-        fprintf(stderr, "[bam_rmdup] fail to read/write input files\n");
+        fprintf(stderr, "[bam_rescue] fail to read/write input files\n");
         return 1;
     }
     sam_hdr_write(out, header);
 
-    if (is_se) bam_rmdupse_core(in, header, out, force_se);
-    else bam_rmdup_core(in, header, out);
+    if (is_se) bam_rescue_se_core(in, header, out, force_se);
+    else bam_rescue_core(in, header, out);
     bam_hdr_destroy(header);
     sam_close(in); sam_close(out);
     return 0;
