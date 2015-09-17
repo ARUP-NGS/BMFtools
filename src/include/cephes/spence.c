@@ -153,45 +153,45 @@ double x;
     int flag;
 
     if (x < 0.0) {
-	mtherr("spence", DOMAIN);
-	return (NPY_NAN);
+    mtherr("spence", DOMAIN);
+    return (NPY_NAN);
     }
 
     if (x == 1.0)
-	return (0.0);
+    return (0.0);
 
     if (x == 0.0)
-	return (NPY_PI * NPY_PI / 6.0);
+    return (NPY_PI * NPY_PI / 6.0);
 
     flag = 0;
 
     if (x > 2.0) {
-	x = 1.0 / x;
-	flag |= 2;
+    x = 1.0 / x;
+    flag |= 2;
     }
 
     if (x > 1.5) {
-	w = (1.0 / x) - 1.0;
-	flag |= 2;
+    w = (1.0 / x) - 1.0;
+    flag |= 2;
     }
 
     else if (x < 0.5) {
-	w = -x;
-	flag |= 1;
+    w = -x;
+    flag |= 1;
     }
 
     else
-	w = x - 1.0;
+    w = x - 1.0;
 
 
     y = -w * polevl(w, A, 7) / polevl(w, B, 7);
 
     if (flag & 1)
-	y = (NPY_PI * NPY_PI) / 6.0 - log(x) * log(1.0 - x) - y;
+    y = (NPY_PI * NPY_PI) / 6.0 - log(x) * log(1.0 - x) - y;
 
     if (flag & 2) {
-	z = log(x);
-	y = -0.5 * z * z - y;
+    z = log(x);
+    y = -0.5 * z * z - y;
     }
 
     return (y);

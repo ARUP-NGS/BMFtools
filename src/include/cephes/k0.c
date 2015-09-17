@@ -38,10 +38,10 @@
  *  K0 domain          x <= 0          NPY_INFINITY
  *
  */
-/*							k0e()
+/*                            k0e()
  *
- *	Modified Bessel function, third kind, order zero,
- *	exponentially scaled
+ *    Modified Bessel function, third kind, order zero,
+ *    exponentially scaled
  *
  *
  *
@@ -279,18 +279,18 @@ double x;
     double y, z;
 
     if (x == 0.0) {
-	mtherr("k0", SING);
-	return NPY_INFINITY;
+    mtherr("k0", SING);
+    return NPY_INFINITY;
     }
     else if (x < 0.0) {
-	mtherr("k0", DOMAIN);
-	return NPY_NAN;
+    mtherr("k0", DOMAIN);
+    return NPY_NAN;
     }
 
     if (x <= 2.0) {
-	y = x * x - 2.0;
-	y = chbevl(y, A, 10) - log(0.5 * x) * i0(x);
-	return (y);
+    y = x * x - 2.0;
+    y = chbevl(y, A, 10) - log(0.5 * x) * i0(x);
+    return (y);
     }
     z = 8.0 / x - 2.0;
     y = exp(-x) * chbevl(z, B, 25) / sqrt(x);
@@ -306,18 +306,18 @@ double x;
     double y;
 
     if (x == 0.0) {
-	mtherr("k0e", SING);
-	return NPY_INFINITY;
+    mtherr("k0e", SING);
+    return NPY_INFINITY;
     }
     else if (x < 0.0) {
-	mtherr("k0e", DOMAIN);
-	return NPY_NAN;
+    mtherr("k0e", DOMAIN);
+    return NPY_NAN;
     }
 
     if (x <= 2.0) {
-	y = x * x - 2.0;
-	y = chbevl(y, A, 10) - log(0.5 * x) * i0(x);
-	return (y * exp(x));
+    y = x * x - 2.0;
+    y = chbevl(y, A, 10) - log(0.5 * x) * i0(x);
+    return (y * exp(x));
     }
 
     y = chbevl(8.0 / x - 2.0, B, 25) / sqrt(x);

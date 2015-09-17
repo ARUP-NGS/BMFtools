@@ -67,8 +67,8 @@ static double simcon[] = {
 double simpsn(double[], double);
 
 double simpsn(f, delta)
-double f[];			/* tabulated function */
-double delta;			/* spacing of arguments */
+double f[];            /* tabulated function */
+double delta;            /* spacing of arguments */
 {
     extern double simcon[];
     double ans;
@@ -77,7 +77,7 @@ double delta;			/* spacing of arguments */
 
     ans = simcon[NCOTE / 2] * f[NCOTE / 2];
     for (i = 0; i < NCOTE / 2; i++)
-	ans += simcon[i] * (f[i] + f[NCOTE - i]);
+    ans += simcon[i] * (f[i] + f[NCOTE - i]);
 
     return (ans * delta * NCOTE);
 }

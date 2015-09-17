@@ -79,31 +79,31 @@ double ellik(double phi,  double m)
             return NPY_NAN;
     }
     if (m == 0.0)
-	return (phi);
+    return (phi);
     a = 1.0 - m;
     if (a == 0.0) {
-	if (fabs(phi) >= NPY_PI_2) {
-	    mtherr("ellik", SING);
-	    return (NPY_INFINITY);
-	}
+    if (fabs(phi) >= NPY_PI_2) {
+        mtherr("ellik", SING);
+        return (NPY_INFINITY);
+    }
         /* DLMF 19.6.8, and 4.23.42 */
        return asinh(tan(phi));
     }
     npio2 = floor(phi / NPY_PI_2);
     if (fmod(fabs(npio2), 2.0) == 1.0)
-	npio2 += 1;
+    npio2 += 1;
     if (npio2 != 0.0) {
-	K = ellpk(a);
-	phi = phi - npio2 * NPY_PI_2;
+    K = ellpk(a);
+    phi = phi - npio2 * NPY_PI_2;
     }
     else
-	K = 0.0;
+    K = 0.0;
     if (phi < 0.0) {
-	phi = -phi;
-	sign = -1;
+    phi = -phi;
+    sign = -1;
     }
     else
-	sign = 0;
+    sign = 0;
     if (a > 1.0) {
         temp = ellik_neg_m(phi, m);
         goto done;
@@ -111,16 +111,16 @@ double ellik(double phi,  double m)
     b = sqrt(a);
     t = tan(phi);
     if (fabs(t) > 10.0) {
-	/* Transform the amplitude */
-	e = 1.0 / (b * t);
-	/* ... but avoid multiple recursions.  */
-	if (fabs(e) < 10.0) {
-	    e = atan(e);
-	    if (npio2 == 0)
-		K = ellpk(a);
-	    temp = K - ellik(e, m);
-	    goto done;
-	}
+    /* Transform the amplitude */
+    e = 1.0 / (b * t);
+    /* ... but avoid multiple recursions.  */
+    if (fabs(e) < 10.0) {
+        e = atan(e);
+        if (npio2 == 0)
+        K = ellpk(a);
+        temp = K - ellik(e, m);
+        goto done;
+    }
     }
     a = 1.0;
     c = sqrt(m);
@@ -128,29 +128,29 @@ double ellik(double phi,  double m)
     mod = 0;
 
     while (fabs(c / a) > MACHEP) {
-	temp = b / a;
-	phi = phi + atan(t * temp) + mod * NPY_PI;
+    temp = b / a;
+    phi = phi + atan(t * temp) + mod * NPY_PI;
         denom = 1.0 - temp * t * t;
         if (fabs(denom) > 10*MACHEP) {
-	    t = t * (1.0 + temp) / denom;
+        t = t * (1.0 + temp) / denom;
             mod = (phi + NPY_PI_2) / NPY_PI;
         }
         else {
             t = tan(phi);
             mod = (int)floor((phi - atan(t))/NPY_PI);
         }
-	c = (a - b) / 2.0;
-	temp = sqrt(a * b);
-	a = (a + b) / 2.0;
-	b = temp;
-	d += d;
+    c = (a - b) / 2.0;
+    temp = sqrt(a * b);
+    a = (a + b) / 2.0;
+    b = temp;
+    d += d;
     }
 
     temp = (atan(t) + mod * NPY_PI) / (d * a);
 
   done:
     if (sign < 0)
-	temp = -temp;
+    temp = -temp;
     temp += npio2 * K;
     return (temp);
 }

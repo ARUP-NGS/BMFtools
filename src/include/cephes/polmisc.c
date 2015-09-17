@@ -61,34 +61,34 @@ int nn;
     int i;
 
     if (nn > N) {
-	mtherr("polatn", OVERFLOW);
-	return;
+    mtherr("polatn", OVERFLOW);
+    return;
     }
     /* arctan( a + b ) = arctan(a) + arctan( b/(1 + ab + a**2) ) */
     t = num[0];
     a = den[0];
     if ((t == 0.0) && (a == 0.0)) {
-	t = num[1];
-	a = den[1];
+    t = num[1];
+    a = den[1];
     }
-    t = atan2(t, a);		/* arctan(num/den), the ANSI argument order */
+    t = atan2(t, a);        /* arctan(num/den), the ANSI argument order */
     polq = (double *) malloc((MAXPOL + 1) * sizeof(double));
     polu = (double *) malloc((MAXPOL + 1) * sizeof(double));
     polt = (double *) malloc((MAXPOL + 1) * sizeof(double));
     polclr(polq, MAXPOL);
     i = poldiv(den, nn, num, nn, polq);
-    a = polq[0];		/* a */
-    polq[0] = 0.0;		/* b */
-    polmov(polq, nn, polu);	/* b */
+    a = polq[0];        /* a */
+    polq[0] = 0.0;        /* b */
+    polmov(polq, nn, polu);    /* b */
     /* Form the polynomial
      * 1 + ab + a**2
      * where a is a scalar.  */
     for (i = 0; i <= nn; i++)
-	polu[i] *= a;
+    polu[i] *= a;
     polu[0] += 1.0 + a * a;
-    poldiv(polu, nn, polq, nn, polt);	/* divide into b */
-    polsbt(polt, nn, patan, nn, polu);	/* arctan(b)  */
-    polu[0] += t;		/* plus arctan(a) */
+    poldiv(polu, nn, polq, nn, polt);    /* divide into b */
+    polsbt(polt, nn, patan, nn, polu);    /* arctan(b)  */
+    polu[0] += t;        /* plus arctan(a) */
     polmov(polu, nn, ans);
     free(polt);
     free(polu);
@@ -116,8 +116,8 @@ int nn;
 #endif
 
     if (nn > N) {
-	mtherr("polatn", OVERFLOW);
-	return;
+    mtherr("polatn", OVERFLOW);
+    return;
     }
     x = (double *) malloc((MAXPOL + 1) * sizeof(double));
     y = (double *) malloc((MAXPOL + 1) * sizeof(double));
@@ -127,8 +127,8 @@ int nn;
     /* Find lowest degree nonzero term.  */
     t = 0.0;
     for (n = 0; n < nn; n++) {
-	if (x[n] != 0.0)
-	    goto nzero;
+    if (x[n] != 0.0)
+        goto nzero;
     }
     polmov(y, nn, ans);
     return;
@@ -136,51 +136,51 @@ int nn;
   nzero:
 
     if (n > 0) {
-	if (n & 1) {
-	    printf("error, sqrt of odd polynomial\n");
-	    return;
-	}
-	/* Divide by x^n.  */
-	y[n] = x[n];
-	poldiv(y, nn, pol, N, x);
+    if (n & 1) {
+        printf("error, sqrt of odd polynomial\n");
+        return;
+    }
+    /* Divide by x^n.  */
+    y[n] = x[n];
+    poldiv(y, nn, pol, N, x);
     }
 
     t = x[0];
     for (i = 1; i <= nn; i++)
-	x[i] /= t;
+    x[i] /= t;
     x[0] = 0.0;
     /* series development sqrt(1+x) = 1  +  x / 2  -  x**2 / 8  +  x**3 / 16
      * hopes that first (constant) term is greater than what follows   */
     polsbt(x, nn, psqrt, nn, y);
     t = sqrt(t);
     for (i = 0; i <= nn; i++)
-	y[i] *= t;
+    y[i] *= t;
 
     /* If first nonzero coefficient was at degree n > 0, multiply by
      * x^(n/2).  */
     if (n > 0) {
-	polclr(x, MAXPOL);
-	x[n / 2] = 1.0;
-	polmul(x, nn, y, nn, y);
+    polclr(x, MAXPOL);
+    x[n / 2] = 1.0;
+    polmul(x, nn, y, nn, y);
     }
 #if 0
     /* Newton iterations */
     for (n = 0; n < 10; n++) {
-	poldiv(y, nn, pol, nn, z);
-	poladd(y, nn, z, nn, y);
-	for (i = 0; i <= nn; i++)
-	    y[i] *= 0.5;
-	for (i = 0; i <= nn; i++) {
-	    u = fabs(y[i] - z[i]);
-	    if (u > 1.0e-15)
-		goto more;
-	}
-	goto done;
+    poldiv(y, nn, pol, nn, z);
+    poladd(y, nn, z, nn, y);
+    for (i = 0; i <= nn; i++)
+        y[i] *= 0.5;
+    for (i = 0; i <= nn; i++) {
+        u = fabs(y[i] - z[i]);
+        if (u > 1.0e-15)
+        goto more;
+    }
+    goto done;
       more:;
     }
     printf("square root did not converge\n");
   done:
-#endif				/* 0 */
+#endif                /* 0 */
 
     polmov(y, nn, ans);
     free(y);
@@ -206,8 +206,8 @@ int nn;
     int i;
 
     if (nn > N) {
-	mtherr("polatn", OVERFLOW);
-	return;
+    mtherr("polatn", OVERFLOW);
+    return;
     }
     w = (double *) malloc((MAXPOL + 1) * sizeof(double));
     c = (double *) malloc((MAXPOL + 1) * sizeof(double));
@@ -222,13 +222,13 @@ int nn;
     sc = sin(a);
     /* sin(a) cos (b) */
     for (i = 0; i <= nn; i++)
-	c[i] *= sc;
+    c[i] *= sc;
     /* y = sin (b)  */
     polsbt(w, nn, psin, nn, y);
     sc = cos(a);
     /* cos(a) sin(b) */
     for (i = 0; i <= nn; i++)
-	y[i] *= sc;
+    y[i] *= sc;
     poladd(c, nn, y, nn, y);
     free(c);
     free(w);
@@ -252,8 +252,8 @@ int nn;
     int i;
 
     if (nn > N) {
-	mtherr("polatn", OVERFLOW);
-	return;
+    mtherr("polatn", OVERFLOW);
+    return;
     }
     w = (double *) malloc((MAXPOL + 1) * sizeof(double));
     c = (double *) malloc((MAXPOL + 1) * sizeof(double));
@@ -267,13 +267,13 @@ int nn;
     sc = cos(a);
     /* cos(a) cos(b)  */
     for (i = 0; i <= nn; i++)
-	c[i] *= sc;
+    c[i] *= sc;
     /* y = sin(b) */
     polsbt(w, nn, psin, nn, y);
     sc = sin(a);
     /* sin(a) sin(b) */
     for (i = 0; i <= nn; i++)
-	y[i] *= sc;
+    y[i] *= sc;
     polsub(y, nn, c, nn, y);
     free(c);
     free(w);

@@ -42,9 +42,9 @@
  *    IEEE      0, 30       60000       4.2e-16     1.1e-16
  *
  */
-/*							y0.c
+/*                            y0.c
  *
- *	Bessel function of the second kind, order zero
+ *    Bessel function of the second kind, order zero
  *
  *
  *
@@ -489,16 +489,16 @@ double x;
     double w, z, p, q, xn;
 
     if (x < 0)
-	x = -x;
+    x = -x;
 
     if (x <= 5.0) {
-	z = x * x;
-	if (x < 1.0e-5)
-	    return (1.0 - z / 4.0);
+    z = x * x;
+    if (x < 1.0e-5)
+        return (1.0 - z / 4.0);
 
-	p = (z - DR1) * (z - DR2);
-	p = p * polevl(z, RP, 3) / p1evl(z, RQ, 8);
-	return (p);
+    p = (z - DR1) * (z - DR2);
+    p = p * polevl(z, RP, 3) / p1evl(z, RQ, 8);
+    return (p);
     }
 
     w = 5.0 / x;
@@ -530,18 +530,18 @@ double x;
     double w, z, p, q, xn;
 
     if (x <= 5.0) {
-	if (x == 0.0) {
-	    mtherr("y0", SING);
-	    return -NPY_INFINITY;
-	}
-	else if (x < 0.0) {
-	    mtherr("y0", DOMAIN);
-	    return NPY_NAN;
-	}
-	z = x * x;
-	w = polevl(z, YP, 7) / p1evl(z, YQ, 7);
-	w += NPY_2_PI * log(x) * j0(x);
-	return (w);
+    if (x == 0.0) {
+        mtherr("y0", SING);
+        return -NPY_INFINITY;
+    }
+    else if (x < 0.0) {
+        mtherr("y0", DOMAIN);
+        return NPY_NAN;
+    }
+    z = x * x;
+    w = polevl(z, YP, 7) / p1evl(z, YQ, 7);
+    w += NPY_2_PI * log(x) * j0(x);
+    return (w);
     }
 
     w = 5.0 / x;

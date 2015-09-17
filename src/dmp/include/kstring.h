@@ -54,40 +54,40 @@
 #ifndef KSTRING_T
 #define KSTRING_T kstring_t
 typedef struct __kstring_t {
-	size_t l, m;
-	char *s;
+    size_t l, m;
+    char *s;
 } kstring_t;
 #endif
 
 typedef struct {
-	uint64_t tab[4];
-	int sep, finished;
-	const char *p; // end of the current token
+    uint64_t tab[4];
+    int sep, finished;
+    const char *p; // end of the current token
 } ks_tokaux_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-	int kvsprintf(kstring_t *s, const char *fmt, va_list ap) KS_ATTR_PRINTF(2,0);
-	int ksprintf(kstring_t *s, const char *fmt, ...) KS_ATTR_PRINTF(2,3);
-	int ksplit_core(char *s, int delimiter, int *_max, int **_offsets);
-	char *kstrstr(const char *str, const char *pat, int **_prep);
-	char *kstrnstr(const char *str, const char *pat, int n, int **_prep);
-	void *kmemmem(const void *_str, int n, const void *_pat, int m, int **_prep);
+    int kvsprintf(kstring_t *s, const char *fmt, va_list ap) KS_ATTR_PRINTF(2,0);
+    int ksprintf(kstring_t *s, const char *fmt, ...) KS_ATTR_PRINTF(2,3);
+    int ksplit_core(char *s, int delimiter, int *_max, int **_offsets);
+    char *kstrstr(const char *str, const char *pat, int **_prep);
+    char *kstrnstr(const char *str, const char *pat, int n, int **_prep);
+    void *kmemmem(const void *_str, int n, const void *_pat, int m, int **_prep);
 
-	/* kstrtok() is similar to strtok_r() except that str is not
-	 * modified and both str and sep can be NULL. For efficiency, it is
-	 * actually recommended to set both to NULL in the subsequent calls
-	 * if sep is not changed. */
-	char *kstrtok(const char *str, const char *sep, ks_tokaux_t *aux);
+    /* kstrtok() is similar to strtok_r() except that str is not
+     * modified and both str and sep can be NULL. For efficiency, it is
+     * actually recommended to set both to NULL in the subsequent calls
+     * if sep is not changed. */
+    char *kstrtok(const char *str, const char *sep, ks_tokaux_t *aux);
 
-	/* kgetline() uses the supplied fgets()-like function to read a "\n"-
-	 * or "\r\n"-terminated line from fp.  The line read is appended to the
-	 * kstring without its terminator and 0 is returned; EOF is returned at
-	 * EOF or on error (determined by querying fp, as per fgets()). */
-	typedef char *kgets_func(char *, int, void *);
-	int kgetline(kstring_t *s, kgets_func *fgets, void *fp);
+    /* kgetline() uses the supplied fgets()-like function to read a "\n"-
+     * or "\r\n"-terminated line from fp.  The line read is appended to the
+     * kstring without its terminator and 0 is returned; EOF is returned at
+     * EOF or on error (determined by querying fp, as per fgets()). */
+    typedef char *kgets_func(char *, int, void *);
+    int kgetline(kstring_t *s, kgets_func *fgets, void *fp);
 
 #ifdef __cplusplus
 }
@@ -95,26 +95,26 @@ extern "C" {
 
 static inline int ks_resize(kstring_t *s, size_t size)
 {
-	if (s->m < size) {
-		char *tmp;
-		s->m = size;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return -1;
-	}
-	return 0;
+    if (s->m < size) {
+        char *tmp;
+        s->m = size;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return -1;
+    }
+    return 0;
 }
 
 static inline char *ks_str(kstring_t *s)
 {
-	return s->s;
+    return s->s;
 }
 
 static inline size_t ks_len(kstring_t *s)
 {
-	return s->l;
+    return s->l;
 }
 
 // Give ownership of the underlying buffer away to something else (making
@@ -123,144 +123,144 @@ static inline size_t ks_len(kstring_t *s)
 // needing  free(str.s)  to prevent a memory leak.
 static inline char *ks_release(kstring_t *s)
 {
-	char *ss = s->s;
-	s->l = s->m = 0;
-	s->s = NULL;
-	return ss;
+    char *ss = s->s;
+    s->l = s->m = 0;
+    s->s = NULL;
+    return ss;
 }
 
 static inline int kputsn(const char *p, int l, kstring_t *s)
 {
-	if (s->l + l + 1 >= s->m) {
-		char *tmp;
-		s->m = s->l + l + 2;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	memcpy(s->s + s->l, p, l);
-	s->l += l;
-	s->s[s->l] = 0;
-	return l;
+    if (s->l + l + 1 >= s->m) {
+        char *tmp;
+        s->m = s->l + l + 2;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    memcpy(s->s + s->l, p, l);
+    s->l += l;
+    s->s[s->l] = 0;
+    return l;
 }
 
 static inline int kputs(const char *p, kstring_t *s)
 {
-	return kputsn(p, strlen(p), s);
+    return kputsn(p, strlen(p), s);
 }
 
 static inline int kputc(int c, kstring_t *s)
 {
-	if (s->l + 1 >= s->m) {
-		char *tmp;
-		s->m = s->l + 2;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	s->s[s->l++] = c;
-	s->s[s->l] = 0;
-	return c;
+    if (s->l + 1 >= s->m) {
+        char *tmp;
+        s->m = s->l + 2;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    s->s[s->l++] = c;
+    s->s[s->l] = 0;
+    return c;
 }
 
 static inline int kputc_(int c, kstring_t *s)
 {
-	if (s->l + 1 > s->m) {
-		char *tmp;
-		s->m = s->l + 1;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	s->s[s->l++] = c;
-	return 1;
+    if (s->l + 1 > s->m) {
+        char *tmp;
+        s->m = s->l + 1;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    s->s[s->l++] = c;
+    return 1;
 }
 
 static inline int kputsn_(const void *p, int l, kstring_t *s)
 {
-	if (s->l + l > s->m) {
-		char *tmp;
-		s->m = s->l + l;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	memcpy(s->s + s->l, p, l);
-	s->l += l;
-	return l;
+    if (s->l + l > s->m) {
+        char *tmp;
+        s->m = s->l + l;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    memcpy(s->s + s->l, p, l);
+    s->l += l;
+    return l;
 }
 
 static inline int kputw(int c, kstring_t *s)
 {
-	char buf[16];
-	int i, l = 0;
-	unsigned int x = c;
-	if (c < 0) x = -x;
-	do { buf[l++] = x%10 + '0'; x /= 10; } while (x > 0);
-	if (c < 0) buf[l++] = '-';
-	if (s->l + l + 1 >= s->m) {
-		char *tmp;
-		s->m = s->l + l + 2;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
-	s->s[s->l] = 0;
-	return 0;
+    char buf[16];
+    int i, l = 0;
+    unsigned int x = c;
+    if (c < 0) x = -x;
+    do { buf[l++] = x%10 + '0'; x /= 10; } while (x > 0);
+    if (c < 0) buf[l++] = '-';
+    if (s->l + l + 1 >= s->m) {
+        char *tmp;
+        s->m = s->l + l + 2;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
+    s->s[s->l] = 0;
+    return 0;
 }
 
 static inline int kputuw(unsigned c, kstring_t *s)
 {
-	char buf[16];
-	int l, i;
-	unsigned x;
-	if (c == 0) return kputc('0', s);
-	for (l = 0, x = c; x > 0; x /= 10) buf[l++] = x%10 + '0';
-	if (s->l + l + 1 >= s->m) {
-		char *tmp;
-		s->m = s->l + l + 2;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
-	s->s[s->l] = 0;
-	return 0;
+    char buf[16];
+    int l, i;
+    unsigned x;
+    if (c == 0) return kputc('0', s);
+    for (l = 0, x = c; x > 0; x /= 10) buf[l++] = x%10 + '0';
+    if (s->l + l + 1 >= s->m) {
+        char *tmp;
+        s->m = s->l + l + 2;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
+    s->s[s->l] = 0;
+    return 0;
 }
 
 static inline int kputl(long c, kstring_t *s)
 {
-	char buf[32];
-	int i, l = 0;
-	unsigned long x = c;
-	if (c < 0) x = -x;
-	do { buf[l++] = x%10 + '0'; x /= 10; } while (x > 0);
-	if (c < 0) buf[l++] = '-';
-	if (s->l + l + 1 >= s->m) {
-		char *tmp;
-		s->m = s->l + l + 2;
-		kroundup32(s->m);
-		if ((tmp = (char*)realloc(s->s, s->m)))
-			s->s = tmp;
-		else
-			return EOF;
-	}
-	for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
-	s->s[s->l] = 0;
-	return 0;
+    char buf[32];
+    int i, l = 0;
+    unsigned long x = c;
+    if (c < 0) x = -x;
+    do { buf[l++] = x%10 + '0'; x /= 10; } while (x > 0);
+    if (c < 0) buf[l++] = '-';
+    if (s->l + l + 1 >= s->m) {
+        char *tmp;
+        s->m = s->l + l + 2;
+        kroundup32(s->m);
+        if ((tmp = (char*)realloc(s->s, s->m)))
+            s->s = tmp;
+        else
+            return EOF;
+    }
+    for (i = l - 1; i >= 0; --i) s->s[s->l++] = buf[i];
+    s->s[s->l] = 0;
+    return 0;
 }
 
 /*
@@ -269,9 +269,9 @@ static inline int kputl(long c, kstring_t *s)
  */
 static inline int *ksplit(kstring_t *s, int delimiter, int *n)
 {
-	int max = 0, *offsets = 0;
-	*n = ksplit_core(s->s, delimiter, &max, &offsets);
-	return offsets;
+    int max = 0, *offsets = 0;
+    *n = ksplit_core(s->s, delimiter, &max, &offsets);
+    return offsets;
 }
 
 #endif

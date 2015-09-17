@@ -42,9 +42,9 @@
  * See also incbet.c.
  *
  */
-/*							nbdtrc.c
+/*                            nbdtrc.c
  *
- *	Complemented negative binomial distribution
+ *    Complemented negative binomial distribution
  *
  *
  *
@@ -118,9 +118,9 @@
  *
  * See incbet.c.
  */
-/*							nbdtri
+/*                            nbdtri
  *
- *	Functional inverse of negative binomial distribution
+ *    Functional inverse of negative binomial distribution
  *
  *
  *
@@ -159,11 +159,11 @@ double p;
     double dk, dn;
 
     if ((p < 0.0) || (p > 1.0))
-	goto domerr;
+    goto domerr;
     if (k < 0) {
       domerr:
-	mtherr("nbdtr", DOMAIN);
-	return (NPY_NAN);
+    mtherr("nbdtr", DOMAIN);
+    return (NPY_NAN);
     }
 
     dk = k + 1;
@@ -180,11 +180,11 @@ double p;
     double dk, dn;
 
     if ((p < 0.0) || (p > 1.0))
-	goto domerr;
+    goto domerr;
     if (k < 0) {
       domerr:
-	mtherr("nbdtr", DOMAIN);
-	return (NPY_NAN);
+    mtherr("nbdtr", DOMAIN);
+    return (NPY_NAN);
     }
     dk = k + 1;
     dn = n;
@@ -200,11 +200,11 @@ double p;
     double dk, dn, w;
 
     if ((p < 0.0) || (p > 1.0))
-	goto domerr;
+    goto domerr;
     if (k < 0) {
       domerr:
-	mtherr("nbdtri", DOMAIN);
-	return (NPY_NAN);
+    mtherr("nbdtri", DOMAIN);
+    return (NPY_NAN);
     }
     dk = k + 1;
     dn = n;

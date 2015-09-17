@@ -473,10 +473,10 @@ double xxa, *ssa, *cca;
     x = fabs(xxa);
     x2 = x * x;
     if (x2 < 2.5625) {
-	t = x2 * x2;
-	ss = x * x2 * polevl(t, sn, 5) / p1evl(t, sd, 6);
-	cc = x * polevl(t, cn, 5) / polevl(t, cd, 6);
-	goto done;
+    t = x2 * x2;
+    ss = x * x2 * polevl(t, sn, 5) / p1evl(t, sd, 6);
+    cc = x * polevl(t, cn, 5) / polevl(t, cd, 6);
+    goto done;
     }
 
     if (x > 36974.0) {
@@ -484,9 +484,9 @@ double xxa, *ssa, *cca;
          * http://functions.wolfram.com/GammaBetaErf/FresnelC/06/02/
          * http://functions.wolfram.com/GammaBetaErf/FresnelS/06/02/
          */
-	cc = 0.5 + 1/(NPY_PI*x) * sin(NPY_PI*x*x/2);
-	ss = 0.5 - 1/(NPY_PI*x) * cos(NPY_PI*x*x/2);
-	goto done;
+    cc = 0.5 + 1/(NPY_PI*x) * sin(NPY_PI*x*x/2);
+    ss = 0.5 - 1/(NPY_PI*x) * cos(NPY_PI*x*x/2);
+    goto done;
     }
 
 
@@ -509,8 +509,8 @@ double xxa, *ssa, *cca;
 
   done:
     if (xxa < 0.0) {
-	cc = -cc;
-	ss = -ss;
+    cc = -cc;
+    ss = -ss;
     }
 
     *cca = cc;

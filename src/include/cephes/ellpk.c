@@ -198,7 +198,7 @@ static double Q[] = {
     4.99999999999999999821E-1
 };
 
-static double C1 = 1.3862943611198906188E0;	/* log(4) */
+static double C1 = 1.3862943611198906188E0;    /* log(4) */
 #endif
 
 extern double MACHEP;
@@ -208,8 +208,8 @@ double x;
 {
 
     if (x < 0.0) {
-	mtherr("ellpk", DOMAIN);
-	return (NPY_NAN);
+    mtherr("ellpk", DOMAIN);
+    return (NPY_NAN);
     }
 
     if (x > 1.0) {
@@ -220,15 +220,15 @@ double x;
     }
 
     if (x > MACHEP) {
-	return (polevl(x, P, 10) - log(x) * polevl(x, Q, 10));
+    return (polevl(x, P, 10) - log(x) * polevl(x, Q, 10));
     }
     else {
-	if (x == 0.0) {
-	    mtherr("ellpk", SING);
-	    return (NPY_INFINITY);
-	}
-	else {
-	    return (C1 - 0.5 * log(x));
-	}
+    if (x == 0.0) {
+        mtherr("ellpk", SING);
+        return (NPY_INFINITY);
+    }
+    else {
+        return (C1 - 0.5 * log(x));
+    }
     }
 }

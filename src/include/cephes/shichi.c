@@ -511,24 +511,24 @@ double *si, *ci;
     short sign;
 
     if (x < 0.0) {
-	sign = -1;
-	x = -x;
+    sign = -1;
+    x = -x;
     }
     else
-	sign = 0;
+    sign = 0;
 
 
     if (x == 0.0) {
-	*si = 0.0;
-	*ci = -NPY_INFINITY;
-	return (0);
+    *si = 0.0;
+    *ci = -NPY_INFINITY;
+    return (0);
     }
 
     if (x >= 8.0)
-	goto chb;
+    goto chb;
 
     if (x >= 88.0)
-	goto asymp;
+    goto asymp;
 
     z = x * x;
 
@@ -539,12 +539,12 @@ double *si, *ci;
     k = 2.0;
 
     do {
-	a *= z / k;
-	c += a / k;
-	k += 1.0;
-	a /= k;
-	s += a / k;
-	k += 1.0;
+    a *= z / k;
+    c += a / k;
+    k += 1.0;
+    a /= k;
+    s += a / k;
+    k += 1.0;
     }
     while (fabs(a / s) > MACHEP);
 
@@ -555,19 +555,19 @@ double *si, *ci;
 chb:
     /* Chebyshev series expansions */
     if (x < 18.0) {
-	a = (576.0 / x - 52.0) / 10.0;
-	k = exp(x) / x;
-	s = k * chbevl(a, S1, 22);
-	c = k * chbevl(a, C1, 23);
-	goto done;
+    a = (576.0 / x - 52.0) / 10.0;
+    k = exp(x) / x;
+    s = k * chbevl(a, S1, 22);
+    c = k * chbevl(a, C1, 23);
+    goto done;
     }
 
     if (x <= 88.0) {
-	a = (6336.0 / x - 212.0) / 70.0;
-	k = exp(x) / x;
-	s = k * chbevl(a, S2, 23);
-	c = k * chbevl(a, C2, 24);
-	goto done;
+    a = (6336.0 / x - 212.0) / 70.0;
+    k = exp(x) / x;
+    s = k * chbevl(a, S2, 23);
+    c = k * chbevl(a, C2, 24);
+    goto done;
     }
 
 asymp:
@@ -592,7 +592,7 @@ asymp:
 
 done:
     if (sign)
-	s = -s;
+    s = -s;
 
     *si = s;
 

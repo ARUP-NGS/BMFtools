@@ -48,9 +48,9 @@
  *   message         condition      value returned
  * chdtr domain   x < 0 or v < 1        0.0
  */
-/*							chdtrc()
+/*                            chdtrc()
  *
- *	Complemented Chi-square distribution
+ *    Complemented Chi-square distribution
  *
  *
  *
@@ -82,7 +82,7 @@
  * The incomplete Gamma integral is used, according to the
  * formula
  *
- *	y = chdtr( v, x ) = igamc( v/2.0, x/2.0 ).
+ *    y = chdtr( v, x ) = igamc( v/2.0, x/2.0 ).
  *
  *
  * The arguments must both be positive.
@@ -98,9 +98,9 @@
  *   message         condition      value returned
  * chdtrc domain  x < 0 or v < 1        0.0
  */
-/*							chdtri()
+/*                            chdtri()
  *
- *	Inverse of complemented Chi-square distribution
+ *    Inverse of complemented Chi-square distribution
  *
  *
  *
@@ -155,7 +155,7 @@ double df, x;
 {
 
     if (x < 0.0)
-	return 1.0;		/* modified by T. Oliphant */
+    return 1.0;        /* modified by T. Oliphant */
     return (igamc(df / 2.0, x / 2.0));
 }
 
@@ -165,9 +165,9 @@ double chdtr(df, x)
 double df, x;
 {
 
-    if ((x < 0.0)) {		/* || (df < 1.0) ) */
-	mtherr("chdtr", DOMAIN);
-	return (NPY_NAN);
+    if ((x < 0.0)) {        /* || (df < 1.0) ) */
+    mtherr("chdtr", DOMAIN);
+    return (NPY_NAN);
     }
     return (igam(df / 2.0, x / 2.0));
 }
@@ -179,9 +179,9 @@ double df, y;
 {
     double x;
 
-    if ((y < 0.0) || (y > 1.0)) {	/* || (df < 1.0) ) */
-	mtherr("chdtri", DOMAIN);
-	return (NPY_NAN);
+    if ((y < 0.0) || (y > 1.0)) {    /* || (df < 1.0) ) */
+    mtherr("chdtri", DOMAIN);
+    return (NPY_NAN);
     }
 
     x = igami(0.5 * df, y);

@@ -5,13 +5,13 @@ typedef double float64_t;
 #define square(x) ((x)*(x))
 
 float64_t Hellinger_in_c(float64_t* arr1, float64_t* arr2, size_t length){
-	float64_t cumSum = 0.;
-	float64_t tmpFloat;
-	for(size_t index = 0; index < length; index++){
-		tmpFloat = abs(sqrt(arr1[index]) - sqrt(arr2[index]));
-		cumSum += square(tmpFloat);
-	}
-	return sqrt(cumSum) * M_SQRT1_2;
+    float64_t cumSum = 0.;
+    float64_t tmpFloat;
+    for(size_t index = 0; index < length; index++){
+        tmpFloat = abs(sqrt(arr1[index]) - sqrt(arr2[index]));
+        cumSum += square(tmpFloat);
+    }
+    return sqrt(cumSum) * M_SQRT1_2;
 }
 /*
  * cdef float64_t cHellingerDistance(float64_t* array1,

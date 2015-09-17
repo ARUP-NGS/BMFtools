@@ -42,16 +42,16 @@ double *A, *B, *Y;
     pY = Y;
     pB = B;
     for (i = 0; i < r; i++) {
-	pA = A;
-	for (j = 0; j < r; j++) {
-	    pt = pB;
-	    s = 0.0;
-	    for (k = 0; k < c; k++) {
-		s += *pA++ * *pt;
-		pt += r;	/* increment to next row underneath */
-	    }
-	    *pY++ = s;
-	}
-	pB += 1;
+    pA = A;
+    for (j = 0; j < r; j++) {
+        pt = pB;
+        s = 0.0;
+        for (k = 0; k < c; k++) {
+        s += *pA++ * *pt;
+        pt += r;    /* increment to next row underneath */
+        }
+        *pY++ = s;
+    }
+    pB += 1;
     }
 }

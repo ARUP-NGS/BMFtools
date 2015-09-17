@@ -83,49 +83,49 @@ double iv(double v, double x)
     /* If v is a negative integer, invoke symmetry */
     t = floor(v);
     if (v < 0.0) {
-	if (t == v) {
-	    v = -v;		/* symmetry */
-	    t = -t;
-	}
+    if (t == v) {
+        v = -v;        /* symmetry */
+        t = -t;
+    }
     }
     /* If x is negative, require v to be an integer */
     sign = 1;
     if (x < 0.0) {
-	if (t != v) {
-	    mtherr("iv", DOMAIN);
-	    return (NPY_NAN);
-	}
-	if (v != 2.0 * floor(v / 2.0)) {
-	    sign = -1;
-	}
+    if (t != v) {
+        mtherr("iv", DOMAIN);
+        return (NPY_NAN);
+    }
+    if (v != 2.0 * floor(v / 2.0)) {
+        sign = -1;
+    }
     }
 
     /* Avoid logarithm singularity */
     if (x == 0.0) {
-	if (v == 0.0) {
-	    return 1.0;
-	}
-	if (v < 0.0) {
-	    mtherr("iv", OVERFLOW);
-	    return NPY_INFINITY;
-	}
-	else
-	    return 0.0;
+    if (v == 0.0) {
+        return 1.0;
+    }
+    if (v < 0.0) {
+        mtherr("iv", OVERFLOW);
+        return NPY_INFINITY;
+    }
+    else
+        return 0.0;
     }
 
     ax = fabs(x);
     if (fabs(v) > 50) {
-	/*
-	 * Uniform asymptotic expansion for large orders.
-	 *
-	 * This appears to overflow slightly later than the Boost
-	 * implementation of Temme's method.
-	 */
-	ikv_asymptotic_uniform(v, ax, &res, NULL);
+    /*
+     * Uniform asymptotic expansion for large orders.
+     *
+     * This appears to overflow slightly later than the Boost
+     * implementation of Temme's method.
+     */
+    ikv_asymptotic_uniform(v, ax, &res, NULL);
     }
     else {
-	/* Otherwise: Temme's method */
-	ikv_temme(v, ax, &res, NULL);
+    /* Otherwise: Temme's method */
+    ikv_temme(v, ax, &res, NULL);
     }
     res *= sign;
     return res;
@@ -145,7 +145,7 @@ static double iv_asymptotic(double v, double x)
     prefactor = exp(x) / sqrt(2 * NPY_PI * x);
 
     if (prefactor == NPY_INFINITY) {
-	return prefactor;
+    return prefactor;
     }
 
     mu = 4 * v * v;
@@ -154,15 +154,15 @@ static double iv_asymptotic(double v, double x)
     k = 1;
 
     do {
-	factor = (mu - (2 * k - 1) * (2 * k - 1)) / (8 * x) / k;
-	if (k > 100) {
-	    /* didn't converge */
-	    mtherr("iv(iv_asymptotic)", TLOSS);
-	    break;
-	}
-	term *= -factor;
-	sum += term;
-	++k;
+    factor = (mu - (2 * k - 1) * (2 * k - 1)) / (8 * x) / k;
+    if (k > 100) {
+        /* didn't converge */
+        mtherr("iv(iv_asymptotic)", TLOSS);
+        break;
+    }
+    term *= -factor;
+    sum += term;
+    ++k;
     } while (fabs(term) > MACHEP * fabs(sum));
     return sum * prefactor;
 }
@@ -241,7 +241,7 @@ static const double asymptotic_ufactors[N_UFACTORS][N_UFACTOR_TERMS] = {
  * Compute Iv, Kv from (AMS5 9.7.7 + 9.7.8), asymptotic expansion for large v
  */
 void ikv_asymptotic_uniform(double v, double x,
-			    double *i_value, double *k_value)
+                double *i_value, double *k_value)
 {
     double i_prefactor, k_prefactor;
     double t, t2, eta, z;
@@ -250,9 +250,9 @@ void ikv_asymptotic_uniform(double v, double x,
     int sign = 1;
 
     if (v < 0) {
-	/* Negative v; compute I_{-v} and K_{-v} and use (AMS 9.6.2) */
-	sign = -1;
-	v = -v;
+    /* Negative v; compute I_{-v} and K_{-v} and use (AMS 9.6.2) */
+    sign = -1;
+    v = -v;
     }
 
     z = x / v;
@@ -268,59 +268,59 @@ void ikv_asymptotic_uniform(double v, double x,
 
     divisor = v;
     for (n = 1; n < N_UFACTORS; ++n) {
-	/*
-	 * Evaluate u_k(t) with Horner's scheme;
-	 * (using the knowledge about which coefficients are zero)
-	 */
-	term = 0;
-	for (k = N_UFACTOR_TERMS - 1 - 3 * n;
-	     k < N_UFACTOR_TERMS - n; k += 2) {
-	    term *= t2;
-	    term += asymptotic_ufactors[n][k];
-	}
-	for (k = 1; k < n; k += 2) {
-	    term *= t2;
-	}
-	if (n % 2 == 1) {
-	    term *= t;
-	}
+    /*
+     * Evaluate u_k(t) with Horner's scheme;
+     * (using the knowledge about which coefficients are zero)
+     */
+    term = 0;
+    for (k = N_UFACTOR_TERMS - 1 - 3 * n;
+         k < N_UFACTOR_TERMS - n; k += 2) {
+        term *= t2;
+        term += asymptotic_ufactors[n][k];
+    }
+    for (k = 1; k < n; k += 2) {
+        term *= t2;
+    }
+    if (n % 2 == 1) {
+        term *= t;
+    }
 
-	/* Sum terms */
-	term /= divisor;
-	i_sum += term;
-	k_sum += (n % 2 == 0) ? term : -term;
+    /* Sum terms */
+    term /= divisor;
+    i_sum += term;
+    k_sum += (n % 2 == 0) ? term : -term;
 
-	/* Check convergence */
-	if (fabs(term) < MACHEP) {
-	    break;
-	}
+    /* Check convergence */
+    if (fabs(term) < MACHEP) {
+        break;
+    }
 
-	divisor *= v;
+    divisor *= v;
     }
 
     if (fabs(term) > 1e-3 * fabs(i_sum)) {
-	/* Didn't converge */
-	mtherr("ikv_asymptotic_uniform", TLOSS);
+    /* Didn't converge */
+    mtherr("ikv_asymptotic_uniform", TLOSS);
     }
     if (fabs(term) > MACHEP * fabs(i_sum)) {
-	/* Some precision lost */
-	mtherr("ikv_asymptotic_uniform", PLOSS);
+    /* Some precision lost */
+    mtherr("ikv_asymptotic_uniform", PLOSS);
     }
 
     if (k_value != NULL) {
-	/* symmetric in v */
-	*k_value = k_prefactor * k_sum;
+    /* symmetric in v */
+    *k_value = k_prefactor * k_sum;
     }
 
     if (i_value != NULL) {
-	if (sign == 1) {
-	    *i_value = i_prefactor * i_sum;
-	}
-	else {
-	    /* (AMS 9.6.2) */
-	    *i_value = (i_prefactor * i_sum
-			+ (2 / NPY_PI) * sin(NPY_PI * v) * k_prefactor * k_sum);
-	}
+    if (sign == 1) {
+        *i_value = i_prefactor * i_sum;
+    }
+    else {
+        /* (AMS 9.6.2) */
+        *i_value = (i_prefactor * i_sum
+            + (2 / NPY_PI) * sin(NPY_PI * v) * k_prefactor * k_sum);
+    }
     }
 }
 
@@ -382,19 +382,19 @@ static int temme_ik_series(double v, double x, double *K, double *K1)
     /* series summation */
     tolerance = MACHEP;
     for (k = 1; k < MAXITER; k++) {
-	f = (k * f + p + q) / (k * k - v * v);
-	p /= k - v;
-	q /= k + v;
-	h = p - k * f;
-	coef *= x * x / (4 * k);
-	sum += coef * f;
-	sum1 += coef * h;
-	if (fabs(coef * f) < fabs(sum) * tolerance) {
-	    break;
-	}
+    f = (k * f + p + q) / (k * k - v * v);
+    p /= k - v;
+    q /= k + v;
+    h = p - k * f;
+    coef *= x * x / (4 * k);
+    sum += coef * f;
+    sum1 += coef * h;
+    if (fabs(coef * f) < fabs(sum) * tolerance) {
+        break;
+    }
     }
     if (k == MAXITER) {
-	mtherr("ikv_temme(temme_ik_series)", TLOSS);
+    mtherr("ikv_temme(temme_ik_series)", TLOSS);
     }
 
     *K = sum;
@@ -422,28 +422,28 @@ static int CF1_ik(double v, double x, double *fv)
      */
     tolerance = 2 * MACHEP;
     tiny = 1 / sqrt(MAXNUM);
-    C = f = tiny;		/* b0 = 0, replace with tiny */
+    C = f = tiny;        /* b0 = 0, replace with tiny */
     D = 0;
     for (k = 1; k < MAXITER; k++) {
-	a = 1;
-	b = 2 * (v + k) / x;
-	C = b + a / C;
-	D = b + a * D;
-	if (C == 0) {
-	    C = tiny;
-	}
-	if (D == 0) {
-	    D = tiny;
-	}
-	D = 1 / D;
-	delta = C * D;
-	f *= delta;
-	if (fabs(delta - 1) <= tolerance) {
-	    break;
-	}
+    a = 1;
+    b = 2 * (v + k) / x;
+    C = b + a / C;
+    D = b + a * D;
+    if (C == 0) {
+        C = tiny;
+    }
+    if (D == 0) {
+        D = tiny;
+    }
+    D = 1 / D;
+    delta = C * D;
+    f *= delta;
+    if (fabs(delta - 1) <= tolerance) {
+        break;
+    }
     }
     if (k == MAXITER) {
-	mtherr("ikv_temme(CF1_ik)", TLOSS);
+    mtherr("ikv_temme(CF1_ik)", TLOSS);
     }
 
     *fv = f;
@@ -475,36 +475,36 @@ static int CF2_ik(double v, double x, double *Kv, double *Kv1)
      */
     tolerance = MACHEP;
     a = v * v - 0.25f;
-    b = 2 * (x + 1);		/* b1 */
-    D = 1 / b;			/* D1 = 1 / b1 */
-    f = delta = D;		/* f1 = delta1 = D1, coincidence */
-    prev = 0;			/* q0 */
-    current = 1;		/* q1 */
-    Q = C = -a;			/* Q1 = C1 because q1 = 1 */
-    S = 1 + Q * delta;		/* S1 */
-    for (k = 2; k < MAXITER; k++) {	/* starting from 2 */
-	/* continued fraction f = z1 / z0 */
-	a -= 2 * (k - 1);
-	b += 2;
-	D = 1 / (b + a * D);
-	delta *= b * D - 1;
-	f += delta;
+    b = 2 * (x + 1);        /* b1 */
+    D = 1 / b;            /* D1 = 1 / b1 */
+    f = delta = D;        /* f1 = delta1 = D1, coincidence */
+    prev = 0;            /* q0 */
+    current = 1;        /* q1 */
+    Q = C = -a;            /* Q1 = C1 because q1 = 1 */
+    S = 1 + Q * delta;        /* S1 */
+    for (k = 2; k < MAXITER; k++) {    /* starting from 2 */
+    /* continued fraction f = z1 / z0 */
+    a -= 2 * (k - 1);
+    b += 2;
+    D = 1 / (b + a * D);
+    delta *= b * D - 1;
+    f += delta;
 
-	/* series summation S = 1 + \sum_{n=1}^{\infty} C_n * z_n / z_0 */
-	q = (prev - (b - 2) * current) / a;
-	prev = current;
-	current = q;		/* forward recurrence for q */
-	C *= -a / k;
-	Q += C * q;
-	S += Q * delta;
+    /* series summation S = 1 + \sum_{n=1}^{\infty} C_n * z_n / z_0 */
+    q = (prev - (b - 2) * current) / a;
+    prev = current;
+    current = q;        /* forward recurrence for q */
+    C *= -a / k;
+    Q += C * q;
+    S += Q * delta;
 
-	/* S converges slower than f */
-	if (fabs(Q * delta) < fabs(S) * tolerance) {
-	    break;
-	}
+    /* S converges slower than f */
+    if (fabs(Q * delta) < fabs(S) * tolerance) {
+        break;
+    }
     }
     if (k == MAXITER) {
-	mtherr("ikv_temme(CF2_ik)", TLOSS);
+    mtherr("ikv_temme(CF2_ik)", TLOSS);
     }
 
     *Kv = sqrt(NPY_PI / (2 * x)) * exp(-x) / S;
@@ -535,114 +535,114 @@ void ikv_temme(double v, double x, double *Iv_p, double *Kv_p)
 
     kind = 0;
     if (Iv_p != NULL) {
-	kind |= need_i;
+    kind |= need_i;
     }
     if (Kv_p != NULL) {
-	kind |= need_k;
+    kind |= need_k;
     }
 
     if (v < 0) {
-	reflect = 1;
-	v = -v;			/* v is non-negative from here */
-	kind |= need_k;
+    reflect = 1;
+    v = -v;            /* v is non-negative from here */
+    kind |= need_k;
     }
     n = round(v);
-    u = v - n;			/* -1/2 <= u < 1/2 */
+    u = v - n;            /* -1/2 <= u < 1/2 */
 
     if (x < 0) {
-	if (Iv_p != NULL)
-	    *Iv_p = NPY_NAN;
-	if (Kv_p != NULL)
-	    *Kv_p = NPY_NAN;
-	mtherr("ikv_temme", DOMAIN);
-	return;
+    if (Iv_p != NULL)
+        *Iv_p = NPY_NAN;
+    if (Kv_p != NULL)
+        *Kv_p = NPY_NAN;
+    mtherr("ikv_temme", DOMAIN);
+    return;
     }
     if (x == 0) {
-	Iv = (v == 0) ? 1 : 0;
-	if (kind & need_k) {
-	    mtherr("ikv_temme", OVERFLOW);
-	    Kv = NPY_INFINITY;
-	}
-	else {
-	    Kv = NPY_NAN;	/* any value will do */
-	}
+    Iv = (v == 0) ? 1 : 0;
+    if (kind & need_k) {
+        mtherr("ikv_temme", OVERFLOW);
+        Kv = NPY_INFINITY;
+    }
+    else {
+        Kv = NPY_NAN;    /* any value will do */
+    }
 
-	if (reflect && (kind & need_i)) {
-	    double z = (u + n % 2);
+    if (reflect && (kind & need_i)) {
+        double z = (u + n % 2);
 
-	    Iv = sin(NPY_PI * z) == 0 ? Iv : NPY_INFINITY;
-	    if (Iv == NPY_INFINITY || Iv == -NPY_INFINITY) {
-		mtherr("ikv_temme", OVERFLOW);
-	    }
-	}
+        Iv = sin(NPY_PI * z) == 0 ? Iv : NPY_INFINITY;
+        if (Iv == NPY_INFINITY || Iv == -NPY_INFINITY) {
+        mtherr("ikv_temme", OVERFLOW);
+        }
+    }
 
-	if (Iv_p != NULL) {
-	    *Iv_p = Iv;
-	}
-	if (Kv_p != NULL) {
-	    *Kv_p = Kv;
-	}
-	return;
+    if (Iv_p != NULL) {
+        *Iv_p = Iv;
+    }
+    if (Kv_p != NULL) {
+        *Kv_p = Kv;
+    }
+    return;
     }
     /* x is positive until reflection */
-    W = 1 / x;			/* Wronskian */
-    if (x <= 2) {		/* x in (0, 2] */
-	temme_ik_series(u, x, &Ku, &Ku1);	/* Temme series */
+    W = 1 / x;            /* Wronskian */
+    if (x <= 2) {        /* x in (0, 2] */
+    temme_ik_series(u, x, &Ku, &Ku1);    /* Temme series */
     }
-    else {			/* x in (2, \infty) */
-	CF2_ik(u, x, &Ku, &Ku1);	/* continued fraction CF2_ik */
+    else {            /* x in (2, \infty) */
+    CF2_ik(u, x, &Ku, &Ku1);    /* continued fraction CF2_ik */
     }
     prev = Ku;
     current = Ku1;
-    for (k = 1; k <= n; k++) {	/* forward recurrence for K */
-	next = 2 * (u + k) * current / x + prev;
-	prev = current;
-	current = next;
+    for (k = 1; k <= n; k++) {    /* forward recurrence for K */
+    next = 2 * (u + k) * current / x + prev;
+    prev = current;
+    current = next;
     }
     Kv = prev;
     Kv1 = current;
     if (kind & need_i) {
-	double lim = (4 * v * v + 10) / (8 * x);
+    double lim = (4 * v * v + 10) / (8 * x);
 
-	lim *= lim;
-	lim *= lim;
-	lim /= 24;
-	if ((lim < MACHEP * 10) && (x > 100)) {
-	    /*
-	     * x is huge compared to v, CF1 may be very slow 
-	     * to converge so use asymptotic expansion for large
-	     * x case instead.  Note that the asymptotic expansion
-	     * isn't very accurate - so it's deliberately very hard
-	     * to get here - probably we're going to overflow:
-	     */
-	    Iv = iv_asymptotic(v, x);
-	}
-	else {
-	    CF1_ik(v, x, &fv);	/* continued fraction CF1_ik */
-	    Iv = W / (Kv * fv + Kv1);	/* Wronskian relation */
-	}
+    lim *= lim;
+    lim *= lim;
+    lim /= 24;
+    if ((lim < MACHEP * 10) && (x > 100)) {
+        /*
+         * x is huge compared to v, CF1 may be very slow 
+         * to converge so use asymptotic expansion for large
+         * x case instead.  Note that the asymptotic expansion
+         * isn't very accurate - so it's deliberately very hard
+         * to get here - probably we're going to overflow:
+         */
+        Iv = iv_asymptotic(v, x);
     }
     else {
-	Iv = NPY_NAN;		/* any value will do */
+        CF1_ik(v, x, &fv);    /* continued fraction CF1_ik */
+        Iv = W / (Kv * fv + Kv1);    /* Wronskian relation */
+    }
+    }
+    else {
+    Iv = NPY_NAN;        /* any value will do */
     }
 
     if (reflect) {
-	double z = (u + n % 2);
+    double z = (u + n % 2);
 
-	if (Iv_p != NULL) {
-	    *Iv_p = Iv + (2 / NPY_PI) * sin(NPY_PI * z) * Kv;	/* reflection formula */
-	}
-	if (Kv_p != NULL) {
-	    *Kv_p = Kv;
-	}
+    if (Iv_p != NULL) {
+        *Iv_p = Iv + (2 / NPY_PI) * sin(NPY_PI * z) * Kv;    /* reflection formula */
+    }
+    if (Kv_p != NULL) {
+        *Kv_p = Kv;
+    }
     }
     else {
-	if (Iv_p != NULL) {
-	    *Iv_p = Iv;
-	}
-	if (Kv_p != NULL) {
-	    *Kv_p = Kv;
-	}
+    if (Iv_p != NULL) {
+        *Iv_p = Iv;
+    }
+    if (Kv_p != NULL) {
+        *Kv_p = Kv;
+    }
     }
     return;
 }

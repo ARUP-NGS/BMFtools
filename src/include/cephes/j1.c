@@ -33,9 +33,9 @@
  *
  *
  */
-/*							y1.c
+/*                            y1.c
  *
- *	Bessel function of second kind of order one
+ *    Bessel function of second kind of order one
  *
  *
  *
@@ -472,13 +472,13 @@ double x;
 
     w = x;
     if (x < 0)
-	return -j1(-x);
+    return -j1(-x);
 
     if (w <= 5.0) {
-	z = x * x;
-	w = polevl(z, RP, 3) / p1evl(z, RQ, 8);
-	w = w * x * (z - Z1) * (z - Z2);
-	return (w);
+    z = x * x;
+    w = polevl(z, RP, 3) / p1evl(z, RQ, 8);
+    w = w * x * (z - Z1) * (z - Z2);
+    return (w);
     }
 
     w = 5.0 / x;
@@ -497,18 +497,18 @@ double x;
     double w, z, p, q, xn;
 
     if (x <= 5.0) {
-	if (x == 0.0) {
-	    mtherr("y1", SING);
-	    return -NPY_INFINITY;
-	}
-	else if (x <= 0.0) {
-	    mtherr("y1", DOMAIN);
-	    return NPY_NAN;
-	}
-	z = x * x;
-	w = x * (polevl(z, YP, 5) / p1evl(z, YQ, 8));
-	w += NPY_2_PI * (j1(x) * log(x) - 1.0 / x);
-	return (w);
+    if (x == 0.0) {
+        mtherr("y1", SING);
+        return -NPY_INFINITY;
+    }
+    else if (x <= 0.0) {
+        mtherr("y1", DOMAIN);
+        return NPY_NAN;
+    }
+    z = x * x;
+    w = x * (polevl(z, YP, 5) / p1evl(z, YQ, 8));
+    w += NPY_2_PI * (j1(x) * log(x) - 1.0 / x);
+    return (w);
     }
 
     w = 5.0 / x;

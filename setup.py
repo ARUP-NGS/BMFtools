@@ -40,9 +40,8 @@ for x in ext:
                       "src/include/cephes/sf_error.c"]
     x.extra_compile_args += compilerList
 
-install_requires = ['pysam>=0.8.2', 'cytoolz', 'matplotlib', 'cython>=0.22',
-                    'cutadapt>=1.5', 'lxml', 'scipy', 'entropy', 'statsmodels',
-                    're2']
+install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
+                    'cutadapt>=1.8']
 
 includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("src/include/cephes")] + pysam.get_include()
 

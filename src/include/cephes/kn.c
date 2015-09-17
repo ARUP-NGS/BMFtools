@@ -92,30 +92,30 @@ double x;
     int i, n;
 
     if (nn < 0)
-	n = -nn;
+    n = -nn;
     else
-	n = nn;
+    n = nn;
 
     if (n > MAXFAC) {
       overf:
-	mtherr("kn", OVERFLOW);
-	return (NPY_INFINITY);
+    mtherr("kn", OVERFLOW);
+    return (NPY_INFINITY);
     }
 
     if (x <= 0.0) {
-	if (x < 0.0) {
-	    mtherr("kn", DOMAIN);
-	    return NPY_NAN;
-	}
-	else {
-	    mtherr("kn", SING);
-	    return NPY_INFINITY;
-	}
+    if (x < 0.0) {
+        mtherr("kn", DOMAIN);
+        return NPY_NAN;
+    }
+    else {
+        mtherr("kn", SING);
+        return NPY_INFINITY;
+    }
     }
 
 
     if (x > 9.55)
-	goto asymp;
+    goto asymp;
 
     ans = 0.0;
     z0 = 0.25 * x * x;
@@ -125,73 +125,73 @@ double x;
     tox = 2.0 / x;
 
     if (n > 0) {
-	/* compute factorial of n and psi(n) */
-	pn = -EUL;
-	k = 1.0;
-	for (i = 1; i < n; i++) {
-	    pn += 1.0 / k;
-	    k += 1.0;
-	    fn *= k;
-	}
+    /* compute factorial of n and psi(n) */
+    pn = -EUL;
+    k = 1.0;
+    for (i = 1; i < n; i++) {
+        pn += 1.0 / k;
+        k += 1.0;
+        fn *= k;
+    }
 
-	zmn = tox;
+    zmn = tox;
 
-	if (n == 1) {
-	    ans = 1.0 / x;
-	}
-	else {
-	    nk1f = fn / n;
-	    kf = 1.0;
-	    s = nk1f;
-	    z = -z0;
-	    zn = 1.0;
-	    for (i = 1; i < n; i++) {
-		nk1f = nk1f / (n - i);
-		kf = kf * i;
-		zn *= z;
-		t = nk1f * zn / kf;
-		s += t;
-		if ((MAXNUM - fabs(t)) < fabs(s))
-		    goto overf;
-		if ((tox > 1.0) && ((MAXNUM / tox) < zmn))
-		    goto overf;
-		zmn *= tox;
-	    }
-	    s *= 0.5;
-	    t = fabs(s);
-	    if ((zmn > 1.0) && ((MAXNUM / zmn) < t))
-		goto overf;
-	    if ((t > 1.0) && ((MAXNUM / t) < zmn))
-		goto overf;
-	    ans = s * zmn;
-	}
+    if (n == 1) {
+        ans = 1.0 / x;
+    }
+    else {
+        nk1f = fn / n;
+        kf = 1.0;
+        s = nk1f;
+        z = -z0;
+        zn = 1.0;
+        for (i = 1; i < n; i++) {
+        nk1f = nk1f / (n - i);
+        kf = kf * i;
+        zn *= z;
+        t = nk1f * zn / kf;
+        s += t;
+        if ((MAXNUM - fabs(t)) < fabs(s))
+            goto overf;
+        if ((tox > 1.0) && ((MAXNUM / tox) < zmn))
+            goto overf;
+        zmn *= tox;
+        }
+        s *= 0.5;
+        t = fabs(s);
+        if ((zmn > 1.0) && ((MAXNUM / zmn) < t))
+        goto overf;
+        if ((t > 1.0) && ((MAXNUM / t) < zmn))
+        goto overf;
+        ans = s * zmn;
+    }
     }
 
 
     tlg = 2.0 * log(0.5 * x);
     pk = -EUL;
     if (n == 0) {
-	pn = pk;
-	t = 1.0;
+    pn = pk;
+    t = 1.0;
     }
     else {
-	pn = pn + 1.0 / n;
-	t = 1.0 / fn;
+    pn = pn + 1.0 / n;
+    t = 1.0 / fn;
     }
     s = (pk + pn - tlg) * t;
     k = 1.0;
     do {
-	t *= z0 / (k * (k + n));
-	pk += 1.0 / k;
-	pn += 1.0 / (k + n);
-	s += (pk + pn - tlg) * t;
-	k += 1.0;
+    t *= z0 / (k * (k + n));
+    pk += 1.0 / k;
+    pn += 1.0 / (k + n);
+    s += (pk + pn - tlg) * t;
+    k += 1.0;
     }
     while (fabs(t / s) > MACHEP);
 
     s = 0.5 * s / zmn;
     if (n & 1)
-	s = -s;
+    s = -s;
     ans += s;
 
     return (ans);
@@ -204,8 +204,8 @@ double x;
   asymp:
 
     if (x > MAXLOG) {
-	mtherr("kn", UNDERFLOW);
-	return (0.0);
+    mtherr("kn", UNDERFLOW);
+    return (0.0);
     }
     k = n;
     pn = 4.0 * k * k;
@@ -217,17 +217,17 @@ double x;
     nkf = NPY_INFINITY;
     i = 0;
     do {
-	z = pn - pk * pk;
-	t = t * z / (fn * z0);
-	nk1f = fabs(t);
-	if ((i >= n) && (nk1f > nkf)) {
-	    goto adone;
-	}
-	nkf = nk1f;
-	s += t;
-	fn += 1.0;
-	pk += 2.0;
-	i += 1;
+    z = pn - pk * pk;
+    t = t * z / (fn * z0);
+    nk1f = fabs(t);
+    if ((i >= n) && (nk1f > nkf)) {
+        goto adone;
+    }
+    nkf = nk1f;
+    s += t;
+    fn += 1.0;
+    pk += 2.0;
+    i += 1;
     }
     while (fabs(t / s) > MACHEP);
 

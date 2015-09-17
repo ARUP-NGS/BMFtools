@@ -612,49 +612,49 @@ double *si, *ci;
     short sign;
 
     if (x < 0.0) {
-	sign = -1;
-	x = -x;
+    sign = -1;
+    x = -x;
     }
     else
-	sign = 0;
+    sign = 0;
 
 
     if (x == 0.0) {
-	*si = 0.0;
-	*ci = -NPY_INFINITY;
-	return (0);
+    *si = 0.0;
+    *ci = -NPY_INFINITY;
+    return (0);
     }
 
 
     if (x > 1.0e9) {
-	if (cephes_isinf(x)) {
-	    if (sign == -1) {
-		*si = -NPY_PI_2;
-		*ci = NPY_NAN;
-	    }
-	    else {
-		*si = NPY_PI_2;
-		*ci = 0;
-	    }
-	    return 0;
-	}
-	*si = NPY_PI_2 - cos(x) / x;
-	*ci = sin(x) / x;
+    if (cephes_isinf(x)) {
+        if (sign == -1) {
+        *si = -NPY_PI_2;
+        *ci = NPY_NAN;
+        }
+        else {
+        *si = NPY_PI_2;
+        *ci = 0;
+        }
+        return 0;
+    }
+    *si = NPY_PI_2 - cos(x) / x;
+    *ci = sin(x) / x;
     }
 
 
 
     if (x > 4.0)
-	goto asympt;
+    goto asympt;
 
     z = x * x;
     s = x * polevl(z, SN, 5) / polevl(z, SD, 5);
     c = z * polevl(z, CN, 5) / polevl(z, CD, 5);
 
     if (sign)
-	s = -s;
+    s = -s;
     *si = s;
-    *ci = NPY_EULER + log(x) + c;	/* real part if x < 0 */
+    *ci = NPY_EULER + log(x) + c;    /* real part if x < 0 */
     return (0);
 
 
@@ -680,16 +680,16 @@ double *si, *ci;
     c = cos(x);
     z = 1.0 / (x * x);
     if (x < 8.0) {
-	f = polevl(z, FN4, 6) / (x * p1evl(z, FD4, 7));
-	g = z * polevl(z, GN4, 7) / p1evl(z, GD4, 7);
+    f = polevl(z, FN4, 6) / (x * p1evl(z, FD4, 7));
+    g = z * polevl(z, GN4, 7) / p1evl(z, GD4, 7);
     }
     else {
-	f = polevl(z, FN8, 8) / (x * p1evl(z, FD8, 8));
-	g = z * polevl(z, GN8, 8) / p1evl(z, GD8, 9);
+    f = polevl(z, FN8, 8) / (x * p1evl(z, FD8, 8));
+    g = z * polevl(z, GN8, 8) / p1evl(z, GD8, 9);
     }
     *si = NPY_PI_2 - f * c - g * s;
     if (sign)
-	*si = -(*si);
+    *si = -(*si);
     *ci = f * s - g * c;
 
     return (0);

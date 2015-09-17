@@ -49,7 +49,7 @@
  * the same degree.
  *
  */
-/*							chbevl.c	*/
+/*                            chbevl.c    */
 
 /*
  * Cephes Math Library Release 2.0:  April, 1987
@@ -74,9 +74,9 @@ int n;
     i = n - 1;
 
     do {
-	b2 = b1;
-	b1 = b0;
-	b0 = x * b1 - b2 + *p++;
+    b2 = b1;
+    b1 = b0;
+    b0 = x * b1 - b2 + *p++;
     }
     while (--i);
 

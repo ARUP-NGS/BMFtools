@@ -42,9 +42,9 @@
  * gdtr domain         x < 0            0.0
  *
  */
-/*							gdtrc.c
+/*                            gdtrc.c
  *
- *	Complemented Gamma distribution function
+ *    Complemented Gamma distribution function
  *
  *
  *
@@ -103,8 +103,8 @@ double a, b, x;
 {
 
     if (x < 0.0) {
-	mtherr("gdtr", DOMAIN);
-	return (NPY_NAN);
+    mtherr("gdtr", DOMAIN);
+    return (NPY_NAN);
     }
     return (igam(b, a * x));
 }
@@ -115,8 +115,8 @@ double a, b, x;
 {
 
     if (x < 0.0) {
-	mtherr("gdtrc", DOMAIN);
-	return (NPY_NAN);
+    mtherr("gdtrc", DOMAIN);
+    return (NPY_NAN);
     }
     return (igamc(b, a * x));
 }
@@ -127,8 +127,8 @@ double a, b, y;
 {
 
     if ((y < 0.0) || (y > 1.0) || (a <= 0.0) || (b < 0.0)) {
-	mtherr("gdtri", DOMAIN);
-	return (NPY_NAN);
+    mtherr("gdtri", DOMAIN);
+    return (NPY_NAN);
     }
 
     return (igami(b, 1.0 - y) / a);

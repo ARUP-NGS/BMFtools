@@ -33,10 +33,10 @@
  *    IEEE      0,30        30000       5.8e-16     1.4e-16
  *
  */
-/*							i0e.c
+/*                            i0e.c
  *
- *	Modified Bessel function of order zero,
- *	exponentially scaled
+ *    Modified Bessel function of order zero,
+ *    exponentially scaled
  *
  *
  *
@@ -355,10 +355,10 @@ double x;
     double y;
 
     if (x < 0)
-	x = -x;
+    x = -x;
     if (x <= 8.0) {
-	y = (x / 2.0) - 2.0;
-	return (exp(x) * chbevl(y, A, 30));
+    y = (x / 2.0) - 2.0;
+    return (exp(x) * chbevl(y, A, 30));
     }
 
     return (exp(x) * chbevl(32.0 / x - 2.0, B, 25) / sqrt(x));
@@ -374,10 +374,10 @@ double x;
     double y;
 
     if (x < 0)
-	x = -x;
+    x = -x;
     if (x <= 8.0) {
-	y = (x / 2.0) - 2.0;
-	return (chbevl(y, A, 30));
+    y = (x / 2.0) - 2.0;
+    return (chbevl(y, A, 30));
     }
 
     return (chbevl(32.0 / x - 2.0, B, 25) / sqrt(x));

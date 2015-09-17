@@ -66,7 +66,7 @@ static NPY_INLINE double polevl(double x, double coef[], int N)
     i = N;
 
     do
-	ans = ans * x + *p++;
+    ans = ans * x + *p++;
     while (--i);
 
     return (ans);
@@ -89,7 +89,7 @@ static NPY_INLINE double p1evl(double x, double coef[], int N)
     i = N - 1;
 
     do
-	ans = ans * x + *p++;
+    ans = ans * x + *p++;
     while (--i);
 
     return (ans);

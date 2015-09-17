@@ -78,8 +78,8 @@ double AUX[];
 
     if (M <= 0) {
       fatal:
-	IER = -1;
-	goto done;
+    IER = -1;
+    goto done;
     }
     /* SEARCH FOR GREATEST MAIN DIAGONAL ELEMENT */
 
@@ -90,13 +90,13 @@ double AUX[];
     piv = 0.0;
     L = 0;
     for (K = 1; K <= M; K++) {
-	L += K;
-	tb = fabs(A[L - 1]);
-	if (tb > piv) {
-	    piv = tb;
-	    I = L;
-	    J = K;
-	}
+    L += K;
+    tb = fabs(A[L - 1]);
+    if (tb > piv) {
+        piv = tb;
+        I = L;
+        J = K;
+    }
     }
     tol = EPS * piv;
 
@@ -109,105 +109,105 @@ double AUX[];
     LST = 0;
     LEND = M - 1;
     for (K = 1; K <= M; K++) {
-	/*     TEST ON USEFULNESS OF SYMMETRIC ALGORITHM */
-	if (piv <= 0.0)
-	    goto fatal;
-	if (IER == 0) {
-	    if (piv <= tol) {
-		IER = K - 1;
-	    }
-	}
-	LT = J - K;
-	LST += K;
+    /*     TEST ON USEFULNESS OF SYMMETRIC ALGORITHM */
+    if (piv <= 0.0)
+        goto fatal;
+    if (IER == 0) {
+        if (piv <= tol) {
+        IER = K - 1;
+        }
+    }
+    LT = J - K;
+    LST += K;
 
-	/*  PIVOT ROW REDUCTION AND ROW INTERCHANGE IN RIGHT HAND SIDE R */
-	pivi = 1.0 / A[I - 1];
-	L = K;
-	LL = L + LT;
-	tb = pivi * R[LL - 1];
-	R[LL - 1] = R[L - 1];
-	R[L - 1] = tb;
-	/* IS ELIMINATION TERMINATED */
-	if (K >= M)
-	    break;
-	/*
-	 * C     ROW AND COLUMN INTERCHANGE AND PIVOT ROW REDUCTION IN MATRIX A.
-	 * C     ELEMENTS OF PIVOT COLUMN ARE SAVED IN AUXILIARY VECTOR AUX.
-	 */
-	LR = LST + (LT * (K + J - 1)) / 2;
-	LL = LR;
-	L = LST;
-	for (II = K; II <= LEND; II++) {
-	    L += II;
-	    LL += 1;
-	    if (L == LR) {
-		A[LL - 1] = A[LST - 1];
-		tb = A[L - 1];
-		goto lab13;
-	    }
-	    if (L > LR)
-		LL = L + LT;
+    /*  PIVOT ROW REDUCTION AND ROW INTERCHANGE IN RIGHT HAND SIDE R */
+    pivi = 1.0 / A[I - 1];
+    L = K;
+    LL = L + LT;
+    tb = pivi * R[LL - 1];
+    R[LL - 1] = R[L - 1];
+    R[L - 1] = tb;
+    /* IS ELIMINATION TERMINATED */
+    if (K >= M)
+        break;
+    /*
+     * C     ROW AND COLUMN INTERCHANGE AND PIVOT ROW REDUCTION IN MATRIX A.
+     * C     ELEMENTS OF PIVOT COLUMN ARE SAVED IN AUXILIARY VECTOR AUX.
+     */
+    LR = LST + (LT * (K + J - 1)) / 2;
+    LL = LR;
+    L = LST;
+    for (II = K; II <= LEND; II++) {
+        L += II;
+        LL += 1;
+        if (L == LR) {
+        A[LL - 1] = A[LST - 1];
+        tb = A[L - 1];
+        goto lab13;
+        }
+        if (L > LR)
+        LL = L + LT;
 
-	    tb = A[LL - 1];
-	    A[LL - 1] = A[L - 1];
-	  lab13:
-	    AUX[II - 1] = tb;
-	    A[L - 1] = pivi * tb;
-	}
-	/* SAVE COLUMN INTERCHANGE INFORMATION */
-	A[LST - 1] = LT;
-	/* ELEMENT REDUCTION AND SEARCH FOR NEXT PIVOT */
-	piv = 0.0;
-	LLST = LST;
-	LT = 0;
-	for (II = K; II <= LEND; II++) {
-	    pivi = -AUX[II - 1];
-	    LL = LLST;
-	    LT += 1;
-	    for (LLD = II; LLD <= LEND; LLD++) {
-		LL += LLD;
-		L = LL + LT;
-		A[L - 1] += pivi * A[LL - 1];
-	    }
-	    LLST += II;
-	    LR = LLST + LT;
-	    tb = fabs(A[LR - 1]);
-	    if (tb > piv) {
-		piv = tb;
-		I = LR;
-		J = II + 1;
-	    }
-	    LR = K;
-	    LL = LR + LT;
-	    R[LL - 1] += pivi * R[LR - 1];
-	}
+        tb = A[LL - 1];
+        A[LL - 1] = A[L - 1];
+      lab13:
+        AUX[II - 1] = tb;
+        A[L - 1] = pivi * tb;
+    }
+    /* SAVE COLUMN INTERCHANGE INFORMATION */
+    A[LST - 1] = LT;
+    /* ELEMENT REDUCTION AND SEARCH FOR NEXT PIVOT */
+    piv = 0.0;
+    LLST = LST;
+    LT = 0;
+    for (II = K; II <= LEND; II++) {
+        pivi = -AUX[II - 1];
+        LL = LLST;
+        LT += 1;
+        for (LLD = II; LLD <= LEND; LLD++) {
+        LL += LLD;
+        L = LL + LT;
+        A[L - 1] += pivi * A[LL - 1];
+        }
+        LLST += II;
+        LR = LLST + LT;
+        tb = fabs(A[LR - 1]);
+        if (tb > piv) {
+        piv = tb;
+        I = LR;
+        J = II + 1;
+        }
+        LR = K;
+        LL = LR + LT;
+        R[LL - 1] += pivi * R[LR - 1];
+    }
     }
     /* END OF ELIMINATION LOOP */
 
     /* BACK SUBSTITUTION AND BACK INTERCHANGE */
 
     if (LEND <= 0) {
-	if (LEND < 0)
-	    goto fatal;
-	goto done;
+    if (LEND < 0)
+        goto fatal;
+    goto done;
     }
     II = M;
     for (I = 2; I <= M; I++) {
-	LST -= II;
-	II -= 1;
-	L = A[LST - 1] + 0.5;
-	J = II;
-	tb = R[J - 1];
-	LL = J;
-	K = LST;
-	for (LT = II; LT <= LEND; LT++) {
-	    LL += 1;
-	    K += LT;
-	    tb -= A[K - 1] * R[LL - 1];
-	}
-	K = J + L;
-	R[J - 1] = R[K - 1];
-	R[K - 1] = tb;
+    LST -= II;
+    II -= 1;
+    L = A[LST - 1] + 0.5;
+    J = II;
+    tb = R[J - 1];
+    LL = J;
+    K = LST;
+    for (LT = II; LT <= LEND; LT++) {
+        LL += 1;
+        K += LT;
+        tb -= A[K - 1] * R[LL - 1];
+    }
+    K = J + L;
+    R[J - 1] = R[K - 1];
+    R[K - 1] = tb;
     }
   done:
     return (IER);

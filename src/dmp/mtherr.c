@@ -1,6 +1,6 @@
-/*							mtherr.c
+/*                            mtherr.c
  *
- *	Library common error handling routine
+ *    Library common error handling routine
  *
  *
  *
@@ -92,7 +92,7 @@ merror = code;
  * by the code argument.
  */
 if( (code <= 0) || (code >= 7) )
-	code = 0;
+    code = 0;
 printf( "%s error\n", ermsg[code] );
 
 /* Return to calling

@@ -180,14 +180,14 @@ double exp10(double x)
     short n;
 
     if (cephes_isnan(x))
-	return (x);
+    return (x);
     if (x > MAXL10) {
-	return (NPY_INFINITY);
+    return (NPY_INFINITY);
     }
 
-    if (x < -MAXL10) {		/* Would like to use MINLOG but can't */
-	mtherr("exp10", UNDERFLOW);
-	return (0.0);
+    if (x < -MAXL10) {        /* Would like to use MINLOG but can't */
+    mtherr("exp10", UNDERFLOW);
+    return (0.0);
     }
 
     /* Express 10**x = 10**g 2**n

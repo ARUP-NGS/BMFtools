@@ -65,44 +65,44 @@ double x;
     static double big = BIG;
 
     if (n < 0)
-	goto domerr;
+    goto domerr;
 
     if (x < 0) {
       domerr:mtherr("expn", DOMAIN);
-	return (NPY_INFINITY);
+    return (NPY_INFINITY);
     }
 
     if (x > MAXLOG)
-	return (0.0);
+    return (0.0);
 
     if (x == 0.0) {
-	if (n < 2) {
-	    mtherr("expn", SING);
-	    return (NPY_INFINITY);
-	}
-	else
-	    return (1.0 / (n - 1.0));
+    if (n < 2) {
+        mtherr("expn", SING);
+        return (NPY_INFINITY);
+    }
+    else
+        return (1.0 / (n - 1.0));
     }
 
     if (n == 0)
-	return (exp(-x) / x);
+    return (exp(-x) / x);
 
     /*                                                     expn.c  */
     /*             Expansion for large n           */
 
     if (n > 5000) {
-	xk = x + n;
-	yk = 1.0 / (xk * xk);
-	t = n;
-	ans = yk * t * (6.0 * x * x - 8.0 * t * x + t * t);
-	ans = yk * (ans + t * (t - 2.0 * x));
-	ans = yk * (ans + t);
-	ans = (ans + 1.0) * exp(-x) / xk;
-	goto done;
+    xk = x + n;
+    yk = 1.0 / (xk * xk);
+    t = n;
+    ans = yk * t * (6.0 * x * x - 8.0 * t * x + t * t);
+    ans = yk * (ans + t * (t - 2.0 * x));
+    ans = yk * (ans + t);
+    ans = (ans + 1.0) * exp(-x) / xk;
+    goto done;
     }
 
     if (x > 1.0)
-	goto cfrac;
+    goto cfrac;
 
     /*                                                     expn.c  */
 
@@ -110,27 +110,27 @@ double x;
 
     psi = -EUL - log(x);
     for (i = 1; i < n; i++)
-	psi = psi + 1.0 / i;
+    psi = psi + 1.0 / i;
 
     z = -x;
     xk = 0.0;
     yk = 1.0;
     pk = 1.0 - n;
     if (n == 1)
-	ans = 0.0;
+    ans = 0.0;
     else
-	ans = 1.0 / pk;
+    ans = 1.0 / pk;
     do {
-	xk += 1.0;
-	yk *= z / xk;
-	pk += 1.0;
-	if (pk != 0.0) {
-	    ans += yk / pk;
-	}
-	if (ans != 0.0)
-	    t = fabs(yk / ans);
-	else
-	    t = 1.0;
+    xk += 1.0;
+    yk *= z / xk;
+    pk += 1.0;
+    if (pk != 0.0) {
+        ans += yk / pk;
+    }
+    if (ans != 0.0)
+        t = fabs(yk / ans);
+    else
+        t = 1.0;
     }
     while (t > MACHEP);
     k = xk;
@@ -150,34 +150,34 @@ double x;
     ans = pkm1 / qkm1;
 
     do {
-	k += 1;
-	if (k & 1) {
-	    yk = 1.0;
-	    xk = n + (k - 1) / 2;
-	}
-	else {
-	    yk = x;
-	    xk = k / 2;
-	}
-	pk = pkm1 * yk + pkm2 * xk;
-	qk = qkm1 * yk + qkm2 * xk;
-	if (qk != 0) {
-	    r = pk / qk;
-	    t = fabs((ans - r) / r);
-	    ans = r;
-	}
-	else
-	    t = 1.0;
-	pkm2 = pkm1;
-	pkm1 = pk;
-	qkm2 = qkm1;
-	qkm1 = qk;
-	if (fabs(pk) > big) {
-	    pkm2 /= big;
-	    pkm1 /= big;
-	    qkm2 /= big;
-	    qkm1 /= big;
-	}
+    k += 1;
+    if (k & 1) {
+        yk = 1.0;
+        xk = n + (k - 1) / 2;
+    }
+    else {
+        yk = x;
+        xk = k / 2;
+    }
+    pk = pkm1 * yk + pkm2 * xk;
+    qk = qkm1 * yk + qkm2 * xk;
+    if (qk != 0) {
+        r = pk / qk;
+        t = fabs((ans - r) / r);
+        ans = r;
+    }
+    else
+        t = 1.0;
+    pkm2 = pkm1;
+    pkm1 = pk;
+    qkm2 = qkm1;
+    qkm1 = qk;
+    if (fabs(pk) > big) {
+        pkm2 /= big;
+        pkm1 /= big;
+        qkm2 /= big;
+        qkm1 /= big;
+    }
     }
     while (t > MACHEP);
 

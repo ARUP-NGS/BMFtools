@@ -75,17 +75,17 @@
 /* Constant definitions for math error conditions
  */
 
-#define DOMAIN		1	/* argument domain error */
-#define SING		2	/* argument singularity */
-#define OVERFLOW	3	/* overflow range error */
-#define UNDERFLOW	4	/* underflow range error */
-#define TLOSS		5	/* total loss of precision */
-#define PLOSS		6	/* partial loss of precision */
-#define TOOMANY         7	/* too many iterations */
+#define DOMAIN        1    /* argument domain error */
+#define SING        2    /* argument singularity */
+#define OVERFLOW    3    /* overflow range error */
+#define UNDERFLOW    4    /* underflow range error */
+#define TLOSS        5    /* total loss of precision */
+#define PLOSS        6    /* partial loss of precision */
+#define TOOMANY         7    /* too many iterations */
 #define MAXITER        500
 
-#define EDOM		33
-#define ERANGE		34
+#define EDOM        33
+#define ERANGE        34
 
 /* Long double complex numeral.  */
 /*
@@ -164,4 +164,4 @@ extern int merror;
 #define cephes_isfinite(x) npy_isfinite(x)
 #endif
 
-#endif				/* CEPHES_MCONF_H */
+#endif                /* CEPHES_MCONF_H */

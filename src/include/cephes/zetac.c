@@ -58,7 +58,7 @@
 #ifdef UNK
 static double azetac[] = {
     -1.50000000000000000000E0,
-    1.70141183460469231730E38,	/* infinity. */
+    1.70141183460469231730E38,    /* infinity. */
     6.44934066848226436472E-1,
     2.02056903159594285400E-1,
     8.23232337111381915160E-2,
@@ -513,57 +513,57 @@ double x;
     double a, b, s, w;
 
     if (x < 0.0) {
-	if (x < -30.8148) {
-	    mtherr("zetac", OVERFLOW);
-	    return (0.0);
-	}
-	s = 1.0 - x;
-	w = zetac(s);
-	b = sin(0.5 * NPY_PI * x) * pow(2.0 * NPY_PI,
-				    x) * Gamma(s) * (1.0 + w) / NPY_PI;
-	return (b - 1.0);
+    if (x < -30.8148) {
+        mtherr("zetac", OVERFLOW);
+        return (0.0);
+    }
+    s = 1.0 - x;
+    w = zetac(s);
+    b = sin(0.5 * NPY_PI * x) * pow(2.0 * NPY_PI,
+                    x) * Gamma(s) * (1.0 + w) / NPY_PI;
+    return (b - 1.0);
     }
 
     if (x >= MAXL2)
-	return (0.0);		/* because first term is 2**-x */
+    return (0.0);        /* because first term is 2**-x */
 
     /* Tabulated values for integer argument */
     w = floor(x);
     if (w == x) {
-	i = x;
-	if (i < 31) {
+    i = x;
+    if (i < 31) {
 #ifdef UNK
-	    return (azetac[i]);
+        return (azetac[i]);
 #else
-	    return (*(double *) &azetac[4 * i]);
+        return (*(double *) &azetac[4 * i]);
 #endif
-	}
+    }
     }
 
 
     if (x < 1.0) {
-	w = 1.0 - x;
-	a = polevl(x, R, 5) / (w * p1evl(x, S, 5));
-	return (a);
+    w = 1.0 - x;
+    a = polevl(x, R, 5) / (w * p1evl(x, S, 5));
+    return (a);
     }
 
     if (x == 1.0) {
-	mtherr("zetac", SING);
-	return (NPY_INFINITY);
+    mtherr("zetac", SING);
+    return (NPY_INFINITY);
     }
 
     if (x <= 10.0) {
-	b = pow(2.0, x) * (x - 1.0);
-	w = 1.0 / x;
-	s = (x * polevl(w, P, 8)) / (b * p1evl(w, Q, 8));
-	return (s);
+    b = pow(2.0, x) * (x - 1.0);
+    w = 1.0 / x;
+    s = (x * polevl(w, P, 8)) / (b * p1evl(w, Q, 8));
+    return (s);
     }
 
     if (x <= 50.0) {
-	b = pow(2.0, -x);
-	w = polevl(x, A, 10) / p1evl(x, B, 10);
-	w = exp(w) + b;
-	return (w);
+    b = pow(2.0, -x);
+    w = polevl(x, A, 10) / p1evl(x, B, 10);
+    w = exp(w) + b;
+    return (w);
     }
 
 
@@ -573,9 +573,9 @@ double x;
     s = 0.0;
     a = 1.0;
     do {
-	a += 2.0;
-	b = pow(a, -x);
-	s += b;
+    a += 2.0;
+    b = pow(a, -x);
+    s += b;
     }
     while (b / s > MACHEP);
 

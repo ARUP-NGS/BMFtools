@@ -45,7 +45,7 @@ double log1p(double x)
 
     z = 1.0 + x;
     if ((z < SQRTH) || (z > SQRT2))
-	return (log(z));
+    return (log(z));
     z = x * x;
     z = -0.5 * z + x * (z * polevl(x, LP, 6) / p1evl(x, LQ, 6));
     return (x + z);
@@ -77,19 +77,19 @@ double expm1(double x)
     double r, xx;
 
     if (!cephes_isfinite(x)) {
-	if (cephes_isnan(x)) {
-	    return x;
-	}
-	else if (x > 0) {
-	    return x;
-	}
-	else {
-	    return -1.0;
-	}
+    if (cephes_isnan(x)) {
+        return x;
+    }
+    else if (x > 0) {
+        return x;
+    }
+    else {
+        return -1.0;
+    }
 
     }
     if ((x < -0.5) || (x > 0.5))
-	return (exp(x) - 1.0);
+    return (exp(x) - 1.0);
     xx = x * x;
     r = x * polevl(xx, EP, 2);
     r = r / (polevl(xx, EQ, 3) - r);
@@ -115,7 +115,7 @@ double cosm1(double x)
     double xx;
 
     if ((x < -NPY_PI_4) || (x > NPY_PI_4))
-	return (cos(x) - 1.0);
+    return (cos(x) - 1.0);
     xx = x * x;
     xx = -0.5 * xx + xx * xx * polevl(xx, coscof, 6);
     return xx;

@@ -75,33 +75,33 @@ double jv(double n, double x)
     double k, q, t, y, an;
     int i, sign, nint;
 
-    nint = 0;			/* Flag for integer n */
-    sign = 1;			/* Flag for sign inversion */
+    nint = 0;            /* Flag for integer n */
+    sign = 1;            /* Flag for sign inversion */
     an = fabs(n);
     y = floor(an);
     if (y == an) {
-	nint = 1;
-	i = an - 16384.0 * floor(an / 16384.0);
-	if (n < 0.0) {
-	    if (i & 1)
-		sign = -sign;
-	    n = an;
-	}
-	if (x < 0.0) {
-	    if (i & 1)
-		sign = -sign;
-	    x = -x;
-	}
-	if (n == 0.0)
-	    return (j0(x));
-	if (n == 1.0)
-	    return (sign * j1(x));
+    nint = 1;
+    i = an - 16384.0 * floor(an / 16384.0);
+    if (n < 0.0) {
+        if (i & 1)
+        sign = -sign;
+        n = an;
+    }
+    if (x < 0.0) {
+        if (i & 1)
+        sign = -sign;
+        x = -x;
+    }
+    if (n == 0.0)
+        return (j0(x));
+    if (n == 1.0)
+        return (sign * j1(x));
     }
 
     if ((x < 0.0) && (y != an)) {
-	mtherr("Jv", DOMAIN);
-	y = NPY_NAN;
-	goto done;
+    mtherr("Jv", DOMAIN);
+    y = NPY_NAN;
+    goto done;
     }
 
     if (x == 0 && n < 0 && !nint) {
@@ -112,117 +112,117 @@ double jv(double n, double x)
     y = fabs(x);
 
     if (y * y < fabs(n + 1) * MACHEP) {
-	return pow(0.5 * x, n) / gamma(n + 1);
+    return pow(0.5 * x, n) / gamma(n + 1);
     }
 
     k = 3.6 * sqrt(y);
     t = 3.6 * sqrt(an);
     if ((y < t) && (an > 21.0))
-	return (sign * jvs(n, x));
+    return (sign * jvs(n, x));
     if ((an < k) && (y > 21.0))
-	return (sign * hankel(n, x));
+    return (sign * hankel(n, x));
 
     if (an < 500.0) {
-	/* Note: if x is too large, the continued fraction will fail; but then the
-	 * Hankel expansion can be used. */
-	if (nint != 0) {
-	    k = 0.0;
-	    q = recur(&n, x, &k, 1);
-	    if (k == 0.0) {
-		y = j0(x) / q;
-		goto done;
-	    }
-	    if (k == 1.0) {
-		y = j1(x) / q;
-		goto done;
-	    }
-	}
+    /* Note: if x is too large, the continued fraction will fail; but then the
+     * Hankel expansion can be used. */
+    if (nint != 0) {
+        k = 0.0;
+        q = recur(&n, x, &k, 1);
+        if (k == 0.0) {
+        y = j0(x) / q;
+        goto done;
+        }
+        if (k == 1.0) {
+        y = j1(x) / q;
+        goto done;
+        }
+    }
 
-	if (an > 2.0 * y)
-	    goto rlarger;
+    if (an > 2.0 * y)
+        goto rlarger;
 
-	if ((n >= 0.0) && (n < 20.0)
-	    && (y > 6.0) && (y < 20.0)) {
-	    /* Recur backwards from a larger value of n */
-	  rlarger:
-	    k = n;
+    if ((n >= 0.0) && (n < 20.0)
+        && (y > 6.0) && (y < 20.0)) {
+        /* Recur backwards from a larger value of n */
+      rlarger:
+        k = n;
 
-	    y = y + an + 1.0;
-	    if (y < 30.0)
-		y = 30.0;
-	    y = n + floor(y - n);
-	    q = recur(&y, x, &k, 0);
-	    y = jvs(y, x) * q;
-	    goto done;
-	}
+        y = y + an + 1.0;
+        if (y < 30.0)
+        y = 30.0;
+        y = n + floor(y - n);
+        q = recur(&y, x, &k, 0);
+        y = jvs(y, x) * q;
+        goto done;
+    }
 
-	if (k <= 30.0) {
-	    k = 2.0;
-	}
-	else if (k < 90.0) {
-	    k = (3 * k) / 4;
-	}
-	if (an > (k + 3.0)) {
-	    if (n < 0.0)
-		k = -k;
-	    q = n - floor(n);
-	    k = floor(k) + q;
-	    if (n > 0.0)
-		q = recur(&n, x, &k, 1);
-	    else {
-		t = k;
-		k = n;
-		q = recur(&t, x, &k, 1);
-		k = t;
-	    }
-	    if (q == 0.0) {
-		y = 0.0;
-		goto done;
-	    }
-	}
-	else {
-	    k = n;
-	    q = 1.0;
-	}
+    if (k <= 30.0) {
+        k = 2.0;
+    }
+    else if (k < 90.0) {
+        k = (3 * k) / 4;
+    }
+    if (an > (k + 3.0)) {
+        if (n < 0.0)
+        k = -k;
+        q = n - floor(n);
+        k = floor(k) + q;
+        if (n > 0.0)
+        q = recur(&n, x, &k, 1);
+        else {
+        t = k;
+        k = n;
+        q = recur(&t, x, &k, 1);
+        k = t;
+        }
+        if (q == 0.0) {
+        y = 0.0;
+        goto done;
+        }
+    }
+    else {
+        k = n;
+        q = 1.0;
+    }
 
-	/* boundary between convergence of
-	 * power series and Hankel expansion
-	 */
-	y = fabs(k);
-	if (y < 26.0)
-	    t = (0.0083 * y + 0.09) * y + 12.9;
-	else
-	    t = 0.9 * y;
+    /* boundary between convergence of
+     * power series and Hankel expansion
+     */
+    y = fabs(k);
+    if (y < 26.0)
+        t = (0.0083 * y + 0.09) * y + 12.9;
+    else
+        t = 0.9 * y;
 
-	if (x > t)
-	    y = hankel(k, x);
-	else
-	    y = jvs(k, x);
+    if (x > t)
+        y = hankel(k, x);
+    else
+        y = jvs(k, x);
 #if CEPHES_DEBUG
-	printf("y = %.16e, recur q = %.16e\n", y, q);
+    printf("y = %.16e, recur q = %.16e\n", y, q);
 #endif
-	if (n > 0.0)
-	    y /= q;
-	else
-	    y *= q;
+    if (n > 0.0)
+        y /= q;
+    else
+        y *= q;
     }
 
     else {
-	/* For large n, use the uniform expansion or the transitional expansion.
-	 * But if x is of the order of n**2, these may blow up, whereas the
-	 * Hankel expansion will then work.
-	 */
-	if (n < 0.0) {
-	    mtherr("Jv", TLOSS);
-	    y = NPY_NAN;
-	    goto done;
-	}
-	t = x / n;
-	t /= n;
-	if (t > 0.3)
-	    y = hankel(n, x);
-	else
-	    y = jnx(n, x);
+    /* For large n, use the uniform expansion or the transitional expansion.
+     * But if x is of the order of n**2, these may blow up, whereas the
+     * Hankel expansion will then work.
+     */
+    if (n < 0.0) {
+        mtherr("Jv", TLOSS);
+        y = NPY_NAN;
+        goto done;
+    }
+    t = x / n;
+    t /= n;
+    if (t > 0.3)
+        y = hankel(n, x);
+    else
+        y = jnx(n, x);
     }
 
   done:return (sign * y);
@@ -261,12 +261,12 @@ static double recur(double *n, double x, double *newn, int cancel)
     maxiter = 22000;
     miniter = fabs(x) - fabs(*n);
     if (miniter < 1)
-	miniter = 1;
+    miniter = 1;
 
     if (*n < 0.0)
-	nflag = 1;
+    nflag = 1;
     else
-	nflag = 0;
+    nflag = 0;
 
   fstart:
 
@@ -280,51 +280,51 @@ static double recur(double *n, double x, double *newn, int cancel)
     qkm1 = *n + *n;
     xk = -x * x;
     yk = qkm1;
-    ans = 0.0;			/* ans=0.0 ensures that t=1.0 in the first iteration */
+    ans = 0.0;            /* ans=0.0 ensures that t=1.0 in the first iteration */
     ctr = 0;
     do {
-	yk += 2.0;
-	pk = pkm1 * yk + pkm2 * xk;
-	qk = qkm1 * yk + qkm2 * xk;
-	pkm2 = pkm1;
-	pkm1 = pk;
-	qkm2 = qkm1;
-	qkm1 = qk;
+    yk += 2.0;
+    pk = pkm1 * yk + pkm2 * xk;
+    qk = qkm1 * yk + qkm2 * xk;
+    pkm2 = pkm1;
+    pkm1 = pk;
+    qkm2 = qkm1;
+    qkm1 = qk;
 
-	/* check convergence */
-	if (qk != 0 && ctr > miniter)
-	    r = pk / qk;
-	else
-	    r = 0.0;
+    /* check convergence */
+    if (qk != 0 && ctr > miniter)
+        r = pk / qk;
+    else
+        r = 0.0;
 
-	if (r != 0) {
-	    t = fabs((ans - r) / r);
-	    ans = r;
-	}
-	else {
-	    t = 1.0;
-	}
+    if (r != 0) {
+        t = fabs((ans - r) / r);
+        ans = r;
+    }
+    else {
+        t = 1.0;
+    }
 
-	if (++ctr > maxiter) {
-	    mtherr("jv", UNDERFLOW);
-	    goto done;
-	}
-	if (t < MACHEP)
-	    goto done;
+    if (++ctr > maxiter) {
+        mtherr("jv", UNDERFLOW);
+        goto done;
+    }
+    if (t < MACHEP)
+        goto done;
 
-	/* renormalize coefficients */
-	if (fabs(pk) > big) {
-	    pkm2 /= big;
-	    pkm1 /= big;
-	    qkm2 /= big;
-	    qkm1 /= big;
-	}
+    /* renormalize coefficients */
+    if (fabs(pk) > big) {
+        pkm2 /= big;
+        pkm1 /= big;
+        qkm2 /= big;
+        qkm1 /= big;
+    }
     }
     while (t > MACHEP);
 
   done:
     if (ans == 0)
-	ans = 1.0;
+    ans = 1.0;
 
 #if CEPHES_DEBUG
     printf("%.6e\n", ans);
@@ -332,11 +332,11 @@ static double recur(double *n, double x, double *newn, int cancel)
 
     /* Change n to n-1 if n < 0 and the continued fraction is small */
     if (nflag > 0) {
-	if (fabs(ans) < 0.125) {
-	    nflag = -1;
-	    *n = *n - 1.0;
-	    goto fstart;
-	}
+    if (fabs(ans) < 0.125) {
+        nflag = -1;
+        *n = *n - 1.0;
+        goto fstart;
+    }
     }
 
 
@@ -353,25 +353,25 @@ static double recur(double *n, double x, double *newn, int cancel)
     k = *n - 1.0;
     r = 2 * k;
     do {
-	pkm2 = (pkm1 * r - pk * x) / x;
-	/*      pkp1 = pk; */
-	pk = pkm1;
-	pkm1 = pkm2;
-	r -= 2.0;
-	/*
-	 * t = fabs(pkp1) + fabs(pk);
-	 * if( (k > (kf + 2.5)) && (fabs(pkm1) < 0.25*t) )
-	 * {
-	 * k -= 1.0;
-	 * t = x*x;
-	 * pkm2 = ( (r*(r+2.0)-t)*pk - r*x*pkp1 )/t;
-	 * pkp1 = pk;
-	 * pk = pkm1;
-	 * pkm1 = pkm2;
-	 * r -= 2.0;
-	 * }
-	 */
-	k -= 1.0;
+    pkm2 = (pkm1 * r - pk * x) / x;
+    /*      pkp1 = pk; */
+    pk = pkm1;
+    pkm1 = pkm2;
+    r -= 2.0;
+    /*
+     * t = fabs(pkp1) + fabs(pk);
+     * if( (k > (kf + 2.5)) && (fabs(pkm1) < 0.25*t) )
+     * {
+     * k -= 1.0;
+     * t = x*x;
+     * pkm2 = ( (r*(r+2.0)-t)*pk - r*x*pkp1 )/t;
+     * pkp1 = pk;
+     * pk = pkm1;
+     * pkm1 = pkm2;
+     * r -= 2.0;
+     * }
+     */
+    k -= 1.0;
     }
     while (k > (kf + 0.5));
 
@@ -380,10 +380,10 @@ static double recur(double *n, double x, double *newn, int cancel)
      */
 
     if (cancel) {
-	if ((kf >= 0.0) && (fabs(pk) > fabs(pkm1))) {
-	    k += 1.0;
-	    pkm2 = pk;
-	}
+    if ((kf >= 0.0) && (fabs(pk) > fabs(pkm1))) {
+        k += 1.0;
+        pkm2 = pk;
+    }
     }
     *newn = k;
 #if CEPHES_DEBUG
@@ -412,11 +412,11 @@ static double jvs(double n, double x)
     t = 1.0;
 
     while (t > MACHEP) {
-	u *= z / (k * (n + k));
-	y += u;
-	k += 1.0;
-	if (y != 0)
-	    t = fabs(u / y);
+    u *= z / (k * (n + k));
+    y += u;
+    k += 1.0;
+    if (y != 0)
+        t = fabs(u / y);
     }
 #if CEPHES_DEBUG
     printf("power series=%.5e ", y);
@@ -424,40 +424,40 @@ static double jvs(double n, double x)
     t = frexp(0.5 * x, &ex);
     ex = ex * n;
     if ((ex > -1023)
-	&& (ex < 1023)
-	&& (n > 0.0)
-	&& (n < (MAXGAM - 1.0))) {
-	t = pow(0.5 * x, n) / gamma(n + 1.0);
+    && (ex < 1023)
+    && (n > 0.0)
+    && (n < (MAXGAM - 1.0))) {
+    t = pow(0.5 * x, n) / gamma(n + 1.0);
 #if CEPHES_DEBUG
-	printf("pow(.5*x, %.4e)/gamma(n+1)=%.5e\n", n, t);
+    printf("pow(.5*x, %.4e)/gamma(n+1)=%.5e\n", n, t);
 #endif
-	y *= t;
+    y *= t;
     }
     else {
 #if CEPHES_DEBUG
-	z = n * log(0.5 * x);
-	k = lgam(n + 1.0);
-	t = z - k;
-	printf("log pow=%.5e, lgam(%.4e)=%.5e\n", z, n + 1.0, k);
+    z = n * log(0.5 * x);
+    k = lgam(n + 1.0);
+    t = z - k;
+    printf("log pow=%.5e, lgam(%.4e)=%.5e\n", z, n + 1.0, k);
 #else
-	t = n * log(0.5 * x) - lgam(n + 1.0);
+    t = n * log(0.5 * x) - lgam(n + 1.0);
 #endif
-	if (y < 0) {
-	    sgngam = -sgngam;
-	    y = -y;
-	}
-	t += log(y);
+    if (y < 0) {
+        sgngam = -sgngam;
+        y = -y;
+    }
+    t += log(y);
 #if CEPHES_DEBUG
-	printf("log y=%.5e\n", log(y));
+    printf("log y=%.5e\n", log(y));
 #endif
-	if (t < -MAXLOG) {
-	    return (0.0);
-	}
-	if (t > MAXLOG) {
-	    mtherr("Jv", OVERFLOW);
-	    return (NPY_INFINITY);
-	}
-	y = sgngam * exp(t);
+    if (t < -MAXLOG) {
+        return (0.0);
+    }
+    if (t > MAXLOG) {
+        mtherr("Jv", OVERFLOW);
+        return (NPY_INFINITY);
+    }
+    y = sgngam * exp(t);
     }
     return (y);
 }
@@ -488,29 +488,29 @@ static double hankel(double n, double x)
     qq = 1.0e38;
 
     while (t > MACHEP) {
-	k += 2.0;
-	j += 1.0;
-	sign = -sign;
-	u *= (m - k * k) / (j * z);
-	p += sign * u;
-	k += 2.0;
-	j += 1.0;
-	u *= (m - k * k) / (j * z);
-	q += sign * u;
-	t = fabs(u / p);
-	if (t < conv) {
-	    conv = t;
-	    qq = q;
-	    pp = p;
-	    flag = 1;
-	}
-	/* stop if the terms start getting larger */
-	if ((flag != 0) && (t > conv)) {
+    k += 2.0;
+    j += 1.0;
+    sign = -sign;
+    u *= (m - k * k) / (j * z);
+    p += sign * u;
+    k += 2.0;
+    j += 1.0;
+    u *= (m - k * k) / (j * z);
+    q += sign * u;
+    t = fabs(u / p);
+    if (t < conv) {
+        conv = t;
+        qq = q;
+        pp = p;
+        flag = 1;
+    }
+    /* stop if the terms start getting larger */
+    if ((flag != 0) && (t > conv)) {
 #if CEPHES_DEBUG
-	    printf("Hankel: convergence to %.4E\n", conv);
+        printf("Hankel: convergence to %.4E\n", conv);
 #endif
-	    goto hank1;
-	}
+        goto hank1;
+    }
     }
 
   hank1:
@@ -626,24 +626,24 @@ static double jnx(double n, double x)
     cbn = cbrt(n);
     z = (x - n) / cbn;
     if (fabs(z) <= 0.7)
-	return (jnt(n, x));
+    return (jnt(n, x));
 
     z = x / n;
     zz = 1.0 - z * z;
     if (zz == 0.0)
-	return (0.0);
+    return (0.0);
 
     if (zz > 0.0) {
-	sz = sqrt(zz);
-	t = 1.5 * (log((1.0 + sz) / z) - sz);	/* zeta ** 3/2          */
-	zeta = cbrt(t * t);
-	nflg = 1;
+    sz = sqrt(zz);
+    t = 1.5 * (log((1.0 + sz) / z) - sz);    /* zeta ** 3/2          */
+    zeta = cbrt(t * t);
+    nflg = 1;
     }
     else {
-	sz = sqrt(-zz);
-	t = 1.5 * (sz - acos(1.0 / z));
-	zeta = -cbrt(t * t);
-	nflg = -1;
+    sz = sqrt(-zz);
+    t = 1.5 * (sz - acos(1.0 / z));
+    zeta = -cbrt(t * t);
+    nflg = -1;
     }
     z32i = fabs(1.0 / t);
     sqz = cbrt(t);
@@ -672,7 +672,7 @@ static double jnx(double n, double x)
 
 #if CEPHES_DEBUG
     for (k = 0; k <= 7; k++)
-	printf("u[%d] = %.5E\n", k, u[k]);
+    printf("u[%d] = %.5E\n", k, u[k]);
 #endif
 
     pp = 0.0;
@@ -685,59 +685,59 @@ static double jnx(double n, double x)
     bkl = NPY_INFINITY;
 
     for (k = 0; k <= 3; k++) {
-	tk = 2 * k;
-	tkp1 = tk + 1;
-	zp = 1.0;
-	ak = 0.0;
-	bk = 0.0;
-	for (s = 0; s <= tk; s++) {
-	    if (doa) {
-		if ((s & 3) > 1)
-		    sign = nflg;
-		else
-		    sign = 1;
-		ak += sign * mu[s] * zp * u[tk - s];
-	    }
+    tk = 2 * k;
+    tkp1 = tk + 1;
+    zp = 1.0;
+    ak = 0.0;
+    bk = 0.0;
+    for (s = 0; s <= tk; s++) {
+        if (doa) {
+        if ((s & 3) > 1)
+            sign = nflg;
+        else
+            sign = 1;
+        ak += sign * mu[s] * zp * u[tk - s];
+        }
 
-	    if (dob) {
-		m = tkp1 - s;
-		if (((m + 1) & 3) > 1)
-		    sign = nflg;
-		else
-		    sign = 1;
-		bk += sign * lambda[s] * zp * u[m];
-	    }
-	    zp *= z32i;
-	}
+        if (dob) {
+        m = tkp1 - s;
+        if (((m + 1) & 3) > 1)
+            sign = nflg;
+        else
+            sign = 1;
+        bk += sign * lambda[s] * zp * u[m];
+        }
+        zp *= z32i;
+    }
 
-	if (doa) {
-	    ak *= np;
-	    t = fabs(ak);
-	    if (t < akl) {
-		akl = t;
-		pp += ak;
-	    }
-	    else
-		doa = 0;
-	}
+    if (doa) {
+        ak *= np;
+        t = fabs(ak);
+        if (t < akl) {
+        akl = t;
+        pp += ak;
+        }
+        else
+        doa = 0;
+    }
 
-	if (dob) {
-	    bk += lambda[tkp1] * zp * u[0];
-	    bk *= -np / sqz;
-	    t = fabs(bk);
-	    if (t < bkl) {
-		bkl = t;
-		qq += bk;
-	    }
-	    else
-		dob = 0;
-	}
+    if (dob) {
+        bk += lambda[tkp1] * zp * u[0];
+        bk *= -np / sqz;
+        t = fabs(bk);
+        if (t < bkl) {
+        bkl = t;
+        qq += bk;
+        }
+        else
+        dob = 0;
+    }
 #if CEPHES_DEBUG
-	printf("a[%d] %.5E, b[%d] %.5E\n", k, ak, k, bk);
+    printf("a[%d] %.5E, b[%d] %.5E\n", k, ak, k, bk);
 #endif
-	if (np < MACHEP)
-	    break;
-	np /= n * n;
+    if (np < MACHEP)
+        break;
+    np /= n * n;
     }
 
     /* normalizing factor ( 4*zeta/(1 - z**2) )**1/4    */
@@ -793,7 +793,7 @@ static double jnt(double n, double x)
 {
     double z, zz, z3;
     double cbn, n23, cbtwo;
-    double ai, aip, bi, bip;	/* Airy functions */
+    double ai, aip, bi, bip;    /* Airy functions */
     double nk, fk, gk, pp, qq;
     double F[5], G[4];
     int k;
@@ -820,9 +820,9 @@ static double jnt(double n, double x)
     G[3] = polevl(z3, PG3, 2) * zz;
 #if CEPHES_DEBUG
     for (k = 0; k <= 4; k++)
-	printf("F[%d] = %.5E\n", k, F[k]);
+    printf("F[%d] = %.5E\n", k, F[k]);
     for (k = 0; k <= 3; k++)
-	printf("G[%d] = %.5E\n", k, G[k]);
+    printf("G[%d] = %.5E\n", k, G[k]);
 #endif
     pp = 0.0;
     qq = 0.0;
@@ -830,16 +830,16 @@ static double jnt(double n, double x)
     n23 = cbrt(n * n);
 
     for (k = 0; k <= 4; k++) {
-	fk = F[k] * nk;
-	pp += fk;
-	if (k != 4) {
-	    gk = G[k] * nk;
-	    qq += gk;
-	}
+    fk = F[k] * nk;
+    pp += fk;
+    if (k != 4) {
+        gk = G[k] * nk;
+        qq += gk;
+    }
 #if CEPHES_DEBUG
-	printf("fk[%d] %.5E, gk[%d] %.5E\n", k, fk, k, gk);
+    printf("fk[%d] %.5E, gk[%d] %.5E\n", k, fk, k, gk);
 #endif
-	nk /= n23;
+    nk /= n23;
     }
 
     fk = cbtwo * ai * pp / cbn + cbrt(4.0) * aip * qq / n;

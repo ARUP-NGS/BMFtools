@@ -30,4 +30,4 @@ void init_lh3sort_key() {
 }
 
 void apply_parallel_lh3sort(char **filenames, int nfilenames,
-										  FILE **ofps, int nthreads);
+                                          FILE **ofps, int nthreads);

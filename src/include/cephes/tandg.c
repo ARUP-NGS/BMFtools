@@ -36,9 +36,9 @@
  *                    x > 1.0e14 (IEEE)
  * tandg singularity  x = 180 k  +  90     NPY_INFINITY
  */
-/*							cotdg.c
+/*                            cotdg.c
  *
- *	Circular cotangent of argument in degrees
+ *    Circular cotangent of argument in degrees
  *
  *
  *
@@ -124,45 +124,45 @@ static double tancot(double xx, int cotflg)
 
     /* make argument positive but save the sign */
     if (xx < 0) {
-	x = -xx;
-	sign = -1;
+    x = -xx;
+    sign = -1;
     }
     else {
-	x = xx;
-	sign = 1;
+    x = xx;
+    sign = 1;
     }
 
     if (x > lossth) {
-	mtherr("tandg", TLOSS);
-	return 0.0;
+    mtherr("tandg", TLOSS);
+    return 0.0;
     }
 
     /* modulo 180 */
     x = x - 180.0 * floor(x / 180.0);
     if (cotflg) {
-	if (x <= 90.0) {
-	    x = 90.0 - x;
-	}
-	else {
-	    x = x - 90.0;
-	    sign *= -1;
-	}
+    if (x <= 90.0) {
+        x = 90.0 - x;
     }
     else {
-	if (x > 90.0) {
-	    x = 180.0 - x;
-	    sign *= -1;
-	}
+        x = x - 90.0;
+        sign *= -1;
+    }
+    }
+    else {
+    if (x > 90.0) {
+        x = 180.0 - x;
+        sign *= -1;
+    }
     }
     if (x == 0.0) {
-	return 0.0;
+    return 0.0;
     }
     else if (x == 45.0) {
-	return sign * 1.0;
+    return sign * 1.0;
     }
     else if (x == 90.0) {
-	mtherr((cotflg ? "cotdg" : "tandg"), SING);
-	return NPY_INFINITY;
+    mtherr((cotflg ? "cotdg" : "tandg"), SING);
+    return NPY_INFINITY;
     }
     /* x is now transformed into [0, 90) */
     return sign * tan(x * PI180);

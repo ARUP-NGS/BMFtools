@@ -40,21 +40,21 @@ double *A, *T;
     np1 = n + 1;
     pA0 = A;
     pT0 = T;
-    for (i = 0; i < n - 1; i++) {	/* row index */
-	pAc = pA0;		/* next diagonal element of input */
-	pAr = pAc + n;		/* next row down underneath the diagonal element */
-	pTc = pT0;		/* next diagonal element of the output */
-	pTr = pTc + n;		/* next row underneath */
-	*pTc++ = *pAc++;	/* copy the diagonal element */
-	for (j = i + 1; j < n; j++) {	/* column index */
-	    x = *pAr;
-	    *pTr = *pAc++;
-	    *pTc++ = x;
-	    pAr += n;
-	    pTr += n;
-	}
-	pA0 += np1;		/* &A[n*i+i] for next i */
-	pT0 += np1;		/* &T[n*i+i] for next i */
+    for (i = 0; i < n - 1; i++) {    /* row index */
+    pAc = pA0;        /* next diagonal element of input */
+    pAr = pAc + n;        /* next row down underneath the diagonal element */
+    pTc = pT0;        /* next diagonal element of the output */
+    pTr = pTc + n;        /* next row underneath */
+    *pTc++ = *pAc++;    /* copy the diagonal element */
+    for (j = i + 1; j < n; j++) {    /* column index */
+        x = *pAr;
+        *pTr = *pAc++;
+        *pTc++ = x;
+        pAr += n;
+        pTr += n;
     }
-    *pT0 = *pA0;		/* copy the diagonal element */
+    pA0 += np1;        /* &A[n*i+i] for next i */
+    pT0 += np1;        /* &T[n*i+i] for next i */
+    }
+    *pT0 = *pA0;        /* copy the diagonal element */
 }

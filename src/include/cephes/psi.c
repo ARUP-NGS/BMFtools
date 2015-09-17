@@ -116,62 +116,62 @@ double x;
     nz = 0.0;
 
     if (x <= 0.0) {
-	negative = 1;
-	q = x;
-	p = floor(q);
-	if (p == q) {
-	    mtherr("psi", SING);
-	    return (NPY_INFINITY);
-	}
-	/* Remove the zeros of tan(NPY_PI x)
-	 * by subtracting the nearest integer from x
-	 */
-	nz = q - p;
-	if (nz != 0.5) {
-	    if (nz > 0.5) {
-		p += 1.0;
-		nz = q - p;
-	    }
-	    nz = NPY_PI / tan(NPY_PI * nz);
-	}
-	else {
-	    nz = 0.0;
-	}
-	x = 1.0 - x;
+    negative = 1;
+    q = x;
+    p = floor(q);
+    if (p == q) {
+        mtherr("psi", SING);
+        return (NPY_INFINITY);
+    }
+    /* Remove the zeros of tan(NPY_PI x)
+     * by subtracting the nearest integer from x
+     */
+    nz = q - p;
+    if (nz != 0.5) {
+        if (nz > 0.5) {
+        p += 1.0;
+        nz = q - p;
+        }
+        nz = NPY_PI / tan(NPY_PI * nz);
+    }
+    else {
+        nz = 0.0;
+    }
+    x = 1.0 - x;
     }
 
     /* check for positive integer up to 10 */
     if ((x <= 10.0) && (x == floor(x))) {
-	y = 0.0;
-	n = x;
-	for (i = 1; i < n; i++) {
-	    w = i;
-	    y += 1.0 / w;
-	}
-	y -= NPY_EULER;
-	goto done;
+    y = 0.0;
+    n = x;
+    for (i = 1; i < n; i++) {
+        w = i;
+        y += 1.0 / w;
+    }
+    y -= NPY_EULER;
+    goto done;
     }
 
     s = x;
     w = 0.0;
     while (s < 10.0) {
-	w += 1.0 / s;
-	s += 1.0;
+    w += 1.0 / s;
+    s += 1.0;
     }
 
     if (s < 1.0e17) {
-	z = 1.0 / (s * s);
-	y = z * polevl(z, A, 6);
+    z = 1.0 / (s * s);
+    y = z * polevl(z, A, 6);
     }
     else
-	y = 0.0;
+    y = 0.0;
 
     y = log(s) - (0.5 / s) - y - w;
 
   done:
 
     if (negative) {
-	y -= nz;
+    y -= nz;
     }
 
     return (y);

@@ -17,7 +17,7 @@ typedef struct mssi_settings {
     int notification_interval; // How many sets of records do you want to process between progress reports?
     int blen; // Length of sequence to trim off from start to finish.
     int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char ***rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+    char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
     char *rescaler_path; // Path to rescaler for
 } mssi_settings_t;
 
@@ -117,7 +117,7 @@ inline char *trim_ext(char *fname) {
  * Warning: Must be freed!
  */
 inline char *make_default_outfname(char *fname, const char *suffix) {
-	char buf[200];
+    char buf[200];
     char *prefix = trim_ext(fname);
     strcpy(buf, prefix);
     strcat(buf, suffix);
@@ -127,5 +127,5 @@ inline char *make_default_outfname(char *fname, const char *suffix) {
 }
 
 inline char *mark_crms_outfname(char *fname) {
-	return make_default_outfname(fname, crms_suffix);
+    return make_default_outfname(fname, crms_suffix);
 }

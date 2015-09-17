@@ -132,16 +132,16 @@ double exp2(double x)
     short n;
 
     if (cephes_isnan(x))
-	return (x);
+    return (x);
     if (x > MAXL2) {
-	return (NPY_INFINITY);
+    return (NPY_INFINITY);
     }
 
     if (x < MINL2) {
-	return (0.0);
+    return (0.0);
     }
 
-    xx = x;			/* save x */
+    xx = x;            /* save x */
     /* separate into integer and fractional parts */
     px = floor(x + 0.5);
     n = px;

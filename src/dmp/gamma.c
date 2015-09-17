@@ -1,6 +1,6 @@
-/*							gamma.c
+/*                            gamma.c
  *
- *	Gamma function
+ *    Gamma function
  *
  *
  *
@@ -41,9 +41,9 @@
  * owing to error amplification by the exponential function.
  *
  */
-/*							lgam()
+/*                            lgam()
  *
- *	Natural logarithm of gamma function
+ *    Natural logarithm of gamma function
  *
  *
  *
@@ -95,8 +95,8 @@
  *
  */
 
-/*							gamma.c	*/
-/*	gamma function	*/
+/*                            gamma.c    */
+/*    gamma function    */
 
 /*
 Cephes Math Library Release 2.2:  July, 1992
@@ -293,14 +293,14 @@ w = 1.0/x;
 w = 1.0 + w * polevl( w, STIR, 4 );
 y = exp(x);
 if( x > MAXSTIR )
-	{ /* Avoid overflow in pow() */
-	v = pow( x, 0.5 * x - 0.25 );
-	y = v * (v / y);
-	}
+    { /* Avoid overflow in pow() */
+    v = pow( x, 0.5 * x - 0.25 );
+    y = v * (v / y);
+    }
 else
-	{
-	y = pow( x, x - 0.5 ) / y;
-	}
+    {
+    y = pow( x, x - 0.5 ) / y;
+    }
 y = SQTPI * y * w;
 return( y );
 }
@@ -316,91 +316,91 @@ int i;
 sgngam = 1;
 #ifdef NANS
 if( isnan(x) )
-	return(x);
+    return(x);
 #endif
 #ifdef INFINITIES
 #ifdef NANS
 if( x == INFINITY )
-	return(x);
+    return(x);
 if( x == -INFINITY )
-	return(NAN);
+    return(NAN);
 #else
 if( !isfinite(x) )
-	return(x);
+    return(x);
 #endif
 #endif
 q = fabs(x);
 
 if( q > 33.0 )
-	{
-	if( x < 0.0 )
-		{
-		p = floor(q);
-		if( p == q )
-			{
+    {
+    if( x < 0.0 )
+        {
+        p = floor(q);
+        if( p == q )
+            {
 #ifdef NANS
 gamnan:
-			mtherr( "gamma", DOMAIN );
-			return (NAN);
+            mtherr( "gamma", DOMAIN );
+            return (NAN);
 #else
-			goto goverf;
+            goto goverf;
 #endif
-			}
-		i = p;
-		if( (i & 1) == 0 )
-			sgngam = -1;
-		z = q - p;
-		if( z > 0.5 )
-			{
-			p += 1.0;
-			z = q - p;
-			}
-		z = q * sin( PI * z );
-		if( z == 0.0 )
-			{
+            }
+        i = p;
+        if( (i & 1) == 0 )
+            sgngam = -1;
+        z = q - p;
+        if( z > 0.5 )
+            {
+            p += 1.0;
+            z = q - p;
+            }
+        z = q * sin( PI * z );
+        if( z == 0.0 )
+            {
 #ifdef INFINITIES
-			return( sgngam * INFINITY);
+            return( sgngam * INFINITY);
 #else
 goverf:
-			mtherr( "gamma", OVERFLOW );
-			return( sgngam * MAXNUM);
+            mtherr( "gamma", OVERFLOW );
+            return( sgngam * MAXNUM);
 #endif
-			}
-		z = fabs(z);
-		z = PI/(z * stirf(q) );
-		}
-	else
-		{
-		z = stirf(x);
-		}
-	return( sgngam * z );
-	}
+            }
+        z = fabs(z);
+        z = PI/(z * stirf(q) );
+        }
+    else
+        {
+        z = stirf(x);
+        }
+    return( sgngam * z );
+    }
 
 z = 1.0;
 while( x >= 3.0 )
-	{
-	x -= 1.0;
-	z *= x;
-	}
+    {
+    x -= 1.0;
+    z *= x;
+    }
 
 while( x < 0.0 )
-	{
-	if( x > -1.E-9 )
-		goto small;
-	z /= x;
-	x += 1.0;
-	}
+    {
+    if( x > -1.E-9 )
+        goto small;
+    z /= x;
+    x += 1.0;
+    }
 
 while( x < 2.0 )
-	{
-	if( x < 1.e-9 )
-		goto small;
-	z /= x;
-	x += 1.0;
-	}
+    {
+    if( x < 1.e-9 )
+        goto small;
+    z /= x;
+    x += 1.0;
+    }
 
 if( x == 2.0 )
-	return(z);
+    return(z);
 
 x -= 2.0;
 p = polevl( x, P, 6 );
@@ -409,20 +409,20 @@ return( z * p / q );
 
 small:
 if( x == 0.0 )
-	{
+    {
 #ifdef INFINITIES
 #ifdef NANS
-	  goto gamnan;
+      goto gamnan;
 #else
-	  return( INFINITY );
+      return( INFINITY );
 #endif
 #else
-	mtherr( "gamma", SING );
-	return( MAXNUM );
+    mtherr( "gamma", SING );
+    return( MAXNUM );
 #endif
-	}
+    }
 else
-	return( z/((1.0 + 0.5772156649015329 * x) * x) );
+    return( z/((1.0 + 0.5772156649015329 * x) * x) );
 }
 
 
@@ -569,103 +569,103 @@ int i;
 sgngam = 1;
 #ifdef NANS
 if( isnan(x) )
-	return(x);
+    return(x);
 #endif
 
 #ifdef INFINITIES
 if( !isfinite(x) )
-	return(INFINITY);
+    return(INFINITY);
 #endif
 
 if( x < -34.0 )
-	{
-	q = -x;
-	w = lgam(q); /* note this modifies sgngam! */
-	p = floor(q);
-	if( p == q )
-		{
+    {
+    q = -x;
+    w = lgam(q); /* note this modifies sgngam! */
+    p = floor(q);
+    if( p == q )
+        {
 lgsing:
 #ifdef INFINITIES
-		mtherr( "lgam", SING );
-		return (INFINITY);
+        mtherr( "lgam", SING );
+        return (INFINITY);
 #else
-		goto loverf;
+        goto loverf;
 #endif
-		}
-	i = p;
-	if( (i & 1) == 0 )
-		sgngam = -1;
-	else
-		sgngam = 1;
-	z = q - p;
-	if( z > 0.5 )
-		{
-		p += 1.0;
-		z = p - q;
-		}
-	z = q * sin( PI * z );
-	if( z == 0.0 )
-		goto lgsing;
-/*	z = log(PI) - log( z ) - w;*/
-	z = LOGPI - log( z ) - w;
-	return( z );
-	}
+        }
+    i = p;
+    if( (i & 1) == 0 )
+        sgngam = -1;
+    else
+        sgngam = 1;
+    z = q - p;
+    if( z > 0.5 )
+        {
+        p += 1.0;
+        z = p - q;
+        }
+    z = q * sin( PI * z );
+    if( z == 0.0 )
+        goto lgsing;
+/*    z = log(PI) - log( z ) - w;*/
+    z = LOGPI - log( z ) - w;
+    return( z );
+    }
 
 if( x < 13.0 )
-	{
-	z = 1.0;
-	p = 0.0;
-	u = x;
-	while( u >= 3.0 )
-		{
-		p -= 1.0;
-		u = x + p;
-		z *= u;
-		}
-	while( u < 2.0 )
-		{
-		if( u == 0.0 )
-			goto lgsing;
-		z /= u;
-		p += 1.0;
-		u = x + p;
-		}
-	if( z < 0.0 )
-		{
-		sgngam = -1;
-		z = -z;
-		}
-	else
-		sgngam = 1;
-	if( u == 2.0 )
-		return( log(z) );
-	p -= 2.0;
-	x = x + p;
-	p = x * polevl( x, B, 5 ) / p1evl( x, C, 6);
-	return( log(z) + p );
-	}
+    {
+    z = 1.0;
+    p = 0.0;
+    u = x;
+    while( u >= 3.0 )
+        {
+        p -= 1.0;
+        u = x + p;
+        z *= u;
+        }
+    while( u < 2.0 )
+        {
+        if( u == 0.0 )
+            goto lgsing;
+        z /= u;
+        p += 1.0;
+        u = x + p;
+        }
+    if( z < 0.0 )
+        {
+        sgngam = -1;
+        z = -z;
+        }
+    else
+        sgngam = 1;
+    if( u == 2.0 )
+        return( log(z) );
+    p -= 2.0;
+    x = x + p;
+    p = x * polevl( x, B, 5 ) / p1evl( x, C, 6);
+    return( log(z) + p );
+    }
 
 if( x > MAXLGM )
-	{
+    {
 #ifdef INFINITIES
-	return( sgngam * INFINITY );
+    return( sgngam * INFINITY );
 #else
 loverf:
-	mtherr( "lgam", OVERFLOW );
-	return( sgngam * MAXNUM );
+    mtherr( "lgam", OVERFLOW );
+    return( sgngam * MAXNUM );
 #endif
-	}
+    }
 
 q = ( x - 0.5 ) * log(x) - x + LS2PI;
 if( x > 1.0e8 )
-	return( q );
+    return( q );
 
 p = 1.0/(x*x);
 if( x >= 1000.0 )
-	q += ((   7.9365079365079365079365e-4 * p
-		- 2.7777777777777777777778e-3) *p
-		+ 0.0833333333333333333333) / x;
+    q += ((   7.9365079365079365079365e-4 * p
+        - 2.7777777777777777777778e-3) *p
+        + 0.0833333333333333333333) / x;
 else
-	q += polevl( p, A, 4 ) / x;
+    q += polevl( p, A, 4 ) / x;
 return( q );
 }

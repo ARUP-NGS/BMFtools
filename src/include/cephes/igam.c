@@ -35,9 +35,9 @@
  *    IEEE      0,30       200000       3.6e-14     2.9e-15
  *    IEEE      0,100      300000       9.9e-14     1.5e-14
  */
-/*							igamc()
+/*                            igamc()
  *
- *	Complemented incomplete Gamma integral
+ *    Complemented incomplete Gamma integral
  *
  *
  *
@@ -96,17 +96,17 @@ double a, x;
     double pk, pkm1, pkm2, qk, qkm1, qkm2;
 
     if ((x < 0) || (a <= 0)) {
-	mtherr("gammaincc", DOMAIN);
-	return (NPY_NAN);
+    mtherr("gammaincc", DOMAIN);
+    return (NPY_NAN);
     }
 
     if ((x < 1.0) || (x < a))
-	return (1.0 - igam(a, x));
+    return (1.0 - igam(a, x));
 
     ax = a * log(x) - x - lgam(a);
     if (ax < -MAXLOG) {
-	mtherr("igamc", UNDERFLOW);
-	return (0.0);
+    mtherr("igamc", UNDERFLOW);
+    return (0.0);
     }
     ax = exp(ax);
 
@@ -121,29 +121,29 @@ double a, x;
     ans = pkm1 / qkm1;
 
     do {
-	c += 1.0;
-	y += 1.0;
-	z += 2.0;
-	yc = y * c;
-	pk = pkm1 * z - pkm2 * yc;
-	qk = qkm1 * z - qkm2 * yc;
-	if (qk != 0) {
-	    r = pk / qk;
-	    t = fabs((ans - r) / r);
-	    ans = r;
-	}
-	else
-	    t = 1.0;
-	pkm2 = pkm1;
-	pkm1 = pk;
-	qkm2 = qkm1;
-	qkm1 = qk;
-	if (fabs(pk) > big) {
-	    pkm2 *= biginv;
-	    pkm1 *= biginv;
-	    qkm2 *= biginv;
-	    qkm1 *= biginv;
-	}
+    c += 1.0;
+    y += 1.0;
+    z += 2.0;
+    yc = y * c;
+    pk = pkm1 * z - pkm2 * yc;
+    qk = qkm1 * z - qkm2 * yc;
+    if (qk != 0) {
+        r = pk / qk;
+        t = fabs((ans - r) / r);
+        ans = r;
+    }
+    else
+        t = 1.0;
+    pkm2 = pkm1;
+    pkm1 = pk;
+    qkm2 = qkm1;
+    qkm1 = qk;
+    if (fabs(pk) > big) {
+        pkm2 *= biginv;
+        pkm1 *= biginv;
+        qkm2 *= biginv;
+        qkm1 *= biginv;
+    }
     }
     while (t > MACHEP);
 
@@ -169,21 +169,21 @@ double a, x;
 
     /* Check zero integration limit first */
     if (x == 0)
-	return (0.0);
+    return (0.0);
 
     if ((x < 0) || (a <= 0)) {
-	mtherr("gammainc", DOMAIN);
-	return (NPY_NAN);
+    mtherr("gammainc", DOMAIN);
+    return (NPY_NAN);
     }
 
     if ((x > 1.0) && (x > a))
-	return (1.0 - igamc(a, x));
+    return (1.0 - igamc(a, x));
 
     /* Compute  x**a * exp(-x) / Gamma(a)  */
     ax = a * log(x) - x - lgam(a);
     if (ax < -MAXLOG) {
-	mtherr("igam", UNDERFLOW);
-	return (0.0);
+    mtherr("igam", UNDERFLOW);
+    return (0.0);
     }
     ax = exp(ax);
 
@@ -193,9 +193,9 @@ double a, x;
     ans = 1.0;
 
     do {
-	r += 1.0;
-	c *= x / r;
-	ans += c;
+    r += 1.0;
+    c *= x / r;
+    ans += c;
     }
     while (c / ans > MACHEP);
 

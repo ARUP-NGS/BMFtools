@@ -235,8 +235,8 @@ void sincos(double x, double *s, double *c, int flg)
      */
     xsign = 1;
     if (x < 0.0) {
-	xsign = -1;
-	x = -x;
+    xsign = -1;
+    x = -x;
     }
 
 
@@ -249,53 +249,53 @@ void sincos(double x, double *s, double *c, int flg)
      * but this is omitted to gain speed.
      */
     ix = x + 0.5;
-    z = x - ix;			/* the residual */
+    z = x - ix;            /* the residual */
 
     /* Look up the sine and cosine of the integer.
      */
     if (ix <= 180) {
-	ssign = 1;
-	csign = 1;
+    ssign = 1;
+    csign = 1;
     }
     else {
-	ssign = -1;
-	csign = -1;
-	ix -= 180;
+    ssign = -1;
+    csign = -1;
+    ix -= 180;
     }
 
     if (ix > 90) {
-	csign = -csign;
-	ix = 180 - ix;
+    csign = -csign;
+    ix = 180 - ix;
     }
 
     sx = sintbl[ix];
     if (ssign < 0)
-	sx = -sx;
+    sx = -sx;
     cx = sintbl[90 - ix];
     if (csign < 0)
-	cx = -cx;
+    cx = -cx;
 
     /* If the flag argument is set, then just return
      * the tabulated values for arg to the nearest whole degree.
      */
     if (flg) {
 #if LINTERP
-	y = sx + 1.74531263774940077459e-2 * z * cx;
-	cx -= 1.74531263774940077459e-2 * z * sx;
-	sx = y;
+    y = sx + 1.74531263774940077459e-2 * z * cx;
+    cx -= 1.74531263774940077459e-2 * z * sx;
+    sx = y;
 #endif
-	if (xsign < 0)
-	    sx = -sx;
-	*s = sx;		/* sine */
-	*c = cx;		/* cosine */
-	return;
+    if (xsign < 0)
+        sx = -sx;
+    *s = sx;        /* sine */
+    *c = cx;        /* cosine */
+    return;
     }
 
 
     if (ssign < 0)
-	sx = -sx;
+    sx = -sx;
     if (csign < 0)
-	cx = -cx;
+    cx = -cx;
 
     /* Find sine and cosine
      * of the residual angle between -0.5 and +0.5 degree.
@@ -321,18 +321,18 @@ void sincos(double x, double *s, double *c, int flg)
     sz = (-8.86092781698004819918e-7 * y + 1.74532925198378577601e-2) * z;
 
     cz = 1.0 - (-3.86631403698859047896e-9 * y
-		+ 1.52308709893047593702e-4) * y;
+        + 1.52308709893047593702e-4) * y;
 #endif
 
 
 #if ACC17
     sz = ((1.34959795251974073996e-11 * y
-	   - 8.86096155697856783296e-7) * y
-	  + 1.74532925199432957214e-2) * z;
+       - 8.86096155697856783296e-7) * y
+      + 1.74532925199432957214e-2) * z;
 
     cz = 1.0 - ((3.92582397764340914444e-14 * y
-		 - 3.86632385155548605680e-9) * y
-		+ 1.52308709893354299569e-4) * y;
+         - 3.86632385155548605680e-9) * y
+        + 1.52308709893354299569e-4) * y;
 #endif
 
 
@@ -341,8 +341,8 @@ void sincos(double x, double *s, double *c, int flg)
      */
     y = sx * cz + cx * sz;
     if (xsign < 0)
-	y = -y;
-    *s = y;			/* sine */
+    y = -y;
+    *s = y;            /* sine */
 
-    *c = cx * cz - sx * sz;	/* cosine */
+    *c = cx * cz - sx * sz;    /* cosine */
 }

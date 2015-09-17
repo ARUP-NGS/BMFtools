@@ -150,43 +150,43 @@ double x;
         return exp(-lgam(x));
     }
     if (x < -34.034) {
-	w = -x;
-	z = sin(NPY_PI * w);
-	if (z == 0.0)
-	    return (0.0);
-	if (z < 0.0) {
-	    sign = 1;
-	    z = -z;
-	}
-	else
-	    sign = -1;
+    w = -x;
+    z = sin(NPY_PI * w);
+    if (z == 0.0)
+        return (0.0);
+    if (z < 0.0) {
+        sign = 1;
+        z = -z;
+    }
+    else
+        sign = -1;
 
-	y = log(w * z) - log(NPY_PI) + lgam(w);
-	if (y < -MAXLOG) {
-	    mtherr(name, UNDERFLOW);
-	    return (sign * 0.0);
-	}
-	if (y > MAXLOG) {
-	    mtherr(name, OVERFLOW);
-	    return (sign * NPY_INFINITY);
-	}
-	return (sign * exp(y));
+    y = log(w * z) - log(NPY_PI) + lgam(w);
+    if (y < -MAXLOG) {
+        mtherr(name, UNDERFLOW);
+        return (sign * 0.0);
+    }
+    if (y > MAXLOG) {
+        mtherr(name, OVERFLOW);
+        return (sign * NPY_INFINITY);
+    }
+    return (sign * exp(y));
     }
     z = 1.0;
     w = x;
 
-    while (w > 1.0) {		/* Downward recurrence */
-	w -= 1.0;
-	z *= w;
+    while (w > 1.0) {        /* Downward recurrence */
+    w -= 1.0;
+    z *= w;
     }
-    while (w < 0.0) {		/* Upward recurrence */
-	z /= w;
-	w += 1.0;
+    while (w < 0.0) {        /* Upward recurrence */
+    z /= w;
+    w += 1.0;
     }
-    if (w == 0.0)		/* Nonpositive integer */
-	return (0.0);
-    if (w == 1.0)		/* Other integer */
-	return (1.0 / z);
+    if (w == 0.0)        /* Nonpositive integer */
+    return (0.0);
+    if (w == 1.0)        /* Other integer */
+    return (1.0 / z);
 
     y = w * (1.0 + chbevl(4.0 * w - 2.0, R, 16)) / z;
     return (y);

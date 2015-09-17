@@ -75,24 +75,24 @@ double ellie(double phi, double m)
     if (cephes_isinf(m))
         return -m;
     if (m == 0.0)
-	return (phi);
+    return (phi);
     lphi = phi;
     npio2 = floor(lphi / NPY_PI_2);
     if (fmod(fabs(npio2), 2.0) == 1.0)
-	npio2 += 1;
+    npio2 += 1;
     lphi = lphi - npio2 * NPY_PI_2;
     if (lphi < 0.0) {
-	lphi = -lphi;
-	sign = -1;
+    lphi = -lphi;
+    sign = -1;
     }
     else {
-	sign = 1;
+    sign = 1;
     }
     a = 1.0 - m;
     E = ellpe(m);
     if (a == 0.0) {
-	temp = sin(lphi);
-	goto done;
+    temp = sin(lphi);
+    goto done;
     }
     if (a > 1.0) {
         temp = ellie_neg_m(lphi, m);
@@ -117,14 +117,14 @@ double ellie(double phi, double m)
     /* Thanks to Brian Fitzgerald <fitzgb@mml0.meche.rpi.edu>
      * for pointing out an instability near odd multiples of pi/2.  */
     if (fabs(t) > 10.0) {
-	/* Transform the amplitude */
-	e = 1.0 / (b * t);
-	/* ... but avoid multiple recursions.  */
-	if (fabs(e) < 10.0) {
-	    e = atan(e);
-	    temp = E + m * sin(lphi) * sin(e) - ellie(e, m);
-	    goto done;
-	}
+    /* Transform the amplitude */
+    e = 1.0 / (b * t);
+    /* ... but avoid multiple recursions.  */
+    if (fabs(e) < 10.0) {
+        e = atan(e);
+        temp = E + m * sin(lphi) * sin(e) - ellie(e, m);
+        goto done;
+    }
     }
     c = sqrt(m);
     a = 1.0;
@@ -133,8 +133,8 @@ double ellie(double phi, double m)
     mod = 0;
 
     while (fabs(c / a) > MACHEP) {
-	temp = b / a;
-	lphi = lphi + atan(t * temp) + mod * NPY_PI;
+    temp = b / a;
+    lphi = lphi + atan(t * temp) + mod * NPY_PI;
         denom = 1 - temp * t * t;
         if (fabs(denom) > 10*MACHEP) {
             t = t * (1.0 + temp) / denom;
@@ -144,12 +144,12 @@ double ellie(double phi, double m)
             t = tan(lphi);
             mod = (int)floor((lphi - atan(t))/NPY_PI);
         }
-	c = (a - b) / 2.0;
-	temp = sqrt(a * b);
-	a = (a + b) / 2.0;
-	b = temp;
-	d += d;
-	e += c * sin(lphi);
+    c = (a - b) / 2.0;
+    temp = sqrt(a * b);
+    a = (a + b) / 2.0;
+    b = temp;
+    d += d;
+    e += c * sin(lphi);
     }
 
     temp = E / ellpk(1.0 - m);
@@ -159,7 +159,7 @@ double ellie(double phi, double m)
   done:
 
     if (sign < 0)
-	temp = -temp;
+    temp = -temp;
     temp += npio2 * E;
     return (temp);
 }

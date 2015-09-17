@@ -18,7 +18,7 @@ int ipow(int base, int exp);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int get_binner(char binner[], int length);
 void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
-				    mss_settings_t settings, mark_splitter_t splitter);
+                    mss_settings_t settings, mark_splitter_t splitter);
 sort_overlord_t build_mp_sorter(mark_splitter_t* splitter_ptr, mss_settings_t *settings_ptr);
 void free_mp_sorter(sort_overlord_t var);
 char test_hp(kseq_t *seq, int threshold);
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
     splitmark_core(seq1, seq2, seq_index,
-    			   settings, splitter);
+                   settings, splitter);
     //apply_lh3_sorts(&splitter, &settings);
     /*
     sort_overlord_t dispatcher = build_mp_sorter(splitter_ptr, settings_ptr);

@@ -4,8 +4,8 @@
  * This is broken.
 inline void comma_i32toa(int32_t value, char *buffer)
 {
-	*buffer++ = ',';
-	i32toa_branchlut(value, buffer);
+    *buffer++ = ',';
+    i32toa_branchlut(value, buffer);
 }
 */
 /*

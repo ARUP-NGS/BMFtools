@@ -70,11 +70,11 @@ cmplx root[];
     final = 0;
     n = m;
     if (n <= 0)
-	return (1);
+    return (1);
     if (n > 36)
-	return (2);
+    return (2);
     if (xcof[m] == 0.0)
-	return (4);
+    return (4);
 
     n1 = n;
     n2 = n;
@@ -83,7 +83,7 @@ cmplx root[];
     q = &xcof[0];
     p = &cof[n];
     for (j = 0; j <= nsav; j++)
-	*p-- = *q++;		/*      cof[ n-j ] = xcof[j]; */
+    *p-- = *q++;        /*      cof[ n-j ] = xcof[j]; */
 
   nxtrut:
     x0.r = 0.00500101;
@@ -104,53 +104,53 @@ cmplx root[];
     iter = 0;
 
     while (iter < 500) {
-	u.r = cof[n];
-	if (u.r == 0.0) {	/* this root is zero */
-	    x.r = 0;
-	    n1 -= 1;
-	    n2 -= 1;
-	    goto zerrut;
-	}
-	u.i = 0;
-	ud.r = 0;
-	ud.i = 0;
-	t.r = 1.0;
-	t.i = 0;
-	p = &cof[n - 1];
-	for (i = 0; i < n; i++) {
-	    t1.r = x.r * t.r - x.i * t.i;
-	    t1.i = x.r * t.i + x.i * t.r;
-	    cofj = *p--;	/* evaluate polynomial */
-	    u.r += cofj * t1.r;
-	    u.i += cofj * t1.i;
-	    cofj = cofj * (i + 1);	/* derivative */
-	    ud.r += cofj * t.r;
-	    ud.i -= cofj * t.i;
-	    t.r = t1.r;
-	    t.i = t1.i;
-	}
+    u.r = cof[n];
+    if (u.r == 0.0) {    /* this root is zero */
+        x.r = 0;
+        n1 -= 1;
+        n2 -= 1;
+        goto zerrut;
+    }
+    u.i = 0;
+    ud.r = 0;
+    ud.i = 0;
+    t.r = 1.0;
+    t.i = 0;
+    p = &cof[n - 1];
+    for (i = 0; i < n; i++) {
+        t1.r = x.r * t.r - x.i * t.i;
+        t1.i = x.r * t.i + x.i * t.r;
+        cofj = *p--;    /* evaluate polynomial */
+        u.r += cofj * t1.r;
+        u.i += cofj * t1.i;
+        cofj = cofj * (i + 1);    /* derivative */
+        ud.r += cofj * t.r;
+        ud.i -= cofj * t.i;
+        t.r = t1.r;
+        t.i = t1.i;
+    }
 
-	mag = ud.r * ud.r + ud.i * ud.i;
-	if (mag == 0.0) {
-	    if (!final)
-		goto tryagn;
-	    x.r = xsav.r;
-	    x.i = xsav.i;
-	    goto findon;
-	}
-	dx.r = (u.i * ud.i - u.r * ud.r) / mag;
-	x.r += dx.r;
-	dx.i = -(u.r * ud.i + u.i * ud.r) / mag;
-	x.i += dx.i;
-	if ((fabs(dx.i) + fabs(dx.r)) < 1.0e-6)
-	    goto lupdon;
-	iter += 1;
-    }				/* while iter < 500 */
+    mag = ud.r * ud.r + ud.i * ud.i;
+    if (mag == 0.0) {
+        if (!final)
+        goto tryagn;
+        x.r = xsav.r;
+        x.i = xsav.i;
+        goto findon;
+    }
+    dx.r = (u.i * ud.i - u.r * ud.r) / mag;
+    x.r += dx.r;
+    dx.i = -(u.r * ud.i + u.i * ud.r) / mag;
+    x.i += dx.i;
+    if ((fabs(dx.i) + fabs(dx.r)) < 1.0e-6)
+        goto lupdon;
+    iter += 1;
+    }                /* while iter < 500 */
 
     if (final)
-	goto lupdon;
+    goto lupdon;
     if (retry < 5)
-	goto tryagn;
+    goto tryagn;
     return (3);
 
   lupdon:
@@ -158,43 +158,43 @@ cmplx root[];
     q = &xcof[nsav];
     p = &cof[0];
     for (j = 0; j <= n2; j++) {
-	cofj = *q;
-	*q-- = *p;
-	*p++ = cofj;
+    cofj = *q;
+    *q-- = *p;
+    *p++ = cofj;
     }
     i = n;
     n = n1;
     n1 = i;
 
     if (!final) {
-	final = 1;
-	if (fabs(x.i / x.r) < 1.0e-4)
-	    x.i = 0.0;
-	xsav.r = x.r;
-	xsav.i = x.i;
-	goto finitr;		/* do final iteration on original polynomial */
+    final = 1;
+    if (fabs(x.i / x.r) < 1.0e-4)
+        x.i = 0.0;
+    xsav.r = x.r;
+    xsav.i = x.i;
+    goto finitr;        /* do final iteration on original polynomial */
     }
 
   findon:
     final = 0;
     if (fabs(x.i / x.r) >= 1.0e-5) {
-	cofj = x.r + x.r;
-	mag = x.r * x.r + x.i * x.i;
-	n -= 2;
+    cofj = x.r + x.r;
+    mag = x.r * x.r + x.i * x.i;
+    n -= 2;
     }
-    else {			/* root is real */
+    else {            /* root is real */
       zerrut:
-	x.i = 0;
-	cofj = x.r;
-	mag = 0;
-	n -= 1;
+    x.i = 0;
+    cofj = x.r;
+    mag = 0;
+    n -= 1;
     }
     /* divide working polynomial cof(z) by z - x */
     p = &cof[1];
     *p += cofj * *(p - 1);
     for (j = 1; j < n; j++) {
-	*(p + 1) += cofj * *p - mag * *(p - 1);
-	p++;
+    *(p + 1) += cofj * *p - mag * *(p - 1);
+    p++;
     }
 
   setrut:
@@ -202,11 +202,11 @@ cmplx root[];
     root[nroot].i = x.i;
     nroot += 1;
     if (mag != 0.0) {
-	x.i = -x.i;
-	mag = 0;
-	goto setrut;		/* fill in the complex conjugate root */
+    x.i = -x.i;
+    mag = 0;
+    goto setrut;        /* fill in the complex conjugate root */
     }
     if (n > 0)
-	goto nxtrut;
+    goto nxtrut;
     return (0);
 }

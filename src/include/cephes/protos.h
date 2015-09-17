@@ -9,7 +9,7 @@ typedef struct {
 
 extern double acosh(double x);
 extern int airy(double x, double *ai, double *aip, double *bi,
-		double *bip);
+        double *bip);
 extern double asin(double x);
 extern double acos(double x);
 extern double asinh(double x);
@@ -54,7 +54,7 @@ extern double ellie(double phi, double m);
 extern double ellik(double phi, double m);
 extern double ellpe(double x);
 extern int ellpj(double u, double m, double *sn, double *cn, double *dn,
-		 double *ph);
+         double *ph);
 extern double ellpk(double x);
 extern double exp(double x);
 extern double exp10(double x);
@@ -139,7 +139,7 @@ extern int shichi(double x, double *si, double *ci);
 extern int sici(double x, double *si, double *ci);
 extern double simpsn(double f[], double delta);
 extern int simq(double A[], double B[], double X[], int n, int flag,
-		int IPS[]);
+        int IPS[]);
 extern double sin(double x);
 extern double cos(double x);
 extern double radian(double d, double m, double s);

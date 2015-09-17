@@ -26,7 +26,6 @@ typedef struct sort_overlord {
 // Calls incomplete gamma complement from CEPHES.
 
 char *barcode_mem_view(kseq_t *seq);
-char ***parse_rescaler(char *qual_rescale_fname);
 
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN

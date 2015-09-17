@@ -365,27 +365,27 @@ double xx;
 
     sign = 1;
     if (xx < 0.0) {
-	sign = -1;
-	xx = -xx;
+    sign = -1;
+    xx = -xx;
     }
 
     if (xx < 3.25) {
-	x = xx * xx;
-	y = xx * polevl(x, AN, 9) / polevl(x, AD, 10);
-	return (sign * y);
+    x = xx * xx;
+    y = xx * polevl(x, AN, 9) / polevl(x, AD, 10);
+    return (sign * y);
     }
 
 
     x = 1.0 / (xx * xx);
 
     if (xx < 6.25) {
-	y = 1.0 / xx + x * polevl(x, BN, 10) / (p1evl(x, BD, 10) * xx);
-	return (sign * 0.5 * y);
+    y = 1.0 / xx + x * polevl(x, BN, 10) / (p1evl(x, BD, 10) * xx);
+    return (sign * 0.5 * y);
     }
 
 
     if (xx > 1.0e9)
-	return ((sign * 0.5) / xx);
+    return ((sign * 0.5) / xx);
 
     /* 6.25 to infinity */
     y = 1.0 / xx + x * polevl(x, CN, 4) / (p1evl(x, CD, 5) * xx);

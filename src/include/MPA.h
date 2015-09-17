@@ -14,18 +14,18 @@ typedef struct ArrayLayoutPos{
 } ArrayLayoutPos_t;
 
 typedef struct ArrayLayout {
-	ArrayLayoutPos_t * layouts;
-	int length;
+    ArrayLayoutPos_t * layouts;
+    int length;
 } ArrayLayout_t;
 
 typedef struct MergeRet {
-	ArrayLayout_t Layout;
-	char Success;
+    ArrayLayout_t Layout;
+    char Success;
 } MergeRet_t;
 
 typedef struct LayoutOffset {
-	ArrayLayout_t Layout;
-	char offset;
+    ArrayLayout_t Layout;
+    char offset;
 } LayoutOffset_t;
 
 ArrayLayoutPos_t cMergeLayoutPositions(ArrayLayoutPos_t L1, ArrayLayoutPos_t L2);

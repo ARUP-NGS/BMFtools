@@ -40,11 +40,11 @@ void mvmpy(int r, int c, double *A, double *V, double *Y)
     pA = A;
     pY = Y;
     for (i = 0; i < r; i++) {
-	pV = V;
-	s = 0.0;
-	for (j = 0; j < c; j++) {
-	    s += *pA++ * *pV++;
-	}
-	*pY++ = s;
+    pV = V;
+    s = 0.0;
+    for (j = 0; j < c; j++) {
+        s += *pA++ * *pV++;
+    }
+    *pY++ = s;
     }
 }

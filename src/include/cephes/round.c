@@ -47,15 +47,15 @@ double round(double x)
 
     /* Round up to nearest. */
     if (r > 0.5)
-	goto rndup;
+    goto rndup;
 
     /* Round to even */
     if (r == 0.5) {
-	r = y - 2.0 * floor(0.5 * y);
-	if (r == 1.0) {
-	  rndup:
-	    y += 1.0;
-	}
+    r = y - 2.0 * floor(0.5 * y);
+    if (r == 1.0) {
+      rndup:
+        y += 1.0;
+    }
     }
 
     /* Else round down. */

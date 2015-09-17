@@ -21,17 +21,17 @@ double tukeylambdacdf(double x, double lmbda)
 
     xeval = 1.0 / lmbda;
     if (lmbda > 0.0) {
-	if (x < (-xeval))
-	    return 0.0;
-	if (x > xeval)
-	    return 1.0;
+    if (x < (-xeval))
+        return 0.0;
+    if (x > xeval)
+        return 1.0;
     }
 
     if ((-SMALLVAL < lmbda) && (lmbda < SMALLVAL)) {
-	if (x >= 0)
-	    return 1.0 / (1.0 + exp(-x));
-	else
-	    return exp(x) / (1.0 + exp(x));
+    if (x >= 0)
+        return 1.0 / (1.0 + exp(-x));
+    else
+        return exp(x) / (1.0 + exp(x));
     }
 
     pmin = 0.0;
@@ -42,18 +42,18 @@ double tukeylambdacdf(double x, double lmbda)
     count = 0;
 
     while ((count < MAXCOUNT) && (fabs(pmid - plow) > EPS)) {
-	xeval = (pow(pmid, lmbda) - pow(1.0 - pmid, lmbda)) / lmbda;
-	if (xeval == x)
-	    return pmid;
-	if (xeval > x) {
-	    phigh = pmid;
-	    pmid = (pmid + plow) / 2.0;
-	}
-	else {
-	    plow = pmid;
-	    pmid = (pmid + phigh) / 2.0;
-	}
-	count++;
+    xeval = (pow(pmid, lmbda) - pow(1.0 - pmid, lmbda)) / lmbda;
+    if (xeval == x)
+        return pmid;
+    if (xeval > x) {
+        phigh = pmid;
+        pmid = (pmid + plow) / 2.0;
+    }
+    else {
+        plow = pmid;
+        pmid = (pmid + phigh) / 2.0;
+    }
+    count++;
     }
     return pmid;
 }

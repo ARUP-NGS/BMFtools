@@ -38,9 +38,9 @@
  *                    x > 1.0e14 (IEEE)
  *
  */
-/*							cosdg.c
+/*                            cosdg.c
  *
- *	Circular cosine of angle in degrees
+ *    Circular cosine of angle in degrees
  *
  *
  *
@@ -99,7 +99,7 @@ static double coscof[] = {
     4.99999999999999999798E-1
 };
 
-static double PI180 = 1.74532925199432957692E-2;	/* pi/180 */
+static double PI180 = 1.74532925199432957692E-2;    /* pi/180 */
 static double lossth = 1.0e14;
 #endif
 
@@ -191,48 +191,48 @@ double x;
     /* make argument positive but save the sign */
     sign = 1;
     if (x < 0) {
-	x = -x;
-	sign = -1;
+    x = -x;
+    sign = -1;
     }
 
     if (x > lossth) {
-	mtherr("sindg", TLOSS);
-	return (0.0);
+    mtherr("sindg", TLOSS);
+    return (0.0);
     }
 
-    y = floor(x / 45.0);	/* integer part of x/NPY_PI_4 */
+    y = floor(x / 45.0);    /* integer part of x/NPY_PI_4 */
 
     /* strip high bits of integer part to prevent integer overflow */
     z = ldexp(y, -4);
-    z = floor(z);		/* integer part of y/8 */
-    z = y - ldexp(z, 4);	/* y - 16 * (y/16) */
+    z = floor(z);        /* integer part of y/8 */
+    z = y - ldexp(z, 4);    /* y - 16 * (y/16) */
 
-    j = z;			/* convert to integer for tests on the phase angle */
+    j = z;            /* convert to integer for tests on the phase angle */
     /* map zeros to origin */
     if (j & 1) {
-	j += 1;
-	y += 1.0;
+    j += 1;
+    y += 1.0;
     }
-    j = j & 07;			/* octant modulo 360 degrees */
+    j = j & 07;            /* octant modulo 360 degrees */
     /* reflect in x axis */
     if (j > 3) {
-	sign = -sign;
-	j -= 4;
+    sign = -sign;
+    j -= 4;
     }
 
-    z = x - y * 45.0;		/* x mod 45 degrees */
-    z *= PI180;			/* multiply by pi/180 to convert to radians */
+    z = x - y * 45.0;        /* x mod 45 degrees */
+    z *= PI180;            /* multiply by pi/180 to convert to radians */
     zz = z * z;
 
     if ((j == 1) || (j == 2)) {
-	y = 1.0 - zz * polevl(zz, coscof, 6);
+    y = 1.0 - zz * polevl(zz, coscof, 6);
     }
     else {
-	y = z + z * (zz * polevl(zz, sincof, 5));
+    y = z + z * (zz * polevl(zz, sincof, 5));
     }
 
     if (sign < 0)
-	y = -y;
+    y = -y;
 
     return (y);
 }
@@ -247,47 +247,47 @@ double x;
     /* make argument positive */
     sign = 1;
     if (x < 0)
-	x = -x;
+    x = -x;
 
     if (x > lossth) {
-	mtherr("cosdg", TLOSS);
-	return (0.0);
+    mtherr("cosdg", TLOSS);
+    return (0.0);
     }
 
     y = floor(x / 45.0);
     z = ldexp(y, -4);
-    z = floor(z);		/* integer part of y/8 */
-    z = y - ldexp(z, 4);	/* y - 16 * (y/16) */
+    z = floor(z);        /* integer part of y/8 */
+    z = y - ldexp(z, 4);    /* y - 16 * (y/16) */
 
     /* integer and fractional part modulo one octant */
     j = z;
-    if (j & 1) {		/* map zeros to origin */
-	j += 1;
-	y += 1.0;
+    if (j & 1) {        /* map zeros to origin */
+    j += 1;
+    y += 1.0;
     }
     j = j & 07;
     if (j > 3) {
-	j -= 4;
-	sign = -sign;
+    j -= 4;
+    sign = -sign;
     }
 
     if (j > 1)
-	sign = -sign;
+    sign = -sign;
 
-    z = x - y * 45.0;		/* x mod 45 degrees */
-    z *= PI180;			/* multiply by pi/180 to convert to radians */
+    z = x - y * 45.0;        /* x mod 45 degrees */
+    z *= PI180;            /* multiply by pi/180 to convert to radians */
 
     zz = z * z;
 
     if ((j == 1) || (j == 2)) {
-	y = z + z * (zz * polevl(zz, sincof, 5));
+    y = z + z * (zz * polevl(zz, sincof, 5));
     }
     else {
-	y = 1.0 - zz * polevl(zz, coscof, 6);
+    y = 1.0 - zz * polevl(zz, coscof, 6);
     }
 
     if (sign < 0)
-	y = -y;
+    y = -y;
 
     return (y);
 }

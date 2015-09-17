@@ -46,9 +46,9 @@
  *                     n < k
  *                     x < 0, x > 1
  */
-/*							bdtrc()
+/*                            bdtrc()
  *
- *	Complemented binomial distribution
+ *    Complemented binomial distribution
  *
  *
  *
@@ -93,9 +93,9 @@
  *   message         condition      value returned
  * bdtrc domain      x<0, x>1, n<k       0.0
  */
-/*							bdtri()
+/*                            bdtri()
  *
- *	Inverse binomial distribution
+ *    Inverse binomial distribution
  *
  *
  *
@@ -155,28 +155,28 @@ double p;
     double dk, dn;
 
     if ((p < 0.0) || (p > 1.0))
-	goto domerr;
+    goto domerr;
     if (k < 0)
-	return (1.0);
+    return (1.0);
 
     if (n < k) {
       domerr:
-	mtherr("bdtrc", DOMAIN);
-	return (NPY_NAN);
+    mtherr("bdtrc", DOMAIN);
+    return (NPY_NAN);
     }
 
     if (k == n)
-	return (0.0);
+    return (0.0);
     dn = n - k;
     if (k == 0) {
-	if (p < .01)
-	    dk = -expm1(dn * log1p(-p));
-	else
-	    dk = 1.0 - pow(1.0 - p, dn);
+    if (p < .01)
+        dk = -expm1(dn * log1p(-p));
+    else
+        dk = 1.0 - pow(1.0 - p, dn);
     }
     else {
-	dk = k + 1;
-	dk = incbet(dk, dn, p);
+    dk = k + 1;
+    dk = incbet(dk, dn, p);
     }
     return (dk);
 }
@@ -190,23 +190,23 @@ double p;
     double dk, dn;
 
     if ((p < 0.0) || (p > 1.0))
-	goto domerr;
+    goto domerr;
     if ((k < 0) || (n < k)) {
       domerr:
-	mtherr("bdtr", DOMAIN);
-	return (NPY_NAN);
+    mtherr("bdtr", DOMAIN);
+    return (NPY_NAN);
     }
 
     if (k == n)
-	return (1.0);
+    return (1.0);
 
     dn = n - k;
     if (k == 0) {
-	dk = pow(1.0 - p, dn);
+    dk = pow(1.0 - p, dn);
     }
     else {
-	dk = k + 1;
-	dk = incbet(dn, dk, 1.0 - p);
+    dk = k + 1;
+    dk = incbet(dn, dk, 1.0 - p);
     }
     return (dk);
 }
@@ -219,27 +219,27 @@ double y;
     double dk, dn, p;
 
     if ((y < 0.0) || (y > 1.0))
-	goto domerr;
+    goto domerr;
     if ((k < 0) || (n <= k)) {
       domerr:
-	mtherr("bdtri", DOMAIN);
-	return (NPY_NAN);
+    mtherr("bdtri", DOMAIN);
+    return (NPY_NAN);
     }
 
     dn = n - k;
     if (k == 0) {
-	if (y > 0.8)
-	    p = -expm1(log1p(y - 1.0) / dn);
-	else
-	    p = 1.0 - pow(y, 1.0 / dn);
+    if (y > 0.8)
+        p = -expm1(log1p(y - 1.0) / dn);
+    else
+        p = 1.0 - pow(y, 1.0 / dn);
     }
     else {
-	dk = k + 1;
-	p = incbet(dn, dk, 0.5);
-	if (p > 0.5)
-	    p = incbi(dk, dn, 1.0 - y);
-	else
-	    p = 1.0 - incbi(dn, dk, y);
+    dk = k + 1;
+    p = incbet(dn, dk, 0.5);
+    if (p > 0.5)
+        p = incbi(dk, dn, 1.0 - y);
+    else
+        p = 1.0 - incbi(dn, dk, y);
     }
     return (p);
 }

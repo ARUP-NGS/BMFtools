@@ -196,17 +196,17 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
 }
 
 
-inline int rescale_qscore(int qscore, int cycle, char base, char ***rescaler)
+inline int rescale_qscore(int readnum, int qscore, int cycle, char base, char ****rescaler)
 {
-    return rescaler[cycle][qscore - 2][nuc2num(base)];
+    return rescaler[readnum][cycle][qscore - 2][nuc2num(base)];
 }
 
 
 
 void set_kf(int readlen, KingFisher_t ret)
 {
-	ret.length = 0;
-	ret.readlen = readlen;
+    ret.length = 0;
+    ret.readlen = readlen;
     ret.nuc_counts = (int **)malloc(readlen * sizeof(int *));
     ret.phred_sums = (double **)malloc(sizeof(double *) * readlen);
     ret.max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.

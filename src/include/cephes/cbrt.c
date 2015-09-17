@@ -33,7 +33,7 @@
  *    IEEE       0,1e308     30000      1.5e-16     5.0e-17
  *
  */
-/*							cbrt.c  */
+/*                            cbrt.c  */
 
 /*
  * Cephes Math Library Release 2.2:  January, 1991
@@ -55,14 +55,14 @@ double cbrt(double x)
     double z;
 
     if (!cephes_isfinite(x))
-	return x;
+    return x;
     if (x == 0)
-	return (x);
+    return (x);
     if (x > 0)
-	sign = 1;
+    sign = 1;
     else {
-	sign = -1;
-	x = -x;
+    sign = -1;
+    x = -x;
     }
 
     z = x;
@@ -75,34 +75,34 @@ double cbrt(double x)
      * peak relative error = 9.2e-6
      */
     x = (((-1.3466110473359520655053e-1 * x
-	   + 5.4664601366395524503440e-1) * x
-	  - 9.5438224771509446525043e-1) * x
-	 + 1.1399983354717293273738e0) * x + 4.0238979564544752126924e-1;
+       + 5.4664601366395524503440e-1) * x
+      - 9.5438224771509446525043e-1) * x
+     + 1.1399983354717293273738e0) * x + 4.0238979564544752126924e-1;
 
     /* exponent divided by 3 */
     if (e >= 0) {
-	rem = e;
-	e /= 3;
-	rem -= 3 * e;
-	if (rem == 1)
-	    x *= CBRT2;
-	else if (rem == 2)
-	    x *= CBRT4;
+    rem = e;
+    e /= 3;
+    rem -= 3 * e;
+    if (rem == 1)
+        x *= CBRT2;
+    else if (rem == 2)
+        x *= CBRT4;
     }
 
 
     /* argument less than 1 */
 
     else {
-	e = -e;
-	rem = e;
-	e /= 3;
-	rem -= 3 * e;
-	if (rem == 1)
-	    x *= CBRT2I;
-	else if (rem == 2)
-	    x *= CBRT4I;
-	e = -e;
+    e = -e;
+    rem = e;
+    e /= 3;
+    rem -= 3 * e;
+    if (rem == 1)
+        x *= CBRT2I;
+    else if (rem == 2)
+        x *= CBRT4I;
+    e = -e;
     }
 
     /* multiply by power of 2 */
@@ -117,6 +117,6 @@ double cbrt(double x)
 #endif
 
     if (sign < 0)
-	x = -x;
+    x = -x;
     return (x);
 }
