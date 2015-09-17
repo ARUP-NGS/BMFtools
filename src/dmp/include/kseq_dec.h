@@ -23,6 +23,7 @@ typedef struct mseq {
     char *barcode;
     int l;
     int blen;
+    char rc;
 } mseq_t;
 
 
@@ -108,8 +109,8 @@ void tmp_mseq_destroy(tmp_mseq_t mvar)
 
 inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
 {
-    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
-            mvar->name, pass_fail, mvar->barcode, mvar->seq, mvar->qual);
+    fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RC=%c\n%s\n+\n%s\n",
+            mvar->name, pass_fail, mvar->barcode, mvar->rc, mvar->seq, mvar->qual);
     return;
 }
 
@@ -117,6 +118,7 @@ inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
 inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 {
     if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) return;
+    mvar->rc = '1';
     for(int i = 0; i < tmp->readlen; i++) {
         tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
@@ -193,7 +195,8 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****resc
             .qual = NULL,
             .barcode = barcode, // barcode still belongs to the argument variable!
             .l = 0,
-            .blen = 0
+            .blen = 0,
+			.rc = '0'
     };
     mseq_rescale_init(seq, &ret, rescaler, tmp, n_len, is_read2);
     return ret;

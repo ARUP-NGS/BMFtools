@@ -224,6 +224,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     int *bFA = (int *)bam_aux_get(b, "FA"); // Length of this should be b->l_qseq
     int *pFA = (int *)bam_aux_get(p, "FA"); // Length of this should be b->l_qseq
     update_int_ptr(bam_aux_get(p, "FM"), bam_aux_get(b, "FM")); // p.FM += b.FM
+    update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RC += b.RC
 #if !NDEBUG
     if(!bPV || !pPV) {
         fprintf(stderr, "Required PV tag not found. Abort mission!\n");
