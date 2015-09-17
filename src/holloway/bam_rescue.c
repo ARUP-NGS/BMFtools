@@ -191,13 +191,17 @@ static inline void update_int_tag(bam1_t *b, const char key[2], int increment)
 
 static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
 {
+#if !NDEBUG
     if(!inc_ptr) {
         fprintf(stderr, "Missing RC tag. Abort mission!\n");
         exit(EXIT_FAILURE);
     }
     else {
+#endif
         *(int *)(++ptr1) += *(int *)(++inc_ptr);
+#if !NDEBUG
     }
+#endif
     return;
 }
 
@@ -205,26 +209,21 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 {
     int n_changed = 0;
     int mask = 0;
-    uint8_t *pPVptr = bam_aux_get(p, "PV");
-    uint8_t *bPVptr = bam_aux_get(b, "PV");
-    uint8_t *pFAptr = bam_aux_get(p, "FA");
-    uint8_t *bFAptr = bam_aux_get(b, "FA");
+    int *bPV = (int *)bam_aux_get(b, "PV"); // Length of this should be b->l_qseq
+    int *pPV = (int *)bam_aux_get(p, "PV"); // Length of this should be b->l_qseq
+    int *bFA = (int *)bam_aux_get(b, "FA"); // Length of this should be b->l_qseq
+    int *pFA = (int *)bam_aux_get(p, "FA"); // Length of this should be b->l_qseq
+    update_int_ptr(bam_aux_get(p, "FM"), bam_aux_get(b, "FM")); // p.FM += b.FM
 #if !NDEBUG
-    if(!bPVptr || !pPVptr) {
+    if(!bPV || !pPV) {
         fprintf(stderr, "Required PV tag not found. Abort mission!\n");
         exit(EXIT_FAILURE);
     }
-    if(!bFAptr || !pFAptr) {
+    if(!bFA || !pFA) {
         fprintf(stderr, "Required FA tag not found. Abort mission!\n");
         exit(EXIT_FAILURE);
     }
 #endif
-    int *bPV = (int *)bPVptr; // Length of this should be b->l_qseq
-    int *pPV = (int *)pPVptr; // Length of this should be p->l_qseq
-    int *bFA = (int *)bFAptr; // Length of this should be b->l_qseq
-    int *pFA = (int *)pFAptr; // Length of this should be p->l_qseq
-    int *pFM = bam_aux2ip(bam_aux_get(p, "FM"));
-    *pFM += bam_aux2i(bam_aux_get(b, "FM"));
 
     char *bSeq = (char *)bam_get_seq(b);
     char *pSeq = (char *)bam_get_seq(p);
@@ -253,7 +252,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
                 pSeq[i] = 'N';
                 pFA[i] = 0;
                 pPV[i] = 0;
-                pQual[i] = '!';
+                pQual[i] = 33; // 33 phred == 0 quality == '!'
                 ++mask;
             }
         }
