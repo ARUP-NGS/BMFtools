@@ -83,23 +83,13 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 
     /*
      * TODO:
-     * Update PV (Done.)
-     * Update FA (Done.)
-     * Update FM (Done.)
-     * Add NC (Number Changed) tag. (Done.)
-     * Add NN (Number N'd) tag. (Done.)
-     * Update RC tag. (Done.)
-     * Update the quality score string. (Done.)
-     * Fill in the bam_rescue settings struct (Done.)
-     * Add in commmandline options. (Done.)
-     * Write the settings destroyer. (Done.)
+     * Expand the rescaling to 4 dimensions (Done.)
+     * Add in commandline option key for users (Done.)
      *
      * Yet TODO
      * Fill in write_bam1_nc (for reads to be realigned)
-     * Add in commandline option key for users.
      * Add in the count for RC to crms
      * Expand the max_phreds in all of the marksplits to make sure it's the highest quality score for the base that was called as consensus.
-     * Expand the rescaling to 4 dimensions
      */
 
 static inline void write_bam1_nc(bam1_t *b, FILE *fp)
@@ -333,6 +323,9 @@ static int rescue_usage(void) {
     fprintf(stderr, "Usage:  samtools rescue [-sS] <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    rescue for SE reads\n");
     fprintf(stderr, "        -S    treat PE reads as SE in rescue (force -s)\n");
+    fprintf(stderr, "        -p    flag - if set, write updated bam records without realigning.\n");
+    fprintf(stderr, "        -t    threshold - number of mismatches to consider barcodes distinct. [int] Default: 2\n");
+    fprintf(stderr, "        -f    Fastq output path. Set to '-' for stdout. If unset, -p flag must be set to true. [int]\n");
 
     sam_global_opt_help(stderr, "-....");
     return 1;
@@ -427,4 +420,9 @@ typedef struct rescue_settings {
         settings.fq_fname = NULL;
     }
     return 0;
+}
+
+
+int main(int argc, char *argv[]) {
+    return bam_rescue(argv, argv);
 }

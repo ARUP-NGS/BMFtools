@@ -164,10 +164,6 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
 
 int main(int argc, char *argv[])
 {
-    fprintf(stderr, "Starting main.\n");
-    if(argc < 5) {
-        print_usage(argv); exit(1);
-    }
     // Build settings struct
     int hp_threshold;
     int n_nucs;
@@ -189,7 +185,6 @@ int main(int argc, char *argv[])
         .rescaler = NULL,
         .rescaler_path = NULL
     };
-    fprintf(stderr, "Parsing args.\n");
     int c;
     while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:")) > -1) {
         switch(c) {
@@ -205,6 +200,10 @@ int main(int argc, char *argv[])
         }
     }
     settings.n_handles = ipow(4, settings.n_nucs);
+    fprintf(stderr, "Starting main.\n");
+    if(argc < 5) {
+        print_usage(argv); exit(1);
+    }
 
     if(!settings.homing_sequence) {
         fprintf(stderr, "Homing sequence not provided. Will not check for it. "
@@ -246,12 +245,17 @@ int main(int argc, char *argv[])
     pp_split_inline(seq1,seq2, settings, splitter);
     if(settings.rescaler) {
         int readlen = count_lines(settings.rescaler_path);
-        for(int i = 0; i < readlen; i++) {
-            for(int j = 0; j < 39; j++) {
+        for(int i = 0; i < 2; ++i) {
+            for(int j = 0; j < readlen; ++j) {
+                for(int k = 0; k < 39; ++k) {
+                    free(settings.rescaler[i][j][k]);
+                }
                 free(settings.rescaler[i][j]);
             }
             free(settings.rescaler[i]);
         }
+        free(settings.rescaler);
+        settings.rescaler = NULL;
     }
     free_mssi_settings(settings);
     FREE_SPLITTER(splitter);

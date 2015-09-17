@@ -37,8 +37,7 @@ inline void free_mssi_settings(mssi_settings_t settings)
 #define FREE_MSSI_SETTINGS(settings) free(settings.output_basename);\
     free(settings.input_r1_path);\
     free(settings.input_r2_path);\
-    if(settings.rescaler_path) free(settings.rescaler_path);\
-    if(settings.rescaler) free(settings.rescaler);
+    if(settings.rescaler_path) free(settings.rescaler_path);
 #endif
 
 
