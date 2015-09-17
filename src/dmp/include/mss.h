@@ -106,7 +106,7 @@ inline int infer_barcode_length(char *bs_ptr)
 {
     int ret = 0;
     for (;;ret++) {
-        if(bs_ptr[ret] == '\0') return ret;
+        if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|') return ret;
 /*
 #if !NDEBUG
         if(ret > MAX_BARCODE_LENGTH) {

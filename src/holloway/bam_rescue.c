@@ -125,6 +125,16 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 
 static inline void write_bam1_nc(bam1_t *b, FILE *fp)
 {
+	/*
+	 * TODO HERE:
+	 * PV
+	 * FA
+	 * FM
+	 * NN
+	 * NC
+	 * RC
+	 * FP
+	 */
     fprintf(stderr, "Not implemented (write_bam1_nc). Abort mission!\n");
     exit(EXIT_FAILURE);
 }
@@ -156,7 +166,7 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
 static inline int hamming_dist_test(char *bs1, char *bs2, int hd_thresh)
 {
     int mm = 0;
-    for(int i = 0; bs1[i]; ++i) { // Gives up once it reaches a null terminus.
+    for(int i = 0; bs1[i]; ++i) { // Gives up once it reaches a null terminus. Convenient, since string tags are null-terminated in the sam file format.
         if(bs1[i] != bs2[i]) {
             ++mm;
             if(!(mm - hd_thresh)) {
