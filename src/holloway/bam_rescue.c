@@ -33,7 +33,9 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/sam.h"
 #include "sam_opts.h"
 #include "bam.h" // for bam_get_library
-#include "kingsfisher.h" // For igamc/igamc_pvalues
+#include "kingfisher.h" // For igamc/igamc_pvalues
+#include "cstr_utils.h"
+#include "sam_opts.h"
 
 typedef bam1_t *bam1_p;
 
@@ -58,18 +60,47 @@ static inline int arr_cmp(char *arr1, char *arr2) {
     return (arr1[0] == arr2[0] && arr1[1] == arr2[1]);
 }
 
+#ifndef IS_REVERSE
+#define IS_REVERSE(bam) ((bam)->core.flag&BAM_FREVERSE)
+#endif
+
+#ifndef IS_MATE_REVERSE
+#define IS_MATE_REVERSE(bam) ((bam)->core.flag&BAM_FMREVERSE)
+#endif
+
+#ifndef IS_READ2
+#define IS_READ2(bam) ((bam)->core.flag&BAM_FREAD2)
+#endif
+
+#ifndef IS_READ1
+#define IS_READ1(bam) ((bam)->core.flag&BAM_FREAD1)
+#endif
+
 #ifndef ARR_CMP
 #define ARR_CMP(arr1, arr2) (arr1[0] == arr2[0] && arr1[1] == arr2[1])
 #endif
 
+// FUNCTION DEFINITIONS
+char *trim_ext(char *fname);
+uint8_t *bam_aux_get(const bam1_t *b, const char tag[2]);
+int pvalue_to_phred(double pvalue);
 
+
+/*
 // buf should be a uint64_t buf[2] or a malloc'd char * of size 2.
 #ifndef ARR_SETKEY
-#define ARR_SETKEY(bam, buf) buf = {(uint64_t)(IS_REVERSE(bam) >> 59 | IS_MATE_REVERSE(bam) >> 57|                       \
-                                               IS_READ1(bam) >> 55 | IS_READ2(bam) >> 53 |                               \
-                                               bam->core.mtid >> 44 | bam->core.tid >> 28)                               \
-                                    , (uint64_t)(bam->core.pos >> 32 | bam->core.mpos)}
+#define ARR_SETKEY(bam, buf) buf = BAM2KEY(bam);
 #endif
+*/
+
+static inline void ARR_SETKEY(bam1_t *bam, uint64_t buf[2])
+{
+    buf[0] = (((uint64_t)IS_REVERSE(bam)) << 59 | ((uint64_t)IS_MATE_REVERSE(bam)) << 57|
+              ((uint64_t)IS_READ1(bam)) << 55 | ((uint64_t)IS_READ2(bam)) << 53 |
+              ((uint64_t)bam->core.mtid) << 44 | ((uint64_t)bam->core.tid) << 28);
+    buf[1] = (((uint64_t)(bam->core.pos) << 32 | bam->core.mpos));
+    return;
+}
 
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
@@ -104,12 +135,12 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
     int i;
     for (i = 0; i != stack->n; ++i) {
         if(stack->a[i]) { // Since I'll be clearing out the values after updating, I am checking to see if it's not NULL first.
-            if(bam_aux2i(stack->a[i], "NC") || bam_aux2i(stack->a[i], "NN")) { // If NN or NC are non-zero.
-                if(settings->write_ncbam) {
+            if(bam_aux2i(bam_aux_get(stack->a[i], "NC")) || bam_aux2i(bam_aux_get(stack->a[i], "NN"))) { // If NN or NC are non-zero.
+                if(settings->write_nc2bam) {
                     sam_write1(out, hdr, stack->a[i]);
                 }
                 else {
-                    write_bam1_nc(stack->a[i], fp);
+                    write_bam1_nc(stack->a[i], settings->fp);
                 }
             }
             else {
@@ -122,18 +153,18 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
     stack->n = 0;
 }
 
-static inline int hamming_dist_test(char *bs1, char *bs2, int len, int hd_thresh)
+static inline int hamming_dist_test(char *bs1, char *bs2, int hd_thresh)
 {
     int mm = 0;
-    for(int i = 0; i < len; ++i) {
+    for(int i = 0; bs1[i]; ++i) { // Gives up once it reaches a null terminus.
         if(bs1[i] != bs2[i]) {
             ++mm;
             if(!(mm - hd_thresh)) {
-                return 1;
+                return 0;
             }
         }
     }
-    return 0;
+    return 1;
 }
 
 static inline int *bam_aux2ip(uint8_t *ptr)
@@ -146,14 +177,14 @@ static inline int disc_pvalues(double pv_better, double pv_worse)
     return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - (10. * log10(1 - pow(10., (pv_worse * 0.1)))))));
 }
 
-static inline void update_int_tag(bam1_t *b, const char[2]key, int increment)
+static inline void update_int_tag(bam1_t *b, const char key[2], int increment)
 {
     uint8_t *tag_ptr = bam_aux_get(b, key);
     if(!tag_ptr) {
-        bam_aux_append(b, key, 'i', sizeof(int), (uint8_t *)&increment)
+        bam_aux_append(b, key, 'i', sizeof(int), (uint8_t *)&increment);
     }
     else {
-        (int)*(++tag_ptr) += increment;
+        *(int *)++tag_ptr += increment;
     }
     return;
 }
@@ -165,7 +196,7 @@ static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
         exit(EXIT_FAILURE);
     }
     else {
-        (int)*(++ptr1) += (int)*(++inc_ptr);
+        *(int *)(++ptr1) += *(int *)(++inc_ptr);
     }
     return;
 }
@@ -241,35 +272,19 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 
 static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings_ptr)
 {
+    uint8_t *cp, *cb;
     int pass;
-    bam1_t *b, bam1_t *p;
-    for(int i = 0; i < stack->n, ++i) {
+    bam1_t *b, *p;
+    for(int i = 0; i < stack->n; ++i) {
         b = stack->a[i];
-        uint8_t *cb = bam_aux_get(b, "BS");
-#if !NDEBUG
-        pass = 1;
-        if(!cb) {
-            fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(b), b->core.flag);
-            pass = 0;
-        }
-#endif
+        cb = bam_aux_get(b, "BS");
         for(int j = i + 1; j < stack->n; ++i) {
             p = stack->a[j];
-            uint8_t *cp = bam_aux_get(p, "BS");
-#if !NDEBUG
-            if(!cp) {
-                fprintf(stderr, "BS tag not found for read. Name: %s. Flag: %i.\n", bam_get_qname(p), p->core.flag);
-                pass = 0;
-            }
-            if(!pass) {
-                exit(EXIT_FAILURE);
-            }
-#endif
-
+            cp = bam_aux_get(p, "BS");
         }
     }
-    if(hamming_dist_test(cp, cb, len, hd_thresh)) {
-        update_bam1(p, b); // Update record p with b
+    if(hamming_dist_test(++cp, ++cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
+        update_bam1(p, b, settings_ptr->fp); // Update record p with b
     }
     return;
 }
@@ -387,7 +402,7 @@ typedef struct rescue_settings {
     if(settings.write_nc2bam && settings.fp) {
         fprintf(stderr, "Conflicting options - write to bam and to fastq. "
                         "This will result in non-unique primary alignments "
-                        "for a given read name. Abort mission!\n");""
+                        "for a given read name. Abort mission!\n");
         exit(EXIT_FAILURE);
     }
     if (optind + 2 > argc)
@@ -413,7 +428,7 @@ typedef struct rescue_settings {
     bam_hdr_destroy(header);
     sam_close(in); sam_close(out);
     if(settings.fp) {
-        fclose(fp);
+        fclose(settings.fp);
     };
     if(settings.fq_fname) {
         free(settings.fq_fname);
@@ -424,5 +439,5 @@ typedef struct rescue_settings {
 
 
 int main(int argc, char *argv[]) {
-    return bam_rescue(argv, argv);
+    return bam_rescue(argc, argv);
 }

@@ -1,4 +1,5 @@
 #include "kseq_dec.h"
+#include "cstr_utils.h"
 
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN
@@ -97,19 +98,6 @@ inline char test_hp(kseq_t *seq, int threshold)
 
 
 const char *crms_suffix = ".crms.split";
-
-/*
- * Returns a null-terminated string with the extension and terminal period removed.
- * Warning: Must be freed!
- */
-inline char *trim_ext(char *fname) {
-    char *buf = malloc((strlen(fname) + 1) * sizeof(char ));
-    ptrdiff_t pos = strrchr(fname, '.') - fname; // Find the position in the read where the last '.' is.
-    memcpy(buf, fname, pos * sizeof(char));
-    buf[pos] = '\0';
-    fprintf(stderr, "tmp buffer: %s.\n", buf);
-    return buf;
-}
 
 /*
  * Returns a null-terminated string with the default outfname.
