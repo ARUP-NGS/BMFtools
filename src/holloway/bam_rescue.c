@@ -291,10 +291,10 @@ static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings
         for(int j = i + 1; j < stack->n; ++i) {
             p = stack->a[j];
             cp = bam_aux_get(p, "BS");
+            if(hamming_dist_test(++cp, ++cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
+            update_bam1(p, b, settings_ptr->fp); // Update record p with b
+            }      
         }
-    }
-    if(hamming_dist_test(++cp, ++cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
-        update_bam1(p, b, settings_ptr->fp); // Update record p with b
     }
     return;
 }
