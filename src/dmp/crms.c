@@ -21,7 +21,6 @@
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 void FREE_SPLITTER(mark_splitter_t var);
-int get_binner(char binner[], int length);
 mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
 mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
@@ -49,6 +48,9 @@ void u32toa_branchlut(uint32_t value, char* buffer);
 void i32toa_branchlut(int32_t value, char* buffer);
 int get_fileno_limit();
 void increase_nofile_limit(int new_limit);
+uint64_t get_binnerul(char *barcode, int length);
+int get_binner(char *barcode, int length);
+uint64_t ulpow(uint64_t base, uint64_t exp);
 
 
 void print_usage(char *argv[])
@@ -108,7 +110,8 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
                      mssi_settings_t settings, mark_splitter_t splitter)
 {
-    int l1, l2, bin;
+    int l1, l2;
+    uint64_t bin;
 #if LOGGING
     int count = 0;
 #endif
@@ -134,7 +137,7 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
     mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings.rescaler, &tmp, n_len, 0);
     mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings.rescaler, &tmp, n_len, 1);
-    bin = get_binner(barcode, settings.n_nucs);
+    bin = get_binnerul(barcode, settings.n_nucs);
     mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
     mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
     do {
@@ -148,7 +151,7 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp, n_len, 0);
         update_mseq(&mvar2, barcode, seq2, settings.rescaler, &tmp, n_len, 1);
-        bin = get_binner(barcode, settings.n_nucs);
+        bin = get_binnerul(barcode, settings.n_nucs);
         mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
         mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
     } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
