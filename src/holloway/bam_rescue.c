@@ -241,7 +241,12 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     char *bQual = (char *)bam_get_qual(b);
     char *pQual = (char *)bam_get_qual(p);
     for(int i = 0; i < p->core.l_qseq; ++i) {
+#if SUB_NOT_EQ
+        if(!(bSeq[i] - pSeq[i])) {
+#else
         if(bSeq[i] == pSeq[i]) {
+#endif
+
             pPV[i] = igamc(2., LOG10_TO_CHI2(pPV[i] + bPV[i]) / 2.0);
             pFA[i] += bFA[i];
             if(bQual[i] > pQual[i])
