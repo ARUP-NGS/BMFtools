@@ -30,7 +30,7 @@ int ARRG_MAX(KingFisher_t *kfp, int index);
 int infer_barcode_length(char *bs_ptr);
 int pvalue_to_phred(double pvalue);
 void destroy_kf(KingFisher_t *kfp);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t tmp);
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp);
 void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
@@ -195,7 +195,7 @@ void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq) {
     int barcode_counter = 0;
 
     HASH_ITER(hh, hash, current_entry, tmp_entry) {
-        dmp_process_write(current_entry->value, handle, tmp.blen, tmpbuffers);
+        dmp_process_write(current_entry->value, handle, tmp.blen, &tmpbuffers);
         free(current_entry->value);
         HASH_DEL(hash, current_entry);
         free(current_entry);

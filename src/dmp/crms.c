@@ -15,6 +15,7 @@
 #include <sys/resource.h>
 #include "dmp_interface.h"
 #include "include/array_parser.h"
+#include "include/nix_resource.h"
 
 // Inline function declarations
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
@@ -46,6 +47,8 @@ char *make_default_outfname(char *fname, const char *suffix);
 char *mark_crms_outfname(char *fname);
 void u32toa_branchlut(uint32_t value, char* buffer);
 void i32toa_branchlut(int32_t value, char* buffer);
+int get_fileno_limit();
+void increase_nofile_limit(int new_limit);
 
 
 void print_usage(char *argv[])
@@ -106,11 +109,12 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
                      mssi_settings_t settings, mark_splitter_t splitter)
 {
     int l1, l2, bin;
+#if LOGGING
     int count = 0;
+#endif
     char pass_fail;
     int readlen = 0;
     char * barcode;
-    char * tmp_n_str;
     int blen1_2 = settings.blen / 2;
     int n_len = blen1_2 + settings.homing_sequence_length + settings.offset;
     barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
@@ -124,8 +128,6 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
             exit(EXIT_FAILURE);
     }
     readlen = strlen(seq1->seq.s);
-    tmp_n_str = (char *)malloc((readlen + 1) * sizeof(char));
-    tmp_n_str[readlen] = '\0';
     tmp_mseq_t tmp = init_tmp_mseq(readlen, settings.blen);
     // Get first barcode.
     set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
@@ -136,8 +138,10 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
     mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
     do {
+#if LOGGING
         count += 1;
         if(!(count % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
+#endif
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
         pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
@@ -152,7 +156,6 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     mseq_destroy(&mvar1);
     mseq_destroy(&mvar2);
     free(barcode);
-    free(tmp_n_str);
 
 }
 
@@ -200,6 +203,9 @@ int main(int argc, char *argv[])
         }
     }
     settings.n_handles = ipow(4, settings.n_nucs);
+    if(settings.n_handles > get_fileno_limit()) {
+        increase_nofile_limit(kroundup32(settings.n_handles));
+    }
     fprintf(stderr, "Starting main.\n");
     if(argc < 5) {
         print_usage(argv); exit(1);

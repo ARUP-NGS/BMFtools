@@ -247,10 +247,7 @@ inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, i
     memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
     memcpy(barcode + blen1_2, seq2->seq.s + offset,
            blen1_2 * sizeof(char));
-    char *omgzwtf = (char *)malloc((blen1_2 * 2 + 1) * sizeof(char));
-    omgzwtf[blen1_2 * 2] = '\0';
-    memcpy(omgzwtf, barcode, blen1_2 * 2);
-    free(omgzwtf);
+    barcode[blen1_2 * 2] = '\0';
     return;
 }
 

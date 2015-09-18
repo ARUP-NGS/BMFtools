@@ -24,6 +24,10 @@ typedef struct sort_overlord {
 #define MAX_BARCODE_LENGTH 30
 #endif
 
+#ifndef kroundup32
+#define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
+#endif
+
 
 // Calls incomplete gamma complement from CEPHES.
 
