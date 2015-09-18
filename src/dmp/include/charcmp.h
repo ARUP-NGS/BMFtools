@@ -22,6 +22,15 @@ inline int nuc2num(char character)
     }
 }
 
+#define NUC_CMPL(inchr, setchr)\
+    switch(inchr) {\
+        case 'A': setchr = 'T';break;\
+        case 'C': setchr = 'G';break;\
+        case 'G': setchr = 'C';break;\
+        case 'T': setchr = 'A';break;\
+        default: setchr = inchr;break;\
+    }
+
 inline char nuc_cmpl(char character) {
     switch(character) {
         case 'A': return 'T';

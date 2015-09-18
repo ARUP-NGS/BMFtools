@@ -116,14 +116,25 @@ inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
 
 inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 {
-    if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) return;
+    if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) {
+
+#if !NDEBUG
+      fprintf(stderr, "Hey, I am not flipping this record.\n");
+#endif
+        mvar->rc = '0';
+        return;
+    }
     mvar->rc = '1';
     for(int i = 0; i < tmp->readlen; i++) {
-        tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
+        NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i])
+        // Equivalent to
+        //tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
         tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
     }
     for(int i = 0; i < tmp->blen; i++) {
-        tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
+        NUC_CMPL(mvar->barcode[tmp->blen - i - 1], tmp->tmp_barcode[i]);
+        // Equivalent to
+        //tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
     }
 #if !NDEBUG
     char *omgzwtf = (char *)malloc(tmp->readlen + 1);
@@ -195,7 +206,7 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****resc
             .barcode = barcode, // barcode still belongs to the argument variable!
             .l = 0,
             .blen = 0,
-			.rc = '0'
+            .rc = '0'
     };
     mseq_rescale_init(seq, &ret, rescaler, tmp, n_len, is_read2);
     return ret;
