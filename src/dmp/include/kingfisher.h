@@ -134,7 +134,7 @@ inline char ARRG_MAX_TO_NUC(int argmaxret)
 
 inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix)
 {
-    char tmpbuf[10];
+    char tmpbuf[20];
     sprintf(buffer, prefix);
     for(int i = 0; i < readlen; i++) {
         sprintf(tmpbuf, ",%i", arr[i]);
@@ -174,10 +174,10 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
         agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
     cons_seq[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-    char FABuffer[1000];
+    char FABuffer[2000];
     fill_fa_buffer(kfp, agrees, FABuffer);
     //fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-    char PVBuffer[1000];
+    char PVBuffer[2000];
     fill_pv_buffer(kfp, cons_quals, PVBuffer);
     char FPBuffer[7];
     sprintf(FPBuffer, "FP:i:%c", kfp->pass_fail);
@@ -185,7 +185,7 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen)
     memcpy((char *)(name_buffer + 1), kfp->barcode, blen);
     name_buffer[1 + blen] = '\0';
     //fprintf(stderr, "Name buffer: %s\n", name_buffer);
-    char arr_tag_buffer[2000];
+    char arr_tag_buffer[4000];
 #if !NDEBUG
     fprintf(stderr, "Hey, I'm about to make the final string. cons_seq: %s.\n", cons_seq);
 #endif

@@ -44,15 +44,10 @@ int main(int argc, char* argv[]) {
     char *outfname = NULL;
     int c;
     char **infnames = (char **)malloc((argc - 3) * sizeof(char *));
-    if(argc < 4) {
-        fprintf(stderr, "Too few arguments. See usage.\n");
-        print_usage(argv);
-        return 1;
-    }
 #ifdef BMF_THREADS
-    while ((c = getopt(argc, argv, "l:o:t:")) > -1) {
+    while ((c = getopt(argc, argv, "l:o:t:h")) > -1) {
 #endif
-    while ((c = getopt(argc, argv, "l:o:t:")) > -1) {
+    while ((c = getopt(argc, argv, "l:o:t:h")) > -1) {
         switch(c) {
 #ifdef BMF_THREADS
             case 't': threads = atoi(optarg); break;
@@ -60,8 +55,14 @@ int main(int argc, char* argv[]) {
             case 't': fprintf(stderr, "bmftools_dmp was compiled without BMF_THREADS. Invalid option!\n"); return 1;
 #endif
             case 'o': outfname = strdup(optarg); break;
+            case 'h': print_usage(argv); exit(1);
             default: print_opt_err(argv, optarg);
         }
+    }
+    if(argc < 4) {
+        fprintf(stderr, "Too few arguments. See usage.\n");
+        print_usage(argv);
+        return 1;
     }
     int fnames_count = 0;
     fprintf(stderr, "Entry at optind %i: %s\n", optind, argv[optind]);

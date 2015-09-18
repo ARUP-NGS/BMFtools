@@ -20,7 +20,9 @@ typedef struct sort_overlord {
 
 
 // Throws an error when inferring barcode length.
+#ifndef MAX_BARCODE_LENGTH
 #define MAX_BARCODE_LENGTH 30
+#endif
 
 
 // Calls incomplete gamma complement from CEPHES.

@@ -97,8 +97,8 @@ static inline void ARR_SETKEY(bam1_t *bam, uint64_t buf[2])
 {
     buf[0] = (((uint64_t)IS_REVERSE(bam)) << 59 | ((uint64_t)IS_MATE_REVERSE(bam)) << 57|
               ((uint64_t)IS_READ1(bam)) << 55 | ((uint64_t)IS_READ2(bam)) << 53 |
-              ((uint64_t)bam->core.mtid) << 44 | ((uint64_t)bam->core.tid) << 28);
-    buf[1] = (((uint64_t)(bam->core.pos) << 32 | bam->core.mpos));
+              ((uint64_t)bam->core.mtid) << 44 | ((uint64_t)bam->core.tid) << 28 | bam->core.pos);
+    buf[1] = ((uint64_t)(bam->core.mpos));
     return;
 }
 
@@ -169,7 +169,7 @@ static inline int hamming_dist_test(char *bs1, char *bs2, int hd_thresh)
     for(int i = 0; bs1[i]; ++i) { // Gives up once it reaches a null terminus. Convenient, since string tags are null-terminated in the sam file format.
         if(bs1[i] != bs2[i]) {
             ++mm;
-            if(!(mm - hd_thresh)) {
+            if(mm == hd_thresh) {
                 return 0;
             }
         }
@@ -215,6 +215,12 @@ static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
     return;
 }
 
+static inline void inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
+{
+	*(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
+	return;
+}
+
 static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 {
     int n_changed = 0;
@@ -223,8 +229,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     int *pPV = (int *)bam_aux_get(p, "PV"); // Length of this should be b->l_qseq
     int *bFA = (int *)bam_aux_get(b, "FA"); // Length of this should be b->l_qseq
     int *pFA = (int *)bam_aux_get(p, "FA"); // Length of this should be b->l_qseq
+    inc_aux_tag(p, b, "FM");
+    inc_aux_tag(p, b, "RC");
+    /*
+     * inc_aux_tag has superseded update_int_ptr because it assigns fewer temporary variables.
     update_int_ptr(bam_aux_get(p, "FM"), bam_aux_get(b, "FM")); // p.FM += b.FM
     update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RC += b.RC
+    */
 #if !NDEBUG
     if(!bPV || !pPV) {
         fprintf(stderr, "Required PV tag not found. Abort mission!\n");
@@ -241,12 +252,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     char *bQual = (char *)bam_get_qual(b);
     char *pQual = (char *)bam_get_qual(p);
     for(int i = 0; i < p->core.l_qseq; ++i) {
-#if SUB_NOT_EQ
-        if(!(bSeq[i] - pSeq[i])) {
-#else
         if(bSeq[i] == pSeq[i]) {
-#endif
-
             pPV[i] = igamc(2., LOG10_TO_CHI2(pPV[i] + bPV[i]) / 2.0);
             pFA[i] += bFA[i];
             if(bQual[i] > pQual[i])
@@ -410,6 +416,7 @@ typedef struct rescue_settings {
                   break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
+        case 'h': return rescue_usage();
         case '?': return rescue_usage();
         }
     }

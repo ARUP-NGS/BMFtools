@@ -3,7 +3,9 @@
 #include "binner.h"
 
 
-
+#ifndef MAX_BARCODE_LENGTH
+#define MAX_BARCODE_LENGTH 30
+#endif
 #ifndef KSEQ_2_FQ
 #define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
         "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
@@ -102,19 +104,18 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
 }
 
 
+
 inline int infer_barcode_length(char *bs_ptr)
 {
     int ret = 0;
     for (;;ret++) {
         if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|') return ret;
-/*
 #if !NDEBUG
         if(ret > MAX_BARCODE_LENGTH) {
             fprintf(stderr, "Inferred barcode length greater than max (%i). Abort!\n", MAX_BARCODE_LENGTH);
             exit(1);
         }
 #endif
-*/
     }
 }
 

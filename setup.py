@@ -49,7 +49,7 @@ subprocess.check_call('gcc src/dmp/fqmarksplit.c src/dmp/igamc_cephes.c -I src/d
 subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
 subprocess.check_call('cd src/dmp;gcc fqmarksplit_inline.c -o fqmarksplit_inline -lm -lz -DNDEBUG -std=gnu11;cd ../..', shell=True)
 subprocess.check_call('cd src/dmp;gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -DNDEBUG -std=gnu11;cd ../..', shell=True)
-subprocess.check_call('cd src/dmp;gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG -std=gnu11;cd ../..', shell=True)
+subprocess.check_call('cd src/dmp;gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG=1 -std=gnu11 -flto;cd ../..', shell=True)
 subprocess.check_call('cd src/dmp;gcc -I. -o hash_dmp hash_dmp.c -lz -lm -std=gnu11 -DNDEBUG;cd ../..', shell=True)
 subprocess.check_call('cd src/holloway;gcc include/htslib/faidx.c include/htslib/bgzf.c include/htslib/hfile.c include/htslib/hfile_net.c include/htslib/kfunc.c include/htslib/md5.c include/htslib/hts.c include/htslib/kstring.c include/htslib/sam.c include/htslib/knetfile.c include/htslib/cram/mFILE.c include/htslib/cram/thread_pool.c include/htslib/cram/pooled_alloc.c include/htslib/cram/cram_external.c include/htslib/cram/cram_encode.c include/htslib/cram/cram_codecs.c include/htslib/cram/cram_io.c include/htslib/cram/sam_header.c include/htslib/cram/files.c include/htslib/cram/vlen.c include/htslib/cram/string_alloc.c include/htslib/cram/cram_decode.c include/htslib/cram/cram_samtools.c include/htslib/cram/rANS_static.c include/htslib/cram/open_trace_file.c include/htslib/cram/cram_index.c include/htslib/cram/cram_stats.c include/htslib/cram/zfio.c sam_opts.c bam_rescue.c ../dmp/igamc_cephes.c -I. -I include/htslib/htslib -I include/htslib/ -I ../dmp/include/ -o frmsi -fopenmp -lm -lz -std=gnu11 -DNDEBUG;cd ../..', shell=True)
 #subprocess.check_call('cd src/dmp; gcc -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o igamc -fopenmp -lm -std=c99; cd ../..', shell=True)
@@ -69,7 +69,7 @@ config = {
     'ext_modules': ext,
     'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/dmp/fqmarksplit_inline', 'src/sort/lh3sort',
-                'src/dmp/bmf_crms'],
+                'src/dmp/bmf_crms', 'src/dmp/dmp'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

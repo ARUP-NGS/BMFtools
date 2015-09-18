@@ -218,7 +218,9 @@ inline void mseq_destroy(mseq_t *mvar)
 
 inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ****rescaler, int *nuc_indices, int blen, int is_read2)
 {
+#if !NDEBUG
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
+#endif
     for(int i = 0; i < kfp->readlen; i++) {
         nuc_to_pos((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
@@ -234,7 +236,9 @@ inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ****resc
         memcpy(kfp->barcode, bs_ptr, blen);
     }
     kfp->length++; // Increment
+#if !NDEBUG
     fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
+#endif
     return;
 }
 
@@ -254,11 +258,13 @@ inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, i
 
 inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
+#if !NDEBUG
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
+#endif
     for(int i = 0; i < kfp->readlen; i++) {
         nuc_to_pos((seq->seq.s[i]), nuc_indices);
-        kfp->nuc_counts[i][nuc_indices[0]] += 1;
-        kfp->phred_sums[i][nuc_indices[1]] += seq->qual.s[i] - 33;
+        kfp->nuc_counts[i][nuc_indices[1]] += 1;
+        kfp->phred_sums[i][nuc_indices[0]] += seq->qual.s[i] - 33;
         if(seq->qual.s[i] > kfp->max_phreds[i]) {
             kfp->max_phreds[i] = seq->qual.s[i];
         }
@@ -271,7 +277,9 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
         kfp->barcode[blen] = '\0';
     }
     kfp->length++; // Increment
+#if !NDEBUG
     fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
+#endif
     return;
 }
 
