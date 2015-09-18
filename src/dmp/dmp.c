@@ -9,7 +9,7 @@ int ARRG_MAX(KingFisher_t *kfp, int index);
 char ARRG_MAX_TO_NUC(int argmaxret);
 int pvalue_to_phred(double pvalue);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen);
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t tmp);
 int bmftools_dmp_wrapper(char *input_path, char *output_path);
 int infer_barcode_length(char *bs_ptr);
 void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix);
@@ -123,8 +123,9 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
 
 
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
+	tmpbuffers_t tmp;
     int l, readlen;
-    int *nuc_indices = malloc(2 * sizeof(int));
+    int nuc_indices[2];
     l = kseq_read(seq);
     fprintf(stderr, "Starting bmftools_dmp_core.\n");
     if(l < 0) {
@@ -168,14 +169,14 @@ int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
 #if !NDEBUG
             fprintf(stderr, "Different barcode. Write out result.\n");
 #endif
-            dmp_process_write(Hook, out_handle, blen);
+            dmp_process_write(Hook, out_handle, blen, tmp);
             clear_kf(Hook); // Reset Holloway
             memcpy(current_barcode, bs_ptr, blen * sizeof(char)); // Update working barcode.
             pushback_kseq(Hook, seq, nuc_indices, blen);
         }
     }
     if(Hook->length) { // If length is not 0
-        dmp_process_write(Hook, out_handle, blen);
+        dmp_process_write(Hook, out_handle, blen, tmp);
     }
     destroy_kf(Hook);
     return 0;

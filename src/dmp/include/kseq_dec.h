@@ -1,4 +1,3 @@
-#pragma once
 #include "kseq.h"
 #include "kingfisher.h"
 #include <zlib.h>
@@ -232,8 +231,8 @@ inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ****resc
     if(kfp->length == 0) {
         char *bs_ptr = barcode_mem_view(seq);
         kfp->pass_fail = (char)*(bs_ptr- 5);
-        kfp->barcode = (char *)calloc(blen + 1, sizeof(char));
         memcpy(kfp->barcode, bs_ptr, blen);
+        kfp->barcode[blen] = '\0';
     }
     kfp->length++; // Increment
 #if !NDEBUG
@@ -272,7 +271,6 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
     if(!kfp->length) { // Empty KingFisher
         char *bs_ptr = barcode_mem_view(seq);
         kfp->pass_fail = (char)*(bs_ptr- 5);
-        kfp->barcode = (char *)malloc((blen + 1) * sizeof(char));
         memcpy(kfp->barcode, bs_ptr, blen);
         kfp->barcode[blen] = '\0';
     }
