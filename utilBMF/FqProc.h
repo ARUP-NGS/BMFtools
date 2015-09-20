@@ -10,9 +10,9 @@ simple C header file that merges a fastq family.
 #include <stdlib.h>
 
 typedef struct Read_ {
-	int* sequence;
-	int* quality;
-	int length;
+    int* sequence;
+    int* quality;
+    int length;
 } Read;
 
 int amax(int* arr, int length);

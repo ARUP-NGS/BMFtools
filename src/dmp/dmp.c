@@ -105,7 +105,10 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
     fprintf(stderr, "Starting bmftools_dmp_wrapper.\n");
     FILE *in_handle;
     FILE *out_handle;
-    if(input_path[0] == '-' || !input_path) in_handle = stdin;
+    if(input_path[0] == '-' || !input_path) {
+        fprintf(stderr, "Input path set to stdin.\n");
+        in_handle = stdin;
+    }
     else {
         in_handle = fopen(input_path, "r");
     }
@@ -122,8 +125,14 @@ int bmftools_dmp_wrapper(char *input_path, char *output_path) {
 }
 
 
+/*
+ * TODO:
+ * Expand the writing out of KingFisher_t to include the RC count.
+ * Only write this out of the count >= 0.
+ */
+
 int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
-	tmpbuffers_t tmp;
+    tmpbuffers_t tmp;
     int l, readlen;
     int nuc_indices[2];
     l = kseq_read(seq);

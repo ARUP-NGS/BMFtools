@@ -5,10 +5,14 @@
 #include "charcmp.h"
 #include "khash.h"
 #include "uthash.h"
+#include "khash.h"
 
 #ifndef MAX_BARCODE_LENGTH
 #define MAX_BARCODE_LENGTH 30
 #endif
+
+int nuc2num(char character);
+
 
 typedef struct KingFisher {
     int **nuc_counts; // Count of nucleotides of this form
@@ -18,21 +22,19 @@ typedef struct KingFisher {
     char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
     char barcode[MAX_BARCODE_LENGTH + 1];
     char pass_fail;
+    int n_rc;
 } KingFisher_t;
 
 
+
 typedef struct tmpbuffers {
-	char name_buffer[120];
-	char PVBuffer[1000];
-	char FABuffer[1000];
-	char cons_seq_buffer[300];
-	int cons_quals[300];
-	int agrees[300];
+    char name_buffer[120];
+    char PVBuffer[1000];
+    char FABuffer[1000];
+    char cons_seq_buffer[300];
+    int cons_quals[300];
+    int agrees[300];
 } tmpbuffers_t;
-
-
-KHASH_MAP_INIT_INT64(fisher, KingFisher_t *) // Initialize a hashmap with int64 keys and KingFisher_t payload.
-int nuc2num(char character);
 
 extern double igamc(double x, double y);
 
@@ -74,7 +76,9 @@ inline KingFisher_t init_kf(int readlen)
         .phred_sums = phred_sums,
         .length = 0,
         .readlen = readlen,
-        .max_phreds = (char *)calloc(readlen + 1, 1) // Keep track of the maximum phred score observed at position.
+        .max_phreds = (char *)calloc(readlen + 1, 1), // Keep track of the maximum phred score observed at position.
+        .n_rc = 0,
+        .pass_fail = '1'
     };
     return fisher;
 }
@@ -160,13 +164,13 @@ inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix)
 
 inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer)
 {
-    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:");
+    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:I");
     return;
 }
 
 inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
 {
-    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:");
+    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:I"); // Add in the "I" to type the array.
     return;
 }
 

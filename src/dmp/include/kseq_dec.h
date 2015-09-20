@@ -281,8 +281,13 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
         kfp->pass_fail = (char)*(bs_ptr- 5);
         memcpy(kfp->barcode, bs_ptr, blen);
         kfp->barcode[blen] = '\0';
+        switch(*(bs_ptr + blen + 4)) {
+            case '1': ++kfp->n_rc; break;
+            case '-': kfp->n_rc = INT_MIN; break;
+            default: break;
+        }
     }
-    kfp->length++; // Increment
+    ++kfp->length; // Increment
 #if !NDEBUG
     fprintf(stderr, "New length of kfp: %i. BTW, readlen for kfp: %i.\n", kfp->length, kfp->readlen);
 #endif

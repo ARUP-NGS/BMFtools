@@ -125,16 +125,16 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 
 static inline void write_bam1_nc(bam1_t *b, FILE *fp)
 {
-	/*
-	 * TODO HERE:
-	 * PV
-	 * FA
-	 * FM
-	 * NN
-	 * NC
-	 * RC
-	 * FP
-	 */
+    /*
+     * TODO HERE:
+     * PV
+     * FA
+     * FM
+     * NN
+     * NC
+     * RC
+     * FP
+     */
     fprintf(stderr, "Not implemented (write_bam1_nc). Abort mission!\n");
     exit(EXIT_FAILURE);
 }
@@ -215,10 +215,13 @@ static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
     return;
 }
 
+#define INC_TAG(p, b, key) *(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
+
 static inline void inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
 {
-	*(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
-	return;
+    INC_TAG(p, b, key)
+    //*(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
+    return;
 }
 
 static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
