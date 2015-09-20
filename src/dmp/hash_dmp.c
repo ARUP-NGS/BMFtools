@@ -42,17 +42,17 @@ int main(int argc, char *argv[]){
     char *outfname = NULL;
     char *infname = NULL;
     int c;
-    if(argc < 4) {
-        fprintf(stderr, "Required arguments missing. See usage.\n");
-        print_usage(argv);
-        exit(1);
-    }
-    while ((c = getopt(argc, argv, "h:o:")) > -1) {
+    while ((c = getopt(argc, argv, "ho:")) > -1) {
         switch(c) {
             case 'o': outfname = strdup(optarg);break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
+    }
+    if(argc < 4) {
+        fprintf(stderr, "Required arguments missing. See usage.\n");
+        print_usage(argv);
+        exit(1);
     }
     FILE *in_handle;
     FILE *out_handle;
@@ -107,12 +107,15 @@ void hash_dmp_core(outpost_t *Navy, FILE *handle) {
         fprintf(stderr, "Locating barcode failed. seq's comment: %s.\n", Navy->seq->comment.s);
         exit(1);
     }
+    fprintf(stderr, "Now initializing Holloway pointer.\n");
     KingFisher_t *Holloway = init_kfp(Navy->seq->seq.l);
     //fprintf(stderr, "Holloway's current length: %i. Barcode: %s. Pointer to Holloway: %p.\n", Holloway.length, Holloway.barcode, &Holloway);
+    fprintf(stderr, "Now pushing back first record.\n");
     pushback_kseq(Holloway, Navy->seq, Navy->nuc_indices, Navy->blen);
-    int ret;
     Navy->key = get_binnerul(Navy->bs_ptr, Navy->blen);
-    Navy->k = kh_put(fisher, Navy->hash, Navy->key, &ret);
+    Navy->k = kh_put(fisher, Navy->hash, get_binnerul(Navy->bs_ptr, Navy->blen), &Navy->ret);
+    fprintf(stderr, "Now inserting key %i.\n", Navy->key);
+    fprintf(stderr, "Now setting key value.\n");
     kh_value(Navy->hash, Navy->k) = Holloway;
     /*
     char *first_barcode = (char *)malloc((Navy->blen + 1) * sizeof(char));

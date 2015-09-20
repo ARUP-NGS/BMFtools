@@ -58,14 +58,17 @@ inline int64_t lpow(int64_t base, int64_t exp)
 
 inline uint64_t ulpow(uint64_t base, uint64_t exp)
 {
+	fprintf(stderr, "Now running ulpow. Base: %i. Exp: %i.\n", base, exp);
     uint64_t result = 1;
     while (exp)
     {
         if (exp & 1)
             result *= base;
+            fprintf(stderr, "Result is now %i.\n", result);
         exp >>= 1;
         base *= base;
     }
+	fprintf(stderr, "Now returning ulpow result %i.\n", result);
 
     return result;
 }
@@ -81,7 +84,7 @@ inline int64_t get_binnerl(char *barcode, int length)
         bin += lpow(4, count) * inc_binner;
         count++;
     }
-    fprintf(stderr, "Bin: %i.\n", bin);
+    //fprintf(stderr, "Bin for barcode %s and length %i: %i.\n", barcode, length, bin);
     return bin;
 }
 

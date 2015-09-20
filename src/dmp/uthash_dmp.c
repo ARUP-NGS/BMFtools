@@ -17,13 +17,15 @@ typedef struct tmpvars {
 
 typedef struct HashKing {
     UT_hash_handle hh;
-    int64_t id;
+    char *id;
     KingFisher_t *value;
 } HashKing_t;
 
 
+extern uint64_t get_binnerul(char *barcode, int length); // From binner.h
 extern int64_t get_binnerl(char *barcode, int length); // From binner.h
 extern char *barcode_mem_view(kseq_t *seq); // from dmp.h
+int64_t lpow(int64_t base, int64_t exp);
 char ARRG_MAX_TO_NUC(int argmaxret);
 double igamc_pvalues(int num_pvalues, double x);
 int ARRG_MAX(KingFisher_t *kfp, int index);
@@ -40,7 +42,7 @@ void nuc_to_pos(char character, int *nuc_indices);
 char test_hp(kseq_t *seq, int threshold);
 int get_binner(char *barcode, int length);
 void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq);
-int64_t lpow(int64_t base, int64_t exp);
+uint64_t ulpow(uint64_t base, uint64_t exp);
 static void pushback_entry(HashKing_t *hash, HashKing_t *tmp_entry, tmpvars_t *tmp, kseq_t *seq);
 
 
@@ -66,11 +68,20 @@ void print_opt_err(char *argv[], char *optarg) {
     exit(1);
 }
 
+static inline HashKing_t *init_hk(HashKing_t *hash, int64_t bin, int readlen) {
+    fprintf(stderr, "About to start my hash with bin %i and readlen %i.\n", bin, readlen);
+    HashKing_t *current_entry = (HashKing_t *)calloc(1, sizeof(HashKing_t));
+    current_entry->id = bin;
+    current_entry->value = init_kfp(readlen);
+    HASH_ADD(hh, hash, id, sizeof(int64_t), current_entry);
+    return current_entry;
+}
+
 int main(int argc, char *argv[]){
     char *outfname = NULL;
     char *infname = NULL;
     int c;
-    while ((c = getopt(argc, argv, "h:o:")) > -1) {
+    while ((c = getopt(argc, argv, "ho:")) > -1) {
         switch(c) {
             case 'o': outfname = strdup(optarg);break;
             case 'h': print_usage(argv); return 0;
@@ -108,20 +119,24 @@ int main(int argc, char *argv[]){
     int blen = infer_barcode_length(bs_ptr);
     int readlen = seq->seq.l;
     fprintf(stderr, "About to start my tmpvars.\n");
+    fprintf(stderr, "tmpvars: bs_ptr %s, blen %i, readlen %i.\n", bs_ptr, blen, readlen);
     tmpvars_t tmp = init_tmpvars(bs_ptr, blen, readlen);
-    HashKing_t *hash = NULL;
-    fprintf(stderr, "About to start my hash.\n");
-    HashKing_t *current_entry = (HashKing_t *)malloc(sizeof(HashKing_t));
+    tmp.blen = blen;
     int64_t bin = get_binnerl(bs_ptr, blen);
-    current_entry->id = bin;
-    *current_entry->value = init_kf(readlen);
-    fprintf(stderr, "Now about to add a value to my hash.\n");
+    HashKing_t *hash = NULL;
+    HashKing_t *current_entry = init_hk(hash, bin, readlen);
+    fprintf(stderr, "Now about to add a value to my kf, whose pointer is at %p.\n", current_entry->value);
     pushback_kseq(current_entry->value, seq, tmp.nuc_indices, blen);
     fprintf(stderr, "Pushed back kseq.\n");
-    HASH_ADD(hh, hash, id, sizeof(int64_t), current_entry);
     fprintf(stderr, "Initiated hash table.\n");
+    /*
+     * Start of testing block
+     */
+    HashKing_t *ref = current_entry;
+    HASH_FIND(hh, hash, &bin, sizeof(int64_t), )
+    fprintf(stderr, "Fetched entry %p which should have the same value as %p.\n", current_entry, ref);
     //pushback_entry(hash, current_entry, &tmp);
-    hash_dmp_core(out_handle, hash, tmp, seq);
+    //hash_dmp_core(out_handle, hash, tmp, seq);
     fprintf(stderr, "Returned from hash_dmp_core.\n");
     kseq_destroy(seq);
     free(hash);
@@ -129,22 +144,29 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
+
+//static inline void insert_entry(HashKing_t *head, )
+
 static inline void pushback_entry(HashKing_t *hash, HashKing_t *tmp_entry, tmpvars_t *tmp, kseq_t *seq)
 {
     tmp->bs_ptr = barcode_mem_view(seq);
     int64_t bin = get_binnerl(tmp->bs_ptr, tmp->blen);
-    fprintf(stderr, "Bin for pushing back hash: %i.", bin);
+    fprintf(stderr, "Bin for bs %s and blen %i is %i.\n", tmp->bs_ptr, tmp->blen, bin);
     HASH_FIND(hh, hash, &bin, sizeof(int64_t), tmp_entry);
-    if(tmp_entry) {
-        pushback_kseq(tmp_entry->value, seq, tmp->nuc_indices, tmp->blen);
+    if(!tmp_entry) {
+    	fprintf(stderr, "Key not found in hash_table. Make a new KingFisher_t * object which should have readlen %i.\n", tmp->readlen);
+        tmp_entry = (HashKing_t *)malloc(sizeof(HashKing_t));
+        tmp_entry->id = bin;
+        tmp_entry->value = init_kfp(tmp->readlen);
+    	fprintf(stderr, "Successfully initialized now value in hash_table.\n");
     }
     else {
-        tmp_entry = (HashKing_t *)malloc(sizeof(tmp_entry));
-        tmp_entry->id = bin;
-        tmp_entry->value = (KingFisher_t *)malloc(sizeof(KingFisher_t));
-        *tmp_entry->value = init_kf(tmp->readlen);
-        pushback_kseq(tmp_entry->value, seq, tmp->nuc_indices, tmp->blen);
+    	fprintf(stderr, "Key found in hashtable. Pointer to KingFisher_t object: %p.", tmp_entry->value);
     }
+    if(!tmp_entry->value) {
+    	fprintf(stderr, "My KingFisher_t struct is empty. WTF.\n");
+    }
+    pushback_kseq(tmp_entry->value, seq, tmp->nuc_indices, tmp->blen);
     return;
 }
 
@@ -159,12 +181,12 @@ static inline void pushback_uthash(FILE *handle, HashKing_t *hash, tmpvars_t *tm
         fprintf(stderr, "New barcode! %s, %i.", tmp->bs_ptr, bin);
         tmp_entry = (HashKing_t *)malloc(sizeof(HashKing_t));
         tmp_entry->id = bin;
-        tmp_entry->value = (KingFisher_t *)malloc(sizeof(KingFisher_t));
-        *tmp_entry->value = init_kf(tmp->readlen);
+        tmp_entry->value = init_kfp(tmp->readlen);
         pushback_kseq(tmp_entry->value, seq, tmp->nuc_indices, tmp->blen);
         HASH_ADD(hh, hash, id, sizeof(int64_t), tmp_entry);
     }
     else {
+        fprintf(stderr, "Key found in table. Pointer to kf object: %p.\n", tmp_entry->value);
         pushback_kseq(tmp_entry->value, seq, tmp->nuc_indices, tmp->blen);
     }
     return;
@@ -179,9 +201,9 @@ void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq) {
     fprintf(stderr, "Now beginning hash_dmp_core.\n");
     int ret;
 #if !NDEBUG
-    fprintf(stderr, "Seq value. %s", seq->seq.s);
+    //fprintf(stderr, "Seq value. %s", seq->seq.s);
     tmp.bs_ptr = barcode_mem_view(seq);
-    fprintf(stderr, "Bs PTR! %s.", tmp.bs_ptr);
+    //fprintf(stderr, "Bs PTR! %s.", tmp.bs_ptr);
     char *first_barcode = (char *)calloc(tmp.blen + 1, sizeof(char));
     first_barcode[tmp.blen] = '\0';
     memcpy(first_barcode, tmp.bs_ptr, tmp.blen);
@@ -189,7 +211,6 @@ void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq) {
 #endif
     // Delete every between here and "int l" when done.
     while ((l = kseq_read(seq)) >= 0) {
-        fprintf(stderr, "Hey, kseq now has seq %s and qual %s.\n", seq->seq.s, seq->qual.s);
         pushback_entry(hash, tmp_entry, &tmp, seq);
     }
     int barcode_counter = 0;

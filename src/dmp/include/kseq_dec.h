@@ -267,6 +267,7 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
 {
 #if !NDEBUG
     fprintf(stderr, "Pushing back kseq with read length %i\n", kfp->readlen);
+    fprintf(stderr, "kfp: %p\n", kfp);
 #endif
     for(int i = 0; i < kfp->readlen; i++) {
         nuc_to_pos((seq->seq.s[i]), nuc_indices);

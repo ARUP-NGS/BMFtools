@@ -71,21 +71,40 @@ typedef struct outpost {
     int ret;
 } outpost_t;
 
-static inline KingFisher_t *init_kfp(size_t readlen)
+
+static inline void set_kfp(KingFisher_t *ret, size_t readlen)
 {
-    KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
-    ret->nuc_counts = (int **)malloc(readlen * sizeof(int *));
-    ret->phred_sums = (double **)malloc(sizeof(double *) * readlen);
+	ret = (KingFisher_t *)malloc(sizeof(KingFisher_t));
+    ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
+    ret->n_rc = 0;
+    ret->readlen = readlen;
+    ret->max_phreds = (char *)calloc(readlen + 1, 1), // Keep track of the maximum phred score observed at position.
+    ret->nuc_counts = (int **)calloc(readlen, sizeof(int *));
+    ret->phred_sums = (double **)calloc(readlen, sizeof(double *));
     for(int i = 0; i < readlen; ++i) {
         ret->nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
         ret->phred_sums[i] = (double *)calloc(4, sizeof(double)); // One for each nucleotide
     }
-#if !NDEBUG
+    ret->pass_fail = '1';
+    return;
+}
+
+
+
+static inline KingFisher_t *init_kfp(size_t readlen)
+{
+    KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
     ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
     ret->n_rc = 0;
-#endif
     ret->readlen = readlen;
+    fprintf(stderr, "New read length for new kfp: %i. Pointer: %p.", ret->readlen, ret);
     ret->max_phreds = (char *)calloc(readlen + 1, 1), // Keep track of the maximum phred score observed at position.
+    ret->nuc_counts = (int **)calloc(readlen, sizeof(int *));
+    ret->phred_sums = (double **)calloc(readlen, sizeof(double *));
+    for(int i = 0; i < readlen; ++i) {
+        ret->nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
+        ret->phred_sums[i] = (double *)calloc(4, sizeof(double)); // One for each nucleotide
+    }
     ret->pass_fail = '1';
     return ret;
 }
