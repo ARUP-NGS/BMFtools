@@ -12,7 +12,7 @@ void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp);
 int bmftools_dmp_wrapper(char *input_path, char *output_path);
 int infer_barcode_length(char *bs_ptr);
-void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix);
+void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, char typecode);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void destroy_kf(KingFisher_t *kfp);

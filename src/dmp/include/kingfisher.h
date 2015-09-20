@@ -152,10 +152,10 @@ inline char ARRG_MAX_TO_NUC(int argmaxret)
 }
 
 
-inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix)
+inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, char typecode)
 {
     char tmpbuf[20];
-    sprintf(buffer, prefix);
+    sprintf(buffer, "%s%c", prefix, typecode);
     for(int i = 0; i < readlen; i++) {
         sprintf(tmpbuf, ",%i", arr[i]);
         strcat(buffer, tmpbuf);
@@ -164,13 +164,13 @@ inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix)
 
 inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer)
 {
-    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:I");
+    fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:", 'I');
     return;
 }
 
 inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
 {
-    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:I"); // Add in the "I" to type the array.
+    fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:", 'I'); // Add in the "I" to type the array.
     return;
 }
 

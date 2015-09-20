@@ -11,7 +11,7 @@ int infer_barcode_length(char *bs_ptr);
 int pvalue_to_phred(double pvalue);
 void destroy_kf(KingFisher_t *kfp);
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp);
-void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix);
+void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, char typecode);
 void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void hash_dmp_core(outpost_t *Navy, FILE *handle);
