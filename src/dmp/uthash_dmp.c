@@ -1,5 +1,6 @@
 #include "include/kingfisher.h"
 #include "dmp_interface.h"  // Contains the KingFisher_t type and KSEQ_INIT
+#include "uthash_dmp.h"
 #include "igamc_cephes.c"
 
 extern double igamc(double a, double x);
@@ -46,6 +47,7 @@ void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq);
 uint64_t ulpow(uint64_t base, uint64_t exp);
 void cp_view2buf(char *view, char *buf);
 void omgz_core(FILE *handle, HashKing_t *hash, tmpvars_t *tmp, kseq_t *seq);
+void cp_view2buf(char *view, char *buf);
 
 
 tmpvars_t init_tmpvars(char *bs_ptr, int blen, int readlen)
@@ -70,22 +72,7 @@ void print_opt_err(char *argv[], char *optarg) {
     print_usage(argv);
     exit(1);
 }
-/*
- * :param: seq - [arg/kseq_t *] a filled-in kseq object.
- * :param: buf - a pre-allocated buffer or malloc'd char_ptr with enough space for the barcode and the null terminus.
- * :returns:
- */
-inline void cp_bs2buf(kseq_t *seq, char *buf)
-{
-    char *view = barcode_mem_view(seq);
-    int blen = 0;
-    while(view[blen] != '\0' && view[blen] != '|') {
-        ++blen;
-    }
-    memcpy(buf, view, blen);
-    buf[blen] = '\0';
-    return;
-}
+
 
 inline void cp_view2buf(char *view, char *buf)
 {

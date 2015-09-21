@@ -1,3 +1,5 @@
+#pragma once
+
 #include "kseq.h"
 #include "kingfisher.h"
 #include <zlib.h>

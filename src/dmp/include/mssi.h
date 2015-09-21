@@ -1,3 +1,5 @@
+#pragma once
+
 #include "kseq_dec.h"
 #include "cstr_utils.h"
 
