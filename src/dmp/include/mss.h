@@ -54,7 +54,6 @@ void FREE_SPLITTER(mark_splitter_t var)
 {
     for(int i = 0; i < var.n_handles; i++) {
         //fprintf(stderr, "Now trying to close file #%i with filename %s.\n", i, var.fnames_r1[i]);
-        FILE *omgz = var.tmp_out_handles_r1[i];
         //fprintf(stderr, "Now trying to access FILE * with number %i.\n", i);
         free(var.fnames_r1[i]);
         free(var.fnames_r2[i]);

@@ -59,76 +59,27 @@ int ipow(int base, int exp);
 
 KHASH_MAP_INIT_INT64(fisher, KingFisher_t *) // Initialize a hashmap with uint64 keys and KingFisher_t payload.
 
-typedef struct outpost {
-    khash_t(fisher) *hash;
-    kseq_t *seq;
-    char *bs_ptr;
-    int blen;
-    //int readlen; - Don't need readlen - already available as seq->seq.l;
-    int *nuc_indices;
-    khiter_t k;
-    uint64_t key;
-    int ret;
-} outpost_t;
-
-
-static inline void set_kfp(KingFisher_t *ret, size_t readlen)
-{
-	ret = (KingFisher_t *)malloc(sizeof(KingFisher_t));
-    ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
-    ret->n_rc = 0;
-    ret->readlen = readlen;
-    ret->max_phreds = (char *)calloc(readlen + 1, 1), // Keep track of the maximum phred score observed at position.
-    ret->nuc_counts = (int **)calloc(readlen, sizeof(int *));
-    ret->phred_sums = (double **)calloc(readlen, sizeof(double *));
-    for(int i = 0; i < readlen; ++i) {
-        ret->nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
-        ret->phred_sums[i] = (double *)calloc(4, sizeof(double)); // One for each nucleotide
-    }
-    ret->pass_fail = '1';
-    return;
-}
-
-
 
 static inline KingFisher_t *init_kfp(size_t readlen)
 {
-    KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
+    KingFisher_t *ret = (KingFisher_t *)malloc(sizeof(KingFisher_t));
     ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
     ret->n_rc = 0;
     ret->readlen = readlen;
 #if !NDEBUG
     fprintf(stderr, "New read length for new kfp: %i. Pointer: %p.", ret->readlen, ret);
 #endif
-    ret->max_phreds = (char *)calloc(readlen + 1, 1), // Keep track of the maximum phred score observed at position.
-    ret->nuc_counts = (int **)calloc(readlen, sizeof(int *));
-    ret->phred_sums = (double **)calloc(readlen, sizeof(double *));
+    ret->max_phreds = (char *)malloc((readlen + 1) * sizeof(char)), // Keep track of the maximum phred score observed at position.
+    ret->nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
+    ret->phred_sums = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
     for(int i = 0; i < readlen; ++i) {
-        ret->nuc_counts[i] = (int *)calloc(5, sizeof(int)); // One each for A, C, G, T, and N
-        ret->phred_sums[i] = (double *)calloc(4, sizeof(double)); // One for each nucleotide
+        ret->nuc_counts[i] = (uint16_t *)calloc(5, sizeof(uint16_t)); // One each for A, C, G, T, and N
+        ret->phred_sums[i] = (uint16_t *)calloc(4, sizeof(uint16_t)); // One for each nucleotide
     }
     ret->pass_fail = '1';
     return ret;
 }
 
-
-static inline void pushback_hash(outpost_t *Navy)
-{
-    Navy->bs_ptr = barcode_mem_view(Navy->seq);
-    Navy->key = get_binnerul(Navy->bs_ptr, Navy->blen);
-    Navy->k=kh_get(fisher, Navy->hash,
-                   Navy->key);
-    if(Navy->k==kh_end(Navy->hash)) {
-        KingFisher_t *Holloway = init_kfp(Navy->seq->seq.l);
-        kh_put(fisher, Navy->hash, Navy->key, &Navy->ret);
-        pushback_kseq(Holloway, Navy->seq, Navy->nuc_indices, Navy->blen);
-        kh_value(Navy->hash, Navy->k) = Holloway;
-    }
-    else {
-        pushback_kseq(kh_value(Navy->hash, Navy->k), Navy->seq, Navy->nuc_indices, Navy->blen);
-    }
-    return;
-}
 
 
 /*
