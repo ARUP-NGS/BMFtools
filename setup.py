@@ -49,8 +49,9 @@ subprocess.check_call('gcc src/dmp/fqmarksplit.c src/dmp/igamc_cephes.c -I src/d
 subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
 subprocess.check_call('cd src/dmp;gcc fqmarksplit_inline.c -o fqmarksplit_inline -lm -lz -DNDEBUG -std=gnu11;cd ../..', shell=True)
 subprocess.check_call('cd src/dmp;gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -DNDEBUG -std=gnu11 ;cd ../..', shell=True)
-subprocess.check_call('cd src/dmp;gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG=1 -std=gnu11 -fivopts;cd ../..', shell=True)
+subprocess.check_call('cd src/dmp;gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG -std=gnu11 -fivopts;cd ../..', shell=True)
 subprocess.check_call('cd src/dmp;gcc -I. -o uthash_dmp uthash_dmp.c -lz -lm -std=gnu11 -DNDEBUG;cd ../..', shell=True)
+subprocess.check_call('cd src/dmp;gcc -o vlrcms vlcrms.c -lz -lm -std=gnu11 -DNDEBUG;cd ../..', shell=True)
 subprocess.check_call('cd src/holloway;gcc htslib/faidx.c htslib/bgzf.c htslib/hfile.c htslib/hfile_net.c htslib/kfunc.c htslib/md5.c htslib/hts.c htslib/kstring.c htslib/sam.c htslib/knetfile.c htslib/cram/mFILE.c htslib/cram/thread_pool.c htslib/cram/pooled_alloc.c htslib/cram/cram_external.c htslib/cram/cram_encode.c htslib/cram/cram_codecs.c htslib/cram/cram_io.c htslib/cram/sam_header.c htslib/cram/files.c htslib/cram/vlen.c htslib/cram/string_alloc.c htslib/cram/cram_decode.c htslib/cram/cram_samtools.c htslib/cram/rANS_static.c htslib/cram/open_trace_file.c htslib/cram/cram_index.c htslib/cram/cram_stats.c htslib/cram/zfio.c sam_opts.c bam_rescue.c ../dmp/igamc_cephes.c -I. -I htslib/htslib -I htslib/ -I ../dmp/include/ -o frmsi -fopenmp -lm -lz -std=gnu11 -DNDEBUG;cd ../..', shell=True)
 #subprocess.check_call('cd src/dmp; gcc -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o igamc -fopenmp -lm -std=c99; cd ../..', shell=True)
 #gcc  -g -Wall -O2 dmp.c igamc_cephes.c isnanl.c -o omgz -fopenmp -lm -lz -std=gnu99
