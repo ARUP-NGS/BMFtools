@@ -18,70 +18,9 @@
 #include "include/nix_resource.h"
 #include "vlcrms.h"
 
-#define MAX_N_BLENS 5
-#define MAX_HOMING_SEQUENCE 8
-
-typedef struct blens {
-	int max_blen; // Last value in blens
-	int min_blen; // Lowest value in blens
-	int blens[MAX_N_BLENS]; // Array holding blens
-	int n; // Number of blens to look for
-	int current_blen;
-	int homing_sequence_length;
-	char homing_sequence[MAX_HOMING_SEQUENCE + 1];
-} blens_t;
-
-inline blens_t *get_blens(char *str2parse)
-{
-	blens_t *ret = (blens_t *)malloc(sizeof(blens_t));
-	ret->min_blen = 200;
-	ret->max_blen = 0;
-	ret->n = 0;
-	ret->current_blen = -1;
-	char *token;
-	while((token = strtok(str2parse, ",")) != NULL){
-	   ret->blens[ret->n] = atoi(token);
-	   if(ret->max_blen < ret->blens[ret->n]) {
-		   ret->max_blen = ret->blens[ret->n];
-	   }
-	   else if(ret->min_blen > ret->blens[ret->n]) {
-		   ret->min_blen = ret->blens[ret->n];
-	   }
-	   ++ret->n;
-	}
-	return ret;
-}
-
-
-inline int get_nlen()
-
-inline void free_crms_settings(crms_settings_t settings)
-{
-    free(settings.output_basename);
-    free(settings.input_r1_path);
-    free(settings.input_r2_path);
-    if(settings.rescaler_path) free(settings.rescaler_path);
-    // Note: rescaler array should be handled elsewhere!
-    return;
-}
-
-typedef struct crms_settings {
-    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
-    int n_nucs; // Number of nucleotides to split by.
-    char *output_basename;
-    char *input_r1_path;
-    char *input_r2_path;
-    char *homing_sequence; // Homing sequence...
-    int homing_sequence_length; // Length of homing sequence, should it be used.
-    int n_handles; // Number of handles
-    int notification_interval; // How many sets of records do you want to process between progress reports?
-    blens_t *blen_data;
-    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
-    char *rescaler_path; // Path to rescaler for
-} crms_settings_t;
-
 // Inline function declarations
+blens_t *get_blens(char *str2parse);
+void free_crms_settings(crms_settings_t settings);
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 void FREE_SPLITTER(mark_splitter_t var);
@@ -115,6 +54,42 @@ void increase_nofile_limit(int new_limit);
 uint64_t get_binnerul(char *barcode, int length);
 int get_binner(char *barcode, int length);
 uint64_t ulpow(uint64_t base, uint64_t exp);
+int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
+
+
+
+inline blens_t *get_blens(char *str2parse)
+{
+	blens_t *ret = (blens_t *)malloc(sizeof(blens_t));
+	ret->min_blen = 200;
+	ret->max_blen = 0;
+	ret->n = 0;
+	ret->current_blen = -1;
+	char *token;
+	while((token = strtok(str2parse, ",")) != NULL){
+	   ret->blens[ret->n] = atoi(token);
+	   if(ret->max_blen < ret->blens[ret->n]) {
+		   ret->max_blen = ret->blens[ret->n];
+	   }
+	   else if(ret->min_blen > ret->blens[ret->n]) {
+		   ret->min_blen = ret->blens[ret->n];
+	   }
+	   ++ret->n;
+	}
+	return ret;
+}
+
+
+inline void free_crms_settings(crms_settings_t settings)
+{
+    free(settings.output_basename);
+    free(settings.input_r1_path);
+    free(settings.input_r2_path);
+    if(settings.rescaler_path) free(settings.rescaler_path);
+    // Note: rescaler array should be handled elsewhere!
+    return;
+}
+
 
 
 void print_usage(char *argv[])
@@ -168,11 +143,57 @@ mark_splitter_t init_splitter_crms(crms_settings_t* settings_ptr)
     return ret;
 }
 
+void free_rescaler_array(crms_settings_t settings) {
+    int readlen = count_lines(settings.rescaler_path);
+    for(int i = 0; i < 2; ++i) {
+        for(int j = 0; j < readlen; ++j) {
+            for(int k = 0; k < 39; ++k) {
+            	if(settings.rescaler[i][j][k]) {
+                   free(settings.rescaler[i][j][k]);
+                   settings.rescaler[i][j][k] = NULL;
+            	}
+            }
+            if(settings.rescaler[i][j]) {
+                free(settings.rescaler[i][j]);
+                settings.rescaler[i][j] = NULL;
+            }
+        }
+        if(settings.rescaler[i]) {
+            free(settings.rescaler[i]);
+            settings.rescaler[i] = NULL;
+        }
+    }
+    free(settings.rescaler);
+    settings.rescaler = NULL;
+    return;
+}
+
+
+
+inline int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr)
+{
+#if !NDEBUG
+    if(!settings_ptr->blen_data->homing_sequence) {
+        fprintf(stderr, "Okay, if the homing sequence isn't set, just give up.\n");
+        exit(EXIT_FAILURE);
+    }
+#endif
+    for(int i = 0; i < settings_ptr->blen_data->n; ++i) {
+    	if(memcmp(seq1->seq.s + settings_ptr->blen_data->blens[i] + settings_ptr->offset,
+    			  settings_ptr->blen_data->homing_sequence,
+				  settings_ptr->blen_data->homing_sequence_length) == 0) {
+            return settings_ptr->blen_data->blens[i];
+    	}
+    }
+    return 0;
+}
+
+
 /*
  * Pre-processes and splits fastqs with inline barcodes.
  */
 void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
-                     crms_settings_t settings, mark_splitter_t splitter)
+                     crms_settings_t *settings, mark_splitter_t *splitter)
 {
     int l1, l2;
     uint64_t bin;
@@ -181,42 +202,42 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
 #endif
     char pass_fail;
     int readlen = 0;
-    char * barcode;
-    int blen1_2 = settings.blen / 2;
-    int n_len = blen1_2 + settings.homing_sequence_length + settings.offset;
-    barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
-    barcode[settings.blen] = '\0'; // Null-terminate
+    char *barcode;
+    barcode = (char *)malloc((settings->blen_data->max_blen + 1) * sizeof(char));
+    barcode[settings->blen_data->max_blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);
     l2 = kseq_read(seq2);
     if(l1 < 0 || l2 < 0) {
             fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
-            FREE_MSSI_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
+            FREE_SPLITTER(*splitter);
             exit(EXIT_FAILURE);
     }
     readlen = seq1->seq.l;
-    tmp_mseq_t tmp = init_tmp_mseq(readlen, settings.blen);
+    settings->blen_data->current_blen =  vl_homing_loc(seq1, seq2, settings);
+    int n_len = settings->blen_data->current_blen + settings->blen_data->homing_sequence_length + settings->offset;
+    tmp_mseq_t tmp = init_tmp_mseq(readlen, settings->blen_data->max_blen);
     // Get first barcode.
-    set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
-    pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings.rescaler, &tmp, n_len, 0);
-    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings.rescaler, &tmp, n_len, 1);
-    bin = get_binnerul(barcode, settings.n_nucs);
-    mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
-    mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
+    set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
+    pass_fail = settings->blen_data->current_blen ? test_hp_inline(barcode, settings->blen_data->current_blen, settings->hp_threshold) : '0';
+    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings->rescaler, &tmp, n_len, 0);
+    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings->rescaler, &tmp, n_len, 1);
+    bin = get_binnerul(barcode, settings->n_nucs);
+    mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
+    mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
     do {
 #if LOGGING
-        if(!(count++ % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
+        if(!(count++ % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
 #endif
         // Iterate through second fastq file.
-        set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
-        pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp, n_len, 0);
-        update_mseq(&mvar2, barcode, seq2, settings.rescaler, &tmp, n_len, 1);
-        bin = get_binnerul(barcode, settings.n_nucs);
-        mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
-        mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
+        set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
+        settings->blen_data->current_blen = vl_homing_loc(seq1, seq2, settings);
+        pass_fail = settings->blen_data->current_blen ? test_hp_inline(barcode, settings->blen_data->current_blen, settings->hp_threshold) : '0';
+        n_len = settings->blen_data->current_blen + settings->blen_data->homing_sequence_length + settings->offset;
+        update_mseq(&mvar1, barcode, seq1, settings->rescaler, &tmp, n_len, 0);
+        update_mseq(&mvar2, barcode, seq2, settings->rescaler, &tmp, n_len, 1);
+        bin = get_binnerul(barcode, settings->n_nucs);
+        mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
+        mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
     } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
     tmp_mseq_destroy(tmp);
     mseq_destroy(&mvar1);
@@ -245,11 +266,9 @@ int main(int argc, char *argv[])
         .output_basename = NULL,
         .input_r1_path = NULL,
         .input_r2_path = NULL,
-        .homing_sequence = NULL,
         .n_handles = 0,
         .notification_interval = 100000,
-        .blen_data = (blens_t *)malloc(sizeof(blens_t)),
-        .homing_sequence_length = 0,
+        .blen_data = (blens_t *)calloc(1, sizeof(blens_t)),
         .offset = 0,
         .rescaler = NULL,
         .rescaler_path = NULL
@@ -263,17 +282,19 @@ int main(int argc, char *argv[])
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg); break;
             case 'r': settings.rescaler_path = strdup(optarg); break;
-            case 's': settings.blen_data->homing_sequence = strdup(optarg); settings.blen_data->homing_sequence_length = strlen(settings.homing_sequence); break;
+            case 's': strcpy(settings.blen_data->homing_sequence, optarg); settings.blen_data->homing_sequence_length = strlen(settings.blen_data->homing_sequence); break;
             case 'l': settings.blen_data = get_blens(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
     }
-    if(!settings.blen_data) {
-    	settings.blen_data->homing_sequence_length
-    }
     if(!settings.blen_data->homing_sequence_length) {
+    	fprintf(stderr, "homing sequence not provided. e.g., %s -s <homing_sequence> <other_args>.\n", argv[0]);
+    	exit(EXIT_FAILURE);
+
+    }
+    if(settings.blen_data->max_blen < 0) {
     	fprintf(stderr, "blen data not provided. This should be a comma-separated list "
     			         "of positive integers for possible barcode lengths.\n");
     	fprintf(stderr, "e.g., %s -l 8,9,10 <other_args>.\n", argv[0]);
@@ -288,19 +309,12 @@ int main(int argc, char *argv[])
         print_usage(argv); exit(1);
     }
 
-    if(!settings.homing_sequence) {
-        fprintf(stderr, "Homing sequence not provided. Will not check for it. "
-                        "Reads will not be QC failed for its absence.\n");
-        fprintf(stderr, "Actually, that's stupid. I'm going to exit. Abort!\n");
-        exit(EXIT_FAILURE);
-    }
-    if(!settings.blen) {
-        fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
-        exit(EXIT_FAILURE);
-    }
-
     if(settings.offset) {
-        settings.blen -= 2 * settings.offset;
+    	for(int i = 0; i < settings.blen_data->n; ++i) {
+    		settings.blen_data->blens[i] -= 2 * settings.offset;
+    	}
+        settings.blen_data->max_blen -= 2 * settings.offset;
+        settings.blen_data->min_blen -= 2 * settings.offset;
     }
     if(settings.rescaler_path) {
         settings.rescaler = parse_rescaler(settings.rescaler_path);
@@ -317,8 +331,8 @@ int main(int argc, char *argv[])
     strcpy(r2_fq_buf, argv[optind + 1]);
 
     if(!settings.output_basename) {
-        settings.output_basename = mark_crms_outfname(r1_fq_buf);
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
+        settings.output_basename = mark_crms_outfname(r1_fq_buf);
     }
     gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1_fq_buf, "r");
@@ -326,35 +340,15 @@ int main(int argc, char *argv[])
     int l1, l2;
     kseq_t *seq1 = kseq_init(fp_read1);
     kseq_t *seq2 = kseq_init(fp_read2);
-    mark_splitter_t splitter = init_splitter_inline(&settings);
-    pp_split_inline(seq1, seq2, settings, splitter);
+    mark_splitter_t splitter = init_splitter_crms(&settings);
+    vl_split_inline(seq1, seq2, &settings, &splitter);
     if(settings.rescaler) {
-        int readlen = count_lines(settings.rescaler_path);
-        for(int i = 0; i < 2; ++i) {
-            for(int j = 0; j < readlen; ++j) {
-                for(int k = 0; k < 39; ++k) {
-                	if(settings.rescaler[i][j][k]) {
-                       free(settings.rescaler[i][j][k]);
-                       settings.rescaler[i][j][k] = NULL;
-                	}
-                }
-                if(settings.rescaler[i][j]) {
-                    free(settings.rescaler[i][j]);
-                    settings.rescaler[i][j] = NULL;
-                }
-            }
-            if(settings.rescaler[i]) {
-                free(settings.rescaler[i]);
-                settings.rescaler[i] = NULL;
-            }
-        }
-        free(settings.rescaler);
-        settings.rescaler = NULL;
+    	free_rescaler_array(settings);
     }
+    free(settings.blen_data);
     free_crms_settings(settings);
     FREE_SPLITTER(splitter);
     kseq_destroy(seq1);
     kseq_destroy(seq2);
     return 0;
 }
-.blen_data->
