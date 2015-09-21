@@ -111,8 +111,14 @@ inline int infer_barcode_length(char *bs_ptr)
 {
     int ret = 0;
     for (;;ret++) {
-        if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|') return ret;
+        if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|') {
 #if !NDEBUG
+            fprintf(stderr, "Returning blen as %i.\n", ret);
+#endif
+            return ret;
+        }
+#if !NDEBUG
+        fprintf(stderr, "Length: %i. Char: %c.\n", ret, bs_ptr[ret]);
         if(ret > MAX_BARCODE_LENGTH) {
             fprintf(stderr, "Inferred barcode length greater than max (%i). Abort!\n", MAX_BARCODE_LENGTH);
             exit(1);

@@ -14,6 +14,18 @@
 int nuc2num(char character);
 
 
+// Memory costs
+// max_phreds --> 1 * readlen + 8 (ptr)
+// barcode --> [MAX_BARCODE_LENGTH + 1] + 8 (ptr)
+// pass_fail --> 1
+// nuc_counts --> readlen * 8 (ptrs) + 8 (ptr) + (readlen * 5 * sizeof(int)) [20] --> 6 * readlen + 1
+// (nuc_counts = 28 * readlen + 8
+// phred_sums --> readlen * 8 (ptrs) + 8 (ptr) + (readlen * 4 * sizeof(double)) [40 * readlen + 8]
+// readlen --> 4
+// length --> 1
+// 69 * readlen + 46
+// 4900 + 49 --> 5kB per barcode
+
 typedef struct KingFisher {
     int **nuc_counts; // Count of nucleotides of this form
     double **phred_sums; // Sums of -10log10(p-value)
