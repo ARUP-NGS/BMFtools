@@ -35,14 +35,14 @@ const char *fms_suffix = ".fms.split";
 
 #define kseq2fq_inline(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) \
     memcpy(tmp_n_str, read->seq.s, read->seq.l * sizeof(char));\
-    memset(tmp_n_str, 78, n_len);\
+    memset(tmp_n_str, 'N', n_len);\
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
             read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
 
 
 #define kseq2slfq_inline(handle, read, barcode, pass_fail, tmp_n_str, readlen, n_len) \
     memcpy(tmp_n_str, read->seq.s, read->seq.l * sizeof(char));\
-    memset(tmp_n_str, 78, n_len);\
+    memset(tmp_n_str, 'N', n_len);\
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\t%s\t+\t%s\n",\
             read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
 
@@ -135,7 +135,7 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     int blen1_2 = settings.blen / 2;
     int n_len = blen1_2 + settings.homing_sequence_length;
     barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
-    memset(barcode, 78, settings.blen); // Set to all N
+    memset(barcode, 'N', settings.blen); // Set to all N
     barcode[settings.blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);
     l2 = kseq_read(seq2);
@@ -147,7 +147,7 @@ static void splitmark_core_inline(kseq_t *seq1, kseq_t *seq2,
     }
     int readlen = strlen(seq1->seq.s);
     tmp_n_str = (char *)malloc((readlen + 1) * sizeof(char));
-    memset(tmp_n_str, 78, readlen);
+    memset(tmp_n_str, 'N', readlen);
     tmp_n_str[readlen] = '\0';
     do {
         count += 1;
@@ -268,7 +268,7 @@ void kseq2fq_inline(FILE *handle, kseq_t *read,
     fprintf(stderr, "Accessing unmodified tmp_n_str %i.", strlen(tmp_n_str));
     memcpy(tmp_n_str, read->seq.s, read->seq.l * sizeof(char));
     fprintf(stderr, "Copied seq over: %i. Value: %s.\n", strlen(tmp_n_str), tmp_n_str);
-    memset(tmp_n_str, 78, n_len);
+    memset(tmp_n_str, 'N', n_len);
     fprintf(stderr, "N'd Value: %s.\n", tmp_n_str);
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
             read->name.s, pass_fail, barcode, tmp_n_str, read->qual.s);
