@@ -195,7 +195,6 @@ int main(int argc, char *argv[])
     int hp_threshold;
     int n_nucs;
     char *output_basename;
-    int threads;
     const char *default_basename = "metasyntactic_var";
     int blens[10];
     mssi_settings_t settings = {
@@ -215,6 +214,7 @@ int main(int argc, char *argv[])
         .run_hash_dmp = 0,
         .threads = 1
     };
+    omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
     while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:")) > -1) {
         switch(c) {
@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
             case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
             case 'l': settings.blen = 2 * atoi(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
-            case 'p': settings.threads = atoi(optarg); break;
+            case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
             case 'd': settings.run_hash_dmp = 1; break;
             case 'h': print_crms_usage(argv); return 0;
             default: print_crms_opt_err(argv, optarg);
