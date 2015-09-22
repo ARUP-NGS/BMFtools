@@ -20,8 +20,10 @@ typedef struct mssi_settings {
     int notification_interval; // How many sets of records do you want to process between progress reports?
     int blen; // Length of sequence to trim off from start to finish.
     int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
     char *rescaler_path; // Path to rescaler for
+    int threads;
+    int run_hash_dmp;
+    char ****rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
 } mssi_settings_t;
 
 void free_mssi_settings(mssi_settings_t settings);
