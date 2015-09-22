@@ -1,7 +1,6 @@
 # cython: boundscheck=False, wraparound=False
 from itertools import groupby
 from matplotlib.backends.backend_pdf import PdfPages
-from MawCluster.BCFastq import GetDescTagValue
 from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
 import argparse

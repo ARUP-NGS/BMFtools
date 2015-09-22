@@ -70,7 +70,7 @@ config = {
     'ext_modules': ext,
     'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/dmp/fqmarksplit_inline', 'src/sort/lh3sort',
-                'src/dmp/bmf_crms', 'src/dmp/dmp', 'src/dmp/uthash_dmp', 'src/dmp/hash_dmp'],
+                'src/dmp/bmf_crms', 'src/dmp/dmp', 'src/dmp/uthash_dmp'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
