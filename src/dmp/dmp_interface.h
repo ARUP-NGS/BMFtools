@@ -1,3 +1,5 @@
+#pragma once
+
 #include <getopt.h>
 #include <math.h>
 #include <omp.h>

@@ -16,7 +16,7 @@
 #include "dmp_interface.h"
 #include "include/array_parser.h"
 #include "include/nix_resource.h"
-#include "vlcrms.h"
+#include "crms.h"
 
 // Inline function declarations
 blens_t *get_blens(char *str2parse);
@@ -55,7 +55,7 @@ uint64_t get_binnerul(char *barcode, int length);
 int get_binner(char *barcode, int length);
 uint64_t ulpow(uint64_t base, uint64_t exp);
 int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
-
+void free_rescaler_array(crms_settings_t settings);
 
 
 inline blens_t *get_blens(char *str2parse)
@@ -143,33 +143,6 @@ mark_splitter_t init_splitter_crms(crms_settings_t* settings_ptr)
     return ret;
 }
 
-void free_rescaler_array(crms_settings_t settings) {
-    int readlen = count_lines(settings.rescaler_path);
-    for(int i = 0; i < 2; ++i) {
-        for(int j = 0; j < readlen; ++j) {
-            for(int k = 0; k < 39; ++k) {
-            	if(settings.rescaler[i][j][k]) {
-                   free(settings.rescaler[i][j][k]);
-                   settings.rescaler[i][j][k] = NULL;
-            	}
-            }
-            if(settings.rescaler[i][j]) {
-                free(settings.rescaler[i][j]);
-                settings.rescaler[i][j] = NULL;
-            }
-        }
-        if(settings.rescaler[i]) {
-            free(settings.rescaler[i]);
-            settings.rescaler[i] = NULL;
-        }
-    }
-    free(settings.rescaler);
-    settings.rescaler = NULL;
-    return;
-}
-
-
-
 inline int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr)
 {
 #if !NDEBUG
@@ -239,6 +212,10 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
         mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
         mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
     } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
+    for(int i = 0; i < splitter->n_handles; ++i) {
+        fclose(splitter->tmp_out_handles_r1[i]);
+        fclose(splitter->tmp_out_handles_r2[i]);
+    }
     tmp_mseq_destroy(tmp);
     mseq_destroy(&mvar1);
     mseq_destroy(&mvar2);

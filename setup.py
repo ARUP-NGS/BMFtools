@@ -45,6 +45,7 @@ install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
 
 includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("src/include/cephes")] + pysam.get_include()
 
+subprocess.check_call('cd src/dmp/include/htslib; make; cd ../../../../', shell=True)
 subprocess.check_call('gcc src/dmp/fqmarksplit.c src/dmp/igamc_cephes.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11', shell=True)
 subprocess.check_call('cd src/sort;make;cd ../..;', shell=True)
 subprocess.check_call('cd src/dmp;gcc fqmarksplit_inline.c -o fqmarksplit_inline -lm -lz -DNDEBUG -std=gnu11;cd ../..', shell=True)

@@ -16,6 +16,8 @@
 #include "dmp_interface.h"
 #include "include/array_parser.h"
 #include "include/nix_resource.h"
+#include "crms.h"
+#include "uthash_dmp_core.c"
 
 // Inline function declarations
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
@@ -44,16 +46,17 @@ void FREE_SPLITTER(mark_splitter_t var);
 char *trim_ext(char *fname);
 char *make_default_outfname(char *fname, const char *suffix);
 char *mark_crms_outfname(char *fname);
-void u32toa_branchlut(uint32_t value, char* buffer);
-void i32toa_branchlut(int32_t value, char* buffer);
 int get_fileno_limit();
 void increase_nofile_limit(int new_limit);
 uint64_t get_binnerul(char *barcode, int length);
 int get_binner(char *barcode, int length);
 uint64_t ulpow(uint64_t base, uint64_t exp);
+void splitterhash_destroy(splitterhash_params_t *params);
+splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 
 
-void print_usage(char *argv[])
+
+void print_crms_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
                         "\nFlags:\n"
@@ -66,12 +69,14 @@ void print_usage(char *argv[])
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
                         "-s: homing sequence. If not provided, %s will not look for it.\n"
+                        "-p: Number of threads to use if running uthash_dmp.\n"
+                        "-d: Set this flag to true to run hash_dmp.\n"
                         "-h: Print usage.\n", argv[0], argv[0]);
 }
 
-void print_opt_err(char *argv[], char *optarg)
+void print_crms_opt_err(char *argv[], char *optarg)
 {
-    print_usage(argv);
+    print_crms_usage(argv);
     fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
     exit(1);
 }
@@ -103,6 +108,7 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
     }
     return ret;
 }
+
 
 /*
  * Pre-processes and splits fastqs with inline barcodes.
@@ -155,6 +161,10 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
         mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
         mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
     } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
+    for(int i = 0; i < splitter.n_handles; ++i) {
+        fclose(splitter.tmp_out_handles_r1[i]);
+        fclose(splitter.tmp_out_handles_r2[i]);
+    }
     tmp_mseq_destroy(tmp);
     mseq_destroy(&mvar1);
     mseq_destroy(&mvar2);
@@ -164,13 +174,13 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
 
 inline int get_blens(char *str2parse, int *buf2fill)
 {
-	char *token;
-	size_t count;
-	do {
-	   token = strtok(str2parse, ",");
-	   buf2fill[++count] = atoi(token);
-	} while(token);
-	return buf2fill[count - 1];
+    char *token;
+    size_t count;
+    do {
+       token = strtok(str2parse, ",");
+       buf2fill[++count] = atoi(token);
+    } while(token);
+    return buf2fill[count - 1];
 }
 
 // Rescaling
@@ -185,7 +195,6 @@ int main(int argc, char *argv[])
     int hp_threshold;
     int n_nucs;
     char *output_basename;
-    int threads;
     const char *default_basename = "metasyntactic_var";
     int blens[10];
     mssi_settings_t settings = {
@@ -201,10 +210,13 @@ int main(int argc, char *argv[])
         .homing_sequence_length = 0,
         .offset = 0,
         .rescaler = NULL,
-        .rescaler_path = NULL
+        .rescaler_path = NULL,
+        .run_hash_dmp = 0,
+        .threads = 1
     };
+    omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:")) > -1) {
+    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
@@ -213,8 +225,10 @@ int main(int argc, char *argv[])
             case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
             case 'l': settings.blen = 2 * atoi(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
-            case 'h': print_usage(argv); return 0;
-            default: print_opt_err(argv, optarg);
+            case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
+            case 'd': settings.run_hash_dmp = 1; break;
+            case 'h': print_crms_usage(argv); return 0;
+            default: print_crms_opt_err(argv, optarg);
         }
     }
     settings.n_handles = ipow(4, settings.n_nucs);
@@ -223,7 +237,7 @@ int main(int argc, char *argv[])
     }
     fprintf(stderr, "Starting main.\n");
     if(argc < 5) {
-        print_usage(argv); exit(1);
+        print_crms_usage(argv); exit(1);
     }
 
     if(!settings.homing_sequence) {
@@ -246,7 +260,7 @@ int main(int argc, char *argv[])
     char r2_fq_buf[100];
     if(argc - 1 != optind + 1) {
         fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);
-        print_usage(argv);
+        print_crms_usage(argv);
         return 1;
     }
     strcpy(r1_fq_buf, argv[optind]);
@@ -277,6 +291,19 @@ int main(int argc, char *argv[])
         }
         free(settings.rescaler);
         settings.rescaler = NULL;
+    }
+    if(settings.run_hash_dmp) {
+        // Whatever I end up putting into here.
+        splitterhash_params_t *params = init_splitterhash(&settings, &splitter);
+        #pragma omp parallel
+        {
+            #pragma omp for
+            for(int i = 0; i < settings.n_handles; ++i) {
+                omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
+                omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
+            }
+        }
+        splitterhash_destroy(params);
     }
     free_mssi_settings(settings);
     FREE_SPLITTER(splitter);

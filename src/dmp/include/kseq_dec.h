@@ -164,7 +164,7 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_m
     ret->name = strdup(seq->name.s);
     ret->comment = strdup(seq->comment.s);
     ret->seq = strdup(seq->seq.s);
-    memset(ret->seq, 78, n_len); // Set the beginning of the read to Ns.
+    memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
     if(!rescaler) ret->qual = strdup(seq->qual.s);
     else {
         ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
@@ -184,7 +184,7 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****resca
 {
     memcpy(mvar->name, seq->name.s, seq->name.l * sizeof(char)); // Update name
     memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-    memset(mvar->seq, 78, n_len);
+    memset(mvar->seq, 'N', n_len);
     if(!rescaler) {
         memcpy(mvar->qual, seq->qual.s, seq->qual.l * sizeof(char));
     }
