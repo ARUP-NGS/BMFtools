@@ -20,13 +20,11 @@ from numpy cimport ndarray
 @cython.initializedcheck(False)
 @cython.wraparound(False)
 cdef inline int8_t NUC_TO_ARRAY(int8_t index) nogil:
-    if(index == 0):
-        return 65
-    elif(index == 1):
-        return 67
-    elif(index == 2):
-        return 71
-    elif(index == 3):
-        return 84
+    if(index == 65):
+        return 0
+    elif(index == 67):
+        return 1
+    elif(index == 71):
+        return 2
     else:
-        return 78
+        return 3

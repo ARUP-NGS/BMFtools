@@ -26,24 +26,26 @@ cdef errorTracker(AlignedSegment_t read,
     index = read.qstart
     for index, base in enumerate(tmpArr[read.qstart:read.qend],
                                  start=read.qstart):
-        if base == 78:  # base is '=' or 'N'
+        if base == 78:  # base is 'N'
             continue
+        """
         fprintf(c_stderr,
                 "Hey this is base %c with numeric"
                 " value %hi and int value %i.",
                 base, base, base)
+        """
         char_index = NUC_TO_ARRAY(base)
         phred_index = read.query_qualities[index] - 2
         # Note if/elses with same predicate --> switch
+        readObs[index][phred_index][char_index] += 1
         if base != 61:
-            readObs[index][phred_index][char_index] += 1
             readErr[index][phred_index][char_index] += 1
 
 
 def MakeErrorArray(args):
 
     cdef size_t rLen, index, read_index, qual_index, context_index
-    cdef uint64_t fam_range, qcfail, ReadCount, FamSizeFamCount, FM
+    cdef uint64_t qcfail, ReadCount
     cdef double_t r1mean, r2mean
     cdef ndarray[uint64_t, ndim=3, mode="c"] r1error, r1obs
     cdef ndarray[uint64_t, ndim=3, mode="c"] r2error, r2obs
@@ -76,10 +78,8 @@ def MakeErrorArray(args):
     r2obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
 
     qcfail = 0
-    FamSizeFamCount = 0
     ReadCount = 0
 
-    minFM, maxFM = args.minFM, args.maxFM
     mdBam = pysam.AlignmentFile(args.mdBam, "rb")
     for read in mdBam:
         '''
@@ -91,10 +91,6 @@ def MakeErrorArray(args):
         if read.flag & 2820 or not (read.flag & 2):
             qcfail += 1
             continue
-        FM = read.opt("FM")
-        if(FM < minFM or FM > maxFM):
-                FamSizeFamCount += 1
-                continue
         if read.flag & 64:
             errorTracker(read, r1error, r1obs, tmpArr)
         elif read.flag & 128:
@@ -102,12 +98,11 @@ def MakeErrorArray(args):
         else:
             pass
         ReadCount += 1
-    stderr.write("Family Size Range: %i-%i\n" % (minFM, maxFM))
     stderr.write("Reads Analyzed: %i\n" % (ReadCount))
     stderr.write("Reads QC Filtered: %i\n" % (qcfail))
-    stderr.write("Reads Family Size Filtered: %i\n" % (FamSizeFamCount))
-    r1frac = np.divide(r1error, r1obs)  # Now r1frac holds error / obs
-    r2frac = np.divide(r2error, r2obs)  # Now r2frac holds error / obs
+    r1frac = np.divide(r1error.astype(np.float64), r1obs.astype(np.float64))
+    r2frac = np.divide(r2error.astype(np.float64), r2obs.astype(np.float64))
+    """
     r1mean = np.mean(r1frac)
     r2mean = np.mean(r2frac)
     r1cyclemeans = np.mean(np.mean(r1frac, axis=2, dtype=np.float64),
@@ -122,56 +117,53 @@ def MakeErrorArray(args):
             "r1qm": r1qualmeans, "r2qm": r2qualmeans,
             "r1f": r1frac, "r2f": r2frac, "r1m": r1mean,
             "r2m": r2mean, "r1e": r1error, "r2e": r2error}
+    """
+    return {"r1f": r1obs, "r2f": r2obs}
 
 
-def calculateError(args):
+def errorArrayFormat(dict data, output):
+    """Formats and outputs error array data"""
+    cdef int cycle, qual, base
+    with open(output, 'w') as o:
+        for cycle in range(len(data["r1f"])):
+            r1quals = []
+            r2quals = []
+            for qual in range(len(data["r1f"][cycle])):
+                r1bases = []
+                r2bases = []
+                for base in range(len(data["r1f"][cycle][qual])):
+                    b1 = data['r1f'][cycle][qual][base]
+                    b2 = data['r2f'][cycle][qual][base]
+                    if np.isnan(b1):
+                        b1 = 0
+                    if np.isnan(b2):
+                        b2 = 0
+                    r1bases.append(str(b1))
+                    r2bases.append(str(b2))
+                r1quals.append(":".join(r1bases))
+                r2quals.append(":".join(r2bases))
+            r1quals = ",".join(r1quals)
+            r2quals = ",".join(r2quals)
+            out = "|".join([r1quals, r2quals])+"\n"
+            o.write(out)
+    return 0
 
+def calculateErrorArray(args):
     cdef dict data
     from sys import stderr
-
     if(args.table_prefix is None):
         table_prefix = TrimExt(args.mdBam)
     else:
         table_prefix = args.table_prefix
-    table_prefix += ".out."
-
+    table_prefix += ".out"
+    """
     FullTableHandle = open(table_prefix + "full.tsv", "w")
     CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
     PhredTableHandle = open(table_prefix + "phred.tsv", "w")
     ContextTableHandle = open(table_prefix + "context.tsv", "w")
-
+    """
     data = MakeErrorArray(args)
-    '''
-    CycleTableHandle.write("#Cycle\tRead1 mean error\tRead2 mean error\tread count\n")
-    for index in xrange(1, rLen):
-        CycleTableHandle.write(
-            "%i\t%f\t%f\t%i\n" % (index+1, [index],
-                                  r2cyclemeans[index], ReadCount))
-    CycleTableHandle.close()
-    PhredTableHandle.write("#Quality Score\tr1 mean error\tr2 mean error\n")
-    for index in xrange(39):
-        PhredTableHandle.write(
-            "%i\t%f\t%f\n" % (index+2, r1qualmeans[index],
-                              r2qualmeans[index]))
-    PhredTableHandle.close()
-    ContextTableHandle.write("#Context ID\tRead 1 mean error\tRead 2 mean error\n")
-    for index in xrange(16):
-        ContextTableHandle.write(
-            "%i\t%f\t%f\n" % (index, r1contextmeans[index],
-                              r2contextmeans[index]))
-    ContextTableHandle.close()
-    FullTableHandle.write(
-        "#Cycle\tQuality Score\tContext ID\tRead "
-        "1 mean error\tRead 2 mean error\n")
-    for read_index in xrange(rLen):
-        for qual_index in xrange(39):
-            for context_index in xrange(16):
-                FullTableHandle.write(
-                    "%i\t%i\t%i\t%f\t%f\n" % (read_index + 1, qual_index + 2, context_index,
-                                              r1frac[read_index][qual_index][context_index],
-                                              r2frac[read_index][qual_index][context_index]))
-    FullTableHandle.close()
-    '''
+    errorArrayFormat(data, table_prefix)
     return 0
 
 
