@@ -37,14 +37,11 @@ DEALINGS IN THE SOFTWARE.  */
 #include "htslib/klist.h"
 #include "htslib/kstring.h"
 #include "htslib/sam.h"
+#include "bam_rescue.h"
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
 #endif
-
-#define forever for(;;)
-#define bam_is_r1(b) (((b)->core.flag&BAM_FREAD1) != 0)
-#define bam_is_r2(b) (((b)->core.flag&BAM_FREAD2) != 0)
 
 
 #ifdef NEED_MEMSET_PATTERN4
@@ -68,7 +65,7 @@ KHASH_MAP_INIT_STR(c2i, int)
 #define __free_char(p)
 KLIST_INIT(hdrln, char*, __free_char)
 
-static int g_is_by_qname = 0;
+static int sort_cmp_key = 0;
 
 static int strnum_cmp(const char *_a, const char *_b)
 {
@@ -107,7 +104,7 @@ typedef struct {
 // Function to compare reads in the heap and determine which one is < the other
 static inline int heap_lt(const heap1_t a, const heap1_t b)
 {
-    if (g_is_by_qname) {
+    if (sort_cmp_key) {
         int t;
         if (a.b == NULL || b.b == NULL) return a.b == NULL? 1 : 0;
         t = strnum_cmp(bam_get_qname(a.b), bam_get_qname(b.b));
@@ -595,7 +592,7 @@ int* rtrans_build(int n, int n_targets, trans_tbl_t* translation_tbl)
 
 /*!
   @abstract    Merge multiple sorted BAM.
-  @param  is_by_qname whether to sort by query name
+  @param  sort_cmp_int whether to sort by query name
   @param  out         output BAM file name
   @param  mode        sam_open() mode to be used to create the final output file
                       (overrides level settings from UNCOMP and LEVEL1 flags)
@@ -641,7 +638,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode, const char 
         hout->text = strdup("");
     }
 
-    g_is_by_qname = by_qname;
+    sort_cmp_key = by_qname;
     fp = (samFile**)calloc(n, sizeof(samFile*));
     heap = (heap1_t*)calloc(n, sizeof(heap1_t));
     iter = (hts_itr_t**)calloc(n, sizeof(hts_itr_t*));
@@ -856,7 +853,7 @@ static void merge_usage(FILE *to)
 
 int bam_merge(int argc, char *argv[])
 {
-    int c, is_by_qname = 0, flag = 0, ret = 0, n_threads = 0, level = -1;
+    int c, sort_cmp_int = 0, flag = 0, ret = 0, n_threads = 0, level = -1;
     char *fn_headers = NULL, *reg = NULL, mode[12];
     long random_seed = (long)time(NULL);
     char** fn = NULL;
@@ -872,7 +869,7 @@ int bam_merge(int argc, char *argv[])
         case 'r': flag |= MERGE_RG; break;
         case 'f': flag |= MERGE_FORCE; break;
         case 'h': fn_headers = strdup(optarg); break;
-        case 'n': is_by_qname = 1; break;
+        case 'n': sort_cmp_int = 1; break;
         case '1': flag |= MERGE_LEVEL1; level = 1; break;
         case 'u': flag |= MERGE_UNCOMP; level = 0; break;
         case 'R': reg = strdup(optarg); break;
@@ -930,7 +927,7 @@ int bam_merge(int argc, char *argv[])
     }
     strcpy(mode, "wb");
     if (level >= 0) sprintf(strchr(mode, '\0'), "%d", level < 9? level : 9);
-    if (bam_merge_core2(is_by_qname, argv[optind], mode, fn_headers, fn_size+nargcfiles, fn, flag, reg, n_threads) < 0) ret = 1;
+    if (bam_merge_core2(sort_cmp_int, argv[optind], mode, fn_headers, fn_size+nargcfiles, fn, flag, reg, n_threads) < 0) ret = 1;
 end:
     if (fn_size > 0) {
         int i;
@@ -987,19 +984,17 @@ static int change_SO(bam_hdr_t *h, const char *so)
 // Function to compare reads and determine which one is < the other
 static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
-    if(g_is_by_qname){
-        int t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
-        return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-    }
-    else{
-        uint64_t cmp = ((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) - ((uint64_t)b->core.tid<<32|(b->core.pos+1));
-        if(cmp < 0){ return true;}
-        else if(cmp > 0){return false;}
-        uint64_t cmp2 = ((uint64_t)a->core.mtid<<34|a->core.mpos<<2|bam_is_rev(a)<<1|bam_is_r1(a)) -
-                         ((uint64_t)b->core.mtid<<34|b->core.mpos<<2|bam_is_rev(b)<<1|bam_is_r1(b));
-        if(cmp2 < 0) {return true;}
-        else if(cmp2 > 0) {return false;}
-        else {return strnum_cmp(bam_get_qname(a), bam_get_qname(b)) < 0;}
+    int t;
+    bmf_cmpkey_t key_a, key_b;
+    switch(sort_cmp_key) {
+        case QNAME_SORT_ORDER:
+            t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
+            return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
+        case SAMTOOLS_SORT_ORDER: return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
+        case BMF_SORT_ORDER:
+            ARR_SETKEY(a, key_a);
+            ARR_SETKEY(b, key_b);
+            return BMF_KEY_LT(key_a, key_b);
     }
 }
 KSORT_INIT(sort, bam1_p, bam1_lt)
@@ -1071,7 +1066,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   @abstract Sort an unsorted BAM file based on the chromosome order
   and the leftmost position of an alignment
 
-  @param  is_by_qname whether to sort by query name
+  @param  sort_cmp_int whether to sort by query name
   @param  fn       name of the file to be sorted
   @param  prefix   prefix of the temporary files (prefix.NNNN.bam are written)
   @param  fnout    name of the final output file to be written
@@ -1083,7 +1078,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   and then merge them by calling bam_merge_core(). This function is
   NOT thread safe.
  */
-int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads)
+int bam_sort_core_ext(int sort_cmp_int, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads)
 {
     int ret, i, n_files = 0;
     size_t mem, max_k, k, max_mem;
@@ -1092,7 +1087,7 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
     bam1_t *b, **buf;
 
     if (n_threads < 2) n_threads = 1;
-    g_is_by_qname = is_by_qname;
+    sort_cmp_key = sort_cmp_int;
     max_k = k = 0; mem = 0;
     max_mem = _max_mem * n_threads;
     buf = NULL;
@@ -1107,8 +1102,11 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
         sam_close(fp);
         return -1;
     }
-    if (is_by_qname == 1) change_SO(header, "queryname");
-    else change_SO(header, "coordinate");
+    switch(sort_cmp_int) {
+        case 2:
+        case 0: change_SO(header, "coordinate"); break;
+        case 1: change_SO(header, "queryname"); break;
+    }
     // write sub files
     forever {
         if (k == max_k) {
@@ -1147,7 +1145,7 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
             fns[i] = (char*)calloc(strlen(prefix) + 20, 1);
             sprintf(fns[i], "%s.%.4d.bam", prefix, i);
         }
-        if (bam_merge_core2(is_by_qname, fnout, modeout, NULL, n_files, fns, MERGE_COMBINE_RG|MERGE_COMBINE_PG, NULL, n_threads) < 0) {
+        if (bam_merge_core2(sort_cmp_int, fnout, modeout, NULL, n_files, fns, MERGE_COMBINE_RG|MERGE_COMBINE_PG, NULL, n_threads) < 0) {
             // Propagate bam_merge_core2() failure; it has already emitted a
             // message explaining the failure, so no further message is needed.
             return -1;
@@ -1166,12 +1164,12 @@ int bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, const
     return 0;
 }
 
-int bam_sort_core(int is_by_qname, const char *fn, const char *prefix, size_t max_mem)
+int bam_sort_core(int sort_cmp_int, const char *fn, const char *prefix, size_t max_mem)
 {
     int ret;
     char *fnout = calloc(strlen(prefix) + 4 + 1, 1);
     sprintf(fnout, "%s.bam", prefix);
-    ret = bam_sort_core_ext(is_by_qname, fn, prefix, fnout, "wb", max_mem, 0);
+    ret = bam_sort_core_ext(sort_cmp_int, fn, prefix, fnout, "wb", max_mem, 0);
     free(fnout);
     return ret;
 }
@@ -1179,40 +1177,38 @@ int bam_sort_core(int is_by_qname, const char *fn, const char *prefix, size_t ma
 static int sort_usage(FILE *fp, int status)
 {
     fprintf(fp,
-"Usage: samtools sort [options...] [in.bam]\n"
+"Usage: bmf_bam_sort [options...] [in.bam]\n"
 "Options:\n"
 "  -l INT     Set compression level, from 0 (uncompressed) to 9 (best)\n"
 "  -m INT     Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
-"  -n         Sort by read name\n"
+"  -k         Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional. Default: bmf comparison.\n"
 "  -o FILE    Write final output to FILE rather than standard output\n"
-"  -O FORMAT  Write output as FORMAT ('sam'/'bam'/'cram')   (either -O or\n"
-"  -T PREFIX  Write temporary files to PREFIX.nnnn.bam       -T is required)\n"
+"  -O FORMAT  Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
+"  -T PREFIX  Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
 "  -@ INT     Set number of sorting and compression threads [1]\n"
-"\n"
-"Legacy usage: samtools sort [options...] <in.bam> <out.prefix>\n"
-"Options:\n"
-"  -f         Use <out.prefix> as full final filename rather than prefix\n"
-"  -o         Write final output to stdout rather than <out.prefix>.bam\n"
-"  -l,m,n,@   Similar to corresponding options above\n");
+"\n");
     return status;
 }
 
-int bam_sort(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     size_t max_mem = 768<<20; // 512MB
-    int c, i, modern, nargs, is_by_qname = 0, is_stdout = 0, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;
-    char *fnout = "-", *fmtout = NULL, modeout[12], *tmpprefix = NULL;
+    int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, is_stdout = 0, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;
+    char *fnout = "-", *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
     kstring_t fnout_buffer = { 0, 0, NULL };
 
-    modern = 0;
-    for (i = 1; i < argc; ++i)
-        if (argv[i][0] == '-' && strpbrk(argv[i], "OT")) { modern = 1; break; }
-
-    while ((c = getopt(argc, argv, modern? "l:m:no:O:T:@:" : "fnom:@:l:")) >= 0) {
+    while ((c = getopt(argc, argv, "l:m:k:o:O:T:@:h")) >= 0) {
         switch (c) {
         case 'f': full_path = 1; break;
-        case 'o': if (modern) fnout = optarg; else is_stdout = 1; break;
-        case 'n': is_by_qname = 1; break;
+        case 'o': fnout = optarg; break;
+        case 'k': if(strcmp(optarg, "bmf") == 0) sort_cmp_int = BMF_SORT_ORDER;
+                  else if(strcmp(optarg, "pos") == 0) sort_cmp_int = SAMTOOLS_SORT_ORDER;
+                  else if(strcmp(optarg, "qname") == 0) sort_cmp_int = QNAME_SORT_ORDER;
+                  else {
+                      fprintf(stderr, "Unrecognized sort key option %s.\n", optarg);
+                      return sort_usage(stderr, EXIT_FAILURE);
+                  }
+                  break;
         case 'm': {
                 char *q;
                 max_mem = strtol(optarg, &q, 0);
@@ -1221,10 +1217,11 @@ int bam_sort(int argc, char *argv[])
                 else if (*q == 'g' || *q == 'G') max_mem <<= 30;
                 break;
             }
-        case 'O': fmtout = optarg; break;
-        case 'T': tmpprefix = optarg; break;
+        case 'O': fmtout = strdup(optarg); break;
+        case 'T': tmpprefix = strdup(optarg); break;
         case '@': n_threads = atoi(optarg); break;
         case 'l': level = atoi(optarg); break;
+        case 'h': return sort_usage(stderr, 0);
         default: return sort_usage(stderr, EXIT_FAILURE);
         }
     }
@@ -1232,19 +1229,8 @@ int bam_sort(int argc, char *argv[])
     nargs = argc - optind;
     if (argc == 1)
         return sort_usage(stdout, EXIT_SUCCESS);
-    else if (modern? (nargs > 1) : (nargs != 2))
+    else if (nargs > 1)
         return sort_usage(stderr, EXIT_FAILURE);
-
-    if (!modern) {
-        fmtout = "bam";
-        if (is_stdout) fnout = "-";
-        else if (full_path) fnout = argv[optind+1];
-        else {
-            ksprintf(&fnout_buffer, "%s.%s", argv[optind+1], fmtout);
-            fnout = fnout_buffer.s;
-        }
-        tmpprefix = argv[optind+1];
-    }
 
     strcpy(modeout, "w");
     if (sam_open_mode(&modeout[1], fnout, fmtout) < 0) {
@@ -1255,15 +1241,27 @@ int bam_sort(int argc, char *argv[])
     }
     if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-    if (tmpprefix == NULL) {
-        fprintf(stderr, "[bam_sort] no prefix specified for temporary files (use -T option)\n");
-        ret = EXIT_FAILURE;
-        goto sort_end;
-    }
 
-    if (bam_sort_core_ext(is_by_qname, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads) < 0) ret = EXIT_FAILURE;
+    if (bam_sort_core_ext(sort_cmp_int, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads) < 0) ret = EXIT_FAILURE;
+
+    if(tmpprefix) {
+        free(tmpprefix);
+        tmpprefix = NULL;
+    }
+    if(fmtout) {
+        free(fmtout);
+        fmtout = NULL;
+    }
 
 sort_end:
     free(fnout_buffer.s);
+    if(tmpprefix) {
+        free(tmpprefix);
+        tmpprefix = NULL;
+    }
+    if(fmtout) {
+        free(fmtout);
+        fmtout = NULL;
+    }
     return ret;
 }

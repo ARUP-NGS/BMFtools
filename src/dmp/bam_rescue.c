@@ -1,5 +1,6 @@
 /*  bam_rescue.c -- duplicate read detection.
 
+
     Copyright (C) 2009, 2015 Genome Research Ltd.
     Portions copyright (C) 2009 Broad Institute.
 
@@ -36,6 +37,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include "kingfisher.h" // For igamc/igamc_pvalues
 #include "cstr_utils.h"
 #include "sam_opts.h"
+#include "bam_rescue.h"
 
 typedef bam1_t *bam1_p;
 
@@ -45,62 +47,16 @@ typedef struct tmp_stack {
     bam1_t **a;
 } tmp_stack_t;
 
-typedef struct rescue_settings {
-    FILE *fp;
-    int write_nc2bam; // Write the reads with the number of nucleotides changed to bam rather than to a fastq file.
-    int hd_thresh; // Threshold for hamming distance. If < hd_thresh, reads are considered to be from the same family.
-    int is_se; // Is single end
-    int force_se; // Is single end
-    char *fq_fname;
-} rescue_settings_t;
-
-
 // arr1 and arr2 should each be a uint64_t buf[2] or a malloc'd char * of size 2.
 static inline int arr_cmp(char *arr1, char *arr2) {
     return (arr1[0] == arr2[0] && arr1[1] == arr2[1]);
 }
 
-#ifndef IS_REVERSE
-#define IS_REVERSE(bam) ((bam)->core.flag&BAM_FREVERSE)
-#endif
-
-#ifndef IS_MATE_REVERSE
-#define IS_MATE_REVERSE(bam) ((bam)->core.flag&BAM_FMREVERSE)
-#endif
-
-#ifndef IS_READ2
-#define IS_READ2(bam) ((bam)->core.flag&BAM_FREAD2)
-#endif
-
-#ifndef IS_READ1
-#define IS_READ1(bam) ((bam)->core.flag&BAM_FREAD1)
-#endif
-
-#ifndef ARR_CMP
-#define ARR_CMP(arr1, arr2) (arr1[0] == arr2[0] && arr1[1] == arr2[1])
-#endif
-
 // FUNCTION DEFINITIONS
 char *trim_ext(char *fname);
 uint8_t *bam_aux_get(const bam1_t *b, const char tag[2]);
 int pvalue_to_phred(double pvalue);
-
-
-/*
-// buf should be a uint64_t buf[2] or a malloc'd char * of size 2.
-#ifndef ARR_SETKEY
-#define ARR_SETKEY(bam, buf) buf = BAM2KEY(bam);
-#endif
-*/
-
-static inline void ARR_SETKEY(bam1_t *bam, uint64_t buf[2])
-{
-    buf[0] = (((uint64_t)IS_REVERSE(bam)) << 59 | ((uint64_t)IS_MATE_REVERSE(bam)) << 57|
-              ((uint64_t)IS_READ1(bam)) << 55 | ((uint64_t)IS_READ2(bam)) << 53 |
-              ((uint64_t)bam->core.mtid) << 44 | ((uint64_t)bam->core.tid) << 28 | bam->core.pos);
-    buf[1] = ((uint64_t)(bam->core.mpos));
-    return;
-}
+void ARR_SETKEY(bam1_t *bam, bmf_cmpkey_t key);
 
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
@@ -318,16 +274,23 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_
     bam1_t *b, *tmpb;
     int last_tid = -1;
     tmp_stack_t stack;
-    uint64_t last_arr[2] = {0, 0};
-    uint64_t current_arr[2] = {0, 0};
+    bmf_cmpkey_t last_value = {
+            .key1 = 0,
+            .key2 = 0
+    };
+    bmf_cmpkey_t current_value = {
+            .key1 = 0,
+            .key2 = 0
+    };
 
     b = bam_init1();
     memset(&stack, 0, sizeof(tmp_stack_t));
 
     while (sam_read1(in, hdr, b) >= 0) {
         bam1_core_t *c = &b->core;
-        ARR_SETKEY(b, current_arr);
-        if (!ARR_CMP(last_arr, current_arr)) {
+        ARR_SETKEY(b, current_value);
+        if (!BMF_KEY_EQ(last_value, current_value)) {
+            ARR_SETKEY(b, last_value);
             flatten_stack(&stack, settings_ptr);
             write_stack(&stack, out, hdr, settings_ptr); // write the result
             if ((int)c->tid < 0) { // append unmapped reads
@@ -359,7 +322,7 @@ void bam_rescue_se_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settin
 
 static int rescue_usage(void) {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  samtools rescue [-sS] <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Usage:  bam_rescue [-sS] <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    rescue for SE reads\n");
     fprintf(stderr, "        -S    treat PE reads as SE in rescue (force -s)\n");
     fprintf(stderr, "        -p    flag - if set, write updated bam records without realigning.\n");
@@ -400,7 +363,7 @@ typedef struct rescue_settings {
     };
 
     int c;
-    while ((c = getopt_long(argc, argv, "sSpt:", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hsSpt:", lopts, NULL)) >= 0) {
         switch (c) {
         case 's': settings.is_se = 1; break;
         case 'S': settings.force_se = settings.is_se = 1; break;

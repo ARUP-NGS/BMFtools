@@ -60,23 +60,23 @@ void free_rescaler_array(crms_settings_t settings);
 
 inline blens_t *get_blens(char *str2parse)
 {
-	blens_t *ret = (blens_t *)malloc(sizeof(blens_t));
-	ret->min_blen = 200;
-	ret->max_blen = 0;
-	ret->n = 0;
-	ret->current_blen = -1;
-	char *token;
-	while((token = strtok(str2parse, ",")) != NULL){
-	   ret->blens[ret->n] = atoi(token);
-	   if(ret->max_blen < ret->blens[ret->n]) {
-		   ret->max_blen = ret->blens[ret->n];
-	   }
-	   else if(ret->min_blen > ret->blens[ret->n]) {
-		   ret->min_blen = ret->blens[ret->n];
-	   }
-	   ++ret->n;
-	}
-	return ret;
+    blens_t *ret = (blens_t *)malloc(sizeof(blens_t));
+    ret->min_blen = 200;
+    ret->max_blen = 0;
+    ret->n = 0;
+    ret->current_blen = -1;
+    char *token;
+    while((token = strtok(str2parse, ",")) != NULL){
+       ret->blens[ret->n] = atoi(token);
+       if(ret->max_blen < ret->blens[ret->n]) {
+           ret->max_blen = ret->blens[ret->n];
+       }
+       else if(ret->min_blen > ret->blens[ret->n]) {
+           ret->min_blen = ret->blens[ret->n];
+       }
+       ++ret->n;
+    }
+    return ret;
 }
 
 
@@ -152,11 +152,11 @@ inline int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_p
     }
 #endif
     for(int i = 0; i < settings_ptr->blen_data->n; ++i) {
-    	if(memcmp(seq1->seq.s + settings_ptr->blen_data->blens[i] + settings_ptr->offset,
-    			  settings_ptr->blen_data->homing_sequence,
-				  settings_ptr->blen_data->homing_sequence_length) == 0) {
+        if(memcmp(seq1->seq.s + settings_ptr->blen_data->blens[i] + settings_ptr->offset,
+                  settings_ptr->blen_data->homing_sequence,
+                  settings_ptr->blen_data->homing_sequence_length) == 0) {
             return settings_ptr->blen_data->blens[i];
-    	}
+        }
     }
     return 0;
 }
@@ -267,15 +267,15 @@ int main(int argc, char *argv[])
         }
     }
     if(!settings.blen_data->homing_sequence_length) {
-    	fprintf(stderr, "homing sequence not provided. e.g., %s -s <homing_sequence> <other_args>.\n", argv[0]);
-    	exit(EXIT_FAILURE);
+        fprintf(stderr, "homing sequence not provided. e.g., %s -s <homing_sequence> <other_args>.\n", argv[0]);
+        exit(EXIT_FAILURE);
 
     }
     if(settings.blen_data->max_blen < 0) {
-    	fprintf(stderr, "blen data not provided. This should be a comma-separated list "
-    			         "of positive integers for possible barcode lengths.\n");
-    	fprintf(stderr, "e.g., %s -l 8,9,10 <other_args>.\n", argv[0]);
-    	exit(EXIT_FAILURE);
+        fprintf(stderr, "blen data not provided. This should be a comma-separated list "
+                         "of positive integers for possible barcode lengths.\n");
+        fprintf(stderr, "e.g., %s -l 8,9,10 <other_args>.\n", argv[0]);
+        exit(EXIT_FAILURE);
     }
     settings.n_handles = ipow(4, settings.n_nucs);
     if(settings.n_handles > get_fileno_limit()) {
@@ -287,9 +287,9 @@ int main(int argc, char *argv[])
     }
 
     if(settings.offset) {
-    	for(int i = 0; i < settings.blen_data->n; ++i) {
-    		settings.blen_data->blens[i] -= 2 * settings.offset;
-    	}
+        for(int i = 0; i < settings.blen_data->n; ++i) {
+            settings.blen_data->blens[i] -= 2 * settings.offset;
+        }
         settings.blen_data->max_blen -= 2 * settings.offset;
         settings.blen_data->min_blen -= 2 * settings.offset;
     }
@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
     mark_splitter_t splitter = init_splitter_crms(&settings);
     vl_split_inline(seq1, seq2, &settings, &splitter);
     if(settings.rescaler) {
-    	free_rescaler_array(settings);
+        free_rescaler_array(settings);
     }
     free(settings.blen_data);
     free_crms_settings(settings);
