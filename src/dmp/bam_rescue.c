@@ -56,7 +56,6 @@ static inline int arr_cmp(char *arr1, char *arr2) {
 char *trim_ext(char *fname);
 uint8_t *bam_aux_get(const bam1_t *b, const char tag[2]);
 int pvalue_to_phred(double pvalue);
-void ARR_SETKEY(bam1_t *bam, bmf_cmpkey_t key);
 
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
@@ -101,7 +100,9 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
     int i;
     for (i = 0; i != stack->n; ++i) {
         if(stack->a[i]) { // Since I'll be clearing out the values after updating, I am checking to see if it's not NULL first.
-            if(bam_aux2i(bam_aux_get(stack->a[i], "NC")) || bam_aux2i(bam_aux_get(stack->a[i], "NN"))) { // If NN or NC are non-zero.
+            uint8_t *aNC = bam_aux_get(stack->a[i], "NC");
+            uint8_t *aNN = bam_aux_get(stack->a[i], "NN");
+            if((aNC && bam_aux2i(aNC)) || (aNN && bam_aux2i(aNN))) { // If NN or NC are non-zero.
                 if(settings->write_nc2bam) {
                     sam_write1(out, hdr, stack->a[i]);
                 }
@@ -180,6 +181,28 @@ static inline void inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
     return;
 }
 
+/*
+ * Use this function rather than inc_aux_tag for cases when one is unsure
+ * as to whether or not the tag will be set.
+ * If unset, will set to -1.
+ */
+static inline void check_inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
+{
+    uint8_t *p_ptr = bam_aux_get(p, key);
+    uint8_t *b_ptr = bam_aux_get(b, key);
+    if(!(p_ptr && b_ptr)) {
+        fprintf(stderr, "Found pointers for both reads with key %s.\n", key);
+        *(int *)(p_ptr + 1) += *(int *)(b_ptr + 1);
+    }
+    else {
+        fprintf(stderr, "Didn't find pointers for both aux tags with key %s.\n", key);
+        int val = -1;
+        bam_aux_append(p, key, 'i', sizeof(int), (uint8_t *)&val); // Set the value to -1 if the tag is not present.
+    }
+    //*(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
+    return;
+}
+
 static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 {
     int n_changed = 0;
@@ -189,7 +212,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     int *bFA = (int *)bam_aux_get(b, "FA"); // Length of this should be b->l_qseq
     int *pFA = (int *)bam_aux_get(p, "FA"); // Length of this should be b->l_qseq
     inc_aux_tag(p, b, "FM");
-    inc_aux_tag(p, b, "RC");
+    check_inc_aux_tag(p, b, "RC");
     /*
      * inc_aux_tag has superseded update_int_ptr because it assigns fewer temporary variables.
     update_int_ptr(bam_aux_get(p, "FM"), bam_aux_get(b, "FM")); // p.FM += b.FM
@@ -269,30 +292,41 @@ static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings
     return;
 }
 
+
+#ifndef bam_sort_core_key
+#define bam_sort_core_key(a) (uint64_t)(((uint64_t)a->core.tid)<<32|(a->core.pos+1)<<1|bam_is_rev(a))
+#endif
+
+#ifndef bam_sort_mate_key
+#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|a->core.mpos+1)
+#endif
+
 void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_t *settings_ptr)
 {
     bam1_t *b, *tmpb;
     int last_tid = -1;
     tmp_stack_t stack;
-    bmf_cmpkey_t last_value = {
-            .key1 = 0,
-            .key2 = 0
-    };
-    bmf_cmpkey_t current_value = {
-            .key1 = 0,
-            .key2 = 0
-    };
+    uint64_t last_core = 0;
+    uint64_t current_core = 0;
+    uint64_t last_mate = 0;
+    uint64_t current_mate = 0;
 
     b = bam_init1();
     memset(&stack, 0, sizeof(tmp_stack_t));
 
     while (sam_read1(in, hdr, b) >= 0) {
+        fprintf(stderr, "Reading in a record.\n");
         bam1_core_t *c = &b->core;
-        ARR_SETKEY(b, current_value);
-        if (!BMF_KEY_EQ(last_value, current_value)) {
-            ARR_SETKEY(b, last_value);
+        current_core = bam_sort_core_key(b);
+        current_mate = bam_sort_mate_key(b);
+        if (!(current_core == last_core && current_mate == last_mate)) {
+            last_core = current_core;
+            last_mate = current_mate;
+            fprintf(stderr, "About to flatten stack.\n");
             flatten_stack(&stack, settings_ptr);
+            fprintf(stderr, "About to write stack.\n");
             write_stack(&stack, out, hdr, settings_ptr); // write the result
+            fprintf(stderr, "Successfully wrote stack.\n");
             if ((int)c->tid < 0) { // append unmapped reads
                 sam_write1(out, hdr, b);
                 while (sam_read1(in, hdr, b) >= 0) sam_write1(out, hdr, b);
@@ -363,7 +397,7 @@ typedef struct rescue_settings {
     };
 
     int c;
-    while ((c = getopt_long(argc, argv, "hsSpt:", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "hsSpt:f:", lopts, NULL)) >= 0) {
         switch (c) {
         case 's': settings.is_se = 1; break;
         case 'S': settings.force_se = settings.is_se = 1; break;
@@ -376,6 +410,7 @@ typedef struct rescue_settings {
                   else {
                       settings.fq_fname = trim_ext(optarg);
                       settings.fq_fname = realloc(settings.fq_fname, strlen(settings.fq_fname) + 10);
+                      if(!settings.fq_fname) {ABORT_MISSION("Could not allocate output fastq name. Abort!\n");}
                       strcat(settings.fq_fname, ".ra.fastq");
                       settings.fp = fopen(settings.fq_fname, "w");
                   }
@@ -386,15 +421,16 @@ typedef struct rescue_settings {
         case '?': return rescue_usage();
         }
     }
-
     if(settings.write_nc2bam && settings.fp) {
         fprintf(stderr, "Conflicting options - write to bam and to fastq. "
                         "This will result in non-unique primary alignments "
                         "for a given read name. Abort mission!\n");
         exit(EXIT_FAILURE);
     }
-    if (optind + 2 > argc)
+    if (optind + 2 > argc) {
+        fprintf(stderr, "Insufficient arguments. Last index: %s. See usage.\n", argv[optind]);
         return rescue_usage();
+    }
 
     in = sam_open_format(argv[optind], "r", &ga.in);
     header = sam_hdr_read(in);

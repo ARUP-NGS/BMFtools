@@ -983,14 +983,6 @@ static int change_SO(bam_hdr_t *h, const char *so)
 }
 
 
-#ifndef bam_sort_core_key
-#define bam_sort_core_key(a) (uint64_t)(((uint64_t)a->core.tid)<<32|(a->core.pos+1)<<1|bam_is_rev(a))
-#endif
-
-#ifndef bam_sort_mate_key
-#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|a->core.mpos+1)
-#endif
-
 // Function to compare reads and determine which one is < the other
 static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
@@ -1002,16 +994,12 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
             t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
             return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
         case SAMTOOLS_SORT_ORDER: return bam_sort_core_key(a) < bam_sort_core_key(b);
-        //case SAMTOOLS_SORT_ORDER: return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
         case BMF_SORT_ORDER:
-            fprintf(stderr, "Now trying to do a bmf comparison.\n");
-            if(bam_sort_core_key(a) < bam_sort_core_key(b)) {return 1;}
-            else if(bam_sort_core_key(b) < bam_sort_core_key(a)) {return 0;}
-            else {
-                fprintf(stderr, "A mate key: %" PRIu64 ". B mate key: %" PRIu64 ". Diff: %" PRId64 ".\n",
-                        bam_sort_mate_key(a), bam_sort_mate_key(b), bam_sort_mate_key(a) - bam_sort_mate_key(b));
-                return bam_sort_mate_key(a) < bam_sort_mate_key(b);
-            }
+            key_a = bam_sort_core_key(a);
+            key_b = bam_sort_core_key(b);
+            if(key_a < key_b) {return 1;}
+            else if(key_b < key_a) {return 0;}
+            else {return bam_sort_mate_key(a) < bam_sort_mate_key(b);}
     }
 }
 KSORT_INIT(sort, bam1_p, bam1_lt)

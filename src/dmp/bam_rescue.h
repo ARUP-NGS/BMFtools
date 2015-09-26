@@ -58,3 +58,6 @@ typedef struct rescue_settings {
 #define IS_READ1(bam) ((bam)->core.flag&BAM_FREAD1 != 0)
 #endif
 
+#ifndef ABORT_MISSION
+#define ABORT_MISSION(message) do {fprintf(stderr, message); exit(EXIT_FAILURE);} while(0)
+#endif
