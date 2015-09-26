@@ -32,6 +32,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <regex.h>
 #include <time.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include "htslib/ksort.h"
 #include "htslib/khash.h"
 #include "htslib/klist.h"
@@ -981,20 +982,36 @@ static int change_SO(bam_hdr_t *h, const char *so)
     return 0;
 }
 
+
+#ifndef bam_sort_core_key
+#define bam_sort_core_key(a) (uint64_t)(((uint64_t)a->core.tid)<<32|(a->core.pos+1)<<1|bam_is_rev(a))
+#endif
+
+#ifndef bam_sort_mate_key
+#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|a->core.mpos+1)
+#endif
+
 // Function to compare reads and determine which one is < the other
 static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
     int t;
-    bmf_cmpkey_t key_a, key_b;
+    uint64_t key_a, key_b;
+    int64_t diff;
     switch(sort_cmp_key) {
         case QNAME_SORT_ORDER:
             t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
             return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-        case SAMTOOLS_SORT_ORDER: return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
+        case SAMTOOLS_SORT_ORDER: return bam_sort_core_key(a) < bam_sort_core_key(b);
+        //case SAMTOOLS_SORT_ORDER: return (((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a)) < ((uint64_t)b->core.tid<<32|(b->core.pos+1)<<1|bam_is_rev(b)));
         case BMF_SORT_ORDER:
-            ARR_SETKEY(a, key_a);
-            ARR_SETKEY(b, key_b);
-            return BMF_KEY_LT(key_a, key_b);
+            fprintf(stderr, "Now trying to do a bmf comparison.\n");
+            if(bam_sort_core_key(a) < bam_sort_core_key(b)) {return 1;}
+            else if(bam_sort_core_key(b) < bam_sort_core_key(a)) {return 0;}
+            else {
+                fprintf(stderr, "A mate key: %" PRIu64 ". B mate key: %" PRIu64 ". Diff: %" PRId64 ".\n",
+                        bam_sort_mate_key(a), bam_sort_mate_key(b), bam_sort_mate_key(a) - bam_sort_mate_key(b));
+                return bam_sort_mate_key(a) < bam_sort_mate_key(b);
+            }
     }
 }
 KSORT_INIT(sort, bam1_p, bam1_lt)
