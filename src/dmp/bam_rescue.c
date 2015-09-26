@@ -74,7 +74,7 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
      *
      * Yet TODO
      * Fill in write_bam1_nc (for reads to be realigned)
-     * Add in the count for RC to crms
+     * Add in the count for RT to crms
      * Expand the max_phreds in all of the marksplits to make sure it's the highest quality score for the base that was called as consensus.
      */
 
@@ -87,7 +87,7 @@ static inline void write_bam1_nc(bam1_t *b, FILE *fp)
      * FM
      * NN
      * NC
-     * RC
+     * RT
      * FP
      */
     fprintf(stderr, "Not implemented (write_bam1_nc). Abort mission!\n");
@@ -122,11 +122,13 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
 
 static inline int hamming_dist_test(char *bs1, char *bs2, int hd_thresh)
 {
+#if !NDEBUG
+	fprintf(stderr, "Barcode 1: %s. Barcode 2: %s.\n", bs1, bs2);
+#endif
     int mm = 0;
     for(int i = 0; bs1[i]; ++i) { // Gives up once it reaches a null terminus. Convenient, since string tags are null-terminated in the sam file format.
         if(bs1[i] != bs2[i]) {
-            ++mm;
-            if(mm == hd_thresh) {
+            if(++mm == hd_thresh) {
                 return 0;
             }
         }
@@ -160,7 +162,7 @@ static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
 {
 #if !NDEBUG
     if(!inc_ptr) {
-        fprintf(stderr, "Missing RC tag. Abort mission!\n");
+        fprintf(stderr, "Missing RT tag. Abort mission!\n");
         exit(EXIT_FAILURE);
     }
     else {
@@ -212,11 +214,11 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     int *bFA = (int *)bam_aux_get(b, "FA"); // Length of this should be b->l_qseq
     int *pFA = (int *)bam_aux_get(p, "FA"); // Length of this should be b->l_qseq
     inc_aux_tag(p, b, "FM");
-    check_inc_aux_tag(p, b, "RC");
+    //check_inc_aux_tag(p, b, "RT");
     /*
      * inc_aux_tag has superseded update_int_ptr because it assigns fewer temporary variables.
     update_int_ptr(bam_aux_get(p, "FM"), bam_aux_get(b, "FM")); // p.FM += b.FM
-    update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RC += b.RC
+    update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RT += b.RT
     */
 #if !NDEBUG
     if(!bPV || !pPV) {
@@ -264,12 +266,12 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
         // Add if not present.
         update_int_tag(p, "NC", n_changed);
         update_int_tag(p, "NN", mask);
-        uint8_t *p_rc_ptr = bam_aux_get(p, "RC");
-        if(p_rc_ptr) {
-            update_int_ptr(p_rc_ptr, bam_aux_get(b, "RC"));
+        uint8_t *p_rt_ptr = bam_aux_get(p, "RT");
+        if(p_rt_ptr) {
+            update_int_ptr(p_rt_ptr, bam_aux_get(b, "RT"));
         }
-        bam_destroy1(b);
-        b = NULL;
+        //bam_destroy1(b);
+        //b = NULL;
     }
 }
 
@@ -285,21 +287,12 @@ static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings
             p = stack->a[j];
             cp = bam_aux_get(p, "BS");
             if(hamming_dist_test(++cp, ++cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
-            update_bam1(p, b, settings_ptr->fp); // Update record p with b
+                update_bam1(p, b, settings_ptr->fp); // Update record p with b. Also frees b.
             }      
         }
     }
     return;
 }
-
-
-#ifndef bam_sort_core_key
-#define bam_sort_core_key(a) (uint64_t)(((uint64_t)a->core.tid)<<32|(a->core.pos+1)<<1|bam_is_rev(a))
-#endif
-
-#ifndef bam_sort_mate_key
-#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|a->core.mpos+1)
-#endif
 
 void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_t *settings_ptr)
 {

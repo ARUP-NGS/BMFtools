@@ -10,8 +10,16 @@ typedef struct rescue_settings {
     char *fq_fname;
 } rescue_settings_t;
 
+#ifndef bam_is_r1
+#define bam_is_r1(b) (!!((b)->core.flag&BAM_FREAD1))
+#endif
+
+#ifndef bam_is_r2
+#define bam_is_r2(b) (!!((b)->core.flag&BAM_FREAD2))
+#endif
+
 #ifndef bam_sort_core_key
-#define bam_sort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(a->core.pos+1)<<1|bam_is_rev(a))
+#define bam_sort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(a->core.pos+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
 #endif
 
 #ifndef bam_sort_mate_key
@@ -20,14 +28,6 @@ typedef struct rescue_settings {
 
 #ifndef forever
 #define forever for(;;)
-#endif
-
-#ifndef bam_is_r1
-#define bam_is_r1(b) (((b)->core.flag&BAM_FREAD1) != 0)
-#endif
-
-#ifndef bam_is_r2
-#define bam_is_r2(b) (((b)->core.flag&BAM_FREAD2) != 0)
 #endif
 
 #ifndef BMF_SORT_ORDER
