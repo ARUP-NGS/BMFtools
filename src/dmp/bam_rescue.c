@@ -123,7 +123,7 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
 static inline int hamming_dist_test(char *bs1, char *bs2, int hd_thresh)
 {
 #if !NDEBUG
-	fprintf(stderr, "Barcode 1: %s. Barcode 2: %s.\n", bs1, bs2);
+    fprintf(stderr, "Barcode 1: %s. Barcode 2: %s.\n", bs1, bs2);
 #endif
     int mm = 0;
     for(int i = 0; bs1[i]; ++i) { // Gives up once it reaches a null terminus. Convenient, since string tags are null-terminated in the sam file format.
@@ -183,6 +183,16 @@ static inline void inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
     return;
 }
 
+int has_tag(bam1_t *p, const char key[2]) {
+    return (bam_aux_get(p, key)) ? 1: 0;
+}
+
+#define ARRAY_TAG_OFFSET 2
+
+static inline uint8_t *array_aux_get(bam1_t *p, const char key[2]) {
+    return bam_aux_get(p, key) + ARRAY_TAG_OFFSET;
+}
+
 /*
  * Use this function rather than inc_aux_tag for cases when one is unsure
  * as to whether or not the tag will be set.
@@ -190,9 +200,18 @@ static inline void inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
  */
 static inline void check_inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
 {
+    /*
+    int p_has_tag = has_tag(p);
+    int b_has_tag = has_tag(b);
+    if(!(p_has_tag && b_has_tag)) {
+        fprintf(stderr, "Didn't find tag!\n");
+    }
+    */
     uint8_t *p_ptr = bam_aux_get(p, key);
     uint8_t *b_ptr = bam_aux_get(b, key);
-    if(!(p_ptr && b_ptr)) {
+    int p_value = bam_aux2i(p_ptr);
+    int b_value = bam_aux2i(b_ptr);
+    if(!(p_value && b_value)) {
         fprintf(stderr, "Found pointers for both reads with key %s.\n", key);
         *(int *)(p_ptr + 1) += *(int *)(b_ptr + 1);
     }
@@ -207,17 +226,33 @@ static inline void check_inc_aux_tag(bam1_t *p, bam1_t *b, const char key[2])
 
 static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 {
+    char *b_qname;
     int n_changed = 0;
     int mask = 0;
-    int *bPV = (int *)bam_aux_get(b, "PV"); // Length of this should be b->l_qseq
-    int *pPV = (int *)bam_aux_get(p, "PV"); // Length of this should be b->l_qseq
-    int *bFA = (int *)bam_aux_get(b, "FA"); // Length of this should be b->l_qseq
-    int *pFA = (int *)bam_aux_get(p, "FA"); // Length of this should be b->l_qseq
+    int *bPV = (int *)array_aux_get(b, "PV"); // Length of this should be b->l_qseq
+    int *pPV = (int *)array_aux_get(p, "PV"); // Length of this should be b->l_qseq
+    int *bFA = (int *)array_aux_get(b, "FA"); // Length of this should be b->l_qseq
+    int *pFA = (int *)array_aux_get(p, "FA"); // Length of this should be b->l_qseq
+    int *pFM = (int *)(bam_aux_get(p, "FM"));
+    int *bFM = (int *)(bam_aux_get(b, "FM"));
+    if(*pFM < *bFM) {
+        b_qname = bam_get_qname(b);
+        memcpy(bam_get_qname(p), b_qname, strlen(b_qname));
+    }
     inc_aux_tag(p, b, "FM");
-    //check_inc_aux_tag(p, b, "RT");
     /*
+    for(int i = 0; i < p->core.l_qseq; ++i) {
+        fprintf(stderr, "tointer to tag for read b: %p.\n", bFA);
+        //fprintf(stderr, (i == p->core.l_qseq - 1) ? "%i\n": "%i\t", bFA[i]);
+        fprintf(stderr, (i == p->core.l_qseq - 1) ? "%i\n": "%i\t", bFA[i]);
+    }
+    for(int i = 0; i < p->core.l_qseq; ++i) {
+        //fprintf(stderr, "Pointer to tag for read p: %p.\n", pPV);
+        //fprintf(stderr, (i == p->core.l_qseq - 1) ? "%i\n": "%i\t", pPV[i]);
+    }
+    /*
+    //check_inc_aux_tag(p, b, "RT");
      * inc_aux_tag has superseded update_int_ptr because it assigns fewer temporary variables.
-    update_int_ptr(bam_aux_get(p, "FM"), bam_aux_get(b, "FM")); // p.FM += b.FM
     update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RT += b.RT
     */
 #if !NDEBUG
@@ -237,10 +272,19 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     char *pQual = (char *)bam_get_qual(p);
     for(int i = 0; i < p->core.l_qseq; ++i) {
         if(bSeq[i] == pSeq[i]) {
-            pPV[i] = igamc(2., LOG10_TO_CHI2(pPV[i] + bPV[i]) / 2.0);
+            //fprintf(stderr, "Old pPV value: %i.\n", pPV[i]);
+            double igamc_input = AVG_LOG_TO_CHI2(pPV[i] + bPV[i]);
+            pPV[i] = (int)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i] + bPV[i]))));
+/*
+#if !NDEBUG
+            fprintf(stderr, "Igamc input that's about to cause an underflow error: %f, %i.\n", igamc_input, pPV[i] + bPV[i]);
+            fprintf(stderr, "New pPV value: %i.\n", pPV[i]);
+#endif
+*/
             pFA[i] += bFA[i];
-            if(bQual[i] > pQual[i])
+            if(bQual[i] > pQual[i]) {
                 pQual[i] = bQual[i];
+            }
         }
         else {
             if(pPV[i] > bPV[i]) {
@@ -254,43 +298,57 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
                 pQual[i] = bQual[i];
                 ++n_changed;
             }
-            if(pPV[i] < 3) {
-                pSeq[i] = 'N';
-                pFA[i] = 0;
-                pPV[i] = 0;
-                pQual[i] = 33; // 33 phred == 0 quality == '!'
-                ++mask;
-            }
+        }
+        if(pPV[i] < 3) {
+            pSeq[i] = 'N';
+            pFA[i] = 0;
+            pPV[i] = 0;
+            pQual[i] = 33; // 33 phred == 0 quality == '!'
+            ++mask;
         }
 
-        // Add if not present.
+        /*
         update_int_tag(p, "NC", n_changed);
         update_int_tag(p, "NN", mask);
         uint8_t *p_rt_ptr = bam_aux_get(p, "RT");
-        if(p_rt_ptr) {
             update_int_ptr(p_rt_ptr, bam_aux_get(b, "RT"));
-        }
-        //bam_destroy1(b);
-        //b = NULL;
+        */
     }
+        bam_destroy1(b);
+        b = NULL;
+        fprintf(stderr, "Finished merging two records.\n");
 }
 
 static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings_ptr)
 {
     uint8_t *cp, *cb;
     int pass;
-    bam1_t *b, *p;
+    int j;
     for(int i = 0; i < stack->n; ++i) {
-        b = stack->a[i];
-        cb = bam_aux_get(b, "BS");
-        for(int j = i + 1; j < stack->n; ++i) {
-            p = stack->a[j];
-            cp = bam_aux_get(p, "BS");
+        fprintf(stderr, "Hey, I'm working my way through the first loop here.\n");
+        if(!stack->a[i]) {
+            continue;
+        }
+        cb = bam_get_qname(stack->a[i]);
+        for(j = i + 1; j < stack->n; ++i) {
+            if(!stack->a[j]) {
+                fprintf(stderr, "Destroyed record here. Ignore it!\n");
+                continue;
+            }
+            cp = bam_get_qname(stack->a[j]);
+            fprintf(stderr, "Hey, I successfully accessed the BS tag.\n");
             if(hamming_dist_test(++cp, ++cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
-                update_bam1(p, b, settings_ptr->fp); // Update record p with b. Also frees b.
-            }      
+                if((strcmp(cb, cp) == 0) && (bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]) && bam_is_r2(stack->a[i]) == bam_is_r1(stack->a[j]))) {
+                    fprintf(stderr, "Abort! These have the same read number and barcode... WTF!\n");
+                    exit(EXIT_FAILURE);
+                }
+                update_bam1(stack->a[j], stack->a[i], settings_ptr->fp); // Update record p with b. Also frees b.
+            }
         }
     }
+#if !NDEBUG
+    fprintf(stderr, "Finished flattening stack with total number of reads %i.\n", stack->n);
+#endif
     return;
 }
 
@@ -308,7 +366,7 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_
     memset(&stack, 0, sizeof(tmp_stack_t));
 
     while (sam_read1(in, hdr, b) >= 0) {
-        fprintf(stderr, "Reading in a record.\n");
+        int *bPV = (int *)bam_aux_get(b, "PV"); // Length of this should be b->l_qseq
         bam1_core_t *c = &b->core;
         current_core = bam_sort_core_key(b);
         current_mate = bam_sort_mate_key(b);

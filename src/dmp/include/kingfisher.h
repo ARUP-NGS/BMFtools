@@ -53,8 +53,10 @@ extern double igamc(double x, double y);
 
 //Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
 #define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
+#define LOG10E_X5_1_2 0.230258509299404568401799145468436420760110148862877297603332790096757260967735248
 //such as in the following macro:
 #define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
+#define AVG_LOG_TO_CHI2(x) (x) * LOG10E_X5_1_2
 
 
 
