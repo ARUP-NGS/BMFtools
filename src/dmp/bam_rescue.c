@@ -229,9 +229,38 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
     char *b_qname;
     int n_changed = 0;
     int mask = 0;
+    if(!b || !p) {
+        // If the
+        fprintf(stderr, "One of these records is null. Abort!\n");
+        return;
+    }
+    fprintf(stderr, "Getting PV tag 1.\n");
     int *bPV = (int *)array_aux_get(b, "PV"); // Length of this should be b->l_qseq
+    fprintf(stderr, "Getting PV tag 2.\n");
     int *pPV = (int *)array_aux_get(p, "PV"); // Length of this should be b->l_qseq
+    fprintf(stderr, "Getting FA tag 1.\n");
     int *bFA = (int *)array_aux_get(b, "FA"); // Length of this should be b->l_qseq
+    fprintf(stderr, "Getting FA tag 2.\n");
+    int *pFA = (int *)array_aux_get(p, "FA"); // Length of this should be b->l_qseq
+    fprintf(stderr, "Getting FM tag 1.\n");
+    int *pFM = (int *)(bam_aux_get(p, "FM"));
+    fprintf(stderr, "Getting FM tag 2.\n");
+    int *bFM = (int *)(bam_aux_get(b, "FM"));
+    if(*pFM < *bFM) {
+        b_qname = bam_get_qname(b);
+        memcpy(bam_get_qname(p), b_qname, strlen(b_qname));
+    }
+    inc_aux_tag(p, b, "FM");
+    /*
+    int *pFA = (int *)array_aux_get(p, "FA"); // Length of this should be b->l_qseq
+    int *pFM = (int *)(bam_aux_get(p, "FM"));
+    int *bFM = (int *)(bam_aux_get(b, "FM"));
+    if(*pFM < *bFM) {
+        b_qname = bam_get_qname(b);
+        memcpy(bam_get_qname(p), b_qname, strlen(b_qname));
+    }
+    inc_aux_tag(p, b, "FM");
+    /*
     int *pFA = (int *)array_aux_get(p, "FA"); // Length of this should be b->l_qseq
     int *pFM = (int *)(bam_aux_get(p, "FM"));
     int *bFM = (int *)(bam_aux_get(b, "FM"));
@@ -337,7 +366,7 @@ static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings
             }
             cp = bam_get_qname(stack->a[j]);
             fprintf(stderr, "Hey, I successfully accessed the BS tag.\n");
-            if(hamming_dist_test(++cp, ++cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
+            if(hamming_dist_test(cp, cb, settings_ptr->hd_thresh)) { // Increment these pointers to get to t
                 if((strcmp(cb, cp) == 0) && (bam_is_r1(stack->a[i]) == bam_is_r1(stack->a[j]) && bam_is_r2(stack->a[i]) == bam_is_r1(stack->a[j]))) {
                     fprintf(stderr, "Abort! These have the same read number and barcode... WTF!\n");
                     exit(EXIT_FAILURE);
@@ -397,6 +426,7 @@ void bam_rescue_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_
     }
     free(stack.a);
     bam_destroy1(b);
+    b = NULL;
 }
 
 void bam_rescue_se_core(samFile *in, bam_hdr_t *hdr, samFile *out, rescue_settings_t *settings_ptr)
