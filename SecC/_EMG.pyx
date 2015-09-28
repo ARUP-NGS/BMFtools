@@ -111,12 +111,32 @@ def MakeErrorArray(args):
         ReadCount += 1
     stderr.write("Reads Analyzed: %i\n" % (ReadCount))
     stderr.write("Reads QC Filtered: %i\n" % (qcfail))
-    r1frac = np.divide(r1error.astype(np.float64), r1obs.astype(np.float64))
-    r2frac = np.divide(r2error.astype(np.float64), r2obs.astype(np.float64))
-    return {'r1f': r1obs, 'r2f': r2obs, 'r1e': r1error, 'r2e': r2error}
+    #r1frac = np.divide(r1error.astype(np.float64), r1obs.astype(np.float64))
+    #r2frac = np.divide(r2error.astype(np.float64), r2obs.astype(np.float64))
+    return {'r1o': r1obs, 'r2o': r2obs, 'r1e': r1error, 'r2e': r2error}
 
 
-def errorArrayFormat(dict data, output):
+def errorArrayFormat2D(dict data, output):
+    """formats and outputs error array data in 2D"""
+    cdef int cycle, base
+    cdef ndarray[uint64_t, ndim=2, mode="c"] r1err, r2err
+    r1err = np.divide(data['r1e'].astype(np.float64),
+                      data['r1o'].astype(np.float64))
+    r2err = np.divide(data['r1e'].astype(np.float64),
+                      data['r1o'].astype(np.float64))
+    with open(output, 'w') as o:
+        for cycle in range(len(r1err)):
+            for base in range(len(r2err)):
+                b1 = r1err[cycle][base]
+                r1bases.append(str(r1err[cycle][base]))
+                r2bases.append(str(r2err[cycle][base]))
+            r1bases = ",".join(r1bases)
+            r2bases = ",".join(r2bases)
+            out = "|".join([r1bases, r2bases]) + "\n"
+            o.write(out)
+    return 0
+
+def errorArrayFormat3D(dict data, output):
     """Formats and outputs error array data"""
     cdef int cycle, qual, base
     with open(output, 'w') as o:
@@ -160,7 +180,7 @@ def calculateErrorArray(args):
     """
     data = MakeErrorArray(args)
     cPickle.dump(data, open(table_prefix+"data.pickle",'w'))
-    #errorArrayFormat(data, table_prefix)
+    errorArrayFormat2D(data, table_prefix)
     return 0
 
 
