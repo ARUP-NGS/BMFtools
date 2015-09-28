@@ -451,7 +451,7 @@ cdef void FilterSet(list recs,
     return
 
 
-cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
+cpdef inline cystr pBamRescue(cystr inBam, cystr outBam, cystr tmpFq,
                               char mmlim, int8_t bLen):
     """
     :param inBam: [cystr/arg] - path to input bam
@@ -460,16 +460,52 @@ cpdef inline cystr pBamRescue(cystr inBam, cystr outBam,
     :param bLen: [int8_t/arg] - barcode length
     :return: [cystr]
     """
-    return BamRescue(inBam, outBam, mmlim, bLen)
+    return BamRescue(inBam, outBam, tmpFq, mmlim, bLen)
+
+
+cdef inline void update_rec(AlignedSegment_t a, AlignedSegment_t b):
+    raise NotImplementedError("Hey, sorry, I need to write this!")
+
+
+cdef inline cystr bam2fq_comment(AlignedSegment_t read):
+    raise NotImplementedError("Hey, sorry, I need to write this!")
+
+
+cdef inline cystr bam2ffq(AlignedSegment_t read):
+    return "@%s %s\n%s\n+\n%s\n" % (read.query_name, bam2fq_comment(read),
+                                  read.query_sequence, read.qual)
+
+
+cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
+    """
+    :param inBam: [list/arg] - path to input bam
+    :param bLen: [int/arg] - length of barcode
+    :param mmlim: [int/arg] - mismatch limit
+    """
+    cdef AlignedSegment_t read
+    cdef int listlen = len(recList)
+    cdef int i, j
+    for i in xrange(listlen):
+        for j in xrange(i + 1, listlen):
+            if(pBarcodeHD(recList[i], recList[j], bLen) < mmlim):
+                recList[i].set_tag(("RA", 0))
+                recList[j].set_tag(("RA", 1))
+                update_rec(recList[j], recList[i])
+                # Updates recList j with i's values for meta-analysis.
+    return ([read for read in recList if
+             read.has_tag("RA") is False],
+            [bam2ffq(read) for read in recList if read.has_tag("RA")])
 
 
 cdef cystr BamRescue(cystr inBam,
                      cystr outBam,
-                     char mmlim, int8_t bLen):
+                     cystr tmpFq,
+                     int mmlim, int bLen):
     input_bam = pysam.AlignmentFile(inBam, "rb")
     output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
+    fq_handle = open(tmpFq, "w")
     cdef AlignedSegment_t read
-    cdef list recList
+    cdef list recList, fqList
     cdef int RefID, RNext, Pos, MPos
     cdef bint IsRead1, IsRev, Pass
     obw = output_bam.write
@@ -477,24 +513,17 @@ cdef cystr BamRescue(cystr inBam,
         if not Pass:
             [obw(read) for read in gen]
             continue
-        for RefID, gen1 in groupby(input_bam, REF_ID):
-            for Pos, gen2 in groupby(gen1, POS):
-                for RNext, gen3 in groupby(gen2, RNEXT):
-                    for MPos, gen4 in groupby(gen3, MPOS):
-                        for IsRead1, gen5 in groupby(gen4, IS_READ1):
-                            for IsRev, FinalGen in groupby(gen5, IS_REV):
-                                recList = list(FinalGen)
-                                if len(recList) == 1:
-                                    obw(recList[0])
-                                    continue
-                                recList = BFF(recList, bLen, mmlim)
-                                [obw(read) for read in recList]
+        for fullkey, gen in groupby(input_bam, FULL_KEY):
+            recList = list(gen)
+            recList, fqList = BamRescueSadness(recList, bLen, mmlim)
+            [obw(read) for read in recList]
+            fq_handle.write("\n".join(fqList))
     input_bam.close()
     output_bam.close()
     return output_bam.filename
 
 
-cdef inline int8_t StringHD(char * str1, char * str2, int8_t bLen) nogil:
+cdef inline int8_t StringHD(char *str1, char *str2, int8_t bLen) nogil:
     cdef size_t index
     cdef int8_t ret = 0
     for index in range(bLen):
@@ -504,7 +533,7 @@ cdef inline int8_t StringHD(char * str1, char * str2, int8_t bLen) nogil:
 
 
 cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
-                       int8_t bLen):
+                       int bLen):
     cdef cystr BC1, BC2
     BC1 = query.query_name
     BC2 = cmp.query_name

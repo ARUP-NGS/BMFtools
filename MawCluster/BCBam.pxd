@@ -65,6 +65,9 @@ cdef inline bint IS_REV(AlignedSegment_t read):
 cdef inline bint IS_READ1(AlignedSegment_t read):
     return read.is_read1
 
+cdef inline FULL_KEY(AlignedSegment_t read):
+    return (read.pos, read.mpos, read.reference_id, read.rnext, read.is_read1, read.is_reverse)
+
 
 cdef inline int MPOS(AlignedSegment_t read):
     return read.mpos

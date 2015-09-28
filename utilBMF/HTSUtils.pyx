@@ -153,11 +153,14 @@ cdef class pFastqProxy:
         return cls(FastqProxyObj.comment, FastqProxyObj.quality,
                    FastqProxyObj.sequence, FastqProxyObj.name)
 
+    @classmethod
+    def empty(cls):
+        return cls("", "", "", "")
+
     cdef cystr tostring(self):
         return "@%s %s\n%s\n+\n%s\n" % (self.name, self.comment,
                                         self.sequence, self.quality)
 
-    @cython.returns(cystr)
     def __str__(self):
         return self.tostring()
 
