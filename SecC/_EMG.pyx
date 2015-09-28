@@ -10,22 +10,22 @@ import operator
 import pysam
 import cython
 from array import array
+import cPickle
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 
 
-cdef errorTracker(AlignedSegment_t read,
-                  ndarray[uint64_t, ndim=3, mode="c"] readErr,
-                  ndarray[uint64_t, ndim=3, mode="c"] readObs,
-                  py_array tmpArr):
+cdef errorTracker(AlignedSegment_t mdRead, AlignedSegment_t bamRead,
+                  ndarray[uint64_t, ndim=2, mode="c"] readErr,
+                  ndarray[uint64_t, ndim=2, mode="c"] readObs):
     cdef int32_t index = 0
     cdef int32_t start, end
-    cdef char base
+    cdef char base, mbase
     cdef int8_t phred_index, char_index
-    tmpArr = array('B', read.query_sequence)
-    index = read.qstart
-    for index, base in enumerate(tmpArr[read.qstart:read.qend],
-                                 start=read.qstart):
+    tmpMArr = array('B', mdRead.query_sequence)
+    tmpBArr = array('B', bamRead.query_sequence)
+    for index, base in enumerate(tmpMArr[mdRead.qstart:mdRead.qend],
+                                 start=mdRead.qstart):
         if base == 78:  # base is 'N'
             continue
         """
@@ -33,13 +33,17 @@ cdef errorTracker(AlignedSegment_t read,
                 "Hey this is base %c with numeric"
                 " value %hi and int value %i.",
                 base, base, base)
-        """
-        char_index = NUC_TO_ARRAY(base)
-        phred_index = read.query_qualities[index] - 2
+        char_index = NUC_TO_ARRAY(tmpBArr[index])
+        phred_index = mdRead.query_qualities[index] - 2
         # Note if/elses with same predicate --> switch
         readObs[index][phred_index][char_index] += 1
         if base != 61:
             readErr[index][phred_index][char_index] += 1
+        """
+        char_index = NUC_TO_ARRAY(tmpBArr[index])
+        readObs[index][char_index] += 1
+        if base != 61:
+            readErr[index][char_index] += 1
 
 
 def MakeErrorArray(args):
@@ -47,13 +51,11 @@ def MakeErrorArray(args):
     cdef size_t rLen, index, read_index, qual_index, context_index
     cdef uint64_t qcfail, ReadCount
     cdef double_t r1mean, r2mean
-    cdef ndarray[uint64_t, ndim=3, mode="c"] r1error, r1obs
-    cdef ndarray[uint64_t, ndim=3, mode="c"] r2error, r2obs
-    cdef ndarray[double_t, ndim=3, mode="c"] r1frac, r2frac
-    cdef ndarray[double_t, ndim=1, mode="c"] r1cyclemeans, r2cyclemeans
-    cdef ndarray[double_t, ndim=1, mode="c"] r1qualmeans, r2qualmeans
-    cdef AlignedSegment_t read
-    cdef AlignmentFile_t mdBam
+    cdef ndarray[uint64_t, ndim=2, mode="c"] r1error, r1obs
+    cdef ndarray[uint64_t, ndim=2, mode="c"] r2error, r2obs
+    cdef ndarray[double_t, ndim=2, mode="c"] r1frac, r2frac
+    cdef AlignedSegment_t mdRead, bamRead
+    cdef AlignmentFile_t mdBam, bam
     cdef py_array tmpArr
 
     from cPickle import dump
@@ -69,32 +71,41 @@ def MakeErrorArray(args):
         table_prefix = args.table_prefix
     table_prefix += ".out."
 
+    bamGen = pysam.AlignmentFile(args.bam).next
     rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
     tmpArr = array('B')
     c_array.resize(tmpArr, rLen)
+    """ preserving 3D arrays here
     r1error = np.zeros([rLen, 39, 4], dtype=np.uint64)
     r1obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
     r2error = np.zeros([rLen, 39, 4], dtype=np.uint64)
     r2obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
+    """
+    # Moving to 2D arrays here
+    r1error = np.zeros([rLen, 4], dtype=np.uint64)
+    r1obs = np.zeros([rLen, 4], dtype=np.uint64)
+    r2error = np.zeros([rLen, 4], dtype=np.uint64)
+    r2obs = np.zeros([rLen, 4], dtype=np.uint64)
 
     qcfail = 0
     ReadCount = 0
 
     mdBam = pysam.AlignmentFile(args.mdBam, "rb")
-    for read in mdBam:
+    for mdRead in mdBam:
+        bamRead = bamGen()
         '''
         First if is equivalent to the following:
             if(read.is_secondary or read.is_supplementary or
                read.is_unmapped or read.is_qcfail):
         Second if is equivalent to not (read.is_proper_pair)
         '''
-        if read.flag & 2820 or not (read.flag & 2):
+        if mdRead.flag & 2820 or not (mdRead.flag & 2):
             qcfail += 1
             continue
-        if read.flag & 64:
-            errorTracker(read, r1error, r1obs, tmpArr)
-        elif read.flag & 128:
-            errorTracker(read, r2error, r2obs, tmpArr)
+        if mdRead.flag & 64:
+            errorTracker(mdRead, bamRead, r1error, r1obs)
+        elif mdRead.flag & 128:
+            errorTracker(mdRead, bamRead, r2error, r2obs)
         else:
             pass
         ReadCount += 1
@@ -102,23 +113,7 @@ def MakeErrorArray(args):
     stderr.write("Reads QC Filtered: %i\n" % (qcfail))
     r1frac = np.divide(r1error.astype(np.float64), r1obs.astype(np.float64))
     r2frac = np.divide(r2error.astype(np.float64), r2obs.astype(np.float64))
-    """
-    r1mean = np.mean(r1frac)
-    r2mean = np.mean(r2frac)
-    r1cyclemeans = np.mean(np.mean(r1frac, axis=2, dtype=np.float64),
-                           axis=1, dtype=np.float64)
-    r2cyclemeans = np.mean(np.mean(r2frac, axis=2, dtype=np.float64),
-                           axis=1, dtype=np.float64)
-    r1qualmeans = np.mean(np.mean(r1frac, axis=0, dtype=np.float64),
-                          axis=1, dtype=np.float64)
-    r2qualmeans = np.mean(np.mean(r2frac, axis=0, dtype=np.float64),
-                          axis=1, dtype=np.float64)
-    return {"r1cm": r1cyclemeans, "r2cm": r2cyclemeans,
-            "r1qm": r1qualmeans, "r2qm": r2qualmeans,
-            "r1f": r1frac, "r2f": r2frac, "r1m": r1mean,
-            "r2m": r2mean, "r1e": r1error, "r2e": r2error}
-    """
-    return {"r1f": r1obs, "r2f": r2obs}
+    return {'r1f': r1obs, 'r2f': r2obs, 'r1e': r1error, 'r2e': r2error}
 
 
 def errorArrayFormat(dict data, output):
@@ -135,9 +130,9 @@ def errorArrayFormat(dict data, output):
                     b1 = data['r1f'][cycle][qual][base]
                     b2 = data['r2f'][cycle][qual][base]
                     if np.isnan(b1):
-                        b1 = 0
+                        b1 = 0.0
                     if np.isnan(b2):
-                        b2 = 0
+                        b2 = 0.0
                     r1bases.append(str(b1))
                     r2bases.append(str(b2))
                 r1quals.append(":".join(r1bases))
@@ -147,6 +142,7 @@ def errorArrayFormat(dict data, output):
             out = "|".join([r1quals, r2quals])+"\n"
             o.write(out)
     return 0
+
 
 def calculateErrorArray(args):
     cdef dict data
@@ -163,7 +159,8 @@ def calculateErrorArray(args):
     ContextTableHandle = open(table_prefix + "context.tsv", "w")
     """
     data = MakeErrorArray(args)
-    errorArrayFormat(data, table_prefix)
+    cPickle.dump(data, open(table_prefix+"data.pickle",'w'))
+    #errorArrayFormat(data, table_prefix)
     return 0
 
 
