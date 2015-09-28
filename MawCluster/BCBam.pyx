@@ -485,6 +485,8 @@ cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
     cdef AlignedSegment_t read
     cdef int listlen = len(recList)
     cdef int i, j
+    cdef list bamList = []
+    cdef cystr fq_text = ""
     for i in xrange(listlen):
         for j in xrange(i + 1, listlen):
             if(pBarcodeHD(recList[i], recList[j], bLen) < mmlim):
@@ -492,9 +494,18 @@ cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
                 recList[j].set_tag(("RA", 1))
                 update_rec(recList[j], recList[i])
                 # Updates recList j with i's values for meta-analysis.
+    for read in recList:
+        if read.has_tag("RA"):
+            if(read.get_tag("RA")):
+                fq_text += bam2ffq(read)
+        else:
+            bamList.append(read)
+    return bamList, fq_text
+'''
     return ([read for read in recList if
              read.has_tag("RA") is False],
             [bam2ffq(read) for read in recList if read.has_tag("RA")])
+'''
 
 
 cdef cystr BamRescue(cystr inBam,
@@ -505,9 +516,10 @@ cdef cystr BamRescue(cystr inBam,
     output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
     fq_handle = open(tmpFq, "w")
     cdef AlignedSegment_t read
-    cdef list recList, fqList
+    cdef list recList
     cdef int RefID, RNext, Pos, MPos
     cdef bint IsRead1, IsRev, Pass
+    cdef cystr fq_text
     obw = output_bam.write
     for Pass, gen in groupby(input_bam, SKIP_READS):
         if not Pass:
@@ -515,9 +527,9 @@ cdef cystr BamRescue(cystr inBam,
             continue
         for fullkey, gen in groupby(input_bam, FULL_KEY):
             recList = list(gen)
-            recList, fqList = BamRescueSadness(recList, bLen, mmlim)
+            recList, fq_text = BamRescueSadness(recList, bLen, mmlim)
             [obw(read) for read in recList]
-            fq_handle.write("\n".join(fqList))
+            fq_handle.write(fq_text)
     input_bam.close()
     output_bam.close()
     return output_bam.filename
