@@ -26,5 +26,5 @@ cdef inline int8_t NUC_TO_ARRAY(int8_t index) nogil:
         return 1
     elif(index == 71):
         return 2
-    else:
+    elif(index == 84):
         return 3

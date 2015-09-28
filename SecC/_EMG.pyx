@@ -119,14 +119,16 @@ def MakeErrorArray(args):
 def errorArrayFormat2D(dict data, output):
     """formats and outputs error array data in 2D"""
     cdef int cycle, base
-    cdef ndarray[uint64_t, ndim=2, mode="c"] r1err, r2err
+    cdef ndarray[double_t, ndim=2, mode="c"] r1err, r2err
     r1err = np.divide(data['r1e'].astype(np.float64),
                       data['r1o'].astype(np.float64))
     r2err = np.divide(data['r1e'].astype(np.float64),
                       data['r1o'].astype(np.float64))
     with open(output, 'w') as o:
         for cycle in range(len(r1err)):
-            for base in range(len(r2err)):
+            r1bases = []
+            r2bases = []
+            for base in range(len(r2err[cycle])):
                 b1 = r1err[cycle][base]
                 r1bases.append(str(r1err[cycle][base]))
                 r2bases.append(str(r2err[cycle][base]))
