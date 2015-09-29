@@ -112,6 +112,7 @@ int uthash_dmp_main(int argc, char *argv[])
     return 0;
 }
 
+
 void omgz_core(char *infname, char *outfname)
 {
     FILE *in_handle;

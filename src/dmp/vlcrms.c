@@ -297,23 +297,23 @@ int main(int argc, char *argv[])
         settings.rescaler = parse_rescaler(settings.rescaler_path);
     }
     fprintf(stderr, "About to get the read paths.\n");
-    char r1_fq_buf[100];
-    char r2_fq_buf[100];
+    char r1fq[100];
+    char r2fq[100];
     if(argc - 1 != optind + 1) {
         fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);
         print_usage(argv);
         return 1;
     }
-    strcpy(r1_fq_buf, argv[optind]);
-    strcpy(r2_fq_buf, argv[optind + 1]);
+    strcpy(r1fq, argv[optind]);
+    strcpy(r2fq, argv[optind + 1]);
 
     if(!settings.output_basename) {
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
-        settings.output_basename = mark_crms_outfname(r1_fq_buf);
+        settings.output_basename = mark_crms_outfname(r1fq);
     }
     gzFile fp_read1, fp_read2;
-    fp_read1 = gzopen(r1_fq_buf, "r");
-    fp_read2 = gzopen(r2_fq_buf, "r");
+    fp_read1 = gzopen(r1fq, "r");
+    fp_read2 = gzopen(r2fq, "r");
     int l1, l2;
     kseq_t *seq1 = kseq_init(fp_read1);
     kseq_t *seq2 = kseq_init(fp_read2);

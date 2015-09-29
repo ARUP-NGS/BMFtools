@@ -11,6 +11,8 @@ typedef struct tmpvars {
     tmpbuffers_t *buffers;
 } tmpvars_t;
 
+void omgz_core(char *infname, char *outfname);
+
 
 typedef struct HashKing {
     UT_hash_handle hh;

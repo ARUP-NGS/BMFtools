@@ -25,6 +25,8 @@ char test_hp(kseq_t *seq, int threshold);
 int count_lines(char *fname);
 void u32toa_branchlut(uint32_t value, char* buffer);
 void i32toa_branchlut(int32_t value, char* buffer);
+void splitmark_core1(char *r1fq, char *r2fq, char *index_fq,
+                            mss_settings_t *settings);
 
 // Macros
 
@@ -113,44 +115,21 @@ int main(int argc, char *argv[])
         return 1;
     }
     fprintf(stderr, "About to get the read paths.\n");
-    char r1_fq_buf[100];
-    char r2_fq_buf[100];
+    char r1fq[100];
+    char r2fq[100];
     if(argc - 1 != optind + 1) {
         fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);
         print_usage(argv);
         return 1;
     }
-    strcpy(r1_fq_buf, argv[optind]);
-    strcpy(r2_fq_buf, argv[optind + 1]);
-    mss_settings_t *settings_ptr = &settings;
-    gzFile fp_read1, fp_read2, fp_index;
-    fp_read1 = gzopen(r1_fq_buf, "r");
-    fp_read2 = gzopen(r2_fq_buf, "r");
-    fp_index = gzopen(settings.index_fq_path, "r");
-    kseq_t *seq1;
-    kseq_t *seq2;
-    kseq_t *seq_index;
-    int l1, l2, l_index;
-    seq1 = kseq_init(fp_read1);
-    seq2 = kseq_init(fp_read2);
-    seq_index = kseq_init(fp_index);
-    mark_splitter_t splitter = init_splitter(settings_ptr);
-    mark_splitter_t *splitter_ptr = &splitter;
+    strcpy(r1fq, argv[optind]);
+    strcpy(r2fq, argv[optind + 1]);
 /*
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
-    splitmark_core(seq1, seq2, seq_index,
-                   settings, splitter);
-    //apply_lh3_sorts(&splitter, &settings);
-    /*
-    sort_overlord_t dispatcher = build_mp_sorter(splitter_ptr, settings_ptr);
-    apply_lh3_sorts(&dispatcher, settings_ptr);
-    free_mp_sorter(dispatcher);
-    */
+    splitmark_core1(r1fq, r2fq, settings.index_fq_path,
+                    &settings);
     FREE_SETTINGS(settings);
-    FREE_SPLITTER(splitter);
-    kseq_destroy(seq1);
-    kseq_destroy(seq2);
     return 0;
 }

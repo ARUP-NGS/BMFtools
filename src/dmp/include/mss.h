@@ -19,7 +19,7 @@
 #define FREE_SETTINGS(settings) free(settings.output_basename);\
     free(settings.index_fq_path);\
     free(settings.input_r1_path);\
-    free(settings.input_r2_path);
+    free(settings.input_r2_path)
 #endif
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN
@@ -49,8 +49,9 @@ typedef struct mark_splitter {
     char **fnames_r2;
 } mark_splitter_t;
 
+mark_splitter_t init_splitter(mss_settings_t* settings_ptr);
 
-void FREE_SPLITTER(mark_splitter_t var)
+static inline void FREE_SPLITTER(mark_splitter_t var)
 {
     for(int i = 0; i < var.n_handles; i++) {
         //fprintf(stderr, "Now trying to close file #%i with filename %s.\n", i, var.fnames_r1[i]);
@@ -70,36 +71,18 @@ void FREE_SPLITTER(mark_splitter_t var)
 }
 
 
-
-
 static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
                            mss_settings_t settings, mark_splitter_t splitter)
 {
     int l1, l2, l_index, bin;
-    int count = 0;
+    int count = 1;
     char pass_fail;
-    while ((l1 = kseq_read(seq1)) >= 0) {
-        count += 1;
-        if(!(count % settings.notification_interval)) {
+    while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
+            && (l_index = kseq_read(seq_index)) >= 0) {
+        if(!(++count % settings.notification_interval)) {
             fprintf(stderr, "Number of records processed: %i.\n", count);
         }
         // Iterate through second fastq file.
-        l_index = kseq_read(seq_index);
-        l2 = kseq_read(seq2);
-        if (l_index < 0) {
-            fprintf(stderr, "Index return value for kseq_read less than "
-                            "0. Are the fastqs different sizes? Abort!\n");
-            FREE_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            exit(EXIT_FAILURE);
-        }
-        if (l2 < 0) {
-            fprintf(stderr, "Read 2 return value for kseq_read less than "
-                            "0. Are the fastqs different sizes? Abort!\n");
-            FREE_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            exit(EXIT_FAILURE);
-        }
         pass_fail = test_hp(seq_index, settings.hp_threshold);
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(seq_index->seq.s, settings.n_nucs);
@@ -108,12 +91,47 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
     }
 }
 
+static void splitmark_core1(char *r1fq, char *r2fq, char *index_fq,
+                            mss_settings_t *settings)
+{
+    gzFile fp_read1, fp_read2, fp_index;
+    kseq_t *seq1, *seq2, *seq_index;
+    mark_splitter_t splitter = init_splitter(settings);
+    fp_read1 = gzopen(r1fq, "r");
+    fp_read2 = gzopen(r2fq, "r");
+    fp_index = gzopen(index_fq, "r");
+    seq1 = kseq_init(fp_read1);
+    seq2 = kseq_init(fp_read2);
+    seq_index = kseq_init(fp_index);
+    int l1, l2, l_index, bin;
+    int count = 0;
+    char pass_fail;
+    while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
+            && (l_index = kseq_read(seq_index)) >= 0) {
+        if(!(count++ % settings->notification_interval)) {
+            fprintf(stderr, "Number of records processed: %i.\n", count);
+        }
+        // Iterate through second fastq file.
+        pass_fail = test_hp(seq_index, settings->hp_threshold);
+        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
+        bin = get_binner(seq_index->seq.s, settings->n_nucs);
+        KSEQ_2_FQ(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass_fail);
+        KSEQ_2_FQ(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass_fail);
+    }
+    kseq_destroy(seq1);
+    kseq_destroy(seq2);
+    kseq_destroy(seq_index);
+    gzclose(fp_read1);
+    gzclose(fp_read2);
+    gzclose(fp_index);
+    return;
+}
 
 
 inline int infer_barcode_length(char *bs_ptr)
 {
     int ret = 0;
-    for (;;ret++) {
+    for (;;++ret) {
         if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|') {
 #if !NDEBUG
             fprintf(stderr, "Returning blen as %i.\n", ret);
