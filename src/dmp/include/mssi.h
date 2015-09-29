@@ -23,6 +23,7 @@ typedef struct mssi_settings {
     char *rescaler_path; // Path to rescaler for
     int threads;
     int run_hash_dmp;
+    char *ffq_prefix; // Final fastq prefix
     char ****rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
 } mssi_settings_t;
 
