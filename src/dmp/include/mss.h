@@ -71,6 +71,28 @@ static inline void FREE_SPLITTER(mark_splitter_t var)
 }
 
 
+static inline void FREE_SPLITTER_PTR(mark_splitter_t *var)
+{
+    for(int i = 0; i < var->n_handles; i++) {
+        //fprintf(stderr, "Now trying to close file #%i with filename %s.\n", i, var->fnames_r1[i]);
+        //fprintf(stderr, "Now trying to access FILE * with number %i.\n", i);
+        if(var->fnames_r1[i]) {
+            free(var->fnames_r1[i]);
+            var->fnames_r1[i] = NULL;
+        }
+        if(var->fnames_r2[i]) {
+            free(var->fnames_r2[i]);
+            var->fnames_r2[i] = NULL;
+        }
+    }
+    free(var->tmp_out_handles_r1);
+    free(var->tmp_out_handles_r2);
+    free(var);
+    var = NULL;
+    return;
+}
+
+
 static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
                            mss_settings_t settings, mark_splitter_t splitter)
 {

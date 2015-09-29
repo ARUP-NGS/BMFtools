@@ -111,7 +111,7 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 
 
 /*
- * Pre-processes and splits fastqs with inline barcodes.
+ * Pre-processes (pp) and splits fastqs with inline barcodes.
  */
 void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
                      mssi_settings_t settings, mark_splitter_t splitter)
@@ -170,6 +170,71 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     mseq_destroy(&mvar2);
     free(barcode);
     return;
+}
+
+
+/*
+ * Pre-processes (pp) and splits fastqs with inline barcodes.
+ */
+mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
+                     mssi_settings_t *settings)
+{
+	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+	*splitter = init_splitter_inline(settings);
+	gzFile fp1 = gzopen(r1fq, "r");
+	gzFile fp2 = gzopen(r2fq, "r");
+	kseq_t *seq1 = kseq_init(fp1);
+	kseq_t *seq2 = kseq_init(fp2);
+    int l1, l2;
+    uint64_t bin;
+    int count = 0;
+    char pass_fail;
+    int blen1_2 = settings->blen / 2;
+    int n_len = blen1_2 + settings->homing_sequence_length + settings->offset;
+    char *barcode = (char *)malloc((settings->blen + 1) * sizeof(char));
+    barcode[settings->blen] = '\0'; // Null-terminate
+    l1 = kseq_read(seq1);
+    l2 = kseq_read(seq2);
+    if(l1 < 0 || l2 < 0) {
+            fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
+            FREE_MSSI_SETTINGS_PTR(settings);
+            FREE_SPLITTER_PTR(splitter);
+            exit(EXIT_FAILURE);
+    }
+    tmp_mseq_t tmp = init_tmp_mseq(seq1->seq.l, settings->blen);
+    // Get first barcode.
+    set_barcode(seq1, seq2, barcode, settings->offset, blen1_2);
+    pass_fail = test_homing_seq(seq1, seq2, settings) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
+    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings->rescaler, &tmp, n_len, 0);
+    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings->rescaler, &tmp, n_len, 1);
+    bin = get_binnerul(barcode, settings->n_nucs);
+    mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
+    mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
+    do {
+        if(!(count++ % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
+        // Iterate through second fastq file.
+        set_barcode(seq1, seq2, barcode, settings->offset, blen1_2);
+        pass_fail = test_homing_seq(seq1, seq2, settings) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
+        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
+        update_mseq(&mvar1, barcode, seq1, settings->rescaler, &tmp, n_len, 0);
+        update_mseq(&mvar2, barcode, seq2, settings->rescaler, &tmp, n_len, 1);
+        bin = get_binnerul(barcode, settings->n_nucs);
+        mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
+        mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
+    } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
+    for(int i = 0; i < splitter->n_handles; ++i) {
+        fclose(splitter->tmp_out_handles_r1[i]);
+        fclose(splitter->tmp_out_handles_r2[i]);
+    }
+    tmp_mseq_destroy(tmp);
+    mseq_destroy(&mvar1);
+    mseq_destroy(&mvar2);
+    free(barcode);
+    kseq_destroy(seq1);
+    kseq_destroy(seq2);
+    gzclose(fp1);
+    gzclose(fp2);
+    return splitter;
 }
 
 inline int get_blens(char *str2parse, int *buf2fill)
@@ -270,14 +335,7 @@ int main(int argc, char *argv[])
         settings.output_basename = mark_crms_outfname(r1fq);
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
-    gzFile fp_read1, fp_read2;
-    fp_read1 = gzopen(r1fq, "r");
-    fp_read2 = gzopen(r2fq, "r");
-    int l1, l2;
-    kseq_t *seq1 = kseq_init(fp_read1);
-    kseq_t *seq2 = kseq_init(fp_read2);
-    mark_splitter_t splitter = init_splitter_inline(&settings);
-    pp_split_inline(seq1,seq2, settings, splitter);
+    mark_splitter_t *splitter = pp_split_inline1(r1fq, r2fq, &settings);
     if(settings.rescaler) {
         int readlen = count_lines(settings.rescaler_path);
         for(int i = 0; i < 2; ++i) {
@@ -294,7 +352,7 @@ int main(int argc, char *argv[])
     }
     if(settings.run_hash_dmp) {
         // Whatever I end up putting into here.
-        splitterhash_params_t *params = init_splitterhash(&settings, &splitter);
+        splitterhash_params_t *params = init_splitterhash(&settings, splitter);
         #pragma omp parallel
         {
             #pragma omp for
@@ -306,8 +364,6 @@ int main(int argc, char *argv[])
         splitterhash_destroy(params);
     }
     free_mssi_settings(settings);
-    FREE_SPLITTER(splitter);
-    kseq_destroy(seq1);
-    kseq_destroy(seq2);
+    FREE_SPLITTER_PTR(splitter);
     return 0;
 }
