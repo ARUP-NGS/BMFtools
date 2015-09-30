@@ -7,8 +7,8 @@ cimport utilBMF.HTSUtils
 from cython cimport bint
 from cpython cimport array as c_array
 from libc.stdint cimport *
-from libc.stdio cimport sprintf
-from libc.string cimport memcpy
+from libc.stdio cimport *
+from libc.string cimport *
 from pysam.chtslib cimport bam_aux2Z, bam_hdr_t, bam_get_seq, bam_get_aux
 from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict

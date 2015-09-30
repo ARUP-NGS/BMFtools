@@ -39,6 +39,8 @@ from utilBMF import HTSUtils
 from warnings import warn
 import SecC
 
+cdef int DEFAULT_MMLIM = 2
+
 
 def AbraCadabra(inBAM, outBAM="default",
                 jar="default", sortMem="default", ref="default",
@@ -452,15 +454,20 @@ cdef void FilterSet(list recs,
 
 
 cpdef inline cystr pBamRescue(cystr inBam, cystr outBam, cystr tmpFq,
-                              char mmlim, int8_t bLen):
+                              object mmlim=None):
     """
     :param inBam: [cystr/arg] - path to input bam
     :param outBam: [cystr/arg] - path to output bam
-    :param mmlim: [char/arg] - mismatch limit
-    :param bLen: [int8_t/arg] - barcode length
+    :param mmlim: [object/kwarg/None] - mismatch limit
+    If unset, defaults to DEFAULT_MMLIM (2)
     :return: [cystr]
     """
-    return BamRescue(inBam, outBam, tmpFq, mmlim, bLen)
+    if not mmlim:
+        mmlim = DEFAULT_MMLIM
+    else:
+        mmlim = int(mmlim)
+    sys.stderr.write("Now beginning BamRescue. mmlim: {}\n".format(mmlim))
+    return BamRescue(inBam, outBam, tmpFq, mmlim)
 
 
 cdef inline void update_rec(AlignedSegment_t a, AlignedSegment_t b):
@@ -503,7 +510,7 @@ cdef inline cystr bam2fq_header(AlignedSegment_t read):
 
 
 cdef inline cystr bam2ffq(AlignedSegment_t read):
-    if(read.flag & 16):
+    if read.flag & 16:
         return "%s\n%s\n+\n%s\n" % (bam2fq_header(read),
                                     RevCmp(read.query_sequence),
                                     read.qual[::-1])
@@ -512,30 +519,43 @@ cdef inline cystr bam2ffq(AlignedSegment_t read):
                                     read.query_sequence, read.qual)
 
 
-cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
+cdef inline tuple BamRescueSadness(list recList, int bLen, int mmlim):
     """
     :param inBam: [list/arg] - path to input bam
     :param bLen: [int/arg] - length of barcode
     :param mmlim: [int/arg] - mismatch limit
     """
+    fprintf(stderr, "Now starting a BamRescueSadness.\n")
     cdef AlignedSegment_t read
     cdef int listlen = len(recList)
     cdef int i, j
     cdef list bamList = []
     cdef cystr fq_text = ""
+    cdef set nameset = set()
+    cdef int ra_int
     for i in xrange(listlen):
+        recList[i].set_tag("RA", -1)
         for j in xrange(i + 1, listlen):
             if(pBarcodeHD(recList[i], recList[j], bLen) < mmlim):
-                recList[i].set_tag(("RA", 0))
-                recList[j].set_tag(("RA", 1))
+                recList[i].set_tag("RA", 0)
+                recList[j].set_tag("RA", 1)
                 update_rec(recList[j], recList[i])
                 # Updates recList j with i's values for meta-analysis.
+            else:
+                print("Barcode distance is too great between %s and %s." % (recList[i].opt("BS"),
+                                                                            recList[j].opt("BS")))
     for read in recList:
-        if read.has_tag("RA"):
-            if(read.get_tag("RA") != 0):
-                fq_text += bam2ffq(read)
-        else:
+        ra_int = read.get_tag("RA")
+        if(ra_int == 1):
+            print("RA tag is 1")
+            fq_text += bam2ffq(read)
+            fprintf(stderr, "Now returning the fastq parts. %s.\n", <char *>fq_text)
+        elif ra_int == -1:
+            print("RA tag is -1")
             bamList.append(read)
+        else:
+            print("No RA tag.")
+            pass
     return bamList, fq_text
 '''
     return ([read for read in recList if
@@ -547,15 +567,30 @@ cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
 cdef cystr BamRescue(cystr inBam,
                      cystr outBam,
                      cystr tmpFq,
-                     int mmlim, int bLen):
-    input_bam = pysam.AlignmentFile(inBam, "rb")
-    output_bam = pysam.AlignmentFile(outBam, "wb", template=input_bam)
-    fq_handle = open(tmpFq, "w")
+                     int mmlim=DEFAULT_MMLIM):
+    """
+    :param: inBam [cystr/arg] Path to input bam.
+    :param: outBam [cystr/arg] Path to output bam.
+    :param: tmpFq [cystr/arg] Path to output fastq.
+    Set to "-" to default to sdtout.
+    :param: mmlim [int/kwarg/2] Mismatch limit for barcode rescue.
+    Hamming distances less than mmlim are considered to be from the same
+    original founding molecule.
+    """
     cdef AlignedSegment_t read
     cdef list recList
-    cdef int RefID, RNext, Pos, MPos
-    cdef bint IsRead1, IsRev, Pass
+    cdef bint Pass
     cdef cystr fq_text
+    # Default to outputting fastq to stdout.
+    cdef FILE *fp = fopen(<char *>tmpFq, "w") if(tmpFq == "-") else stdout
+    fprintf(stderr, "Output fastq path: %s.\n", <char *>tmpFq)
+    input_bam = pysam.AlignmentFile(inBam, "rb")
+    cdef int bLen = len(input_bam.next().opt("BS"))
+    input_bam = pysam.AlignmentFile(inBam, "rb")
+    if outBam == "default":
+        outBam = TrimExt(inBam) + ".rescue.bam"
+    output_bam = pysam.AlignmentFile(outBam, "wb",
+                                     template=input_bam)
     obw = output_bam.write
     for Pass, gen in groupby(input_bam, SKIP_READS):
         if not Pass:
@@ -563,11 +598,16 @@ cdef cystr BamRescue(cystr inBam,
             continue
         for fullkey, gen in groupby(input_bam, FULL_KEY):
             recList = list(gen)
-            recList, fq_text = BamRescueSadness(recList, bLen, mmlim)
-            [obw(read) for read in recList]
-            fq_handle.write(fq_text)
+            if(len(recList) == 1):
+                obw(read)
+                continue
+            else:
+                recList, fq_text = BamRescueSadness(recList, bLen, mmlim)
+                [obw(read) for read in recList]
+                fprintf(fp, <char *>fq_text)
     input_bam.close()
     output_bam.close()
+    fclose(fp)
     return output_bam.filename
 
 

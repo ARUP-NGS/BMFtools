@@ -25,13 +25,12 @@ somatic variant calling. Written to be similar in form to bcftools
 and samtools.
 """
 
-#  warnings.filterwarnings('error')
 
-
-def main():
+def get_args():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
+    BamRescueParser = subparsers.add_parser("rescue")
     PipeAlignTagMergeParser = subparsers.add_parser("aligntagmerge")
     SlaveDMPParser = subparsers.add_parser("slavedmp")
     PipeParser = subparsers.add_parser(
@@ -849,12 +848,28 @@ def main():
         "--coorsort", "-s",
         help="Set to true to emit uncompressed bam output.",
         action="store_true")
+    BamRescueParser.add_argument(
+        "inBAM", help="Path to input BAM which has been bmf_bam_sort'd.")
+    BamRescueParser.add_argument(
+        "-o", "--outBAM", help=("Path to output BAM which has been bmf_bam_"
+                                "sort'd. Defaults to 'default'"))
+    BamRescueParser.add_argument(
+        "--mmlim", "-l", help=("Mismatch limit. Number of barcode "
+                               "substitutions to permit when rescuing "
+                               "families with barcode errors. Defaults to 2"))
+    BamRescueParser.add_argument(
+        "--tmpFq", "-f", help="Path to temporary fastq. Default: None.")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
+    return parser.parse_args()
+
+
+def main():
+
 
     # set_trace()
-    Palin = parser.parse_args()
+    Palin = get_args()
 
     # Global Variables
     global Logger
@@ -1297,7 +1312,7 @@ def main():
                                         FastDOCPath=Chapman["FastDOCPath"],
                                         minMQ=Chapman("minMQ"))
             pl("Last stop! Watch your step.")
-    if(subcommand == "mpa"):
+    elif(subcommand == "mpa"):
         from utilBMF.MPA import MPA2Bam
         if(Chapman('outBAM') in [None, "default", "stdout"]):
             Chapman['outBAM'] = "-"  # Prints to stdout.
@@ -1305,7 +1320,7 @@ def main():
                          u=Chapman('uncompressed_bam'),
                          coorsort=Chapman('coorsort'),
                          sortMem=Chapman('sortMem'))
-    if(subcommand == "pep8"):
+    elif(subcommand == "pep8"):
         from subprocess import Popen, PIPE
         from time import sleep
         if os.path.isdir(Chapman['dir']) is False:
@@ -1329,7 +1344,7 @@ def main():
                "standards or caring more about these violations.")
             sys.stdout.write(out)
             return 1
-    if(subcommand == "pipetagbam"):
+    elif(subcommand == "pipetagbam"):
         from MawCluster.BCBam import PipeBarcodeTagCOBam
         compressInput = True if(
             Palin.compression[0] == 'b') else False
@@ -1342,13 +1357,12 @@ def main():
                                                  "bam" if(
             bamOutput) else "sam"))
         PipeBarcodeTagCOBam()
-    if(subcommand == "slavedmp"):
+    elif(subcommand == "slavedmp"):
         from utilBMF.HTSUtils import SlaveDMP
         SlaveDMP(Chapman['bsFastq1'], Chapman['bsFastq2'],
                  p3Seq=Chapman['p3Seq'], p5Seq=Chapman['p5Seq'],
                  sortMem=Chapman['slave_sort_mem'], head=Chapman['head'])
-        return 0
-    if(subcommand == "aligntagmerge"):
+    elif(subcommand == "aligntagmerge"):
         from utilBMF.MPA import PipeAlignTagMPA
         R1 = Chapman['inFqs'][0]
         R2 = Chapman['inFqs'][1]
@@ -1357,10 +1371,19 @@ def main():
                                  coorsort=Chapman['coorsort'],
                                  u=Chapman["uncompressed_bam"],
                                  ref=Chapman['ref'])
-        return 0
+    elif(subcommand == "rescue"):
+        if Chapman['tmpFq'] is None:
+            Chapman['tmpFq'] = TrimExt(Chapman['inBAM']) + ".tmp.ra.fastq"
+        from MawCluster.BCBam import pBamRescue as BamRescue
+        out_bam = BamRescue(Chapman['inBAM'], Chapman['outBAM'], Chapman['tmpFq'],
+                            Chapman['mmlim'])
+        sys.stderr.write("Successfully rescued bam. Output BAM: "
+                         "%s. Output fastq: %s.\n" % (Chapman['outBAM'],
+                                                      Chapman['tmpFq']))
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0
+
 
 if(__name__ == "__main__"):
     sys.exit(main())

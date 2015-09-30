@@ -150,6 +150,7 @@ DefaultConfig = {
                  "minPileupLen": (10, 'i'),
                  "mismatches": (0, 'i'),
                  "mm": (1, 'i'),
+                 "mmlim": (2, 'i'),
                  "num_nucs": (2, 'i'),
                  "on_target": (0.25, 'f'),
                  "opts": ("", 's'),
@@ -176,5 +177,6 @@ DefaultConfig = {
                  "single_end": (False, 'b'),
                  "sortMem": ("6G", 's'),
                  "threads": (4, 'i'),
+                 "tmpFq": (None, 's'),
                  "uncompressed_bam": (False, 'b')
                  }
