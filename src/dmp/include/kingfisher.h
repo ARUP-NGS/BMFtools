@@ -208,7 +208,10 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     tmp->name_buffer[1 + blen] = '\0';
     //fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
     //fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-    fprintf(handle, "%s %s\t%s\tFP:i:%c\n%s\n+\n%s\n", tmp->name_buffer, tmp->FABuffer, tmp->PVBuffer, kfp->pass_fail, tmp->cons_seq_buffer, kfp->max_phreds);
+    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+            tmp->FABuffer, tmp->PVBuffer,
+            kfp->pass_fail, kfp->n_rc,
+            tmp->cons_seq_buffer, kfp->max_phreds);
     return;
 }
 

@@ -32,7 +32,7 @@ from utilBMF.HTSUtils import (printlog as pl,
                               FractionAligned, FractionSoftClipped,
                               SWRealignAS, pPileupRead,
                               BwaswCall, samtoolsMergeBam, pFastqProxy,
-                              TrimExt)
+                              TrimExt, RevCmp)
 from utilBMF.ErrorHandling import (IllegalArgumentError, ThisIsMadness as Tim,
                                    MissingExternalTool)
 from utilBMF import HTSUtils
@@ -464,16 +464,52 @@ cpdef inline cystr pBamRescue(cystr inBam, cystr outBam, cystr tmpFq,
 
 
 cdef inline void update_rec(AlignedSegment_t a, AlignedSegment_t b):
-    raise NotImplementedError("Hey, sorry, I need to write this!")
+    cdef int i
+    cdef char *a_seq = <char *>a.query_sequence
+    cdef char *b_seq = <char *>b.query_sequence
+    cdef ndarray[int32_t, ndim=1] a_qual = np.array(a.opt("PV"), dtype=np.int32)
+    cdef ndarray[int32_t, ndim=1] b_qual = np.array(b.opt("PV"), dtype=np.int32)
+    cdef ndarray[int32_t, ndim=1] a_FA = np.array(a.opt("FA"), dtype=np.int32)
+    cdef ndarray[int32_t, ndim=1] b_FA = np.array(b.opt("FA"), dtype=np.int32)
+    # Increment FM tag.
+    a.set_tag("FM", a.opt("FM") + b.opt("FM"), value_type='i')
+    # Increment RC tag.
+    a.set_tag("RC", a.opt("RC") + b.opt("RC"), value_type='i')
+    # Let either read now pass via FP tag. Requires both reads being collapsed
+    # pass
+    a.set_tag("FP", 1 if(a.opt("FP") and b.opt("FP")) else 0, value_type='i')
+    for i in xrange(a.inferred_length):
+        if(a_seq[i] == b_seq[i]):
+            a_qual[i] = MergeAgreedQualities(a_qual[i], b_qual[i])
+            a_FA[i] += b_FA[i]
+        else:
+            if(b_qual[i] > a_qual[i]):
+                a_seq[i] = b_seq[i]
+                a_FA[i] = b_FA[i]
+            a_qual[i] = MergeDiscQualities(a_qual[i], b_qual[i])
+    a.query_sequence = a_seq
+    a.set_tag("PV", a_qual)
+    return
 
 
-cdef inline cystr bam2fq_comment(AlignedSegment_t read):
-    raise NotImplementedError("Hey, sorry, I need to write this!")
+cdef inline cystr bam2fq_header(AlignedSegment_t read):
+    return "@%s PV:B:i,%s\tFA:B:i,%sFM:i:%i\tFP:i:%i\tRC:i:%i" % (
+        read.query_name,
+        ",".join(map(str, read.opt("PV"))),
+        ",".join(map(str, read.opt("FA"))),
+        read.opt("FM"),
+        read.opt("FP"),
+        read.opt("RC"))
 
 
 cdef inline cystr bam2ffq(AlignedSegment_t read):
-    return "@%s %s\n%s\n+\n%s\n" % (read.query_name, bam2fq_comment(read),
-                                  read.query_sequence, read.qual)
+    if(read.flag & 16):
+        return "%s\n%s\n+\n%s\n" % (bam2fq_header(read),
+                                    RevCmp(read.query_sequence),
+                                    read.qual[::-1])
+    else:
+        return "%s\n%s\n+\n%s\n" % (bam2fq_header(read),
+                                    read.query_sequence, read.qual)
 
 
 cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
@@ -496,7 +532,7 @@ cdef tuple BamRescueSadness(list recList, int bLen, int mmlim):
                 # Updates recList j with i's values for meta-analysis.
     for read in recList:
         if read.has_tag("RA"):
-            if(read.get_tag("RA")):
+            if(read.get_tag("RA") != 0):
                 fq_text += bam2ffq(read)
         else:
             bamList.append(read)

@@ -223,11 +223,6 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     return;
 }
 
-// Rescaling
-// TODO:
-// 1. Write modified splitmark_core_inline
-// 2. Add parser for recalibrated quality scores.
-
 
 int main(int argc, char *argv[])
 {
