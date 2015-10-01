@@ -365,7 +365,7 @@ cdef inline update_rec(AlignedSegment_t a, AlignedSegment_t b):
     cdef int i, newFM, newFP, readlen
     cdef char *a_seq = <char *>a.query_sequence
     cdef char *b_seq = <char *>b.query_sequence
-    cdef char *a_tmpqual = <char *>a.qual
+    cdef py_array a_tmpqual = array('b', a.qual)
     cdef py_array a_qual = array('i', a.opt("PV"))
     cdef py_array b_qual = array('i', b.opt("PV"))
     cdef py_array a_FA = array('i', a.opt("FA"))
@@ -391,11 +391,9 @@ cdef inline update_rec(AlignedSegment_t a, AlignedSegment_t b):
                 a_FA[i] = b_FA[i]
             a_qual[i] = MergeDiscQualities(a_qual[i], b_qual[i])
     a.query_sequence = a_seq
-    a.qual = a_tmpqual
-    # print("About to set tags. If you don't a finished setting tags, I got stuck.")
+    a.qual = a_tmpqual.tostring()
     a.set_tags([("FM", newFM, "i"), ("RC", newRC, "i"),
                 ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)] + a.get_tags())
-    # print("Finished setting tags.")
     return
 
 
@@ -428,14 +426,18 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
     """
     cdef AlignedSegment_t read
     cdef int listlen = len(recList)
+    if listlen == 1:
+        return recList, ""
     cdef int i, j
     cdef list bamList = []
     cdef cystr fq_text = ""
-    cdef set nameset = set()
     cdef int ra_int
     for i in xrange(listlen):
         for j in xrange(i + 1, listlen):
             if(pBarcodeHD(recList[i], recList[j], bLen) < mmlim):
+                '''
+                skip_names.append(recList[i].query_name)
+                '''
                 recList[i].set_tag("RA", 0)
                 recList[j].set_tag("RA", 1)
                 update_rec(recList[j], recList[i])
@@ -449,6 +451,9 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
         ra_int = read.get_tag("RA")
         if(ra_int > 0):
             fq_text += bam2ffq(read)
+            '''
+            ra_names.append(read.query_name)
+            '''
         elif ra_int < 0:
             bamList.append(read)
         else:
@@ -462,9 +467,10 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
 '''
 
 
-cdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
-                         cystr tmpBam=None, cystr tmpFq=None, cystr opts=None,
-                         int mmlim=DEFAULT_MMLIM, int threads=4):
+cpdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
+                          cystr tmpBam=None, cystr tmpFq=None,
+                          cystr opts=None,
+                          int mmlim=DEFAULT_MMLIM, int threads=4):
     """
     :param: [cystr/arg] inBam - path to input bam.
     :param: [cystr/arg] outBam - path to final output bam.
@@ -489,7 +495,7 @@ cdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
         opts = "-t 4 -v 1 -Y -T 0".replace("-t 4", "-t %i" % threads)
     # Name sort, then align this fastq, sort it, then merge it into the tmpBam
     cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
-           "'\n' | bwa mem -C -p %s %s %s - | samtools sort "  % (opts, ref) +
+           "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
            "-O bam -l 0 -T %s - | samtools merge " % (random_prefix) +
            "-@ %i %s %s -" % (threads, outBam, tmpBam))
     fprintf(stderr, "Command string: %s\n", <char *>cStr)
@@ -497,6 +503,7 @@ cdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
     fprintf(stderr, "Now deleting temporary bam %s and temporary fastq %s.\n",
             <char *>tmpBam, <char *>tmpFq)
     check_call(["rm", tmpBam, tmpFq])
+    fprintf(stderr, "Successfully completed BamRescueFull.\n")
     return outBam
 
 
@@ -546,6 +553,7 @@ cdef cystr BamRescue(cystr inBam,
             continue
         for fullkey, gen1 in groupby(gen, FULL_KEY):
             recList = list(gen1)
+            '''
             if recList[0].flag & 4:
                 for read in recList:
                     if read.has_tag("RC") is False:
@@ -554,14 +562,15 @@ cdef cystr BamRescue(cystr inBam,
                         read.set_tags([("RA", -1, "i") + read.get_tags()])
                 [obw(read) for read in recList]
                 continue
-            print(recList[-1].tostring(input_bam))
+            '''
+            # print(recList[-1].tostring(input_bam))
             for read in recList:
                 if read.has_tag("RC") is False:
                     read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
                 else:
                     read.set_tags([("RA", -1, "i") + read.get_tags()])
-            if(len(recList) == 1):
-                obw(read)
+            if recList[0].flag & 12:
+                [obw(read) for read in recList]
             else:
                 recList, fq_text = BamRescueCore(recList, bLen, mmlim)
                 [obw(read) for read in recList]

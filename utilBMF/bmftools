@@ -30,7 +30,8 @@ def get_args():
     import argparse
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="bmfsuites")
-    BamRescueParser = subparsers.add_parser("rescue")
+    BamRescue2BamParser = subparsers.add_parser("rescue")
+    BamRescue2FqParser = subparsers.add_parser("rescue2fq")
     PipeAlignTagMergeParser = subparsers.add_parser("aligntagmerge")
     SlaveDMPParser = subparsers.add_parser("slavedmp")
     PipeParser = subparsers.add_parser(
@@ -848,16 +849,16 @@ def get_args():
         "--coorsort", "-s",
         help="Set to true to emit uncompressed bam output.",
         action="store_true")
-    BamRescueParser.add_argument(
+    BamRescue2FqParser.add_argument(
         "inBAM", help="Path to input BAM which has been bmf_bam_sort'd.")
-    BamRescueParser.add_argument(
+    BamRescue2FqParser.add_argument(
         "-o", "--outBAM", help=("Path to output BAM which has been bmf_bam_"
                                 "sort'd. Defaults to 'default'"))
-    BamRescueParser.add_argument(
+    BamRescue2FqParser.add_argument(
         "--mmlim", "-l", help=("Mismatch limit. Number of barcode "
                                "substitutions to permit when rescuing "
                                "families with barcode errors. Defaults to 2"))
-    BamRescueParser.add_argument(
+    BamRescue2FqParser.add_argument(
         "--tmpFq", "-f", help="Path to temporary fastq. Default: None.")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
@@ -1371,15 +1372,24 @@ def main():
                                  coorsort=Chapman['coorsort'],
                                  u=Chapman["uncompressed_bam"],
                                  ref=Chapman['ref'])
-    elif(subcommand == "rescue"):
+    elif(subcommand == "rescue2fq"):
+        from MawCluster.BCBam import pBamRescue as BamRescue
         if Chapman['tmpFq'] is None:
             Chapman['tmpFq'] = TrimExt(Chapman['inBAM']) + ".tmp.ra.fastq"
-        from MawCluster.BCBam import pBamRescue as BamRescue
         out_bam = BamRescue(Chapman['inBAM'], Chapman['outBAM'], Chapman['tmpFq'],
                             Chapman['mmlim'])
         sys.stderr.write("Successfully rescued bam. Output BAM: "
                          "%s. Output fastq: %s.\n" % (Chapman['outBAM'],
                                                       Chapman['tmpFq']))
+    elif(subcommand == "rescue"):
+        from MawCluster.BCBam import BamRescueFull
+        if Chapman['tmpFq'] is None:
+            Chapman['tmpFq'] = TrimExt(Chapman['inBAM']) + ".tmp.ra.fastq"
+        outBam = BamRescueFull(Chapman['inBAM'], Chapman['outBAM'],
+                               Chapman['tmpFq'], Chapman['opts'],
+                               mmlim=Chapman['mmlim'],
+                               threads=Chapman['threads'])
+
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))
     return 0

@@ -85,10 +85,7 @@ cdef inline int RNEXT(AlignedSegment_t read):
     return read.rnext
 
 cdef inline bint SKIP_READS(AlignedSegment_t read):
-    if read.flag & 2820:
-        return True
-    else:
-        return False
+    return (not read.flag & 2816)
 
 
 cdef class BamPipe:
