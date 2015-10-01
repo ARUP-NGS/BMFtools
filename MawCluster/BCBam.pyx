@@ -488,7 +488,7 @@ cdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
     if opts is None:
         opts = "-t 4 -v 1 -Y -T 0".replace("-t 4", "-t %i" % threads)
     # Name sort, then align this fastq, sort it, then merge it into the tmpBam
-    cStr = ("cat %s | paste -d'-' - - - - | sort -k1,1 | tr '-' " % tmpFq +
+    cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
            "'\n' | bwa mem -C -p %s %s %s - | samtools sort "  % (opts, ref) +
            "-O bam -l 0 -T %s - | samtools merge " % (random_prefix) +
            "-@ %i %s %s -" % (threads, outBam, tmpBam))
@@ -526,7 +526,6 @@ cdef cystr BamRescue(cystr inBam,
     else:
         fp = fopen(<char *>tmpFq, "w")
         fprintf(stderr, "Writing fastq to %s.\n", <char *>tmpFq)
-    fprintf(fp, <char *>"Hey, just testing!\n")
     input_bam = pysam.AlignmentFile(inBam, "rb")
     cdef int bLen = len(input_bam.next().opt("BS"))
     input_bam = pysam.AlignmentFile(inBam, "rb")
@@ -546,7 +545,16 @@ cdef cystr BamRescue(cystr inBam,
             [obw(read) for read in recList]
             continue
         for fullkey, gen1 in groupby(gen, FULL_KEY):
-            recList = list(gen)
+            recList = list(gen1)
+            if recList[0].flag & 4:
+                for read in recList:
+                    if read.has_tag("RC") is False:
+                        read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
+                    else:
+                        read.set_tags([("RA", -1, "i") + read.get_tags()])
+                [obw(read) for read in recList]
+                continue
+            print(recList[-1].tostring(input_bam))
             for read in recList:
                 if read.has_tag("RC") is False:
                     read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
