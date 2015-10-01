@@ -398,7 +398,7 @@ cdef inline update_rec(AlignedSegment_t a, AlignedSegment_t b):
 
 
 cdef inline cystr bam2fq_header(AlignedSegment_t read):
-    return "@%s PV:B:i,%s\tFA:B:i,%s\tFM:i:%i\tFP:i:%i\tRC:i:%i" % (
+    return "@%s RA:i:1\tPV:B:i,%s\tFA:B:i,%s\tFM:i:%i\tFP:i:%i\tRC:i:%i" % (
         read.query_name,
         ",".join(map(str, read.opt("PV"))),
         ",".join(map(str, read.opt("FA"))),
@@ -483,6 +483,8 @@ cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
     merge and bwa mem.
     :return: [cystr] outBam - Path to final output bam.
     """
+    if ref is None:
+        raise Tim("Reference fasta required for BamRescueFull!")
     random_prefix = str(uuid.uuid4().get_hex()[0:8])
     tmpFq = TrimExt(inBam) + ".ra.fastq"
     tmpBam = random_prefix + ".ra.tmp.bam"
@@ -494,7 +496,7 @@ cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
     # Name sort, then align this fastq, sort it, then merge it into the tmpBam
     cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
            "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
-           "-O bam -l 0 -T %s - | samtools merge " % (random_prefix) +
+           "-O bam -l 0 -T %s - | samtools merge -f " % (random_prefix) +
            "-@ %i %s %s -" % (threads, outBam, tmpBam))
     fprintf(stderr, "Command string: %s\n", <char *>cStr)
     check_call(cStr, shell=True)

@@ -876,6 +876,8 @@ def get_args():
     BamRescue2BamParser.add_argument(
         "--tmpFq", "-f", help="Path to temporary fastq. Default: None.")
     BamRescue2BamParser.add_argument(
+        "--ref", "-r", help="Path to reference fasta. Default: None.")
+    BamRescue2BamParser.add_argument(
         "--opts",
         help="Options to provide to bwa mem. Defaults to -Y -T 0 -t 4.")
     # for each subparser, add_argument for conf.
@@ -1406,7 +1408,8 @@ def main():
         if Chapman['outBAM'] is None:
             Chapman['outBAM'] = TrimExt(Chapman['inBAM']) + ".tmp.ra.bam"
         outBam = BamRescueFull(Chapman['inBAM'], Chapman['outBAM'],
-                               Chapman['tmpFq'], Chapman['opts'],
+                               Chapman['ref'],
+                               opts=Chapman['opts'],
                                mmlim=int(Chapman['mmlim']),
                                threads=int(Chapman['threads']))
 
