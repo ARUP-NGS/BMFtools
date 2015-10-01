@@ -860,6 +860,24 @@ def get_args():
                                "families with barcode errors. Defaults to 2"))
     BamRescue2FqParser.add_argument(
         "--tmpFq", "-f", help="Path to temporary fastq. Default: None.")
+    BamRescue2BamParser.add_argument(
+        "inBAM", help="Path to input BAM which has been bmf_bam_sort'd.")
+    BamRescue2BamParser.add_argument(
+        "-o", "--outBAM", help=("Path to output BAM which has been bmf_bam_"
+                                "sort'd. Defaults to 'default'"))
+    BamRescue2BamParser.add_argument(
+        "--mmlim", "-l", help=("Mismatch limit. Number of barcode "
+                               "substitutions to permit when rescuing "
+                               "families with barcode errors. Defaults to 2"))
+    BamRescue2BamParser.add_argument(
+        "--threads", "-t", help=("Mismatch limit. Number of barcode "
+                               "substitutions to permit when rescuing "
+                               "families with barcode errors. Defaults to 2"))
+    BamRescue2BamParser.add_argument(
+        "--tmpFq", "-f", help="Path to temporary fastq. Default: None.")
+    BamRescue2BamParser.add_argument(
+        "--opts",
+        help="Options to provide to bwa mem. Defaults to -Y -T 0 -t 4.")
     # for each subparser, add_argument for conf.
     # Load default one and then override with config file.
     # Then override any arguments that are not None.
@@ -1385,10 +1403,12 @@ def main():
         from MawCluster.BCBam import BamRescueFull
         if Chapman['tmpFq'] is None:
             Chapman['tmpFq'] = TrimExt(Chapman['inBAM']) + ".tmp.ra.fastq"
+        if Chapman['outBAM'] is None:
+            Chapman['outBAM'] = TrimExt(Chapman['inBAM']) + ".tmp.ra.bam"
         outBam = BamRescueFull(Chapman['inBAM'], Chapman['outBAM'],
                                Chapman['tmpFq'], Chapman['opts'],
-                               mmlim=Chapman['mmlim'],
-                               threads=Chapman['threads'])
+                               mmlim=int(Chapman['mmlim']),
+                               threads=int(Chapman['threads']))
 
     pl("Successful completion of subcommand %s." % subcommand +
        "\nSample Metrics: %s" % repr(Metrics))

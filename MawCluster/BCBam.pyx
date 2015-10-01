@@ -467,8 +467,7 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
 '''
 
 
-cpdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
-                          cystr tmpBam=None, cystr tmpFq=None,
+cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
                           cystr opts=None,
                           int mmlim=DEFAULT_MMLIM, int threads=4):
     """
@@ -485,10 +484,9 @@ cpdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
     :return: [cystr] outBam - Path to final output bam.
     """
     random_prefix = str(uuid.uuid4().get_hex()[0:8])
-    if tmpFq is None:
-        tmpFq = TrimExt(inBam) + ".ra.fastq"
-    if tmpBam is None:
-        tmpBam = TrimExt(inBam) + ".ra.tmp.bam"
+    tmpFq = TrimExt(inBam) + ".ra.fastq"
+    tmpBam = random_prefix + ".ra.tmp.bam"
+    print("tmpFq: %s. tmpBam: %s" % (tmpFq, tmpBam))
     # Make the temporary fastq for reads that need to be realigned.
     tmpFq = BamRescue(inBam, tmpBam, tmpFq, mmlim=mmlim)
     if opts is None:
@@ -525,22 +523,27 @@ cdef cystr BamRescue(cystr inBam,
     cdef list recList
     cdef bint Pass
     cdef cystr fq_text
-    cdef FILE *fp
-    # Default to outputting fastq to stdout.
-    if(tmpFq == "-"):
-        fp = stdout
+    if tmpFq == "-":
+        fp = sys.stdout
         fprintf(stderr, "Writing fastq to stdout.\n")
     else:
-        fp = fopen(<char *>tmpFq, "w")
+        try:
+            fp = open(tmpFq, "w")
+        except IOError:
+            print("tmpFq: %s." % tmpFq)
+            sys.exit(137)
         fprintf(stderr, "Writing fastq to %s.\n", <char *>tmpFq)
+    fprintf(stderr, "Now opening bam file for reading: %s\n", <char *>inBam)
     input_bam = pysam.AlignmentFile(inBam, "rb")
     cdef int bLen = len(input_bam.next().opt("BS"))
     input_bam = pysam.AlignmentFile(inBam, "rb")
     if outBam == "default":
         outBam = TrimExt(inBam) + ".rescue.bam"
+    fprintf(stderr, "Now opening output bam %s\n", <char *>outBam)
     output_bam = pysam.AlignmentFile(outBam, "wb",
                                      template=input_bam)
     obw = output_bam.write
+    fpw = fp.write
     for Pass, gen in groupby(input_bam, SKIP_READS):
         if not Pass:
             recList = list(gen)
@@ -574,10 +577,10 @@ cdef cystr BamRescue(cystr inBam,
             else:
                 recList, fq_text = BamRescueCore(recList, bLen, mmlim)
                 [obw(read) for read in recList]
-                fprintf(fp, <char *>fq_text)
+                fpw(fq_text)
     input_bam.close()
     output_bam.close()
-    fclose(fp)
+    fp.close()
     return tmpFq
 
 
