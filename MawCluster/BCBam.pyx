@@ -361,7 +361,7 @@ cpdef inline cystr pBamRescue(cystr inBam, cystr outBam, cystr tmpFq,
     return BamRescue(inBam, outBam, tmpFq, mmlim)
 
 
-cdef inline AlignedSegment_t update_rec(AlignedSegment_t a, AlignedSegment_t b):
+cdef inline update_rec(AlignedSegment_t a, AlignedSegment_t b):
     cdef int i, newFM, newFP, readlen
     cdef char *a_seq = <char *>a.query_sequence
     cdef char *b_seq = <char *>b.query_sequence
@@ -392,9 +392,11 @@ cdef inline AlignedSegment_t update_rec(AlignedSegment_t a, AlignedSegment_t b):
             a_qual[i] = MergeDiscQualities(a_qual[i], b_qual[i])
     a.query_sequence = a_seq
     a.qual = a_tmpqual
+    # print("About to set tags. If you don't a finished setting tags, I got stuck.")
     a.set_tags([("FM", newFM, "i"), ("RC", newRC, "i"),
                 ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)] + a.get_tags())
-    return a
+    # print("Finished setting tags.")
+    return
 
 
 cdef inline cystr bam2fq_header(AlignedSegment_t read):
@@ -461,11 +463,42 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
 
 
 cdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
-                         tmpBam=None, tmpFq=None,
-                         mmlim=DEFAULT_MMLIM):
+                         cystr tmpBam=None, cystr tmpFq=None, cystr opts=None,
+                         int mmlim=DEFAULT_MMLIM, int threads=4):
+    """
+    :param: [cystr/arg] inBam - path to input bam.
+    :param: [cystr/arg] outBam - path to final output bam.
+    :param: [cystr/arg] ref - path to genome reference.
+    :param: [cystr/kwarg/None] tmpBam - path to store temporary bam.
+    :param: [cystr/kwarg/None] tmpFq - Path to store temporary fastqs.
+    :param: [cystr/kwarg/opts] opts - Options to pass to bwa.
+    :param: [int/kwarg/2] mmlim - mismatch threshold for considering reads to
+    be from the same family.
+    :param: [int/kwargs/4] threads - number of threads to use for samtools
+    merge and bwa mem.
+    :return: [cystr] outBam - Path to final output bam.
+    """
+    random_prefix = str(uuid.uuid4().get_hex()[0:8])
     if tmpFq is None:
         tmpFq = TrimExt(inBam) + ".ra.fastq"
+    if tmpBam is None:
+        tmpBam = TrimExt(inBam) + ".ra.tmp.bam"
+    # Make the temporary fastq for reads that need to be realigned.
     tmpFq = BamRescue(inBam, tmpBam, tmpFq, mmlim=mmlim)
+    if opts is None:
+        opts = "-t 4 -v 1 -Y -T 0".replace("-t 4", "-t %i" % threads)
+    # Name sort, then align this fastq, sort it, then merge it into the tmpBam
+    cStr = ("cat %s | paste -d'-' - - - - | sort -k1,1 | tr '-' " % tmpFq +
+           "'\n' | bwa mem -C -p %s %s %s - | samtools sort "  % (opts, ref) +
+           "-O bam -l 0 -T %s - | samtools merge " % (random_prefix) +
+           "-@ %i %s %s -" % (threads, outBam, tmpBam))
+    fprintf(stderr, "Command string: %s\n", <char *>cStr)
+    check_call(cStr, shell=True)
+    fprintf(stderr, "Now deleting temporary bam %s and temporary fastq %s.\n",
+            <char *>tmpBam, <char *>tmpFq)
+    check_call(["rm", tmpBam, tmpFq])
+    return outBam
+
 
 cdef cystr BamRescue(cystr inBam,
                      cystr outBam,
@@ -548,12 +581,3 @@ cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
     BC1 = query.query_name
     BC2 = cmp.query_name
     return StringHD(<char*> BC1, <char*> BC2, bLen)
-
-cdef AlignedSegment_t MergeBamRecList(list recList):
-    return recList[0]
-
-'''
-cdef inline pBarcodeHD(AlignedSegment_t query, AlignedSegment_t cmp,
-                       int8_t bLen):
-    return BarcodeHD(query._delegate, cmp._delegate, bLen)
-'''
