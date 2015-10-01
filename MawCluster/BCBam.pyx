@@ -344,115 +344,6 @@ cdef AlignedSegment_t MergeBamRecs(AlignedSegment_t template,
     return template
 
 
-cdef size_t build_dist_mtx(list recs, ndarray[int8_t, ndim=2] distmtx,
-                           int8_t bLen):
-    cdef size_t qcount, ccount, size, maxfm, FM, idxmaxfm
-    cdef AlignedSegment_t qrec, cmprec
-    size = len(recs)
-    distmtx = np.zeros([size, size], dtype=np.int8)
-    maxfm = 0
-    for qcount, qrec in enumerate(recs):
-        FM = qrec.opt("FM")
-        if FM > maxfm:
-            maxfm = FM
-            idxmaxfm = qcount
-        ccount = qcount + 1
-        for cmprec in recs[ccount:]:
-            distmtx[qcount,ccount] = pBarcodeHD(qrec, cmprec, bLen)
-            ccount += 1
-    return idxmaxfm
-
-
-cdef list BFF(list recs, int8_t bLen, char mmlim):
-
-    # C definitions
-    cdef AlignedSegment_t qrec, cmprec
-    cdef size_t size, qcount, ccount, idxmaxfm, FM, maxfm
-    cdef list ret, merging_sets, sublist
-    cdef ndarray[int8_t, ndim=2] distmtx
-    cdef py_array mergeidx, fms
-    cdef int8_t i
-
-    # Debug message
-    sys.stderr.write("Now attempting to flatten this set of"
-                     " records which share coordinates.\n")
-
-    # Setup
-    size = len(recs)
-    mergeidx = array('B')
-    fms = array('i')
-    c_array.resize(mergeidx, size)
-    c_array.resize(fms, size)
-    distmtx = np.zeros([size, size], dtype=np.int8)
-
-    # Calculate the hamming distances. No way around that.
-    idxmaxfm = 0
-    maxfm = 0
-    for qcount, qrec in enumerate(recs):
-        # Note that I need to initialize these arrays, as I didn't set them
-        # as clear when resizing.
-        FM = qrec.opt("FM")
-        fms[qcount] = FM
-        if FM > maxfm:
-            maxfm = FM
-            idxmaxfm = qcount
-        mergeidx[qcount] = 0
-        ccount = qcount + 1
-
-        for cmprec in recs[ccount:]:
-            distmtx[qcount,ccount] = pBarcodeHD(qrec, cmprec, bLen)
-            if distmtx[qcount,ccount] <= mmlim:
-                mergeidx[qcount] = 1
-            ccount += 1
-
-    # Remove the ones which don't need to be flattened.
-    ret = []
-    qcount = size
-    for qrec in recs[size:0:-1]:
-        if not mergeidx[qcount]:
-            ret.append(qrec)
-            recs.remove(qrec)
-        qcount -= 1
-
-    # "Map" out which sets of reads need to be flattened into eah other.
-    # First, get the one with the largest family size, then lump it into
-    # a merging_sets sublist to be flattened.
-    # and all within mmlim of it into a single record.
-    merging_sets = []
-    while True:
-        size = len(recs)
-        if size == 0:
-            break
-        idxmaxfm = build_dist_mtx(recs, distmtx, bLen)
-        FilterSet(recs, distmtx, merging_sets, idxmaxfm, mmlim)
-
-    ret += [MergeBamRecList(sublist) for sublist in merging_sets]
-    sys.stderr.write("Now returning my list of records to write.\n")
-    return ret
-
-
-cdef void FilterSet(list recs,
-                    ndarray[int8_t, ndim=1, mode="c"] distmtx,
-                    list merging_sets, size_t idxmaxfm, char mmlim):
-    # FilterSet needs to add the relevant reads to a new list in
-    # merging_sets, and remove the relevant records from recs
-    cdef size_t index
-    cdef AlignedSegment_t rec
-    cdef py_array indices
-    cdef list to_append
-    indices = array('i')
-    to_append = []
-    for index, rec in enumerate(recs):
-        if idxmaxfm == index or distmtx[idxmaxfm,index] < mmlim:
-            indices.append(index)
-    for index in range(len(indices), 0, -1):
-        rec = recs[index]
-        to_append.append(rec)
-        recs.remove(rec)
-    merging_sets.append(to_append)
-    return
-
-
 cpdef inline cystr pBamRescue(cystr inBam, cystr outBam, cystr tmpFq,
                               object mmlim=None):
     """
@@ -470,22 +361,27 @@ cpdef inline cystr pBamRescue(cystr inBam, cystr outBam, cystr tmpFq,
     return BamRescue(inBam, outBam, tmpFq, mmlim)
 
 
-cdef inline void update_rec(AlignedSegment_t a, AlignedSegment_t b):
-    cdef int i
+cdef inline AlignedSegment_t update_rec(AlignedSegment_t a, AlignedSegment_t b):
+    cdef int i, newFM, newFP, readlen
     cdef char *a_seq = <char *>a.query_sequence
     cdef char *b_seq = <char *>b.query_sequence
-    cdef ndarray[int32_t, ndim=1] a_qual = np.array(a.opt("PV"), dtype=np.int32)
-    cdef ndarray[int32_t, ndim=1] b_qual = np.array(b.opt("PV"), dtype=np.int32)
-    cdef ndarray[int32_t, ndim=1] a_FA = np.array(a.opt("FA"), dtype=np.int32)
-    cdef ndarray[int32_t, ndim=1] b_FA = np.array(b.opt("FA"), dtype=np.int32)
+    cdef char *a_tmpqual = <char *>a.qual
+    cdef py_array a_qual = array('i', a.opt("PV"))
+    cdef py_array b_qual = array('i', b.opt("PV"))
+    cdef py_array a_FA = array('i', a.opt("FA"))
+    cdef py_array b_FA = array('i', b.opt("FA"))
     # Increment FM tag.
-    a.set_tag("FM", a.opt("FM") + b.opt("FM"), value_type='i')
+    newFM = a.opt("FM") + b.opt("FM")
     # Increment RC tag.
-    a.set_tag("RC", a.opt("RC") + b.opt("RC"), value_type='i')
+    newRC = a.opt("RC") + b.opt("RC")
     # Let either read now pass via FP tag. Requires both reads being collapsed
     # pass
-    a.set_tag("FP", 1 if(a.opt("FP") and b.opt("FP")) else 0, value_type='i')
-    for i in xrange(a.inferred_length):
+    newFP = a.opt("FP") and b.opt("FP")
+    if(a.inferred_length is not None):
+        readlen = a.inferred_length
+    else:
+        readlen = len(a.qual)
+    for i in xrange(readlen):
         if(a_seq[i] == b_seq[i]):
             a_qual[i] = MergeAgreedQualities(a_qual[i], b_qual[i])
             a_FA[i] += b_FA[i]
@@ -495,18 +391,21 @@ cdef inline void update_rec(AlignedSegment_t a, AlignedSegment_t b):
                 a_FA[i] = b_FA[i]
             a_qual[i] = MergeDiscQualities(a_qual[i], b_qual[i])
     a.query_sequence = a_seq
-    a.set_tag("PV", a_qual)
-    return
+    a.qual = a_tmpqual
+    a.set_tags([("FM", newFM, "i"), ("RC", newRC, "i"),
+                ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)] + a.get_tags())
+    return a
 
 
 cdef inline cystr bam2fq_header(AlignedSegment_t read):
-    return "@%s PV:B:i,%s\tFA:B:i,%sFM:i:%i\tFP:i:%i\tRC:i:%i" % (
+    return "@%s PV:B:i,%s\tFA:B:i,%s\tFM:i:%i\tFP:i:%i\tRC:i:%i" % (
         read.query_name,
         ",".join(map(str, read.opt("PV"))),
         ",".join(map(str, read.opt("FA"))),
         read.opt("FM"),
         read.opt("FP"),
         read.opt("RC"))
+
 
 
 cdef inline cystr bam2ffq(AlignedSegment_t read):
@@ -519,13 +418,12 @@ cdef inline cystr bam2ffq(AlignedSegment_t read):
                                     read.query_sequence, read.qual)
 
 
-cdef inline tuple BamRescueSadness(list recList, int bLen, int mmlim):
+cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
     """
     :param inBam: [list/arg] - path to input bam
     :param bLen: [int/arg] - length of barcode
     :param mmlim: [int/arg] - mismatch limit
     """
-    fprintf(stderr, "Now starting a BamRescueSadness.\n")
     cdef AlignedSegment_t read
     cdef int listlen = len(recList)
     cdef int i, j
@@ -534,28 +432,26 @@ cdef inline tuple BamRescueSadness(list recList, int bLen, int mmlim):
     cdef set nameset = set()
     cdef int ra_int
     for i in xrange(listlen):
-        recList[i].set_tag("RA", -1)
         for j in xrange(i + 1, listlen):
             if(pBarcodeHD(recList[i], recList[j], bLen) < mmlim):
                 recList[i].set_tag("RA", 0)
                 recList[j].set_tag("RA", 1)
                 update_rec(recList[j], recList[i])
                 # Updates recList j with i's values for meta-analysis.
+            """
             else:
                 print("Barcode distance is too great between %s and %s." % (recList[i].opt("BS"),
                                                                             recList[j].opt("BS")))
+            """
     for read in recList:
         ra_int = read.get_tag("RA")
-        if(ra_int == 1):
-            print("RA tag is 1")
+        if(ra_int > 0):
             fq_text += bam2ffq(read)
-            fprintf(stderr, "Now returning the fastq parts. %s.\n", <char *>fq_text)
-        elif ra_int == -1:
-            print("RA tag is -1")
+        elif ra_int < 0:
             bamList.append(read)
         else:
-            print("No RA tag.")
             pass
+    # assert fq_text is not None
     return bamList, fq_text
 '''
     return ([read for read in recList if
@@ -563,6 +459,13 @@ cdef inline tuple BamRescueSadness(list recList, int bLen, int mmlim):
             [bam2ffq(read) for read in recList if read.has_tag("RA")])
 '''
 
+
+cdef cystr BamRescueFull(cystr inBam, outBam, cystr ref,
+                         tmpBam=None, tmpFq=None,
+                         mmlim=DEFAULT_MMLIM):
+    if tmpFq is None:
+        tmpFq = TrimExt(inBam) + ".ra.fastq"
+    tmpFq = BamRescue(inBam, tmpBam, tmpFq, mmlim=mmlim)
 
 cdef cystr BamRescue(cystr inBam,
                      cystr outBam,
@@ -576,14 +479,21 @@ cdef cystr BamRescue(cystr inBam,
     :param: mmlim [int/kwarg/2] Mismatch limit for barcode rescue.
     Hamming distances less than mmlim are considered to be from the same
     original founding molecule.
+    :param: [cystr] Path to temporary fastq.
     """
     cdef AlignedSegment_t read
     cdef list recList
     cdef bint Pass
     cdef cystr fq_text
+    cdef FILE *fp
     # Default to outputting fastq to stdout.
-    cdef FILE *fp = fopen(<char *>tmpFq, "w") if(tmpFq == "-") else stdout
-    fprintf(stderr, "Output fastq path: %s.\n", <char *>tmpFq)
+    if(tmpFq == "-"):
+        fp = stdout
+        fprintf(stderr, "Writing fastq to stdout.\n")
+    else:
+        fp = fopen(<char *>tmpFq, "w")
+        fprintf(stderr, "Writing fastq to %s.\n", <char *>tmpFq)
+    fprintf(fp, <char *>"Hey, just testing!\n")
     input_bam = pysam.AlignmentFile(inBam, "rb")
     cdef int bLen = len(input_bam.next().opt("BS"))
     input_bam = pysam.AlignmentFile(inBam, "rb")
@@ -594,21 +504,33 @@ cdef cystr BamRescue(cystr inBam,
     obw = output_bam.write
     for Pass, gen in groupby(input_bam, SKIP_READS):
         if not Pass:
-            [obw(read) for read in gen]
+            recList = list(gen)
+            for read in recList:
+                if read.has_tag("RC") is False:
+                    read.set_tags([("RC", -1), ("RA", -1)] + read.get_tags())
+                else:
+                    read.set_tags([("RA", -1) + read.get_tags()])
+            [obw(read) for read in recList]
             continue
         for fullkey, gen in groupby(input_bam, FULL_KEY):
+            print("Hey, I'm still chugging along.")
             recList = list(gen)
+            for read in recList:
+                if read.has_tag("RC") is False:
+                    read.set_tags([("RC", -1), ("RA", -1)] + read.get_tags())
+                else:
+                    read.set_tags([("RA", -1) + read.get_tags()])
             if(len(recList) == 1):
                 obw(read)
                 continue
             else:
-                recList, fq_text = BamRescueSadness(recList, bLen, mmlim)
+                recList, fq_text = BamRescueCore(recList, bLen, mmlim)
                 [obw(read) for read in recList]
                 fprintf(fp, <char *>fq_text)
     input_bam.close()
     output_bam.close()
     fclose(fp)
-    return output_bam.filename
+    return tmpFq
 
 
 cdef inline int8_t StringHD(char *str1, char *str2, int8_t bLen) nogil:
