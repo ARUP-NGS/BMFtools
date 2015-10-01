@@ -540,22 +540,20 @@ cdef cystr BamRescue(cystr inBam,
             recList = list(gen)
             for read in recList:
                 if read.has_tag("RC") is False:
-                    read.set_tags([("RC", -1), ("RA", -1)] + read.get_tags())
+                    read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
                 else:
-                    read.set_tags([("RA", -1) + read.get_tags()])
+                    read.set_tags([("RA", -1, "i") + read.get_tags()])
             [obw(read) for read in recList]
             continue
-        for fullkey, gen in groupby(input_bam, FULL_KEY):
-            print("Hey, I'm still chugging along.")
+        for fullkey, gen1 in groupby(gen, FULL_KEY):
             recList = list(gen)
             for read in recList:
                 if read.has_tag("RC") is False:
-                    read.set_tags([("RC", -1), ("RA", -1)] + read.get_tags())
+                    read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
                 else:
-                    read.set_tags([("RA", -1) + read.get_tags()])
+                    read.set_tags([("RA", -1, "i") + read.get_tags()])
             if(len(recList) == 1):
                 obw(read)
-                continue
             else:
                 recList, fq_text = BamRescueCore(recList, bLen, mmlim)
                 [obw(read) for read in recList]
