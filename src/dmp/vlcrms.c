@@ -56,6 +56,7 @@ void print_usage(char *argv[])
 {
         fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
                         "\nFlags:\n"
+                        "-s: homing sequence. REQUIRED.\n"
                         "-l: Number of nucleotides at the beginning of each read to "
                         "use for barcode. Final barcode length is twice this. REQUIRED.\n"
                         "-o: Output basename. Defaults to a variation on input filename.\n"
@@ -64,7 +65,6 @@ void print_usage(char *argv[])
                         "Default: 10.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
-                        "-s: homing sequence. If not provided, %s will not look for it.\n"
                         "-h: Print usage.\n", argv[0], argv[0]);
 }
 
@@ -158,9 +158,7 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
     mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
     do {
-#if LOGGING
         if(!(count++ % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
-#endif
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
         settings->blen_data->current_blen = vl_homing_loc(seq1, seq2, settings);
@@ -186,6 +184,9 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
 
 int main(int argc, char *argv[])
 {
+    if(argc < 5) {
+        print_usage(argv); exit(1);
+    }
     // Build settings struct
     int hp_threshold;
     int n_nucs;
@@ -199,7 +200,7 @@ int main(int argc, char *argv[])
         .input_r1_path = NULL,
         .input_r2_path = NULL,
         .n_handles = 0,
-        .notification_interval = 100000,
+        .notification_interval = 1000000,
         .blen_data = (blens_t *)calloc(1, sizeof(blens_t)),
         .offset = 0,
         .rescaler = NULL,
@@ -237,9 +238,6 @@ int main(int argc, char *argv[])
         increase_nofile_limit(kroundup32(settings.n_handles));
     }
     fprintf(stderr, "Starting main.\n");
-    if(argc < 5) {
-        print_usage(argv); exit(1);
-    }
 
     if(settings.offset) {
         for(int i = 0; i < settings.blen_data->n; ++i) {

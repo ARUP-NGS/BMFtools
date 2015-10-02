@@ -192,8 +192,8 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
     for(int i = 0; i < kfp->readlen; ++i) {
         argmaxret = ARRG_MAX(kfp, i);
-        tmp->cons_seq_buffer[i] = ARRG_MAX_TO_NUC(argmaxret);
         tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
+        tmp->cons_seq_buffer[i] = tmp->cons_quals[i] > 2 ? ARRG_MAX_TO_NUC(argmaxret): 'N';
         tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
     fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
@@ -240,9 +240,7 @@ static inline KingFisher_t *init_kfp(size_t readlen)
     ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
     ret->n_rc = 0;
     ret->readlen = readlen;
-    ret->max_phreds = (char *)malloc((readlen + 1) * sizeof(char)); // Keep track of the maximum phred score observed at position.
-    memset(ret->max_phreds, '#', readlen);
-    ret->max_phreds[readlen] = '\0';
+    ret->max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
     ret->nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
     ret->phred_sums = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
     for(int i = 0; i < readlen; ++i) {

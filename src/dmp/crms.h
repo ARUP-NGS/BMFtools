@@ -18,6 +18,7 @@ typedef struct blens {
     char homing_sequence[MAX_HOMING_SEQUENCE + 1];
 } blens_t;
 
+
 typedef struct crms_settings {
     int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
     int n_nucs; // Number of nucleotides to split by.
@@ -31,6 +32,26 @@ typedef struct crms_settings {
     char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
     char *rescaler_path; // Path to rescaler for
 } crms_settings_t;
+/*
+typedef struct mssi_settings {
+    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
+    int n_nucs; // Number of nucleotides to split by.
+    char *output_basename;
+    char *input_r1_path;
+    char *input_r2_path;
+    char *homing_sequence; // Homing sequence...
+    int homing_sequence_length; // Length of homing sequence, should it be used.
+    int n_handles; // Number of handles
+    int notification_interval; // How many sets of records do you want to process between progress reports?
+    int blen; // Length of sequence to trim off from start to finish.
+    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
+    char *rescaler_path; // Path to rescaler for
+    int threads;
+    int run_hash_dmp;
+    char *ffq_prefix; // Final fastq prefix
+    char ****rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+} mssi_settings_t;
+*/
 
 /*
  * :param: settings [crms_settings_t, mssi_settings_t] Settings struct in which to free the rescaler.

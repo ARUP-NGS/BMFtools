@@ -39,6 +39,7 @@ void print_crms_usage(char *argv[])
                         "-d: Use this flag to to run hash_dmp.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
+        		        "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
                         "-h: Print usage.\n", argv[0], argv[0]);
 }
 
@@ -231,7 +232,7 @@ int main(int argc, char *argv[])
         .input_r2_path = NULL,
         .homing_sequence = NULL,
         .n_handles = 0,
-        .notification_interval = 100000,
+        .notification_interval = 1000000,
         .blen = 0,
         .homing_sequence_length = 0,
         .offset = 0,
@@ -263,7 +264,6 @@ int main(int argc, char *argv[])
     if(settings.n_handles > get_fileno_limit()) {
         increase_nofile_limit(kroundup32(settings.n_handles));
     }
-    fprintf(stderr, "Starting main.\n");
     if(argc < 5) {
         print_crms_usage(argv); exit(1);
     }
@@ -315,9 +315,13 @@ int main(int argc, char *argv[])
         }
         // Whatever I end up putting into here.
         splitterhash_params_t *params = init_splitterhash(&settings, splitter);
-#if PARALLEL
+#if NOPARALLEL
+#else
         #pragma omp parallel
         {
+#if !NDEBUG
+            fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
+#endif
             #pragma omp for
 #endif
             for(int i = 0; i < settings.n_handles; ++i) {
@@ -326,7 +330,8 @@ int main(int argc, char *argv[])
                 omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
                 omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
             }
-#if PARALLEL
+#if NOPARALLEL
+#else
         }
 #endif
         // Remove temporary split files
@@ -341,7 +346,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Now building cat string.\n");
         char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
         char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
-        fprintf(stderr, "Current cat buff1: %s.\n", cat_buff1);
         for(int i = 0; i < settings.n_handles; ++i) {
             strcat(cat_buff1, params->outfnames_r1[i]);
             strcat(cat_buff1, " ");
@@ -355,9 +359,15 @@ int main(int argc, char *argv[])
         strcat(cat_buff2, settings.ffq_prefix);
         strcat(cat_buff2, ".R2.fq");
         fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
-        system(cat_buff1);
+        int sys_call_ret = system(cat_buff1);
+        if(sys_call_ret < 0) {
+            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
+        }
         fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
-        system(cat_buff2);
+        sys_call_ret = system(cat_buff2);
+        if(sys_call_ret < 0) {
+            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
+        }
         for(int i = 0; i < splitter->n_handles; ++i) {
             fprintf(stderr, "Now calling 'rm %s %s'\n", params->outfnames_r1[i], params->outfnames_r2[i]);
             sprintf(del_buf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);

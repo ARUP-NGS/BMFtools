@@ -95,14 +95,18 @@ void omgz_core(char *infname, char *outfname)
     else {
         in_handle = fopen(infname, "r");
     }
+#if !NDEBUG
     fprintf(stderr, "[omgz_core]: Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
+#endif
     if(!outfname) out_handle = stdout;
     else {
         out_handle = fopen(outfname, "w");
     }
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
+#if !NDEBUG
     fprintf(stderr, "[omgz_core]: Opened file handles, initiated kseq parser.\n");
+#endif
     // Initialized kseq
     int l = kseq_read(seq);
     if(l < 0) {
@@ -112,7 +116,9 @@ void omgz_core(char *infname, char *outfname)
     }
     char *bs_ptr = barcode_mem_view(seq);
     int blen = infer_barcode_length(bs_ptr);
-    fprintf(stderr, "[omgz_core]: Barcode length: %i.\n", blen);
+#if !NDEBUG
+    fprintf(stderr, "[omgz_core]: Barcode length (inferred): %i.\n", blen);
+#endif
     tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
     // Start hash table
     HashKing_t *hash = NULL;
@@ -138,7 +144,9 @@ void omgz_core(char *infname, char *outfname)
             pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
         }
     }
+#if !NDEBUG
     fprintf(stderr, "[omgz_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
+#endif
     HASH_ITER(hh, hash, current_entry, tmp_hk) {
         dmp_process_write(current_entry->value, out_handle, tmp->blen, tmp->buffers);
         destroy_kf(current_entry->value);
