@@ -45,6 +45,7 @@ cdef errorTracker(AlignedSegment_t mdRead, AlignedSegment_t bamRead,
             readErr[index][phred_index][char_index] += 1
 
 
+@cython.returns(dict)
 def MakeErrorArray(args):
     cdef size_t rLen, index, read_index, qual_index, context_index
     cdef uint64_t qcfail, ReadCount
@@ -119,7 +120,7 @@ def format2DOutput(dict data, cystr output):
         return 0
 
 
-def genarateCompleteArray(dict data):
+def genarateCompleteArray(dict data, obsCutoff=1000):
     """creates the complete 3D error array, including filling in
     cycle, qual, base values with inadeuate data with a value derived
     from the differenc between the illumina quality and the
@@ -152,11 +153,11 @@ def genarateCompleteArray(dict data):
                 b2 = r2err[cycle][qual][base]
                 b1 = -10*log10(b1)
                 b2 = -10*log10(b2)
-                if data['read1']['obs'][cycle][qual][base] < 100:
+                if data['read1']['obs'][cycle][qual][base] < obsCutoff:
                     b1 = qual + 2 - r1offset[cycle][base]
                 elif np.isnan(b1):
                     b1 = qual + 2 - r1offset[cycle][base]
-                if data['read2']['obs'][cycle][qual][base] < 100:
+                if data['read2']['obs'][cycle][qual][base] < obsCutoff:
                     b2 = qual + 2 - r2offset[cycle][base]
                 if np.isnan(b2):
                     b2 = qual + 2 - r2offset[cycle][base]
@@ -205,7 +206,7 @@ def calculateErrorArray(args):
         format2DOutput(data, table_prefix)
         return 0
     if args.dim == "3D":
-        r1dataArray, r2dataArray = genarateCompleteArray(data)
+        r1dataArray, r2dataArray = genarateCompleteArray(data, args.obsCutoff)
         format3DOoutput(r1dataArray, r2dataArray, table_prefix)
     return 0
 
