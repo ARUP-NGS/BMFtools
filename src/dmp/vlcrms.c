@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 
     if(!settings.output_basename) {
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
-        settings.output_basename = mark_crms_outfname(r1fq);
+        settings.output_basename = make_crms_outfname(r1fq);
     }
     gzFile fp_read1, fp_read2;
     fp_read1 = gzopen(r1fq, "r");

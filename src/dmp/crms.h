@@ -96,7 +96,7 @@ int count_lines(char *fname);
 void FREE_SPLITTER(mark_splitter_t var);
 char *trim_ext(char *fname);
 char *make_default_outfname(char *fname, const char *suffix);
-char *mark_crms_outfname(char *fname);
+char *make_crms_outfname(char *fname);
 int get_fileno_limit();
 void increase_nofile_limit(int new_limit);
 uint64_t get_binnerul(char *barcode, int length);

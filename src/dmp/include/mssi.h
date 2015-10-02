@@ -115,7 +115,8 @@ const char *crms_suffix = ".crms.split";
  * Returns a null-terminated string with the default outfname.
  * Warning: Must be freed!
  */
-inline char *make_default_outfname(char *fname, const char *suffix) {
+static inline char *make_default_outfname(char *fname, const char *suffix)
+{
     char buf[200];
     char *prefix = trim_ext(fname);
     strcpy(buf, prefix);
@@ -125,6 +126,7 @@ inline char *make_default_outfname(char *fname, const char *suffix) {
     return ret;
 }
 
-inline char *mark_crms_outfname(char *fname) {
+static inline char *make_crms_outfname(char *fname)
+{
     return make_default_outfname(fname, crms_suffix);
 }

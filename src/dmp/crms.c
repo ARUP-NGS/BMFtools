@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
     strcpy(r2fq, argv[optind + 1]);
 
     if(!settings.output_basename) {
-        settings.output_basename = mark_crms_outfname(r1fq);
+        settings.output_basename = make_crms_outfname(r1fq);
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
     mark_splitter_t *splitter = pp_split_inline1(r1fq, r2fq, &settings);

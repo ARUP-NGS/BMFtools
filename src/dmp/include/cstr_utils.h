@@ -11,7 +11,8 @@
  * Returns a null-terminated string with the extension and terminal period removed.
  * Warning: Must be freed!
  */
-inline char *trim_ext(char *fname) {
+inline char *trim_ext(char *fname)
+{
     char *buf = malloc((strlen(fname) + 1) * sizeof(char ));
     ptrdiff_t pos = strrchr(fname, '.') - fname; // Find the position in the read where the last '.' is.
     memcpy(buf, fname, pos * sizeof(char));
