@@ -28,15 +28,19 @@ inline blens_t *get_blens(char *str2parse)
     ret->n = 0;
     ret->current_blen = -1;
     char *token;
-    while((token = strtok(str2parse, ",")) != NULL){
-       ret->blens[ret->n] = atoi(token);
-       if(ret->max_blen < ret->blens[ret->n]) {
-           ret->max_blen = ret->blens[ret->n];
-       }
-       else if(ret->min_blen > ret->blens[ret->n]) {
-           ret->min_blen = ret->blens[ret->n];
-       }
-       ++ret->n;
+    fprintf(stderr, "Now parsing str2parse %s.\n", str2parse);
+    token = strtok(str2parse, ",");
+    while(token != NULL){
+        fprintf(stderr, "Hey, token here is %s.\n", token);
+        ret->blens[ret->n] = atoi(token);
+        if(ret->max_blen < ret->blens[ret->n]) {
+            ret->max_blen = ret->blens[ret->n];
+        }
+        else if(ret->min_blen > ret->blens[ret->n]) {
+            ret->min_blen = ret->blens[ret->n];
+        }
+        ++ret->n;
+        token = strtok(NULL, ",");
     }
     return ret;
 }
@@ -198,10 +202,6 @@ mark_splitter_t *vl_split_inline(char *r1fq, char *r2fq,
 
 int main(int argc, char *argv[])
 {
-    if(argc < 7) {
-        fprintf(stderr, "Insufficient arguments. See usage.\n");
-        print_usage(argv); exit(1);
-    }
     // Build settings struct
     int hp_threshold;
     int n_nucs;
@@ -243,6 +243,11 @@ int main(int argc, char *argv[])
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
+    }
+
+    if(argc < 7) {
+        fprintf(stderr, "Insufficient arguments. See usage.\n");
+        print_usage(argv); exit(1);
     }
 
     if(!settings.blen_data->homing_sequence_length) {
@@ -290,8 +295,8 @@ int main(int argc, char *argv[])
     strcpy(r2fq, argv[optind + 1]);
 
     if(!settings.output_basename) {
-        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
         settings.output_basename = make_crms_outfname(r1fq);
+        fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
     mark_splitter_t *splitter = vl_split_inline(r1fq, r1fq, &settings);
     if(settings.rescaler) {
