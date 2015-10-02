@@ -100,14 +100,13 @@ inline KingFisher_t init_kf(int readlen)
 
 inline void destroy_kf(KingFisher_t *kfp)
 {
-#if !NDEBUG
-    fprintf(stderr, "Starting to destroy kfp with readlen %i.\n", kfp->readlen);
-#endif
     for(int i = 0; i < kfp->readlen; ++i) {
+        /*
 #if !NDEBUG
         fprintf(stderr, "Starting to destroy.\n");
         fprintf(stderr, "Freeing nuc_counts and phred_sums %i.", i);
 #endif
+         */
         free(kfp->nuc_counts[i]);
         free(kfp->phred_sums[i]);
     }
@@ -187,9 +186,6 @@ inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
  */
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
 {
-#if !NDEBUG
-    fprintf(stderr, "Hey, just got to dpw.\n");
-#endif
     //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
     //buffer[0] = '@'; Set this later?
     int argmaxret;

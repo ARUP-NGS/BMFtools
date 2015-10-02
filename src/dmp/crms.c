@@ -19,10 +19,7 @@
 #include "crms.h"
 #include "uthash_dmp_core.c"
 
-#define CAT_BUFFER_SIZE 1 >> 23
-
-
-
+#define CAT_BUFFER_SIZE 2000000
 
 
 void print_crms_usage(char *argv[])
@@ -31,13 +28,13 @@ void print_crms_usage(char *argv[])
                         "\nFlags:\n"
                         "-l: Number of nucleotides at the beginning of each read to "
                         "use for barcode. Final barcode length is twice this. REQUIRED.\n"
+                        "-s: homing sequence. REQUIRED.\n"
                         "-o: Output basename. Defaults to a variation on input filename.\n"
                         "-t: Homopolymer failure threshold. A molecular barcode with"
                         " a homopolymer of length >= this limit is flagged as QC fail."
                         "Default: 10.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
-                        "-s: homing sequence. If not provided, %s will not look for it.\n"
                         "-p: Number of threads to use if running uthash_dmp.\n"
                         "-d: Use this flag to to run hash_dmp.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
@@ -278,8 +275,8 @@ int main(int argc, char *argv[])
     }
 
     if(!settings.homing_sequence) {
-        fprintf(stderr, "Homing sequence not provided. Will not check for it. "
-                        "Reads will not be QC failed for its absence.\n");
+        fprintf(stderr, "Homing sequence not provided. Required.\n");
+        exit(EXIT_FAILURE);
     }
     if(!settings.blen) {
         fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
@@ -312,6 +309,7 @@ int main(int argc, char *argv[])
         cfree_rescaler(settings);
     }
     if(settings.run_hash_dmp) {
+        fprintf(stderr, "Now executing hash dmp.\n");
         if(!settings.ffq_prefix) {
             settings.ffq_prefix = make_default_outfname(r1fq, ".dmp.final");
         }
@@ -321,21 +319,25 @@ int main(int argc, char *argv[])
         {
             #pragma omp for
             for(int i = 0; i < settings.n_handles; ++i) {
+                fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
+                        params->infnames_r1[i], params->outfnames_r1[i]);
                 omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
                 omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
             }
         }
         // Remove temporary split files
+        fprintf(stderr, "Now removing temporary files.\n");
         char del_buf[250];
         for(int i = 0; i < splitter->n_handles; ++i) {
-            sprintf(del_buf, "rm %s", splitter->fnames_r1[i]);
-            sprintf(del_buf, "rm %s", splitter->fnames_r2[i]);
+            fprintf(stderr, "Now removing temporary files %s and %s.\n",
+                    splitter->fnames_r1[i], splitter->fnames_r2[i]);
+            sprintf(del_buf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
             system(del_buf);
         }
-        char cat_buff1[CAT_BUFFER_SIZE];
-        char cat_buff2[CAT_BUFFER_SIZE];
-        strcpy(cat_buff1, "/bin/cat ");
-        strcpy(cat_buff2, "/bin/cat ");
+        fprintf(stderr, "Now building cat string.\n");
+        char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
+        char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+        fprintf(stderr, "Current cat buff1: %s.\n", cat_buff1);
         for(int i = 0; i < settings.n_handles; ++i) {
             strcat(cat_buff1, params->outfnames_r1[i]);
             strcat(cat_buff1, " ");
@@ -348,11 +350,13 @@ int main(int argc, char *argv[])
         strcat(cat_buff2, " > ");
         strcat(cat_buff2, settings.ffq_prefix);
         strcat(cat_buff2, ".R2.fq");
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
         system(cat_buff1);
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
         system(cat_buff2);
         for(int i = 0; i < splitter->n_handles; ++i) {
-            sprintf(del_buf, "rm %s", params->outfnames_r1[i]);
-            sprintf(del_buf, "rm %s", params->outfnames_r2[i]);
+            fprintf(stderr, "Now calling 'rm %s %s'\n", params->outfnames_r1[i], params->outfnames_r2[i]);
+            sprintf(del_buf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
             system(del_buf);
         }
         splitterhash_destroy(params);

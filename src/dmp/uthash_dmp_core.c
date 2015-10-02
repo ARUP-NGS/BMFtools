@@ -95,35 +95,33 @@ void omgz_core(char *infname, char *outfname)
     else {
         in_handle = fopen(infname, "r");
     }
-    fprintf(stderr, "Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
+    fprintf(stderr, "[omgz_core]: Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
     if(!outfname) out_handle = stdout;
     else {
         out_handle = fopen(outfname, "w");
     }
     gzFile fp = gzdopen(fileno(in_handle), "r");
     kseq_t *seq = kseq_init(fp);
-    fprintf(stderr, "Opened file handles, initiated kseq parser.\n");
+    fprintf(stderr, "[omgz_core]: Opened file handles, initiated kseq parser.\n");
     // Initialized kseq
     int l = kseq_read(seq);
     if(l < 0) {
-        fprintf(stderr, "Could not open fastq file (%s). Abort mission!\n",
+        fprintf(stderr, "[omgz_core]: Could not open fastq file (%s). Abort mission!\n",
                 strcmp(infname, "-") == 0 ? "stdin": infname);
         exit(1);
     }
     char *bs_ptr = barcode_mem_view(seq);
     int blen = infer_barcode_length(bs_ptr);
-    fprintf(stderr, "Barcode length: %i.\n", blen);
+    fprintf(stderr, "[omgz_core]: Barcode length: %i.\n", blen);
     tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
     // Start hash table
     HashKing_t *hash = NULL;
     HashKing_t *current_entry = (HashKing_t *)malloc(sizeof(HashKing_t));
     HashKing_t *tmp_hk = current_entry; // Save the pointer location for later comparison.
     cp_view2buf(bs_ptr, current_entry->id);
-    fprintf(stderr, "About to start my hash with key %s and readlen %i.\n", current_entry->id, tmp->readlen);
     current_entry->value = init_kfp(tmp->readlen);
     HASH_ADD_STR(hash, id, current_entry);
     pushback_kseq(current_entry->value, seq, tmp->nuc_indices, tmp->blen);
-    fprintf(stderr, "Initiated hash table.\n");
 
     while((l = kseq_read(seq)) >= 0) {
         tmp->bs_ptr = barcode_mem_view(seq);
@@ -140,7 +138,7 @@ void omgz_core(char *infname, char *outfname)
             pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
         }
     }
-    fprintf(stderr, "Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
+    fprintf(stderr, "[omgz_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
     HASH_ITER(hh, hash, current_entry, tmp_hk) {
         dmp_process_write(current_entry->value, out_handle, tmp->blen, tmp->buffers);
         destroy_kf(current_entry->value);

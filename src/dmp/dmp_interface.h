@@ -68,9 +68,6 @@ static inline KingFisher_t *init_kfp(size_t readlen)
     ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
     ret->n_rc = 0;
     ret->readlen = readlen;
-#if !NDEBUG
-    fprintf(stderr, "New read length for new kfp: %i. Pointer: %p.", ret->readlen, ret);
-#endif
     ret->max_phreds = (char *)malloc((readlen + 1) * sizeof(char)), // Keep track of the maximum phred score observed at position.
     ret->nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
     ret->phred_sums = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
