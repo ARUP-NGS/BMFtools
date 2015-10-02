@@ -157,8 +157,9 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     bin = get_binnerul(barcode, settings->n_nucs);
     mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
     mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
+    int count = 0;
     do {
-        if(!(count++ % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
+        if(!(++count % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
         settings->blen_data->current_blen = vl_homing_loc(seq1, seq2, settings);

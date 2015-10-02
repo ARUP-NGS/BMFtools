@@ -34,15 +34,8 @@ typedef struct crms_settings {
 } crms_settings_t;
 /*
 typedef struct mssi_settings {
-    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
-    int n_nucs; // Number of nucleotides to split by.
-    char *output_basename;
-    char *input_r1_path;
-    char *input_r2_path;
     char *homing_sequence; // Homing sequence...
     int homing_sequence_length; // Length of homing sequence, should it be used.
-    int n_handles; // Number of handles
-    int notification_interval; // How many sets of records do you want to process between progress reports?
     int blen; // Length of sequence to trim off from start to finish.
     int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
     char *rescaler_path; // Path to rescaler for
