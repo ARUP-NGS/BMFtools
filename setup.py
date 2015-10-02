@@ -49,7 +49,7 @@ subprocess.check_call('cd src/dmp/include/htslib && make && cd ../../../../', sh
 subprocess.check_call('gcc src/dmp/fqmarksplit.c src/dmp/igamc_cephes.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11', shell=True)
 subprocess.check_call('cd src/sort && make && cd ../..;', shell=True)
 subprocess.check_call('cd src/dmp && gcc fqmarksplit_inline.c -o fqmarksplit_inline -lm -lz -DNDEBUG -std=gnu11 && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -DNDEBUG -std=gnu11 && cd ../..', shell=True)
+subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -std=gnu11 && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG -std=gnu11 -fivopts && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc -I. -o uthash_dmp uthash_dmp.c -lz -lm -std=gnu11 -DNDEBUG && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc -o vlrcms vlcrms.c -lz -lm -std=gnu11 -DNDEBUG && cd ../..', shell=True)

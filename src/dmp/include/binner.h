@@ -58,18 +58,17 @@ inline int64_t lpow(int64_t base, int64_t exp)
 
 inline uint64_t ulpow(uint64_t base, uint64_t exp)
 {
-    fprintf(stderr, "Now running ulpow. Base: %i. Exp: %i.\n", base, exp);
+    //fprintf(stderr, "Now running ulpow. Base: %i. Exp: %i.\n", base, exp);
     uint64_t result = 1;
     while (exp)
     {
         if (exp & 1)
             result *= base;
-            fprintf(stderr, "Result is now %i.\n", result);
+            //fprintf(stderr, "Result is now %i.\n", result);
         exp >>= 1;
         base *= base;
     }
-    fprintf(stderr, "Now returning ulpow result %i.\n", result);
-
+    //fprintf(stderr, "Now returning ulpow result %i.\n", result);
     return result;
 }
 

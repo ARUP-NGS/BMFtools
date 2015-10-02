@@ -110,6 +110,8 @@ void tmp_mseq_destroy(tmp_mseq_t mvar)
 
 inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
 {
+	fprintf(stderr, "Length of strings. name: %i, barcode: %i.\n",
+			strlen(mvar->name), strlen(mvar->barcode));
     fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RC=%c\n%s\n+\n%s\n",
             mvar->name, pass_fail, mvar->barcode, mvar->rc, mvar->seq, mvar->qual);
     return;
@@ -119,10 +121,6 @@ inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
 inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 {
     if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) {
-
-#if !NDEBUG
-      fprintf(stderr, "Hey, I am not flipping this record.\n");
-#endif
         mvar->rc = '0';
         return;
     }
@@ -154,7 +152,15 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
     return;
 }
 
-
+/*
+ * :param: [kseq_t *] seq - kseq handle
+ * :param: [mseq_t *] ret - initialized mseq_t pointer.
+ * :param: [char ****] rescaler - pointer to a 3-dimensional array of rescaled phred scores.
+ * :param: [tmp_mseq_t *] tmp - pointer to a tmp_mseq_t object
+ * for holding information for conditional reverse complementing.
+ * :param: [int] n_len - the number of bases to N at the beginning of each read.
+ * :param: [int] is_read2 - true if the read is read2.
+ */
 inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
     if(!seq) {
@@ -164,7 +170,6 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_m
     ret->name = strdup(seq->name.s);
     ret->comment = strdup(seq->comment.s);
     ret->seq = strdup(seq->seq.s);
-    memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
     if(!rescaler) ret->qual = strdup(seq->qual.s);
     else {
         ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
@@ -173,6 +178,8 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_m
             ret->qual[i] = rescale_qscore(is_read2 ? 1: 0, ret->qual[i], i, ret->seq[i], rescaler);
         }
     }
+    memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
+    memset(ret->qual, '#', n_len); // Set all N bases to quality score of 2.
     ret->l = seq->seq.l;
     crc_mseq(ret, tmp);
 }

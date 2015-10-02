@@ -3,32 +3,6 @@
 #include "uthash_dmp_core.h"
 #include "igamc_cephes.c"
 
-extern double igamc(double a, double x);
-extern uint64_t get_binnerul(char *barcode, int length); // From binner.h
-extern int64_t get_binnerl(char *barcode, int length); // From binner.h
-extern char *barcode_mem_view(kseq_t *seq); // from dmp.h
-int64_t lpow(int64_t base, int64_t exp);
-char ARRG_MAX_TO_NUC(int argmaxret);
-double igamc_pvalues(int num_pvalues, double x);
-int ARRG_MAX(KingFisher_t *kfp, int index);
-int infer_barcode_length(char *bs_ptr);
-int pvalue_to_phred(double pvalue);
-void destroy_kf(KingFisher_t *kfp);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp);
-void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, char typecode);
-void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen);
-KingFisher_t init_kf(int readlen);
-void nuc_to_pos(char character, int *nuc_indices);
-char test_hp(kseq_t *seq, int threshold);
-int get_binner(char *barcode, int length);
-void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq);
-uint64_t ulpow(uint64_t base, uint64_t exp);
-void cp_view2buf(char *view, char *buf);
-void omgz_core(char *infname, char *outfname);
-void cp_view2buf(char *view, char *buf);
-
 
 void tmpvars_destroy(tmpvars_t *tmp)
 {

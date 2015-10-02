@@ -21,40 +21,7 @@
 
 #define CAT_BUFFER_SIZE 1 >> 23
 
-// Inline function declarations
-int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
-void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
-void FREE_SPLITTER(mark_splitter_t var);
-mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
-mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
-int ipow(int base, int exp);
-void mseq_destroy(mseq_t *mvar);
-void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-int nuc2num(char character);
-int nuc_cmp(char forward, char reverse);
-char ****parse_rescaler(char *qual_rescale_fname);
-int rescale_qscore(int readnum, int qscore, int cycle, char base, char ****rescaler);
-void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
-char test_hp_inline(char *barcode, int length, int threshold);
-char test_hp(kseq_t *seq, int threshold);
-void tmp_mseq_destroy(tmp_mseq_t mvar);
-void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-char nuc_cmpl(char character);
-void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail);
-int count_lines(char *fname);
-void FREE_SPLITTER(mark_splitter_t var);
-char *trim_ext(char *fname);
-char *make_default_outfname(char *fname, const char *suffix);
-char *mark_crms_outfname(char *fname);
-int get_fileno_limit();
-void increase_nofile_limit(int new_limit);
-uint64_t get_binnerul(char *barcode, int length);
-int get_binner(char *barcode, int length);
-uint64_t ulpow(uint64_t base, uint64_t exp);
-void splitterhash_destroy(splitterhash_params_t *params);
-splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+
 
 
 
@@ -116,7 +83,6 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
- */
 void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
                      mssi_settings_t settings, mark_splitter_t splitter)
 {
@@ -175,6 +141,7 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
     free(barcode);
     return;
 }
+ */
 
 
 /*
@@ -183,6 +150,7 @@ void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
 mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
                      mssi_settings_t *settings)
 {
+    fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", r1fq, r2fq);
     mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
     *splitter = init_splitter_inline(settings);
     gzFile fp1 = gzopen(r1fq, "r");
@@ -215,7 +183,9 @@ mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
     mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
     mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
     do {
-        if(!(count++ % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
+        if(++count % settings->notification_interval == 0) {
+            fprintf(stderr, "Number of records processed: %i.\n", count);
+        }
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings->offset, blen1_2);
         pass_fail = test_homing_seq(seq1, seq2, settings) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
@@ -238,18 +208,8 @@ mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
     kseq_destroy(seq2);
     gzclose(fp1);
     gzclose(fp2);
+    fprintf(stderr, "Successfully completed pp_split_inline.\n");
     return splitter;
-}
-
-inline int get_blens(char *str2parse, int *buf2fill)
-{
-    char *token;
-    size_t count;
-    do {
-       token = strtok(str2parse, ",");
-       buf2fill[++count] = atoi(token);
-    } while(token);
-    return buf2fill[count - 1];
 }
 
 // Rescaling
@@ -349,18 +309,7 @@ int main(int argc, char *argv[])
     }
     mark_splitter_t *splitter = pp_split_inline1(r1fq, r2fq, &settings);
     if(settings.rescaler) {
-        int readlen = count_lines(settings.rescaler_path);
-        for(int i = 0; i < 2; ++i) {
-            for(int j = 0; j < readlen; ++j) {
-                for(int k = 0; k < 39; ++k) {
-                    free(settings.rescaler[i][j][k]);
-                }
-                free(settings.rescaler[i][j]);
-            }
-            free(settings.rescaler[i]);
-        }
-        free(settings.rescaler);
-        settings.rescaler = NULL;
+        cfree_rescaler(settings);
     }
     if(settings.run_hash_dmp) {
         if(!settings.ffq_prefix) {

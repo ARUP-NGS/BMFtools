@@ -18,44 +18,6 @@
 #include "include/nix_resource.h"
 #include "crms.h"
 
-// Inline function declarations
-blens_t *get_blens(char *str2parse);
-void free_crms_settings(crms_settings_t settings);
-int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
-void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
-void FREE_SPLITTER(mark_splitter_t var);
-mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
-mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
-int ipow(int base, int exp);
-void mseq_destroy(mseq_t *mvar);
-void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-int nuc2num(char character);
-int nuc_cmp(char forward, char reverse);
-char ****parse_rescaler(char *qual_rescale_fname);
-int rescale_qscore(int readnum, int qscore, int cycle, char base, char ****rescaler);
-void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
-char test_hp_inline(char *barcode, int length, int threshold);
-char test_hp(kseq_t *seq, int threshold);
-void tmp_mseq_destroy(tmp_mseq_t mvar);
-void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-char nuc_cmpl(char character);
-void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail);
-int count_lines(char *fname);
-void FREE_SPLITTER(mark_splitter_t var);
-char *trim_ext(char *fname);
-char *make_default_outfname(char *fname, const char *suffix);
-char *mark_crms_outfname(char *fname);
-void u32toa_branchlut(uint32_t value, char* buffer);
-void i32toa_branchlut(int32_t value, char* buffer);
-int get_fileno_limit();
-void increase_nofile_limit(int new_limit);
-uint64_t get_binnerul(char *barcode, int length);
-int get_binner(char *barcode, int length);
-uint64_t ulpow(uint64_t base, uint64_t exp);
-int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
-void free_rescaler_array(crms_settings_t settings);
 
 
 inline blens_t *get_blens(char *str2parse)
@@ -85,12 +47,10 @@ inline void free_crms_settings(crms_settings_t settings)
     free(settings.output_basename);
     free(settings.input_r1_path);
     free(settings.input_r2_path);
-    if(settings.rescaler_path) free(settings.rescaler_path);
+    cond_free(settings.rescaler_path);
     // Note: rescaler array should be handled elsewhere!
     return;
 }
-
-
 
 void print_usage(char *argv[])
 {
@@ -314,9 +274,7 @@ int main(int argc, char *argv[])
     kseq_t *seq2 = kseq_init(fp_read2);
     mark_splitter_t splitter = init_splitter_crms(&settings);
     vl_split_inline(seq1, seq2, &settings, &splitter);
-    if(settings.rescaler) {
-        free_rescaler_array(settings);
-    }
+    cfree_rescaler(settings);
     free(settings.blen_data);
     free_crms_settings(settings);
     FREE_SPLITTER(splitter);
