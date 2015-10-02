@@ -19,7 +19,7 @@
 #include "crms.h"
 #include "uthash_dmp_core.c"
 
-#define CAT_BUFFER_SIZE 2000000
+#define CAT_BUFFER_SIZE 500000
 
 
 void print_crms_usage(char *argv[])
@@ -315,16 +315,20 @@ int main(int argc, char *argv[])
         }
         // Whatever I end up putting into here.
         splitterhash_params_t *params = init_splitterhash(&settings, splitter);
+#if PARALLEL
         #pragma omp parallel
         {
             #pragma omp for
+#endif
             for(int i = 0; i < settings.n_handles; ++i) {
                 fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
                         params->infnames_r1[i], params->outfnames_r1[i]);
                 omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
                 omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
             }
+#if PARALLEL
         }
+#endif
         // Remove temporary split files
         fprintf(stderr, "Now removing temporary files.\n");
         char del_buf[250];

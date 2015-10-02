@@ -59,28 +59,6 @@ int ipow(int base, int exp);
 #endif
 
 
-KHASH_MAP_INIT_INT64(fisher, KingFisher_t *) // Initialize a hashmap with uint64 keys and KingFisher_t payload.
-
-
-static inline KingFisher_t *init_kfp(size_t readlen)
-{
-    KingFisher_t *ret = (KingFisher_t *)malloc(sizeof(KingFisher_t));
-    ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
-    ret->n_rc = 0;
-    ret->readlen = readlen;
-    ret->max_phreds = (char *)malloc((readlen + 1) * sizeof(char)), // Keep track of the maximum phred score observed at position.
-    ret->nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
-    ret->phred_sums = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
-    for(int i = 0; i < readlen; ++i) {
-        ret->nuc_counts[i] = (uint16_t *)calloc(5, sizeof(uint16_t)); // One each for A, C, G, T, and N
-        ret->phred_sums[i] = (uint16_t *)calloc(4, sizeof(uint16_t)); // One for each nucleotide
-    }
-    ret->pass_fail = '1';
-    return ret;
-}
-
-
-
 /*
 static inline void pushback_hash(outpost_t Navy)
 {
