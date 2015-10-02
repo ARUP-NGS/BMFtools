@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
         .offset = 0,
         .rescaler = NULL,
         .rescaler_path = NULL,
-        .run_hash_dmp = NULL,
+        .run_hash_dmp = 0,
         .ffq_prefix = NULL,
         .threads = 1
     };

@@ -29,20 +29,20 @@ typedef struct crms_settings {
     int notification_interval; // How many sets of records do you want to process between progress reports?
     blens_t *blen_data;
     int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
-    char *rescaler_path; // Path to rescaler for
+    char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases).
+    char *rescaler_path; // Path to flat text file for parsing in the rescaler.
+    char *ffq_prefix; // Final fastq prefix.
+    int threads; // Number of threads to use for parallel dmp.
+    char *homing_sequence;
+    int homing_sequence_length;
+    int run_hash_dmp;
 } crms_settings_t;
 /*
 typedef struct mssi_settings {
     char *homing_sequence; // Homing sequence...
     int homing_sequence_length; // Length of homing sequence, should it be used.
-    int blen; // Length of sequence to trim off from start to finish.
-    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char *rescaler_path; // Path to rescaler for
     int threads;
     int run_hash_dmp;
-    char *ffq_prefix; // Final fastq prefix
-    char ****rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
 } mssi_settings_t;
 */
 

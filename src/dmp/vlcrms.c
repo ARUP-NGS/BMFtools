@@ -141,7 +141,7 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     l1 = kseq_read(seq1);
     l2 = kseq_read(seq2);
     if(l1 < 0 || l2 < 0) {
-            fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
+            fprintf(stderr, "[vlcrms_split_inline]: Could not open fastqs for reading. Abort!\n");
             FREE_SPLITTER(*splitter);
             exit(EXIT_FAILURE);
     }
@@ -159,7 +159,9 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
     int count = 0;
     do {
-        if(!(++count % settings->notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
+        if(!(++count % settings->notification_interval)) {
+        	fprintf(stderr, "[vlcrms_split_inline]: Number of records processed: %i.\n", count);
+        }
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
         settings->blen_data->current_blen = vl_homing_loc(seq1, seq2, settings);
@@ -205,8 +207,18 @@ int main(int argc, char *argv[])
         .blen_data = (blens_t *)calloc(1, sizeof(blens_t)),
         .offset = 0,
         .rescaler = NULL,
+        .run_hash_dmp = 0,
+        .ffq_prefix = NULL,
+        .threads = 1,
         .rescaler_path = NULL
     };
+    /*
+     *     char *rescaler_path; // Path to flat text file for parsing in the rescaler.
+    char *ffq_prefix; // Final fastq prefix.
+    int threads; // Number of threads to use for parallel dmp.
+    char *homing_sequence;
+    int homing_sequence_length;
+     */
     settings.blen_data->max_blen = -1;
     settings.blen_data->homing_sequence_length = 0;
     int c;
@@ -215,25 +227,36 @@ int main(int argc, char *argv[])
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg); break;
-            case 'r': settings.rescaler_path = strdup(optarg); break;
+            case 'r': settings.rescaler_path = strdup(optarg); settings.rescaler = parse_rescaler(settings.rescaler_path); break;
             case 's': strcpy(settings.blen_data->homing_sequence, optarg); settings.blen_data->homing_sequence_length = strlen(settings.blen_data->homing_sequence); break;
             case 'l': settings.blen_data = get_blens(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
+            case 'f': settings.ffq_prefix = strdup(optarg); break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
     }
+
     if(!settings.blen_data->homing_sequence_length) {
         fprintf(stderr, "homing sequence not provided. e.g., %s -s <homing_sequence> <other_args>.\n", argv[0]);
         exit(EXIT_FAILURE);
 
     }
+
     if(settings.blen_data->max_blen < 0) {
         fprintf(stderr, "blen data not provided. This should be a comma-separated list "
                          "of positive integers for possible barcode lengths.\n");
         fprintf(stderr, "e.g., %s -l 8,9,10 <other_args>.\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+
+
+    if(settings.ffq_prefix && !settings.run_hash_dmp) {
+        fprintf(stderr, "Final fastq prefix option provided but run_hash_dmp not selected."
+                "Either eliminate the -f flag or add the -d flag.\n");
+        exit(EXIT_FAILURE);
+    }
+
     settings.n_handles = ipow(4, settings.n_nucs);
     if(settings.n_handles > get_fileno_limit()) {
         increase_nofile_limit(kroundup32(settings.n_handles));
@@ -246,9 +269,6 @@ int main(int argc, char *argv[])
         }
         settings.blen_data->max_blen -= 2 * settings.offset;
         settings.blen_data->min_blen -= 2 * settings.offset;
-    }
-    if(settings.rescaler_path) {
-        settings.rescaler = parse_rescaler(settings.rescaler_path);
     }
     fprintf(stderr, "About to get the read paths.\n");
     char r1fq[100];
