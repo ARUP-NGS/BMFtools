@@ -1,8 +1,11 @@
 # cython: boundscheck=False, wraparound=False
+from array import array
 from itertools import groupby
+from numpy import log10
 from matplotlib.backends.backend_pdf import PdfPages
 from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
+from sys import stderr
 import argparse
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,78 +17,54 @@ import cPickle
 # cimport pysam.calignmentfile
 # ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef errorTracker(AlignedSegment_t mdRead, AlignedSegment_t bamRead,
-                  ndarray[uint64_t, ndim=2, mode="c"] readErr,
-                  ndarray[uint64_t, ndim=2, mode="c"] readObs):
+                  ndarray[uint64_t, ndim=3, mode="c"] readErr,
+                  ndarray[uint64_t, ndim=3, mode="c"] readObs,
+                  ndarray[double_t, ndim=2, mode="c"] illSum,
+                  ndarray[uint64_t, ndim=2, mode="c"] illCount):
     cdef int32_t index = 0
     cdef int32_t start, end
-    cdef char base, mbase
+    cdef char base
     cdef int8_t phred_index, char_index
+    cdef double_t pVal
     tmpMArr = array('B', mdRead.query_sequence)
     tmpBArr = array('B', bamRead.query_sequence)
     for index, base in enumerate(tmpMArr[mdRead.qstart:mdRead.qend],
                                  start=mdRead.qstart):
         if base == 78:  # base is 'N'
             continue
-        """
-        fprintf(c_stderr,
-                "Hey this is base %c with numeric"
-                " value %hi and int value %i.",
-                base, base, base)
         char_index = NUC_TO_ARRAY(tmpBArr[index])
         phred_index = mdRead.query_qualities[index] - 2
-        # Note if/elses with same predicate --> switch
         readObs[index][phred_index][char_index] += 1
+        pVal = 10.0**-((phred_index + 2.0)/10.0)
+        illSum[index][char_index] += pVal
+        illCount[index][char_index] += 1
         if base != 61:
             readErr[index][phred_index][char_index] += 1
-        """
-        char_index = NUC_TO_ARRAY(tmpBArr[index])
-        readObs[index][char_index] += 1
-        if base != 61:
-            readErr[index][char_index] += 1
 
 
 def MakeErrorArray(args):
-
     cdef size_t rLen, index, read_index, qual_index, context_index
     cdef uint64_t qcfail, ReadCount
     cdef double_t r1mean, r2mean
-    cdef ndarray[uint64_t, ndim=2, mode="c"] r1error, r1obs
-    cdef ndarray[uint64_t, ndim=2, mode="c"] r2error, r2obs
-    cdef ndarray[double_t, ndim=2, mode="c"] r1frac, r2frac
+    cdef ndarray[uint64_t, ndim=3, mode="c"] r1error, r1obs, r2error, r2obs
+    cdef ndarray[double_t, ndim=2, mode="c"] ill1Sum, ill2Sum
+    cdef ndarray[uint64_t, ndim=2, mode="c"] ill1Count, ill2Count
     cdef AlignedSegment_t mdRead, bamRead
     cdef AlignmentFile_t mdBam, bam
-    cdef py_array tmpArr
-
-    from cPickle import dump
-    from sys import stderr
-
-    if(args.pickle_path is None):
-        pickle_path = TrimExt(args.mdBam) + ".errorprofile.pyd"
-    else:
-        pickle_path = args.pickle_path
-    if(args.table_prefix is None):
-        table_prefix = TrimExt(args.mdBam)
-    else:
-        table_prefix = args.table_prefix
-    table_prefix += ".out."
 
     bamGen = pysam.AlignmentFile(args.bam).next
     rLen = pysam.AlignmentFile(args.mdBam).next().inferred_length
-    tmpArr = array('B')
-    c_array.resize(tmpArr, rLen)
-    """ preserving 3D arrays here
     r1error = np.zeros([rLen, 39, 4], dtype=np.uint64)
     r1obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
     r2error = np.zeros([rLen, 39, 4], dtype=np.uint64)
     r2obs = np.zeros([rLen, 39, 4], dtype=np.uint64)
-    """
-    # Moving to 2D arrays here
-    r1error = np.zeros([rLen, 4], dtype=np.uint64)
-    r1obs = np.zeros([rLen, 4], dtype=np.uint64)
-    r2error = np.zeros([rLen, 4], dtype=np.uint64)
-    r2obs = np.zeros([rLen, 4], dtype=np.uint64)
+    ill1Sum = np.zeros([rLen, 4], dtype=np.float64)
+    ill2Sum = np.zeros([rLen, 4], dtype=np.float64)
+    ill1Count = np.zeros([rLen, 4], dtype=np.uint64)
+    ill2Count = np.zeros([rLen, 4], dtype=np.uint64)
 
     qcfail = 0
     ReadCount = 0
@@ -103,67 +82,114 @@ def MakeErrorArray(args):
             qcfail += 1
             continue
         if mdRead.flag & 64:
-            errorTracker(mdRead, bamRead, r1error, r1obs)
+            errorTracker(mdRead, bamRead, r1error, r1obs, ill1Sum, ill1Count)
         elif mdRead.flag & 128:
-            errorTracker(mdRead, bamRead, r2error, r2obs)
+            errorTracker(mdRead, bamRead, r2error, r2obs, ill2Sum, ill2Count)
         else:
-            pass
+            continue
         ReadCount += 1
     stderr.write("Reads Analyzed: %i\n" % (ReadCount))
     stderr.write("Reads QC Filtered: %i\n" % (qcfail))
-    #r1frac = np.divide(r1error.astype(np.float64), r1obs.astype(np.float64))
-    #r2frac = np.divide(r2error.astype(np.float64), r2obs.astype(np.float64))
-    return {'r1o': r1obs, 'r2o': r2obs, 'r1e': r1error, 'r2e': r2error}
+    return {"read1": {"err": r1error, "obs": r1obs, "illSum": ill1Sum,
+            "illCount": ill1Count},
+           "read2": {"err": r2error, "obs": r2obs, "illSum": ill2Sum,
+            "illCount": ill2Count}}
 
-
-def errorArrayFormat2D(dict data, output):
-    """formats and outputs error array data in 2D"""
-    cdef int cycle, base
+def format2DOutput(dict data, cystr output):
+    """Formats and outputs 2D error array of Cycle and Nucleotide"""
     cdef ndarray[double_t, ndim=2, mode="c"] r1err, r2err
-    r1err = np.divide(data['r1e'].astype(np.float64),
-                      data['r1o'].astype(np.float64))
-    r2err = np.divide(data['r1e'].astype(np.float64),
-                      data['r1o'].astype(np.float64))
+    r1err = np.divide(np.mean(data['read1']['err'].astype(np.float64), axis=1),
+                      np.mean(data['read1']['obs'].astype(np.float64), axis=1))
+    r2err = np.divide(np.mean(data['read2']['err'].astype(np.float64), axis=1),
+                      np.mean(data['read2']['obs'].astype(np.float64), axis=1))
+    r1err = -10*np.log10(r1err)
+    r2err = -10*np.log10(r2err)
+    cdef int cycle, base
     with open(output, 'w') as o:
         for cycle in range(len(r1err)):
             r1bases = []
             r2bases = []
-            for base in range(len(r2err[cycle])):
-                b1 = r1err[cycle][base]
+            for base in range(len(r1err[cycle])):
                 r1bases.append(str(r1err[cycle][base]))
                 r2bases.append(str(r2err[cycle][base]))
             r1bases = ",".join(r1bases)
             r2bases = ",".join(r2bases)
-            out = "|".join([r1bases, r2bases]) + "\n"
+            out = "|".join([r1bases, r2bases])+"\n"
             o.write(out)
-    return 0
+        return 0
 
-def errorArrayFormat3D(dict data, output):
-    """Formats and outputs error array data"""
-    cdef int cycle, qual, base
-    with open(output, 'w') as o:
-        for cycle in range(len(data["r1f"])):
+
+def genarateCompleteArray(dict data):
+    """creates the complete 3D error array, including filling in
+    cycle, qual, base values with inadeuate data with a value derived
+    from the differenc between the illumina quality and the
+    observed error rates that that nuc/cycle combination"""
+    cdef ndarray[double_t, ndim=2, mode="c"] r12d, r122d, ill1mean, ill2mean
+    cdef ndarray[double_t, ndim=2, mode="c"] r1offset, r2offset
+    cdef ndarray[double_t, ndim=3, mode="c"] r1DataArray, r2DataArray
+    cdef ndarray[double_t, ndim=3, mode="c"] r1err, r2err
+    r1err = np.divide(data['read1']['err'].astype(np.float64),
+                      data['read1']['obs'].astype(np.float64))
+    r2err = np.divide(data['read2']['err'].astype(np.float64),
+                      data['read2']['obs'].astype(np.float64))
+    r12d = np.divide(np.mean(data['read1']['err'].astype(np.float64), axis=1),
+                      np.mean(data['read1']['obs'].astype(np.float64), axis=1))
+    r22d = np.divide(np.mean(data['read2']['err'].astype(np.float64), axis=1),
+                      np.mean(data['read2']['obs'].astype(np.float64), axis=1))
+    ill1mean = np.divide(data['read1']['illSum'].astype(np.float64),
+                         data['read1']['illCount'].astype(np.float64))
+    ill2mean = np.divide(data['read2']['illSum'].astype(np.float64),
+                         data['read2']['illCount'].astype(np.float64))
+    r1offset = -10*log10(ill1mean) - -10*log10(r12d)
+    r2offset = -10*log10(ill2mean) - -10*log10(r22d)
+    arrShape = [r1err.shape[0], r1err.shape[1], r1err.shape[2]]
+    r1DataArray = np.zeros(arrShape, dtype=np.float64)
+    r2DataArray = np.zeros(arrShape, dtype=np.float64)
+    for cycle in range(len(r1err)):
+        for qual in range(len(r1err[cycle])):
+            for base in range(len(r1err[cycle][qual])):
+                b1 = r1err[cycle][qual][base]
+                b2 = r2err[cycle][qual][base]
+                b1 = -10*log10(b1)
+                b2 = -10*log10(b2)
+                if data['read1']['obs'][cycle][qual][base] < 100:
+                    b1 = qual + 2 - r1offset[cycle][base]
+                elif np.isnan(b1):
+                    b1 = qual + 2 - r1offset[cycle][base]
+                if data['read2']['obs'][cycle][qual][base] < 100:
+                    b2 = qual + 2 - r2offset[cycle][base]
+                if np.isnan(b2):
+                    b2 = qual + 2 - r2offset[cycle][base]
+                if b1 <= 0:
+                    b1 = 2
+                if b2 <= 0:
+                    b2 = 2
+                r1DataArray[cycle][qual][base] = b1
+                r2DataArray[cycle][qual][base] = b2
+    return r1DataArray, r2DataArray
+
+
+def format3DOoutput(ndarray[double_t, ndim=3, mode="c"] r1Array,
+                    ndarray[double_t, ndim=3, mode="c"] r2Array,
+                    cystr output):
+    """Outputs the formatted 3D matrix"""
+    with open(output, 'w') as out:
+        for ci, cycle in enumerate(r1Array):
             r1quals = []
             r2quals = []
-            for qual in range(len(data["r1f"][cycle])):
+            for qi, qual in enumerate(cycle):
                 r1bases = []
                 r2bases = []
-                for base in range(len(data["r1f"][cycle][qual])):
-                    b1 = data['r1f'][cycle][qual][base]
-                    b2 = data['r2f'][cycle][qual][base]
-                    if np.isnan(b1):
-                        b1 = 0.0
-                    if np.isnan(b2):
-                        b2 = 0.0
-                    r1bases.append(str(b1))
-                    r2bases.append(str(b2))
+                for bi, base in enumerate(qual):
+                    r1bases.append(str(base))
+                    r2bases.append(str(r1Array[ci][qi][bi]))
                 r1quals.append(":".join(r1bases))
-                r2quals.append(":".join(r2bases))
+                r2quals.append(":".join(r1bases))
             r1quals = ",".join(r1quals)
             r2quals = ",".join(r2quals)
-            out = "|".join([r1quals, r2quals])+"\n"
-            o.write(out)
-    return 0
+            o = "|".join([r1quals, r2quals])+"\n"
+            out.write(o)
+    return
 
 
 def calculateErrorArray(args):
@@ -174,15 +200,13 @@ def calculateErrorArray(args):
     else:
         table_prefix = args.table_prefix
     table_prefix += ".out"
-    """
-    FullTableHandle = open(table_prefix + "full.tsv", "w")
-    CycleTableHandle = open(table_prefix + "cycle.tsv", "w")
-    PhredTableHandle = open(table_prefix + "phred.tsv", "w")
-    ContextTableHandle = open(table_prefix + "context.tsv", "w")
-    """
     data = MakeErrorArray(args)
-    cPickle.dump(data, open(table_prefix+"data.pickle",'w'))
-    errorArrayFormat2D(data, table_prefix)
+    if args.dim == "2D":
+        format2DOutput(data, table_prefix)
+        return 0
+    if args.dim == "3D":
+        r1dataArray, r2dataArray = genarateCompleteArray(data)
+        format3DOoutput(r1dataArray, r2dataArray, table_prefix)
     return 0
 
 
@@ -198,27 +222,8 @@ cdef inline bint TEST_ERROR(char character) nogil:
         return 1
 
 
-cpdef errorFinder(AlignedSegment_t read,
-                  ndarray[uint64_t, ndim=1] readErr,
-                  ndarray[uint64_t, ndim=1] readObs):
-    '''
-    cdef size_t read_index
-    cdef char base
-    cdef char * seq
-    cdef size_t offset_index
-    cdef bint err
-
-    seq = read.query_sequence
-    for read_index in xrange(read.qstart, read.qend):
-        readObs[read_index] += 1
-        err = TEST_ERROR(<char>seq[read_index])
-        if not err:
-            # case "=" or "N"
-            return
-        else:
-            readErr[read_index] += 1
-            return
-    '''
+def errorFinder():
+    pass
 
 
 @cython.returns(dict)
