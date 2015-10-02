@@ -17,7 +17,7 @@
 #include "include/array_parser.h"
 #include "include/nix_resource.h"
 #include "crms.h"
-
+#include "uthash_dmp_core.c"
 
 
 inline blens_t *get_blens(char *str2parse)
@@ -48,6 +48,7 @@ inline void free_crms_settings(crms_settings_t settings)
     free(settings.input_r1_path);
     free(settings.input_r2_path);
     cond_free(settings.rescaler_path);
+    free(settings.blen_data);
     // Note: rescaler array should be handled elsewhere!
     return;
 }
@@ -65,6 +66,11 @@ void print_usage(char *argv[])
                         "Default: 10.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
                         "-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
+                        "-p: Number of threads to use if running uthash_dmp.\n"
+                        "-d: Use this flag to to run hash_dmp.\n"
+                        "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
+                        "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
+                         "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
                         "-h: Print usage.\n", argv[0], argv[0]);
 }
 
@@ -125,14 +131,17 @@ inline int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_p
 /*
  * Pre-processes and splits fastqs with inline barcodes.
  */
-void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
-                     crms_settings_t *settings, mark_splitter_t *splitter)
+mark_splitter_t *vl_split_inline(char *r1fq, char *r2fq,
+                                 crms_settings_t *settings)
 {
+    gzFile fp_read1 = gzopen(r1fq, "r");
+    gzFile fp_read2 = gzopen(r2fq, "r");
     int l1, l2;
+    kseq_t *seq1 = kseq_init(fp_read1);
+    kseq_t *seq2 = kseq_init(fp_read2);
+    mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+    *splitter = init_splitter_crms(settings);
     uint64_t bin;
-#if LOGGING
-    int count = 0;
-#endif
     char pass_fail;
     int readlen = 0;
     char *barcode;
@@ -160,7 +169,7 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     int count = 0;
     do {
         if(!(++count % settings->notification_interval)) {
-        	fprintf(stderr, "[vlcrms_split_inline]: Number of records processed: %i.\n", count);
+            fprintf(stderr, "[vlcrms_split_inline]: Number of records processed: %i.\n", count);
         }
         // Iterate through second fastq file.
         set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
@@ -181,13 +190,16 @@ void vl_split_inline(kseq_t *seq1, kseq_t *seq2,
     mseq_destroy(&mvar1);
     mseq_destroy(&mvar2);
     free(barcode);
-    return;
+    kseq_destroy(seq1);
+    kseq_destroy(seq2);
+    return splitter;
 }
 
 
 int main(int argc, char *argv[])
 {
-    if(argc < 5) {
+    if(argc < 7) {
+        fprintf(stderr, "Insufficient arguments. See usage.\n");
         print_usage(argv); exit(1);
     }
     // Build settings struct
@@ -212,18 +224,13 @@ int main(int argc, char *argv[])
         .threads = 1,
         .rescaler_path = NULL
     };
-    /*
-     *     char *rescaler_path; // Path to flat text file for parsing in the rescaler.
-    char *ffq_prefix; // Final fastq prefix.
-    int threads; // Number of threads to use for parallel dmp.
-    char *homing_sequence;
-    int homing_sequence_length;
-     */
     settings.blen_data->max_blen = -1;
     settings.blen_data->homing_sequence_length = 0;
+    omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:")) > -1) {
+    while ((c = getopt(argc, argv, "p:t:ho:n:s:l:m:r:f:d")) > -1) {
         switch(c) {
+            case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg); break;
@@ -232,6 +239,7 @@ int main(int argc, char *argv[])
             case 'l': settings.blen_data = get_blens(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
+            case 'd': settings.run_hash_dmp = 1; break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
@@ -285,19 +293,79 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
         settings.output_basename = make_crms_outfname(r1fq);
     }
-    gzFile fp_read1, fp_read2;
-    fp_read1 = gzopen(r1fq, "r");
-    fp_read2 = gzopen(r2fq, "r");
-    int l1, l2;
-    kseq_t *seq1 = kseq_init(fp_read1);
-    kseq_t *seq2 = kseq_init(fp_read2);
-    mark_splitter_t splitter = init_splitter_crms(&settings);
-    vl_split_inline(seq1, seq2, &settings, &splitter);
-    cfree_rescaler(settings);
-    free(settings.blen_data);
+    mark_splitter_t *splitter = vl_split_inline(r1fq, r1fq, &settings);
+    if(settings.rescaler) {
+        cfree_rescaler(settings);
+    }
+    if(settings.run_hash_dmp) {
+        fprintf(stderr, "Now executing hash dmp.\n");
+        if(!settings.ffq_prefix) {
+            settings.ffq_prefix = make_default_outfname(r1fq, ".dmp.final");
+        }
+        // Whatever I end up putting into here.
+        splitterhash_params_t *params = init_vl_splitterhash(&settings, splitter);
+#if NOPARALLEL
+#else
+        #pragma omp parallel
+        {
+#if !NDEBUG
+            fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
+#endif
+            #pragma omp for
+#endif
+            for(int i = 0; i < settings.n_handles; ++i) {
+                fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
+                        params->infnames_r1[i], params->outfnames_r1[i]);
+                omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
+                omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
+            }
+#if NOPARALLEL
+#else
+        }
+#endif
+        // Remove temporary split files
+        fprintf(stderr, "Now removing temporary files.\n");
+        char del_buf[250];
+        for(int i = 0; i < splitter->n_handles; ++i) {
+            fprintf(stderr, "Now removing temporary files %s and %s.\n",
+                    splitter->fnames_r1[i], splitter->fnames_r2[i]);
+            sprintf(del_buf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
+            system(del_buf);
+        }
+        fprintf(stderr, "Now building cat string.\n");
+        char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
+        char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+        for(int i = 0; i < settings.n_handles; ++i) {
+            strcat(cat_buff1, params->outfnames_r1[i]);
+            strcat(cat_buff1, " ");
+            strcat(cat_buff2, params->outfnames_r2[i]);
+            strcat(cat_buff2, " ");
+        }
+        strcat(cat_buff1, " > ");
+        strcat(cat_buff1, settings.ffq_prefix);
+        strcat(cat_buff1, ".R1.fq");
+        strcat(cat_buff2, " > ");
+        strcat(cat_buff2, settings.ffq_prefix);
+        strcat(cat_buff2, ".R2.fq");
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
+        int sys_call_ret = system(cat_buff1);
+        if(sys_call_ret < 0) {
+            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
+        }
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
+        sys_call_ret = system(cat_buff2);
+        if(sys_call_ret < 0) {
+            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
+        }
+        for(int i = 0; i < splitter->n_handles; ++i) {
+            fprintf(stderr, "Now calling 'rm %s %s'\n", params->outfnames_r1[i], params->outfnames_r2[i]);
+            sprintf(del_buf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+            system(del_buf);
+        }
+        splitterhash_destroy(params);
+        free(settings.ffq_prefix);
+    }
     free_crms_settings(settings);
-    FREE_SPLITTER(splitter);
-    kseq_destroy(seq1);
-    kseq_destroy(seq2);
+    FREE_SPLITTER_PTR(splitter);
     return 0;
 }

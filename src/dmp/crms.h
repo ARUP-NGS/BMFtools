@@ -7,6 +7,9 @@
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
 #endif
+#ifndef CAT_BUFFER_SIZE
+#define CAT_BUFFER_SIZE 500000
+#endif
 
 typedef struct blens {
     int max_blen; // Last value in blens
@@ -37,14 +40,6 @@ typedef struct crms_settings {
     int homing_sequence_length;
     int run_hash_dmp;
 } crms_settings_t;
-/*
-typedef struct mssi_settings {
-    char *homing_sequence; // Homing sequence...
-    int homing_sequence_length; // Length of homing sequence, should it be used.
-    int threads;
-    int run_hash_dmp;
-} mssi_settings_t;
-*/
 
 /*
  * :param: settings [crms_settings_t, mssi_settings_t] Settings struct in which to free the rescaler.
@@ -68,6 +63,44 @@ typedef struct mssi_settings {
             cond_free(settings.rescaler);\
         }\
     } while(0)
+
+
+inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
+{
+#if !NDEBUG
+    fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
+#endif
+    if(!settings_ptr) {
+        fprintf(stderr, "Settings pointer null. Abort!\n");
+        exit(EXIT_FAILURE);
+    }
+    if(!settings_ptr->output_basename) {
+        fprintf(stderr, "Output basename not set. Abort!\n");
+        exit(EXIT_FAILURE);
+    }
+    if(!splitter_ptr) {
+        fprintf(stderr, "Splitter pointer null. Abort!\n");
+        exit(EXIT_FAILURE);
+    }
+    char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+    splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
+    fprintf(stderr, "Alloc'd ret.\n");
+    ret->n = splitter_ptr->n_handles;
+    ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+    ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+    ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+    ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+    for(int i = 0; i < splitter_ptr->n_handles; ++i) {
+        ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
+        ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
+        sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
+        ret->outfnames_r1[i] = strdup(tmp_buffer);
+        sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
+        ret->outfnames_r2[i] = strdup(tmp_buffer);
+    }
+    return ret;
+}
+
 
 void free_rescaler_array(crms_settings_t settings) {
     int readlen = count_lines(settings.rescaler_path);
@@ -121,3 +154,4 @@ splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_spl
 int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
 blens_t *get_blens(char *str2parse);
 void free_crms_settings(crms_settings_t settings);
+splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);

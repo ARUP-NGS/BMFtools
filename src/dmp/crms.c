@@ -19,8 +19,6 @@
 #include "crms.h"
 #include "uthash_dmp_core.c"
 
-#define CAT_BUFFER_SIZE 500000
-
 
 void print_crms_usage(char *argv[])
 {
@@ -40,7 +38,7 @@ void print_crms_usage(char *argv[])
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
         		        "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
-                        "-h: Print usage.\n", argv[0], argv[0]);
+                        "-h: Print usage.\n", argv[0]);
 }
 
 void print_crms_opt_err(char *argv[], char *optarg)
