@@ -242,6 +242,9 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     for(int i = 0; i < kfp->readlen; ++i) {
         argmaxret = ARRG_MAX(kfp, i);
         tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
+        if(tmp->cons_quals[i] < -1073741824) { // Underflow!
+            tmp->cons_quals[i] = 3114;
+        }
         // Final quality must be 2 or greater and at least one read in the family should support that base call.
         tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
         tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];

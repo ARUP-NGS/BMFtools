@@ -326,13 +326,13 @@ int main(int argc, char *argv[])
         sys_call_ret = system(cat_buff);
         for(int i = 0; i < settings.n_handles; ++i) {
             // Clear files if present
-            sprintf(cat_buff, (settings.gzip_output) ? "cat %s >> %s": "cat %s | gzip - >> %s", params->outfnames_r1[i], ffq_r1);
+            sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
             sys_call_ret = system(cat_buff);
             if(sys_call_ret < 0) {
                 fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
                 exit(EXIT_FAILURE);
             }
-            sprintf(cat_buff, (settings.gzip_output) ? "cat %s >> %s": "cat %s | gzip - >> %s", params->outfnames_r2[i], ffq_r2);
+            sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
             sys_call_ret = system(cat_buff);
             if(sys_call_ret < 0) {
                 fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
             }
             // Delete both un-needed fastqs.
             sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-            fprintf(stderr, "Now calling 'rm %s %s'\n", params->outfnames_r1[i], params->outfnames_r2[i]);
+            fprintf(stderr, "Now calling '%s'\n", cat_buff);
             sys_call_ret = system(cat_buff);
         }
         splitterhash_destroy(params);
