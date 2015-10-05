@@ -19,6 +19,12 @@
 #include "crms.h"
 #include "uthash_dmp_core.c"
 
+/*
+ * Random not needed work.
+ * 1. Creating the special family size one case.
+ * 2. digitslut (sprintf)
+ */
+
 
 void print_crms_usage(char *argv[])
 {
@@ -36,10 +42,11 @@ void print_crms_usage(char *argv[])
                         "-p: Number of threads to use if running uthash_dmp.\n"
                         "-d: Use this flag to to run hash_dmp.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
-                        "The Final Fastq files will be named '<ffq_prefix>.R1.fq95 ' and '<ffq_prefix>.R2.fq'.\n"
+                        "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
                         "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
                         "-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
                         " (-1), other barcode lengths will not be considered."
+                        "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
                         "-h: Print usage.\n", argv[0]);
 }
 
@@ -165,11 +172,6 @@ mark_splitter_t *pp_split_inline(char *r1fq, char *r2fq,
     return splitter;
 }
 
-// Rescaling
-// TODO:
-// 1. Write modified splitmark_core_inline
-// 2. Add parser for recalibrated quality scores.
-
 
 int main(int argc, char *argv[])
 {
@@ -196,11 +198,12 @@ int main(int argc, char *argv[])
         .run_hash_dmp = 0,
         .ffq_prefix = NULL,
         .threads = 1,
-        .max_blen = -1
+        .max_blen = -1,
+        .gzip_output = 0
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:f:v:")) > -1) {
+    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:f:v:z")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
@@ -213,6 +216,7 @@ int main(int argc, char *argv[])
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
             case 'v': settings.max_blen = atoi(optarg); break;
+            case 'z': settings.gzip_output = 1; break;
             case 'h': print_crms_usage(argv); return 0;
             default: print_crms_opt_err(argv, optarg);
         }
@@ -309,35 +313,35 @@ int main(int argc, char *argv[])
             sprintf(del_buf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
             system(del_buf);
         }
-        fprintf(stderr, "Now building cat string.\n");
-        char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
-        char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+        // Make sure that both files are empty.
+        int sys_call_ret;
+        char cat_buff[CAT_BUFFER_SIZE];
+        char ffq_r1[200];
+        char ffq_r2[200];
+        sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
+        sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
+        sprintf(cat_buff, "> %s", ffq_r1);
+        sys_call_ret = system(cat_buff);
+        sprintf(cat_buff, "> %s", ffq_r2);
+        sys_call_ret = system(cat_buff);
         for(int i = 0; i < settings.n_handles; ++i) {
-            strcat(cat_buff1, params->outfnames_r1[i]);
-            strcat(cat_buff1, " ");
-            strcat(cat_buff2, params->outfnames_r2[i]);
-            strcat(cat_buff2, " ");
-        }
-        strcat(cat_buff1, " > ");
-        strcat(cat_buff1, settings.ffq_prefix);
-        strcat(cat_buff1, ".R1.fq");
-        strcat(cat_buff2, " > ");
-        strcat(cat_buff2, settings.ffq_prefix);
-        strcat(cat_buff2, ".R2.fq");
-        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
-        int sys_call_ret = system(cat_buff1);
-        if(sys_call_ret < 0) {
-            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
-        }
-        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
-        sys_call_ret = system(cat_buff2);
-        if(sys_call_ret < 0) {
-            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
-        }
-        for(int i = 0; i < splitter->n_handles; ++i) {
+            // Clear files if present
+            sprintf(cat_buff, (settings.gzip_output) ? "cat %s >> %s": "cat %s | gzip - >> %s", params->outfnames_r1[i], ffq_r1);
+            sys_call_ret = system(cat_buff);
+            if(sys_call_ret < 0) {
+                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
+                exit(EXIT_FAILURE);
+            }
+            sprintf(cat_buff, (settings.gzip_output) ? "cat %s >> %s": "cat %s | gzip - >> %s", params->outfnames_r2[i], ffq_r2);
+            sys_call_ret = system(cat_buff);
+            if(sys_call_ret < 0) {
+                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
+                exit(EXIT_FAILURE);
+            }
+            // Delete both un-needed fastqs.
+            sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
             fprintf(stderr, "Now calling 'rm %s %s'\n", params->outfnames_r1[i], params->outfnames_r2[i]);
-            sprintf(del_buf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-            system(del_buf);
+            sys_call_ret = system(cat_buff);
         }
         splitterhash_destroy(params);
         free(settings.ffq_prefix);
