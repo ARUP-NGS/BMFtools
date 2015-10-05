@@ -9,6 +9,7 @@ from utilBMF.cstring cimport cs_to_ph, cs_to_ia, DNA_CODON_TABLE
 from cpython cimport array as c_array
 from pysam.cfaidx cimport PersistentFastqProxy
 from libc.stdint cimport int8_t
+from libc.stdlib cimport atoi
 ctypedef c_array.array py_array
 ctypedef cython.str cystr
 ctypedef np.longdouble_t dtype128_t
@@ -133,10 +134,8 @@ cdef public dict PhageRefIDDict
 cdef class pFastqProxy:
     cdef public cystr comment, name, quality, sequence
     cdef cystr tostring(self)
-    cpdef int getFM(self)
-    cdef int cGetFM(self)
-    cdef cystr cGetBS(self)
-    cpdef cystr getBS(self)
+    cpdef dict get_tag_dict(self)
+    cpdef int get_int_tag(self, cystr tag)
     cpdef py_array getQualArray(self)
     cpdef cystr getSlice(self, int start=?, int end=?,
                          cystr addComment=?)

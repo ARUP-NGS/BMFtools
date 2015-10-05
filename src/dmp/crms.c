@@ -36,8 +36,10 @@ void print_crms_usage(char *argv[])
                         "-p: Number of threads to use if running uthash_dmp.\n"
                         "-d: Use this flag to to run hash_dmp.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
-                        "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
-        		        "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
+                        "The Final Fastq files will be named '<ffq_prefix>.R1.fq95 ' and '<ffq_prefix>.R2.fq'.\n"
+                        "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
+                        "-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
+                        " (-1), other barcode lengths will not be considered."
                         "-h: Print usage.\n", argv[0]);
 }
 
@@ -77,74 +79,28 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 }
 
 
-/*
- * Pre-processes (pp) and splits fastqs with inline barcodes.
-void pp_split_inline(kseq_t *seq1, kseq_t *seq2,
-                     mssi_settings_t settings, mark_splitter_t splitter)
+inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
 {
-    int l1, l2;
-    uint64_t bin;
-#if LOGGING
-    int count = 0;
-#endif
-    char pass_fail;
-    int readlen = 0;
-    char * barcode;
-    int blen1_2 = settings.blen / 2;
-    int n_len = blen1_2 + settings.homing_sequence_length + settings.offset;
-    barcode = (char *)malloc((settings.blen + 1) * sizeof(char));
-    barcode[settings.blen] = '\0'; // Null-terminate
-    l1 = kseq_read(seq1);
-    l2 = kseq_read(seq2);
-    if(l1 < 0 || l2 < 0) {
-            fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
-            FREE_MSSI_SETTINGS(settings);
-            FREE_SPLITTER(splitter);
-            exit(EXIT_FAILURE);
+    if(settings_ptr->max_blen < 0) {
+        return (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
+                       settings_ptr->homing_sequence,
+                       settings_ptr->homing_sequence_length) == 0) ? settings_ptr->blen1_2 + settings_ptr->offset + settings_ptr->homing_sequence_length: -1;
     }
-    readlen = seq1->seq.l;
-    tmp_mseq_t tmp = init_tmp_mseq(readlen, settings.blen);
-    // Get first barcode.
-    set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
-    pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings.rescaler, &tmp, n_len, 0);
-    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings.rescaler, &tmp, n_len, 1);
-    bin = get_binnerul(barcode, settings.n_nucs);
-    mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
-    mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
-    do {
-#if LOGGING
-        count += 1;
-        if(!(count % settings.notification_interval)) fprintf(stderr, "Number of records processed: %i.\n", count);
-#endif
-        // Iterate through second fastq file.
-        set_barcode(seq1, seq2, barcode, settings.offset, blen1_2);
-        pass_fail = test_homing_seq(seq1, seq2, &settings) ? test_hp_inline(barcode, settings.blen, settings.hp_threshold) : '0';
-        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        update_mseq(&mvar1, barcode, seq1, settings.rescaler, &tmp, n_len, 0);
-        update_mseq(&mvar2, barcode, seq2, settings.rescaler, &tmp, n_len, 1);
-        bin = get_binnerul(barcode, settings.n_nucs);
-        mseq2fq_inline(splitter.tmp_out_handles_r1[bin], &mvar1, pass_fail);
-        mseq2fq_inline(splitter.tmp_out_handles_r2[bin], &mvar2, pass_fail);
-    } while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
-    for(int i = 0; i < splitter.n_handles; ++i) {
-        fclose(splitter.tmp_out_handles_r1[i]);
-        fclose(splitter.tmp_out_handles_r2[i]);
+    for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+        if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
+            return i + settings_ptr->homing_sequence_length;
+        }
     }
-    tmp_mseq_destroy(tmp);
-    mseq_destroy(&mvar1);
-    mseq_destroy(&mvar2);
-    free(barcode);
-    return;
+    return -1;
 }
- */
+
 
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
  */
-mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
-                     mssi_settings_t *settings)
+mark_splitter_t *pp_split_inline(char *r1fq, char *r2fq,
+                                 mssi_settings_t *settings)
 {
     fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", r1fq, r2fq);
     mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
@@ -157,8 +113,7 @@ mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
     uint64_t bin;
     int count = 0;
     char pass_fail;
-    int blen1_2 = settings->blen / 2;
-    int n_len = blen1_2 + settings->homing_sequence_length + settings->offset;
+    settings->blen1_2 = settings->blen / 2;
     char *barcode = (char *)malloc((settings->blen + 1) * sizeof(char));
     barcode[settings->blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);
@@ -170,11 +125,12 @@ mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
             exit(EXIT_FAILURE);
     }
     tmp_mseq_t tmp = init_tmp_mseq(seq1->seq.l, settings->blen);
+    int n_len = nlen_homing_seq(seq1, seq2, settings);
     // Get first barcode.
-    set_barcode(seq1, seq2, barcode, settings->offset, blen1_2);
-    pass_fail = test_homing_seq(seq1, seq2, settings) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
-    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings->rescaler, &tmp, n_len, 0);
-    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings->rescaler, &tmp, n_len, 1);
+    set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
+    pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
+    mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings->rescaler, &tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0);
+    mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings->rescaler, &tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
     bin = get_binnerul(barcode, settings->n_nucs);
     mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
     mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
@@ -183,11 +139,12 @@ mark_splitter_t *pp_split_inline1(char *r1fq, char *r2fq,
             fprintf(stderr, "Number of records processed: %i.\n", count);
         }
         // Iterate through second fastq file.
-        set_barcode(seq1, seq2, barcode, settings->offset, blen1_2);
-        pass_fail = test_homing_seq(seq1, seq2, settings) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
+        n_len = nlen_homing_seq(seq1, seq2, settings);
+        set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
+        pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        update_mseq(&mvar1, barcode, seq1, settings->rescaler, &tmp, n_len, 0);
-        update_mseq(&mvar2, barcode, seq2, settings->rescaler, &tmp, n_len, 1);
+        update_mseq(&mvar1, barcode, seq1, settings->rescaler, &tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0);
+        update_mseq(&mvar2, barcode, seq2, settings->rescaler, &tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
         bin = get_binnerul(barcode, settings->n_nucs);
         mseq2fq_inline(splitter->tmp_out_handles_r1[bin], &mvar1, pass_fail);
         mseq2fq_inline(splitter->tmp_out_handles_r2[bin], &mvar2, pass_fail);
@@ -238,11 +195,12 @@ int main(int argc, char *argv[])
         .rescaler_path = NULL,
         .run_hash_dmp = 0,
         .ffq_prefix = NULL,
-        .threads = 1
+        .threads = 1,
+        .max_blen = -1
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:f:")) > -1) {
+    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:f:v:")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
@@ -254,18 +212,23 @@ int main(int argc, char *argv[])
             case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
+            case 'v': settings.max_blen = atoi(optarg); break;
             case 'h': print_crms_usage(argv); return 0;
             default: print_crms_opt_err(argv, optarg);
         }
     }
-    settings.n_handles = ipow(4, settings.n_nucs);
-    if(settings.n_handles > get_fileno_limit()) {
-        increase_nofile_limit(kroundup32(settings.n_handles));
-    }
+
     if(argc < 5) {
         print_crms_usage(argv); exit(1);
     }
 
+    settings.n_handles = ipow(4, settings.n_nucs);
+    if(settings.n_handles > get_fileno_limit()) {
+        int o_fnl = get_fileno_limit();
+        increase_nofile_limit(kroundup32(settings.n_handles));
+        fprintf(stderr, "Increased nofile limit from %i to %i.\n", o_fnl,
+                kroundup32(settings.n_handles));
+    }
     if(settings.ffq_prefix && !settings.run_hash_dmp) {
         fprintf(stderr, "Final fastq prefix option provided but run_hash_dmp not selected."
                 "Either eliminate the -f flag or add the -d flag.\n");
@@ -279,6 +242,11 @@ int main(int argc, char *argv[])
     if(!settings.blen) {
         fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
         exit(EXIT_FAILURE);
+    }
+
+    if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
+        fprintf(stderr, "max blen (%i) must be less than the minimum blen provided (%i).\n", settings.max_blen,
+                settings.blen / 2);
     }
 
     if(settings.offset) {
@@ -302,7 +270,7 @@ int main(int argc, char *argv[])
         settings.output_basename = make_crms_outfname(r1fq);
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
-    mark_splitter_t *splitter = pp_split_inline1(r1fq, r2fq, &settings);
+    mark_splitter_t *splitter = pp_split_inline(r1fq, r2fq, &settings);
     if(settings.rescaler) {
         cfree_rescaler(settings);
     }

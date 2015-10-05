@@ -193,7 +193,8 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     for(int i = 0; i < kfp->readlen; ++i) {
         argmaxret = ARRG_MAX(kfp, i);
         tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
-        tmp->cons_seq_buffer[i] = tmp->cons_quals[i] > 2 ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+        // Final quality must be 2 or greater and at least one read in the family should support that base call.
+        tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
         tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
     fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
@@ -204,9 +205,9 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     tmp->name_buffer[1 + blen] = '\0';
     //fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
     //fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
             tmp->FABuffer, tmp->PVBuffer,
-            kfp->pass_fail, kfp->n_rc,
+            kfp->pass_fail, kfp->n_rc, kfp->length,
             tmp->cons_seq_buffer, kfp->max_phreds);
     return;
 }

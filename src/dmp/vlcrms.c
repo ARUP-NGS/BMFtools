@@ -116,15 +116,15 @@ mark_splitter_t init_splitter_crms(crms_settings_t* settings_ptr)
 inline int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr)
 {
 #if !NDEBUG
-    if(!settings_ptr->blen_data->homing_sequence) {
+    if(!settings_ptr->homing_sequence) {
         fprintf(stderr, "Okay, if the homing sequence isn't set, just give up.\n");
         exit(EXIT_FAILURE);
     }
 #endif
     for(int i = 0; i < settings_ptr->blen_data->n; ++i) {
         if(memcmp(seq1->seq.s + settings_ptr->blen_data->blens[i] + settings_ptr->offset,
-                  settings_ptr->blen_data->homing_sequence,
-                  settings_ptr->blen_data->homing_sequence_length) == 0) {
+                  settings_ptr->homing_sequence,
+                  settings_ptr->homing_sequence_length) == 0) {
             return settings_ptr->blen_data->blens[i];
         }
     }
@@ -149,8 +149,8 @@ mark_splitter_t *vl_split_inline(char *r1fq, char *r2fq,
     char pass_fail;
     int readlen = 0;
     char *barcode;
-    barcode = (char *)malloc((settings->blen_data->max_blen + 1) * sizeof(char));
-    barcode[settings->blen_data->max_blen] = '\0'; // Null-terminate
+    barcode = (char *)malloc((settings->blen_data->min_blen + 1) * sizeof(char));
+    barcode[settings->blen_data->min_blen] = '\0'; // Null-terminate
     l1 = kseq_read(seq1);
     l2 = kseq_read(seq2);
     if(l1 < 0 || l2 < 0) {
@@ -159,12 +159,12 @@ mark_splitter_t *vl_split_inline(char *r1fq, char *r2fq,
             exit(EXIT_FAILURE);
     }
     readlen = seq1->seq.l;
-    settings->blen_data->current_blen =  vl_homing_loc(seq1, seq2, settings);
-    int n_len = settings->blen_data->current_blen + settings->blen_data->homing_sequence_length + settings->offset;
-    tmp_mseq_t tmp = init_tmp_mseq(readlen, settings->blen_data->max_blen);
+    settings->blen_data->current_blen = vl_homing_loc(seq1, seq2, settings);
+    int n_len = settings->blen_data->current_blen + settings->homing_sequence_length + settings->offset;
+    tmp_mseq_t tmp = init_tmp_mseq(readlen, settings->blen_data->min_blen);
     // Get first barcode.
     set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
-    pass_fail = settings->blen_data->current_blen ? test_hp_inline(barcode, settings->blen_data->current_blen, settings->hp_threshold) : '0';
+    pass_fail = settings->blen_data->current_blen ? test_hp_inline(barcode, settings->blen_data->min_blen, settings->hp_threshold) : '0';
     mseq_t mvar1 = init_rescale_revcmp_mseq(seq1, barcode, settings->rescaler, &tmp, n_len, 0);
     mseq_t mvar2 = init_rescale_revcmp_mseq(seq2, barcode, settings->rescaler, &tmp, n_len, 1);
     bin = get_binnerul(barcode, settings->n_nucs);
@@ -179,7 +179,7 @@ mark_splitter_t *vl_split_inline(char *r1fq, char *r2fq,
         set_barcode(seq1, seq2, barcode, settings->offset, settings->blen_data->min_blen);
         settings->blen_data->current_blen = vl_homing_loc(seq1, seq2, settings);
         pass_fail = settings->blen_data->current_blen ? test_hp_inline(barcode, settings->blen_data->current_blen, settings->hp_threshold) : '0';
-        n_len = settings->blen_data->current_blen + settings->blen_data->homing_sequence_length + settings->offset;
+        n_len = settings->blen_data->current_blen + settings->homing_sequence_length + settings->offset;
         update_mseq(&mvar1, barcode, seq1, settings->rescaler, &tmp, n_len, 0);
         update_mseq(&mvar2, barcode, seq2, settings->rescaler, &tmp, n_len, 1);
         bin = get_binnerul(barcode, settings->n_nucs);
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
         .input_r2_path = NULL,
         .n_handles = 0,
         .notification_interval = 1000000,
-        .blen_data = (blens_t *)calloc(1, sizeof(blens_t)),
+        .blen_data = NULL,
         .offset = 0,
         .rescaler = NULL,
         .run_hash_dmp = 0,
@@ -224,8 +224,7 @@ int main(int argc, char *argv[])
         .threads = 1,
         .rescaler_path = NULL
     };
-    settings.blen_data->max_blen = -1;
-    settings.blen_data->homing_sequence_length = 0;
+    settings.homing_sequence_length = 0;
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
     while ((c = getopt(argc, argv, "p:t:ho:n:s:l:m:r:f:d")) > -1) {
@@ -235,7 +234,12 @@ int main(int argc, char *argv[])
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'o': settings.output_basename = strdup(optarg); break;
             case 'r': settings.rescaler_path = strdup(optarg); settings.rescaler = parse_rescaler(settings.rescaler_path); break;
-            case 's': strcpy(settings.blen_data->homing_sequence, optarg); settings.blen_data->homing_sequence_length = strlen(settings.blen_data->homing_sequence); break;
+            case 's':
+                settings.homing_sequence = strdup(optarg);
+                fprintf(stderr, "Homing sequence parsed in: %s.\n", settings.homing_sequence);
+                settings.homing_sequence_length = strlen(settings.homing_sequence);
+                fprintf(stderr, "Homing sequence length: %i.\n", settings.homing_sequence_length);
+                break;
             case 'l': settings.blen_data = get_blens(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
@@ -245,18 +249,21 @@ int main(int argc, char *argv[])
         }
     }
 
+    fprintf(stderr, "Parsed in arguments.\n");
+
     if(argc < 7) {
         fprintf(stderr, "Insufficient arguments. See usage.\n");
         print_usage(argv); exit(1);
     }
 
-    if(!settings.blen_data->homing_sequence_length) {
-        fprintf(stderr, "homing sequence not provided. e.g., %s -s <homing_sequence> <other_args>.\n", argv[0]);
+    if(!settings.homing_sequence) {
+        fprintf(stderr,
+                "homing sequence not provided (length: %i). e.g., %s -s <homing_sequence> <other_args>.\n",
+                settings.homing_sequence_length, argv[0]);
         exit(EXIT_FAILURE);
-
     }
 
-    if(settings.blen_data->max_blen < 0) {
+    if(!settings.blen_data) {
         fprintf(stderr, "blen data not provided. This should be a comma-separated list "
                          "of positive integers for possible barcode lengths.\n");
         fprintf(stderr, "e.g., %s -l 8,9,10 <other_args>.\n", argv[0]);
