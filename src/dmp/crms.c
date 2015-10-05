@@ -43,9 +43,9 @@ void print_crms_usage(char *argv[])
                         "-d: Use this flag to to run hash_dmp.\n"
                         "-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
                         "The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
-                        "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used."
+                        "-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
                         "-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
-                        " (-1), other barcode lengths will not be considered."
+                        " (-1), other barcode lengths will not be considered.\n"
                         "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
                         "-h: Print usage.\n", argv[0]);
 }
