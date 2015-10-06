@@ -1,0 +1,37 @@
+All with one thread.
+
+SUBCHI2
+real    3m22.670s
+user    3m8.704s
+sys     0m11.682s
+
+FULL_PVALUES
+
+real    3m32.812s
+user    3m15.734s
+sys     0m12.241s
+
+SUBCHI2V2
+
+real    4m34.103s
+user    4m16.149s
+sys     0m15.445s
+
+
+1 Cat vs. 4**n cats
+
+ONE CAT
+real    4m23.363s
+user    3m38.882s
+sys     0m9.505s
+
+ONE_CAT_RUN2
+real    4m26.596s
+user    3m38.198s
+sys     0m9.007s
+
+MANY_CATS
+real    4m39.970s
+user    3m49.822s
+sys     0m15.790s
+

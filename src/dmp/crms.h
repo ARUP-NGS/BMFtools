@@ -1,25 +1,12 @@
 #include "uthash_dmp_core.h"
 #include "include/o_mem.h"
 
-#ifndef MAX_N_BLENS
-#define MAX_N_BLENS 5
-#endif
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
 #endif
 #ifndef CAT_BUFFER_SIZE
 #define CAT_BUFFER_SIZE 500000
 #endif
-
-typedef struct blens {
-    int max_blen; // Last value in blens
-    int min_blen; // Lowest value in blens
-    int blens[MAX_N_BLENS]; // Array holding blens
-    int n; // Number of blens to look for
-    int current_blen;
-    int homing_sequence_length;
-    char homing_sequence[MAX_HOMING_SEQUENCE + 1];
-} blens_t;
 
 
 typedef struct crms_settings {
@@ -40,6 +27,8 @@ typedef struct crms_settings {
     int homing_sequence_length;
     int run_hash_dmp;
 } crms_settings_t;
+
+int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 
 /*
  * :param: settings [crms_settings_t, mssi_settings_t] Settings struct in which to free the rescaler.

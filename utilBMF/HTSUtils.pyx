@@ -164,27 +164,12 @@ cdef class pFastqProxy:
     def __str__(self):
         return self.tostring()
 
-    cpdef int getFM(self):
-        return self.cGetFM()
+    cpdef dict get_tag_dict(self):
+        return {el.split(":")[0]: el.split(":")[2] for
+                el in self.comment.split("\t")}
 
-    cdef int cGetFM(self):
-        cdef cystr entry, key, value
-        for entry in self.comment.split("|")[1:]:
-            key, value = entry.split("=")
-            if(key == "FM"):
-                return int(value)
-        return -1
-
-    cdef cystr cGetBS(self):
-        cdef cystr entry, key, value
-        for entry in self.comment.split("|")[1:]:
-            key, value = entry.split("=")
-            if(key == "BS"):
-                return value
-        return ""
-
-    cpdef cystr getBS(self):
-        return self.cGetBS()
+    cpdef int get_int_tag(self, cystr key):
+        return int(self.get_tag_dict()[key])
 
     cpdef py_array getQualArray(self):
         return cs_to_ph(self.quality)

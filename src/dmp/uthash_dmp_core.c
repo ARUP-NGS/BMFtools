@@ -148,7 +148,13 @@ void omgz_core(char *infname, char *outfname)
     fprintf(stderr, "[omgz_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
 #endif
     HASH_ITER(hh, hash, current_entry, tmp_hk) {
+#if FULL_PVALUES
+    	dmp_process_write_full_pvalues(current_entry->value, out_handle, tmp->blen, tmp->buffers);
+#elif SUB_CHI2
+    	dmp_process_write_sub_chi2(current_entry->value, out_handle, tmp->blen, tmp->buffers);
+#else
         dmp_process_write(current_entry->value, out_handle, tmp->blen, tmp->buffers);
+#endif
         destroy_kf(current_entry->value);
         free(current_entry->value);
         current_entry->value = NULL;

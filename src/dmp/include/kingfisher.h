@@ -168,15 +168,160 @@ inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, c
     }
 }
 
+
 inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer)
 {
     fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:", 'I');
     return;
 }
 
+
 inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
 {
     fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:", 'I'); // Add in the "I" to type the array.
+    return;
+}
+
+/*
+inline void fill_csv_buffer_fs1(int readlen, int *arr, char *buffer, char *prefix, char typecode)
+{
+    char tmpbuf[20];
+    sprintf(buffer, "%s%c", prefix, typecode);
+    for(int i = 0; i < readlen; i++) {
+        strcat(buffer, ",1");
+    }
+}
+
+
+inline void fill_fa_buffer_fs1(KingFisher_t *kfp, int *agrees, char *buffer)
+{
+    fill_csv_buffer_fs1(kfp->readlen, agrees, buffer, "FA:B:", 'I'); // Add in the "I" to type the array.
+    return;
+}
+
+
+static inline void dmp_process_write_fs1(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
+{
+    //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
+    //buffer[0] = '@'; Set this later?
+    int argmaxret;
+    tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+    for(int i = 0; i < kfp->readlen; ++i) {
+        argmaxret = ARRG_MAX(kfp, i);
+        tmp->cons_quals[i] = kfp->phred_sums[i][argmaxret];
+        // Final quality must be 2 or greater and at least one read in the family should support that base call.
+        tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+        tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
+    }
+    fill_fa_buffer_fs2(kfp, tmp->agrees, tmp->FABuffer);
+    //fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+    fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
+    tmp->name_buffer[0] = '@';
+    memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
+    tmp->name_buffer[1 + blen] = '\0';
+    //fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
+    //fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
+    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+            tmp->FABuffer, tmp->PVBuffer,
+            kfp->pass_fail, kfp->n_rc, kfp->length,
+            tmp->cons_seq_buffer, kfp->max_phreds);
+    return;
+}
+*/
+
+
+/*
+ * This returns primarily negative numbers. Whoops.
+ */
+static inline void dmp_process_write_full_pvalues(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
+{
+    //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
+    //buffer[0] = '@'; Set this later?
+    int argmaxret;
+    int tmp_max;
+    double tmp_phred;
+    tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+    for(int i = 0; i < kfp->readlen; ++i) {
+        tmp_max = -1;
+        argmaxret = ARRG_MAX(kfp, i);
+        tmp_phred = kfp->phred_sums[i][argmaxret];
+        for(int j = 0; j != argmaxret && j < 4; ++j) {
+            tmp_phred -= kfp->phred_sums[i][j];
+        }
+        tmp->cons_quals[i] = tmp_phred > 0 ? pvalue_to_phred(LOG10_TO_CHI2(tmp_phred)): 0;
+        if(tmp->cons_quals[i] < -1073741824) { // Underflow!
+            tmp->cons_quals[i] = 3114;
+        }
+        /*
+        else if(tmp->cons_quals[i] < 0) {
+            tmp->cons_quals[i] = 0;
+        }
+        */
+
+        // Final quality must be 2 or greater and at least one read in the family should support that base call.
+        tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+        tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
+    }
+    fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
+    //fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+    fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
+    tmp->name_buffer[0] = '@';
+    memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
+    tmp->name_buffer[1 + blen] = '\0';
+    //fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
+    //fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
+    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+            tmp->FABuffer, tmp->PVBuffer,
+            kfp->pass_fail, kfp->n_rc, kfp->length,
+            tmp->cons_seq_buffer, kfp->max_phreds);
+    return;
+}
+
+
+/*
+ * TODO: Use tmpvals_t object to avoid allocating and deallocating each of these.
+ */
+static inline void dmp_process_write_sub_chi2(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
+{
+    //1. Argmax on the phred_sums arrays, using that to fill in the new seq and
+    //buffer[0] = '@'; Set this later?
+    int tmp_max;
+    int tmp_phreds[4];
+    tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+    for(int i = 0; i < kfp->readlen; ++i) {
+        tmp_max = -1;
+        for(int j = 0; j < 4; ++j) {
+            if(kfp->phred_sums[i][j] > tmp_max) {
+                tmp_max = j;
+            }
+            tmp_phreds[j] = pvalue_to_phred(igamc_pvalues(kfp->nuc_counts[i][j], LOG10_TO_CHI2(kfp->phred_sums[i][j])));
+        }
+        if(tmp_max < 0) {
+            tmp_max = 0;
+        }
+        for(int j = 0; j < 4 && j != tmp_max; ++j) {
+            tmp_phreds[tmp_max] -= tmp_phreds[j];
+        }
+        tmp->cons_quals[i] = tmp_phreds[tmp_max];
+        if(tmp->cons_quals[i] < -1073741824) { // Underflow!
+            tmp->cons_quals[i] = 3114;
+        }
+        // Final quality must be 2 or greater and at least one read in the family should support that base call.
+        tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][tmp_max]) ? ARRG_MAX_TO_NUC(tmp_max): 'N';
+        tmp->agrees[i] = kfp->nuc_counts[i][tmp_max];
+    }
+    fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
+    //fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+    fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
+    tmp->name_buffer[0] = '@';
+    memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
+    tmp->name_buffer[1 + blen] = '\0';
+    //fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
+    //fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
+    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+            tmp->FABuffer, tmp->PVBuffer,
+            kfp->pass_fail, kfp->n_rc, kfp->length,
+            tmp->cons_seq_buffer, kfp->max_phreds);
     return;
 }
 
@@ -193,7 +338,11 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     for(int i = 0; i < kfp->readlen; ++i) {
         argmaxret = ARRG_MAX(kfp, i);
         tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
-        tmp->cons_seq_buffer[i] = tmp->cons_quals[i] > 2 ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+        if(tmp->cons_quals[i] < -1073741824) { // Underflow!
+            tmp->cons_quals[i] = 3114;
+        }
+        // Final quality must be 2 or greater and at least one read in the family should support that base call.
+        tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
         tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
     }
     fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
@@ -204,9 +353,9 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
     tmp->name_buffer[1 + blen] = '\0';
     //fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
     //fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+    fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
             tmp->FABuffer, tmp->PVBuffer,
-            kfp->pass_fail, kfp->n_rc,
+            kfp->pass_fail, kfp->n_rc, kfp->length,
             tmp->cons_seq_buffer, kfp->max_phreds);
     return;
 }

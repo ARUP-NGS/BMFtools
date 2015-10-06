@@ -1,7 +1,6 @@
 # cython: boundscheck=False, wraparound=False
 from array import array
 from itertools import groupby
-from numpy import log10
 from matplotlib.backends.backend_pdf import PdfPages
 from utilBMF.ErrorHandling import ThisIsMadness, ImproperArgumentError
 from utilBMF.HTSUtils import pFastqProxy, pFastqFile, getBS, RevCmp, TrimExt
@@ -141,8 +140,8 @@ def genarateCompleteArray(dict data, obsCutoff=1000):
                          data['read1']['illCount'].astype(np.float64))
     ill2mean = np.divide(data['read2']['illSum'].astype(np.float64),
                          data['read2']['illCount'].astype(np.float64))
-    r1offset = -10*log10(ill1mean) - -10*log10(r12d)
-    r2offset = -10*log10(ill2mean) - -10*log10(r22d)
+    r1offset = -10*np.log10(ill1mean) - -10*np.log10(r12d)
+    r2offset = -10*np.log10(ill2mean) - -10*np.log10(r22d)
     arrShape = [r1err.shape[0], r1err.shape[1], r1err.shape[2]]
     r1DataArray = np.zeros(arrShape, dtype=np.float64)
     r2DataArray = np.zeros(arrShape, dtype=np.float64)
@@ -151,8 +150,8 @@ def genarateCompleteArray(dict data, obsCutoff=1000):
             for base in range(len(r1err[cycle][qual])):
                 b1 = r1err[cycle][qual][base]
                 b2 = r2err[cycle][qual][base]
-                b1 = -10*log10(b1)
-                b2 = -10*log10(b2)
+                b1 = -10*np.log10(b1)
+                b2 = -10*np.log10(b2)
                 if data['read1']['obs'][cycle][qual][base] < obsCutoff:
                     b1 = qual + 2 - r1offset[cycle][base]
                 elif np.isnan(b1) or np.isinf(b1):

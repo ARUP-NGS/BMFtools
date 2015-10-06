@@ -467,6 +467,55 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
 '''
 
 
+cpdef cystr BamRescueMT(cystr inBam, cystr outBam, cystr ref,
+                        cystr opts=None,
+                        int mmlim=DEFAULT_MMLIM, int threads=4):
+    """
+    :param: [cystr/arg] inBam - path to input bam.
+    :param: [cystr/arg] outBam - path to final output bam.
+    :param: [cystr/arg] ref - path to genome reference.
+    :param: [cystr/kwarg/None] tmpBam - path to store temporary bam.
+    :param: [cystr/kwarg/None] tmpFq - Path to store temporary fastqs.
+    :param: [cystr/kwarg/opts] opts - Options to pass to bwa.
+    :param: [int/kwarg/2] mmlim - mismatch threshold for considering reads to
+    be from the same family.
+    :param: [int/kwargs/4] threads - number of threads to use for samtools
+    merge and bwa mem.
+    :return: [cystr] outBam - Path to final output bam.
+    """
+    cdef list split_names
+    if ref is None:
+        raise Tim("Reference fasta required for BamRescueFull!")
+    random_prefix = str(uuid.uuid4().get_hex()[0:8])
+    tmpPrefix = TrimExt(inBam)
+    tmpFq = tmpPrefix + ".ra.fastq"
+    tmpBam = random_prefix + ".ra.tmp.bam"
+    unmappedBam = "%s.REF_unmapped.bam" % tmpPrefix
+    print("tmpFq: %s. tmpBam: %s" % (tmpFq, tmpBam))
+    # Make the subset bams
+    check_call(shlex.split("bamtools split -in %s -reference" % (inBam)))
+    # This is what the output bams will be.
+    split_names = ["%s.REF_%s.bam" % (tmpPrefix, refName) for
+                   refName in pysam.AlignmentFile(inBam, "rb").references]
+    raise NotImplementedError("Hey, I need to actually do this split.")
+    # Make the temporary fastqs for reads that need to be realigned.
+    tmpFq = BamRescue(inBam, tmpBam, tmpFq, mmlim=mmlim)
+    if opts is None:
+        opts = "-t 4 -v 1 -Y -T 0".replace("-t 4", "-t %i" % threads)
+    # Name sort, then align this fastq, sort it, then merge it into the tmpBam
+    cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
+           "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
+           "-O bam -l 0 -T %s - | samtools merge -f " % (random_prefix) +
+           "-@ %i %s %s -" % (threads, outBam, tmpBam))
+    fprintf(stderr, "Command string: %s\n", <char *>cStr)
+    check_call(cStr, shell=True)
+    fprintf(stderr, "Now deleting temporary bam %s and temporary fastq %s.\n",
+            <char *>tmpBam, <char *>tmpFq)
+    check_call(["rm", tmpBam, tmpFq])
+    fprintf(stderr, "Successfully completed BamRescueFull.\n")
+    return outBam
+
+
 cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
                           cystr opts=None,
                           int mmlim=DEFAULT_MMLIM, int threads=4):
@@ -541,7 +590,8 @@ cdef cystr BamRescue(cystr inBam,
     input_bam = pysam.AlignmentFile(inBam, "rb")
     if outBam == "default":
         outBam = TrimExt(inBam) + ".rescue.bam"
-    fprintf(stderr, "Now opening output bam %s\n", <char *>outBam)
+    fprintf(stderr, "Now opening output bam %s\n",
+            <char *>(outBam if(outBam != "-") else "stdout"))
     output_bam = pysam.AlignmentFile(outBam, "wb",
                                      template=input_bam)
     obw = output_bam.write
@@ -551,9 +601,9 @@ cdef cystr BamRescue(cystr inBam,
             recList = list(gen)
             for read in recList:
                 if read.has_tag("RC") is False:
-                    read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
+                    read.tags += [("RC", -1), ("RA", -1)]
                 else:
-                    read.set_tags([("RA", -1, "i") + read.get_tags()])
+                    read.tags.append(("RA", -1))
             [obw(read) for read in recList]
             continue
         for fullkey, gen1 in groupby(gen, FULL_KEY):
@@ -571,10 +621,11 @@ cdef cystr BamRescue(cystr inBam,
             # print(recList[-1].tostring(input_bam))
             for read in recList:
                 if read.has_tag("RC") is False:
-                    read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
+                    read.tags += [("RC", -1), ("RA", -1)]
                 else:
-                    read.set_tags([("RA", -1, "i") + read.get_tags()])
+                    read.tags.append(("RA", -1, "i"))
             if recList[0].flag & 12:
+                # Both read and its mate are unaligned.
                 [obw(read) for read in recList]
             else:
                 recList, fq_text = BamRescueCore(recList, bLen, mmlim)
