@@ -324,6 +324,7 @@ int main(int argc, char *argv[])
         sys_call_ret = system(cat_buff);
         sprintf(cat_buff, "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
+#if !ONE_CAT
         for(int i = 0; i < settings.n_handles; ++i) {
             // Clear files if present
             sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
@@ -343,6 +344,32 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Now calling '%s'\n", cat_buff);
             sys_call_ret = system(cat_buff);
         }
+#else
+        fprintf(stderr, "Now building cat string.\n");
+        char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
+        char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+        for(int i = 0; i < settings.n_handles; ++i) {
+            strcat(cat_buff1, params->outfnames_r1[i]);
+            strcat(cat_buff1, " ");
+            strcat(cat_buff2, params->outfnames_r2[i]);
+            strcat(cat_buff2, " ");
+        }
+        strcat(cat_buff1, " > ");
+        strcat(cat_buff1, ffq_r1);
+        strcat(cat_buff2, " > ");
+        strcat(cat_buff2, ffq_r2);
+        strcat(cat_buff2, ".R2.fq");
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
+        int sys_call_ret = system(cat_buff1);
+        if(sys_call_ret < 0) {
+            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
+        }
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
+        sys_call_ret = system(cat_buff2);
+        if(sys_call_ret < 0) {
+            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
+        }
+#endif
         splitterhash_destroy(params);
         free(settings.ffq_prefix);
     }
