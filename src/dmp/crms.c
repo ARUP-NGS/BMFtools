@@ -47,6 +47,8 @@ void print_crms_usage(char *argv[])
                         "-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
                         " (-1), other barcode lengths will not be considered.\n"
                         "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
+                        "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
+                        "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                         "-h: Print usage.\n", argv[0]);
 }
 
@@ -199,11 +201,12 @@ int main(int argc, char *argv[])
         .ffq_prefix = NULL,
         .threads = 1,
         .max_blen = -1,
-        .gzip_output = 0
+        .gzip_output = 0,
+        .one_cat = 0
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:ho:n:s:l:m:r:dp:f:v:z")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:zcdh")) > -1) {
         switch(c) {
             case 'n': settings.n_nucs = atoi(optarg); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
@@ -218,6 +221,7 @@ int main(int argc, char *argv[])
             case 'v': settings.max_blen = atoi(optarg); break;
             case 'z': settings.gzip_output = 1; break;
             case 'h': print_crms_usage(argv); return 0;
+            case 'c': settings.one_cat = 1; break;
             default: print_crms_opt_err(argv, optarg);
         }
     }
@@ -324,52 +328,52 @@ int main(int argc, char *argv[])
         sys_call_ret = system(cat_buff);
         sprintf(cat_buff, "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
-#if !ONE_CAT
-        for(int i = 0; i < settings.n_handles; ++i) {
-            // Clear files if present
-            sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-            sys_call_ret = system(cat_buff);
-            if(sys_call_ret < 0) {
-                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
-                exit(EXIT_FAILURE);
+        if(!settings.one_cat) {
+            for(int i = 0; i < settings.n_handles; ++i) {
+                // Clear files if present
+                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+                sys_call_ret = system(cat_buff);
+                if(sys_call_ret < 0) {
+                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
+                    exit(EXIT_FAILURE);
+                }
+                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+                sys_call_ret = system(cat_buff);
+                if(sys_call_ret < 0) {
+                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
+                    exit(EXIT_FAILURE);
+                }
+                // Delete both un-needed fastqs.
+                sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+                fprintf(stderr, "Now calling '%s'\n", cat_buff);
+                sys_call_ret = system(cat_buff);
             }
-            sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-            sys_call_ret = system(cat_buff);
-            if(sys_call_ret < 0) {
-                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
-                exit(EXIT_FAILURE);
+        }
+        else {
+            fprintf(stderr, "Now building cat string.\n");
+            char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
+            char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+            for(int i = 0; i < settings.n_handles; ++i) {
+                strcat(cat_buff1, params->outfnames_r1[i]);
+                strcat(cat_buff1, " ");
+                strcat(cat_buff2, params->outfnames_r2[i]);
+                strcat(cat_buff2, " ");
             }
-            // Delete both un-needed fastqs.
-            sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-            fprintf(stderr, "Now calling '%s'\n", cat_buff);
-            sys_call_ret = system(cat_buff);
+            strcat(cat_buff1, " > ");
+            strcat(cat_buff1, ffq_r1);
+            strcat(cat_buff2, " > ");
+            strcat(cat_buff2, ffq_r2);
+            fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
+            sys_call_ret = system(cat_buff1);
+            if(sys_call_ret < 0) {
+                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
+            }
+            fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
+            sys_call_ret = system(cat_buff2);
+            if(sys_call_ret < 0) {
+                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
+            }
         }
-#else
-        fprintf(stderr, "Now building cat string.\n");
-        char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
-        char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
-        for(int i = 0; i < settings.n_handles; ++i) {
-            strcat(cat_buff1, params->outfnames_r1[i]);
-            strcat(cat_buff1, " ");
-            strcat(cat_buff2, params->outfnames_r2[i]);
-            strcat(cat_buff2, " ");
-        }
-        strcat(cat_buff1, " > ");
-        strcat(cat_buff1, ffq_r1);
-        strcat(cat_buff2, " > ");
-        strcat(cat_buff2, ffq_r2);
-        strcat(cat_buff2, ".R2.fq");
-        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
-        int sys_call_ret = system(cat_buff1);
-        if(sys_call_ret < 0) {
-            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
-        }
-        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
-        sys_call_ret = system(cat_buff2);
-        if(sys_call_ret < 0) {
-            fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
-        }
-#endif
         splitterhash_destroy(params);
         free(settings.ffq_prefix);
     }

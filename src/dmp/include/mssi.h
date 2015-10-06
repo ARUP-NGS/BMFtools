@@ -40,6 +40,7 @@ typedef struct mssi_settings {
     int blen1_2;
     int max_blen;
     int gzip_output;
+    int one_cat;
 } mssi_settings_t;
 
 void free_mssi_settings(mssi_settings_t settings);
