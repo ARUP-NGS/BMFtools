@@ -11,6 +11,12 @@ real    3m32.812s
 user    3m15.734s
 sys     0m12.241s
 
+SUBCHI2V2
+
+real    4m34.103s
+user    4m16.149s
+sys     0m15.445s
+
 
 1 Cat vs. 4**n cats
 

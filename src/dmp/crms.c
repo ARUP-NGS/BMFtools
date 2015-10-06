@@ -76,6 +76,7 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
     ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
     ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
     char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+    #pragma omp parallel for
     for (int i = 0; i < ret.n_handles; i++) {
         sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);
         ret.fnames_r1[i] = strdup(tmp_buffer);
@@ -311,6 +312,7 @@ int main(int argc, char *argv[])
         // Remove temporary split files
         fprintf(stderr, "Now removing temporary files.\n");
         char del_buf[250];
+        #pragma omp parallel for
         for(int i = 0; i < splitter->n_handles; ++i) {
             fprintf(stderr, "Now removing temporary files %s and %s.\n",
                     splitter->fnames_r1[i], splitter->fnames_r2[i]);
@@ -329,6 +331,7 @@ int main(int argc, char *argv[])
         sprintf(cat_buff, "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
         if(!settings.one_cat) {
+            #pragma omp parallel for
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present
                 sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
