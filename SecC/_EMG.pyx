@@ -154,11 +154,11 @@ def genarateCompleteArray(dict data, obsCutoff=1000):
                 b2 = -10*np.log10(b2)
                 if data['read1']['obs'][cycle][qual][base] < obsCutoff:
                     b1 = qual + 2 - r1offset[cycle][base]
-                elif np.isnan(b1):
+                elif np.isnan(b1) or np.isinf(b1):
                     b1 = qual + 2 - r1offset[cycle][base]
                 if data['read2']['obs'][cycle][qual][base] < obsCutoff:
                     b2 = qual + 2 - r2offset[cycle][base]
-                if np.isnan(b2):
+                if np.isnan(b2) or np.isinf(b2):
                     b2 = qual + 2 - r2offset[cycle][base]
                 if b1 <= 0:
                     b1 = 2
@@ -182,9 +182,9 @@ def format3DOoutput(ndarray[double_t, ndim=3, mode="c"] r1Array,
                 r2bases = []
                 for bi, base in enumerate(qual):
                     r1bases.append(str(base))
-                    r2bases.append(str(r1Array[ci][qi][bi]))
+                    r2bases.append(str(r2Array[ci][qi][bi]))
                 r1quals.append(":".join(r1bases))
-                r2quals.append(":".join(r1bases))
+                r2quals.append(":".join(r2bases))
             r1quals = ",".join(r1quals)
             r2quals = ",".join(r2quals)
             o = "|".join([r1quals, r2quals])+"\n"
