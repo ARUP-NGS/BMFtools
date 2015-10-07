@@ -95,6 +95,9 @@ void omgz_core(char *infname, char *outfname)
     else {
         in_handle = fopen(infname, "r");
     }
+    if(!in_handle) {
+        fprintf(stderr, "Could not open %s for reading. Abort mission!\n", infname);
+    }
 #if !NDEBUG
     fprintf(stderr, "[omgz_core]: Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
 #endif
@@ -130,13 +133,27 @@ void omgz_core(char *infname, char *outfname)
     pushback_kseq(current_entry->value, seq, tmp->nuc_indices, tmp->blen);
 
     while((l = kseq_read(seq)) >= 0) {
-        tmp->bs_ptr = barcode_mem_view(seq);
-        cp_view2buf(tmp->bs_ptr, tmp->key);
+        /*
+#if !NDEBUG
+        fprintf(stderr,"Barcode sequence: %s. Comment: %s.", tmp->bs_ptr, seq->comment.s);
+        exit(EXIT_SUCCESS);
+        if(!tmp->bs_ptr) {
+            fprintf(stderr, "Couldn't get barcode mem view to work for read %s.\n", seq->name.s);
+            exit(EXIT_FAILURE);
+        }
+        fprintf(stderr, "Seq name: %s. Comment: %s. View: %s.\n", seq->name.s, seq->comment.s, tmp->bs_ptr);
+        if(!seq->seq.s) {
+            fprintf(stderr, "The sequence is somehow null. Stopping reading the file now. \n");
+            break;
+        }
+#endif
+        */
+        cp_view2buf(seq->comment.s + 14, tmp->key);
         HASH_FIND_STR(hash, tmp->key, tmp_hk);
         if(!tmp_hk) {
             tmp_hk = (HashKing_t *)malloc(sizeof(HashKing_t));
             tmp_hk->value = init_kfp(tmp->readlen);
-            cp_view2buf(tmp->bs_ptr, tmp_hk->id);
+            cp_view2buf(seq->comment.s + 14, tmp_hk->id);
             pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
             HASH_ADD_STR(hash, id, tmp_hk);
         }
@@ -148,22 +165,14 @@ void omgz_core(char *infname, char *outfname)
     fprintf(stderr, "[omgz_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
 #endif
     HASH_ITER(hh, hash, current_entry, tmp_hk) {
-#if FULL_PVALUES
-    	dmp_process_write_full_pvalues(current_entry->value, out_handle, tmp->blen, tmp->buffers);
-#elif SUB_CHI2
-    	dmp_process_write_sub_chi2(current_entry->value, out_handle, tmp->blen, tmp->buffers);
-#else
         dmp_process_write(current_entry->value, out_handle, tmp->blen, tmp->buffers);
-#endif
         destroy_kf(current_entry->value);
-        free(current_entry->value);
-        current_entry->value = NULL;
+        cond_free(current_entry->value);
         HASH_DEL(hash, current_entry);
         free(current_entry);
     }
     fclose(out_handle);
-    free(hash);
+    cond_free(hash);
     kseq_destroy(seq);
     tmpvars_destroy(tmp);
 }
-

@@ -44,7 +44,7 @@ typedef struct tmp_mseq {
 char *barcode_mem_view(kseq_t *seq)
 {
     int hits = 0;
-    for(int i = 0; i < seq->comment.l; i++) {
+    for(int i = 0; i < seq->comment.l; ++i) {
         if(seq->comment.s[i] == '|') {
             if(!hits) {
                 hits += 1;
