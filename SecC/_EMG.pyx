@@ -182,9 +182,9 @@ def format3DOoutput(ndarray[double_t, ndim=3, mode="c"] r1Array,
                 r2bases = []
                 for bi, base in enumerate(qual):
                     r1bases.append(str(base))
-                    r2bases.append(str(r1Array[ci][qi][bi]))
+                    r2bases.append(str(r2Array[ci][qi][bi]))
                 r1quals.append(":".join(r1bases))
-                r2quals.append(":".join(r1bases))
+                r2quals.append(":".join(r2bases))
             r1quals = ",".join(r1quals)
             r2quals = ",".join(r2quals)
             o = "|".join([r1quals, r2quals])+"\n"
