@@ -235,18 +235,6 @@ def is_read_softclipped(read):
     return False
 
 
-def BwaswCall(fq1, fq2, ref="default", outBAM="default"):
-    if(ref == "default"):
-        raise Tim("ref required to call bwasw.")
-    if(outBAM == "default"):
-        outBAM = ".".join(fq1.split(".")[:-1]) + ".bam"
-    cStr = "bwa bwasw %s %s %s | samtools view -Sbh - > %s" % (ref, fq1, fq2,
-                                                               outBAM)
-    pl("About to call bwasw. Command string: %s" % cStr)
-    check_call(cStr, shell=True)
-    return outBAM
-
-
 def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
                   cystr opts="", cystr outBAM=None,
                   bint addRG=True):
@@ -285,60 +273,54 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
     return outBAM
 
 
-def PipeAlignTag(R1, R2, ref="default",
-                 outBAM="default", path="default",
-                 bint coorsort=True, bint u=False,
-                 sortMem="6G", cystr opts=None,
-                 bint dry_run=False, bint sam=False):
+def BwaMemCall(R1, R2, ref="default",
+               outBAM="default", path="default",
+               bint coorsort=True, bint u=False,
+               sortMem="6G", cystr opts=None,
+               bint dry_run=False, bint sam=False,
+               int threads=4):
     """
-    :param R1 - [cystr/arg] - path to input fastq for read 1
-    :param R2 - [cystr/arg] - path to input fastq for read 2
-    :param ref [cystr/kwarg/"default"] path to reference index base
-    :param outBAM - [cystr/kwarg/"default"] - path to output bam.
+    :param: R1 - [cystr/arg] - path to input fastq for read 1
+    :param: R2 - [cystr/arg] - path to input fastq for read 2
+    :param: ref [cystr/kwarg/"default"] path to reference index base
+    :param: outBAM - [cystr/kwarg/"default"] - path to output bam.
     Set to 'stdout' to emit to stdout.
-    :param path - [cystr/kwarg/"default"] - absolute path to bwa executable.
-    :param coorsort [bint/kwarg/True] - whether or not to coordinate sort
-    :param u [bint/kwarg/False] - emit uncompressed bam.
+    :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
+    :param: coorsort [bint/kwarg/True] - whether or not to coordinate sort
+    :param: u [bint/kwarg/False] - emit uncompressed bam.
     Override default bwa path (bwa) if necessary.
-    :param sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
-    :param opts - [cystr/kwarg/"-t 4 -v 1 -Y -T 0"] - optional arguments
+    :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
+    :param: opts - [cystr/kwarg/"-t 4 -v 1 -Y -T 0"] - optional arguments
     to provide to bwa for alignment.
-    :param dry_run - [bint/kwarg/False] - flag to return the command string
+    :param: dry_run - [bint/kwarg/False] - flag to return the command string
     rather than calling it.
+    :param: threads - [int/kwarg/4]
     :returns: [cystr] - path to outBAM if writing to file, "stdout" if
     emitting to stdout.
     """
     if(opts is None):
-        opts = "-t 4 -v 1 -Y -T 0"
+        opts = "-t %i -v 1 -Y -T 0" % threads
     if(path == "default"):
         path = "bwa"
     if(outBAM == "default"):
         outBAM = ".".join(R1.split(".")[0:-1]) + ".mem.bam"
     if(ref == "default"):
         raise Tim("Reference file index required for alignment!")
-    PBTflag = 6 if(u) else 2
     uuidvar = str(uuid.uuid4().get_hex().upper()[0:8])
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    sedString = (" | sed -r -e 's/\t~#!#~\|/\t"
-                 "RG:Z:default\t/' -e 's/^@PG/@RG\tID:default\tPL:"
-                 "ILLUMINA\tPU:default\tLB:default\tSM:default\tCN:defaul"
-                 "t\n@PG/' -e 's/FP=/FP:i:/' -e 's/\|BS=/\tBS:Z:/' -e "
-                 "'s/\|FM=/\tFM:i:/' -e 's/\|ND=/\tND:i:/' -e 's/\|FA=/\t"
-                 "FA:B:i,/' -e 's/\|PV=/\tPV:B:i,/'")
-    cStr += sedString
     if(sam is False):
         if(coorsort):
             compStr = " -l 0 " if(u) else ""
             cStr += " | samtools sort -m %s -O bam -T %s %s -" % (sortMem,
                                                                   uuidvar,
                                                                   compStr)
-            if(outBAM != "stdout" and outBAM != "-"):
+            if(outBAM not in ["stdout", "-"]):
                 cStr += " -o %s" % outBAM
         else:
             cStr += (" | samtools view -Sbhu - " if(
                 u) else " | samtools view -Sbh -")
-            if(outBAM != "stdout" and outBAM != "-"):
+            if(outBAM not in ["stdout", "-"]):
                 cStr += " > %s" % outBAM
     else:
         cStr += " > %s" % outBAM.replace(".bam", ".sam")

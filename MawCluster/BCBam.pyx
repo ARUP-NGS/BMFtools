@@ -464,19 +464,29 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
     return ([read for read in recList if
              read.has_tag("RA") is False],
             [bam2ffq(read) for read in recList if read.has_tag("RA")])
+            waMemCall(R1, R2, ref="default",
+               outBAM="default", path="default",
+               bint coorsort=True, bint u=False,
+               sortMem="6G", cystr opts=None,
+               bint dry_run=False, bint sam=False,
+               int threads=4)
 '''
 
 
-cpdef cystr BamRescueMT(cystr inBam, cystr outBam, cystr ref,
-                        cystr opts=None,
+cpdef cystr BamRescueMT(cystr fq1, cystr fq2, cystr ref,
+                        cystr outBam=None, cystr prefix=None, cystr opts=None,
                         int mmlim=DEFAULT_MMLIM, int threads=4):
     """
-    :param: [cystr/arg] inBam - path to input bam.
+    :param: [cystr/arg] fq1 - path to input fastq R1.
+    :param: [cystr/arg] fq2 - path to input fastq R2.
     :param: [cystr/arg] outBam - path to final output bam.
     :param: [cystr/arg] ref - path to genome reference.
     :param: [cystr/kwarg/None] tmpBam - path to store temporary bam.
     :param: [cystr/kwarg/None] tmpFq - Path to store temporary fastqs.
-    :param: [cystr/kwarg/opts] opts - Options to pass to bwa.
+    :param: [cystr/kwarg/None] opts - Options to pass to bwa.
+    Defaults to "-t <threads> -v 1 -Y -T 0" if left as None.
+    :param: [cystr/kwarg/opts] prefix - Prefix to pass to bamtools split.
+    Default: "BMF"
     :param: [int/kwarg/2] mmlim - mismatch threshold for considering reads to
     be from the same family.
     :param: [int/kwargs/4] threads - number of threads to use for samtools
@@ -486,16 +496,21 @@ cpdef cystr BamRescueMT(cystr inBam, cystr outBam, cystr ref,
     cdef list split_names
     if ref is None:
         raise Tim("Reference fasta required for BamRescueFull!")
+    if outBam is None:
+        outBam = TrimExt(fq1) + ".rsq.bam"
     random_prefix = str(uuid.uuid4().get_hex()[0:8])
-    tmpPrefix = TrimExt(inBam)
+    tmpPrefix = TrimExt(outBam)
     tmpFq = tmpPrefix + ".ra.fastq"
     tmpBam = random_prefix + ".ra.tmp.bam"
     unmappedBam = "%s.REF_unmapped.bam" % tmpPrefix
     print("tmpFq: %s. tmpBam: %s" % (tmpFq, tmpBam))
+    print("Now")
     # Make the subset bams
-    check_call(shlex.split("bamtools split -in %s -reference" % (inBam)))
+    if prefix is None:
+        prefix = ""
     # This is what the output bams will be.
-    split_names = ["%s.REF_%s.bam" % (tmpPrefix, refName) for
+    '''
+    split_names = ["%s.%s%s.bam" % (tmpPrefix, prefix,refName) for
                    refName in pysam.AlignmentFile(inBam, "rb").references]
     raise NotImplementedError("Hey, I need to actually do this split.")
     # Make the temporary fastqs for reads that need to be realigned.
@@ -506,13 +521,16 @@ cpdef cystr BamRescueMT(cystr inBam, cystr outBam, cystr ref,
     cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
            "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
            "-O bam -l 0 -T %s - | samtools merge -f " % (random_prefix) +
-           "-@ %i %s %s -" % (threads, outBam, tmpBam))
-    fprintf(stderr, "Command string: %s\n", <char *>cStr)
+           "-@ %i %s %s - | bamtools split -" % (threads, outBam, tmpBam) +
+           "refPrefix %s -stub %s" % (prefix if(prefix != "") else "''",
+                                      tmpPrefix))
+    fprintf(stderr, "Command string: '%s'\n", <char *>cStr)
     check_call(cStr, shell=True)
     fprintf(stderr, "Now deleting temporary bam %s and temporary fastq %s.\n",
             <char *>tmpBam, <char *>tmpFq)
     check_call(["rm", tmpBam, tmpFq])
     fprintf(stderr, "Successfully completed BamRescueFull.\n")
+    '''
     return outBam
 
 
@@ -525,7 +543,7 @@ cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
     :param: [cystr/arg] ref - path to genome reference.
     :param: [cystr/kwarg/None] tmpBam - path to store temporary bam.
     :param: [cystr/kwarg/None] tmpFq - Path to store temporary fastqs.
-    :param: [cystr/kwarg/opts] opts - Options to pass to bwa.
+    :param: [cystr/kwarg/None] opts - Options to pass to bwa.
     :param: [int/kwarg/2] mmlim - mismatch threshold for considering reads to
     be from the same family.
     :param: [int/kwargs/4] threads - number of threads to use for samtools
@@ -547,7 +565,7 @@ cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
            "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
            "-O bam -l 0 -T %s - | samtools merge -f " % (random_prefix) +
            "-@ %i %s %s -" % (threads, outBam, tmpBam))
-    fprintf(stderr, "Command string: %s\n", <char *>cStr)
+    fprintf(stderr, "Command string: '%s'\n", <char *>cStr)
     check_call(cStr, shell=True)
     fprintf(stderr, "Now deleting temporary bam %s and temporary fastq %s.\n",
             <char *>tmpBam, <char *>tmpFq)
