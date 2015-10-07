@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "include/mss.h" // contains structs and methods related to both inline and non-inline mss
+#include "include/o_mem.h" // contains conditional free
 
 
 typedef struct sort_overlord {
@@ -52,10 +53,11 @@ int ipow(int base, int exp);
 
 
 #ifndef FREE_SETTINGS
-#define FREE_SETTINGS(settings) free(settings.output_basename);\
-    free(settings.index_fq_path);\
-    free(settings.input_r1_path);\
-    free(settings.input_r2_path);
+#define FREE_SETTINGS(settings) cond_free(settings.output_basename);\
+    cond_free(settings.index_fq_path);\
+    cond_free(settings.input_r1_path);\
+    cond_free(settings.input_r2_path);\
+    cond_free(settings.ffq_prefix)
 #endif
 
 

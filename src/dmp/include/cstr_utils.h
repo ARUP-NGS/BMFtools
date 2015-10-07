@@ -13,6 +13,7 @@
  */
 inline char *trim_ext(char *fname)
 {
+	fprintf(stderr, "Now trimming char * %s.\n", fname);
     char *buf = malloc((strlen(fname) + 1) * sizeof(char ));
     ptrdiff_t pos = strrchr(fname, '.') - fname; // Find the position in the read where the last '.' is.
     memcpy(buf, fname, pos * sizeof(char));

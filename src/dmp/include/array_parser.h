@@ -1,3 +1,5 @@
+#pragma once
+
 #include <math.h>
 #include <omp.h>
 #include <stddef.h>
@@ -10,7 +12,6 @@
 
 // Shamelessly stolen from the source code for 'wc'.
 typedef unsigned long count_t; /* counter type */
-
 
 inline int count_lines(char *fname) {
     int ret = 0;

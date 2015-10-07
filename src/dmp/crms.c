@@ -47,6 +47,7 @@ void print_crms_usage(char *argv[])
                         "-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
                         " (-1), other barcode lengths will not be considered.\n"
                         "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
+                        "-u: Set notification/update interval for split. Default: 1000000.\n"
                         "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
                         "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                         "-h: Print usage.\n", argv[0]);
@@ -203,26 +204,27 @@ int main(int argc, char *argv[])
         .threads = 1,
         .max_blen = -1,
         .gzip_output = 0,
-        .one_cat = 0
+        .panthera = 0
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:zcdh")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:zcdh")) > -1) {
         switch(c) {
-            case 'n': settings.n_nucs = atoi(optarg); break;
-            case 't': settings.hp_threshold = atoi(optarg); break;
-            case 'o': settings.output_basename = strdup(optarg); break;
-            case 'r': settings.rescaler_path = strdup(optarg); break;
-            case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
-            case 'l': settings.blen = 2 * atoi(optarg); break;
-            case 'm': settings.offset = atoi(optarg); break;
-            case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
+            case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
+            case 'l': settings.blen = 2 * atoi(optarg); break;
+            case 'm': settings.offset = atoi(optarg); break;
+            case 'n': settings.n_nucs = atoi(optarg); break;
+            case 'o': settings.output_basename = strdup(optarg); break;
+            case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
+            case 'r': settings.rescaler_path = strdup(optarg); break;
+            case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
+            case 't': settings.hp_threshold = atoi(optarg); break;
             case 'v': settings.max_blen = atoi(optarg); break;
+            case 'u': settings.notification_interval = atoi(optarg); break;
             case 'z': settings.gzip_output = 1; break;
             case 'h': print_crms_usage(argv); return 0;
-            case 'c': settings.one_cat = 1; break;
             default: print_crms_opt_err(argv, optarg);
         }
     }
@@ -232,7 +234,7 @@ int main(int argc, char *argv[])
     }
 
     settings.n_handles = ipow(4, settings.n_nucs);
-    if(settings.n_handles > get_fileno_limit()) {
+    if(settings.n_handles * 3 > get_fileno_limit()) {
         int o_fnl = get_fileno_limit();
         increase_nofile_limit(kroundup32(settings.n_handles));
         fprintf(stderr, "Increased nofile limit from %i to %i.\n", o_fnl,
@@ -330,7 +332,7 @@ int main(int argc, char *argv[])
         sys_call_ret = system(cat_buff);
         sprintf(cat_buff, "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
-        if(!settings.one_cat) {
+        if(!settings.panthera) {
             #pragma omp parallel for
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present

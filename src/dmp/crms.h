@@ -1,5 +1,6 @@
 #include "uthash_dmp_core.h"
 #include "include/o_mem.h"
+#include "include/array_parser.h"
 
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
@@ -7,7 +8,6 @@
 #ifndef CAT_BUFFER_SIZE
 #define CAT_BUFFER_SIZE 500000
 #endif
-
 
 typedef struct crms_settings {
     int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
@@ -29,6 +29,7 @@ typedef struct crms_settings {
 } crms_settings_t;
 
 int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
+int count_lines(char *fname);
 
 /*
  * :param: settings [crms_settings_t, mssi_settings_t] Settings struct in which to free the rescaler.
@@ -90,7 +91,7 @@ inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr
     return ret;
 }
 
-
+/*
 void free_rescaler_array(crms_settings_t settings) {
     int readlen = count_lines(settings.rescaler_path);
     for(int i = 0; i < 2; ++i) {
@@ -105,6 +106,20 @@ void free_rescaler_array(crms_settings_t settings) {
     cond_free(settings.rescaler);
     return;
 }
+*/
+
+#define free_rescaler_array(settings) \
+	    int readlen = count_lines(settings.rescaler_path);\
+	    for(int i##settings = 0; i##settings < 2; ++i##settings) {\
+	        for(int j##settings = 0; j##settings < readlen; ++j##settings) {\
+	            for(int k##settings = 0; k##settings < 39; ++k##settings) {\
+	                cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
+	            }\
+	            cond_free(settings.rescaler[i##settings][j##settings]);\
+	        }\
+	        cond_free(settings.rescaler[i##settings]);\
+	    }\
+	    cond_free(settings.rescaler)\
 
 // Inline function declarations
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
@@ -128,7 +143,6 @@ void tmp_mseq_destroy(tmp_mseq_t mvar);
 void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 char nuc_cmpl(char character);
 void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail);
-int count_lines(char *fname);
 void FREE_SPLITTER(mark_splitter_t var);
 char *trim_ext(char *fname);
 char *make_default_outfname(char *fname, const char *suffix);
@@ -140,7 +154,9 @@ int get_binner(char *barcode, int length);
 uint64_t ulpow(uint64_t base, uint64_t exp);
 void splitterhash_destroy(splitterhash_params_t *params);
 splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
 blens_t *get_blens(char *str2parse);
 void free_crms_settings(crms_settings_t settings);
 splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+void omgz_core(char *infname, char *outfname);

@@ -13,6 +13,11 @@
         "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
     read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
 #endif
+#ifndef SALTED_KSEQ_2_FQ
+#define SALTED_KSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
+        "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
+    read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
+#endif
 
 
 #ifndef FREE_SETTINGS
@@ -32,11 +37,17 @@ typedef struct mss_settings {
     int n_nucs;
     int n_handles;
     char *output_basename;
-    int threads;
     int notification_interval;
     char *index_fq_path;
     char *input_r1_path;
     char *input_r2_path;
+    char *ffq_prefix;
+    int run_hash_dmp;
+    int gzip_output;
+    int panthera; // One "big cat" or many small cats?
+    int salt; // Number of bases from each of read 1 and read 2 to use to salt
+    int offset; // The number of bases at the start of reads 1 and 2 to skip when salting
+    int threads; // Number of threads to use for parallel dmp
 } mss_settings_t;
 
 
@@ -113,12 +124,13 @@ static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
     }
 }
 
-static void splitmark_core1(char *r1fq, char *r2fq, char *index_fq,
-                            mss_settings_t *settings)
+static mark_splitter_t *splitmark_core1(char *r1fq, char *r2fq, char *index_fq,
+                                        mss_settings_t *settings)
 {
     gzFile fp_read1, fp_read2, fp_index;
     kseq_t *seq1, *seq2, *seq_index;
-    mark_splitter_t splitter = init_splitter(settings);
+    mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+    *splitter_ptr = init_splitter(settings);
     fp_read1 = gzopen(r1fq, "r");
     fp_read2 = gzopen(r2fq, "r");
     fp_index = gzopen(index_fq, "r");
@@ -128,17 +140,22 @@ static void splitmark_core1(char *r1fq, char *r2fq, char *index_fq,
     int l1, l2, l_index, bin;
     int count = 0;
     char pass_fail;
+    char barcode[200];
     while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
             && (l_index = kseq_read(seq_index)) >= 0) {
-        if(!(count++ % settings->notification_interval)) {
+        if(!(++count % settings->notification_interval)) {
             fprintf(stderr, "Number of records processed: %i.\n", count);
         }
+        memcpy(barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+        memcpy(barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+        memcpy(barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
+        barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
         // Iterate through second fastq file.
         pass_fail = test_hp(seq_index, settings->hp_threshold);
         //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-        bin = get_binner(seq_index->seq.s, settings->n_nucs);
-        KSEQ_2_FQ(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass_fail);
-        KSEQ_2_FQ(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass_fail);
+        bin = get_binner(barcode, settings->n_nucs);
+        SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
+        SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], seq2, barcode, pass_fail);
     }
     kseq_destroy(seq1);
     kseq_destroy(seq2);
@@ -146,7 +163,7 @@ static void splitmark_core1(char *r1fq, char *r2fq, char *index_fq,
     gzclose(fp_read1);
     gzclose(fp_read2);
     gzclose(fp_index);
-    return;
+    return splitter_ptr;
 }
 
 
