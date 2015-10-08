@@ -327,54 +327,28 @@ int main(int argc, char *argv[])
         sys_call_ret = system(cat_buff);
         sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
-        if(!settings.panthera) {
-            #pragma omp parallel for shared(settings, params, ffq_r1, ffq_r2)
-            for(int i = 0; i < settings.n_handles; ++i) {
-                // Clear files if present
-                if(settings.gzip_output) {
-                    sprintf(cat_buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
-                }
-                else {
-                    sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-                }
-                CHECK_CALL(cat_buff, sys_call_ret);
-                if(settings.gzip_output) {
-                    sprintf(cat_buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
-                }
-                else {
-                    sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-                }
-                CHECK_CALL(cat_buff, sys_call_ret);
-            }
-            for(int i = 0; i < settings.n_handles; ++i) {
-                sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-                CHECK_CALL(cat_buff, sys_call_ret);
-            }
+        fprintf(stderr, "Now building cat string.\n");
+        char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
+        char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+        for(int i = 0; i < settings.n_handles; ++i) {
+            strcat(cat_buff1, params->outfnames_r1[i]);
+            strcat(cat_buff1, " ");
+            strcat(cat_buff2, params->outfnames_r2[i]);
+            strcat(cat_buff2, " ");
         }
-        else {
-            fprintf(stderr, "Now building cat string.\n");
-            char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
-            char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
-            for(int i = 0; i < settings.n_handles; ++i) {
-                strcat(cat_buff1, params->outfnames_r1[i]);
-                strcat(cat_buff1, " ");
-                strcat(cat_buff2, params->outfnames_r2[i]);
-                strcat(cat_buff2, " ");
-            }
-            strcat(cat_buff1, " > ");
-            strcat(cat_buff1, ffq_r1);
-            strcat(cat_buff2, " > ");
-            strcat(cat_buff2, ffq_r2);
-            fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
+        strcat(cat_buff1, " > ");
+        strcat(cat_buff1, ffq_r1);
+        strcat(cat_buff2, " > ");
+        strcat(cat_buff2, ffq_r2);
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
+        CHECK_CALL(cat_buff1, sys_call_ret);
+        fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
+        CHECK_CALL(cat_buff2, sys_call_ret);
+        //#pragma omp parallel for shared(params)
+        for(int i = 0; i < settings.n_handles; ++i) {
+            sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+            fprintf(stderr, "About to call command '%s'.\n", cat_buff1);
             CHECK_CALL(cat_buff1, sys_call_ret);
-            fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
-            CHECK_CALL(cat_buff2, sys_call_ret);
-            #pragma omp parallel for shared(params)
-            for(int i = 0; i < settings.n_handles; ++i) {
-                sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-                fprintf(stderr, "About to call command '%s'.\n", cat_buff1);
-                CHECK_CALL(cat_buff1, sys_call_ret);
-            }
         }
         splitterhash_destroy(params);
         free(settings.ffq_prefix);

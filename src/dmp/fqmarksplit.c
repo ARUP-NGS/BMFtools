@@ -89,13 +89,7 @@ int main(int argc, char *argv[])
         .threads = 4
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
-    settings.n_handles = ipow(4, settings.n_nucs);
-    if(settings.n_handles * 3 > get_fileno_limit()) {
-        int o_fnl = get_fileno_limit();
-        increase_nofile_limit(kroundup32(settings.n_handles));
-        fprintf(stderr, "Increased nofile limit from %i to %i.\n", o_fnl,
-                kroundup32(settings.n_handles));
-    }
+
     int c;
     while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:hdcz")) > -1) {
         switch(c) {
@@ -114,6 +108,13 @@ int main(int argc, char *argv[])
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
+    }
+    settings.n_handles = ipow(4, settings.n_nucs);
+    if(settings.n_handles * 3 > get_fileno_limit()) {
+        int o_fnl = get_fileno_limit();
+        increase_nofile_limit(kroundup32(settings.n_handles));
+        fprintf(stderr, "Increased nofile limit from %i to %i.\n", o_fnl,
+                kroundup32(settings.n_handles));
     }
 
     if(argc - 1 != optind + 1) {
@@ -147,24 +148,25 @@ int main(int argc, char *argv[])
         }
         // Whatever I end up putting into here.
         splitterhash_params_t *params = init_splitterhash_mss(&settings, splitter);
+        for(int i = 0; i < params->n; ++i) {
+            fprintf(stderr, "infnames R1 %s, R2 %s. outfnames R1 %s, R2 %s\n",
+                    params->infnames_r1[i], params->infnames_r2[i],
+                    params->outfnames_r1[i], params->outfnames_r2[i]);
+        }
 #if NOPARALLEL
 #else
-        #pragma omp parallel
+        fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
+        #pragma omp parallel shared(params)
         {
-#if !NDEBUG
-            fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
-#endif
             #pragma omp for
 #endif
-            for(int i = 0; i < settings.n_handles; ++i) {
-            	if(!(splitter->fnames_r1[i] && params->outfnames_r1[i])) {
-            		fprintf(stderr, "File names are null! Abort mission! '%s', '%s'.\n", splitter->fnames_r1[i], params->outfnames_r1[i]);
-            		exit(EXIT_FAILURE);
-            	}
+            for(int i = 0; i < params->n; ++i) {
                 fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
-                        splitter->fnames_r1[i], params->outfnames_r1[i]);
-                omgz_core(splitter->fnames_r1[i], params->outfnames_r1[i]);
-                omgz_core(splitter->fnames_r2[i], params->outfnames_r2[i]);
+                        params->infnames_r1[i], params->outfnames_r1[i]);
+                omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
+                fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
+                        params->infnames_r2[i], params->outfnames_r2[i]);
+                omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
             }
 #if NOPARALLEL
 #else
@@ -215,12 +217,14 @@ int main(int argc, char *argv[])
         }
         else {
             fprintf(stderr, "Now building cat string.\n");
-            char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
-            char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+            char cat_buff1[CAT_BUFFER_SIZE];
+            sprintf(cat_buff1, "/bin/cat ");
+            char cat_buff2[CAT_BUFFER_SIZE];
+            sprintf(cat_buff2, "/bin/cat ");
             for(int i = 0; i < settings.n_handles; ++i) {
                 strcat(cat_buff1, params->outfnames_r1[i]);
                 strcat(cat_buff1, " ");
-                strcat(cat_buff2, params->outfnames_r2[i]);
+                fprintf(stderr, "Now adding filename %s.\n", params->outfnames_r2[i]);
                 strcat(cat_buff2, " ");
             }
             strcat(cat_buff1, " > ");
@@ -236,6 +240,13 @@ int main(int argc, char *argv[])
             sys_call_ret = system(cat_buff2);
             if(sys_call_ret < 0) {
                 fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
+            }
+            for(int i = 0; i < settings.n_handles; ++i) {
+                sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+                sys_call_ret = system(cat_buff1);
+                if(sys_call_ret < 0) {
+                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
+                }
             }
         }
         splitterhash_destroy(params);
