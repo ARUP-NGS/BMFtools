@@ -57,6 +57,9 @@ void print_crms_usage(char *argv[])
                         "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
                         "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                         "-u: Set notification/update interval for split. Default: 1000000.\n"
+        		        "-$: Number of bases from each read with which to salt if using inline barcodes. Default: 0.\n"
+        		        "-7: Flag - set to true to use a secondary index fastq. Requires -i!\n"
+        		        "-i: Path to index fastq. (Required if -7 set.)\n"
                         "-h: Print usage.\n", argv[0]);
 }
 
@@ -65,35 +68,6 @@ void print_crms_opt_err(char *argv[], char *optarg)
     print_crms_usage(argv);
     fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
     exit(1);
-}
-
-
-mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
-{
-    mark_splitter_t ret = {
-        .n_handles = ipow(4, settings_ptr->n_nucs),
-        .n_nucs = settings_ptr->n_nucs,
-        .fnames_r1 = NULL,
-        .fnames_r2 = NULL,
-        .tmp_out_handles_r1 = NULL,
-        .tmp_out_handles_r2 = NULL
-    };
-    // Avoid passing more variables.
-    ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-    ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-    ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
-    ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
-    char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-    for (int i = 0; i < ret.n_handles; i++) {
-        sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);
-        ret.fnames_r1[i] = strdup(tmp_buffer);
-        sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
-        ret.fnames_r2[i] = strdup(tmp_buffer);
-        fprintf(stderr, "Do R1 and R2 match up? %s, %s.\n", ret.fnames_r1[i], ret.fnames_r2[i]);
-        ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
-        ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
-    }
-    return ret;
 }
 
 
@@ -111,7 +85,6 @@ inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
     }
     return -1;
 }
-
 
 
 /*
@@ -212,16 +185,23 @@ int main(int argc, char *argv[])
         .max_blen = -1,
         .gzip_output = 0,
         .panthera = 0,
-        .gzip_compression = 6
+        .gzip_compression = 6,
+		.index_fq_path = NULL,
+		.p7 = 0,
+		.salt = 0
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:zcdh")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:$:7zcdh")) > -1) {
         switch(c) {
+            case '7': settings.p7 = 1; break;
+            case '$': settings.salt = atoi(optarg);
             case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
             case 'g': settings.gzip_compression = atoi(optarg); break;
+            case 'h': print_crms_usage(argv); return 0;
+            case 'i': settings.index_fq_path = strdup(optarg); break;
             case 'l': settings.blen = 2 * atoi(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
@@ -230,10 +210,9 @@ int main(int argc, char *argv[])
             case 'r': settings.rescaler_path = strdup(optarg); break;
             case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
             case 't': settings.hp_threshold = atoi(optarg); break;
-            case 'v': settings.max_blen = atoi(optarg); break;
             case 'u': settings.notification_interval = atoi(optarg); break;
+            case 'v': settings.max_blen = atoi(optarg); break;
             case 'z': settings.gzip_output = 1; break;
-            case 'h': print_crms_usage(argv); return 0;
             default: print_crms_opt_err(argv, optarg);
         }
     }
@@ -255,16 +234,16 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    if(!settings.homing_sequence) {
+    if(!settings.homing_sequence && !settings.p7) {
         fprintf(stderr, "Homing sequence not provided. Required.\n");
         exit(EXIT_FAILURE);
     }
-    if(!settings.blen) {
+    if(!settings.blen && !settings.p7) {
         fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
         exit(EXIT_FAILURE);
     }
 
-    if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
+    if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen  && !settings.p7) {
         fprintf(stderr, "max blen (%i) must be less than the minimum blen provided (%i).\n", settings.max_blen,
                 settings.blen / 2);
     }
@@ -290,7 +269,18 @@ int main(int argc, char *argv[])
         settings.output_basename = make_crms_outfname(r1fq);
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
-    mark_splitter_t *splitter = pp_split_inline(r1fq, r2fq, &settings);
+    mark_splitter_t *splitter;
+    if(!settings.p7) {
+        splitter = pp_split_inline(r1fq, r2fq, &settings);
+    }
+    else {
+    	if(!settings.index_fq_path) {
+    		fprintf(stderr, "Index fq path required for fqmarksplit. Abort mission! (See usage.).");
+    		print_crms_usage(argv); exit(1);
+    	}
+    	splitter = splitmark_core_mssi(settings.input_r1_path, settings.input_r2_path,
+    	                               settings.index_fq_path, &settings);
+    }
     if(settings.rescaler) {
         cfree_rescaler(settings);
     }

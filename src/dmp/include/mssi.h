@@ -26,6 +26,7 @@ typedef struct mssi_settings {
     char *output_basename;
     char *input_r1_path;
     char *input_r2_path;
+    char *index_fq_path;
     char *homing_sequence; // Homing sequence...
     int homing_sequence_length; // Length of homing sequence, should it be used.
     int n_handles; // Number of handles
@@ -42,6 +43,8 @@ typedef struct mssi_settings {
     int gzip_output;
     int panthera;
     int gzip_compression;
+    int p7; // Set to true to use p7/secondary index instead of inline barcodes.
+    int salt; // Number of bases from each of read 1 and read 2 to use to salt
 } mssi_settings_t;
 
 void free_mssi_settings(mssi_settings_t settings);

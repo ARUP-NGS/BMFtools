@@ -127,7 +127,6 @@ void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 void FREE_SPLITTER(mark_splitter_t var);
 mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
-mark_splitter_t init_splitter(mss_settings_t *settings_ptr);
 int ipow(int base, int exp);
 void mseq_destroy(mseq_t *mvar);
 void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
