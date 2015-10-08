@@ -47,7 +47,7 @@ includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("s
 
 subprocess.check_call('cd src/dmp/include/htslib && make && cd ../../../../', shell=True)
 subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit_db -fopenmp -std=gnu11 -fno-inline -DNOPARALLEL', shell=True)
-subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11 -DNDEBUG -finline-functions', shell=True)
+subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11 -DNDEBUG -finline-functions -DNOPARALLEL', shell=True)
 subprocess.check_call('cd src/sort && make && cd ../..;', shell=True)
 subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -finline-functions && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms_sc -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -finline-functions -DSUB_CHI2 && cd ../..', shell=True)

@@ -26,31 +26,10 @@
  */
 
 #define CHECK_CALL(buff, ret) \
+	fprintf(stderr, "Now check calling command '%s'.\n", buff);\
     ret = system(buff);\
     if(ret < 0)\
         fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
-
-
-#define O_CAT_COMMAND(buff, settings, params, ffq_r1, ffq_r2, ret) \
-    if(settings.gzip_output) {\
-        sprintf(buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);\
-    }\
-    else {\
-        sprintf(buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);\
-    }\
-    CHECK_CALL(buff, ret);\
-    sprintf(buff, "rm %s", params->outfnames_r1[i]);\
-    CHECK_CALL(buff, ret);\
-    if(settings.gzip_output) {\
-        sprintf(buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);\
-    }\
-    else {\
-        sprintf(buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);\
-    }\
-    CHECK_CALL(buff, ret);\
-    sprintf(buff, "rm %s", params->outfnames_r2[i]);\
-    CHECK_CALL(buff, ret)
-
 
 
 void print_crms_usage(char *argv[])
@@ -105,12 +84,12 @@ mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
     ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
     ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
     char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-    #pragma omp parallel for
     for (int i = 0; i < ret.n_handles; i++) {
         sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);
         ret.fnames_r1[i] = strdup(tmp_buffer);
         sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
         ret.fnames_r2[i] = strdup(tmp_buffer);
+        fprintf(stderr, "Do R1 and R2 match up? %s, %s.\n", ret.fnames_r1[i], ret.fnames_r2[i]);
         ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
         ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
     }
@@ -348,26 +327,38 @@ int main(int argc, char *argv[])
         }
 #endif
         // Remove temporary split files
-        fprintf(stderr, "Now removing temporary files.\n");
-        #pragma omp parallel for
-        for(int i = 0; i < splitter->n_handles; ++i) {
-        }
-        // Make sure that both files are empty.
         int sys_call_ret;
         char cat_buff[CAT_BUFFER_SIZE];
         char ffq_r1[200];
         char ffq_r2[200];
         sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
         sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-        sprintf(cat_buff, "> %s", ffq_r1);
+        sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r1);
         sys_call_ret = system(cat_buff);
-        sprintf(cat_buff, "> %s", ffq_r2);
+        sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
         if(!settings.panthera) {
-            #pragma omp parallel for
+            #pragma omp parallel for shared(settings, params, ffq_r1, ffq_r2)
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present
-                O_CAT_COMMAND(cat_buff, settings, params, ffq_r1, ffq_r2, sys_call_ret);
+                if(settings.gzip_output) {
+                    sprintf(cat_buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
+                }
+                else {
+                    sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+                }
+                CHECK_CALL(cat_buff, sys_call_ret);
+                if(settings.gzip_output) {
+                    sprintf(cat_buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
+                }
+                else {
+                    sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+                }
+                CHECK_CALL(cat_buff, sys_call_ret);
+            }
+            for(int i = 0; i < settings.n_handles; ++i) {
+                sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+                CHECK_CALL(cat_buff, sys_call_ret);
             }
         }
         else {
@@ -388,9 +379,10 @@ int main(int argc, char *argv[])
             CHECK_CALL(cat_buff1, sys_call_ret);
             fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
             CHECK_CALL(cat_buff2, sys_call_ret);
-            #pragma omp parallel for
+            #pragma omp parallel for shared(params)
             for(int i = 0; i < settings.n_handles; ++i) {
                 sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+                fprintf(stderr, "About to call command '%s'.\n", cat_buff1);
                 CHECK_CALL(cat_buff1, sys_call_ret);
             }
         }
