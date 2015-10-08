@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
         .threads = 1,
         .max_blen = -1,
         .gzip_output = 0,
-        .panthera = 0,
+        .panthera = 1,
         .gzip_compression = 6,
 		.index_fq_path = NULL,
 		.p7 = 0,
