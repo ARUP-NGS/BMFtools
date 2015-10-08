@@ -144,7 +144,6 @@ mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
         ret.fnames_r1[i] = strdup(tmp_buffer);
         sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
         ret.fnames_r2[i] = strdup(tmp_buffer);
-        fprintf(stderr, "Do R1 and R2 match up? %s, %s.\n", ret.fnames_r1[i], ret.fnames_r2[i]);
         ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
         ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
     }
