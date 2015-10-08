@@ -1,4 +1,5 @@
 #pragma once
+
 #include "include/kseq_dec.h"
 
 typedef struct tmpvars {

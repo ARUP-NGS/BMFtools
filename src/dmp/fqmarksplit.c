@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
             }
             #pragma omp parallel for
-            for(i = 0; i < settings.n_handles; ++i) {
+            for(int i = 0; i < settings.n_handles; ++i) {
                 sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
                 sys_call_ret = system(cat_buff1);
                 if(sys_call_ret < 0) {

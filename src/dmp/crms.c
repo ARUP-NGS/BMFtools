@@ -25,6 +25,33 @@
  * 2. digitslut (sprintf)
  */
 
+#define CHECK_CALL(buff, ret) \
+    ret = system(buff);\
+    if(ret < 0)\
+        fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
+
+
+#define O_CAT_COMMAND(buff, settings, params, ffq_r1, ffq_r2, ret) \
+    if(settings.gzip_output) {\
+        sprintf(buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);\
+    }\
+    else {\
+        sprintf(buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);\
+    }\
+    CHECK_CALL(buff, ret);\
+    sprintf(buff, "rm %s", params->outfnames_r1[i]);\
+    CHECK_CALL(buff, ret);\
+    if(settings.gzip_output) {\
+        sprintf(buff, "cat %s | gzip -%i - >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);\
+    }\
+    else {\
+        sprintf(buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);\
+    }\
+    CHECK_CALL(buff, ret);\
+    sprintf(buff, "rm %s", params->outfnames_r2[i]);\
+    CHECK_CALL(buff, ret)
+
+
 
 void print_crms_usage(char *argv[])
 {
@@ -47,9 +74,10 @@ void print_crms_usage(char *argv[])
                         "-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
                         " (-1), other barcode lengths will not be considered.\n"
                         "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
-                        "-u: Set notification/update interval for split. Default: 1000000.\n"
+                        "-g: Gzip compression ratio if piping to gzip (-z). Default: 6 (default).\n"
                         "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
                         "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
+                        "-u: Set notification/update interval for split. Default: 1000000.\n"
                         "-h: Print usage.\n", argv[0]);
 }
 
@@ -204,15 +232,17 @@ int main(int argc, char *argv[])
         .threads = 1,
         .max_blen = -1,
         .gzip_output = 0,
-        .panthera = 0
+        .panthera = 0,
+        .gzip_compression = 6
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:zcdh")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:zcdh")) > -1) {
         switch(c) {
             case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
+            case 'g': settings.gzip_compression = atoi(optarg); break;
             case 'l': settings.blen = 2 * atoi(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
@@ -292,6 +322,7 @@ int main(int argc, char *argv[])
         }
         // Whatever I end up putting into here.
         splitterhash_params_t *params = init_splitterhash(&settings, splitter);
+        char del_buf[250];
 #if NOPARALLEL
 #else
         #pragma omp parallel
@@ -305,7 +336,12 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
                         params->infnames_r1[i], params->outfnames_r1[i]);
                 omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
+
                 omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
+                fprintf(stderr, "Now removing temporary files %s and %s.\n",
+                        params->infnames_r1[i], params->infnames_r2[i]);
+                sprintf(del_buf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+                system(del_buf);
             }
 #if NOPARALLEL
 #else
@@ -313,13 +349,8 @@ int main(int argc, char *argv[])
 #endif
         // Remove temporary split files
         fprintf(stderr, "Now removing temporary files.\n");
-        char del_buf[250];
         #pragma omp parallel for
         for(int i = 0; i < splitter->n_handles; ++i) {
-            fprintf(stderr, "Now removing temporary files %s and %s.\n",
-                    splitter->fnames_r1[i], splitter->fnames_r2[i]);
-            sprintf(del_buf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
-            system(del_buf);
         }
         // Make sure that both files are empty.
         int sys_call_ret;
@@ -336,22 +367,7 @@ int main(int argc, char *argv[])
             #pragma omp parallel for
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present
-                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-                sys_call_ret = system(cat_buff);
-                if(sys_call_ret < 0) {
-                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
-                    exit(EXIT_FAILURE);
-                }
-                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-                sys_call_ret = system(cat_buff);
-                if(sys_call_ret < 0) {
-                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
-                    exit(EXIT_FAILURE);
-                }
-                // Delete both un-needed fastqs.
-                sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-                fprintf(stderr, "Now calling '%s'\n", cat_buff);
-                sys_call_ret = system(cat_buff);
+                O_CAT_COMMAND(cat_buff, settings, params, ffq_r1, ffq_r2, sys_call_ret);
             }
         }
         else {
@@ -369,14 +385,13 @@ int main(int argc, char *argv[])
             strcat(cat_buff2, " > ");
             strcat(cat_buff2, ffq_r2);
             fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
-            sys_call_ret = system(cat_buff1);
-            if(sys_call_ret < 0) {
-                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
-            }
+            CHECK_CALL(cat_buff1, sys_call_ret);
             fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
-            sys_call_ret = system(cat_buff2);
-            if(sys_call_ret < 0) {
-                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
+            CHECK_CALL(cat_buff2, sys_call_ret);
+            #pragma omp parallel for
+            for(int i = 0; i < settings.n_handles; ++i) {
+                sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+                CHECK_CALL(cat_buff1, sys_call_ret);
             }
         }
         splitterhash_destroy(params);
