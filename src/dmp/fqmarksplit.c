@@ -157,10 +157,14 @@ int main(int argc, char *argv[])
             #pragma omp for
 #endif
             for(int i = 0; i < settings.n_handles; ++i) {
+            	if(!(splitter->fnames_r1[i] && params->outfnames_r1[i])) {
+            		fprintf(stderr, "File names are null! Abort mission! '%s', '%s'.\n", splitter->fnames_r1[i], params->outfnames_r1[i]);
+            		exit(EXIT_FAILURE);
+            	}
                 fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
-                        params->infnames_r1[i], params->outfnames_r1[i]);
-                omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
-                omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
+                        splitter->fnames_r1[i], params->outfnames_r1[i]);
+                omgz_core(splitter->fnames_r1[i], params->outfnames_r1[i]);
+                omgz_core(splitter->fnames_r2[i], params->outfnames_r2[i]);
             }
 #if NOPARALLEL
 #else
@@ -188,6 +192,7 @@ int main(int argc, char *argv[])
         sprintf(cat_buff, "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
         if(!settings.panthera) {
+            #pragma omp parallel for
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present
                 sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
@@ -231,13 +236,6 @@ int main(int argc, char *argv[])
             sys_call_ret = system(cat_buff2);
             if(sys_call_ret < 0) {
                 fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
-            }
-            for(int i = 0; i < settings.n_handles; ++i) {
-                sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-                sys_call_ret = system(cat_buff1);
-                if(sys_call_ret < 0) {
-                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
-                }
             }
         }
         splitterhash_destroy(params);

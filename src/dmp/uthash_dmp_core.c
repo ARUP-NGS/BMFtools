@@ -91,6 +91,10 @@ void omgz_core(char *infname, char *outfname)
 {
     FILE *in_handle;
     FILE *out_handle;
+    if(!outfname && !infname) {
+    	fprintf(stderr, "in_handle and out_handle are both null. Abort mission!\n");
+    	exit(EXIT_FAILURE);
+    }
     if(infname[0] == '-' || !infname) in_handle = stdin;
     else {
         in_handle = fopen(infname, "r");
