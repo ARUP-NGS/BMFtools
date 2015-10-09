@@ -44,6 +44,7 @@ typedef struct mss_settings {
     char *ffq_prefix;
     int run_hash_dmp;
     int gzip_output;
+    int gzip_compression;
     int panthera; // One "big cat" or many small cats?
     int salt; // Number of bases from each of read 1 and read 2 to use to salt
     int offset; // The number of bases at the start of reads 1 and 2 to skip when salting

@@ -44,6 +44,7 @@ void print_usage(char *argv[])
                         "-i: Index fastq path. Required.\n"
                         "-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
                         "-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
+                        "-g: Gzip compression ratio if piping to gzip (-z). Default: 6 (default).\n"
                         "-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
                         "-m: Number of bases in the start of reads to skip when salting. Default: 0. Recommended: 1.\n"
                         "-d: Flag to run hash dmp. Default: False.\n"
@@ -86,12 +87,13 @@ int main(int argc, char *argv[])
         .ffq_prefix = NULL,
         .salt = 0,
         .offset = 0,
-        .threads = 4
+        .threads = 4,
+        .gzip_compression = 6
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:hdcz")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:hdcz")) > -1) {
         switch(c) {
             case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
@@ -105,6 +107,7 @@ int main(int argc, char *argv[])
             case 't': settings.hp_threshold = atoi(optarg); break;
             case 'v': settings.notification_interval = atoi(optarg); break;
             case 'z': settings.gzip_output = 1; break;
+            case 'g': settings.gzip_compression = atoi(optarg); break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
@@ -225,6 +228,11 @@ int main(int argc, char *argv[])
                 strcat(cat_buff1, " ");
                 strcat(cat_buff2, params->outfnames_r2[i]);
                 strcat(cat_buff2, " ");
+            }
+            if(settings.gzip_output) {
+                sprintf(del_buf, " | gzip - -%i", settings.gzip_compression < 9 ? settings.gzip_compression: 9);
+                strcat(cat_buff1, del_buf);
+                strcat(cat_buff2, del_buf);
             }
             strcat(cat_buff1, " > ");
             strcat(cat_buff1, ffq_r1);

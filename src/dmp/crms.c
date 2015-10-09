@@ -330,10 +330,19 @@ int main(int argc, char *argv[])
             strcat(cat_buff2, params->outfnames_r2[i]);
             strcat(cat_buff2, " ");
         }
+        if(settings.gzip_output) {
+        	sprintf(del_buf, " | gzip - -%i ", settings.gzip_compression);
+        	strcat(cat_buff1, del_buf);
+        	strcat(cat_buff2, del_buf);
+        }
         strcat(cat_buff1, " > ");
         strcat(cat_buff1, ffq_r1);
         strcat(cat_buff2, " > ");
         strcat(cat_buff2, ffq_r2);
+        if(settings.gzip_output) {
+        	strcat(cat_buff1, ".gz");
+        	strcat(cat_buff2, ".gz");
+        }
         fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
         CHECK_CALL(cat_buff1, sys_call_ret);
         fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
