@@ -347,7 +347,6 @@ int main(int argc, char *argv[])
         CHECK_CALL(cat_buff1, sys_call_ret);
         fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
         CHECK_CALL(cat_buff2, sys_call_ret);
-        #pragma omp parallel for shared(params)
         for(int i = 0; i < params->n; ++i) {
             sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
             fprintf(stderr, "About to call command '%s'.\n", cat_buff1);

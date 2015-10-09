@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CHARCMP_H
+#define CHARCMP_H
 //#include "branchlut.h"
 /*
  * This is broken.
@@ -59,3 +60,5 @@ inline void nuc_to_pos(char character, int *nuc_indices)
         default: nuc_indices[0] = 0; nuc_indices[1] = 4; return;
     }
 }
+
+#endif

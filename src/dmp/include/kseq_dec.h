@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KSEQ_DEC_H
+#define KSEQ_DEC_H
 
 #include "kseq.h"
 #include "kingfisher.h"
@@ -41,7 +42,7 @@ typedef struct tmp_mseq {
  * Warning: returns a NULL upon not finding a second pipe symbol.
  * This is *NOT* a properly null-terminated string.
  */
-char *barcode_mem_view(kseq_t *seq)
+inline char *barcode_mem_view(kseq_t *seq)
 {
     int hits = 0;
     for(int i = 0; i < seq->comment.l; ++i) {
@@ -71,7 +72,7 @@ inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
         }
     }
     for(int i = 0; i < readlen; ++i) {
-        cmp_ret = nuc_cmp(barcode[i], barcode[readlen - i - 1]);
+        cmp_ret = nuc_cmp(mvar->seq[i], mvar->seq[readlen - i - 1]);
         if(cmp_ret < 0) {
             return 0; // It's lexicographically lower as is. Don't flip!
         }
@@ -290,3 +291,4 @@ inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int 
     return;
 }
 
+#endif
