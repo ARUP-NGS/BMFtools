@@ -74,28 +74,26 @@ static char *ermsg[7] = {
 };
 
 
-int mtherr( name, code )
+inline int mtherr( name, code )
 char *name;
 int code;
 {
-
 /* Display string passed by calling program,
  * which is supposed to be the name of the
  * function in which the error occurred:
- */
 printf( "\n%s ", name );
 
-/* Set global error message word */
+ * Set global error message word *
 merror = code;
 
-/* Display error message defined
+ * Display error message defined
  * by the code argument.
- */
+ *
 if( (code <= 0) || (code >= 7) )
     code = 0;
 printf( "%s error\n", ermsg[code] );
 
-/* Return to calling
+ * Return to calling
  * program
  */
 return( 0 );

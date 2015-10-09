@@ -175,7 +175,9 @@ int main(int argc, char *argv[])
         // Remove temporary split files
         fprintf(stderr, "Now removing temporary files.\n");
         char del_buf[250];
-        #pragma omp parallel for
+        char cat_buff2[CAT_BUFFER_SIZE];
+        char cat_buff1[CAT_BUFFER_SIZE];
+        //#pragma omp parallel for shared(splitter)
         for(int i = 0; i < splitter->n_handles; ++i) {
             fprintf(stderr, "Now removing temporary files %s and %s.\n",
                     splitter->fnames_r1[i], splitter->fnames_r2[i]);
@@ -194,7 +196,6 @@ int main(int argc, char *argv[])
         sprintf(cat_buff, "> %s", ffq_r2);
         sys_call_ret = system(cat_buff);
         if(!settings.panthera) {
-            #pragma omp parallel for
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present
                 sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
@@ -217,37 +218,28 @@ int main(int argc, char *argv[])
         }
         else {
             fprintf(stderr, "Now building cat string.\n");
-            char cat_buff1[CAT_BUFFER_SIZE];
             sprintf(cat_buff1, "/bin/cat ");
-            char cat_buff2[CAT_BUFFER_SIZE];
             sprintf(cat_buff2, "/bin/cat ");
             for(int i = 0; i < settings.n_handles; ++i) {
                 strcat(cat_buff1, params->outfnames_r1[i]);
                 strcat(cat_buff1, " ");
-                fprintf(stderr, "Now adding filename %s.\n", params->outfnames_r2[i]);
+                strcat(cat_buff2, params->outfnames_r2[i]);
                 strcat(cat_buff2, " ");
             }
             strcat(cat_buff1, " > ");
             strcat(cat_buff1, ffq_r1);
             strcat(cat_buff2, " > ");
             strcat(cat_buff2, ffq_r2);
-            fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
-            sys_call_ret = system(cat_buff1);
-            if(sys_call_ret < 0) {
-                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
+            CHECK_CALL(cat_buff1, sys_call_ret);
+            CHECK_CALL(cat_buff2, sys_call_ret);
+            sprintf(cat_buff1, "rm ");
+            for(int i = 0; i < params->n; ++i) {
+                strcat(cat_buff1, params->outfnames_r1[i]);
+                strcat(cat_buff1, " ");
+                strcat(cat_buff1, params->outfnames_r2[i]);
+                strcat(cat_buff1, " ");
             }
-            fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
-            sys_call_ret = system(cat_buff2);
-            if(sys_call_ret < 0) {
-                fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff2);
-            }
-            for(int i = 0; i < settings.n_handles; ++i) {
-                sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-                sys_call_ret = system(cat_buff1);
-                if(sys_call_ret < 0) {
-                    fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff1);
-                }
-            }
+            CHECK_CALL(cat_buff1, sys_call_ret);
         }
         splitterhash_destroy(params);
     }

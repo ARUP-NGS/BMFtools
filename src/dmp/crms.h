@@ -9,6 +9,14 @@
 #define CAT_BUFFER_SIZE 500000
 #endif
 
+#ifndef CHECK_CALL
+#define CHECK_CALL(buff, ret) \
+	fprintf(stderr, "Now check calling command '%s'.\n", buff);\
+    ret = system(buff);\
+    if(ret < 0)\
+        fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
+#endif
+
 typedef struct crms_settings {
     int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
     int n_nucs; // Number of nucleotides to split by.
