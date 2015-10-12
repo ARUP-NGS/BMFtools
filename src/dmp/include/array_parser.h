@@ -67,13 +67,13 @@ inline char ****parse_rescaler(char *qual_rescale_fname)
                 basecall_tok = strtok(qscore_tok, ":");
                 while(basecall_tok) {
                     ret[readnum_count][line_count][qs_count][bc_count] = atoi(basecall_tok);
-                    basecall_tok = strtok(qscore_tok, ":");
+                    basecall_tok = strtok(NULL, ":");
                     ++bc_count;
                 }
-                qscore_tok = strtok(line, ",");
+                qscore_tok = strtok(NULL, ",");
                 ++qs_count;
             }
-            readnum_tok = strtok(line, "|");
+            readnum_tok = strtok(NULL, "|");
             ++readnum_count;
         }
         ++line_count;

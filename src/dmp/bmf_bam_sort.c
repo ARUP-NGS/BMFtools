@@ -1301,7 +1301,10 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
     int index;
     for (i = 0; i < l; ++i) {
         index = SPLIT_INDEX(buf[i]);
-        sam_write1(fps[index > 0 ? index: h->n_targets], h, buf[i]);
+#if !NDEBUG
+        fprintf(stderr, "tid/mtid %i, index %i.\n", index, index > 0 ? index: h->n_targets);
+#endif
+        sam_write1(fps[index >= 0 ? index: h->n_targets], h, buf[i]);
     }
     for(i = 0; i < h->n_targets;++i)
         sam_close(fps[i]);
@@ -1507,6 +1510,8 @@ static int sort_usage(FILE *fp, int status)
 
 int main(int argc, char *argv[])
 {
+    if (argc == 1)
+        return sort_usage(stdout, EXIT_SUCCESS);
     size_t max_mem = 768<<20; // 512MB
     int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, is_stdout = 0, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;
     char *fnout = "-", *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
@@ -1554,9 +1559,7 @@ int main(int argc, char *argv[])
     }
 
     nargs = argc - optind;
-    if (argc == 1)
-        return sort_usage(stdout, EXIT_SUCCESS);
-    else if (nargs > 1)
+    if (nargs > 1)
         return sort_usage(stderr, EXIT_FAILURE);
 
     strcpy(modeout, "w");
