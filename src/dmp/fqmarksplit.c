@@ -142,8 +142,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
-    mark_splitter_t *splitter = splitmark_core1(settings.input_r1_path, settings.input_r2_path,
-                                                settings.index_fq_path, &settings);
+    mark_splitter_t *splitter = splitmark_core1(&settings);
     if(settings.run_hash_dmp) {
         fprintf(stderr, "Now executing hash dmp.\n");
         if(!settings.ffq_prefix) {
@@ -185,6 +184,7 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Now removing temporary files %s and %s.\n",
                     splitter->fnames_r1[i], splitter->fnames_r2[i]);
             sprintf(del_buf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
+            //fprintf(stderr, "Don't feel like executing command '%s' today. Eh.\n", del_buf);
             system(del_buf);
         }
         // Make sure that both files are empty.
@@ -248,6 +248,7 @@ int main(int argc, char *argv[])
                 strcat(cat_buff1, " ");
             }
             CHECK_CALL(cat_buff1, sys_call_ret);
+            //fprintf(stderr, "Not executing %s today. Eh.\n", cat_buff1);
         }
         splitterhash_destroy(params);
     }

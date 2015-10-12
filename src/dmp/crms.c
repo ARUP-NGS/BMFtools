@@ -51,9 +51,6 @@ void print_crms_usage(char *argv[])
                         "-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
                         "In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
                         "-u: Set notification/update interval for split. Default: 1000000.\n"
-        		        "-$: Number of bases from each read with which to salt if using inline barcodes. Default: 0.\n"
-        		        "-7: Flag - set to true to use a secondary index fastq. Requires -i!\n"
-        		        "-i: Path to index fastq. (Required if -7 set.)\n"
                         "-h: Print usage.\n", argv[0]);
 }
 
@@ -84,14 +81,13 @@ inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
  */
-mark_splitter_t *pp_split_inline(char *r1fq, char *r2fq,
-                                 mssi_settings_t *settings)
+mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 {
-    fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", r1fq, r2fq);
+    fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
     mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
     *splitter = init_splitter_inline(settings);
-    gzFile fp1 = gzopen(r1fq, "r");
-    gzFile fp2 = gzopen(r2fq, "r");
+    gzFile fp1 = gzopen(settings->input_r1_path, "r");
+    gzFile fp2 = gzopen(settings->input_r2_path, "r");
     kseq_t *seq1 = kseq_init(fp1);
     kseq_t *seq2 = kseq_init(fp2);
     int l1, l2;
@@ -179,23 +175,17 @@ int main(int argc, char *argv[])
         .max_blen = -1,
         .gzip_output = 0,
         .panthera = 1,
-        .gzip_compression = 6,
-		.index_fq_path = NULL,
-		.p7 = 0,
-		.salt = 0
+        .gzip_compression = 6
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
     int c;
-    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:$:7zcdh")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zcdh")) > -1) {
         switch(c) {
-            case '7': settings.p7 = 1; break;
-            case '$': settings.salt = atoi(optarg);
             case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
             case 'f': settings.ffq_prefix = strdup(optarg); break;
             case 'g': settings.gzip_compression = atoi(optarg); break;
             case 'h': print_crms_usage(argv); return 0;
-            case 'i': settings.index_fq_path = strdup(optarg); break;
             case 'l': settings.blen = 2 * atoi(optarg); break;
             case 'm': settings.offset = atoi(optarg); break;
             case 'n': settings.n_nucs = atoi(optarg); break;
@@ -228,16 +218,16 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    if(!settings.homing_sequence && !settings.p7) {
+    if(!settings.homing_sequence) {
         fprintf(stderr, "Homing sequence not provided. Required.\n");
         exit(EXIT_FAILURE);
     }
-    if(!settings.blen && !settings.p7) {
+    if(!settings.blen) {
         fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
         exit(EXIT_FAILURE);
     }
 
-    if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen  && !settings.p7) {
+    if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
         fprintf(stderr, "max blen (%i) must be less than the minimum blen provided (%i).\n", settings.max_blen,
                 settings.blen / 2);
     }
@@ -249,39 +239,26 @@ int main(int argc, char *argv[])
         settings.rescaler = parse_rescaler(settings.rescaler_path);
     }
     fprintf(stderr, "About to get the read paths.\n");
-    char r1fq[100];
-    char r2fq[100];
     if(argc - 1 != optind + 1) {
         fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);
         print_crms_usage(argv);
         return 1;
     }
-    strcpy(r1fq, argv[optind]);
-    strcpy(r2fq, argv[optind + 1]);
+    settings.input_r1_path = strdup(argv[optind]);
+    settings.input_r2_path = strdup(argv[optind + 1]);
 
     if(!settings.output_basename) {
-        settings.output_basename = make_crms_outfname(r1fq);
+        settings.output_basename = make_crms_outfname(settings.input_r1_path);
         fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
     }
-    mark_splitter_t *splitter;
-    if(!settings.p7) {
-        splitter = pp_split_inline(r1fq, r2fq, &settings);
-    }
-    else {
-    	if(!settings.index_fq_path) {
-    		fprintf(stderr, "Index fq path required for fqmarksplit. Abort mission! (See usage.).");
-    		print_crms_usage(argv); exit(1);
-    	}
-    	splitter = splitmark_core_mssi(settings.input_r1_path, settings.input_r2_path,
-    	                               settings.index_fq_path, &settings);
-    }
+    mark_splitter_t *splitter = pp_split_inline(&settings);
     if(settings.rescaler) {
         cfree_rescaler(settings);
     }
     if(settings.run_hash_dmp) {
         fprintf(stderr, "Now executing hash dmp.\n");
         if(!settings.ffq_prefix) {
-            settings.ffq_prefix = make_default_outfname(r1fq, ".dmp.final");
+            settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
         }
         // Whatever I end up putting into here.
         splitterhash_params_t *params = init_splitterhash(&settings, splitter);

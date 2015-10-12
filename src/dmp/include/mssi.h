@@ -26,7 +26,6 @@ typedef struct mssi_settings {
     char *output_basename;
     char *input_r1_path;
     char *input_r2_path;
-    char *index_fq_path;
     char *homing_sequence; // Homing sequence...
     int homing_sequence_length; // Length of homing sequence, should it be used.
     int n_handles; // Number of handles
@@ -43,8 +42,6 @@ typedef struct mssi_settings {
     int gzip_output;
     int panthera;
     int gzip_compression;
-    int p7; // Set to true to use p7/secondary index instead of inline barcodes.
-    int salt; // Number of bases from each of read 1 and read 2 to use to salt
 } mssi_settings_t;
 
 void free_mssi_settings(mssi_settings_t settings);
@@ -60,17 +57,17 @@ inline void free_mssi_settings(mssi_settings_t settings)
 }
 
 #ifndef FREE_MSSI_SETTINGS_PTR
-#define FREE_MSSI_SETTINGS_PTR(settings) free(settings->output_basename);\
-    free(settings->input_r1_path);\
-    free(settings->input_r2_path);\
-    if(settings->rescaler_path) free(settings->rescaler_path)
+#define FREE_MSSI_SETTINGS_PTR(settings) cond_free(settings->output_basename);\
+    cond_free(settings->input_r1_path);\
+    cond_free(settings->input_r2_path);\
+    cond_free(settings->rescaler_path)
 #endif
 
 #ifndef FREE_MSSI_SETTINGS
-#define FREE_MSSI_SETTINGS(settings) free(settings.output_basename);\
-    free(settings.input_r1_path);\
-    free(settings.input_r2_path);\
-    if(settings.rescaler_path) free(settings.rescaler_path);
+#define FREE_MSSI_SETTINGS(settings) cond_free(settings.output_basename);\
+    cond_free(settings.input_r1_path);\
+    cond_free(settings.input_r2_path);\
+    cond_free(settings.rescaler_path);
 #endif
 
 
@@ -108,20 +105,20 @@ inline char test_hp_inline(char *barcode, int length, int threshold)
 
 
 
-inline char test_hp(kseq_t *seq, int threshold)
+inline char test_hp(char *seq, int threshold)
 {
     int run = 0;
     char last = '\0';
-    for(int i = 0; i < seq->seq.l; i++){
-        if(seq->seq.s[i] == 'N') {
+    for(int i = 0; seq[i]; ++i){
+        if(seq[i] == 'N') {
             return '0';
         }
-        if(seq->seq.s[i] == last) {
-            run += 1;
+        if(seq[i] == last) {
+            ++run;
         }
         else {
             run = 0;
-            last = seq->seq.s[i];
+            last = seq[i];
         }
     }
     return (run < threshold) ? '1': '0';

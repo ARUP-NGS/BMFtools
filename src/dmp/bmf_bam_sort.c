@@ -1549,14 +1549,11 @@ int main(int argc, char *argv[])
         default: return sort_usage(stderr, EXIT_FAILURE);
         }
     }
+
     if(!split_prefix) {
         split_prefix = trim_ext(fnout);
     }
 
-    if(split && strcmp(fnout, "-") == 0) {
-        fprintf(stderr, "Final output filename required if split is set to true. Abort mission!\n");
-        exit(EXIT_FAILURE);
-    }
 
     nargs = argc - optind;
     if (nargs > 1)

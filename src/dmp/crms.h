@@ -145,7 +145,7 @@ int rescale_qscore(int readnum, int qscore, int cycle, char base, char ****resca
 void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
-char test_hp(kseq_t *seq, int threshold);
+char test_hp(char *seq, int threshold);
 void tmp_mseq_destroy(tmp_mseq_t mvar);
 void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 char nuc_cmpl(char character);

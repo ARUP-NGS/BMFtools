@@ -155,7 +155,7 @@ void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
 void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen);
 KingFisher_t init_kf(int readlen);
 void nuc_to_pos(char character, int *nuc_indices);
-char test_hp(kseq_t *seq, int threshold);
+char test_hp(char *seq, int threshold);
 int get_binner(char *barcode, int length);
 void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq);
 uint64_t ulpow(uint64_t base, uint64_t exp);
