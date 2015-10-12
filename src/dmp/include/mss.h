@@ -228,6 +228,10 @@ static mark_splitter_t *splitmark_core_mssi(mssi_settings_t *settings)
 
 static mark_splitter_t *splitmark_core1(mss_settings_t *settings)
 {
+	if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
+		fprintf(stderr, "Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n", settings->input_r1_path, settings->input_r2_path);
+        exit(EXIT_FAILURE);
+	}
     gzFile fp_read1, fp_read2, fp_index;
     kseq_t *seq1, *seq2, *seq_index;
     mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
@@ -253,9 +257,7 @@ static mark_splitter_t *splitmark_core1(mss_settings_t *settings)
         memcpy(barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
         memcpy(barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
         barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
-        // Iterate through second fastq file.
         pass_fail = test_hp(barcode, settings->hp_threshold);
-        //fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
         bin = get_binner(barcode, settings->n_nucs);
         SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
         SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], seq2, barcode, pass_fail);

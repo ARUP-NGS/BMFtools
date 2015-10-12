@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     settings.input_r1_path =  strdup(argv[optind]);
-    settings.input_r2_path =  strdup(argv[optind]);
+    settings.input_r2_path =  strdup(argv[optind + 1]);
 
     if(!settings.index_fq_path) {
         fprintf(stderr, "Index fastq required. See usage.\n");
