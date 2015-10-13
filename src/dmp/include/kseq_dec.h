@@ -150,6 +150,38 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
     return;
 }
 
+
+/*
+ * :param: [kseq_t *] seq - kseq handle
+ * :param: [mseq_t *] ret - initialized mseq_t pointer.
+ * :param: [char ****] rescaler - pointer to a 3-dimensional array of rescaled phred scores.
+ * :param: [tmp_mseq_t *] tmp - pointer to a tmp_mseq_t object
+ * for holding information for conditional reverse complementing.
+ * :param: [int] n_len - the number of bases to N at the beginning of each read.
+ * :param: [int] is_read2 - true if the read is read2.
+ */
+inline void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2)
+{
+    if(!seq) {
+        ret = NULL;
+        return;
+    }
+    ret->name = strdup(seq->name.s);
+    ret->comment = strdup(seq->comment.s);
+    ret->seq = strdup(seq->seq.s);
+    if(!rescaler) ret->qual = strdup(seq->qual.s);
+    else {
+        ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
+        ret->qual[seq->seq.l] = '\0'; // Null-terminate this string.
+        for(int i = 0; i < seq->seq.l; i++) {
+            ret->qual[i] = rescale_qscore(is_read2 ? 1: 0, ret->qual[i], i, ret->seq[i], seq->seq.l, rescaler);
+        }
+    }
+    memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
+    memset(ret->qual, '#', n_len); // Set all N bases to quality score of 2.
+    ret->l = seq->seq.l;
+}
+
 /*
  * :param: [kseq_t *] seq - kseq handle
  * :param: [mseq_t *] ret - initialized mseq_t pointer.

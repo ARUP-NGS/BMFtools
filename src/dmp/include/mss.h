@@ -49,6 +49,8 @@ typedef struct mss_settings {
     int salt; // Number of bases from each of read 1 and read 2 to use to salt
     int offset; // The number of bases at the start of reads 1 and 2 to skip when salting
     int threads; // Number of threads to use for parallel dmp
+    char *rescaler_path;
+    char *rescaler;
 } mss_settings_t;
 
 
@@ -250,6 +252,56 @@ static mark_splitter_t *splitmark_core1(mss_settings_t *settings)
     		settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
     while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
             && (l_index = kseq_read(seq_index)) >= 0) {
+        if(!(++count % settings->notification_interval)) {
+            fprintf(stderr, "Number of records processed: %i.\n", count);
+        }
+        memcpy(barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+        memcpy(barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+        memcpy(barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
+        barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
+        pass_fail = test_hp(barcode, settings->hp_threshold);
+        bin = get_binner(barcode, settings->n_nucs);
+        SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
+        SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], seq2, barcode, pass_fail);
+    }
+    kseq_destroy(seq1);
+    kseq_destroy(seq2);
+    kseq_destroy(seq_index);
+    gzclose(fp_read1);
+    gzclose(fp_read2);
+    gzclose(fp_index);
+    return splitter_ptr;
+}
+
+static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
+{
+	if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
+		fprintf(stderr, "Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n", settings->input_r1_path, settings->input_r2_path);
+        exit(EXIT_FAILURE);
+	}
+    gzFile fp_read1, fp_read2, fp_index;
+    kseq_t *seq1, *seq2, *seq_index;
+    mseq_t *rseq1, *rseq2;
+    mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+    *splitter_ptr = init_splitter(settings);
+    fp_read1 = gzopen(settings->input_r1_path, "r");
+    fp_read2 = gzopen(settings->input_r2_path, "r");
+    fp_index = gzopen(settings->index_fq_path, "r");
+    seq1 = kseq_init(fp_read1);
+    seq2 = kseq_init(fp_read2);
+    seq_index = kseq_init(fp_index);
+    int l1, l2, l_index, bin;
+    int count = 0;
+    char pass_fail;
+    char barcode[200];
+    fprintf(stderr, "Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
+    		settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
+    while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
+            && (l_index = kseq_read(seq_index)) >= 0) {
+    	if(!rseq1) {
+            rseq1 = (mseq_t *)malloc(sizeof(mseq_t));
+            p7_mseq_rescale_init(seq1, rseq1, settings->rescaler, 0, 0); // rseq1 is initialized
+    	}
         if(!(++count % settings->notification_interval)) {
             fprintf(stderr, "Number of records processed: %i.\n", count);
         }

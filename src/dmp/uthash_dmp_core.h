@@ -161,3 +161,5 @@ void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq);
 uint64_t ulpow(uint64_t base, uint64_t exp);
 void cp_view2buf(char *view, char *buf);
 void omgz_core(char *infname, char *outfname);
+void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2);
+char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);

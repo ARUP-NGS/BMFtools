@@ -88,12 +88,14 @@ int main(int argc, char *argv[])
         .salt = 0,
         .offset = 0,
         .threads = 4,
-        .gzip_compression = 6
+        .gzip_compression = 6,
+		.rescaler = NULL,
+		.rescaler_path = NULL
     };
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:hdcz")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdcz")) > -1) {
         switch(c) {
             case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
@@ -108,6 +110,7 @@ int main(int argc, char *argv[])
             case 'v': settings.notification_interval = atoi(optarg); break;
             case 'z': settings.gzip_output = 1; break;
             case 'g': settings.gzip_compression = atoi(optarg); break;
+            case 'r': settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path); break;
             case 'h': print_usage(argv); return 0;
             default: print_opt_err(argv, optarg);
         }
@@ -142,7 +145,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
     fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
-    mark_splitter_t *splitter = splitmark_core1(&settings);
+    mark_splitter_t *splitter = (settings.rescaler) ? splitmark_core_rescale(&settings): splitmark_core1(&settings);
     if(settings.run_hash_dmp) {
         fprintf(stderr, "Now executing hash dmp.\n");
         if(!settings.ffq_prefix) {

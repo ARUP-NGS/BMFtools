@@ -168,3 +168,4 @@ blens_t *get_blens(char *str2parse);
 void free_crms_settings(crms_settings_t settings);
 splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 void omgz_core(char *infname, char *outfname);
+void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2);
