@@ -11,7 +11,6 @@ KSEQ_INIT(gzFile, gzread)
 
 char nuc_cmpl(char character);
 int nuc_cmp(char forward, char reverse);
-int rescale_qscore(int readnum, int qscore, int cycle, char base, char ****rescaler);
 
 
 
@@ -160,7 +159,7 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2.
  */
-inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
     if(!seq) {
         ret = NULL;
@@ -174,7 +173,7 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_m
         ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
         ret->qual[seq->seq.l] = '\0'; // Null-terminate this string.
         for(int i = 0; i < seq->seq.l; i++) {
-            ret->qual[i] = rescale_qscore(is_read2 ? 1: 0, ret->qual[i], i, ret->seq[i], rescaler);
+            ret->qual[i] = rescale_qscore(is_read2 ? 1: 0, ret->qual[i], i, ret->seq[i], seq->seq.l, rescaler);
         }
     }
     memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
@@ -186,7 +185,7 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char ****rescaler, tmp_m
 /*
  * Set is_read2 to 1 for read 2, 0 for read 1.
  */
-inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	mvar->name = memcpy(mvar->name, seq->name.s, 49 * sizeof(char));
 
@@ -198,14 +197,14 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char ****resca
     else {
         for(int i = n_len; i < seq->seq.l; i++) {
             // Leave quality scores alone for bases which are N. Otherwise
-            mvar->qual[i] = (mvar->seq[i] == 'N') ? 0 : rescale_qscore(is_read2, mvar->qual[i], i, mvar->seq[i], rescaler);
+            mvar->qual[i] = (mvar->seq[i] == 'N') ? 0 : rescale_qscore(is_read2, mvar->qual[i], i, mvar->seq[i], seq->seq.l, rescaler);
         }
     }
     mvar->barcode = barcode;
     crc_mseq(mvar, tmp);
 }
 
-inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char ****rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
     mseq_t ret = {
             .name = NULL,
@@ -235,12 +234,12 @@ inline void mseq_destroy(mseq_t *mvar)
 }
 
 
-inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char ****rescaler, int *nuc_indices, int blen, int is_read2)
+inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char *rescaler, int *nuc_indices, int blen, int is_read2)
 {
     for(int i = 0; i < kfp->readlen; i++) {
         nuc_to_pos((seq->seq.s[i]), nuc_indices);
         kfp->nuc_counts[i][nuc_indices[0]] += 1;
-        kfp->phred_sums[i][nuc_indices[1]] += rescale_qscore(is_read2 ? 1 : 0, seq->qual.s[i] - 33, i, seq->seq.s[i], rescaler);
+        kfp->phred_sums[i][nuc_indices[1]] += rescale_qscore(is_read2 ? 1 : 0, seq->qual.s[i] - 33, i, seq->seq.s[i], seq->seq.l, rescaler);
         if(seq->qual.s[i] > kfp->max_phreds[i]) {
             kfp->max_phreds[i] = seq->qual.s[i];
         }

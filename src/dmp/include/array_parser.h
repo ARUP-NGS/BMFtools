@@ -82,3 +82,48 @@ inline char ****parse_rescaler(char *qual_rescale_fname)
     fclose(fp);
     return ret;
 }
+
+
+inline char *parse_1d_rescaler(char *qual_rescale_fname)
+{
+    int readlen = count_lines(qual_rescale_fname);
+    FILE *fp = fopen(qual_rescale_fname, "r");
+    if(!fp) {
+        fprintf(stderr, "Could not open file %s. Abort mission!\n", qual_rescale_fname);
+        exit(EXIT_FAILURE);
+    }
+    char *ret = (char *)malloc(2 * readlen * 39 * 4 * sizeof(char));
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t line_length;
+    int lineno = 0;
+    char *readnum_tok;
+    char *qscore_tok;
+    char *basecall_tok;
+    size_t readnum_count = 0;
+    size_t line_count = 0;
+    size_t qs_count = 0;
+    size_t bc_count = 0;
+    while ((line_length = getline(&line, &len, fp)) != -1) {
+        readnum_tok = strtok(line, "|");
+        while(readnum_tok) {
+            qscore_tok = strtok(readnum_tok, ",");
+            while(qscore_tok) {
+                basecall_tok = strtok(qscore_tok, ":");
+                while(basecall_tok) {
+                    ret[readnum_count + line_count * 2 + qs_count * 2 * readlen + bc_count * 2 * readlen * 39] = atoi(basecall_tok);
+                    basecall_tok = strtok(NULL, ":");
+                    ++bc_count;
+                }
+                qscore_tok = strtok(NULL, ",");
+                ++qs_count;
+            }
+            readnum_tok = strtok(NULL, "|");
+            ++readnum_count;
+        }
+        ++line_count;
+    }
+    if(line) free(line);
+    fclose(fp);
+    return ret;
+}

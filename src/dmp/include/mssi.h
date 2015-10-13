@@ -35,7 +35,7 @@ typedef struct mssi_settings {
     int threads;
     int run_hash_dmp;
     char *ffq_prefix; // Final fastq prefix
-    char ****rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+    char *rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
     int blen;
     int blen1_2;
     int max_blen;

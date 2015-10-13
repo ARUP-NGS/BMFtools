@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 		settings.blen -= 2 * settings.offset;
 	}
 	if(settings.rescaler_path) {
-		settings.rescaler = parse_rescaler(settings.rescaler_path);
+		settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
 	}
 	fprintf(stderr, "About to get the read paths.\n");
 	if(argc - 1 != optind + 1) {
@@ -252,9 +252,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
 	}
 	mark_splitter_t *splitter = pp_split_inline(&settings);
-	if(settings.rescaler) {
-		cfree_rescaler(settings);
-	}
+    cond_free(settings.rescaler);
 	if(settings.run_hash_dmp) {
 		fprintf(stderr, "Now executing hash dmp.\n");
 		if(!settings.ffq_prefix) {

@@ -361,9 +361,16 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
 }
 
 
-inline int rescale_qscore(int readnum, int qscore, int cycle, char base, char ****rescaler)
+inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
 {
-    return rescaler[readnum][cycle][qscore - 2][nuc2num(base)];
+	int index = readnum;
+	int mult = 2;
+	index += cycle * mult;
+	mult *= readlen;
+	index += (qscore - 2) * mult;
+	mult *= 39;
+	index += mult * nuc2num(base);
+    return rescaler[index];
 }
 
 
