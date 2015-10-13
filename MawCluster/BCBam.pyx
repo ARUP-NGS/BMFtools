@@ -166,7 +166,8 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
 cdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
                             cystr opts=None, cystr path=None,
                             int threads=4, prefix=None, cystr memStr="6G",
-                            int mmlim=DEFAULT_MMLIM, bint cleanup=False):
+                            int mmlim=DEFAULT_MMLIM, bint cleanup=False,
+                            int ncpus=1):
     """
     :param: R1 - [cystr/arg] - path to input fastq for read 1
     :param: R2 - [cystr/arg] - path to input fastq for read 2
@@ -188,8 +189,8 @@ cdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
     bampaths = bmf_align_split(R1, R2, ref=ref, opts=opts,
                                path=path, threads=threads,
                                prefix=prefix, memStr=memStr)
-    return rescue_bam_list(outBAM, bampaths, cystr ref=ref,
-                           opts=opts, int mmlim=mmlim,
+    return rescue_bam_list(outBAM, bampaths, ref=ref,
+                           opts=opts, mmlim=mmlim,
                            threads=4, cleanup=False)
 
 
@@ -236,7 +237,9 @@ def catfq_sort_str(cystr fq):
 
 cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
                       cystr opts=None, int mmlim=DEFAULT_MMLIM,
-                      int threads=4, bint cleanup=False):
+                      int threads=4, bint cleanup=False, int ncpus=1):
+    import multiprocessing as mp
+    pool = mp.Pool(processes=ncpus)
     cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])
     cdef cystr prefix = TrimExt(outBAM)
     assert ref is not None
@@ -245,8 +248,11 @@ cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
     tuple_set = [(tmp, TrimExt(tmp) + ".tmprsq.bam",
                   TrimExt(tmp) + ".tmprsq.fq") for tmp in fnames]
     pl("Now doing bam rescue on each sub bam.")
-    for tup in tuple_set:
-        BamRescue(tup[i]*, mmlim=mmlim)
+    if ncpus > 1:
+        [pool.apply_async(pBamRescue, args=(tup[0], tup[1], tup[2]),
+                          kwds={"mmlim": mmlim}) for tup in tuple_set]
+    else:
+        [BamRescue(tup[0], tup[1], tup[2], mmlim=mmlim) for tup in tuple_set]
     tmpbams = [tup[1] for tup in tuple_set]
     if cleanup:
         [check_call("rm %s" % tup[0]) for tup in tuple_set]
