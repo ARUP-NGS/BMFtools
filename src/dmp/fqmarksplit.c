@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
     omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 
     int c;
-    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:hdcz")) > -1) {
+    while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:hdcz")) > -1) {
         switch(c) {
             case 'c': settings.panthera = 1; break;
             case 'd': settings.run_hash_dmp = 1; break;
@@ -201,22 +201,18 @@ int main(int argc, char *argv[])
         if(!settings.panthera) {
             for(int i = 0; i < settings.n_handles; ++i) {
                 // Clear files if present
-                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
                 sys_call_ret = system(cat_buff);
                 if(sys_call_ret < 0) {
                     fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
                     exit(EXIT_FAILURE);
                 }
-                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+                sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
                 sys_call_ret = system(cat_buff);
                 if(sys_call_ret < 0) {
                     fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
                     exit(EXIT_FAILURE);
                 }
-                // Delete both un-needed fastqs.
-                sprintf(cat_buff, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-                fprintf(stderr, "Now calling '%s'\n", cat_buff);
-                sys_call_ret = system(cat_buff);
             }
         }
         else {
