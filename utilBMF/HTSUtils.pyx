@@ -273,42 +273,6 @@ def align_bwa_aln(cystr R1, cystr R2, cystr ref=None,
     return outBAM
 
 
-def bmf_align_split(cystr R1, cystr R2, cystr ref=None, cystr opts=None, cystr path=None,
-                    int threads=4, prefix=None, cystr memStr="6G"):
-    """
-    :param: R1 - [cystr/arg] - path to input fastq for read 1
-    :param: R2 - [cystr/arg] - path to input fastq for read 2
-    :param: ref [cystr/kwarg/"default"] path to reference index base
-    :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
-    Defaults to 'bwa'
-    :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
-    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - optional arguments
-    to provide to bwa for alignment.
-    :param: dry_run - [bint/kwarg/False] - flag to return the command string
-    rather than calling it.
-    :param: threads - [int/kwarg/4]
-    :returns: [cystr] - path to outBAM if writing to file, "stdout" if
-    emitting to stdout.
-    """
-    if not path:
-        path = "bwa"
-    if not opts:
-        opts = "-t %i -v 1 -Y " % threads
-    split_opts = opts.split()
-    for n, opt in enumerate(split_opts):
-        if(opt == "-t"):
-            split_opts[n + 1] = str(threads)
-    if not prefix:
-        prefix = TrimExt(R1)
-    opt_concat = ' '.join(opts.split())
-    cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    cStr += " | bmf_bam_sort -sp %s -m %s -@ %i" % (prefix, memStr, threads)
-    sys.stderr.write("Command string for bmf align split: %s.\n" % cStr)
-    check_call(cStr, shell=True, executable="/bin/bash")
-    outfnames = ["%s.%s.bam" % (prefix, contig) for contig in
-                 pysam.FastaFile(ref).references]
-    
-
 def BwaMemCall(R1, R2, ref="default",
                outBAM="default", path="default",
                bint coorsort=True, bint u=False,

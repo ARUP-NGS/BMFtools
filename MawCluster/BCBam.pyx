@@ -163,14 +163,106 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     return outbed
 
 
-def Bam2Sam(inBAM, outsam):
-    pl("Bam2Sam. Input: {}. Output: {}.".format(inBAM, outsam))
-    output = open(outsam, 'w', 0)
-    command_str = 'samtools view -h {}'.format(inBAM)
-    pl(command_str)
-    check_call(shlex.split(command_str), stdout=output, shell=False)
-    return(command_str, outsam)
+cdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
+                            cystr opts=None, cystr path=None,
+                            int threads=4, prefix=None, cystr memStr="6G",
+                            int mmlim=DEFAULT_MMLIM, bint cleanup=False):
+    """
+    :param: R1 - [cystr/arg] - path to input fastq for read 1
+    :param: R2 - [cystr/arg] - path to input fastq for read 2
+    :param: outBAM - [cystr/arg] - path for final output BAM
+    :param: ref [cystr/kwarg/"default"] path to reference index base
+    :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
+    Defaults to 'bwa'
+    :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
+    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - optional arguments
+    to provide to bwa for alignment.
+    :param: dry_run - [bint/kwarg/False] - flag to return the command string
+    rather than calling it.
+    :param: threads - [int/kwarg/4]
+    :param: memStr - [cystr/memStr/"6G"]
+    :returns: [cystr] - Path to final BAM file
+    """
+    cdef list bampaths
+    cdef cystr ret
+    bampaths = bmf_align_split(R1, R2, ref=ref, opts=opts,
+                               path=path, threads=threads,
+                               prefix=prefix, memStr=memStr)
+    return rescue_bam_list(outBAM, bampaths, cystr ref=ref,
+                           opts=opts, int mmlim=mmlim,
+                           threads=4, cleanup=False)
 
+
+cpdef list bmf_align_split(cystr R1, cystr R2, cystr ref=None,
+                           cystr opts=None, cystr path=None,
+                           int threads=4, prefix=None, cystr memStr="6G"):
+    """
+    :param: R1 - [cystr/arg] - path to input fastq for read 1
+    :param: R2 - [cystr/arg] - path to input fastq for read 2
+    :param: ref [cystr/kwarg/"default"] path to reference index base
+    :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
+    Defaults to 'bwa'
+    :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
+    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - optional arguments
+    to provide to bwa for alignment.
+    :param: dry_run - [bint/kwarg/False] - flag to return the command string
+    rather than calling it.
+    :param: threads - [int/kwarg/4]
+    :param: memStr - [cystr/memStr/"6G"]
+    :returns: [list] - List of strings of output bam files.
+    """
+    if not path:
+        path = "bwa"
+    if not opts:
+        opts = "-t %i -v 1 -Y " % threads
+    split_opts = opts.split()
+    for n, opt in enumerate(split_opts):
+        if(opt == "-t"):
+            split_opts[n + 1] = str(threads)
+    if not prefix:
+        prefix = TrimExt(R1)
+    opt_concat = ' '.join(opts.split())
+    cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
+    cStr += " | bmf_bam_sort -sp %s -m %s -@ %i" % (prefix, memStr, threads)
+    sys.stderr.write("Command string for bmf align split: %s.\n" % cStr)
+    check_call(cStr, shell=True, executable="/bin/bash")
+    outfnames = ["%s.%s.bam" % (prefix, contig) for contig in
+                 pysam.FastaFile(ref).references]
+    return outfnames
+
+def catfq_sort_str(cystr fq):
+    return "cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n' " % fq
+
+
+cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
+                      cystr opts=None, int mmlim=DEFAULT_MMLIM,
+                      int threads=4, bint cleanup=False):
+    cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])
+    cdef cystr prefix = TrimExt(outBAM)
+    assert ref is not None
+    if not opts:
+        opts = "-t 4 -v 1 -Y "
+    tuple_set = [(tmp, TrimExt(tmp) + ".tmprsq.bam",
+                  TrimExt(tmp) + ".tmprsq.fq") for tmp in fnames]
+    pl("Now doing bam rescue on each sub bam.")
+    for tup in tuple_set:
+        BamRescue(tup[i]*, mmlim=mmlim)
+    tmpbams = [tup[1] for tup in tuple_set]
+    if cleanup:
+        [check_call("rm %s" % tup[0]) for tup in tuple_set]
+    pl("Now catting fastqs together to align and merge "
+       "back into the final bam.")
+    cStr = "cat %s" % (" ".join([tup[2] for tup in tuple_set]))
+    cStr += " | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n'"
+    cStr += " | bwa mem -C -p %s %s - | samtools sort" % (opts, ref)
+    cStr += " -O bam -l 0 -T %s - | samtools merge -f " % (random_prefix)
+    cStr += "-@ %i %s %s" % (threads, outBAM, " ".join(tmpbams))
+    pl("About to call cStr: '%s'.", cStr)
+    check_call(cStr, shell=True, executable="/bin/bash")
+    if cleanup:
+        [check_call("rm %s %s" % (tup[0], tup[2]), shell=True) for
+         tup in tuple_set]
+    return outBAM
 
 def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          bed="default", dbsnp="default"):
@@ -460,17 +552,6 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
             pass
     # assert fq_text is not None
     return bamList, fq_text
-'''
-    return ([read for read in recList if
-             read.has_tag("RA") is False],
-            [bam2ffq(read) for read in recList if read.has_tag("RA")])
-            waMemCall(R1, R2, ref="default",
-               outBAM="default", path="default",
-               bint coorsort=True, bint u=False,
-               sortMem="6G", cystr opts=None,
-               bint dry_run=False, bint sam=False,
-               int threads=4)
-'''
 
 
 cpdef cystr BamRescueMT(cystr fq1, cystr fq2, cystr ref,
@@ -559,7 +640,7 @@ cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
     # Make the temporary fastq for reads that need to be realigned.
     tmpFq = BamRescue(inBam, tmpBam, tmpFq, mmlim=mmlim)
     if opts is None:
-        opts = "-t 4 -v 1 -Y -T 0".replace("-t 4", "-t %i" % threads)
+        opts = "-t %i -v 1 -Y -T 0" % threads
     # Name sort, then align this fastq, sort it, then merge it into the tmpBam
     cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
            "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
