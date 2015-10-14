@@ -89,7 +89,6 @@ void period_to_null(char *instr)
 	while(instr[i]) {
 		if(instr[i] == '.') {
 			instr[i] = '\0';
-			return;
 		}
 		++i;
 	}
@@ -107,53 +106,32 @@ inline char *parse_1d_rescaler(char *qual_rescale_fname)
 		fprintf(stderr, "Could not open file %s. Abort mission!\n", qual_rescale_fname);
 		exit(EXIT_FAILURE);
 	}
+	int arr_len = 2 * readlen * 39 * 4 * sizeof(char);
 	char *ret = (char *)malloc(2 * readlen * 39 * 4 * sizeof(char));
 	char *line = NULL;
 	size_t len = 0;
-	ssize_t line_length;
-	int lineno = 0;
-	char *readnum_tok;
-	char *qscore_tok;
-	char *basecall_tok;
-	size_t readnum_count;
-	size_t line_count = 0;
-	size_t qs_count;
-	size_t bc_count;
-	size_t index;
-	fprintf(stderr, "Now reading lines...\n");
+	ssize_t line_length = 0;
+	char *tok = NULL;
+	size_t index = 0;
+	int lnum = 0;
+	fprintf(stderr, "Parsing in array from %s...\n", qual_rescale_fname);
 	while ((line_length = getline(&line, &len, fp)) != -1) {
-		fprintf(stderr, "Now reading line %" PRIu64 "...\n", line_count + 1);
-		readnum_tok = strtok(line, "|");
-		readnum_count = 0;
-		while(readnum_tok) {
-			qs_count = 0;
-			fprintf(stderr, "readnum_tok: %s.\n", readnum_tok);
-			qscore_tok = strtok(readnum_tok, ",");
-			while(qscore_tok) {
-                bc_count = 0;
-				fprintf(stderr, "qscore_tok: %s.\n", qscore_tok);
-				basecall_tok = strtok(qscore_tok, ":");
-				while(basecall_tok) {
-				    fprintf(stderr, "basecall_tok: %s.\n", basecall_tok);
-					period_to_null(basecall_tok);
-				    fprintf(stderr, "basecall_tok after stopping at a period: %s.\n", basecall_tok);
-					index = readnum_count + line_count * 2 + qs_count * 2 * readlen + bc_count * 2 * readlen * 39;
-					fprintf(stderr, "rn %i, lc %i, qs_c %i, bc_c%i.\n", readnum_count, line_count, qs_count, bc_count);
-					fprintf(stderr, "About to assign to index %" PRIu64 " from string %s.\n", index, basecall_tok);
-					ret[index] = atoi(basecall_tok);
-					fprintf(stderr, "Converted base quality: %i.\n", ret[index]);
-					basecall_tok = strtok(NULL, ":");
-					++bc_count;
+		for(int readnum = 0; readnum < 2; ++readnum) {
+			for(int qnum = 0; qnum < 39; ++qnum) {
+				for(int bnum = 0; bnum < 4; ++bnum) {
+					tok = strtok(tok ? NULL : line, "|:,");
+					if(!tok) {
+						break;
+					}
+					period_to_null(tok);
+					ret[index++] = atoi(tok);
+					//fprintf(stderr, "New qual str: %s. New qual: %c. Cycle: %i. Read num: %i. Qscore num %i. Basecall %i. .\n", tok, atoi(tok) + 33, lnum + 1, readnum + 1, qnum + 2, bnum + 1);
 				}
-				qscore_tok = strtok(NULL, ",");
-				++qs_count;
 			}
-			readnum_tok = strtok(NULL, "|");
-			++readnum_count;
 		}
-		++line_count;
+		++lnum;
 	}
-	if(line) free(line);
+	cond_free(line);
 	fclose(fp);
 	return ret;
 }

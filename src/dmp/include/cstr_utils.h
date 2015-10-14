@@ -49,67 +49,67 @@ const char digit_pairs[201] = {
 
 char *opt_itoa(unsigned val, char *s)
 {
-    if(!val)
-    {
-        s="0";
-        return s;
-    }
+	if(!val)
+	{
+		s="0";
+		return s;
+	}
 
-    int size;
-    if(val>=10000)
-    {
-        if(val>=10000000)
-        {
-            if(val>=1000000000)
-                size=10;
-            else if(val>=100000000)
-                size=9;
-            else
-                size=8;
-        }
-        else
-        {
-            if(val>=1000000)
-                size=7;
-            else if(val>=100000)
-                size=6;
-            else
-                size=5;
-        }
-    }
-    else
-    {
-        if(val>=100)
-        {
-            if(val>=1000)
-                size=4;
-            else
-                size=3;
-        }
-        else
-        {
-            if(val>=10)
-                size=2;
-            else
-                size=1;
-        }
-    }
+	int size;
+	if(val>=10000)
+	{
+		if(val>=10000000)
+		{
+			if(val>=1000000000)
+				size=10;
+			else if(val>=100000000)
+				size=9;
+			else
+				size=8;
+		}
+		else
+		{
+			if(val>=1000000)
+				size=7;
+			else if(val>=100000)
+				size=6;
+			else
+				size=5;
+		}
+	}
+	else
+	{
+		if(val>=100)
+		{
+			if(val>=1000)
+				size=4;
+			else
+				size=3;
+		}
+		else
+		{
+			if(val>=10)
+				size=2;
+			else
+				size=1;
+		}
+	}
 
-    s[size] = '\0';
-    char* c = &s[size-1];
-    while(val>=100)
-    {
-       int pos = val % 100;
-       val /= 100;
-       *(short*)(c-1)=*(short*)(digit_pairs+2*pos);
-       c-=2;
-    }
-    while(val>0)
-    {
-        *c--='0' + (val % 10);
-        val /= 10;
-    }
-    return s;
+	s[size] = '\0';
+	char* c = &s[size-1];
+	while(val>=100)
+	{
+	   int pos = val % 100;
+	   val /= 100;
+	   *(short*)(c-1)=*(short*)(digit_pairs+2*pos);
+	   c-=2;
+	}
+	while(val>0)
+	{
+		*c--='0' + (val % 10);
+		val /= 10;
+	}
+	return s;
 }
 
 
