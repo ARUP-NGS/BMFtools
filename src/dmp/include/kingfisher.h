@@ -28,7 +28,7 @@ int nuc2num(char character);
 
 typedef struct KingFisher {
 	uint16_t **nuc_counts; // Count of nucleotides of this form
-	uint16_t **phred_sums; // Sums of -10log10(p-value)
+	uint32_t **phred_sums; // Sums of -10log10(p-value)
 	int length; // Number of reads in family
 	int readlen; // Length of reads
 	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
@@ -80,10 +80,10 @@ static inline double igamc_pvalues(int num_pvalues, double x)
 inline KingFisher_t init_kf(int readlen)
 {
 	uint16_t **nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
-	uint16_t **phred_sums = (uint16_t **)malloc(sizeof(uint16_t *) * readlen);
+	uint32_t **phred_sums = (uint32_t **)malloc(sizeof(uint32_t *) * readlen);
 	for(int i = 0; i < readlen; i++) {
 		nuc_counts[i] = (uint16_t *)calloc(5, sizeof(uint16_t)); // One each for A, C, G, T, and N
-		phred_sums[i] = (uint16_t *)calloc(4, sizeof(uint16_t)); // One for each nucleotide
+		phred_sums[i] = (uint32_t *)calloc(4, sizeof(uint32_t)); // One for each nucleotide
 	}
 	KingFisher_t fisher = {
 		.nuc_counts = nuc_counts,
@@ -120,7 +120,7 @@ inline void clear_kf(KingFisher_t *kfp)
 {
 	for(int i = 0; i < kfp->readlen; i++) {
 		memset(kfp->nuc_counts[i], 0, 5 * sizeof(int)); // And these.
-		memset(kfp->phred_sums[i], 0, 4 * sizeof(int)); // Sets these to 0.
+		memset(kfp->phred_sums[i], 0, 4 * sizeof(uint32_t)); // Sets these to 0.
 	}
 	memset(kfp->max_phreds, 0, kfp->readlen); //Turn it back into an array of nulls.
 	kfp->length = 0;
@@ -285,7 +285,7 @@ static inline void dmp_process_write_sub_chi2(KingFisher_t *kfp, FILE *handle, i
 {
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
 	//buffer[0] = '@'; Set this later?
-	int tmp_max;
+	uint32_t tmp_max;
 	int tmp_phreds[4];
 	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < kfp->readlen; ++i) {
@@ -380,11 +380,11 @@ void set_kf(int readlen, KingFisher_t ret)
 	ret.length = 0;
 	ret.readlen = readlen;
 	ret.nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
-	ret.phred_sums = (uint16_t **)malloc(sizeof(uint16_t *) * readlen);
+	ret.phred_sums = (uint32_t **)malloc(sizeof(uint32_t *) * readlen);
 	ret.max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
 	for(int i = 0; i < readlen; i++) {
 		ret.nuc_counts[i] = (uint16_t *)calloc(5, sizeof(uint16_t)); // One each for A, C, G, T, and N
-		ret.phred_sums[i] = (uint16_t *)calloc(4, sizeof(uint16_t)); // One for each nucleotide
+		ret.phred_sums[i] = (uint32_t *)calloc(4, sizeof(uint32_t)); // One for each nucleotide
 	}
 	return;
 }
@@ -398,10 +398,10 @@ static inline KingFisher_t *init_kfp(size_t readlen)
 	ret->readlen = readlen;
 	ret->max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
 	ret->nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
-	ret->phred_sums = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
+	ret->phred_sums = (uint32_t **)malloc(readlen * sizeof(uint32_t *));
 	for(int i = 0; i < readlen; ++i) {
 		ret->nuc_counts[i] = (uint16_t *)calloc(5, sizeof(uint16_t)); // One each for A, C, G, T, and N
-		ret->phred_sums[i] = (uint16_t *)calloc(4, sizeof(uint16_t)); // One for each nucleotide
+		ret->phred_sums[i] = (uint32_t *)calloc(4, sizeof(uint32_t)); // One for each nucleotide
 	}
 	ret->pass_fail = '1';
 	return ret;
