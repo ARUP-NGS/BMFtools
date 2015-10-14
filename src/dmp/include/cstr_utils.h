@@ -39,9 +39,9 @@ inline int fast_atoi(char *str)
 	int ret = 0;
 	int sign = 1;
 	switch(*str) {
-	    case '-': sign = -1; break;
-	    case '+': break;
-	    default: ret = *str - '0';
+		case '-': sign = -1; break;
+		case '+': break;
+		default: ret = *str - '0';
 	}
 	++str;
 	while(*str) {

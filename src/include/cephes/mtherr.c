@@ -1,6 +1,6 @@
-/*                                                     mtherr.c
+/*													 mtherr.c
  *
- *     Library common error handling routine
+ *	 Library common error handling routine
  *
  *
  *
@@ -19,16 +19,16 @@
  * This routine may be called to report one of the following
  * error conditions (in the include file mconf.h).
  *  
- *   Mnemonic        Value          Significance
+ *   Mnemonic		Value		  Significance
  *
- *    DOMAIN            1       argument domain error
- *    SING              2       function singularity
- *    OVERFLOW          3       overflow range error
- *    UNDERFLOW         4       underflow range error
- *    TLOSS             5       total loss of precision
- *    PLOSS             6       partial loss of precision
- *    EDOM             33       Unix domain error code
- *    ERANGE           34       Unix range error code
+ *	DOMAIN			1	   argument domain error
+ *	SING			  2	   function singularity
+ *	OVERFLOW		  3	   overflow range error
+ *	UNDERFLOW		 4	   underflow range error
+ *	TLOSS			 5	   total loss of precision
+ *	PLOSS			 6	   partial loss of precision
+ *	EDOM			 33	   Unix domain error code
+ *	ERANGE		   34	   Unix range error code
  *
  * The default version of the file prints the function name,
  * passed to it by the pointer fctnam, followed by the
@@ -62,36 +62,36 @@
 int merror = 0;
 
 static sf_error_t conv_to_sf[8] = {
-    SF_ERROR_OTHER,
-    SF_ERROR_DOMAIN,
-    SF_ERROR_SINGULAR,
-    SF_ERROR_OVERFLOW,
-    SF_ERROR_UNDERFLOW,
-    SF_ERROR_NO_RESULT,
-    SF_ERROR_LOSS,
-    SF_ERROR_SLOW
+	SF_ERROR_OTHER,
+	SF_ERROR_DOMAIN,
+	SF_ERROR_SINGULAR,
+	SF_ERROR_OVERFLOW,
+	SF_ERROR_UNDERFLOW,
+	SF_ERROR_NO_RESULT,
+	SF_ERROR_LOSS,
+	SF_ERROR_SLOW
 };
 
 int mtherr(char *name, int code)
 {
-    /* Display string passed by calling program,
-     * which is supposed to be the name of the
-     * function in which the error occurred:
-     */
+	/* Display string passed by calling program,
+	 * which is supposed to be the name of the
+	 * function in which the error occurred:
+	 */
 
-    /* Set global error message word */
-    merror = code;
+	/* Set global error message word */
+	merror = code;
 
-    /* Display error message defined
-     * by the code argument.
-     */
-    if ((code <= 0) || (code >= 8))
-    code = 0;
+	/* Display error message defined
+	 * by the code argument.
+	 */
+	if ((code <= 0) || (code >= 8))
+	code = 0;
 
-    sf_error(name, conv_to_sf[code], NULL);
+	sf_error(name, conv_to_sf[code], NULL);
 
-    /* Return to calling
-     * program
-     */
-    return (0);
+	/* Return to calling
+	 * program
+	 */
+	return (0);
 }

@@ -1,4 +1,4 @@
-/*                                                     simpsn.c        */
+/*													 simpsn.c		*/
 /* simpsn.c
  * Numerical integration of function tabulated
  * at equally spaced arguments
@@ -23,11 +23,11 @@
 
 /* 8th order formula */
 static double simcon[] = {
-    3.488536155202821869E-2,
-    2.076895943562610229E-1,
-    -3.27336860670194003527E-2,
-    3.7022927689594356261E-1,
-    -1.6014109347442680776E-1,
+	3.488536155202821869E-2,
+	2.076895943562610229E-1,
+	-3.27336860670194003527E-2,
+	3.7022927689594356261E-1,
+	-1.6014109347442680776E-1,
 };
 
 /* 10th order formula */
@@ -43,7 +43,7 @@ static double simcon[] = {
  * };
  */
 
-/*                                                     simpsn.c 2      */
+/*													 simpsn.c 2	  */
 /* 20th order formula */
 /*
  * static double simcon[] =
@@ -62,22 +62,22 @@ static double simcon[] = {
  * };
  */
 
-/*                                                     simpsn.c 3      */
+/*													 simpsn.c 3	  */
 
 double simpsn(double[], double);
 
 double simpsn(f, delta)
-double f[];            /* tabulated function */
-double delta;            /* spacing of arguments */
+double f[];			/* tabulated function */
+double delta;			/* spacing of arguments */
 {
-    extern double simcon[];
-    double ans;
-    int i;
+	extern double simcon[];
+	double ans;
+	int i;
 
 
-    ans = simcon[NCOTE / 2] * f[NCOTE / 2];
-    for (i = 0; i < NCOTE / 2; i++)
-    ans += simcon[i] * (f[i] + f[NCOTE - i]);
+	ans = simcon[NCOTE / 2] * f[NCOTE / 2];
+	for (i = 0; i < NCOTE / 2; i++)
+	ans += simcon[i] * (f[i] + f[NCOTE - i]);
 
-    return (ans * delta * NCOTE);
+	return (ans * delta * NCOTE);
 }

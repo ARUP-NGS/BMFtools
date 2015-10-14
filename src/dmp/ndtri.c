@@ -1,6 +1,6 @@
-/*                            ndtri.c
+/*							ndtri.c
  *
- *    Inverse of Normal distribution function
+ *	Inverse of Normal distribution function
  *
  *
  *
@@ -29,19 +29,19 @@
  *
  * ACCURACY:
  *
- *                      Relative error:
- * arithmetic   domain        # trials      peak         rms
- *    DEC      0.125, 1         5500       9.5e-17     2.1e-17
- *    DEC      6e-39, 0.135     3500       5.7e-17     1.3e-17
- *    IEEE     0.125, 1        20000       7.2e-16     1.3e-16
- *    IEEE     3e-308, 0.135   50000       4.6e-16     9.8e-17
+ *					  Relative error:
+ * arithmetic   domain		# trials	  peak		 rms
+ *	DEC	  0.125, 1		 5500	   9.5e-17	 2.1e-17
+ *	DEC	  6e-39, 0.135	 3500	   5.7e-17	 1.3e-17
+ *	IEEE	 0.125, 1		20000	   7.2e-16	 1.3e-16
+ *	IEEE	 3e-308, 0.135   50000	   4.6e-16	 9.8e-17
  *
  *
  * ERROR MESSAGES:
  *
- *   message         condition    value returned
- * ndtri domain       x <= 0        -MAXNUM
- * ndtri domain       x >= 1         MAXNUM
+ *   message		 condition	value returned
+ * ndtri domain	   x <= 0		-MAXNUM
+ * ndtri domain	   x >= 1		 MAXNUM
  *
  */
 
@@ -369,42 +369,42 @@ int code;
 double polevl(), p1evl(), log(), sqrt();
 
 if( y0 <= 0.0 )
-    {
-    mtherr( "ndtri", DOMAIN );
-    return( -MAXNUM );
-    }
+	{
+	mtherr( "ndtri", DOMAIN );
+	return( -MAXNUM );
+	}
 if( y0 >= 1.0 )
-    {
-    mtherr( "ndtri", DOMAIN );
-    return( MAXNUM );
-    }
+	{
+	mtherr( "ndtri", DOMAIN );
+	return( MAXNUM );
+	}
 code = 1;
 y = y0;
 if( y > (1.0 - 0.13533528323661269189) ) /* 0.135... = exp(-2) */
-    {
-    y = 1.0 - y;
-    code = 0;
-    }
+	{
+	y = 1.0 - y;
+	code = 0;
+	}
 
 if( y > 0.13533528323661269189 )
-    {
-    y = y - 0.5;
-    y2 = y * y;
-    x = y + y * (y2 * polevl( y2, P0, 4)/p1evl( y2, Q0, 8 ));
-    x = x * s2pi; 
-    return(x);
-    }
+	{
+	y = y - 0.5;
+	y2 = y * y;
+	x = y + y * (y2 * polevl( y2, P0, 4)/p1evl( y2, Q0, 8 ));
+	x = x * s2pi; 
+	return(x);
+	}
 
 x = sqrt( -2.0 * log(y) );
 x0 = x - log(x)/x;
 
 z = 1.0/x;
 if( x < 8.0 ) /* y > exp(-32) = 1.2664165549e-14 */
-    x1 = z * polevl( z, P1, 8 )/p1evl( z, Q1, 8 );
+	x1 = z * polevl( z, P1, 8 )/p1evl( z, Q1, 8 );
 else
-    x1 = z * polevl( z, P2, 8 )/p1evl( z, Q2, 8 );
+	x1 = z * polevl( z, P2, 8 )/p1evl( z, Q2, 8 );
 x = x0 - x1;
 if( code != 0 )
-    x = -x;
+	x = -x;
 return( x );
 }

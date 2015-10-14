@@ -1,6 +1,6 @@
-/*                                                     mvmpy.c
+/*													 mvmpy.c
  *
- *     Matrix times vector
+ *	 Matrix times vector
  *
  *
  *
@@ -15,11 +15,11 @@
  *
  * DESCRIPTION:
  *
- *          c-1
- *          --
+ *		  c-1
+ *		  --
  * Y[j] =   >   A[j][k] V[k] ,  j = 1, ..., r
- *          --
- *          k=0
+ *		  --
+ *		  k=0
  *
  * Multiplies the r (rows) by c (columns) matrix A on the left
  * by column vector V of dimension c on the right
@@ -33,18 +33,18 @@
 
 void mvmpy(int r, int c, double *A, double *V, double *Y)
 {
-    register double s;
-    double *pA, *pV, *pY;
-    int i, j;
+	register double s;
+	double *pA, *pV, *pY;
+	int i, j;
 
-    pA = A;
-    pY = Y;
-    for (i = 0; i < r; i++) {
-    pV = V;
-    s = 0.0;
-    for (j = 0; j < c; j++) {
-        s += *pA++ * *pV++;
-    }
-    *pY++ = s;
-    }
+	pA = A;
+	pY = Y;
+	for (i = 0; i < r; i++) {
+	pV = V;
+	s = 0.0;
+	for (j = 0; j < c; j++) {
+		s += *pA++ * *pV++;
+	}
+	*pY++ = s;
+	}
 }

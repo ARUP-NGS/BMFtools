@@ -12,28 +12,28 @@
 #ifndef CHECK_CALL
 #define CHECK_CALL(buff, ret) \
 	fprintf(stderr, "Now check calling command '%s'.\n", buff);\
-    ret = system(buff);\
-    if(ret < 0)\
-        fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
+	ret = system(buff);\
+	if(ret < 0)\
+		fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
 #endif
 
 typedef struct crms_settings {
-    int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
-    int n_nucs; // Number of nucleotides to split by.
-    char *output_basename;
-    char *input_r1_path;
-    char *input_r2_path;
-    int n_handles; // Number of handles
-    int notification_interval; // How many sets of records do you want to process between progress reports?
-    blens_t *blen_data;
-    int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-    char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases).
-    char *rescaler_path; // Path to flat text file for parsing in the rescaler.
-    char *ffq_prefix; // Final fastq prefix.
-    int threads; // Number of threads to use for parallel dmp.
-    char *homing_sequence;
-    int homing_sequence_length;
-    int run_hash_dmp;
+	int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
+	int n_nucs; // Number of nucleotides to split by.
+	char *output_basename;
+	char *input_r1_path;
+	char *input_r2_path;
+	int n_handles; // Number of handles
+	int notification_interval; // How many sets of records do you want to process between progress reports?
+	blens_t *blen_data;
+	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
+	char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases).
+	char *rescaler_path; // Path to flat text file for parsing in the rescaler.
+	char *ffq_prefix; // Final fastq prefix.
+	int threads; // Number of threads to use for parallel dmp.
+	char *homing_sequence;
+	int homing_sequence_length;
+	int run_hash_dmp;
 } crms_settings_t;
 
 int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
@@ -46,88 +46,88 @@ int count_lines(char *fname);
  */
 
 #define cfree_rescaler(settings) \
-    do {\
-        if(settings.rescaler) {\
-            int readlen##_settings = count_lines(settings.rescaler_path);\
-            for(int i = 0; i < 2; ++i) {\
-                for(int j = 0; j < readlen##_settings; ++j) {\
-                    for(int k = 0; k < 39; ++k) {\
-                        cond_free(settings.rescaler[i][j][k]);\
-                    }\
-                    cond_free(settings.rescaler[i][j]);\
-                }\
-                cond_free(settings.rescaler[i]);\
-            }\
-            cond_free(settings.rescaler);\
-        }\
-    } while(0)
+	do {\
+		if(settings.rescaler) {\
+			int readlen##_settings = count_lines(settings.rescaler_path);\
+			for(int i = 0; i < 2; ++i) {\
+				for(int j = 0; j < readlen##_settings; ++j) {\
+					for(int k = 0; k < 39; ++k) {\
+						cond_free(settings.rescaler[i][j][k]);\
+					}\
+					cond_free(settings.rescaler[i][j]);\
+				}\
+				cond_free(settings.rescaler[i]);\
+			}\
+			cond_free(settings.rescaler);\
+		}\
+	} while(0)
 
 
 inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
 #if !NDEBUG
-    fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
+	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
 #endif
-    if(!settings_ptr) {
-        fprintf(stderr, "Settings pointer null. Abort!\n");
-        exit(EXIT_FAILURE);
-    }
-    if(!settings_ptr->output_basename) {
-        fprintf(stderr, "Output basename not set. Abort!\n");
-        exit(EXIT_FAILURE);
-    }
-    if(!splitter_ptr) {
-        fprintf(stderr, "Splitter pointer null. Abort!\n");
-        exit(EXIT_FAILURE);
-    }
-    char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-    splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-    fprintf(stderr, "Alloc'd ret.\n");
-    ret->n = splitter_ptr->n_handles;
-    ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-    ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-    ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-    ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-    for(int i = 0; i < splitter_ptr->n_handles; ++i) {
-        ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-        ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-        sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
-        ret->outfnames_r1[i] = strdup(tmp_buffer);
-        sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
-        ret->outfnames_r2[i] = strdup(tmp_buffer);
-    }
-    return ret;
+	if(!settings_ptr) {
+		fprintf(stderr, "Settings pointer null. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!settings_ptr->output_basename) {
+		fprintf(stderr, "Output basename not set. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!splitter_ptr) {
+		fprintf(stderr, "Splitter pointer null. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
+	fprintf(stderr, "Alloc'd ret.\n");
+	ret->n = splitter_ptr->n_handles;
+	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
+		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
+		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
+		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
+		ret->outfnames_r1[i] = strdup(tmp_buffer);
+		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
+		ret->outfnames_r2[i] = strdup(tmp_buffer);
+	}
+	return ret;
 }
 
 /*
 void free_rescaler_array(crms_settings_t settings) {
-    int readlen = count_lines(settings.rescaler_path);
-    for(int i = 0; i < 2; ++i) {
-        for(int j = 0; j < readlen; ++j) {
-            for(int k = 0; k < 39; ++k) {
-                cond_free(settings.rescaler[i][j][k]);
-            }
-            cond_free(settings.rescaler[i][j]);
-        }
-        cond_free(settings.rescaler[i]);
-    }
-    cond_free(settings.rescaler);
-    return;
+	int readlen = count_lines(settings.rescaler_path);
+	for(int i = 0; i < 2; ++i) {
+		for(int j = 0; j < readlen; ++j) {
+			for(int k = 0; k < 39; ++k) {
+				cond_free(settings.rescaler[i][j][k]);
+			}
+			cond_free(settings.rescaler[i][j]);
+		}
+		cond_free(settings.rescaler[i]);
+	}
+	cond_free(settings.rescaler);
+	return;
 }
 */
 
 #define free_rescaler_array(settings) \
-	    int readlen = count_lines(settings.rescaler_path);\
-	    for(int i##settings = 0; i##settings < 2; ++i##settings) {\
-	        for(int j##settings = 0; j##settings < readlen; ++j##settings) {\
-	            for(int k##settings = 0; k##settings < 39; ++k##settings) {\
-	                cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
-	            }\
-	            cond_free(settings.rescaler[i##settings][j##settings]);\
-	        }\
-	        cond_free(settings.rescaler[i##settings]);\
-	    }\
-	    cond_free(settings.rescaler)\
+		int readlen = count_lines(settings.rescaler_path);\
+		for(int i##settings = 0; i##settings < 2; ++i##settings) {\
+			for(int j##settings = 0; j##settings < readlen; ++j##settings) {\
+				for(int k##settings = 0; k##settings < 39; ++k##settings) {\
+					cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
+				}\
+				cond_free(settings.rescaler[i##settings][j##settings]);\
+			}\
+			cond_free(settings.rescaler[i##settings]);\
+		}\
+		cond_free(settings.rescaler)\
 
 // Inline function declarations
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);

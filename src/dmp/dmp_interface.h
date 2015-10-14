@@ -14,11 +14,11 @@
 
 
 typedef struct sort_overlord {
-    mark_splitter_t *splitter;
-    //FILE **sort_out_handles_r1;
-    //FILE **sort_out_handles_r2;
-    char **out_fnames_r1;
-    char **out_fnames_r2;
+	mark_splitter_t *splitter;
+	//FILE **sort_out_handles_r1;
+	//FILE **sort_out_handles_r2;
+	char **out_fnames_r1;
+	char **out_fnames_r2;
 } sort_overlord_t;
 
 
@@ -47,36 +47,36 @@ int ipow(int base, int exp);
 
 #ifndef KSEQ_2_FQ
 #define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
-        "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-    read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
+		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
+	read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
 #endif
 
 
 #ifndef FREE_SETTINGS
 #define FREE_SETTINGS(settings) cond_free(settings.output_basename);\
-    cond_free(settings.index_fq_path);\
-    cond_free(settings.input_r1_path);\
-    cond_free(settings.input_r2_path);\
-    cond_free(settings.ffq_prefix)
+	cond_free(settings.index_fq_path);\
+	cond_free(settings.input_r1_path);\
+	cond_free(settings.input_r2_path);\
+	cond_free(settings.ffq_prefix)
 #endif
 
 
 /*
 static inline void pushback_hash(outpost_t Navy)
 {
-    Navy.bs_ptr = barcode_mem_view(Navy.seq);
-    int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
-    fprintf(stderr, "Bin for pushing back hash: %i.", bin);
-    Navy.k=kh_get(fisher, Navy.hash,
-                  get_binner(Navy.bs_ptr, Navy.blen));
-    if(Navy.k==kh_end(Navy.hash)) {
-        fprintf(stderr, "New barcode! %s, %i.", Navy.bs_ptr, bin);
-        kh_value(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
-        pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
-    }
-    else {
-        pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
-    }
-    return;
+	Navy.bs_ptr = barcode_mem_view(Navy.seq);
+	int64_t bin = get_binnerl(Navy.bs_ptr, Navy.blen);
+	fprintf(stderr, "Bin for pushing back hash: %i.", bin);
+	Navy.k=kh_get(fisher, Navy.hash,
+				  get_binner(Navy.bs_ptr, Navy.blen));
+	if(Navy.k==kh_end(Navy.hash)) {
+		fprintf(stderr, "New barcode! %s, %i.", Navy.bs_ptr, bin);
+		kh_value(Navy.hash, Navy.k) = init_kf(Navy.seq->seq.l);
+		pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
+	}
+	else {
+		pushback_kseq(&kh_value(Navy.hash, Navy.k), Navy.seq, Navy.nuc_indices, Navy.blen);
+	}
+	return;
 }
 */

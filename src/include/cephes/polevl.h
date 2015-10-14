@@ -1,7 +1,7 @@
-/*                                                     polevl.c
- *                                                     p1evl.c
+/*													 polevl.c
+ *													 p1evl.c
  *
- *     Evaluate polynomial
+ *	 Evaluate polynomial
  *
  *
  *
@@ -18,14 +18,14 @@
  *
  * Evaluates polynomial of degree N:
  *
- *                     2          N
+ *					 2		  N
  * y  =  C  + C x + C x  +...+ C x
- *        0    1     2          N
+ *		0	1	 2		  N
  *
  * Coefficients are stored in reverse order:
  *
  * coef[0] = C  , ..., coef[N] = C  .
- *            N                   0
+ *			N				   0
  *
  *  The function p1evl() assumes that coef[N] = 1.0 and is
  * omitted from the array.  Its calling arguments are
@@ -57,42 +57,42 @@
 
 static NPY_INLINE double polevl(double x, double coef[], int N)
 {
-    double ans;
-    int i;
-    double *p;
+	double ans;
+	int i;
+	double *p;
 
-    p = coef;
-    ans = *p++;
-    i = N;
+	p = coef;
+	ans = *p++;
+	i = N;
 
-    do
-    ans = ans * x + *p++;
-    while (--i);
+	do
+	ans = ans * x + *p++;
+	while (--i);
 
-    return (ans);
+	return (ans);
 }
 
-/*                                                     p1evl() */
-/*                                          N
+/*													 p1evl() */
+/*										  N
  * Evaluate polynomial when coefficient of x  is 1.0.
  * Otherwise same as polevl.
  */
 
 static NPY_INLINE double p1evl(double x, double coef[], int N)
 {
-    double ans;
-    double *p;
-    int i;
+	double ans;
+	double *p;
+	int i;
 
-    p = coef;
-    ans = x + *p++;
-    i = N - 1;
+	p = coef;
+	ans = x + *p++;
+	i = N - 1;
 
-    do
-    ans = ans * x + *p++;
-    while (--i);
+	do
+	ans = ans * x + *p++;
+	while (--i);
 
-    return (ans);
+	return (ans);
 }
 
 #endif

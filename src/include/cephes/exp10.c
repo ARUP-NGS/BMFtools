@@ -1,7 +1,7 @@
-/*                                                     exp10.c
+/*													 exp10.c
  *
- *     Base 10 exponential function
- *      (Common antilogarithm)
+ *	 Base 10 exponential function
+ *	  (Common antilogarithm)
  *
  *
  *
@@ -21,7 +21,7 @@
  * as 10**x = 2**n 10**f, with |f| < 0.5 log10(2).
  * The Pade' form
  *
- *    1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
+ *	1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
  *
  * is used to approximate 10**f.
  *
@@ -29,17 +29,17 @@
  *
  * ACCURACY:
  *
- *                      Relative error:
- * arithmetic   domain     # trials      peak         rms
- *    IEEE     -307,+307    30000       2.2e-16     5.5e-17
+ *					  Relative error:
+ * arithmetic   domain	 # trials	  peak		 rms
+ *	IEEE	 -307,+307	30000	   2.2e-16	 5.5e-17
  * Test result from an earlier version (2.1):
- *    DEC       -38,+38     70000       3.1e-17     7.0e-18
+ *	DEC	   -38,+38	 70000	   3.1e-17	 7.0e-18
  *
  * ERROR MESSAGES:
  *
- *   message         condition      value returned
- * exp10 underflow    x < -MAXL10        0.0
- * exp10 overflow     x > MAXL10       NPY_INFINITY
+ *   message		 condition	  value returned
+ * exp10 underflow	x < -MAXL10		0.0
+ * exp10 overflow	 x > MAXL10	   NPY_INFINITY
  *
  * DEC arithmetic: MAXL10 = 38.230809449325611792.
  * IEEE arithmetic: MAXL10 = 308.2547155599167.
@@ -57,17 +57,17 @@
 
 #ifdef UNK
 static double P[] = {
-    4.09962519798587023075E-2,
-    1.17452732554344059015E1,
-    4.06717289936872725516E2,
-    2.39423741207388267439E3,
+	4.09962519798587023075E-2,
+	1.17452732554344059015E1,
+	4.06717289936872725516E2,
+	2.39423741207388267439E3,
 };
 
 static double Q[] = {
-    /* 1.00000000000000000000E0, */
-    8.50936160849306532625E1,
-    1.27209271178345121210E3,
-    2.07960819286001865907E3,
+	/* 1.00000000000000000000E0, */
+	8.50936160849306532625E1,
+	1.27209271178345121210E3,
+	2.07960819286001865907E3,
 };
 
 /* static double LOG102 = 3.01029995663981195214e-1; */
@@ -81,17 +81,17 @@ static double MAXL10 = 308.2547155599167;
 
 #ifdef DEC
 static unsigned short P[] = {
-    0037047, 0165657, 0114061, 0067234,
-    0041073, 0166243, 0123052, 0144643,
-    0042313, 0055720, 0024032, 0047443,
-    0043025, 0121714, 0070232, 0050007,
+	0037047, 0165657, 0114061, 0067234,
+	0041073, 0166243, 0123052, 0144643,
+	0042313, 0055720, 0024032, 0047443,
+	0043025, 0121714, 0070232, 0050007,
 };
 
 static unsigned short Q[] = {
-    /*0040200,0000000,0000000,0000000, */
-    0041652, 0027756, 0071216, 0050075,
-    0042637, 0001367, 0077263, 0136017,
-    0043001, 0174673, 0024157, 0133416,
+	/*0040200,0000000,0000000,0000000, */
+	0041652, 0027756, 0071216, 0050075,
+	0042637, 0001367, 0077263, 0136017,
+	0043001, 0174673, 0024157, 0133416,
 };
 
 /*
@@ -114,17 +114,17 @@ static unsigned short MXL[] = { 0041430, 0166131, 0047761, 0154130, };
 
 #ifdef IBMPC
 static unsigned short P[] = {
-    0x2dd4, 0xf306, 0xfd75, 0x3fa4,
-    0x5934, 0x74c5, 0x7d94, 0x4027,
-    0x49e4, 0x0503, 0x6b7a, 0x4079,
-    0x4a01, 0x8e13, 0xb479, 0x40a2,
+	0x2dd4, 0xf306, 0xfd75, 0x3fa4,
+	0x5934, 0x74c5, 0x7d94, 0x4027,
+	0x49e4, 0x0503, 0x6b7a, 0x4079,
+	0x4a01, 0x8e13, 0xb479, 0x40a2,
 };
 
 static unsigned short Q[] = {
-    /*0x0000,0x0000,0x0000,0x3ff0, */
-    0xca08, 0xce51, 0x45fd, 0x4055,
-    0x7782, 0xefd6, 0xe05e, 0x4093,
-    0xf6e2, 0x650d, 0x3f37, 0x40a0,
+	/*0x0000,0x0000,0x0000,0x3ff0, */
+	0xca08, 0xce51, 0x45fd, 0x4055,
+	0x7782, 0xefd6, 0xe05e, 0x4093,
+	0xf6e2, 0x650d, 0x3f37, 0x40a0,
 };
 
 /*
@@ -145,17 +145,17 @@ static double MAXL10 = 308.2547155599167;
 
 #ifdef MIEEE
 static unsigned short P[] = {
-    0x3fa4, 0xfd75, 0xf306, 0x2dd4,
-    0x4027, 0x7d94, 0x74c5, 0x5934,
-    0x4079, 0x6b7a, 0x0503, 0x49e4,
-    0x40a2, 0xb479, 0x8e13, 0x4a01,
+	0x3fa4, 0xfd75, 0xf306, 0x2dd4,
+	0x4027, 0x7d94, 0x74c5, 0x5934,
+	0x4079, 0x6b7a, 0x0503, 0x49e4,
+	0x40a2, 0xb479, 0x8e13, 0x4a01,
 };
 
 static unsigned short Q[] = {
-    /*0x3ff0,0x0000,0x0000,0x0000, */
-    0x4055, 0x45fd, 0xce51, 0xca08,
-    0x4093, 0xe05e, 0xefd6, 0x7782,
-    0x40a0, 0x3f37, 0x650d, 0xf6e2,
+	/*0x3ff0,0x0000,0x0000,0x0000, */
+	0x4055, 0x45fd, 0xce51, 0xca08,
+	0x4093, 0xe05e, 0xefd6, 0x7782,
+	0x40a0, 0x3f37, 0x650d, 0xf6e2,
 };
 
 /*
@@ -176,40 +176,40 @@ static double MAXL10 = 308.2547155599167;
 
 double exp10(double x)
 {
-    double px, xx;
-    short n;
+	double px, xx;
+	short n;
 
-    if (cephes_isnan(x))
-    return (x);
-    if (x > MAXL10) {
-    return (NPY_INFINITY);
-    }
+	if (cephes_isnan(x))
+	return (x);
+	if (x > MAXL10) {
+	return (NPY_INFINITY);
+	}
 
-    if (x < -MAXL10) {        /* Would like to use MINLOG but can't */
-    mtherr("exp10", UNDERFLOW);
-    return (0.0);
-    }
+	if (x < -MAXL10) {		/* Would like to use MINLOG but can't */
+	mtherr("exp10", UNDERFLOW);
+	return (0.0);
+	}
 
-    /* Express 10**x = 10**g 2**n
-     *   = 10**g 10**( n log10(2) )
-     *   = 10**( g + n log10(2) )
-     */
-    px = floor(LOG210 * x + 0.5);
-    n = px;
-    x -= px * LG102A;
-    x -= px * LG102B;
+	/* Express 10**x = 10**g 2**n
+	 *   = 10**g 10**( n log10(2) )
+	 *   = 10**( g + n log10(2) )
+	 */
+	px = floor(LOG210 * x + 0.5);
+	n = px;
+	x -= px * LG102A;
+	x -= px * LG102B;
 
-    /* rational approximation for exponential
-     * of the fractional part:
-     * 10**x = 1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
-     */
-    xx = x * x;
-    px = x * polevl(xx, P, 3);
-    x = px / (p1evl(xx, Q, 3) - px);
-    x = 1.0 + ldexp(x, 1);
+	/* rational approximation for exponential
+	 * of the fractional part:
+	 * 10**x = 1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
+	 */
+	xx = x * x;
+	px = x * polevl(xx, P, 3);
+	x = px / (p1evl(xx, Q, 3) - px);
+	x = 1.0 + ldexp(x, 1);
 
-    /* multiply by power of 2 */
-    x = ldexp(x, n);
+	/* multiply by power of 2 */
+	x = ldexp(x, n);
 
-    return (x);
+	return (x);
 }

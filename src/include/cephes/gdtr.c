@@ -1,6 +1,6 @@
-/*                                                     gdtr.c
+/*													 gdtr.c
  *
- *     Gamma distribution function
+ *	 Gamma distribution function
  *
  *
  *
@@ -18,13 +18,13 @@
  * density function:
  *
  *
- *                x
- *        b       -
- *       a       | |   b-1  -at
- * y =  -----    |    t    e    dt
- *       -     | |
- *      | (b)   -
- *               0
+ *				x
+ *		b	   -
+ *	   a	   | |   b-1  -at
+ * y =  -----	|	t	e	dt
+ *	   -	 | |
+ *	  | (b)   -
+ *			   0
  *
  *  The incomplete Gamma integral is used, according to the
  * relation
@@ -38,13 +38,13 @@
  *
  * ERROR MESSAGES:
  *
- *   message         condition      value returned
- * gdtr domain         x < 0            0.0
+ *   message		 condition	  value returned
+ * gdtr domain		 x < 0			0.0
  *
  */
-/*                            gdtrc.c
+/*							gdtrc.c
  *
- *    Complemented Gamma distribution function
+ *	Complemented Gamma distribution function
  *
  *
  *
@@ -62,13 +62,13 @@
  * probability density function:
  *
  *
- *               inf.
- *        b       -
- *       a       | |   b-1  -at
- * y =  -----    |    t    e    dt
- *       -     | |
- *      | (b)   -
- *               x
+ *			   inf.
+ *		b	   -
+ *	   a	   | |   b-1  -at
+ * y =  -----	|	t	e	dt
+ *	   -	 | |
+ *	  | (b)   -
+ *			   x
  *
  *  The incomplete Gamma integral is used, according to the
  * relation
@@ -82,12 +82,12 @@
  *
  * ERROR MESSAGES:
  *
- *   message         condition      value returned
- * gdtrc domain         x < 0            0.0
+ *   message		 condition	  value returned
+ * gdtrc domain		 x < 0			0.0
  *
  */
 
-/*                                                     gdtr()  */
+/*													 gdtr()  */
 
 
 /*
@@ -102,11 +102,11 @@ double gdtr(a, b, x)
 double a, b, x;
 {
 
-    if (x < 0.0) {
-    mtherr("gdtr", DOMAIN);
-    return (NPY_NAN);
-    }
-    return (igam(b, a * x));
+	if (x < 0.0) {
+	mtherr("gdtr", DOMAIN);
+	return (NPY_NAN);
+	}
+	return (igam(b, a * x));
 }
 
 
@@ -114,11 +114,11 @@ double gdtrc(a, b, x)
 double a, b, x;
 {
 
-    if (x < 0.0) {
-    mtherr("gdtrc", DOMAIN);
-    return (NPY_NAN);
-    }
-    return (igamc(b, a * x));
+	if (x < 0.0) {
+	mtherr("gdtrc", DOMAIN);
+	return (NPY_NAN);
+	}
+	return (igamc(b, a * x));
 }
 
 
@@ -126,10 +126,10 @@ double gdtri(a, b, y)
 double a, b, y;
 {
 
-    if ((y < 0.0) || (y > 1.0) || (a <= 0.0) || (b < 0.0)) {
-    mtherr("gdtri", DOMAIN);
-    return (NPY_NAN);
-    }
+	if ((y < 0.0) || (y > 1.0) || (a <= 0.0) || (b < 0.0)) {
+	mtherr("gdtri", DOMAIN);
+	return (NPY_NAN);
+	}
 
-    return (igami(b, 1.0 - y) / a);
+	return (igami(b, 1.0 - y) / a);
 }

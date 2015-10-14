@@ -1,6 +1,6 @@
-/*                                                     powi.c
+/*													 powi.c
  *
- *     Real raised to integer power
+ *	 Real raised to integer power
  *
  *
  *
@@ -26,17 +26,17 @@
  * ACCURACY:
  *
  *
- *                      Relative error:
- * arithmetic   x domain   n domain  # trials      peak         rms
- *    DEC       .04,26     -26,26    100000       2.7e-16     4.3e-17
- *    IEEE      .04,26     -26,26     50000       2.0e-15     3.8e-16
- *    IEEE        1,2    -1022,1023   50000       8.6e-14     1.6e-14
+ *					  Relative error:
+ * arithmetic   x domain   n domain  # trials	  peak		 rms
+ *	DEC	   .04,26	 -26,26	100000	   2.7e-16	 4.3e-17
+ *	IEEE	  .04,26	 -26,26	 50000	   2.0e-15	 3.8e-16
+ *	IEEE		1,2	-1022,1023   50000	   8.6e-14	 1.6e-14
  *
  * Returns NPY_INFINITY on overflow, zero on underflow.
  *
  */
 
-/*                                                     powi.c  */
+/*													 powi.c  */
 
 /*
  * Cephes Math Library Release 2.3:  March, 1995
@@ -50,117 +50,117 @@ double powi(x, nn)
 double x;
 int nn;
 {
-    int n, e, sign, asign, lx;
-    double w, y, s;
+	int n, e, sign, asign, lx;
+	double w, y, s;
 
-    /* See pow.c for these tests.  */
-    if (x == 0.0) {
-    if (nn == 0)
-        return (1.0);
-    else if (nn < 0)
-        return (NPY_INFINITY);
-    else {
-        if (nn & 1)
-        return (x);
-        else
-        return (0.0);
-    }
-    }
+	/* See pow.c for these tests.  */
+	if (x == 0.0) {
+	if (nn == 0)
+		return (1.0);
+	else if (nn < 0)
+		return (NPY_INFINITY);
+	else {
+		if (nn & 1)
+		return (x);
+		else
+		return (0.0);
+	}
+	}
 
-    if (nn == 0)
-    return (1.0);
+	if (nn == 0)
+	return (1.0);
 
-    if (nn == -1)
-    return (1.0 / x);
+	if (nn == -1)
+	return (1.0 / x);
 
-    if (x < 0.0) {
-    asign = -1;
-    x = -x;
-    }
-    else
-    asign = 0;
+	if (x < 0.0) {
+	asign = -1;
+	x = -x;
+	}
+	else
+	asign = 0;
 
 
-    if (nn < 0) {
-    sign = -1;
-    n = -nn;
-    }
-    else {
-    sign = 1;
-    n = nn;
-    }
+	if (nn < 0) {
+	sign = -1;
+	n = -nn;
+	}
+	else {
+	sign = 1;
+	n = nn;
+	}
 
-    /* Even power will be positive. */
-    if ((n & 1) == 0)
-    asign = 0;
+	/* Even power will be positive. */
+	if ((n & 1) == 0)
+	asign = 0;
 
-    /* Overflow detection */
+	/* Overflow detection */
 
-    /* Calculate approximate logarithm of answer */
-    s = frexp(x, &lx);
-    e = (lx - 1) * n;
-    if ((e == 0) || (e > 64) || (e < -64)) {
-    s = (s - 7.0710678118654752e-1) / (s + 7.0710678118654752e-1);
-    s = (2.9142135623730950 * s - 0.5 + lx) * nn * LOGE2;
-    }
-    else {
-    s = LOGE2 * e;
-    }
+	/* Calculate approximate logarithm of answer */
+	s = frexp(x, &lx);
+	e = (lx - 1) * n;
+	if ((e == 0) || (e > 64) || (e < -64)) {
+	s = (s - 7.0710678118654752e-1) / (s + 7.0710678118654752e-1);
+	s = (2.9142135623730950 * s - 0.5 + lx) * nn * LOGE2;
+	}
+	else {
+	s = LOGE2 * e;
+	}
 
-    if (s > MAXLOG) {
-    mtherr("powi", OVERFLOW);
-    y = NPY_INFINITY;
-    goto done;
-    }
+	if (s > MAXLOG) {
+	mtherr("powi", OVERFLOW);
+	y = NPY_INFINITY;
+	goto done;
+	}
 
 #if DENORMAL
-    if (s < MINLOG) {
-    y = 0.0;
-    goto done;
-    }
+	if (s < MINLOG) {
+	y = 0.0;
+	goto done;
+	}
 
-    /* Handle tiny denormal answer, but with less accuracy
-     * since roundoff error in 1.0/x will be amplified.
-     * The precise demarcation should be the gradual underflow threshold.
-     */
-    if ((s < (-MAXLOG + 2.0)) && (sign < 0)) {
-    x = 1.0 / x;
-    sign = -sign;
-    }
+	/* Handle tiny denormal answer, but with less accuracy
+	 * since roundoff error in 1.0/x will be amplified.
+	 * The precise demarcation should be the gradual underflow threshold.
+	 */
+	if ((s < (-MAXLOG + 2.0)) && (sign < 0)) {
+	x = 1.0 / x;
+	sign = -sign;
+	}
 #else
-    /* do not produce denormal answer */
-    if (s < -MAXLOG)
-    return (0.0);
+	/* do not produce denormal answer */
+	if (s < -MAXLOG)
+	return (0.0);
 #endif
 
 
-    /* First bit of the power */
-    if (n & 1)
-    y = x;
+	/* First bit of the power */
+	if (n & 1)
+	y = x;
 
-    else
-    y = 1.0;
+	else
+	y = 1.0;
 
-    w = x;
-    n >>= 1;
-    while (n) {
-    w = w * w;        /* arg to the 2-to-the-kth power */
-    if (n & 1)        /* if that bit is set, then include in product */
-        y *= w;
-    n >>= 1;
-    }
+	w = x;
+	n >>= 1;
+	while (n) {
+	w = w * w;		/* arg to the 2-to-the-kth power */
+	if (n & 1)		/* if that bit is set, then include in product */
+		y *= w;
+	n >>= 1;
+	}
 
-    if (sign < 0)
-    y = 1.0 / y;
+	if (sign < 0)
+	y = 1.0 / y;
 
   done:
 
-    if (asign) {
-    /* odd power of negative number */
-    if (y == 0.0)
-        y = NPY_NZERO;
-    else
-        y = -y;
-    }
-    return (y);
+	if (asign) {
+	/* odd power of negative number */
+	if (y == 0.0)
+		y = NPY_NZERO;
+	else
+		y = -y;
+	}
+	return (y);
 }

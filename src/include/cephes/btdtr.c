@@ -1,7 +1,7 @@
 
-/*                                                     btdtr.c
+/*													 btdtr.c
  *
- *     Beta distribution
+ *	 Beta distribution
  *
  *
  *
@@ -19,13 +19,13 @@
  * function:
  *
  *
- *                          x
- *            -             -
- *           | (a+b)       | |  a-1      b-1
- * P(x)  =  ----------     |   t    (1-t)    dt
- *           -     -     | |
- *          | (a) | (b)   -
- *                         0
+ *						  x
+ *			-			 -
+ *		   | (a+b)	   | |  a-1	  b-1
+ * P(x)  =  ----------	 |   t	(1-t)	dt
+ *		   -	 -	 | |
+ *		  | (a) | (b)   -
+ *						 0
  *
  *
  * This function is identical to the incomplete beta
@@ -42,7 +42,7 @@
  *
  */
 
-/*                                                             btdtr() */
+/*															 btdtr() */
 
 
 /*
@@ -56,5 +56,5 @@ double btdtr(a, b, x)
 double a, b, x;
 {
 
-    return (incbet(a, b, x));
+	return (incbet(a, b, x));
 }

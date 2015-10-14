@@ -1,6 +1,6 @@
-/*                                                     nbdtr.c
+/*													 nbdtr.c
  *
- *     Negative binomial distribution
+ *	 Negative binomial distribution
  *
  *
  *
@@ -17,8 +17,8 @@
  * binomial distribution:
  *
  *   k
- *   --  ( n+j-1 )   n      j
- *   >   (       )  p  (1-p)
+ *   --  ( n+j-1 )   n	  j
+ *   >   (	   )  p  (1-p)
  *   --  (   j   )
  *  j=0
  *
@@ -36,15 +36,15 @@
  *
  * Tested at random points (a,b,p), with p between 0 and 1.
  *
- *               a,b                     Relative error:
- * arithmetic  domain     # trials      peak         rms
- *    IEEE     0,100       100000      1.7e-13     8.8e-15
+ *			   a,b					 Relative error:
+ * arithmetic  domain	 # trials	  peak		 rms
+ *	IEEE	 0,100	   100000	  1.7e-13	 8.8e-15
  * See also incbet.c.
  *
  */
-/*                            nbdtrc.c
+/*							nbdtrc.c
  *
- *    Complemented negative binomial distribution
+ *	Complemented negative binomial distribution
  *
  *
  *
@@ -61,8 +61,8 @@
  * binomial distribution:
  *
  *   inf
- *   --  ( n+j-1 )   n      j
- *   >   (       )  p  (1-p)
+ *   --  ( n+j-1 )   n	  j
+ *   >   (	   )  p  (1-p)
  *   --  (   j   )
  *  j=k+1
  *
@@ -77,15 +77,15 @@
  *
  * Tested at random points (a,b,p), with p between 0 and 1.
  *
- *               a,b                     Relative error:
- * arithmetic  domain     # trials      peak         rms
- *    IEEE     0,100       100000      1.7e-13     8.8e-15
+ *			   a,b					 Relative error:
+ * arithmetic  domain	 # trials	  peak		 rms
+ *	IEEE	 0,100	   100000	  1.7e-13	 8.8e-15
  * See also incbet.c.
  */
 
-/*                                                     nbdtrc
+/*													 nbdtrc
  *
- *     Complemented negative binomial distribution
+ *	 Complemented negative binomial distribution
  *
  *
  *
@@ -102,8 +102,8 @@
  * binomial distribution:
  *
  *   inf
- *   --  ( n+j-1 )   n      j
- *   >   (       )  p  (1-p)
+ *   --  ( n+j-1 )   n	  j
+ *   >   (	   )  p  (1-p)
  *   --  (   j   )
  *  j=k+1
  *
@@ -118,9 +118,9 @@
  *
  * See incbet.c.
  */
-/*                            nbdtri
+/*							nbdtri
  *
- *    Functional inverse of negative binomial distribution
+ *	Functional inverse of negative binomial distribution
  *
  *
  *
@@ -139,9 +139,9 @@
  *
  * Tested at random points (a,b,y), with y between 0 and 1.
  *
- *               a,b                     Relative error:
- * arithmetic  domain     # trials      peak         rms
- *    IEEE     0,100       100000      1.5e-14     8.5e-16
+ *			   a,b					 Relative error:
+ * arithmetic  domain	 # trials	  peak		 rms
+ *	IEEE	 0,100	   100000	  1.5e-14	 8.5e-16
  * See also incbi.c.
  */
 
@@ -156,19 +156,19 @@ double nbdtrc(k, n, p)
 int k, n;
 double p;
 {
-    double dk, dn;
+	double dk, dn;
 
-    if ((p < 0.0) || (p > 1.0))
-    goto domerr;
-    if (k < 0) {
-      domerr:
-    mtherr("nbdtr", DOMAIN);
-    return (NPY_NAN);
-    }
+	if ((p < 0.0) || (p > 1.0))
+	goto domerr;
+	if (k < 0) {
+	  domerr:
+	mtherr("nbdtr", DOMAIN);
+	return (NPY_NAN);
+	}
 
-    dk = k + 1;
-    dn = n;
-    return (incbet(dk, dn, 1.0 - p));
+	dk = k + 1;
+	dn = n;
+	return (incbet(dk, dn, 1.0 - p));
 }
 
 
@@ -177,18 +177,18 @@ double nbdtr(k, n, p)
 int k, n;
 double p;
 {
-    double dk, dn;
+	double dk, dn;
 
-    if ((p < 0.0) || (p > 1.0))
-    goto domerr;
-    if (k < 0) {
-      domerr:
-    mtherr("nbdtr", DOMAIN);
-    return (NPY_NAN);
-    }
-    dk = k + 1;
-    dn = n;
-    return (incbet(dn, dk, p));
+	if ((p < 0.0) || (p > 1.0))
+	goto domerr;
+	if (k < 0) {
+	  domerr:
+	mtherr("nbdtr", DOMAIN);
+	return (NPY_NAN);
+	}
+	dk = k + 1;
+	dn = n;
+	return (incbet(dn, dk, p));
 }
 
 
@@ -197,17 +197,17 @@ double nbdtri(k, n, p)
 int k, n;
 double p;
 {
-    double dk, dn, w;
+	double dk, dn, w;
 
-    if ((p < 0.0) || (p > 1.0))
-    goto domerr;
-    if (k < 0) {
-      domerr:
-    mtherr("nbdtri", DOMAIN);
-    return (NPY_NAN);
-    }
-    dk = k + 1;
-    dn = n;
-    w = incbi(dn, dk, p);
-    return (w);
+	if ((p < 0.0) || (p > 1.0))
+	goto domerr;
+	if (k < 0) {
+	  domerr:
+	mtherr("nbdtri", DOMAIN);
+	return (NPY_NAN);
+	}
+	dk = k + 1;
+	dn = n;
+	w = incbi(dn, dk, p);
+	return (w);
 }

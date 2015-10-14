@@ -1,6 +1,6 @@
-/*                                                     chdtr.c
+/*													 chdtr.c
  *
- *     Chi-square distribution
+ *	 Chi-square distribution
  *
  *
  *
@@ -19,20 +19,20 @@
  * v degrees of freedom.
  *
  *
- *                                  inf.
- *                                    -
- *                        1          | |  v/2-1  -t/2
- *  P( x | v )   =   -----------     |   t      e     dt
- *                    v/2  -       | |
- *                   2    | (v/2)   -
- *                                   x
+ *								  inf.
+ *									-
+ *						1		  | |  v/2-1  -t/2
+ *  P( x | v )   =   -----------	 |   t	  e	 dt
+ *					v/2  -	   | |
+ *				   2	| (v/2)   -
+ *								   x
  *
  * where x is the Chi-square variable.
  *
  * The incomplete Gamma integral is used, according to the
  * formula
  *
- *     y = chdtr( v, x ) = igam( v/2.0, x/2.0 ).
+ *	 y = chdtr( v, x ) = igam( v/2.0, x/2.0 ).
  *
  *
  * The arguments must both be positive.
@@ -45,12 +45,12 @@
  *
  * ERROR MESSAGES:
  *
- *   message         condition      value returned
- * chdtr domain   x < 0 or v < 1        0.0
+ *   message		 condition	  value returned
+ * chdtr domain   x < 0 or v < 1		0.0
  */
-/*                            chdtrc()
+/*							chdtrc()
  *
- *    Complemented Chi-square distribution
+ *	Complemented Chi-square distribution
  *
  *
  *
@@ -69,20 +69,20 @@
  * with v degrees of freedom:
  *
  *
- *                                  inf.
- *                                    -
- *                        1          | |  v/2-1  -t/2
- *  P( x | v )   =   -----------     |   t      e     dt
- *                    v/2  -       | |
- *                   2    | (v/2)   -
- *                                   x
+ *								  inf.
+ *									-
+ *						1		  | |  v/2-1  -t/2
+ *  P( x | v )   =   -----------	 |   t	  e	 dt
+ *					v/2  -	   | |
+ *				   2	| (v/2)   -
+ *								   x
  *
  * where x is the Chi-square variable.
  *
  * The incomplete Gamma integral is used, according to the
  * formula
  *
- *    y = chdtr( v, x ) = igamc( v/2.0, x/2.0 ).
+ *	y = chdtr( v, x ) = igamc( v/2.0, x/2.0 ).
  *
  *
  * The arguments must both be positive.
@@ -95,12 +95,12 @@
  *
  * ERROR MESSAGES:
  *
- *   message         condition      value returned
- * chdtrc domain  x < 0 or v < 1        0.0
+ *   message		 condition	  value returned
+ * chdtrc domain  x < 0 or v < 1		0.0
  */
-/*                            chdtri()
+/*							chdtri()
  *
- *    Inverse of complemented Chi-square distribution
+ *	Inverse of complemented Chi-square distribution
  *
  *
  *
@@ -122,7 +122,7 @@
  * This is accomplished using the inverse Gamma integral
  * function and the relation
  *
- *    x/2 = igami( df/2, y );
+ *	x/2 = igami( df/2, y );
  *
  *
  *
@@ -133,13 +133,13 @@
  *
  * ERROR MESSAGES:
  *
- *   message         condition      value returned
- * chdtri domain   y < 0 or y > 1        0.0
- *                     v < 1
+ *   message		 condition	  value returned
+ * chdtri domain   y < 0 or y > 1		0.0
+ *					 v < 1
  *
  */
 
-/*                                                             chdtr() */
+/*															 chdtr() */
 
 
 /*
@@ -154,9 +154,9 @@ double chdtrc(df, x)
 double df, x;
 {
 
-    if (x < 0.0)
-    return 1.0;        /* modified by T. Oliphant */
-    return (igamc(df / 2.0, x / 2.0));
+	if (x < 0.0)
+	return 1.0;		/* modified by T. Oliphant */
+	return (igamc(df / 2.0, x / 2.0));
 }
 
 
@@ -165,11 +165,11 @@ double chdtr(df, x)
 double df, x;
 {
 
-    if ((x < 0.0)) {        /* || (df < 1.0) ) */
-    mtherr("chdtr", DOMAIN);
-    return (NPY_NAN);
-    }
-    return (igam(df / 2.0, x / 2.0));
+	if ((x < 0.0)) {		/* || (df < 1.0) ) */
+	mtherr("chdtr", DOMAIN);
+	return (NPY_NAN);
+	}
+	return (igam(df / 2.0, x / 2.0));
 }
 
 
@@ -177,13 +177,13 @@ double df, x;
 double chdtri(df, y)
 double df, y;
 {
-    double x;
+	double x;
 
-    if ((y < 0.0) || (y > 1.0)) {    /* || (df < 1.0) ) */
-    mtherr("chdtri", DOMAIN);
-    return (NPY_NAN);
-    }
+	if ((y < 0.0) || (y > 1.0)) {	/* || (df < 1.0) ) */
+	mtherr("chdtri", DOMAIN);
+	return (NPY_NAN);
+	}
 
-    x = igami(0.5 * df, y);
-    return (2.0 * x);
+	x = igami(0.5 * df, y);
+	return (2.0 * x);
 }

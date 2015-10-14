@@ -320,9 +320,9 @@ register double *P = (double *)p;
 
 y = *P++;
 do
-    {
-    y = y * x + *P++;
-    }
+	{
+	y = y * x + *P++;
+	}
 while( --n );
 return(y);
 }
@@ -340,9 +340,9 @@ register double *P = (double *)p;
 n -= 1;
 y = x + *P++;
 do
-    {
-    y = y * x + *P++;
-    }
+	{
+	y = y * x + *P++;
+	}
 while( --n );
 return( y );
 }
@@ -353,43 +353,43 @@ double x, y, z, y2, x0, x1;
 int code;
 
 if( y0 <= 0.0 )
-    {
-    mtherr( "ndtri", DOMAIN );
-    return( -MAXNUM );
-    }
+	{
+	mtherr( "ndtri", DOMAIN );
+	return( -MAXNUM );
+	}
 if( y0 >= 1.0 )
-    {
-    mtherr( "ndtri", DOMAIN );
-    return( MAXNUM );
-    }
+	{
+	mtherr( "ndtri", DOMAIN );
+	return( MAXNUM );
+	}
 code = 1;
 y = y0;
 if( y > (1.0 - 0.13533528323661269189) ) /* 0.135... = exp(-2) */
-    {
-    y = 1.0 - y;
-    code = 0;
-    }
+	{
+	y = 1.0 - y;
+	code = 0;
+	}
 
 if( y > 0.13533528323661269189 )
-    {
-    y = y - 0.5;
-    y2 = y * y;
-    x = y + y * (y2 * polevl( y2, P0, 4)/p1evl( y2, Q0, 8 ));
-    x = x * s2pi;
-    return(x);
-    }
+	{
+	y = y - 0.5;
+	y2 = y * y;
+	x = y + y * (y2 * polevl( y2, P0, 4)/p1evl( y2, Q0, 8 ));
+	x = x * s2pi;
+	return(x);
+	}
 
 x = sqrt( -2.0 * log(y) );
 x0 = x - log(x)/x;
 
 z = 1.0/x;
 if( x < 8.0 ) /* y > exp(-32) = 1.2664165549e-14 */
-    x1 = z * polevl( z, P1, 8 )/p1evl( z, Q1, 8 );
+	x1 = z * polevl( z, P1, 8 )/p1evl( z, Q1, 8 );
 else
-    x1 = z * polevl( z, P2, 8 )/p1evl( z, Q2, 8 );
+	x1 = z * polevl( z, P2, 8 )/p1evl( z, Q2, 8 );
 x = x0 - x1;
 if( code != 0 )
-    x = -x;
+	x = -x;
 return( x );
 }
 
@@ -564,14 +564,14 @@ w = 1.0/x;
 w = 1.0 + w * polevl( w, STIR, 4 );
 y = exp(x);
 if( x > MAXSTIR )
-    { /* Avoid overflow in pow() */
-    v = pow( x, 0.5 * x - 0.25 );
-    y = v * (v / y);
-    }
+	{ /* Avoid overflow in pow() */
+	v = pow( x, 0.5 * x - 0.25 );
+	y = v * (v / y);
+	}
 else
-    {
-    y = pow( x, x - 0.5 ) / y;
-    }
+	{
+	y = pow( x, x - 0.5 ) / y;
+	}
 y = SQTPI * y * w;
 return( y );
 }

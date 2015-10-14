@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
 	}
 	mark_splitter_t *splitter = pp_split_inline(&settings);
-    cond_free(settings.rescaler);
+	cond_free(settings.rescaler);
 	if(settings.run_hash_dmp) {
 		fprintf(stderr, "Now executing hash dmp.\n");
 		if(!settings.ffq_prefix) {

@@ -1,6 +1,6 @@
-/*                                                     beta.c
+/*													 beta.c
  *
- *     Beta function
+ *	 Beta function
  *
  *
  *
@@ -14,11 +14,11 @@
  *
  * DESCRIPTION:
  *
- *                   -     -
- *                  | (a) | (b)
+ *				   -	 -
+ *				  | (a) | (b)
  * beta( a, b )  =  -----------.
- *                     -
- *                    | (a+b)
+ *					 -
+ *					| (a+b)
  *
  * For large arguments the logarithm of the function is
  * evaluated using lgam(), then exponentiated.
@@ -27,20 +27,20 @@
  *
  * ACCURACY:
  *
- *                      Relative error:
- * arithmetic   domain     # trials      peak         rms
- *    DEC        0,30        1700       7.7e-15     1.5e-15
- *    IEEE       0,30       30000       8.1e-14     1.1e-14
+ *					  Relative error:
+ * arithmetic   domain	 # trials	  peak		 rms
+ *	DEC		0,30		1700	   7.7e-15	 1.5e-15
+ *	IEEE	   0,30	   30000	   8.1e-14	 1.1e-14
  *
  * ERROR MESSAGES:
  *
- *   message         condition          value returned
- * beta overflow    log(beta) > MAXLOG       0.0
- *                  a or b <0 integer        0.0
+ *   message		 condition		  value returned
+ * beta overflow	log(beta) > MAXLOG	   0.0
+ *				  a or b <0 integer		0.0
  *
  */
 
-/*                                                     beta.c  */
+/*													 beta.c  */
 
 
 /*
@@ -77,75 +77,75 @@ double gammasgn(double x);
 double beta(a, b)
 double a, b;
 {
-    double y;
-    int sign;
+	double y;
+	int sign;
 
-    sign = 1;
+	sign = 1;
 
-    if (a <= 0.0) {
-    if (a == floor(a)) {
-            if (a == (int)a) {
-                return beta_negint((int)a, b);
-            }
-            else {
-                goto over;
-            }
-        }
-    }
+	if (a <= 0.0) {
+	if (a == floor(a)) {
+			if (a == (int)a) {
+				return beta_negint((int)a, b);
+			}
+			else {
+				goto over;
+			}
+		}
+	}
 
-    if (b <= 0.0) {
-    if (b == floor(b)) {
-            if (b == (int)b) {
-                return beta_negint((int)b, a);
-            }
-            else {
-                goto over;
-            }
-        }
-    }
+	if (b <= 0.0) {
+	if (b == floor(b)) {
+			if (b == (int)b) {
+				return beta_negint((int)b, a);
+			}
+			else {
+				goto over;
+			}
+		}
+	}
 
-    if (fabs(a) < fabs(b)) {
-        y = a; a = b; b = y;
-    }
+	if (fabs(a) < fabs(b)) {
+		y = a; a = b; b = y;
+	}
 
-    if (fabs(a) > ASYMP_FACTOR * fabs(b) && a > ASYMP_FACTOR) {
-        /* Avoid loss of precision in lgam(a + b) - lgam(a) */
-        y = lbeta_asymp(a, b, &sign);
-        return sign * exp(y);
-    }
+	if (fabs(a) > ASYMP_FACTOR * fabs(b) && a > ASYMP_FACTOR) {
+		/* Avoid loss of precision in lgam(a + b) - lgam(a) */
+		y = lbeta_asymp(a, b, &sign);
+		return sign * exp(y);
+	}
 
-    y = a + b;
-    if (fabs(y) > MAXGAM || fabs(a) > MAXGAM || fabs(b) > MAXGAM) {
-    y = lgam(y);
-    sign *= sgngam;        /* keep track of the sign */
-    y = lgam(b) - y;
-    sign *= sgngam;
-    y = lgam(a) + y;
-    sign *= sgngam;
-    if (y > MAXLOG) {
-      over:
-        mtherr("beta", OVERFLOW);
-        return (sign * NPY_INFINITY);
-    }
-    return (sign * exp(y));
-    }
+	y = a + b;
+	if (fabs(y) > MAXGAM || fabs(a) > MAXGAM || fabs(b) > MAXGAM) {
+	y = lgam(y);
+	sign *= sgngam;		/* keep track of the sign */
+	y = lgam(b) - y;
+	sign *= sgngam;
+	y = lgam(a) + y;
+	sign *= sgngam;
+	if (y > MAXLOG) {
+	  over:
+		mtherr("beta", OVERFLOW);
+		return (sign * NPY_INFINITY);
+	}
+	return (sign * exp(y));
+	}
 
-    y = Gamma(y);
-    a = Gamma(a);
-    b = Gamma(b);
-    if (y == 0.0)
-    goto over;
+	y = Gamma(y);
+	a = Gamma(a);
+	b = Gamma(b);
+	if (y == 0.0)
+	goto over;
 
-    if (fabs(fabs(a) - fabs(y)) > fabs(fabs(b) - fabs(y))) {
-        y = b / y;
-        y *= a;
-    }
-    else {
-        y = a / y;
-        y *= b;
-    }
+	if (fabs(fabs(a) - fabs(y)) > fabs(fabs(b) - fabs(y))) {
+		y = b / y;
+		y *= a;
+	}
+	else {
+		y = a / y;
+		y *= b;
+	}
 
-    return (y);
+	return (y);
 }
 
 
@@ -154,82 +154,82 @@ double a, b;
 double lbeta(a, b)
 double a, b;
 {
-    double y;
-    int sign;
+	double y;
+	int sign;
 
-    sign = 1;
+	sign = 1;
 
-    if (a <= 0.0) {
-    if (a == floor(a)) {
-            if (a == (int)a) {
-                return lbeta_negint((int)a, b);
-            }
-            else {
-                goto over;
-            }
-        }
-    }
+	if (a <= 0.0) {
+	if (a == floor(a)) {
+			if (a == (int)a) {
+				return lbeta_negint((int)a, b);
+			}
+			else {
+				goto over;
+			}
+		}
+	}
 
-    if (b <= 0.0) {
-    if (b == floor(b)) {
-            if (b == (int)b) {
-                return lbeta_negint((int)b, a);
-            }
-            else {
-                goto over;
-            }
-        }
-    }
+	if (b <= 0.0) {
+	if (b == floor(b)) {
+			if (b == (int)b) {
+				return lbeta_negint((int)b, a);
+			}
+			else {
+				goto over;
+			}
+		}
+	}
 
-    if (fabs(a) < fabs(b)) {
-        y = a; a = b; b = y;
-    }
+	if (fabs(a) < fabs(b)) {
+		y = a; a = b; b = y;
+	}
 
-    if (fabs(a) > ASYMP_FACTOR * fabs(b) && a > ASYMP_FACTOR) {
-        /* Avoid loss of precision in lgam(a + b) - lgam(a) */
-        y = lbeta_asymp(a, b, &sign);
-        sgngam = sign;
-        return y;
-    }
+	if (fabs(a) > ASYMP_FACTOR * fabs(b) && a > ASYMP_FACTOR) {
+		/* Avoid loss of precision in lgam(a + b) - lgam(a) */
+		y = lbeta_asymp(a, b, &sign);
+		sgngam = sign;
+		return y;
+	}
 
-    y = a + b;
-    if (fabs(y) > MAXGAM || fabs(a) > MAXGAM || fabs(b) > MAXGAM) {
-    y = lgam(y);
-    sign *= sgngam;        /* keep track of the sign */
-    y = lgam(b) - y;
-    sign *= sgngam;
-    y = lgam(a) + y;
-    sign *= sgngam;
-    sgngam = sign;
-    return (y);
-    }
+	y = a + b;
+	if (fabs(y) > MAXGAM || fabs(a) > MAXGAM || fabs(b) > MAXGAM) {
+	y = lgam(y);
+	sign *= sgngam;		/* keep track of the sign */
+	y = lgam(b) - y;
+	sign *= sgngam;
+	y = lgam(a) + y;
+	sign *= sgngam;
+	sgngam = sign;
+	return (y);
+	}
 
-    y = Gamma(y);
-    a = Gamma(a);
-    b = Gamma(b);
-    if (y == 0.0) {
-      over:
-    mtherr("lbeta", OVERFLOW);
-    return (sign * NPY_INFINITY);
-    }
+	y = Gamma(y);
+	a = Gamma(a);
+	b = Gamma(b);
+	if (y == 0.0) {
+	  over:
+	mtherr("lbeta", OVERFLOW);
+	return (sign * NPY_INFINITY);
+	}
 
-    if (fabs(fabs(a) - fabs(y)) > fabs(fabs(b) - fabs(y))) {
-        y = b / y;
-        y *= a;
-    }
-    else {
-        y = a / y;
-        y *= b;
-    }
+	if (fabs(fabs(a) - fabs(y)) > fabs(fabs(b) - fabs(y))) {
+		y = b / y;
+		y *= a;
+	}
+	else {
+		y = a / y;
+		y *= b;
+	}
 
-    if (y < 0) {
-    sgngam = -1;
-    y = -y;
-    }
-    else
-    sgngam = 1;
+	if (y < 0) {
+	sgngam = -1;
+	y = -y;
+	}
+	else
+	sgngam = 1;
 
-    return (log(y));
+	return (log(y));
 }
 
 /*
@@ -237,15 +237,15 @@ double a, b;
  */
 static double lbeta_asymp(double a, double b, int *sgn)
 {
-    double r = lgam(b);
-    *sgn = sgngam;
-    r -= b * log(a);
+	double r = lgam(b);
+	*sgn = sgngam;
+	r -= b * log(a);
 
-    r += b*(1-b)/(2*a);
-    r += b*(1-b)*(1-2*b)/(12*a*a);
-    r += - b*b*(1-b)*(1-b)/(12*a*a*a);
+	r += b*(1-b)/(2*a);
+	r += b*(1-b)*(1-2*b)/(12*a*a);
+	r += - b*b*(1-b)*(1-b)/(12*a*a*a);
 
-    return r;
+	return r;
 }
 
 
@@ -255,29 +255,29 @@ static double lbeta_asymp(double a, double b, int *sgn)
 
 static double beta_negint(int a, double b)
 {
-    int sgn;
-    if (b == (int)b && 1 - a - b > 0) {
-        sgn = ((int)b % 2 == 0) ? 1 : -1;
-        return sgn * beta(1 - a - b, b);
-    }
-    else {
-    mtherr("lbeta", OVERFLOW);
-        return NPY_INFINITY;
-    }
+	int sgn;
+	if (b == (int)b && 1 - a - b > 0) {
+		sgn = ((int)b % 2 == 0) ? 1 : -1;
+		return sgn * beta(1 - a - b, b);
+	}
+	else {
+	mtherr("lbeta", OVERFLOW);
+		return NPY_INFINITY;
+	}
 }
 
 static double lbeta_negint(int a, double b)
 {
-    double r;
-    int sgn;
-    if (b == (int)b && 1 - a - b > 0) {
-        sgn = ((int)b % 2 == 0) ? 1 : -1;
-        r = lbeta(1 - a - b, b);
-        sgngam *= sgn;
-        return r;
-    }
-    else {
-    mtherr("lbeta", OVERFLOW);
-        return NPY_INFINITY;
-    }
+	double r;
+	int sgn;
+	if (b == (int)b && 1 - a - b > 0) {
+		sgn = ((int)b % 2 == 0) ? 1 : -1;
+		r = lbeta(1 - a - b, b);
+		sgngam *= sgn;
+		return r;
+	}
+	else {
+	mtherr("lbeta", OVERFLOW);
+		return NPY_INFINITY;
+	}
 }

@@ -1,6 +1,6 @@
-/*                                                     chbevl.c
+/*													 chbevl.c
  *
- *     Evaluate Chebyshev series
+ *	 Evaluate Chebyshev series
  *
  *
  *
@@ -17,11 +17,11 @@
  *
  * Evaluates the series
  *
- *        N-1
- *         - '
+ *		N-1
+ *		 - '
  *  y  =   >   coef[i] T (x/2)
- *         -            i
- *        i=0
+ *		 -			i
+ *		i=0
  *
  * of Chebyshev polynomials Ti at argument x/2.
  *
@@ -49,7 +49,7 @@
  * the same degree.
  *
  */
-/*                            chbevl.c    */
+/*							chbevl.c	*/
 
 /*
  * Cephes Math Library Release 2.0:  April, 1987
@@ -65,20 +65,20 @@ double x;
 double array[];
 int n;
 {
-    double b0, b1, b2, *p;
-    int i;
+	double b0, b1, b2, *p;
+	int i;
 
-    p = array;
-    b0 = *p++;
-    b1 = 0.0;
-    i = n - 1;
+	p = array;
+	b0 = *p++;
+	b1 = 0.0;
+	i = n - 1;
 
-    do {
-    b2 = b1;
-    b1 = b0;
-    b0 = x * b1 - b2 + *p++;
-    }
-    while (--i);
+	do {
+	b2 = b1;
+	b1 = b0;
+	b0 = x * b1 - b2 + *p++;
+	}
+	while (--i);
 
-    return (0.5 * (b0 - b2));
+	return (0.5 * (b0 - b2));
 }

@@ -1,8 +1,8 @@
 #ifndef __MCONF_H
 #define __MCONF_H
-/*                            mconf.h
+/*							mconf.h
  *
- *    Common include file for math routines
+ *	Common include file for math routines
  *
  *
  *
@@ -58,31 +58,31 @@ Copyright 1984, 1987, 1989, 1995 by Stephen L. Moshier
 /* Constant definitions for math error conditions
  */
 
-#define DOMAIN        1    /* argument domain error */
-#define SING        2    /* argument singularity */
-#define OVERFLOW    3    /* overflow range error */
-#define UNDERFLOW    4    /* underflow range error */
-#define TLOSS        5    /* total loss of precision */
-#define PLOSS        6    /* partial loss of precision */
+#define DOMAIN		1	/* argument domain error */
+#define SING		2	/* argument singularity */
+#define OVERFLOW	3	/* overflow range error */
+#define UNDERFLOW	4	/* underflow range error */
+#define TLOSS		5	/* total loss of precision */
+#define PLOSS		6	/* partial loss of precision */
 
-#define EDOM        33
-#define ERANGE        34
+#define EDOM		33
+#define ERANGE		34
 
 /* Complex numeral.  */
 typedef struct
-    {
-    double r;
-    double i;
-    }cmplx;
+	{
+	double r;
+	double i;
+	}cmplx;
 
 /* Long double complex numeral.  */
 /* Comment out if your compiler does not have long double.  */
 #if 1
 typedef struct
-    {
-    long double r;
-    long double i;
-    }cmplxl;
+	{
+	long double r;
+	long double i;
+	}cmplxl;
 #endif
 
 /* Type of computer arithmetic */

@@ -2,12 +2,12 @@
 #include "stdio.h"
 
 typedef struct rescue_settings {
-    FILE *fp;
-    int write_nc2bam; // Write the reads with the number of nucleotides changed to bam rather than to a fastq file.
-    int hd_thresh; // Threshold for hamming distance. If < hd_thresh, reads are considered to be from the same family.
-    int is_se; // Is single end
-    int force_se; // Is single end
-    char *fq_fname;
+	FILE *fp;
+	int write_nc2bam; // Write the reads with the number of nucleotides changed to bam rather than to a fastq file.
+	int hd_thresh; // Threshold for hamming distance. If < hd_thresh, reads are considered to be from the same family.
+	int is_se; // Is single end
+	int force_se; // Is single end
+	char *fq_fname;
 } rescue_settings_t;
 
 #ifndef bam_is_r1
