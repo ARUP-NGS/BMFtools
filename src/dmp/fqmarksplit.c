@@ -111,7 +111,9 @@ int main(int argc, char *argv[])
 			case 'v': settings.notification_interval = atoi(optarg); break;
 			case 'z': settings.gzip_output = 1; break;
 			case 'g': settings.gzip_compression = atoi(optarg); break;
-			case 'r': settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path); break;
+			case 'r':
+				fprintf(stderr, "About to parse in rescaler.\n");
+				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path); break;
 			case 'h': print_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
 		}

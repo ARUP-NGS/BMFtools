@@ -71,7 +71,7 @@ config = {
                  "SecC", "analyscripts"],
     'ext_modules': ext,
     'include_dirs': includes,
-    'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/sort/lh3sort',
+    'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/sort/lh3sort', 'src/dmp/fqmarksplit_p',
                 'src/dmp/bmf_crms', 'src/dmp/dmp', 'src/dmp/uthash_dmp', 'src/dmp/bam_rescue',
                 'src/dmp/bmf_bam_sort', 'src/dmp/bmf_crms_sc'],
     'name': 'BMFTools',

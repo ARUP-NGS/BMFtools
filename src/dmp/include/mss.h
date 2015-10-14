@@ -18,6 +18,11 @@
 		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
 	read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
 #endif
+#ifndef SALTED_MSEQ_2_FQ
+#define SALTED_MSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
+		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
+	read->name, pass_fail, barcode, read->seq, read->qual)
+#endif
 
 
 #ifndef FREE_SETTINGS
@@ -296,24 +301,43 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	char barcode[200];
 	fprintf(stderr, "Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
 			settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
+	l1 = kseq_read(seq1);
+	l2 = kseq_read(seq2);
+	l_index = kseq_read(seq_index);
+	if(l1 < 0 | l2 < 0 | l_index < 0) {
+		fprintf(stderr, "Could not read input fastqs. Abort mission!\n");
+		exit(EXIT_FAILURE);
+	}
+	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
+	rseq1 = (mseq_t *)malloc(sizeof(mseq_t));
+	rseq2 = (mseq_t *)malloc(sizeof(mseq_t));
+	p7_mseq_rescale_init(seq1, rseq1, settings->rescaler, 0, 0); // rseq1 is initialized
+	p7_mseq_rescale_init(seq2, rseq2, settings->rescaler, 0, 0); // rseq2 is initialized
+	barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
+	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, 0, 0);
+	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, 0, 0);
+	pass_fail = test_hp(barcode, settings->hp_threshold);
+	bin = get_binner(barcode, settings->n_nucs);
+	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
+	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], seq2, barcode, pass_fail);
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
-		if(!rseq1) {
-			rseq1 = (mseq_t *)malloc(sizeof(mseq_t));
-			p7_mseq_rescale_init(seq1, rseq1, settings->rescaler, 0, 0); // rseq1 is initialized
-		}
 		if(!(++count % settings->notification_interval)) {
 			fprintf(stderr, "Number of records processed: %i.\n", count);
 		}
 		memcpy(barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 		memcpy(barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 		memcpy(barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
-		barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
+		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, 0, 0);
+		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, 0, 0);
 		pass_fail = test_hp(barcode, settings->hp_threshold);
 		bin = get_binner(barcode, settings->n_nucs);
-		SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
-		SALTED_KSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], seq2, barcode, pass_fail);
+		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], seq1, barcode, pass_fail);
+		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], seq2, barcode, pass_fail);
 	}
+	tm_destroy(tmp);
+	mseq_destroy(rseq1);
+	mseq_destroy(rseq2);
 	kseq_destroy(seq1);
 	kseq_destroy(seq2);
 	kseq_destroy(seq_index);

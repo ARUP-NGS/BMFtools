@@ -3,6 +3,7 @@
 
 #include "kseq.h"
 #include "kingfisher.h"
+#include "o_mem.h"
 #include <zlib.h>
 /*
  * Utilities regarding kseq types.
@@ -57,6 +58,13 @@ inline char *barcode_mem_view(kseq_t *seq)
 	return NULL;
 }
 
+void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
+tmp_mseq_t *init_tm_ptr(int readlen, int blen);
+void tm_destroy(tmp_mseq_t *var);
+tmp_mseq_t init_tmp_mseq(int readlen, int blen);
+void mseq_destroy(mseq_t *mvar);
+void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
+int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 
 inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 {
@@ -82,8 +90,32 @@ inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 	return 0; // Both barcode and read are lexicographically identical forward and reverse... is that possible? Eh. Don't flip.
 }
 
+/*
+ * Init's tmp_mseq_t ptr
+ */
+inline tmp_mseq_t *init_tm_ptr(int readlen, int blen)
+{
+	tmp_mseq_t *ret = (tmp_mseq_t *)malloc(sizeof(tmp_mseq_t));
+	char *tmp_seq = (char *)malloc(readlen * sizeof(char));
+	char *tmp_qual = (char *)malloc(readlen * sizeof(char));
+	char *tmp_barcode = (char *)malloc(blen * sizeof(char));
+	ret->tmp_seq = tmp_seq;
+	ret->tmp_qual = tmp_qual;
+	ret->tmp_barcode = tmp_barcode;
+	ret->readlen = readlen;
+	ret->blen = blen;
+	return ret;
+}
 
-tmp_mseq_t init_tmp_mseq(int readlen, int blen)
+inline void tm_destroy(tmp_mseq_t *var) {
+	cond_free(var->tmp_barcode);
+	cond_free(var->tmp_seq);
+	cond_free(var->tmp_qual);
+	cond_free(var);
+}
+
+
+inline tmp_mseq_t init_tmp_mseq(int readlen, int blen)
 {
 	char *tmp_seq = (char *)malloc(readlen * sizeof(char));
 	char *tmp_qual = (char *)malloc(readlen * sizeof(char));
@@ -101,9 +133,9 @@ tmp_mseq_t init_tmp_mseq(int readlen, int blen)
 
 void tmp_mseq_destroy(tmp_mseq_t mvar)
 {
-	free(mvar.tmp_seq);
-	free(mvar.tmp_qual);
-	free(mvar.tmp_barcode);
+	cond_free(mvar.tmp_seq);
+	cond_free(mvar.tmp_qual);
+	cond_free(mvar.tmp_barcode);
 	mvar.readlen = 0;
 	mvar.blen = 0;
 }
@@ -255,13 +287,14 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescale
 
 inline void mseq_destroy(mseq_t *mvar)
 {
-	free(mvar->name);
-	free(mvar->comment);
-	free(mvar->seq);
-	free(mvar->qual);
+	cond_free(mvar->name);
+	cond_free(mvar->comment);
+	cond_free(mvar->seq);
+	cond_free(mvar->qual);
 	// Note: do not free barcode, as that is owned by another.
 	mvar->l = 0;
 	mvar->blen = 0;
+	cond_free(mvar);
 	return;
 }
 
