@@ -192,14 +192,17 @@ inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2. Assumption: is_read2 is 0 or 1.
  */
-inline void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2)
+inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int is_read2)
 {
 	if(!seq) {
-		ret = NULL;
-		return;
+		fprintf(stderr, "kseq for initiating p7_mseq is null. Abort!\n");
+		exit(EXIT_FAILURE);
 	}
-	ret->name = strdup(seq->name.s);
-	ret->comment = strdup(seq->comment.s);
+	mseq_t *ret = (mseq_t *)malloc(sizeof(mseq_t));
+	ret->name = (char *)malloc(100 * sizeof(char));
+	strcpy(ret->name, seq->name.s);
+	ret->comment = (char *)malloc(2000 * sizeof(char));
+	strcpy(ret->comment, seq->comment.s);
 	ret->seq = strdup(seq->seq.s);
 	if(!rescaler) ret->qual = strdup(seq->qual.s);
 	else {
@@ -207,14 +210,15 @@ inline void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n
 		ret->qual = (char *)calloc(seq->seq.l + 1, sizeof(char));
 		ret->qual[seq->seq.l] = '\0'; // Null-terminate this string.
 		for(int i = 0; i < seq->seq.l; i++) {
-			fprintf(stderr, "RS params: %i, %i, %i, %i, %i.\n", is_read2 , seq->qual.s[i], i, ret->seq[i], seq->seq.l);
+			//fprintf(stderr, "RS params: %i, %i, %i, %i, %i.\n", is_read2 , seq->qual.s[i], i, ret->seq[i], seq->seq.l);
 			ret->qual[i] = rescale_qscore(is_read2 , seq->qual.s[i], i, ret->seq[i], seq->seq.l, rescaler);
-			fprintf(stderr, "New qscore: %i.\n", ret->qual[i]);
+			//fprintf(stderr, "New qscore: %i.\n", ret->qual[i]);
 		}
 	}
 	memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
 	memset(ret->qual, '#', n_len); // Set all N bases to quality score of 2.
 	ret->l = seq->seq.l;
+	return ret;
 }
 
 /*
@@ -254,8 +258,8 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, tmp_mseq
  */
 inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
-	memcpy(mvar->name, seq->name.s, 49 * sizeof(char));
-
+	memcpy(mvar->name, seq->name.s, seq->name.l);
+    mvar->name[name.l] = '\0';
 	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
 	memset(mvar->seq, 'N', n_len);
 	if(!rescaler) {
@@ -265,7 +269,16 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler
 		for(int i = n_len; i < seq->seq.l; i++) {
 			// Leave quality scores alone for bases which are N. Otherwise
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? 0 : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
+			if(mvar->qual[i] < '!') {
+				fprintf(stderr, "Name: %s. Comment: %s. Seq: %s. Qual: %s.\n", seq->name.s, seq->comment.s, seq->seq.s, seq->qual.s);
+				fprintf(stderr, "Just got a rescaled value of < 33 with R%i, %i, original qual %i, base %c (%i).\n", is_read2 + 1, seq->qual.s[i], seq->seq.s[i], seq->seq.s[i]);
+				exit(EXIT_FAILURE);
+			}
 		}
+	}
+	if(strlen(mvar->qual) != seq->qual.l){
+		fprintf(stderr, "Ret qual has the wrong length. (%i). Expected: %i. Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
+		exit(1);
 	}
 	mvar->barcode = barcode;
 	crc_mseq(mvar, tmp);

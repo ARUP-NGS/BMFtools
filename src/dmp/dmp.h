@@ -21,5 +21,5 @@ void i32toa_branchlut(int32_t value, char* buffer);
 int get_binner(char *barcode, int length);
 void nuc_to_pos(char character, int *nuc_indices);
 char test_hp(char *seq, int threshold);
-void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2);
+mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int is_read2);
 char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);

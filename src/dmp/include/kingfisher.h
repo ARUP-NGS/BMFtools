@@ -365,26 +365,26 @@ inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int re
 {
 	int index = readnum;
 	int mult = 2;
-	fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
+	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += cycle * mult;
 	mult *= readlen;
-	fprintf(stderr, "index value is now: %i, mult %i. Qscore: %i, Qscore index%i.\n", index, mult, qscore, qscore - 35);
+	//fprintf(stderr, "index value is now: %i, mult %i. Qscore: %i, Qscore index%i.\n", index, mult, qscore, qscore - 35);
 	index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
 	mult *= 39;
-	fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
+	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += mult * nuc2num(base);
-	fprintf(stderr, "Index = %i.\n", index);
+	//fprintf(stderr, "Index = %i.\n", index);
 	if(index >= readlen * 2 * 39 * 4) {
-		fprintf(stderr, "Something's wrong. Index (%i) is too big! Max: %i.\n", index, readlen * 2 * 39 * 4);
-		fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
+		//fprintf(stderr, "Something's wrong. Index (%i) is too big! Max: %i.\n", index, readlen * 2 * 39 * 4);
+		//fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
 		exit(EXIT_FAILURE);
 	}
 	else if(index < 0) {
-		fprintf(stderr, "Something's wrong. Index (%i) is negative???\n", index);
-		fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
+		//fprintf(stderr, "Something's wrong. Index (%i) is negative???\n", index);
+		//fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
 		exit(EXIT_FAILURE);
 	}
-	return rescaler[index];
+	return rescaler[index] + 33;
 }
 
 
