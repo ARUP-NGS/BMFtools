@@ -72,7 +72,6 @@ inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 	fprintf(stderr, "Var with name %s and pointer %p.\n", mvar->name, mvar);
 #endif
 	int cmp_ret;
-	fprintf(stderr, "Barcode: %s.\n", barcode);
 	for(int i = 0; i < blen; ++i) {
 		cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);
 		if(cmp_ret < 0) {
@@ -203,10 +202,6 @@ inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int 
 		exit(EXIT_FAILURE);
 	}
 	mseq_t *ret = (mseq_t *)malloc(sizeof(mseq_t));
-	if(!ret) {
-		fprintf(stderr, "Failed to allocate memory. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
 	strcpy(ret->name, seq->name.s);
 	strcpy(ret->comment, seq->comment.s);
 	strcpy(ret->seq, seq->seq.s);
@@ -242,11 +237,7 @@ inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int 
 inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	mseq_t *ret = p7_mseq_rescale_init(seq, rescaler, n_len, is_read2);
-	fprintf(stderr, "Pointer to ret: %p. To tmp: %p. Barcode: %s.\n", ret, tmp, ret->barcode);
-	if(!ret) {
-		fprintf(stderr, "Failed to allocate memory. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
+	//fprintf(stderr, "Pointer to ret: %p. To tmp: %p. Barcode: %s.\n", ret, tmp, ret->barcode);
 	if(!tmp) {
 		fprintf(stderr, "Tmpvars not allocated!\n");
 		exit(EXIT_FAILURE);
@@ -277,16 +268,19 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? 33 : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
 		}
 	}
+#if !NDEBUG
 	if(strlen(mvar->qual) != seq->qual.l){
 		fprintf(stderr, "Ret qual has the wrong length. (%i). Expected: %i. Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
 		exit(1);
 	}
+#endif
 	strcpy(mvar->barcode, barcode);
 	crc_mseq(mvar, tmp);
 }
 
 inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
+#if !NDEBUG
 	if(!barcode) {
 		fprintf(stderr, "Barocde is NULL ABORT>asdfasfjafjhaksdfkjasdfas.\n");
 		exit(1);
@@ -294,9 +288,9 @@ inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_ms
 	else {
 		fprintf(stderr, "Barcode: %s.\n", barcode);
 	}
+#endif
 	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
 	strcpy(ret->barcode, barcode);
-	fprintf(stderr, "Finished making ret with barcode: %s.\n", barcode);
 	return ret;
 }
 

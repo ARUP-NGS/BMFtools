@@ -14,7 +14,7 @@ from numpy cimport ndarray
 from utilBMF.HTSUtils cimport PysamToChrDict
 from utilBMF.Inliners cimport Num2Nuc
 from utilBMF.cstring cimport struct_str
-from utilBMF.MPA cimport MergeAgreedQualities, MergeDiscQualities
+from MawCluster.Math cimport MergeAgreedQualities, MergeDiscQualities
 from pysam.calignedsegment cimport pysam_get_l_qname, bam1_t
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
 ctypedef pysam.calignmentfile.AlignmentFile AlignmentFile

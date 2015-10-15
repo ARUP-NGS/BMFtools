@@ -13,7 +13,7 @@
 		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
 	read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
 #endif
-#ifndef SALTED_KSEQ_2_FQ
+#ifndef SALTED_KSEQ_2_Q
 #define SALTED_KSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
 		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
 	read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)

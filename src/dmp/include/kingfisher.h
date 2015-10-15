@@ -250,7 +250,7 @@ static inline void dmp_process_write_full_pvalues(KingFisher_t *kfp, FILE *handl
 		}
 		tmp->cons_quals[i] = tmp_phred > 0 ? pvalue_to_phred(LOG10_TO_CHI2(tmp_phred)): 0;
 		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
-			tmp->cons_quals[i] = 3114;
+			tmp->cons_quals[i] = 6666;
 		}
 		/*
 		else if(tmp->cons_quals[i] < 0) {
@@ -374,18 +374,12 @@ inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int re
 	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += mult * nuc2num(base);
 	//fprintf(stderr, "Index = %i.\n", index);
-	if(index >= readlen * 2 * 39 * 4) {
-		//fprintf(stderr, "Something's wrong. Index (%i) is too big! Max: %i.\n", index, readlen * 2 * 39 * 4);
-		//fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
-		exit(EXIT_FAILURE);
-	}
-	else if(index < 0) {
-		//fprintf(stderr, "Something's wrong. Index (%i) is negative???\n", index);
-		//fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
+#if !NDEBUG
+	if(index >= readlen * 2 * 39 * 4 || index < 0) {
+		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * 39 * 4);
 		exit(EXIT_FAILURE);
 	}
 	//fprintf(stderr, "Value at index: %i (%c).\n", rescaler[index], rescaler[index] + 33);
-#if !NDEBUG
 	if(rescaler[index] < 0) {
 		fprintf(stderr, "WTF THIS CAN'T BE BELOW 0 (%i).\n", rescaler[index]);
 	}

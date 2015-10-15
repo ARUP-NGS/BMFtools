@@ -12,7 +12,7 @@ from cython cimport bint
 from utilBMF.Inliners cimport CigarOpToCigarChar, ChrToRefIDInline
 from utilBMF.Inliners cimport chrInline, opLenToStr
 from utilBMF.cstring cimport PH2CHR_TRANS
-from MawCluster.Math cimport CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED, igamc
+from MawCluster.Math cimport CHI2_FROM_PHRED, INV_CHI2_FROM_PHRED, igamc, MergeAgreedQualities, MergeDiscQualities
 from libc.math cimport log10 as c_log10
 
 ctypedef cython.str cystr
@@ -87,17 +87,4 @@ cdef class ListBool:
 
 cdef object oagtag
 
-
-cdef inline int MergeAgreedQualities(int q1, int q2) nogil:
-    return <int>(-10 * c_log10(igamc(2., CHI2_FROM_PHRED(q1) +
-                                     CHI2_FROM_PHRED(q2) / 2.0)) + 0.5)
-
-
-cdef inline int MergeDiscQualities(int q1, int q2) nogil:
-    if(q1 > q2):
-        return <int>(- 10 * c_log10(igamc(2., INV_CHI2_FROM_PHRED(q2) +
-                                          CHI2_FROM_PHRED(q1))) + 0.5)
-    else:
-        return <int>(- 10 * c_log10(igamc(2., INV_CHI2_FROM_PHRED(q1) +
-                                          CHI2_FROM_PHRED(q2))) + 0.5)
 

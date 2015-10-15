@@ -28,11 +28,8 @@ import cython
 
 from .BCFastq import GetDescriptionTagDict as getdesc
 from . import BCFastq
-from utilBMF.HTSUtils import (printlog as pl,
-                              FractionAligned, FractionSoftClipped,
-                              SWRealignAS, pPileupRead,
-                              BwaswCall, samtoolsMergeBam, pFastqProxy,
-                              TrimExt, RevCmp)
+from utilBMF.HTSUtils import *
+from utilBMF.HTSUtils import printlog as pl
 from utilBMF.ErrorHandling import (IllegalArgumentError, ThisIsMadness as Tim,
                                    MissingExternalTool)
 from utilBMF import HTSUtils
@@ -163,7 +160,7 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     return outbed
 
 
-cdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
+cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
                             cystr opts=None, cystr path=None,
                             int threads=4, prefix=None, cystr memStr="6G",
                             int mmlim=DEFAULT_MMLIM, bint cleanup=False,
@@ -236,8 +233,8 @@ def catfq_sort_str(cystr fq):
 
 
 cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
-                      cystr opts=None, int mmlim=DEFAULT_MMLIM,
-                      int threads=4, bint cleanup=False, int ncpus=1):
+                            cystr opts=None, int mmlim=DEFAULT_MMLIM,
+                            int threads=4, bint cleanup=False, int ncpus=1):
     import multiprocessing as mp
     pool = mp.Pool(processes=ncpus)
     cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])

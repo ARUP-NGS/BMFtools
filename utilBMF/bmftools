@@ -32,7 +32,6 @@ def get_args():
     subparsers = parser.add_subparsers(dest="bmfsuites")
     BamRescue2BamParser = subparsers.add_parser("rescue")
     BamRescue2FqParser = subparsers.add_parser("rescue2fq")
-    PipeAlignTagMergeParser = subparsers.add_parser("aligntagmerge")
     SlaveDMPParser = subparsers.add_parser("slavedmp")
     PipeParser = subparsers.add_parser(
         "pipetagbam",
