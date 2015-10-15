@@ -320,6 +320,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	bin = get_binner(barcode, settings->n_nucs);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, barcode, pass_fail);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, barcode, pass_fail);
+	fprintf(stderr, "Now beginning loop through file.\n");
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
 		if(!(++count % settings->notification_interval)) {

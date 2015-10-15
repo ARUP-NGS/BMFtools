@@ -384,6 +384,12 @@ inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int re
 		//fprintf(stderr, "RN: %i. QS: %i. Cycle: %i. Base: %i. Readlen: %i.\n", readnum, qscore, cycle, nuc2num(base), readlen);
 		exit(EXIT_FAILURE);
 	}
+	//fprintf(stderr, "Value at index: %i (%c).\n", rescaler[index], rescaler[index] + 33);
+#if !NDEBUG
+	if(rescaler[index] < 0) {
+		fprintf(stderr, "WTF THIS CAN'T BE BELOW 0 (%i).\n", rescaler[index]);
+	}
+#endif
 	return rescaler[index] + 33;
 }
 
