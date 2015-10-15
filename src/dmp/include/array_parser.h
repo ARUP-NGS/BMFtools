@@ -128,50 +128,47 @@ inline char *parse_1d_rescaler(char *qual_rescale_fname)
 	length = ftell(fp);
 	char *buffer;
 	fseek(fp, 0, SEEK_SET);
-	  buffer = malloc(length * sizeof(char));
-	  if(buffer) {
-	    fread(buffer, 1, length, fp);
-	  }
-	  else {
+	buffer = malloc(length * sizeof(char));
+	if(buffer) {
+		  fread(buffer, 1, length, fp);
+	}
+	else {
 		  fprintf(stderr, "MEMORY ERROR.\n");
-		  exit(EXIT_FAILURE);
-	  }
-	  fclose(fp);
+	exit(EXIT_FAILURE);
+	}
+	fclose(fp);
+	fp = NULL;
 	int arr_len = 2 * readlen * 39 * 4 * sizeof(char);
 	char *ret = (char *)malloc(2 * readlen * 39 * 4 * sizeof(char));
-	char *line = NULL;
 	char *tok = NULL;
 	size_t index = 0;
 	fprintf(stderr, "Parsing in array from %s...\n", qual_rescale_fname);
 	int lnum;
 	for(lnum = 0; lnum < readlen; ++lnum) {
-		fprintf(stderr, "Now reading line %i.\n", lnum);
+		//fprintf(stderr, "Now reading line %i.\n", lnum);
 		for(int readnum = 0; readnum < 2; ++readnum) {
-			fprintf(stderr, "Now working with read %i.\n", readnum + 1);
+			//fprintf(stderr, "Now working with read %i.\n", readnum + 1);
 			for(int qnum = 0; qnum < 39; ++qnum) {
-				fprintf(stderr, "Now working with qscore %i.\n", qnum + 2);
+				//fprintf(stderr, "Now working with qscore %i.\n", qnum + 2);
 				for(int bnum = 0; bnum < 4; ++bnum) {
-					fprintf(stderr, "Now working with base %c.\n", num2nuc(bnum));
-					tok = strtok(tok ? NULL : buffer, "|:,");
+					//fprintf(stderr, "Now working with base %c.\n", num2nuc(bnum));
+					tok = strtok(tok ? NULL : buffer, "|:,\n");
 					if(!tok) {
 						break;
 					}
-					fprintf(stderr, "1d rescaler starting. (%i, %s).\n", atoi(tok), tok);
 					period_to_null(tok);
 					ret[index++] = (char)((int)atof(tok));
 					if(ret[index - 1] < 0) {
 						fprintf(stderr, "Negative integer in 1d rescaler (%i, %s). Index: %i. Abort mission!\n", ret[index - 1], tok, index - 1);
 						exit(EXIT_FAILURE);
 					}
-					fprintf(stderr, "%i,%i,%i,%c", lnum, readnum + 1, qnum + 2, num2nuc(bnum));
 					//fprintf(stderr, "New qual str: %s. New qual: %c. Cycle: %i. Read num: %i. Qscore num %i. Basecall %i. .\n", tok, atoi(tok) + 33, lnum + 1, readnum + 1, qnum + 2, bnum + 1);
 				}
 			}
 		}
 	}
-	fprintf(stderr, "Final index: %i. Expected: %i.\n", index, arr_len - 1);
-	fprintf(stderr, "Final line num: %i. Expected: %i.\n", lnum, readlen - 1);
-	cond_free(line);
-	fclose(fp);
+	fprintf(stderr, "Final index: %i. Expected: %i.\n", index, arr_len);
+	fprintf(stderr, "Final line num: %i. Expected: %i.\n", lnum, readlen);
+	free(buffer);
 	return ret;
 }
