@@ -68,9 +68,6 @@ int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 
 inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 {
-#if !NDEBUG
-	fprintf(stderr, "Var with name %s and pointer %p.\n", mvar->name, mvar);
-#endif
 	int cmp_ret;
 	for(int i = 0; i < blen; ++i) {
 		cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);

@@ -175,8 +175,6 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
     :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
     :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - optional arguments
     to provide to bwa for alignment.
-    :param: dry_run - [bint/kwarg/False] - flag to return the command string
-    rather than calling it.
     :param: threads - [int/kwarg/4]
     :param: memStr - [cystr/memStr/"6G"]
     :returns: [cystr] - Path to final BAM file
@@ -191,9 +189,9 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
                            threads=4, cleanup=False)
 
 
-cpdef list bmf_align_split(cystr R1, cystr R2, cystr ref=None,
-                           cystr opts=None, cystr path=None,
-                           int threads=4, prefix=None, cystr memStr="6G"):
+cpdef list bmf_align_split(R1, R2, ref=None,
+                           opts=None, path=None,
+                           int threads=4, prefix=None, memStr="6G"):
     """
     :param: R1 - [cystr/arg] - path to input fastq for read 1
     :param: R2 - [cystr/arg] - path to input fastq for read 2
@@ -487,8 +485,8 @@ cdef inline update_rec(AlignedSegment_t a, AlignedSegment_t b):
             a_qual[i] = MergeDiscQualities(a_qual[i], b_qual[i])
     a.query_sequence = a_seq
     a.qual = a_tmpqual.tostring()
-    a.set_tags([("FM", newFM, "i"), ("RC", newRC, "i"),
-                ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)] + a.get_tags())
+    a.set_tags(a.tags + [("FM", newFM, "i"), ("RC", newRC, "i"),
+                ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)])
     return
 
 
@@ -533,8 +531,8 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
                 '''
                 skip_names.append(recList[i].query_name)
                 '''
-                recList[i].set_tag("RA", 0)
-                recList[j].set_tag("RA", 1)
+                recList[i].set_tags(recList[i].tags + [("RA", 0)])
+                recList[j].set_tags(recList[j].tags + [("RA", 1)])
                 update_rec(recList[j], recList[i])
                 # Updates recList j with i's values for meta-analysis.
             """
@@ -544,15 +542,11 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
             """
     for read in recList:
         ra_int = read.get_tag("RA")
-        if(ra_int > 0):
-            fq_text += bam2ffq(read)
-            '''
-            ra_names.append(read.query_name)
-            '''
-        elif ra_int < 0:
+        if(ra_int < 0):
             bamList.append(read)
         else:
-            pass
+            if(ra_int > 0):
+                fq_text += bam2ffq(read)
     # assert fq_text is not None
     return bamList, fq_text
 
@@ -688,7 +682,7 @@ cdef cystr BamRescue(cystr inBam,
         fprintf(stderr, "Writing fastq to %s.\n", <char *>tmpFq)
     fprintf(stderr, "Now opening bam file for reading: %s\n", <char *>inBam)
     input_bam = pysam.AlignmentFile(inBam, "rb")
-    cdef int bLen = len(input_bam.next().opt("BS"))
+    cdef int bLen = len(input_bam.next().query_name)
     input_bam = pysam.AlignmentFile(inBam, "rb")
     if outBam == "default":
         outBam = TrimExt(inBam) + ".rescue.bam"
@@ -703,9 +697,9 @@ cdef cystr BamRescue(cystr inBam,
             recList = list(gen)
             for read in recList:
                 if read.has_tag("RC") is False:
-                    read.tags += [("RC", -1), ("RA", -1)]
+                    read.set_tags(read.tags + [("RC", -1), ("RA", -1)])
                 else:
-                    read.tags.append(("RA", -1))
+                    read.set_tags(read.tags + [("RA", -1)])
             [obw(read) for read in recList]
             continue
         for fullkey, gen1 in groupby(gen, FULL_KEY):
@@ -723,9 +717,9 @@ cdef cystr BamRescue(cystr inBam,
             # print(recList[-1].tostring(input_bam))
             for read in recList:
                 if read.has_tag("RC") is False:
-                    read.tags += [("RC", -1), ("RA", -1)]
+                    read.set_tags(read.tags + [("RC", -1), ("RA", -1)])
                 else:
-                    read.tags.append(("RA", -1, "i"))
+                    read.set_tags(read.tags + [("RA", -1)])
             if recList[0].flag & 12:
                 # Both read and its mate are unaligned.
                 [obw(read) for read in recList]
