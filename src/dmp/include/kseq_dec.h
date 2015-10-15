@@ -259,7 +259,7 @@ inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, tmp_mseq
 inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	memcpy(mvar->name, seq->name.s, seq->name.l);
-    mvar->name[name.l] = '\0';
+    mvar->name[seq->name.l] = '\0';
 	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
 	memset(mvar->seq, 'N', n_len);
 	if(!rescaler) {
