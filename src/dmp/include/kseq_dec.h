@@ -230,27 +230,15 @@ inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int 
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2.
  */
-inline void mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
-	if(!seq) {
-		ret = NULL;
-		return;
+	mseq_t *ret = p7_mseq_rescale_init(seq, rescaler, n_len, is_read2);
+	ret->blen = tmp->blen;
+	ret->rc = 0;
+	if(ret) {
+		crc_mseq(ret, tmp);
 	}
-	ret->name = strdup(seq->name.s);
-	ret->comment = strdup(seq->comment.s);
-	ret->seq = strdup(seq->seq.s);
-	if(!rescaler) ret->qual = strdup(seq->qual.s);
-	else {
-		ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
-		ret->qual[seq->seq.l] = '\0'; // Null-terminate this string.
-		for(int i = 0; i < seq->seq.l; i++) {
-			ret->qual[i] = rescale_qscore(is_read2 ? 1: 0, ret->qual[i], i, ret->seq[i], seq->seq.l, rescaler);
-		}
-	}
-	memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
-	memset(ret->qual, '#', n_len); // Set all N bases to quality score of 2.
-	ret->l = seq->seq.l;
-	crc_mseq(ret, tmp);
+	return ret;
 }
 
 /*
@@ -279,6 +267,13 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler
 	crc_mseq(mvar, tmp);
 }
 
+inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+{
+	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
+	ret->barcode = barcode;
+	return ret;
+}
+
 inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	mseq_t ret = {
@@ -291,7 +286,7 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescale
 			.blen = 0,
 			.rc = '0'
 	};
-	mseq_rescale_init(seq, &ret, rescaler, tmp, n_len, is_read2);
+	mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
 	return ret;
 }
 

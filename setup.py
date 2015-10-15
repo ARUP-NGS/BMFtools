@@ -50,7 +50,7 @@ subprocess.check_call('cd src/sort && make && cd ../..;', shell=True)
 subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11 -O3', shell=True)
 subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit_p -fopenmp -std=gnu11 -fno-inline', shell=True)
 subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -finline-functions && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms_sc -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -finline-functions -DSUB_CHI2 && cd ../..', shell=True)
+subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms_sc -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -fno-inline && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc crms.c -I . -pg -o bmf_crms_p -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -fno-inline && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG -std=gnu11 -finline-functions && cd ../..', shell=True)
 subprocess.check_call('cd src/dmp && gcc -I. -o uthash_dmp uthash_dmp.c -lz -lm -std=gnu11 -DNDEBUG -finline-functions -O3 && cd ../..', shell=True)
@@ -70,7 +70,7 @@ config = {
     'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/sort/lh3sort', 'src/dmp/fqmarksplit_p',
                 'src/dmp/bmf_crms', 'src/dmp/dmp', 'src/dmp/uthash_dmp', 'src/dmp/bam_rescue',
-                'src/dmp/bmf_bam_sort', 'src/dmp/bmf_crms_sc'],
+                'src/dmp/bmf_bam_sort', 'src/dmp/bmf_crms_sc',  'src/dmp/bmf_crms_p'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

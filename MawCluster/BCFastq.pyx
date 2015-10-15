@@ -311,11 +311,9 @@ cpdef SeqQual_t FisherFlatten(
 
 cdef py_array MaxOriginalQuals(int32_t * arr2D, size_t nRecs, size_t rLen):
     cdef py_array ret = array('B')
-    cdef int8_t * ptr
     c_array.resize(ret, rLen)
-    ptr = <int8_t *>ret.data.as_shorts
-    memset(ptr, 0, rLen)
-    arrmax(arr2D, <int8_t *>ret.data.as_shorts, nRecs, rLen)
+    memset(ret.data.as_voidptr, 0, rLen)
+    arrmax(arr2D, <int8_t *>ret.data.as_voidptr, nRecs, rLen)
     return ret
 
 
