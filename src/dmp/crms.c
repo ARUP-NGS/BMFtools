@@ -108,8 +108,6 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	}
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int n_len = nlen_homing_seq(seq1, seq2, settings);
-	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0, 0); // rseq1 is initialized
-	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 0, 1); // rseq2 is initialized
 	// Get first barcode.
 	set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
 	pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';

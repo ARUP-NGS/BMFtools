@@ -18,11 +18,11 @@ int nuc_cmp(char forward, char reverse);
 // mseq is a mutable struct holding kseq's information.
 
 typedef struct mseq {
-	char *name;
-	char *comment;
-	char *seq;
-	char *qual;
-	char *barcode;
+	char name[100];
+	char comment[2000];
+	char seq[200];
+	char qual[200];
+	char barcode[MAX_BARCODE_LENGTH + 1];
 	int l;
 	int blen;
 	char rc;
@@ -68,7 +68,11 @@ int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 
 inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 {
+#if !NDEBUG
+	fprintf(stderr, "Var with name %s and pointer %p.\n", mvar->name, mvar);
+#endif
 	int cmp_ret;
+	fprintf(stderr, "Barcode: %s.\n", barcode);
 	for(int i = 0; i < blen; ++i) {
 		cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);
 		if(cmp_ret < 0) {
@@ -199,15 +203,19 @@ inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int 
 		exit(EXIT_FAILURE);
 	}
 	mseq_t *ret = (mseq_t *)malloc(sizeof(mseq_t));
-	ret->name = (char *)malloc(100 * sizeof(char));
+	if(!ret) {
+		fprintf(stderr, "Failed to allocate memory. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(ret->name, seq->name.s);
-	ret->comment = (char *)malloc(2000 * sizeof(char));
 	strcpy(ret->comment, seq->comment.s);
-	ret->seq = strdup(seq->seq.s);
-	if(!rescaler) ret->qual = strdup(seq->qual.s);
-	else {
+	strcpy(ret->seq, seq->seq.s);
+	//if(!rescaler) {
+		strcpy(ret->qual, seq->qual.s);
+	//}
+
+	if(rescaler) {
 		//ret->qual = (char *)malloc((seq->seq.l + 1) * sizeof(char));
-		ret->qual = (char *)calloc(seq->seq.l + 1, sizeof(char));
 		ret->qual[seq->seq.l] = '\0'; // Null-terminate this string.
 		for(int i = 0; i < seq->seq.l; i++) {
 			//fprintf(stderr, "RS params: %i, %i, %i, %i, %i.\n", is_read2 , seq->qual.s[i], i, ret->seq[i], seq->seq.l);
@@ -218,6 +226,7 @@ inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int 
 	memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
 	memset(ret->qual, '#', n_len); // Set all N bases to quality score of 2.
 	ret->l = seq->seq.l;
+	memset(ret->barcode, 0, MAX_BARCODE_LENGTH + 1);
 	return ret;
 }
 
@@ -233,6 +242,15 @@ inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int 
 inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	mseq_t *ret = p7_mseq_rescale_init(seq, rescaler, n_len, is_read2);
+	fprintf(stderr, "Pointer to ret: %p. To tmp: %p. Barcode: %s.\n", ret, tmp, ret->barcode);
+	if(!ret) {
+		fprintf(stderr, "Failed to allocate memory. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!tmp) {
+		fprintf(stderr, "Tmpvars not allocated!\n");
+		exit(EXIT_FAILURE);
+	}
 	ret->blen = tmp->blen;
 	ret->rc = 0;
 	if(ret) {
@@ -263,29 +281,33 @@ inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler
 		fprintf(stderr, "Ret qual has the wrong length. (%i). Expected: %i. Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
 		exit(1);
 	}
-	mvar->barcode = barcode;
+	strcpy(mvar->barcode, barcode);
 	crc_mseq(mvar, tmp);
 }
 
 inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
+	if(!barcode) {
+		fprintf(stderr, "Barocde is NULL ABORT>asdfasfjafjhaksdfkjasdfas.\n");
+		exit(1);
+	}
+	else {
+		fprintf(stderr, "Barcode: %s.\n", barcode);
+	}
 	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
-	ret->barcode = barcode;
+	strcpy(ret->barcode, barcode);
+	fprintf(stderr, "Finished making ret with barcode: %s.\n", barcode);
 	return ret;
 }
 
 inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	mseq_t ret = {
-			.name = NULL,
-			.comment = NULL,
-			.seq = NULL,
-			.qual = NULL,
-			.barcode = barcode, // barcode still belongs to the argument variable!
 			.l = 0,
 			.blen = 0,
 			.rc = '0'
 	};
+	memcpy(ret.barcode, barcode, strlen(barcode) + 1);
 	mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
 	return ret;
 }
@@ -293,10 +315,6 @@ inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescale
 
 inline void mseq_destroy(mseq_t *mvar)
 {
-	cond_free(mvar->name);
-	cond_free(mvar->comment);
-	cond_free(mvar->seq);
-	cond_free(mvar->qual);
 	// Note: do not free barcode, as that is owned by another.
 	mvar->l = 0;
 	mvar->blen = 0;
