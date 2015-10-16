@@ -138,11 +138,12 @@ inline char *parse_1d_rescaler(char *qual_rescale_fname)
 	}
 	fclose(fp);
 	fp = NULL;
-	int arr_len = 2 * readlen * 39 * 4 * sizeof(char);
-	char *ret = (char *)malloc(2 * readlen * 39 * 4 * sizeof(char));
+	int arr_len = 2 * readlen * 39 * 4;
+	char *ret = (char *)malloc(arr_len * sizeof(char));
+	memset(ret, -127, arr_len);
 	char *tok = NULL;
 	size_t index = 0;
-	fprintf(stderr, "Parsing in array from %s...\n", qual_rescale_fname);
+	fprintf(stderr, "Parsing in array with read len %i from %s...\n", arr_len, qual_rescale_fname);
 	int lnum;
 	for(lnum = 0; lnum < readlen; ++lnum) {
 		//fprintf(stderr, "Now reading line %i.\n", lnum);
@@ -157,10 +158,23 @@ inline char *parse_1d_rescaler(char *qual_rescale_fname)
 						break;
 					}
 					period_to_null(tok);
-					ret[index++] = (char)((int)atof(tok));
+					ret[index++] = (char)((int)(atof(tok) + 0.5)); // Round up.
+					//fprintf(stderr, "Quality score set: %i.\n", ret[index - 1]);
 					if(ret[index - 1] < 0) {
-						fprintf(stderr, "Negative integer in 1d rescaler (%i, %s). Index: %i. Abort mission!\n", ret[index - 1], tok, index - 1);
+						fprintf(stderr,
+								"Negative integer in 1d rescaler (%i, %s). Index:"
+								" %i. Abort mission!\n", ret[index - 1], tok, index - 1);
 						exit(EXIT_FAILURE);
+					}
+					if(ret[index - 1] > 93) {
+						fprintf(stderr,
+								"WARNING: rescaled quality score above the max"
+								" that can be held in the fastq format. Capping at 93. Value: %i.\n", ret[index - 1]);
+						ret[index - 1] = 93;
+					}
+					if(ret[index - 1] == 0) {
+						//fprintf(stderr, "Hey this is crazy. Let's set these to two...\n");
+						ret[index - 1] = 2;
 					}
 					//fprintf(stderr, "New qual str: %s. New qual: %c. Cycle: %i. Read num: %i. Qscore num %i. Basecall %i. .\n", tok, atoi(tok) + 33, lnum + 1, readnum + 1, qnum + 2, bnum + 1);
 				}
@@ -168,7 +182,15 @@ inline char *parse_1d_rescaler(char *qual_rescale_fname)
 		}
 	}
 	fprintf(stderr, "Final index: %i. Expected: %i.\n", index, arr_len);
+	if(index != arr_len) {
+		fprintf(stderr, "Unexpected index! Abort!\n");
+		exit(EXIT_FAILURE);
+	}
 	fprintf(stderr, "Final line num: %i. Expected: %i.\n", lnum, readlen);
+	if(lnum != readlen) {
+		fprintf(stderr, "Unexpected index! Abort!\n");
+		exit(EXIT_FAILURE);
+	}
 	free(buffer);
 	return ret;
 }

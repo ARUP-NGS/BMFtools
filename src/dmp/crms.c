@@ -84,6 +84,13 @@ inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
 mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 {
 	fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
+	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
+		fprintf(stderr, "Hey, it looks like you're trying to use the same path for both r1 and r2. At least try to fool me by making a symbolic link.\n");
+		exit(EXIT_FAILURE);
+	}
+	if(settings->rescaler_path) {
+		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
+	}
 	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter = init_splitter_inline(settings);
 	gzFile fp1 = gzopen(settings->input_r1_path, "r");
@@ -100,6 +107,22 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	barcode[settings->blen] = '\0'; // Null-terminate
 	l1 = kseq_read(seq1);
 	l2 = kseq_read(seq2);
+	fprintf(stderr, "Read length for dataset: %i.\n", seq1->seq.l);
+#if !NDEBUG
+	int arr_size = seq1->seq.l * 4 * 2 * 39;
+	if(settings->rescaler) {
+		for(int i = 0; i < arr_size; ++i) {
+			if(settings->rescaler[i] < 0) {
+				fprintf(stderr, "Rescaler's got a negative number in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+			else if(settings->rescaler[i] == 0) {
+				fprintf(stderr, "Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+#endif
 	if(l1 < 0 || l2 < 0) {
 			fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
 			FREE_MSSI_SETTINGS_PTR(settings);
@@ -111,7 +134,9 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	// Get first barcode.
 	set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
 	pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
+	//fprintf(stderr, "Initializing rseq1.\n");
 	rseq1 = init_crms_mseq(seq1, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0);
+	//fprintf(stderr, "Initializing rseq2.\n");
 	rseq2 = init_crms_mseq(seq2, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
 	bin = get_binnerul(barcode, settings->n_nucs);
 	mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail);
@@ -236,9 +261,7 @@ int main(int argc, char *argv[])
 	if(settings.offset) {
 		settings.blen -= 2 * settings.offset;
 	}
-	if(settings.rescaler_path) {
-		settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
-	}
+
 	fprintf(stderr, "About to get the read paths.\n");
 	if(argc - 1 != optind + 1) {
 		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);

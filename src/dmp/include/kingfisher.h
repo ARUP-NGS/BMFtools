@@ -382,6 +382,7 @@ inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int re
 	//fprintf(stderr, "Value at index: %i (%c).\n", rescaler[index], rescaler[index] + 33);
 	if(rescaler[index] < 0) {
 		fprintf(stderr, "WTF THIS CAN'T BE BELOW 0 (%i).\n", rescaler[index]);
+		exit(EXIT_FAILURE);
 	}
 #endif
 	return rescaler[index] + 33;

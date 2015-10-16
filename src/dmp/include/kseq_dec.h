@@ -285,6 +285,22 @@ inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_ms
 	else {
 		fprintf(stderr, "Barcode: %s.\n", barcode);
 	}
+	if(rescaler) {
+		for(int i = 0; i < seq->seq.l * 39 * 4 * 2; ++i) {
+			if(rescaler[i] < 0) {
+				fprintf(stderr, "Rescaler's got a negative number in init_crms_mseq. WTF? %i. Index: %i.\n", rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+			else if(!rescaler[i]) {
+				fprintf(stderr, "Rescaler's got a zero value in init_crms_mseq. WTF? %i. Index: %i.\n", rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+			else {
+				fprintf(stderr, "Rescaler's looking like it's supposed to. %i.Index: %i\n", rescaler[i], i);
+			}
+		}
+	}
+	fprintf(stderr, "Finished checking the array values. Now initializing mseq_t for read %i.\n", is_read2 + 1);
 #endif
 	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
 	strcpy(ret->barcode, barcode);

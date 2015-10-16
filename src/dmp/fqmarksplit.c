@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 			case 'r':
 				fprintf(stderr, "About to parse in rescaler.\n");
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
-				fprintf(stderr, "Parsed in rescaler."); break;
+				fprintf(stderr, "Parsed rescaler.\n"); break;
 			case 'h': print_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
 		}
@@ -162,9 +162,9 @@ int main(int argc, char *argv[])
 					params->infnames_r1[i], params->infnames_r2[i],
 					params->outfnames_r1[i], params->outfnames_r2[i]);
 		}
+		fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", settings.threads);
 #if NOPARALLEL
 #else
-		fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
 		#pragma omp parallel shared(params)
 		{
 			#pragma omp for
