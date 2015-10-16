@@ -11,7 +11,7 @@
 
 #ifndef CHECK_CALL
 #define CHECK_CALL(buff, ret) \
-	fprintf(stderr, "Now check calling command '%s'.\n", buff);\
+	/*fprintf(stderr, "Now check calling command '%s'.\n", buff); */\
 	ret = system(buff);\
 	if(ret < 0)\
 		fprintf(stderr, "System call failed. Command: '%s'.\n", buff)

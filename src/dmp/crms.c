@@ -295,6 +295,7 @@ int main(int argc, char *argv[])
 			#pragma omp for
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
+				char tmpbuf[250];
 				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
@@ -302,8 +303,8 @@ int main(int argc, char *argv[])
 				omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				fprintf(stderr, "Now removing temporary files %s and %s.\n",
 						params->infnames_r1[i], params->infnames_r2[i]);
-				sprintf(del_buf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-				system(del_buf);
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+				system(tmpbuf);
 			}
 #if NOPARALLEL
 #else
@@ -365,10 +366,12 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
+		#pragma omp parallel for shared(params)
 		for(int i = 0; i < params->n; ++i) {
-			sprintf(cat_buff1, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-			fprintf(stderr, "About to call command '%s'.\n", cat_buff1);
-			CHECK_CALL(cat_buff1, sys_call_ret);
+			char tmpbuf[500];
+			sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+			fprintf(stderr, "About to call command '%s'.\n", tmpbuf);
+			CHECK_CALL(tmpbuf, sys_call_ret);
 		}
 		splitterhash_destroy(params);
 		free(settings.ffq_prefix);

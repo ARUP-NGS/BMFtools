@@ -243,14 +243,12 @@ int main(int argc, char *argv[])
 			strcat(cat_buff2, ffq_r2);
 			CHECK_CALL(cat_buff1, sys_call_ret);
 			CHECK_CALL(cat_buff2, sys_call_ret);
-			sprintf(cat_buff1, "rm ");
+			#pragma omp parallel for shared(params)
 			for(int i = 0; i < params->n; ++i) {
-				strcat(cat_buff1, params->outfnames_r1[i]);
-				strcat(cat_buff1, " ");
-				strcat(cat_buff1, params->outfnames_r2[i]);
-				strcat(cat_buff1, " ");
+				char tmpbuf[500];
+				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+				CHECK_CALL(tmpbuf, sys_call_ret);
 			}
-			CHECK_CALL(cat_buff1, sys_call_ret);
 			//fprintf(stderr, "Not executing %s today. Eh.\n", cat_buff1);
 		}
 		splitterhash_destroy(params);
