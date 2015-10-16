@@ -219,7 +219,7 @@ cpdef list bmf_align_split(R1, R2, ref=None,
         prefix = TrimExt(R1)
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    cStr += " | bmf_bam_sort -sp %s -m %s -@ %i" % (prefix, memStr, threads)
+    cStr += " | bmf_bam_sort -sp %s -m %s" % (prefix, memStr)
     sys.stderr.write("Command string for bmf align split: %s.\n" % cStr)
     check_call(cStr, shell=True, executable="/bin/bash")
     outfnames = ["%s.%s.bam" % (prefix, contig) for contig in
@@ -242,7 +242,8 @@ cdef int has_records(cystr bampath):
 
 cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
                             cystr opts=None, int mmlim=DEFAULT_MMLIM,
-                            int threads=4, bint cleanup=False, int ncpus=1):
+                            int threads=4, bint cleanup=False, int ncpus=1,
+                            int merge_threads=2):
     import multiprocessing as mp
     pool = mp.Pool(processes=ncpus)
     cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])
@@ -288,7 +289,7 @@ cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
         cStr += " | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n'"
         cStr += " | bwa mem -C -p %s %s - | samtools sort" % (opts, ref)
         cStr += " -O bam -l 0 -T %s - | samtools merge -f " % (random_prefix)
-        cStr += "-@ %i %s %s" % (threads, outBAM, " ".join(tmpbams))
+        cStr += "-@ %s %s %s" % (merge_threads, outBAM, " ".join(tmpbams))
     else:
         sys.stderr.write("Note: all fastqs were empty. "
                          "Nothing was rescued.\n")
@@ -763,7 +764,7 @@ cdef cystr BamRescue(cystr inBam,
     input_bam.close()
     output_bam.close()
     fp.close()
-    fprintf(stder,
+    fprintf(stderr,
             "Number of records written: "
             "%lu. Output path: %s.\n", n_written, <char *>output_bam.filename)
     if(os.path.isfile(outBam) is False and outBam != "-"):
