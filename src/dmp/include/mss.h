@@ -281,24 +281,35 @@ static mark_splitter_t *splitmark_core1(mss_settings_t *settings)
 
 static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 {
+	//fprintf(stderr, "[splitmark_rescale_core]\n");
 	if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
 		fprintf(stderr, "Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n", settings->input_r1_path, settings->input_r2_path);
 		exit(EXIT_FAILURE);
 	}
+	else {
+		fprintf(stderr, "Path to index fq: %s.\n", settings->index_fq_path);
+	}
 	gzFile fp_read1, fp_read2, fp_index;
 	kseq_t *seq1, *seq2, *seq_index;
 	mseq_t *rseq1, *rseq2;
+	int l1, l2, l_index;
+	//fprintf(stderr, "[splitmark_rescale_core]: initializing splitter.\n");
 	mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter_ptr = init_splitter(settings);
+	//fprintf(stderr, "[splitmark_rescale_core]: Opening input handles.\n");
 	fp_read1 = gzopen(settings->input_r1_path, "r");
 	fp_read2 = gzopen(settings->input_r2_path, "r");
 	fp_index = gzopen(settings->index_fq_path, "r");
 	seq1 = kseq_init(fp_read1);
 	seq2 = kseq_init(fp_read2);
 	seq_index = kseq_init(fp_index);
-	int l1 = kseq_read(seq1);
-	int l2 = kseq_read(seq2);
-	int l_index = kseq_read(seq_index);
+	//fprintf(stderr, "[splitmark_rescale_core]: Reading from Read 1. Path: %s.\n", settings->input_r1_path);
+	l1 = kseq_read(seq1);
+	//fprintf(stderr, "[splitmark_rescale_core]: Reading from Read index. Path: %s.\n", settings->index_fq_path);
+	l_index = kseq_read(seq_index);
+	//fprintf(stderr, "[splitmark_rescale_core]: Reading from Read 2. Path: %s.\n", settings->input_r2_path);
+	l2 = kseq_read(seq2);
+	//fprintf(stderr, "[splitmark_rescale_core]: Read from Read 2! Path: %s.\n", settings->input_r2_path);
 	int bin = 0;
 	int count = 0;
 	char pass_fail = '1';
@@ -320,7 +331,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	bin = get_binner(barcode, settings->n_nucs);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, barcode, pass_fail);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, barcode, pass_fail);
-	fprintf(stderr, "Now beginning loop through file.\n");
+	//fprintf(stderr, "Now beginning to loop through file.\n");
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
 		if(!(++count % settings->notification_interval)) {
