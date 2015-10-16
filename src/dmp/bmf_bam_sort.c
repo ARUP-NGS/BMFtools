@@ -1386,7 +1386,7 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   and then merge them by calling bam_merge_core(). This function is
   NOT thread safe.
  */
-int bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads,
+int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads,
 					   int split, char *split_prefix)
 {
 	int ret, i, n_files = 0;
@@ -1402,12 +1402,13 @@ int bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, con
 	buf = NULL;
 	fp = sam_open(fn, "r");
 	if (fp == NULL) {
-		fprintf(stderr, "[bam_sort_core] fail to open file %s\n", fn);
+		fprintf(stderr, "[bmf_bam_sort_core] fail to open file %s\n", fn);
 		return -1;
 	}
+	fprintf(stderr, "[bmf_bam_sort_core] Reading from '%s'.\n", (strcmp(fn, "-") == 0 | strcmp(fn, "stdin") == 0) ? "stdin": fn);
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		fprintf(stderr, "[bam_sort_core] failed to read header for '%s'\n", fn);
+		fprintf(stderr, "[bmf_bam_sort_core] failed to read header for '%s'\n", fn);
 		sam_close(fp);
 		return -1;
 	}
@@ -1440,7 +1441,7 @@ int bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, con
 		}
 	}
 	if (ret != -1)
-		fprintf(stderr, "[bam_sort_core] truncated file. Continue anyway.\n");
+		fprintf(stderr, "[bmf_bam_sort_core] truncated file. Continue anyway.\n");
 	// write the final output
 	if (n_files == 0) { // a single block
 		ks_mergesort(sort, k, buf, 0);
@@ -1451,7 +1452,7 @@ int bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, con
 	} else { // then merge
 		char **fns;
 		n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
-		fprintf(stderr, "[bam_sort_core] merging from %d files...\n", n_files);
+		fprintf(stderr, "[bmf_bam_sort_core] merging from %d files...\n", n_files);
 		fns = (char**)calloc(n_files, sizeof(char*));
 		for (i = 0; i < n_files; ++i) {
 			fns[i] = (char*)calloc(strlen(prefix) + 20, 1);
@@ -1480,12 +1481,12 @@ int bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, con
 	return 0;
 }
 
-int bam_sort_core(int sort_cmp_int, const char *fn, const char *prefix, size_t max_mem)
+int bmf_bam_sort_core(int sort_cmp_int, const char *fn, const char *prefix, size_t max_mem)
 {
 	int ret;
 	char *fnout = calloc(strlen(prefix) + 4 + 1, 1);
 	sprintf(fnout, "%s.bam", prefix);
-	ret = bam_sort_core_ext1(sort_cmp_int, fn, prefix, fnout, "wb", max_mem, 0, 0, "");
+	ret = bmf_bam_sort_core_ext1(sort_cmp_int, fn, prefix, fnout, "wb", max_mem, 0, 0, "");
 	free(fnout);
 	return ret;
 }
@@ -1568,7 +1569,7 @@ int main(int argc, char *argv[])
 	}
 	if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-	if (bam_sort_core_ext1(sort_cmp_int, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
+	if (bmf_bam_sort_core_ext1(sort_cmp_int, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
 
 	cond_free(tmpprefix);
 	cond_free(fmtout);
