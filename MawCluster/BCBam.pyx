@@ -237,6 +237,8 @@ cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
     pool = mp.Pool(processes=ncpus)
     cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])
     cdef cystr prefix = TrimExt(outBAM)
+    cdef list fqs = []
+    uint64_t nlines = 0
     assert ref is not None
     if not opts:
         opts = "-t 4 -v 1 -Y "
@@ -244,20 +246,27 @@ cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
                   TrimExt(tmp) + ".tmprsq.fq") for tmp in fnames]
     pl("Now doing bam rescue on each sub bam.")
     if ncpus > 1:
-        [pool.apply_async(pBamRescue, args=(tup[0], tup[1], tup[2]),
+        fqs = [pool.apply_async(pBamRescue, args=(tup[0], tup[1], tup[2]),
                           kwds={"mmlim": mmlim}) for tup in tuple_set]
     else:
-        [BamRescue(tup[0], tup[1], tup[2], mmlim=mmlim) for tup in tuple_set]
+        fqs = [BamRescue(tup[0], tup[1], tup[2], mmlim=mmlim) for tup in tuple_set]
     tmpbams = [tup[1] for tup in tuple_set]
     if cleanup:
         [check_call("rm %s" % tup[0]) for tup in tuple_set]
     pl("Now catting fastqs together to align and merge "
        "back into the final bam.")
-    cStr = "cat %s" % (" ".join([tup[2] for tup in tuple_set]))
-    cStr += " | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n'"
-    cStr += " | bwa mem -C -p %s %s - | samtools sort" % (opts, ref)
-    cStr += " -O bam -l 0 -T %s - | samtools merge -f " % (random_prefix)
-    cStr += "-@ %i %s %s" % (threads, outBAM, " ".join(tmpbams))
+    # Check to see if they're all empty (a rare occurrence)
+    nlines = <uint32_t>int(check_output("wc -l <(cat %s | head)" % (" ".join(fqs))).split()[0])
+    if nlines != 0:
+        cStr = "cat %s" % (" ".join(fqs))
+        cStr += " | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n'"
+        cStr += " | bwa mem -C -p %s %s - | samtools sort" % (opts, ref)
+        cStr += " -O bam -l 0 -T %s - | samtools merge -f " % (random_prefix)
+        cStr += "-@ %i %s %s" % (threads, outBAM, " ".join(tmpbams))
+    else:
+        sys.stderr.write("Note: all fastqs were empty. Nothing was rescued.\n")
+        cStr = "samtools merge -f-@ %i %s %s" % (threads, outBAM,
+                                                 " ".join(tmpbams))
     pl("About to call cStr: '%s'.", cStr)
     check_call(cStr, shell=True, executable="/bin/bash")
     if cleanup:
@@ -682,7 +691,13 @@ cdef cystr BamRescue(cystr inBam,
         fprintf(stderr, "Writing fastq to %s.\n", <char *>tmpFq)
     fprintf(stderr, "Now opening bam file for reading: %s\n", <char *>inBam)
     input_bam = pysam.AlignmentFile(inBam, "rb")
-    cdef int bLen = len(input_bam.next().query_name)
+    cdef int bLen = 0
+    try:
+        blen = len(input_bam.next().query_name)
+    except StopIteration:
+        fprintf(stderr, "Looks like this bam is simply empty. Make an empty fastq.\n")
+        fp.close()
+        return tmpFq
     input_bam = pysam.AlignmentFile(inBam, "rb")
     if outBam == "default":
         outBam = TrimExt(inBam) + ".rescue.bam"
