@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
 						params->infnames_r2[i], params->outfnames_r2[i]);
 				omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
-				sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r2[i]);
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
 				CHECK_CALL(tmpbuf, tmp_ret);
 			}
 #if NOPARALLEL
