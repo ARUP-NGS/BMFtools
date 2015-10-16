@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
 		}
 		// Whatever I end up putting into here.
 		splitterhash_params_t *params = init_splitterhash(&settings, splitter);
-		char del_buf[250];
+		char del_buf[500];
 #if NOPARALLEL
 #else
 		#pragma omp parallel
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
 			#pragma omp for
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[250];
+				char tmpbuf[500];
 				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);

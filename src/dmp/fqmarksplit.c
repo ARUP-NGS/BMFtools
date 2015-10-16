@@ -183,16 +183,18 @@ int main(int argc, char *argv[])
 #endif
 		// Remove temporary split files
 		fprintf(stderr, "Now removing temporary files.\n");
-		char del_buf[250];
+		char del_buf[500];
 		char cat_buff2[CAT_BUFFER_SIZE];
 		char cat_buff1[CAT_BUFFER_SIZE];
-		//#pragma omp parallel for shared(splitter)
+		#pragma omp parallel for shared(splitter)
 		for(int i = 0; i < splitter->n_handles; ++i) {
+			int tmp_ret;
+			char tmpbuf[500];
 			fprintf(stderr, "Now removing temporary files %s and %s.\n",
 					splitter->fnames_r1[i], splitter->fnames_r2[i]);
-			sprintf(del_buf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
-			//fprintf(stderr, "Don't feel like executing command '%s' today. Eh.\n", del_buf);
-			system(del_buf);
+			sprintf(tmpbuf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
+			//fprintf(stderr, "Don't feel like executing command '%s' today. Eh.\n", tmpbuf);
+			CHECK_CALL(tmpbuf, tmp_ret);
 		}
 		// Make sure that both files are empty.
 		int sys_call_ret;
