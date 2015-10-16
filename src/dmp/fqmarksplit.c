@@ -170,12 +170,18 @@ int main(int argc, char *argv[])
 			#pragma omp for
 #endif
 			for(int i = 0; i < params->n; ++i) {
+				char tmpbuf[500];
+				int tmp_ret;
 				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+				CHECK_CALL(tmpbuf, tmp_ret);
 				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
 						params->infnames_r2[i], params->outfnames_r2[i]);
 				omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r2[i]);
+				CHECK_CALL(tmpbuf, tmp_ret);
 			}
 #if NOPARALLEL
 #else
@@ -186,16 +192,6 @@ int main(int argc, char *argv[])
 		char del_buf[500];
 		char cat_buff2[CAT_BUFFER_SIZE];
 		char cat_buff1[CAT_BUFFER_SIZE];
-		#pragma omp parallel for shared(splitter)
-		for(int i = 0; i < splitter->n_handles; ++i) {
-			int tmp_ret;
-			char tmpbuf[500];
-			fprintf(stderr, "Now removing temporary files %s and %s.\n",
-					splitter->fnames_r1[i], splitter->fnames_r2[i]);
-			sprintf(tmpbuf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
-			//fprintf(stderr, "Don't feel like executing command '%s' today. Eh.\n", tmpbuf);
-			CHECK_CALL(tmpbuf, tmp_ret);
-		}
 		// Make sure that both files are empty.
 		int sys_call_ret;
 		char cat_buff[CAT_BUFFER_SIZE];
