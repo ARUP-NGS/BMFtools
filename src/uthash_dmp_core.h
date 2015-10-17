@@ -1,34 +1,9 @@
-#pragma once
+#ifndef UTHASH_DMP_CORE_H
+#define UTHASH_DMP_CORE_H
 
-#include "include/kseq_dec.h"
-
-typedef struct tmpvars {
-	char *bs_ptr;
-	int blen;
-	int readlen;
-	int nuc_indices[2];
-	char key[MAX_BARCODE_LENGTH + 1];
-	int l; // For holding ret value for seq.
-	tmpbuffers_t *buffers;
-} tmpvars_t;
+#include "crms.h"
 
 void omgz_core(char *infname, char *outfname);
-
-
-typedef struct HashKing {
-	UT_hash_handle hh;
-	char id[MAX_BARCODE_LENGTH + 1];
-	KingFisher_t *value;
-} HashKing_t;
-
-typedef struct splitterhash_params {
-	char **infnames_r1;
-	char **infnames_r2;
-	char **outfnames_r1;
-	char **outfnames_r2;
-	int n; // Number of infnames and outfnames
-	int paired; // 1 if paired, 0 if single-end
-} splitterhash_params_t;
 
 
 /*
@@ -136,30 +111,4 @@ inline void splitterhash_destroy(splitterhash_params_t *params)
 	return;
 }
 
-
-extern double igamc(double a, double x);
-extern uint64_t get_binnerul(char *barcode, int length); // From binner.h
-extern int64_t get_binnerl(char *barcode, int length); // From binner.h
-extern char *barcode_mem_view(kseq_t *seq); // from dmp.h
-int64_t lpow(int64_t base, int64_t exp);
-char ARRG_MAX_TO_NUC(int argmaxret);
-double igamc_pvalues(int num_pvalues, double x);
-int ARRG_MAX(KingFisher_t *kfp, int index);
-int infer_barcode_length(char *bs_ptr);
-int pvalue_to_phred(double pvalue);
-void destroy_kf(KingFisher_t *kfp);
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp);
-void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, char typecode);
-void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void fill_pv_buffer(KingFisher_t *kfp, int *agrees, char *buffer);
-void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen);
-KingFisher_t init_kf(int readlen);
-void nuc_to_pos(char character, int *nuc_indices);
-char test_hp(char *seq, int threshold);
-int get_binner(char *barcode, int length);
-void hash_dmp_core(FILE *handle, HashKing_t *hash, tmpvars_t tmp, kseq_t *seq);
-uint64_t ulpow(uint64_t base, uint64_t exp);
-void cp_view2buf(char *view, char *buf);
-void omgz_core(char *infname, char *outfname);
-//void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2);
-char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
+#endif

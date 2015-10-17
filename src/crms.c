@@ -3,21 +3,7 @@
  * For inline Loeb adapters only.
  */
 
-#include <zlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <regex.h>
-#include <getopt.h>
-#include <math.h>
-#include <string.h>
-#include <omp.h>
-#include <stdlib.h>
-#include <sys/resource.h>
-#include "dmp_interface.h"
-#include "include/array_parser.h"
-#include "include/nix_resource.h"
 #include "crms.h"
-#include "uthash_dmp_core.c"
 
 /*
  * Random not needed work.

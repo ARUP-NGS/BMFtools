@@ -4,7 +4,7 @@
 
 
 // Functions
-inline int ipow(int base, int exp)
+static inline int ipow(int base, int exp)
 {
 	int result = 1;
 	while (exp)
@@ -27,7 +27,7 @@ inline int ipow(int base, int exp)
 	}
 
 
-inline int get_binner(char *barcode, int length)
+static inline int get_binner(char *barcode, int length)
 {
 	int bin = 0;
 	size_t count = 0;
@@ -41,7 +41,7 @@ inline int get_binner(char *barcode, int length)
 }
 
 
-inline int64_t lpow(int64_t base, int64_t exp)
+static inline int64_t lpow(int64_t base, int64_t exp)
 {
 	int64_t result = 1;
 	while (exp)
@@ -56,7 +56,7 @@ inline int64_t lpow(int64_t base, int64_t exp)
 }
 
 
-inline uint64_t ulpow(uint64_t base, uint64_t exp)
+static inline uint64_t ulpow(uint64_t base, uint64_t exp)
 {
 	//fprintf(stderr, "Now running ulpow. Base: %i. Exp: %i.\n", base, exp);
 	uint64_t result = 1;
@@ -73,7 +73,7 @@ inline uint64_t ulpow(uint64_t base, uint64_t exp)
 }
 
 
-inline int64_t get_binnerl(char *barcode, int length)
+static inline int64_t get_binnerl(char *barcode, int length)
 {
 	int64_t bin = 0;
 	size_t count = 0;
@@ -89,7 +89,7 @@ inline int64_t get_binnerl(char *barcode, int length)
 
 
 
-inline uint64_t get_binnerul(char *barcode, int length)
+static inline uint64_t get_binnerul(char *barcode, int length)
 {
 	uint64_t bin = 0;
 	size_t count = 0;

@@ -8,10 +8,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "dmp_interface.h"
 #include "crms.h"
-#include "uthash_dmp_core.c"
-#include "include/nix_resource.h"
 
 // Allocate file handle array memory, open file handles.
 
@@ -76,7 +73,7 @@ int main(int argc, char *argv[])
 		.hp_threshold = 10,
 		.n_nucs = 4,
 		.index_fq_path = NULL,
-		.output_basename = NULL,
+		.output_basename = default_basename,
 		.threads = 4,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,
@@ -128,7 +125,7 @@ int main(int argc, char *argv[])
 	}
 
 	if(argc - 1 != optind + 1) {
-		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);
+		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n");
 		print_usage(argv);
 		return 1;
 	}

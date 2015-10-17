@@ -1,7 +1,4 @@
-#include "include/kingfisher.h"
-#include "dmp_interface.h"  // Contains the KingFisher_t type and KSEQ_INIT
 #include "uthash_dmp_core.h"
-#include "igamc_cephes.c"
 
 
 void tmpvars_destroy(tmpvars_t *tmp)

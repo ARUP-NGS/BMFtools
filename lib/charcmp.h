@@ -13,7 +13,8 @@ inline void comma_i32toa(int32_t value, char *buffer)
  * Small character comparison or conversion utilities.
  */
 
-inline int nuc2num(char character)
+
+static inline int nuc2num(char character)
 {
 	switch(character) {
 		case 'C': return 1; break;
@@ -32,7 +33,7 @@ inline int nuc2num(char character)
 		default: setchr = inchr;break;\
 	}
 
-inline char nuc_cmpl(char character) {
+static inline char nuc_cmpl(char character) {
 	switch(character) {
 		case 'A': return 'T';
 		case 'C': return 'G';
@@ -43,14 +44,14 @@ inline char nuc_cmpl(char character) {
 }
 
 
-inline int nuc_cmp(char forward, char reverse)
+static inline int nuc_cmp(char forward, char reverse)
 {
 	return forward - reverse;
 }
 
 
 //Converts a nucleotide in a char * into an index for the phred_sums and nuc_counts arrays.
-inline void nuc_to_pos(char character, int *nuc_indices)
+static inline void nuc_to_pos(char character, int *nuc_indices)
 {
 	switch(character) {
 		case 'A': nuc_indices[0] = 0; nuc_indices[1] = 0; return;

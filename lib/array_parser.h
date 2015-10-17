@@ -8,12 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
+#include <inttypes.h>
 
 
 // Shamelessly stolen from the source code for 'wc'.
 typedef unsigned long count_t; /* counter type */
-
-char num2nuc(int num);
 
 inline int count_lines(char *fname) {
 	int ret = 0;
@@ -32,7 +31,7 @@ inline int count_lines(char *fname) {
 	return ret;
 }
 
-inline char ****parse_rescaler(char *qual_rescale_fname)
+static inline char ****parse_rescaler(char *qual_rescale_fname)
 {
 	int readlen = count_lines(qual_rescale_fname);
 	FILE *fp = fopen(qual_rescale_fname, "r");
@@ -53,7 +52,6 @@ inline char ****parse_rescaler(char *qual_rescale_fname)
 	char *line = NULL;
 	size_t len = 0;
 	ssize_t line_length;
-	int lineno = 0;
 	char *readnum_tok;
 	char *qscore_tok;
 	char *basecall_tok;
@@ -85,7 +83,7 @@ inline char ****parse_rescaler(char *qual_rescale_fname)
 	return ret;
 }
 
-void period_to_null(char *instr)
+static void period_to_null(char *instr)
 {
 	int i = 0;
 	while(instr[i]) {
@@ -96,7 +94,7 @@ void period_to_null(char *instr)
 	}
 }
 
-inline char num2nuc(int num)
+static inline char num2nuc(int num)
 {
 	switch(num) {
 	case 0:
@@ -112,7 +110,7 @@ inline char num2nuc(int num)
 }
 
 
-inline char *parse_1d_rescaler(char *qual_rescale_fname)
+static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 {
 	int readlen = count_lines(qual_rescale_fname);
 #if !NDEBUG
@@ -181,7 +179,7 @@ inline char *parse_1d_rescaler(char *qual_rescale_fname)
 			}
 		}
 	}
-	fprintf(stderr, "Final index: %i. Expected: %i.\n", index, arr_len);
+	fprintf(stderr, "Final index: %" PRIu64 ". Expected: %i.\n", index, arr_len);
 	if(index != arr_len) {
 		fprintf(stderr, "Unexpected index! Abort!\n");
 		exit(EXIT_FAILURE);

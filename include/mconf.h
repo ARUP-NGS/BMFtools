@@ -160,8 +160,8 @@ typedef struct
 /* #if 1 */
 /* #if 0 */
 #define ANSIPROT
-#include "protos.h"
-#include "qprotos.h"
+//#include "protos.h"
+//#include "qprotos.h"
 #else
 int mtherr();
 int qadd(), qsub(), qmul(), qdiv(), qmuli(), qsqrt(), qlog(), qexp();
