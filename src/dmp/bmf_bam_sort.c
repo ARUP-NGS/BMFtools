@@ -1256,7 +1256,6 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
 	int t;
 	uint64_t key_a, key_b;
-	int64_t diff;
 	switch(sort_cmp_key) {
 		case QNAME_SORT_ORDER:
 			t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
