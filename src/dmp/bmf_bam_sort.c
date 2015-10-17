@@ -23,24 +23,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <regex.h>
-#include <time.h>
-#include <unistd.h>
-#include <inttypes.h>
-#include "htslib/ksort.h"
-#include "htslib/khash.h"
-#include "htslib/klist.h"
-#include "htslib/kstring.h"
-#include "htslib/sam.h"
-#include "bam_rescue.h"
-#include "include/cstr_utils.h"
-#include "include/o_mem.h"
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
