@@ -1,7 +1,5 @@
 #ifndef PAIR_UTIL_H
 #define PAIR_UTIL_H
-#include "bam.h"
-#include "bam_rescue.h"
 #include <ctype.h>
 #include <errno.h>
 #include "htslib/khash.h"
@@ -9,23 +7,26 @@
 #include "htslib/ksort.h"
 #include "htslib/kstring.h"
 #include "htslib/sam.h"
-#include "include/cstr_utils.h"
-#include "include/o_mem.h"
+#include "cstr_utils.h"
+#include "o_mem.h"
 #include <inttypes.h>
 #include "io_util.h"
 #include <regex.h>
 #include "sam.h"
 #include "sam_opts.h"
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <vector>
 #include <zlib.h>
+#include "bam.h"
+#include "bam_rescue.h"
 
-void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2);
+static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2);
 
 static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2) {
 	uint32_t i, offset1 = 0, offset2 = 0, ucs1 = b1->core.pos, ucs2 = b2->core.pos;

@@ -1,3 +1,6 @@
+#ifndef IGAMC_CEPHES_H
+#define IGAMC_CEPHES_H
+
 #include "mtherr.c"
 
 extern double MAXNUM;
@@ -575,3 +578,4 @@ else
 y = SQTPI * y * w;
 return( y );
 }
+#endif

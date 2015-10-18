@@ -48,21 +48,6 @@ void print_crms_opt_err(char *argv[], char *optarg)
 }
 
 
-inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
-{
-	if(settings_ptr->max_blen < 0) {
-		return (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
-					   settings_ptr->homing_sequence,
-					   settings_ptr->homing_sequence_length) == 0) ? settings_ptr->blen1_2 + settings_ptr->offset + settings_ptr->homing_sequence_length: -1;
-	}
-	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
-			return i + settings_ptr->homing_sequence_length;
-		}
-	}
-	return -1;
-}
-
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
@@ -166,7 +151,6 @@ int main(int argc, char *argv[])
 	int n_nucs;
 	char *output_basename;
 	const char *default_basename = "metasyntactic_var";
-	int blens[10];
 	mssi_settings_t settings = {
 		.hp_threshold = 10,
 		.n_nucs = 4,

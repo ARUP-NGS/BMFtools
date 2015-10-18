@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CSTR_UTILS_H
+#define CSTR_UTILS_H
+
 #include "stdio.h"
 #include "stddef.h"
 #include "stdint.h"
@@ -11,7 +13,7 @@
  * Returns a null-terminated string with the extension and terminal period removed.
  * Warning: Must be freed!
  */
-inline char *trim_ext(char *fname)
+static inline char *trim_ext(char *fname)
 {
 	fprintf(stderr, "Now trimming char * %s.\n", fname);
 	char *buf = malloc((strlen(fname) + 1) * sizeof(char ));
@@ -24,7 +26,7 @@ inline char *trim_ext(char *fname)
 /*
  * Fast positive atoi
  */
-inline int fp_atoi(char *str)
+static inline int fp_atoi(char *str)
 {
 	int ret = *str++ - '0';
 	while(*str) {
@@ -33,7 +35,7 @@ inline int fp_atoi(char *str)
 	return ret;
 }
 
-const char digit_pairs[201] = {
+static const char digit_pairs[201] = {
   "00010203040506070809"
   "10111213141516171819"
   "20212223242526272829"
@@ -47,7 +49,7 @@ const char digit_pairs[201] = {
 };
 
 
-char *opt_itoa(unsigned val, char *s)
+static inline char *opt_itoa(unsigned val, char *s)
 {
 	if(!val)
 	{
@@ -128,3 +130,5 @@ inline int fast_atoi(char *str)
 	}
 	return ret * sign;
 }
+
+#endif

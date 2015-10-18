@@ -1,3 +1,5 @@
+#ifndef MTHERR_C
+#define MTHERR_C
 /*							mtherr.c
  *
  *	Library common error handling routine
@@ -57,6 +59,8 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 #include <stdio.h>
 #include "mconf.h"
 
+static inline int mtherr ( char *name, int code );
+
 int merror = 0;
 
 /* Notice: the order of appearance of the following
@@ -74,7 +78,7 @@ static char *ermsg[7] = {
 };
 
 
-inline int mtherr( name, code )
+static inline int mtherr( name, code )
 char *name;
 int code;
 {
@@ -98,3 +102,4 @@ printf( "%s error\n", ermsg[code] );
  */
 return( 0 );
 }
+#endif

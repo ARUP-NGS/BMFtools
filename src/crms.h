@@ -12,6 +12,8 @@
 #include "array_parser.h"
 #include "nix_resource.h"
 #include "o_mem.h"
+#include "binner.h"
+#include "cstr_utils.h"
 
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
@@ -164,7 +166,7 @@ typedef struct splitterhash_params {
 } splitterhash_params_t;
 
 
-char *trim_ext(char *fname);
+//char *trim_ext(char *fname);
 
 static inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
 {
@@ -322,7 +324,6 @@ mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *t
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
-mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr);
 int ipow(int base, int exp);
 void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
@@ -419,7 +420,7 @@ static inline void FREE_SPLITTER_PTR(mark_splitter_t *var)
 }
 
 
-mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
+static inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
 {
 	mark_splitter_t ret = {
 		.n_handles = ipow(4, settings_ptr->n_nucs),
@@ -447,7 +448,7 @@ mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
 }
 
 
-mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
+static inline mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
 {
 	mark_splitter_t ret = {
 		.n_handles = ipow(4, settings_ptr->n_nucs),
@@ -689,7 +690,20 @@ static inline void free_mssi_settings(mssi_settings_t settings)
 
 // Calls incomplete gamma complement from CEPHES.
 
-char *barcode_mem_view(kseq_t *seq);
+static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+{
+	if(settings_ptr->max_blen < 0) {
+		return (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
+					   settings_ptr->homing_sequence,
+					   settings_ptr->homing_sequence_length) == 0) ? settings_ptr->blen1_2 + settings_ptr->offset + settings_ptr->homing_sequence_length: -1;
+	}
+	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
+			return i + settings_ptr->homing_sequence_length;
+		}
+	}
+	return -1;
+}
 
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN

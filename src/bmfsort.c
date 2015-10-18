@@ -23,6 +23,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
+#include "bmfsort.h"
 
 #if !defined(__DARWIN_C_LEVEL) || __DARWIN_C_LEVEL < 900000L
 #define NEED_MEMSET_PATTERN4
@@ -1495,7 +1496,7 @@ int main(int argc, char *argv[])
 	if (argc == 1)
 		return sort_usage(stdout, EXIT_SUCCESS);
 	size_t max_mem = 768<<20; // 512MB
-	int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, is_stdout = 0, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;
+	int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;
 	char *fnout = "-", *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
 	kstring_t fnout_buffer = { 0, 0, NULL };
 	char *split_prefix = NULL;

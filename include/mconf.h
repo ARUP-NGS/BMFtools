@@ -172,6 +172,6 @@ int qcmp(), qclear(), qmov();
 #endif
 
 /* Variable for error reporting.  See mtherr.c.  */
-extern int merror;
+//extern int merror;
 #endif /* __MCONF_H */
 

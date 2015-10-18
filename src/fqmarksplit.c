@@ -8,6 +8,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+#include "cstr_utils.h"
 #include "crms.h"
 
 // Allocate file handle array memory, open file handles.

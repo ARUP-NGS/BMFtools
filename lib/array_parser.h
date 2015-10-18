@@ -14,7 +14,7 @@
 // Shamelessly stolen from the source code for 'wc'.
 typedef unsigned long count_t; /* counter type */
 
-inline int count_lines(char *fname) {
+static inline int count_lines(char *fname) {
 	int ret = 0;
 	FILE *fp = fopen(fname, "r");
 	if(!fp) {

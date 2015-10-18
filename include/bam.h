@@ -205,8 +205,8 @@ extern "C" {
       @return     SAM file handler
      */
     static inline tamFile samtools_sam_open(const char *fn) { return sam_open(fn, "r"); }
-    #undef  sam_open
-    #define sam_open samtools_sam_open
+    //#undef  sam_open
+    //#define sam_open samtools_sam_open
 
     /*!
       @abstract   Close a SAM file handler
