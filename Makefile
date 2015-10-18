@@ -19,7 +19,7 @@ IGAMC_INC= include/igamc_cephes.c
 
 .PHONY: all clean
 
-all: lh3sort libhts.a fqmarksplit crms bmfsort bin
+all: lh3sort libhts.a fqmarksplit crms bmfsort dmp copy
 
 lh3sort:
 	cd include/sort && make && cd ../..
@@ -27,9 +27,9 @@ lh3sort:
 libhts.a:
 	cd htslib && make && cp libhts.a ../
 fqmarksplit:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit_p
 crms:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/crms.c include/igamc_cephes.c src/uthash_dmp_core.c -o crms
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/crms.c include/igamc_cephes.c src/uthash_dmp_core.c -o crms_db
@@ -38,8 +38,10 @@ bmfsort:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/bmfsort.c -o bmfsort_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/bmfsort.c -o bmfsort_p
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/bmfsort.c -o bmfsort
-bin:
-	mv crms crms_db crms_p bmfsort bmfsort_db bmfsort_p lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p bin/
+dmp:
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/dmp.c include/igamc_cephes.c -o dmp
+copy:
+	cp dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p bin/
 
 
 clean:

@@ -35,9 +35,7 @@ for x in ext:
     x.extra_link_args += pysam.get_libraries()
     x.define_macros += pysam.get_defines()
     if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam', 'MawCluster.Math']):
-        x.sources += ["src/include/cephes/igam.c", "src/include/cephes/const.c",
-                      "src/include/cephes/gamma.c", "src/include/cephes/mtherr.c",
-                      "src/include/cephes/sf_error.c"]
+        pass # x.sources += ["include/igamc_cephes.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
@@ -59,9 +57,9 @@ config = {
                  "SecC", "analyscripts"],
     'ext_modules': ext,
     'include_dirs': includes,
-    'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/sort/lh3sort', 'src/dmp/fqmarksplit_p',
-                'src/dmp/crms', 'src/dmp/dmp', 'src/dmp/uthash_dmp', 'src/dmp/bam_rescue',
-                'src/dmp/bmfsort', 'src/dmp/crms_db',  'src/dmp/crms_p'],
+    'scripts': ['utilBMF/bmftools', 'bin/fqmarksplit', 'bin/lh3sort', 'bin/fqmarksplit_p',
+                'bin/crms', 'bin/dmp', 'bin/uthash_dmp', 'bin/bam_rescue',
+                'bin/bmfsort', 'bin/crms_db',  'bin/crms_p'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',
