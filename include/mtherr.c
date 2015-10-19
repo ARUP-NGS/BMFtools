@@ -61,7 +61,7 @@ Direct inquiries to 30 Frost Street, Cambridge, MA 02140
 
 static inline int mtherr ( char *name, int code );
 
-int merror = 0;
+static int merror = 0;
 
 /* Notice: the order of appearance of the following
  * messages is bound to the error codes defined

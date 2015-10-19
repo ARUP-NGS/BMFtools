@@ -34,8 +34,8 @@ ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
 for x in ext:
     x.extra_link_args += pysam.get_libraries()
     x.define_macros += pysam.get_defines()
-    if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam', 'MawCluster.Math']):
-        pass # x.sources += ["include/igamc_cephes.c"]
+    if(x.name in ['MawCluster.BCFastq', 'MawCluster.Math']):
+        x.sources += ["include/igamc_cephes.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
