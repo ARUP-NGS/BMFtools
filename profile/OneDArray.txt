@@ -1,0 +1,11 @@
+OneDArray
+
+real    3m18.088s
+user    7m32.044s
+sys     0m58.299s
+
+TwoDArray
+
+real    3m42.649s
+user    8m35.626s
+sys     0m57.851s

@@ -23,7 +23,7 @@ typedef struct rescue_settings {
 #endif
 
 #ifndef bam_sort_mate_key
-#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|a->core.mpos+1)
+#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|(a->core.mpos+1))
 #endif
 
 #ifndef forever
