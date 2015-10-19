@@ -8,6 +8,15 @@
 // Leave semicolon out so that it looks like a normal function.
 #define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
 
+#define cond_realloc_t(var, newsize, type_t)\
+	do {\
+		var = (type_t)realloc(var, newsize);\
+		if(!var){\
+			fprintf(stderr, "Could not allocate new memory for size %" PRIu64 ". Abort mission!\n", newsize);\
+			exit(EXIT_FAILURE);\
+		}\
+	} while(0)
+
 #define cond_realloc(var, newsize)\
 	do {\
 		var = realloc(var, newsize);\
