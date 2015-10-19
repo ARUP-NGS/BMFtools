@@ -1394,7 +1394,7 @@ def fqmarksplit_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
     if dry_run:
         return cStr
     check_call(cStr, shell=True)
-    return (ffq_basename + ".R1.fq", ffq_basename + "R2.fq")
+    return (ffq_basename + ".R1.fq", ffq_basename + ".R2.fq")
 
 
 
@@ -1482,35 +1482,3 @@ def split_and_sort(cystr Fq1, cystr Fq2, cystr indexFq,
     finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
     sorted_split_files = dispatch_lh3_sorts(tmpFnames, sortFnames, threads)
     return sorted_split_files
-
-
-def split_sort_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
-                   int hpThreshold, int n_nucs,
-                   int threads=8):
-    """
-    :param Fq1 [cystr/arg] Path to read 1 fastq.
-    :param Fq2 [cystr/arg] Path to read 2 fastq.
-    :param indexFq [cystr/arg] Path to index fastq
-    :param hpThreshold [int/arg] Threshold for homopolymer length to QC fail.
-    :param n_nucs [int/arg] Number of nucleotides to use to split the
-    initial fastq.
-    :param threads [int/kwarg/8] Number of threads to instruct MP to use.
-    :return List of tuples for read1/read2 read sets.
-    """
-    cdef dict fqmarksplit_retdict
-    fqmarksplit_retdict = Callfqmarksplit(Fq1, Fq2, indexFq,
-                                          hpThreshold, n_nucs)
-    tmpFnames = fqmarksplit_retdict['mark']
-    marker1 = tmpFnames[0]
-    marker2 = tmpFnames[1]
-    del tmpFnames
-    sortFnames = fqmarksplit_retdict['sort']
-    sorter1 = sortFnames[0]
-    sorter2 = sortFnames[1]
-    del sortFnames
-    sorted_split_files1 = dispatch_lh3_sorts(marker1, sorter1, threads)
-    sorted_split_files2 = dispatch_lh3_sorts(marker2, sorter2, threads)
-    return
-    finalTmpFnames = GenerateFinalTmpFilenames(Fq1, n_nucs)
-    dispatch_sfc(sortFnames, finalTmpFnames, threads)
-    return

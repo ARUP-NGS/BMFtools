@@ -352,7 +352,7 @@ int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
 blens_t *get_blens(char *str2parse);
 void free_crms_settings(crms_settings_t settings);
 splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-void omgz_core(char *infname, char *outfname);
+void hash_dmp_core(char *infname, char *outfname);
 mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int is_read2);
 
 
@@ -645,10 +645,10 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	gzclose(fp_read2);
 	gzclose(fp_index);
 	for(count = 0; count < settings->n_handles; ++count) {
-		fclose(splitter_ptr->fnames_r1[count]);
-		fclose(splitter_ptr->fnames_r2[count]);
-		splitter_ptr->fnames_r1[count] = NULL;
-		splitter_ptr->fnames_r2[count] = NULL;
+		fclose(splitter_ptr->tmp_out_handles_r1[count]);
+		fclose(splitter_ptr->tmp_out_handles_r2[count]);
+		splitter_ptr->tmp_out_handles_r1[count] = NULL;
+		splitter_ptr->tmp_out_handles_r2[count] = NULL;
 	}
 	free(splitter_ptr->fnames_r1);
 	splitter_ptr->fnames_r1 = NULL;

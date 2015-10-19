@@ -77,14 +77,14 @@ int uthash_dmp_main(int argc, char *argv[])
 	}
 	infname = strdup(argv[optind]);
 
-	omgz_core(infname, outfname);
+	hash_dmp_core(infname, outfname);
 	free(outfname);
 	free(infname);
 	return 0;
 }
 
 
-void omgz_core(char *infname, char *outfname)
+void hash_dmp_core(char *infname, char *outfname)
 {
 	FILE *in_handle;
 	FILE *out_handle;
@@ -100,7 +100,7 @@ void omgz_core(char *infname, char *outfname)
 		fprintf(stderr, "Could not open %s for reading. Abort mission!\n", infname);
 	}
 #if !NDEBUG
-	fprintf(stderr, "[omgz_core]: Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
+	fprintf(stderr, "[hash_dmp_core]: Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
 #endif
 	if(!outfname) out_handle = stdout;
 	else {
@@ -109,19 +109,19 @@ void omgz_core(char *infname, char *outfname)
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 #if !NDEBUG
-	fprintf(stderr, "[omgz_core]: Opened file handles, initiated kseq parser.\n");
+	fprintf(stderr, "[hash_dmp_core]: Opened file handles, initiated kseq parser.\n");
 #endif
 	// Initialized kseq
 	int l = kseq_read(seq);
 	if(l < 0) {
-		fprintf(stderr, "[omgz_core]: Could not open fastq file (%s). Abort mission!\n",
+		fprintf(stderr, "[hash_dmp_core]: Could not open fastq file (%s). Abort mission!\n",
 				strcmp(infname, "-") == 0 ? "stdin": infname);
 		exit(1);
 	}
 	char *bs_ptr = barcode_mem_view(seq);
 	int blen = infer_barcode_length(bs_ptr);
 #if !NDEBUG
-	fprintf(stderr, "[omgz_core]: Barcode length (inferred): %i.\n", blen);
+	fprintf(stderr, "[hash_dmp_core]: Barcode length (inferred): %i.\n", blen);
 #endif
 	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
 	// Start hash table
@@ -163,7 +163,7 @@ void omgz_core(char *infname, char *outfname)
 		}
 	}
 #if !NDEBUG
-	fprintf(stderr, "[omgz_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
+	fprintf(stderr, "[hash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
 #endif
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
 		dmp_process_write(current_entry->value, out_handle, tmp->blen, tmp->buffers);

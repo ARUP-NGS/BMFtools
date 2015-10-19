@@ -268,9 +268,9 @@ int main(int argc, char *argv[])
 				char tmpbuf[500];
 				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
-				omgz_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 
-				omgz_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				fprintf(stderr, "Now removing temporary files %s and %s.\n",
 						params->infnames_r1[i], params->infnames_r2[i]);
 				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);

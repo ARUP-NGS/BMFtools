@@ -229,7 +229,7 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
     :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
     :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - opt arguments
     to provide to bwa for alignment.
-    :param: br_ncpus - [int/kwarg/4]
+    :param: br_ncpus - [int/kwarg/8]
     :param: memStr - [cystr/kwarg/"6G"]
     :param: cleanup [bint/kwarg/True]
     :returns: [cystr] - Path to final BAM file
@@ -254,7 +254,7 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
 
 cpdef list bmf_align_split(R1, R2, ref=None,
                            opts=None, path=None,
-                           int threads=4, prefix=None, memStr="6G"):
+                           int threads=8, prefix=None, memStr="6G"):
     """
     :param: R1 - [cystr/arg] - path to input fastq for read 1
     :param: R2 - [cystr/arg] - path to input fastq for read 2
@@ -266,7 +266,7 @@ cpdef list bmf_align_split(R1, R2, ref=None,
     to provide to bwa for alignment.
     :param: dry_run - [bint/kwarg/False] - flag to return the command string
     rather than calling it.
-    :param: threads - [int/kwarg/4]
+    :param: threads - [int/kwarg/8]
     :param: memStr - [cystr/memStr/"6G"]
     :returns: [list] - List of strings of output bam files.
     """

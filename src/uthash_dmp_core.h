@@ -3,7 +3,7 @@
 
 #include "crms.h"
 
-void omgz_core(char *infname, char *outfname);
+void hash_dmp_core(char *infname, char *outfname);
 void cp_view2buf(char *view, char *buf);
 
 
