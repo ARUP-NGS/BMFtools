@@ -644,6 +644,16 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	gzclose(fp_read1);
 	gzclose(fp_read2);
 	gzclose(fp_index);
+	for(count = 0; count < settings->n_handles; ++count) {
+		fclose(splitter_ptr->fnames_r1[count]);
+		fclose(splitter_ptr->fnames_r2[count]);
+		splitter_ptr->fnames_r1[count] = NULL;
+		splitter_ptr->fnames_r2[count] = NULL;
+	}
+	free(splitter_ptr->fnames_r1);
+	splitter_ptr->fnames_r1 = NULL;
+	free(splitter_ptr->fnames_r2);
+	splitter_ptr->fnames_r2 = NULL;
 	return splitter_ptr;
 }
 

@@ -25,7 +25,7 @@ from cytoolz import frequencies as cyfreq
 import pysam
 import cython
 
-from .BCFastq import GetDescriptionTagDict as getdesc
+from .BCFastq import GetDescriptionTagDict as getdesc, fqmarksplit_dmp
 from . import BCFastq
 from utilBMF.HTSUtils import *
 from utilBMF.HTSUtils import printlog as pl
@@ -205,8 +205,7 @@ cpdef cystr fqms_dmp_align_rescue(cystr Fq1, cystr Fq2, cystr indexFq,
                                        rescaler_path=rescaler_path,
                                        hpThreshold=hpThreshold, n_nucs=n_nucs,
                                        offset=offset, salt=salt,
-                                       dmp_ncpus=dmp_ncpus,
-                                       path=path)
+                                       dmp_ncpus=dmp_ncpus)
     if(not outBAM):
         outBAM = TrimExt(Fq1) + ".bmfrsq.bam"
     bmf_align_rescue(dmp_fq1, dmp_fq2, outBAM, ref=ref, opts=bwa_opts,

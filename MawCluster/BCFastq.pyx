@@ -1387,7 +1387,7 @@ def fqmarksplit_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
     rescaler_string = "" if(not rescaler_path) else " -r %s" % rescaler_path
     cStr = ("fqmarksplit -t %i -n %i -i %s " % (hpThreshold, n_nucs,
                                                 indexFq) +
-            "-s %i -dp %i -f %s" % (salt, dmp_ncpus, ffq_basename) +
+            "-s %i -dp %i -f %s " % (salt, dmp_ncpus, ffq_basename) +
             rescaler_string +
             "-o %s -m %i %s %s" % (tmp_basename, offset, Fq1, Fq2))
     sys.stderr.write(cStr + "\n")
