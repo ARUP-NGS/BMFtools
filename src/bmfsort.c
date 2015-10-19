@@ -1387,7 +1387,7 @@ int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix,
 		fprintf(stderr, "[bmf_bam_sort_core] fail to open file %s\n", fn);
 		return -1;
 	}
-	fprintf(stderr, "[bmf_bam_sort_core] Reading from '%s'.\n", (strcmp(fn, "-") == 0 | strcmp(fn, "stdin") == 0) ? "stdin": fn);
+	fprintf(stderr, "[bmf_bam_sort_core] Reading from '%s'.\n", (strcmp(fn, "-") == 0 || strcmp(fn, "stdin") == 0) ? "stdin": fn);
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
 		fprintf(stderr, "[bmf_bam_sort_core] failed to read header for '%s'\n", fn);
@@ -1496,7 +1496,7 @@ int main(int argc, char *argv[])
 	if (argc == 1)
 		return sort_usage(stdout, EXIT_SUCCESS);
 	size_t max_mem = 768<<20; // 512MB
-	int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1, full_path = 0;
+	int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
 	char *fnout = "-", *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
 	kstring_t fnout_buffer = { 0, 0, NULL };
 	char *split_prefix = NULL;
@@ -1504,7 +1504,6 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "l:m:k:o:O:T:@:p:sh")) >= 0) {
 		switch (c) {
-		case 'f': full_path = 1; break;
 		case 'o': fnout = optarg; break;
 		case 'k': if(strcmp(optarg, "bmf") == 0) sort_cmp_int = BMF_SORT_ORDER;
 				  else if(strcmp(optarg, "pos") == 0) sort_cmp_int = SAMTOOLS_SORT_ORDER;
