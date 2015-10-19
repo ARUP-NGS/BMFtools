@@ -509,6 +509,8 @@ cdef class pPileupRead:
             FAs = array('l', np.array(self.alignment.opt("FA").split(","),
                                       dtype=np.int64))
         if(self.alignment.is_reverse):
+            sys.stderr.write("inferred length: %i. qp: %i. Diff: %i.\n" % (self.alignment.inferred_length, self.query_position,
+                                                                           self.alignment.inferred_length - self.query_position))
             self.BQ = BQs[self.alignment.inferred_length - self.query_position]
             self.FA = FAs[self.alignment.inferred_length - self.query_position]
         else:

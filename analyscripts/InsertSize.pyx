@@ -245,6 +245,7 @@ cdef class CoarseSNVWrangler:
         self.filter_cnf = array('d', [<double_t>minFM, <double_t>minMQ,
                                       <double_t> minPV, <double_t> minFA,
                                       minFAFrac])
+        sys.stderr.write("Filter cnf: %s.\n" % str(self.filter_cnf))
         self.max_insert_size = max_insert_size
 
         # Test to see if this position is even available on the contig.
