@@ -239,9 +239,9 @@ static inline void dmp_process_write_full_pvalues(KingFisher_t *kfp, FILE *handl
 	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < kfp->readlen; ++i) {
 		argmaxret = ARRG_MAX(kfp, i);
-		tmp_phred = kfp->phred_sums[i][argmaxret];
+		tmp_phred = kfp->phred_sums[i * 4 + argmaxret];
 		for(int j = 0; j != argmaxret && j < 4; ++j) {
-			tmp_phred -= kfp->phred_sums[i][j];
+			tmp_phred -= kfp->phred_sums[i * 4 + j];
 		}
 		tmp->cons_quals[i] = tmp_phred > 0 ? pvalue_to_phred(LOG10_TO_CHI2(tmp_phred)): 0;
 		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
@@ -254,8 +254,8 @@ static inline void dmp_process_write_full_pvalues(KingFisher_t *kfp, FILE *handl
 		*/
 
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
+		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+		tmp->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
 	}
 	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
@@ -286,10 +286,10 @@ static inline void dmp_process_write_sub_chi2(KingFisher_t *kfp, FILE *handle, i
 	for(int i = 0; i < kfp->readlen; ++i) {
 		tmp_max = -1;
 		for(int j = 0; j < 4; ++j) {
-			if(kfp->phred_sums[i][j] > tmp_max) {
+			if(kfp->phred_sums[i * 4 + j] > tmp_max) {
 				tmp_max = j;
 			}
-			tmp_phreds[j] = pvalue_to_phred(igamc_pvalues(kfp->nuc_counts[i][j], LOG10_TO_CHI2(kfp->phred_sums[i][j])));
+			tmp_phreds[j] = pvalue_to_phred(igamc_pvalues(kfp->nuc_counts[i * 4 + j], LOG10_TO_CHI2(kfp->phred_sums[i * 4 + j])));
 		}
 		if(tmp_max < 0) {
 			tmp_max = 0;
@@ -302,8 +302,8 @@ static inline void dmp_process_write_sub_chi2(KingFisher_t *kfp, FILE *handle, i
 			tmp->cons_quals[i] = 3114;
 		}
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][tmp_max]) ? ARRG_MAX_TO_NUC(tmp_max): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i][tmp_max];
+		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + tmp_max]) ? ARRG_MAX_TO_NUC(tmp_max): 'N';
+		tmp->agrees[i] = kfp->nuc_counts[i * 4 + tmp_max];
 	}
 	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
@@ -332,13 +332,13 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
 	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < kfp->readlen; ++i) {
 		argmaxret = ARRG_MAX(kfp, i);
-		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i][argmaxret]))));
+		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 4 + argmaxret]))));
 		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
 			tmp->cons_quals[i] = 3114;
 		}
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
+		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+		tmp->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
 	}
 	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
@@ -389,13 +389,9 @@ static inline void set_kf(int readlen, KingFisher_t ret)
 {
 	ret.length = 0;
 	ret.readlen = readlen;
-	ret.nuc_counts = (uint16_t **)malloc(readlen * sizeof(uint16_t *));
-	ret.phred_sums = (uint32_t **)malloc(sizeof(uint32_t *) * readlen);
+	ret.nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
+	ret.phred_sums = (uint32_t *)calloc(readlen * 4, sizeof(uint32_t));
 	ret.max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
-	for(int i = 0; i < readlen; i++) {
-		ret.nuc_counts[i] = (uint16_t *)calloc(5, sizeof(uint16_t)); // One each for A, C, G, T, and N
-		ret.phred_sums[i] = (uint32_t *)calloc(4, sizeof(uint32_t)); // One for each nucleotide
-	}
 	return;
 }
 
@@ -407,9 +403,8 @@ static inline KingFisher_t *init_kfp(size_t readlen)
 	ret->n_rc = 0;
 	ret->readlen = readlen;
 	ret->max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
-	ret->nuc_counts = (uint16_t *)malloc(readlen * 5, sizeof(uint16_t));
-	ret->phred_sums = (uint32_t *)malloc(readlen * 4, sizeof(uint32_t));
-	}
+	ret->nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
+	ret->phred_sums = (uint32_t *)calloc(readlen * 4, sizeof(uint32_t));
 	ret->pass_fail = '1';
 	return ret;
 }
@@ -727,8 +722,8 @@ static inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char *
 {
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		kfp->nuc_counts[i][nuc_indices[0]] += 1;
-		kfp->phred_sums[i][nuc_indices[1]] += rescale_qscore(is_read2 ? 1 : 0, seq->qual.s[i], i, seq->seq.s[i], seq->seq.l, rescaler);
+		kfp->nuc_counts[i * 4 + nuc_indices[0]] += 1;
+		kfp->phred_sums[i * 4 + nuc_indices[1]] += rescale_qscore(is_read2 ? 1 : 0, seq->qual.s[i], i, seq->seq.s[i], seq->seq.l, rescaler);
 		if(seq->qual.s[i] > kfp->max_phreds[i]) {
 			kfp->max_phreds[i] = seq->qual.s[i];
 		}
@@ -758,8 +753,8 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 {
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		kfp->nuc_counts[i][nuc_indices[1]] += 1;
-		kfp->phred_sums[i][nuc_indices[0]] += seq->qual.s[i] - 33;
+		kfp->nuc_counts[i * 4 + nuc_indices[1]] += 1;
+		kfp->phred_sums[i * 4 + nuc_indices[0]] += seq->qual.s[i] - 33;
 		if(seq->qual.s[i] > kfp->max_phreds[i]) {
 			kfp->max_phreds[i] = seq->qual.s[i];
 		}
