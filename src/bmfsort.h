@@ -8,7 +8,7 @@
 #include "htslib/kstring.h"
 #include "htslib/sam.h"
 #include "cstr_utils.h"
-#include "o_mem.h"
+#include "mem_util.h"
 #include <inttypes.h>
 #include "io_util.h"
 #include <regex.h>

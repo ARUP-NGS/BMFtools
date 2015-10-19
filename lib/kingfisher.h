@@ -7,7 +7,7 @@
 #include "charcmp.h"
 #include "khash.h"
 #include "uthash.h"
-#include "o_mem.h"
+#include "mem_util.h"
 #include <zlib.h>
 
 #ifndef MAX_BARCODE_LENGTH
@@ -319,11 +319,41 @@ static inline void dmp_process_write_sub_chi2(KingFisher_t *kfp, FILE *handle, i
 			tmp->cons_seq_buffer, kfp->max_phreds);
 	return;
 }
-
-
 /*
- * TODO: Use tmpvals_t object to avoid allocating and deallocating each of these.
- */
+static inline void dpw_cap(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp, int cap)
+{
+	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
+	//buffer[0] = '@'; Set this later?
+	int argmaxret;
+	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+	for(int i = 0; i < kfp->readlen; ++i) {
+		argmaxret = ARRG_MAX(kfp, i);
+		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 4 + argmaxret]))));
+		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
+			tmp->cons_quals[i] = 3114;
+		}
+		// Final quality must be 2 or greater and at least one read in the family should support that base call.
+		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+		tmp->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
+		kfp->max_phreds[i] = (tmp->cons_quals[i] > cap) ? '~': '#';
+	}
+	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
+	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
+	tmp->name_buffer[0] = '@';
+	memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
+	tmp->name_buffer[1 + blen] = '\0';
+	//fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
+	//fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
+	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+			tmp->FABuffer, tmp->PVBuffer,
+			kfp->pass_fail, kfp->n_rc, kfp->length,
+			tmp->cons_seq_buffer, kfp->max_phreds);
+	return;
+}
+*/
+
+
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
 {
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and

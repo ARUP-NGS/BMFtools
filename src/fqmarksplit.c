@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 		.threads = 4,
 		.gzip_compression = 6,
 		.rescaler = NULL,
-		.rescaler_path = NULL
+		.rescaler_path = NULL,
 	};
 	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 

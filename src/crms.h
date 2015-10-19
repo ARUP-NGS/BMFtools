@@ -11,7 +11,7 @@
 #include "kingfisher.h"
 #include "array_parser.h"
 #include "nix_resource.h"
-#include "o_mem.h"
+#include "mem_util.h"
 #include "binner.h"
 #include "cstr_utils.h"
 
