@@ -1,5 +1,6 @@
 # cython: c_string_type=str, c_string_encoding=ascii
 import abc
+from array import array
 from copy import copy as ccopy
 from cytoolz import memoize, frequencies as cyfreq
 from functools import partial
@@ -488,18 +489,32 @@ cdef class pPileupRead:
         return self.alignment.opt(arg)
 
     def __init__(self, pysam.calignedsegment.PileupRead PileupRead):
-        cdef py_array BQs
+        cdef py_array BQs, FAs
         self.alignment = PileupRead.alignment
         self.indel = PileupRead.indel
         self.level = PileupRead.level
         self.query_position = PileupRead.query_position
         self.name = self.alignment.qname
         self.BaseCall = self.alignment.seq[self.query_position]
-        BQs = self.alignment.opt("PV")
-        self.BQ = BQs[self.query_position]
+        try:
+            BQs = self.alignment.opt("PV")
+        except TypeError:
+            # Must be old code.
+            BQs = array('l', np.array(self.alignment.opt("PV").split(","),
+                                      dtype=np.int64))
+        try:
+            FAs = self.alignment.opt("FA")
+        except TypeError:
+            # Must be old code.
+            FAs = array('l', np.array(self.alignment.opt("FA").split(","),
+                                      dtype=np.int64))
+        if(self.alignment.is_reverse):
+            self.BQ = BQs[self.alignment.inferred_length - self.query_position]
+            self.FA = FAs[self.alignment.inferred_length - self.query_position]
+        else:
+            self.BQ = BQs[self.query_position]
+            self.FA = FAs[self.query_position]
         self.MBQ = nmax(BQs)
-        BQs = self.alignment.opt("FA")
-        self.FA = BQs[self.query_position]
         self.FM = self.alignment.opt("FM")
         self.MQ = self.alignment.mapping_quality
 

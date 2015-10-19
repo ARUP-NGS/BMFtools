@@ -61,7 +61,7 @@ cdef class CoarseSNVWrangler:
     cdef py_array_t filter_cnf, lengths
 
     cdef bint pass_record(self, pPileupRead_t PR)
-    cdef void fast_forward(self)
+    cpdef void fast_forward(self)
     cdef void build_insert_size_dict(self)
     cdef void get_insert_sizes(self)
     cdef ndarray[int32_t, ndim=2] c_get_allele_counts(self, dict insert_size_dict)
