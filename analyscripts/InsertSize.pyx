@@ -3,14 +3,15 @@ Contains functions for analyzing insert size in the context of variant allele
 support.
 """
 
+from array import array
+from matplotlib.backends.backend_pdf import PdfPages
+from utilBMF.ErrorHandling import ThisIsMadness as Tim, ImproperArgumentError
+from utilBMF.HTSUtils import pPileupRead, TrimExt
 import cython
+import matplotlib.pyplot as plt
 import numpy as np
 import pysam
-from utilBMF.HTSUtils import pPileupRead, TrimExt
-from utilBMF.ErrorHandling import ThisIsMadness as Tim, ImproperArgumentError
-from array import array
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
+import sys
 
 
 cdef class SNVAlleleWrangler:
