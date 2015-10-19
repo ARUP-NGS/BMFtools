@@ -58,7 +58,7 @@ config = {
     'ext_modules': ext,
     'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'bin/fqmarksplit', 'bin/lh3sort', 'bin/fqmarksplit_p',
-                'bin/crms', 'bin/dmp', 'bin/hash_dmp', 'bin/bam_rescue',
+                'bin/crms', 'bin/dmp', 'bin/hash_dmp',
                 'bin/bmfsort', 'bin/crms_db',  'bin/crms_p'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
