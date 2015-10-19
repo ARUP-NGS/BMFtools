@@ -160,11 +160,34 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     return outbed
 
 
+cpdef cystr fqms_dmp_align_rescue(cystr Fq1, cystr Fq2, cystr indexFq,
+                                  outBAM=None, ref=None, rescaler_path=None,
+                                  tmp_basename="", ffq_basename="",
+                                  int hpThreshold=-1, int n_nucs=-1,
+                                  int offset=-1, int salt=-1, int dmp_ncpus=-1,
+                                  bwa_opts=None, prefix=None, memStr=None,
+                                  int mmlim=DEFAULT_MMLIM, cleanup=True,
+                                  int br_ncpus=1):
+    dmp_fq1, dmp_fq2 = fqmarksplit_dmp(Fq1, Fq2, indexFq,
+                                       tmp_basename=tmp_basename,
+                                       ffq_basename=ffq_basename,
+                                       rescaler_path=rescaler_path,
+                                       hpThreshold=hpThreshold, n_nucs=n_nucs,
+                                       offset=offset, salt=salt,
+                                       dmp_ncpus=dmp_ncpus)
+    if(not outBAM):
+        outBAM = TrimExt(Fq1) + ".bmfrsq.bam"
+    bmf_align_rescue(dmp_fq1, dmp_fq2, outBAM, ref=ref, opts=bwa_opts,
+                     prefix=prefix, memStr=memStr, mmlim=mmlim,
+                     cleanup=cleanup, br_ncpus=br_ncpus)
+    return outBAM
+
+
 cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
                              cystr opts=None, cystr path=None,
-                             int threads=4, prefix=None, cystr memStr="6G",
+                             int threads=4, prefix=None, memStr=None,
                              int mmlim=DEFAULT_MMLIM, bint cleanup=True,
-                             int ncpus=1):
+                             int br_ncpus=1):
     """
     :param: R1 - [cystr/arg] - path to input fastq for read 1
     :param: R2 - [cystr/arg] - path to input fastq for read 2
@@ -179,8 +202,12 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
     :param: memStr - [cystr/memStr/"6G"]
     :returns: [cystr] - Path to final BAM file
     """
+    if  not memStr:
+        memStr="6G"
     cdef list bampaths
     cdef cystr ret
+    if not ref:
+        raise ValueError("Reference path required for an alignment!")
     bampaths = bmf_align_split(R1, R2, ref=ref, opts=opts,
                                path=path, threads=threads,
                                prefix=prefix, memStr=memStr)
@@ -242,10 +269,10 @@ cdef int has_records(cystr bampath):
 
 cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
                             cystr opts=None, int mmlim=DEFAULT_MMLIM,
-                            int threads=4, bint cleanup=False, int ncpus=1,
+                            int threads=4, bint cleanup=False, int br_ncpus=1,
                             int merge_threads=2):
     import multiprocessing as mp
-    pool = mp.Pool(processes=ncpus)
+    pool = mp.Pool(processes=br_ncpus)
     cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])
     cdef cystr prefix = TrimExt(outBAM)
     cdef list fqs = []
@@ -257,9 +284,9 @@ cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
                   TrimExt(tmp) + ".tmprsq.fq") for tmp in fnames
                  if has_records(tmp)]
     [check_call(["rm", tmp]) for tmp in fnames if has_records(tmp) is False]
-    if ncpus > 1:
+    if br_ncpus > 1:
         pl("Now doing bam rescue on each sub bam "
-           "in parallel with %i cpus." % ncpus)
+           "in parallel with %i cpus." % br_ncpus)
         fqs = [pool.apply_async(pBamRescue, args=(tup[0], tup[1], tup[2]),
                                 kwds={"mmlim": mmlim}) for tup in tuple_set]
     else:

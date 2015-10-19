@@ -1347,6 +1347,57 @@ def GenerateFinalTmpFilenames(cystr Fq1, int n_nucs):
              i in xrange(n_handles)])
 
 
+def fqmarksplit_dmp(cystr Fq1, cystr Fq2, cystr indexFq,
+                    cystr tmp_basename="",
+                    cystr ffq_basename="", rescaler_path=None,
+                    int hpThreshold=-1, int n_nucs=-1, int offset=-1,
+                    int salt=-1, int dmp_ncpus=-1,
+                    bint dry_run=False):
+    """
+    :param Fq1- [cystr/arg] Path to read 1 fastq
+    :param Fq2- [cystr/arg] Path to read 2 fastq
+    :param indexFq- [cystr/arg] Path to index fastq
+    :param hpThreshold [int/arg] Threshold to fail a homopolymer.
+    :param n_nucs [int/arg] Number of nucleotides to use to split the files.
+    """
+
+    if(salt < 0):
+        salt = 0
+        sys.stderr.write("Note: salt not set. Defaulting to default, 0.\n")
+    if(offset < 0):
+        offset = 1
+        sys.stderr.write("Note: offset not set. Defaulting to default, 1.\n")
+    if(hpThreshold < 0):
+        hpThreshold = 12
+        sys.stderr.write("Note: hpThreshold not set. Defaulting to default, 12.\n")
+    if(dmp_ncpus < 0):
+        dmp_ncpus = 4
+        sys.stderr.write("Note: dmp_ncpus not set. Defaulting to default, 4.\n")
+    if(n_nucs < 0):
+        n_nucs = 3
+        sys.stderr.write("Note: n_nucs not set. Defaulting to default, 3.\n")
+    if(ffq_basename == ""):
+        ffq_basename = TrimExt(Fq1) + ".dmp.ffq"
+        sys.stderr.write("ffq_basename not set. "
+                         "Setting to variation on input: %s\n" % ffq_basename)
+    if(tmp_basename == ""):
+        tmp_basename = TrimExt(Fq1) + ".tmp.ffq"
+        sys.stderr.write("tmp_basename not set. "
+                         "Setting to variation on input: %s\n" % tmp_basename)
+    rescaler_string = "" if(not rescaler_path) else " -r %s" % rescaler_path
+    cStr = ("fqmarksplit -t %i -n %i -i %s " % (hpThreshold, n_nucs,
+                                                indexFq) +
+            "-s %i -dp %i -f %s" % (salt, dmp_ncpus, ffq_basename) +
+            rescaler_string +
+            "-o %s -m %i %s %s" % (tmp_basename, offset, Fq1, Fq2))
+    sys.stderr.write(cStr + "\n")
+    if dry_run:
+        return cStr
+    check_call(cStr, shell=True)
+    return (ffq_basename + ".R1.fq", ffq_basename + "R2.fq")
+
+
+
 def Callfqmarksplit(cystr Fq1, cystr Fq2, cystr indexFq,
                     int hpThreshold, int n_nucs,
                     bint dry_run=False):
