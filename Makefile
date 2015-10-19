@@ -19,7 +19,7 @@ IGAMC_INC= include/igamc_cephes.c
 
 .PHONY: all clean
 
-all: lh3sort libhts.a fqmarksplit crms bmfsort dmp copy
+all: lh3sort libhts.a fqmarksplit crms bmfsort hash_dmp copy
 
 lh3sort:
 	cd include/sort && make && cd ../..
@@ -38,7 +38,7 @@ bmfsort:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/bmfsort.c -o bmfsort_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/bmfsort.c -o bmfsort_p
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/bmfsort.c -o bmfsort
-dmp:
+hash_dmp:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/dmp.c include/igamc_cephes.c -o hash_dmp
 copy:
 	mv hash_dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p bin/
