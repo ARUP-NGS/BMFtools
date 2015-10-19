@@ -164,22 +164,55 @@ cpdef cystr fqms_dmp_align_rescue(cystr Fq1, cystr Fq2, cystr indexFq,
                                   outBAM=None, ref=None, rescaler_path=None,
                                   tmp_basename="", ffq_basename="",
                                   int hpThreshold=-1, int n_nucs=-1,
-                                  int offset=-1, int salt=-1, int dmp_ncpus=-1,
-                                  bwa_opts=None, prefix=None, memStr=None,
+                                  int salt=-1, int offset=-1, int dmp_ncpus=-1,
+                                  bwa_opts=None, tmpbam_prefix=None, memStr=None,
                                   int mmlim=DEFAULT_MMLIM, cleanup=True,
-                                  int br_ncpus=1):
+                                  int br_ncpus=-1, path=None):
+    """
+    :param: Fq1 - [cystr/arg] - path to input fastq for read 1
+    :param: Fq2 - [cystr/arg] - path to input fastq for read 2
+    :param: indexFq [cystr/arg]
+    :param: outBAM - [cystr/kwarg/TrimExt(Fq1) + ".bmf.rsq.bam"] -
+    path for final output BAM
+    :param: ref [object/kwarg/None] path to reference index base
+    :param: rescaler_path [object/kwarg/None] path to rescaler flat text file
+    for bootstrapping from the sequencer/chemistry/run. If not None,
+    the file will be parsed. Otherwise, it won't be used.
+    :param: tmp_basename [object/kwarg/""] - Defaults to variation on input.
+    :param: ffq_basename [object/kwarg/""] - Defaults to variation on input.
+    :param: hpThreshold [int/kwarg/12] - Maximum homopolymer length
+    permitted for QC pass in barcode.
+    :param: n_nucs [int/kwarg/4] - Number of nucleotides at the start of the
+    barcode by which to split the marked fastqs.
+    :param: salt [int/kwarg/1] - Number of bases from the start of each read
+    to use to "salt" the molecular barcode.
+    :param: offset [int/kwarg/1] - Number of bases at the start of each read
+    when salting the barcode. -m parameter for fqmarksplit.
+    :param: dmp_ncpus - [int/kwarg/4]
+    :param: br_ncpus - [int/kwarg/4]
+    :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
+    Defaults to 'bwa'
+    :param: bwa_opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - opt arguments
+    to provide to bwa for alignment.
+    :param: memStr - [cystr/kwarg/"6G"]
+    :param: path - [object/kwarg/None] - Path to bwa executable.
+    :param: mmlim [int/kwarg/2] - Mismatch limit for rescue step.
+    :param: cleanup - [bint/kwarg/True] - Clean up temporary files.
+    :returns: [cystr] - Path to final BAM file
+    """
     dmp_fq1, dmp_fq2 = fqmarksplit_dmp(Fq1, Fq2, indexFq,
                                        tmp_basename=tmp_basename,
                                        ffq_basename=ffq_basename,
                                        rescaler_path=rescaler_path,
                                        hpThreshold=hpThreshold, n_nucs=n_nucs,
                                        offset=offset, salt=salt,
-                                       dmp_ncpus=dmp_ncpus)
+                                       dmp_ncpus=dmp_ncpus,
+                                       path=path)
     if(not outBAM):
         outBAM = TrimExt(Fq1) + ".bmfrsq.bam"
     bmf_align_rescue(dmp_fq1, dmp_fq2, outBAM, ref=ref, opts=bwa_opts,
-                     prefix=prefix, memStr=memStr, mmlim=mmlim,
-                     cleanup=cleanup, br_ncpus=br_ncpus)
+                     prefix=tmpbam_prefix, memStr=memStr, mmlim=mmlim,
+                     cleanup=cleanup, br_ncpus=br_ncpus, path=path)
     return outBAM
 
 
@@ -187,19 +220,20 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
                              cystr opts=None, cystr path=None,
                              int threads=4, prefix=None, memStr=None,
                              int mmlim=DEFAULT_MMLIM, bint cleanup=True,
-                             int br_ncpus=1):
+                             int br_ncpus=-1):
     """
     :param: R1 - [cystr/arg] - path to input fastq for read 1
     :param: R2 - [cystr/arg] - path to input fastq for read 2
     :param: outBAM - [cystr/arg] - path for final output BAM
-    :param: ref [cystr/kwarg/"default"] path to reference index base
+    :param: ref [cystr/kwarg/None] path to reference index base
     :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
     Defaults to 'bwa'
     :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
     :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - opt arguments
     to provide to bwa for alignment.
-    :param: threads - [int/kwarg/4]
-    :param: memStr - [cystr/memStr/"6G"]
+    :param: br_ncpus - [int/kwarg/4]
+    :param: memStr - [cystr/kwarg/"6G"]
+    :param: cleanup [bint/kwarg/True]
     :returns: [cystr] - Path to final BAM file
     """
     if  not memStr:
@@ -208,6 +242,10 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
     cdef cystr ret
     if not ref:
         raise ValueError("Reference path required for an alignment!")
+    if(br_ncpus < 0):
+        br_ncpus = 4
+        sys.stderr.write("Note: br_ncpus unset. "
+                         "Setting to default (%i).\n" % br_ncpus)
     bampaths = bmf_align_split(R1, R2, ref=ref, opts=opts,
                                path=path, threads=threads,
                                prefix=prefix, memStr=memStr)
