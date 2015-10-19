@@ -9,7 +9,8 @@ import pysam
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from SecC._EMG import calculateErrorArray
+from SecC._EMG import (calculateErrorArray, qualityRescale,
+                        calculatePVErrorArray)
 nucList = ["A", "T", "C", "G", "N"]
 
 
@@ -44,6 +45,20 @@ def getArgs():
                               "to use that data for recalibration.  default="
                               "1000", default=1000)
     parser_array.add_argument("--table_prefix", help="table prefix")
+    parser_rescale = subparsers.add_parser("qualityRescale", help="Rescales "
+                              "quality scores to fit expectations of standard "
+                              "variant calling pipelines (does not do this)")
+    parser_rescale.add_argument("dmpBam", help="Bam file for quality scores to "
+                                "be rescaled")
+    parser_rescale.add_argument("inBam", help="Matching bam file, but no DMP")
+    parser_rescale.add_argument("--graph", help="Creates a plot of illumina "
+                                "and dmp quality scores", default=False,
+                                action='store_true')
+    pv_error = subparsers.add_parser("pvError", help="calculate the error rate"
+                                    " for combined quality scores generated "
+                                    "by BMFTools dmp")
+    pv_error.add_argument("mdBam", help="calmd bam from DMP'd using BMFTools")
+    pv_error.add_argument("--table_prefix", help="output base name")
     return parser.parse_args()
 
 
@@ -234,14 +249,16 @@ def heater(args):
 
 def main():
     args = getArgs()
-    if args.mode not in ["heatmap", "cycleError", "errorArray"]:
-        raise ThisIsMadness("invalid mode")
     if args.mode == "heater":
         heater(args)
     if args.mode == "cycleError":
         cycleError(args)
     if args.mode == "errorArray":
         calculateErrorArray(args)
+    if args.mode == "qualityRescale":
+        qualityRescale(args)
+    if args.mode == "pvError":
+        calculatePVErrorArray(args)
 
 
 if __name__ == "__main__":
