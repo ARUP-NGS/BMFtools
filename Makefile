@@ -39,9 +39,9 @@ bmfsort:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/bmfsort.c -o bmfsort_p
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/bmfsort.c -o bmfsort
 dmp:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/dmp.c include/igamc_cephes.c -o dmp
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/dmp.c include/igamc_cephes.c -o hash_dmp
 copy:
-	cp dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p bin/
+	cp hash_dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p bin/
 
 
 clean:
