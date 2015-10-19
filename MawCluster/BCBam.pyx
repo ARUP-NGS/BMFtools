@@ -78,7 +78,7 @@ def AbraCadabra(inBAM, outBAM="default",
     else:
         pl("Bed file set: {}.".format(bed))
     if(working == "default"):
-        bamFilename= path.basename(inBAM)
+        bamFilename = path.basename(inBAM)
         working = (path.dirname(inBAM) + bamFilename.split('.')[0] +
                    ".working_dir")
         pl("Default working directory set to be: " + working)
@@ -93,7 +93,7 @@ def AbraCadabra(inBAM, outBAM="default",
                                                                  outBAM,
                                                                  jar) +
         "sortMem=\"{}\", ref=\"{}\", threads=\"{}\", ".format(sortMem,
-                                                             ref, threads) +
+                                                              ref, threads) +
         "bed=\"{}\", working=\"{}\", log=\"{}\")".format(bed, working, log)))
     if(path.isdir(working)):
         pl("Working directory already exists - deleting!")
@@ -160,11 +160,34 @@ def AbraKmerBedfile(inbed, rLen=-1, ref="default", outbed="default",
     return outbed
 
 
+cpdef cystr fqms_dmp_align_rescue(cystr Fq1, cystr Fq2, cystr indexFq,
+                                  outBAM=None, ref=None, rescaler_path=None,
+                                  tmp_basename="", ffq_basename="",
+                                  int hpThreshold=-1, int n_nucs=-1,
+                                  int offset=-1, int salt=-1, int dmp_ncpus=-1,
+                                  bwa_opts=None, prefix=None, memStr=None,
+                                  int mmlim=DEFAULT_MMLIM, cleanup=True,
+                                  int br_ncpus=1):
+    dmp_fq1, dmp_fq2 = fqmarksplit_dmp(Fq1, Fq2, indexFq,
+                                       tmp_basename=tmp_basename,
+                                       ffq_basename=ffq_basename,
+                                       rescaler_path=rescaler_path,
+                                       hpThreshold=hpThreshold, n_nucs=n_nucs,
+                                       offset=offset, salt=salt,
+                                       dmp_ncpus=dmp_ncpus)
+    if(not outBAM):
+        outBAM = TrimExt(Fq1) + ".bmfrsq.bam"
+    bmf_align_rescue(dmp_fq1, dmp_fq2, outBAM, ref=ref, opts=bwa_opts,
+                     prefix=prefix, memStr=memStr, mmlim=mmlim,
+                     cleanup=cleanup, br_ncpus=br_ncpus)
+    return outBAM
+
+
 cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
-                            cystr opts=None, cystr path=None,
-                            int threads=4, prefix=None, cystr memStr="6G",
-                            int mmlim=DEFAULT_MMLIM, bint cleanup=False,
-                            int ncpus=1):
+                             cystr opts=None, cystr path=None,
+                             int threads=4, prefix=None, memStr=None,
+                             int mmlim=DEFAULT_MMLIM, bint cleanup=True,
+                             int br_ncpus=1):
     """
     :param: R1 - [cystr/arg] - path to input fastq for read 1
     :param: R2 - [cystr/arg] - path to input fastq for read 2
@@ -173,14 +196,18 @@ cpdef cystr bmf_align_rescue(cystr R1, cystr R2, cystr outBAM, cystr ref=None,
     :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
     Defaults to 'bwa'
     :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
-    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - optional arguments
+    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - opt arguments
     to provide to bwa for alignment.
     :param: threads - [int/kwarg/4]
     :param: memStr - [cystr/memStr/"6G"]
     :returns: [cystr] - Path to final BAM file
     """
+    if  not memStr:
+        memStr="6G"
     cdef list bampaths
     cdef cystr ret
+    if not ref:
+        raise ValueError("Reference path required for an alignment!")
     bampaths = bmf_align_split(R1, R2, ref=ref, opts=opts,
                                path=path, threads=threads,
                                prefix=prefix, memStr=memStr)
@@ -199,7 +226,7 @@ cpdef list bmf_align_split(R1, R2, ref=None,
     :param: path - [cystr/kwarg/"default"] - absolute path to bwa executable.
     Defaults to 'bwa'
     :param: sortMem - [cystr/kwarg/"6G"] - sort memory limit for samtools
-    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - optional arguments
+    :param: opts - [cystr/kwarg/"-t <threads> -v 1 -Y -T 0"] - opt arguments
     to provide to bwa for alignment.
     :param: dry_run - [bint/kwarg/False] - flag to return the command string
     rather than calling it.
@@ -219,51 +246,91 @@ cpdef list bmf_align_split(R1, R2, ref=None,
         prefix = TrimExt(R1)
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    cStr += " | bmf_bam_sort -sp %s -m %s -@ %i" % (prefix, memStr, threads)
+    cStr += " | bmf_bam_sort -sp %s -m %s" % (prefix, memStr)
     sys.stderr.write("Command string for bmf align split: %s.\n" % cStr)
     check_call(cStr, shell=True, executable="/bin/bash")
     outfnames = ["%s.%s.bam" % (prefix, contig) for contig in
                  pysam.FastaFile(ref).references]
     return outfnames
 
+
 def catfq_sort_str(cystr fq):
     return "cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n' " % fq
 
 
+cdef int has_records(cystr bampath):
+    a = pysam.AlignmentFile(bampath, "rb")
+    try:
+        b = a.next()
+        return 1
+    except StopIteration:
+        return 0
+
+
 cpdef cystr rescue_bam_list(cystr outBAM, list fnames, cystr ref=None,
                             cystr opts=None, int mmlim=DEFAULT_MMLIM,
-                            int threads=4, bint cleanup=False, int ncpus=1):
+                            int threads=4, bint cleanup=False, int br_ncpus=1,
+                            int merge_threads=2):
     import multiprocessing as mp
-    pool = mp.Pool(processes=ncpus)
+    pool = mp.Pool(processes=br_ncpus)
     cdef cystr random_prefix = str(uuid.uuid4().get_hex()[0:8])
     cdef cystr prefix = TrimExt(outBAM)
+    cdef list fqs = []
+    cdef uint64_t nonzero_lines = 0
     assert ref is not None
     if not opts:
         opts = "-t 4 -v 1 -Y "
     tuple_set = [(tmp, TrimExt(tmp) + ".tmprsq.bam",
-                  TrimExt(tmp) + ".tmprsq.fq") for tmp in fnames]
-    pl("Now doing bam rescue on each sub bam.")
-    if ncpus > 1:
-        [pool.apply_async(pBamRescue, args=(tup[0], tup[1], tup[2]),
-                          kwds={"mmlim": mmlim}) for tup in tuple_set]
+                  TrimExt(tmp) + ".tmprsq.fq") for tmp in fnames
+                 if has_records(tmp)]
+    [check_call(["rm", tmp]) for tmp in fnames if has_records(tmp) is False]
+    if br_ncpus > 1:
+        pl("Now doing bam rescue on each sub bam "
+           "in parallel with %i cpus." % br_ncpus)
+        fqs = [pool.apply_async(pBamRescue, args=(tup[0], tup[1], tup[2]),
+                                kwds={"mmlim": mmlim}) for tup in tuple_set]
     else:
-        [BamRescue(tup[0], tup[1], tup[2], mmlim=mmlim) for tup in tuple_set]
+        pl("Now doing bam rescue in series.")
+        fqs = [BamRescue(tup[0], tup[1], tup[2], mmlim=mmlim) for
+               tup in tuple_set]
     tmpbams = [tup[1] for tup in tuple_set]
+    # Empty bams and fastqs need to be axed.
+    files_to_del = [tup for tup in tuple_set if
+                    os.path.isfile(tup[1]) is False]
+    [check_output(["rm", fn], shell=True) for fn in list(cfi(files_to_del))]
+    tuple_set = [tup for tup in tuple_set if os.path.isfile(tup[1])]
+
     if cleanup:
-        [check_call("rm %s" % tup[0]) for tup in tuple_set]
+        check_call("rm %s" % " ".join([tup[0] for tup in tuple_set]))
     pl("Now catting fastqs together to align and merge "
        "back into the final bam.")
-    cStr = "cat %s" % (" ".join([tup[2] for tup in tuple_set]))
-    cStr += " | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n'"
-    cStr += " | bwa mem -C -p %s %s - | samtools sort" % (opts, ref)
-    cStr += " -O bam -l 0 -T %s - | samtools merge -f " % (random_prefix)
-    cStr += "-@ %i %s %s" % (threads, outBAM, " ".join(tmpbams))
-    pl("About to call cStr: '%s'.", cStr)
+    # Check to see if they're all empty (a rare occurrence)
+    for fq in fqs:
+        print("Looking for fastq %s." % fq)
+        if(int(check_output("head %s | wc -l" % fq,
+                            shell=True).split()[0]) > 0):
+            nonzero_lines = 1
+            break
+    if nonzero_lines != 0:
+        cStr = "cat %s" % (" ".join(fqs))
+        cStr += " | paste -d'~' - - - - | sort -k1,1 | tr '~' '\n'"
+        cStr += " | bwa mem -C -p %s %s - | samtools sort" % (opts, ref)
+        cStr += " -O bam -l 0 -T %s - | samtools merge -f " % (random_prefix)
+        cStr += "-@ %s %s %s" % (merge_threads, outBAM, " ".join(tmpbams))
+    else:
+        sys.stderr.write("Note: all fastqs were empty. "
+                         "Nothing was rescued.\n")
+        cStr = "samtools merge -f -@ %i %s %s" % (threads,
+                                                  outBAM,
+                                                  " ".join([tmp for
+                                                            tmp in tmpbams]))
+    pl("About to call cStr: '%s'." % cStr)
     check_call(cStr, shell=True, executable="/bin/bash")
     if cleanup:
-        [check_call("rm %s %s" % (tup[0], tup[2]), shell=True) for
+        [check_call("rm %s %s" % (tup[1], tup[2]), shell=True) for
          tup in tuple_set]
     return outBAM
+
 
 def GATKIndelRealignment(inBAM, gatk="default", ref="default",
                          bed="default", dbsnp="default"):
@@ -486,7 +553,7 @@ cdef inline update_rec(AlignedSegment_t a, AlignedSegment_t b):
     a.query_sequence = a_seq
     a.qual = a_tmpqual.tostring()
     a.set_tags(a.tags + [("FM", newFM, "i"), ("RC", newRC, "i"),
-                ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)])
+               ("FP", newFP, "i"), ("PV", a_qual), ("FA", a_FA)])
     return
 
 
@@ -500,7 +567,6 @@ cdef inline cystr bam2fq_header(AlignedSegment_t read):
         read.opt("RC"))
 
 
-
 cdef inline cystr bam2ffq(AlignedSegment_t read):
     if read.flag & 16:
         return "%s\n%s\n+\n%s\n" % (bam2fq_header(read),
@@ -511,7 +577,8 @@ cdef inline cystr bam2ffq(AlignedSegment_t read):
                                     read.query_sequence, read.qual)
 
 
-cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
+cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim,
+                                int n_written):
     """
     :param inBam: [list/arg] - path to input bam
     :param bLen: [int/arg] - length of barcode
@@ -535,11 +602,6 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
                 recList[j].set_tags(recList[j].tags + [("RA", 1)])
                 update_rec(recList[j], recList[i])
                 # Updates recList j with i's values for meta-analysis.
-            """
-            else:
-                print("Barcode distance is too great between %s and %s." % (recList[i].opt("BS"),
-                                                                            recList[j].opt("BS")))
-            """
     for read in recList:
         ra_int = read.get_tag("RA")
         if(ra_int < 0):
@@ -547,6 +609,7 @@ cdef inline tuple BamRescueCore(list recList, int bLen, int mmlim):
         else:
             if(ra_int > 0):
                 fq_text += bam2ffq(read)
+                n_written += 1
     # assert fq_text is not None
     return bamList, fq_text
 
@@ -640,9 +703,9 @@ cpdef cystr BamRescueFull(cystr inBam, cystr outBam, cystr ref,
         opts = "-t %i -v 1 -Y -T 0" % threads
     # Name sort, then align this fastq, sort it, then merge it into the tmpBam
     cStr = ("cat %s | paste -d'~' - - - - | sort -k1,1 | tr '~' " % tmpFq +
-           "'\n' | bwa mem -C -p %s %s - | samtools sort "  % (opts, ref) +
-           "-O bam -l 0 -T %s - | samtools merge -f " % (random_prefix) +
-           "-@ %i %s %s -" % (threads, outBam, tmpBam))
+            "'\n' | bwa mem -C -p %s %s - | samtools sort " % (opts, ref) +
+            "-O bam -l 0 -T %s - | samtools merge -f " % (random_prefix) +
+            "-@ %i %s %s -" % (threads, outBam, tmpBam))
     fprintf(stderr, "Command string: '%s'\n", <char *>cStr)
     check_call(cStr, shell=True)
     fprintf(stderr, "Now deleting temporary bam %s and temporary fastq %s.\n",
@@ -670,6 +733,7 @@ cdef cystr BamRescue(cystr inBam,
     cdef list recList
     cdef bint Pass
     cdef cystr fq_text
+    cdef uint64_t n_written = 0
     if tmpFq == "-":
         fp = sys.stdout
         fprintf(stderr, "Writing fastq to stdout.\n")
@@ -682,7 +746,14 @@ cdef cystr BamRescue(cystr inBam,
         fprintf(stderr, "Writing fastq to %s.\n", <char *>tmpFq)
     fprintf(stderr, "Now opening bam file for reading: %s\n", <char *>inBam)
     input_bam = pysam.AlignmentFile(inBam, "rb")
-    cdef int bLen = len(input_bam.next().query_name)
+    cdef int bLen = 0
+    try:
+        blen = len(input_bam.next().query_name)
+    except StopIteration:
+        fprintf(stderr, "Looks like this bam is simply empty. "
+                "Make an empty fastq.\n")
+        fp.close()
+        return tmpFq
     input_bam = pysam.AlignmentFile(inBam, "rb")
     if outBam == "default":
         outBam = TrimExt(inBam) + ".rescue.bam"
@@ -704,17 +775,6 @@ cdef cystr BamRescue(cystr inBam,
             continue
         for fullkey, gen1 in groupby(gen, FULL_KEY):
             recList = list(gen1)
-            '''
-            if recList[0].flag & 4:
-                for read in recList:
-                    if read.has_tag("RC") is False:
-                        read.set_tags([("RC", -1, "i"), ("RA", -1, "i")] + read.get_tags())
-                    else:
-                        read.set_tags([("RA", -1, "i") + read.get_tags()])
-                [obw(read) for read in recList]
-                continue
-            '''
-            # print(recList[-1].tostring(input_bam))
             for read in recList:
                 if read.has_tag("RC") is False:
                     read.set_tags(read.tags + [("RC", -1), ("RA", -1)])
@@ -724,12 +784,18 @@ cdef cystr BamRescue(cystr inBam,
                 # Both read and its mate are unaligned.
                 [obw(read) for read in recList]
             else:
-                recList, fq_text = BamRescueCore(recList, bLen, mmlim)
+                recList, fq_text = BamRescueCore(recList, bLen,
+                                                 mmlim, n_written)
                 [obw(read) for read in recList]
                 fpw(fq_text)
     input_bam.close()
     output_bam.close()
     fp.close()
+    fprintf(stderr,
+            "Number of records written: "
+            "%lu. Output path: %s.\n", n_written, <char *>output_bam.filename)
+    if(os.path.isfile(outBam) is False and outBam != "-"):
+        raise Tim("Output bam '%' didn't get made. WTF???")
     return tmpFq
 
 

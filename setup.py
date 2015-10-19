@@ -35,9 +35,7 @@ for x in ext:
     x.extra_link_args += pysam.get_libraries()
     x.define_macros += pysam.get_defines()
     if(x.name in ['MawCluster.BCFastq', 'utilBMF.MPA', 'MawCluster.BCBam', 'MawCluster.Math']):
-        x.sources += ["src/include/cephes/igam.c", "src/include/cephes/const.c",
-                      "src/include/cephes/gamma.c", "src/include/cephes/mtherr.c",
-                      "src/include/cephes/sf_error.c"]
+        pass # x.sources += ["include/igamc_cephes.c"]
     x.extra_compile_args += compilerList
 
 install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
@@ -45,17 +43,8 @@ install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
 
 includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("src/include/cephes")] + pysam.get_include()
 
-subprocess.check_call('cd src/dmp/include/htslib && make && cd ../../../../', shell=True)
-subprocess.check_call('cd src/sort && make && cd ../..;', shell=True)
-subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit -fopenmp -std=gnu11 -O3 -DNDEBUG -finline-functions', shell=True)
-subprocess.check_call('gcc src/dmp/fqmarksplit.c -I src/dmp/ -I src/dmp/include -lm -lz -o src/dmp/fqmarksplit_p -fopenmp -std=gnu11 -fno-inline', shell=True)
-subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -finline-functions && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc crms.c -I . -o bmf_crms_sc -fopenmp -lm -lz -std=gnu11 -O3 -fno-inline && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc crms.c -I . -pg -o bmf_crms_p -fopenmp -lm -lz -std=gnu11 -O3 -DNDEBUG -fno-inline && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc dmp.c -I. igamc_cephes.c -lm -lz -o dmp -fopenmp -DNDEBUG -std=gnu11 -finline-functions && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc -I. -o uthash_dmp uthash_dmp.c -lz -lm -std=gnu11 -DNDEBUG -finline-functions -O3 && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc include/htslib/faidx.c include/htslib/bgzf.c include/htslib/hfile.c include/htslib/hfile_net.c include/htslib/kfunc.c include/htslib/md5.c include/htslib/hts.c include/htslib/kstring.c include/htslib/sam.c include/htslib/knetfile.c include/htslib/cram/mFILE.c include/htslib/cram/thread_pool.c include/htslib/cram/pooled_alloc.c include/htslib/cram/cram_external.c include/htslib/cram/cram_encode.c include/htslib/cram/cram_codecs.c include/htslib/cram/cram_io.c include/htslib/cram/sam_header.c include/htslib/cram/files.c include/htslib/cram/vlen.c include/htslib/cram/string_alloc.c include/htslib/cram/cram_decode.c include/htslib/cram/cram_samtools.c include/htslib/cram/rANS_static.c include/htslib/cram/open_trace_file.c include/htslib/cram/cram_index.c include/htslib/cram/cram_stats.c include/htslib/cram/zfio.c sam_opts.c bam_rescue.c ../dmp/igamc_cephes.c -I. -I include/htslib/include/htslib -I include/htslib/ -I ../dmp/include/ -o bam_rescue -fopenmp -lm -lz -std=gnu11 && cd ../..', shell=True)
-subprocess.check_call('cd src/dmp && gcc include/htslib/faidx.c include/htslib/bgzf.c include/htslib/hfile.c include/htslib/hfile_net.c include/htslib/kfunc.c include/htslib/md5.c include/htslib/hts.c include/htslib/kstring.c include/htslib/sam.c include/htslib/knetfile.c include/htslib/cram/mFILE.c include/htslib/cram/thread_pool.c include/htslib/cram/pooled_alloc.c include/htslib/cram/cram_external.c include/htslib/cram/cram_encode.c include/htslib/cram/cram_codecs.c include/htslib/cram/cram_io.c include/htslib/cram/sam_header.c include/htslib/cram/files.c include/htslib/cram/vlen.c include/htslib/cram/string_alloc.c include/htslib/cram/cram_decode.c include/htslib/cram/cram_samtools.c include/htslib/cram/rANS_static.c include/htslib/cram/open_trace_file.c include/htslib/cram/cram_index.c include/htslib/cram/cram_stats.c include/htslib/cram/zfio.c sam_opts.c bmf_bam_sort.c ../dmp/igamc_cephes.c -I. -I include/htslib/include/htslib -I include/htslib/ -I ../dmp/include/ -o bmf_bam_sort -fopenmp -lm -lz -std=gnu11 -DNDEBUG && cd ../..', shell=True)
+
+########subprocess.check_call(['make'])
 
 config = {
     'description': '',
@@ -68,9 +57,9 @@ config = {
                  "SecC", "analyscripts"],
     'ext_modules': ext,
     'include_dirs': includes,
-    'scripts': ['utilBMF/bmftools', 'src/dmp/fqmarksplit', 'src/sort/lh3sort', 'src/dmp/fqmarksplit_p',
-                'src/dmp/bmf_crms', 'src/dmp/dmp', 'src/dmp/uthash_dmp', 'src/dmp/bam_rescue',
-                'src/dmp/bmf_bam_sort', 'src/dmp/bmf_crms_sc',  'src/dmp/bmf_crms_p'],
+    'scripts': ['utilBMF/bmftools', 'bin/fqmarksplit', 'bin/lh3sort', 'bin/fqmarksplit_p',
+                'bin/crms', 'bin/dmp', 'bin/uthash_dmp', 'bin/bam_rescue',
+                'bin/bmfsort', 'bin/crms_db',  'bin/crms_p'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
                'pending institutional approval',

@@ -185,7 +185,7 @@ def genarateCompleteArray(dict data, obsCutoff=1000):
     cycle, qual, base values with inadeuate data with a value derived
     from the differenc between the illumina quality and the
     observed error rates that that nuc/cycle combination"""
-    cdef ndarray[double_t, ndim=2, mode="c"] r12d, r122d, ill1mean, ill2mean
+    cdef ndarray[double_t, ndim=2, mode="c"] r12d, r22d, ill1mean, ill2mean
     cdef ndarray[double_t, ndim=2, mode="c"] r1offset, r2offset
     cdef ndarray[double_t, ndim=3, mode="c"] r1DataArray, r2DataArray
     cdef ndarray[double_t, ndim=3, mode="c"] r1err, r2err
