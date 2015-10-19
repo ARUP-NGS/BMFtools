@@ -841,6 +841,10 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 	if(!split) {
 		return bam_merge_core2(by_qname, out, mode, headers, n, fn, flag, reg, n_threads);
 	}
+	if(!strcmp(out, "-")) {
+		fprintf(stderr, "Out prefix required if splitting while sorting. Abort mission!\n");
+		exit(EXIT_FAILURE);
+	}
 	samFile **fp, **out_handles;
 	heap1_t *heap;
 	bam_hdr_t *hout = NULL;
@@ -1013,12 +1017,11 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 
 	out_handles = (samFile **)calloc(hout->n_targets + 1, sizeof(samFile *));
 	char **out_names = (char **)calloc(hout->n_targets + 1, sizeof(char *));
-	char *prefix = trim_ext(out); // Treat "out" to make the prefix, don't actually write to the "out" path.
 	char tmp_fname[200];
 
 	// Open output file and write header
 	for(int y = 0; y < hout->n_targets; ++y) {
-		sprintf(tmp_fname, "%s.%s.bam", prefix, hout->target_name[i]);
+		sprintf(tmp_fname, "%s.%s.bam", out, hout->target_name[i]);
 		if((out_handles[y] = sam_open(tmp_fname, mode)) == 0) {
 			fprintf(stderr, "[%s] fail to create the output file %s.\n", __func__, tmp_fname);
 			return -1;
@@ -1026,8 +1029,7 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 		sam_hdr_write(out_handles[y], hout);
 		if (!(flag & MERGE_UNCOMP)) hts_set_threads(out_handles[y], n_threads);
 	}
-	sprintf(out_names[hout->n_targets], "%s.unmapped.bam", prefix);
-	free(prefix);
+	sprintf(out_names[hout->n_targets], "%s.unmapped.bam", out);
 
 	// Begin the actual merge
 	ks_heapmake(heap, n, heap);
@@ -1368,8 +1370,8 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
   and then merge them by calling bam_merge_core(). This function is
   NOT thread safe.
  */
-int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads,
-					   int split, char *split_prefix)
+int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, const char *fnout, const char *modeout, size_t _max_mem, int n_threads,
+					   	   int split, char *split_prefix)
 {
 	int ret, i, n_files = 0;
 	size_t mem, max_k, k, max_mem;
@@ -1384,13 +1386,13 @@ int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix,
 	buf = NULL;
 	fp = sam_open(fn, "r");
 	if (fp == NULL) {
-		fprintf(stderr, "[bmf_bam_sort_core] fail to open file %s\n", fn);
+		fprintf(stderr, "[bmfsort_core] fail to open file %s\n", fn);
 		return -1;
 	}
-	fprintf(stderr, "[bmf_bam_sort_core] Reading from '%s'.\n", (strcmp(fn, "-") == 0 || strcmp(fn, "stdin") == 0) ? "stdin": fn);
+	fprintf(stderr, "[bmfsort_core] Reading from '%s'.\n", (strcmp(fn, "-") == 0 || strcmp(fn, "stdin") == 0) ? "stdin": fn);
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		fprintf(stderr, "[bmf_bam_sort_core] failed to read header for '%s'\n", fn);
+		fprintf(stderr, "[bmfsort_core] failed to read header for '%s'\n", fn);
 		sam_close(fp);
 		return -1;
 	}
@@ -1423,7 +1425,7 @@ int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix,
 		}
 	}
 	if (ret != -1)
-		fprintf(stderr, "[bmf_bam_sort_core] truncated file. Continue anyway.\n");
+		fprintf(stderr, "[bmfsort_core] truncated file. Continue anyway.\n");
 	// write the final output
 	if (n_files == 0) { // a single block
 		ks_mergesort(sort, k, buf, 0);
@@ -1434,17 +1436,13 @@ int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix,
 	} else { // then merge
 		char **fns;
 		n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
-		fprintf(stderr, "[bmf_bam_sort_core] merging from %d files...\n", n_files);
+		fprintf(stderr, "[bmfsort_core] merging from %d files...\n", n_files);
 		fns = (char**)calloc(n_files, sizeof(char*));
 		for (i = 0; i < n_files; ++i) {
 			fns[i] = (char*)calloc(strlen(prefix) + 20, 1);
 			sprintf(fns[i], "%s.%.4d.bam", prefix, i);
 		}
-		/*
-		 * Make this use core3.
-		 * Finish writing core3.
-		 */
-		if (bam_merge_core3(sort_cmp_int, fnout, modeout, NULL, n_files, fns, MERGE_COMBINE_RG|MERGE_COMBINE_PG, NULL, n_threads, split) < 0) {
+		if (bam_merge_core3(sort_cmp_int, split_prefix, modeout, NULL, n_files, fns, MERGE_COMBINE_RG|MERGE_COMBINE_PG, NULL, n_threads, split) < 0) {
 			// Propagate bam_merge_core2() failure; it has already emitted a
 			// message explaining the failure, so no further message is needed.
 			return -1;
@@ -1463,12 +1461,12 @@ int bmf_bam_sort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix,
 	return 0;
 }
 
-int bmf_bam_sort_core(int sort_cmp_int, const char *fn, const char *prefix, size_t max_mem)
+int bmfsort_core(int sort_cmp_int, const char *fn, const char *prefix, size_t max_mem)
 {
 	int ret;
 	char *fnout = calloc(strlen(prefix) + 4 + 1, 1);
 	sprintf(fnout, "%s.bam", prefix);
-	ret = bmf_bam_sort_core_ext1(sort_cmp_int, fn, prefix, fnout, "wb", max_mem, 0, 0, "");
+	ret = bmfsort_core_ext1(sort_cmp_int, fn, prefix, fnout, "wb", max_mem, 0, 0, "");
 	free(fnout);
 	return ret;
 }
@@ -1476,17 +1474,16 @@ int bmf_bam_sort_core(int sort_cmp_int, const char *fn, const char *prefix, size
 static int sort_usage(FILE *fp, int status)
 {
 	fprintf(fp,
-"Usage: bmf_bam_sort [options...] [in.bam]\n"
+"Usage: bmfsort [options...] [in.bam]\n"
 "Options:\n"
 "  -l INT	 Set compression level, from 0 (uncompressed) to 9 (best)\n"
 "  -m INT	 Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
 "  -k		 Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional. Default: bmf comparison.\n"
-"  -o FILE	Write final output to FILE rather than standard output\n"
+"  -o FILE	Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
 "  -O FORMAT  Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
 "  -T PREFIX  Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
 "  -@ INT	 Set number of sorting and compression threads [1]\n"
 "  -s		 Flag to split the bam into a list of file handles.\n"
-"  -p		 Set prefix for split file handles.\n"
 "\n");
 	return status;
 }
@@ -1502,7 +1499,7 @@ int main(int argc, char *argv[])
 	char *split_prefix = NULL;
 	int split = 0;
 
-	while ((c = getopt(argc, argv, "l:m:k:o:O:T:@:p:sh")) >= 0) {
+	while ((c = getopt(argc, argv, "l:m:k:o:O:T:@:sh")) >= 0) {
 		switch (c) {
 		case 'o': fnout = optarg; break;
 		case 'k': if(strcmp(optarg, "bmf") == 0) sort_cmp_int = BMF_SORT_ORDER;
@@ -1527,7 +1524,6 @@ int main(int argc, char *argv[])
 		case 'l': level = atoi(optarg); break;
 		case 'h': return sort_usage(stderr, 0);
 		case 's': split = 1; break;
-		case 'p': split_prefix = strdup(optarg); break;
 		default: return sort_usage(stderr, EXIT_FAILURE);
 		}
 	}
@@ -1550,7 +1546,7 @@ int main(int argc, char *argv[])
 	}
 	if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-	if (bmf_bam_sort_core_ext1(sort_cmp_int, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
+	if (bmfsort_core_ext1(sort_cmp_int, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
 
 	cond_free(tmpprefix);
 	cond_free(fmtout);

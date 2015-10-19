@@ -17,10 +17,15 @@ static inline char *trim_ext(char *fname)
 {
 	fprintf(stderr, "Now trimming char * %s.\n", fname);
 	char *buf = malloc((strlen(fname) + 1) * sizeof(char ));
-	ptrdiff_t pos = strrchr(fname, '.') - fname; // Find the position in the read where the last '.' is.
+	char *found_pos = strrchr(fname, '.');
+	if(!found_pos) {
+		fprintf(stderr, "Could not trim file name's extension. Looks like it's missing a '.' (name: '%s').\n", fname);
+		exit(EXIT_FAILURE);
+	}
+	ptrdiff_t pos = found_pos - fname; // Find the position in the read where the last '.' is.
 	memcpy(buf, fname, pos * sizeof(char));
 	buf[pos] = '\0';
-	fprintf(stderr, "tmp buffer: %s.\n", buf);
+	//fprintf(stderr, "tmp buffer: %s.\n", buf);
 	return buf;
 }
 /*

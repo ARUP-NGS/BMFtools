@@ -282,7 +282,7 @@ cpdef list bmf_align_split(R1, R2, ref=None,
         prefix = TrimExt(R1)
     opt_concat = ' '.join(opts.split())
     cStr = "%s mem -C %s %s %s %s " % (path, opt_concat, ref, R1, R2)
-    cStr += " | bmf_bam_sort -sp %s -m %s" % (prefix, memStr)
+    cStr += " | bmfsort -sp %s -m %s" % (prefix, memStr)
     sys.stderr.write("Command string for bmf align split: %s.\n" % cStr)
     check_call(cStr, shell=True, executable="/bin/bash")
     outfnames = ["%s.%s.bam" % (prefix, contig) for contig in
