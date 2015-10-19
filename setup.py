@@ -44,7 +44,7 @@ install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
 includes = [np.get_include(), os.path.abspath("src/include"), os.path.abspath("src/include/cephes")] + pysam.get_include()
 
 
-########subprocess.check_call(['make'])
+subprocess.check_call(['make'])
 
 config = {
     'description': '',
