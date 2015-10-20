@@ -314,9 +314,7 @@ int main(int argc, char *argv[])
 				strcat(cat_buff1, ".gz");
 				strcat(cat_buff2, ".gz");
 			}
-			fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff1);
 			CHECK_CALL(cat_buff1, sys_call_ret);
-			fprintf(stderr, "Now calling cat string '%s'.\n", cat_buff2);
 			CHECK_CALL(cat_buff2, sys_call_ret);
 		}
 		else {

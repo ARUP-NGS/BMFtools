@@ -612,6 +612,8 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode, const char 
 	bam_hdr_t **hdr = NULL;
 	trans_tbl_t *translation_tbl = NULL;
 
+	fprintf(stderr, "Now running bam_sort_core2 to a single output file.\n");
+
 	// Is there a specified pre-prepared header to use for output?
 	if (headers) {
 		samFile* fpheaders = sam_open(headers, "r");
@@ -839,8 +841,10 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 					int split)
 {
 	if(!split) {
+		fprintf(stderr, "Not splitting output by contig.\n");
 		return bam_merge_core2(by_qname, out, mode, headers, n, fn, flag, reg, n_threads);
 	}
+	fprintf(stderr, "Now splitting output by contig.\n");
 	if(!strcmp(out, "-")) {
 		fprintf(stderr, "Out prefix required if splitting while sorting. Abort mission!\n");
 		exit(EXIT_FAILURE);
@@ -1432,7 +1436,14 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		/*
 		 * TODO: Make this split as well.
 		 */
-		write_buffer_split(fnout, modeout, k, buf, header, split_prefix);
+		if(split) {
+			fprintf(stderr, "Single block. Writing to split buffer because split's value is %i.\n", split);
+			write_buffer_split(fnout, modeout, k, buf, header, split_prefix);
+		}
+		else {
+			fprintf(stderr, "Single block. Writing to regular buffer because split's value is %i.\n", split);
+			write_buffer(fnout, modeout, k, buf, header, n_threads);
+		}
 	} else { // then merge
 		char **fns;
 		n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);

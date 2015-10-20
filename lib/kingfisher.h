@@ -85,7 +85,7 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 
 static inline int pvalue_to_phred(double pvalue)
 {
-	return (int)(-10 * log10(pvalue));
+	return (int)(-10 * log10(pvalue) + 0.5); // 0.5 to round up
 }
 
 // Converts a chi2 sum into a p value.
