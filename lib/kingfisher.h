@@ -575,11 +575,14 @@ static inline void rc_mseq(mseq_t *mvar,tmp_mseq_t *tmp) {
 		tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
 		tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
 	}
+	/*
+	 * Barcode is now reverse-complemented elsewhere in the code.
 	for(int i = 0; i < tmp->blen; i++) {
 		//NUC_CMPL(mvar->barcode[tmp->blen - i - 1], tmp->tmp_barcode[i]);
 		// Equivalent to
 		tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
 	}
+	*/
 #if !NDEBUG
 	char *omgzwtf = (char *)malloc(tmp->readlen + 1);
 	omgzwtf[tmp->readlen] = '\0';
@@ -592,7 +595,7 @@ static inline void rc_mseq(mseq_t *mvar,tmp_mseq_t *tmp) {
 #endif
 	memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
 	memcpy(mvar->seq, tmp->tmp_seq, tmp->readlen * sizeof(char));
-	memcpy(mvar->barcode, tmp->tmp_barcode, tmp->blen * sizeof(char));
+	//memcpy(mvar->barcode, tmp->tmp_barcode, tmp->blen * sizeof(char));
 	return;
 }
 

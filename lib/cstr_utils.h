@@ -9,6 +9,10 @@
 #include "khash.h"
 #include "uthash.h"
 
+#ifndef MAX_BARCODE_LENGTH
+#define MAX_BARCODE_LENGTH 30
+#endif
+
 /*
  * Returns a null-terminated string with the extension and terminal period removed.
  * Warning: Must be freed!
@@ -27,6 +31,16 @@ static inline char *trim_ext(char *fname)
 	buf[pos] = '\0';
 	//fprintf(stderr, "tmp buffer: %s.\n", buf);
 	return buf;
+}
+
+static inline void rc_barcode(char *barcode, int blen) {
+	char buf[MAX_BARCODE_LENGTH];
+	memcpy(buf, barcode, blen * sizeof(char));
+	buf[blen] = '\0';
+	for(int i = 0; i < blen; ++i) {
+		barcode[i] = nuc_cmpl(buf[blen - i - 1]);
+	}
+	return;
 }
 /*
  * Fast positive atoi
