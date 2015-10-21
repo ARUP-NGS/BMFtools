@@ -475,7 +475,7 @@ static inline char *barcode_mem_view(kseq_t *seq)
 static inline int bc_flip(char *barcode, int blen) {
 	int cmp;
 	for(int i = 0; i < blen; ++i) {
-		cmp = nuc_cmp(barcode[i], barcode[blen - i - 1]);
+		cmp = barcode[i] - barcode[blen - i - 1];
 		if(cmp < 0) {
 			return 0; // It's lexicographically lower as is. Don't flip!
 		}
@@ -483,6 +483,7 @@ static inline int bc_flip(char *barcode, int blen) {
 			return 1; // It's not lexicographically lower as it is. Flip!
 		}
 	}
+	return -1;
 }
 
 
@@ -509,6 +510,13 @@ static inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 	}
 	return 0; // Both barcode and read are lexicographically identical forward and reverse... is that possible? Eh. Don't flip.
 }
+
+
+static inline void pair_flip(mseq_t *m1, mseq_t *m2, tmpvars_t *tmp)
+{
+	// Test to see if I should flip.
+}
+
 
 /*
  * Init's tmp_mseq_t ptr

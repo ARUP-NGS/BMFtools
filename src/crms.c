@@ -110,9 +110,13 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	rseq1 = init_crms_mseq(seq1, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0);
 	//fprintf(stderr, "Initializing rseq2.\n");
 	rseq2 = init_crms_mseq(seq2, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
+	size_t palindromes = 0;
 	rc = bc_flip(barcode, tmp->blen);
 	if(rc)
 		rc_barcode(barcode, tmp->blen);
+	if(rc < 0)
+		++palindromes;
+
 	bin = get_binnerul(barcode, settings->n_nucs);
 	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
 	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
@@ -130,6 +134,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		rc = bc_flip(barcode, tmp->blen);
 		if(rc)
 			rc_barcode(barcode, tmp->blen);
+		if(rc < 0)
+			++palindromes;
 		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
 		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
 		bin = get_binnerul(barcode, settings->n_nucs);
@@ -148,7 +154,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	kseq_destroy(seq2);
 	gzclose(fp1);
 	gzclose(fp2);
-	fprintf(stderr, "Successfully completed pp_split_inline.\n");
+	fprintf(stderr, "Successfully completed pp_split_inline. Number of palindromic barcodes: %"PRIu64"\n", palindromes);
 	return splitter;
 }
 
