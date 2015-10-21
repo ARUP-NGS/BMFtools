@@ -20,20 +20,6 @@ KSEQ_INIT(gzFile, gzread)
 #endif
 
 
-// Memory costs
-// max_phreds --> 1 * readlen + 8 (ptr)
-// barcode --> [MAX_BARCODE_LENGTH + 1] + 8 (ptr)
-// pass_fail --> 1
-// nuc_counts --> readlen * 8 (ptrs) + 8 (ptr) + (readlen * 5 * sizeof(int)) [20] --> 6 * readlen + 1
-// (nuc_counts = 28 * readlen + 8
-// phred_sums --> readlen * 8 (ptrs) + 8 (ptr) + (readlen * 4 * sizeof(double)) [40 * readlen + 8]
-// readlen --> 4
-// length --> 1
-// 69 * readlen + 46
-// 4900 + 49 --> 5kB per barcode
-
-
-
 typedef struct tmpbuffers {
 	char name_buffer[120];
 	char PVBuffer[1000];
@@ -486,6 +472,19 @@ static inline char *barcode_mem_view(kseq_t *seq)
 	return NULL;
 }
 
+static inline int bc_flip(char *barcode, int blen) {
+	int cmp;
+	for(int i = 0; i < blen; ++i) {
+		cmp = nuc_cmp(barcode[i], barcode[blen - i - 1]);
+		if(cmp < 0) {
+			return 0; // It's lexicographically lower as is. Don't flip!
+		}
+		else if(cmp > 0) {
+			return 1; // It's not lexicographically lower as it is. Flip!
+		}
+	}
+}
+
 
 static inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
 {
@@ -561,31 +560,25 @@ static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 	mvar.blen = 0;
 }
 
-static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail)
+static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
 {
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RC=%c\n%s\n+\n%s\n",
-			mvar->name, pass_fail, mvar->barcode, mvar->rc, mvar->seq, mvar->qual);
+			mvar->name, pass_fail, barcode, mvar->rc, mvar->seq, mvar->qual);
 	return;
 }
 
-
-static inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
-{
-	if(!crc_flip(mvar, mvar->barcode, tmp->blen, tmp->readlen)) {
-		mvar->rc = '0';
-		return;
-	}
+static inline void rc_mseq(mseq_t *mvar,tmp_mseq_t *tmp) {
 	mvar->rc = '1';
 	for(int i = 0; i < tmp->readlen; i++) {
-		NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i])
+		//NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i])
 		// Equivalent to
-		//tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
+		tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
 		tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
 	}
 	for(int i = 0; i < tmp->blen; i++) {
-		NUC_CMPL(mvar->barcode[tmp->blen - i - 1], tmp->tmp_barcode[i]);
+		//NUC_CMPL(mvar->barcode[tmp->blen - i - 1], tmp->tmp_barcode[i]);
 		// Equivalent to
-		//tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
+		tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
 	}
 #if !NDEBUG
 	char *omgzwtf = (char *)malloc(tmp->readlen + 1);
@@ -600,6 +593,13 @@ static inline void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
 	memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
 	memcpy(mvar->seq, tmp->tmp_seq, tmp->readlen * sizeof(char));
 	memcpy(mvar->barcode, tmp->tmp_barcode, tmp->blen * sizeof(char));
+	return;
+}
+
+
+static inline void norc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
+{
+	mvar->rc = '0';
 	return;
 }
 
@@ -662,16 +662,13 @@ static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t 
 	}
 	ret->blen = tmp->blen;
 	ret->rc = 0;
-	if(ret) {
-		crc_mseq(ret, tmp);
-	}
 	return ret;
 }
 
 /*
  * Set is_read2 to 1 for read 2, 0 for read 1.
  */
-static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int rc)
 {
 	memcpy(mvar->name, seq->name.s, seq->name.l);
     mvar->name[seq->name.l] = '\0';
@@ -693,7 +690,10 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 	}
 #endif
 	strcpy(mvar->barcode, barcode);
-	crc_mseq(mvar, tmp);
+	if(rc)
+		rc_mseq(mvar, tmp);
+	else
+		norc_mseq(mvar, tmp);
 }
 
 static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
@@ -725,18 +725,9 @@ static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler,
 #endif
 	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
 	strcpy(ret->barcode, barcode);
-	return ret;
-}
-
-static inline mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
-{
-	mseq_t ret = {
-			.l = 0,
-			.blen = 0,
-			.rc = '0'
-	};
-	memcpy(ret.barcode, barcode, strlen(barcode) + 1);
-	mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
+	if(bc_flip(barcode, tmp->blen)) {
+		rc_mseq(ret, tmp);
+	}
 	return ret;
 }
 

@@ -323,7 +323,6 @@ static inline char *make_crms_outfname(char *fname)
 mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
 void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
-mseq_t init_rescale_revcmp_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 int ipow(int base, int exp);
 void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
@@ -335,9 +334,7 @@ char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, 
 void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 void tmp_mseq_destroy(tmp_mseq_t mvar);
-void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 char nuc_cmpl(char character);
-void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail);
 char *make_default_outfname(char *fname, const char *suffix);
 char *make_crms_outfname(char *fname);
 int get_fileno_limit();
@@ -580,7 +577,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	gzFile fp_read1, fp_read2, fp_index;
 	kseq_t *seq1, *seq2, *seq_index;
 	mseq_t *rseq1, *rseq2;
-	int l1, l2, l_index;
+	int l1, l2, l_index, rc;
 	//fprintf(stderr, "[splitmark_rescale_core]: initializing splitter.\n");
 	mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter_ptr = init_splitter(settings);
@@ -613,8 +610,9 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	rseq1 = p7_mseq_rescale_init(seq1, settings->rescaler, 0, 0); // rseq1 is initialized
 	rseq2 = p7_mseq_rescale_init(seq2, settings->rescaler, 0, 1); // rseq2 is initialized
 	barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
-	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, 0, 0);
-	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, 0, 1);
+	rc = bc_flip(barcode, tmp->blen);
+	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, 0, 0, rc);
+	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, 0, 1, rc);
 	pass_fail = test_hp(barcode, settings->hp_threshold);
 	bin = get_binner(barcode, settings->n_nucs);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, barcode, pass_fail);
@@ -628,8 +626,9 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 		memcpy(barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 		memcpy(barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 		memcpy(barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
-		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, 0, 0);
-		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, 0, 1);
+		rc = bc_flip(barcode, tmp->blen);
+		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, 0, 0, rc);
+		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, 0, 1, rc);
 		pass_fail = test_hp(barcode, settings->hp_threshold);
 		bin = get_binner(barcode, settings->n_nucs);
 		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, barcode, pass_fail);
