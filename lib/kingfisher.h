@@ -14,7 +14,10 @@
 #define MAX_BARCODE_LENGTH 30
 #endif
 
+#ifndef KSEQ_DEC_GZ
+#define KSEQ_DEC_GZ
 KSEQ_INIT(gzFile, gzread)
+#endif
 
 
 // Memory costs
