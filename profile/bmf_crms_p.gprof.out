@@ -1,0 +1,454 @@
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ms/call  ms/call  name    
+ 31.58      4.66     4.66 34635443     0.00     0.00  igamc
+ 12.71      6.54     1.88  3067180     0.00     0.00  igaml
+  6.98      7.57     1.03   236286     0.00     0.04  dmp_process_write
+  6.37      8.51     0.94   376570     0.00     0.00  pushback_kseq
+  5.25      9.28     0.78 34860915     0.00     0.00  lgam
+  4.68      9.97     0.69  1000002     0.00     0.00  crc_mseq
+  4.64     10.66     0.69 30897880     0.00     0.00  ARRG_MAX
+  4.47     11.32     0.66       52    12.70   241.67  omgz_core
+  4.00     11.91     0.59  4232834     0.00     0.00  ks_getuntil2.constprop.8
+  2.51     12.28     0.37 134002554     0.00     0.00  rescale_qscore
+  2.44     12.64     0.36 72994701     0.00     0.00  nuc_to_pos
+  2.00     12.93     0.30 26550385     0.00     0.00  pvalue_to_phred
+  1.90     13.21     0.28   549530     0.00     0.00  fill_csv_buffer
+  1.66     13.46     0.25 134002554     0.00     0.00  nuc2num
+  1.56     13.69     0.23   321482     0.00     0.00  init_kfp
+  1.46     13.90     0.22 32894339     0.00     0.00  igamc_pvalues
+  1.29     14.09     0.19  1000000     0.00     0.00  update_mseq
+  1.12     14.26     0.17   295055     0.00     0.00  destroy_kf
+  1.02     14.41     0.15  1397640     0.00     0.00  ks_getuntil2.constprop.7
+  0.75     14.52     0.11 24033464     0.00     0.00  ARRG_MAX_TO_NUC
+  0.47     14.59     0.07  1373744     0.00     0.00  kseq_read
+  0.24     14.62     0.04  1340490     0.00     0.00  nuc_cmp
+  0.24     14.66     0.04                             gamma
+  0.17     14.68     0.03                             stirf
+  0.14     14.70     0.02   708842     0.00     0.00  cp_view2buf
+  0.14     14.72     0.02   498039     0.00     0.00  barcode_mem_view
+  0.14     14.74     0.02   216892     0.00     0.00  fill_fa_buffer
+  0.07     14.75     0.01  5599015     0.00     0.00  ks_getc
+  0.07     14.76     0.01                             pp_split_inline
+  0.00     14.76     0.00  1500003     0.00     0.00  ulpow.constprop.2
+  0.00     14.76     0.00  1407914     0.00     0.00  ks_getuntil.constprop.6
+  0.00     14.76     0.00  1389180     0.00     0.00  ks_getuntil.constprop.5
+  0.00     14.76     0.00  1000002     0.00     0.00  crc_flip
+  0.00     14.76     0.00  1000002     0.00     0.00  mseq2fq_inline
+  0.00     14.76     0.00   500001     0.00     0.00  get_binnerul
+  0.00     14.76     0.00   500001     0.00     0.00  nlen_homing_seq
+  0.00     14.76     0.00   500001     0.00     0.00  set_barcode
+  0.00     14.76     0.00   306496     0.00     0.00  fill_pv_buffer
+  0.00     14.76     0.00    47112     0.00     0.00  period_to_null
+  0.00     14.76     0.00      563     0.00     0.00  test_hp_inline
+  0.00     14.76     0.00       55     0.00     0.00  ks_destroy
+  0.00     14.76     0.00       54     0.00     0.00  init_tmpvars_p
+  0.00     14.76     0.00       54     0.00     0.00  kseq_destroy
+  0.00     14.76     0.00       51     0.00     0.00  tmpvars_destroy
+  0.00     14.76     0.00       48     0.00     0.00  kseq_init
+  0.00     14.76     0.00       45     0.00     0.00  infer_barcode_length
+  0.00     14.76     0.00       44     0.00     0.00  ks_init
+  0.00     14.76     0.00        2     0.00     0.00  init_crms_mseq
+  0.00     14.76     0.00        2     0.00     0.00  mseq_destroy
+  0.00     14.76     0.00        2     0.00     0.00  mseq_rescale_init
+  0.00     14.76     0.00        2     0.00     0.00  p7_mseq_rescale_init
+  0.00     14.76     0.00        1     0.00     0.00  count_lines
+  0.00     14.76     0.00        1     0.00     0.00  init_splitter_inline
+  0.00     14.76     0.00        1     0.00     0.00  init_tm_ptr
+  0.00     14.76     0.00        1     0.00     0.00  ipow.constprop.4
+  0.00     14.76     0.00        1     0.00     0.00  parse_1d_rescaler
+  0.00     14.76     0.00        1     0.00     0.00  tm_destroy
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+cumulative a running sum of the number of seconds accounted
+ seconds   for by this function and those listed above it.
+
+ self      the number of seconds accounted for by this
+seconds    function alone.  This is the major sort for this
+           listing.
+
+calls      the number of times this function was invoked, if
+           this function is profiled, else blank.
+ 
+ self      the average number of milliseconds spent in this
+ms/call    function per call, if this function is profiled,
+	   else blank.
+
+ total     the average number of milliseconds spent in this
+ms/call    function and its descendents per call, if this 
+	   function is profiled, else blank.
+
+name       the name of the function.  This is the minor sort
+           for this listing. The index shows the location of
+	   the function in the gprof listing. If the index is
+	   in parenthesis it shows where it would appear in
+	   the gprof listing if it were to be printed.
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+		     Call graph (explanation follows)
+
+
+granularity: each sample hit covers 2 byte(s) for 0.07% of 14.76 seconds
+
+index % time    self  children    called     name
+                0.66   11.91      52/52          uthash_dmp_main [2]
+[1]     85.1    0.66   11.91      52         omgz_core [1]
+                1.03    8.92  236286/236286      dmp_process_write [3]
+                0.94    0.38  376570/376570      pushback_kseq [7]
+                0.23    0.00  321482/321482      init_kfp [19]
+                0.02    0.20  373743/1373744     kseq_read [8]
+                0.17    0.00  295055/295055      destroy_kf [21]
+                0.02    0.00  708842/708842      cp_view2buf [28]
+                0.00    0.00      48/498039      barcode_mem_view [29]
+                0.00    0.00      54/54          init_tmpvars_p [46]
+                0.00    0.00      52/54          kseq_destroy [47]
+                0.00    0.00      46/48          kseq_init [49]
+                0.00    0.00      45/45          infer_barcode_length [50]
+-----------------------------------------------
+                                                 <spontaneous>
+[2]     85.1    0.00   12.57                 uthash_dmp_main [2]
+                0.66   11.91      52/52          omgz_core [1]
+                0.00    0.00      51/51          tmpvars_destroy [48]
+-----------------------------------------------
+                1.03    8.92  236286/236286      omgz_core [1]
+[3]     67.4    1.03    8.92  236286         dmp_process_write [3]
+                4.66    2.65 34635443/34635443     igamc [4]
+                0.69    0.00 30897880/30897880     ARRG_MAX [12]
+                0.30    0.00 26550385/26550385     pvalue_to_phred [16]
+                0.28    0.00  549530/549530      fill_csv_buffer [17]
+                0.22    0.00 32894339/32894339     igamc_pvalues [20]
+                0.11    0.00 24033464/24033464     ARRG_MAX_TO_NUC [23]
+                0.02    0.00  216892/216892      fill_fa_buffer [30]
+                0.00    0.00  306496/306496      fill_pv_buffer [42]
+-----------------------------------------------
+                4.66    2.65 34635443/34635443     dmp_process_write [3]
+[4]     49.5    4.66    2.65 34635443         igamc [4]
+                1.88    0.07 3067180/3067180     igaml [6]
+                0.71    0.00 31729359/34860915     lgam [10]
+-----------------------------------------------
+                                                 <spontaneous>
+[5]     14.5    0.01    2.13                 pp_split_inline [5]
+                0.19    0.62 1000000/1000000     update_mseq [9]
+                0.69    0.04 1000000/1000002     crc_mseq [11]
+                0.05    0.55 1000001/1373744     kseq_read [8]
+                0.00    0.00       2/2           init_crms_mseq [32]
+                0.00    0.00 1000002/1000002     mseq2fq_inline [38]
+                0.00    0.00  500001/500001      nlen_homing_seq [40]
+                0.00    0.00  500001/500001      set_barcode [41]
+                0.00    0.00  500001/500001      get_binnerul [39]
+                0.00    0.00     563/563         test_hp_inline [44]
+                0.00    0.00       2/48          kseq_init [49]
+                0.00    0.00       2/2           mseq_destroy [52]
+                0.00    0.00       2/54          kseq_destroy [47]
+                0.00    0.00       1/1           parse_1d_rescaler [57]
+                0.00    0.00       1/1           init_splitter_inline [54]
+                0.00    0.00       1/1           init_tm_ptr [55]
+                0.00    0.00       1/1           tm_destroy [58]
+-----------------------------------------------
+                1.88    0.07 3067180/3067180     igamc [4]
+[6]     13.2    1.88    0.07 3067180         igaml [6]
+                0.07    0.00 3131556/34860915     lgam [10]
+-----------------------------------------------
+                0.94    0.38  376570/376570      omgz_core [1]
+[7]      8.9    0.94    0.38  376570         pushback_kseq [7]
+                0.36    0.00 72994701/72994701     nuc_to_pos [15]
+                0.02    0.00  497991/498039      barcode_mem_view [29]
+-----------------------------------------------
+                0.02    0.20  373743/1373744     omgz_core [1]
+                0.05    0.55 1000001/1373744     pp_split_inline [5]
+[8]      5.6    0.07    0.75 1373744         kseq_read [8]
+                0.59    0.00 4232834/4232834     ks_getuntil2.constprop.8 [14]
+                0.15    0.00 1397640/1397640     ks_getuntil2.constprop.7 [22]
+                0.01    0.00 5599015/5599015     ks_getc [31]
+                0.00    0.00 1407914/1407914     ks_getuntil.constprop.6 [36]
+                0.00    0.00 1389180/1389180     ks_getuntil.constprop.5 [37]
+-----------------------------------------------
+                0.19    0.62 1000000/1000000     pp_split_inline [5]
+[9]      5.5    0.19    0.62 1000000         update_mseq [9]
+                0.37    0.25 134002252/134002554     rescale_qscore [13]
+-----------------------------------------------
+                0.07    0.00 3131556/34860915     igaml [6]
+                0.71    0.00 31729359/34860915     igamc [4]
+[10]     5.3    0.78    0.00 34860915         lgam [10]
+-----------------------------------------------
+                0.00    0.00       2/1000002     mseq_rescale_init [33]
+                0.69    0.04 1000000/1000002     pp_split_inline [5]
+[11]     4.9    0.69    0.04 1000002         crc_mseq [11]
+                0.00    0.04 1000002/1000002     crc_flip [25]
+-----------------------------------------------
+                0.69    0.00 30897880/30897880     dmp_process_write [3]
+[12]     4.6    0.69    0.00 30897880         ARRG_MAX [12]
+-----------------------------------------------
+                0.00    0.00     302/134002554     p7_mseq_rescale_init [34]
+                0.37    0.25 134002252/134002554     update_mseq [9]
+[13]     4.2    0.37    0.25 134002554         rescale_qscore [13]
+                0.25    0.00 134002554/134002554     nuc2num [18]
+-----------------------------------------------
+                0.59    0.00 4232834/4232834     kseq_read [8]
+[14]     4.0    0.59    0.00 4232834         ks_getuntil2.constprop.8 [14]
+-----------------------------------------------
+                0.36    0.00 72994701/72994701     pushback_kseq [7]
+[15]     2.4    0.36    0.00 72994701         nuc_to_pos [15]
+-----------------------------------------------
+                0.30    0.00 26550385/26550385     dmp_process_write [3]
+[16]     2.0    0.30    0.00 26550385         pvalue_to_phred [16]
+-----------------------------------------------
+                0.28    0.00  549530/549530      dmp_process_write [3]
+[17]     1.9    0.28    0.00  549530         fill_csv_buffer [17]
+-----------------------------------------------
+                0.25    0.00 134002554/134002554     rescale_qscore [13]
+[18]     1.7    0.25    0.00 134002554         nuc2num [18]
+-----------------------------------------------
+                0.23    0.00  321482/321482      omgz_core [1]
+[19]     1.6    0.23    0.00  321482         init_kfp [19]
+-----------------------------------------------
+                0.22    0.00 32894339/32894339     dmp_process_write [3]
+[20]     1.5    0.22    0.00 32894339         igamc_pvalues [20]
+-----------------------------------------------
+                0.17    0.00  295055/295055      omgz_core [1]
+[21]     1.1    0.17    0.00  295055         destroy_kf [21]
+-----------------------------------------------
+                0.15    0.00 1397640/1397640     kseq_read [8]
+[22]     1.0    0.15    0.00 1397640         ks_getuntil2.constprop.7 [22]
+-----------------------------------------------
+                0.11    0.00 24033464/24033464     dmp_process_write [3]
+[23]     0.7    0.11    0.00 24033464         ARRG_MAX_TO_NUC [23]
+-----------------------------------------------
+                0.04    0.00 1340490/1340490     crc_flip [25]
+[24]     0.2    0.04    0.00 1340490         nuc_cmp [24]
+-----------------------------------------------
+                0.00    0.04 1000002/1000002     crc_mseq [11]
+[25]     0.2    0.00    0.04 1000002         crc_flip [25]
+                0.04    0.00 1340490/1340490     nuc_cmp [24]
+-----------------------------------------------
+                                                 <spontaneous>
+[26]     0.2    0.04    0.00                 gamma [26]
+-----------------------------------------------
+                                                 <spontaneous>
+[27]     0.2    0.03    0.00                 stirf [27]
+-----------------------------------------------
+                0.02    0.00  708842/708842      omgz_core [1]
+[28]     0.1    0.02    0.00  708842         cp_view2buf [28]
+-----------------------------------------------
+                0.00    0.00      48/498039      omgz_core [1]
+                0.02    0.00  497991/498039      pushback_kseq [7]
+[29]     0.1    0.02    0.00  498039         barcode_mem_view [29]
+-----------------------------------------------
+                0.02    0.00  216892/216892      dmp_process_write [3]
+[30]     0.1    0.02    0.00  216892         fill_fa_buffer [30]
+-----------------------------------------------
+                0.01    0.00 5599015/5599015     kseq_read [8]
+[31]     0.1    0.01    0.00 5599015         ks_getc [31]
+-----------------------------------------------
+                0.00    0.00       2/2           pp_split_inline [5]
+[32]     0.0    0.00    0.00       2         init_crms_mseq [32]
+                0.00    0.00       2/2           mseq_rescale_init [33]
+-----------------------------------------------
+                0.00    0.00       2/2           init_crms_mseq [32]
+[33]     0.0    0.00    0.00       2         mseq_rescale_init [33]
+                0.00    0.00       2/1000002     crc_mseq [11]
+                0.00    0.00       2/2           p7_mseq_rescale_init [34]
+-----------------------------------------------
+                0.00    0.00       2/2           mseq_rescale_init [33]
+[34]     0.0    0.00    0.00       2         p7_mseq_rescale_init [34]
+                0.00    0.00     302/134002554     rescale_qscore [13]
+-----------------------------------------------
+                0.00    0.00 1500003/1500003     get_binnerul [39]
+[35]     0.0    0.00    0.00 1500003         ulpow.constprop.2 [35]
+-----------------------------------------------
+                0.00    0.00 1407914/1407914     kseq_read [8]
+[36]     0.0    0.00    0.00 1407914         ks_getuntil.constprop.6 [36]
+-----------------------------------------------
+                0.00    0.00 1389180/1389180     kseq_read [8]
+[37]     0.0    0.00    0.00 1389180         ks_getuntil.constprop.5 [37]
+-----------------------------------------------
+                0.00    0.00 1000002/1000002     pp_split_inline [5]
+[38]     0.0    0.00    0.00 1000002         mseq2fq_inline [38]
+-----------------------------------------------
+                0.00    0.00  500001/500001      pp_split_inline [5]
+[39]     0.0    0.00    0.00  500001         get_binnerul [39]
+                0.00    0.00 1500003/1500003     ulpow.constprop.2 [35]
+-----------------------------------------------
+                0.00    0.00  500001/500001      pp_split_inline [5]
+[40]     0.0    0.00    0.00  500001         nlen_homing_seq [40]
+-----------------------------------------------
+                0.00    0.00  500001/500001      pp_split_inline [5]
+[41]     0.0    0.00    0.00  500001         set_barcode [41]
+-----------------------------------------------
+                0.00    0.00  306496/306496      dmp_process_write [3]
+[42]     0.0    0.00    0.00  306496         fill_pv_buffer [42]
+-----------------------------------------------
+                0.00    0.00   47112/47112       parse_1d_rescaler [57]
+[43]     0.0    0.00    0.00   47112         period_to_null [43]
+-----------------------------------------------
+                0.00    0.00     563/563         pp_split_inline [5]
+[44]     0.0    0.00    0.00     563         test_hp_inline [44]
+-----------------------------------------------
+                0.00    0.00      55/55          kseq_destroy [47]
+[45]     0.0    0.00    0.00      55         ks_destroy [45]
+-----------------------------------------------
+                0.00    0.00      54/54          omgz_core [1]
+[46]     0.0    0.00    0.00      54         init_tmpvars_p [46]
+-----------------------------------------------
+                0.00    0.00       2/54          pp_split_inline [5]
+                0.00    0.00      52/54          omgz_core [1]
+[47]     0.0    0.00    0.00      54         kseq_destroy [47]
+                0.00    0.00      55/55          ks_destroy [45]
+-----------------------------------------------
+                0.00    0.00      51/51          uthash_dmp_main [2]
+[48]     0.0    0.00    0.00      51         tmpvars_destroy [48]
+-----------------------------------------------
+                0.00    0.00       2/48          pp_split_inline [5]
+                0.00    0.00      46/48          omgz_core [1]
+[49]     0.0    0.00    0.00      48         kseq_init [49]
+                0.00    0.00      44/44          ks_init [51]
+-----------------------------------------------
+                0.00    0.00      45/45          omgz_core [1]
+[50]     0.0    0.00    0.00      45         infer_barcode_length [50]
+-----------------------------------------------
+                0.00    0.00      44/44          kseq_init [49]
+[51]     0.0    0.00    0.00      44         ks_init [51]
+-----------------------------------------------
+                0.00    0.00       2/2           pp_split_inline [5]
+[52]     0.0    0.00    0.00       2         mseq_destroy [52]
+-----------------------------------------------
+                0.00    0.00       1/1           parse_1d_rescaler [57]
+[53]     0.0    0.00    0.00       1         count_lines [53]
+-----------------------------------------------
+                0.00    0.00       1/1           pp_split_inline [5]
+[54]     0.0    0.00    0.00       1         init_splitter_inline [54]
+                0.00    0.00       1/1           ipow.constprop.4 [56]
+-----------------------------------------------
+                0.00    0.00       1/1           pp_split_inline [5]
+[55]     0.0    0.00    0.00       1         init_tm_ptr [55]
+-----------------------------------------------
+                0.00    0.00       1/1           init_splitter_inline [54]
+[56]     0.0    0.00    0.00       1         ipow.constprop.4 [56]
+-----------------------------------------------
+                0.00    0.00       1/1           pp_split_inline [5]
+[57]     0.0    0.00    0.00       1         parse_1d_rescaler [57]
+                0.00    0.00   47112/47112       period_to_null [43]
+                0.00    0.00       1/1           count_lines [53]
+-----------------------------------------------
+                0.00    0.00       1/1           pp_split_inline [5]
+[58]     0.0    0.00    0.00       1         tm_destroy [58]
+-----------------------------------------------
+
+ This table describes the call tree of the program, and was sorted by
+ the total amount of time spent in each function and its children.
+
+ Each entry in this table consists of several lines.  The line with the
+ index number at the left hand margin lists the current function.
+ The lines above it list the functions that called this function,
+ and the lines below it list the functions this one called.
+ This line lists:
+     index	A unique number given to each element of the table.
+		Index numbers are sorted numerically.
+		The index number is printed next to every function name so
+		it is easier to look up where the function is in the table.
+
+     % time	This is the percentage of the `total' time that was spent
+		in this function and its children.  Note that due to
+		different viewpoints, functions excluded by options, etc,
+		these numbers will NOT add up to 100%.
+
+     self	This is the total amount of time spent in this function.
+
+     children	This is the total amount of time propagated into this
+		function by its children.
+
+     called	This is the number of times the function was called.
+		If the function called itself recursively, the number
+		only includes non-recursive calls, and is followed by
+		a `+' and the number of recursive calls.
+
+     name	The name of the current function.  The index number is
+		printed after it.  If the function is a member of a
+		cycle, the cycle number is printed between the
+		function's name and the index number.
+
+
+ For the function's parents, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the function into this parent.
+
+     children	This is the amount of time that was propagated from
+		the function's children into this parent.
+
+     called	This is the number of times this parent called the
+		function `/' the total number of times the function
+		was called.  Recursive calls to the function are not
+		included in the number after the `/'.
+
+     name	This is the name of the parent.  The parent's index
+		number is printed after it.  If the parent is a
+		member of a cycle, the cycle number is printed between
+		the name and the index number.
+
+ If the parents of the function cannot be determined, the word
+ `<spontaneous>' is printed in the `name' field, and all the other
+ fields are blank.
+
+ For the function's children, the fields have the following meanings:
+
+     self	This is the amount of time that was propagated directly
+		from the child into the function.
+
+     children	This is the amount of time that was propagated from the
+		child's children to the function.
+
+     called	This is the number of times the function called
+		this child `/' the total number of times the child
+		was called.  Recursive calls by the child are not
+		listed in the number after the `/'.
+
+     name	This is the name of the child.  The child's index
+		number is printed after it.  If the child is a
+		member of a cycle, the cycle number is printed
+		between the name and the index number.
+
+ If there are any cycles (circles) in the call graph, there is an
+ entry for the cycle-as-a-whole.  This entry shows who called the
+ cycle (as parents) and the members of the cycle (as children.)
+ The `+' recursive calls entry shows the number of function calls that
+ were internal to the cycle, and the calls entry for each member shows,
+ for that member, how many times it was called from other members of
+ the cycle.
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
+
+Index by function name
+
+  [12] ARRG_MAX               [19] init_kfp               [40] nlen_homing_seq
+  [23] ARRG_MAX_TO_NUC        [54] init_splitter_inline   [18] nuc2num
+  [29] barcode_mem_view       [55] init_tm_ptr            [24] nuc_cmp
+  [53] count_lines            [46] init_tmpvars_p         [15] nuc_to_pos
+  [28] cp_view2buf            [56] ipow.constprop.4        [1] omgz_core
+  [25] crc_flip               [45] ks_destroy             [34] p7_mseq_rescale_init
+  [11] crc_mseq               [31] ks_getc                [57] parse_1d_rescaler
+  [21] destroy_kf             [37] ks_getuntil.constprop.5 [43] period_to_null
+   [3] dmp_process_write      [36] ks_getuntil.constprop.6 [5] pp_split_inline
+  [17] fill_csv_buffer        [22] ks_getuntil2.constprop.7 [7] pushback_kseq
+  [30] fill_fa_buffer         [14] ks_getuntil2.constprop.8 [16] pvalue_to_phred
+  [42] fill_pv_buffer         [51] ks_init                [13] rescale_qscore
+  [26] gamma                  [47] kseq_destroy           [41] set_barcode
+  [39] get_binnerul           [49] kseq_init              [27] stirf
+   [4] igamc                   [8] kseq_read              [44] test_hp_inline
+  [20] igamc_pvalues          [10] lgam                   [58] tm_destroy
+   [6] igaml                  [38] mseq2fq_inline         [48] tmpvars_destroy
+  [50] infer_barcode_length   [52] mseq_destroy           [35] ulpow.constprop.2
+  [32] init_crms_mseq         [33] mseq_rescale_init       [9] update_mseq

@@ -632,10 +632,6 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 		splitter_ptr->tmp_out_handles_r1[count] = NULL;
 		splitter_ptr->tmp_out_handles_r2[count] = NULL;
 	}
-	free(splitter_ptr->fnames_r1);
-	splitter_ptr->fnames_r1 = NULL;
-	free(splitter_ptr->fnames_r2);
-	splitter_ptr->fnames_r2 = NULL;
 	return splitter_ptr;
 }
 
