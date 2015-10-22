@@ -25,7 +25,7 @@ void print_usage(char *argv[])
 						"-i: Index fastq path. Required.\n"
 						"-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
 						"-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
-						"-g: Gzip compression ratio if piping to gzip (-z). Default: 6 (default).\n"
+						"-g: Gzip compression ratio if piping to gzip (-z). Default: 1 (weak compression).\n"
 						"-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
 						"-m: Number of bases in the start of reads to skip when salting. Default: 0. Recommended: 1.\n"
 						"-d: Flag to run hash dmp. Default: False.\n"
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 		.salt = 0,
 		.offset = 0,
 		.threads = 4,
-		.gzip_compression = 6,
+		.gzip_compression = 1,
 		.rescaler = NULL,
 		.rescaler_path = NULL,
 	};
@@ -154,10 +154,10 @@ int main(int argc, char *argv[])
 			for(int i = 0; i < params->n; ++i) {
 				char tmpbuf[500];
 				int tmp_ret;
-				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
+				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
+				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r2[i], params->outfnames_r2[i]);
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);

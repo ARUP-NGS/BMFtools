@@ -498,23 +498,32 @@ cdef class pPileupRead:
         self.BaseCall = self.alignment.seq[self.query_position]
         try:
             BQs = self.alignment.opt("PV")
+            self.BQ = BQs[self.alignment.inferred_length -
+                          self.query_position - 1]
         except TypeError:
             # Must be old code.
             BQs = array('l', np.array(self.alignment.opt("PV").split(","),
                                       dtype=np.int64))
+            self.BQ = BQs[self.alignment.inferred_length -
+                          self.query_position - 1]
+        except KeyError:
+            # Must not have PV tags.
+            BQs = self.alignment.query_qualities
+            self.BQ = BQs[self.query_position]
         try:
             FAs = self.alignment.opt("FA")
         except TypeError:
             # Must be old code.
             FAs = array('l', np.array(self.alignment.opt("FA").split(","),
                                       dtype=np.int64))
+        except KeyError:
+            # Must not have FA tags.
+            warnings.warn("Missing FA tag in pPileupRead initialization.")
+            FAs = array('l', [1] * self.alignment.inferred_length)
         if(self.alignment.is_reverse):
-            self.BQ = BQs[self.alignment.inferred_length -
-                          self.query_position - 1]
             self.FA = FAs[self.alignment.inferred_length -
                           self.query_position - 1]
         else:
-            self.BQ = BQs[self.query_position]
             self.FA = FAs[self.query_position]
         self.MBQ = nmax(BQs)
         self.FM = self.alignment.opt("FM")

@@ -1,6 +1,7 @@
 from pysam.calignmentfile cimport AlignmentFile, IteratorColumnRegion
 from pysam.calignedsegment cimport PileupColumn, PileupRead
 from libc.stdint cimport *
+from libc.string cimport memset
 from cpython cimport array as c_array
 from cython cimport bint
 cimport cython

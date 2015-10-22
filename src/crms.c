@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
-				fprintf(stderr, "Now running omgz core on input filename %s and output filename %s.\n",
+				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 

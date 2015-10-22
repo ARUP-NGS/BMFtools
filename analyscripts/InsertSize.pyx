@@ -56,8 +56,7 @@ cdef class SNVAlleleWrangler:
         ret = np.zeros([length, 5], dtype=np.int32)
         lengths = array('i')
         c_array.resize(lengths, length)
-        for index in xrange(length):
-            lengths[index] = 0
+        memset(lengths.data.as_voidptr, 0, length * 4)
 
         for index, tlen in enumerate(self.insert_sizes):
             for PR in insert_size_dict[tlen]:
