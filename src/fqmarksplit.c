@@ -11,23 +11,6 @@
 #include "cstr_utils.h"
 #include "uthash_dmp_core.h"
 
-// Allocate file handle array memory, open file handles.
-
-/*
-#define FREE_SPLITTER(var) \
-	for(int i_##var_tmp = 0; i_##var_tmp < var.n_handles; i_##var_tmp++) {\
-		fclose(var.tmp_out_handles_r1[i_##var_tmp]);\
-		fclose(var.tmp_out_handles_r2[i_##var_tmp]);\
-		free(var.fnames_r1);\
-		free(var.fnames_r2);\
-	}\
-	free(var.tmp_out_handles_r1);\
-	free(var.tmp_out_handles_r2);\
-	free(var.fnames_r1);\
-	free(var.fnames_r2);
-*/
-
-
 void print_usage(char *argv[])
 {
 		fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
@@ -99,7 +82,7 @@ int main(int argc, char *argv[])
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
 			case 'o': settings.output_basename = strdup(optarg);break;;
-			case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
+			case 'p': settings.threads = atoi(optarg); break;
 			case 's': settings.salt = atoi(optarg); break;
 			case 't': settings.hp_threshold = atoi(optarg); break;
 			case 'v': settings.notification_interval = atoi(optarg); break;
@@ -113,6 +96,11 @@ int main(int argc, char *argv[])
 			default: print_opt_err(argv, optarg);
 		}
 	}
+
+
+	increase_nofile_limit(settings.threads);
+	omp_set_num_threads(settings.threads);
+
 	settings.n_handles = ipow(4, settings.n_nucs);
 	if(settings.n_handles * 3 > get_fileno_limit()) {
 		int o_fnl = get_fileno_limit();

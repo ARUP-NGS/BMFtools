@@ -356,28 +356,6 @@ void hash_dmp_core(char *infname, char *outfname);
 mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int is_read2);
 
 
-
-static void splitmark_core(kseq_t *seq1, kseq_t *seq2, kseq_t *seq_index,
-						   mss_settings_t settings, mark_splitter_t splitter)
-{
-	int l1, l2, l_index, bin;
-	int count = 1;
-	char pass_fail;
-	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
-			&& (l_index = kseq_read(seq_index)) >= 0) {
-		if(!(++count % settings.notification_interval)) {
-			fprintf(stderr, "Number of records processed: %i.\n", count);
-		}
-		// Iterate through second fastq file.
-		pass_fail = test_hp(seq_index->seq.s, settings.hp_threshold);
-		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-		bin = get_binner(seq_index->seq.s, settings.n_nucs);
-		KSEQ_2_FQ(splitter.tmp_out_handles_r1[bin], seq1, seq_index, pass_fail);
-		KSEQ_2_FQ(splitter.tmp_out_handles_r2[bin], seq2, seq_index, pass_fail);
-	}
-}
-
-
 static inline void FREE_SPLITTER(mark_splitter_t var)
 {
 	for(int i = 0; i < var.n_handles; i++) {

@@ -163,10 +163,6 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 int main(int argc, char *argv[])
 {
 	// Build settings struct
-	int hp_threshold;
-	int n_nucs;
-	char *output_basename;
-	const char *default_basename = "metasyntactic_var";
 	mssi_settings_t settings = {
 		.hp_threshold = 10,
 		.n_nucs = 4,
@@ -202,7 +198,7 @@ int main(int argc, char *argv[])
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
 			case 'o': settings.output_basename = strdup(optarg); break;
-			case 'p': settings.threads = atoi(optarg); omp_set_num_threads(settings.threads); break;
+			case 'p': settings.threads = atoi(optarg); break;
 			case 'r': settings.rescaler_path = strdup(optarg); break;
 			case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
 			case 't': settings.hp_threshold = atoi(optarg); break;
@@ -212,6 +208,9 @@ int main(int argc, char *argv[])
 			default: print_crms_opt_err(argv, optarg);
 		}
 	}
+
+	increase_nofile_limit(settings.threads);
+	omp_set_num_threads(settings.threads);
 
 	if(argc < 5) {
 		print_crms_usage(argv); exit(1);
@@ -250,7 +249,7 @@ int main(int argc, char *argv[])
 
 	fprintf(stderr, "About to get the read paths.\n");
 	if(argc - 1 != optind + 1) {
-		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n", argc, optind);
+		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n");
 		print_crms_usage(argv);
 		return 1;
 	}

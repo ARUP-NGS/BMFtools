@@ -1257,6 +1257,7 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 			else if(key_b < key_a) {return 0;}
 			else {return bam_sort_mate_key(a) < bam_sort_mate_key(b);}
 	}
+	return 0; // This never happens.
 }
 KSORT_INIT(sort, bam1_p, bam1_lt)
 
@@ -1504,7 +1505,7 @@ int main(int argc, char *argv[])
 	if (argc == 1)
 		return sort_usage(stdout, EXIT_SUCCESS);
 	size_t max_mem = 768<<20; // 512MB
-	int c, i, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
+	int c, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
 	char *fnout = "-", *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
 	kstring_t fnout_buffer = { 0, 0, NULL };
 	char *split_prefix = NULL;

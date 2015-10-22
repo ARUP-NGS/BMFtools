@@ -9,6 +9,7 @@
 #include "uthash.h"
 #include "mem_util.h"
 #include <zlib.h>
+#include <inttypes.h>
 
 #ifndef MAX_BARCODE_LENGTH
 #define MAX_BARCODE_LENGTH 30
@@ -696,7 +697,7 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 	}
 #if !NDEBUG
 	if(strlen(mvar->qual) != seq->qual.l){
-		fprintf(stderr, "Ret qual has the wrong length. (%i). Expected: %i. Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
+		fprintf(stderr, "Ret qual has the wrong length. (%"PRIu64"). Expected: %"PRIu64". Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
 		exit(1);
 	}
 #endif
