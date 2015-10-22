@@ -233,6 +233,17 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Homing sequence not provided. Required.\n");
 		exit(EXIT_FAILURE);
 	}
+	else {
+		for(int i = 0; settings.homing_sequence[i]; ++i) {
+			switch(settings.homing_sequence[i]) {
+			default: fprintf(stderr, "Homing sequence contains illegal characters. Accepted: ACGT. Paramter: %s.\n", settings.homing_sequence);
+			case 'A': break;
+			case 'C': break;
+			case 'G': break;
+			case 'T': break;
+			}
+		}
+	}
 	if(!settings.blen) {
 		fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
 		exit(EXIT_FAILURE);
