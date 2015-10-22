@@ -12,7 +12,7 @@ void cp_view2buf(char *view, char *buf);
  * :param: buf - a pre-allocated buffer or malloc'd char_ptr with enough space for the barcode and the null terminus.
  * :returns:
  */
-inline void cp_bs2buf(kseq_t *seq, char *buf)
+static inline void cp_bs2buf(kseq_t *seq, char *buf)
 {
 	char *view = barcode_mem_view(seq);
 	int blen = 0;
@@ -26,7 +26,7 @@ inline void cp_bs2buf(kseq_t *seq, char *buf)
 
 
 
-inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
+static inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
 #if !NDEBUG
 	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
@@ -63,7 +63,7 @@ inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr
 }
 
 
-inline splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
+static inline splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
 #if !NDEBUG
 	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);

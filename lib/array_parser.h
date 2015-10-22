@@ -160,8 +160,8 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 					//fprintf(stderr, "Quality score set: %i.\n", ret[index - 1]);
 					if(ret[index - 1] < 0) {
 						fprintf(stderr,
-								"Negative integer in 1d rescaler (%i, %s). Index:"
-								" %i. Abort mission!\n", ret[index - 1], tok, index - 1);
+								"Negative integer in 1d rescaler %i, %s). Index:"
+								" %"PRIu64". Abort mission!\n", ret[index - 1], tok, index - 1);
 						exit(EXIT_FAILURE);
 					}
 					if(ret[index - 1] > 93) {

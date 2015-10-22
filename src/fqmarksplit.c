@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "cstr_utils.h"
-#include "crms.h"
+#include "uthash_dmp_core.h"
 
 // Allocate file handle array memory, open file handles.
 
@@ -65,16 +65,12 @@ void print_opt_err(char *argv[], char *optarg)
 int main(int argc, char *argv[])
 {
 	// Build settings struct
-	int hp_threshold;
-	int n_nucs;
-	char *output_basename;
-	int threads;
 	const char *default_basename = "metasyntactic_var";
 	mss_settings_t settings = {
 		.hp_threshold = 10,
 		.n_nucs = 4,
 		.index_fq_path = NULL,
-		.output_basename = default_basename,
+		.output_basename = (char *)default_basename,
 		.threads = 4,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,

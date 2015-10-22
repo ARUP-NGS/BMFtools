@@ -1,3 +1,6 @@
+#ifndef CRMS_H
+#define CRMS_H
+
 #include <getopt.h>
 #include <math.h>
 #include <omp.h>
@@ -342,9 +345,9 @@ void increase_nofile_limit(int new_limit);
 uint64_t get_binnerul(char *barcode, int length);
 int get_binner(char *barcode, int length);
 uint64_t ulpow(uint64_t base, uint64_t exp);
-void splitterhash_destroy(splitterhash_params_t *params);
-splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+static void splitterhash_destroy(splitterhash_params_t *params);
+static splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+static inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
 blens_t *get_blens(char *str2parse);
 void free_crms_settings(crms_settings_t settings);
@@ -472,6 +475,7 @@ static inline mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr
 	return ret;
 }
 
+/*
 static mark_splitter_t *splitmark_core_mssi(mssi_settings_t *settings)
 {
 	fprintf(stderr, "Beginning splitmark_core_mssi.\n");
@@ -517,6 +521,7 @@ static mark_splitter_t *splitmark_core_mssi(mssi_settings_t *settings)
 	gzclose(fp_read2);
 	return splitter_ptr;
 }
+*/
 
 
 static mark_splitter_t *splitmark_core1(mss_settings_t *settings)
@@ -736,4 +741,6 @@ int ipow(int base, int exp);
 	cond_free(settings.input_r1_path);\
 	cond_free(settings.input_r2_path);\
 	cond_free(settings.ffq_prefix)
+#endif
+
 #endif

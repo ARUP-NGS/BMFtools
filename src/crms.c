@@ -4,6 +4,7 @@
  */
 
 #include "crms.h"
+#include "uthash_dmp_core.h"
 
 /*
  * Random not needed work.
