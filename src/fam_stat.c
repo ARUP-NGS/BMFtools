@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <getopt.h>
+#include <inttypes.h>
 
 #include "htslib/sam.h"
 //#include "samtools.h"
@@ -37,16 +38,21 @@ typedef struct famstat_settings {
 	uint32_t minFM;
 } famstat_settings_t;
 
+static inline void tag_test(uint8_t *data, const char *tag)
+{
+	if(data)
+		return;
+	fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", tag);
+	exit(EXIT_FAILURE);
+}
+
 
 static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
 {
 	++s->n_pass;
 	uint8_t *data;
 	data = bam_aux_get(b, "FM");
-	if(!data) {
-		fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", "FM");
-		exit(EXIT_FAILURE);
-	}
+	tag_test(data, "FM");
 	int FM = bam_aux2i(data);
 #if !NDEBUG
 	fprintf(stderr, "FM tag: %i.\n", FM);
@@ -56,23 +62,15 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 		return;
 	}
 	data = bam_aux_get(b, "RC");
-	if(!data) {
-		fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", "RC");
-		exit(EXIT_FAILURE);
-	}
+	tag_test(data, "RC");
 	int RC = bam_aux2i(data);
 #if !NDEBUG
 	fprintf(stderr, "RC tag: %i.\n", RC);
 #endif
-	if(!data) {
-		fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", "RC");
-		exit(EXIT_FAILURE);
+	if(FM > 1) {
+		++s->realfm_counts; s->realfm_sum += FM; ++s->realrc_counts; s->realrc_sum += RC;
 	}
-	switch(FM > 1)
-	{
-		case 1: ++s->realfm_counts; s->realfm_sum += FM; ++s->realrc_counts; s->realrc_sum += RC;// Fall-through
-		default: ++s->allfm_counts; s->allfm_sum += FM; ++s->allrc_counts; s->allrc_sum += RC; break;
-	}
+	++s->allfm_counts; s->allfm_sum += FM; ++s->allrc_counts; s->allrc_sum += RC;
 	s->ki = kh_get(fm, s->fm, FM);
 	if(s->ki == kh_end(s->fm)) {
 		s->ki = kh_put(fm, s->fm, FM, &s->khr);
@@ -86,6 +84,7 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 
 famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings)
 {
+	uint64_t count = 0;
 	famstats_t *s;
 	bam1_t *b;
 	int ret;
@@ -94,8 +93,11 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	s->rc = kh_init(rc);
 	s->data = NULL;
 	b = bam_init1();
-	while ((ret = sam_read1(fp, h, b)) >= 0)
+	while ((ret = sam_read1(fp, h, b)) >= 0) {
 		famstat_loop(s, b, settings);
+		if(!(++count % 250000))
+			fprintf(stderr, "Number of records processed: %"PRIu64".\n", count);
+	}
 	bam_destroy1(b);
 	if (ret != -1)
 		fprintf(stderr, "[famstat_core] Truncated file? Continue anyway.\n");
@@ -168,6 +170,18 @@ int main(int argc, char *argv[])
 	printf("%lld + %lld with mate mapped to a different chr\n", s->n_diffchr[0], s->n_diffchr[1]);
 	printf("%lld + %lld with mate mapped to a different chr (mapQ>=5)\n", s->n_diffhigh[0], s->n_diffhigh[1]);
 	*/
+	double mean_fm_all = (double)(s->allfm_sum) / s->allfm_counts;
+	double mean_fm_real = (double)(s->realfm_sum) / s->realfm_counts;
+	double mean_rcfrac_all = (double)(s->allfm_sum) / s->allrc_sum;
+	double mean_rcfrac_real = (double)(s->realfm_sum) / s->realrc_sum;
+	fprintf(stdout, "Mean Family Size (all)\t%f\n", mean_fm_all);
+	fprintf(stdout, "Mean Family Size (FM > 1)\t%f\n", mean_fm_real);
+	fprintf(stdout, "Mean Reverse Complement Fraction (all)\t%f\n", mean_rcfrac_all);
+	fprintf(stdout, "Mean Reverse Complement Fraction (FM > 1)\t%f\n", mean_rcfrac_real);
+	fprintf(stdout, "Number of families total\t%"PRIu64"\n", s->allfm_counts);
+	fprintf(stdout, "Number of families (FM > 1)\t%"PRIu64"\n", s->realfm_counts);
+	fprintf(stdout, "Number of raw reads reverse-complemented\t%"PRIu64"\n", s->allrc_counts);
+	fprintf(stdout, "Number of raw reads reverse-complemented in families (FM > 1)\t%"PRIu64"\n", s->realrc_counts);
 	free(s);
 	free(settings);
 	bam_hdr_destroy(header);
