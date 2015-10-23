@@ -38,6 +38,14 @@ typedef struct famstat_settings {
 	uint32_t minFM;
 } famstat_settings_t;
 
+static inline void print_stats(famstats_t *stats)
+{
+	fprintf(stderr, "Number passing filters: %"PRIu64".\n", stats->n_pass);
+	fprintf(stderr, "Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(stderr, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
+	fprintf(stderr, "Summed RC(total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+}
+
 static inline void tag_test(uint8_t *data, const char *tag)
 {
 	if(data)
@@ -176,7 +184,7 @@ int main(int argc, char *argv[])
 	double mean_rcfrac_real = (double)(s->realfm_sum) / s->realrc_sum;
 	fprintf(stdout, "Mean Family Size (all)\t%f\n", mean_fm_all);
 	fprintf(stdout, "Mean Family Size (FM > 1)\t%f\n", mean_fm_real);
-	fprintf(stdout, "Mean Reverse Complement Fraction (all)\t%f\n", mean_rcfrac_all);
+	fprintf(stdout, "Mean Reverse Complement Fraction (all)\t%f.\n", mean_rcfrac_all);
 	fprintf(stdout, "Mean Reverse Complement Fraction (FM > 1)\t%f\n", mean_rcfrac_real);
 	fprintf(stdout, "Number of families total\t%"PRIu64"\n", s->allfm_counts);
 	fprintf(stdout, "Number of families (FM > 1)\t%"PRIu64"\n", s->realfm_counts);
