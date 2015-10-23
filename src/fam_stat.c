@@ -21,11 +21,9 @@ typedef struct famstats {
 	uint64_t allfm_sum;
 	uint64_t allfm_counts;
 	uint64_t allrc_sum;
-	uint64_t allrc_counts;
 	uint64_t realfm_sum;
 	uint64_t realfm_counts;
 	uint64_t realrc_sum;
-	uint64_t realrc_counts;
 	khash_t(fm) *fm;
 	khash_t(rc) *rc;
 	khiter_t ki;
@@ -43,7 +41,13 @@ static inline void print_stats(famstats_t *stats)
 	fprintf(stderr, "Number passing filters: %"PRIu64".\n", stats->n_pass);
 	fprintf(stderr, "Number failing filters: %"PRIu64".\n", stats->n_fail);
 	fprintf(stderr, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(stderr, "Summed RC(total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(stderr, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
+	fprintf(stderr, "Summed RC (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(stderr, "Summed RC (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(stderr, "RC fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+	fprintf(stderr, "RC fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+	fprintf(stdout, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
+	fprintf(stdout, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
 }
 
 static inline void tag_test(uint8_t *data, const char *tag)
@@ -76,9 +80,9 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	fprintf(stderr, "RC tag: %i.\n", RC);
 #endif
 	if(FM > 1) {
-		++s->realfm_counts; s->realfm_sum += FM; ++s->realrc_counts; s->realrc_sum += RC;
+		++s->realfm_counts; s->realfm_sum += FM; s->realrc_sum += RC;
 	}
-	++s->allfm_counts; s->allfm_sum += FM; ++s->allrc_counts; s->allrc_sum += RC;
+	++s->allfm_counts; s->allfm_sum += FM; s->allrc_sum += RC;
 	s->ki = kh_get(fm, s->fm, FM);
 	if(s->ki == kh_end(s->fm)) {
 		s->ki = kh_put(fm, s->fm, FM, &s->khr);
@@ -178,18 +182,7 @@ int main(int argc, char *argv[])
 	printf("%lld + %lld with mate mapped to a different chr\n", s->n_diffchr[0], s->n_diffchr[1]);
 	printf("%lld + %lld with mate mapped to a different chr (mapQ>=5)\n", s->n_diffhigh[0], s->n_diffhigh[1]);
 	*/
-	double mean_fm_all = (double)(s->allfm_sum) / s->allfm_counts;
-	double mean_fm_real = (double)(s->realfm_sum) / s->realfm_counts;
-	double mean_rcfrac_all = (double)(s->allfm_sum) / s->allrc_sum;
-	double mean_rcfrac_real = (double)(s->realfm_sum) / s->realrc_sum;
-	fprintf(stdout, "Mean Family Size (all)\t%f\n", mean_fm_all);
-	fprintf(stdout, "Mean Family Size (FM > 1)\t%f\n", mean_fm_real);
-	fprintf(stdout, "Mean Reverse Complement Fraction (all)\t%f.\n", mean_rcfrac_all);
-	fprintf(stdout, "Mean Reverse Complement Fraction (FM > 1)\t%f\n", mean_rcfrac_real);
-	fprintf(stdout, "Number of families total\t%"PRIu64"\n", s->allfm_counts);
-	fprintf(stdout, "Number of families (FM > 1)\t%"PRIu64"\n", s->realfm_counts);
-	fprintf(stdout, "Number of raw reads reverse-complemented\t%"PRIu64"\n", s->allrc_counts);
-	fprintf(stdout, "Number of raw reads reverse-complemented in families (FM > 1)\t%"PRIu64"\n", s->realrc_counts);
+	print_stats(s);
 	free(s);
 	free(settings);
 	bam_hdr_destroy(header);
