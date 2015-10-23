@@ -55,6 +55,9 @@ void print_crms_opt_err(char *argv[], char *optarg)
  */
 mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 {
+#if WRITE_BARCODE_FQ
+	FILE *fp = fopen("tmp.molbc.fq", "w");
+#endif
 	fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
 		fprintf(stderr, "Hey, it looks like you're trying to use the same path for both r1 and r2. At least try to fool me by making a symbolic link.\n");
