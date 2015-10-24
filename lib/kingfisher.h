@@ -473,43 +473,15 @@ static inline char *barcode_mem_view(kseq_t *seq)
 	return NULL;
 }
 
-static inline int bc_flip(char *barcode, int blen) {
-	int cmp;
-	for(int i = 0; i < blen; ++i) {
-		cmp = barcode[i] - barcode[blen - i - 1];
-		if(cmp < 0) {
-			return 0; // It's lexicographically lower as is. Don't flip!
-		}
-		else if(cmp > 0) {
-			return 1; // It's not lexicographically lower as it is. Flip!
-		}
-	}
-	return -1;
-}
-
-
-static inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
+static inline int bc_flip(char *barcode, int blen)
 {
-	int cmp_ret;
-	for(int i = 0; i < blen; ++i) {
-		cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);
-		if(cmp_ret < 0) {
-			return 0; // It's lexicographically lower as is. Don't flip!
-		}
-		else if(cmp_ret > 0) {
-			return 1; // It's not lexicographically lower as it is. Flip!
-		}
+	switch(lex_lt(barcode, blen)) {
+	case 0:
+		return 0;
+	case 1:
+		return 1;
+	default: return rclex_lt(barcode, blen;
 	}
-	for(int i = 0; i < readlen; ++i) {
-		cmp_ret = nuc_cmp(mvar->seq[i], mvar->seq[readlen - i - 1]);
-		if(cmp_ret < 0) {
-			return 0; // It's lexicographically lower as is. Don't flip!
-		}
-		else if(cmp_ret > 0) {
-			return 1; // It's not lexicographically lower as it is. Flip!
-		}
-	}
-	return 0; // Both barcode and read are lexicographically identical forward and reverse... is that possible? Eh. Don't flip.
 }
 
 

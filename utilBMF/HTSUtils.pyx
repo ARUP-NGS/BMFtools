@@ -11,6 +11,7 @@ from numpy import (any as npany, concatenate as nconcatenate, less as nless,
 from operator import iadd as oia, itemgetter as oig, methodcaller as mc
 from os import path as ospath
 from pysam.calignedsegment import AlignedSegment as pAlignedSegment
+from string import maketrans
 from subprocess import check_output, check_call, CalledProcessError
 from utilBMF.ErrorHandling import (ThisIsMadness as Tim, FPStr,
                                    FunctionCallException,
@@ -56,6 +57,17 @@ __version__ = "0.1.1"
 
 def l1(x):
     return x[1]
+
+
+def revcmp_test(src, uint64_t l):
+    cdef bytes ret
+    cdef char *pr;
+    pr = revcmp(<char *>src, l);
+    try:
+        ret = pr
+    finally:
+        free(pr)
+    return ret
 
 
 @cython.returns(bint)
@@ -124,6 +136,7 @@ cpdef list permuteNucleotides(long maxn, object nci=nci, int kmerLen=-1):
 def MemoRevCmp(cystr seq):
     return RevCmp(seq)
 
+DNA_CODON_TABLE = maketrans("ACGTN", "TGCAN")
 
 cpdef cystr RevCmp(cystr seq):
     """
