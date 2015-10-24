@@ -747,27 +747,7 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 			kfp->max_phreds[i] = seq->qual.s[i];
 		}
 	}
-	if(!kfp->length) { // Empty KingFisher
-		char *bs_ptr = barcode_mem_view(seq);
-		kfp->pass_fail = (char)*(bs_ptr- 5);
-		memcpy(kfp->barcode, bs_ptr, blen);
-		kfp->barcode[blen] = '\0';
-		fprintf(stderr, "About to smart messing with RC. Before: %i. To add: %c.\n", kfp->n_rc, *(bs_ptr + blen + 4));
-		if(kfp->n_rc && *(bs_ptr + blen + 4) == '1') {
-			fprintf(stderr, "THIS SHOULD HAVE A VALUE > 1 NOW!!! (Before: %i)\n", kfp->n_rc);
-			kfp->n_rc += *(bs_ptr + blen + 4) - '0'; // Convert to int
-			if(kfp->n_rc < 2) {
-				fprintf(stderr, "RC NOT BEING UPDATED. %i. WTF...\n", kfp->n_rc);
-			}
-		}
-		kfp->n_rc += *(bs_ptr + blen + 4) - '0'; // Convert to int
-		fprintf(stderr, "New RC: %i.\n", kfp->n_rc);
-		fprintf(stderr, "New n_rc after adding %c: %i.\n", *(bs_ptr + blen + 4), kfp->n_rc);
-		if(kfp->n_rc > 1) {
-			fprintf(stderr, "HEY!!! I HAVE AN RC THAT'S NOT 1 or 0!!!\n");
-			exit(EXIT_SUCCESS);
-		}
-	}
+	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	++kfp->length; // Increment
 	return;
 }
