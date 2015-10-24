@@ -300,12 +300,10 @@ int main(int argc, char *argv[])
 				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-#if !DBG
 				fprintf(stderr, "Now removing temporary files %s and %s.\n",
 						params->infnames_r1[i], params->infnames_r2[i]);
 				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
 				system(tmpbuf);
-#endif
 			}
 #if NOPARALLEL
 #else
