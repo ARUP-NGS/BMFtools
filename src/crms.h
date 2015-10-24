@@ -252,7 +252,7 @@ static inline char test_hp(char *seq, int threshold)
 
 static inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
 #endif
 	if(!settings_ptr) {

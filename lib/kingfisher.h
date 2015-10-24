@@ -5,6 +5,7 @@
 #include "stdio.h"
 #include "math.h"
 #include "charcmp.h"
+#include "cstr_utils.h"
 #include "khash.h"
 #include "uthash.h"
 #include "mem_util.h"
@@ -389,7 +390,7 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += mult * nuc2num(base);
 	//fprintf(stderr, "Index = %i.\n", index);
-#if !NDEBUG
+#if DBG
 	if(index >= readlen * 2 * 39 * 4 || index < 0) {
 		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * 39 * 4);
 		exit(EXIT_FAILURE);
@@ -480,7 +481,7 @@ static inline int bc_flip(char *barcode, int blen)
 		return 0;
 	case 1:
 		return 1;
-	default: return rclex_lt(barcode, blen;
+	default: return rclex_lt(barcode, blen);
 	}
 }
 
@@ -564,7 +565,7 @@ static inline void rc_mseq(mseq_t *mvar,tmp_mseq_t *tmp) {
 		tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
 	}
 	*/
-#if !NDEBUG
+#if DBG
 	char *omgzwtf = (char *)malloc(tmp->readlen + 1);
 	omgzwtf[tmp->readlen] = '\0';
 	memcpy(omgzwtf, tmp->tmp_seq, tmp->readlen);
@@ -667,7 +668,7 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? 33 : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
 		}
 	}
-#if !NDEBUG
+#if DBG
 	if(strlen(mvar->qual) != seq->qual.l){
 		fprintf(stderr, "Ret qual has the wrong length. (%"PRIu64"). Expected: %"PRIu64". Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
 		exit(1);
@@ -682,7 +683,7 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 
 static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
-#if !NDEBUG
+#if DBG
 	if(!barcode) {
 		fprintf(stderr, "Barocde is NULL ABORT>asdfasfjafjhaksdfkjasdfas.\n");
 		exit(1);
@@ -726,27 +727,6 @@ static inline void mseq_destroy(mseq_t *mvar)
 }
 
 
-static inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char *rescaler, int *nuc_indices, int blen, int is_read2)
-{
-	for(int i = 0; i < kfp->readlen; i++) {
-		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		kfp->nuc_counts[i * 4 + nuc_indices[0]] += 1;
-		kfp->phred_sums[i * 4 + nuc_indices[1]] += rescale_qscore(is_read2 ? 1 : 0, seq->qual.s[i], i, seq->seq.s[i], seq->seq.l, rescaler);
-		if(seq->qual.s[i] > kfp->max_phreds[i]) {
-			kfp->max_phreds[i] = seq->qual.s[i];
-		}
-	}
-	if(kfp->length == 0) {
-		char *bs_ptr = barcode_mem_view(seq);
-		kfp->pass_fail = (char)*(bs_ptr- 5);
-		memcpy(kfp->barcode, bs_ptr, blen);
-		kfp->barcode[blen] = '\0';
-	}
-	kfp->length++; // Increment
-	return;
-}
-
-
 static inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
 	memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
@@ -761,7 +741,7 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 {
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		kfp->nuc_counts[i * 4 + nuc_indices[1]] += 1;
+		++kfp->nuc_counts[i * 4 + nuc_indices[1]];
 		kfp->phred_sums[i * 4 + nuc_indices[0]] += seq->qual.s[i] - 33;
 		if(seq->qual.s[i] > kfp->max_phreds[i]) {
 			kfp->max_phreds[i] = seq->qual.s[i];
@@ -772,10 +752,20 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 		kfp->pass_fail = (char)*(bs_ptr- 5);
 		memcpy(kfp->barcode, bs_ptr, blen);
 		kfp->barcode[blen] = '\0';
-		switch(*(bs_ptr + blen + 4)) {
-			case '1': ++kfp->n_rc; break;
-			case '-': kfp->n_rc = INT_MIN; break;
-			default: break;
+		fprintf(stderr, "About to smart messing with RC. Before: %i. To add: %c.\n", kfp->n_rc, *(bs_ptr + blen + 4));
+		if(kfp->n_rc && *(bs_ptr + blen + 4) == '1') {
+			fprintf(stderr, "THIS SHOULD HAVE A VALUE > 1 NOW!!! (Before: %i)\n", kfp->n_rc);
+			kfp->n_rc += *(bs_ptr + blen + 4) - '0'; // Convert to int
+			if(kfp->n_rc < 2) {
+				fprintf(stderr, "RC NOT BEING UPDATED. %i. WTF...\n", kfp->n_rc);
+			}
+		}
+		kfp->n_rc += *(bs_ptr + blen + 4) - '0'; // Convert to int
+		fprintf(stderr, "New RC: %i.\n", kfp->n_rc);
+		fprintf(stderr, "New n_rc after adding %c: %i.\n", *(bs_ptr + blen + 4), kfp->n_rc);
+		if(kfp->n_rc > 1) {
+			fprintf(stderr, "HEY!!! I HAVE AN RC THAT'S NOT 1 or 0!!!\n");
+			exit(EXIT_SUCCESS);
 		}
 	}
 	++kfp->length; // Increment

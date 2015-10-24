@@ -122,7 +122,7 @@ static inline void write_stack(tmp_stack_t *stack, samFile *out, bam_hdr_t *hdr,
 
 static inline int hamming_dist_test(char *bs1, char *bs2, int hd_thresh)
 {
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "Barcode 1: %s. Barcode 2: %s.\n", bs1, bs2);
 #endif
 	int mm = 0;
@@ -160,7 +160,7 @@ static inline void update_int_tag(bam1_t *b, const char key[2], int increment)
 
 static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
 {
-#if !NDEBUG
+#if DBG
 	if(!inc_ptr) {
 		fprintf(stderr, "Missing RT tag. Abort mission!\n");
 		exit(EXIT_FAILURE);
@@ -168,7 +168,7 @@ static inline void update_int_ptr(uint8_t *ptr1, uint8_t *inc_ptr)
 	else {
 #endif
 		*(int *)(++ptr1) += *(int *)(++inc_ptr);
-#if !NDEBUG
+#if DBG
 	}
 #endif
 	return;
@@ -284,7 +284,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 	 * inc_aux_tag has superseded update_int_ptr because it assigns fewer temporary variables.
 	update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RT += b.RT
 	*/
-#if !NDEBUG
+#if DBG
 	if(!bPV || !pPV) {
 		fprintf(stderr, "Required PV tag not found. Abort mission!\n");
 		exit(EXIT_FAILURE);
@@ -305,7 +305,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 			double igamc_input = AVG_LOG_TO_CHI2(pPV[i] + bPV[i]);
 			pPV[i] = (int)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i] + bPV[i]))));
 /*
-#if !NDEBUG
+#if DBG
 			fprintf(stderr, "Igamc input that's about to cause an underflow error: %f, %i.\n", igamc_input, pPV[i] + bPV[i]);
 			fprintf(stderr, "New pPV value: %i.\n", pPV[i]);
 #endif
@@ -375,7 +375,7 @@ static inline void flatten_stack(tmp_stack_t *stack, rescue_settings_t *settings
 			}
 		}
 	}
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "Finished flattening stack with total number of reads %i.\n", stack->n);
 #endif
 	return;

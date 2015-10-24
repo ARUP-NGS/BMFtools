@@ -100,7 +100,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	if(!in_handle) {
 		fprintf(stderr, "Could not open %s for reading. Abort mission!\n", infname);
 	}
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "[hash_dmp_core]: Now reading from file or handle %s.\n", strcmp(infname, "-") == 0 ? "stdin": infname);
 #endif
 	if(!outfname) out_handle = stdout;
@@ -109,7 +109,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	}
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "[hash_dmp_core]: Opened file handles, initiated kseq parser.\n");
 #endif
 	// Initialized kseq
@@ -121,7 +121,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	}
 	char *bs_ptr = barcode_mem_view(seq);
 	int blen = infer_barcode_length(bs_ptr);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "[hash_dmp_core]: Barcode length (inferred): %i.\n", blen);
 #endif
 	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
@@ -136,7 +136,7 @@ void hash_dmp_core(char *infname, char *outfname)
 
 	while((l = kseq_read(seq)) >= 0) {
 		/*
-#if !NDEBUG
+#if DBG
 		fprintf(stderr,"Barcode sequence: %s. Comment: %s.", tmp->bs_ptr, seq->comment.s);
 		exit(EXIT_SUCCESS);
 		if(!tmp->bs_ptr) {
@@ -163,7 +163,7 @@ void hash_dmp_core(char *infname, char *outfname)
 			pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
 		}
 	}
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "[hash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
 #endif
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {

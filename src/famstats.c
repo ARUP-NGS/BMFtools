@@ -25,6 +25,7 @@ typedef struct famstats {
 	uint64_t realfm_counts;
 	uint64_t realrc_sum;
 	khash_t(fm) *fm;
+	khash_t(rc) *rc;
 	khiter_t ki;
 	int khr;
 	uint8_t *data;
@@ -42,6 +43,12 @@ static inline void print_hashstats(famstats_t *stats)
 		if(!kh_exist(stats->fm, stats->ki))
 			continue;
 		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->fm, stats->ki), kh_val(stats->fm, stats->ki));
+	}
+	fprintf(stdout, "#RC'd in family\tNumber of families\n");
+	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
+		if(!kh_exist(stats->rc, stats->ki))
+			continue;
+		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
 	}
 	return;
 }
@@ -77,7 +84,7 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	data = bam_aux_get(b, "FM");
 	tag_test(data, "FM");
 	int FM = bam_aux2i(data);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "FM tag: %i.\n", FM);
 #endif
 	if(b->core.qual < settings->minMQ || FM < settings->minFM || b->core.flag & 2816) {
@@ -87,7 +94,7 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	data = bam_aux_get(b, "RC");
 	tag_test(data, "RC");
 	int RC = bam_aux2i(data);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "RC tag: %i.\n", RC);
 #endif
 	if(FM > 1) {
@@ -102,6 +109,14 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	else {
 		++kh_val(s->fm, s->ki);
 	}
+	s->ki = kh_get(rc, s->rc, RC);
+	if(s->ki == kh_end(s->rc)) {
+		s->ki = kh_put(rc, s->rc, RC, &s->khr);
+		kh_val(s->rc, s->ki) = 1;
+	}
+	else {
+		++kh_val(s->rc, s->ki);
+	}
 }
 
 
@@ -113,6 +128,7 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	int ret;
 	s = (famstats_t*)calloc(1, sizeof(famstats_t));
 	s->fm = kh_init(fm);
+	s->rc = kh_init(rc);
 	s->data = NULL;
 	b = bam_init1();
 	while ((ret = sam_read1(fp, h, b)) >= 0) {
@@ -194,6 +210,7 @@ int main(int argc, char *argv[])
 	*/
 	print_stats(s);
 	kh_destroy(fm, s->fm);
+	kh_destroy(rc, s->rc);
 	free(s);
 	free(settings);
 	bam_hdr_destroy(header);
