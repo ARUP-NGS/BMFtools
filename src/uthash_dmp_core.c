@@ -167,8 +167,8 @@ void hash_dmp_core(char *infname, char *outfname)
 			pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
 			HASH_ADD_STR(hash, id, tmp_hk);
 #if DBG
-			fprintf(stderr, "Barcode in HashKing entry: %s.\n", tmp_hk->id);
-			fprintf(stderr, "New kingfisher has barcode %s.\n", tmp_hk->value->barcode);
+			//fprintf(stderr, "Barcode in HashKing entry: %s.\n", tmp_hk->id);
+			//fprintf(stderr, "New kingfisher has barcode %s.\n", tmp_hk->value->barcode);
 #endif
 		}
 		else {
@@ -178,8 +178,8 @@ void hash_dmp_core(char *infname, char *outfname)
 	fprintf(stderr, "[hash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
 #if DBG
-		fprintf(stderr, "Barcode: '%s'.\n", current_entry->id);
-		fprintf(stderr, "Barcode in kingfisher: '%s'.\n", current_entry->value->barcode);
+		//fprintf(stderr, "Barcode: '%s'.\n", current_entry->id);
+		//fprintf(stderr, "Barcode in kingfisher: '%s'.\n", current_entry->value->barcode);
 #endif
 		kh_pw(current_entry, out_handle, tmp->blen, tmp->buffers, current_entry->id);
 		destroy_kf(current_entry->value);

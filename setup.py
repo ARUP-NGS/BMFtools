@@ -59,7 +59,7 @@ config = {
     'include_dirs': includes,
     'scripts': ['utilBMF/bmftools', 'bin/fqmarksplit', 'bin/lh3sort',
                 'bin/fqmarksplit_p', 'bin/fqmarksplit_np',
-                'bin/crms', 'bin/hash_dmp', 'bin/famstats',
+                'bin/crms', 'bin/hash_dmp', 'bin/famstats', 'bin/hash_dmp_p',
                 'bin/bmfsort', 'bin/crms_db',  'bin/crms_p'],
     'name': 'BMFTools',
     'license': 'GNU Affero General Public License, '
