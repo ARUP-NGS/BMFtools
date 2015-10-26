@@ -14,6 +14,8 @@
 KHASH_MAP_INIT_INT64(fm, uint64_t)
 KHASH_MAP_INIT_INT64(rc, uint64_t)
 
+int RCWarn = 1;
+
 
 typedef struct famstats {
 	uint64_t n_pass;
@@ -92,8 +94,11 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 		return;
 	}
 	data = bam_aux_get(b, "RC");
-	tag_test(data, "RC");
-	int RC = bam_aux2i(data);
+	if(!data && RCWarn) {
+		RCWarn = 0;
+		fprintf(stderr, "Warning: RC tag not found. Continue.\n");
+	}
+	int RC = data ? bam_aux2i(data): 0;
 #if DBG
 	fprintf(stderr, "RC tag: %i.\n", RC);
 #endif
