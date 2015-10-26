@@ -18,6 +18,8 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 	ret->bs_ptr = bs_ptr;
 	ret->nuc_indices[0] = ret->nuc_indices[1] = 0;
 	ret->buffers = (tmpbuffers_t *)malloc(sizeof(tmpbuffers_t));
+	ret->buffers->name_buffer[0] = '@';
+	ret->buffers->name_buffer[blen] = '\0';
 	return ret;
 }
 
@@ -129,11 +131,17 @@ void hash_dmp_core(char *infname, char *outfname)
 	HashKing_t *hash = NULL;
 	HashKing_t *current_entry = (HashKing_t *)malloc(sizeof(HashKing_t));
 	HashKing_t *tmp_hk = current_entry; // Save the pointer location for later comparison.
-	cp_view2buf(bs_ptr, current_entry->id);
 	current_entry->value = init_kfp(tmp->readlen);
+	memcpy(current_entry->id, bs_ptr, blen); // Add key
+	current_entry->id[blen] = '\0';
 	HASH_ADD_STR(hash, id, current_entry);
 	pushback_kseq(current_entry->value, seq, tmp->nuc_indices, tmp->blen);
-
+#if DBG
+	fprintf(stderr, "The table should now have one entry.\n");
+	HASH_ITER(hh, hash, current_entry, tmp_hk) {
+		fprintf(stderr, "Barcode: '%s'.\n", current_entry->id);
+	}
+#endif
 	while((l = kseq_read(seq)) >= 0) {
 		/*
 #if DBG
@@ -158,21 +166,42 @@ void hash_dmp_core(char *infname, char *outfname)
 			cp_view2buf(seq->comment.s + 14, tmp_hk->id);
 			pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
 			HASH_ADD_STR(hash, id, tmp_hk);
+#if DBG
+			fprintf(stderr, "Barcode in HashKing entry: %s.\n", tmp_hk->id);
+			fprintf(stderr, "New kingfisher has barcode %s.\n", tmp_hk->value->barcode);
+#endif
 		}
 		else {
 			pushback_kseq(tmp_hk->value, seq, tmp->nuc_indices, tmp->blen);
 		}
 	}
-#if DBG
 	fprintf(stderr, "[hash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
-#endif
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		dmp_process_write(current_entry->value, out_handle, tmp->blen, tmp->buffers);
+#if DBG
+		fprintf(stderr, "Barcode: '%s'.\n", current_entry->id);
+		fprintf(stderr, "Barcode in kingfisher: '%s'.\n", current_entry->value->barcode);
+#endif
+		kh_pw(current_entry, out_handle, tmp->blen, tmp->buffers, current_entry->id);
 		destroy_kf(current_entry->value);
 		cond_free(current_entry->value);
 		HASH_DEL(hash, current_entry);
 		free(current_entry);
 	}
+/*
+	HASH_ITER(hh, hash, current_entry, tmp_hk) {
+		fprintf(stderr, "Now writing entry with barcode %s to file.\n", current_entry->value->barcode);
+		KingFisher_t *kf = current_entry->value;
+		fprintf(stderr, "Now writing entry with barcode %s to file. %p, %p\n", kf->barcode, current_entry->value->barcode, kf->barcode);
+		memcpy((char *)(tmp->buffers->name_buffer + 1), kf->barcode, blen);
+		memcpy(kf->barcode, current_entry->value->barcode, blen);
+		fprintf(stderr, "Name buffer now: %s.\n", tmp->buffers->name_buffer);
+		dmp_process_write(kf, out_handle, tmp->blen, tmp->buffers);
+		destroy_kf(current_entry->value);
+		cond_free(current_entry->value);
+		HASH_DEL(hash, current_entry);
+		free(current_entry);
+	}
+*/
 	fclose(out_handle);
 	cond_free(hash);
 	kseq_destroy(seq);

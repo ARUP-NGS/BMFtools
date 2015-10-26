@@ -12,7 +12,7 @@ INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
 LIB=-Lhtslib -lhts
 
 OPT_FLAGS = -O3 -DNDEBUG -finline-functions
-DB_FLAGS = -fno-inline -DDBG=1
+DB_FLAGS = -fno-inline -DDBG=1 -DNOPARALLEL
 GP_FLAGS = $(DB_FLAGS) -pg
 
 IGAMC_INC= include/igamc_cephes.c
@@ -40,7 +40,7 @@ bmfsort:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/bmfsort.c -o bmfsort_p
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/bmfsort.c -o bmfsort
 hash_dmp:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/uthash_dmp.c include/igamc_cephes.c -o hash_dmp
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/uthash_dmp.c include/igamc_cephes.c -o hash_dmp
 dmp:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/dmp.c include/igamc_cephes.c -o dmp
 famstats:

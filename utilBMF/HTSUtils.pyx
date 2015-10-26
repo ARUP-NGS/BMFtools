@@ -58,16 +58,14 @@ __version__ = "0.1.1"
 def l1(x):
     return x[1]
 
-
-def revcmp_test(src, uint64_t l):
-    cdef bytes ret
-    cdef char *pr;
-    pr = revcmp(<char *>src, l);
-    try:
-        ret = pr
-    finally:
-        free(pr)
-    return ret
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+@cython.returns(cystr)
+def prevcmp(cystr src, uint64_t l):
+    cdef char buf[200]
+    revcmp(buf, <char *>src, l)
+    return <bytes>buf[:l]
 
 
 @cython.returns(bint)

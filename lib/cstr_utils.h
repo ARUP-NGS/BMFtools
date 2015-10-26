@@ -149,14 +149,14 @@ inline int fast_atoi(char *str)
 	return ret * sign;
 }
 
-static inline char *revcmp(char *src, uint64_t l)
+static inline char *revcmp(char *dest, char *src, uint64_t l)
 {
-	char *ret = malloc((l + 1)* sizeof(char));
-	ret[l] = '\0';
+	//char *ret = malloc((l + 1)* sizeof(char));
+	dest[l] = '\0';
 	for(uint64_t i = 0; i < l; ++i) {
-		ret[i] = nuc_cmpl(src[l - i - 1]);
+		dest[i] = nuc_cmpl(src[l - i - 1]);
 	}
-	return;
+	return dest;
 }
 
 static inline int lex_lt(char *s, size_t l)

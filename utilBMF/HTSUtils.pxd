@@ -5,14 +5,12 @@ cimport pysam.cfaidx
 cimport numpy as np
 from numpy cimport ndarray
 from cython cimport bint
-from utilBMF.cstring cimport cs_to_ph, cs_to_ia
+from utilBMF.cstring cimport *
 from cpython cimport array as c_array
 from pysam.cfaidx cimport PersistentFastqProxy
 from libc.stdint cimport int8_t, uint32_t, uint64_t
 from libc.stdlib cimport *
 from libc.stdio cimport *
-ctypedef c_array.array py_array
-ctypedef cython.str cystr
 ctypedef np.longdouble_t dtype128_t
 ctypedef pPileupRead pPileupRead_t
 ctypedef pysam.calignedsegment.AlignedSegment AlignedSegment_t
@@ -130,9 +128,6 @@ cdef public cystr cGetBS(pFastqProxy_t)
 cdef public dict PysamToChrDict, ph2chrDict, TypeConversionDict
 cdef public dict chr2ph, chr2phStr, int2Str, TagTypeDict
 cdef public list nucList
-
-cdef extern from "../lib/cstr_utils.h" nogil:
-    char *revcmp(char *, uint64_t);
 
 cdef class pFastqProxy:
     cdef public cystr comment, name, quality, sequence

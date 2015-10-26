@@ -21,5 +21,6 @@ cdef struct struct_str:
     char * string
     size_t size
 
-cdef extern from "../lib/cstr_utils.h":
+cdef extern from "../lib/cstr_utils.h" nogil:
     int lex_lt(char *s, size_t l)
+    char *revcmp(char *, char *, size_t)
