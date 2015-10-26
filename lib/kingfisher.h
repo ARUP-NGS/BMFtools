@@ -621,6 +621,10 @@ static inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int of
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
+#if DBG
+	fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
+	fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
+#endif
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
 		++kfp->nuc_counts[i * 4 + nuc_indices[1]];

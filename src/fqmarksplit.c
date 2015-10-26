@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
 	fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
 */
-	mark_splitter_t *splitter = (settings.rescaler) ? splitmark_core_rescale(&settings): splitmark_core1(&settings);
+	mark_splitter_t *splitter = splitmark_core_rescale(&settings);
 	if(settings.run_hash_dmp) {
 		fprintf(stderr, "Now executing hash dmp.\n");
 		if(!settings.ffq_prefix) {
