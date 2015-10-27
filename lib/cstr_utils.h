@@ -159,6 +159,33 @@ static inline char *revcmp(char *dest, char *src, uint64_t l)
 	return dest;
 }
 
+
+static inline int lex_memcmp(char *s1, char *s2, size_t l)
+{
+	for(uint64_t i = 0; i < l; ++i) {
+		if(s1[i] < s2[i]) {
+			return 1;
+		}
+		else if(s2[i] < s1[i]) {
+			return 0;
+		}
+	}
+	return -1;
+}
+
+static inline int lex_strcmp(char *s1, char *s2)
+{
+	for(uint64_t i = 0; s1[i]; ++i) {
+		if(s1[i] < s2[i]) {
+			return 1;
+		}
+		else if(s2[i] < s1[i]) {
+			return 0;
+		}
+	}
+	return -1;
+}
+
 static inline int lex_lt(char *s, size_t l)
 {
 	//fprintf(stderr, "Char *: %s.\n", s);

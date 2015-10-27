@@ -75,7 +75,6 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	mseq_t *rseq1, *rseq2;
 	int l1, l2;
 	int rc;
-	uint64_t bin;
 	int count = 0;
 	char pass_fail;
 	settings->blen1_2 = settings->blen / 2;
@@ -108,38 +107,44 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int n_len = nlen_homing_seq(seq1, seq2, settings);
 	// Get first barcode.
-	set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
+	int switch_reads = set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
 	pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
 	//fprintf(stderr, "Initializing rseq1.\n");
 	rseq1 = init_crms_mseq(seq1, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0);
 	//fprintf(stderr, "Initializing rseq2.\n");
 	rseq2 = init_crms_mseq(seq2, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
-	rc = bc_flip(barcode, tmp->blen);
-	if(rc)
-		rc_barcode(barcode, tmp->blen);
 
-	bin = get_binnerul(barcode, settings->n_nucs);
+	uint64_t bin = get_binnerul(barcode, settings->n_nucs);
 	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
 	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
-	mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, barcode);
-	mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, barcode);
+	if(switch_reads) {
+		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, barcode);
+		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, barcode);
+	}
+	else {
+		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, barcode);
+		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, barcode);
+	}
 	do {
 		if(++count % settings->notification_interval == 0) {
 			fprintf(stderr, "Number of records processed: %i.\n", count);
 		}
 		// Iterate through second fastq file.
 		n_len = nlen_homing_seq(seq1, seq2, settings);
-		set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
+		switch_reads = set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
 		pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
 		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-		rc = bc_flip(barcode, tmp->blen);
-		if(rc)
-			rc_barcode(barcode, tmp->blen);
 		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
 		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
 		bin = get_binnerul(barcode, settings->n_nucs);
-		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, barcode);
-		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, barcode);
+		if(switch_reads) {
+			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, barcode);
+			mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, barcode);
+		}
+		else {
+			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, barcode);
+			mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, barcode);
+		}
 	} while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]);
