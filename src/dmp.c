@@ -106,7 +106,7 @@ static int bmftools_dmp_wrapper(char *input_path, char *output_path) {
 
 /*
  * TODO:
- * Expand the writing out of KingFisher_t to include the RC count.
+ * Expand the writing out of KingFisher_t to include the RV count.
  * Only write this out of the count >= 0.
  */
 

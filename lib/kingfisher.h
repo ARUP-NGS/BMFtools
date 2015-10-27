@@ -209,7 +209,7 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 	fill_fa_buffer(hkp->value, tmp->agrees, tmp->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
 	fill_pv_buffer(hkp->value, tmp->cons_quals, tmp->PVBuffer);
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", barcode,
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", barcode,
 			tmp->FABuffer, tmp->PVBuffer,
 			hkp->value->pass_fail, hkp->value->n_rc, hkp->value->length,
 			tmp->cons_seq_buffer, hkp->value->max_phreds);
@@ -253,7 +253,7 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
 #if !NDEBUG
 	fprintf(stderr, "Name '%s'\n", tmp->name_buffer);
 #endif
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
 			tmp->FABuffer, tmp->PVBuffer,
 			kfp->pass_fail, kfp->n_rc, kfp->length,
 			tmp->cons_seq_buffer, kfp->max_phreds);
@@ -428,7 +428,7 @@ static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 
 static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RC=%c\n%s\n+\n%s\n",
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RV=%c\n%s\n+\n%s\n",
 			mvar->name, pass_fail, barcode, mvar->rv, mvar->seq, mvar->qual);
 	return;
 }

@@ -42,13 +42,13 @@
 #endif
 #ifndef SALTED_KSEQ_2_Q
 #define SALTED_KSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s|RC=0\n%s\n+\n%s\n",\
+		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
 	read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
 #endif
 #ifndef SALTED_MSEQ_2_FQ
 #define SALTED_MSEQ_2_FQ(handle, read, barcode, pass_fail) \
 	fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s|RC=0\n%s\n+\n%s\n",\
+		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
 	read->name, pass_fail, barcode, read->seq, read->qual)
 #endif
 

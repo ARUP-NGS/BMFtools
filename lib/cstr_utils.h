@@ -221,7 +221,7 @@ static inline int rclex_lt(char *s, size_t l)
 		}
 	}
 	//fprintf(stderr, "This barcode is palindromic!\n");
-	return -1; // RC palindromic
+	return -1; // RV palindromic
 }
 
 #endif
