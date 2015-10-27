@@ -28,7 +28,7 @@ static inline void cp_bs2buf(kseq_t *seq, char *buf)
 
 static inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
-#if !NDEBUG
+#if DBG
 	if(!settings_ptr) {
 		fprintf(stderr, "Settings struct null. Abort mission!\n");
 		exit(EXIT_FAILURE);
@@ -81,7 +81,7 @@ static inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *setti
 
 static inline splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
 #endif
 	if(!settings_ptr) {

@@ -9,15 +9,11 @@ ctypedef c_array.array py_array
 ctypedef cython.str cystr
 cimport numpy as np
 
-from string import maketrans
-
 cpdef py_array str2intarray(cystr instr)
 
 cdef inline py_array cs_to_ia(cystr input_str)
 cdef inline py_array cs_to_ph(cystr input_str)
 
-
-cdef DNA_CODON_TABLE = maketrans("ACGTN", "TGCAN")
 
 cdef public cystr PH2CHR_TRANS
 
@@ -25,3 +21,6 @@ cdef struct struct_str:
     char * string
     size_t size
 
+cdef extern from "../lib/cstr_utils.h" nogil:
+    int lex_lt(char *s, size_t l)
+    char *revcmp(char *, char *, size_t)

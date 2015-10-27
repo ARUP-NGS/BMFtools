@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
 			break;
 		}
 	}
-#if !NDEBUG
+#if DBG
 	// DEBUG code goes here.
 #endif
 	if(abort) {
@@ -134,13 +134,13 @@ static int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
 #endif
 	char *current_barcode = (char *)calloc(blen + 1, 1);
 	memcpy(current_barcode, bs_ptr, blen);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "Current barcode: %s.\n", current_barcode);
 #endif
 	pushback_kseq(Hook, seq, nuc_indices, blen); // Initialize Hook with
 	while ((l = kseq_read(seq)) >= 0) {
 		bs_ptr = barcode_mem_view(seq);
-#if !NDEBUG
+#if DBG
 		if(!bs_ptr) { // bs_ptr is NULL
 			destroy_kf(Hook);
 			fprintf(stderr, "Malformed fastq comment field - missing the second delimiter. Abort!\n");
@@ -148,13 +148,13 @@ static int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
 		}
 #endif
 		if(memcmp(bs_ptr, current_barcode, blen) == 0) {
-#if !NDEBUG
+#if DBG
 			fprintf(stderr, "Same barcode. Continue pushing back.\n");
 #endif
 			pushback_kseq(Hook, seq, nuc_indices, blen);
 		}
 		else {
-#if !NDEBUG
+#if DBG
 			fprintf(stderr, "Different barcode. Write out result.\n");
 #endif
 			dmp_process_write(Hook, out_handle, blen, &tmp);

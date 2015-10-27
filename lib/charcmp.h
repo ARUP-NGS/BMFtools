@@ -1,17 +1,5 @@
 #ifndef CHARCMP_H
 #define CHARCMP_H
-//#include "branchlut.h"
-/*
- * This is broken.
-inline void comma_i32toa(int32_t value, char *buffer)
-{
-	*buffer++ = ',';
-	i32toa_branchlut(value, buffer);
-}
-*/
-/*
- * Small character comparison or conversion utilities.
- */
 
 
 static inline int nuc2num(char character)
@@ -24,14 +12,6 @@ static inline int nuc2num(char character)
 	}
 }
 
-#define NUC_CMPL(inchr, setchr)\
-	switch(inchr) {\
-		case 'A': setchr = 'T';break;\
-		case 'C': setchr = 'G';break;\
-		case 'G': setchr = 'C';break;\
-		case 'T': setchr = 'A';break;\
-		default: setchr = inchr;break;\
-	}
 
 static inline char nuc_cmpl(char character) {
 	switch(character) {

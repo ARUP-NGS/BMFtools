@@ -1,13 +1,12 @@
 #ifndef CSTR_UTILS_H
 #define CSTR_UTILS_H
 
+#include <inttypes.h>
 #include "stdio.h"
 #include "stddef.h"
 #include "stdint.h"
 #include "math.h"
 #include "charcmp.h"
-#include "khash.h"
-#include "uthash.h"
 
 #ifndef MAX_BARCODE_LENGTH
 #define MAX_BARCODE_LENGTH 30
@@ -148,6 +147,54 @@ inline int fast_atoi(char *str)
 		ret = ret*10 + (*str++ - '0');
 	}
 	return ret * sign;
+}
+
+static inline char *revcmp(char *dest, char *src, uint64_t l)
+{
+	//char *ret = malloc((l + 1)* sizeof(char));
+	dest[l] = '\0';
+	for(uint64_t i = 0; i < l; ++i) {
+		dest[i] = nuc_cmpl(src[l - i - 1]);
+	}
+	return dest;
+}
+
+static inline int lex_lt(char *s, size_t l)
+{
+	//fprintf(stderr, "Char *: %s.\n", s);
+	for(uint64_t i = 0; i < l; ++i) {
+		//fprintf(stderr, "Comparing string indices %"PRIu64" and %"PRIu64".\n", i, l - i - 1);
+		if(s[l - i - 1] > s[i]) {
+			//fprintf(stderr, "Character %c (%i) at index %i is less than %c. String: %s.\n", s[i], s[i], i, s[l -i - 1], s);
+			return 1;
+		}
+		else if(s[l - i - 1] < s[i]) {
+			//fprintf(stderr, "Character %c (%i) is less than %c. String: %s.\n", s[l - i - 1], s[l - i - 1], s[i], s);
+			return 0;
+		}
+	}
+	//fprintf(stderr, "This barcode is palindromic!\n");
+	return -1; // Palindromic
+}
+
+static inline int rclex_lt(char *s, size_t l)
+{
+	char cmp;
+	//fprintf(stderr, "Char *: %s.\n", s);
+	for(uint64_t i = 0; i < l; ++i) {
+		cmp = nuc_cmpl(l - i - 1);
+		//fprintf(stderr, "Comparing string indices %"PRIu64" and %"PRIu64".\n", i, l - i - 1);
+		if(cmp > s[i]) {
+			//fprintf(stderr, "Character %c (%i) at index %i is less than %c. String: %s.\n", s[i], s[i], i, s[l -i - 1], s);
+			return 1;
+		}
+		else if(s[i] > cmp) {
+			//fprintf(stderr, "Character %c (%i) is less than %c. String: %s.\n", s[l - i - 1], s[l - i - 1], s[i], s);
+			return 0;
+		}
+	}
+	//fprintf(stderr, "This barcode is palindromic!\n");
+	return -1; // RC palindromic
 }
 
 #endif

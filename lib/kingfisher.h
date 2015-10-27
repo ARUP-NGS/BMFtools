@@ -5,6 +5,7 @@
 #include "stdio.h"
 #include "math.h"
 #include "charcmp.h"
+#include "cstr_utils.h"
 #include "khash.h"
 #include "uthash.h"
 #include "mem_util.h"
@@ -187,165 +188,46 @@ static inline void fill_fa_buffer_fs1(KingFisher_t *kfp, int *agrees, char *buff
 }
 
 
-static inline void dmp_process_write_fs1(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
-{
-	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
-	//buffer[0] = '@'; Set this later?
-	int argmaxret;
-	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-	for(int i = 0; i < kfp->readlen; ++i) {
-		argmaxret = ARRG_MAX(kfp, i);
-		tmp->cons_quals[i] = kfp->phred_sums[i][argmaxret];
-		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i][argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i][argmaxret];
-	}
-	fill_fa_buffer_fs2(kfp, tmp->agrees, tmp->FABuffer);
-	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
-	tmp->name_buffer[0] = '@';
-	memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
-	tmp->name_buffer[1 + blen] = '\0';
-	//fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
-	//fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
-			tmp->FABuffer, tmp->PVBuffer,
-			kfp->pass_fail, kfp->n_rc, kfp->length,
-			tmp->cons_seq_buffer, kfp->max_phreds);
-	return;
-}
 */
 
-
-/*
- * This returns primarily negative numbers. Whoops.
- */
-static inline void dmp_process_write_full_pvalues(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
+static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *tmp, char *barcode)
 {
-	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
-	//buffer[0] = '@'; Set this later?
 	int argmaxret;
-	double tmp_phred;
-	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-	for(int i = 0; i < kfp->readlen; ++i) {
-		argmaxret = ARRG_MAX(kfp, i);
-		tmp_phred = kfp->phred_sums[i * 4 + argmaxret];
-		for(int j = 0; j != argmaxret && j < 4; ++j) {
-			tmp_phred -= kfp->phred_sums[i * 4 + j];
-		}
-		tmp->cons_quals[i] = tmp_phred > 0 ? pvalue_to_phred(LOG10_TO_CHI2(tmp_phred)): 0;
-		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
-			tmp->cons_quals[i] = 6666;
-		}
-		/*
-		else if(tmp->cons_quals[i] < 0) {
-			tmp->cons_quals[i] = 0;
-		}
-		*/
-
-		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
-	}
-	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
-	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
-	tmp->name_buffer[0] = '@';
-	memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
-	tmp->name_buffer[1 + blen] = '\0';
-	//fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
-	//fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
-			tmp->FABuffer, tmp->PVBuffer,
-			kfp->pass_fail, kfp->n_rc, kfp->length,
-			tmp->cons_seq_buffer, kfp->max_phreds);
-	return;
-}
-
-
-/*
- * TODO: Use tmpvals_t object to avoid allocating and deallocating each of these.
- */
-static inline void dmp_process_write_sub_chi2(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
-{
-	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
-	//buffer[0] = '@'; Set this later?
-	uint32_t tmp_max;
-	int tmp_phreds[4];
-	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-	for(int i = 0; i < kfp->readlen; ++i) {
-		tmp_max = -1;
-		for(int j = 0; j < 4; ++j) {
-			if(kfp->phred_sums[i * 4 + j] > tmp_max) {
-				tmp_max = j;
-			}
-			tmp_phreds[j] = pvalue_to_phred(igamc_pvalues(kfp->nuc_counts[i * 4 + j], LOG10_TO_CHI2(kfp->phred_sums[i * 4 + j])));
-		}
-		if(tmp_max < 0) {
-			tmp_max = 0;
-		}
-		for(int j = 0; j < 4 && j != tmp_max; ++j) {
-			tmp_phreds[tmp_max] -= tmp_phreds[j];
-		}
-		tmp->cons_quals[i] = tmp_phreds[tmp_max];
+	tmp->cons_seq_buffer[hkp->value->readlen] = '\0'; // Null-terminal cons_seq.
+	for(int i = 0; i < hkp->value->readlen; ++i) {
+		argmaxret = ARRG_MAX(hkp->value, i);
+		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(hkp->value->length, LOG10_TO_CHI2((hkp->value->phred_sums[i * 4 + argmaxret]))));
 		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
 			tmp->cons_quals[i] = 3114;
 		}
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + tmp_max]) ? ARRG_MAX_TO_NUC(tmp_max): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i * 4 + tmp_max];
+		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && hkp->value->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+		tmp->agrees[i] = hkp->value->nuc_counts[i * 4 + argmaxret];
 	}
-	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
+	fill_fa_buffer(hkp->value, tmp->agrees, tmp->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
-	tmp->name_buffer[0] = '@';
-	memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
-	tmp->name_buffer[1 + blen] = '\0';
-	//fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
-	//fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+	fill_pv_buffer(hkp->value, tmp->cons_quals, tmp->PVBuffer);
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", barcode,
 			tmp->FABuffer, tmp->PVBuffer,
-			kfp->pass_fail, kfp->n_rc, kfp->length,
-			tmp->cons_seq_buffer, kfp->max_phreds);
-	return;
+			hkp->value->pass_fail, hkp->value->n_rc, hkp->value->length,
+			tmp->cons_seq_buffer, hkp->value->max_phreds);
 }
-/*
-static inline void dpw_cap(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp, int cap)
-{
-	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
-	//buffer[0] = '@'; Set this later?
-	int argmaxret;
-	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-	for(int i = 0; i < kfp->readlen; ++i) {
-		argmaxret = ARRG_MAX(kfp, i);
-		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 4 + argmaxret]))));
-		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
-			tmp->cons_quals[i] = 3114;
-		}
-		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
-		kfp->max_phreds[i] = (tmp->cons_quals[i] > cap) ? '~': '#';
-	}
-	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
-	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
-	tmp->name_buffer[0] = '@';
-	memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
-	tmp->name_buffer[1 + blen] = '\0';
-	//fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
-	//fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
-			tmp->FABuffer, tmp->PVBuffer,
-			kfp->pass_fail, kfp->n_rc, kfp->length,
-			tmp->cons_seq_buffer, kfp->max_phreds);
-	return;
-}
-*/
 
 
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
 {
+#if !NDEBUG
+	fprintf(stderr, "kfp->barcode: %s. Tmpbuffers name: %s. Length: %"PRIu64". Expected length: %i.\n", kfp->barcode, tmp->name_buffer, strlen(kfp->barcode), blen);
+	if(blen != strlen(kfp->barcode)) {
+		fprintf(stderr, "This barcode has the wrong length ROFLOLMAOMGWTFFSBBQ\n!");
+		int nuc_counts_sum = 0;
+		for(int i = 0; i < kfp->readlen * 4; ++i) {
+			nuc_counts_sum += kfp->nuc_counts[i];
+		}
+		fprintf(stderr, "Total number of nuc counts: %i.\n", nuc_counts_sum);
+		exit(EXIT_FAILURE);
+	}
+#endif
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
 	//buffer[0] = '@'; Set this later?
 	int argmaxret;
@@ -364,11 +246,12 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
 	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
 	tmp->name_buffer[0] = '@';
-	memcpy((char *)(tmp->name_buffer + 1), kfp->barcode, blen);
 	tmp->name_buffer[1 + blen] = '\0';
-	//fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
-	//fprintf(stderr, "Output result: %s %s", tmp->name_buffer, arr_tag_buffer);
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", tmp->name_buffer,
+	fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
+#if !NDEBUG
+	fprintf(stderr, "Name '%s'\n", tmp->name_buffer);
+#endif
+	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
 			tmp->FABuffer, tmp->PVBuffer,
 			kfp->pass_fail, kfp->n_rc, kfp->length,
 			tmp->cons_seq_buffer, kfp->max_phreds);
@@ -389,7 +272,7 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += mult * nuc2num(base);
 	//fprintf(stderr, "Index = %i.\n", index);
-#if !NDEBUG
+#if DBG
 	if(index >= readlen * 2 * 39 * 4 || index < 0) {
 		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * 39 * 4);
 		exit(EXIT_FAILURE);
@@ -473,43 +356,15 @@ static inline char *barcode_mem_view(kseq_t *seq)
 	return NULL;
 }
 
-static inline int bc_flip(char *barcode, int blen) {
-	int cmp;
-	for(int i = 0; i < blen; ++i) {
-		cmp = barcode[i] - barcode[blen - i - 1];
-		if(cmp < 0) {
-			return 0; // It's lexicographically lower as is. Don't flip!
-		}
-		else if(cmp > 0) {
-			return 1; // It's not lexicographically lower as it is. Flip!
-		}
-	}
-	return -1;
-}
-
-
-static inline int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen)
+static inline int bc_flip(char *barcode, int blen)
 {
-	int cmp_ret;
-	for(int i = 0; i < blen; ++i) {
-		cmp_ret = nuc_cmp(barcode[i], barcode[blen - i - 1]);
-		if(cmp_ret < 0) {
-			return 0; // It's lexicographically lower as is. Don't flip!
-		}
-		else if(cmp_ret > 0) {
-			return 1; // It's not lexicographically lower as it is. Flip!
-		}
+	switch(lex_lt(barcode, blen)) {
+	case 0:
+		return 0;
+	case 1:
+		return 1;
+	default: return rclex_lt(barcode, blen);
 	}
-	for(int i = 0; i < readlen; ++i) {
-		cmp_ret = nuc_cmp(mvar->seq[i], mvar->seq[readlen - i - 1]);
-		if(cmp_ret < 0) {
-			return 0; // It's lexicographically lower as is. Don't flip!
-		}
-		else if(cmp_ret > 0) {
-			return 1; // It's not lexicographically lower as it is. Flip!
-		}
-	}
-	return 0; // Both barcode and read are lexicographically identical forward and reverse... is that possible? Eh. Don't flip.
 }
 
 
@@ -592,7 +447,7 @@ static inline void rc_mseq(mseq_t *mvar,tmp_mseq_t *tmp) {
 		tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
 	}
 	*/
-#if !NDEBUG
+#if DBG
 	char *omgzwtf = (char *)malloc(tmp->readlen + 1);
 	omgzwtf[tmp->readlen] = '\0';
 	memcpy(omgzwtf, tmp->tmp_seq, tmp->readlen);
@@ -658,7 +513,7 @@ static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_le
 /*
  * :param: [kseq_t *] seq - kseq handle
  * :param: [mseq_t *] ret - initialized mseq_t pointer.
- * :param: [char ****] rescaler - pointer to a 3-dimensional array of rescaled phred scores.
+ * :param: [char *] rescaler - pointer to a 1-dimensional projection of a 4-dimensional array of rescaled phred scores.
  * :param: [tmp_mseq_t *] tmp - pointer to a tmp_mseq_t object
  * for holding information for conditional reverse complementing.
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
@@ -695,7 +550,7 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? 33 : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
 		}
 	}
-#if !NDEBUG
+#if DBG
 	if(strlen(mvar->qual) != seq->qual.l){
 		fprintf(stderr, "Ret qual has the wrong length. (%"PRIu64"). Expected: %"PRIu64". Seq: %s. Kseq: %s.\n", strlen(mvar->qual), seq->qual.l, mvar->qual, seq->qual.s);
 		exit(1);
@@ -710,7 +565,7 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 
 static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
-#if !NDEBUG
+#if DBG && NDEBEG
 	if(!barcode) {
 		fprintf(stderr, "Barocde is NULL ABORT>asdfasfjafjhaksdfkjasdfas.\n");
 		exit(1);
@@ -754,27 +609,6 @@ static inline void mseq_destroy(mseq_t *mvar)
 }
 
 
-static inline void pushback_rescaled_kseq(KingFisher_t *kfp, kseq_t *seq, char *rescaler, int *nuc_indices, int blen, int is_read2)
-{
-	for(int i = 0; i < kfp->readlen; i++) {
-		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		kfp->nuc_counts[i * 4 + nuc_indices[0]] += 1;
-		kfp->phred_sums[i * 4 + nuc_indices[1]] += rescale_qscore(is_read2 ? 1 : 0, seq->qual.s[i], i, seq->seq.s[i], seq->seq.l, rescaler);
-		if(seq->qual.s[i] > kfp->max_phreds[i]) {
-			kfp->max_phreds[i] = seq->qual.s[i];
-		}
-	}
-	if(kfp->length == 0) {
-		char *bs_ptr = barcode_mem_view(seq);
-		kfp->pass_fail = (char)*(bs_ptr- 5);
-		memcpy(kfp->barcode, bs_ptr, blen);
-		kfp->barcode[blen] = '\0';
-	}
-	kfp->length++; // Increment
-	return;
-}
-
-
 static inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
 	memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
@@ -787,25 +621,19 @@ static inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int of
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
+#if DBG
+	fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
+	fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
+#endif
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		kfp->nuc_counts[i * 4 + nuc_indices[1]] += 1;
+		++kfp->nuc_counts[i * 4 + nuc_indices[1]];
 		kfp->phred_sums[i * 4 + nuc_indices[0]] += seq->qual.s[i] - 33;
 		if(seq->qual.s[i] > kfp->max_phreds[i]) {
 			kfp->max_phreds[i] = seq->qual.s[i];
 		}
 	}
-	if(!kfp->length) { // Empty KingFisher
-		char *bs_ptr = barcode_mem_view(seq);
-		kfp->pass_fail = (char)*(bs_ptr- 5);
-		memcpy(kfp->barcode, bs_ptr, blen);
-		kfp->barcode[blen] = '\0';
-		switch(*(bs_ptr + blen + 4)) {
-			case '1': ++kfp->n_rc; break;
-			case '-': kfp->n_rc = INT_MIN; break;
-			default: break;
-		}
-	}
+	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	++kfp->length; // Increment
 	return;
 }

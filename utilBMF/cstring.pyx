@@ -79,3 +79,7 @@ cdef inline py_array cs_to_ph(cystr input_str):
     for index in range(len(tmpArr)):
         tmpArr[index] -= 33
     return tmpArr
+
+
+def should_flip(instr, l):
+    return lex_lt(<char *>instr, l)

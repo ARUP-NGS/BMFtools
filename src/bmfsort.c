@@ -1290,7 +1290,7 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 	int index;
 	for (i = 0; i < l; ++i) {
 		index = SPLIT_INDEX(buf[i]);
-#if !NDEBUG
+#if DBG
 		fprintf(stderr, "tid/mtid %i, index %i.\n", index, index > 0 ? index: h->n_targets);
 #endif
 		sam_write1(fps[index >= 0 ? index: h->n_targets], h, buf[i]);

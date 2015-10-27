@@ -113,7 +113,7 @@ static inline char num2nuc(int num)
 static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 {
 	int readlen = count_lines(qual_rescale_fname);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "Number of lines: %i.\n", readlen);
 #endif
 	FILE *fp = fopen(qual_rescale_fname, "rb");

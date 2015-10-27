@@ -14,6 +14,8 @@
 KHASH_MAP_INIT_INT64(fm, uint64_t)
 KHASH_MAP_INIT_INT64(rc, uint64_t)
 
+int RCWarn = 1;
+
 
 typedef struct famstats {
 	uint64_t n_pass;
@@ -36,18 +38,36 @@ typedef struct famstat_settings {
 	uint32_t minFM;
 } famstat_settings_t;
 
+static inline void print_hashstats(famstats_t *stats)
+{
+	fprintf(stdout, "#Family size\tNumber of families\n");
+	for(stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
+		if(!kh_exist(stats->fm, stats->ki))
+			continue;
+		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->fm, stats->ki), kh_val(stats->fm, stats->ki));
+	}
+	fprintf(stdout, "#RC'd in family\tNumber of families\n");
+	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
+		if(!kh_exist(stats->rc, stats->ki))
+			continue;
+		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
+	}
+	return;
+}
+
 static inline void print_stats(famstats_t *stats)
 {
-	fprintf(stderr, "Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(stderr, "Number failing filters: %"PRIu64".\n", stats->n_fail);
-	fprintf(stderr, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(stderr, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
-	fprintf(stderr, "Summed RC (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
-	fprintf(stderr, "Summed RC (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
-	fprintf(stderr, "RC fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-	fprintf(stderr, "RC fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+	fprintf(stdout, "Number passing filters: %"PRIu64".\n", stats->n_pass);
+	fprintf(stdout, "Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(stdout, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
+	fprintf(stdout, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
+	fprintf(stdout, "Summed RC (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(stdout, "Summed RC (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(stdout, "RC fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+	fprintf(stdout, "RC fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
 	fprintf(stdout, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
 	fprintf(stdout, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+	print_hashstats(stats);
 }
 
 static inline void tag_test(uint8_t *data, const char *tag)
@@ -66,17 +86,20 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	data = bam_aux_get(b, "FM");
 	tag_test(data, "FM");
 	int FM = bam_aux2i(data);
-#if !NDEBUG
+#if DBG
 	fprintf(stderr, "FM tag: %i.\n", FM);
 #endif
-	if(b->core.qual < settings->minMQ || FM < settings->minFM) {
+	if(b->core.qual < settings->minMQ || FM < settings->minFM || b->core.flag & 2816) {
 		++s->n_fail;
 		return;
 	}
 	data = bam_aux_get(b, "RC");
-	tag_test(data, "RC");
-	int RC = bam_aux2i(data);
-#if !NDEBUG
+	if(!data && RCWarn) {
+		RCWarn = 0;
+		fprintf(stderr, "Warning: RC tag not found. Continue.\n");
+	}
+	int RC = data ? bam_aux2i(data): 0;
+#if DBG
 	fprintf(stderr, "RC tag: %i.\n", RC);
 #endif
 	if(FM > 1) {
@@ -90,6 +113,14 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	}
 	else {
 		++kh_val(s->fm, s->ki);
+	}
+	s->ki = kh_get(rc, s->rc, RC);
+	if(s->ki == kh_end(s->rc)) {
+		s->ki = kh_put(rc, s->rc, RC, &s->khr);
+		kh_val(s->rc, s->ki) = 1;
+	}
+	else {
+		++kh_val(s->rc, s->ki);
 	}
 }
 
@@ -183,6 +214,8 @@ int main(int argc, char *argv[])
 	printf("%lld + %lld with mate mapped to a different chr (mapQ>=5)\n", s->n_diffhigh[0], s->n_diffhigh[1]);
 	*/
 	print_stats(s);
+	kh_destroy(fm, s->fm);
+	kh_destroy(rc, s->rc);
 	free(s);
 	free(settings);
 	bam_hdr_destroy(header);

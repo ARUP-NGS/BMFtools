@@ -55,6 +55,9 @@ void print_crms_opt_err(char *argv[], char *optarg)
  */
 mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 {
+#if WRITE_BARCODE_FQ
+	FILE *fp = fopen("tmp.molbc.fq", "w");
+#endif
 	fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
 		fprintf(stderr, "Hey, it looks like you're trying to use the same path for both r1 and r2. At least try to fool me by making a symbolic link.\n");
@@ -81,7 +84,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	l1 = kseq_read(seq1);
 	l2 = kseq_read(seq2);
 	fprintf(stderr, "Read length for dataset: %"PRIu64".\n", seq1->seq.l);
-#if !NDEBUG
+#if DBG
 	int arr_size = seq1->seq.l * 4 * 2 * 39;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
@@ -111,12 +114,9 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	rseq1 = init_crms_mseq(seq1, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0);
 	//fprintf(stderr, "Initializing rseq2.\n");
 	rseq2 = init_crms_mseq(seq2, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
-	size_t palindromes = 0;
 	rc = bc_flip(barcode, tmp->blen);
 	if(rc)
 		rc_barcode(barcode, tmp->blen);
-	if(rc < 0)
-		++palindromes;
 
 	bin = get_binnerul(barcode, settings->n_nucs);
 	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
@@ -135,8 +135,6 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		rc = bc_flip(barcode, tmp->blen);
 		if(rc)
 			rc_barcode(barcode, tmp->blen);
-		if(rc < 0)
-			++palindromes;
 		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
 		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
 		bin = get_binnerul(barcode, settings->n_nucs);
@@ -155,7 +153,6 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	kseq_destroy(seq2);
 	gzclose(fp1);
 	gzclose(fp2);
-	fprintf(stderr, "Successfully completed pp_split_inline. Number of palindromic barcodes: %"PRIu64"\n", palindromes);
 	return splitter;
 }
 
@@ -234,13 +231,19 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	else {
+		fprintf(stderr, "Homing sequence: %s.\n", settings.homing_sequence);
 		for(int i = 0; settings.homing_sequence[i]; ++i) {
 			switch(settings.homing_sequence[i]) {
-			default: fprintf(stderr, "Homing sequence contains illegal characters. Accepted: ACGT. Paramter: %s.\n", settings.homing_sequence);
 			case 'A': break;
 			case 'C': break;
 			case 'G': break;
 			case 'T': break;
+			case 'a': // Fall-through
+			case 'g': // Fall-through
+			case 'c': // Fall-through
+			case 't': settings.homing_sequence[i] -= 32; // Converts lower-case to upper-case
+			default: fprintf(stderr, "Homing sequence contains illegal characters. Accepted: ACGT. Parameter: %s.\n", settings.homing_sequence);
+			exit(EXIT_FAILURE);
 			}
 		}
 	}
@@ -285,7 +288,7 @@ int main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-#if !NDEBUG
+#if DBG
 			fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
 #endif
 			#pragma omp for
