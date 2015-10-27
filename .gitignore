@@ -39,3 +39,4 @@ utilBMF/cFqProc.c
 utilBMF/cstring.c
 Doc/*
 BMFTools.egg-info/*
+Bin/*

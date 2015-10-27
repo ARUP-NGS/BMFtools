@@ -150,6 +150,7 @@ def cycleError(args):
         flag = read.flag
         if flag & 2820:
             continue
+            qc += 1
         """
         Equivalent to:
         if(read.is_secondary or read.is_supplementary or
