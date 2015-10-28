@@ -78,7 +78,7 @@ def famHistogram(famstats, binSize, output):
     ax2.tick_params(labelleft='off')
     ax1.axis('tight')
     ax2.axis('tight')
-    plt.xlabel("Family Size")
+    ax2.set_xlabel("Family Size")
     ax1.set_ylabel("$Log_2$ observations of Family Sizes", color = 'r')
     ax3.set_ylabel("$Log_2$ total reads in families of that size", color = 'b')
     ax3.tick_params(axis='y', colors='blue')
