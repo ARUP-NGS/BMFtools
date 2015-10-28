@@ -125,6 +125,7 @@ typedef struct mssi_settings {
 	int panthera;
 	int gzip_compression;
 	int cleanup; // Set to false to leave temporary files
+	int annealed; // Set to true to avoid reversing sequences TODO: Actually implement this.
 } mssi_settings_t;
 
 

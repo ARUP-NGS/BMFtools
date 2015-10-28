@@ -39,6 +39,7 @@ void print_crms_usage(char *argv[])
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-u: Set notification/update interval for split. Default: 1000000.\n"
 						"-w: Set flag to leave temporary files. Primarily for debugging.\n"
+						"-a: For annealed inline barcodes. Uses inline barcodes but doesn't conditionally reverse.\n"
 						"-h: Print usage.\n", argv[0]);
 }
 
@@ -186,12 +187,14 @@ int main(int argc, char *argv[])
 		.gzip_output = 0,
 		.panthera = 0,
 		.gzip_compression = 1,
-		.cleanup = 1
+		.cleanup = 1,
+		.annealed = 0
 	};
 	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?a")) > -1) {
 		switch(c) {
+			case 'a': settings.annealed = 1; break;
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
 			case 'f': settings.ffq_prefix = strdup(optarg); break;

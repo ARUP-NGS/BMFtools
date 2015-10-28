@@ -57,16 +57,16 @@ static inline void print_hashstats(famstats_t *stats)
 
 static inline void print_stats(famstats_t *stats)
 {
-	fprintf(stderr, "Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(stderr, "Number failing filters: %"PRIu64".\n", stats->n_fail);
-	fprintf(stderr, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(stderr, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
-	fprintf(stderr, "Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
-	fprintf(stderr, "Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
-	fprintf(stderr, "RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-	fprintf(stderr, "RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
-	fprintf(stderr, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
-	fprintf(stderr, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+	fprintf(stderr, "#Number passing filters: %"PRIu64".\n", stats->n_pass);
+	fprintf(stderr, "#Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(stderr, "#Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
+	fprintf(stderr, "#Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
+	fprintf(stderr, "#Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(stderr, "#Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(stderr, "#RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+	fprintf(stderr, "#RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+	fprintf(stderr, "#Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
+	fprintf(stderr, "#Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
 	print_hashstats(stats);
 }
 
