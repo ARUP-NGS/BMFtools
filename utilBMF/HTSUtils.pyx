@@ -1707,6 +1707,6 @@ cdef inline bint TestBarcode(char *BS, int8_t hpLimit, int bLen) nogil:
 def bcswitch(instr):
     l = len(instr)
     if(l % 2):
-        raise ThisIsMadness("Sorry, instr must have an even length.")
+        raise Tim("Sorry, instr must have an even length.")
     l /= 2
     return instr[l:] + instr[:l]
