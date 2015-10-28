@@ -14,7 +14,7 @@
 KHASH_MAP_INIT_INT64(fm, uint64_t)
 KHASH_MAP_INIT_INT64(rc, uint64_t)
 
-int RCWarn = 1;
+int RVWarn = 1;
 
 
 typedef struct famstats {
@@ -46,27 +46,27 @@ static inline void print_hashstats(famstats_t *stats)
 			continue;
 		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->fm, stats->ki), kh_val(stats->fm, stats->ki));
 	}
-	fprintf(stdout, "#RC'd in family\tNumber of families\n");
+	fprintf(stdout, "#RV'd in family\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
 		if(!kh_exist(stats->rc, stats->ki))
 			continue;
-		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
+		fprintf(stderr, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
 	}
 	return;
 }
 
 static inline void print_stats(famstats_t *stats)
 {
-	fprintf(stdout, "Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(stdout, "Number failing filters: %"PRIu64".\n", stats->n_fail);
-	fprintf(stdout, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(stdout, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
-	fprintf(stdout, "Summed RC (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
-	fprintf(stdout, "Summed RC (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
-	fprintf(stdout, "RC fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-	fprintf(stdout, "RC fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
-	fprintf(stdout, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
-	fprintf(stdout, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+	fprintf(stderr, "Number passing filters: %"PRIu64".\n", stats->n_pass);
+	fprintf(stderr, "Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(stderr, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
+	fprintf(stderr, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
+	fprintf(stderr, "Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(stderr, "Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(stderr, "RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+	fprintf(stderr, "RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+	fprintf(stderr, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
+	fprintf(stderr, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
 	print_hashstats(stats);
 }
 
@@ -93,19 +93,19 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 		++s->n_fail;
 		return;
 	}
-	data = bam_aux_get(b, "RC");
-	if(!data && RCWarn) {
-		RCWarn = 0;
-		fprintf(stderr, "Warning: RC tag not found. Continue.\n");
+	data = bam_aux_get(b, "RV");
+	if(!data && RVWarn) {
+		RVWarn = 0;
+		fprintf(stderr, "Warning: RV tag not found. Continue.\n");
 	}
-	int RC = data ? bam_aux2i(data): 0;
+	int RV = data ? bam_aux2i(data): 0;
 #if DBG
-	fprintf(stderr, "RC tag: %i.\n", RC);
+	fprintf(stderr, "RV tag: %i.\n", RV);
 #endif
 	if(FM > 1) {
-		++s->realfm_counts; s->realfm_sum += FM; s->realrc_sum += RC;
+		++s->realfm_counts; s->realfm_sum += FM; s->realrc_sum += RV;
 	}
-	++s->allfm_counts; s->allfm_sum += FM; s->allrc_sum += RC;
+	++s->allfm_counts; s->allfm_sum += FM; s->allrc_sum += RV;
 	s->ki = kh_get(fm, s->fm, FM);
 	if(s->ki == kh_end(s->fm)) {
 		s->ki = kh_put(fm, s->fm, FM, &s->khr);
@@ -114,9 +114,9 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	else {
 		++kh_val(s->fm, s->ki);
 	}
-	s->ki = kh_get(rc, s->rc, RC);
+	s->ki = kh_get(rc, s->rc, RV);
 	if(s->ki == kh_end(s->rc)) {
-		s->ki = kh_put(rc, s->rc, RC, &s->khr);
+		s->ki = kh_put(rc, s->rc, RV, &s->khr);
 		kh_val(s->rc, s->ki) = 1;
 	}
 	else {

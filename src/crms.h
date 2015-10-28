@@ -42,13 +42,13 @@
 #endif
 #ifndef SALTED_KSEQ_2_Q
 #define SALTED_KSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s|RC=0\n%s\n+\n%s\n",\
+		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
 	read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
 #endif
 #ifndef SALTED_MSEQ_2_FQ
 #define SALTED_MSEQ_2_FQ(handle, read, barcode, pass_fail) \
 	fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s|RC=0\n%s\n+\n%s\n",\
+		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
 	read->name, pass_fail, barcode, read->seq, read->qual)
 #endif
 
@@ -124,6 +124,7 @@ typedef struct mssi_settings {
 	int gzip_output;
 	int panthera;
 	int gzip_compression;
+	int cleanup; // Set to false to leave temporary files
 } mssi_settings_t;
 
 
@@ -323,9 +324,9 @@ static inline char *make_crms_outfname(char *fname)
 		cond_free(settings.rescaler)\
 
 // Inline function declarations
+/*
 mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 int crc_flip(mseq_t *mvar, char *barcode, int blen, int readlen);
-void crc_mseq(mseq_t *mvar, tmp_mseq_t *tmp);
 int ipow(int base, int exp);
 void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
@@ -334,7 +335,7 @@ int nuc_cmp(char forward, char reverse);
 char ****parse_rescaler(char *qual_rescale_fname);
 char *parse_1d_rescaler(char *qual_rescale_fname);
 char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
-void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
+//void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
 void tmp_mseq_destroy(tmp_mseq_t mvar);
 char nuc_cmpl(char character);
@@ -345,7 +346,7 @@ void increase_nofile_limit(int new_limit);
 uint64_t get_binnerul(char *barcode, int length);
 int get_binner(char *barcode, int length);
 uint64_t ulpow(uint64_t base, uint64_t exp);
-static void splitterhash_destroy(splitterhash_params_t *params);
+
 static splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 static inline splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 int vl_homing_loc(kseq_t *seq1, kseq_t *seq2, crms_settings_t *settings_ptr);
@@ -354,7 +355,9 @@ void free_crms_settings(crms_settings_t settings);
 splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 void hash_dmp_core(char *infname, char *outfname);
 mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int is_read2);
+*/
 
+static void splitterhash_destroy(splitterhash_params_t *params);
 
 static inline void FREE_SPLITTER(mark_splitter_t var)
 {

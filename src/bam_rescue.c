@@ -282,7 +282,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b, FILE *fp)
 	/*
 	//check_inc_aux_tag(p, b, "RT");
 	 * inc_aux_tag has superseded update_int_ptr because it assigns fewer temporary variables.
-	update_int_ptr(bam_aux_get(p, "RC"), bam_aux_get(b, "RC")); // p.RT += b.RT
+	update_int_ptr(bam_aux_get(p, "RV"), bam_aux_get(b, "RV")); // p.RT += b.RT
 	*/
 #if DBG
 	if(!bPV || !pPV) {

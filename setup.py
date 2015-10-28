@@ -68,6 +68,8 @@ config = {
     'package_data': {'': ['README.md']}
 }
 
+config['scripts'] = []
+
 
 setup(**config)
 

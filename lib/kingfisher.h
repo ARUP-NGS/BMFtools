@@ -21,6 +21,8 @@
 KSEQ_INIT(gzFile, gzread)
 #endif
 
+#define HOM_SEQ_OFFSET 5
+
 
 typedef struct tmpbuffers {
 	char name_buffer[120];
@@ -207,7 +209,7 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 	fill_fa_buffer(hkp->value, tmp->agrees, tmp->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
 	fill_pv_buffer(hkp->value, tmp->cons_quals, tmp->PVBuffer);
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", barcode,
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", barcode,
 			tmp->FABuffer, tmp->PVBuffer,
 			hkp->value->pass_fail, hkp->value->n_rc, hkp->value->length,
 			tmp->cons_seq_buffer, hkp->value->max_phreds);
@@ -251,7 +253,7 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, 
 #if !NDEBUG
 	fprintf(stderr, "Name '%s'\n", tmp->name_buffer);
 #endif
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRC:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
 			tmp->FABuffer, tmp->PVBuffer,
 			kfp->pass_fail, kfp->n_rc, kfp->length,
 			tmp->cons_seq_buffer, kfp->max_phreds);
@@ -323,7 +325,7 @@ typedef struct mseq {
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	int l;
 	int blen;
-	char rc;
+	char rv;
 } mseq_t;
 
 
@@ -426,50 +428,10 @@ static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 
 static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RC=%c\n%s\n+\n%s\n",
-			mvar->name, pass_fail, barcode, mvar->rc, mvar->seq, mvar->qual);
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RV=%c\n%s\n+\n%s\n",
+			mvar->name, pass_fail, barcode, mvar->rv, mvar->seq, mvar->qual);
 	return;
 }
-
-static inline void rc_mseq(mseq_t *mvar,tmp_mseq_t *tmp) {
-	mvar->rc = '1';
-	for(int i = 0; i < tmp->readlen; i++) {
-		//NUC_CMPL(mvar->seq[tmp->readlen - i - 1], tmp->tmp_seq[i])
-		// Equivalent to
-		tmp->tmp_seq[i] = nuc_cmpl(mvar->seq[tmp->readlen - i - 1]);
-		tmp->tmp_qual[i] = mvar->qual[tmp->readlen - i - 1];
-	}
-	/*
-	 * Barcode is now reverse-complemented elsewhere in the code.
-	for(int i = 0; i < tmp->blen; i++) {
-		//NUC_CMPL(mvar->barcode[tmp->blen - i - 1], tmp->tmp_barcode[i]);
-		// Equivalent to
-		tmp->tmp_barcode[i] = nuc_cmpl(mvar->barcode[tmp->blen - i - 1]);
-	}
-	*/
-#if DBG
-	char *omgzwtf = (char *)malloc(tmp->readlen + 1);
-	omgzwtf[tmp->readlen] = '\0';
-	memcpy(omgzwtf, tmp->tmp_seq, tmp->readlen);
-	free(omgzwtf);
-	omgzwtf = (char *)malloc(tmp->blen + 1);
-	omgzwtf[tmp->blen] = '\0';
-	memcpy(omgzwtf, tmp->tmp_barcode, tmp->blen);
-	free(omgzwtf);
-#endif
-	memcpy(mvar->qual, tmp->tmp_qual, tmp->readlen * sizeof(char));
-	memcpy(mvar->seq, tmp->tmp_seq, tmp->readlen * sizeof(char));
-	//memcpy(mvar->barcode, tmp->tmp_barcode, tmp->blen * sizeof(char));
-	return;
-}
-
-
-static inline void norc_mseq(mseq_t *mvar, tmp_mseq_t *tmp)
-{
-	mvar->rc = '0';
-	return;
-}
-
 
 /*
  * :param: [kseq_t *] seq - kseq handle
@@ -528,14 +490,14 @@ static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t 
 		exit(EXIT_FAILURE);
 	}
 	ret->blen = tmp->blen;
-	ret->rc = 0;
+	ret->rv = '0';
 	return ret;
 }
 
 /*
  * Set is_read2 to 1 for read 2, 0 for read 1.
  */
-static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int rc)
+static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads)
 {
 	memcpy(mvar->name, seq->name.s, seq->name.l);
     mvar->name[seq->name.l] = '\0';
@@ -557,10 +519,7 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 	}
 #endif
 	strcpy(mvar->barcode, barcode);
-	if(rc)
-		rc_mseq(mvar, tmp);
-	else
-		norc_mseq(mvar, tmp);
+	mvar->rv = switch_reads ? '1': '0';
 }
 
 static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
@@ -592,9 +551,6 @@ static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler,
 #endif
 	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
 	strcpy(ret->barcode, barcode);
-	if(bc_flip(barcode, tmp->blen)) {
-		rc_mseq(ret, tmp);
-	}
 	return ret;
 }
 
@@ -608,14 +564,31 @@ static inline void mseq_destroy(mseq_t *mvar)
 	return;
 }
 
-
-static inline void set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
+/*
+ * :param: kseq_t *seq1 - fastq kseq handle
+ * :param: kseq_t *seq2 - fastq kseq handle
+ * :param: char *barcode - buffer set by function
+ * :param: int offset - number of bases to skip at the start of each read
+ * :param: blen1_2 - number of bases to steal from each read
+ * :returns: int - whether or not it was switched.
+ */
+static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
-	memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
-	memcpy(barcode + blen1_2, seq2->seq.s + offset,
-		   blen1_2 * sizeof(char));
-	barcode[blen1_2 * 2] = '\0';
-	return;
+	if(lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset)) { // seq1's barcode is lower. No switching.
+		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+		memcpy(barcode + blen1_2, seq1->seq.s + offset,
+				blen1_2 * sizeof(char));
+		barcode[blen1_2 * 2] = '\0';
+		return 0;
+
+	}
+	else {
+		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+		memcpy(barcode + blen1_2, seq1->seq.s + offset,
+				blen1_2 * sizeof(char));
+		barcode[blen1_2 * 2] = '\0';
+		return 1;
+	}
 }
 
 
