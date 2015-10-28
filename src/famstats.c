@@ -50,23 +50,23 @@ static inline void print_hashstats(famstats_t *stats)
 	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
 		if(!kh_exist(stats->rc, stats->ki))
 			continue;
-		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
+		fprintf(stderr, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
 	}
 	return;
 }
 
 static inline void print_stats(famstats_t *stats)
 {
-	fprintf(stdout, "Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(stdout, "Number failing filters: %"PRIu64".\n", stats->n_fail);
-	fprintf(stdout, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(stdout, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
-	fprintf(stdout, "Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
-	fprintf(stdout, "Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
-	fprintf(stdout, "RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-	fprintf(stdout, "RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
-	fprintf(stdout, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
-	fprintf(stdout, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+	fprintf(stderr, "Number passing filters: %"PRIu64".\n", stats->n_pass);
+	fprintf(stderr, "Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(stderr, "Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
+	fprintf(stderr, "Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
+	fprintf(stderr, "Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(stderr, "Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(stderr, "RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+	fprintf(stderr, "RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+	fprintf(stderr, "Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
+	fprintf(stderr, "Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
 	print_hashstats(stats);
 }
 
