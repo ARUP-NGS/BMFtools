@@ -34,10 +34,11 @@ void print_crms_usage(char *argv[])
 						"-v: Maximum barcode length for a variable length barcode dataset. If left as default value,"
 						" (-1), other barcode lengths will not be considered.\n"
 						"-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
-						"-g: Gzip compression ratio if piping to gzip (-z). Default: 6 (default).\n"
+						"-g: Gzip compression ratio if piping to gzip (-z). Default: 1 (mostly to reduce I/O).\n"
 						"-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-u: Set notification/update interval for split. Default: 1000000.\n"
+						"-w: Set flag to leave temporary files. Primarily for debugging.\n"
 						"-h: Print usage.\n", argv[0]);
 }
 
@@ -74,7 +75,6 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	kseq_t *seq2 = kseq_init(fp2);
 	mseq_t *rseq1, *rseq2;
 	int l1, l2;
-	int rc;
 	int count = 0;
 	char pass_fail;
 	settings->blen1_2 = settings->blen / 2;
@@ -115,8 +115,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	rseq2 = init_crms_mseq(seq2, barcode, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1);
 
 	uint64_t bin = get_binnerul(barcode, settings->n_nucs);
-	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
-	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
+	update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, switch_reads);
+	update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, switch_reads);
 	if(switch_reads) {
 		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, barcode);
 		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, barcode);
@@ -134,8 +134,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		switch_reads = set_barcode(seq1, seq2, barcode, settings->offset, settings->blen1_2);
 		pass_fail = (n_len > 0) ? test_hp_inline(barcode, settings->blen, settings->hp_threshold) : '0';
 		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
-		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, rc);
-		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, rc);
+		update_mseq(rseq1, barcode, seq1, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 0, switch_reads);
+		update_mseq(rseq2, barcode, seq2, settings->rescaler, tmp, (n_len > 0) ? n_len: settings->max_blen + settings->offset + settings->homing_sequence_length, 1, switch_reads);
 		bin = get_binnerul(barcode, settings->n_nucs);
 		if(switch_reads) {
 			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, barcode);
@@ -185,16 +185,18 @@ int main(int argc, char *argv[])
 		.max_blen = -1,
 		.gzip_output = 0,
 		.panthera = 0,
-		.gzip_compression = 6
+		.gzip_compression = 1,
+		.cleanup = 1
 	};
 	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zcdh")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
 			case 'g': settings.gzip_compression = atoi(optarg); break;
+			case '?': // Fall-through
 			case 'h': print_crms_usage(argv); return 0;
 			case 'l': settings.blen = 2 * atoi(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
@@ -206,6 +208,7 @@ int main(int argc, char *argv[])
 			case 't': settings.hp_threshold = atoi(optarg); break;
 			case 'u': settings.notification_interval = atoi(optarg); break;
 			case 'v': settings.max_blen = atoi(optarg); break;
+			case 'w': settings.cleanup = 0;
 			case 'z': settings.gzip_output = 1; break;
 			default: print_crms_opt_err(argv, optarg);
 		}
@@ -307,8 +310,10 @@ int main(int argc, char *argv[])
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				fprintf(stderr, "Now removing temporary files %s and %s.\n",
 						params->infnames_r1[i], params->infnames_r2[i]);
-				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-				system(tmpbuf);
+				if(settings.cleanup) {
+					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+					system(tmpbuf);
+				}
 			}
 #if NOPARALLEL
 #else
@@ -368,12 +373,14 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		#pragma omp parallel for shared(params)
-		for(int i = 0; i < params->n; ++i) {
-			char tmpbuf[500];
-			sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-			fprintf(stderr, "About to call command '%s'.\n", tmpbuf);
-			CHECK_CALL(tmpbuf, sys_call_ret);
+		if(settings.cleanup) {
+			#pragma omp parallel for shared(params)
+			for(int i = 0; i < params->n; ++i) {
+				char tmpbuf[500];
+				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+				fprintf(stderr, "About to call command '%s'.\n", tmpbuf);
+				CHECK_CALL(tmpbuf, sys_call_ret);
+			}
 		}
 		splitterhash_destroy(params);
 		free(settings.ffq_prefix);

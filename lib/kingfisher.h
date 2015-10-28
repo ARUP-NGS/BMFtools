@@ -574,22 +574,21 @@ static inline void mseq_destroy(mseq_t *mvar)
  */
 static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
-	int ret = lex_memcmp(seq1->seq.s + offset, seq2->seq.s + offset, blen1_2);
-	if(ret < 0) ret = lex_strcmp(seq1->seq.s + blen1_2 + offset + HOM_SEQ_OFFSET,
-			 	 	 	 	 	 seq2->seq.s + blen1_2 + offset + HOM_SEQ_OFFSET);
-	if(ret) { // seq1's barcode is lower. No switching.
-		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
+	if(lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset)) { // seq1's barcode is lower. No switching.
+		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
 		memcpy(barcode + blen1_2, seq1->seq.s + offset,
 				blen1_2 * sizeof(char));
 		barcode[blen1_2 * 2] = '\0';
+		return 0;
+
 	}
 	else {
-		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the fist half of the barcode
+		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
 		memcpy(barcode + blen1_2, seq1->seq.s + offset,
 				blen1_2 * sizeof(char));
 		barcode[blen1_2 * 2] = '\0';
+		return 1;
 	}
-	return ret;
 }
 
 

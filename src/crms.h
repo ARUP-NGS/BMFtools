@@ -124,6 +124,7 @@ typedef struct mssi_settings {
 	int gzip_output;
 	int panthera;
 	int gzip_compression;
+	int cleanup; // Set to false to leave temporary files
 } mssi_settings_t;
 
 
