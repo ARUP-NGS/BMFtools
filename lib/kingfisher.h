@@ -575,18 +575,27 @@ static inline void mseq_destroy(mseq_t *mvar)
 static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
 	if(lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset)) { // seq1's barcode is lower. No switching.
-		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
-		memcpy(barcode + blen1_2, seq1->seq.s + offset,
+		memcpy(barcode, seq1->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
+		memcpy(barcode + blen1_2, seq2->seq.s + offset,
 				blen1_2 * sizeof(char));
 		barcode[blen1_2 * 2] = '\0';
+#if TEST
+		if(strcmp(barcode, "GAATAGATATCGCGTATA") == 0 || strcmp(barcode, "TCGCGTATAGAATAGATA") == 0) {
+			fprintf(stderr, "Barcode %s is not being reversed.\n", barcode);
+		}
+#endif
 		return 0;
-
 	}
 	else {
 		memcpy(barcode, seq2->seq.s + offset, blen1_2 * sizeof(char)); // Copying the first half of the barcode
 		memcpy(barcode + blen1_2, seq1->seq.s + offset,
 				blen1_2 * sizeof(char));
 		barcode[blen1_2 * 2] = '\0';
+#if TEST
+		if(strcmp(barcode, "GAATAGATATCGCGTATA") == 0 || strcmp(barcode, "TCGCGTATAGAATAGATA") == 0) {
+			fprintf(stderr, "Barcode %s is being reversed.\n", barcode);
+		}
+#endif
 		return 1;
 	}
 }

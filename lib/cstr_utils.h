@@ -177,11 +177,11 @@ static inline int lex_strlt(char *s1, char *s2)
 {
 	for(uint64_t i = 0; s1[i]; ++i) {
 		if(s1[i] < s2[i]) {
-			fprintf(stderr,"String '%s' is < String '%s'. Is that right? How many fucks do I give?\n", s1, s2);
+			//fprintf(stderr,"String '%s' is < String '%s'. Is that right? How many fucks do I give?\n", s1, s2);
 			return 0;
 		}
 		else if(s2[i] < s1[i]) {
-			fprintf(stderr,"String '%s' is > String '%s'. Is that right? How many fucks do I give?\n", s1, s2);
+			//fprintf(stderr,"String '%s' is > String '%s'. Is that right? How many fucks do I give?\n", s1, s2);
 			return 1;
 		}
 	}

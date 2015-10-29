@@ -12,7 +12,7 @@ INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
 LIB=-Lhtslib -lhts
 
 OPT_FLAGS = -O3 -DNDEBUG -finline-functions
-DB_FLAGS = -fno-inline -DDBG=1 -DNOPARALLEL
+DB_FLAGS = -fno-inline -DDBG=1 -DNOPARALLEL -DTEST
 GP_FLAGS = $(DB_FLAGS) -pg
 
 IGAMC_INC= include/igamc_cephes.c
