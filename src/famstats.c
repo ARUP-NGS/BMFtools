@@ -89,9 +89,11 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 #if DBG
 	fprintf(stderr, "FM tag: %i.\n", FM);
 #endif
-	if(b->core.qual < settings->minMQ || FM < settings->minFM || b->core.flag & 2816) {
+	if(b->core.qual < settings->minMQ || FM < settings->minFM || b->core.flag & 2944) {
 		++s->n_fail;
 		return;
+		// Skips supp/second/read2/qc fail/marked duplicate
+		// 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
 	}
 	data = bam_aux_get(b, "RV");
 	if(!data && RVWarn) {
