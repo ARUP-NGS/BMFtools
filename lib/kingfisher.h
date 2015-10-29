@@ -442,7 +442,7 @@ static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, ch
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2. Assumption: is_read2 is 0 or 1.
  */
-static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_len, int is_read2)
+static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int is_read2)
 {
 	if(!seq) {
 		fprintf(stderr, "kseq for initiating p7_mseq is null. Abort!\n");
@@ -465,8 +465,6 @@ static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_le
 			//fprintf(stderr, "New qscore: %i.\n", ret->qual[i]);
 		}
 	}
-	memset(ret->seq, 'N', n_len); // Set the beginning of the read to Ns.
-	memset(ret->qual, '#', n_len); // Set all N bases to quality score of 2.
 	ret->l = seq->seq.l;
 	memset(ret->barcode, 0, MAX_BARCODE_LENGTH + 1);
 	return ret;
@@ -481,9 +479,9 @@ static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int n_le
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2.
  */
-static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2)
 {
-	mseq_t *ret = p7_mseq_rescale_init(seq, rescaler, n_len, is_read2);
+	mseq_t *ret = p7_mseq_rescale_init(seq, rescaler, is_read2);
 	//fprintf(stderr, "Pointer to ret: %p. To tmp: %p. Barcode: %s.\n", ret, tmp, ret->barcode);
 	if(!tmp) {
 		fprintf(stderr, "Tmpvars not allocated!\n");
@@ -497,19 +495,20 @@ static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t 
 /*
  * Set is_read2 to 1 for read 2, 0 for read 1.
  */
-static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads)
+static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads)
 {
 	memcpy(mvar->name, seq->name.s, seq->name.l);
     mvar->name[seq->name.l] = '\0';
 	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
 	memset(mvar->seq, 'N', n_len);
+	memset(mvar->qual, '#', n_len);
 	if(!rescaler) {
-		memcpy(mvar->qual, seq->qual.s, seq->qual.l * sizeof(char));
+		memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
 	}
 	else {
-		for(int i = n_len; i < seq->seq.l; i++) {
+		for(uint32_t i = n_len; i < seq->seq.l; i++) {
 			// Leave quality scores alone for bases which are N. Otherwise
-			mvar->qual[i] = (mvar->seq[i] == 'N') ? 33 : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
+			mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
 		}
 	}
 #if DBG
@@ -518,11 +517,11 @@ static inline void update_mseq(mseq_t *mvar, char *barcode, kseq_t *seq, char *r
 		exit(1);
 	}
 #endif
-	strcpy(mvar->barcode, barcode);
 	mvar->rv = switch_reads ? '1': '0';
 }
 
-static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
+
+static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int is_read2)
 {
 #if DBG && NDEBEG
 	if(!barcode) {
@@ -549,7 +548,7 @@ static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler,
 	}
 	fprintf(stderr, "Finished checking the array values. Now initializing mseq_t for read %i.\n", is_read2 + 1);
 #endif
-	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, n_len, is_read2);
+	mseq_t *ret = mseq_rescale_init(seq, rescaler, tmp, is_read2);
 	strcpy(ret->barcode, barcode);
 	return ret;
 }
@@ -568,9 +567,20 @@ static inline void mseq_destroy(mseq_t *mvar)
  * :param: kseq_t *seq1 - fastq kseq handle
  * :param: kseq_t *seq2 - fastq kseq handle
  * :param: char *barcode - buffer set by function
+ * :returns: int - whether or not to switch
+ */
+static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
+{
+	return lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
+}
+
+/*
+ * :param: kseq_t *seq1 - fastq kseq handle
+ * :param: kseq_t *seq2 - fastq kseq handle
+ * :param: char *barcode - buffer set by function
  * :param: int offset - number of bases to skip at the start of each read
  * :param: blen1_2 - number of bases to steal from each read
- * :returns: int - whether or not it was switched.
+ * :returns: int - whether or not it was switched == 0.
  */
 static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2)
 {
@@ -579,11 +589,6 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 		memcpy(barcode + blen1_2, seq2->seq.s + offset,
 				blen1_2 * sizeof(char));
 		barcode[blen1_2 * 2] = '\0';
-#if TEST
-		if(strcmp(barcode, "GAATAGATATCGCGTATA") == 0 || strcmp(barcode, "TCGCGTATAGAATAGATA") == 0) {
-			fprintf(stderr, "Barcode %s is not being reversed.\n", barcode);
-		}
-#endif
 		return 0;
 	}
 	else {
@@ -591,11 +596,6 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 		memcpy(barcode + blen1_2, seq1->seq.s + offset,
 				blen1_2 * sizeof(char));
 		barcode[blen1_2 * 2] = '\0';
-#if TEST
-		if(strcmp(barcode, "GAATAGATATCGCGTATA") == 0 || strcmp(barcode, "TCGCGTATAGAATAGATA") == 0) {
-			fprintf(stderr, "Barcode %s is being reversed.\n", barcode);
-		}
-#endif
 		return 1;
 	}
 }
