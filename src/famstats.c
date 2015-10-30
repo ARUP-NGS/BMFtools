@@ -122,7 +122,6 @@ int target_main(int argc, char *argv[])
 	samFile *fp;
 	bam_hdr_t *header;
 	int c;
-	uint32_t minFM = 0;
 	khash_t(bed) *bed = NULL;
 	char *bedpath;
 	int padding = -1;
@@ -147,7 +146,6 @@ int target_main(int argc, char *argv[])
 		padding = 25;
 		fprintf(stderr, "Padding not set. Set to 25.\n");
 	}
-	fprintf(stderr, "[famstat_target_main]: Running frac main minFM %i.\n", minFM);
 
 	if (argc != optind+1) {
 		if (argc == optind) frac_usage_exit(stdout, EXIT_SUCCESS);
@@ -168,11 +166,10 @@ int target_main(int argc, char *argv[])
 	uint64_t fm_target = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
 	while ((c = sam_read1(fp, header, b)) >= 0) {
-		target_loop(b, bed, minFM, &fm_target, &total_fm);
+		target_loop(b, bed, &fm_target, &total_fm);
 		if(!(++count % 250000))
 			fprintf(stderr, "[famstat_frac_core] Number of records processed: %"PRIu64".\n", count);
 	}
-	fprintf(stderr, "#Fraction of raw reads on target %i: %f.\n", minFM, (double)fm_target / total_fm);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);
