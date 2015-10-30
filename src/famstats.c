@@ -26,7 +26,24 @@ static void print_hashstats(famstats_t *stats)
 	return;
 }
 
-static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header)
+
+static inline int bed_test(bam1_t *b, khash_t(bed) *h)
+{
+	khint_t k;
+	k = kh_get(bed, h, b->core.tid);
+	if(k == kh_end(h)) {
+		return 0;
+	}
+	uint32_t pos_plus_len = b->core.pos + b->core.l_qseq;
+	for(uint64_t i = 0; i < kh_val(h, k).n; ++i) {
+		if(pos_plus_len >= kh_val(h, k).intervals[i].start && b->core.pos <= kh_val(h, k).intervals[i].end) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 {
 	khash_t(bed) *ret = kh_init(bed);
 	FILE *ifp = fopen(path, "r");
@@ -51,8 +68,8 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header)
 #endif
 			k = kh_put(bed, ret, tid, &khr);
 			kh_val(ret, k).intervals = (interval_t *)calloc(1, sizeof(interval_t));
-			kh_val(ret, k).intervals[0].start = start;
-			kh_val(ret, k).intervals[0].end = stop;
+			kh_val(ret, k).intervals[0].start = start - padding > 0 ? start - padding : 0;
+			kh_val(ret, k).intervals[0].end = stop + padding;
 			kh_val(ret, k).n = 1;
 		}
 		else {
@@ -64,12 +81,105 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header)
 			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].start = start;
 			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].end = stop;
 #if !NDEBUG
-			fprintf(stderr, "Number of intervals in bed file: %"PRIu64"\n", kh_val(ret, k).n);
+			fprintf(stderr, "Number of intervals in bed file for contig "PRIu32": %"PRIu64"\n", tid, kh_val(ret, k).n);
 #endif
 		}
 	}
 	return ret;
 }
+
+void target_usage_exit(FILE *fp, int success)
+{
+	fprintf(fp, "Usage: famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n");
+	exit(success);
+}
+
+void bed_destroy(khash_t(bed) *b)
+{
+	khint_t ki;
+	for(ki = kh_begin(b); ki != kh_end(b); ++ki) {
+		if(!kh_exist(b, ki))
+			continue;
+		cond_free(kh_val(b, ki).intervals);
+		kh_val(b, ki).n = 0;
+	}
+	cond_free(b);
+}
+
+static inline void target_loop(bam1_t *b, khash_t(bed) *bed, uint64_t *fm_target, uint64_t *total_fm)
+{
+	if(bed_test(b, bed)) {
+		*fm_target += bam_aux2i(bam_aux_get(b, "FM"));
+	}
+	else {
+		*total_fm += bam_aux2i(bam_aux_get(b, "FM"));
+	}
+}
+
+
+int target_main(int argc, char *argv[])
+{
+	samFile *fp;
+	bam_hdr_t *header;
+	int c;
+	uint32_t minFM = 0;
+	khash_t(bed) *bed = NULL;
+	char *bedpath;
+	int padding = -1;
+
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) target_usage_exit(stderr, EXIT_SUCCESS);
+
+	while ((c = getopt(argc, argv, "b:p:h?")) >= 0) {
+		switch (c) {
+		case 'b':
+			bedpath = strdup(optarg);
+			break;
+		case 'p':
+			padding = atoi(optarg);
+		case '?':
+		case 'h':
+			frac_usage_exit(stderr, EXIT_SUCCESS);
+		default:
+			frac_usage_exit(stderr, EXIT_FAILURE);
+		}
+	}
+	if(padding < 0) {
+		padding = 25;
+		fprintf(stderr, "Padding not set. Set to 25.\n");
+	}
+	fprintf(stderr, "[famstat_target_main]: Running frac main minFM %i.\n", minFM);
+
+	if (argc != optind+1) {
+		if (argc == optind) frac_usage_exit(stdout, EXIT_SUCCESS);
+		else frac_usage_exit(stderr, EXIT_FAILURE);
+	}
+	fp = sam_open(argv[optind], "r");
+	if (fp == NULL) {
+		fprintf(stderr, "[famstat_target_main]: Cannot open input file \"%s\"", argv[optind]);
+		exit(EXIT_FAILURE);
+	}
+
+	header = sam_hdr_read(fp);
+	if (header == NULL) {
+		fprintf(stderr, "[famstat_target_main]: Failed to read header for \"%s\"\n", argv[optind]);
+		exit(EXIT_FAILURE);
+	}
+	bed = parse_bed(bedpath, header, padding);
+	uint64_t fm_target = 0, total_fm = 0, count = 0;
+	bam1_t *b = bam_init1();
+	while ((c = sam_read1(fp, header, b)) >= 0) {
+		target_loop(b, bed, minFM, &fm_target, &total_fm);
+		if(!(++count % 250000))
+			fprintf(stderr, "[famstat_frac_core] Number of records processed: %"PRIu64".\n", count);
+	}
+	fprintf(stderr, "#Fraction of raw reads on target %i: %f.\n", minFM, (double)fm_target / total_fm);
+	bam_destroy1(b);
+	bam_hdr_destroy(header);
+	sam_close(fp);
+	bed_destroy(bed);
+	return 0;
+}
+
 
 static void print_stats(famstats_t *stats)
 {
@@ -255,7 +365,7 @@ int frac_main(int argc, char *argv[])
 	samFile *fp;
 	bam_hdr_t *header;
 	int c;
-	uint32_t minFM;
+	uint32_t minFM = 0;
 
 	if(strcmp(argv[1], "--help") == 0) frac_usage_exit(stderr, EXIT_SUCCESS);
 
@@ -270,6 +380,10 @@ int frac_main(int argc, char *argv[])
 		default:
 			frac_usage_exit(stderr, EXIT_FAILURE);
 		}
+	}
+	if(!minFM) {
+		fprintf(stderr, "minFM not set. frac_main meaningless without it. Result: 1.0.\n");
+		return EXIT_FAILURE;
 	}
 	fprintf(stderr, "[famstat_frac_main]: Running frac main minFM %i.\n", minFM);
 
