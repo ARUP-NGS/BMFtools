@@ -1,18 +1,4 @@
-#include <unistd.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <limits.h>
-#include <getopt.h>
-#include <inttypes.h>
-
-#include "htslib/sam.h"
-//#include "samtools.h"
-#include "khash.h"
-
-KHASH_MAP_INIT_INT64(fm, uint64_t)
-KHASH_MAP_INIT_INT64(rc, uint64_t)
+#include "famstats.h"
 
 int RVWarn = 1;
 
@@ -21,28 +7,9 @@ int frac_usage_exit(FILE *fp, int code) {
 }
 
 
-typedef struct famstats {
-	uint64_t n_pass;
-	uint64_t n_fail;
-	uint64_t allfm_sum;
-	uint64_t allfm_counts;
-	uint64_t allrc_sum;
-	uint64_t realfm_sum;
-	uint64_t realfm_counts;
-	uint64_t realrc_sum;
-	khash_t(fm) *fm;
-	khash_t(rc) *rc;
-	khiter_t ki;
-	int khr;
-	uint8_t *data;
-} famstats_t;
+KHASH_MAP_INIT_INT(bed, region_set_t)
 
-typedef struct famstat_settings {
-	uint32_t minMQ;
-	uint32_t minFM;
-} famstat_settings_t;
-
-static inline void print_hashstats(famstats_t *stats)
+static void print_hashstats(famstats_t *stats)
 {
 	fprintf(stdout, "#Family size\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
@@ -59,7 +26,52 @@ static inline void print_hashstats(famstats_t *stats)
 	return;
 }
 
-static inline void print_stats(famstats_t *stats)
+static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header)
+{
+	khash_t(bed) *ret = kh_init(bed);
+	FILE *ifp = fopen(path, "r");
+	char *line = NULL;
+	char *tok = NULL;
+	size_t len = 0;
+	ssize_t read;
+	uint32_t tid, start, stop;
+	int khr;
+	khint_t k;
+	while ((read = getline(&line, &len, ifp)) != -1) {
+		tok = strtok(line, "\t");
+		tid = (uint32_t)bam_name2id(header, tok);
+		tok = strtok(NULL, "\t");
+		start = strtoul(tok, NULL, 10);
+		tok = strtok(NULL, "\t");
+		stop = strtoul(tok, NULL, 10);
+		k = kh_get(bed, ret, tid);
+		if(k == kh_end(ret)) {
+#if !NDEBUG
+			fprintf(stderr, "New contig in bed hashmap: %"PRIu32".\n", tid);
+#endif
+			k = kh_put(bed, ret, tid, &khr);
+			kh_val(ret, k).intervals = (interval_t *)calloc(1, sizeof(interval_t));
+			kh_val(ret, k).intervals[0].start = start;
+			kh_val(ret, k).intervals[0].end = stop;
+			kh_val(ret, k).n = 1;
+		}
+		else {
+			kh_val(ret, k).intervals = (interval_t *)realloc(kh_val(ret, k).intervals, ++kh_val(ret, k).n);
+			if(!kh_val(ret, k).intervals) {
+				fprintf(stderr, "Could not allocate memory. Abort mission!\n");
+				exit(EXIT_FAILURE);
+			}
+			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].start = start;
+			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].end = stop;
+#if !NDEBUG
+			fprintf(stderr, "Number of intervals in bed file: %"PRIu64"\n", kh_val(ret, k).n);
+#endif
+		}
+	}
+	return ret;
+}
+
+static void print_stats(famstats_t *stats)
 {
 	fprintf(stderr, "#Number passing filters: %"PRIu64".\n", stats->n_pass);
 	fprintf(stderr, "#Number failing filters: %"PRIu64".\n", stats->n_fail);
@@ -189,16 +201,16 @@ int fm_main(int argc, char *argv[])
 			settings->minFM = atoi(optarg); break;
 			break;
 		case 'h':
-			usage_exit(stderr, EXIT_SUCCESS);
+			fm_usage_exit(stderr, EXIT_SUCCESS);
 		default:
-			usage_exit(stderr, EXIT_FAILURE);
+			fm_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
 	fprintf(stderr, "[famstat_main]: Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
 
 	if (argc != optind+1) {
-		if (argc == optind) usage_exit(stdout, EXIT_SUCCESS);
-		else usage_exit(stderr, EXIT_FAILURE);
+		if (argc == optind) fm_usage_exit(stdout, EXIT_SUCCESS);
+		else fm_usage_exit(stderr, EXIT_FAILURE);
 	}
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
@@ -262,8 +274,8 @@ int frac_main(int argc, char *argv[])
 	fprintf(stderr, "[famstat_frac_main]: Running frac main minFM %i.\n", minFM);
 
 	if (argc != optind+1) {
-		if (argc == optind) usage_exit(stdout, EXIT_SUCCESS);
-		else usage_exit(stderr, EXIT_FAILURE);
+		if (argc == optind) frac_usage_exit(stdout, EXIT_SUCCESS);
+		else frac_usage_exit(stderr, EXIT_FAILURE);
 	}
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
