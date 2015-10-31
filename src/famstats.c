@@ -343,12 +343,14 @@ int fm_main(int argc, char *argv[])
 			fm_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
-	fprintf(stderr, "[famstat_main]: Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
 
 	if (argc != optind+1) {
 		if (argc == optind) fm_usage_exit(stdout, EXIT_SUCCESS);
 		else fm_usage_exit(stderr, EXIT_FAILURE);
 	}
+
+	fprintf(stderr, "[famstat_main]: Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
+
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
 		fprintf(stderr, "[famstat_main]: Cannot open input file \"%s\"", argv[optind]);
