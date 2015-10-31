@@ -1,9 +1,15 @@
 #include "famstats.h"
 
 int RVWarn = 1;
+#ifndef notification_interval
+#define notification_interval 1000000
+#endif
 
 int frac_usage_exit(FILE *fp, int code) {
-	return 0;
+	fprintf(fp, "famstats frac <opts> <in.bam>\n"
+			"Opts:\n-m minFM to accept. REQUIRED.\n"
+			"-h, -?: Return usage.\n");
+	exit(code);
 }
 
 
@@ -57,6 +63,9 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 	while ((read = getline(&line, &len, ifp)) != -1) {
 		tok = strtok(line, "\t");
 		tid = (uint32_t)bam_name2id(header, tok);
+#if !NDEBUG
+		fprintf(stderr, "Transcript id for tok %s is %"PRIu32"\n", tok, tid);
+#endif
 		tok = strtok(NULL, "\t");
 		start = strtoul(tok, NULL, 10);
 		tok = strtok(NULL, "\t");
@@ -73,7 +82,7 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 			kh_val(ret, k).n = 1;
 		}
 		else {
-			kh_val(ret, k).intervals = (interval_t *)realloc(kh_val(ret, k).intervals, ++kh_val(ret, k).n);
+			kh_val(ret, k).intervals = (interval_t *)realloc(kh_val(ret, k).intervals, ++kh_val(ret, k).n * sizeof(interval_t));
 			if(!kh_val(ret, k).intervals) {
 				fprintf(stderr, "Could not allocate memory. Abort mission!\n");
 				exit(EXIT_FAILURE);
@@ -81,7 +90,7 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].start = start;
 			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].end = stop;
 #if !NDEBUG
-			fprintf(stderr, "Number of intervals in bed file for contig "PRIu32": %"PRIu64"\n", tid, kh_val(ret, k).n);
+			fprintf(stderr, "Number of intervals in bed file for contig %"PRIu32": %"PRIu64"\n", tid, kh_val(ret, k).n);
 #endif
 		}
 	}
@@ -90,7 +99,9 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 
 void target_usage_exit(FILE *fp, int success)
 {
-	fprintf(fp, "Usage: famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n");
+	fprintf(fp, "Usage: famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
+			"-p padding. Number of bases around bed regions to pad. Default: 25.\n"
+			"-h, -?: Return usage.\n");
 	exit(success);
 }
 
@@ -123,34 +134,47 @@ int target_main(int argc, char *argv[])
 	bam_hdr_t *header;
 	int c;
 	khash_t(bed) *bed = NULL;
-	char *bedpath;
+	char *bedpath = NULL;
 	int padding = -1;
+
+	if(argc < 4) {
+		target_usage_exit(stderr, EXIT_FAILURE);
+	}
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) target_usage_exit(stderr, EXIT_SUCCESS);
 
-	while ((c = getopt(argc, argv, "b:p:h?")) >= 0) {
+	while ((c = getopt(argc, argv, "b:p:n:h?")) >= 0) {
 		switch (c) {
 		case 'b':
 			bedpath = strdup(optarg);
 			break;
 		case 'p':
 			padding = atoi(optarg);
+			break;
 		case '?':
 		case 'h':
-			frac_usage_exit(stderr, EXIT_SUCCESS);
+			target_usage_exit(stderr, EXIT_SUCCESS);
 		default:
-			frac_usage_exit(stderr, EXIT_FAILURE);
+			target_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
+
+
 	if(padding < 0) {
 		padding = 25;
-		fprintf(stderr, "Padding not set. Set to 25.\n");
+		fprintf(stderr, "[famstat_target_main]: Padding not set. Set to 25.\n");
 	}
 
 	if (argc != optind+1) {
-		if (argc == optind) frac_usage_exit(stdout, EXIT_SUCCESS);
-		else frac_usage_exit(stderr, EXIT_FAILURE);
+		if (argc == optind) target_usage_exit(stdout, EXIT_SUCCESS);
+		else target_usage_exit(stderr, EXIT_FAILURE);
 	}
+
+	if(!bedpath) {
+		fprintf(stderr, "Bed path required for famstats target. See usage!\n");
+		target_usage_exit(stderr, EXIT_FAILURE);
+	}
+
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
 		fprintf(stderr, "[famstat_target_main]: Cannot open input file \"%s\"", argv[optind]);
@@ -167,13 +191,16 @@ int target_main(int argc, char *argv[])
 	bam1_t *b = bam_init1();
 	while ((c = sam_read1(fp, header, b)) >= 0) {
 		target_loop(b, bed, &fm_target, &total_fm);
-		if(!(++count % 250000))
-			fprintf(stderr, "[famstat_frac_core] Number of records processed: %"PRIu64".\n", count);
+		if(++count % notification_interval == 0)
+			fprintf(stderr, "[famstat_target_core] Number of records processed: %"PRIu64".\n", count);
 	}
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);
 	bed_destroy(bed);
+	free(bedpath);
+	fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %"PRIu64". Raw reads on target: %"PRIu64".\n",
+			(double)fm_target / total_fm, total_fm, fm_target);
 	return 0;
 }
 
@@ -263,7 +290,7 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	b = bam_init1();
 	while ((ret = sam_read1(fp, h, b)) >= 0) {
 		famstat_loop(s, b, settings);
-		if(!(++count % 250000))
+		if(!(++count % notification_interval))
 			fprintf(stderr, "[famstat_core] Number of records processed: %"PRIu64".\n", count);
 	}
 	bam_destroy1(b);
@@ -275,7 +302,9 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 static void usage_exit(FILE *fp, int exit_status)
 {
 	fprintf(fp, "Usage: famstat <in.bam>\n");
-	fprintf(fp, "Subcommands: \nfm\tFamily Size stats\n");
+	fprintf(fp, "Subcommands: \nfm\tFamily Size stats\n"
+			"frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
+			"target\tFraction of raw reads on target.\n");
 	exit(exit_status);
 }
 
@@ -299,7 +328,7 @@ int fm_main(int argc, char *argv[])
 	settings->minMQ = 0;
 	settings->minFM = 0;
 
-	while ((c = getopt(argc, argv, "m:f:h")) >= 0) {
+	while ((c = getopt(argc, argv, "m:f:n:h")) >= 0) {
 		switch (c) {
 		case 'm':
 			settings->minMQ = atoi(optarg); break;
@@ -307,6 +336,7 @@ int fm_main(int argc, char *argv[])
 		case 'f':
 			settings->minFM = atoi(optarg); break;
 			break;
+		case '?': // Fall-through!
 		case 'h':
 			fm_usage_exit(stderr, EXIT_SUCCESS);
 		default:
@@ -364,9 +394,11 @@ int frac_main(int argc, char *argv[])
 	int c;
 	uint32_t minFM = 0;
 
-	if(strcmp(argv[1], "--help") == 0) frac_usage_exit(stderr, EXIT_SUCCESS);
+	if(argc < 4) {
+		frac_usage_exit(stderr, EXIT_FAILURE);
+	}
 
-	while ((c = getopt(argc, argv, "m:h?")) >= 0) {
+	while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
 		switch (c) {
 		case 'm':
 			minFM = (uint32_t)atoi(optarg); break;
@@ -378,6 +410,9 @@ int frac_main(int argc, char *argv[])
 			frac_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
+
+	if(strcmp(argv[1], "--help") == 0) frac_usage_exit(stderr, EXIT_SUCCESS);
+
 	if(!minFM) {
 		fprintf(stderr, "minFM not set. frac_main meaningless without it. Result: 1.0.\n");
 		return EXIT_FAILURE;
@@ -403,7 +438,7 @@ int frac_main(int argc, char *argv[])
 	bam1_t *b = bam_init1();
 	while ((c = sam_read1(fp, header, b)) >= 0) {
 		frac_loop(b, minFM, &fm_above, &total_fm);
-		if(!(++count % 250000))
+		if(!(++count % notification_interval))
 			fprintf(stderr, "[famstat_frac_core] Number of records processed: %"PRIu64".\n", count);
 	}
 	fprintf(stderr, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
@@ -427,6 +462,10 @@ int main(int argc, char *argv[])
 	if(strcmp(argv[1], "frac") == 0) {
 		return frac_main(argc - 1, argv + 1);
 	}
+	if(strcmp(argv[1], "target") == 0) {
+		return target_main(argc - 1, argv + 1);
+	}
+	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
 	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
 	usage_exit(stderr, 1);
 }
