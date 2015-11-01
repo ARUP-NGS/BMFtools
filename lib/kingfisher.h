@@ -29,8 +29,8 @@ typedef struct tmpbuffers {
 	char PVBuffer[1000];
 	char FABuffer[1000];
 	char cons_seq_buffer[300];
-	int cons_quals[300];
-	int agrees[300];
+	uint32_t cons_quals[300];
+	uint16_t agrees[300];
 } tmpbuffers_t;
 
 typedef struct tmpvars {
@@ -76,9 +76,9 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 
 
 
-static inline int pvalue_to_phred(double pvalue)
+static inline uint32_t pvalue_to_phred(double pvalue)
 {
-	return (int)(-10 * log10(pvalue) + 0.5); // 0.5 to round up
+	return (uint32_t)(-10 * log10(pvalue) + 0.5); // 0.5 to round up
 }
 
 // Converts a chi2 sum into a p value.
@@ -148,29 +148,34 @@ static inline char ARRG_MAX_TO_NUC(int argmaxret)
 }
 
 
-static inline void fill_csv_buffer(int readlen, int *arr, char *buffer, char *prefix, char typecode)
+static inline void fill_csv_buffer(int readlen, uint32_t *arr, char *buffer, char *prefix, char typecode)
 {
 	char tmpbuf[20];
 	sprintf(buffer, "%s%c", prefix, typecode);
-	for(int i = 0; i < readlen; i++) {
+	for(uint32_t i = 0; i < readlen; i++) {
 		sprintf(tmpbuf, ",%i", arr[i]);
 		strcat(buffer, tmpbuf);
 	}
 }
 
 
-static inline void fill_pv_buffer(KingFisher_t *kfp, int *phred_values, char *buffer)
+static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, char *buffer)
 {
 	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:", 'I');
 	return;
 }
 
-
-static inline void fill_fa_buffer(KingFisher_t *kfp, int *agrees, char *buffer)
+static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buffer)
 {
-	fill_csv_buffer(kfp->readlen, agrees, buffer, "FA:B:", 'I'); // Add in the "I" to type the array.
+	char tmpbuf[20];
+	sprintf(buffer, "FA:B:I");
+	for(uint32_t i = 0; i < kfp->readlen; ++i) {
+		sprintf(tmpbuf, ",%"PRIu16"", agrees[i]);
+		strcat(buffer, tmpbuf);
+	}
 	return;
 }
+
 
 /*
 static inline void fill_csv_buffer_fs1(int readlen, int *arr, char *buffer, char *prefix, char typecode)
