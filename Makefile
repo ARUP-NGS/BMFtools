@@ -19,7 +19,7 @@ IGAMC_INC= include/igamc_cephes.c
 
 .PHONY: all clean
 
-all: lh3sort libhts.a fqmarksplit crms bmfsort hash_dmp famstats copy
+all: lh3sort libhts.a hash_dmp.o fqmarksplit crms bmfsort hash_dmp famstats copy
 
 lh3sort:
 	cd include/sort && make && cd ../..
@@ -27,22 +27,27 @@ lh3sort:
 libhts.a:
 	cd htslib && make && cp libhts.a ../
 fqmarksplit:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit_db
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) -DNOPARALLEL src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit_np
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) $(IGAMC_INC) src/fqmarksplit.c src/uthash_dmp_core.c -o fqmarksplit_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) -DNOPARALLEL  src/khash_dmp_core.c  src/fqmarksplit.c -o fqmarksplit_np
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit_p
 crms:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/uthash_dmp_core.c -o crms
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/uthash_dmp_core.c -o crms_db
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/uthash_dmp_core.c -o crms_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms_p
 bmfsort:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/bmfsort.c -o bmfsort_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/bmfsort.c -o bmfsort_p
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/bmfsort.c -o bmfsort
+hash_dmp.o:
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) -fPIC src/khash_dmp_core.c -c -o hash_dmp.o
 hash_dmp:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_core.c src/uthash_dmp.c include/igamc_cephes.c -o hash_dmp_db
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_core.c src/uthash_dmp.c include/igamc_cephes.c -o hash_dmp
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/khash_dmp_core.c src/uthash_dmp.c include/igamc_cephes.c -o hash_dmp_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_p
+	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
+	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
+	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_p
 dmp:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/dmp.c include/igamc_cephes.c -o dmp
 famstats:

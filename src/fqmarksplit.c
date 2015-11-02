@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "cstr_utils.h"
-#include "uthash_dmp_core.h"
+#include "khash_dmp_core.h"
 
 void print_usage(char *argv[])
 {
@@ -29,7 +29,7 @@ void print_usage(char *argv[])
 						"-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
 						"-m: Number of bases in the start of reads to skip when salting. Default: 0. Recommended: 1.\n"
 						"-d: Flag to run hash dmp. Default: False.\n"
-						"-p: Number of threads to use if running uthash_dmp. Default: 4.\n"
+						"-p: Number of threads to use if running hash_dmp. Default: 4.\n"
 						"-v: Set notification interval for split. Default: 1000000.\n"
 						"-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
@@ -156,10 +156,10 @@ int main(int argc, char *argv[])
 				int tmp_ret;
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
-				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r2[i], params->outfnames_r2[i]);
-				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
 				CHECK_CALL(tmpbuf, tmp_ret);
 			}

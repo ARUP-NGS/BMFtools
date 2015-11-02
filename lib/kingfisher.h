@@ -7,7 +7,6 @@
 #include "charcmp.h"
 #include "cstr_utils.h"
 #include "khash.h"
-#include "uthash.h"
 #include "mem_util.h"
 #include <zlib.h>
 #include <inttypes.h>
@@ -54,13 +53,6 @@ typedef struct KingFisher {
 	char pass_fail;
 	int n_rc;
 } KingFisher_t;
-
-
-typedef struct HashKing {
-	UT_hash_handle hh;
-	char id[MAX_BARCODE_LENGTH + 1];
-	KingFisher_t *value;
-} HashKing_t;
 
 
 extern double igamc(double a, double x);
@@ -213,7 +205,6 @@ static inline void fill_fa_buffer_fs1(KingFisher_t *kfp, int *agrees, char *buff
 }
 
 
-*/
 
 static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *tmp, char *barcode)
 {
@@ -233,6 +224,7 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 			hkp->value->pass_fail, hkp->value->n_rc, hkp->value->length,
 			tmp->cons_seq_buffer, hkp->value->max_phreds);
 }
+*/
 
 
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpvars_t *tmp)

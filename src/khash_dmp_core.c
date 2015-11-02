@@ -1,10 +1,10 @@
 #include "khash_dmp_core.h"
 
-void print_khashdmp_usage(char *argv[]) {
+static inline void print_khashdmp_usage(char *argv[]) {
 	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n", argv[0]);
 }
 
-void print_khashdmp_opt_err(char *argv[], char *optarg) {
+static inline void print_khashdmp_opt_err(char *argv[], char *optarg) {
 	fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
 	print_khashdmp_usage(argv);
 	exit(1);

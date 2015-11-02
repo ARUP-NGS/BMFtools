@@ -72,6 +72,8 @@
 		fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
 #endif
 
+extern void khash_dmp_core(char *infname, char *outfname);
+
 
 typedef struct blens {
 	int max_blen; // Last value in blens
