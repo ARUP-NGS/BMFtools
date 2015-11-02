@@ -5,6 +5,15 @@
 
 void hash_dmp_core(char *infname, char *outfname);
 void cp_view2buf(char *view, char *buf);
+tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
+
+static inline void tmpvars_destroy(tmpvars_t *tmp)
+{
+	free(tmp->buffers);
+	free(tmp);
+	tmp = NULL;
+	return;
+}
 
 
 /*

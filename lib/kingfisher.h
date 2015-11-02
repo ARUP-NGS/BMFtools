@@ -113,6 +113,8 @@ static inline void destroy_kf(KingFisher_t *kfp)
 	cond_free(kfp->nuc_counts);
 	cond_free(kfp->phred_sums);
 	cond_free(kfp->max_phreds);
+	free(kfp);
+	kfp = NULL;
 }
 
 
@@ -199,14 +201,10 @@ static inline void fill_fa_buffer_fs1(KingFisher_t *kfp, int *agrees, char *buff
 
 static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *tmp, char *barcode)
 {
-	int argmaxret;
 	tmp->cons_seq_buffer[hkp->value->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < hkp->value->readlen; ++i) {
-		argmaxret = ARRG_MAX(hkp->value, i);
+		int argmaxret = ARRG_MAX(hkp->value, i);
 		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(hkp->value->length, LOG10_TO_CHI2((hkp->value->phred_sums[i * 4 + argmaxret]))));
-		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
-			tmp->cons_quals[i] = 3114;
-		}
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
 		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && hkp->value->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
 		tmp->agrees[i] = hkp->value->nuc_counts[i * 4 + argmaxret];
@@ -221,47 +219,33 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 }
 
 
-static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, int blen, tmpbuffers_t *tmp)
-{
-#if !NDEBUG
-	fprintf(stderr, "kfp->barcode: %s. Tmpbuffers name: %s. Length: %"PRIu64". Expected length: %i.\n", kfp->barcode, tmp->name_buffer, strlen(kfp->barcode), blen);
-	if(blen != strlen(kfp->barcode)) {
-		fprintf(stderr, "This barcode has the wrong length ROFLOLMAOMGWTFFSBBQ\n!");
-		int nuc_counts_sum = 0;
-		for(int i = 0; i < kfp->readlen * 4; ++i) {
-			nuc_counts_sum += kfp->nuc_counts[i];
-		}
-		fprintf(stderr, "Total number of nuc counts: %i.\n", nuc_counts_sum);
-		exit(EXIT_FAILURE);
-	}
-#endif
+static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpvars_t *tmp)
+{;
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
 	//buffer[0] = '@'; Set this later?
 	int argmaxret;
-	tmp->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+	tmpbuffers_t *bufs = tmp->buffers;
+	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < kfp->readlen; ++i) {
 		argmaxret = ARRG_MAX(kfp, i);
-		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 4 + argmaxret]))));
-		if(tmp->cons_quals[i] < -1073741824) { // Underflow!
-			tmp->cons_quals[i] = 3114;
+		bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 4 + argmaxret]))));
+		/*
+		if(bufs->cons_quals[i] > 1073741824) { // Underflow!
+			fprintf(stderr, "Note: phred_sums in underflow: %" PRIu32 ".\n", kfp->phred_sums[i * 4 + argmaxret]);
+			bufs->cons_quals[i] = 3114;
 		}
+		*/
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
+		bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+		bufs->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
 	}
-	fill_fa_buffer(kfp, tmp->agrees, tmp->FABuffer);
+	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, tmp->cons_quals, tmp->PVBuffer);
-	tmp->name_buffer[0] = '@';
-	tmp->name_buffer[1 + blen] = '\0';
-	fprintf(stderr, "Name buffer: %s\n", tmp->name_buffer);
-#if !NDEBUG
-	fprintf(stderr, "Name '%s'\n", tmp->name_buffer);
-#endif
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
-			tmp->FABuffer, tmp->PVBuffer,
+	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+			bufs->FABuffer, bufs->PVBuffer,
 			kfp->pass_fail, kfp->n_rc, kfp->length,
-			tmp->cons_seq_buffer, kfp->max_phreds);
+			bufs->cons_seq_buffer, kfp->max_phreds);
 	return;
 }
 
@@ -609,9 +593,13 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
 #if DBG
-	fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
-	fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
+	//fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
+	//fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
 #endif
+	if(!kfp->length) {
+		memcpy(kfp->barcode, seq->comment.s + 14, blen);
+		kfp->barcode[blen] = '\0';
+	}
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
 		++kfp->nuc_counts[i * 4 + nuc_indices[1]];

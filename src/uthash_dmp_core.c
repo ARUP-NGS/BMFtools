@@ -1,15 +1,5 @@
 #include "uthash_dmp_core.h"
 
-
-void tmpvars_destroy(tmpvars_t *tmp)
-{
-	free(tmp->buffers);
-	free(tmp);
-	tmp = NULL;
-	return;
-}
-
-
 tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 {
 	tmpvars_t *ret = (tmpvars_t *)malloc(sizeof(tmpvars_t));
@@ -182,10 +172,12 @@ void hash_dmp_core(char *infname, char *outfname)
 		//fprintf(stderr, "Barcode in kingfisher: '%s'.\n", current_entry->value->barcode);
 #endif
 		kh_pw(current_entry, out_handle, tmp->blen, tmp->buffers, current_entry->id);
-		destroy_kf(current_entry->value);
-		cond_free(current_entry->value);
+		if(current_entry->value) {
+			destroy_kf(current_entry->value);
+			current_entry->value = NULL;
+		}
 		HASH_DEL(hash, current_entry);
-		free(current_entry);
+		cond_free(current_entry);
 	}
 /*
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {

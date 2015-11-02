@@ -334,9 +334,9 @@ int main(int argc, char *argv[])
 				char tmpbuf[500];
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
-				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 
-				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				fprintf(stderr, "Now removing temporary files %s and %s.\n",
 						params->infnames_r1[i], params->infnames_r2[i]);
 				if(settings.cleanup) {
