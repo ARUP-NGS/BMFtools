@@ -130,6 +130,7 @@ static inline void clear_kf(KingFisher_t *kfp)
 
 static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 {
+/*
 	uint32_t max_index = 0, i;
 	for(i = 0;i < 4; ++i) {
 		if(kfp->phred_sums[index * 4 + i] > kfp->phred_sums[index * 4 + max_index]) {
@@ -137,6 +138,21 @@ static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 		}
 	}
 	return max_index;
+*/
+	int i4 = index * 4;
+	if(kfp->phred_sums[i4] > kfp->phred_sums[i4 + 1] &&
+		kfp->phred_sums[i4] > kfp->phred_sums[i4 + 2] &&
+		kfp->phred_sums[i4] > kfp->phred_sums[i4 + 3])
+		return 0;
+
+	else if(kfp->phred_sums[i4 + 1] > kfp->phred_sums[i4 + 2] &&
+			kfp->phred_sums[i4 + 1] > kfp->phred_sums[i4 + 3])
+		return 1;
+	else if(kfp->phred_sums[i4 + 2] > kfp->phred_sums[i4 + 3])
+		return 2;
+	else
+		return 3;
+	return 0; // This never happens
 }
 
 static inline char ARRG_MAX_TO_NUC(int argmaxret)
