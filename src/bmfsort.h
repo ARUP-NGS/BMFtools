@@ -26,6 +26,15 @@
 #include "bam.h"
 #include "bam_rescue.h"
 
+
+#ifndef ucs_sort_mate_key
+#define ucs_sort_mate_key(a, mucs) (uint64_t)((uint64_t)a->core.mtid<<32|(bam_aux2i(bam_aux_get(b, "MU")) + 1)<<2|(!!(a->core.flag & BAM_FMREVERSE)))
+#endif
+
+#ifndef ucs_sort_core_key
+#define ucs_sort_core_key(a, ucs) (uint64_t)((uint64_t)a->core.tid<<32|(bam_aux2i(bam_aux_get(b, "SU"))+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
+#endif
+
 static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2);
 
 static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2) {
@@ -48,18 +57,8 @@ static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2) {
 			offset2 += cigar2[i] >> BAM_CIGAR_SHIFT;
 		}
 	}
-	if(b1->core.flag & BAM_FREVERSE) {
-		ucs1 += offset1;
-	}
-	else {
-		ucs1 -= offset1;
-	}
-	if(b2->core.flag & BAM_FREVERSE) {
-		ucs2 += offset2;
-	}
-	else {
-		ucs2 -= offset2;
-	}
+	ucs1 += (b1->core.flag & BAM_FREVERSE) ? offset1: -1 * offset1;
+	ucs2 += (b2->core.flag & BAM_FREVERSE) ? offset2: -1 * offset2;
 	bam_aux_append(b2, "MU", 'I', sizeof(uint32_t), (uint8_t *)&ucs1);
 	bam_aux_append(b1, "MU", 'I', sizeof(uint32_t), (uint8_t *)&ucs2);
 	return;

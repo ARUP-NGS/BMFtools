@@ -1253,9 +1253,15 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 		case BMF_SORT_ORDER:
 			key_a = bam_sort_core_key(a);
 			key_b = bam_sort_core_key(b);
-			if(key_a < key_b) {return 1;}
-			else if(key_b < key_a) {return 0;}
-			else {return bam_sort_mate_key(a) < bam_sort_mate_key(b);}
+			if(key_a < key_b) return 1;
+			else if(key_b < key_a) return 0;
+			else return bam_sort_mate_key(a) < bam_sort_mate_key(b);
+		case UCS_SORT_ORDER:
+			key_a = ucs_sort_core_key(a);
+			key_b = ucs_sort_core_key(b);
+			if(key_a < key_b) return 1;
+			else if(key_b < key_a) return 0;
+			else return ucs_sort_mate_key(a) < ucs_sort_mate_key(b);
 	}
 	return 0; // This never happens.
 }
@@ -1490,7 +1496,7 @@ static int sort_usage(FILE *fp, int status)
 "Options:\n"
 "  -l INT	 Set compression level, from 0 (uncompressed) to 9 (best)\n"
 "  -m INT	 Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
-"  -k		 Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional. Default: bmf comparison.\n"
+"  -k		 Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.\n"
 "  -o FILE	Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
 "  -O FORMAT  Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
 "  -T PREFIX  Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
@@ -1517,6 +1523,7 @@ int main(int argc, char *argv[])
 		case 'k': if(strcmp(optarg, "bmf") == 0) sort_cmp_int = BMF_SORT_ORDER;
 				  else if(strcmp(optarg, "pos") == 0) sort_cmp_int = SAMTOOLS_SORT_ORDER;
 				  else if(strcmp(optarg, "qname") == 0) sort_cmp_int = QNAME_SORT_ORDER;
+				  else if(strcmp(optarg, "ucs") == 0) sort_cmp_int = UCS_SORT_ORDER;
 				  else {
 					  fprintf(stderr, "Unrecognized sort key option %s.\n", optarg);
 					  return sort_usage(stderr, EXIT_FAILURE);

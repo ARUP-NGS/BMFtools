@@ -34,6 +34,10 @@ typedef struct rescue_settings {
 #define BMF_SORT_ORDER 2
 #endif
 
+#ifndef UCS_SORT_ORDER
+#define UCS_SORT_ORDER 3
+#endif
+
 #ifndef SAMTOOLS_SORT_ORDER
 #define SAMTOOLS_SORT_ORDER 0
 #endif

@@ -388,13 +388,13 @@ int main(int argc, char *argv[])
 		else {
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s.gz": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
 				sys_call_ret = system(cat_buff);
 				if(sys_call_ret < 0) {
 					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
 					exit(EXIT_FAILURE);
 				}
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s.gz": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 				sys_call_ret = system(cat_buff);
 				if(sys_call_ret < 0) {
 					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
