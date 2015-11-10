@@ -82,13 +82,25 @@ static inline void resize_stack(tmp_stack_t *stack, size_t n) {
 #endif
 }
 
+
 typedef struct pr_settings {
 	FILE *fqh;
 	samFile *out;
-	int cmpkey;
+	int cmpkey; // 0 for pos, 1 for unclipped start position
+	int mmthr; // Mismatch failure threshold.
+	int annealed_check; // Set to true to check a reversed barcode for a mismatch limit.
 } pr_settings_t;
 
-static inline int barcmp(bam1_t *a, bam1_t *b, pr_settings_t *settings);
+static inline int barcmp(bam1_t *a, bam1_t *b, pr_settings_t *settings)
+{
+	char *aname = bam_get_qname(a);
+	char *bname = bam_get_qname(b);
+	int m = 0; // mismatches
+	int lqn = a->core.l_qname - 1;
+	for(int i = 0; i < lqn; ++i) {
+		if(aname[i] != bname[i])
+	}
+}
 
 static inline int pvalue_to_phred(double pvalue)
 {
@@ -134,6 +146,8 @@ static inline void stack_flatten(tmp_stack_t *stack, pr_settings_t *settings) {
 		for(int j = i + 1; j < stack->n; ++j) {
 			if(barcmp(a[i], a[j], settings)) {
 				update_bam(a[j], a[i]); // Update j with i's information
+				bam1_destroy(a[i]);
+				a[i] = NULL;
 			}
 		}
 	}
