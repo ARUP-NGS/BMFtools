@@ -82,14 +82,24 @@ static inline void resize_stack(tmp_stack_t *stack, size_t n) {
 #endif
 }
 
+enum cmpkey {
+	POS,
+	UCS
+};
+
 
 typedef struct pr_settings {
 	FILE *fqh;
+	samFile *in;
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
 	int mmthr; // Mismatch failure threshold.
-	int annealed_check; // Set to true to check a reversed barcode for a mismatch limit.
+	int annealed; // Set to true to check a reversed barcode for a mismatch limit.
+	int is_se; // Is single-end
+	bam_hdr_t *hdr; // BAM header
+
 } pr_settings_t;
+
 
 static inline int barcmp(bam1_t *a, bam1_t *b, pr_settings_t *settings)
 {

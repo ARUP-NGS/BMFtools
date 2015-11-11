@@ -125,7 +125,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 }
 
 
-void bam_prse_core(samFile *in, bam_hdr_t *hdr, samFile *out, int force_se)
+void bam_prse_core(pr_settings_t settings)
 {
     bam1_t *b;
     int last_tid = -2;
@@ -134,14 +134,14 @@ void bam_prse_core(samFile *in, bam_hdr_t *hdr, samFile *out, int force_se)
     resize_stack(&stack, STACK_START);
 
     b = bam_init1();
-    while (sam_read1(in, hdr, b) >= 0) {
+    while (sam_read1(settings.in, settings.hdr, b) >= 0) {
         bam1_core_t *c = &b->core;
     }
     bam_destroy1(b);
 }
 
 
-void bam_pr_core(samFile *in, bam_hdr_t *hdr, samFile *out)
+void bam_pr_core(pr_settings_t settings)
 {
     bam1_t *b;
     int last_tid = -1, last_pos = -1;
@@ -150,7 +150,7 @@ void bam_pr_core(samFile *in, bam_hdr_t *hdr, samFile *out)
     b = bam_init1();
     memset(&stack, 0, sizeof(tmp_stack_t));
 
-    while (sam_read1(in, hdr, b) >= 0) {
+    while (sam_read1(settings.in, settings.hdr, b) >= 0) {
         bam1_core_t *c = &b->core;
     }
     free(stack.a);
@@ -174,8 +174,6 @@ int main(int argc, char *argv[]) {
 int bam_pr(int argc, char *argv[])
 {
     int c, is_se = 0, force_se = 0;
-    samFile *in, *out;
-    bam_hdr_t *header;
     char wmode[3] = {'w', 'b', 0};
     sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
 
@@ -184,10 +182,21 @@ int bam_pr(int argc, char *argv[])
         { NULL, 0, NULL, 0 }
     };
 
-    while ((c = getopt_long(argc, argv, "sS", lopts, NULL)) >= 0) {
+    pr_settings_t settings = {
+    		.fqh = NULL,
+			.in = NULL,
+			.out = NULL,
+			.hdr = NULL,
+			.mmthr = 2,
+			.cmpkey = POS,
+			.is_se = 0,
+			.annealed = 0
+    };
+
+    while ((c = getopt_long(argc, argv, "t:au?h", lopts, NULL)) >= 0) {
         switch (c) {
-        case 's': is_se = 1; break;
-        case 'S': force_se = is_se = 1; break;
+        case 'a': settings.annealed = 1; break;
+        case 'u': settings.cmpkey = UCS; break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
         case '?': return pr_usage();
@@ -196,24 +205,24 @@ int bam_pr(int argc, char *argv[])
     if (optind + 2 > argc)
         return pr_usage();
 
-    in = sam_open_format(argv[optind], "r", &ga.in);
-    header = sam_hdr_read(in);
-    if (header == NULL || header->n_targets == 0) {
+    settings.in = sam_open_format(argv[optind], "r", &ga.in);
+    settings.hdr = sam_hdr_read(in);
+    if (settings.hdr == NULL || settings.hdr->n_targets == 0) {
         fprintf(stderr, "[bam_pr] input SAM does not have header. Abort!\n");
         return 1;
     }
 
     sam_open_mode(wmode+1, argv[optind+1], NULL);
-    out = sam_open_format(argv[optind+1], wmode, &ga.out);
-    if (in == 0 || out == 0) {
+    settings.out = sam_open_format(argv[optind+1], wmode, &ga.out);
+    if (setings.in == 0 || settings.out == 0) {
         fprintf(stderr, "[bam_pr] fail to read/write input files\n");
         return 1;
     }
-    sam_hdr_write(out, header);
+    sam_hdr_write(settings.out, settings.out);
 
-    if (is_se) bam_prse_core(in, header, out, force_se);
-    else bam_pr_core(in, header, out);
-    bam_hdr_destroy(header);
-    sam_close(in); sam_close(out);
+    if (is_se) bam_prse_core(settings);
+    else bam_pr_core(settings);
+    bam_hdr_destroy(settings.hdr);
+    sam_close(settings.in); sam_close(settings.out);
     return 0;
 }
