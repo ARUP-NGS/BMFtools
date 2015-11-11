@@ -11,7 +11,8 @@ static inline void cp_view2buf(char *view, char *buf)
 {
 	int blen = 0;
 	while(view[blen] != '\0' && view[blen] != '|') {
-		buf[blen] = view[blen++];
+		buf[blen] = view[blen];
+        ++blen;
 	}
 	buf[blen] = '\0';
 	return;
