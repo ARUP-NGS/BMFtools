@@ -32,7 +32,7 @@ fqmarksplit:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) -DNOPARALLEL  src/khash_dmp_core.c  src/fqmarksplit.c -o fqmarksplit_np
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit_p
 bam_pr:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/sam_opts.c src/bam_pr.c -o bam_pr
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/sam_opts.c src/bam_pr.c -o bam_pr
 crms:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms_db
@@ -55,7 +55,7 @@ dmp:
 famstats:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/famstats.c -o famstats
 copy:
-	mv hash_dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p fqmarksplit_np famstats hash_dmp_p hash_dmp_db bin/
+	mv hash_dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p fqmarksplit_np famstats hash_dmp_p hash_dmp_db bam_pr bin/
 
 
 clean:

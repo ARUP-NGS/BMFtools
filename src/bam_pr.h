@@ -12,6 +12,7 @@
 #include "bam.h" // for bam_get_library
 #include "bam_rescue.h"
 #include "igamc_cephes.c"
+#include "cstr_util.h"
 
 #define STACK_START (1 << 5)
 
@@ -55,6 +56,24 @@
 #define AVG_LOG_TO_CHI2(x) (x) * LOG10E_X5_1_2
 #endif
 
+#ifndef CHECK_SEQ
+#define CHECK_SEQ(seqvar) do {char *tmpseq = seqvar; for(uint32_t seq_##i = 0; tmpseq[seq_##i]; ++seq_##i) {\
+	switch(tmpseq[seq_##i]) {\
+		case 'A':\
+		case 'C':\
+		case 'G':\
+		case 'T':\
+		case 'N':\
+		case 'a':\
+		case 'c':\
+		case 'g':\
+		case 't':\
+		case 'n': break;\
+		default: fprintf(stderr, "OMGZWTF There's an incorrect nucleotide in here. (%c). String: %s.\n", tmpseq[seq_##i], tmpseq); exit(EXIT_FAILURE);break;\
+	}}} while(0)
+#endif
+
+
 typedef bam1_t *bam1_p;
 
 typedef struct {
@@ -72,12 +91,18 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 }
 
 static inline void resize_stack(tmp_stack_t *stack, size_t n) {
+	if(!stack->a) {
+		stack->a = (bam1_t **)malloc(sizeof(bam1_t *) * n);
+		memset(stack->a, 0, sizeof(bam1_t *) * n);
+		stack->max = n;
+		return;
+	}
 	if(n > stack->max) {
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 #if !NDEBUG
 		if(!stack->a) {
-			fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n");
+			fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
 			exit(EXIT_FAILURE);
 		}
 #endif
@@ -119,18 +144,6 @@ typedef struct pr_settings {
 
 } pr_settings_t;
 
-
-static inline int barcmp(bam1_t *a, bam1_t *b, pr_settings_t *settings)
-{
-	char *aname = bam_get_qname(a);
-	char *bname = bam_get_qname(b);
-	int m = 0; // mismatches
-	int lqn = a->core.l_qname - 1;
-	for(int i = 0; i < lqn; ++i) {
-		if(aname[i] != bname[i])
-	}
-}
-
 static inline int pvalue_to_phred(double pvalue)
 {
 	return (int)(-10 * log10(pvalue) + 0.5); // Add 0.5 to round up
@@ -161,31 +174,11 @@ static inline void *array_tag(bam1_t *b, const char *tag) {
 		exit(EXIT_FAILURE);
 	}
 	char typecode = *data++;
-	int n = *(((int *)data)++);
-	return data ? (void *)(data): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
+	int n = *((int *)data);
+	return data ? (void *)(data + 4): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
 #else
 	return data ? (void *)(data + 6): NULL;
 #endif
-}
-
-static inline void stack_flatten(tmp_stack_t *stack, pr_settings_t *settings) {
-	bam1_t **a = stack->a;
-	uint8_t *idata, *jdata;
-	for(int i = 0; i < stack->n; ++i) {
-		for(int j = i + 1; j < stack->n; ++j) {
-			if(barcmp(a[i], a[j], settings)) {
-				update_bam(a[j], a[i]); // Update j with i's information
-				bam1_destroy(a[i]);
-				a[i] = NULL;
-			}
-		}
-	}
-}
-
-static inline void stack_resize(tmp_stack_t *stack, size_t n) {
-    stack->a = (bam1_t **)realloc(stack->a, n * sizeof(tmp_stack_t)); // Default pre-allocate 32
-    memset(&stack, 0, sizeof(tmp_stack_t) * n);
-    return;
 }
 
 
@@ -224,14 +217,15 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 			if(bam_aux_get(stack->a[i], "RA")) /* If RA tag is present, IE, if it was merged.*/
 				bam2ffq(stack->a[i], settings->fqh);
 			else
-				sam_write1(settings->out, settings->hdr, records[i]);
-			bam1_destroy(records[i]);
-			records[i] = NULL;
+				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			bam_destroy1(stack->a[i]);
+			stack->a[i] = NULL;
 		}
 	}
 }
 
 int bam_pr(int argc, char *argv[]);
+
 
 
 #endif /* BAM_PR_H */

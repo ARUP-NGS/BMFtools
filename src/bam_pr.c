@@ -127,13 +127,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 }
 
 
-void bam_prse_core(pr_settings_t settings)
+void bam_prse_core(pr_settings_t *settings)
 {
+	/*
     bam1_t *b;
-    int last_tid = -2;
-
     tmp_stack_t stack;
     resize_stack(&stack, STACK_START);
+    memset(&stack, 0, sizeof(tmp_stack_t) * stack->max);
 
     b = bam_init1();
     while (sam_read1(settings.in, settings.hdr, b) >= 0) {
@@ -142,6 +142,7 @@ void bam_prse_core(pr_settings_t settings)
     	}
     }
     bam_destroy1(b);
+    */
 }
 
 static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
@@ -161,6 +162,8 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 
 static inline int annealed_check(bam1_t *a, bam1_t *b, int mmlim)
 {
+	char *aname = (char *)bam_get_qname(a);
+	char *bname = (char *)bam_get_qname(b);
 	int lq_2 = (a->core.l_qname - 1) / 2;
 	int hd = 0;
 	int i;
@@ -189,7 +192,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 {
 	for(int i = 0; i < stack->n; ++i) {
 		for(int j = i + 1; j < stack->n; ++j) {
-			if(hd_linear(stack->a[i], stack->a[j])) {
+			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
 				update_bam1(stack->a[j], stack->a[i]);
 				break;
 				// "break" in case there are multiple within hamming distance.
@@ -225,11 +228,10 @@ static inline void flatten_stack(tmp_stack_t *stack, pr_settings_t *settings)
 	settings->annealed ? flatten_stack_annealed(stack, settings): flatten_stack_linear(stack, settings);
 }
 
-static inline void
-
 static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 {
-    while (sam_read1(settings.in, settings.hdr, b) >= 0) {
+	bam1_t *b = bam_init1();
+    while (sam_read1(settings->in, settings->hdr, b) >= 0) {
         if(same_stack_pos(b, stack->a[0])) {
         	stack_insert(stack, b);
         	continue;
@@ -241,11 +243,28 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
         	stack->a[0] = bam_dup1(b);
         }
     }
+    bam_destroy1(b);
 }
 
 static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 {
+	//fprintf(stderr, "Beginning %s at line %s\n", __FUNCTION__, __LINE__);
+	bam1_t *b = bam_init1();
+	if(!settings) {
+		fprintf(stderr, "pr_loop_ucs got a null settings variable. WTF?\n");
+		fprintf(stderr, "Failed to open input bam... WTF?\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!(settings->in && settings->hdr)) {
+		fprintf(stderr, "Failed to open input bam... WTF?\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!stack->a) {
+		fprintf(stderr, "Looks like my stack wasn't properly initialized.\n");
+		exit(EXIT_FAILURE);
+	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+    	fprintf(stderr, "Hey, I read a record!\n");
         if(same_stack_ucs(b, stack->a[0])) {
         	stack_insert(stack, b);
         	continue;
@@ -257,27 +276,32 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
         	stack->a[0] = bam_dup1(b);
         }
     }
+    bam_destroy1(b);
 }
 
 
 static inline void pr_loop(pr_settings_t *settings, tmp_stack_t *stack)
 {
-	settings.cmpkey ? pr_loop_ucs(settings, stack): pr_loop_pos(settings, stack);
+	pr_loop_ucs(settings, stack);
+	//settings->cmpkey ? pr_loop_ucs(settings, stack): pr_loop_pos(settings, stack);
 }
 
 
-void bam_pr_core(pr_settings_t settings)
+void bam_pr_core(pr_settings_t *settings)
 {
-    bam1_t *b;
-    int last_tid = -1, last_pos = -1;
     tmp_stack_t stack;
-
-    b = bam_init1();
+    memset(&stack, 0, sizeof(tmp_stack_t));
     resize_stack(&stack, STACK_START);
-    memset(&stack, 0, sizeof(tmp_stack_t) * stack->max);
-    pr_loop(&settings, &stack); // Core
+    if(!(settings->in && settings->hdr && settings->out)) {
+    	fprintf(stderr, "Failed to read input/output files....\n");
+    	exit(EXIT_FAILURE);
+    }
+    if(!stack.a) {
+    	fprintf(stderr, "Failed to start array of bam1_t srtucts...\n");
+    	exit(EXIT_FAILURE);
+    }
+    pr_loop(settings, &stack); // Core
     free(stack.a);
-    bam_destroy1(b);
 }
 
 int pr_usage(void)
@@ -301,7 +325,7 @@ int main(int argc, char *argv[])
 
 int bam_pr(int argc, char *argv[])
 {
-    int c, is_se = 0, force_se = 0;
+    int c;
     char wmode[3] = {'w', 'b', 0};
     sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
 
@@ -310,22 +334,21 @@ int bam_pr(int argc, char *argv[])
         { NULL, 0, NULL, 0 }
     };
 
-    pr_settings_t settings = {
-    		.fqh = NULL,
-			.in = NULL,
-			.out = NULL,
-			.hdr = NULL,
-			.mmlim = 2,
-			.cmpkey = POS,
-			.is_se = 0,
-			.annealed = 0
-    };
+    pr_settings_t *settings = (pr_settings_t *)malloc(sizeof(pr_settings_t));
+    settings->fqh = NULL;
+    settings->in = NULL;
+    settings->out = NULL;
+    settings->hdr = NULL;
+    settings->mmlim = 2;
+    settings->cmpkey = 0;
+    settings->is_se = 0;
+    settings->annealed = 0;
 
     while ((c = getopt_long(argc, argv, "t:au?h", lopts, NULL)) >= 0) {
         switch (c) {
-        case 'a': settings.annealed = 1; break;
-        case 'u': settings.cmpkey = UCS; break;
-        case 't': settings.mmlim = atoi(optarg); break;
+        case 'a': settings->annealed = 1; break;
+        case 'u': settings->cmpkey = 1; break;
+        case 't': settings->mmlim = atoi(optarg); break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
         case '?': return pr_usage();
@@ -334,24 +357,24 @@ int bam_pr(int argc, char *argv[])
     if (optind + 2 > argc)
         return pr_usage();
 
-    settings.in = sam_open_format(argv[optind], "r", &ga.in);
-    settings.hdr = sam_hdr_read(in);
-    if (settings.hdr == NULL || settings.hdr->n_targets == 0) {
+    settings->in = sam_open_format(argv[optind], "r", &ga.in);
+    settings->hdr = sam_hdr_read(settings->in);
+    if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
         fprintf(stderr, "[bam_pr] input SAM does not have header. Abort!\n");
         return 1;
     }
 
     sam_open_mode(wmode+1, argv[optind+1], NULL);
-    settings.out = sam_open_format(argv[optind+1], wmode, &ga.out);
-    if (setings.in == 0 || settings.out == 0) {
+    settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
+    if (settings->in == 0 || settings->out == 0) {
         fprintf(stderr, "[bam_pr] fail to read/write input files\n");
         return 1;
     }
-    sam_hdr_write(settings.out, settings.out);
+    sam_hdr_write(settings->out, settings->hdr);
 
-    if (is_se) bam_prse_core(settings);
+    if (settings->is_se) bam_prse_core(settings);
     else bam_pr_core(settings);
-    bam_hdr_destroy(settings.hdr);
-    sam_close(settings.in); sam_close(settings.out);
+    bam_hdr_destroy(settings->hdr);
+    sam_close(settings->in); sam_close(settings->out);
     return 0;
 }
