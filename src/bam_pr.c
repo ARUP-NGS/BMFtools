@@ -117,6 +117,8 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		bam_aux_append(p, "RA", 'i', sizeof(int), (uint8_t *)&pRA);
 		//fprintf(stderr, "Deleted existing and appended RA tag to read %s.\n", (char *)bam_get_qname(p));
 	}
+	bam_destroy1(b);
+	b = NULL;
 #if !NDEBUG
 	pdata = bam_aux_get(p, "RA");
 	if(!pdata)
@@ -135,9 +137,132 @@ void bam_prse_core(pr_settings_t settings)
 
     b = bam_init1();
     while (sam_read1(settings.in, settings.hdr, b) >= 0) {
-        bam1_core_t *c = &b->core;
+    	if(stack.n) {
+
+    	}
     }
     bam_destroy1(b);
+}
+
+static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
+{
+	char *aname = (char *)bam_get_qname(a);
+	char *bname = (char *)bam_get_qname(b);
+	int l_qname = a->core.l_qname - 1; // Skip the terminal null in comparison.
+	int hd = 0;
+	for(uint64_t i = 0; i < l_qname; ++i) {
+		if(aname[i] != bname[i]) {
+			if(++hd > mmlim)
+				return 0;
+		}
+	}
+	return hd;
+}
+
+static inline int annealed_check(bam1_t *a, bam1_t *b, int mmlim)
+{
+	int lq_2 = (a->core.l_qname - 1) / 2;
+	int hd = 0;
+	int i;
+	for(i = 0; i < lq_2; ++i) {
+		if(aname[i] != bname[i + lq_2]) {
+			if(++hd > mmlim) {
+				return 0;
+			}
+		}
+		if(aname[i + lq_2] != bname[i]) {
+			if(++hd > mmlim) {
+				return 0;
+			}
+		}
+	}
+	return hd * -1;
+}
+
+static inline int hd_annealed(bam1_t *a, bam1_t *b, int mmlim)
+{
+	int lhd = hd_linear(a, b, mmlim);
+	return lhd ? lhd: annealed_check(a, b, mmlim);
+}
+
+static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *settings)
+{
+	for(int i = 0; i < stack->n; ++i) {
+		for(int j = i + 1; j < stack->n; ++j) {
+			if(hd_linear(stack->a[i], stack->a[j])) {
+				update_bam1(stack->a[j], stack->a[i]);
+				break;
+				// "break" in case there are multiple within hamming distance.
+				// Otherwise, I'll end up having memory mistakes.
+				// Besides, that read set will get merged into the later read in the set.
+			}
+		}
+	}
+}
+
+static inline void flatten_stack_annealed(tmp_stack_t *stack, pr_settings_t *settings)
+{/*
+	int hd;
+	for(int i = 0; i < stack->n; ++i) {
+		for(int j = i + 1; j < stack->n; ++j) {
+			if((hd = hd_linear(stack->a[i], stack->a[j]))) {
+				if(hd > 0)
+					update_bam1(stack->a[j], stack->a[i]);
+				else
+					update_bam1_rc(stack->a[j], stack->a[i]);
+				break;
+				// "break" in case there are multiple within hamming distance.
+				// Otherwise, I'll end up having memory mistakes.
+				// Besides, that read set will get merged into the later read in the set.
+			}
+		}
+	}
+	*/
+}
+
+static inline void flatten_stack(tmp_stack_t *stack, pr_settings_t *settings)
+{
+	settings->annealed ? flatten_stack_annealed(stack, settings): flatten_stack_linear(stack, settings);
+}
+
+static inline void
+
+static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
+{
+    while (sam_read1(settings.in, settings.hdr, b) >= 0) {
+        if(same_stack_pos(b, stack->a[0])) {
+        	stack_insert(stack, b);
+        	continue;
+        }
+        else {
+        	flatten_stack_linear(stack, settings);
+        	write_stack(stack, settings);
+        	resize_stack(stack, 1);
+        	stack->a[0] = bam_dup1(b);
+        }
+    }
+}
+
+static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
+{
+    while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+        if(same_stack_ucs(b, stack->a[0])) {
+        	stack_insert(stack, b);
+        	continue;
+        }
+        else {
+        	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+        	write_stack(stack, settings);
+        	resize_stack(stack, 1);
+        	stack->a[0] = bam_dup1(b);
+        }
+    }
+}
+
+
+static inline void pr_loop(pr_settings_t *settings, tmp_stack_t *stack)
+{
+	settings.cmpkey ? pr_loop_ucs(settings, stack): pr_loop_pos(settings, stack);
 }
 
 
@@ -148,26 +273,29 @@ void bam_pr_core(pr_settings_t settings)
     tmp_stack_t stack;
 
     b = bam_init1();
-    memset(&stack, 0, sizeof(tmp_stack_t));
-
-    while (sam_read1(settings.in, settings.hdr, b) >= 0) {
-        bam1_core_t *c = &b->core;
-    }
+    resize_stack(&stack, STACK_START);
+    memset(&stack, 0, sizeof(tmp_stack_t) * stack->max);
+    pr_loop(&settings, &stack); // Core
     free(stack.a);
     bam_destroy1(b);
 }
 
-int pr_usage(void) {
+int pr_usage(void)
+{
     fprintf(stderr, "\n");
     fprintf(stderr, "Usage:  samtools pr [-sS] <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    pr for SE reads\n");
-    fprintf(stderr, "        -S    treat PE reads as SE in pr (force -s)\n");
+    fprintf(stderr, "        -a    Use annealed rescue\n");
+    fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
+    fprintf(stderr, "        -u    Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
+    		"Note: This requires pre-processing with mark_unclipped from ppbwa (http://github.com/noseatbelts/ppbwa).\n");
 
     sam_global_opt_help(stderr, "-....");
     return 1;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	return bam_pr(argc, argv);
 }
 
@@ -187,7 +315,7 @@ int bam_pr(int argc, char *argv[])
 			.in = NULL,
 			.out = NULL,
 			.hdr = NULL,
-			.mmthr = 2,
+			.mmlim = 2,
 			.cmpkey = POS,
 			.is_se = 0,
 			.annealed = 0
@@ -197,6 +325,7 @@ int bam_pr(int argc, char *argv[])
         switch (c) {
         case 'a': settings.annealed = 1; break;
         case 'u': settings.cmpkey = UCS; break;
+        case 't': settings.mmlim = atoi(optarg); break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
         case '?': return pr_usage();

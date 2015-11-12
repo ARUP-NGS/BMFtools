@@ -72,14 +72,23 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 }
 
 static inline void resize_stack(tmp_stack_t *stack, size_t n) {
-	stack->max = n;
-	stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
+	if(n > stack->max) {
+		stack->max = n;
+		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 #if !NDEBUG
-	if(!stack->a) {
-		fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
+		if(!stack->a) {
+			fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n");
+			exit(EXIT_FAILURE);
+		}
 #endif
+	}
+	else if(n < stack->n){
+		for(uint64_t i = stack->n; i > n; --i) {
+			bam_destroy1(stack->a[i]);
+		}
+		stack->max = n;
+		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
+	}
 }
 
 enum cmpkey {
@@ -87,13 +96,23 @@ enum cmpkey {
 	UCS
 };
 
+static inline int same_stack_pos(bam1_t *b, bam1_t *p) {
+	return (bam_sort_core_key(b) == bam_sort_core_key(p) &&
+			bam_sort_mate_key(b) == bam_sort_mate_key(p));
+}
+
+static inline int same_stack_ucs(bam1_t *b, bam1_t *p) {
+	return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
+			ucs_sort_mate_key(b) == ucs_sort_mate_key(p));
+}
+
 
 typedef struct pr_settings {
 	FILE *fqh;
 	samFile *in;
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
-	int mmthr; // Mismatch failure threshold.
+	int mmlim; // Mismatch failure threshold.
 	int annealed; // Set to true to check a reversed barcode for a mismatch limit.
 	int is_se; // Is single-end
 	bam_hdr_t *hdr; // BAM header
@@ -167,6 +186,49 @@ static inline void stack_resize(tmp_stack_t *stack, size_t n) {
     stack->a = (bam1_t **)realloc(stack->a, n * sizeof(tmp_stack_t)); // Default pre-allocate 32
     memset(&stack, 0, sizeof(tmp_stack_t) * n);
     return;
+}
+
+
+static inline void bam2ffq(bam1_t *b, FILE *fp)
+{
+	char comment[3000] = "";
+	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
+	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
+	append_csv_buffer(b->core.l_qseq, (int *)pv, comment, (char *)"PV:I:B");
+	strcat(comment, "\t");
+	append_csv_buffer(b->core.l_qseq, (int *)fa, comment, (char *)"FA:I:B");
+	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
+	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
+	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
+	if(!(b->core.flag & BAM_FREVERSE)) {
+		fprintf(fp, "@%s %s\n%s\n+\n%s\n", bam_get_qname(b), comment, bam_get_seq(b), bam_get_qual(b));
+		return;
+	}
+	fprintf(fp, "@%s %s\n", (char *)bam_get_qname(b), comment);
+	char tmpbuf[300];
+	fill_rc((char *)bam_get_seq(b), tmpbuf, b->core.l_qseq);
+	fprintf(fp, "%s\n+\n", tmpbuf);
+#if !NDEBUG
+	CHECK_SEQ((char *)bam_get_seq(b));
+#endif
+	fill_rv((char *)bam_get_qual(b), tmpbuf, b->core.l_qseq);
+	fprintf(fp, "%s\n", tmpbuf);
+	return;
+}
+
+
+static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
+{
+	for(int i = 0; i < stack->n; ++i) {
+		if(stack->a[i]) {
+			if(bam_aux_get(stack->a[i], "RA")) /* If RA tag is present, IE, if it was merged.*/
+				bam2ffq(stack->a[i], settings->fqh);
+			else
+				sam_write1(settings->out, settings->hdr, records[i]);
+			bam1_destroy(records[i]);
+			records[i] = NULL;
+		}
+	}
 }
 
 int bam_pr(int argc, char *argv[]);
