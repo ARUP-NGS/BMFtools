@@ -65,6 +65,13 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
 	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
 	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+#if !NDEBUG
+	for(int i = 0; i < b->core.l_qseq; ++i) {
+		fprintf(stderr, "%"PRIu32",", bPV[i]);
+	}
+	fprintf(stderr, "\n");
+	exit(0);
+#endif
 	if(!bPV || !pPV) {
 		fprintf(stderr, "Required PV tag not found. Abort mission! Read names: %s, %s.\n", bam_get_qname(b), bam_get_qname(p));
 		exit(EXIT_FAILURE);
@@ -74,16 +81,16 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		exit(EXIT_FAILURE);
 	}
 
-	char *bSeq = (char *)bam_get_seq(b);
-	char *pSeq = (char *)bam_get_seq(p);
-	char *bQual = (char *)bam_get_qual(b);
-	char *pQual = (char *)bam_get_qual(p);
-	if(!(bSeq && pSeq && bQual &&pQual)) {
+	uint8_t *bSeq = (uint8_t *)bam_get_seq(b);
+	uint8_t *pSeq = (uint8_t *)bam_get_seq(p);
+	uint8_t *bQual = (uint8_t *)bam_get_qual(b);
+	uint8_t *pQual = (uint8_t *)bam_get_qual(p);
+	if(!(bSeq && pSeq && bQual && pQual)) {
 		fprintf(stderr, "Qual strings or sequence strings are null. Abort!\n");
 	}
 	for(int i = 0; i < p->core.l_qseq; ++i) {
-		if(bSeq[i] == pSeq[i]) {
-			pPV[i] = (uint32_t)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i] + bPV[i]))));
+		if(bam_seqi(pSeq, i) == bam_seqi( bSeq, i)) {
+			pPV[i] = (uint32_t)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i], bPV[i]))));
 			pFA[i] += bFA[i];
 			if(bQual[i] > pQual[i])
 				pQual[i] = bQual[i];
@@ -94,17 +101,17 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pPV[i] = disc_pvalues(pPV[i], bPV[i]);
 			else {
 				pPV[i] = disc_pvalues(bPV[i], pPV[i]);
-				pSeq[i] = bSeq[i];
+				set_base(pSeq, bSeq, i);
 				pFA[i] = bFA[i];
 				pQual[i] = bQual[i];
 				++n_changed;
 			}
 		}
 		if(pPV[i] < 3) {
-			pSeq[i] = 'N';
+			pSeq[(i)>>1] |= (0xf << ((!(i % 2)) * 4)); // Set the base to N
 			pFA[i] = 0;
 			pPV[i] = 0;
-			pQual[i] = '!'; // 33 phred == 0 quality == '!'
+			pQual[i] = 0; // Note: this is not shifted by 33.
 			++mask;
 		}
 	}
@@ -112,13 +119,6 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	if(!pdata) {
 		bam_aux_append(p, "RA", 'i', sizeof(int), (uint8_t *)&ra_val);
 		//fprintf(stderr, "Appended RA tag to read %s.\n", (char *)bam_get_qname(p));
-	}
-	else {
-		int pRA = bam_aux2i(pdata);
-		pRA |= ra_val;
-		bam_aux_del(p, bam_aux_get(p, "RA"));
-		bam_aux_append(p, "RA", 'i', sizeof(int), (uint8_t *)&pRA);
-		//fprintf(stderr, "Deleted existing and appended RA tag to read %s.\n", (char *)bam_get_qname(p));
 	}
 	bam_destroy1(b);
 	b = NULL;
@@ -273,24 +273,33 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		exit(EXIT_FAILURE);
 	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+    	const char *seq = bam_get_seq(b);
     	fprintf(stderr, "Reading record!\n");
-    	fprintf(stderr, "Current sequence: %s\n", (char *)bam_get_seq(b));
-    	fprintf(stderr, "Current qual: %s\n", (char *)bam_get_qual(b));
+    	fprintf(stderr, "Current sequence: %s.\tstrlen: %i. l_qseq: %i., char at l_qseq: %c %i.\t", seq, (int)strlen(seq), b->core.l_qseq, seq[b->core.l_qseq], seq[b->core.l_qseq]);
+    	for(int i = 0; i < b->core.l_qname;++i)
+    		fprintf(stderr, "%i,%i\t", i, (int)seq[i]);
+    	fprintf(stderr, "\n");
+    	//fprintf(stderr, "Current qual: %s\n", (char *)bam_get_qual(b));
+    	//fprintf(stderr, "Current qname: %s. strlen: %i.\n", (char *)bam_get_qname(b), strlen((char *)bam_get_qname(b)));
         if(same_stack_ucs(b, stack->a[stack->n - 1])) {
         	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
         		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
         		exit(EXIT_FAILURE);
         	}
         	fprintf(stderr, "Adding record to stack! New length: %i.\n", stack->n);
+        	/*
         	stack_insert(stack, b);
+        	*/
         	continue;
         }
         else {
         	fprintf(stderr, "Flattening stack!\n");
+        	/*
         	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         	write_stack(stack, settings);
         	stack->n = 1;
         	stack->a[0] = bam_dup1(b);
+        	*/
         }
     }
     bam_destroy1(b);
@@ -391,7 +400,7 @@ int bam_pr(int argc, char *argv[])
     }
 
 
-    settings->in = sam_open_format(argv[optind], "r", &ga.in);
+    settings->in = sam_open_format(argv[optind], "rb", &ga.in);
     settings->hdr = sam_hdr_read(settings->in);
     if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
         fprintf(stderr, "[bam_pr] input SAM does not have header. Abort!\n");

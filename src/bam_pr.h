@@ -53,7 +53,27 @@
 #endif
 
 #ifndef AVG_LOG_TO_CHI2
-#define AVG_LOG_TO_CHI2(x) (x) * LOG10E_X5_1_2
+#define AVG_LOG_TO_CHI2(x, y) (x + y) * LOG10E_X5_1_2
+#endif
+
+#ifndef HTS_A
+#define HTS_A 1
+#endif
+
+#ifndef HTS_C
+#define HTS_C 2
+#endif
+
+#ifndef HTS_G
+#define HTS_G 4
+#endif
+
+#ifndef HTS_T
+#define HTS_T 8
+#endif
+
+#ifndef HTS_N
+#define HTS_N 15
 #endif
 
 #ifndef CHECK_SEQ
@@ -72,6 +92,8 @@
 		default: fprintf(stderr, "OMGZWTF There's an incorrect nucleotide in here. (%c). String: %s.\n", tmpseq[seq_##i], tmpseq); exit(EXIT_FAILURE);break;\
 	}}} while(0)
 #endif
+
+#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? (bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): ((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
 
 
 typedef bam1_t *bam1_p;

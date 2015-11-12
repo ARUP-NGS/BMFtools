@@ -1400,6 +1400,7 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		fprintf(stderr, "[bmfsort_core] fail to open file %s\n", fn);
 		return -1;
 	}
+	b = bam_init1();
 	fprintf(stderr, "[bmfsort_core] Reading from '%s'.\n", (strcmp(fn, "-") == 0 || strcmp(fn, "stdin") == 0) ? "stdin": fn);
 	header = sam_hdr_read(fp);
 	if (header == NULL) {

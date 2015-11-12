@@ -244,6 +244,10 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpvars_t 
 		}
 		*/
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
+		if(bufs->cons_quals[i] > 2) {
+			bufs->cons_seq_buffer[i] = ARRG_MAX_TO_NUC(argmaxret);
+			bufs->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
+		}
 		bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
 		bufs->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
 	}
