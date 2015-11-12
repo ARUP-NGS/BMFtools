@@ -25,6 +25,9 @@ DEALINGS IN THE SOFTWARE.  */
 #include "bam_pr.h"
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
+#if !NDEBUG
+	fprintf(stderr, "Now updating bam1_t with name %s with bam1_t with name %s.\n", bam_get_qname(p), bam_get_qname(b));
+#endif
 	uint8_t *bdata, *pdata;
 	int n_changed = 0;
 	int mask = 0;
@@ -231,7 +234,13 @@ static inline void flatten_stack(tmp_stack_t *stack, pr_settings_t *settings)
 static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
+	if(sam_read1(settings->in, settings->hdr, b) < 0) {
+		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	stack_insert(stack, b);
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+    	fprintf(stderr, "Current sequence: %s\n", bam_get_seq(b));
         if(same_stack_pos(b, stack->a[0])) {
         	stack_insert(stack, b);
         	continue;
@@ -250,11 +259,11 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 {
 	//fprintf(stderr, "Beginning %s at line %s\n", __FUNCTION__, __LINE__);
 	bam1_t *b = bam_init1();
-	if(!settings) {
-		fprintf(stderr, "pr_loop_ucs got a null settings variable. WTF?\n");
-		fprintf(stderr, "Failed to open input bam... WTF?\n");
+	if(sam_read1(settings->in, settings->hdr, b) < 0) {
+		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
+	stack_insert(stack, b);
 	if(!(settings->in && settings->hdr)) {
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
 		exit(EXIT_FAILURE);
@@ -264,15 +273,23 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		exit(EXIT_FAILURE);
 	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
-    	fprintf(stderr, "Hey, I read a record!\n");
-        if(same_stack_ucs(b, stack->a[0])) {
+    	fprintf(stderr, "Reading record!\n");
+    	fprintf(stderr, "Current sequence: %s\n", (char *)bam_get_seq(b));
+    	fprintf(stderr, "Current qual: %s\n", (char *)bam_get_qual(b));
+        if(same_stack_ucs(b, stack->a[stack->n - 1])) {
+        	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
+        		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
+        		exit(EXIT_FAILURE);
+        	}
+        	fprintf(stderr, "Adding record to stack! New length: %i.\n", stack->n);
         	stack_insert(stack, b);
         	continue;
         }
         else {
+        	fprintf(stderr, "Flattening stack!\n");
         	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         	write_stack(stack, settings);
-        	resize_stack(stack, 1);
+        	stack->n = 1;
         	stack->a[0] = bam_dup1(b);
         }
     }
@@ -344,18 +361,35 @@ int bam_pr(int argc, char *argv[])
     settings->is_se = 0;
     settings->annealed = 0;
 
-    while ((c = getopt_long(argc, argv, "t:au?h", lopts, NULL)) >= 0) {
+    char fqname[200] = "";
+
+    while ((c = getopt_long(argc, argv, "f:t:au?h", lopts, NULL)) >= 0) {
         switch (c) {
         case 'a': settings->annealed = 1; break;
         case 'u': settings->cmpkey = 1; break;
         case 't': settings->mmlim = atoi(optarg); break;
+        case 'f': strcpy(fqname, optarg); break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
+        case 'h': /* fall-through */
         case '?': return pr_usage();
         }
     }
     if (optind + 2 > argc)
         return pr_usage();
+
+    if(strcmp(fqname, "") == 0) {
+    	fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
+    	return pr_usage();
+    }
+
+    settings->fqh = fopen(fqname, "w");
+
+    if(!settings->fqh) {
+    	fprintf(stderr, "Failed to open output fastq for writing. Abort!\n");
+    	exit(EXIT_FAILURE);
+    }
+
 
     settings->in = sam_open_format(argv[optind], "r", &ga.in);
     settings->hdr = sam_hdr_read(settings->in);
@@ -376,5 +410,8 @@ int bam_pr(int argc, char *argv[])
     else bam_pr_core(settings);
     bam_hdr_destroy(settings->hdr);
     sam_close(settings->in); sam_close(settings->out);
+    if(settings->fqh) {
+    	fclose(settings->fqh);
+    }
     return 0;
 }

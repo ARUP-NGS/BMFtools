@@ -87,7 +87,7 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
         stack->max = stack->max? stack->max<<1 : 0x10000;
         stack->a = (bam1_t**)realloc(stack->a, sizeof(bam1_t*) * stack->max);
     }
-    stack->a[stack->n++] = b;
+    stack->a[stack->n++] = bam_dup1(b);
 }
 
 static inline void resize_stack(tmp_stack_t *stack, size_t n) {
@@ -127,6 +127,18 @@ static inline int same_stack_pos(bam1_t *b, bam1_t *p) {
 }
 
 static inline int same_stack_ucs(bam1_t *b, bam1_t *p) {
+#if !NDEBUG
+	if(!p) {
+		fprintf(stderr, "Later bam record not set. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!b) {
+		fprintf(stderr, "First bam record not set. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	fprintf(stderr, "Core key 1: %" PRIu64 ". Core key 2: %" PRIu64 ".\n", ucs_sort_core_key(p), ucs_sort_core_key(b));
+	fprintf(stderr, "Mate key 1: %" PRIu64 ". Mate key 2: %" PRIu64 ".\n", ucs_sort_mate_key(p), ucs_sort_mate_key(b));
+#endif
 	return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
 			ucs_sort_mate_key(b) == ucs_sort_mate_key(p));
 }
@@ -214,10 +226,14 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
-			if(bam_aux_get(stack->a[i], "RA")) /* If RA tag is present, IE, if it was merged.*/
+			if(bam_aux_get(stack->a[i], "RA")) { /* If RA tag is present, IE, if it was merged.*/
+				fprintf(stderr, "This should be writing the record to the fastq handle.\n");
 				bam2ffq(stack->a[i], settings->fqh);
-			else
+			}
+			else {
+				fprintf(stderr, "This should be writing the record to the bam handle.\n");
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			}
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}
