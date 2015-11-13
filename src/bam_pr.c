@@ -92,18 +92,43 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	}
 	for(int i = 0; i < p->core.l_qseq; ++i) {
 		if(bam_seqi(pSeq, i) == bam_seqi( bSeq, i)) {
+			uint32_t delete_me = (uint32_t)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i], bPV[i]))));
+			if(delete_me > 1073741824) {
+				fprintf(stderr, "Input quantities of %"PRIu32" and %"PRIu32" resulted in overflow (%"PRIu32") in igamc.\n", bPV[i], pPV[i], delete_me);
+				exit(0);
+			}
 			pPV[i] = (uint32_t)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i], bPV[i]))));
 			pFA[i] += bFA[i];
 			if(bQual[i] > pQual[i])
 				pQual[i] = bQual[i];
 		}
 		else {
-			if(pPV[i] > bPV[i])
+			uint32_t delete_me;
+			if(pPV[i] > bPV[i]) {
 				// Leave pFA alone since it didn't change.
+#if !NDEBUG
+				delete_me = disc_pvalues(pPV[i], bPV[i]);
+				if(delete_me > 1073741824) {
+					fprintf(stderr, "Input quantities of %"PRIu32" and %"PRIu32" resulted in overflow (%"PRIu32"in igamc with disc_pvalues.\n", bPV[i], pPV[i], delete_me);
+					exit(0);
+				}
+#endif
 				pPV[i] = disc_pvalues(pPV[i], bPV[i]);
+			}
 			else {
 				pPV[i] = disc_pvalues(bPV[i], pPV[i]);
+#if !NDEBUG
+				delete_me = disc_pvalues(pPV[i], bPV[i]);
+				if(delete_me > 1073741824) {
+					fprintf(stderr, "Input quantities of %"PRIu32" and %"PRIu32" resulted in overflow (%"PRIu32"in igamc with disc_pvalues.\n", bPV[i], pPV[i], delete_me);
+					exit(0);
+				}
+#endif
 				set_base(pSeq, bSeq, i);
+				if(bam_seqi(pSeq, i) != bam_seqi(bSeq, i)) {
+					fprintf(stderr, "You sucked at this, Daniel. Try again! bSeq number: %i. pSeq number: %i.\n", bam_seqi(bSeq, i), bam_seqi(pSeq, i));
+					exit(EXIT_FAILURE);
+				}
 				pFA[i] = bFA[i];
 				pQual[i] = bQual[i];
 				++n_changed;
