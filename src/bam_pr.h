@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <tgmath.h>
 #include <inttypes.h>
+#include <assert.h>
 #include "htslib/sam.h"
 #include "sam_opts.h"
 #include "bam.h" // for bam_get_library
@@ -88,9 +89,13 @@
 		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
 	buf[len] = '\0'
 
-
-//#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? (bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): ((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
-#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi((bSeq), i) << ((!(i % 2)) << 2)) | (((pSeq)[(i)>>1]) & (0xfU << ((!(i % 2)) << 2))))
+/*
+#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? \
+		(bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): \
+		((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
+*/
+#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi(bSeq, i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xf0U >> (((~i) & 1) << 2))))
+//#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi((bSeq), i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xfU << ((~i) & 1) << 2)))
 
 
 typedef bam1_t *bam1_p;
@@ -174,17 +179,22 @@ typedef struct pr_settings {
 	int annealed; // Set to true to check a reversed barcode for a mismatch limit.
 	int is_se; // Is single-end
 	bam_hdr_t *hdr; // BAM header
-
 } pr_settings_t;
 
-static inline int pvalue_to_phred(double pvalue)
+static inline uint32_t pvalue_to_phred(double pvalue)
 {
-	return (int)(-10 * log10(pvalue) + 0.5); // Add 0.5 to round up
+	return (uint32_t)(-10 * log10(pvalue) + 0.5); // Add 0.5 to round up
 }
 
-static inline int disc_pvalues(double pv_better, double pv_worse)
+static inline uint32_t agreed_pvalues(double pv1, double pv2)
 {
-	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - (10. * log10(1 - pow(10., (pv_worse * 0.1)))))));
+	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv1 + pv2)));
+}
+
+static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
+{
+	//return pv_better - pv_worse;
+	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - pv_worse)));
 }
 
 
@@ -196,6 +206,15 @@ static inline double igamc_pvalues(int num_pvalues, double x)
 	}
 	else {
 		return igamc((double)num_pvalues, x / 2.0);
+	}
+}
+
+static inline int n_side(bam1_t *b)
+{
+	int n_run = 0;
+	for(int i = 0; i < b->core.l_qseq; ++i) {
+		if(bam_seqi(b, i) == HTS_N)
+			++n_run;
 	}
 }
 
@@ -265,16 +284,16 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			/*
-			if(bam_aux_get(stack->a[i], "RA")) { // If RA tag is present, IE, if it was merged.
+			if(bam_aux_get(stack->a[i], "RA")) // If RA tag is present, IE, if it was merged.
 				//fprintf(stderr, "This should be writing the record to the fastq handle.\n");
 				bam2ffq(stack->a[i], settings->fqh);
-			}
-			else {
+			else
 				//fprintf(stderr, "This should be writing the record to the bam handle.\n");
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
-			}
-			*/
-			sam_write1(settings->out, settings->hdr, stack->a[i]);
+			//sam_write1(settings->out, settings->hdr, stack->a[i]);
+			 *
+			 */
+			bam_aux_get(stack->a[i], "RA") ? bam2ffq(stack->a[i], settings->fqh): sam_write1(settings->out, settings->hdr, stack->a[i]);
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}

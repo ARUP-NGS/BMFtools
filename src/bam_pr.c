@@ -25,42 +25,61 @@ DEALINGS IN THE SOFTWARE.  */
 #include "bam_pr.h"
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
-#if !NDEBUG
-	//fprintf(stderr, "Now updating bam1_t with name %s with bam1_t with name %s.\n", bam_get_qname(p), bam_get_qname(b));
-#endif
 	uint8_t *bdata, *pdata;
-	int n_changed = 0;
-	int mask = 0;
 	int ra_val = 1;
 	if(!b || !p) {
 		// If the
 		fprintf(stderr, "One of these records is null. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
-	int bFM = bam_aux2i(bam_aux_get(b, "FM"));
-	int pFM = bam_aux2i(bam_aux_get(p, "FM"));
-	pFM += bFM;
-	bam_aux_del(p, bam_aux_get(p, "FM"));
-	bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
+	bdata = bam_aux_get(b, "FM");
 	pdata = bam_aux_get(p, "FM");
+	int bFM = bam_aux2i(bdata);
+	int pFM = bam_aux2i(pdata);
 	if(pFM < bFM)
 		memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
-	int pRV;
+	int iFM = pFM;
+	pFM += bFM;
+	bam_aux_del(p, pdata);
+	bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
+#if !NDEBUG
+	assert(pFM == bam_aux2i(bam_aux_get(p, "FM")));
+#endif
 	pdata = bam_aux_get(p, "RV");
 	if(pdata) {
-		pRV = bam_aux2i(pdata);
-		bdata = bam_aux_get(b, "RV");
-		pRV += bam_aux2i(bdata);
-		bam_aux_del(p, bam_aux_get(p, "RV"));
+		int pRV = bam_aux2i(pdata);
+		pRV += bam_aux2i(bam_aux_get(b, "RV"));
+		bam_aux_del(p, pdata);
 		bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
 	}
-	int bFP = bam_aux2i(bam_aux_get(b, "FP"));
-	int pFP = bam_aux2i(bam_aux_get(p, "FP"));
-	if(bFP && !pFP) {
-		pFP = 1;
-		bam_aux_del(p, bam_aux_get(p, "FP"));
-		bam_aux_append(p, "FP", 'i', sizeof(int), (uint8_t *)&pFP);
+	pdata = bam_aux_get(p, "NN");
+	bdata = bam_aux_get(b, "NN");
+	int mask;
+	if(pdata) {
+		if(bdata)
+			mask = bam_aux2i(bdata) + bam_aux2i(pdata);
+		else
+			mask = bam_aux2i(pdata);
+		bam_aux_del(p, pdata);
 	}
+	else if(bdata)
+		mask = bam_aux2i(bdata);
+	else
+		mask = 0;
+	pdata = bam_aux_get(p, "NC");
+	bdata = bam_aux_get(b, "NC");
+	int n_changed;
+	if(pdata) {
+		if(bdata)
+			n_changed = bam_aux2i(bdata) + bam_aux2i(pdata);
+		else
+			n_changed = bam_aux2i(pdata);
+		bam_aux_del(p, pdata);
+	}
+	else if(bdata)
+		n_changed = bam_aux2i(bdata);
+	else
+		n_changed = 0;
 	uint32_t *bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
 	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
 	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
@@ -92,54 +111,50 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	}
 	for(int i = 0; i < p->core.l_qseq; ++i) {
 		if(bam_seqi(pSeq, i) == bam_seqi( bSeq, i)) {
-			uint32_t delete_me = (uint32_t)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i], bPV[i]))));
-			if(delete_me > 1073741824) {
-				fprintf(stderr, "Input quantities of %"PRIu32" and %"PRIu32" resulted in overflow (%"PRIu32") in igamc.\n", bPV[i], pPV[i], delete_me);
-				exit(0);
-			}
-			pPV[i] = (uint32_t)(-10 * log10(igamc(2., AVG_LOG_TO_CHI2(pPV[i], bPV[i]))));
+			pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
 			pFA[i] += bFA[i];
 			if(bQual[i] > pQual[i])
 				pQual[i] = bQual[i];
 		}
+		else if(bam_seqi(pSeq, i) == HTS_N) {
+			set_base(pSeq, bSeq, i);
+			pFA[i] = bFA[i];
+			pPV[i] = bPV[i];
+			++n_changed; // Note: goes from N to a useable nucleotide.
+		}
+		else if(bam_seqi(bSeq, i) == HTS_N) {
+			// Nothing
+		}
 		else {
-			uint32_t delete_me;
-			if(pPV[i] > bPV[i]) {
+			if(pPV[i] > bPV[i])
 				// Leave pFA alone since it didn't change.
-#if !NDEBUG
-				delete_me = disc_pvalues(pPV[i], bPV[i]);
-				if(delete_me > 1073741824) {
-					fprintf(stderr, "Input quantities of %"PRIu32" and %"PRIu32" resulted in overflow (%"PRIu32"in igamc with disc_pvalues.\n", bPV[i], pPV[i], delete_me);
-					exit(0);
-				}
-#endif
 				pPV[i] = disc_pvalues(pPV[i], bPV[i]);
-			}
 			else {
 				pPV[i] = disc_pvalues(bPV[i], pPV[i]);
+				if(bam_seqi(bSeq, i) != HTS_N)
+					set_base(pSeq, bSeq, i);
 #if !NDEBUG
-				delete_me = disc_pvalues(pPV[i], bPV[i]);
-				if(delete_me > 1073741824) {
-					fprintf(stderr, "Input quantities of %"PRIu32" and %"PRIu32" resulted in overflow (%"PRIu32"in igamc with disc_pvalues.\n", bPV[i], pPV[i], delete_me);
-					exit(0);
-				}
-#endif
-				set_base(pSeq, bSeq, i);
 				if(bam_seqi(pSeq, i) != bam_seqi(bSeq, i)) {
-					fprintf(stderr, "You sucked at this, Daniel. Try again! bSeq number: %i. pSeq number: %i.\n", bam_seqi(bSeq, i), bam_seqi(pSeq, i));
+					fprintf(stderr, "You sucked at this, Daniel. Try again! bSeq number: %i. pSeq number: %i. Direction: %s.\n", bam_seqi(bSeq, i), bam_seqi(pSeq, i),
+							(i % 2) ? "Odd": "Even");
 					exit(EXIT_FAILURE);
 				}
+#endif
 				pFA[i] = bFA[i];
 				pQual[i] = bQual[i];
 				++n_changed;
 			}
 		}
 		if(pPV[i] < 3) {
-			pSeq[(i)>>1] |= (0xf << ((!(i % 2)) * 4)); // Set the base to N
+			if(bam_seqi(pSeq, i) != HTS_N)
+				++mask;
+			pSeq[(i)>>1] |= (0xf << (((~i) & 1) << 2)); // Set the base to N
+#if !NDEBUG
+			assert(bam_seqi(pSeq, i) == 0xfU);
+#endif
 			pFA[i] = 0;
 			pPV[i] = 0;
 			pQual[i] = 0; // Note: this is not shifted by 33.
-			++mask;
 		}
 	}
 	pdata = bam_aux_get(p, "RA");
@@ -147,13 +162,8 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		bam_aux_append(p, "RA", 'i', sizeof(int), (uint8_t *)&ra_val);
 		//fprintf(stderr, "Appended RA tag to read %s.\n", (char *)bam_get_qname(p));
 	}
-	bam_destroy1(b);
-	b = NULL;
-#if !NDEBUG
-	pdata = bam_aux_get(p, "RA");
-	if(!pdata)
-		exit(EXIT_FAILURE);
-#endif
+	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
+	bam_aux_append(p, "NN", 'i', sizeof(int), (uint8_t *)&mask);
 }
 
 
@@ -223,7 +233,16 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	for(int i = 0; i < stack->n; ++i) {
 		for(int j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
+#if !NDEBUG
+				if(strcmp(bam_get_qname(stack->a[j]), "CTGAGCAGCTCATCAATA") == 0 ||
+					strcmp(bam_get_qname(stack->a[i]), "CTGAGCAGCTCATCAATA") == 0) {
+						bam2ffq(stack->a[j], settings->fqh);
+						bam2ffq(stack->a[i], settings->fqh);
+				}
+#endif
 				update_bam1(stack->a[j], stack->a[i]);
+				bam_destroy1(stack->a[i]);
+				stack->a[i] = NULL;
 				break;
 				// "break" in case there are multiple within hamming distance.
 				// Otherwise, I'll end up having memory mistakes.
@@ -309,8 +328,9 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
     		sam_write1(settings->out, settings->hdr, b);
     		continue;
     	}
-        if(same_stack_ucs(b, stack->a[stack->n - 1])) {
+        if(same_stack_ucs(b, *stack->a)) {
 #if !NDEBUG
+        	assert((b->core.flag & BAM_FREAD1) == (stack->a[0]->core.flag & BAM_FREAD1));
         	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
         		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
         		exit(EXIT_FAILURE);
