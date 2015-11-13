@@ -96,19 +96,19 @@
 typedef bam1_t *bam1_p;
 
 typedef struct {
-    int n, max;
-    bam1_t **a;
+	int n, max;
+	bam1_t **a;
 } tmp_stack_t;
 
 const int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
-    if (stack->n == stack->max) {
-        stack->max = stack->max? stack->max<<1 : 0x10000;
-        stack->a = (bam1_t**)realloc(stack->a, sizeof(bam1_t*) * stack->max);
-    }
-    stack->a[stack->n++] = bam_dup1(b);
+	if (stack->n == stack->max) {
+	    stack->max = stack->max? stack->max<<1 : 0x10000;
+	    stack->a = (bam1_t**)realloc(stack->a, sizeof(bam1_t*) * stack->max);
+	}
+	stack->a[stack->n++] = bam_dup1(b);
 }
 
 static inline void resize_stack(tmp_stack_t *stack, size_t n) {
@@ -217,46 +217,44 @@ static inline void *array_tag(bam1_t *b, const char *tag) {
 
 static inline void bam2ffq(bam1_t *b, FILE *fp)
 {
+	int i;
+	int qlen = b->core.l_qseq;
+	char seqbuf[SEQBUF_SIZE];
+	uint8_t *seq;
+	seq = bam_get_seq(b);
+	for (i = 0; i < qlen; ++i)
+	    seqbuf[i] = bam_seqi(seq, i);
+	if (b->core.flag & BAM_FREVERSE) { // reverse complement
+	    for (i = 0; i < qlen>>1; ++i) {
+	        int8_t t = seq_comp_table[seqbuf[qlen - 1 - i]];
+	        seqbuf[qlen - 1 - i] = seq_comp_table[seqbuf[i]];
+	        seqbuf[i] = t;
+	    }
+	    if (qlen&1) seqbuf[i] = seq_comp_table[seqbuf[i]];
+	}
+	for (i = 0; i < qlen; ++i)
+	    seqbuf[i] = seq_nt16_str[seqbuf[i]];
+	seqbuf[qlen] = '\0';
 	char comment[3000] = "";
 	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
 	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
-	append_csv_buffer(b->core.l_qseq, (int *)pv, comment, (char *)"PV:I:B");
+	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:I:B");
 	strcat(comment, "\t");
-	append_csv_buffer(b->core.l_qseq, (int *)fa, comment, (char *)"FA:I:B");
+	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:I:B");
 	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
 	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
-	if(!(b->core.flag & BAM_FREVERSE)) {
-		fprintf(fp, "Writing the read with current direction.\n");
-		uint8_t *bseq = bam_get_seq(b);
-		uint8_t *bqual = bam_get_qual(b);
-		char seqbuf[SEQBUF_SIZE];
-		seq2buf(seqbuf, bseq, b->core.l_qseq);
-		fprintf(fp, "@%s %s\n%s\n+\n", bam_get_qname(b), comment, seqbuf);
-		for(int i = 0; i < b->core.l_qseq; ++i)
-			seqbuf[i] = 33 + bqual[i];
-		fprintf(fp, "%s\n", seqbuf);
-		return;
-	}
-	fprintf(stderr, "Writing the read by reverse-complementing.\n");
-	uint8_t *bseq = bam_get_seq(b);
-	uint8_t *bqual = bam_get_qual(b);
-	char seqbuf[SEQBUF_SIZE];
-	int i;
-	for(i = 0; i < (b->core.l_qseq >> 1); ++i) {
-		const int8_t tmp = bam_seqi(bseq, i);
-		seqbuf[i] = nuc_cmpl(seq_nt16_str[bam_seqi(bseq, b->core.l_qseq - i - 1)]);
-		seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seq_nt16_str[tmp]);
-	}
-	if(b->core.l_qseq & 1)
-		seqbuf[i] = nuc_cmpl(seq_nt16_str[bam_seqi(bseq, i)]);
-#if !NDEBUG
-	fprintf(stderr, "Now the sequence is %s.\n", seqbuf);
-#endif
-	fprintf(fp, "Writing the read by reverse-complementing.\n");
 	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
-	for(uint64_t j = 0; j < b->core.l_qseq; ++j)
-		seqbuf[j] = bqual[b->core.l_qseq - j - 1] + 33;
+	char *qual = (char *)bam_get_qual(b);
+	for(i = 0; i < qlen; ++i)
+		seqbuf[i] = 33 + qual[i];
+	if (b->core.flag & BAM_FREVERSE) { // reverse
+	    for (i = 0; i < qlen>>1; ++i) {
+	        int8_t t = seqbuf[qlen - 1 - i];
+	        seqbuf[qlen - 1 - i] = seqbuf[i];
+	        seqbuf[i] = t;
+	    }
+	}
 	fprintf(fp, "%s\n", seqbuf);
 	return;
 }

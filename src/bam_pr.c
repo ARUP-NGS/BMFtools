@@ -264,6 +264,12 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
+	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+		sam_write1(settings->out, settings->hdr, b);
+		if(sam_read1(settings->in, settings->hdr, b) < 0)
+		fprintf(stderr, "Failed to read first non-secondary/supplementary in bam file. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
 	stack_insert(stack, b);
 	if(!(settings->in && settings->hdr)) {
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
@@ -274,6 +280,10 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		exit(EXIT_FAILURE);
 	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+    	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+    		sam_write1(settings->out, settings->hdr, b);
+    		continue;
+    	}
         if(same_stack_ucs(b, stack->a[stack->n - 1])) {
 #if !NDEBUG
         	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
@@ -312,7 +322,7 @@ void bam_pr_core(pr_settings_t *settings)
     	exit(EXIT_FAILURE);
     }
     if(!stack.a) {
-    	fprintf(stderr, "Failed to start array of bam1_t srtucts...\n");
+    	fprintf(stderr, "Failed to start array of bam1_t structs...\n");
     	exit(EXIT_FAILURE);
     }
     pr_loop(settings, &stack); // Core
