@@ -264,7 +264,8 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
-			if(bam_aux_get(stack->a[i], "RA")) { /* If RA tag is present, IE, if it was merged.*/
+			/*
+			if(bam_aux_get(stack->a[i], "RA")) { /* If RA tag is present, IE, if it was merged.
 				//fprintf(stderr, "This should be writing the record to the fastq handle.\n");
 				bam2ffq(stack->a[i], settings->fqh);
 			}
@@ -272,6 +273,8 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 				//fprintf(stderr, "This should be writing the record to the bam handle.\n");
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
 			}
+			*/
+			sam_write1(settings->out, settings->hdr, stack->a[i]);
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}
