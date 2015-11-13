@@ -76,22 +76,21 @@
 #define HTS_N 15
 #endif
 
-#ifndef CHECK_SEQ
-#define CHECK_SEQ(seqvar) do {char *tmpseq = seqvar; for(uint32_t seq_##i = 0; tmpseq[seq_##i]; ++seq_##i) {\
-	switch(tmpseq[seq_##i]) {\
-		case 'A':\
-		case 'C':\
-		case 'G':\
-		case 'T':\
-		case 'N':\
-		case 'a':\
-		case 'c':\
-		case 'g':\
-		case 't':\
-		case 'n': break;\
-		default: fprintf(stderr, "OMGZWTF There's an incorrect nucleotide in here. (%c). String: %s.\n", tmpseq[seq_##i], tmpseq); exit(EXIT_FAILURE);break;\
-	}}} while(0)
-#endif
+#define SEQBUF_SIZE 300
+
+#define seq2buf(buf, seq, len) \
+	for(uint64_t i_ = 0; i_ < len; ++i_)\
+		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
+	buf[len] = '\0'
+
+#define rc_seq2buf(buf, seq, len) \
+	for(uint64_t i_ = 0; i_ < (len >> 1); ++i_) {\
+       int8_t t = seq_nt16_str[seq_comp_table[buf[len - 1 - i_]]];\
+       buf[len - 1 - i_] = seq_nt16_str[seq_comp_table[buf[i_]]];\
+       buf[i_] = t;\
+	}\
+	buf[len] = '\0'
+
 
 #define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? (bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): ((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
 
@@ -102,6 +101,8 @@ typedef struct {
     int n, max;
     bam1_t **a;
 } tmp_stack_t;
+
+const int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
@@ -228,18 +229,24 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
 	if(!(b->core.flag & BAM_FREVERSE)) {
-		fprintf(fp, "@%s %s\n%s\n+\n%s\n", bam_get_qname(b), comment, bam_get_seq(b), bam_get_qual(b));
+		uint8_t *bseq = bam_get_seq(b);
+		uint8_t *bqual = bam_get_qual(b);
+		char seqbuf[SEQBUF_SIZE];
+		seq2buf(seqbuf, bseq, b->core.l_qseq);
+		fprintf(fp, "@%s %s\n%s\n+\n", bam_get_qname(b), comment, seqbuf);
+		for(int i = 0; i < b->core.l_qseq; ++i)
+			seqbuf[i] = 33 + bqual[i];
+		fprintf(fp, "%s\n", seqbuf);
 		return;
 	}
-	fprintf(fp, "@%s %s\n", (char *)bam_get_qname(b), comment);
-	char tmpbuf[300];
-	fill_rc((char *)bam_get_seq(b), tmpbuf, b->core.l_qseq);
-	fprintf(fp, "%s\n+\n", tmpbuf);
-#if !NDEBUG
-	CHECK_SEQ((char *)bam_get_seq(b));
-#endif
-	fill_rv((char *)bam_get_qual(b), tmpbuf, b->core.l_qseq);
-	fprintf(fp, "%s\n", tmpbuf);
+	uint8_t *bseq = bam_get_seq(b);
+	uint8_t *bqual = bam_get_qual(b);
+	char seqbuf[SEQBUF_SIZE];
+	rc_seq2buf(seqbuf, bseq, b->core.l_qseq);
+	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
+	for(uint64_t i = 0; i < b->core.l_qseq; ++i)
+		seqbuf[i] = bqual[b->core.l_qseq - i - 1] + 33;
+	fprintf(fp, "%s\n", seqbuf);
 	return;
 }
 

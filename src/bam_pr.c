@@ -65,6 +65,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
 	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
 	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+/*
 #if !NDEBUG
 	for(int i = 0; i < b->core.l_qseq; ++i) {
 		fprintf(stderr, "%"PRIu32",", bPV[i]);
@@ -72,6 +73,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	fprintf(stderr, "\n");
 	exit(0);
 #endif
+*/
 	if(!bPV || !pPV) {
 		fprintf(stderr, "Required PV tag not found. Abort mission! Read names: %s, %s.\n", bam_get_qname(b), bam_get_qname(p));
 		exit(EXIT_FAILURE);
@@ -273,33 +275,21 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		exit(EXIT_FAILURE);
 	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
-    	const char *seq = bam_get_seq(b);
-    	fprintf(stderr, "Reading record!\n");
-    	fprintf(stderr, "Current sequence: %s.\tstrlen: %i. l_qseq: %i., char at l_qseq: %c %i.\t", seq, (int)strlen(seq), b->core.l_qseq, seq[b->core.l_qseq], seq[b->core.l_qseq]);
-    	for(int i = 0; i < b->core.l_qname;++i)
-    		fprintf(stderr, "%i,%i\t", i, (int)seq[i]);
-    	fprintf(stderr, "\n");
-    	//fprintf(stderr, "Current qual: %s\n", (char *)bam_get_qual(b));
-    	//fprintf(stderr, "Current qname: %s. strlen: %i.\n", (char *)bam_get_qname(b), strlen((char *)bam_get_qname(b)));
         if(same_stack_ucs(b, stack->a[stack->n - 1])) {
         	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
         		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
         		exit(EXIT_FAILURE);
         	}
         	fprintf(stderr, "Adding record to stack! New length: %i.\n", stack->n);
-        	/*
         	stack_insert(stack, b);
-        	*/
         	continue;
         }
         else {
         	fprintf(stderr, "Flattening stack!\n");
-        	/*
         	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         	write_stack(stack, settings);
         	stack->n = 1;
         	stack->a[0] = bam_dup1(b);
-        	*/
         }
     }
     bam_destroy1(b);
@@ -419,8 +409,7 @@ int bam_pr(int argc, char *argv[])
     else bam_pr_core(settings);
     bam_hdr_destroy(settings->hdr);
     sam_close(settings->in); sam_close(settings->out);
-    if(settings->fqh) {
+    if(settings->fqh)
     	fclose(settings->fqh);
-    }
     return 0;
 }
