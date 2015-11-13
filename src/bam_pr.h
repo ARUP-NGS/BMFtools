@@ -79,20 +79,18 @@
 #define SEQBUF_SIZE 300
 
 #define seq2buf(buf, seq, len) \
-	for(uint64_t i_ = 0; i_ < len; ++i_)\
+	uint64_t i_;\
+	for(i_ = 0; i_ < len; ++i_) {\
+		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
+		buf[len - i_ - 1] = seq_nt16_str[bam_seqi(seq, len - i_ - 1)];\
+	}\
+	if(len&1)\
 		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
 	buf[len] = '\0'
 
-#define rc_seq2buf(buf, seq, len) \
-	for(uint64_t i_ = 0; i_ < (len >> 1); ++i_) {\
-       int8_t t = seq_nt16_str[seq_comp_table[buf[len - 1 - i_]]];\
-       buf[len - 1 - i_] = seq_nt16_str[seq_comp_table[buf[i_]]];\
-       buf[i_] = t;\
-	}\
-	buf[len] = '\0'
 
-
-#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? (bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): ((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
+//#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? (bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): ((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
+#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi((bSeq), i) << ((!(i % 2)) << 2)) | (((pSeq)[(i)>>1]) & (0xfU << ((!(i % 2)) << 2))))
 
 
 typedef bam1_t *bam1_p;
@@ -159,8 +157,8 @@ static inline int same_stack_ucs(bam1_t *b, bam1_t *p) {
 		fprintf(stderr, "First bam record not set. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "Core key 1: %" PRIu64 ". Core key 2: %" PRIu64 ".\n", ucs_sort_core_key(p), ucs_sort_core_key(b));
-	fprintf(stderr, "Mate key 1: %" PRIu64 ". Mate key 2: %" PRIu64 ".\n", ucs_sort_mate_key(p), ucs_sort_mate_key(b));
+	//fprintf(stderr, "Core key 1: %" PRIu64 ". Core key 2: %" PRIu64 ".\n", ucs_sort_core_key(p), ucs_sort_core_key(b));
+	//fprintf(stderr, "Mate key 1: %" PRIu64 ". Mate key 2: %" PRIu64 ".\n", ucs_sort_mate_key(p), ucs_sort_mate_key(b));
 #endif
 	return (ucs_sort_core_key(b) == ucs_sort_core_key(p) &&
 			ucs_sort_mate_key(b) == ucs_sort_mate_key(p));
@@ -210,9 +208,9 @@ static inline void *array_tag(bam1_t *b, const char *tag) {
 	}
 	char typecode = *data++;
 	int n = *((int *)data);
-	return data ? (void *)(data + 4): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
+	return data ? (void *)(data + sizeof(int)): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
 #else
-	return data ? (void *)(data + 6): NULL;
+	return data ? (void *)(data + sizeof(int)): NULL;
 #endif
 }
 
@@ -229,6 +227,7 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
 	if(!(b->core.flag & BAM_FREVERSE)) {
+		fprintf(fp, "Writing the read with current direction.\n");
 		uint8_t *bseq = bam_get_seq(b);
 		uint8_t *bqual = bam_get_qual(b);
 		char seqbuf[SEQBUF_SIZE];
@@ -239,13 +238,25 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 		fprintf(fp, "%s\n", seqbuf);
 		return;
 	}
+	fprintf(stderr, "Writing the read by reverse-complementing.\n");
 	uint8_t *bseq = bam_get_seq(b);
 	uint8_t *bqual = bam_get_qual(b);
 	char seqbuf[SEQBUF_SIZE];
-	rc_seq2buf(seqbuf, bseq, b->core.l_qseq);
+	int i;
+	for(i = 0; i < (b->core.l_qseq >> 1); ++i) {
+		const int8_t tmp = bam_seqi(bseq, i);
+		seqbuf[i] = nuc_cmpl(seq_nt16_str[bam_seqi(bseq, b->core.l_qseq - i - 1)]);
+		seqbuf[b->core.l_qseq - i - 1] = nuc_cmpl(seq_nt16_str[tmp]);
+	}
+	if(b->core.l_qseq & 1)
+		seqbuf[i] = nuc_cmpl(seq_nt16_str[bam_seqi(bseq, i)]);
+#if !NDEBUG
+	fprintf(stderr, "Now the sequence is %s.\n", seqbuf);
+#endif
+	fprintf(fp, "Writing the read by reverse-complementing.\n");
 	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
-	for(uint64_t i = 0; i < b->core.l_qseq; ++i)
-		seqbuf[i] = bqual[b->core.l_qseq - i - 1] + 33;
+	for(uint64_t j = 0; j < b->core.l_qseq; ++j)
+		seqbuf[j] = bqual[b->core.l_qseq - j - 1] + 33;
 	fprintf(fp, "%s\n", seqbuf);
 	return;
 }
@@ -256,11 +267,11 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			if(bam_aux_get(stack->a[i], "RA")) { /* If RA tag is present, IE, if it was merged.*/
-				fprintf(stderr, "This should be writing the record to the fastq handle.\n");
+				//fprintf(stderr, "This should be writing the record to the fastq handle.\n");
 				bam2ffq(stack->a[i], settings->fqh);
 			}
 			else {
-				fprintf(stderr, "This should be writing the record to the bam handle.\n");
+				//fprintf(stderr, "This should be writing the record to the bam handle.\n");
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
 			}
 			bam_destroy1(stack->a[i]);

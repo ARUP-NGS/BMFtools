@@ -26,7 +26,7 @@ DEALINGS IN THE SOFTWARE.  */
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 #if !NDEBUG
-	fprintf(stderr, "Now updating bam1_t with name %s with bam1_t with name %s.\n", bam_get_qname(p), bam_get_qname(b));
+	//fprintf(stderr, "Now updating bam1_t with name %s with bam1_t with name %s.\n", bam_get_qname(p), bam_get_qname(b));
 #endif
 	uint8_t *bdata, *pdata;
 	int n_changed = 0;
@@ -259,7 +259,6 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 
 static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 {
-	//fprintf(stderr, "Beginning %s at line %s\n", __FUNCTION__, __LINE__);
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0) {
 		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
@@ -276,16 +275,16 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
         if(same_stack_ucs(b, stack->a[stack->n - 1])) {
+#if !NDEBUG
         	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
         		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
         		exit(EXIT_FAILURE);
         	}
-        	fprintf(stderr, "Adding record to stack! New length: %i.\n", stack->n);
+#endif
         	stack_insert(stack, b);
         	continue;
         }
         else {
-        	fprintf(stderr, "Flattening stack!\n");
         	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         	write_stack(stack, settings);
         	stack->n = 1;
