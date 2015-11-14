@@ -77,6 +77,8 @@
 #define HTS_N 15
 #endif
 
+#define MIN_BC 8
+
 #define SEQBUF_SIZE 300
 
 #define seq2buf(buf, seq, len) \
@@ -209,13 +211,21 @@ static inline double igamc_pvalues(int num_pvalues, double x)
 	}
 }
 
+
+/*
+ * :returns: 1 if n on the end. 0 if ns at thebeginning.
+ */
 static inline int n_side(bam1_t *b)
 {
+	uint8_t *data = bam_get_seq(b);
 	int n_run = 0;
 	for(int i = 0; i < b->core.l_qseq; ++i) {
-		if(bam_seqi(b, i) == HTS_N)
+		if(bam_seqi(data, i) == HTS_N)
 			++n_run;
+		else
+			break;
 	}
+	return n_run < MIN_BC;
 }
 
 static inline void *array_tag(bam1_t *b, const char *tag) {
@@ -229,7 +239,7 @@ static inline void *array_tag(bam1_t *b, const char *tag) {
 	int n = *((int *)data);
 	return data ? (void *)(data + sizeof(int)): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
 #else
-	return data ? (void *)(data + sizeof(int)): NULL;
+	return data ? (void *)(data + sizeof(int) + 2): NULL;
 #endif
 }
 

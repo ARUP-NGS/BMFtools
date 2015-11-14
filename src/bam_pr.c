@@ -133,13 +133,6 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pPV[i] = disc_pvalues(bPV[i], pPV[i]);
 				if(bam_seqi(bSeq, i) != HTS_N)
 					set_base(pSeq, bSeq, i);
-#if !NDEBUG
-				if(bam_seqi(pSeq, i) != bam_seqi(bSeq, i)) {
-					fprintf(stderr, "You sucked at this, Daniel. Try again! bSeq number: %i. pSeq number: %i. Direction: %s.\n", bam_seqi(bSeq, i), bam_seqi(pSeq, i),
-							(i % 2) ? "Odd": "Even");
-					exit(EXIT_FAILURE);
-				}
-#endif
 				pFA[i] = bFA[i];
 				pQual[i] = bQual[i];
 				++n_changed;
@@ -222,24 +215,13 @@ static inline int annealed_check(bam1_t *a, bam1_t *b, int mmlim)
 	return hd * -1;
 }
 
-static inline int hd_annealed(bam1_t *a, bam1_t *b, int mmlim)
-{
-	int lhd = hd_linear(a, b, mmlim);
-	return lhd ? lhd: annealed_check(a, b, mmlim);
-}
-
 static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *settings)
 {
 	for(int i = 0; i < stack->n; ++i) {
 		for(int j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
-#if !NDEBUG
-				if(strcmp(bam_get_qname(stack->a[j]), "CTGAGCAGCTCATCAATA") == 0 ||
-					strcmp(bam_get_qname(stack->a[i]), "CTGAGCAGCTCATCAATA") == 0) {
-						bam2ffq(stack->a[j], settings->fqh);
-						bam2ffq(stack->a[i], settings->fqh);
-				}
-#endif
+				const uint8_t *iseq = bam_get_seq(stack->a[i]);
+				const uint8_t *jseq = bam_get_seq(stack->a[i]);
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
 				stack->a[i] = NULL;
@@ -330,7 +312,8 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
     	}
         if(same_stack_ucs(b, *stack->a)) {
 #if !NDEBUG
-        	assert((b->core.flag & BAM_FREAD1) == (stack->a[0]->core.flag & BAM_FREAD1));
+        	assert((b->core.flag & BAM_FREAD1) == (stack->a[0]->core.flag & BAM_FREAD1)
+        			&& ((b->core.flag & BAM_FMREVERSE) == (stack->a[0]->core.flag & BAM_FMREVERSE)));
         	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
         		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
         		exit(EXIT_FAILURE);
