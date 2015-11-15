@@ -82,13 +82,13 @@
 #define SEQBUF_SIZE 300
 
 #define seq2buf(buf, seq, len) \
-	uint64_t i_;\
-	for(i_ = 0; i_ < (len >> 1); ++i_) {\
-		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
-		buf[len - i_ - 1] = seq_nt16_str[bam_seqi(seq, len - i_ - 1)];\
+	uint64_t i_##seq;\
+	for(i_##seq = 0; i_##seq < (len >> 1); ++i_##seq) {\
+		buf[i_##seq] = seq_nt16_str[bam_seqi(seq, i_##seq)];\
+		buf[len - i_##seq - 1] = seq_nt16_str[bam_seqi(seq, len - i_##seq - 1)];\
 	}\
 	if(len&1)\
-		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
+		buf[i_##seq] = seq_nt16_str[bam_seqi(seq, i_##seq)];\
 	buf[len] = '\0'
 
 /*
