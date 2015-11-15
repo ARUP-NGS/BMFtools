@@ -97,7 +97,6 @@
 		((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
 */
 #define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi(bSeq, i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xf0U >> (((~i) & 1) << 2))))
-//#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi((bSeq), i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xfU << ((~i) & 1) << 2)))
 
 
 typedef bam1_t *bam1_p;
@@ -203,12 +202,7 @@ static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
 // Converts a chi2 sum into a p value.
 static inline double igamc_pvalues(int num_pvalues, double x)
 {
-	if(x < 0) {
-		return 1.0;
-	}
-	else {
-		return igamc((double)num_pvalues, x / 2.0);
-	}
+	return (x - 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
 }
 
 
@@ -249,8 +243,7 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	int i;
 	int qlen = b->core.l_qseq;
 	char seqbuf[SEQBUF_SIZE];
-	uint8_t *seq;
-	seq = bam_get_seq(b);
+	uint8_t *seq = bam_get_seq(b);
 	for (i = 0; i < qlen; ++i)
 	    seqbuf[i] = bam_seqi(seq, i);
 	if (b->core.flag & BAM_FREVERSE) { // reverse complement
