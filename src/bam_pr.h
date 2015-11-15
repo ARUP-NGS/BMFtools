@@ -83,7 +83,7 @@
 
 #define seq2buf(buf, seq, len) \
 	uint64_t i_;\
-	for(i_ = 0; i_ < len; ++i_) {\
+	for(i_ = 0; i_ < (len >> 1); ++i_) {\
 		buf[i_] = seq_nt16_str[bam_seqi(seq, i_)];\
 		buf[len - i_ - 1] = seq_nt16_str[bam_seqi(seq, len - i_ - 1)];\
 	}\
