@@ -97,6 +97,7 @@
 		((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
 */
 #define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi(bSeq, i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xf0U >> (((~i) & 1) << 2))))
+#define n_base(pSeq, i) pSeq[(i)>>1] |= (0xf << ((~(i) & 1) << 2));
 //#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi((bSeq), i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xfU << ((~i) & 1) << 2)))
 
 
@@ -178,7 +179,7 @@ typedef struct pr_settings {
 	samFile *out;
 	int cmpkey; // 0 for pos, 1 for unclipped start position
 	int mmlim; // Mismatch failure threshold.
-	int annealed; // Set to true to check a reversed barcode for a mismatch limit.
+	int realign_unchanged; // Set to true to realign unchanged reads.
 	int is_se; // Is single-end
 	bam_hdr_t *hdr; // BAM header
 } pr_settings_t;
@@ -291,6 +292,7 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 
 static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
+	uint8_t *data;
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			/*
@@ -303,7 +305,14 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 			//sam_write1(settings->out, settings->hdr, stack->a[i]);
 			 *
 			 */
-			bam_aux_get(stack->a[i], "RA") ? bam2ffq(stack->a[i], settings->fqh): sam_write1(settings->out, settings->hdr, stack->a[i]);
+			if((data = bam_aux_get(stack->a[i], "RA")) != NULL) {
+				(settings->realign_unchanged || bam_aux2i(data)) ?
+						bam2ffq(stack->a[i], settings->fqh):
+						sam_write1(settings->out, settings->hdr, stack->a[i]);
+			}
+			else {
+				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			}
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}

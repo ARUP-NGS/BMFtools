@@ -52,6 +52,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		bam_aux_del(p, pdata);
 		bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
 	}
+	/*
 	pdata = bam_aux_get(p, "NN");
 	bdata = bam_aux_get(b, "NN");
 	int mask;
@@ -66,6 +67,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		mask = bam_aux2i(bdata);
 	else
 		mask = 0;
+	*/
 	pdata = bam_aux_get(p, "NC");
 	bdata = bam_aux_get(b, "NC");
 	int n_changed;
@@ -109,45 +111,84 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	if(!(bSeq && pSeq && bQual && pQual)) {
 		fprintf(stderr, "Qual strings or sequence strings are null. Abort!\n");
 	}
-	for(int i = 0; i < p->core.l_qseq; ++i) {
-		if(bam_seqi(pSeq, i) == bam_seqi( bSeq, i)) {
-			pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
-			pFA[i] += bFA[i];
-			if(bQual[i] > pQual[i])
-				pQual[i] = bQual[i];
-		}
-		else if(bam_seqi(pSeq, i) == HTS_N) {
-			set_base(pSeq, bSeq, i);
-			pFA[i] = bFA[i];
-			pPV[i] = bPV[i];
-			++n_changed; // Note: goes from N to a useable nucleotide.
-		}
-		else if(bam_seqi(bSeq, i) == HTS_N) {
-			// Nothing
-		}
-		else {
-			if(pPV[i] > bPV[i])
-				// Leave pFA alone since it didn't change.
-				pPV[i] = disc_pvalues(pPV[i], bPV[i]);
+	int qlen = p->core.l_qseq;
+	if(p->core.flag & (BAM_FREVERSE)) {
+		for(int i = 0; i < qlen; ++i) {
+			const int qleni1 = qlen - i - 1;
+			if(bam_seqi(pSeq, qleni1) == bam_seqi(bSeq, qleni1)) {
+				pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
+				pFA[i] += bFA[i];
+				if(bQual[qleni1] > pQual[qleni1])
+					pQual[qleni1] = bQual[qleni1];
+			}
+			else if(bam_seqi(pSeq, qleni1) == HTS_N) {
+				set_base(pSeq, bSeq, qleni1);
+				pFA[i] = bFA[i];
+				pPV[i] = bPV[i];
+				pQual[qleni1] = bQual[qleni1];
+				++n_changed; // Note: goes from N to a useable nucleotide.
+				continue;
+			}
 			else {
-				pPV[i] = disc_pvalues(bPV[i], pPV[i]);
+				pPV[i] = (pPV[i] > bPV[i]) ? disc_pvalues(pPV[i], bPV[i]) : disc_pvalues(bPV[i], pPV[i]);
+				if(bam_seqi(bSeq, qleni1) != HTS_N)
+					set_base(pSeq, bSeq, qleni1);
+				pFA[i] = bFA[i];
+				pQual[qleni1] = bQual[qleni1];
+				++n_changed;
+			}
+			if(pPV[i] < 3) {
+				pFA[i] = 0;
+				pPV[i] = 0;
+				pQual[qleni1] = 2;
+				n_base(pSeq, qleni1);
+				continue;
+			}
+			if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = pPV[i];
+		}
+	}
+	else {
+		for(int i = 0; i < qlen; ++i) {
+			if(bam_seqi(pSeq, i) == bam_seqi(bSeq, i)) {
+				pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
+				pFA[i] += bFA[i];
+				if(bQual[i] > pQual[i])
+					pQual[i] = bQual[i];
+			}
+			else if(bam_seqi(pSeq, i) == HTS_N) {
+				set_base(pSeq, bSeq, i);
+				pFA[i] = bFA[i];
+				pPV[i] = bPV[i];
+				++n_changed; // Note: goes from N to a useable nucleotide.
+				continue;
+			}
+			else {
+				pPV[i] = (pPV[i] > bPV[i]) ? disc_pvalues(pPV[i], bPV[i]) : disc_pvalues(bPV[i], pPV[i]);
 				if(bam_seqi(bSeq, i) != HTS_N)
 					set_base(pSeq, bSeq, i);
 				pFA[i] = bFA[i];
 				pQual[i] = bQual[i];
 				++n_changed;
 			}
-		}
-		if(pPV[i] < 3) {
-			if(bam_seqi(pSeq, i) != HTS_N)
-				++mask;
-			pSeq[(i)>>1] |= (0xf << (((~i) & 1) << 2)); // Set the base to N
-#if !NDEBUG
-			assert(bam_seqi(pSeq, i) == 0xfU);
-#endif
-			pFA[i] = 0;
-			pPV[i] = 0;
-			pQual[i] = 0; // Note: this is not shifted by 33.
+			if(pPV[i] < 3) {
+				pFA[i] = 0;
+				pPV[i] = 0;
+				pQual[i] = 2;
+				n_base(pSeq, i);
+				continue;
+			}
+			if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = pPV[i];
+			/*
+			if(pPV[i] < 3) {
+				if(bam_seqi(pSeq, i) != HTS_N)
+					++mask;
+				pSeq[(i)>>1] |= (0xf << (((~i) & 1) << 2)); // Set the base to N
+				assert(bam_seqi(pSeq, i) == 0xfU);
+				pFA[i] = 0;
+				pPV[i] = 0;
+				pQual[i] = 0; // Note: this is not shifted by 33.
+			}
+			*/
 		}
 	}
 	pdata = bam_aux_get(p, "RA");
@@ -156,7 +197,9 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		//fprintf(stderr, "Appended RA tag to read %s.\n", (char *)bam_get_qname(p));
 	}
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
+	/*
 	bam_aux_append(p, "NN", 'i', sizeof(int), (uint8_t *)&mask);
+	*/
 }
 
 
@@ -220,8 +263,6 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	for(int i = 0; i < stack->n; ++i) {
 		for(int j = i + 1; j < stack->n; ++j) {
 			if(hd_linear(stack->a[i], stack->a[j], settings->mmlim)) {
-				const uint8_t *iseq = bam_get_seq(stack->a[i]);
-				const uint8_t *jseq = bam_get_seq(stack->a[i]);
 				update_bam1(stack->a[j], stack->a[i]);
 				bam_destroy1(stack->a[i]);
 				stack->a[i] = NULL;
@@ -234,31 +275,6 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	}
 }
 
-static inline void flatten_stack_annealed(tmp_stack_t *stack, pr_settings_t *settings)
-{/*
-	int hd;
-	for(int i = 0; i < stack->n; ++i) {
-		for(int j = i + 1; j < stack->n; ++j) {
-			if((hd = hd_linear(stack->a[i], stack->a[j]))) {
-				if(hd > 0)
-					update_bam1(stack->a[j], stack->a[i]);
-				else
-					update_bam1_rc(stack->a[j], stack->a[i]);
-				break;
-				// "break" in case there are multiple within hamming distance.
-				// Otherwise, I'll end up having memory mistakes.
-				// Besides, that read set will get merged into the later read in the set.
-			}
-		}
-	}
-	*/
-}
-
-static inline void flatten_stack(tmp_stack_t *stack, pr_settings_t *settings)
-{
-	settings->annealed ? flatten_stack_annealed(stack, settings): flatten_stack_linear(stack, settings);
-}
-
 static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
@@ -266,17 +282,30 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
+	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+		sam_write1(settings->out, settings->hdr, b);
+		if(sam_read1(settings->in, settings->hdr, b) < 0)
+		fprintf(stderr, "Failed to read first non-secondary/supplementary in bam file. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
 	stack_insert(stack, b);
+	if(!(settings->in && settings->hdr)) {
+		fprintf(stderr, "Failed to open input bam... WTF?\n");
+		exit(EXIT_FAILURE);
+	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
-    	fprintf(stderr, "Current sequence: %s\n", bam_get_seq(b));
-        if(same_stack_pos(b, stack->a[0])) {
+    	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+    		sam_write1(settings->out, settings->hdr, b);
+    		continue;
+    	}
+        if(same_stack_pos(b, *stack->a)) {
         	stack_insert(stack, b);
         	continue;
         }
         else {
-        	flatten_stack_linear(stack, settings);
+        	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
         	write_stack(stack, settings);
-        	resize_stack(stack, 1);
+        	stack->n = 1;
         	stack->a[0] = bam_dup1(b);
         }
     }
@@ -301,24 +330,12 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
 		exit(EXIT_FAILURE);
 	}
-	if(!stack->a) {
-		fprintf(stderr, "Looks like my stack wasn't properly initialized.\n");
-		exit(EXIT_FAILURE);
-	}
     while (sam_read1(settings->in, settings->hdr, b) >= 0) {
     	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
     		sam_write1(settings->out, settings->hdr, b);
     		continue;
     	}
         if(same_stack_ucs(b, *stack->a)) {
-#if !NDEBUG
-        	assert((b->core.flag & BAM_FREAD1) == (stack->a[0]->core.flag & BAM_FREAD1)
-        			&& ((b->core.flag & BAM_FMREVERSE) == (stack->a[0]->core.flag & BAM_FMREVERSE)));
-        	if(strcmp(bam_get_qname(b), bam_get_qname(stack->a[0])) == 0) {
-        		fprintf(stderr, "We're comparing records at %p and %p which have the same name. Abort!\n", b, stack->a[0]);
-        		exit(EXIT_FAILURE);
-        	}
-#endif
         	stack_insert(stack, b);
         	continue;
         }
@@ -335,8 +352,7 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 
 static inline void pr_loop(pr_settings_t *settings, tmp_stack_t *stack)
 {
-	pr_loop_ucs(settings, stack);
-	//settings->cmpkey ? pr_loop_ucs(settings, stack): pr_loop_pos(settings, stack);
+	settings->cmpkey ? pr_loop_ucs(settings, stack): pr_loop_pos(settings, stack);
 }
 
 
@@ -361,8 +377,8 @@ int pr_usage(void)
 {
     fprintf(stderr, "\n");
     fprintf(stderr, "Usage:  samtools pr [-sS] <input.srt.bam> <output.bam>\n\n");
-    fprintf(stderr, "Option: -s    pr for SE reads\n");
-    fprintf(stderr, "        -a    Use annealed rescue\n");
+    fprintf(stderr, "Option: -s    pr for SE reads [Not implemented]\n");
+    fprintf(stderr, "        -r    Realign reads with no changed bases. Default: False.\n");
     fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
     fprintf(stderr, "        -u    Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
     		"Note: This requires pre-processing with mark_unclipped from ppbwa (http://github.com/noseatbelts/ppbwa).\n");
@@ -393,16 +409,16 @@ int bam_pr(int argc, char *argv[])
     settings->out = NULL;
     settings->hdr = NULL;
     settings->mmlim = 2;
-    settings->cmpkey = 0;
+    settings->cmpkey = POS;
     settings->is_se = 0;
-    settings->annealed = 0;
+    settings->realign_unchanged = 0;
 
     char fqname[200] = "";
 
-    while ((c = getopt_long(argc, argv, "f:t:au?h", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "f:t:aur?h", lopts, NULL)) >= 0) {
         switch (c) {
-        case 'a': settings->annealed = 1; break;
-        case 'u': settings->cmpkey = 1; break;
+        case 'r': settings->realign_unchanged = 1; break;
+        case 'u': settings->cmpkey = UCS; break;
         case 't': settings->mmlim = atoi(optarg); break;
         case 'f': strcpy(fqname, optarg); break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
