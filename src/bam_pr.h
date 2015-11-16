@@ -267,6 +267,7 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
 	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
+	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
 	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
 	char *qual = (char *)bam_get_qual(b);
 	for(i = 0; i < qlen; ++i)
@@ -298,14 +299,12 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 			//sam_write1(settings->out, settings->hdr, stack->a[i]);
 			 *
 			 */
-			if((data = bam_aux_get(stack->a[i], "RA")) != NULL) {
-				(settings->realign_unchanged || bam_aux2i(data)) ?
+			if(bam_aux_get(stack->a[i], "RA"))
+				(settings->realign_unchanged || (bam_aux2i(bam_aux_get(stack->a[i], "NC")))) ?
 						bam2ffq(stack->a[i], settings->fqh):
 						sam_write1(settings->out, settings->hdr, stack->a[i]);
-			}
-			else {
+			else
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
-			}
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}
