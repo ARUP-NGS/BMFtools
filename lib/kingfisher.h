@@ -246,10 +246,12 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpvars_t 
 		// Final quality must be 2 or greater and at least one read in the family should support that base call.
 		if(bufs->cons_quals[i] > 2) {
 			bufs->cons_seq_buffer[i] = ARRG_MAX_TO_NUC(argmaxret);
-			bufs->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
+			bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];
 		}
-		bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && kfp->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		bufs->agrees[i] = kfp->nuc_counts[i * 4 + argmaxret];
+		else {
+			bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && kfp->nuc_counts[i * 5 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
+			bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];
+		}
 	}
 	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
@@ -623,23 +625,22 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 		memcpy(kfp->barcode, seq->comment.s + 14, blen);
 		kfp->barcode[blen] = '\0';
 	}
+	++kfp->length; // Increment
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
-		++kfp->nuc_counts[i * 4 + nuc_indices[1]];
+		++kfp->nuc_counts[i * 5 + nuc_indices[1]];
 #if !NDEBUG
-		if(kfp->nuc_counts[i * 4 + nuc_indices[1]] > kfp->length) {
-			fprintf(stderr, "Warning: KF counts is too high!\n");
+		if(kfp->nuc_counts[i * 5 + nuc_indices[1]] > kfp->length) {
+			fprintf(stderr, "Warning: KF counts is too high! %i, %i\n", (int)kfp->nuc_counts[i * 5 + nuc_indices[1]], (int)kfp->length);
 			print_kf(kfp);
 			exit(EXIT_FAILURE);
 		}
 #endif
 		kfp->phred_sums[i * 4 + nuc_indices[0]] += seq->qual.s[i] - 33;
-		if(seq->qual.s[i] > kfp->max_phreds[i]) {
+		if(seq->qual.s[i] > kfp->max_phreds[i])
 			kfp->max_phreds[i] = seq->qual.s[i];
-		}
 	}
 	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
-	++kfp->length; // Increment
 	return;
 }
 
