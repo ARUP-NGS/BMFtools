@@ -105,7 +105,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	}
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int switch_reads = switch_test(seq1, seq2, settings->offset);
-	int default_nlen = settings->max_blen + settings->offset + settings->homing_sequence_length;
+	int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
 	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, pass_fail);
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
