@@ -605,21 +605,21 @@ static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *s
 	return -1;
 }
 
-static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr, int default_len, char pass_fail)
+static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr, int default_len, char *pass_fail)
 {
 	if(settings_ptr->max_blen < 0) {
-		pass_fail = (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
+		*pass_fail = (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
 				   settings_ptr->homing_sequence,
 				   settings_ptr->homing_sequence_length) == 0) ? '1': '0';
 		return default_len;
 	}
 	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
 		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
-			pass_fail = '1';
+			*pass_fail = '1';
 			return i + settings_ptr->homing_sequence_length;
 		}
 	}
-	pass_fail = '0';
+	*pass_fail = '0';
 	return default_len;
 }
 

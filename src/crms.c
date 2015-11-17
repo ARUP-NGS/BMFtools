@@ -50,6 +50,116 @@ void print_crms_opt_err(char *argv[], char *optarg)
 	exit(1);
 }
 
+static inline void mask_mseq(mseq_t *rseq, int n_len, char s, char q) {
+	memset(rseq->seq, s, n_len);
+	memset(rseq->qual, q, n_len);
+}
+
+/*
+ * Pre-processes (pp) and splits fastqs with inline barcodes.
+ */
+mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
+{
+#if WRITE_BARCODE_FQ
+	FILE *fp = fopen("tmp.molbc.fq", "w");
+#endif
+	fprintf(stderr, "Now beginning pp_split_annealed with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
+	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
+		fprintf(stderr, "Hey, it looks like you're trying to use the same path for both r1 and r2. At least try to fool me by making a symbolic link.\n");
+		exit(EXIT_FAILURE);
+	}
+	if(settings->rescaler_path) {
+		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
+	}
+	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+	*splitter = init_splitter_inline(settings);
+	gzFile fp1 = gzopen(settings->input_r1_path, "r");
+	gzFile fp2 = gzopen(settings->input_r2_path, "r");
+	kseq_t *seq1 = kseq_init(fp1);
+	kseq_t *seq2 = kseq_init(fp2);
+	mseq_t *rseq1, *rseq2;
+	int l1, l2;
+	int count = 0;
+	char pass_fail;
+	settings->blen1_2 = settings->blen / 2;
+	l1 = kseq_read(seq1);
+	l2 = kseq_read(seq2);
+	fprintf(stderr, "Read length for dataset: %"PRIu64".\n", seq1->seq.l);
+#if DBG
+	int arr_size = seq1->seq.l * 4 * 2 * 39;
+	if(settings->rescaler) {
+		for(int i = 0; i < arr_size; ++i) {
+			if(settings->rescaler[i] < 0) {
+				fprintf(stderr, "Rescaler's got a negative number in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+			else if(settings->rescaler[i] == 0) {
+				fprintf(stderr, "Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+#endif
+	if(l1 < 0 || l2 < 0) {
+			fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
+			FREE_MSSI_SETTINGS_PTR(settings);
+			FREE_SPLITTER_PTR(splitter);
+			exit(EXIT_FAILURE);
+	}
+	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
+	int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
+	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
+	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
+	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
+#if !NDEBUG
+	fprintf(stderr, "Made my first rseq objects (%p, %p).\n", rseq1, rseq2);
+#endif
+	rseq1->barcode[settings->blen] = '\0';
+	if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold))) {
+		pass_fail = '0';
+	}
+	memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
+	uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+#if !NDEBUG
+	fprintf(stderr, "Now settings Ns and #s %i.\n", n_len);
+#endif
+	mask_mseq(rseq1, n_len, 'N', '#');
+	mask_mseq(rseq2, n_len, 'N', '#');
+	// Get first barcode.
+	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 0);
+	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 0);
+	mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+	mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+	do {
+		if(++count % settings->notification_interval == 0)
+			fprintf(stderr, "Number of records processed: %i.\n", count);
+		// Iterate through second fastq file.
+		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
+		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
+		update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 0);
+		update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 0);
+		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
+		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
+		if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold))) {
+			pass_fail = '0';
+		}
+		bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+	} while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
+	for(int i = 0; i < splitter->n_handles; ++i) {
+		fclose(splitter->tmp_out_handles_r1[i]);
+		fclose(splitter->tmp_out_handles_r2[i]);
+	}
+	tm_destroy(tmp);
+	mseq_destroy(rseq1);
+	mseq_destroy(rseq2);
+	kseq_destroy(seq1);
+	kseq_destroy(seq2);
+	gzclose(fp1);
+	gzclose(fp2);
+	return splitter;
+}
 
 
 /*
@@ -106,7 +216,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int switch_reads = switch_test(seq1, seq2, settings->offset);
 	int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
-	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, pass_fail);
+	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
 #if !NDEBUG
@@ -128,10 +238,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 #if !NDEBUG
 	fprintf(stderr, "Now settings Ns and #s %i.\n", n_len);
 #endif
-	memset(rseq1->seq, 'N', n_len); // Set the beginning of the read to Ns.
-	memset(rseq1->qual, '#', n_len); // Set all N bases to quality score of 2.
-	memset(rseq2->seq, 'N', n_len); // Set the beginning of the read to Ns.
-	memset(rseq2->qual, '#', n_len); // Set all N bases to quality score of 2.
+	mask_mseq(rseq1, n_len, 'N', '#');
+	mask_mseq(rseq2, n_len, 'N', '#');
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, switch_reads);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, switch_reads);
@@ -148,7 +256,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 			fprintf(stderr, "Number of records processed: %i.\n", count);
 		}
 		// Iterate through second fastq file.
-		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, pass_fail);
+		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		switch_reads = switch_test(seq1, seq2, settings->offset);
 		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
 		update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, switch_reads);
@@ -311,7 +419,7 @@ int main(int argc, char *argv[])
 		settings.output_basename = make_crms_outfname(settings.input_r1_path);
 		fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
 	}
-	mark_splitter_t *splitter = pp_split_inline(&settings);
+	mark_splitter_t *splitter = (settings.annealed) ? pp_split_annealed(&settings): pp_split_inline(&settings);
 	cond_free(settings.rescaler);
 	if(settings.run_hash_dmp) {
 		fprintf(stderr, "Now executing hash dmp.\n");
