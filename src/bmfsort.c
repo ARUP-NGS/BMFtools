@@ -1566,7 +1566,7 @@ int main(int argc, char *argv[])
 	}
 	if (level >= 0) sprintf(strchr(modeout, '\0'), "%d", level < 9? level : 9);
 
-	if (bmfsort_core_ext1(sort_cmp_int, (nargs > 0)? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
+	if (bmfsort_core_ext1(sort_cmp_int, (nargs > 0) ? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
 
 	cond_free(tmpprefix);
 	cond_free(fmtout);
