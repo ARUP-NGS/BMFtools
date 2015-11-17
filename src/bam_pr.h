@@ -213,7 +213,7 @@ static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
 // Converts a chi2 sum into a p value.
 static inline double igamc_pvalues(int num_pvalues, double x)
 {
-	return (x - 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
+	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
 }
 
 

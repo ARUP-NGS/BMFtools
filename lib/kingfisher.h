@@ -76,12 +76,7 @@ static inline uint32_t pvalue_to_phred(double pvalue)
 // Converts a chi2 sum into a p value.
 static inline double igamc_pvalues(int num_pvalues, double x)
 {
-	if(x < 0) {
-		return 1.0;
-	}
-	else {
-		return igamc((double)num_pvalues, x / 2.0);
-	}
+	return (x < 0) ? 1.0: igamc((double)num_pvalues, x / 2.0);
 }
 
 
