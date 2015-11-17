@@ -49,6 +49,26 @@ static inline int bed_test(bam1_t *b, khash_t(bed) *h)
 	return 0;
 }
 
+
+int intcmp(const void *a, const void *b)
+{
+	size_t diff = (*(interval_t *)a).start - (*(interval_t *)b).start;
+	return (diff) ? diff: (*(interval_t *)a).end - (*(interval_t *)b).end;
+}
+
+
+static void sort_bed(khash_t(bed) *bed)
+{
+	khint_t k;
+	for(k = kh_begin(bed); k != kh_end(bed); ++k) {
+		if(!kh_exist(bed, k))
+			continue;
+		qsort(kh_val(bed, k).intervals, kh_val(bed, k).n, sizeof(region_set_t), &intcmp);
+	}
+	return;
+}
+
+
 static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 {
 	khash_t(bed) *ret = kh_init(bed);
@@ -94,6 +114,7 @@ static khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
 #endif
 		}
 	}
+	sort_bed(ret);
 	return ret;
 }
 

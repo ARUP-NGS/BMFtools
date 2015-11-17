@@ -601,12 +601,23 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 	}
 }
 
+static void print_kf(KingFisher_t *kfp)
+{
+	fprintf(stderr, "Length: %i.\n", kfp->length);
+	fprintf(stderr, "FA: ");
+	for(int i = 0; i < kfp->readlen; ++i) {
+		fprintf(stderr, ",%i\t", (int)kfp->nuc_counts[i]);
+	}
+	fprintf(stderr, "\n");
+	return;
+}
+
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
-#if DBG
-	//fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
-	//fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
+#if !NDEBUG
+	fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
+	fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
 #endif
 	if(!kfp->length) {
 		memcpy(kfp->barcode, seq->comment.s + 14, blen);
@@ -615,6 +626,13 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 	for(int i = 0; i < kfp->readlen; i++) {
 		nuc_to_pos((seq->seq.s[i]), nuc_indices);
 		++kfp->nuc_counts[i * 4 + nuc_indices[1]];
+#if !NDEBUG
+		if(kfp->nuc_counts[i * 4 + nuc_indices[1]] > kfp->length) {
+			fprintf(stderr, "Warning: KF counts is too high!\n");
+			print_kf(kfp);
+			exit(EXIT_FAILURE);
+		}
+#endif
 		kfp->phred_sums[i * 4 + nuc_indices[0]] += seq->qual.s[i] - 33;
 		if(seq->qual.s[i] > kfp->max_phreds[i]) {
 			kfp->max_phreds[i] = seq->qual.s[i];

@@ -99,6 +99,16 @@
 #define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi(bSeq, i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xf0U >> (((~i) & 1) << 2))))
 #define n_base(pSeq, i) pSeq[(i)>>1] |= (0xf << ((~(i) & 1) << 2));
 
+#define check_fa(arr, fm, len) \
+		do {\
+		for(int i##arr = 0; i##arr < len; ++i##arr) {\
+			if(arr[i##arr] > fm){\
+				fprintf(stderr, "FAIL. %" PRIu32 " arr value greater than FM %" PRIu32 ".\n", arr[i##arr], fm);\
+				exit(EXIT_FAILURE);\
+			}\
+		}\
+		} while(0)
+
 
 typedef bam1_t *bam1_p;
 
@@ -261,6 +271,22 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	char comment[3000] = "";
 	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
 	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
+#if !NDEBUG
+	int tmpfm = bam_aux2i(bam_aux_get(b, (char *)"FM"));
+	for(int i = 0; i < b->core.l_qseq; ++i) {
+		if(fa[i] > tmpfm) {
+			fprintf(stderr, "Failure at bam2ffq with record name %s.\n", bam_get_qname(b));
+			exit(EXIT_FAILURE);
+		}
+	}
+	if(strcmp(bam_get_qname(b), "GTGTGATTCTGACTAACG") == 0) {
+		for(int i = 0; i < b->core.l_qseq; ++i) {
+			fprintf(stderr, "" PRIu32"\t", fa[i]);
+		}
+		fprintf(stderr, "\n");
+		exit(EXIT_FAILURE);
+	}
+#endif
 	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:I:B");
 	strcat(comment, "\t");
 	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:I:B");

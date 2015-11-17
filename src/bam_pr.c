@@ -26,6 +26,10 @@ DEALINGS IN THE SOFTWARE.  */
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 	uint8_t *bdata, *pdata;
+	uint32_t *bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
+	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
+	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
+	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
 	int ra_val = 1;
 	if(!b || !p) {
 		// If the
@@ -38,7 +42,6 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	int pFM = bam_aux2i(pdata);
 	if(pFM < bFM)
 		memcpy(bam_get_qname(p), bam_get_qname(b), b->core.l_qname);
-	int iFM = pFM;
 	pFM += bFM;
 	bam_aux_del(p, pdata);
 	bam_aux_append(p, "FM", 'i', sizeof(int), (uint8_t *)&pFM);
@@ -82,10 +85,6 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		n_changed = bam_aux2i(bdata);
 	else
 		n_changed = 0;
-	uint32_t *bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
-	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
-	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
-	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
 /*
 #if !NDEBUG
 	for(int i = 0; i < b->core.l_qseq; ++i) {
@@ -191,6 +190,14 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 			*/
 		}
 	}
+#if !NDEBUG
+	for(int k = 0; k < qlen; ++k) {
+		if(pFA[k] > pFM) {
+			fprintf(stderr, "pFA is too large. WTF? %i (pFA), %i (pFM).\n", pFA[k], pFM);
+			exit(EXIT_FAILURE);
+		}
+	}
+#endif
 	pdata = bam_aux_get(p, "RA");
 	if(!pdata) {
 		bam_aux_append(p, "RA", 'i', sizeof(int), (uint8_t *)&ra_val);
