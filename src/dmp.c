@@ -84,17 +84,16 @@ static int bmftools_dmp_wrapper(char *input_path, char *output_path) {
 	fprintf(stderr, "Starting bmftools_dmp_wrapper.\n");
 	FILE *in_handle;
 	FILE *out_handle;
-	if(input_path[0] == '-' || !input_path) {
+	if(input_path[0] == '-' || (input_path == NULL)) {
 		fprintf(stderr, "Input path set to stdin.\n");
 		in_handle = stdin;
 	}
-	else {
+	else
 		in_handle = fopen(input_path, "r");
-	}
-	if(!output_path) out_handle = stdout;
-	else {
-		out_handle = fopen(output_path, "w");
-	}
+	out_handle = (output_path) ? fopen(output_path, "w"): stdout;
+#if !NDEBUG
+	fprintf(stderr, "Input path: %s.\n", input_path);
+#endif
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 	fprintf(stderr, "Opened file handles, initiated kseq parser.\n");
@@ -157,14 +156,14 @@ static int bmftools_dmp_core(kseq_t *seq, FILE *out_handle) {
 #if DBG
 			fprintf(stderr, "Different barcode. Write out result.\n");
 #endif
-			dmp_process_write(Hook, out_handle, blen, &tmp);
+			dmp_process_write(Hook, out_handle, &tmp);
 			clear_kf(Hook); // Reset Holloway
 			memcpy(current_barcode, bs_ptr, blen * sizeof(char)); // Update working barcode.
 			pushback_kseq(Hook, seq, nuc_indices, blen);
 		}
 	}
 	if(Hook->length) { // If length is not 0
-		dmp_process_write(Hook, out_handle, blen, &tmp);
+		dmp_process_write(Hook, out_handle, &tmp);
 	}
 	destroy_kf(Hook);
 	return 0;

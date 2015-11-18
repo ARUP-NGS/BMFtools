@@ -1558,6 +1558,10 @@ int main(int argc, char *argv[])
 		}
 		split_prefix = fnout[tmpint] ? trim_ext(fnout): strdup(fnout);
 	}
+	if(split && (strcmp(fnout, "-") == 0 || strcmp(fnout, "stdout") == 0)) {
+		fprintf(stderr, "Cannot split and write to standard out. Abort mission!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if(split)
 		fprintf(stderr, "[bmfsort] split_prefix: %s.\n", split_prefix);
