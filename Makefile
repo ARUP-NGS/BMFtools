@@ -40,7 +40,6 @@ bam_pr:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) src/sam_opts.c src/bam_pr.c -o bam_pr_p
 crms:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(UR_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms_unroll
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/crms.c include/igamc_cephes.c src/khash_dmp_core.c -o crms_p
 bmfsort:
@@ -52,7 +51,6 @@ hash_dmp.o:
 hash_dmp:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(UR_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_unroll
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_p
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
