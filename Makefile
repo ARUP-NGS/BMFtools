@@ -12,6 +12,7 @@ INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
 LIB=-Lhtslib -lhts
 
 OPT_FLAGS = -O3 -DNDEBUG -finline-functions
+#O2_FLAGS = -O2 -DNDEBUG -finline-functions
 DB_FLAGS = -fno-inline -DNOPARALLEL -DTEST
 GP_FLAGS = -fno-inline -DNOPARALLEL -DTEST -pg
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
@@ -31,6 +32,7 @@ libhts.a:
 	cd htslib && make && cp libhts.a ../
 fqmarksplit:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit
+	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(O2_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit_o2
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(IGAMC_INC) -DNOPARALLEL  src/khash_dmp_core.c  src/fqmarksplit.c -o fqmarksplit_np
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) $(IGAMC_INC) src/fqmarksplit.c  src/khash_dmp_core.c  -o fqmarksplit_p
@@ -51,6 +53,7 @@ hash_dmp.o:
 hash_dmp:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
+	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(O2_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_o2
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_p
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp

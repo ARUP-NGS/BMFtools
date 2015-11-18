@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 			case 't': settings.hp_threshold = atoi(optarg); break;
 			case 'v': settings.notification_interval = atoi(optarg); break;
 			case 'z': settings.gzip_output = 1; break;
-			case 'g': settings.gzip_compression = atoi(optarg); break;
+			case 'g': settings.gzip_compression = atoi(optarg); if(settings.gzip_compression > 9) settings.gzip_compression = 9; break;
 			case 'r':
 				fprintf(stderr, "About to parse in rescaler.\n");
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
@@ -189,8 +189,8 @@ int main(int argc, char *argv[])
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
 		char ffq_r2[200];
-		sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
-		sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
+		sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq": "%s.R1.fq.gz", settings.ffq_prefix);
+		sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq": "%s.R2.fq.gz", settings.ffq_prefix);
 		sprintf(cat_buff, "> %s", ffq_r1);
 		sys_call_ret = system(cat_buff);
 		sprintf(cat_buff, "> %s", ffq_r2);
@@ -198,13 +198,13 @@ int main(int argc, char *argv[])
 		if(!settings.panthera) {
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -%i >> %s": "cat %s >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
 				sys_call_ret = system(cat_buff);
 				if(sys_call_ret < 0) {
 					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
 					exit(EXIT_FAILURE);
 				}
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -%i >> %s": "cat %s >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
 				sys_call_ret = system(cat_buff);
 				if(sys_call_ret < 0) {
 					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 				strcat(cat_buff2, " ");
 			}
 			if(settings.gzip_output) {
-				sprintf(del_buf, " | gzip - -%i", settings.gzip_compression < 9 ? settings.gzip_compression: 9);
+				sprintf(del_buf, " | gzip - -%i", settings.gzip_compression);
 				strcat(cat_buff1, del_buf);
 				strcat(cat_buff2, del_buf);
 			}
