@@ -383,10 +383,11 @@ void bam_pr_core(pr_settings_t *settings)
 int pr_usage(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  samtools pr [-sS] <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Usage:  bam_pr [-srtu] [-f <to_realign.fq>] <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    pr for SE reads [Not implemented]\n");
     fprintf(stderr, "        -r    Realign reads with no changed bases. Default: False.\n");
     fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
+    fprintf(stderr, "        -l    Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
     fprintf(stderr, "        -u    Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
     		"Note: This requires pre-processing with mark_unclipped from ppbwa (http://github.com/noseatbelts/ppbwa).\n");
 
@@ -403,7 +404,7 @@ int main(int argc, char *argv[])
 int bam_pr(int argc, char *argv[])
 {
     int c;
-    char wmode[3] = {'w', 'b', 0};
+    char wmode[4] = {'w', 'b', 0, 0};
     sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
 
     static const struct option lopts[] = {
@@ -420,15 +421,17 @@ int bam_pr(int argc, char *argv[])
     settings->cmpkey = POS;
     settings->is_se = 0;
     settings->realign_unchanged = 0;
+    int compression = 0;
 
     char fqname[200] = "";
 
-    while ((c = getopt_long(argc, argv, "f:t:aur?h", lopts, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "l:f:t:aur?h", lopts, NULL)) >= 0) {
         switch (c) {
         case 'r': settings->realign_unchanged = 1; break;
         case 'u': settings->cmpkey = UCS; break;
         case 't': settings->mmlim = atoi(optarg); break;
         case 'f': strcpy(fqname, optarg); break;
+        case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
         default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
             /* else fall-through */
         case 'h': /* fall-through */
@@ -458,7 +461,7 @@ int bam_pr(int argc, char *argv[])
         return 1;
     }
 
-    sam_open_mode(wmode+1, argv[optind+1], NULL);
+    sam_open_mode("b", argv[optind+1], NULL);
     settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
     if (settings->in == 0 || settings->out == 0) {
         fprintf(stderr, "[bam_pr] fail to read/write input files\n");

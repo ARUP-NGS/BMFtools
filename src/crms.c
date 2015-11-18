@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
 	// Build settings struct
 	mssi_settings_t settings = {
 		.hp_threshold = 10,
-		.n_nucs = 4,
+		.n_nucs = 2,
 		.output_basename = NULL,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,
@@ -433,9 +433,6 @@ int main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-#if DBG
-			fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", omp_get_num_threads());
-#endif
 			#pragma omp for
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
@@ -443,13 +440,12 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-
 				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-				fprintf(stderr, "Now removing temporary files %s and %s.\n",
-						params->infnames_r1[i], params->infnames_r2[i]);
 				if(settings.cleanup) {
+					fprintf(stderr, "Now removing temporary files %s and %s.\n",
+							params->infnames_r1[i], params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-					system(tmpbuf);
+					popen(tmpbuf, "w");
 				}
 			}
 #if NOPARALLEL
@@ -464,9 +460,9 @@ int main(int argc, char *argv[])
 		sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 		sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
 		sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-		sys_call_ret = system(cat_buff);
+		CHECK_CALL(cat_buff);
 		sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-		sys_call_ret = system(cat_buff);
+		CHECK_CALL(cat_buff);
 		char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
 		if(settings.panthera) {
 			fprintf(stderr, "Now building cat string.\n");
@@ -490,22 +486,22 @@ int main(int argc, char *argv[])
 				strcat(cat_buff1, ".gz");
 				strcat(cat_buff2, ".gz");
 			}
-			CHECK_CALL(cat_buff1, sys_call_ret);
-			CHECK_CALL(cat_buff2, sys_call_ret);
+			FILE *c1_popen = popen(cat_buff1, "w");
+			CHECK_CALL(cat_buff2);
+			if(pclose(c1_popen)) {
+				fprintf(stderr, "Background cat command failed. ('%s').\n", cat_buff1);
+				exit(EXIT_FAILURE);
+			}
 		}
 		else {
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
 				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s.gz": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-				sys_call_ret = system(cat_buff);
-				if(sys_call_ret < 0) {
-					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
-					exit(EXIT_FAILURE);
-				}
+				FILE *g1_popen = popen(cat_buff, "w");
 				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s.gz": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-				sys_call_ret = system(cat_buff);
-				if(sys_call_ret < 0) {
-					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
+				CHECK_CALL(cat_buff);
+				if(pclose(g1_popen)){
+					fprintf(stderr, "Background system call failed.\n");
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -516,7 +512,7 @@ int main(int argc, char *argv[])
 				char tmpbuf[500];
 				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
 				fprintf(stderr, "About to call command '%s'.\n", tmpbuf);
-				CHECK_CALL(tmpbuf, sys_call_ret);
+				popen(tmpbuf, "w");
 			}
 		}
 		splitterhash_destroy(params);

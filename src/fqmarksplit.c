@@ -51,10 +51,9 @@ int main(int argc, char *argv[])
 	const char *default_basename = "metasyntactic_var";
 	mss_settings_t settings = {
 		.hp_threshold = 10,
-		.n_nucs = 4,
+		.n_nucs = 2,
 		.index_fq_path = NULL,
 		.output_basename = (char *)default_basename,
-		.threads = 4,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,
 		.n_handles = 0,
@@ -153,7 +152,6 @@ int main(int argc, char *argv[])
 #endif
 			for(int i = 0; i < params->n; ++i) {
 				char tmpbuf[500];
-				int tmp_ret;
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
@@ -161,7 +159,7 @@ int main(int argc, char *argv[])
 						params->infnames_r2[i], params->outfnames_r2[i]);
 				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-				CHECK_CALL(tmpbuf, tmp_ret);
+				CHECK_CALL(tmpbuf);
 			}
 #if NOPARALLEL
 #else
@@ -185,28 +183,30 @@ int main(int argc, char *argv[])
 		char cat_buff2[CAT_BUFFER_SIZE];
 		char cat_buff1[CAT_BUFFER_SIZE];
 		// Make sure that both files are empty.
-		int sys_call_ret;
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
 		char ffq_r2[200];
 		sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq": "%s.R1.fq.gz", settings.ffq_prefix);
 		sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq": "%s.R2.fq.gz", settings.ffq_prefix);
 		sprintf(cat_buff, "> %s", ffq_r1);
-		sys_call_ret = system(cat_buff);
+		CHECK_CALL(cat_buff);
 		sprintf(cat_buff, "> %s", ffq_r2);
-		sys_call_ret = system(cat_buff);
+		CHECK_CALL(cat_buff);
 		if(!settings.panthera) {
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -%i >> %s": "cat %s >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
-				sys_call_ret = system(cat_buff);
-				if(sys_call_ret < 0) {
-					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
-					exit(EXIT_FAILURE);
-				}
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -%i >> %s": "cat %s >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
-				sys_call_ret = system(cat_buff);
-				if(sys_call_ret < 0) {
+				if(settings.gzip_output)
+					sprintf(cat_buff, "cat %s | gzip - -%i >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
+				else
+					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+				FILE *p1 = popen(cat_buff, "w");
+
+				if(settings.gzip_output)
+					sprintf(cat_buff, "cat %s | gzip - -%i >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
+				else
+					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+				CHECK_CALL(cat_buff);
+				if(pclose(p1)) {
 					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
 					exit(EXIT_FAILURE);
 				}
@@ -229,16 +229,24 @@ int main(int argc, char *argv[])
 			}
 			strcat(cat_buff1, " > ");
 			strcat(cat_buff1, ffq_r1);
+			strcat(cat_buff1, ".gz");
 			strcat(cat_buff2, " > ");
 			strcat(cat_buff2, ffq_r2);
-			CHECK_CALL(cat_buff1, sys_call_ret);
-			CHECK_CALL(cat_buff2, sys_call_ret);
+			strcat(cat_buff2, ".gz");
+			FILE *c1_popen = popen(cat_buff1, "w");
+			CHECK_CALL(cat_buff2);
+			if(pclose(c1_popen)) {
+				fprintf(stderr, "First cat command failed. Abort!\n");
+				exit(EXIT_FAILURE);
+			}
+			fprintf(stderr, "Now cleaning up intermediate files.\n");
 			#pragma omp parallel for shared(params)
 			for(int i = 0; i < params->n; ++i) {
 				char tmpbuf[500];
 				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-				CHECK_CALL(tmpbuf, sys_call_ret);
+				popen(tmpbuf, "w");
 			}
+			fprintf(stderr, "Finished cleaning up intermediate files.\n");
 			//fprintf(stderr, "Not executing %s today. Eh.\n", cat_buff1);
 		}
 		splitterhash_destroy(params);

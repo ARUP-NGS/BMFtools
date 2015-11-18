@@ -65,10 +65,9 @@
 #endif
 
 #ifndef CHECK_CALL
-#define CHECK_CALL(buff, ret) \
+#define CHECK_CALL(buff) \
 	fprintf(stderr, "Now check calling command '%s'.\n", buff); \
-	ret = system(buff);\
-	if(ret < 0)\
+	if(system(buff) < 0)\
 		fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
 #endif
 
