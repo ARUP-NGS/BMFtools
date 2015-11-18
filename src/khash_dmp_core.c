@@ -106,11 +106,10 @@ void khash_dmp_core(char *infname, char *outfname)
 		if(ki == kh_end(hash)) {
 			ki = kh_put(dmp, hash, tmp->key, &khr);
 			kh_val(hash, ki) = init_kfp(tmp->readlen);
-#if DBG
-			//fprintf(stderr, "Barcode in HashKing entry: %s.\n", tmp_hk->id);
-			//fprintf(stderr, "New kingfisher has barcode %s.\n", tmp_hk->value->barcode);
-#endif
 		}
+#if !NDEBUG
+		fprintf(stderr, "Seq: %s. Comment: %s. Quality: %s.\n", seq->seq.s, seq->comment.s, seq->qual.s);
+#endif
 		pushback_kseq(kh_val(hash, ki), seq, tmp->nuc_indices, tmp->blen);
 	}
 	fprintf(stderr, "[khash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");

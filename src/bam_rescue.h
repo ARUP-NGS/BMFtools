@@ -18,12 +18,12 @@ typedef struct rescue_settings {
 #define bam_is_r2(b) (!!((b)->core.flag&BAM_FREAD2))
 #endif
 
-#ifndef bam_sort_core_key
-#define bam_sort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(a->core.pos+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
+#ifndef bmfsort_core_key
+#define bmfsort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(a->core.pos+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
 #endif
 
-#ifndef bam_sort_mate_key
-#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|(a->core.mpos+1))
+#ifndef bmfsort_mate_key
+#define bmfsort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|(a->core.mpos+1))
 #endif
 
 #ifndef forever

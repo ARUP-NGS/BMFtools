@@ -5,7 +5,7 @@
 #include "stdio.h"
 #include "math.h"
 #include "charcmp.h"
-#include "cstr_utils.h"
+#include "cstr_util.h"
 #include "khash.h"
 #include "mem_util.h"
 #include <zlib.h>
@@ -107,11 +107,7 @@ static inline void destroy_kf(KingFisher_t *kfp)
 
 static inline void clear_kf(KingFisher_t *kfp)
 {
-	memset(kfp->nuc_counts, 0, 5 * sizeof(uint16_t) * kfp->readlen);
-	memset(kfp->phred_sums, 0, 4 * sizeof(uint32_t) * kfp->readlen);
-	memset(kfp->max_phreds, 0, kfp->readlen); //Turn it back into an array of nulls.
-	kfp->length = 0;
-	return;
+	memset(kfp, 0, sizeof(KingFisher_t));
 }
 
 
@@ -153,20 +149,9 @@ static inline char ARRG_MAX_TO_NUC(int argmaxret)
 }
 
 
-static inline void fill_csv_buffer(int readlen, uint32_t *arr, char *buffer, char *prefix, char typecode)
-{
-	char tmpbuf[20];
-	sprintf(buffer, "%s%c", prefix, typecode);
-	for(uint32_t i = 0; i < readlen; i++) {
-		sprintf(tmpbuf, ",%i", arr[i]);
-		strcat(buffer, tmpbuf);
-	}
-}
-
-
 static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, char *buffer)
 {
-	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:", 'I');
+	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:I");
 	return;
 }
 
@@ -356,22 +341,6 @@ static inline char *barcode_mem_view(kseq_t *seq)
 	return NULL;
 }
 
-static inline int bc_flip(char *barcode, int blen)
-{
-	switch(lex_lt(barcode, blen)) {
-	case 0:
-		return 0;
-	case 1:
-		return 1;
-	default: return rclex_lt(barcode, blen);
-	}
-}
-
-
-static inline void pair_flip(mseq_t *m1, mseq_t *m2, tmpvars_t *tmp)
-{
-	// Test to see if I should flip.
-}
 
 
 /*

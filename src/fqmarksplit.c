@@ -8,7 +8,7 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include "cstr_utils.h"
+#include "cstr_util.h"
 #include "khash_dmp_core.h"
 
 void print_usage(char *argv[])

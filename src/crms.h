@@ -16,7 +16,7 @@
 #include "nix_resource.h"
 #include "mem_util.h"
 #include "binner.h"
-#include "cstr_utils.h"
+#include "cstr_util.h"
 
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8

@@ -1,4 +1,4 @@
-/*  bam_sort.c -- sorting and merging.
+/*  bmfsort.c -- sorting and merging.
 
 	Copyright (C) 2008-2014 Genome Research Ltd.
 	Portions copyright (C) 2009-2012 Broad Institute.
@@ -612,7 +612,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode, const char 
 	bam_hdr_t **hdr = NULL;
 	trans_tbl_t *translation_tbl = NULL;
 
-	fprintf(stderr, "Now running bam_sort_core2 to a single output file.\n");
+	fprintf(stderr, "Now running bmfsort_core2 to a single output file.\n");
 
 	// Is there a specified pre-prepared header to use for output?
 	if (headers) {
@@ -1249,13 +1249,13 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 		case QNAME_SORT_ORDER:
 			t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
 			return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-		case SAMTOOLS_SORT_ORDER: return bam_sort_core_key(a) < bam_sort_core_key(b);
+		case SAMTOOLS_SORT_ORDER: return bmfsort_core_key(a) < bmfsort_core_key(b);
 		case BMF_SORT_ORDER:
-			key_a = bam_sort_core_key(a);
-			key_b = bam_sort_core_key(b);
+			key_a = bmfsort_core_key(a);
+			key_b = bmfsort_core_key(b);
 			if(key_a < key_b) return 1;
 			else if(key_b < key_a) return 0;
-			else return bam_sort_mate_key(a) < bam_sort_mate_key(b);
+			else return bmfsort_mate_key(a) < bmfsort_mate_key(b);
 		case UCS_SORT_ORDER:
 			key_a = ucs_sort_core_key(a);
 			key_b = ucs_sort_core_key(b);
@@ -1286,7 +1286,7 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 		sprintf(tmpbuf, "%s.%s.bam", split_prefix, h->target_name[i]);
 		fps[i] = sam_open(tmpbuf, mode);
 		if(fps[i] == NULL) {
-			fprintf(stderr, "Couldn't open file %s. Abort!\n", tmpbuf);
+			fprintf(stderr, "[%s]: Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
 			exit(EXIT_FAILURE);
 		}
 		sam_hdr_write(fps[i], h);
@@ -1445,11 +1445,11 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		 * TODO: Make this split as well.
 		 */
 		if(split) {
-			fprintf(stderr, "Single block. Writing to split buffer because split's value is %i.\n", split);
+			fprintf(stderr, "[bmfsort_core] Single block. Writing to split buffer because split's value is %i.\n", split);
 			write_buffer_split(fnout, modeout, k, buf, header, split_prefix);
 		}
 		else {
-			fprintf(stderr, "Single block. Writing to regular buffer because split's value is %i.\n", split);
+			fprintf(stderr, "[bmfsort_core] Single block. Writing to regular buffer because split's value is %i.\n", split);
 			write_buffer(fnout, modeout, k, buf, header, n_threads);
 		}
 	} else { // then merge
@@ -1503,6 +1503,7 @@ static int sort_usage(FILE *fp, int status)
 "  -T PREFIX  Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
 "  -@ INT	 Set number of sorting and compression threads [1]\n"
 "  -s		 Flag to split the bam into a list of file handles.\n"
+"  -p		 If splitting into a list of handles, this sets the file prefix.\n"
 "\n");
 	return status;
 }
@@ -1518,7 +1519,7 @@ int main(int argc, char *argv[])
 	char *split_prefix = NULL;
 	int split = 0;
 
-	while ((c = getopt(argc, argv, "l:m:k:o:O:T:@:sh")) >= 0) {
+	while ((c = getopt(argc, argv, "p:l:m:k:o:O:T:@:sh")) >= 0) {
 		switch (c) {
 		case 'o': fnout = optarg; break;
 		case 'k': if(strcmp(optarg, "bmf") == 0) sort_cmp_int = BMF_SORT_ORDER;
@@ -1544,13 +1545,22 @@ int main(int argc, char *argv[])
 		case 'l': level = atoi(optarg); break;
 		case 'h': return sort_usage(stderr, 0);
 		case 's': split = 1; break;
+		case 'p': split_prefix = strdup(optarg); break;
 		default: return sort_usage(stderr, EXIT_FAILURE);
 		}
 	}
 
-	if(!split_prefix) {
-		split_prefix = trim_ext(fnout);
+	if(split && (!split_prefix)) {
+		int tmpint;
+		for(tmpint = 0; fnout[tmpint]; ++tmpint) {
+			if(fnout[tmpint] == '.')
+				break;
+		}
+		split_prefix = fnout[tmpint] ? trim_ext(fnout): strdup(fnout);
 	}
+
+	if(split)
+		fprintf(stderr, "[bmfsort] split_prefix: %s.\n", split_prefix);
 
 
 	nargs = argc - optind;
@@ -1559,8 +1569,8 @@ int main(int argc, char *argv[])
 
 	strcpy(modeout, "w");
 	if (sam_open_mode(&modeout[1], fnout, fmtout) < 0) {
-		if (fmtout) fprintf(stderr, "[bam_sort] can't parse output format \"%s\"\n", fmtout);
-		else fprintf(stderr, "[bam_sort] can't determine output format\n");
+		if (fmtout) fprintf(stderr, "[bmfsort] can't parse output format \"%s\"\n", fmtout);
+		else fprintf(stderr, "[bmfsort] can't determine output format\n");
 		ret = EXIT_FAILURE;
 		goto sort_end;
 	}
@@ -1571,6 +1581,7 @@ int main(int argc, char *argv[])
 	cond_free(tmpprefix);
 	cond_free(fmtout);
 	cond_free(split_prefix);
+	cond_free(fnout);
 
 sort_end:
 	free(fnout_buffer.s);

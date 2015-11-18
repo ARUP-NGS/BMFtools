@@ -2,18 +2,8 @@
 #define PAIR_UTIL_H
 #include <ctype.h>
 #include <errno.h>
-#include "htslib/khash.h"
-#include "htslib/klist.h"
-#include "htslib/ksort.h"
-#include "htslib/kstring.h"
-#include "htslib/sam.h"
-#include "cstr_utils.h"
-#include "mem_util.h"
 #include <inttypes.h>
-#include "io_util.h"
 #include <regex.h>
-#include "sam.h"
-#include "sam_opts.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -25,6 +15,16 @@
 #include <zlib.h>
 #include "bam.h"
 #include "bam_rescue.h"
+#include "cstr_util.h"
+#include "htslib/khash.h"
+#include "htslib/klist.h"
+#include "htslib/ksort.h"
+#include "htslib/kstring.h"
+#include "htslib/sam.h"
+#include "io_util.h"
+#include "mem_util.h"
+#include "sam.h"
+#include "sam_opts.h"
 
 
 #ifndef ucs_sort_mate_key
@@ -33,6 +33,14 @@
 
 #ifndef ucs_sort_core_key
 #define ucs_sort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(bam_aux2i(bam_aux_get(b, "SU"))+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
+#endif
+
+#ifndef bmfsort_core_key
+#define bmfsort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(a->core.pos+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
+#endif
+
+#ifndef bmfsort_mate_key
+#define bmfsort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|(a->core.mpos+1))
 #endif
 
 static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2);

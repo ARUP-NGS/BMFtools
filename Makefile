@@ -13,7 +13,7 @@ LIB=-Lhtslib -lhts
 
 OPT_FLAGS = -O3 -DNDEBUG -finline-functions
 DB_FLAGS = -fno-inline -DNOPARALLEL -DTEST
-GP_FLAGS = $(DB_FLAGS) -pg
+GP_FLAGS = -fno-inline -DNOPARALLEL -DTEST -pg
 
 IGAMC_INC= include/igamc_cephes.c
 

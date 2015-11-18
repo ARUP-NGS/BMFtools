@@ -399,6 +399,7 @@ int main(int argc, char *argv[])
 	return bam_pr(argc, argv);
 }
 
+
 int bam_pr(int argc, char *argv[])
 {
     int c;
