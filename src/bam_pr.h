@@ -281,7 +281,7 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	}
 	if(strcmp(bam_get_qname(b), "GTGTGATTCTGACTAACG") == 0) {
 		for(int i = 0; i < b->core.l_qseq; ++i) {
-			fprintf(stderr, "" PRIu32"\t", fa[i]);
+			fprintf(stderr, "%" PRIu32"\t", fa[i]);
 		}
 		fprintf(stderr, "\n");
 		exit(EXIT_FAILURE);
@@ -312,7 +312,6 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 
 static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
-	uint8_t *data;
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
 			/*

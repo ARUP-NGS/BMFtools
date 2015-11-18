@@ -75,6 +75,7 @@ void khash_dmp_core(char *infname, char *outfname)
 	fprintf(stderr, "[khash_dmp_core]: Barcode length (inferred): %i.\n", blen);
 #endif
 	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
+	tmpbuffers_t *bufs = tmp->buffers;
 	memcpy(tmp->key, bs_ptr, blen);
 	tmp->key[blen] = '\0';
 	// Start hash table
@@ -117,7 +118,7 @@ void khash_dmp_core(char *infname, char *outfname)
 		if(!kh_exist(hash, ki))
 			continue;
 		//strcpy(tmp->key, kh_val(hash, ki)->barcode);
-		dmp_process_write(kh_val(hash, ki), out_handle, tmp);
+		dmp_process_write(kh_val(hash, ki), out_handle, bufs);
 		destroy_kf(kh_val(hash, ki));
 		kh_val(hash, ki) = NULL;
 	}
