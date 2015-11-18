@@ -1,0 +1,63 @@
+#ifdef NODEF
+static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
+{
+	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
+	//buffer[0] = '@'; Set this later?
+	int argmaxret;
+	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+	uint32_t n = (kfp->readlen - 1) / 8; //
+	switch(kfp->readlen % 8) {
+		case '7':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 7);
+		case '6':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 6);
+		case '5':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 5);
+		case '4':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 4);
+		case 'e':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 3);
+		case '2':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 2);
+		case '1':	dmp_pos(kfp, bufs, argmaxret, kfp->readlen - 1);
+	}
+	while(--n > 0) {
+		uint32_t n8 = n * 8;
+		dmp_pos(kfp, bufs, argmaxret, n8 + 0);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 1);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 2);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 3);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 4);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 5);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 6);
+		dmp_pos(kfp, bufs, argmaxret, n8 + 7);
+	}
+	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
+	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+			bufs->FABuffer, bufs->PVBuffer,
+			kfp->pass_fail, kfp->n_rc, kfp->length,
+			bufs->cons_seq_buffer, kfp->max_phreds);
+	return;
+}
+#endif
+
+#ifdef STFU
+static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
+{
+	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
+	//buffer[0] = '@'; Set this later?
+	int argmaxret;
+	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
+	uint32_t i;
+	for(i = kfp->readlen; i; --i) {
+		dmp_pos(kfp, bufs, argmaxret, i);
+		dmp_pos(kfp, bufs, argmaxret, kfp->readlen - i);
+	}
+	if(i & 1)
+		dmp_pos(kfp, bufs, argmaxret, i);
+	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
+	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
+	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+			bufs->FABuffer, bufs->PVBuffer,
+			kfp->pass_fail, kfp->n_rc, kfp->length,
+			bufs->cons_seq_buffer, kfp->max_phreds);
+	return;
+}
+#endif

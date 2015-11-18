@@ -212,7 +212,6 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
 	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N'
 
-#ifndef UNROLL
 static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
 {
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
@@ -221,6 +220,7 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers
 	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < kfp->readlen; ++i) {
 		dmp_pos(kfp, bufs, argmaxret, i);
+	}
 		/*
 		 * Should I add this back in?
 		if(bufs->cons_quals[i] > 1073741824) { // Underflow!
@@ -228,7 +228,6 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers
 			bufs->cons_quals[i] = 3114;
 		}
 		*/
-	}
 	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
 	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
@@ -238,225 +237,7 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers
 			bufs->cons_seq_buffer, kfp->max_phreds);
 	return;
 }
-#else
-static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
-{
-	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
-	//buffer[0] = '@'; Set this later?
-	int argmaxret;
-	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-	switch(kfp->readlen) {
-		case 200: dmp_pos(kfp, bufs, argmaxret, 199);
-		case 199: dmp_pos(kfp, bufs, argmaxret, 198);
-		case 198: dmp_pos(kfp, bufs, argmaxret, 197);
-		case 197: dmp_pos(kfp, bufs, argmaxret, 196);
-		case 196: dmp_pos(kfp, bufs, argmaxret, 195);
-		case 195: dmp_pos(kfp, bufs, argmaxret, 194);
-		case 194: dmp_pos(kfp, bufs, argmaxret, 193);
-		case 193: dmp_pos(kfp, bufs, argmaxret, 192);
-		case 192: dmp_pos(kfp, bufs, argmaxret, 191);
-		case 191: dmp_pos(kfp, bufs, argmaxret, 190);
-		case 190: dmp_pos(kfp, bufs, argmaxret, 189);
-		case 189: dmp_pos(kfp, bufs, argmaxret, 188);
-		case 188: dmp_pos(kfp, bufs, argmaxret, 187);
-		case 187: dmp_pos(kfp, bufs, argmaxret, 186);
-		case 186: dmp_pos(kfp, bufs, argmaxret, 185);
-		case 185: dmp_pos(kfp, bufs, argmaxret, 184);
-		case 184: dmp_pos(kfp, bufs, argmaxret, 183);
-		case 183: dmp_pos(kfp, bufs, argmaxret, 182);
-		case 182: dmp_pos(kfp, bufs, argmaxret, 181);
-		case 181: dmp_pos(kfp, bufs, argmaxret, 180);
-		case 180: dmp_pos(kfp, bufs, argmaxret, 179);
-		case 179: dmp_pos(kfp, bufs, argmaxret, 178);
-		case 178: dmp_pos(kfp, bufs, argmaxret, 177);
-		case 177: dmp_pos(kfp, bufs, argmaxret, 176);
-		case 176: dmp_pos(kfp, bufs, argmaxret, 175);
-		case 175: dmp_pos(kfp, bufs, argmaxret, 174);
-		case 174: dmp_pos(kfp, bufs, argmaxret, 173);
-		case 173: dmp_pos(kfp, bufs, argmaxret, 172);
-		case 172: dmp_pos(kfp, bufs, argmaxret, 171);
-		case 171: dmp_pos(kfp, bufs, argmaxret, 170);
-		case 170: dmp_pos(kfp, bufs, argmaxret, 169);
-		case 169: dmp_pos(kfp, bufs, argmaxret, 168);
-		case 168: dmp_pos(kfp, bufs, argmaxret, 167);
-		case 167: dmp_pos(kfp, bufs, argmaxret, 166);
-		case 166: dmp_pos(kfp, bufs, argmaxret, 165);
-		case 165: dmp_pos(kfp, bufs, argmaxret, 164);
-		case 164: dmp_pos(kfp, bufs, argmaxret, 163);
-		case 163: dmp_pos(kfp, bufs, argmaxret, 162);
-		case 162: dmp_pos(kfp, bufs, argmaxret, 161);
-		case 161: dmp_pos(kfp, bufs, argmaxret, 160);
-		case 160: dmp_pos(kfp, bufs, argmaxret, 159);
-		case 159: dmp_pos(kfp, bufs, argmaxret, 158);
-		case 158: dmp_pos(kfp, bufs, argmaxret, 157);
-		case 157: dmp_pos(kfp, bufs, argmaxret, 156);
-		case 156: dmp_pos(kfp, bufs, argmaxret, 155);
-		case 155: dmp_pos(kfp, bufs, argmaxret, 154);
-		case 154: dmp_pos(kfp, bufs, argmaxret, 153);
-		case 153: dmp_pos(kfp, bufs, argmaxret, 152);
-		case 152: dmp_pos(kfp, bufs, argmaxret, 151);
-		case 151: dmp_pos(kfp, bufs, argmaxret, 150);
-		case 150: dmp_pos(kfp, bufs, argmaxret, 149);
-		case 149: dmp_pos(kfp, bufs, argmaxret, 148);
-		case 148: dmp_pos(kfp, bufs, argmaxret, 147);
-		case 147: dmp_pos(kfp, bufs, argmaxret, 146);
-		case 146: dmp_pos(kfp, bufs, argmaxret, 145);
-		case 145: dmp_pos(kfp, bufs, argmaxret, 144);
-		case 144: dmp_pos(kfp, bufs, argmaxret, 143);
-		case 143: dmp_pos(kfp, bufs, argmaxret, 142);
-		case 142: dmp_pos(kfp, bufs, argmaxret, 141);
-		case 141: dmp_pos(kfp, bufs, argmaxret, 140);
-		case 140: dmp_pos(kfp, bufs, argmaxret, 139);
-		case 139: dmp_pos(kfp, bufs, argmaxret, 138);
-		case 138: dmp_pos(kfp, bufs, argmaxret, 137);
-		case 137: dmp_pos(kfp, bufs, argmaxret, 136);
-		case 136: dmp_pos(kfp, bufs, argmaxret, 135);
-		case 135: dmp_pos(kfp, bufs, argmaxret, 134);
-		case 134: dmp_pos(kfp, bufs, argmaxret, 133);
-		case 133: dmp_pos(kfp, bufs, argmaxret, 132);
-		case 132: dmp_pos(kfp, bufs, argmaxret, 131);
-		case 131: dmp_pos(kfp, bufs, argmaxret, 130);
-		case 130: dmp_pos(kfp, bufs, argmaxret, 129);
-		case 129: dmp_pos(kfp, bufs, argmaxret, 128);
-		case 128: dmp_pos(kfp, bufs, argmaxret, 127);
-		case 127: dmp_pos(kfp, bufs, argmaxret, 126);
-		case 126: dmp_pos(kfp, bufs, argmaxret, 125);
-		case 125: dmp_pos(kfp, bufs, argmaxret, 124);
-		case 124: dmp_pos(kfp, bufs, argmaxret, 123);
-		case 123: dmp_pos(kfp, bufs, argmaxret, 122);
-		case 122: dmp_pos(kfp, bufs, argmaxret, 121);
-		case 121: dmp_pos(kfp, bufs, argmaxret, 120);
-		case 120: dmp_pos(kfp, bufs, argmaxret, 119);
-		case 119: dmp_pos(kfp, bufs, argmaxret, 118);
-		case 118: dmp_pos(kfp, bufs, argmaxret, 117);
-		case 117: dmp_pos(kfp, bufs, argmaxret, 116);
-		case 116: dmp_pos(kfp, bufs, argmaxret, 115);
-		case 115: dmp_pos(kfp, bufs, argmaxret, 114);
-		case 114: dmp_pos(kfp, bufs, argmaxret, 113);
-		case 113: dmp_pos(kfp, bufs, argmaxret, 112);
-		case 112: dmp_pos(kfp, bufs, argmaxret, 111);
-		case 111: dmp_pos(kfp, bufs, argmaxret, 110);
-		case 110: dmp_pos(kfp, bufs, argmaxret, 109);
-		case 109: dmp_pos(kfp, bufs, argmaxret, 108);
-		case 108: dmp_pos(kfp, bufs, argmaxret, 107);
-		case 107: dmp_pos(kfp, bufs, argmaxret, 106);
-		case 106: dmp_pos(kfp, bufs, argmaxret, 105);
-		case 105: dmp_pos(kfp, bufs, argmaxret, 104);
-		case 104: dmp_pos(kfp, bufs, argmaxret, 103);
-		case 103: dmp_pos(kfp, bufs, argmaxret, 102);
-		case 102: dmp_pos(kfp, bufs, argmaxret, 101);
-		case 101: dmp_pos(kfp, bufs, argmaxret, 100);
-		case 100: dmp_pos(kfp, bufs, argmaxret, 99);
-		case 99: dmp_pos(kfp, bufs, argmaxret, 98);
-		case 98: dmp_pos(kfp, bufs, argmaxret, 97);
-		case 97: dmp_pos(kfp, bufs, argmaxret, 96);
-		case 96: dmp_pos(kfp, bufs, argmaxret, 95);
-		case 95: dmp_pos(kfp, bufs, argmaxret, 94);
-		case 94: dmp_pos(kfp, bufs, argmaxret, 93);
-		case 93: dmp_pos(kfp, bufs, argmaxret, 92);
-		case 92: dmp_pos(kfp, bufs, argmaxret, 91);
-		case 91: dmp_pos(kfp, bufs, argmaxret, 90);
-		case 90: dmp_pos(kfp, bufs, argmaxret, 89);
-		case 89: dmp_pos(kfp, bufs, argmaxret, 88);
-		case 88: dmp_pos(kfp, bufs, argmaxret, 87);
-		case 87: dmp_pos(kfp, bufs, argmaxret, 86);
-		case 86: dmp_pos(kfp, bufs, argmaxret, 85);
-		case 85: dmp_pos(kfp, bufs, argmaxret, 84);
-		case 84: dmp_pos(kfp, bufs, argmaxret, 83);
-		case 83: dmp_pos(kfp, bufs, argmaxret, 82);
-		case 82: dmp_pos(kfp, bufs, argmaxret, 81);
-		case 81: dmp_pos(kfp, bufs, argmaxret, 80);
-		case 80: dmp_pos(kfp, bufs, argmaxret, 79);
-		case 79: dmp_pos(kfp, bufs, argmaxret, 78);
-		case 78: dmp_pos(kfp, bufs, argmaxret, 77);
-		case 77: dmp_pos(kfp, bufs, argmaxret, 76);
-		case 76: dmp_pos(kfp, bufs, argmaxret, 75);
-		case 75: dmp_pos(kfp, bufs, argmaxret, 74);
-		case 74: dmp_pos(kfp, bufs, argmaxret, 73);
-		case 73: dmp_pos(kfp, bufs, argmaxret, 72);
-		case 72: dmp_pos(kfp, bufs, argmaxret, 71);
-		case 71: dmp_pos(kfp, bufs, argmaxret, 70);
-		case 70: dmp_pos(kfp, bufs, argmaxret, 69);
-		case 69: dmp_pos(kfp, bufs, argmaxret, 68);
-		case 68: dmp_pos(kfp, bufs, argmaxret, 67);
-		case 67: dmp_pos(kfp, bufs, argmaxret, 66);
-		case 66: dmp_pos(kfp, bufs, argmaxret, 65);
-		case 65: dmp_pos(kfp, bufs, argmaxret, 64);
-		case 64: dmp_pos(kfp, bufs, argmaxret, 63);
-		case 63: dmp_pos(kfp, bufs, argmaxret, 62);
-		case 62: dmp_pos(kfp, bufs, argmaxret, 61);
-		case 61: dmp_pos(kfp, bufs, argmaxret, 60);
-		case 60: dmp_pos(kfp, bufs, argmaxret, 59);
-		case 59: dmp_pos(kfp, bufs, argmaxret, 58);
-		case 58: dmp_pos(kfp, bufs, argmaxret, 57);
-		case 57: dmp_pos(kfp, bufs, argmaxret, 56);
-		case 56: dmp_pos(kfp, bufs, argmaxret, 55);
-		case 55: dmp_pos(kfp, bufs, argmaxret, 54);
-		case 54: dmp_pos(kfp, bufs, argmaxret, 53);
-		case 53: dmp_pos(kfp, bufs, argmaxret, 52);
-		case 52: dmp_pos(kfp, bufs, argmaxret, 51);
-		case 51: dmp_pos(kfp, bufs, argmaxret, 50);
-		case 50: dmp_pos(kfp, bufs, argmaxret, 49);
-		case 49: dmp_pos(kfp, bufs, argmaxret, 48);
-		case 48: dmp_pos(kfp, bufs, argmaxret, 47);
-		case 47: dmp_pos(kfp, bufs, argmaxret, 46);
-		case 46: dmp_pos(kfp, bufs, argmaxret, 45);
-		case 45: dmp_pos(kfp, bufs, argmaxret, 44);
-		case 44: dmp_pos(kfp, bufs, argmaxret, 43);
-		case 43: dmp_pos(kfp, bufs, argmaxret, 42);
-		case 42: dmp_pos(kfp, bufs, argmaxret, 41);
-		case 41: dmp_pos(kfp, bufs, argmaxret, 40);
-		case 40: dmp_pos(kfp, bufs, argmaxret, 39);
-		case 39: dmp_pos(kfp, bufs, argmaxret, 38);
-		case 38: dmp_pos(kfp, bufs, argmaxret, 37);
-		case 37: dmp_pos(kfp, bufs, argmaxret, 36);
-		case 36: dmp_pos(kfp, bufs, argmaxret, 35);
-		case 35: dmp_pos(kfp, bufs, argmaxret, 34);
-		case 34: dmp_pos(kfp, bufs, argmaxret, 33);
-		case 33: dmp_pos(kfp, bufs, argmaxret, 32);
-		case 32: dmp_pos(kfp, bufs, argmaxret, 31);
-		case 31: dmp_pos(kfp, bufs, argmaxret, 30);
-		case 30: dmp_pos(kfp, bufs, argmaxret, 29);
-		case 29: dmp_pos(kfp, bufs, argmaxret, 28);
-		case 28: dmp_pos(kfp, bufs, argmaxret, 27);
-		case 27: dmp_pos(kfp, bufs, argmaxret, 26);
-		case 26: dmp_pos(kfp, bufs, argmaxret, 25);
-		case 25: dmp_pos(kfp, bufs, argmaxret, 24);
-		case 24: dmp_pos(kfp, bufs, argmaxret, 23);
-		case 23: dmp_pos(kfp, bufs, argmaxret, 22);
-		case 22: dmp_pos(kfp, bufs, argmaxret, 21);
-		case 21: dmp_pos(kfp, bufs, argmaxret, 20);
-		case 20: dmp_pos(kfp, bufs, argmaxret, 19);
-		case 19: dmp_pos(kfp, bufs, argmaxret, 18);
-		case 18: dmp_pos(kfp, bufs, argmaxret, 17);
-		case 17: dmp_pos(kfp, bufs, argmaxret, 16);
-		case 16: dmp_pos(kfp, bufs, argmaxret, 15);
-		case 15: dmp_pos(kfp, bufs, argmaxret, 14);
-		case 14: dmp_pos(kfp, bufs, argmaxret, 13);
-		case 13: dmp_pos(kfp, bufs, argmaxret, 12);
-		case 12: dmp_pos(kfp, bufs, argmaxret, 11);
-		case 11: dmp_pos(kfp, bufs, argmaxret, 10);
-		case 10: dmp_pos(kfp, bufs, argmaxret, 9);
-		case 9: dmp_pos(kfp, bufs, argmaxret, 8);
-		case 8: dmp_pos(kfp, bufs, argmaxret, 7);
-		case 7: dmp_pos(kfp, bufs, argmaxret, 6);
-		case 6: dmp_pos(kfp, bufs, argmaxret, 5);
-		case 5: dmp_pos(kfp, bufs, argmaxret, 4);
-		case 4: dmp_pos(kfp, bufs, argmaxret, 3);
-		case 3: dmp_pos(kfp, bufs, argmaxret, 2);
-		case 2: dmp_pos(kfp, bufs, argmaxret, 1);
-		case 1: dmp_pos(kfp, bufs, argmaxret, 0);
-	}
-	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
-	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
-			bufs->FABuffer, bufs->PVBuffer,
-			kfp->pass_fail, kfp->n_rc, kfp->length,
-			bufs->cons_seq_buffer, kfp->max_phreds);
-	return;
-}
-#endif
+
 
 
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
@@ -800,7 +581,7 @@ static void print_kf(KingFisher_t *kfp)
 	if(seq->qual.s[i] > kfp->max_phreds[i])\
 		kfp->max_phreds[i] = seq->qual.s[i]\
 
-#ifndef UNROLL
+#ifndef UNROLLED
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
 #if !NDEBUG
