@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <omp.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -21,6 +22,7 @@
 #include "htslib/ksort.h"
 #include "htslib/kstring.h"
 #include "htslib/sam.h"
+#include "flow_util.h"
 #include "io_util.h"
 #include "mem_util.h"
 #include "sam.h"

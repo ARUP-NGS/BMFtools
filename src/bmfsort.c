@@ -875,6 +875,8 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 			return -1;
 		}
 	} else  {
+		fprintf(stderr, "HEY BTW I DIDN'T GET A HEADER TO USE FOR MY SPLIT.\n");
+		exit(0);
 		hout = bam_hdr_init();
 		hout->text = strdup("");
 	}
@@ -1034,10 +1036,11 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 		if (!(flag & MERGE_UNCOMP)) hts_set_threads(out_handles[y], n_threads);
 	}
 	sprintf(out_names[hout->n_targets], "%s.unmapped.bam", out);
+	out_handles[hout->n_targets] = sam_open(out_names[hout->n_targets], mode);
+	sam_hdr_write(out_handles[hout->n_targets], hout);
 
 	// Begin the actual merge
 	ks_heapmake(heap, n, heap);
-	int index;
 	while (heap->pos != HEAP_EMPTY) {
 		bam1_t *b = heap->b;
 		if (flag & MERGE_RG) {
@@ -1045,8 +1048,8 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 			if (rg) bam_aux_del(b, rg);
 			bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
 		}
-		index = SPLIT_INDEX(b);
-		sam_write1(out_handles[index > 0 ? index: hout->n_targets], hout, b);
+		const int index = SPLIT_INDEX(b);
+		sam_write1(out_handles[index >= 0 ? index: hout->n_targets], hout, b);
 		if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
 			bam_translate(b, translation_tbl + heap->i);
 			heap->pos = ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
@@ -1279,8 +1282,16 @@ typedef struct {
 static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_p *buf, const bam_hdr_t *h,
 							   char *split_prefix)
 {
+/*
+ * Not needed -- newer samtools version doesn't require that all of these files have an HD.
+ * Just that the template has one.
+	if(!h->have_hd) {
+		fprintf(stderr, "Header does not have HD. Abort!\n");
+		exit(1);
+	}
+*/
 	size_t i;
-	samFile** fps = calloc(h->n_targets, sizeof(samFile *));
+	samFile** fps = calloc(h->n_targets + 1, sizeof(samFile *));
 	char tmpbuf[200];
 	for(int i = 0; i < h->n_targets;++i) {
 		sprintf(tmpbuf, "%s.%s.bam", split_prefix, h->target_name[i]);
@@ -1293,17 +1304,18 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 	}
 	sprintf(tmpbuf, "%s.unmapped.bam", split_prefix);
 	fps[h->n_targets] = sam_open(tmpbuf, mode);
-	int index;
+	sam_hdr_write(fps[h->n_targets], h);
+	omp_set_num_threads(8); // TODO: Actually allow control of this from the command line.
+#pragma omp parallel for
 	for (i = 0; i < l; ++i) {
-		index = SPLIT_INDEX(buf[i]);
-#if DBG
-		fprintf(stderr, "tid/mtid %i, index %i.\n", index, index > 0 ? index: h->n_targets);
+		const int index = SPLIT_INDEX(buf[i]);
+#if !NDEBUG
+		if(!index) fprintf(stderr, "Writing a read to contig 1.\n");
 #endif
-		sam_write1(fps[index >= 0 ? index: h->n_targets], h, buf[i]);
+		sam_write1(fps[index < 0 ? h->n_targets: index], h, buf[i]);
 	}
-	for(i = 0; i < h->n_targets;++i)
+	for(i = 0; i < h->n_targets + 1;++i)
 		sam_close(fps[i]);
-	sam_close(fps[h->n_targets]);
 	free(fps);
 }
 
@@ -1408,11 +1420,15 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		sam_close(fp);
 		return -1;
 	}
+
 	switch(sort_cmp_int) {
 		case 2:
 		case 0: change_SO(header, "coordinate"); break;
 		case 1: change_SO(header, "queryname"); break;
 	}
+#if !NDEBUG
+	uint64_t count = 0;
+#endif
 	// write sub files
 	forever {
 		if (k == max_k) {
@@ -1424,6 +1440,10 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		if (buf[k] == NULL) buf[k] = bam_init1();
 		b = buf[k];
 		if ((ret = sam_read1(fp, header, b)) < 0) break;
+#if !NDEBUG
+		if(!(++count % 100000))
+			fprintf(stderr, "[%s]: Records processed: %" PRIu64 ".\n", __FUNCTION__, count);
+#endif
 		if (b->l_data < b->m_data>>2) { // shrink
 			b->m_data = b->l_data;
 			kroundup32(b->m_data);
@@ -1445,11 +1465,11 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		 * TODO: Make this split as well.
 		 */
 		if(split) {
-			fprintf(stderr, "[bmfsort_core] Single block. Writing to split buffer because split's value is %i.\n", split);
+			fprintf(stderr, "[bmfsort_core] Single block. Writing to split buffer..\n");
 			write_buffer_split(fnout, modeout, k, buf, header, split_prefix);
 		}
 		else {
-			fprintf(stderr, "[bmfsort_core] Single block. Writing to regular buffer because split's value is %i.\n", split);
+			fprintf(stderr, "[bmfsort_core] Single block. Writing to regular, not split, buffer.\n", split);
 			write_buffer(fnout, modeout, k, buf, header, n_threads);
 		}
 	} else { // then merge
@@ -1514,14 +1534,15 @@ int main(int argc, char *argv[])
 		return sort_usage(stdout, EXIT_SUCCESS);
 	size_t max_mem = 768<<20; // 512MB
 	int c, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
-	char *fnout = "-", *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
+	char *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
+	char fnout[200] = "-";
 	kstring_t fnout_buffer = { 0, 0, NULL };
 	char *split_prefix = NULL;
 	int split = 0;
 
 	while ((c = getopt(argc, argv, "p:l:m:k:o:O:T:@:sh")) >= 0) {
 		switch (c) {
-		case 'o': fnout = optarg; break;
+		case 'o': strcpy(fnout, optarg); break;
 		case 'k': if(strcmp(optarg, "bmf") == 0) sort_cmp_int = BMF_SORT_ORDER;
 				  else if(strcmp(optarg, "pos") == 0) sort_cmp_int = SAMTOOLS_SORT_ORDER;
 				  else if(strcmp(optarg, "qname") == 0) sort_cmp_int = QNAME_SORT_ORDER;
@@ -1558,7 +1579,7 @@ int main(int argc, char *argv[])
 		}
 		split_prefix = fnout[tmpint] ? trim_ext(fnout): strdup(fnout);
 	}
-	if(split && (strcmp(fnout, "-") == 0 || strcmp(fnout, "stdout") == 0)) {
+	if(split && (strcmp(fnout, "-") == 0 || strcmp(fnout, "stdout") == 0) && (!split_prefix)) {
 		fprintf(stderr, "Cannot split and write to standard out. Abort mission!\n");
 		exit(EXIT_FAILURE);
 	}
@@ -1585,7 +1606,6 @@ int main(int argc, char *argv[])
 	cond_free(tmpprefix);
 	cond_free(fmtout);
 	cond_free(split_prefix);
-	cond_free(fnout);
 
 sort_end:
 	free(fnout_buffer.s);

@@ -186,8 +186,8 @@ int main(int argc, char *argv[])
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
 		char ffq_r2[200];
-		sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq": "%s.R1.fq.gz", settings.ffq_prefix);
-		sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq": "%s.R2.fq.gz", settings.ffq_prefix);
+		sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq.gz": "%s.R1.fq", settings.ffq_prefix);
+		sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq.gz": "%s.R2.fq", settings.ffq_prefix);
 		sprintf(cat_buff, "> %s", ffq_r1);
 		CHECK_CALL(cat_buff);
 		sprintf(cat_buff, "> %s", ffq_r2);
@@ -196,13 +196,13 @@ int main(int argc, char *argv[])
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
 				if(settings.gzip_output)
-					sprintf(cat_buff, "cat %s | gzip - -%i >> %s.gz", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
+					sprintf(cat_buff, "cat %s | gzip - -%i >> %s", params->outfnames_r1[i], settings.gzip_compression, ffq_r1);
 				else
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
 				FILE *p1 = popen(cat_buff, "w");
 
 				if(settings.gzip_output)
-					sprintf(cat_buff, "cat %s | gzip - -%i >> %s.gz", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
+					sprintf(cat_buff, "cat %s | gzip - -%i >> %s", params->outfnames_r2[i], settings.gzip_compression, ffq_r2);
 				else
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 				CHECK_CALL(cat_buff);
@@ -229,10 +229,8 @@ int main(int argc, char *argv[])
 			}
 			strcat(cat_buff1, " > ");
 			strcat(cat_buff1, ffq_r1);
-			strcat(cat_buff1, ".gz");
 			strcat(cat_buff2, " > ");
 			strcat(cat_buff2, ffq_r2);
-			strcat(cat_buff2, ".gz");
 			FILE *c1_popen = popen(cat_buff1, "w");
 			CHECK_CALL(cat_buff2);
 			if(pclose(c1_popen)) {

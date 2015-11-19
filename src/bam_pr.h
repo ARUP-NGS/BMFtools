@@ -216,23 +216,6 @@ static inline double igamc_pvalues(int num_pvalues, double x)
 	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
 }
 
-
-/*
- * :returns: 1 if n on the end. 0 if ns at thebeginning.
- */
-static inline int n_side(bam1_t *b)
-{
-	uint8_t *data = bam_get_seq(b);
-	int n_run = 0;
-	for(int i = 0; i < b->core.l_qseq; ++i) {
-		if(bam_seqi(data, i) == HTS_N)
-			++n_run;
-		else
-			break;
-	}
-	return n_run < MIN_BC;
-}
-
 static inline void *array_tag(bam1_t *b, const char *tag) {
 	uint8_t *data = bam_aux_get(b, tag);
 #if !NDEBUG
@@ -300,7 +283,7 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 		seqbuf[i] = 33 + qual[i];
 	if (b->core.flag & BAM_FREVERSE) { // reverse
 	    for (i = 0; i < qlen>>1; ++i) {
-	        int8_t t = seqbuf[qlen - 1 - i];
+	        const int8_t t = seqbuf[qlen - 1 - i];
 	        seqbuf[qlen - 1 - i] = seqbuf[i];
 	        seqbuf[i] = t;
 	    }

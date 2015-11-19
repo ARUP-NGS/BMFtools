@@ -563,6 +563,7 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 	}
 }
 
+#if !NDEBUG
 static void print_kf(KingFisher_t *kfp)
 {
 	fprintf(stderr, "Length: %i.\n", kfp->length);
@@ -573,6 +574,7 @@ static void print_kf(KingFisher_t *kfp)
 	fprintf(stderr, "\n");
 	return;
 }
+#endif
 
 #define pb_pos(seq, kfp, nuc_indices, i) \
 	nuc_to_pos((seq->seq.s[i]), nuc_indices);\
@@ -581,7 +583,6 @@ static void print_kf(KingFisher_t *kfp)
 	if(seq->qual.s[i] > kfp->max_phreds[i])\
 		kfp->max_phreds[i] = seq->qual.s[i]\
 
-#ifndef UNROLLED
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
 #if !NDEBUG
@@ -606,219 +607,5 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	return;
 }
-#else
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
-{
-	if(!kfp->length) {
-		memcpy(kfp->barcode, seq->comment.s + 14, blen);
-		kfp->barcode[blen] = '\0';
-	}
-	++kfp->length; // Increment
-	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
-	switch(kfp->readlen) {
-	case 200: pb_pos(seq, kfp, nuc_indices, 199);
-	case 199: pb_pos(seq, kfp, nuc_indices, 198);
-	case 198: pb_pos(seq, kfp, nuc_indices, 197);
-	case 197: pb_pos(seq, kfp, nuc_indices, 196);
-	case 196: pb_pos(seq, kfp, nuc_indices, 195);
-	case 195: pb_pos(seq, kfp, nuc_indices, 194);
-	case 194: pb_pos(seq, kfp, nuc_indices, 193);
-	case 193: pb_pos(seq, kfp, nuc_indices, 192);
-	case 192: pb_pos(seq, kfp, nuc_indices, 191);
-	case 191: pb_pos(seq, kfp, nuc_indices, 190);
-	case 190: pb_pos(seq, kfp, nuc_indices, 189);
-	case 189: pb_pos(seq, kfp, nuc_indices, 188);
-	case 188: pb_pos(seq, kfp, nuc_indices, 187);
-	case 187: pb_pos(seq, kfp, nuc_indices, 186);
-	case 186: pb_pos(seq, kfp, nuc_indices, 185);
-	case 185: pb_pos(seq, kfp, nuc_indices, 184);
-	case 184: pb_pos(seq, kfp, nuc_indices, 183);
-	case 183: pb_pos(seq, kfp, nuc_indices, 182);
-	case 182: pb_pos(seq, kfp, nuc_indices, 181);
-	case 181: pb_pos(seq, kfp, nuc_indices, 180);
-	case 180: pb_pos(seq, kfp, nuc_indices, 179);
-	case 179: pb_pos(seq, kfp, nuc_indices, 178);
-	case 178: pb_pos(seq, kfp, nuc_indices, 177);
-	case 177: pb_pos(seq, kfp, nuc_indices, 176);
-	case 176: pb_pos(seq, kfp, nuc_indices, 175);
-	case 175: pb_pos(seq, kfp, nuc_indices, 174);
-	case 174: pb_pos(seq, kfp, nuc_indices, 173);
-	case 173: pb_pos(seq, kfp, nuc_indices, 172);
-	case 172: pb_pos(seq, kfp, nuc_indices, 171);
-	case 171: pb_pos(seq, kfp, nuc_indices, 170);
-	case 170: pb_pos(seq, kfp, nuc_indices, 169);
-	case 169: pb_pos(seq, kfp, nuc_indices, 168);
-	case 168: pb_pos(seq, kfp, nuc_indices, 167);
-	case 167: pb_pos(seq, kfp, nuc_indices, 166);
-	case 166: pb_pos(seq, kfp, nuc_indices, 165);
-	case 165: pb_pos(seq, kfp, nuc_indices, 164);
-	case 164: pb_pos(seq, kfp, nuc_indices, 163);
-	case 163: pb_pos(seq, kfp, nuc_indices, 162);
-	case 162: pb_pos(seq, kfp, nuc_indices, 161);
-	case 161: pb_pos(seq, kfp, nuc_indices, 160);
-	case 160: pb_pos(seq, kfp, nuc_indices, 159);
-	case 159: pb_pos(seq, kfp, nuc_indices, 158);
-	case 158: pb_pos(seq, kfp, nuc_indices, 157);
-	case 157: pb_pos(seq, kfp, nuc_indices, 156);
-	case 156: pb_pos(seq, kfp, nuc_indices, 155);
-	case 155: pb_pos(seq, kfp, nuc_indices, 154);
-	case 154: pb_pos(seq, kfp, nuc_indices, 153);
-	case 153: pb_pos(seq, kfp, nuc_indices, 152);
-	case 152: pb_pos(seq, kfp, nuc_indices, 151);
-	case 151: pb_pos(seq, kfp, nuc_indices, 150);
-	case 150: pb_pos(seq, kfp, nuc_indices, 149);
-	case 149: pb_pos(seq, kfp, nuc_indices, 148);
-	case 148: pb_pos(seq, kfp, nuc_indices, 147);
-	case 147: pb_pos(seq, kfp, nuc_indices, 146);
-	case 146: pb_pos(seq, kfp, nuc_indices, 145);
-	case 145: pb_pos(seq, kfp, nuc_indices, 144);
-	case 144: pb_pos(seq, kfp, nuc_indices, 143);
-	case 143: pb_pos(seq, kfp, nuc_indices, 142);
-	case 142: pb_pos(seq, kfp, nuc_indices, 141);
-	case 141: pb_pos(seq, kfp, nuc_indices, 140);
-	case 140: pb_pos(seq, kfp, nuc_indices, 139);
-	case 139: pb_pos(seq, kfp, nuc_indices, 138);
-	case 138: pb_pos(seq, kfp, nuc_indices, 137);
-	case 137: pb_pos(seq, kfp, nuc_indices, 136);
-	case 136: pb_pos(seq, kfp, nuc_indices, 135);
-	case 135: pb_pos(seq, kfp, nuc_indices, 134);
-	case 134: pb_pos(seq, kfp, nuc_indices, 133);
-	case 133: pb_pos(seq, kfp, nuc_indices, 132);
-	case 132: pb_pos(seq, kfp, nuc_indices, 131);
-	case 131: pb_pos(seq, kfp, nuc_indices, 130);
-	case 130: pb_pos(seq, kfp, nuc_indices, 129);
-	case 129: pb_pos(seq, kfp, nuc_indices, 128);
-	case 128: pb_pos(seq, kfp, nuc_indices, 127);
-	case 127: pb_pos(seq, kfp, nuc_indices, 126);
-	case 126: pb_pos(seq, kfp, nuc_indices, 125);
-	case 125: pb_pos(seq, kfp, nuc_indices, 124);
-	case 124: pb_pos(seq, kfp, nuc_indices, 123);
-	case 123: pb_pos(seq, kfp, nuc_indices, 122);
-	case 122: pb_pos(seq, kfp, nuc_indices, 121);
-	case 121: pb_pos(seq, kfp, nuc_indices, 120);
-	case 120: pb_pos(seq, kfp, nuc_indices, 119);
-	case 119: pb_pos(seq, kfp, nuc_indices, 118);
-	case 118: pb_pos(seq, kfp, nuc_indices, 117);
-	case 117: pb_pos(seq, kfp, nuc_indices, 116);
-	case 116: pb_pos(seq, kfp, nuc_indices, 115);
-	case 115: pb_pos(seq, kfp, nuc_indices, 114);
-	case 114: pb_pos(seq, kfp, nuc_indices, 113);
-	case 113: pb_pos(seq, kfp, nuc_indices, 112);
-	case 112: pb_pos(seq, kfp, nuc_indices, 111);
-	case 111: pb_pos(seq, kfp, nuc_indices, 110);
-	case 110: pb_pos(seq, kfp, nuc_indices, 109);
-	case 109: pb_pos(seq, kfp, nuc_indices, 108);
-	case 108: pb_pos(seq, kfp, nuc_indices, 107);
-	case 107: pb_pos(seq, kfp, nuc_indices, 106);
-	case 106: pb_pos(seq, kfp, nuc_indices, 105);
-	case 105: pb_pos(seq, kfp, nuc_indices, 104);
-	case 104: pb_pos(seq, kfp, nuc_indices, 103);
-	case 103: pb_pos(seq, kfp, nuc_indices, 102);
-	case 102: pb_pos(seq, kfp, nuc_indices, 101);
-	case 101: pb_pos(seq, kfp, nuc_indices, 100);
-	case 100: pb_pos(seq, kfp, nuc_indices, 99);
-	case 99: pb_pos(seq, kfp, nuc_indices, 98);
-	case 98: pb_pos(seq, kfp, nuc_indices, 97);
-	case 97: pb_pos(seq, kfp, nuc_indices, 96);
-	case 96: pb_pos(seq, kfp, nuc_indices, 95);
-	case 95: pb_pos(seq, kfp, nuc_indices, 94);
-	case 94: pb_pos(seq, kfp, nuc_indices, 93);
-	case 93: pb_pos(seq, kfp, nuc_indices, 92);
-	case 92: pb_pos(seq, kfp, nuc_indices, 91);
-	case 91: pb_pos(seq, kfp, nuc_indices, 90);
-	case 90: pb_pos(seq, kfp, nuc_indices, 89);
-	case 89: pb_pos(seq, kfp, nuc_indices, 88);
-	case 88: pb_pos(seq, kfp, nuc_indices, 87);
-	case 87: pb_pos(seq, kfp, nuc_indices, 86);
-	case 86: pb_pos(seq, kfp, nuc_indices, 85);
-	case 85: pb_pos(seq, kfp, nuc_indices, 84);
-	case 84: pb_pos(seq, kfp, nuc_indices, 83);
-	case 83: pb_pos(seq, kfp, nuc_indices, 82);
-	case 82: pb_pos(seq, kfp, nuc_indices, 81);
-	case 81: pb_pos(seq, kfp, nuc_indices, 80);
-	case 80: pb_pos(seq, kfp, nuc_indices, 79);
-	case 79: pb_pos(seq, kfp, nuc_indices, 78);
-	case 78: pb_pos(seq, kfp, nuc_indices, 77);
-	case 77: pb_pos(seq, kfp, nuc_indices, 76);
-	case 76: pb_pos(seq, kfp, nuc_indices, 75);
-	case 75: pb_pos(seq, kfp, nuc_indices, 74);
-	case 74: pb_pos(seq, kfp, nuc_indices, 73);
-	case 73: pb_pos(seq, kfp, nuc_indices, 72);
-	case 72: pb_pos(seq, kfp, nuc_indices, 71);
-	case 71: pb_pos(seq, kfp, nuc_indices, 70);
-	case 70: pb_pos(seq, kfp, nuc_indices, 69);
-	case 69: pb_pos(seq, kfp, nuc_indices, 68);
-	case 68: pb_pos(seq, kfp, nuc_indices, 67);
-	case 67: pb_pos(seq, kfp, nuc_indices, 66);
-	case 66: pb_pos(seq, kfp, nuc_indices, 65);
-	case 65: pb_pos(seq, kfp, nuc_indices, 64);
-	case 64: pb_pos(seq, kfp, nuc_indices, 63);
-	case 63: pb_pos(seq, kfp, nuc_indices, 62);
-	case 62: pb_pos(seq, kfp, nuc_indices, 61);
-	case 61: pb_pos(seq, kfp, nuc_indices, 60);
-	case 60: pb_pos(seq, kfp, nuc_indices, 59);
-	case 59: pb_pos(seq, kfp, nuc_indices, 58);
-	case 58: pb_pos(seq, kfp, nuc_indices, 57);
-	case 57: pb_pos(seq, kfp, nuc_indices, 56);
-	case 56: pb_pos(seq, kfp, nuc_indices, 55);
-	case 55: pb_pos(seq, kfp, nuc_indices, 54);
-	case 54: pb_pos(seq, kfp, nuc_indices, 53);
-	case 53: pb_pos(seq, kfp, nuc_indices, 52);
-	case 52: pb_pos(seq, kfp, nuc_indices, 51);
-	case 51: pb_pos(seq, kfp, nuc_indices, 50);
-	case 50: pb_pos(seq, kfp, nuc_indices, 49);
-	case 49: pb_pos(seq, kfp, nuc_indices, 48);
-	case 48: pb_pos(seq, kfp, nuc_indices, 47);
-	case 47: pb_pos(seq, kfp, nuc_indices, 46);
-	case 46: pb_pos(seq, kfp, nuc_indices, 45);
-	case 45: pb_pos(seq, kfp, nuc_indices, 44);
-	case 44: pb_pos(seq, kfp, nuc_indices, 43);
-	case 43: pb_pos(seq, kfp, nuc_indices, 42);
-	case 42: pb_pos(seq, kfp, nuc_indices, 41);
-	case 41: pb_pos(seq, kfp, nuc_indices, 40);
-	case 40: pb_pos(seq, kfp, nuc_indices, 39);
-	case 39: pb_pos(seq, kfp, nuc_indices, 38);
-	case 38: pb_pos(seq, kfp, nuc_indices, 37);
-	case 37: pb_pos(seq, kfp, nuc_indices, 36);
-	case 36: pb_pos(seq, kfp, nuc_indices, 35);
-	case 35: pb_pos(seq, kfp, nuc_indices, 34);
-	case 34: pb_pos(seq, kfp, nuc_indices, 33);
-	case 33: pb_pos(seq, kfp, nuc_indices, 32);
-	case 32: pb_pos(seq, kfp, nuc_indices, 31);
-	case 31: pb_pos(seq, kfp, nuc_indices, 30);
-	case 30: pb_pos(seq, kfp, nuc_indices, 29);
-	case 29: pb_pos(seq, kfp, nuc_indices, 28);
-	case 28: pb_pos(seq, kfp, nuc_indices, 27);
-	case 27: pb_pos(seq, kfp, nuc_indices, 26);
-	case 26: pb_pos(seq, kfp, nuc_indices, 25);
-	case 25: pb_pos(seq, kfp, nuc_indices, 24);
-	case 24: pb_pos(seq, kfp, nuc_indices, 23);
-	case 23: pb_pos(seq, kfp, nuc_indices, 22);
-	case 22: pb_pos(seq, kfp, nuc_indices, 21);
-	case 21: pb_pos(seq, kfp, nuc_indices, 20);
-	case 20: pb_pos(seq, kfp, nuc_indices, 19);
-	case 19: pb_pos(seq, kfp, nuc_indices, 18);
-	case 18: pb_pos(seq, kfp, nuc_indices, 17);
-	case 17: pb_pos(seq, kfp, nuc_indices, 16);
-	case 16: pb_pos(seq, kfp, nuc_indices, 15);
-	case 15: pb_pos(seq, kfp, nuc_indices, 14);
-	case 14: pb_pos(seq, kfp, nuc_indices, 13);
-	case 13: pb_pos(seq, kfp, nuc_indices, 12);
-	case 12: pb_pos(seq, kfp, nuc_indices, 11);
-	case 11: pb_pos(seq, kfp, nuc_indices, 10);
-	case 10: pb_pos(seq, kfp, nuc_indices, 9);
-	case 9: pb_pos(seq, kfp, nuc_indices, 8);
-	case 8: pb_pos(seq, kfp, nuc_indices, 7);
-	case 7: pb_pos(seq, kfp, nuc_indices, 6);
-	case 6: pb_pos(seq, kfp, nuc_indices, 5);
-	case 5: pb_pos(seq, kfp, nuc_indices, 4);
-	case 4: pb_pos(seq, kfp, nuc_indices, 3);
-	case 3: pb_pos(seq, kfp, nuc_indices, 2);
-	case 2: pb_pos(seq, kfp, nuc_indices, 1);
-	case 1: pb_pos(seq, kfp, nuc_indices, 0);
-	}
-	return;
-}
-#endif /* UNROLL */
 
 #endif /*KINGFISHER_H*/

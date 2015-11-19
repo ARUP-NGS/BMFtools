@@ -4,7 +4,8 @@
  * Calls bmfsort on an input file or stdin, splits
  */
 
-char **tmpfnames(char *split_prefix, bam_hdr_t *hdr) {
+char **tmpfnames(char *split_prefix, bam_hdr_t *hdr)
+{
 	char **ret = (char **)calloc(hdr->n_targets + 1, sizeof(char *));
 	char buf[200];
 	int i;
@@ -37,8 +38,9 @@ typedef struct {
 	char **outfnames;
 } pr_dispatcher_t;
 
-int bam_pr_dispatcher(char *infname, char *outfname, int mmlim, int cmpkey, int is_se, int realign_unchanged,
-					  int compression) {
+pr_dispatcher_t *pd_init(char *infname, char *outfname, int mmlim, int cmpkey, int is_se, int realign_unchanged,
+					    int compression)
+{
     pr_dispatcher_t *dispatcher = (pr_dispatcher_t *)calloc(1, sizeof(pr_dispatcher_t));
     dispatcher->wmode = "wb";
     dispatcher->mmlim = mmlim;
@@ -51,7 +53,8 @@ int bam_pr_dispatcher(char *infname, char *outfname, int mmlim, int cmpkey, int 
     dispatcher->hdr = sam_hdr_read(tmpfp);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	int c;
 	char *inbam = NULL;
 	char *final_bam = NULL;
