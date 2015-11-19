@@ -74,4 +74,6 @@ static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2) {
 	return;
 }
 
+static int n_threads = 4;
+
 #endif

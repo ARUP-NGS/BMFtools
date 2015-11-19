@@ -1024,8 +1024,8 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 	char tmp_fname[200];
 
 	// Open output file and write header
-	for(int y = 0; y < hout->n_targets; ++y) {
-		sprintf(tmp_fname, "%s.%s.bam", out, hout->target_name[i]);
+	for(int y = 1; y < hout->n_targets + 1; ++y) {
+		sprintf(tmp_fname, "%s.%s.bam", out, hout->target_name[i - 1]);
 		if((out_handles[y] = sam_open(tmp_fname, mode)) == 0) {
 			fprintf(stderr, "[%s] fail to create the output file %s.\n", __func__, tmp_fname);
 			return -1;
@@ -1033,9 +1033,9 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 		sam_hdr_write(out_handles[y], hout);
 		if (!(flag & MERGE_UNCOMP)) hts_set_threads(out_handles[y], n_threads);
 	}
-	sprintf(out_names[hout->n_targets], "%s.unmapped.bam", out);
-	out_handles[hout->n_targets] = sam_open(out_names[hout->n_targets], mode);
-	sam_hdr_write(out_handles[hout->n_targets], hout);
+	sprintf(out_names[0], "%s.unmapped.bam", out);
+	out_handles[0] = sam_open(out_names[hout->n_targets], mode);
+	sam_hdr_write(out_handles[0], hout);
 
 	// Begin the actual merge
 	ks_heapmake(heap, n, heap);
@@ -1046,8 +1046,7 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 			if (rg) bam_aux_del(b, rg);
 			bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
 		}
-		const int index = SPLIT_INDEX(b);
-		sam_write1(out_handles[index >= 0 ? index: hout->n_targets], hout, b);
+		sam_write1(out_handles[SPLIT_INDEX(b) + 1], hout, b);
 		if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
 			bam_translate(b, translation_tbl + heap->i);
 			heap->pos = ((uint64_t)b->core.tid<<32) | (uint32_t)((int)b->core.pos+1)<<1 | bam_is_rev(b);
@@ -1302,12 +1301,13 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 		}
 		sam_hdr_write(fps[i], h);
 	}
-	omp_set_num_threads(8); // TODO: Actually allow control of this from the command line.
-#if NOPARALLEL
+	omp_set_num_threads(n_threads);
+/*
 	for (uint64_t i = 0; i < l; ++i) {
 		sam_write1(fps[SPLIT_INDEX(buf[i]) + 1], h, buf[i]);
 	}
-#else
+*/
+	fprintf(stderr, "Writing bam in parallel %i.\n", n_threads);
 #pragma omp parallel for
 	for(uint64_t i = 0; i < h->n_targets + 1; ++i) {
 		for(uint64_t li = 0; li < l; ++li) {
@@ -1316,7 +1316,6 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 				sam_write1(fps[index], h, buf[li]);
 		}
 	}
-#endif
 	for(uint64_t i = 0; i < h->n_targets + 1;++i)
 		sam_close(fps[i]);
 	free(fps);
@@ -1536,7 +1535,7 @@ int main(int argc, char *argv[])
 	if (argc == 1)
 		return sort_usage(stdout, EXIT_SUCCESS);
 	size_t max_mem = 768<<20; // 512MB
-	int c, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
+	int c, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, level = -1;
 	char *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
 	char fnout[200] = "-";
 	kstring_t fnout_buffer = { 0, 0, NULL };
