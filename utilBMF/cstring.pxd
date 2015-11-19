@@ -1,5 +1,6 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport strcmp, memcpy
+from libc.stdint cimport *
 from cpython.string cimport PyString_AsString
 cimport cython
 from cython cimport view
@@ -17,10 +18,8 @@ cdef inline py_array cs_to_ph(cystr input_str)
 
 cdef public cystr PH2CHR_TRANS
 
+cdef char *revcmp(char *, char *, uint64_t l)
+
 cdef struct struct_str:
     char * string
     size_t size
-
-cdef extern from "../lib/cstr_util.h" nogil:
-    int lex_lt(char *s, size_t l)
-    char *revcmp(char *, char *, size_t)

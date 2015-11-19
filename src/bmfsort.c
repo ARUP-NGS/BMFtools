@@ -875,8 +875,6 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 			return -1;
 		}
 	} else  {
-		fprintf(stderr, "HEY BTW I DIDN'T GET A HEADER TO USE FOR MY SPLIT.\n");
-		exit(0);
 		hout = bam_hdr_init();
 		hout->text = strdup("");
 	}
@@ -1290,11 +1288,13 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 		exit(1);
 	}
 */
-	size_t i;
 	samFile** fps = calloc(h->n_targets + 1, sizeof(samFile *));
 	char tmpbuf[200];
-	for(int i = 0; i < h->n_targets;++i) {
-		sprintf(tmpbuf, "%s.%s.bam", split_prefix, h->target_name[i]);
+	sprintf(tmpbuf, "%s.unmapped.bam", split_prefix);
+	fps[0] = sam_open(tmpbuf, mode);
+	sam_hdr_write(fps[0], h);
+	for(int i = 1; i < h->n_targets + 1;++i) {
+		sprintf(tmpbuf, "%s.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open(tmpbuf, mode);
 		if(fps[i] == NULL) {
 			fprintf(stderr, "[%s]: Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
@@ -1302,19 +1302,22 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 		}
 		sam_hdr_write(fps[i], h);
 	}
-	sprintf(tmpbuf, "%s.unmapped.bam", split_prefix);
-	fps[h->n_targets] = sam_open(tmpbuf, mode);
-	sam_hdr_write(fps[h->n_targets], h);
 	omp_set_num_threads(8); // TODO: Actually allow control of this from the command line.
-#pragma omp parallel for
-	for (i = 0; i < l; ++i) {
-		const int index = SPLIT_INDEX(buf[i]);
-#if !NDEBUG
-		if(!index) fprintf(stderr, "Writing a read to contig 1.\n");
-#endif
-		sam_write1(fps[index < 0 ? h->n_targets: index], h, buf[i]);
+#if NOPARALLEL
+	for (uint64_t i = 0; i < l; ++i) {
+		sam_write1(fps[SPLIT_INDEX(buf[i]) + 1], h, buf[i]);
 	}
-	for(i = 0; i < h->n_targets + 1;++i)
+#else
+#pragma omp parallel for
+	for(uint64_t i = 0; i < h->n_targets + 1; ++i) {
+		for(uint64_t li = 0; li < l; ++li) {
+			const int index = SPLIT_INDEX(buf[li]) + 1;
+			if(index == i)
+				sam_write1(fps[index], h, buf[li]);
+		}
+	}
+#endif
+	for(uint64_t i = 0; i < h->n_targets + 1;++i)
 		sam_close(fps[i]);
 	free(fps);
 }

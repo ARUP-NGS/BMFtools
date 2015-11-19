@@ -9,6 +9,32 @@ from array import array
 from string import maketrans
 
 
+cdef inline int lex_lt(char *s, size_t l):
+    cdef uint64_t i
+    for i in xrange(l):
+        if s[l - i - 1] > s[i]:
+            return 1
+        elif s[l - i - 1] < s[i]:
+            return 0
+    return -1
+
+cdef inline char *revcmp(char *dest, char *src, uint64_t l):
+    dest[l] = 0; # Null terminus
+    cdef uint64_t i
+    for i in xrange(l):
+        if src[i] == 65:
+            dest[l - i - 1] = 84
+        elif src[i] == 67:
+            dest[l - i - 1] = 71
+        elif src[i] == 71:
+            dest[l - i - 1] = 67
+        elif src[i] == 84:
+            dest[l - i - 1] = 65
+        else:
+            dest[l - i - 1] = 78
+    return dest
+
+
 cdef int * to_cstring_array(cystr input_str):
     cdef char *tmp = PyString_AsString(input_str)
     cdef int *ret = <int *>malloc(len(input_str) * sizeof(char *))

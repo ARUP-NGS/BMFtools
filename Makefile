@@ -64,6 +64,6 @@ copy:
 
 
 clean:
-	rm *.a && rm bin/* && cd htslib && make clean
+	rm *.a && rm *.o rm bin/* && cd htslib && make clean
 
 

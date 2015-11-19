@@ -14,26 +14,15 @@ from distutils.core import setup
 
 marchFlag = "-march=native"
 
-compilerList = ["-O2", "-pipe", marchFlag, "-mfpmath=sse", "-std=c99", "-DSAMTOOLS=1",]
+compilerList = ["-O2", "-pipe", "-march=native", "-mfpmath=sse", "-DSAMTOOLS=1",]
 
-"""
-compilerList = ["-O3", "-pipe", marchFlag, "-funroll-loops", "-floop-block",
-                "-fvariable-expansion-in-unroller", "-fsplit-ivs-in-unroller",
-                "-fivopts", "-ftree-loop-im", "-floop-nest-optimize",
-                "-fprefetch-loop-arrays", "-floop-strip-mine", "-flto"]
-compilerList = ["-O3", "-pipe", marchFlag, "-mfpmath=sse", "-funroll-loops",
-                "-floop-strip-mine", "-flto"]
-print("Removing all .c files - this is "
-      "important for making sure things get rebuilt.")
-subprocess.check_call(shlex.split("find . -name \"*.c\" -exec rm \{\} \\;"))
-
-"""
 ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
 
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
     x.extra_link_args += pysam.get_libraries()
     x.define_macros += pysam.get_defines()
+    x.include_dirs += ['include', 'lib']
     if(x.name in ['MawCluster.BCFastq', 'MawCluster.Math', 'MawCluster.BCBam']):
         x.sources += ["include/igamc_cephes.c"]
     x.extra_compile_args += compilerList
