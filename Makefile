@@ -11,7 +11,7 @@ LD= -lm -lz -lpthread
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
 LIB=-Lhtslib -lhts
 
-OPT_FLAGS = -O3 -DNDEBUG -finline-functions
+OPT_FLAGS = -O3 -DNDEBUG -finline-functions -flto
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
 DB_FLAGS = -fno-inline -DNOPARALLEL -DTEST
 GP_FLAGS = -fno-inline -DNOPARALLEL -DTEST -pg
