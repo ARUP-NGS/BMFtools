@@ -111,7 +111,7 @@ else
 		# Put all tmp fastqs into a stream and sort by read name
 		paste -d'~' - - - - | sort | tr '~' '\n' | \
 		# Align
-		bwa mem -p $opts - | samtools merge -@ $sort_threads $final_bam $(ls ${split_prefix}*.rsq.bam)
+		bwa mem -p $opts - | samtools merge -@ $sort_threads $final_bam - $(ls ${split_prefix}*.rsq.bam)
 		# rm $(ls ${split_prefix}*.bam ${split_prefix}*.tmp.fq $tmpbam)
 	else
 		tmprsqbam=${split_prefix}.dnd.bam
@@ -120,11 +120,11 @@ else
 		# Put all tmp fastqs into a stream and sort by read name
 		paste -d'~' - - - - | sort | tr '~' '\n' | \
 		# Align
-		bwa mem -p $opts - | samtools sort -@ $sort_threads -m $memstr -T $tmp_prefix -o $tmprsqbam
+		bwa mem -p $opts - | samtools sort -@ $sort_threads -m $memstr -T $tmp_prefix -o $tmprsqbam -
 
 		# Sort and merge bams
 		cat $tmprsq $(ls ${split_prefix}*.rsq.bam) | \
-		samtools sort -m $memstr -T $tmp_prefix -O bam -@ sort_threads -o $final_bam
+		samtools sort -m $memstr -T $tmp_prefix -O bam -@ sort_threads -o $final_bam -
 
 		# Clean up
 		# rm $(ls ${split_prefix}*.bam ${split_prefix}*.tmp.fq $tmpbam $tmprsqbam)
