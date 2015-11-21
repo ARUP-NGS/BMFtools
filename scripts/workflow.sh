@@ -63,7 +63,7 @@ then
 
 		# Sort tmpbam and merge in with tmprsqbam
 		samtools sort -O bam -T $tmp_prefix -m $memstr $tmprsqbam | \
-		samtools merge -O bam -l 0 -@ $sort_threads $final_bam $tmpbam -
+		samtools merge -O bam -@ $sort_threads $final_bam $tmpbam -
 
 		# Clean up
 		rm $tmprsqbam $tmpbam $tmpfq
@@ -91,13 +91,13 @@ else
 	
 	if [ $USE_UCS -eq 0 ]
 	then
-		for tmp in $(ls $split_prefix*.bam)
+		for tmp in $(ls ${split_prefix}*.bam)
 		do
 			sem -j $threads bam_pr -f ${tmp%.bam}.tmp.fq -t $mismatch_limit $tmp ${tmp%.bam}.rsq.bam
 		done
 		sem --wait
 	else
-		for tmp in $(ls $split_prefix*.bam)
+		for tmp in $(ls ${split_prefix}*.bam)
 		do
 			sem -j $threads bam_pr -uf ${tmp%.bam}.tmp.fq -t $mismatch_limit $tmp ${tmp%.bam}.rsq.bam
 		done
@@ -112,7 +112,7 @@ else
 		paste -d'~' - - - - | sort | tr '~' '\n' | \
 		# Align
 		bwa mem -p $opts - | samtools merge -@ $sort_threads $final_bam $(ls ${split_prefix}*.rsq.bam)
-		rm $(ls ${split_prefix}*.bam ${split_prefix}*.tmp.fq $tmpbam)
+		# rm $(ls ${split_prefix}*.bam ${split_prefix}*.tmp.fq $tmpbam)
 	else
 		tmprsqbam=${split_prefix}.dnd.bam
 		# Sort the fastq, pipe to bwa, pipe to big merge.
@@ -127,7 +127,7 @@ else
 		samtools sort -m $memstr -T $tmp_prefix -O bam -@ sort_threads -o $final_bam
 
 		# Clean up
-		rm $(ls ${split_prefix}*.bam ${split_prefix}*.tmp.fq $tmpbam $tmprsqbam)
+		# rm $(ls ${split_prefix}*.bam ${split_prefix}*.tmp.fq $tmpbam $tmprsqbam)
 	fi
 	# Index bam
 	samtools index $final_bam

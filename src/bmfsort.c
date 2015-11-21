@@ -1025,7 +1025,7 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 
 	// Open output file and write header
 	for(int y = 1; y < hout->n_targets + 1; ++y) {
-		sprintf(tmp_fname, "%s.%s.bam", out, hout->target_name[i - 1]);
+		sprintf(tmp_fname, "%s.split.%s.bam", out, hout->target_name[i - 1]);
 		if((out_handles[y] = sam_open(tmp_fname, mode)) == 0) {
 			fprintf(stderr, "[%s] fail to create the output file %s.\n", __func__, tmp_fname);
 			return -1;
@@ -1033,7 +1033,7 @@ int bam_merge_core3(int by_qname, const char *out, const char *mode, const char 
 		sam_hdr_write(out_handles[y], hout);
 		if (!(flag & MERGE_UNCOMP)) hts_set_threads(out_handles[y], n_threads);
 	}
-	sprintf(out_names[0], "%s.unmapped.bam", out);
+	sprintf(out_names[0], "%s.split.unmapped.bam", out);
 	out_handles[0] = sam_open(out_names[hout->n_targets], mode);
 	sam_hdr_write(out_handles[0], hout);
 
@@ -1289,11 +1289,11 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 */
 	samFile** fps = calloc(h->n_targets + 1, sizeof(samFile *));
 	char tmpbuf[200];
-	sprintf(tmpbuf, "%s.unmapped.bam", split_prefix);
+	sprintf(tmpbuf, "%s.split.unmapped.bam", split_prefix);
 	fps[0] = sam_open(tmpbuf, mode);
 	sam_hdr_write(fps[0], h);
 	for(int i = 1; i < h->n_targets + 1;++i) {
-		sprintf(tmpbuf, "%s.%s.bam", split_prefix, h->target_name[i - 1]);
+		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open(tmpbuf, mode);
 		if(fps[i] == NULL) {
 			fprintf(stderr, "[%s]: Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
@@ -1309,7 +1309,7 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 */
 	fprintf(stderr, "Writing bam in parallel %i.\n", n_threads);
 #pragma omp parallel for
-	for(uint64_t i = 0; i < h->n_targets + 1; ++i) {
+	for(uint64_t i = 0; i < h->n_targets + 1; ++i) { // Consider setting this to 26 to avoid the GLs?
 		for(uint64_t li = 0; li < l; ++li) {
 			const int index = SPLIT_INDEX(buf[li]) + 1;
 			if(index == i)
