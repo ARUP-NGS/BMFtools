@@ -474,7 +474,7 @@ int main(int argc, char *argv[])
 				strcat(cat_buff2, " ");
 			}
 			if(settings.gzip_output) {
-				sprintf(del_buf, " | gzip - -%i ", settings.gzip_compression);
+				sprintf(del_buf, " | pigz - -%i -p %i", settings.gzip_compression, settings.threads >> 1);
 				strcat(cat_buff1, del_buf);
 				strcat(cat_buff2, del_buf);
 			}
@@ -496,9 +496,17 @@ int main(int argc, char *argv[])
 		else {
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s.gz": "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+				if(settings.gzip_output)
+					sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
+							params->outfnames_r1[i], settings.threads >> 1, settings.gzip_compression, ffq_r1);
+				else
+					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
 				FILE *g1_popen = popen(cat_buff, "w");
-				sprintf(cat_buff, (settings.gzip_output) ? "cat %s | gzip - -3 >> %s.gz": "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+				if(settings.gzip_output)
+					sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
+							params->outfnames_r2[i], settings.threads >> 1, settings.gzip_compression, ffq_r2);
+				else
+					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 				CHECK_CALL(cat_buff);
 				if(pclose(g1_popen)){
 					fprintf(stderr, "Background system call failed.\n");

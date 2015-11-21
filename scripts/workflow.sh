@@ -80,10 +80,10 @@ else
 	if [ $USE_UCS -eq 0 ]
 	then
 		bwa mem $opts $r1 $r2 | \
-		bmfsort -T $tmp_prefix -m $memstr -@ $sort_threads -k bmf -l 0 -sp $split_prefix
+		bmfsort -T $tmp_prefix -m $memstr -@ $sort_threads -k bmf -sp $split_prefix
 	else
 		bwa mem $opts $r1 $r2 | mark_unclipped -l 0 - - | \
-		bmfsort -T $tmp_prefix -m $memstr -@ $sort_threads -k ucs -l 0 -sp $split_prefix
+		bmfsort -T $tmp_prefix -m $memstr -@ $sort_threads -k ucs -sp $split_prefix
 	fi
 
 	# Apply bam rescue in parallel
