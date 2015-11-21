@@ -461,7 +461,6 @@ int bam_pr(int argc, char *argv[])
         return 1;
     }
 
-    sam_open_mode("b", argv[optind+1], NULL);
     settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
     if (settings->in == 0 || settings->out == 0) {
         fprintf(stderr, "[bam_pr] fail to read/write input files\n");
