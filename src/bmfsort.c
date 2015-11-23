@@ -50,6 +50,28 @@ void memset_pattern4(void *target, const void *pattern, size_t size) {
 KHASH_INIT(c2c, char*, char*, 1, kh_str_hash_func, kh_str_hash_equal)
 KHASH_MAP_INIT_STR(c2i, int)
 
+/* Something to look like a regmatch_t */
+typedef struct hdr_match {
+    ptrdiff_t rm_so;
+    ptrdiff_t rm_eo;
+} hdr_match_t;
+
+
+// Append char range to kstring
+static inline int range_to_ks(const char *src, int from, int to,
+                              kstring_t *dest) {
+    return kputsn(src + from, to - from, dest) != to - from;
+}
+// Append a header line match to kstring
+static inline int match_to_ks(const char *src, const hdr_match_t *match,
+                              kstring_t *dest) {
+    return range_to_ks(src, match->rm_so, match->rm_eo, dest);
+}
+// Append a kstring to a kstring
+static inline int ks_to_ks(kstring_t *src, kstring_t *dest) {
+    return kputsn(ks_str(src), ks_len(src), dest) != ks_len(src);
+}
+
 #define __free_char(p)
 KLIST_INIT(hdrln, char*, __free_char)
 
@@ -82,12 +104,29 @@ static int strnum_cmp(const char *_a, const char *_b)
 }
 
 #define HEAP_EMPTY UINT64_MAX
+KHASH_INIT(cset, char*, char, 0, kh_str_hash_func, kh_str_hash_equal)
 
 typedef struct {
 	int i;
 	uint64_t pos, idx;
 	bam1_t *b;
 } heap1_t;
+
+typedef struct merged_header {
+    kstring_t     out_hd;
+    kstring_t     out_sq;
+    kstring_t     out_rg;
+    kstring_t     out_pg;
+    kstring_t     out_co;
+    char        **target_name;
+    uint32_t     *target_len;
+    size_t        n_targets;
+    size_t        targets_sz;
+    khash_t(c2i) *sq_tids;
+    khash_t(cset) *rg_ids;
+    khash_t(cset) *pg_ids;
+    bool          have_hd;
+} merged_header_t;
 
 #define __pos_cmp(a, b) ((a).pos > (b).pos || ((a).pos == (b).pos && ((a).i > (b).i || ((a).i == (b).i && (a).idx > (b).idx))))
 
@@ -111,6 +150,77 @@ typedef struct trans_tbl {
 	kh_c2c_t* pg_trans;
 	bool lost_coord_sort;
 } trans_tbl_t;
+
+
+static int hdr_line_match(const char *text, const char *rec,
+                          const char *tag,  hdr_match_t *matches) {
+    const char *line_start, *line_end = text;
+    const char *tag_start, *tag_end;
+
+    for (;;) {
+        // Find record, ensure either at start of text or follows '\n'
+        line_start = strstr(line_end, rec);
+        while (line_start && line_start > text && *(line_start - 1) != '\n') {
+            line_start = strstr(line_start + 3, rec);
+        }
+        if (!line_start) return -1;
+
+        // Find end of header line
+        line_end = strchr(line_start, '\n');
+        if (!line_end) line_end = line_start + strlen(line_start);
+
+        matches[0].rm_so = line_start - text;
+        matches[0].rm_eo = line_end - text;
+        if (!tag) return 0;  // Match found if not looking for tag.
+
+        for (tag_start = line_start + 3; tag_start < line_end; tag_start++) {
+            // Find possible tag start.  Hacky but quick.
+            while (*tag_start > '\n') tag_start++;
+
+            // Check it
+            if (tag_start[0] == '\t'
+                && strncmp(tag_start + 1, tag, 2) == 0
+                && tag_start[3] == ':') {
+                // Found tag, record location and return.
+                tag_end = tag_start + 4;
+                while (*tag_end && *tag_end != '\t' && *tag_end != '\n')
+                    ++tag_end;
+                matches[1].rm_so = tag_start - text + 4;
+                matches[1].rm_eo = tag_end - text;
+                return 0;
+            }
+        }
+        // Couldn't find tag, try again from end of current record.
+    }
+}
+
+/*
+ * Add the @HD line to the new header
+ * In practice the @HD line will come from the first input header.
+ */
+
+static int trans_tbl_add_hd(merged_header_t* merged_hdr,
+                            bam_hdr_t *translate) {
+    hdr_match_t match = {0, 0};
+
+    // TODO: handle case when @HD needs merging.
+    if (merged_hdr->have_hd) return 0;
+
+    if (hdr_line_match(translate->text, "@HD", NULL, &match) != 0) {
+        return 0;
+    }
+
+    if (match_to_ks(translate->text, &match, &merged_hdr->out_hd)) goto memfail;
+    if (kputc('\n', &merged_hdr->out_hd) == EOF) goto memfail;
+    merged_hdr->have_hd = true;
+
+    return 0;
+
+ memfail:
+    perror(__func__);
+    return -1;
+}
+
 
 static void trans_tbl_destroy(trans_tbl_t *tbl) {
 	free(tbl->tid_trans);
@@ -217,24 +327,10 @@ static void trans_tbl_init(bam_hdr_t* out, bam_hdr_t* translate, trans_tbl_t* tb
 
 	// @HD
 	{
-		regex_t hd;
-		regmatch_t* matches = (regmatch_t*)calloc(2, sizeof(regmatch_t));
-		regmatch_t* matches_2 = (regmatch_t*)calloc(2, sizeof(regmatch_t));
-		if (matches == NULL) { perror("out of memory"); exit(-1); }
-		regcomp(&hd, "^@HD.*", REG_EXTENDED|REG_NEWLINE);
-		if (regexec(&hd, translate->text, 1, matches, 0) != 0)
-		{
-			fprintf(stderr, "No @HD tag found.\n");
-			exit(1);
+		if(trans_tbl_add_hd(out, translate)) {
+			fprintf(stderr, "Failed to add HD due to memory error. Abort!\n");
+			exit(EXIT_FAILURE);
 		}
-		// Only add @HD tag if not already in output
-		if (regexec(&hd, out->text, 1, matches_2, 0) != 0)
-		{
-			kputsn(translate->text+matches[0].rm_so, matches[0].rm_eo-matches[0].rm_so, &out_text);
-		} // TODO: handle case when @HD needs merging.
-		regfree(&hd);
-		free(matches_2);
-		free(matches);
 	}
 
 	// SQ
@@ -1308,8 +1404,17 @@ static void write_buffer_split(const char *fn, const char *mode, size_t l, bam1_
 	}
 */
 	fprintf(stderr, "Writing bam in parallel %i.\n", n_threads);
+	const int n_passes = h->n_targets >= 26 ? 27: h->n_targets;
 #pragma omp parallel for
-	for(uint64_t i = 0; i < h->n_targets + 1; ++i) { // Consider setting this to 26 to avoid the GLs?
+	for(uint64_t i = 0; i < n_passes; ++i) { // Consider setting this to 26 to avoid the GLs?
+		if(i == 26) {
+			for(uint64_t li = 0; li < l; ++li) {
+				const int index = SPLIT_INDEX(buf[li]) + 1;
+				if(index >= 26)
+					sam_write1(fps[index], h, buf[li]);
+			}
+			continue;
+		}
 		for(uint64_t li = 0; li < l; ++li) {
 			const int index = SPLIT_INDEX(buf[li]) + 1;
 			if(index == i)
@@ -1467,11 +1572,11 @@ int bmfsort_core_ext1(int sort_cmp_int, const char *fn, const char *prefix, cons
 		 * TODO: Make this split as well.
 		 */
 		if(split) {
-			fprintf(stderr, "[bmfsort_core] Single block. Writing to split buffer..\n");
+			fprintf(stderr, "[%s] Single block. Writing to split buffer..\n", __func__);
 			write_buffer_split(fnout, modeout, k, buf, header, split_prefix);
 		}
 		else {
-			fprintf(stderr, "[bmfsort_core] Single block. Writing to regular, not split, buffer.\n", split);
+			fprintf(stderr, "[%s] Single block. Writing to regular, not split, buffer.\n", split, __func__);
 			write_buffer(fnout, modeout, k, buf, header, n_threads);
 		}
 	} else { // then merge
@@ -1536,10 +1641,12 @@ int main(int argc, char *argv[])
 		return sort_usage(stdout, EXIT_SUCCESS);
 	size_t max_mem = 768<<20; // 512MB
 	int c, nargs, sort_cmp_int = BMF_SORT_ORDER, ret = EXIT_SUCCESS, level = -1;
-	char *fmtout = strdup("bam"), modeout[12], *tmpprefix = strdup("MetasyntacticVariable");
+	char fmtout[10] = "bam";
+	char tmpprefix[200] = "MetasyntacticVariable";
+	char split_prefix[200] = "";
 	char fnout[200] = "-";
+	char modeout[5] = "w";
 	kstring_t fnout_buffer = { 0, 0, NULL };
-	char *split_prefix = NULL;
 	int split = 0;
 
 	while ((c = getopt(argc, argv, "p:l:m:k:o:O:T:@:sh")) >= 0) {
@@ -1562,24 +1669,30 @@ int main(int argc, char *argv[])
 				else if (*q == 'g' || *q == 'G') max_mem <<= 30;
 				break;
 			}
-		case 'O': fmtout = strdup(optarg); break;
-		case 'T': tmpprefix = strdup(optarg); break;
+		case 'O': strcpy(fmtout, optarg); break;
+		case 'T': strcpy(tmpprefix, optarg); break;
 		case '@': n_threads = atoi(optarg); break;
 		case 'l': level = atoi(optarg); break;
 		case 'h': return sort_usage(stderr, 0);
 		case 's': split = 1; break;
-		case 'p': split_prefix = strdup(optarg); break;
+		case 'p': strcpy(split_prefix, optarg); break;
 		default: return sort_usage(stderr, EXIT_FAILURE);
 		}
 	}
 
-	if(split && (!split_prefix)) {
+	if(split && (!split_prefix[0])) {
 		int tmpint;
-		for(tmpint = 0; fnout[tmpint]; ++tmpint) {
+		for(tmpint = 0; fnout[tmpint]; ++tmpint)
 			if(fnout[tmpint] == '.')
 				break;
+
+		if(fnout[tmpint]) {
+			char *trimmed = trim_ext(fnout);
+			strcpy(split_prefix, trimmed);
+			free(trimmed);
 		}
-		split_prefix = fnout[tmpint] ? trim_ext(fnout): strdup(fnout);
+		else
+			strcpy(split_prefix, fnout);
 	}
 	if(split && (strcmp(fnout, "-") == 0 || strcmp(fnout, "stdout") == 0) && (!split_prefix)) {
 		fprintf(stderr, "Cannot split and write to standard out. Abort mission!\n");
@@ -1605,13 +1718,7 @@ int main(int argc, char *argv[])
 
 	if (bmfsort_core_ext1(sort_cmp_int, (nargs > 0) ? argv[optind] : "-", tmpprefix, fnout, modeout, max_mem, n_threads, split, split_prefix) < 0) ret = EXIT_FAILURE;
 
-	cond_free(tmpprefix);
-	cond_free(fmtout);
-	cond_free(split_prefix);
-
 sort_end:
 	free(fnout_buffer.s);
-	cond_free(tmpprefix);
-	cond_free(fmtout);
 	return ret;
 }
