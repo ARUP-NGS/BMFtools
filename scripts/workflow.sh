@@ -9,11 +9,11 @@ set -x
 USE_UCS=1
 MT_RESCUE=1
 ref="/mounts/genome/human_g1k_v37.fasta"
-threads="8"
+threads="16"
 rg_str="@RG\tID:omgz\tSM:wtf\tPL:ILMN"
 opts="-CYT 0 -t $threads -v 1 -R $rg_str $ref "
 tmp_prefix=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
-memstr="12G"
+memstr="2G"
 sort_threads="4"
 mismatch_limit="2"
 

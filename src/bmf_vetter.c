@@ -7,12 +7,19 @@ int vetter_usage()
 	exit(0);
 }
 
+int bmf_vetter_core(vetter_settings_t *settings, const char *bam_rmode, const char *vcf_rmode,
+					const char *vcf_wmode)
+{
+	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
+}
+
 int bmf_vetter_main(int argc, char *argv[])
 {
 	char bam_rmode[2] = "b";
 	char vcf_rmode[4] = "";
 	char vcf_wmode[4] = "w";
-	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
+	char *bam_path = NULL;
+	char *vcf_path = NULL;
     while ((c = getopt_long(argc, argv, "o:b:?h", lopts, NULL)) >= 0) {
         switch (c) {
         case 'c': vcf_wmode = "wb"; break;

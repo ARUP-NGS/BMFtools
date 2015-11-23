@@ -1,10 +1,20 @@
 import multiprocessing as mp
 import subprocess
 import sys
+import uuid
 
+from enum import Enum
 from itertools import chain
 
 import pysam
+
+class chemistry(Enum):
+    loeb = 0
+    annealed = 1
+    secondary = 2
+
+def split_fq(instr):
+    return instr.split(".fastq")[0].split(".fq")[0]
 
 
 class BMFWorkflow(object):
@@ -103,9 +113,8 @@ class BMFWorkflow(object):
                               shell=True)
 
     def get_crms(self):
-        cstr = "crms -dl %i -v %i -n %i -s %s " % (self.nlen, self.max_nlen,
-                                                   self.prefix_len,
-                                                   self.homing)
+        cstr = "crms -dl %i -v %i -s %s " % (self.blen, self.max_blen,
+                                             self.homing)
         if self.panthera:
             cstr += " -c "
         if self.gzip_output:
@@ -114,6 +123,8 @@ class BMFWorkflow(object):
             cstr += " -t %i " % self.hp_threshold
         if self.rescaler:
             cstr += " -r %s " % self.rescaler
+        if self.nucsplit_n:
+            cstr += " -n %i" % self.nucsplit_n
         cstr += (" -o %s -f " % self.tmp_prefix +
                  self.ffq_r1.split(".fastq")[0])
         cstr += " -p %i " % self.threads
@@ -124,8 +135,90 @@ class BMFWorkflow(object):
             key, value = line.strip().split("=")  # Unsafe
             exec("self.%s = '%s'" % (key, value))
 
-    def __init__(self, r1, r2, rescaler):
-        self.chem = None
+    def check_params(self):
+        self.ffq_r1 = split_fq(self.raw_r1) + ".r1.dmp.fq"
+        self.ffq_r2 = split_fq(self.raw_r2) + ".r2.dmp.fq"
+        self.final_bam = split_fq(self.raw_r1) + ".final.bam"
+
+        self.mismatch_limit = int(self.mismatch_limit) if self.mismatch_limit else 2
+
+        self.gzip_output = (self.gzip_output.lower() == 'true' or
+                            int(self.gzip_output)) if self.gzip_output else True
+
+        self.compression = int(self.compression) if self.compression else 6
+
+        self.mask = int(self.mask) if self.mask else 1
+
+        self.hp_threshold = int(self.hp_threshold) if self.hp_threshold else 12
+
+        if self.blen:
+            self.blen = int(self.blen)
+        elif self.chem in [chemistry.loeb, chemistry.annealed]:
+            raise ValueError("barcode length required for inline chemistry.")
+
+        self.max_blen = int(self.max_blen) if self.max_blen else self.blen
+        if not self.mem_str:
+            self.mem_str = "3G"
+            sys.stderr.write("mem_str unset. Setting to 3G.\n")
+
+        if self.panthera:
+            self.panthera = 1
+            sys.stderr.write("mem_str unset. Setting to 3G.\n")
+        else:
+            self.panthera = (self.panthera.lower() == "true" or
+                             int(settings.panthera))
+
+        if self.prefix is None:
+            self.prefix = uuid.uuid4().get_hex().upper()[:16]
+            sys.stderr.write("Prefix unset. Random: %s.\n" % self.prefix)
+
+        if self.nucsplit_n:
+            self.nucsplit_n = int(self.nucsplit_n)
+
+        if self.ref is None:
+            raise ValueError("Required reference path missing!")
+
+        if self.rg_str is None:
+            self.rg_str = "@RG\tID:omgz\tSM:wtf\tPL:ILMN\tDS:%s" % self.prefix
+        sys.stderr.write("RG String: %s.\n" % self.rg_str)
+
+        self.sort_threads = int(self.sort_threads) if self.sort_threads else 2
+
+        self.split = (self.split.lower() == "true" or
+                      int(self.split)) if self.split else False
+
+        if self.threads:
+            self.threads = int(self.threads)
+        else:
+            self.threads = 4
+            sys.stderr.write("threads unset. Defaulting to 4.\n")
+
+        if not self.tmp_bam:
+            self.tmp_bam = self.prefix + ".tmp.bam"
+
+        if not self.tmp_fq:
+            self.tmp_fq = self.prefix + ".tmp.fq"
+
+        self.ucs = (self.ucs.lower() == "true" or
+                    int(self.ucs)) if(self.ucs) else False
+        '''
+        if self.ucs:
+            self.ucs = (self.ucs.lower() == "true" or int(self.ucs))
+        else:
+            self.ucs = False
+        '''
+
+    def __init__(self, r1, r2, rescaler, index, adapter_design):
+        if adapter_design == "l":
+            self.chem = chemistry.loeb
+        elif adapter_design == "a":
+            self.chem = chemistry.annealed
+        elif adapter_design == "s":
+            self.chem = chemistry.secondary
+        else:
+            raise ValueError("Not valid chemistry. Choose 'l', 'a', or 's'.")
+        if self.chem == chemistry.secondary and index in None:
+            raise ValueError("For secondary index chemistry, an index fastq must be provided.")
         self.compression = None
         self.ffq_r1 = None
         self.ffq_r2 = None
@@ -133,15 +226,15 @@ class BMFWorkflow(object):
         self.gzip_output = None
         self.homing = None
         self.hp_threshold = None
-        self.index_read = None
+        self.index_read = index_read
         self.mask = None
-        self.max_nlen = None
+        self.max_blen = None
         self.mem_str = None  # Memory string to pass to samtools sort and bmfsort
         self.mismatch_limit = None  # Mismatch limit for rescue step.
-        self.nlen = None
-        self.panthera = None
+        self.blen = None
+        self.panthera = 1
         self.prefix = None  # temporary prefix for temporary files
-        self.prefix_len = None
+        self.nucsplit_n = None
         self.raw_r1 = r1
         self.raw_r2 = r2
         self.rescaler = rescaler
@@ -156,11 +249,11 @@ class BMFWorkflow(object):
 
 
     def fq_dmp(self):
-        if self.chem == 0:  # annealed
-            subprocess.check_call(self.get_fqmsi(), shell=True)
-        elif self.chem == 1: # loeb
+        if self.chem == chemistry.loeb:
             subprocess.check_call(self.get_crms(), shell=True)
-        elif self.chem == 2:  # secondary index
+        elif self.chem == chemistry.annealed:
+            subprocess.check_call(self.get_fqmsi(), shell=True)
+        elif self.chem == chemistry.secondary:
             subprocess.check_call(self.get_fqms(), shell=True)
         else:
             raise ValueError("Chemistry not supported. Abort!")
@@ -178,16 +271,22 @@ def get_args():
     parser.add_argument("r2", help="Path to raw r2 fastq.")
     parser.add_argument("--rescaler", "-r",
                         help="Path to rescaler array in human-readable format.")
+    parser.add_argument("--index", "-i",
+                        help="Path to index read. Leave unset for inline barcodes.")
     parser.add_argument("--conf", "-c", help="Path to config file.")
+    parser.add_argument("--adapter-design", "-a", help="Adapter design. "
+                        "'l' for loeb,'a' for annealed, 's' for secondary.",
+                        required=True)
     return parser.parse_args()
 
 def main():
     args = get_args()
-    wf = BMFWorkflow(args.r1, args.r2, args.rescaler)
-    wf.get_params(args.conf)
-    wf.fq_dmp()
+    wf = BMFWorkflow(args.r1, args.r2, args.rescaler, args.index, args.adapter_design)
+    wf.get_params(args.conf)  # Parse parameters from config file
+    wf.check_params()  # Make sure that all required parameters are set
+    wf.fq_dmp()  # Perform molecular demultiplexing
     wf.aln_rsq()
     return 0
 
 if __name__ == "__main__":
-    sys.exit(sys.exit(0))
+    sys.exit(main())
