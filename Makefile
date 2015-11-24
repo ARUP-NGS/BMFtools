@@ -21,7 +21,7 @@ IGAMC_INC= include/igamc_cephes.c
 
 .PHONY: all clean
 
-all: bin lh3sort libhts.a hash_dmp.o fqmarksplit crms bmfsort hash_dmp famstats bam_pr copy
+all: bin lh3sort libhts.a fqmarksplit crms bmfsort hash_dmp famstats bam_pr copy
 
 lh3sort:
 	cd include/sort && make && cd ../..
@@ -49,7 +49,7 @@ bmfsort:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/bmfsort.c -o bmfsort
 hash_dmp.o:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) -fPIC src/khash_dmp_core.c -c -o hash_dmp.o
-hash_dmp:
+hash_dmp: hash_dmp.o
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(O2_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_o2
@@ -57,8 +57,14 @@ hash_dmp:
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_db
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp
 	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(GP_FLAGS) src/khash_dmp_main.c  src/khash_dmp_core.c  include/igamc_cephes.c -o hash_dmp_p
-famstats:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/famstats.c -o famstats
+bed_util.o:
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) lib/bed_util.c -c -o bed_util.o
+bedidx.o:
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) include/bedidx.c -c -o bedidx.o
+famstats: bed_util.o
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/famstats.c bed_util.o -o famstats
+bmf_vetter: bedidx.o
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) bedidx.o src/bmf_vetter.c -o vetter
 copy:
 	mv hash_dmp crms crms_db crms_p bmfsort bmfsort_db bmfsort_p include/sort/lh3sort fqmarksplit fqmarksplit_db fqmarksplit_p fqmarksplit_np famstats hash_dmp_p hash_dmp_db bam_pr bam_pr_db bam_pr_p bin/
 

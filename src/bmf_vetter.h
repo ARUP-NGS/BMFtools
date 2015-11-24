@@ -7,32 +7,40 @@
 #include <stdio.h>
 #include <omp.h>
 #include <inttypes.h>
+#include <getopt.h>
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
+#include "htslib/sam.h"
+//#include "bed_util.h"
 
-void vs_destroy(vetter_settings_t *s)
-{
-}
 
-#define VETTER_OPTIONS(o1, o2, o3, o4, o5) \
-    {"minFA",         required_argument, NULL, 'a'}, \
-    {"minFM",         required_argument, NULL, 's'}, \
-    {"minFR",         required_argument, NULL, 'p'}, \
-    {"minMQ",         required_argument, NULL, 'm'}, \
-    {"minPV",         required_argument, NULL, 'b'}, \
-    {"ref",         required_argument, NULL, 'f'} \
+#define VETTER_OPTIONS \
+    {"min-family-agreed",         required_argument, NULL, 'a'}, \
+    {"min-family-size",         required_argument, NULL, 's'}, \
+    {"min-fraction-agreed",         required_argument, NULL, 'f'}, \
+    {"min-mapping-quality",         required_argument, NULL, 'm'}, \
+    {"min-phred-quality",         required_argument, NULL, 'p'}, \
+    {"in-vcf",         required_argument, NULL, 'v'}, \
+    {"out-vcf",         required_argument, NULL, 'o'}, \
+    {"bedpath",         required_argument, NULL, 'b'}, \
+    {"ref",         required_argument, NULL, 'r'}, \
 	{0, 0, 0, 0}
+
+typedef struct vparams {
+	uint32_t minFA; // Minimum Family Members Agreed on base
+	uint32_t minFM; // Minimum family size
+	double minFR; // Minimum  fraction agreed on base
+	uint32_t minMQ; // Minimum mapping quality to include
+	uint32_t minPV; // Minimum PV score to include
+} vparams_t;
 
 
 typedef struct vetter_settings {
-	int minFA; // Minimum Family Members Agreed on base
-	int minFM; // Minimum family size
-	int minFR; // Minimum  fraction agreed on base
-	int minMQ; // Minimum mapping quality to include
-	int minPV; // Minimum PV score to include
-	char bam_path[200]; // Path to input vcf
+
+	char bam_path[200]; // Path to input bam
 	char out_vcf_path[200]; // Path to output vcf path
-	char in_vcf_path[200];
+	char in_vcf_path[200]; // Path to input vcf
+	char bed_path[200]; // Path to bedfile
 	char ref_path[200];
 	faidx_t *fai;
 	samFile *bam;
@@ -40,6 +48,11 @@ typedef struct vetter_settings {
 	vcfFile *vin;
 	vcfFile *vout;
 	bcf_hdr_t *vh;
+	void *bed; // Really reghash_t *
+	vparams_t params;
 } vetter_settings_t;
+
+extern void *bed_read(char *fn);
+extern void bed_destroy(void *);
 
 #endif /* BMF_VETTER_H */

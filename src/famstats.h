@@ -9,22 +9,14 @@
 
 #include "htslib/sam.h"
 //#include "samtools.h"
-#include "khash.h"
 #include "ksort.h"
+#include "khash.h"
+#include "bed_util.h"
 
 
 KHASH_MAP_INIT_INT64(fm, uint64_t)
 KHASH_MAP_INIT_INT64(rc, uint64_t)
 
-typedef struct interval {
-	uint32_t start;
-	uint32_t end;
-} interval_t;
-
-typedef struct region_set {
-	interval_t *intervals;
-	uint64_t n;
-} region_set_t;
 
 #ifndef cond_free
 #define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
