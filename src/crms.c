@@ -297,7 +297,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 }
 
 
-int main(int argc, char *argv[])
+int crms_main(int argc, char *argv[])
 {
 	// Build settings struct
 	mssi_settings_t settings = {
@@ -453,7 +453,6 @@ int main(int argc, char *argv[])
 		}
 #endif
 		// Remove temporary split files
-		int sys_call_ret;
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
 		char ffq_r2[200];

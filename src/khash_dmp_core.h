@@ -33,17 +33,6 @@ static inline tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 }
 
 
-static tmpvars_t init_tmpvars(char *bs_ptr, int blen, int readlen)
-{
-	tmpvars_t ret = {
-			.blen = blen,
-			.readlen = readlen,
-			.bs_ptr = bs_ptr,
-			.nuc_indices = {0, 0}
-	};
-	return ret;
-}
-
 static inline void tmpvars_destroy(tmpvars_t *tmp)
 {
 	free(tmp->buffers);

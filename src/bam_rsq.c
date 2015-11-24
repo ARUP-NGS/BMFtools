@@ -1,4 +1,4 @@
-/*  bam_pr.c -- duplicate read detection.
+/*  bam_rsq.c -- duplicate read detection.
 
     Copyright (C) 2009, 2015 Genome Research Ltd.
     Portions copyright (C) 2009 Broad Institute.
@@ -22,7 +22,7 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
-#include "bam_pr.h"
+#include "bam_rsq.h"
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 	uint8_t *bdata, *pdata;
@@ -210,7 +210,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 }
 
 
-void bam_prse_core(pr_settings_t *settings)
+void bam_rsqse_core(pr_settings_t *settings)
 {
 	/*
     bam1_t *b;
@@ -363,7 +363,7 @@ static inline void pr_loop(pr_settings_t *settings, tmp_stack_t *stack)
 }
 
 
-void bam_pr_core(pr_settings_t *settings)
+void bam_rsq_core(pr_settings_t *settings)
 {
     tmp_stack_t stack;
     memset(&stack, 0, sizeof(tmp_stack_t));
@@ -383,7 +383,7 @@ void bam_pr_core(pr_settings_t *settings)
 int pr_usage(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  bam_pr [-srtu] [-f <to_realign.fq>] <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Usage:  bam_rsq [-srtu] [-f <to_realign.fq>] <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    pr for SE reads [Not implemented]\n");
     fprintf(stderr, "        -r    Realign reads with no changed bases. Default: False.\n");
     fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
@@ -395,13 +395,8 @@ int pr_usage(void)
     return 1;
 }
 
-int main(int argc, char *argv[])
-{
-	return bam_pr(argc, argv);
-}
 
-
-int bam_pr(int argc, char *argv[])
+int bam_rsq(int argc, char *argv[])
 {
     int c;
     char wmode[4] = {'w', 'b', 0, 0};
@@ -457,19 +452,19 @@ int bam_pr(int argc, char *argv[])
     settings->in = sam_open_format(argv[optind], "rb", &ga.in);
     settings->hdr = sam_hdr_read(settings->in);
     if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
-        fprintf(stderr, "[bam_pr] input SAM does not have header. Abort!\n");
+        fprintf(stderr, "[bam_rsq] input SAM does not have header. Abort!\n");
         return 1;
     }
 
     settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
     if (settings->in == 0 || settings->out == 0) {
-        fprintf(stderr, "[bam_pr] fail to read/write input files\n");
+        fprintf(stderr, "[bam_rsq] fail to read/write input files\n");
         return 1;
     }
     sam_hdr_write(settings->out, settings->hdr);
 
-    if (settings->is_se) bam_prse_core(settings);
-    else bam_pr_core(settings);
+    if (settings->is_se) bam_rsqse_core(settings);
+    else bam_rsq_core(settings);
     bam_hdr_destroy(settings->hdr);
     sam_close(settings->in); sam_close(settings->out);
     if(settings->fqh)
