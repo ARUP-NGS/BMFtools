@@ -392,4 +392,5 @@ int famstats_main(int argc, char *argv[])
 	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
 	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
 	usage_exit(stderr, 1);
+	return 0;
 }

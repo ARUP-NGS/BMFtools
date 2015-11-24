@@ -1535,6 +1535,19 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 	sprintf(tmpbuf, "%s.split.unmapped.bam", split_prefix);
 	fps[0] = sam_open_format(tmpbuf, mode, fmt);
 	sam_hdr_write(fps[0], h);
+	if(h->n_targets >= 26) {
+		for(int i = 1; i < 27 ;++i) {
+			sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
+			fps[i] = sam_open_format(tmpbuf, mode, fmt);
+			if(fps[i] == NULL) {
+				fprintf(stderr, "[%s]: Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
+				exit(EXIT_FAILURE);
+			}
+				sam_hdr_write(fps[i], h);
+		}
+		sprintf(tmpbuf, "%s.split.gl_contigs.bam", split_prefix);
+		fps[27] = sam_open_format(tmpbuf, mode, fmt);
+	}
 	for(int i = 1; i < h->n_targets + 1;++i) {
 		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open_format(tmpbuf, mode, fmt);
@@ -1553,9 +1566,8 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 		for(uint64_t i = 0; i < n_passes; ++i) { // Consider setting this to 26 to avoid the GLs?
 			if(i == 26) {
 				for(uint64_t li = 0; li < l; ++li) {
-					const int index = split_index(buf[li]);
-					if(index >= 26)
-						sam_write1(fps[index], h, buf[li]);
+					if(split_index(buf[li]) > 26)
+						sam_write1(fps[27], h, buf[li]);
 				}
 				continue;
 			}
@@ -1565,27 +1577,21 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 					sam_write1(fps[index], h, buf[li]);
 			}
 		}
-		#pragma omp parallel for
-		for(uint64_t i = 0; i < h->n_targets + 1; ++i)
-			sam_close(fps[i]);
-		free(fps);
 	}
 	else {
 		#pragma omp parallel for
 		for(uint64_t i = 0; i < n_passes; ++i) { // Consider setting this to 26 to avoid the GLs?
 			for(uint64_t li = 0; li < l; ++li) {
 				const int index = split_index(buf[li]);
-
 				if(index == i)
 					sam_write1(fps[index], h, buf[li]);
 			}
 		}
-		#pragma omp parallel for
-		for(uint64_t i = 0; i < h->n_targets + 1;++i) {
-			sam_close(fps[i]);
-		}
-		free(fps);
 	}
+	#pragma omp parallel for
+	for(uint64_t i = 0; i < h->n_targets + 1;++i)
+		if(fps[i]) sam_close(fps[i]);
+	free(fps);
 }
 
 static void write_buffer(const char *fn, const char *mode, size_t l, bam1_p *buf, const bam_hdr_t *h, int n_threads, const htsFormat *fmt)
