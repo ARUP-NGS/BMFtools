@@ -7,14 +7,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-
-typedef struct interval {
-	uint32_t start;
-	uint32_t end;
-} interval_t;
-
 typedef struct region_set {
-	interval_t *intervals;
+	uint64_t *intervals;
 	uint64_t n;
 } region_set_t;
 
@@ -33,7 +27,7 @@ static inline int bed_test(bam1_t *b, khash_t(bed) *h)
 		return 0;
 	uint32_t pos_plus_len = b->core.pos + b->core.l_qseq;
 	for(uint64_t i = 0; i < kh_val(h, k).n; ++i) {
-		if(pos_plus_len >= kh_val(h, k).intervals[i].start && b->core.pos <= kh_val(h, k).intervals[i].end)
+		if(pos_plus_len >= (kh_val(h, k).intervals[i] >> 32) && b->core.pos <= (kh_val(h, k).intervals[i] & 0xffffffff00000000))
 			return 1;
 	}
 	return 0;

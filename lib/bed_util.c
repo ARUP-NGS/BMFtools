@@ -9,7 +9,8 @@ khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, uint32_t padding)
 	char *tok = NULL;
 	size_t len = 0;
 	ssize_t read;
-	uint32_t tid, start, stop;
+	uint32_t tid;
+	uint64_t start, stop;
 	int khr;
 	khint_t k;
 	while ((read = getline(&line, &len, ifp)) != -1) {
@@ -21,28 +22,32 @@ khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, uint32_t padding)
 		fprintf(stderr, "Transcript id for tok %s is %"PRIu32"\n", tok, tid);
 #endif
 		tok = strtok(NULL, "\t");
-		start = strtoul(tok, NULL, 10);
+		start = strtoull(tok, NULL, 10);
 		tok = strtok(NULL, "\t");
-		stop = strtoul(tok, NULL, 10);
+		stop = strtoull(tok, NULL, 10);
 		k = kh_get(bed, ret, tid);
 		if(k == kh_end(ret)) {
 #if !NDEBUG
 			fprintf(stderr, "New contig in bed hashmap: %"PRIu32".\n", tid);
 #endif
 			k = kh_put(bed, ret, tid, &khr);
-			kh_val(ret, k).intervals = (interval_t *)calloc(1, sizeof(interval_t));
-			kh_val(ret, k).intervals[0].start = start - padding > 0 ? start - padding : 0;
-			kh_val(ret, k).intervals[0].end = stop + padding;
+			kh_val(ret, k).intervals = (uint64_t *)calloc(1, sizeof(uint64_t));
+			if(start > padding)
+				kh_val(ret, k).intervals[0] = ((start - padding) << 32) | (stop + padding);
+			else
+				kh_val(ret, k).intervals[0] = stop + padding;
 			kh_val(ret, k).n = 1;
 		}
 		else {
-			kh_val(ret, k).intervals = (interval_t *)realloc(kh_val(ret, k).intervals, ++kh_val(ret, k).n * sizeof(interval_t));
+			kh_val(ret, k).intervals = (uint64_t *)realloc(kh_val(ret, k).intervals, ++kh_val(ret, k).n * sizeof(uint64_t));
 			if(!kh_val(ret, k).intervals) {
 				fprintf(stderr, "Could not allocate memory. Abort mission!\n");
 				exit(EXIT_FAILURE);
 			}
-			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].start = start;
-			kh_val(ret, k).intervals[kh_val(ret, k).n - 1].end = stop;
+			if(start > padding)
+				kh_val(ret, k).intervals[kh_val(ret, k).n - 1] = ((start - padding) << 32) | (stop + padding);
+			else
+				kh_val(ret, k).intervals[kh_val(ret, k).n - 1] = stop + padding;
 #if !NDEBUG
 			fprintf(stderr, "Number of intervals in bed file for contig %"PRIu32": %"PRIu64"\n", tid, kh_val(ret, k).n);
 #endif
@@ -58,8 +63,7 @@ khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, uint32_t padding)
  */
 int intcmp(const void *a, const void *b)
 {
-	size_t diff = (*(interval_t *)a).start - (*(interval_t *)b).start;
-	return (diff) ? diff: (*(interval_t *)a).end - (*(interval_t *)b).end;
+	return *(uint64_t *)a - *(uint64_t *)b;
 }
 
 
@@ -82,7 +86,7 @@ void sort_bed(khash_t(bed) *bed)
 	for(k = kh_begin(bed); k != kh_end(bed); ++k) {
 		if(!kh_exist(bed, k))
 			continue;
-		qsort(kh_val(bed, k).intervals, kh_val(bed, k).n, sizeof(interval_t), &intcmp);
+		qsort(kh_val(bed, k).intervals, kh_val(bed, k).n, sizeof(uint64_t), &intcmp);
 	}
 	return;
 }
