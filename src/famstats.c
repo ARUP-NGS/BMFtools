@@ -108,7 +108,7 @@ int target_main(int argc, char *argv[])
 		fprintf(stderr, "[famstat_target_main]: Failed to read header for \"%s\"\n", argv[optind]);
 		exit(EXIT_FAILURE);
 	}
-	bed = parse_bed(bedpath, header, padding);
+	bed = parse_bed_hash(bedpath, header, padding);
 	uint64_t fm_target = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
 	while ((c = sam_read1(fp, header, b)) >= 0) {
@@ -119,7 +119,7 @@ int target_main(int argc, char *argv[])
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);
-	bed_destroy(bed);
+	bed_destroy_hash(bed);
 	free(bedpath);
 	fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %"PRIu64". Raw reads on target: %"PRIu64".\n",
 			(double)fm_target / total_fm, total_fm, fm_target);

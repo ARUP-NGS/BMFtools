@@ -1,7 +1,7 @@
 #include "bed_util.h"
 
 
-khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, uint32_t padding)
+khash_t(bed) *parse_bed_hash(char *path, bam_hdr_t *header, uint32_t padding)
 {
 	khash_t(bed) *ret = kh_init(bed);
 	FILE *ifp = fopen(path, "r");
@@ -67,7 +67,7 @@ int intcmp(const void *a, const void *b)
 }
 
 
-void bed_destroy(void *arg)
+void bed_destroy_hash(void *arg)
 {
 	khash_t(bed) *b = (khash_t(bed) *)arg;
 	khint_t ki;

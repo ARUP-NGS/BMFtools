@@ -122,5 +122,3 @@ int bmf_vetter_main(int argc, char *argv[])
     bmf_vetter_core(invcf, inbam, outvcf, bed, bam_rmode, vcf_rmode, vcf_wmode, &params);
     return 0;
 }
-
-int main() {return 0;}
