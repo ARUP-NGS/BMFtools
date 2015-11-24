@@ -1,7 +1,7 @@
 #include "bed_util.h"
 
 
-khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding)
+khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, uint32_t padding)
 {
 	khash_t(bed) *ret = kh_init(bed);
 	FILE *ifp = fopen(path, "r");
@@ -63,8 +63,9 @@ int intcmp(const void *a, const void *b)
 }
 
 
-void bed_destroy(khash_t(bed) *b)
+void bed_destroy(void *arg)
 {
+	khash_t(bed) *b = (khash_t(bed) *)arg;
 	khint_t ki;
 	for(ki = kh_begin(b); ki != kh_end(b); ++ki) {
 		if(!kh_exist(b, ki))
@@ -81,7 +82,7 @@ void sort_bed(khash_t(bed) *bed)
 	for(k = kh_begin(bed); k != kh_end(bed); ++k) {
 		if(!kh_exist(bed, k))
 			continue;
-		qsort(kh_val(bed, k).intervals, kh_val(bed, k).n, sizeof(region_set_t), &intcmp);
+		qsort(kh_val(bed, k).intervals, kh_val(bed, k).n, sizeof(interval_t), &intcmp);
 	}
 	return;
 }

@@ -57,7 +57,7 @@ int target_main(int argc, char *argv[])
 	int c;
 	khash_t(bed) *bed = NULL;
 	char *bedpath = NULL;
-	int padding = -1;
+	uint32_t padding = (uint32_t)-1;
 
 	if(argc < 4) {
 		target_usage_exit(stderr, EXIT_FAILURE);
@@ -71,7 +71,7 @@ int target_main(int argc, char *argv[])
 			bedpath = strdup(optarg);
 			break;
 		case 'p':
-			padding = atoi(optarg);
+			padding = strtoul(optarg, NULL, 0);
 			break;
 		case '?':
 		case 'h':
@@ -82,7 +82,7 @@ int target_main(int argc, char *argv[])
 	}
 
 
-	if(padding < 0) {
+	if(padding == (uint32_t)-1) {
 		padding = 25;
 		fprintf(stderr, "[famstat_target_main]: Padding not set. Set to 25.\n");
 	}

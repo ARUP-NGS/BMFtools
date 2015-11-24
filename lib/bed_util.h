@@ -22,7 +22,7 @@ KHASH_MAP_INIT_INT(bed, region_set_t)
 
 int intcmp(const void *a, const void *b); // Compare intervals for sorting by start
 void sort_bed(khash_t(bed) *bed);
-khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, int padding);
+khash_t(bed) *parse_bed(char *path, bam_hdr_t *header, uint32_t padding);
 void *bed_read(char *fn);
 void bed_destroy(void *);
 static inline int bed_test(bam1_t *b, khash_t(bed) *h)

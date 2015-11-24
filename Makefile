@@ -63,6 +63,7 @@ bedidx.o:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) include/bedidx.c -c -o bedidx.o
 famstats: bed_util.o
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) src/famstats.c bed_util.o -o famstats
+	rm bed_util.o
 bmf_vetter: bedidx.o
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) bedidx.o src/bmf_vetter.c -o vetter
 copy:
