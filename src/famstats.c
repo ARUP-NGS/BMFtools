@@ -232,7 +232,7 @@ static void usage_exit(FILE *fp, int exit_status)
 
 static void fm_usage_exit(FILE *fp, int exit_status)
 {
-	fprintf(fp, "Usage: famstat fm <opts> <in.bam>\n");
+	fprintf(fp, "Usage: famstats fm <opts> <in.bam>\n");
 	fprintf(fp, "-m Set minimum mapping quality. Default: 0.\n");
 	fprintf(fp, "-f Set minimum family size. Default: 0.\n");
 	exit(exit_status);
@@ -372,7 +372,7 @@ int frac_main(int argc, char *argv[])
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int famstats_main(int argc, char *argv[])
 {
 	if(argc < 2) {
 		usage_exit(stderr, 1);

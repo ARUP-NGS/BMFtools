@@ -11,9 +11,8 @@
 #include "htslib/sam.h"
 #include "sam_opts.h"
 #include "bam.h" // for bam_get_library
-#include "bam_rescue.h"
-#include "igamc_cephes.c"
 #include "cstr_util.h"
+//#include "bmfsort.h"
 
 #define STACK_START (1 << 5)
 
@@ -319,7 +318,7 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 	}
 }
 
-int bam_pr(int argc, char *argv[]);
+int bam_rsq(int argc, char *argv[]);
 
 
 
