@@ -6,7 +6,7 @@
 
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11 #-fpermissive # -fpermissive is crazy
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11 -Wno-char-subscripts -Wno-unused-function
 LD= -lm -lz -lpthread 
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
 LIB=-Lhtslib -lhts

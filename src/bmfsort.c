@@ -1285,6 +1285,9 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
             if (rg) bam_aux_del(b, rg);
             bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
         }
+#if !NDEBUG
+        fprintf(stderr, "Writing a record in merge core to bam handle %i with fn %s.\n", split_index(b), outfps[split_index(b)]->fn);
+#endif
         sam_write1(outfps[split_index(b)], hout, b);
         if ((j = (iter[heap->i]? sam_itr_next(fp[heap->i], iter[heap->i], b) : sam_read1(fp[heap->i], hdr[heap->i], b))) >= 0) {
             bam_translate(b, translation_tbl + heap->i);
@@ -1535,19 +1538,6 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 	sprintf(tmpbuf, "%s.split.unmapped.bam", split_prefix);
 	fps[0] = sam_open_format(tmpbuf, mode, fmt);
 	sam_hdr_write(fps[0], h);
-	if(h->n_targets >= 26) {
-		for(int i = 1; i < 27 ;++i) {
-			sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
-			fps[i] = sam_open_format(tmpbuf, mode, fmt);
-			if(fps[i] == NULL) {
-				fprintf(stderr, "[%s]: Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
-				exit(EXIT_FAILURE);
-			}
-				sam_hdr_write(fps[i], h);
-		}
-		sprintf(tmpbuf, "%s.split.gl_contigs.bam", split_prefix);
-		fps[27] = sam_open_format(tmpbuf, mode, fmt);
-	}
 	for(int i = 1; i < h->n_targets + 1;++i) {
 		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open_format(tmpbuf, mode, fmt);
@@ -1560,33 +1550,8 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 	omp_set_num_threads(n_threads);
 	fprintf(stderr, "Writing bam in parallel. n_threads: %i.\n", n_threads);
 
-	const int n_passes = h->n_targets >= 26 ? 27: h->n_targets;
-	if(h->n_targets >= 26) {
-		#pragma omp parallel for
-		for(uint64_t i = 0; i < n_passes; ++i) { // Consider setting this to 26 to avoid the GLs?
-			if(i == 26) {
-				for(uint64_t li = 0; li < l; ++li) {
-					if(split_index(buf[li]) > 26)
-						sam_write1(fps[27], h, buf[li]);
-				}
-				continue;
-			}
-			for(uint64_t li = 0; li < l; ++li) {
-				const int index = split_index(buf[li]);
-				if(index == i)
-					sam_write1(fps[index], h, buf[li]);
-			}
-		}
-	}
-	else {
-		#pragma omp parallel for
-		for(uint64_t i = 0; i < n_passes; ++i) { // Consider setting this to 26 to avoid the GLs?
-			for(uint64_t li = 0; li < l; ++li) {
-				const int index = split_index(buf[li]);
-				if(index == i)
-					sam_write1(fps[index], h, buf[li]);
-			}
-		}
+	for(uint64_t li = 0; li < l; ++li) {
+		sam_write1(fps[split_index(buf[li])], h, buf[li]);
 	}
 	#pragma omp parallel for
 	for(uint64_t i = 0; i < h->n_targets + 1;++i)

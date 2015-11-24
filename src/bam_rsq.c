@@ -30,7 +30,6 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
 	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
 	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
-	int ra_val = 1;
 	if(!b || !p) {
 		// If the
 		fprintf(stderr, "One of these records is null. Abort!\n");
@@ -177,36 +176,9 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				continue;
 			}
 			if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = pPV[i];
-			/*
-			if(pPV[i] < 3) {
-				if(bam_seqi(pSeq, i) != HTS_N)
-					++mask;
-				pSeq[(i)>>1] |= (0xf << (((~i) & 1) << 2)); // Set the base to N
-				assert(bam_seqi(pSeq, i) == 0xfU);
-				pFA[i] = 0;
-				pPV[i] = 0;
-				pQual[i] = 0; // Note: this is not shifted by 33.
-			}
-			*/
 		}
-	}
-#if !NDEBUG
-	for(int k = 0; k < qlen; ++k) {
-		if(pFA[k] > pFM) {
-			fprintf(stderr, "pFA is too large. WTF? %i (pFA), %i (pFM).\n", pFA[k], pFM);
-			exit(EXIT_FAILURE);
-		}
-	}
-#endif
-	pdata = bam_aux_get(p, "RA");
-	if(!pdata) {
-		bam_aux_append(p, "RA", 'i', sizeof(int), (uint8_t *)&ra_val);
-		//fprintf(stderr, "Appended RA tag to read %s.\n", (char *)bam_get_qname(p));
 	}
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
-	/*
-	bam_aux_append(p, "NN", 'i', sizeof(int), (uint8_t *)&mask);
-	*/
 }
 
 
@@ -321,6 +293,9 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 
 static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 {
+#if !NDEBUG
+	fprintf(stderr, "Now beginning pr_loop_ucs.\n");
+#endif
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0) {
 		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
@@ -416,7 +391,6 @@ int bam_rsq(int argc, char *argv[])
     settings->cmpkey = POS;
     settings->is_se = 0;
     settings->realign_unchanged = 0;
-    int compression = 0;
 
     char fqname[200] = "";
 

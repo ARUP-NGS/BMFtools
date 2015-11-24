@@ -118,6 +118,8 @@ typedef struct {
 
 const int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
+extern double igamc(double a, double x);
+
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
 	if (stack->n == stack->max) {
@@ -250,25 +252,12 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	for (i = 0; i < qlen; ++i)
 	    seqbuf[i] = seq_nt16_str[seqbuf[i]];
 	seqbuf[qlen] = '\0';
+#if !NDEBUG
+	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
+#endif
 	char comment[3000] = "";
 	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
 	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
-#if !NDEBUG
-	int tmpfm = bam_aux2i(bam_aux_get(b, (char *)"FM"));
-	for(int i = 0; i < b->core.l_qseq; ++i) {
-		if(fa[i] > tmpfm) {
-			fprintf(stderr, "Failure at bam2ffq with record name %s.\n", bam_get_qname(b));
-			exit(EXIT_FAILURE);
-		}
-	}
-	if(strcmp(bam_get_qname(b), "GTGTGATTCTGACTAACG") == 0) {
-		for(int i = 0; i < b->core.l_qseq; ++i) {
-			fprintf(stderr, "%" PRIu32"\t", fa[i]);
-		}
-		fprintf(stderr, "\n");
-		exit(EXIT_FAILURE);
-	}
-#endif
 	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:I:B");
 	strcat(comment, "\t");
 	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:I:B");
@@ -276,6 +265,9 @@ static inline void bam2ffq(bam1_t *b, FILE *fp)
 	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
 	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
+#if !NDEBUG
+	fprintf(stderr, "comment string: %s.\n", comment);
+#endif
 	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
 	char *qual = (char *)bam_get_qual(b);
 	for(i = 0; i < qlen; ++i)
@@ -296,22 +288,27 @@ static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 {
 	for(int i = 0; i < stack->n; ++i) {
 		if(stack->a[i]) {
-			/*
-			if(bam_aux_get(stack->a[i], "RA")) // If RA tag is present, IE, if it was merged.
-				//fprintf(stderr, "This should be writing the record to the fastq handle.\n");
-				bam2ffq(stack->a[i], settings->fqh);
-			else
-				//fprintf(stderr, "This should be writing the record to the bam handle.\n");
+			uint8_t *data;
+			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
+				if(bam_aux2i(data) == 0)
+					sam_write1(settings->out, settings->hdr, stack->a[i]);
+				else
+#if !NDEBUG
+				{ fprintf(stderr, "About to write a record to the fastq!");
+#endif
+					bam2ffq(stack->a[i], settings->fqh);
+#if !NDEBUG
+				}
+#endif
+			}
+			else {
+#if !NDEBUG
+				if(bam_aux_get(stack->a[i], "NC")) {
+					fprintf(stderr, "NC: %i.\n", bam_aux2i(bam_aux_get(stack->a[i], "NC")));
+				}
+#endif
 				sam_write1(settings->out, settings->hdr, stack->a[i]);
-			//sam_write1(settings->out, settings->hdr, stack->a[i]);
-			 *
-			 */
-			if(bam_aux_get(stack->a[i], "RA"))
-				(settings->realign_unchanged || (bam_aux2i(bam_aux_get(stack->a[i], "NC")))) ?
-						bam2ffq(stack->a[i], settings->fqh):
-						sam_write1(settings->out, settings->hdr, stack->a[i]);
-			else
-				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			}
 			bam_destroy1(stack->a[i]);
 			stack->a[i] = NULL;
 		}
