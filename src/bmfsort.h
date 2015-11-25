@@ -35,21 +35,12 @@
 #define bam_is_r2(b) (!!((b)->core.flag&BAM_FREAD2))
 #endif
 
-#ifndef BMF_SORT_ORDER
-#define BMF_SORT_ORDER 2
-#endif
-
-#ifndef UCS_SORT_ORDER
-#define UCS_SORT_ORDER 3
-#endif
-
-#ifndef SAMTOOLS_SORT_ORDER
-#define SAMTOOLS_SORT_ORDER 0
-#endif
-
-#ifndef QNAME_SORT_ORDER
-#define QNAME_SORT_ORDER 1
-#endif
+enum sort_order {
+	SAMTOOLS,
+	QNAME,
+	BMF,
+	UCS
+};
 
 #ifndef IS_REVERSE
 #define IS_REVERSE(bam) ((bam)->core.flag&BAM_FREVERSE != 0)

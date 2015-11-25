@@ -90,8 +90,7 @@ double NEGZERO = 0.0;
 #define MAXLGM 2.556348e305
 static double LS2PI  =  0.91893853320467274178;
 
-double igamc(double a, double x);
-double ndtri (double y0);
+static inline double ndtri (double y0);
 double igami(double a, double y0);
 double lgam(double x);
 double igaml(double a, double x);

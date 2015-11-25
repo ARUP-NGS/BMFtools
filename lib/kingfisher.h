@@ -8,6 +8,7 @@
 #include "cstr_util.h"
 #include "khash.h"
 #include "mem_util.h"
+#include "igamc_cephes.h"
 #include <zlib.h>
 #include <inttypes.h>
 
@@ -65,19 +66,6 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 //such as in the following macro:
 #define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
 #define AVG_LOG_TO_CHI2(x) (x) * LOG10E_X5_1_2
-
-
-
-static inline uint32_t pvalue_to_phred(double pvalue)
-{
-	return (uint32_t)(-10 * log10(pvalue) + 0.5); // 0.5 to round up
-}
-
-// Converts a chi2 sum into a p value.
-static inline double igamc_pvalues(int num_pvalues, double x)
-{
-	return (x < 0) ? 1.0: igamc((double)num_pvalues, x / 2.0);
-}
 
 
 static inline KingFisher_t init_kf(int readlen)

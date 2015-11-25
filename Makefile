@@ -6,15 +6,15 @@
 
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11 -Wno-char-subscripts -Wno-unused-function
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11
 LD= -lm -lz -lpthread 
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
 LIB=-Lhtslib -lhts
 
-OPT_FLAGS = -O3 -DNDEBUG -finline-functions -flto -fivopts
+OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-char-subscripts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
-DB_FLAGS = -fno-inline -DNOPARALLEL -DTEST
-GP_FLAGS = -fno-inline -DNOPARALLEL -DTEST -pg
+DB_FLAGS = -fno-inline
+GP_FLAGS = -fno-inline -DTEST -pg
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC= include/igamc_cephes.c

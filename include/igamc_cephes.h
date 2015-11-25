@@ -2,8 +2,13 @@
 #define IGAMC_CEPHES_H
 
 #include "mtherr.c"
+#include <inttypes.h>
+#include <stdint.h>
+#include <stddef.h>
 
 extern double MAXNUM;
+
+double igamc(double a, double x);
 
 // Declarations needed to inline ndtri.
 #ifdef UNK
@@ -350,7 +355,7 @@ while( --n );
 return( y );
 }
 
-inline double ndtri(double y0)
+static inline double ndtri(double y0)
 {
 double x, y, z, y2, x0, x1;
 int code;
@@ -559,7 +564,7 @@ static unsigned short SQT[4] = {
 #endif
 
 
-inline static double stirf(double x)
+static inline double stirf(double x)
 {
 double y, w, v;
 
@@ -578,4 +583,17 @@ else
 y = SQTPI * y * w;
 return( y );
 }
+
+
+static inline uint32_t pvalue_to_phred(double pvalue)
+{
+	return (uint32_t)(-10 * log10(pvalue) + 0.5); // Add 0.5 to round up
+}
+
+// Converts a chi2 sum into a p value.
+static inline double igamc_pvalues(int num_pvalues, double x)
+{
+	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
+}
+
 #endif

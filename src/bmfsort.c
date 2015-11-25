@@ -1536,17 +1536,17 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 	int t;
 	uint64_t key_a, key_b;
 	switch(cmpkey) {
-		case QNAME_SORT_ORDER:
+		case QNAME:
 			t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
 			return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
-		case SAMTOOLS_SORT_ORDER: return bmfsort_core_key(a) < bmfsort_core_key(b);
-		case BMF_SORT_ORDER:
+		case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
+		case BMF:
 			key_a = bmfsort_core_key(a);
 			key_b = bmfsort_core_key(b);
 			if(key_a < key_b) return 1;
 			else if(key_b < key_a) return 0;
 			else return bmfsort_mate_key(a) < bmfsort_mate_key(b);
-		case UCS_SORT_ORDER:
+		case UCS:
 			key_a = ucs_sort_core_key(a);
 			key_b = ucs_sort_core_key(b);
 			if(key_a < key_b) return 1;
@@ -1810,7 +1810,7 @@ int bam_sort(int argc, char *argv[])
 	size_t max_mem = 768<<20; // 512MB
 	int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
 	int split = 0;
-	int cmpkey = BMF_SORT_ORDER;
+	int cmpkey = BMF;
 	char modeout[12];
 	char fnout[200] = "-";
 	char tmpprefix[200] = "MetasyntacticVar";
@@ -1825,10 +1825,10 @@ int bam_sort(int argc, char *argv[])
 
 	while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:sh", lopts, NULL)) >= 0) {
 		switch (c) {
-		case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF_SORT_ORDER;
-				  else if(strcmp(optarg, "pos") == 0) cmpkey = SAMTOOLS_SORT_ORDER;
-				  else if(strcmp(optarg, "qname") == 0) cmpkey = QNAME_SORT_ORDER;
-				  else if(strcmp(optarg, "ucs") == 0) cmpkey = UCS_SORT_ORDER;
+		case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF;
+				  else if(strcmp(optarg, "pos") == 0) cmpkey = SAMTOOLS;
+				  else if(strcmp(optarg, "qname") == 0) cmpkey = QNAME;
+				  else if(strcmp(optarg, "ucs") == 0) cmpkey = UCS;
 				  else {
 					  fprintf(stderr, "Unrecognized sort key option %s.\n", optarg);
 					  return sort_usage(stderr, EXIT_FAILURE);

@@ -23,6 +23,33 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 #include "bam_rsq.h"
+
+void resize_stack(tmp_stack_t *stack, size_t n) {
+	if(!stack->a) {
+		stack->a = (bam1_t **)malloc(sizeof(bam1_t *) * n);
+		memset(stack->a, 0, sizeof(bam1_t *) * n);
+		stack->max = n;
+		return;
+	}
+	if(n > stack->max) {
+		stack->max = n;
+		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
+#if !NDEBUG
+			if(!stack->a) {
+				fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
+				exit(EXIT_FAILURE);
+			}
+#endif
+	}
+	else if(n < stack->n){
+		for(uint64_t i = stack->n; i > n; --i) {
+			bam_destroy1(stack->a[i]);
+		}
+		stack->max = n;
+		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
+	}
+}
+
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 	uint8_t *bdata, *pdata;
@@ -179,6 +206,89 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		}
 	}
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);
+}
+
+void bam2ffq(bam1_t *b, FILE *fp)
+{
+	int i;
+	int qlen = b->core.l_qseq;
+	char seqbuf[SEQBUF_SIZE];
+	uint8_t *seq = bam_get_seq(b);
+	for (i = 0; i < qlen; ++i)
+	    seqbuf[i] = bam_seqi(seq, i);
+	if (b->core.flag & BAM_FREVERSE) { // reverse complement
+	    for (i = 0; i < qlen>>1; ++i) {
+	        int8_t t = seq_comp_table[seqbuf[qlen - 1 - i]];
+	        seqbuf[qlen - 1 - i] = seq_comp_table[seqbuf[i]];
+	        seqbuf[i] = t;
+	    }
+	    if (qlen&1) seqbuf[i] = seq_comp_table[seqbuf[i]];
+	}
+	for (i = 0; i < qlen; ++i)
+	    seqbuf[i] = seq_nt16_str[seqbuf[i]];
+	seqbuf[qlen] = '\0';
+#if !NDEBUG
+	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
+#endif
+	char comment[3000] = "";
+	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
+	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
+	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:I:B");
+	strcat(comment, "\t");
+	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:I:B");
+	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
+	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
+	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
+	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
+#if !NDEBUG
+	fprintf(stderr, "comment string: %s.\n", comment);
+#endif
+	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
+	char *qual = (char *)bam_get_qual(b);
+	for(i = 0; i < qlen; ++i)
+		seqbuf[i] = 33 + qual[i];
+	if (b->core.flag & BAM_FREVERSE) { // reverse
+	    for (i = 0; i < qlen>>1; ++i) {
+	        const int8_t t = seqbuf[qlen - 1 - i];
+	        seqbuf[qlen - 1 - i] = seqbuf[i];
+	        seqbuf[i] = t;
+	    }
+	}
+	fprintf(fp, "%s\n", seqbuf);
+	return;
+}
+
+
+
+void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
+{
+	for(int i = 0; i < stack->n; ++i) {
+		if(stack->a[i]) {
+			uint8_t *data;
+			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
+				if(bam_aux2i(data) == 0)
+					sam_write1(settings->out, settings->hdr, stack->a[i]);
+				else
+#if !NDEBUG
+				{ fprintf(stderr, "About to write a record to the fastq!");
+#endif
+					bam2ffq(stack->a[i], settings->fqh);
+#if !NDEBUG
+				}
+#endif
+			}
+			else {
+#if !NDEBUG
+				if(bam_aux_get(stack->a[i], "NC")) {
+					fprintf(stderr, "NC: %i.\n", bam_aux2i(bam_aux_get(stack->a[i], "NC")));
+				}
+#endif
+				sam_write1(settings->out, settings->hdr, stack->a[i]);
+			}
+			bam_destroy1(stack->a[i]);
+			stack->a[i] = NULL;
+		}
+	}
 }
 
 
@@ -388,7 +498,7 @@ int bam_rsq(int argc, char *argv[])
     settings->out = NULL;
     settings->hdr = NULL;
     settings->mmlim = 2;
-    settings->cmpkey = POS;
+    settings->cmpkey = POSITION;
     settings->is_se = 0;
     settings->realign_unchanged = 0;
 
@@ -397,7 +507,7 @@ int bam_rsq(int argc, char *argv[])
     while ((c = getopt_long(argc, argv, "l:f:t:aur?h", lopts, NULL)) >= 0) {
         switch (c) {
         case 'r': settings->realign_unchanged = 1; break;
-        case 'u': settings->cmpkey = UCS; break;
+        case 'u': settings->cmpkey = UNCLIPPED; break;
         case 't': settings->mmlim = atoi(optarg); break;
         case 'f': strcpy(fqname, optarg); break;
         case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;

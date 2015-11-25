@@ -11,6 +11,7 @@
 #include "htslib/sam.h"
 #include "sam_opts.h"
 #include "bam.h" // for bam_get_library
+#include "igamc_cephes.h"
 #include "cstr_util.h"
 //#include "bmfsort.h"
 
@@ -56,27 +57,13 @@
 #define AVG_LOG_TO_CHI2(x, y) (x + y) * LOG10E_X5_1_2
 #endif
 
-#ifndef HTS_A
-#define HTS_A 1
-#endif
-
-#ifndef HTS_C
-#define HTS_C 2
-#endif
-
-#ifndef HTS_G
-#define HTS_G 4
-#endif
-
-#ifndef HTS_T
-#define HTS_T 8
-#endif
-
-#ifndef HTS_N
-#define HTS_N 15
-#endif
-
-#define MIN_BC 8
+enum htseq {
+	HTS_A = 1,
+	HTS_C = 2,
+	HTS_G = 4,
+	HTS_T = 8,
+	HTS_N = 15
+};
 
 #define SEQBUF_SIZE 300
 
@@ -119,6 +106,8 @@ typedef struct {
 const int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
 extern double igamc(double a, double x);
+extern inline uint32_t pvalue_to_phred(double pvalue);
+extern inline double igamc_pvalues(int num_pvalues, double x);
 
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
@@ -129,35 +118,12 @@ static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 	stack->a[stack->n++] = bam_dup1(b);
 }
 
-static inline void resize_stack(tmp_stack_t *stack, size_t n) {
-	if(!stack->a) {
-		stack->a = (bam1_t **)malloc(sizeof(bam1_t *) * n);
-		memset(stack->a, 0, sizeof(bam1_t *) * n);
-		stack->max = n;
-		return;
-	}
-	if(n > stack->max) {
-		stack->max = n;
-		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-#if !NDEBUG
-		if(!stack->a) {
-			fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
-			exit(EXIT_FAILURE);
-		}
-#endif
-	}
-	else if(n < stack->n){
-		for(uint64_t i = stack->n; i > n; --i) {
-			bam_destroy1(stack->a[i]);
-		}
-		stack->max = n;
-		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-	}
-}
+void resize_stack(tmp_stack_t *stack, size_t n);
+
 
 enum cmpkey {
-	POS,
-	UCS
+	POSITION,
+	UNCLIPPED
 };
 
 static inline int same_stack_pos(bam1_t *b, bam1_t *p) {
@@ -194,11 +160,6 @@ typedef struct pr_settings {
 	bam_hdr_t *hdr; // BAM header
 } pr_settings_t;
 
-static inline uint32_t pvalue_to_phred(double pvalue)
-{
-	return (uint32_t)(-10 * log10(pvalue) + 0.5); // Add 0.5 to round up
-}
-
 static inline uint32_t agreed_pvalues(double pv1, double pv2)
 {
 	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv1 + pv2)));
@@ -210,12 +171,6 @@ static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
 	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - pv_worse)));
 }
 
-
-// Converts a chi2 sum into a p value.
-static inline double igamc_pvalues(int num_pvalues, double x)
-{
-	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
-}
 
 static inline void *array_tag(bam1_t *b, const char *tag) {
 	uint8_t *data = bam_aux_get(b, tag);
@@ -232,90 +187,9 @@ static inline void *array_tag(bam1_t *b, const char *tag) {
 #endif
 }
 
-
-static inline void bam2ffq(bam1_t *b, FILE *fp)
-{
-	int i;
-	int qlen = b->core.l_qseq;
-	char seqbuf[SEQBUF_SIZE];
-	uint8_t *seq = bam_get_seq(b);
-	for (i = 0; i < qlen; ++i)
-	    seqbuf[i] = bam_seqi(seq, i);
-	if (b->core.flag & BAM_FREVERSE) { // reverse complement
-	    for (i = 0; i < qlen>>1; ++i) {
-	        int8_t t = seq_comp_table[seqbuf[qlen - 1 - i]];
-	        seqbuf[qlen - 1 - i] = seq_comp_table[seqbuf[i]];
-	        seqbuf[i] = t;
-	    }
-	    if (qlen&1) seqbuf[i] = seq_comp_table[seqbuf[i]];
-	}
-	for (i = 0; i < qlen; ++i)
-	    seqbuf[i] = seq_nt16_str[seqbuf[i]];
-	seqbuf[qlen] = '\0';
-#if !NDEBUG
-	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
-#endif
-	char comment[3000] = "";
-	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
-	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
-	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:I:B");
-	strcat(comment, "\t");
-	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:I:B");
-	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
-	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
-	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
-	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
-#if !NDEBUG
-	fprintf(stderr, "comment string: %s.\n", comment);
-#endif
-	fprintf(fp, "@%s %s\n%s\n+\n", (char *)bam_get_qname(b), comment, seqbuf);
-	char *qual = (char *)bam_get_qual(b);
-	for(i = 0; i < qlen; ++i)
-		seqbuf[i] = 33 + qual[i];
-	if (b->core.flag & BAM_FREVERSE) { // reverse
-	    for (i = 0; i < qlen>>1; ++i) {
-	        const int8_t t = seqbuf[qlen - 1 - i];
-	        seqbuf[qlen - 1 - i] = seqbuf[i];
-	        seqbuf[i] = t;
-	    }
-	}
-	fprintf(fp, "%s\n", seqbuf);
-	return;
-}
-
-
-static inline void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
-{
-	for(int i = 0; i < stack->n; ++i) {
-		if(stack->a[i]) {
-			uint8_t *data;
-			if((data = bam_aux_get(stack->a[i], "NC")) != NULL) {
-				if(bam_aux2i(data) == 0)
-					sam_write1(settings->out, settings->hdr, stack->a[i]);
-				else
-#if !NDEBUG
-				{ fprintf(stderr, "About to write a record to the fastq!");
-#endif
-					bam2ffq(stack->a[i], settings->fqh);
-#if !NDEBUG
-				}
-#endif
-			}
-			else {
-#if !NDEBUG
-				if(bam_aux_get(stack->a[i], "NC")) {
-					fprintf(stderr, "NC: %i.\n", bam_aux2i(bam_aux_get(stack->a[i], "NC")));
-				}
-#endif
-				sam_write1(settings->out, settings->hdr, stack->a[i]);
-			}
-			bam_destroy1(stack->a[i]);
-			stack->a[i] = NULL;
-		}
-	}
-}
-
 int bam_rsq(int argc, char *argv[]);
+void bam2ffq(bam1_t *b, FILE *fp);
+void write_stack(tmp_stack_t *stack, pr_settings_t *settings);
 
 
 
