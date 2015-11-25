@@ -584,6 +584,14 @@ y = SQTPI * y * w;
 return( y );
 }
 
+//Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
+#define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496L
+#define LOG10E_X5_1_2 0.230258509299404568401799145468436420760110148862877297603332790096757260967735248L
+//such as in the following macro:
+#define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
+
+#define AVG_LOG_TO_CHI2(x, y) (x + y) * LOG10E_X5_1_2
+
 
 static inline uint32_t pvalue_to_phred(double pvalue)
 {
@@ -594,6 +602,17 @@ static inline uint32_t pvalue_to_phred(double pvalue)
 static inline double igamc_pvalues(int num_pvalues, double x)
 {
 	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
+}
+
+static inline uint32_t agreed_pvalues(double pv1, double pv2)
+{
+	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv1 + pv2)));
+}
+
+static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
+{
+	//return pv_better - pv_worse;
+	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - pv_worse)));
 }
 
 #endif

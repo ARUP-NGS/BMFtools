@@ -57,13 +57,19 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
 	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
 	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+/*
 	if(!b || !p) {
 		// If the
 		fprintf(stderr, "One of these records is null. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
+*/
 	bdata = bam_aux_get(b, "FM");
 	pdata = bam_aux_get(p, "FM");
+	if(!bdata || !pdata) {
+		fprintf(stderr, "Required FM tag not found. Abort mission!\n");
+		exit(EXIT_FAILURE);
+	}
 	int bFM = bam_aux2i(bdata);
 	int pFM = bam_aux2i(pdata);
 	if(pFM < bFM)
@@ -81,45 +87,18 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		bam_aux_del(p, pdata);
 		bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
 	}
-	/*
-	pdata = bam_aux_get(p, "NN");
-	bdata = bam_aux_get(b, "NN");
-	int mask;
-	if(pdata) {
-		if(bdata)
-			mask = bam_aux2i(bdata) + bam_aux2i(pdata);
-		else
-			mask = bam_aux2i(pdata);
-		bam_aux_del(p, pdata);
-	}
-	else if(bdata)
-		mask = bam_aux2i(bdata);
-	else
-		mask = 0;
-	*/
+	// Handle NC (Number Changed) tag
 	pdata = bam_aux_get(p, "NC");
 	bdata = bam_aux_get(b, "NC");
 	int n_changed;
 	if(pdata) {
-		if(bdata)
-			n_changed = bam_aux2i(bdata) + bam_aux2i(pdata);
-		else
-			n_changed = bam_aux2i(pdata);
+		n_changed = (bdata) ? bam_aux2i(bdata) + bam_aux2i(pdata): bam_aux2i(pdata);
 		bam_aux_del(p, pdata);
 	}
-	else if(bdata)
-		n_changed = bam_aux2i(bdata);
 	else
-		n_changed = 0;
-/*
-#if !NDEBUG
-	for(int i = 0; i < b->core.l_qseq; ++i) {
-		fprintf(stderr, "%"PRIu32",", bPV[i]);
-	}
-	fprintf(stderr, "\n");
-	exit(0);
-#endif
-*/
+		n_changed = (bdata) ? bam_aux2i(bdata): 0;
+
+	// Check for required PV and FA tags
 	if(!bPV || !pPV) {
 		fprintf(stderr, "Required PV tag not found. Abort mission! Read names: %s, %s.\n", bam_get_qname(b), bam_get_qname(p));
 		exit(EXIT_FAILURE);
@@ -323,28 +302,6 @@ static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 		}
 	}
 	return hd;
-}
-
-static inline int annealed_check(bam1_t *a, bam1_t *b, int mmlim)
-{
-	char *aname = (char *)bam_get_qname(a);
-	char *bname = (char *)bam_get_qname(b);
-	int lq_2 = (a->core.l_qname - 1) / 2;
-	int hd = 0;
-	int i;
-	for(i = 0; i < lq_2; ++i) {
-		if(aname[i] != bname[i + lq_2]) {
-			if(++hd > mmlim) {
-				return 0;
-			}
-		}
-		if(aname[i + lq_2] != bname[i]) {
-			if(++hd > mmlim) {
-				return 0;
-			}
-		}
-	}
-	return hd * -1;
 }
 
 static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *settings)

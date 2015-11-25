@@ -13,48 +13,15 @@
 #include "bam.h" // for bam_get_library
 #include "igamc_cephes.h"
 #include "cstr_util.h"
+#include "sort_util.h"
 //#include "bmfsort.h"
 
 #define STACK_START (1 << 5)
 
-//Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
-#define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
-#define LOG10E_X5_1_2 0.230258509299404568401799145468436420760110148862877297603332790096757260967735248
-//such as in the following macro:
-#define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
 
-
-#ifndef bam_is_r1
-#define bam_is_r1(b) (!!((b)->core.flag&BAM_FREAD1))
-#endif
 
 #ifndef INC_TAG
 #define INC_TAG(p, b, key) *(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
-#endif
-
-#ifndef bam_is_r2
-#define bam_is_r2(b) (!!((b)->core.flag&BAM_FREAD2))
-#endif
-
-
-#ifndef ucs_sort_mate_key
-#define ucs_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|(bam_aux2i(bam_aux_get(b, "MU")) + 1)<<2|(!!(a->core.flag & BAM_FMREVERSE)))
-#endif
-
-#ifndef ucs_sort_core_key
-#define ucs_sort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(bam_aux2i(bam_aux_get(b, "SU"))+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
-#endif
-
-#ifndef bam_sort_core_key
-#define bam_sort_core_key(a) (uint64_t)((uint64_t)a->core.tid<<32|(a->core.pos+1)<<2|bam_is_rev(a)<<1|bam_is_r1(a))
-#endif
-
-#ifndef bam_sort_mate_key
-#define bam_sort_mate_key(a) (uint64_t)((uint64_t)a->core.mtid<<32|(a->core.mpos+1)<<1|(!!(a->core.flag & BAM_FMREVERSE)))
-#endif
-
-#ifndef AVG_LOG_TO_CHI2
-#define AVG_LOG_TO_CHI2(x, y) (x + y) * LOG10E_X5_1_2
 #endif
 
 enum htseq {
@@ -127,8 +94,8 @@ enum cmpkey {
 };
 
 static inline int same_stack_pos(bam1_t *b, bam1_t *p) {
-	return (bam_sort_core_key(b) == bam_sort_core_key(p) &&
-			bam_sort_mate_key(b) == bam_sort_mate_key(p));
+	return (bmfsort_core_key(b) == bmfsort_core_key(p) &&
+			bmfsort_mate_key(b) == bmfsort_mate_key(p));
 }
 
 static inline int same_stack_ucs(bam1_t *b, bam1_t *p) {
@@ -159,17 +126,6 @@ typedef struct pr_settings {
 	int is_se; // Is single-end
 	bam_hdr_t *hdr; // BAM header
 } pr_settings_t;
-
-static inline uint32_t agreed_pvalues(double pv1, double pv2)
-{
-	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv1 + pv2)));
-}
-
-static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
-{
-	//return pv_better - pv_worse;
-	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - pv_worse)));
-}
 
 
 static inline void *array_tag(bam1_t *b, const char *tag) {

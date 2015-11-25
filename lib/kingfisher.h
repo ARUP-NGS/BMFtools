@@ -60,13 +60,6 @@ extern double igamc(double a, double x);
 //void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2);
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
 
-//Multiply a phred score by this to convert a -10log_10(x) to a -2log_e(x)
-#define LOG10E_X5_INV 0.460517018598809136803598290936872841520220297725754595206665580193514521935470496
-#define LOG10E_X5_1_2 0.230258509299404568401799145468436420760110148862877297603332790096757260967735248
-//such as in the following macro:
-#define LOG10_TO_CHI2(x) (x) * LOG10E_X5_INV
-#define AVG_LOG_TO_CHI2(x) (x) * LOG10E_X5_1_2
-
 
 static inline KingFisher_t init_kf(int readlen)
 {
