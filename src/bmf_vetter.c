@@ -47,6 +47,8 @@ void vs_destroy(vetter_settings_t *settings) {
 	if(hts_close(settings->bam))
 		vetter_error("Could not close input bam. ??? Abort!\n", EXIT_FAILURE);
 	bed_destroy(settings->bed);
+	free(settings->conf);
+	settings->conf = NULL;
 	free(settings);
 	settings = NULL;
 }
@@ -56,7 +58,8 @@ int bmf_vetter_core(char *invcf, char *inbam, char *outvcf, char *bed,
 					const char *vcf_wmode, vparams_t *params)
 {
 	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
-	memcpy(&settings->params, params, sizeof(vparams_t));
+	settings->conf = (vetplp_conf_t *)calloc(1, sizeof(vetplp_conf_t));
+	memcpy(&settings->conf->params, params, sizeof(vparams_t));
 	strcpy(settings->in_vcf_path, invcf);
 	strcpy(settings->bam_path, inbam);
 	strcpy(settings->out_vcf_path, outvcf);

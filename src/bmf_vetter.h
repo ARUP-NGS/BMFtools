@@ -11,11 +11,7 @@
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
 #include "htslib/sam.h"
-#include "bam_plbuf.h"
-#include "bam_plcmd.c"
 //#include "bed_util.h"
-
-typedef int *(mplp_func_t)(void *, bam1_t *);
 
 
 #define VETTER_OPTIONS \
@@ -38,6 +34,26 @@ typedef struct vparams {
 	uint32_t minPV; // Minimum PV score to include
 } vparams_t;
 
+typedef struct vetplp_conf {
+	bam_plp_auto_f func;
+	bam_plp_t plp;
+	vparams_t params;
+} vetplp_conf_t;
+
+vetplp_conf_t *vetplp_init(int maxcnt, bam_plp_auto_f func, void *data) {
+	vetplp_conf_t *ret = calloc(1, sizeof(vetplp_conf_t));
+	ret->plp = bam_plp_init(func, data);
+	bam_plp_set_maxcnt(ret->plp, maxcnt);
+	return ret;
+}
+
+void destroy_vetplp(vetplp_conf_t *vp)
+{
+	bam_plp_destroy(vp->plp);
+}
+
+extern void *bed_read(const char *fn);
+
 
 typedef struct vetter_settings {
 
@@ -53,14 +69,7 @@ typedef struct vetter_settings {
 	vcfFile *vout;
 	bcf_hdr_t *vh;
 	void *bed; // Really reghash_t *
-	vparams_t params;
-	const bam_pileup1_t **plp;
-	bam_mplp_t iter;
-	mplp_conf_t *conf;
-	mplp_ref_t *mp_ref;
-	mplp_pileup_t *gplp;
-	mplp_aux_t *data;
-	int n_plp;
+	vetplp_conf_t *conf;
 } vetter_settings_t;
 
 extern void bed_destroy(void *);

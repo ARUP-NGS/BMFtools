@@ -19,8 +19,8 @@ UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC= include/igamc_cephes.c
 
-BMF_SRC = src/bmfsort.c src/bmf_main.c src/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c\
-		  samtools/bam_plbuf.c
+BMF_SRC = src/bmfsort.c src/bmf_main.c src/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c
+		  
 
 .PHONY: all clean
 
