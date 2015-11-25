@@ -8,7 +8,7 @@ CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11
 LD= -lm -lz -lpthread 
-INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude
+INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude -Isamtools
 LIB=-Lhtslib -lhts
 
 OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-char-subscripts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
@@ -19,7 +19,8 @@ UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC= include/igamc_cephes.c
 
-BMF_SRC = src/bmfsort.c src/bmf_main.c src/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c
+BMF_SRC = src/bmfsort.c src/bmf_main.c src/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c\
+		  samtools/bam_plbuf.c
 
 .PHONY: all clean
 
@@ -39,6 +40,6 @@ copy:
 
 
 clean:
-	rm *.a && rm *.o && rm bin/* # && cd htslib && make clean
+	rm *.a && rm *.o && rm bin/* # && cd htslib && make clean && cd ../samtools && make clean
 
 

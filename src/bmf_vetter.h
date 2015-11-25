@@ -11,7 +11,11 @@
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
 #include "htslib/sam.h"
+#include "bam_plbuf.h"
+#include "bam_plcmd.c"
 //#include "bed_util.h"
+
+typedef int *(mplp_func_t)(void *, bam1_t *);
 
 
 #define VETTER_OPTIONS \
@@ -50,9 +54,15 @@ typedef struct vetter_settings {
 	bcf_hdr_t *vh;
 	void *bed; // Really reghash_t *
 	vparams_t params;
+	const bam_pileup1_t **plp;
+	bam_mplp_t iter;
+	mplp_conf_t *conf;
+	mplp_ref_t *mp_ref;
+	mplp_pileup_t *gplp;
+	mplp_aux_t *data;
+	int n_plp;
 } vetter_settings_t;
 
-extern void *bed_read(char *fn);
 extern void bed_destroy(void *);
 
 #endif /* BMF_VETTER_H */

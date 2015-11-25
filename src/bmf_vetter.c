@@ -1,5 +1,7 @@
 #include "bmf_vetter.h"
 
+int max_depth = 20000;
+
 
 void vetter_error(char *message, int retcode)
 {
@@ -105,12 +107,13 @@ int bmf_vetter_main(int argc, char *argv[])
 			.minFR = 0.
 	};
 	int c;
-	while ((c = getopt_long(argc, argv, "a:s:m:p:f:b:v:o:?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "d:a:s:m:p:f:b:v:o:?h", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'a': params.minFA = strtoul(optarg, NULL, 0); break;
 		case 's': params.minFM = strtoul(optarg, NULL, 0); break;
 		case 'm': params.minMQ = strtoul(optarg, NULL, 0); break;
 		case 'p': params.minPV = strtoul(optarg, NULL, 0); break;
+		case 'd': max_depth = atoi(optarg); break;
 		case 'f': params.minFR = atof(optarg); break;
 		case 'b': strcpy(bed, optarg); break;
 		case 'o': strcpy(outvcf, optarg); break;
@@ -119,6 +122,7 @@ int bmf_vetter_main(int argc, char *argv[])
 		default: vetter_error("Unrecognized option. Abort!\n", EXIT_FAILURE);
 		}
 	}
+
 	if(argc < 3) {
 		fprintf(stderr, "Insufficient arguments. Abort!\n");
 		vetter_usage(EXIT_FAILURE);
