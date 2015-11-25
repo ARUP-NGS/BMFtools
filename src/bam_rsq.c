@@ -106,7 +106,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		else
 			n_changed = bam_aux2i(pdata);
 		bam_aux_del(p, pdata);
-	}omgz.10.tmp.fq
+	}
 	else if(bdata)
 		n_changed = bam_aux2i(bdata);
 	else
