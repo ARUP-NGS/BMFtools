@@ -17,32 +17,14 @@
 
 Run:
 ```bash
-python setup.py install
+make
 ```
-You might have an error claiming that README.md is not in dist/. If necessary, copy that file from the distribution base to dist.
-
 ## Use
 
-To run the main program, call the main.py function after installation, or, if installed, run the executable bmftools main.
 
 ```bash
-python main.py R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
+bmftools
 ```
-
-```bash
-bmftools main R1.fastq R2.fastq -i BC.fastq -r ${PathToGenomeIndex} --shades --bed ${PathToBedFile}
-```
-
-If using a config file, this is greatly simplified. I recommend having multiple config files, one for each analysis type. (e.g., one for FFPE, one for amplicon, one for each bed file, etc.)
-A sample configuration file can be found in conf/config.txt. Over time, the number of command-line options has exploded, and a config file is an easy way to keep things consistent.
-
-In that case, one would call thus:
-
-```bash
-bmftools main R1.fastq R2.fastq -i BC.fastq --conf ${PathToConfigFile}
-```
-
-To use bmftools subcommands, check instructions by executing the following:
 
 ```bash
 bmftools --help
@@ -54,45 +36,21 @@ bmftools <subcommand> --help
 
 ## Dependencies
 
-Required python packages: pysam, cytoolz, matplotlib
-
 cutadapt is required for adapter trimming.
 
-numconv is required for conversion to base 64 for PV tags, but that compression is optional.
-
-re2 (Google) is a fast alternative to standard python re. BMFTools will attempt to load the re2 as re. Failing that, it will fall back to the standard library.
-
-Some of vcflib's tools are used, although vcflib (key-word argument for these calls) can be set to False to do it manually on the shell.
+pigz is required for compression/decompression
 
 ### Required external tools:
 
 #### Utilities set
-samtools >= 1.1
-bamleftalign (from FreeBayes)
+samtools >= 1.2
 
 #### Aligners
 
 bwa >= 0.7.10 (mem, aln, bwasw)
 
-bowtie/bowtie2
-
-
-#### Compiler
-gcc >= gccv5.0
-(Not essential, but gcc5 does offer -floop-unroll-and-jam and a few other neat compiler optimizations.)
-
 #### Adapter Trimming
 Cutadapt >= 1.7
-
-#### Indel Realigners
-ABRA >= 0.85 (Assembly Based Realigner, which in turn requires bwa)
-
-GATK >= 1.6, for its IndelRealigner
-
-#### Depth Calculations
-[FastDepthOfCoverage](https://github.com/ARUP-NGS/Pipeline/blob/master/src/main/java/util/coverage/CovCalcApp.java) [Now included in java/ folder as FastDOC.java]
-Alternatively, you may use GATK.
-
 
 ## BMF Tags
 
@@ -101,23 +59,18 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 
 Tag | Content | Format |
 ----|-----|-----|
-AF | Aligned Fraction | Float |
-BS | Barcode Sequence | String. Regex: [ATGCN]+ |
-CC | Cluster Count | Integer |
-DP | Discordant Read Pair information. | String |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
-FF | Minimum value for Fraction of FA for a base in a condensed read. | Float [0-1] | Regex: [0-9\.]+ |
-PF | Ratio of minimum and maximum PV values for bases in a condensed read. | Float [0-1] | Regex: [0-9\.]+ |
+FR | Minimum value for Fraction of FA for a base in a condensed read. | Float [0-1] | Regex: [0-9\.]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
+NC | Number of changed bases in rescued families of reads. | Integer |
 ND | Number of Differences in a family of reads from the consensus read. | Integer from Z+ |
 NF | ND fraction (mean ND per read in family) | Float |
-PV | Phred Values for a read which has saturated the phred scoring system | String, in the form of a comma-joined list of integers. Regex: ASCII|
+PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
 RA | Realigned due to a failure to map appropriately, either as too small a fraction aligned or a mapping quality of 0. | String: aligned. Current Regex: [a-z]|
 RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9\.]+:[0-9]+,[GLXYMT0-9\.]+[0-9]+ |
+RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. |
 SC | Contig Set | String. Regex: [GLXYMT0-9\.]+,[GLXYMT0-9]+ |
-SF | Soft-Clipped Fraction | Float |
-SV | Tags relevant to Structural Variation | Comma-separated list of tags. Regex: [A-Z,]+ |
 
 ## Read Pair Merging Tags
 

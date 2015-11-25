@@ -27,7 +27,7 @@ int bmftools_usage(int rc)
 
 int main(int argc, char *argv[])
 {
-	if(argc == 1)
+	if(argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		return bmftools_usage(EXIT_FAILURE);
 	if(strcmp(argv[1], "sort") == 0)
 		return bam_sort(argc - 1, argv + 1);

@@ -106,7 +106,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		else
 			n_changed = bam_aux2i(pdata);
 		bam_aux_del(p, pdata);
-	}
+	}omgz.10.tmp.fq
 	else if(bdata)
 		n_changed = bam_aux2i(bdata);
 	else
@@ -233,9 +233,9 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	char comment[3000] = "";
 	uint32_t *pv = (uint32_t *)array_tag(b, (char *)"PV");
 	uint32_t *fa = (uint32_t *)array_tag(b, (char *)"FA");
-	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:I:B");
+	append_csv_buffer(b->core.l_qseq, pv, comment, (char *)"PV:B:I");
 	strcat(comment, "\t");
-	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:I:B");
+	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:B:I");
 	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
 	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
