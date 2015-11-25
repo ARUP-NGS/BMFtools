@@ -9,18 +9,36 @@ void vetter_error(char *message, int retcode)
 	exit(retcode);
 }
 
+int vet_func(void *data, bam1_t *b) {
+	return 1;
+}
+
+/*
+ * #define VETTER_OPTIONS \
+    {"min-family-agreed",         required_argument, NULL, 'a'}, \
+    {"min-family-size",         required_argument, NULL, 's'}, \
+    {"min-fraction-agreed",         required_argument, NULL, 'f'}, \
+    {"min-mapping-quality",         required_argument, NULL, 'm'}, \
+    {"min-phred-quality",         required_argument, NULL, 'p'}, \
+    {"in-vcf",         required_argument, NULL, 'v'}, \
+    {"out-vcf",         required_argument, NULL, 'o'}, \
+    {"bedpath",         required_argument, NULL, 'b'}, \
+    {"ref",         required_argument, NULL, 'r'}, \
+	{0, 0, 0, 0}
+ */
+
 void vetter_usage(int retcode)
 {
 	char buf[2000];
-	sprintf(buf, "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf> <in.srt.indexed.bam>\n"
+	sprintf(buf, "Usage:\nbmftools vet <-r/--ref> <ref_path> -o <out.vcf [stdout]> <in.vcf> <in.srt.indexed.bam>\n"
 			 "Optional arguments:\n"
-			 "-b\tPath to bed file to only validate variants in said region\n"
-			 "-f\tMinimum fraction of reads in a family agreed on a base call\n"
-			 "-a\tMinimum number of reads in a family agreed on a base call\n"
-			 "-s\tMinimum number of reads in a family to include a that collapsed observation\n"
-			 "-f\tMinimum fraction of reads in a family agreed on that base\n"
-			 "-m\tMinimum mapping quality for reads for inclusion\n"
-			 "-p\tMinimum calculated p-value on a base call in phred space\n");
+			 "-b, --bedpath\tPath to bed file to only validate variants in said region\n"
+			 "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
+			 "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
+			 "-p, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
+			 "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
+			 "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
+			 "Note: fasta reference must be faidx'd.\n");
 	vetter_error(buf, retcode);
 }
 
@@ -34,6 +52,7 @@ void vs_open(vetter_settings_t *settings) {
 	if((settings->fai = fai_load(settings->ref_path)) == NULL)
 		vetter_error("Could not read Fasta index Abort!\n", EXIT_FAILURE);
 	settings->bed = bed_read(settings->bed_path);
+	settings->conf.func = &vet_func;
 }
 
 void vs_destroy(vetter_settings_t *settings) {
@@ -47,34 +66,43 @@ void vs_destroy(vetter_settings_t *settings) {
 	if(hts_close(settings->bam))
 		vetter_error("Could not close input bam. ??? Abort!\n", EXIT_FAILURE);
 	bed_destroy(settings->bed);
-	free(settings->conf);
-	settings->conf = NULL;
 	free(settings);
 	settings = NULL;
 }
 
-int bmf_vetter_core(char *invcf, char *inbam, char *outvcf, char *bed,
-					const char *bam_rmode, const char *vcf_rmode,
-					const char *vcf_wmode, vparams_t *params)
+int vs_core(vetter_settings_t *settings)
 {
+	bam_plp_t iter = bam_plp_init(settings->conf.func, (void *)&settings->conf.params);
+	bam_plp_init_overlaps(iter); // Create overlap hashmap for overlapping pairs
+	iter->maxcnt = max_depth; // Set max_depth to what we want
+	bam_plp_destroy(iter);
+	return 0;
+}
+
+int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
+						const char *bam_rmode, const char *vcf_rmode,
+						const char *vcf_wmode, vparams_t *params)
+{
+	// Initialize settings struct
 	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
-	settings->conf = (vetplp_conf_t *)calloc(1, sizeof(vetplp_conf_t));
-	memcpy(&settings->conf->params, params, sizeof(vparams_t));
+	// Initialize
+	memcpy(&settings->conf.params, params, sizeof(vparams_t));
+
+	// Copy filenames over and open vcfs.
 	strcpy(settings->in_vcf_path, invcf);
 	strcpy(settings->bam_path, inbam);
 	strcpy(settings->out_vcf_path, outvcf);
 	strcpy(settings->bed_path, bed);
 	settings->vin = vcf_open(settings->in_vcf_path, vcf_rmode);
 	settings->vout = vcf_open(settings->out_vcf_path, vcf_wmode);
-#if !NDEBUG
-	fprintf(stderr, "bam_rmode: %s. bam_path: %s.\n", bam_rmode, settings->bam_path);
-#endif
+
+	// Handle bam reading format
 	htsFormat open_fmt;
 	memset(&open_fmt, 0, sizeof(htsFormat));
 	open_fmt.category = sequence_data;
 	open_fmt.format = bam;
 	open_fmt.version.major = 1;
-	open_fmt.version.minor = 2;
+	open_fmt.version.minor = 3;
 	settings->bam = sam_open_format(settings->bam_path, "r", &open_fmt);
 	if(settings->bam == NULL) {
 		fprintf(stderr, "Failed to open input file. Abort mission!");
@@ -86,6 +114,7 @@ int bmf_vetter_core(char *invcf, char *inbam, char *outvcf, char *bed,
 	// Open handles
 	vs_open(settings);
 
+	vs_core(settings);
 	// Clean up
 	vs_destroy(settings);
 	free(settings);
@@ -148,6 +177,6 @@ int bmf_vetter_main(int argc, char *argv[])
 	}
 	strcpy(invcf, argv[optind]);
 	strcpy(inbam, argv[optind + 1]);
-	bmf_vetter_core(invcf, inbam, outvcf, bed, bam_rmode, vcf_rmode, vcf_wmode, &params);
+	bmf_vetter_bookends(invcf, inbam, outvcf, bed, bam_rmode, vcf_rmode, vcf_wmode, &params);
 	return 0;
 }

@@ -8,10 +8,54 @@
 #include <omp.h>
 #include <inttypes.h>
 #include <getopt.h>
+#include "htslib/khash.h"
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
 #include "htslib/sam.h"
-//#include "bed_util.h"
+
+int vet_func(void *data, bam1_t *b);
+
+// Setup needed for pileup engine
+#ifndef BAM_PLP_DEC
+#define BAM_PLP_DEC
+extern void bam_plp_init_overlaps(bam_plp_t);
+
+typedef struct {
+    int k, x, y, end;
+} cstate_t;
+
+static cstate_t g_cstate_null = { -1, 0, 0, 0 };
+
+typedef struct __linkbuf_t {
+    bam1_t b;
+    int32_t beg, end;
+    cstate_t s;
+    struct __linkbuf_t *next;
+} lbnode_t;
+
+typedef struct {
+    int cnt, n, max;
+    lbnode_t **buf;
+} mempool_t;
+
+KHASH_MAP_INIT_STR(olap_hash, lbnode_t *)
+typedef khash_t(olap_hash) olap_hash_t;
+
+struct __bam_plp_t {
+    mempool_t *mp;
+    lbnode_t *head, *tail, *dummy;
+    int32_t tid, pos, max_tid, max_pos;
+    int is_eof, max_plp, error, maxcnt;
+    uint64_t id;
+    bam_pileup1_t *plp;
+    // for the "auto" interface only
+    bam1_t *b;
+    bam_plp_auto_f func;
+    void *data;
+    olap_hash_t *overlaps;
+};
+
+#endif /* BAM_PLP_DEC */
 
 
 #define VETTER_OPTIONS \
@@ -36,21 +80,8 @@ typedef struct vparams {
 
 typedef struct vetplp_conf {
 	bam_plp_auto_f func;
-	bam_plp_t plp;
 	vparams_t params;
 } vetplp_conf_t;
-
-vetplp_conf_t *vetplp_init(int maxcnt, bam_plp_auto_f func, void *data) {
-	vetplp_conf_t *ret = calloc(1, sizeof(vetplp_conf_t));
-	ret->plp = bam_plp_init(func, data);
-	bam_plp_set_maxcnt(ret->plp, maxcnt);
-	return ret;
-}
-
-void destroy_vetplp(vetplp_conf_t *vp)
-{
-	bam_plp_destroy(vp->plp);
-}
 
 extern void *bed_read(const char *fn);
 
@@ -69,7 +100,7 @@ typedef struct vetter_settings {
 	vcfFile *vout;
 	bcf_hdr_t *vh;
 	void *bed; // Really reghash_t *
-	vetplp_conf_t *conf;
+	vetplp_conf_t conf;
 } vetter_settings_t;
 
 extern void bed_destroy(void *);
