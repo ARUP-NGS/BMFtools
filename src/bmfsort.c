@@ -1547,13 +1547,10 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 		}
 		sam_hdr_write(fps[i], h);
 	}
-	omp_set_num_threads(n_threads);
-	fprintf(stderr, "Writing bam in parallel. n_threads: %i.\n", n_threads);
 
-	for(uint64_t li = 0; li < l; ++li) {
+	for(uint64_t li = 0; li < l; ++li)
 		sam_write1(fps[split_index(buf[li])], h, buf[li]);
-	}
-	#pragma omp parallel for
+
 	for(uint64_t i = 0; i < h->n_targets + 1;++i)
 		if(fps[i]) sam_close(fps[i]);
 	free(fps);
@@ -1818,11 +1815,6 @@ int bam_sort(int argc, char *argv[])
         case '?': return sort_usage(stderr, EXIT_FAILURE);
         case 'h': return sort_usage(stderr, EXIT_SUCCESS);
         }
-    }
-
-    if(n_threads) {
-    	omp_set_dynamic(0);
-    	omp_set_num_threads(n_threads);
     }
 
     nargs = argc - optind;

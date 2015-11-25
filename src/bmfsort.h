@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <getopt.h>
-#include <omp.h>
 #include <regex.h>
 #include <stdbool.h>
 #include <stddef.h>
