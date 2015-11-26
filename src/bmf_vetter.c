@@ -1,6 +1,7 @@
 #include "bmf_vetter.h"
 
 int max_depth = 20000;
+int padding = 50;
 
 
 void vetter_error(char *message, int retcode)
@@ -35,7 +36,8 @@ void vetter_usage(int retcode)
 			 "-b, --bedpath\tPath to bed file to only validate variants in said region\n"
 			 "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
 			 "-f, --min-fraction-agreed\tMinimum fraction of reads in a family agreed on a base call\n"
-			 "-p, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
+			 "-v, --min-phred-quality\tMinimum calculated p-value on a base call in phred space\n"
+			 "-p, --padding\tNumber of bases outside of bed region to pad.\n"
 			 "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
 			 "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
 			 "Note: fasta reference must be faidx'd.\n");
@@ -43,38 +45,101 @@ void vetter_usage(int retcode)
 }
 
 void vs_open(vetter_settings_t *settings) {
-	fprintf(stderr, "Reading header from %s and putting it into a header.\n", settings->bam->fn);
-	if((settings->bh = sam_hdr_read(settings->bam)) == NULL)
+	htsFormat open_fmt;
+	memset(&open_fmt, 0, sizeof(htsFormat));
+	open_fmt.category = sequence_data;
+	open_fmt.format = bam;
+	open_fmt.version.major = 1;
+	open_fmt.version.minor = 3;
+	vetplp_conf_t *conf = &settings->conf;
+
+	// Handle bam reading format
+	conf->bam = sam_open_format(settings->bam_path, "r", &open_fmt);
+	if(conf->bam == NULL) {
+		fprintf(stderr, "Failed to open input file. Abort mission!");
+		exit(EXIT_FAILURE);
+	}
+
+	fprintf(stderr, "Reading header from %s and putting it into a header.\n", settings->conf.bam->fn);
+	if((settings->conf.bh = sam_hdr_read(settings->conf.bam)) == NULL)
 		vetter_error("Could not read header from bam. Abort!\n", EXIT_FAILURE);
-	fprintf(stderr, "Num targets: %.i\n", settings->bh->n_targets);
+	fprintf(stderr, "Num targets: %.i\n", settings->conf.bh->n_targets);
 	settings->vh = bcf_hdr_read(settings->vin);
 	bcf_hdr_write(settings->vout, settings->vh);
 	if((settings->fai = fai_load(settings->ref_path)) == NULL)
 		vetter_error("Could not read Fasta index Abort!\n", EXIT_FAILURE);
-	settings->bed = bed_read(settings->bed_path);
+	conf->bed = parse_bed_hash(settings->bed_path, conf->bh, padding);
 	settings->conf.func = &vet_func;
+	settings->conf.n_iterators = get_nregions(conf->bed);
+	if(conf->bed) {
+		hts_idx_t *idx = sam_index_load(conf->bam, conf->bam->fn);
+		if(!idx) {
+			fprintf(stderr, "[%s] Failed to load bam index for file %s. Abort!\n", __func__, conf->bam->fn);
+			exit(EXIT_FAILURE);
+		}
+		int i = 0;
+		for(khiter_t k = kh_begin(conf->bed); k != kh_end(conf->bed); ++k) {
+			if(!kh_exist(conf->bed, k))
+				continue;
+			for(int j = 0; j < kh_val(conf->bed, k).n; ++j) {
+				// Contig, start, stop
+				conf->iterators[i++] = sam_itr_queryi(idx, kh_key(conf->bed, k),
+													(int32_t)(kh_val(conf->bed, k).intervals[j] >> 32),
+													(int32_t)kh_val(conf->bed, k).intervals[j]);
+			}
+		}
+		if(i != settings->conf.n_iterators) {
+			fprintf(stderr, "The number of bed regions didn't add up. Counted: %i. Expected: %i.", i, settings->conf.n_iterators);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+void conf_destroy(vetplp_conf_t *conf)
+{
+	bam_hdr_destroy(conf->bh);
+	if(hts_close(conf->bam))
+		vetter_error("Could not close input bam. ??? Abort!\n", EXIT_FAILURE);
+	bed_destroy_hash(conf->bed);
+	return;
 }
 
 void vs_destroy(vetter_settings_t *settings) {
+	conf_destroy(&settings->conf);
 	if(hts_close(settings->vin))
 		vetter_error("Could not close input vcf. ??? Abort!\n", EXIT_FAILURE);
 	if(hts_close(settings->vout))
 		vetter_error("Could not close output vcf. ??? Abort!\n", EXIT_FAILURE);
-	bam_hdr_destroy(settings->bh);
 	bcf_hdr_destroy(settings->vh);
 	fai_destroy(settings->fai);
-	if(hts_close(settings->bam))
-		vetter_error("Could not close input bam. ??? Abort!\n", EXIT_FAILURE);
-	bed_destroy(settings->bed);
 	free(settings);
 	settings = NULL;
 }
 
-int vs_core(vetter_settings_t *settings)
+int vs_reg_core(vetter_settings_t *settings)
 {
+	// Set-up
+	// Pileup iterator
+	vetplp_conf_t *conf = &settings->conf;
 	bam_plp_t iter = bam_plp_init(settings->conf.func, (void *)&settings->conf.params);
 	bam_plp_init_overlaps(iter); // Create overlap hashmap for overlapping pairs
-	iter->maxcnt = max_depth; // Set max_depth to what we want
+	bam_plp_set_maxcnt(iter, max_depth);
+
+	if(settings->bed_path[0]) { // Was bed path provided?
+		hts_idx_t *idx = sam_index_load(conf->bam, conf->bam->fn);
+		if(!idx) {
+			fprintf(stderr, "[%s] Failed to load bam index for file %s. Abort!\n", __func__, conf->bam->fn);
+			exit(EXIT_FAILURE);
+		}
+	}
+	// bcf record
+	bcf1_t *bcf_rec = bcf_init1();
+
+	// Main loop
+	int tid, pos;
+	int ret = 0;
+	// Clean up
+	bcf_destroy1(bcf_rec);
 	bam_plp_destroy(iter);
 	return 0;
 }
@@ -96,25 +161,10 @@ int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
 	settings->vin = vcf_open(settings->in_vcf_path, vcf_rmode);
 	settings->vout = vcf_open(settings->out_vcf_path, vcf_wmode);
 
-	// Handle bam reading format
-	htsFormat open_fmt;
-	memset(&open_fmt, 0, sizeof(htsFormat));
-	open_fmt.category = sequence_data;
-	open_fmt.format = bam;
-	open_fmt.version.major = 1;
-	open_fmt.version.minor = 3;
-	settings->bam = sam_open_format(settings->bam_path, "r", &open_fmt);
-	if(settings->bam == NULL) {
-		fprintf(stderr, "Failed to open input file. Abort mission!");
-		exit(EXIT_FAILURE);
-	}
-
-	fprintf(stderr, "Path to input bam: %s.\n", settings->bam->fn);
-
 	// Open handles
 	vs_open(settings);
 
-	vs_core(settings);
+	vs_reg_core(settings);
 	// Clean up
 	vs_destroy(settings);
 	free(settings);
@@ -144,7 +194,8 @@ int bmf_vetter_main(int argc, char *argv[])
 		case 'a': params.minFA = strtoul(optarg, NULL, 0); break;
 		case 's': params.minFM = strtoul(optarg, NULL, 0); break;
 		case 'm': params.minMQ = strtoul(optarg, NULL, 0); break;
-		case 'p': params.minPV = strtoul(optarg, NULL, 0); break;
+		case 'v': params.minPV = strtoul(optarg, NULL, 0); break;
+		case 'p': padding = atoi(optarg); break;
 		case 'd': max_depth = atoi(optarg); break;
 		case 'f': params.minFR = atof(optarg); break;
 		case 'b': strcpy(bed, optarg); break;

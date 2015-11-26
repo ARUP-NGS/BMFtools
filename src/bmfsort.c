@@ -1871,7 +1871,13 @@ int bam_sort(int argc, char *argv[])
 						  &ga.in, &ga.out, split) < 0)
 		ret = EXIT_FAILURE;
 
+#if !NDEBUG
+	fprintf(stderr, "About to free fnout_buffer.s (%p).\n", fnout_buffer.s);
+#endif
 	free(fnout_buffer.s);
+#if !NDEBUG
+	fprintf(stderr, "About to free global args (%p).\n", &ga);
+#endif
 	sam_global_args_free(&ga);
 
 	return ret;

@@ -41,11 +41,10 @@ void target_usage_exit(FILE *fp, int success)
 
 static inline void target_loop(bam1_t *b, khash_t(bed) *bed, uint64_t *fm_target, uint64_t *total_fm)
 {
+	int FM = bam_aux2i(bam_aux_get(b, "FM"));
+	*total_fm += FM;
 	if(bed_test(b, bed)) {
-		*fm_target += bam_aux2i(bam_aux_get(b, "FM"));
-	}
-	else {
-		*total_fm += bam_aux2i(bam_aux_get(b, "FM"));
+		*fm_target += FM;
 	}
 }
 

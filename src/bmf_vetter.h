@@ -12,6 +12,7 @@
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
 #include "htslib/sam.h"
+#include "bed_util.h"
 
 int vet_func(void *data, bam1_t *b);
 
@@ -63,11 +64,11 @@ struct __bam_plp_t {
     {"min-family-size",         required_argument, NULL, 's'}, \
     {"min-fraction-agreed",         required_argument, NULL, 'f'}, \
     {"min-mapping-quality",         required_argument, NULL, 'm'}, \
-    {"min-phred-quality",         required_argument, NULL, 'p'}, \
-    {"in-vcf",         required_argument, NULL, 'v'}, \
+    {"min-phred-quality",         required_argument, NULL, 'v'}, \
     {"out-vcf",         required_argument, NULL, 'o'}, \
     {"bedpath",         required_argument, NULL, 'b'}, \
     {"ref",         required_argument, NULL, 'r'}, \
+    {"padding",         required_argument, NULL, 'p'}, \
 	{0, 0, 0, 0}
 
 typedef struct vparams {
@@ -81,6 +82,11 @@ typedef struct vparams {
 typedef struct vetplp_conf {
 	bam_plp_auto_f func;
 	vparams_t params;
+	hts_itr_t **iterators;
+	int n_iterators;
+	samFile *bam;
+	bam_hdr_t *bh;
+	khash_t(bed) *bed; // Really khash_t(bed) *
 } vetplp_conf_t;
 
 extern void *bed_read(const char *fn);
@@ -94,12 +100,9 @@ typedef struct vetter_settings {
 	char bed_path[200]; // Path to bedfile
 	char ref_path[200];
 	faidx_t *fai;
-	samFile *bam;
-	bam_hdr_t *bh;
 	vcfFile *vin;
 	vcfFile *vout;
 	bcf_hdr_t *vh;
-	void *bed; // Really reghash_t *
 	vetplp_conf_t conf;
 } vetter_settings_t;
 
