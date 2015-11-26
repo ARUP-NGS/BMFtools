@@ -140,7 +140,7 @@ void hts_loop(vetter_settings_t *settings)
 
 	while((ret = bcf_read(settings->vin, settings->vh, rec)) != -1) {
 		// Skip over variants outside of our region
-		if(conf->bed && !vcf_bed_test(rec, conf->bed) || !bcf_is_snp(rec))
+		if((conf->bed && !vcf_bed_test(rec, conf->bed)) || !bcf_is_snp(rec))
 			continue;
 		const hts_itr_t *iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
 	}

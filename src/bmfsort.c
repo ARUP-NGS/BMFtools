@@ -1277,9 +1277,9 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		}
 	}
 	else {
-		outfps[0] = sam_open_format(outfname, mode, out_fmt);
+		outfps[0] = sam_open_format(out, mode, out_fmt);
 		if(!outfps[0]) {
-			fprintf(stderr, "Could not open output bam %s. Abort!\n", outfname);
+			fprintf(stderr, "Could not open output bam %s. Abort!\n", out);
 			exit(EXIT_FAILURE);
 		}
 		sam_hdr_write(outfps[0], hout);

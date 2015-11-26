@@ -14,6 +14,7 @@
 #include "igamc_cephes.h"
 #include "cstr_util.h"
 #include "sort_util.h"
+#include "pair_util.h"
 //#include "bmfsort.h"
 
 #define STACK_START (1 << 5)
@@ -24,13 +25,6 @@
 #define INC_TAG(p, b, key) *(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
 #endif
 
-enum htseq {
-	HTS_A = 1,
-	HTS_C = 2,
-	HTS_G = 4,
-	HTS_T = 8,
-	HTS_N = 15
-};
 
 #define SEQBUF_SIZE 300
 
