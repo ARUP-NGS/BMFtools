@@ -17,6 +17,19 @@ KSEQ_INIT(gzFile, gzread)
 #define MAX_BARCODE_LENGTH 30
 #endif
 
+static char *rand_string(char *str, size_t size)
+{
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK...";
+    if (size) {
+        --size;
+        for (size_t n = 0; n < size; n++) {
+            int key = rand() % (int) (sizeof charset - 1);
+            str[n] = charset[key];
+        }
+        str[size] = '\0';
+    }
+    return str;
+}
 
 static inline void fill_csv_buffer(int readlen, uint32_t *arr, char *buffer, char *prefix_typecode)
 {

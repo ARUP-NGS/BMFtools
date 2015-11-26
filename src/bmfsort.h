@@ -27,6 +27,7 @@
 #include "sam.h"
 #include "sam_opts.h"
 #include "sort_util.h"
+#include "cstr_util.h"
 
 enum sort_order {
 	SAMTOOLS,

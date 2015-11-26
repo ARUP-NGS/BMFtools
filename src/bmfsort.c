@@ -1818,7 +1818,8 @@ int bam_sort(int argc, char *argv[])
 	int cmpkey = BMF;
 	char modeout[12];
 	char fnout[200] = "-";
-	char tmpprefix[200] = "MetasyntacticVar";
+	char tmpprefix[200];
+	rand_string(tmpprefix, 30);
 	kstring_t fnout_buffer = { 0, 0, NULL };
 	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
 

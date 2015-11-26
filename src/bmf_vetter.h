@@ -12,6 +12,7 @@
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
 #include "htslib/sam.h"
+#include "htslib/vcf.h"
 #include "bed_util.h"
 
 int vet_func(void *data, bam1_t *b);
@@ -86,6 +87,7 @@ typedef struct vetplp_conf {
 	int n_iterators;
 	samFile *bam;
 	bam_hdr_t *bh;
+	hts_idx_t *bi;
 	khash_t(bed) *bed; // Really khash_t(bed) *
 } vetplp_conf_t;
 

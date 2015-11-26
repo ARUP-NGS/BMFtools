@@ -98,6 +98,8 @@ void vs_open(vetter_settings_t *settings) {
 void conf_destroy(vetplp_conf_t *conf)
 {
 	bam_hdr_destroy(conf->bh);
+	if(conf->bi)
+		hts_idx_destroy(conf->bi);
 	if(hts_close(conf->bam))
 		vetter_error("Could not close input bam. ??? Abort!\n", EXIT_FAILURE);
 	bed_destroy_hash(conf->bed);
@@ -116,6 +118,35 @@ void vs_destroy(vetter_settings_t *settings) {
 	settings = NULL;
 }
 
+void tabix_loop(vetter_settings_t *settings)
+{
+	vetplp_conf_t *conf = &settings->conf;
+	int ret = -1;
+	bcf1_t *rec = bcf_init1();
+
+	while((ret = bcf_read(settings->vin, settings->vh, rec)) != -1) {
+		// Skip over variants outside of our region
+		if(conf->bed && !vcf_bed_test(rec, conf->bed))
+			continue;
+	}
+	bcf_destroy1(rec);
+}
+
+void hts_loop(vetter_settings_t *settings)
+{
+	vetplp_conf_t *conf = &settings->conf;
+	int ret = -1;
+	bcf1_t *rec = bcf_init1();
+
+	while((ret = bcf_read(settings->vin, settings->vh, rec)) != -1) {
+		// Skip over variants outside of our region
+		if(conf->bed && !vcf_bed_test(rec, conf->bed) || !bcf_is_snp(rec))
+			continue;
+		const hts_itr_t *iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
+	}
+	bcf_destroy1(rec);
+}
+
 int vs_reg_core(vetter_settings_t *settings)
 {
 	// Set-up
@@ -125,21 +156,18 @@ int vs_reg_core(vetter_settings_t *settings)
 	bam_plp_init_overlaps(iter); // Create overlap hashmap for overlapping pairs
 	bam_plp_set_maxcnt(iter, max_depth);
 
-	if(settings->bed_path[0]) { // Was bed path provided?
-		hts_idx_t *idx = sam_index_load(conf->bam, conf->bam->fn);
-		if(!idx) {
-			fprintf(stderr, "[%s] Failed to load bam index for file %s. Abort!\n", __func__, conf->bam->fn);
-			exit(EXIT_FAILURE);
-		}
+	conf->bi = sam_index_load(conf->bam, conf->bam->fn);
+	if(!conf->bi) {
+		fprintf(stderr, "[%s] Failed to load bam index for file %s. Abort!\n", __func__, conf->bam->fn);
+		exit(EXIT_FAILURE);
 	}
-	// bcf record
-	bcf1_t *bcf_rec = bcf_init1();
 
+	if(strcmp(strrchr(settings->vin->fn, '.'), ".vcf") == 0)
+		tabix_loop(settings);
+	else
+		hts_loop(settings);
 	// Main loop
-	int tid, pos;
-	int ret = 0;
 	// Clean up
-	bcf_destroy1(bcf_rec);
 	bam_plp_destroy(iter);
 	return 0;
 }
