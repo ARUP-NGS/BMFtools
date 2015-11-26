@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <inttypes.h>
+#include <assert.h>
 #include "khash.h"
 #include "pair_util.h"
 #include "htslib/faidx.h"

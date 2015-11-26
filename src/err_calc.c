@@ -44,30 +44,46 @@ static inline int bamseq2i(uint8_t seqi) {
 	}
 }
 
-void err_core(samFile *fp, bam_hdr_t *hdr, bam1_t *b, faidx_t *fai, errcnt_t *e)
+void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 {
+	samFile *fp = sam_open_format(fname, "r", open_fmt);
+	bam_hdr_t *hdr = sam_hdr_read(fp);
+	if (hdr == NULL) {
+		fprintf(stderr, "[famstat_err_main]: Failed to read header for \"%s\"\n", fname);
+		exit(EXIT_FAILURE);
+	}
 	int r, len;
 	int32_t last_tid = -1;
-	char *ref; // Will hold the sequence for a chromosome
+	bam1_t *b = bam_init1();
+	char *ref = NULL; // Will hold the sequence for a chromosome
 	while((r = sam_read1(fp, hdr, b)) != -1) {
+		fprintf(stderr, "tid: %i.\n", b->core.tid);
 		if(b->core.flag & 2816 || b->core.tid < 0) { // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 			++e->nskipped;
 			continue;
 		}
+		fprintf(stderr, "Getting seq, qual, and cigar.\n");
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
-		if(++e->nread % 1000000)
+		if(++e->nread % 1000000 == 0)
 			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, e->nread);
+#if !NDEBUG
+		assert(b->core.tid >= 0);
+#endif
 		if(b->core.tid != last_tid) {
-			free(ref);
+			fprintf(stderr, "Getting ref sequence\n");
+			if(ref) free(ref);
+			fprintf(stderr, "Fai fetch time for tid %i, name %s.\n", b->core.tid, "not_gven");
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
+			fprintf(stderr, "Fai fetch success!\n");
 			last_tid = b->core.tid;
 		}
 		// rc -> read count
 		// fc -> reference base count
 		int i, ind, r_ind, rc, fc;
 		const int32_t pos = b->core.pos;
+		fprintf(stderr, "Calculation time.\n");
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			uint8_t s;
 			const uint32_t op = cigar[i];
@@ -100,13 +116,20 @@ void err_core(samFile *fp, bam_hdr_t *hdr, bam1_t *b, faidx_t *fai, errcnt_t *e)
 		}
 	}
 	if(ref) free(ref);
+	bam_destroy1(b);
 	return;
 }
 
 int err_main(int argc, char *argv[])
 {
-	samFile *fp;
-	bam_hdr_t *header;
+	htsFormat open_fmt;
+	memset(&open_fmt, 0, sizeof(htsFormat));
+	open_fmt.category = sequence_data;
+	open_fmt.format = bam;
+	open_fmt.version.major = 1;
+	open_fmt.version.minor = 3;
+	samFile *fp = NULL;
+	bam_hdr_t *header = NULL;
 	int c;
 	char outpath[500] = "";
 
@@ -135,7 +158,7 @@ int err_main(int argc, char *argv[])
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	fp = sam_open(argv[optind + 1], "r");
+	fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
 	if (fp == NULL) {
 		fprintf(stderr, "[famstat_err_main]: Cannot open input file \"%s\"", argv[optind]);
 		exit(EXIT_FAILURE);
@@ -146,13 +169,19 @@ int err_main(int argc, char *argv[])
 		fprintf(stderr, "[famstat_err_main]: Failed to read header for \"%s\"\n", argv[optind]);
 		exit(EXIT_FAILURE);
 	}
+#if !NDEBUG
+	for(int i = 0; i < header->n_targets; ++i)
+		fprintf(stderr, "Target name %i: %s\n", i, header->target_name[i]);
+#endif
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
+	fprintf(stderr, "tid: %i.\n", b->core.tid);
 	errcnt_t *e = errcnt_init((size_t)b->core.l_qseq);
 	sam_close(fp);
-	fp = sam_open(argv[optind], "r");
-	err_core(fp, header, b, fai, e);
+	fp = NULL;
+	bam_destroy1(b);
+	err_core(argv[optind + 1], fai, e, &open_fmt);
 	err_report(ofp, e);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
