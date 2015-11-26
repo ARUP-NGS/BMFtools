@@ -1261,10 +1261,10 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 	char outfname[500] = "";
 	// Open all temporary bams
 	samFile **outfps = (samFile **)malloc(sizeof(samFile *) * (hout->n_targets + 1));
-	sprintf(outfname, "%s.unmapped.bam", out);
-	outfps[0] = sam_open_format(outfname, mode, out_fmt);
-	sam_hdr_write(outfps[0], hout);
 	if(split) {
+		sprintf(outfname, "%s.unmapped.bam", out);
+		outfps[0] = sam_open_format(outfname, mode, out_fmt);
+		sam_hdr_write(outfps[0], hout);
 		for(i = 1; i < hout->n_targets + 1; ++i) {
 			sprintf(outfname, "%s.%s.bam", out, hout->target_name[i - 1]);
 			outfps[i] = sam_open_format(outfname, mode, out_fmt);
@@ -1342,12 +1342,17 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		bam_hdr_destroy(hdr[i]);
 		sam_close(fp[i]);
 	}
-	if(split)
-		for(i = 0; i < hin->n_targets + 1; ++i)
+	fprintf(stderr, "Clean out handles.\n");
+	if(split) {
+		for(i = 0; i < hout->n_targets + 1; ++i) {
 			sam_close(outfps[i]);
-	else
+			outfps[i] = NULL;
+		}
+	}
+	else {
 		sam_close(outfps[0]);
-	bam_hdr_destroy(hin);
+	}
+	if(hin) bam_hdr_destroy(hin);
 	bam_hdr_destroy(hout);
 	free_merged_header(merged_hdr);
 	free(RG); free(translation_tbl); free(fp); free(heap); free(iter); free(hdr);
@@ -1871,14 +1876,7 @@ int bam_sort(int argc, char *argv[])
 						  &ga.in, &ga.out, split) < 0)
 		ret = EXIT_FAILURE;
 
-#if !NDEBUG
-	fprintf(stderr, "About to free fnout_buffer.s (%p).\n", fnout_buffer.s);
-#endif
-	free(fnout_buffer.s);
-#if !NDEBUG
-	fprintf(stderr, "About to free global args (%p).\n", &ga);
-#endif
+	if(fnout_buffer.s) free(fnout_buffer.s);
 	sam_global_args_free(&ga);
-
 	return ret;
 }

@@ -13,11 +13,10 @@ LIB=
 
 OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-char-subscripts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
-DB_FLAGS = -fno-inline
-GP_FLAGS = -fno-inline -DTEST -pg
+DB_FLAGS = -fno-inline -Wno-char-subscripts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
-IGAMC_INC= include/igamc_cephes.c
+IGAMC_INC = include/igamc_cephes.c
 
 BMF_SRC = src/bmfsort.c src/bmf_main.c src/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c libhts.a
 		  
@@ -32,11 +31,11 @@ libhts.a:
 	cd htslib && make && cp libhts.a ../
 bmftools:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(BMF_SRC) -o bmftools
-	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -o bmftools_db
-	#$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(BMF_SRC) -o bmftools_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -o bmftools_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -pg -o bmftools_p
 copy:
-	#mv bmftools bmftools_p bmftools_db bin/
-	mv bmftools  bin/
+	mv bmftools bmftools_p bmftools_db bin/
+	#mv bmftools  bin/
 
 
 clean:
