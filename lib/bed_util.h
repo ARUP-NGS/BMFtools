@@ -21,7 +21,7 @@ void sort_bed(khash_t(bed) *bed);
 khash_t(bed) *parse_bed_hash(char *path, bam_hdr_t *header, uint32_t padding);
 void *bed_read(const char *fn);
 void bed_destroy_hash(void *);
-int get_nregions(khash_t(bed) *h);
+size_t get_nregions(khash_t(bed) *h);
 static inline int bed_test(bam1_t *b, khash_t(bed) *h)
 {
 	khint_t k;
@@ -41,7 +41,7 @@ static inline int vcf_bed_test(bcf1_t *b, khash_t(bed) *h)
 	if((k = kh_get(bed, h, b->rid)) == kh_end(h))
 		return 0;
 	for(uint64_t i = 0; i < kh_val(h, k).n; ++i) {
-		if(b->rid >= (int32_t)(kh_val(h, k).intervals[i] >> 32) && b->rid <= (int32_t)(kh_val(h, k).intervals[i]))
+		if(b->pos >= (int32_t)(kh_val(h, k).intervals[i] >> 32) && b->pos <= (int32_t)(kh_val(h, k).intervals[i]))
 			return 1;
 	}
 	return 0;

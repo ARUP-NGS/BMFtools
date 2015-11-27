@@ -57,9 +57,9 @@ khash_t(bed) *parse_bed_hash(char *path, bam_hdr_t *header, uint32_t padding)
 	return ret;
 }
 
-int get_nregions(khash_t(bed) *h)
+size_t get_nregions(khash_t(bed) *h)
 {
-	int ret = 0;
+	size_t ret = 0uL;
 	for(khiter_t ki = kh_begin(h); ki != kh_end(h); ++ki){
 		if(!kh_exist(h, ki))
 			continue;

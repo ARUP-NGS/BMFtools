@@ -88,7 +88,12 @@ typedef struct vetplp_conf {
 	samFile *bam;
 	bam_hdr_t *bh;
 	hts_idx_t *bi;
+	hts_idx_t *vi;
 	khash_t(bed) *bed; // Really khash_t(bed) *
+	faidx_t *fai;
+	vcfFile *vin;
+	vcfFile *vout;
+	bcf_hdr_t *vh;
 } vetplp_conf_t;
 
 extern void *bed_read(const char *fn);
@@ -101,10 +106,9 @@ typedef struct vetter_settings {
 	char in_vcf_path[200]; // Path to input vcf
 	char bed_path[200]; // Path to bedfile
 	char ref_path[200];
-	faidx_t *fai;
-	vcfFile *vin;
-	vcfFile *vout;
-	bcf_hdr_t *vh;
+	char bam_rmode[4];
+	char vcf_rmode[4];
+	char vcf_wmode[4];
 	vetplp_conf_t conf;
 } vetter_settings_t;
 

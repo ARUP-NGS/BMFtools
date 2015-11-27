@@ -31,7 +31,8 @@ void err_report(FILE *fp, errcnt_t *e)
 	return;
 }
 
-static inline int bamseq2i(uint8_t seqi) {
+static int bamseq2i(uint8_t seqi) {
+	fprintf(stderr, "Now calling bamseq2i.\n");
 	switch(seqi) {
 	case HTS_A:
 		return 0;
@@ -57,45 +58,63 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	while((r = sam_read1(fp, hdr, b)) != -1) {
-		fprintf(stderr, "tid: %i.\n", b->core.tid);
+		fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
 		if(b->core.flag & 2816 || b->core.tid < 0) { // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 			++e->nskipped;
 			continue;
 		}
-		fprintf(stderr, "Getting seq, qual, and cigar.\n");
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
-		if(++e->nread % 1000000 == 0)
+		if(!cigar) {
+			fprintf(stderr, "Could not get bam cigar. Abort!\n");
+			exit(EXIT_FAILURE);
+		}
+		if(!seq) {
+			fprintf(stderr, "Could not get bam seq. Abort!\n");
+			exit(EXIT_FAILURE);
+		}
+		if(!qual) {
+			fprintf(stderr, "Could not get bam qual. Abort!\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if(++e->nread % 10 == 0)
 			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, e->nread);
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
 		if(b->core.tid != last_tid) {
-			fprintf(stderr, "Getting ref sequence\n");
 			if(ref) free(ref);
-			fprintf(stderr, "Fai fetch time for tid %i, name %s.\n", b->core.tid, "not_gven");
+			fprintf(stderr, "Loading ref sequence for tid %i, name %s.\n", b->core.tid, hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			fprintf(stderr, "Fai fetch success!\n");
+			fprintf(stderr, "Finished loading ref sequence for tid %i, name %s.\n", b->core.tid, hdr->target_name[b->core.tid]);
 			last_tid = b->core.tid;
 		}
 		// rc -> read count
 		// fc -> reference base count
-		int i, ind, r_ind, rc, fc;
+		int i, ind, rc, fc;
 		const int32_t pos = b->core.pos;
 		fprintf(stderr, "Calculation time.\n");
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+			fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			uint8_t s;
 			const uint32_t op = cigar[i];
 			const uint32_t len = bam_cigar_oplen(op);
+			fprintf(stderr, "Got to the switch!\n");
 			switch(bam_cigar_op(op)) {
 			case BAM_CMATCH:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					if(s == HTS_N) continue;
-					++e->obs[bamseq2i(s)][qual[ind + rc - 2]][ind + rc];
-					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s)
-						++e->err[bamseq2i(s)][qual[ind + rc - 2]][ind + rc];
+#if !NDEBUG
+					fprintf(stderr, "Pointer: index %i, obs %p, qual ind %i, qual val %i, %p.\n", bamseq2i(s), e->obs, ind + rc, qual[ind + rc] - 2, e->obs[bamseq2i(s)]);
+#endif
+					++e->obs[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
+					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s) {
+						fprintf(stderr, "Found a mismatch before I died.\n");
+						++e->err[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
+					}
 				}
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
@@ -111,9 +130,17 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 			case BAM_CDEL:
 				fc += len;
 				break;
+#if !NDEBUG
+			default:
+				fprintf(stderr, "Default case thrown for op %i", bam_cigar_op(op)); break;
+#endif
 			// Default: break
 			}
+#if !NDEBUG
+			fprintf(stderr, "Keep going! Finished cigar operation #%i (1-based).\n", i + 1); break;
+#endif
 		}
+		fprintf(stderr, "Added things to the thingamajigger.\n");
 	}
 	if(ref) free(ref);
 	bam_destroy1(b);
@@ -170,13 +197,12 @@ int err_main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 #if !NDEBUG
-	for(int i = 0; i < header->n_targets; ++i)
-		fprintf(stderr, "Target name %i: %s\n", i, header->target_name[i]);
+	//for(int i = 0; i < header->n_targets; ++i)
+		//fprintf(stderr, "Target name %i: %s\n", i, header->target_name[i]);
 #endif
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	fprintf(stderr, "tid: %i.\n", b->core.tid);
 	errcnt_t *e = errcnt_init((size_t)b->core.l_qseq);
 	sam_close(fp);
 	fp = NULL;
