@@ -18,7 +18,7 @@ typedef struct errcnt {
 	uint64_t nskipped; // Number of records read
 } errcnt_t;
 
-#define nqscores 41
+#define nqscores 45
 
 uint64_t ***arr_init(size_t l) {
 	uint64_t ***ret = (uint64_t ***)calloc(4, sizeof(uint64_t **));

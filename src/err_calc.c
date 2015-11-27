@@ -107,14 +107,21 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					if(s == HTS_N) continue;
+					if(qual[ind + rc] > nqscores - 1) {
+						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %i.\n", (int)qual[ind + rc], qual[ind + rc], nqscores - 1);
+						exit(EXIT_FAILURE);
+					}
 #if !NDEBUG
-					fprintf(stderr, "Pointer: index %i, obs %p, qual ind %i, qual val %i, %p.\n", bamseq2i(s), e->obs, ind + rc, qual[ind + rc] - 2, e->obs[bamseq2i(s)]);
+					if(ind + rc > )
+					fprintf(stderr, "Pointer: qual ind %i, qual val %i, %p.\n", ind + rc, qual[ind + rc] - 2, e->obs[bamseq2i(s)]);
+					fprintf(stderr, "Incrementing observations.\n");
 #endif
 					++e->obs[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s) {
 						fprintf(stderr, "Found a mismatch before I died.\n");
 						++e->err[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
 					}
+					fprintf(stderr, "Finished incrementing.\n");
 				}
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
