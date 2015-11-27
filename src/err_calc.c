@@ -1,6 +1,6 @@
 #include "err_calc.h"
 
-int min_obs = 200;
+uint64_t min_obs = 1000;
 
 void err_usage_exit(FILE *fp, int retcode)
 {
@@ -12,19 +12,29 @@ void err_usage_exit(FILE *fp, int retcode)
 
 void err_report(FILE *fp, errcnt_t *e)
 {
+	uint64_t min_obs = min_obs;
+	fprintf(stderr, "Beginning error report.\n");
 	fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", e->nread, e->nskipped);
-	uint64_t n_obs = 0, n_err = 0;
+	uint64_t n_obs = 0, n_err = 0, n_ins = 0;
+	// n_ins is number with insufficient observations to report.
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
 			for(int k = 0; k < e->l; ++k) {
 				n_obs += e->obs[i][j][k];
 				n_err += e->err[i][j][k];
-				if(e->obs[i][j][k] >= min_obs) {
+				if(e->obs[i][j][k] >= min_obs)
 					e->rates[i][j][k] = (double)e->err[i][j][k] / e->obs[i][j][k];
+				else {
+					e->rates[i][j][k] = DBL_MAX;
+					++n_ins;
 				}
 			}
 		}
 	}
+	fprintf(stderr, "{\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
+
+			",\n{\"number_insufficient\": %lu}",
+			(double)n_err / n_obs, n_obs, n_err, n_ins);
 	fprintf(fp, "{\"total_error\": %lf},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}",
 			(double)n_err / n_obs, n_obs, n_err);
 	fprintf(fp, "}");
@@ -32,7 +42,6 @@ void err_report(FILE *fp, errcnt_t *e)
 }
 
 static int bamseq2i(uint8_t seqi) {
-	fprintf(stderr, "Now calling bamseq2i.\n");
 	switch(seqi) {
 	case HTS_A:
 		return 0;
@@ -58,7 +67,7 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	while((r = sam_read1(fp, hdr, b)) != -1) {
-		fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
+		//fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
 		if(b->core.flag & 2816 || b->core.tid < 0) { // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 			++e->nskipped;
 			continue;
@@ -79,49 +88,46 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 			exit(EXIT_FAILURE);
 		}
 
-		if(++e->nread % 10 == 0)
+		if(++e->nread % 1000000 == 0)
 			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, e->nread);
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
 		if(b->core.tid != last_tid) {
 			if(ref) free(ref);
-			fprintf(stderr, "Loading ref sequence for tid %i, name %s.\n", b->core.tid, hdr->target_name[b->core.tid]);
+			fprintf(stderr, "Loading ref sequence for refernece contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			fprintf(stderr, "Finished loading ref sequence for tid %i, name %s.\n", b->core.tid, hdr->target_name[b->core.tid]);
+			fprintf(stderr, "Finished loading ref sequence for contig '%s'.\n", hdr->target_name[b->core.tid]);
 			last_tid = b->core.tid;
 		}
 		// rc -> read count
 		// fc -> reference base count
 		int i, ind, rc, fc;
 		const int32_t pos = b->core.pos;
-		fprintf(stderr, "Calculation time.\n");
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
+			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			uint8_t s;
 			const uint32_t op = cigar[i];
 			const uint32_t len = bam_cigar_oplen(op);
-			fprintf(stderr, "Got to the switch!\n");
 			switch(bam_cigar_op(op)) {
 			case BAM_CMATCH:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					if(s == HTS_N) continue;
-					if(qual[ind + rc] > nqscores - 1) {
-						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %i.\n", (int)qual[ind + rc], qual[ind + rc], nqscores - 1);
+					if(qual[ind + rc] > nqscores + 1) { // nqscores + 2 - 1
+						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %i.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
 #if !NDEBUG
-					if(ind + rc > )
-					fprintf(stderr, "Pointer: qual ind %i, qual val %i, %p.\n", ind + rc, qual[ind + rc] - 2, e->obs[bamseq2i(s)]);
-					fprintf(stderr, "Incrementing observations.\n");
+					//fprintf(stderr, "Pointer: qual ind %i, qual val %i, %p.\n", ind + rc, qual[ind + rc] - 2, e->obs[bamseq2i(s)]);
+					//fprintf(stderr, "Incrementing observations.\n");
 #endif
 					++e->obs[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s) {
-						fprintf(stderr, "Found a mismatch before I died.\n");
+						//fprintf(stderr, "Found a mismatch before I died.\n");
 						++e->err[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
 					}
-					fprintf(stderr, "Finished incrementing.\n");
+					//fprintf(stderr, "Finished incrementing.\n");
 				}
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
@@ -137,19 +143,14 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 			case BAM_CDEL:
 				fc += len;
 				break;
-#if !NDEBUG
-			default:
-				fprintf(stderr, "Default case thrown for op %i", bam_cigar_op(op)); break;
-#endif
 			// Default: break
 			}
-#if !NDEBUG
-			fprintf(stderr, "Keep going! Finished cigar operation #%i (1-based).\n", i + 1); break;
-#endif
 		}
-		fprintf(stderr, "Added things to the thingamajigger.\n");
+		fprintf(stderr, "Finished operating on read with qname %s.\n", bam_get_qname(b));
 	}
+	fprintf(stderr, "Cleaning up after gathering my error data.\n");
 	if(ref) free(ref);
+	fprintf(stderr, "Deleting bam record.\n");
 	bam_destroy1(b);
 	return;
 }

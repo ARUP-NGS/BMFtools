@@ -130,7 +130,7 @@ static inline void *array_tag(bam1_t *b, const char *tag) {
 		exit(EXIT_FAILURE);
 	}
 	char typecode = *data++;
-	int n = *((int *)data);
+	//int n = *((int *)data);
 	return data ? (void *)(data + sizeof(int)): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
 #else
 	return data ? (void *)(data + sizeof(int) + 2): NULL;

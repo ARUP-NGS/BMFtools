@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <assert.h>
+#include <float.h>
 #include "khash.h"
 #include "pair_util.h"
 #include "htslib/faidx.h"
@@ -18,7 +19,7 @@ typedef struct errcnt {
 	uint64_t nskipped; // Number of records read
 } errcnt_t;
 
-#define nqscores 45
+#define nqscores 59
 
 uint64_t ***arr_init(size_t l) {
 	uint64_t ***ret = (uint64_t ***)calloc(4, sizeof(uint64_t **));
@@ -33,15 +34,7 @@ uint64_t ***arr_init(size_t l) {
 	return ret;
 }
 
-errcnt_t *errcnt_init(size_t l) {
-	errcnt_t *ret = (errcnt_t *)calloc(1, sizeof(errcnt_t));
-	ret->obs = arr_init(l);
-	ret->err = arr_init(l);
-	ret->l = l;
-	return ret;
-}
-
-void get_errs(errcnt_t *e)
+void rate_init(errcnt_t *e)
 {
 	e->rates = (double ***)malloc(4 * sizeof(double **));
 	for(int i = 0; i < 4; ++i) {
@@ -55,6 +48,16 @@ void get_errs(errcnt_t *e)
 	}
 	return;
 }
+
+errcnt_t *errcnt_init(size_t l) {
+	errcnt_t *ret = (errcnt_t *)calloc(1, sizeof(errcnt_t));
+	ret->obs = arr_init(l);
+	ret->err = arr_init(l);
+	ret->l = l;
+	rate_init(ret);
+	return ret;
+}
+
 
 void errcnt_destroy(errcnt_t *e) {
 	for(int i = 0; i < 4; ++i) {

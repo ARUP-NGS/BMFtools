@@ -137,7 +137,6 @@ void full_iter_loop(vetter_settings_t *settings)
 void hts_loop(vetter_settings_t *settings)
 {
 	vetplp_conf_t *conf = &settings->conf;
-	int ret = -1;
 	if((conf->vi = bcf_index_load(conf->vin->fn)) == NULL) {
 		fprintf(stderr, "Failed to open bcf index. WTF?\n");
 		exit(EXIT_FAILURE);
