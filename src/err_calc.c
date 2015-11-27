@@ -1,7 +1,5 @@
 #include "err_calc.h"
 
-uint64_t min_obs = 1000;
-
 void err_usage_exit(FILE *fp, int retcode)
 {
 	fprintf(fp, "Usage: Not written\n"
@@ -31,28 +29,16 @@ void err_report(FILE *fp, errcnt_t *e)
 			}
 		}
 	}
+	uint64_t n_cases = nqscores * 4 * e->l;
 	fprintf(stderr, "{\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
 
-			",\n{\"number_insufficient\": %lu}",
-			(double)n_err / n_obs, n_obs, n_err, n_ins);
-	fprintf(fp, "{\"total_error\": %lf},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}",
-			(double)n_err / n_obs, n_obs, n_err);
+			",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu},",
+			(double)n_err / n_obs, n_obs, n_err, n_ins, n_cases);
 	fprintf(fp, "}");
 	return;
 }
 
-static int bamseq2i(uint8_t seqi) {
-	switch(seqi) {
-	case HTS_A:
-		return 0;
-	case HTS_C:
-		return 1;
-	case HTS_G:
-		return 2;
-	default: // HTS_T, since HTS_N was already checked for
-		return 3;
-	}
-}
+
 
 void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 {
@@ -113,19 +99,15 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 			case BAM_CMATCH:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
-					if(s == HTS_N) continue;
+					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 					if(qual[ind + rc] > nqscores + 1) { // nqscores + 2 - 1
 						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %i.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
-#if !NDEBUG
-					//fprintf(stderr, "Pointer: qual ind %i, qual val %i, %p.\n", ind + rc, qual[ind + rc] - 2, e->obs[bamseq2i(s)]);
-					//fprintf(stderr, "Incrementing observations.\n");
-#endif
-					++e->obs[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
+					++e->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s) {
 						//fprintf(stderr, "Found a mismatch before I died.\n");
-						++e->err[bamseq2i(s)][qual[ind + rc] - 2][ind + rc];
+						++e->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					}
 					//fprintf(stderr, "Finished incrementing.\n");
 				}
@@ -146,7 +128,6 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 			// Default: break
 			}
 		}
-		fprintf(stderr, "Finished operating on read with qname %s.\n", bam_get_qname(b));
 	}
 	fprintf(stderr, "Cleaning up after gathering my error data.\n");
 	if(ref) free(ref);
@@ -215,11 +196,11 @@ int err_main(int argc, char *argv[])
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
-	err_core(argv[optind + 1], fai, e, &open_fmt);
-	err_report(ofp, e);
-	bam_destroy1(b);
 	bam_hdr_destroy(header);
-	sam_close(fp);
+	header = NULL;
+	err_core(argv[optind + 1], fai, e, &open_fmt);
+	rate_calc(e);
+	err_report(ofp, e);
 	errcnt_destroy(e);
 	fclose(ofp);
 	return 0;

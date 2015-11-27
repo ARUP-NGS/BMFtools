@@ -129,6 +129,7 @@ void full_iter_loop(vetter_settings_t *settings)
 		// Skip over variants outside of our region
 		if(conf->bed && !vcf_bed_test(rec, conf->bed))
 			continue;
+		bam_plp_t p = bam_plp_init(&vet_func, (void *)conf);
 		const hts_itr_t *iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
 	}
 	bcf_destroy1(rec);
