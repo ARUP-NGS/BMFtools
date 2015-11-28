@@ -38,6 +38,96 @@ void err_report(FILE *fp, errcnt_t *e)
 	return;
 }
 
+void errcnt_destroy(errcnt_t *e){
+	for(int i = 0; i < 4; ++i) {
+		for(int j = 0; j < nqscores; ++j) {
+			free(e->obs[i][j]);
+			free(e->err[i][j]);
+			if(e->final[i][j]) free(e->final[i][j]);
+			if(e->rates[i][j]) free(e->rates[i][j]);
+		}
+		free(e->obs[i]);
+		free(e->err[i]);
+		if(e->final[i]) free(e->final[i]);
+		if(e->rates[i]) free(e->rates[i]);
+		if(e->qrates[i]) free(e->qrates[i]);
+		if(e->qcounts[i]) free(e->qcounts[i]);
+	}
+	if(e->qrates) free(e->qrates), e->qrates = NULL;
+	if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
+	if(e->rates) free(e->rates), e->rates = NULL;
+	free(e->obs);
+	free(e->err);
+	free(e);
+}
+
+void rate_calc(errcnt_t *e)
+{
+	uint64_t min_obs = min_obs;
+	e->rates = (double ***)malloc(4 * sizeof(double **));
+	e->qrates = (double **)malloc(4 * sizeof(double *));
+	e->qdiffs = (int **)malloc(4 * sizeof(int *));
+	uint64_t **qobs = (uint64_t **)malloc(4 * sizeof(uint64_t *));
+	uint64_t **qerr = (uint64_t **)malloc(4 * sizeof(uint64_t *));
+	double **qsum = (double **)malloc(4 * sizeof(double *));
+	uint64_t **qcounts = (uint64_t **)malloc(4 * sizeof(uint64_t *));
+	for(int i = 0; i < 4; ++i) {
+		qcounts[i] = (uint64_t *)calloc(e->l, sizeof(uint64_t));
+		qsum[i] = (double *)calloc(e->l, sizeof(double));
+		qobs[i] = (uint64_t *)calloc(e->l,  sizeof(uint64_t));
+		qerr[i] = (uint64_t *)calloc(e->l,  sizeof(uint64_t));
+		e->qrates[i] = (double *)malloc(e->l * sizeof(double));
+		e->rates[i] = (double **)malloc(nqscores * sizeof(double *));
+		for(int j = 0; j < nqscores; ++j) {
+			e->rates[i][j] = (double *)malloc(e->l * sizeof(double));
+			for(uint32_t l = 0; l < e->l; ++l) {
+				e->rates[i][j][l] = (e->obs[i][j][l] >= min_obs) ? (double)e->err[i][j][l] / e->obs[i][j][l] : DBL_MAX;
+				qsum[i][l] += (-10. * log10(j + 2)) * e->obs[i][j][l];
+				qcounts += e->obs[i][j][l];
+				qobs[i][l] += e->obs[i][j][l];
+				qerr[i][l] += e->err[i][j][l];
+			}
+		}
+	}
+	int i;
+	uint64_t l;
+	for(i = 0; i < 4; ++i) {
+		for(l = 0; l < e->l; ++l)
+			qsum[i][l] /= qcounts[i][l];
+		free(qcounts[i]);
+	}
+	free(qcounts);
+
+	for(i = 0; i < 4; ++i) {
+		for(l = 0; l < e->l; ++l) {
+			e->qrates[i][l] = (qobs[i][l]) ? (double)qerr[i][l] / qobs[i][l]: DBL_MAX;
+			if(e->qrates[i][l] != DBL_MAX)
+				e->qdiffs[i][l] = (int)(-10 * log10(e->qrates[i][l]) + 0.5) - (int)(-10 * log10(qsum[i][l]) + 0.5);
+			else
+				e->qdiffs[i][l] = 0; // Use ILMN-reported quality for these if not available
+			// Difference between measured error rate and observed error rate
+		}
+		free(qobs[i]);
+		free(qerr[i]);
+	}
+	e->final = (int ***)malloc(sizeof(int **) * 4);
+	for(i = 0; i < 4; ++i) {
+		e->final[i] = (int **)malloc(sizeof(int *) * nqscores);
+		for(int j = 0; j < nqscores; ++j) {
+			e->final[i][j] = (int *)malloc(sizeof(int) * e->l);
+			for(l = 0; l < e->l; ++l)
+				e->final[i][j][l] = (e->rates[i][j][l] != DBL_MAX) ?
+						(int)(-10 * log10(e->rates[i][j][l]) + 0.5):
+						j + 2 + e->qdiffs[i][l];
+		}
+	}
+	free(qobs);
+	free(qerr);
+	// Now impute with the diffs for those which had insufficient observations.
+	return;
+}
+// TODO: finish cleanup. Delete the qrates and qdiff arrays
+
 
 
 void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
