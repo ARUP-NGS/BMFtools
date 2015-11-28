@@ -30,10 +30,7 @@ typedef struct fullerr {
 	size_t l;
 } fullerr_t;
 
-#define nqscores 49uL
-
-static int bamseq2i[8] = {-1, 0, 1, -1, 2, -1, -1, 3};
-static uint64_t min_obs = 1000;
+#define nqscores 59uL
 
 static inline int pv2ph(double pv)
 {
@@ -53,6 +50,8 @@ uint64_t ***arr_init(size_t l) {
 	return ret;
 }
 
+static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
+
 void rate_calc(readerr_t *e);
 
 readerr_t *readerr_init(size_t l) {
@@ -65,9 +64,9 @@ readerr_t *readerr_init(size_t l) {
 
 fullerr_t *fullerr_init(size_t l) {
 	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
+	ret->l = l;
 	ret->r1 = readerr_init(l);
 	ret->r2 = readerr_init(l);
-	ret->l = l;
 	return ret;
 }
 void readerr_destroy(readerr_t *e);

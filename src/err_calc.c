@@ -1,5 +1,7 @@
 #include "err_calc.h"
 
+static uint64_t min_obs = 1000;
+
 void err_usage_exit(FILE *fp, int retcode)
 {
 	fprintf(fp, "Usage: Not written\n"
@@ -87,6 +89,7 @@ void readerr_destroy(readerr_t *e){
 
 void rate_calc(readerr_t *e)
 {
+	fprintf(stderr, "Beginning %s for readerr %p.\n", __func__, e);
 	uint64_t min_obs = min_obs;
 	e->rates = (double ***)malloc(4 * sizeof(double **));
 	e->qrates = (double **)malloc(4 * sizeof(double *));
@@ -95,6 +98,7 @@ void rate_calc(readerr_t *e)
 	uint64_t **qerr = (uint64_t **)malloc(4 * sizeof(uint64_t *));
 	double **qsum = (double **)malloc(4 * sizeof(double *));
 	uint64_t **qcounts = (uint64_t **)malloc(4 * sizeof(uint64_t *));
+	// Calculate error rates, prepare information for imputing.
 	for(int i = 0; i < 4; ++i) {
 		qcounts[i] = (uint64_t *)calloc(e->l, sizeof(uint64_t));
 		qsum[i] = (double *)calloc(e->l, sizeof(double));
@@ -115,13 +119,18 @@ void rate_calc(readerr_t *e)
 	}
 	int i;
 	uint64_t l;
+	fprintf(stderr, "Freeing qcounts\n");
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < e->l; ++l)
 			qsum[i][l] /= qcounts[i][l];
 		free(qcounts[i]);
+		fprintf(stderr, "Freeing pointer %p.\n", qcounts[i]);
 	}
+	fprintf(stderr, "Freeing pointer %p.\n", qcounts);
 	free(qcounts);
 
+	// Impute if needed
+	fprintf(stderr, "Imputing as needed\n");
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < e->l; ++l) {
 			e->qrates[i][l] = (qobs[i][l]) ? (double)qerr[i][l] / qobs[i][l]: DBL_MAX;
@@ -132,6 +141,7 @@ void rate_calc(readerr_t *e)
 		free(qobs[i]);
 		free(qerr[i]);
 	}
+	fprintf(stderr, "Building final.\n");
 	e->final = (int ***)malloc(sizeof(int **) * 4);
 	for(i = 0; i < 4; ++i) {
 		e->final[i] = (int **)malloc(sizeof(int *) * nqscores);
@@ -142,6 +152,7 @@ void rate_calc(readerr_t *e)
 						pv2ph(e->rates[i][j][l]): j + 2 + e->qdiffs[i][l];
 		}
 	}
+	fprintf(stderr, "Finished making final, freed qobs %p and qerr %p.\n", qobs, qerr);
 	free(qobs);
 	free(qerr);
 	// Now impute with the diffs for those which had insufficient observations.
@@ -153,6 +164,11 @@ void rate_calc(readerr_t *e)
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
+	fprintf(stderr, "%p, %p\n", f->r1, f->r2);
+	if(!f->r1)
+		f->r1 = readerr_init(f->l);
+	if(!f->r2)
+		f->r2 = readerr_init(f->l);//
 	fprintf(stderr, "Opening bam file.\n");
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
@@ -165,7 +181,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	while((r = sam_read1(fp, hdr, b)) != -1) {
-		fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
+		//fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
 		if(b->core.flag & 2816 || b->core.tid < 0) {// UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 			++f->nskipped;
 			continue;
@@ -191,9 +207,10 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
+		static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 		if(b->core.tid != last_tid) {
 			if(ref) free(ref);
-			fprintf(stderr, "Loading ref sequence for refernece contig with name %s.\n", hdr->target_name[b->core.tid]);
+			fprintf(stderr, "Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			fprintf(stderr, "Finished loading ref sequence for contig '%s'.\n", hdr->target_name[b->core.tid]);
 			last_tid = b->core.tid;
@@ -202,36 +219,38 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		// fc -> reference base count
 		int i, ind, rc, fc;
 		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
-		fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
+		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
-			uint8_t s;
+			int s; // seq value, base index
 			const uint32_t op = cigar[i];
 			const uint32_t len = bam_cigar_oplen(op);
 			switch(bam_cigar_op(op)) {
 			case BAM_CMATCH:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
+					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 					if(qual[ind + rc] > nqscores + 1) { // nqscores + 2 - 1
 						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
-					if(bamseq2i[s] < 0) {
-						fprintf(stderr, "HEY THIS SHOULDN'T BE NEGATIVE\n");
-						exit(EXIT_FAILURE);
-					}
-					fprintf(stderr, "Incrementing obs %p, %p, %p, %lu\n", r->obs, r->obs[bamseq2i[s]], r->obs[bamseq2i[s]][qual[ind + rc] - 2],
-							r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc]);
-					fprintf(stderr, "Incrementing err %p, %p,\n", r->err, r->err[bamseq2i[s]]);
+					/*
+					fprintf(stderr, "indices: %i, ind + rec %i, qual val %i\n", bi, ind + rc, qual[ind + rc] - 2);
+					fprintf(stderr, "Incrementing obs %p, %p, %i\n", r->obs, r->obs[bi], qual[ind + rc] - 2);
+					fprintf(stderr, "Incrementing err %p, %p, %i\n", r->err, r->err[bi], qual[ind + rc] - 2);
+					fprintf(stderr, "Incrementing obs %p, %p, %p\n", r->obs, r->obs[bi], r->obs[bi][qual[ind + rc] - 2]);
+					fprintf(stderr, "Incrementing err %p, %p, %p\n", r->err, r->err[bi], r->err[bi][qual[ind + rc] - 2]);
+					fprintf(stderr, "Incrementing obs %p, %p, %p, %lu\n", r->obs, r->obs[bi], r->obs[bi][qual[ind + rc] - 2], r->obs[bi][qual[ind + rc] - 2][ind + rc]);
+					fprintf(stderr, "Incrementing err %p, %p, %p, %lu\n", r->err, r->err[bi], r->err[bi][qual[ind + rc] - 2], r->err[bi][qual[ind + rc] - 2][ind + rc]);
+					*/
 					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s) {
+					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s)
 						//fprintf(stderr, "Found a mismatch before I died.\n");
-						fprintf(stderr, "Incrementing err %p, %p, %p, %lu\n", r->err, r->err[bamseq2i[s]], r->err[bamseq2i[s]][qual[ind + rc] - 2],
-								r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc]);
+						//fprintf(stderr, "Incrementing err %p, %p, %p, %lu\n", r->err, r->err[bamseq2i[s]], r->err[bamseq2i[s]][qual[ind + rc] - 2],
+						//		r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc]);
 							++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					}
 					//fprintf(stderr, "Finished incrementing.\n");
 				}
 			case BAM_CEQUAL:
@@ -254,7 +273,11 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	}
 	fprintf(stderr, "Cleaning up after gathering my error data.\n");
 	if(ref) free(ref);
+#if !NDEBUG
+	fprintf(stderr, "Deleting bam record at pointer %p.\n", b);
+#else
 	fprintf(stderr, "Deleting bam record.\n");
+#endif
 	bam_destroy1(b);
 	return;
 }
@@ -278,13 +301,13 @@ int err_main(int argc, char *argv[])
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage_exit(stderr, EXIT_SUCCESS);
 
-	FILE *ofp = NULL, *d2 = NULL, *d3 = NULL;
-	while ((c = getopt(argc, argv, "m:o:h?")) >= 0) {
+	FILE *ofp = NULL, *d4 = NULL, *d3 = NULL;
+	while ((c = getopt(argc, argv, "4:3:m:o:h?")) >= 0) {
 		switch (c) {
 		case 'o': strcpy(outpath, optarg); break;
 		case 'm': min_obs = atoi(optarg); break;
+		case '4': d4 = fopen(optarg, "w"); break;
 		case '3': d3 = fopen(optarg, "w"); break;
-		case '2': d2 = fopen(optarg, "w"); break;
 		case '?':
 		case 'h':
 			err_usage_exit(stderr, EXIT_SUCCESS);
@@ -334,7 +357,7 @@ int err_main(int argc, char *argv[])
 	fclose(ofp);
 	if(d3)
 		fclose(d3);
-	if(d2)
-		fclose(d2);
+	if(d4)
+		fclose(d4);
 	return 0;
 }
