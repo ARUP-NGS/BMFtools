@@ -8,37 +8,61 @@ void err_usage_exit(FILE *fp, int retcode)
 	exit(retcode);
 }
 
-void err_report(FILE *fp, errcnt_t *e)
+// Add new dimension read 1/read 2 :'(
+void make4d(FILE *fp, fullerr_t *e)
+{
+	for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
+		for(uint32_t qn = 0; qn < nqscores; ++qn) {
+			fprintf(fp, "%i", e->r1->final[0][qn][cycle]);
+			for(uint32_t bn = 1; bn < 4; ++bn)
+				fprintf(fp, ":%i", e->r1->final[bn][qn][cycle]);
+			if(qn != nqscores - 1) fprintf(fp, ",");
+		}
+		fprintf(fp, "|");
+		for(uint32_t qn = 0; qn < nqscores; ++qn) {
+			fprintf(fp, "%i", e->r2->final[0][qn][cycle]);
+			for(uint32_t bn = 1; bn < 4; ++bn)
+				fprintf(fp, ":%i", e->r2->final[bn][qn][cycle]);
+			if(qn != nqscores - 1) fprintf(fp, ",");
+		}
+		fprintf(fp, "\n");
+	}
+}
+
+void err_report(FILE *fp, fullerr_t *e)
 {
 	uint64_t min_obs = min_obs;
 	fprintf(stderr, "Beginning error report.\n");
 	fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", e->nread, e->nskipped);
-	uint64_t n_obs = 0, n_err = 0, n_ins = 0;
+	uint64_t n1_obs = 0, n1_err = 0, n1_ins = 0;
+	uint64_t n2_obs = 0, n2_err = 0, n2_ins = 0;
 	// n_ins is number with insufficient observations to report.
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
 			for(int k = 0; k < e->l; ++k) {
-				n_obs += e->obs[i][j][k];
-				n_err += e->err[i][j][k];
-				if(e->obs[i][j][k] >= min_obs)
-					e->rates[i][j][k] = (double)e->err[i][j][k] / e->obs[i][j][k];
-				else {
-					e->rates[i][j][k] = DBL_MAX;
-					++n_ins;
-				}
+				n1_obs += e->r1->obs[i][j][k];
+				n2_obs += e->r2->obs[i][j][k];
+				n1_err += e->r1->err[i][j][k];
+				n2_err += e->r2->err[i][j][k];
+				if(e->r1->rates[i][j][k] == DBL_MAX)
+					++n1_ins;
+				if(e->r2->rates[i][j][k] == DBL_MAX)
+					++n2_ins;
 			}
 		}
 	}
 	uint64_t n_cases = nqscores * 4 * e->l;
-	fprintf(stderr, "{\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
-
-			",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu},",
-			(double)n_err / n_obs, n_obs, n_err, n_ins, n_cases);
+	fprintf(stderr, "{\"read1\": {\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
+			",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
+			(double)n1_err / n1_obs, n1_obs, n1_err, n1_ins, n_cases);
+	fprintf(stderr, "{\"read2\": {\"total_error\": %f},\n{\"total_obs\": %lu},\n{\"total_err\": %lu}"
+			",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
+			(double)n2_err / n2_obs, n2_obs, n2_err, n2_ins, n_cases);
 	fprintf(fp, "}");
 	return;
 }
 
-void errcnt_destroy(errcnt_t *e){
+void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
 			free(e->obs[i][j]);
@@ -61,7 +85,7 @@ void errcnt_destroy(errcnt_t *e){
 	free(e);
 }
 
-void rate_calc(errcnt_t *e)
+void rate_calc(readerr_t *e)
 {
 	uint64_t min_obs = min_obs;
 	e->rates = (double ***)malloc(4 * sizeof(double **));
@@ -101,10 +125,8 @@ void rate_calc(errcnt_t *e)
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < e->l; ++l) {
 			e->qrates[i][l] = (qobs[i][l]) ? (double)qerr[i][l] / qobs[i][l]: DBL_MAX;
-			if(e->qrates[i][l] != DBL_MAX)
-				e->qdiffs[i][l] = (int)(-10 * log10(e->qrates[i][l]) + 0.5) - (int)(-10 * log10(qsum[i][l]) + 0.5);
-			else
-				e->qdiffs[i][l] = 0; // Use ILMN-reported quality for these if not available
+			e->qdiffs[i][l] = (e->qrates[i][l] != DBL_MAX) ?
+					pv2ph(e->qrates[i][l]) - pv2ph(qsum[i][l]): 0.;
 			// Difference between measured error rate and observed error rate
 		}
 		free(qobs[i]);
@@ -117,8 +139,7 @@ void rate_calc(errcnt_t *e)
 			e->final[i][j] = (int *)malloc(sizeof(int) * e->l);
 			for(l = 0; l < e->l; ++l)
 				e->final[i][j][l] = (e->rates[i][j][l] != DBL_MAX) ?
-						(int)(-10 * log10(e->rates[i][j][l]) + 0.5):
-						j + 2 + e->qdiffs[i][l];
+						pv2ph(e->rates[i][j][l]): j + 2 + e->qdiffs[i][l];
 		}
 	}
 	free(qobs);
@@ -130,8 +151,9 @@ void rate_calc(errcnt_t *e)
 
 
 
-void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
+void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
+	fprintf(stderr, "Opening bam file.\n");
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
 	if (hdr == NULL) {
@@ -143,9 +165,9 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	while((r = sam_read1(fp, hdr, b)) != -1) {
-		//fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
-		if(b->core.flag & 2816 || b->core.tid < 0) { // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
-			++e->nskipped;
+		fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
+		if(b->core.flag & 2816 || b->core.tid < 0) {// UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+			++f->nskipped;
 			continue;
 		}
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
@@ -164,8 +186,8 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 			exit(EXIT_FAILURE);
 		}
 
-		if(++e->nread % 1000000 == 0)
-			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, e->nread);
+		if(++f->nread % 1000000 == 0)
+			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
@@ -179,6 +201,8 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 		// rc -> read count
 		// fc -> reference base count
 		int i, ind, rc, fc;
+		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
+		fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
@@ -191,13 +215,22 @@ void err_core(char *fname, faidx_t *fai, errcnt_t *e, htsFormat *open_fmt)
 					s = bam_seqi(seq, ind + rc);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 					if(qual[ind + rc] > nqscores + 1) { // nqscores + 2 - 1
-						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %i.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
-					++e->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					if(bamseq2i[s] < 0) {
+						fprintf(stderr, "HEY THIS SHOULDN'T BE NEGATIVE\n");
+						exit(EXIT_FAILURE);
+					}
+					fprintf(stderr, "Incrementing obs %p, %p, %p, %lu\n", r->obs, r->obs[bamseq2i[s]], r->obs[bamseq2i[s]][qual[ind + rc] - 2],
+							r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc]);
+					fprintf(stderr, "Incrementing err %p, %p,\n", r->err, r->err[bamseq2i[s]]);
+					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s) {
 						//fprintf(stderr, "Found a mismatch before I died.\n");
-						++e->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+						fprintf(stderr, "Incrementing err %p, %p, %p, %lu\n", r->err, r->err[bamseq2i[s]], r->err[bamseq2i[s]][qual[ind + rc] - 2],
+								r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc]);
+							++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					}
 					//fprintf(stderr, "Finished incrementing.\n");
 				}
@@ -245,9 +278,13 @@ int err_main(int argc, char *argv[])
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage_exit(stderr, EXIT_SUCCESS);
 
-	while ((c = getopt(argc, argv, "o:h?")) >= 0) {
+	FILE *ofp = NULL, *d2 = NULL, *d3 = NULL;
+	while ((c = getopt(argc, argv, "m:o:h?")) >= 0) {
 		switch (c) {
 		case 'o': strcpy(outpath, optarg); break;
+		case 'm': min_obs = atoi(optarg); break;
+		case '3': d3 = fopen(optarg, "w"); break;
+		case '2': d2 = fopen(optarg, "w"); break;
 		case '?':
 		case 'h':
 			err_usage_exit(stderr, EXIT_SUCCESS);
@@ -256,7 +293,7 @@ int err_main(int argc, char *argv[])
 		}
 	}
 
-	FILE *ofp = NULL;
+
 	ofp = (outpath[0]) ? fopen(outpath, "w"): stdout;
 
 	if (argc != optind+2)
@@ -282,16 +319,22 @@ int err_main(int argc, char *argv[])
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	errcnt_t *e = errcnt_init((size_t)b->core.l_qseq);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	header = NULL;
-	err_core(argv[optind + 1], fai, e, &open_fmt);
-	rate_calc(e);
-	err_report(ofp, e);
-	errcnt_destroy(e);
+	err_core(argv[optind + 1], fai, f, &open_fmt);
+	rate_calc(f->r1);
+	rate_calc(f->r2);
+	make4d(ofp, f);
+	//err_report(ofp, e);
+	fullerr_destroy(f);
 	fclose(ofp);
+	if(d3)
+		fclose(d3);
+	if(d2)
+		fclose(d2);
 	return 0;
 }
