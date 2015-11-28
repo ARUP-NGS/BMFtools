@@ -95,7 +95,7 @@ void rate_calc(readerr_t *e)
 	e->qrates = (double **)malloc(4 * sizeof(double *));
 	e->qdiffs = (int **)malloc(4 * sizeof(int *));
 	uint64_t **qobs = (uint64_t **)malloc(4 * sizeof(uint64_t *));
-	uint64_t **qerr = (uint64_t **)malloc(4 * sizeof(uint64_t *));
+	uint64_t **qerr = (uint64_t **)calloc(4, sizeof(uint64_t *));
 	double **qsum = (double **)malloc(4 * sizeof(double *));
 	uint64_t **qcounts = (uint64_t **)malloc(4 * sizeof(uint64_t *));
 	// Calculate error rates, prepare information for imputing.
@@ -109,20 +109,26 @@ void rate_calc(readerr_t *e)
 		for(int j = 0; j < nqscores; ++j) {
 			e->rates[i][j] = (double *)malloc(e->l * sizeof(double));
 			for(uint32_t l = 0; l < e->l; ++l) {
+				fprintf(stderr, "Accessing %i, %i, %u\n", i, j, l);
 				e->rates[i][j][l] = (e->obs[i][j][l] >= min_obs) ? (double)e->err[i][j][l] / e->obs[i][j][l] : DBL_MAX;
-				qsum[i][l] += (-10. * log10(j + 2)) * e->obs[i][j][l];
-				qcounts += e->obs[i][j][l];
+				qsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * e->obs[i][j][l];
+				fprintf(stderr, "p value for char %c, %i in float space: %0.8f.\n", (char)(j + 35),j + 2, pow(10., (double)(-0.1 * (j + 2))));
+				qcounts[i][l] += e->obs[i][j][l];
 				qobs[i][l] += e->obs[i][j][l];
 				qerr[i][l] += e->err[i][j][l];
 			}
 		}
+		fprintf(stderr, "Finishing index %i where the last is 3.\n", i);
 	}
 	int i;
 	uint64_t l;
 	fprintf(stderr, "Freeing qcounts\n");
 	for(i = 0; i < 4; ++i) {
-		for(l = 0; l < e->l; ++l)
-			qsum[i][l] /= qcounts[i][l];
+		for(l = 0; l < e->l; ++l) {
+			fprintf(stderr, "qsum: %f. Counts: %lu.\n", qsum[i][l], qcounts[i][l]);
+			qsum[i][l] /= (qcounts[i][l] == 0.0) ? 1.0: qcounts[i][l];
+			fprintf(stderr, "Mean p value: %f\n", qsum[i][l]);
+		}
 		free(qcounts[i]);
 		fprintf(stderr, "Freeing pointer %p.\n", qcounts[i]);
 	}
@@ -134,12 +140,19 @@ void rate_calc(readerr_t *e)
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < e->l; ++l) {
 			e->qrates[i][l] = (qobs[i][l]) ? (double)qerr[i][l] / qobs[i][l]: DBL_MAX;
+			fprintf(stderr, "qrate: %f. mean qsum: %f.\n", e->qrates[i][l], qsum[i][l]);
+			fprintf(stderr, "readqscore: %i. Mean measured: %i.\n", pv2ph(e->qrates[i][l]), pv2ph(qsum[i][l]));
 			e->qdiffs[i][l] = (e->qrates[i][l] != DBL_MAX) ?
-					pv2ph(e->qrates[i][l]) - pv2ph(qsum[i][l]): 0.;
+					pv2ph(e->qrates[i][l]) - pv2ph(qsum[i][l]): 0;
+			fprintf(stderr, "Qdiff %i: %i, %lu\n", e->qdiffs[i][l], i, l);
 			// Difference between measured error rate and observed error rate
 		}
+		fprintf(stderr, "Deleting pointer %p.\n", qobs[i]);
 		free(qobs[i]);
+		fprintf(stderr, "Deleting pointer %p.\n", qerr);
+		fprintf(stderr, "Deleting pointer %p.\n", qerr[i]);
 		free(qerr[i]);
+		fprintf(stderr, "Successful iteration finish with index %i.\n", i);
 	}
 	fprintf(stderr, "Building final.\n");
 	e->final = (int ***)malloc(sizeof(int **) * 4);

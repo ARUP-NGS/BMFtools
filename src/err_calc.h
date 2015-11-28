@@ -31,10 +31,11 @@ typedef struct fullerr {
 } fullerr_t;
 
 #define nqscores 59uL
+#define maxpv 3114
 
 static inline int pv2ph(double pv)
 {
-	return (int)(-10. * log10(pv) + 0.5);
+	return (pv == 0.0) ? maxpv: (int)(-10. * log10(pv) + 0.5);
 }
 
 uint64_t ***arr_init(size_t l) {
