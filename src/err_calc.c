@@ -13,6 +13,7 @@ void err_usage_exit(FILE *fp, int retcode)
 // Add new dimension read 1/read 2 :'(
 void make4d(FILE *fp, fullerr_t *e)
 {
+	fprintf(stderr, "Hey i'm making 4d!\n");
 	for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
 		for(uint32_t qn = 0; qn < nqscores; ++qn) {
 			fprintf(fp, "%i", e->r1->final[0][qn][cycle]);
@@ -29,6 +30,8 @@ void make4d(FILE *fp, fullerr_t *e)
 		}
 		fprintf(fp, "\n");
 	}
+	fprintf(stderr, "Finishing make4d.\n");
+	return;
 }
 
 void err_report(FILE *fp, fullerr_t *e)
@@ -66,25 +69,29 @@ void err_report(FILE *fp, fullerr_t *e)
 
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
+		fprintf(stderr, "Destroying e with index %i\n", i);
 		for(int j = 0; j < nqscores; ++j) {
-			free(e->obs[i][j]);
-			free(e->err[i][j]);
+			fprintf(stderr, "j is %i.\n", j);
+			if(e->obs[i][j]) free(e->obs[i][j]);
+			if(e->err[i][j]) free(e->err[i][j]);
 			if(e->final[i][j]) free(e->final[i][j]);
 			if(e->rates[i][j]) free(e->rates[i][j]);
 		}
-		free(e->obs[i]);
-		free(e->err[i]);
+		fprintf(stderr, "Getting tier 1\n");
+		if(e->obs[i]) free(e->obs[i]);
+		if(e->err[i]) free(e->err[i]);
 		if(e->final[i]) free(e->final[i]);
 		if(e->rates[i]) free(e->rates[i]);
-		if(e->qrates[i]) free(e->qrates[i]);
-		if(e->qcounts[i]) free(e->qcounts[i]);
+		if(e->qrates && e->qrates[i]) free(e->qrates[i]);
+		if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
 	}
+	fprintf(stderr, "Getting tier 0\n");
 	if(e->qrates) free(e->qrates), e->qrates = NULL;
 	if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
 	if(e->rates) free(e->rates), e->rates = NULL;
-	free(e->obs);
-	free(e->err);
-	free(e);
+	if(e->obs) free(e->obs), e->obs = NULL;
+	if(e->err) free(e->err), e->err = NULL;
+	free(e), e = NULL;
 }
 
 void rate_calc(readerr_t *e)
@@ -96,8 +103,8 @@ void rate_calc(readerr_t *e)
 	e->qdiffs = (int **)malloc(4 * sizeof(int *));
 	uint64_t **qobs = (uint64_t **)malloc(4 * sizeof(uint64_t *));
 	uint64_t **qerr = (uint64_t **)calloc(4, sizeof(uint64_t *));
-	double **qsum = (double **)malloc(4 * sizeof(double *));
-	uint64_t **qcounts = (uint64_t **)malloc(4 * sizeof(uint64_t *));
+	double **qsum = (double **)calloc(4, sizeof(double *));
+	uint64_t **qcounts = (uint64_t **)calloc(4, sizeof(uint64_t *));
 	// Calculate error rates, prepare information for imputing.
 	for(int i = 0; i < 4; ++i) {
 		qcounts[i] = (uint64_t *)calloc(e->l, sizeof(uint64_t));
@@ -118,46 +125,35 @@ void rate_calc(readerr_t *e)
 				qerr[i][l] += e->err[i][j][l];
 			}
 		}
-		fprintf(stderr, "Finishing index %i where the last is 3.\n", i);
 	}
 	int i;
 	uint64_t l;
 	fprintf(stderr, "Freeing qcounts\n");
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < e->l; ++l) {
-			fprintf(stderr, "qsum: %f. Counts: %lu.\n", qsum[i][l], qcounts[i][l]);
 			qsum[i][l] /= (qcounts[i][l] == 0.0) ? 1.0: qcounts[i][l];
-			fprintf(stderr, "Mean p value: %f\n", qsum[i][l]);
 		}
 		free(qcounts[i]);
-		fprintf(stderr, "Freeing pointer %p.\n", qcounts[i]);
+		qcounts[i] = NULL;
 	}
-	fprintf(stderr, "Freeing pointer %p.\n", qcounts);
 	free(qcounts);
+	qcounts = NULL;
 
 	// Impute if needed
 	fprintf(stderr, "Imputing as needed\n");
 	for(i = 0; i < 4; ++i) {
+		e->qdiffs[i] = (int *)calloc(e->l, sizeof(double));
 		for(l = 0; l < e->l; ++l) {
 			e->qrates[i][l] = (qobs[i][l]) ? (double)qerr[i][l] / qobs[i][l]: DBL_MAX;
-			fprintf(stderr, "qrate: %f. mean qsum: %f.\n", e->qrates[i][l], qsum[i][l]);
-			fprintf(stderr, "readqscore: %i. Mean measured: %i.\n", pv2ph(e->qrates[i][l]), pv2ph(qsum[i][l]));
 			e->qdiffs[i][l] = (e->qrates[i][l] != DBL_MAX) ?
 					pv2ph(e->qrates[i][l]) - pv2ph(qsum[i][l]): 0;
-			fprintf(stderr, "Qdiff %i: %i, %lu\n", e->qdiffs[i][l], i, l);
 			// Difference between measured error rate and observed error rate
 		}
-		fprintf(stderr, "Deleting pointer %p.\n", qobs[i]);
-		free(qobs[i]);
-		fprintf(stderr, "Deleting pointer %p.\n", qerr);
-		fprintf(stderr, "Deleting pointer %p.\n", qerr[i]);
-		free(qerr[i]);
-		fprintf(stderr, "Successful iteration finish with index %i.\n", i);
 	}
-	fprintf(stderr, "Building final.\n");
 	e->final = (int ***)malloc(sizeof(int **) * 4);
 	for(i = 0; i < 4; ++i) {
 		e->final[i] = (int **)malloc(sizeof(int *) * nqscores);
+		free(qobs[i]), free(qerr[i]);
 		for(int j = 0; j < nqscores; ++j) {
 			e->final[i][j] = (int *)malloc(sizeof(int) * e->l);
 			for(l = 0; l < e->l; ++l)
@@ -165,9 +161,7 @@ void rate_calc(readerr_t *e)
 						pv2ph(e->rates[i][j][l]): j + 2 + e->qdiffs[i][l];
 		}
 	}
-	fprintf(stderr, "Finished making final, freed qobs %p and qerr %p.\n", qobs, qerr);
-	free(qobs);
-	free(qerr);
+	free(qerr), free(qobs);
 	// Now impute with the diffs for those which had insufficient observations.
 	return;
 }
