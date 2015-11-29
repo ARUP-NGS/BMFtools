@@ -6,12 +6,15 @@ void err_usage_exit(FILE *fp, int retcode)
 {
 	fprintf(fp, "Usage: Not written\n"
 			"bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
-			"Opts:\n\t-h/-?\tThis helpful help menu!\n");
+			"Opts:\n\t-h/-?\tThis helpful help menu!\n"
+			"\t-3: Path to write the 3d offset array in tabular format.\n"
+			"\t-4: Path to write the 4d measured array in tabular format.\n"
+			);
 	exit(retcode);
 }
 
 // Add new dimension read 1/read 2 :'(
-void make4d(FILE *fp, fullerr_t *e)
+void makefinal(FILE *fp, fullerr_t *e)
 {
 	fprintf(stderr, "Hey i'm making 4d!\n");
 	for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
@@ -30,7 +33,7 @@ void make4d(FILE *fp, fullerr_t *e)
 		}
 		fprintf(fp, "\n");
 	}
-	fprintf(stderr, "Finishing make4d.\n");
+	fprintf(stderr, "Finishing makefinal.\n");
 	return;
 }
 
@@ -69,15 +72,12 @@ void err_report(FILE *fp, fullerr_t *e)
 
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
-		fprintf(stderr, "Destroying e with index %i\n", i);
 		for(int j = 0; j < nqscores; ++j) {
-			fprintf(stderr, "j is %i.\n", j);
 			if(e->obs[i][j]) free(e->obs[i][j]);
 			if(e->err[i][j]) free(e->err[i][j]);
 			if(e->final[i][j]) free(e->final[i][j]);
 			if(e->rates[i][j]) free(e->rates[i][j]);
 		}
-		fprintf(stderr, "Getting tier 1\n");
 		if(e->obs[i]) free(e->obs[i]);
 		if(e->err[i]) free(e->err[i]);
 		if(e->final[i]) free(e->final[i]);
@@ -85,7 +85,6 @@ void readerr_destroy(readerr_t *e){
 		if(e->qrates && e->qrates[i]) free(e->qrates[i]);
 		if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
 	}
-	fprintf(stderr, "Getting tier 0\n");
 	if(e->qrates) free(e->qrates), e->qrates = NULL;
 	if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
 	if(e->rates) free(e->rates), e->rates = NULL;
@@ -96,7 +95,6 @@ void readerr_destroy(readerr_t *e){
 
 void rate_calc(readerr_t *e)
 {
-	fprintf(stderr, "Beginning %s for readerr %p.\n", __func__, e);
 	uint64_t min_obs = min_obs;
 	e->rates = (double ***)malloc(4 * sizeof(double **));
 	e->qrates = (double **)malloc(4 * sizeof(double *));
@@ -105,6 +103,7 @@ void rate_calc(readerr_t *e)
 	uint64_t **qerr = (uint64_t **)calloc(4, sizeof(uint64_t *));
 	double **qsum = (double **)calloc(4, sizeof(double *));
 	uint64_t **qcounts = (uint64_t **)calloc(4, sizeof(uint64_t *));
+	fprintf(stderr, "About to calculate the error rates and prepare info for imputing.\n");
 	// Calculate error rates, prepare information for imputing.
 	for(int i = 0; i < 4; ++i) {
 		qcounts[i] = (uint64_t *)calloc(e->l, sizeof(uint64_t));
@@ -116,10 +115,11 @@ void rate_calc(readerr_t *e)
 		for(int j = 0; j < nqscores; ++j) {
 			e->rates[i][j] = (double *)malloc(e->l * sizeof(double));
 			for(uint32_t l = 0; l < e->l; ++l) {
-				fprintf(stderr, "Accessing %i, %i, %u\n", i, j, l);
+				fprintf(stderr, "Before\n");
+
 				e->rates[i][j][l] = (e->obs[i][j][l] >= min_obs) ? (double)e->err[i][j][l] / e->obs[i][j][l] : DBL_MAX;
+				fprintf(stderr, "After\n");
 				qsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * e->obs[i][j][l];
-				fprintf(stderr, "p value for char %c, %i in float space: %0.8f.\n", (char)(j + 35),j + 2, pow(10., (double)(-0.1 * (j + 2))));
 				qcounts[i][l] += e->obs[i][j][l];
 				qobs[i][l] += e->obs[i][j][l];
 				qerr[i][l] += e->err[i][j][l];
@@ -128,7 +128,7 @@ void rate_calc(readerr_t *e)
 	}
 	int i;
 	uint64_t l;
-	fprintf(stderr, "Freeing qcounts\n");
+	fprintf(stderr, "Calculating mean ILMN-reported quality.\n");
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < e->l; ++l) {
 			qsum[i][l] /= (qcounts[i][l] == 0.0) ? 1.0: qcounts[i][l];
@@ -140,7 +140,7 @@ void rate_calc(readerr_t *e)
 	qcounts = NULL;
 
 	// Impute if needed
-	fprintf(stderr, "Imputing as needed\n");
+	fprintf(stderr, "Imputing if needed.\n");
 	for(i = 0; i < 4; ++i) {
 		e->qdiffs[i] = (int *)calloc(e->l, sizeof(double));
 		for(l = 0; l < e->l; ++l) {
@@ -150,37 +150,41 @@ void rate_calc(readerr_t *e)
 			// Difference between measured error rate and observed error rate
 		}
 	}
+	fprintf(stderr, "Plugging in imputations, then overwriting with sufficient information to make final useable array.\n");
 	e->final = (int ***)malloc(sizeof(int **) * 4);
 	for(i = 0; i < 4; ++i) {
 		e->final[i] = (int **)malloc(sizeof(int *) * nqscores);
 		free(qobs[i]), free(qerr[i]);
+		qobs[i] = qerr[i] = NULL;
 		for(int j = 0; j < nqscores; ++j) {
-			e->final[i][j] = (int *)malloc(sizeof(int) * e->l);
+			e->final[i][j] = (int *)malloc(e->l * sizeof(int));
 			for(l = 0; l < e->l; ++l)
-				e->final[i][j][l] = (e->rates[i][j][l] != DBL_MAX) ?
-						pv2ph(e->rates[i][j][l]): j + 2 + e->qdiffs[i][l];
+				e->final[i][j][l] = (e->qdiffs[i][l] > 0) ? j + 2 + e->qdiffs[i][l]: 0;
 		}
 	}
 	free(qerr), free(qobs);
-	// Now impute with the diffs for those which had insufficient observations.
+	qerr = qobs = NULL;
+	for(i = 0; i < 4; ++i) {
+		for(int j = 0; j < nqscores; ++j) {
+			for(l = 0; l < e->l; ++l)
+				if(e->rates[i][j][l] != DBL_MAX)
+					e->final[i][j][l] = pv2ph(e->rates[i][j][l]);
+		}
+	}
 	return;
 }
-// TODO: finish cleanup. Delete the qrates and qdiff arrays
 
 
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
-	fprintf(stderr, "%p, %p\n", f->r1, f->r2);
 	if(!f->r1)
 		f->r1 = readerr_init(f->l);
 	if(!f->r2)
 		f->r2 = readerr_init(f->l);//
-	fprintf(stderr, "Opening bam file.\n");
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
 	if (hdr == NULL) {
-		fprintf(stderr, "[famstat_err_main]: Failed to read header for \"%s\"\n", fname);
 		exit(EXIT_FAILURE);
 	}
 	int r, len;
@@ -188,7 +192,6 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	while((r = sam_read1(fp, hdr, b)) != -1) {
-		//fprintf(stderr, "Read new record with name %s.\n", bam_get_qname(b));
 		if(b->core.flag & 2816 || b->core.tid < 0) {// UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 			++f->nskipped;
 			continue;
@@ -289,6 +292,44 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	return;
 }
 
+void write_4d_errs(FILE *fp, fullerr_t *f)
+{
+	fprintf(fp, "##Each line is a cycle on the sequencer"
+			"#R1/A/2\tR1/C/2\tR1/G/2\t&c.\t\n");
+	for(uint64_t k = 0; k < f->l; ++k) {
+		for(int j = 0; j < nqscores; ++j) {
+			for(int i = 0; i < 4; ++i) {
+				fprintf(fp, (i) ? ":%0.8f": "%0.8f", f->r1->rates[i][j][k]);
+			}
+			if(j != nqscores - 1) fprintf(fp, ",");
+		}
+		fprintf(fp, "|");
+		for(int j = 0; j < nqscores; ++j) {
+			for(int i = 0; i < 4; ++i) {
+				fprintf(fp, (i) ? ":%0.8f": "%0.8f", f->r2->rates[i][j][k]);
+			}
+			if(j != nqscores - 1) fprintf(fp, ",");
+		}
+		fprintf(fp, "\n");
+	}
+
+}
+
+void write_3d_offsets(FILE *fp, fullerr_t *f)
+{
+	for(uint64_t k = 0; k < f->l; ++k) {
+		for(int i = 0; i < 4; ++i) {
+			fprintf(fp, i ? ":%i": "%i", f->r1->qdiffs[i][k]);
+		}
+		fprintf(fp, "|");
+		for(int i = 0; i < 4; ++i) {
+			fprintf(fp, i ? ":%i": "%i", f->r2->qdiffs[i][k]);
+		}
+		fprintf(fp, "\n");
+	}
+	return;
+}
+
 int err_main(int argc, char *argv[])
 {
 	htsFormat open_fmt;
@@ -358,13 +399,15 @@ int err_main(int argc, char *argv[])
 	err_core(argv[optind + 1], fai, f, &open_fmt);
 	rate_calc(f->r1);
 	rate_calc(f->r2);
-	make4d(ofp, f);
+	makefinal(ofp, f);
+	if(d4)
+		fprintf(stderr, "Writin' 4d errs\n"),
+		write_4d_errs(d4, f), fclose(d4);
+	if(d3)
+		fprintf(stderr, "Writin' 3d errs\n"),
+		write_3d_offsets(d3, f), fclose(d3);
 	//err_report(ofp, e);
 	fullerr_destroy(f);
 	fclose(ofp);
-	if(d3)
-		fclose(d3);
-	if(d4)
-		fclose(d4);
 	return 0;
 }
