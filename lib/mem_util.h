@@ -30,11 +30,10 @@
 		}\
 	} while(0)
 
-#define cond_close(fp) \
-	if(fp) {\
-		fclose(fp);\
-	}\
-	fp = NULL
+#define cfclose(fp) \
+	if(fp)\
+		fclose(fp), fp = NULL;
+
 
 #define roundup_div(top, bottom) 1 + (((top) - 1) / (bottom))
 

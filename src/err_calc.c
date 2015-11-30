@@ -1,6 +1,6 @@
 #include "err_calc.h"
 
-static uint64_t min_obs = 1000;
+static uint64_t min_obs = 10;
 
 void err_usage_exit(FILE *fp, int retcode)
 {
@@ -52,9 +52,9 @@ void err_report(FILE *fp, fullerr_t *e)
 				n2_obs += e->r2->obs[i][j][k];
 				n1_err += e->r1->err[i][j][k];
 				n2_err += e->r2->err[i][j][k];
-				if(e->r1->rates[i][j][k] == DBL_MAX)
+				if(e->r1->obs[i][j][k] < min_obs)
 					++n1_ins;
-				if(e->r2->rates[i][j][k] == DBL_MAX)
+				if(e->r2->obs[i][j][k] < min_obs)
 					++n2_ins;
 			}
 		}
@@ -73,107 +73,43 @@ void err_report(FILE *fp, fullerr_t *e)
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
-			if(e->obs[i][j]) free(e->obs[i][j]);
-			if(e->err[i][j]) free(e->err[i][j]);
-			if(e->final[i][j]) free(e->final[i][j]);
-			if(e->rates[i][j]) free(e->rates[i][j]);
+			fprintf(stderr, "Destroying obs %i %i\n", i, j);
+			if(e->obs[i][j]) free(e->obs[i][j]), e->obs[i][j] = NULL;
+			fprintf(stderr, "Destroying err %i %i\n", i, j);
+			if(e->err[i][j]) free(e->err[i][j]), e->err[i][j] = NULL;
+			fprintf(stderr, "Destroying final %i, %i\n", i, j);
+			if(e->final[i][j]) free(e->final[i][j]), e->final[i][j] = NULL;
+			//if(e->rates[i][j]) free(e->rates[i][j]);
 		}
-		if(e->obs[i]) free(e->obs[i]);
-		if(e->err[i]) free(e->err[i]);
-		if(e->final[i]) free(e->final[i]);
-		if(e->rates[i]) free(e->rates[i]);
-		if(e->qrates && e->qrates[i]) free(e->qrates[i]);
-		if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
+		fprintf(stderr, "Destroying obs %i\n", i);
+		if(e->obs[i]) free(e->obs[i]), e->obs[i] = NULL;
+		fprintf(stderr, "Destroying err %i\n", i);
+		if(e->err[i]) free(e->err[i]), e->err[i] = NULL;
+		fprintf(stderr, "Destroying qobs %i\n", i);
+		if(e->qobs[i]) free(e->qobs[i]), e->qobs[i] = NULL;
+		fprintf(stderr, "Destroying qerr %i\n", i);
+		if(e->qerr[i]) free(e->qerr[i]), e->qerr[i] = NULL;
+		fprintf(stderr, "Destroying final %i\n", i);
+		if(e->final[i]) free(e->final[i]), e->final[i] = NULL;
+		fprintf(stderr, "Destroying qpvsum %i\n", i);
+		if(e->qpvsum[i]) free(e->qpvsum[i]), e->qpvsum[i] = NULL;
+		fprintf(stderr, "Destroying qdiffs %i\n", i);
+		if(e->qdiffs[i]) free(e->qdiffs[i]), e->qdiffs[i] = NULL;
+		//if(e->qrates && e->qrates[i]) free(e->qrates[i]);
+		//if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
 	}
-	if(e->qrates) free(e->qrates), e->qrates = NULL;
-	if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
-	if(e->rates) free(e->rates), e->rates = NULL;
+	//if(e->qrates) free(e->qrates), e->qrates = NULL;
+	//if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
+	//if(e->rates) free(e->rates), e->rates = NULL;
 	if(e->obs) free(e->obs), e->obs = NULL;
 	if(e->err) free(e->err), e->err = NULL;
+	if(e->qobs) free(e->qobs), e->qobs = NULL;
+	if(e->qerr) free(e->qerr), e->qerr = NULL;
+	if(e->final) free(e->final), e->final = NULL;
+	if(e->qpvsum) free(e->qpvsum), e->qpvsum = NULL;
+	if(e->qdiffs) free(e->qdiffs), e->qdiffs = NULL;
 	free(e), e = NULL;
 }
-
-void rate_calc(readerr_t *e)
-{
-	uint64_t min_obs = min_obs;
-	e->rates = (double ***)malloc(4 * sizeof(double **));
-	e->qrates = (double **)malloc(4 * sizeof(double *));
-	e->qdiffs = (int **)malloc(4 * sizeof(int *));
-	uint64_t **qobs = (uint64_t **)malloc(4 * sizeof(uint64_t *));
-	uint64_t **qerr = (uint64_t **)calloc(4, sizeof(uint64_t *));
-	double **qsum = (double **)calloc(4, sizeof(double *));
-	uint64_t **qcounts = (uint64_t **)calloc(4, sizeof(uint64_t *));
-	fprintf(stderr, "About to calculate the error rates and prepare info for imputing.\n");
-	// Calculate error rates, prepare information for imputing.
-	for(int i = 0; i < 4; ++i) {
-		qcounts[i] = (uint64_t *)calloc(e->l, sizeof(uint64_t));
-		qsum[i] = (double *)calloc(e->l, sizeof(double));
-		qobs[i] = (uint64_t *)calloc(e->l,  sizeof(uint64_t));
-		qerr[i] = (uint64_t *)calloc(e->l,  sizeof(uint64_t));
-		e->qrates[i] = (double *)malloc(e->l * sizeof(double));
-		e->rates[i] = (double **)malloc(nqscores * sizeof(double *));
-		for(int j = 0; j < nqscores; ++j) {
-			e->rates[i][j] = (double *)malloc(e->l * sizeof(double));
-			for(uint32_t l = 0; l < e->l; ++l) {
-				fprintf(stderr, "Before\n");
-
-				e->rates[i][j][l] = (e->obs[i][j][l] >= min_obs) ? (double)e->err[i][j][l] / e->obs[i][j][l] : DBL_MAX;
-				fprintf(stderr, "After\n");
-				qsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * e->obs[i][j][l];
-				qcounts[i][l] += e->obs[i][j][l];
-				qobs[i][l] += e->obs[i][j][l];
-				qerr[i][l] += e->err[i][j][l];
-			}
-		}
-	}
-	int i;
-	uint64_t l;
-	fprintf(stderr, "Calculating mean ILMN-reported quality.\n");
-	for(i = 0; i < 4; ++i) {
-		for(l = 0; l < e->l; ++l) {
-			qsum[i][l] /= (qcounts[i][l] == 0.0) ? 1.0: qcounts[i][l];
-		}
-		free(qcounts[i]);
-		qcounts[i] = NULL;
-	}
-	free(qcounts);
-	qcounts = NULL;
-
-	// Impute if needed
-	fprintf(stderr, "Imputing if needed.\n");
-	for(i = 0; i < 4; ++i) {
-		e->qdiffs[i] = (int *)calloc(e->l, sizeof(double));
-		for(l = 0; l < e->l; ++l) {
-			e->qrates[i][l] = (qobs[i][l]) ? (double)qerr[i][l] / qobs[i][l]: DBL_MAX;
-			e->qdiffs[i][l] = (e->qrates[i][l] != DBL_MAX) ?
-					pv2ph(e->qrates[i][l]) - pv2ph(qsum[i][l]): 0;
-			// Difference between measured error rate and observed error rate
-		}
-	}
-	fprintf(stderr, "Plugging in imputations, then overwriting with sufficient information to make final useable array.\n");
-	e->final = (int ***)malloc(sizeof(int **) * 4);
-	for(i = 0; i < 4; ++i) {
-		e->final[i] = (int **)malloc(sizeof(int *) * nqscores);
-		free(qobs[i]), free(qerr[i]);
-		qobs[i] = qerr[i] = NULL;
-		for(int j = 0; j < nqscores; ++j) {
-			e->final[i][j] = (int *)malloc(e->l * sizeof(int));
-			for(l = 0; l < e->l; ++l)
-				e->final[i][j][l] = (e->qdiffs[i][l] > 0) ? j + 2 + e->qdiffs[i][l]: 0;
-		}
-	}
-	free(qerr), free(qobs);
-	qerr = qobs = NULL;
-	for(i = 0; i < 4; ++i) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(l = 0; l < e->l; ++l)
-				if(e->rates[i][j][l] != DBL_MAX)
-					e->final[i][j][l] = pv2ph(e->rates[i][j][l]);
-		}
-	}
-	return;
-}
-
 
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
@@ -294,6 +230,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 
 void write_4d_errs(FILE *fp, fullerr_t *f)
 {
+	/*
 	fprintf(fp, "##Each line is a cycle on the sequencer"
 			"#R1/A/2\tR1/C/2\tR1/G/2\t&c.\t\n");
 	for(uint64_t k = 0; k < f->l; ++k) {
@@ -312,7 +249,80 @@ void write_4d_errs(FILE *fp, fullerr_t *f)
 		}
 		fprintf(fp, "\n");
 	}
+	*/
+}
 
+void fill_qvals(fullerr_t *f)
+{
+	fprintf(stderr, "Beginning fill_qvals\n");
+	for(int i = 0; i < 4; ++i) {
+		for(uint64_t l = 0; l < f->l; ++l) {
+			for(int j = 1; j < nqscores; ++j) { // Skip qualities of 2
+				f->r1->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
+				f->r2->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
+				f->r1->qobs[i][l] += f->r1->obs[i][j][l];
+				f->r2->qobs[i][l] += f->r2->obs[i][j][l];
+				f->r1->qerr[i][l] += f->r1->err[i][j][l];
+				f->r2->qerr[i][l] += f->r2->err[i][j][l];
+			}
+		}
+	}
+	for(int i = 0; i < 4; ++i) {
+		for(uint64_t l = 0; l < f->l; ++l) {
+			f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
+			f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
+			f->r1->qdiffs[i][l] = pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]);
+			f->r2->qdiffs[i][l] = pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l]);
+			if(f->r1->qobs[i][l] < min_obs) f->r1->qdiffs[i][l] = 0;
+			if(f->r2->qobs[i][l] < min_obs) f->r2->qdiffs[i][l] = 0;
+		}
+	}
+	FILE *qvh = fopen("qvalues.txt", "w");
+	for(uint64_t l = 0; l < f->l; ++l) {
+		for(int i = 0; i < 4; ++i){
+			fprintf(qvh, i ? ":%i": "%i", f->r1->qdiffs[i][l]);
+			fputc('|', qvh);
+			fprintf(qvh, i ? ":%i": "%i", f->r2->qdiffs[i][l]);
+		}
+		fputc('\n', qvh);
+	}
+	fclose(qvh);
+}
+
+void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
+{
+	const char *bstr = "ACGT";
+	FILE *dictwrite = fopen("dict.txt", "w");
+	fprintf(dictwrite, "{\n\t");
+	for(uint32_t l = 0; l < f->l; ++l) {
+		for(int j = 0; j < nqscores; ++j) {
+			for(int i = 0; i < 4; ++i) {
+				fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->obs[i][j][l]);
+				fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->obs[i][j][l]);
+				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->err[i][j][l]);
+				if(i == 3 && j == nqscores - 1 && l == f->l - 1)
+					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
+				else
+					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
+				fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
+				fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
+			}
+			if(j != nqscores - 1)
+				fprintf(ep, ","), fprintf(cp, ",");
+		}
+		fprintf(ep, "|"), fprintf(cp, "|");
+		for(int j = 0; j < nqscores; ++j) {
+			for(int i = 0; i < 4; ++i) {
+				fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
+				fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
+			}
+			if(j != nqscores - 1)
+				fprintf(ep, ","), fprintf(cp, ",");
+		}
+		fprintf(ep, "\n"), fprintf(cp, "\n");
+	}
+	fclose(dictwrite);
+	return;
 }
 
 void write_3d_offsets(FILE *fp, fullerr_t *f)
@@ -397,9 +407,16 @@ int err_main(int argc, char *argv[])
 	bam_hdr_destroy(header);
 	header = NULL;
 	err_core(argv[optind + 1], fai, f, &open_fmt);
+	fprintf(stderr, "Core finished.\n");
+	FILE *ch = fopen("counts.txt", "w"),*eh = fopen("errs.txt", "w");
+	write_counts(f, ch, eh);
+	fill_qvals(f);
+	cfclose(ch); cfclose(eh);
+	/*
 	rate_calc(f->r1);
 	rate_calc(f->r2);
 	makefinal(ofp, f);
+	*/
 	if(d4)
 		fprintf(stderr, "Writin' 4d errs\n"),
 		write_4d_errs(d4, f), fclose(d4);
