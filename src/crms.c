@@ -25,7 +25,7 @@ void print_crms_usage(char *argv[])
 						" a homopolymer of length >= this limit is flagged as QC fail."
 						"Default: 10.\n"
 						"-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
-						"-m: Mask first n nucleotides in read for barcode. Default: 0. Recommended: 1.\n"
+						"-m: Mask first n nucleotides in read for barcode. Default: 1.\n"
 						"-p: Number of threads to use if running uthash_dmp.\n"
 						"-d: Use this flag to to run hash_dmp.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
@@ -311,7 +311,7 @@ int crms_main(int argc, char *argv[])
 		.notification_interval = 1000000,
 		.blen = 0,
 		.homing_sequence_length = 0,
-		.offset = 0,
+		.offset = 1,
 		.rescaler = NULL,
 		.rescaler_path = NULL,
 		.run_hash_dmp = 0,
@@ -416,8 +416,9 @@ int crms_main(int argc, char *argv[])
 	settings.input_r2_path = strdup(argv[optind + 1]);
 
 	if(!settings.output_basename) {
-		settings.output_basename = make_crms_outfname(settings.input_r1_path);
-		fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
+		settings.output_basename = (char *)malloc(21 * sizeof(char));
+		rand_string(settings.output_basename, 20);
+		fprintf(stderr, "Output basename not provided. Defaulting to random: %s.\n", settings.output_basename);
 	}
 	mark_splitter_t *splitter = (settings.annealed) ? pp_split_annealed(&settings): pp_split_inline(&settings);
 	cond_free(settings.rescaler);

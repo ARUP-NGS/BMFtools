@@ -27,7 +27,7 @@ void print_usage(char *argv[])
 						"-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
 						"-g: Gzip compression ratio if piping to gzip (-z). Default: 1 (weak compression).\n"
 						"-s: Number of bases from reads 1 and 2 with which to salt the barcode. Default: 0.\n"
-						"-m: Number of bases in the start of reads to skip when salting. Default: 0. Recommended: 1.\n"
+						"-m: Number of bases in the start of reads to skip when salting. Default: 1.\n"
 						"-d: Flag to run hash dmp. Default: False.\n"
 						"-p: Number of threads to use if running hash_dmp. Default: 4.\n"
 						"-v: Set notification interval for split. Default: 1000000.\n"
@@ -149,7 +149,7 @@ int fqms_main(int argc, char *argv[])
 		.gzip_output = 0,
 		.ffq_prefix = NULL,
 		.salt = 0,
-		.offset = 0,
+		.offset = 1,
 		.threads = 4,
 		.gzip_compression = 1,
 		.rescaler = NULL,
@@ -184,7 +184,7 @@ int fqms_main(int argc, char *argv[])
 
 	if(!settings.output_basename) {
 		settings.output_basename = malloc(21 * sizeof(char));
-
+		rand_string(settings.output_basename, 20);
 	}
 
 
