@@ -33,10 +33,11 @@ libhts.a:
 	cd htslib && make && cp libhts.a ../
 bmftools:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(BMF_SRC) -o bmftools
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -fno-inline -o bmftools_db
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(BMF_SRC) -DPUTC -o bmftools1
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -o bmftools_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -pg -o bmftools_p
 copy:
-	mv bmftools bmftools_p bmftools_db bin/
+	mv bmftools bmftools_p bmftools_db bmftools1 bin/
 	#mv bmftools  bin/
 
 

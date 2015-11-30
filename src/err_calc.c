@@ -1,6 +1,6 @@
 #include "err_calc.h"
 
-static uint64_t min_obs = 10;
+#define min_obs 1000uL
 
 void err_usage_exit(FILE *fp, int retcode)
 {
@@ -13,8 +13,7 @@ void err_usage_exit(FILE *fp, int retcode)
 	exit(retcode);
 }
 
-// Add new dimension read 1/read 2 :'(
-void makefinal(FILE *fp, fullerr_t *e)
+void write_final(FILE *fp, fullerr_t *e)
 {
 	fprintf(stderr, "Hey i'm making 4d!\n");
 	for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
@@ -33,13 +32,12 @@ void makefinal(FILE *fp, fullerr_t *e)
 		}
 		fprintf(fp, "\n");
 	}
-	fprintf(stderr, "Finishing makefinal.\n");
+	fprintf(stderr, "Finishing write_final.\n");
 	return;
 }
 
 void err_report(FILE *fp, fullerr_t *e)
 {
-	uint64_t min_obs = min_obs;
 	fprintf(stderr, "Beginning error report.\n");
 	fprintf(fp, "{\n{\"total_read\": %lu},\n{\"total_skipped\": %lu},\n", e->nread, e->nskipped);
 	uint64_t n1_obs = 0, n1_err = 0, n1_ins = 0;
@@ -73,27 +71,17 @@ void err_report(FILE *fp, fullerr_t *e)
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
-			fprintf(stderr, "Destroying obs %i %i\n", i, j);
 			if(e->obs[i][j]) free(e->obs[i][j]), e->obs[i][j] = NULL;
-			fprintf(stderr, "Destroying err %i %i\n", i, j);
 			if(e->err[i][j]) free(e->err[i][j]), e->err[i][j] = NULL;
-			fprintf(stderr, "Destroying final %i, %i\n", i, j);
 			if(e->final[i][j]) free(e->final[i][j]), e->final[i][j] = NULL;
 			//if(e->rates[i][j]) free(e->rates[i][j]);
 		}
-		fprintf(stderr, "Destroying obs %i\n", i);
 		if(e->obs[i]) free(e->obs[i]), e->obs[i] = NULL;
-		fprintf(stderr, "Destroying err %i\n", i);
 		if(e->err[i]) free(e->err[i]), e->err[i] = NULL;
-		fprintf(stderr, "Destroying qobs %i\n", i);
 		if(e->qobs[i]) free(e->qobs[i]), e->qobs[i] = NULL;
-		fprintf(stderr, "Destroying qerr %i\n", i);
 		if(e->qerr[i]) free(e->qerr[i]), e->qerr[i] = NULL;
-		fprintf(stderr, "Destroying final %i\n", i);
 		if(e->final[i]) free(e->final[i]), e->final[i] = NULL;
-		fprintf(stderr, "Destroying qpvsum %i\n", i);
 		if(e->qpvsum[i]) free(e->qpvsum[i]), e->qpvsum[i] = NULL;
-		fprintf(stderr, "Destroying qdiffs %i\n", i);
 		if(e->qdiffs[i]) free(e->qdiffs[i]), e->qdiffs[i] = NULL;
 		//if(e->qrates && e->qrates[i]) free(e->qrates[i]);
 		//if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
@@ -153,7 +141,6 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
-		static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 		if(b->core.tid != last_tid) {
 			if(ref) free(ref);
 			fprintf(stderr, "Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
@@ -228,33 +215,21 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	return;
 }
 
-void write_4d_errs(FILE *fp, fullerr_t *f)
+void impute_scores(fullerr_t *f)
 {
-	/*
-	fprintf(fp, "##Each line is a cycle on the sequencer"
-			"#R1/A/2\tR1/C/2\tR1/G/2\t&c.\t\n");
-	for(uint64_t k = 0; k < f->l; ++k) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
-				fprintf(fp, (i) ? ":%0.8f": "%0.8f", f->r1->rates[i][j][k]);
+	for(int i = 0; i < 4; ++i) {
+		for(uint64_t l = 0; l < f->l; ++l) {
+			for(int j = 0; j < nqscores; ++j) {
+				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2,
+				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2;
 			}
-			if(j != nqscores - 1) fprintf(fp, ",");
 		}
-		fprintf(fp, "|");
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
-				fprintf(fp, (i) ? ":%0.8f": "%0.8f", f->r2->rates[i][j][k]);
-			}
-			if(j != nqscores - 1) fprintf(fp, ",");
-		}
-		fprintf(fp, "\n");
 	}
-	*/
+	return;
 }
 
 void fill_qvals(fullerr_t *f)
 {
-	fprintf(stderr, "Beginning fill_qvals\n");
 	for(int i = 0; i < 4; ++i) {
 		for(uint64_t l = 0; l < f->l; ++l) {
 			for(int j = 1; j < nqscores; ++j) { // Skip qualities of 2
@@ -273,20 +248,37 @@ void fill_qvals(fullerr_t *f)
 			f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
 			f->r1->qdiffs[i][l] = pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]);
 			f->r2->qdiffs[i][l] = pv2ph((double)f->r2->qerr[i][l] / f->r2->qobs[i][l]) - pv2ph(f->r2->qpvsum[i][l]);
+			//fprintf(stderr, "qdiffs i, l (measured) is R1:%i R2:%i.\n", f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
 			if(f->r1->qobs[i][l] < min_obs) f->r1->qdiffs[i][l] = 0;
 			if(f->r2->qobs[i][l] < min_obs) f->r2->qdiffs[i][l] = 0;
+			//fprintf(stderr, "qdiffs %i, %lu after checking for %lu %lu > %lu min_obs is R1:%i R2:%i.\n", i, l, f->r1->qobs[i][l], f->r2->qobs[i][l], min_obs, f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
 		}
 	}
-	FILE *qvh = fopen("qvalues.txt", "w");
-	for(uint64_t l = 0; l < f->l; ++l) {
-		for(int i = 0; i < 4; ++i){
-			fprintf(qvh, i ? ":%i": "%i", f->r1->qdiffs[i][l]);
-			fputc('|', qvh);
-			fprintf(qvh, i ? ":%i": "%i", f->r2->qdiffs[i][l]);
+	return;
+}
+
+void fill_sufficient_obs(fullerr_t *f)
+{
+#if DELETE_ME
+	FILE *before_fs = fopen("before_fill_sufficient.txt", "w");
+	write_3d_offsets(before_fs, f);
+	fclose(before_fs);
+#endif
+	for(int i = 0; i < 4; ++i) {
+		for(int j = 0; j < nqscores; ++j) {
+			for(uint64_t l = 0; l < f->l; ++l) {
+				if(f->r1->obs[i][j][l] > min_obs)
+					f->r1->final[i][j][l] = pv2ph((double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
+				if(f->r2->obs[i][j][l] > min_obs)
+					f->r2->final[i][j][l] = pv2ph((double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
+			}
 		}
-		fputc('\n', qvh);
 	}
-	fclose(qvh);
+#if DELETE_ME
+	FILE *after_fs = fopen("after_fill_sufficient.txt", "w");
+	write_3d_offsets(after_fs, f);
+	fclose(after_fs);
+#endif
 }
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
@@ -327,15 +319,14 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 
 void write_3d_offsets(FILE *fp, fullerr_t *f)
 {
-	for(uint64_t k = 0; k < f->l; ++k) {
-		for(int i = 0; i < 4; ++i) {
-			fprintf(fp, i ? ":%i": "%i", f->r1->qdiffs[i][k]);
-		}
-		fprintf(fp, "|");
-		for(int i = 0; i < 4; ++i) {
-			fprintf(fp, i ? ":%i": "%i", f->r2->qdiffs[i][k]);
-		}
-		fprintf(fp, "\n");
+	fprintf(fp, "#Cycle\tR1A\tR1C\tR1G\tR1T\tR2A\tR2C\tR2G\tR2T\n");
+	for(uint64_t l = 0; l < f->l; ++l) {
+		fprintf(fp, "%lu\t", l + 1);
+		int i;
+		for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%i": "%i", f->r1->qdiffs[i][l]);
+		fputc('|', fp);
+		for(i = 0; i < 4; ++i) fprintf(fp, i ? "\t%i": "%i", f->r2->qdiffs[i][l]);
+		fputc('\n', fp);
 	}
 	return;
 }
@@ -359,12 +350,10 @@ int err_main(int argc, char *argv[])
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage_exit(stderr, EXIT_SUCCESS);
 
-	FILE *ofp = NULL, *d4 = NULL, *d3 = NULL;
-	while ((c = getopt(argc, argv, "4:3:m:o:h?")) >= 0) {
+	FILE *ofp = NULL, *d3 = NULL;
+	while ((c = getopt(argc, argv, "3:o:h?")) >= 0) {
 		switch (c) {
 		case 'o': strcpy(outpath, optarg); break;
-		case 'm': min_obs = atoi(optarg); break;
-		case '4': d4 = fopen(optarg, "w"); break;
 		case '3': d3 = fopen(optarg, "w"); break;
 		case '?':
 		case 'h':
@@ -410,20 +399,14 @@ int err_main(int argc, char *argv[])
 	fprintf(stderr, "Core finished.\n");
 	FILE *ch = fopen("counts.txt", "w"),*eh = fopen("errs.txt", "w");
 	write_counts(f, ch, eh);
-	fill_qvals(f);
 	cfclose(ch); cfclose(eh);
-	/*
-	rate_calc(f->r1);
-	rate_calc(f->r2);
-	makefinal(ofp, f);
-	*/
-	if(d4)
-		fprintf(stderr, "Writin' 4d errs\n"),
-		write_4d_errs(d4, f), fclose(d4);
+	fill_qvals(f);
+	impute_scores(f);
+	fill_sufficient_obs(f);
+	write_final(ofp, f);
 	if(d3)
 		fprintf(stderr, "Writin' 3d errs\n"),
 		write_3d_offsets(d3, f), fclose(d3);
-	//err_report(ofp, e);
 	fullerr_destroy(f);
 	fclose(ofp);
 	return 0;

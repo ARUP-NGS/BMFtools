@@ -31,7 +31,7 @@ typedef struct fullerr {
 	size_t l;
 } fullerr_t;
 
-#define nqscores 59uL
+#define nqscores 39uL
 #define maxpv 3114
 
 static inline int pv2ph(double pv)
@@ -57,19 +57,67 @@ static inline int pv2ph(double pv)
 		var[i_] = (type *)calloc(l, sizeof(type));\
 	}} while(0)
 
+uint64_t ***a3d_u64(size_t l)
+{
+	uint64_t ***ret = (uint64_t ***)calloc(4, sizeof(uint64_t **));
+	for(uint64_t i = 0; i < 4; ++i) {
+		ret[i] = (uint64_t **)calloc(nqscores, sizeof(uint64_t *));
+		for(uint64_t j = 0; j < nqscores; ++j)
+			ret[i][j] = (uint64_t *)calloc(l, sizeof(uint64_t));
+	}
+	return ret;
+}
+
+double **a2d_double(size_t l)
+{
+	double **ret = (double **)calloc(4, sizeof(double *));
+	for(int i = 0; i < 4; ++i)
+		ret[i] = (double *)calloc(l, sizeof(double));
+	return ret;
+}
+
+int **a2d_int(size_t l)
+{
+	int **ret = (int **)calloc(4, sizeof(int *));
+	for(int i = 0; i < 4; ++i)
+		ret[i] = (int *)calloc(l, sizeof(int));
+	return ret;
+}
+
+uint64_t **a2d_u64(size_t l)
+{
+	uint64_t **ret = (uint64_t **)calloc(4, sizeof(uint64_t *));
+	for(uint64_t i = 0; i < 4; ++i)
+		ret[i] = (uint64_t *)calloc(l, sizeof(uint64_t));
+	return ret;
+}
+
+
+int ***a3d_int(size_t l)
+{
+	int ***ret = (int ***)calloc(4, sizeof(int **));
+	for(int i = 0; i < 4; ++i) {
+		ret[i] = (int **)calloc(nqscores, sizeof(int *));
+		for(int j = 0; j < nqscores; ++j) {
+			ret[i][j] = (int *)calloc(l, sizeof(int));
+		}
+	}
+	return ret;
+}
+
 static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 
 void rate_calc(readerr_t *e);
 
 readerr_t *readerr_init(size_t l) {
 	readerr_t *ret = (readerr_t *)calloc(1, sizeof(readerr_t));
-	arr3d_init(ret->obs, l, uint64_t);
-	arr3d_init(ret->err, l, uint64_t);
-	arr3d_init(ret->final, l, int);
-	arr2d_init(ret->qdiffs, l, int);
-	arr2d_init(ret->qpvsum, l, double);
-	arr2d_init(ret->qobs, l, uint64_t);
-	arr2d_init(ret->qerr, l, uint64_t);
+	ret->obs = a3d_u64(l);
+	ret->err = a3d_u64(l);
+	ret->final = a3d_int(l);
+	ret->qdiffs = a2d_int(l);
+	ret->qpvsum = a2d_double(l);
+	ret->qobs = a2d_u64(l);
+	ret->qerr = a2d_u64(l);
 	ret->l = l;
 	return ret;
 }

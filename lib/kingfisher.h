@@ -212,10 +212,30 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers
 	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
 	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+#if PUTC
+	fputc('@', handle);
+	fputs(kfp->barcode,handle);
+	fputc(' ', handle);
+	fputs(bufs->FABuffer, handle);
+	fputc('\t', handle);
+	fputs(bufs->PVBuffer, handle);
+	fputs("\tFP:i:", handle);
+	fputc(kfp->pass_fail, handle);
+	fputs("\tRV:i:", handle);
+	fputc(kfp->n_rc + '0', handle);
+	fputs("\tFM:i:", handle);
+	fputc(kfp->length + '0', handle);
+	fputc('\n', handle);
+	fputs(bufs->cons_seq_buffer, handle);
+	fputs("\n+\n", handle);
+	fputs(kfp->max_phreds, handle);
+	fputc('\n', handle);
+#else
+	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
 			bufs->FABuffer, bufs->PVBuffer,
 			kfp->pass_fail, kfp->n_rc, kfp->length,
 			bufs->cons_seq_buffer, kfp->max_phreds);
+#endif
 	return;
 }
 
