@@ -135,12 +135,11 @@ void print_opt_err(char *argv[], char *optarg)
 int fqms_main(int argc, char *argv[])
 {
 	// Build settings struct
-	const char *default_basename = "metasyntactic_var";
 	mss_settings_t settings = {
 		.hp_threshold = 10,
 		.n_nucs = 2,
 		.index_fq_path = NULL,
-		.output_basename = (char *)default_basename,
+		.output_basename = NULL,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,
 		.n_handles = 0,
@@ -181,6 +180,11 @@ int fqms_main(int argc, char *argv[])
 			case 'h': print_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
 		}
+	}
+
+	if(!settings.output_basename) {
+		settings.output_basename = malloc(21 * sizeof(char));
+
 	}
 
 

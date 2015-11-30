@@ -37,5 +37,8 @@
 
 #define roundup_div(top, bottom) 1 + (((top) - 1) / (bottom))
 
+#define ifn_abort(var) \
+	do {if(!var) fprintf(stderr, "Could not allocate memory or get pointer ('%s'). Abort!\n", #var),\
+		exit(EXIT_FAILURE);} while(0)
 
 #endif

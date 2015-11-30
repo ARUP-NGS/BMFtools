@@ -123,18 +123,9 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
-		if(!cigar) {
-			fprintf(stderr, "Could not get bam cigar. Abort!\n");
-			exit(EXIT_FAILURE);
-		}
-		if(!seq) {
-			fprintf(stderr, "Could not get bam seq. Abort!\n");
-			exit(EXIT_FAILURE);
-		}
-		if(!qual) {
-			fprintf(stderr, "Could not get bam qual. Abort!\n");
-			exit(EXIT_FAILURE);
-		}
+		ifn_abort(cigar);
+		ifn_abort(seq);
+		ifn_abort(qual);
 
 		if(++f->nread % 1000000 == 0)
 			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
@@ -220,8 +211,10 @@ void impute_scores(fullerr_t *f)
 	for(int i = 0; i < 4; ++i) {
 		for(uint64_t l = 0; l < f->l; ++l) {
 			for(int j = 0; j < nqscores; ++j) {
-				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2,
-				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2;
+				const int f1 = f->r1->qdiffs[i][l] + j + 2;
+				const int f2 = f->r2->qdiffs[i][l] + j + 2;
+				f->r1->final[i][j][l] = f1 > 0 ? f1: 0,
+				f->r2->final[i][j][l] = f2 > 0 ? f2: 0;
 			}
 		}
 	}
