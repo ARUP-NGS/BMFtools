@@ -184,8 +184,9 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	fprintf(stderr, "Cleaning up after gathering my error data.\n");
-	if(ref) free(ref);
+	if(ref) free(ref), ref = NULL;
 	bam_destroy1(b), b = NULL;
+	bam_hdr_destroy(hdr), sam_close(fp), hdr = NULL, fp = NULL;
 	return;
 }
 
@@ -257,8 +258,8 @@ void impute_scores(fullerr_t *f)
 	int j, i;
 	uint64_t l;
 	for(i = 0; i < 4; ++i)
-		for(uint64_t l = 0; l < f->l; ++l)
-			for(int j = 0; j < nqscores; ++j)
+		for(l = 0; l < f->l; ++l)
+			for(j = 0; j < nqscores; ++j)
 				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2 > 0 ? f->r1->qdiffs[i][l] + j + 2: 0,
 				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2 > 0 ? f->r2->qdiffs[i][l] + j + 2: 0;
 	return;
@@ -436,6 +437,7 @@ int err_main(int argc, char *argv[])
 	header = NULL;
 	err_core(argv[optind + 1], fai, f, &open_fmt);
 	fprintf(stderr, "Core finished.\n");
+	fai_destroy(fai);
 	FILE *ch = fopen("counts.txt", "w"),*eh = fopen("errs.txt", "w");
 	write_counts(f, ch, eh);
 	cfclose(ch); cfclose(eh);
