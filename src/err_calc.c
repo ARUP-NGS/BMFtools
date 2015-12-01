@@ -7,6 +7,7 @@ void err_usage_exit(FILE *fp, int retcode)
 	fprintf(fp, "Usage: Not written\n"
 			"bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Opts:\n\t-h/-?\tThis helpful help menu!\n"
+			"\t-r: Name of contig. If set, only reads aligned to this contig are considered\n"
 			"\t-3: Path to write the 3d offset array in tabular format.\n"
 			"\t-f: Path to write the full measured error rates in tabular format.\n"
 			"\t-b: Path to write the cycle/base call error rates in tabular format.\n"
@@ -117,8 +118,20 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	int32_t last_tid = -1;
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
+	int tid_to_study = -1;
+	if(f->refcontig) {
+		for(int i = 0; i < hdr->n_targets; ++i) {
+			if(!strcmp(hdr->target_name[i], f->refcontig)) {
+				tid_to_study = i; break;
+			}
+		}
+		if(tid_to_study < 0) {
+			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 	while((r = sam_read1(fp, hdr, b)) != -1) {
-		if(b->core.flag & 2816) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if(b->core.flag & 2820 || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
@@ -149,9 +162,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			int s; // seq value, base index
-			const uint32_t op = cigar[i];
-			const uint32_t len = bam_cigar_oplen(op);
-			switch(bam_cigar_op(op)) {
+			const uint32_t len = bam_cigar_oplen(cigar[i]);
+			switch(bam_cigar_op(cigar[i])) {
 			case BAM_CMATCH:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
@@ -388,13 +400,15 @@ int err_main(int argc, char *argv[])
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage_exit(stderr, EXIT_SUCCESS);
 
 	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *db = NULL, *dc = NULL;
-	while ((c = getopt(argc, argv, "c:b:f:3:o:h?")) >= 0) {
+	char refcontig[200] = "";
+	while ((c = getopt(argc, argv, "r:c:b:f:3:o:h?")) >= 0) {
 		switch (c) {
 		case 'f': df = fopen(optarg, "w"); break;
 		case 'o': strcpy(outpath, optarg); break;
 		case '3': d3 = fopen(optarg, "w"); break;
 		case 'c': dc = fopen(optarg, "w"); break;
 		case 'b': db = fopen(optarg, "w"); break;
+		case 'r': strcpy(refcontig, optarg); break;
 		case '?':
 		case 'h':
 			err_usage_exit(stderr, EXIT_SUCCESS);
@@ -433,6 +447,7 @@ int err_main(int argc, char *argv[])
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
+	if(refcontig[0]) f->refcontig = strdup(refcontig);
 	bam_hdr_destroy(header);
 	header = NULL;
 	err_core(argv[optind + 1], fai, f, &open_fmt);
@@ -459,5 +474,6 @@ int err_main(int argc, char *argv[])
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
 	fullerr_destroy(f);
 	fclose(ofp);
+	cond_free(refcontig);
 	return 0;
 }

@@ -1,6 +1,7 @@
 #ifndef CSTR_UTIL_H
 #define CSTR_UTIL_H
 #include <inttypes.h>
+#include <zlib.h>
 #include "kseq.h"
 #include "stdio.h"
 #include "stddef.h"
@@ -19,12 +20,12 @@ KSEQ_INIT(gzFile, gzread)
 
 static char *rand_string(char *str, size_t size)
 {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK...";
+	srand(time(NULL)); // Pick a seed!
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK_OMGZ_WTF";
     if (size) {
         --size;
         for (size_t n = 0; n < size; n++) {
-            int key = rand() % (int) (sizeof charset - 1);
-            str[n] = charset[key];
+            str[n] = charset[(int)(rand() % (int) (sizeof charset - 1))];
         }
         str[size] = '\0';
     }

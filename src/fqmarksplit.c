@@ -185,6 +185,7 @@ int fqms_main(int argc, char *argv[])
 	if(!settings.output_basename) {
 		settings.output_basename = malloc(21 * sizeof(char));
 		rand_string(settings.output_basename, 20);
+		fprintf(stderr, "[%s] Temporary fq basename not provided. Random chosen: %s.\n", __func__, settings.output_basename);
 	}
 
 

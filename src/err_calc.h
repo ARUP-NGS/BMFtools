@@ -29,6 +29,7 @@ typedef struct fullerr {
 	readerr_t *r1;
 	readerr_t *r2;
 	size_t l;
+	char *refcontig;
 } fullerr_t;
 
 #define nqscores 39uL
@@ -139,6 +140,7 @@ void fullerr_destroy(fullerr_t *e) {
 		readerr_destroy(e->r1), e->r1 = NULL;
 	if(e->r2)
 		readerr_destroy(e->r2), e->r2 = NULL;
+	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
 	free(e);
 	return;
 }

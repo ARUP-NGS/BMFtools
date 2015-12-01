@@ -19,7 +19,9 @@ int bmftools_usage(int rc)
 	fprintf(stderr, "sort:\tSort for bam rescue.\n"
                     "dmp:\tDemultiplex inline barcoded experiments.\n"
                     "sdmp:\tDemultiplex secondary-index barcoded experiments.\n"
+                    "hashdmp:\tDemultiplex inline barcoded experiments that have already been marked.\n"
                     "rsq:\tRescue bmf-sorted or ucs-sorted bam alignments.\n"
+                    "err:\tCalculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:\tCalculate family size statistics for a bam alignment file.\n"
                     "vet:\tCurate variant calls from another variant caller (.vcf) and a bam alignment.\n"
 			);
