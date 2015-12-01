@@ -126,7 +126,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 		if(tid_to_study < 0) {
-			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n");
+			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -474,6 +474,5 @@ int err_main(int argc, char *argv[])
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
 	fullerr_destroy(f);
 	fclose(ofp);
-	cond_free(refcontig);
 	return 0;
 }

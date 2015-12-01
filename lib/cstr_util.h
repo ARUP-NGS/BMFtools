@@ -1,6 +1,7 @@
 #ifndef CSTR_UTIL_H
 #define CSTR_UTIL_H
 #include <inttypes.h>
+#include <time.h>
 #include <zlib.h>
 #include "kseq.h"
 #include "stdio.h"
