@@ -283,6 +283,7 @@ int fqms_main(int argc, char *argv[])
 #else
 		}
 #endif
+		free(popens);
 		// Remove temporary split files
 		fprintf(stderr, "Now removing temporary files.\n");
 		/*

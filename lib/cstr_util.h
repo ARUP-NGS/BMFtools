@@ -22,7 +22,7 @@ KSEQ_INIT(gzFile, gzread)
 static char *rand_string(char *str, size_t size)
 {
 	srand(time(NULL)); // Pick a seed!
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJK_OMGZ_WTF";
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKSTFUOMGZWTF";
     if (size) {
         --size;
         for (size_t n = 0; n < size; n++) {

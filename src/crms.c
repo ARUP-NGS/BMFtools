@@ -501,6 +501,7 @@ int crms_main(int argc, char *argv[])
 #else
 		}
 #endif
+		free(popens);
 		// Remove temporary split files
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
