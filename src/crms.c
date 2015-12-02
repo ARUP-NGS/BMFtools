@@ -430,6 +430,7 @@ int crms_main(int argc, char *argv[])
 		// Whatever I end up putting into here.
 		splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 		char del_buf[500];
+		FILE **popens = (FILE **)malloc(settings.n_handles * sizeof(FILE *));
 #if NOPARALLEL
 #else
 		#pragma omp parallel
@@ -441,13 +442,60 @@ int crms_main(int argc, char *argv[])
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				if(settings.cleanup) {
+					fprintf(stderr, "Now removing temporary file %s.\n",
+							params->infnames_r1[i]);
+					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
+					popens[i] = popen(tmpbuf, "w");
+				}
+			}
+#if NOPARALLEL
+#else
+		}
+#endif
+#if NOPARALLEL
+#else
+		#pragma omp parallel
+		{
+			#pragma omp for
+#endif
+			for(int i = 0; i < settings.n_handles; ++i) {
+				pclose(popens[i]);
+			}
+#if NOPARALLEL
+#else
+		}
+#endif
+#if NOPARALLEL
+#else
+		#pragma omp parallel
+		{
+			#pragma omp for
+#endif
+			for(int i = 0; i < settings.n_handles; ++i) {
+				char tmpbuf[500];
+				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
+						params->infnames_r2[i], params->outfnames_r2[i]);
 				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "Now removing temporary files %s and %s.\n",
-							params->infnames_r1[i], params->infnames_r2[i]);
-					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-					popen(tmpbuf, "w");
+					fprintf(stderr, "Now removing temporary file %s.\n",
+							params->infnames_r2[i]);
+					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
+					popens[i] = popen(tmpbuf, "w");
 				}
+			}
+#if NOPARALLEL
+#else
+		}
+#endif
+#if NOPARALLEL
+#else
+		#pragma omp parallel
+		{
+			#pragma omp for
+#endif
+			for(int i = 0; i < settings.n_handles; ++i) {
+				pclose(popens[i]);
 			}
 #if NOPARALLEL
 #else

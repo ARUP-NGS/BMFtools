@@ -131,6 +131,7 @@ typedef struct mssi_settings {
 
 
 typedef struct mss_settings {
+	int cleanup;
 	int hp_threshold;
 	int n_nucs;
 	int n_handles;

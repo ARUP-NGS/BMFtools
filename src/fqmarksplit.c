@@ -34,6 +34,7 @@ void print_usage(char *argv[])
 						"-c: Flag to optionally cat all files together in one command. Faster than sequential cats, but might break."
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
+						"-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n",
 						argv[0]);
 }
@@ -154,11 +155,12 @@ int fqms_main(int argc, char *argv[])
 		.gzip_compression = 1,
 		.rescaler = NULL,
 		.rescaler_path = NULL,
+		.cleanup = 1
 	};
 	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 
 	int c;
-	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdcz")) > -1) {
+	while ((c = getopt(argc, argv, "w:t:o:i:n:m:s:f:u:p:g:v:r:hdcz")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -173,6 +175,7 @@ int fqms_main(int argc, char *argv[])
 			case 'v': settings.notification_interval = atoi(optarg); break;
 			case 'z': settings.gzip_output = 1; break;
 			case 'g': settings.gzip_compression = atoi(optarg); if(settings.gzip_compression > 9) settings.gzip_compression = 9; break;
+			case 'w': settings.cleanup = 0; break;
 			case 'r':
 				fprintf(stderr, "About to parse in rescaler.\n");
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
@@ -238,20 +241,43 @@ int fqms_main(int argc, char *argv[])
 		fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", settings.threads);
 #if NOPARALLEL
 #else
-		#pragma omp parallel shared(params)
+		#pragma omp parallel
 		{
 			#pragma omp for
 #endif
-			for(int i = 0; i < params->n; ++i) {
+			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r1[i], params->outfnames_r1[i]);
 				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				if(settings.cleanup) {
+					fprintf(stderr, "Now removing temporary file %s.\n",
+							params->infnames_r1[i]);
+					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
+					popen(tmpbuf, "w");
+				}
+			}
+#if NOPARALLEL
+#else
+		}
+#endif
+#if NOPARALLEL
+#else
+		#pragma omp parallel
+		{
+			#pragma omp for
+#endif
+			for(int i = 0; i < settings.n_handles; ++i) {
+				char tmpbuf[500];
 				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
 						params->infnames_r2[i], params->outfnames_r2[i]);
 				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-				CHECK_CALL(tmpbuf);
+				if(settings.cleanup) {
+					fprintf(stderr, "Now removing temporary file %s.\n",
+							params->infnames_r2[i]);
+					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
+					popen(tmpbuf, "w");
+				}
 			}
 #if NOPARALLEL
 #else
