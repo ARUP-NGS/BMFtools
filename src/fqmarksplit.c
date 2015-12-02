@@ -239,6 +239,7 @@ int fqms_main(int argc, char *argv[])
 					params->outfnames_r1[i], params->outfnames_r2[i]);
 		}
 		fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", settings.threads);
+		FILE **popens = (FILE **)malloc(settings.n_handles * sizeof(FILE *));
 #if NOPARALLEL
 #else
 		#pragma omp parallel
@@ -254,8 +255,21 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "Now removing temporary file %s.\n",
 							params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-					popen(tmpbuf, "w");
+					popens[i] = popen(tmpbuf, "w");
 				}
+			}
+#if NOPARALLEL
+#else
+		}
+#endif
+#if NOPARALLEL
+#else
+		#pragma omp parallel
+		{
+			#pragma omp for
+#endif
+			for(int i = 0; i < settings.n_handles; ++i) {
+				pclose(popens[i]);
 			}
 #if NOPARALLEL
 #else
@@ -276,8 +290,21 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "Now removing temporary file %s.\n",
 							params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-					popen(tmpbuf, "w");
+					popens[i] = popen(tmpbuf, "w");
 				}
+			}
+#if NOPARALLEL
+#else
+		}
+#endif
+#if NOPARALLEL
+#else
+		#pragma omp parallel
+		{
+			#pragma omp for
+#endif
+			for(int i = 0; i < settings.n_handles; ++i) {
+				pclose(popens[i]);
 			}
 #if NOPARALLEL
 #else
@@ -315,19 +342,21 @@ int fqms_main(int argc, char *argv[])
 			for(int i = 0; i < settings.n_handles; ++i) {
 				// Clear files if present
 				if(settings.gzip_output)
-					sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r1[i], settings.threads >> 1,
+					sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r1[i],
+							settings.threads >= 2 ? settings.threads >> 1: 1,
 							settings.gzip_compression, ffq_r1);
 				else
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
 				FILE *p1 = popen(cat_buff, "w");
 
 				if(settings.gzip_output)
-					sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r2[i], settings.threads >> 1,
+					sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r2[i],
+							settings.threads >= 2 ? settings.threads >> 1: 1,
 							settings.gzip_compression, ffq_r2);
 				else
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-				CHECK_CALL(cat_buff);
-				if(pclose(p1)) {
+				FILE *p2 = popen(cat_buff, "w");
+				if(pclose(p2) || pclose(p1)) {
 					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
 					exit(EXIT_FAILURE);
 				}
@@ -344,7 +373,7 @@ int fqms_main(int argc, char *argv[])
 				strcat(cat_buff2, " ");
 			}
 			if(settings.gzip_output) {
-				sprintf(del_buf, " | pigz -p %i -%i -", settings.threads >> 1, settings.gzip_compression);
+				sprintf(del_buf, " | pigz -p %i -%i -", settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression);
 				strcat(cat_buff1, del_buf);
 				strcat(cat_buff2, del_buf);
 			}

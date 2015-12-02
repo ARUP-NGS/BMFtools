@@ -586,10 +586,6 @@ static void print_kf(KingFisher_t *kfp)
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
 {
-#if !NDEBUG
-	fprintf(stderr, "%p: kfp.%p: seq. %p: nuc_indices, %i.\n", kfp, seq, nuc_indices, blen);
-	fprintf(stderr, "View: %s, %s.\n", barcode_mem_view(seq), kfp->barcode);
-#endif
 	if(!kfp->length) {
 		memcpy(kfp->barcode, seq->comment.s + 14, blen);
 		kfp->barcode[blen] = '\0';
@@ -597,13 +593,6 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indice
 	++kfp->length; // Increment
 	for(int i = 0; i < kfp->readlen; i++) {
 		pb_pos(seq, kfp, nuc_indices, i);
-#if !NDEBUG
-		if(kfp->nuc_counts[i * 5 + nuc_indices[1]] > kfp->length) {
-			fprintf(stderr, "Warning: KF counts is too high! %i, %i\n", (int)kfp->nuc_counts[i * 5 + nuc_indices[1]], (int)kfp->length);
-			print_kf(kfp);
-			exit(EXIT_FAILURE);
-		}
-#endif /* !NDEBUG */
 	}
 	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	return;

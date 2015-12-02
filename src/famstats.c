@@ -141,60 +141,44 @@ static void print_stats(famstats_t *stats)
 	print_hashstats(stats);
 }
 
-static inline void tag_test(uint8_t *data, const char *tag)
+static inline void tag_test(const uint8_t *data, const char *tag)
 {
-	if(data)
-		return;
-	fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", tag);
-	exit(EXIT_FAILURE);
+	if(UNLIKELY(!data))
+		fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", tag),
+		exit(EXIT_FAILURE);
 }
 
 
 static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
 {
-	++s->n_pass;
-	uint8_t *data;
-	data = bam_aux_get(b, "FM");
+	const uint8_t *data = bam_aux_get(b, "FM");
 	tag_test(data, "FM");
-	int FM = bam_aux2i(data);
-#if DBG
-	fprintf(stderr, "FM tag: %i.\n", FM);
-#endif
+	const int FM = bam_aux2i(data);
 	if(b->core.flag & 2944 || b->core.qual < settings->minMQ || FM < settings->minFM) {
 		++s->n_fail;
 		return;
-		// Skips supp/second/read2/qc fail/marked duplicate
 		// 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
 	}
-	data = bam_aux_get(b, "RV");
-	if(!data && RVWarn) {
+	++s->n_pass;
+	const uint8_t *rvdata = bam_aux_get(b, "RV");
+	if(!rvdata && RVWarn) {
 		RVWarn = 0;
-		fprintf(stderr, "[famstat_core]: Warning: RV tag not found. Continue.\n");
+		fprintf(stderr, "[%s]: Warning: RV tag not found. Continue.\n", __func__);
 	}
-	int RV = data ? bam_aux2i(data): 0;
-#if DBG
-	fprintf(stderr, "RV tag: %i.\n", RV);
-#endif
-	if(FM > 1) {
-		++s->realfm_counts; s->realfm_sum += FM; s->realrc_sum += RV;
-	}
-	++s->allfm_counts; s->allfm_sum += FM; s->allrc_sum += RV;
-	s->ki = kh_get(fm, s->fm, FM);
-	if(s->ki == kh_end(s->fm)) {
-		s->ki = kh_put(fm, s->fm, FM, &s->khr);
-		kh_val(s->fm, s->ki) = 1;
-	}
-	else {
+	int RV = rvdata ? bam_aux2i(data): 0;
+
+	if(FM > 1)
+		++s->realfm_counts, s->realfm_sum += FM, s->realrc_sum += RV;
+	++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
+
+	if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
+		s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
+	else
 		++kh_val(s->fm, s->ki);
-	}
-	s->ki = kh_get(rc, s->rc, RV);
-	if(s->ki == kh_end(s->rc)) {
-		s->ki = kh_put(rc, s->rc, RV, &s->khr);
-		kh_val(s->rc, s->ki) = 1;
-	}
-	else {
+	if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
+		s->ki = kh_put(rc, s->rc, RV, &s->khr), kh_val(s->rc, s->ki) = 1;
+	else
 		++kh_val(s->rc, s->ki);
-	}
 }
 
 
@@ -211,12 +195,12 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	b = bam_init1();
 	while ((ret = sam_read1(fp, h, b)) >= 0) {
 		famstat_loop(s, b, settings);
-		if(!(++count % notification_interval))
-			fprintf(stderr, "[famstat_core] Number of records processed: %"PRIu64".\n", count);
+		if(UNLIKELY(!(++count % notification_interval)))
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 	}
 	bam_destroy1(b);
 	if (ret != -1)
-		fprintf(stderr, "[famstat_core] Truncated file? Continue anyway.\n");
+		fprintf(stderr, "[%s] Truncated file? Continue anyway.\n", __func__);
 	return s;
 }
 
@@ -296,17 +280,13 @@ int fm_main(int argc, char *argv[])
 
 static inline void frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
 {
-	uint8_t *data = bam_aux_get(b, "FM");
+	const uint8_t *data = bam_aux_get(b, "FM");
 	tag_test(data, "FM");
-	int FM = bam_aux2i(data);
-	if(b->core.flag & 2944) {
+	const int FM = bam_aux2i(data);
+	if(b->core.flag & 2944) // 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
 		return;
-		// Skips supp/second/read2/qc fail/marked duplicate
-		// 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
-	}
-	if(FM >= minFM)
-		*fm_above += FM;
 	*fm_total += FM;
+	if(FM >= minFM) *fm_above += FM;
 }
 
 
@@ -317,9 +297,8 @@ int frac_main(int argc, char *argv[])
 	int c;
 	uint32_t minFM = 0;
 
-	if(argc < 4) {
-		frac_usage_exit(stderr, EXIT_FAILURE);
-	}
+	if(argc < 4) frac_usage_exit(stderr, EXIT_FAILURE);
+	if(strcmp(argv[1], "--help") == 0) frac_usage_exit(stderr, EXIT_SUCCESS);
 
 	while ((c = getopt(argc, argv, "n:m:h?")) >= 0) {
 		switch (c) {
@@ -333,8 +312,6 @@ int frac_main(int argc, char *argv[])
 			frac_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
-
-	if(strcmp(argv[1], "--help") == 0) frac_usage_exit(stderr, EXIT_SUCCESS);
 
 	if(!minFM) {
 		fprintf(stderr, "minFM not set. frac_main meaningless without it. Result: 1.0.\n");
@@ -359,9 +336,9 @@ int frac_main(int argc, char *argv[])
 	}
 	uint64_t fm_above = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
-	while ((c = sam_read1(fp, header, b)) >= 0) {
+	while (LIKELY(c = sam_read1(fp, header, b)) >= 0) {
 		frac_loop(b, minFM, &fm_above, &total_fm);
-		if(!(++count % notification_interval))
+		if(UNLIKELY(!(++count % notification_interval)))
 			fprintf(stderr, "[famstat_frac_core] Number of records processed: %"PRIu64".\n", count);
 	}
 	fprintf(stderr, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
@@ -389,7 +366,6 @@ int famstats_main(int argc, char *argv[])
 		return target_main(argc - 1, argv + 1);
 	}
 	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
-	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
 	usage_exit(stderr, 1);
-	return 0;
+	return 0; // This never happens
 }

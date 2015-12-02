@@ -85,7 +85,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	l1 = kseq_read(seq1);
 	l2 = kseq_read(seq2);
 	fprintf(stderr, "Read length for dataset: %"PRIu64".\n", seq1->seq.l);
-#if DBG
+#if !NDEBUG
 	int arr_size = seq1->seq.l * 4 * 2 * 39;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
@@ -192,7 +192,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	l1 = kseq_read(seq1);
 	l2 = kseq_read(seq2);
 	fprintf(stderr, "Read length for dataset: %"PRIu64".\n", seq1->seq.l);
-#if DBG
+#if !NDEBUG
 	int arr_size = seq1->seq.l * 4 * 2 * 39;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
@@ -523,7 +523,7 @@ int crms_main(int argc, char *argv[])
 				strcat(cat_buff2, " ");
 			}
 			if(settings.gzip_output) {
-				sprintf(del_buf, " | pigz - -%i -p %i", settings.gzip_compression, settings.threads >> 1);
+				sprintf(del_buf, " | pigz - -%i -p %i", settings.gzip_compression, settings.threads >= 2 ? settings.threads >> 1: 1);
 				strcat(cat_buff1, del_buf);
 				strcat(cat_buff2, del_buf);
 			}
@@ -536,8 +536,8 @@ int crms_main(int argc, char *argv[])
 				strcat(cat_buff2, ".gz");
 			}
 			FILE *c1_popen = popen(cat_buff1, "w");
-			CHECK_CALL(cat_buff2);
-			if(pclose(c1_popen)) {
+			FILE *c2_popen = popen(cat_buff2, "w");
+			if(pclose(c2_popen) || pclose(c1_popen)) {
 				fprintf(stderr, "Background cat command failed. ('%s').\n", cat_buff1);
 				exit(EXIT_FAILURE);
 			}
@@ -547,17 +547,17 @@ int crms_main(int argc, char *argv[])
 				// Clear files if present
 				if(settings.gzip_output)
 					sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-							params->outfnames_r1[i], settings.threads >> 1, settings.gzip_compression, ffq_r1);
+							params->outfnames_r1[i], settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression, ffq_r1);
 				else
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
 				FILE *g1_popen = popen(cat_buff, "w");
 				if(settings.gzip_output)
 					sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-							params->outfnames_r2[i], settings.threads >> 1, settings.gzip_compression, ffq_r2);
+							params->outfnames_r2[i], settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression, ffq_r2);
 				else
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-				CHECK_CALL(cat_buff);
-				if(pclose(g1_popen)){
+				FILE *g2_popen = popen(cat_buff, "w");
+				if(pclose(g2_popen) || pclose(g1_popen)){
 					fprintf(stderr, "Background system call failed.\n");
 					exit(EXIT_FAILURE);
 				}

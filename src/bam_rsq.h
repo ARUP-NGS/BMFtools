@@ -124,18 +124,8 @@ typedef struct pr_settings {
 
 
 static inline void *array_tag(bam1_t *b, const char *tag) {
-	uint8_t *data = bam_aux_get(b, tag);
-#if !NDEBUG
-	if(*data++ != 'B') {
-		fprintf(stderr, "This is not an array tag. Abort mission! (%c)\n", *data);
-		exit(EXIT_FAILURE);
-	}
-	char typecode = *data++;
-	//int n = *((int *)data);
-	return data ? (void *)(data + sizeof(int)): NULL; // Offset by 1 to skip typecode, 2 to skip array length.
-#else
+	const uint8_t *data = bam_aux_get(b, tag);
 	return data ? (void *)(data + sizeof(int) + 2): NULL;
-#endif
 }
 
 int bam_rsq(int argc, char *argv[]);

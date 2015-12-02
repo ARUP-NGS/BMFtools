@@ -14,6 +14,7 @@ LIB=
 OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-char-subscripts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
 DB_FLAGS = -fno-inline -Wno-char-subscripts
+PG_FLAGS = -Wno-char-subscripts -pg -DNDEBUG -O2 -fno-inline
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
@@ -34,7 +35,7 @@ libhts.a:
 bmftools:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(BMF_SRC) -o bmftools
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -o bmftools_db
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -pg -o bmftools_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(BMF_SRC) -o bmftools_p
 copy:
 	mv bmftools bmftools_p bmftools_db bin/
 	#mv bmftools  bin/

@@ -12,6 +12,7 @@
 #include "ksort.h"
 #include "khash.h"
 #include "bed_util.h"
+#include "compiler_util.h"
 
 
 KHASH_MAP_INIT_INT64(fm, uint64_t)

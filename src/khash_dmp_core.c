@@ -12,16 +12,6 @@ void print_khashdmp_opt_err(char *argv[], char *optarg) {
 
 splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
-#if DBG
-	if(!settings_ptr) {
-		fprintf(stderr, "Settings struct null. Abort mission!\n");
-		exit(EXIT_FAILURE);
-	}
-	if(!splitter_ptr) {
-		fprintf(stderr, "Splitter struct null. Abort mission!\n");
-		exit(EXIT_FAILURE);
-	}
-#endif
 	if(!settings_ptr) {
 		fprintf(stderr, "Settings pointer null. Abort!\n");
 		exit(EXIT_FAILURE);
@@ -65,9 +55,6 @@ splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_
 
 splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
-#if DBG
-	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
-#endif
 	if(!settings_ptr) {
 		fprintf(stderr, "Settings pointer null. Abort!\n");
 		exit(EXIT_FAILURE);
@@ -162,7 +149,7 @@ void khash_dmp_core(char *infname, char *outfname)
 	}
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
-#if DBG
+#if !NDEBUG
 	fprintf(stderr, "[khash_dmp_core]: Opened file handles, initiated kseq parser.\n");
 #endif
 	// Initialized kseq
@@ -174,7 +161,7 @@ void khash_dmp_core(char *infname, char *outfname)
 	}
 	char *bs_ptr = barcode_mem_view(seq);
 	int blen = infer_barcode_length(bs_ptr);
-#if DBG
+#if !NDEBUG
 	fprintf(stderr, "[khash_dmp_core]: Barcode length (inferred): %i.\n", blen);
 #endif
 	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
@@ -190,30 +177,11 @@ void khash_dmp_core(char *infname, char *outfname)
 	kh_val(hash, ki) = init_kfp(tmp->readlen);
 	pushback_kseq(kh_val(hash, ki), seq, tmp->nuc_indices, tmp->blen);
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
-		/*
-#if DBG
-		fprintf(stderr,"Barcode sequence: %s. Comment: %s.", tmp->bs_ptr, seq->comment.s);
-		exit(EXIT_SUCCESS);
-		if(!tmp->bs_ptr) {
-			fprintf(stderr, "Couldn't get barcode mem view to work for read %s.\n", seq->name.s);
-			exit(EXIT_FAILURE);
-		}
-		fprintf(stderr, "Seq name: %s. Comment: %s. View: %s.\n", seq->name.s, seq->comment.s, tmp->bs_ptr);
-		if(!seq->seq.s) {
-			fprintf(stderr, "The sequence is somehow null. Stopping reading the file now. \n");
-			break;
-		}
-#endif
-		*/
 		cp_view2buf(seq->comment.s + 14, tmp->key);
-		ki = kh_get(dmp, hash, tmp->key);
-		if(ki == kh_end(hash)) {
+		if((ki = kh_get(dmp, hash, tmp->key)) == kh_end(hash)) {
 			ki = kh_put(dmp, hash, tmp->key, &khr);
 			kh_val(hash, ki) = init_kfp(tmp->readlen);
 		}
-#if !NDEBUG
-		fprintf(stderr, "Seq: %s. Comment: %s. Quality: %s.\n", seq->seq.s, seq->comment.s, seq->qual.s);
-#endif
 		pushback_kseq(kh_val(hash, ki), seq, tmp->nuc_indices, tmp->blen);
 	}
 	fprintf(stderr, "[khash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
