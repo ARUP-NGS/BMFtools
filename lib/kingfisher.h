@@ -231,7 +231,7 @@ static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers
 	fputs(kfp->max_phreds, handle);
 	fputc('\n', handle);
 #else
-	fprintf(handle, "%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
 			bufs->FABuffer, bufs->PVBuffer,
 			kfp->pass_fail, kfp->n_rc, kfp->length,
 			bufs->cons_seq_buffer, kfp->max_phreds);
