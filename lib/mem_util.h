@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "compiler_util.h"
 
 // Leave semicolon out so that it looks like a normal function.
 #if !NDEBUG

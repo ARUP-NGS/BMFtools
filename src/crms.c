@@ -131,7 +131,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 	mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	do {
-		if(++count % settings->notification_interval == 0)
+		if(UNLIKELY(++count % settings->notification_interval == 0))
 			fprintf(stderr, "Number of records processed: %i.\n", count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
@@ -146,7 +146,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 		bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
-	} while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
+	} while (LIKELY(((l1 = kseq_read(seq1)) >= 0)) && LIKELY((l2 = kseq_read(seq2)) >= 0));
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]);
 		fclose(splitter->tmp_out_handles_r2[i]);
@@ -252,7 +252,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	}
 	do {
-		if(++count % settings->notification_interval == 0) {
+		if(UNLIKELY(++count % settings->notification_interval == 0)) {
 			fprintf(stderr, "Number of records processed: %i.\n", count);
 		}
 		// Iterate through second fastq file.
@@ -281,7 +281,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 			mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 		}
-	} while (((l1 = kseq_read(seq1)) >= 0) && ((l2 = kseq_read(seq2)) >= 0));
+	} while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0));
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]);
 		fclose(splitter->tmp_out_handles_r2[i]);
@@ -529,4 +529,35 @@ int crms_main(int argc, char *argv[])
 	free_mssi_settings(settings);
 	FREE_SPLITTER_PTR(splitter);
 	return 0;
+}
+
+int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+{
+	if(!settings_ptr->homing_sequence) {
+		return 1;
+	}
+	else {
+		return memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),
+					   settings_ptr->homing_sequence,
+					   settings_ptr->homing_sequence_length) == 0;
+	}
+}
+
+char test_hp_inline(char *barcode, int length, int threshold)
+{
+	int run = 0;
+	char last = '\0';
+	for(int i = 0; i < length; i++){
+		if(barcode[i] == 'N') {
+			return '0';
+		}
+		if(barcode[i] == last) {
+			run += 1;
+		}
+		else {
+			run = 0;
+			last = barcode[i];
+		}
+	}
+	return (run < threshold) ? '1': '0';
 }

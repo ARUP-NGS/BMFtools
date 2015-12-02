@@ -1718,7 +1718,7 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 		}
 		if (buf[k] == NULL) buf[k] = bam_init1();
 		b = buf[k];
-		if ((ret = sam_read1(fp, header, b)) < 0) break;
+		if (UNLIKELY((ret = sam_read1(fp, header, b)) < 0)) break;
 		if(++count % 1000000 == 0)
 			fprintf(stderr, "[%s] Records processed: %" PRIu64".\n", __func__, count);
 		if (b->l_data < b->m_data>>2) { // shrink

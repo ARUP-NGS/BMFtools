@@ -174,38 +174,10 @@ typedef struct splitterhash_params {
 
 //char *trim_ext(char *fname);
 
-static inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
-{
-	if(!settings_ptr->homing_sequence) {
-		return 1;
-	}
-	else {
-		return memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),
-					   settings_ptr->homing_sequence,
-					   settings_ptr->homing_sequence_length) == 0;
-	}
-}
 
-
-
-static inline char test_hp_inline(char *barcode, int length, int threshold)
-{
-	int run = 0;
-	char last = '\0';
-	for(int i = 0; i < length; i++){
-		if(barcode[i] == 'N') {
-			return '0';
-		}
-		if(barcode[i] == last) {
-			run += 1;
-		}
-		else {
-			run = 0;
-			last = barcode[i];
-		}
-	}
-	return (run < threshold) ? '1': '0';
-}
+int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
+char test_hp_inline(char *barcode, int length, int threshold);
+extern void splitterhash_destroy(splitterhash_params_t *params);
 
 
 
@@ -324,8 +296,6 @@ static inline char *make_crms_outfname(char *fname)
 			cond_free(settings.rescaler[i##settings]);\
 		}\
 		cond_free(settings.rescaler)\
-
-static void splitterhash_destroy(splitterhash_params_t *params);
 
 static inline void FREE_SPLITTER_PTR(mark_splitter_t *var)
 {

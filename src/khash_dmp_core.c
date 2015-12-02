@@ -1,14 +1,117 @@
 #include "khash_dmp_core.h"
 
-static inline void print_khashdmp_usage(char *argv[]) {
+void print_khashdmp_usage(char *argv[]) {
 	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n", argv[0]);
 }
 
-static inline void print_khashdmp_opt_err(char *argv[], char *optarg) {
+void print_khashdmp_opt_err(char *argv[], char *optarg) {
 	fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
 	print_khashdmp_usage(argv);
 	exit(1);
 }
+
+splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
+{
+#if DBG
+	if(!settings_ptr) {
+		fprintf(stderr, "Settings struct null. Abort mission!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!splitter_ptr) {
+		fprintf(stderr, "Splitter struct null. Abort mission!\n");
+		exit(EXIT_FAILURE);
+	}
+#endif
+	if(!settings_ptr) {
+		fprintf(stderr, "Settings pointer null. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!settings_ptr->output_basename) {
+		fprintf(stderr, "Output basename not set. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!splitter_ptr) {
+		fprintf(stderr, "Splitter pointer null. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
+	ret->n = splitter_ptr->n_handles;
+	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+	fprintf(stderr, "About to initialize array entries for splitter.\n");
+	for(int i = 0; i < ret->n; ++i) {
+		if(!splitter_ptr->fnames_r1[i]) {
+			fprintf(stderr, "Input r1 filename with index %i null. Abort!\n", i);
+			exit(EXIT_FAILURE);
+		}
+		if(!splitter_ptr->fnames_r2[i]) {
+			fprintf(stderr, "Input r2 filename with index %i null. Abort!\n", i);
+			exit(EXIT_FAILURE);
+		}
+		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
+		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
+		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
+		ret->outfnames_r1[i] = strdup(tmp_buffer);
+		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
+		ret->outfnames_r2[i] = strdup(tmp_buffer);
+	}
+	fprintf(stderr, "Finished initializing splitterhash with size %i and output basename %s.\n", ret->n, settings_ptr->output_basename);
+	return ret;
+}
+
+
+splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
+{
+#if DBG
+	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
+#endif
+	if(!settings_ptr) {
+		fprintf(stderr, "Settings pointer null. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!settings_ptr->output_basename) {
+		fprintf(stderr, "Output basename not set. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!splitter_ptr) {
+		fprintf(stderr, "Splitter pointer null. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
+	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
+	fprintf(stderr, "Alloc'd ret.\n");
+	ret->n = splitter_ptr->n_handles;
+	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
+		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
+		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
+		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
+		ret->outfnames_r1[i] = strdup(tmp_buffer);
+		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
+		ret->outfnames_r2[i] = strdup(tmp_buffer);
+	}
+	return ret;
+}
+
+void splitterhash_destroy(splitterhash_params_t *params)
+{
+	for(int i = 0; i < params->n; ++i) {
+		free(params->outfnames_r1[i]);
+		free(params->outfnames_r2[i]);
+	}
+	free(params->outfnames_r1);
+	free(params->outfnames_r2);
+	free(params);
+	params = NULL;
+	return;
+}
+
 
 
 int khash_dmp_main(int argc, char *argv[])
@@ -86,7 +189,7 @@ void khash_dmp_core(char *infname, char *outfname)
 	ki = kh_put(dmp, hash, tmp->key, &khr);
 	kh_val(hash, ki) = init_kfp(tmp->readlen);
 	pushback_kseq(kh_val(hash, ki), seq, tmp->nuc_indices, tmp->blen);
-	while((l = kseq_read(seq)) >= 0) {
+	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		/*
 #if DBG
 		fprintf(stderr,"Barcode sequence: %s. Comment: %s.", tmp->bs_ptr, seq->comment.s);

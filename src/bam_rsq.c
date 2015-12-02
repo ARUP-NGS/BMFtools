@@ -339,7 +339,7 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
 		exit(EXIT_FAILURE);
 	}
-    while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
     	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
     		sam_write1(settings->out, settings->hdr, b);
     		continue;
@@ -379,7 +379,7 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
 		exit(EXIT_FAILURE);
 	}
-    while (sam_read1(settings->in, settings->hdr, b) >= 0) {
+    while (LIKELY(sam_read1(settings->in, settings->hdr, b)) >= 0) {
     	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
     		sam_write1(settings->out, settings->hdr, b);
     		continue;
