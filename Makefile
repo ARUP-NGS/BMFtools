@@ -11,10 +11,10 @@ LD= -lm -lz -lpthread
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude -Isamtools
 LIB=
 
-OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-char-subscripts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
+OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
 DB_FLAGS = -fno-inline -Wno-char-subscripts
-PG_FLAGS = -Wno-char-subscripts -pg -DNDEBUG -O2 -fno-inline
+PG_FLAGS = -Wno-char-subscripts -pg -DNDEBUG -O2 -fno-inline -DPUTC
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
@@ -42,6 +42,6 @@ copy:
 
 
 clean:
-	rm *.a && rm *.o && rm bin/* # && cd htslib && make clean && cd ../samtools && make clean
+	rm -f *.a && rm -f *.o && rm bin/* # && cd htslib && make clean && cd ../samtools && make clean
 
 

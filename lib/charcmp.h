@@ -1,32 +1,26 @@
 #ifndef CHARCMP_H
 #define CHARCMP_H
 
+static const uint32_t nucpos_arr[128] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+										 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,0,0,0,
+										 0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,3,
+										 0,0,0,0,0,0,0,0,0,0,0};
 
-static inline int nuc2num(char character)
-{
-	switch(character) {
-		case 'C': return 1; break;
-		case 'G': return 2; break;
-		case 'T': return 3; break;
-		default: return 0; break; // 'A'
-	}
-}
+static const char *rc_string = "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNTNGNNNCNNNNNNNNNNNNANNNNNNNNNNNNTNGNNNCNNNNNNNNNNNNANNNNNNNNNNN";
 
+#define nuc2num(character) nucpos_arr[(int)character]
 
-static inline char nuc_cmpl(char character) {
-	switch(character) {
-		case 'A': return 'T';
-		case 'C': return 'G';
-		case 'G': return 'C';
-		case 'T': return 'A';
-		default: return character;
-	}
-}
+#define nuc_cmpl(character) rc_string[(int)character]
 
 
 static inline int nuc_cmp(char forward, char reverse)
 {
 	return forward - reverse;
+}
+
+static inline uint32_t nuc_to_posdata(char character)
+{
+	return nuc2num(character) | ((character & 0x8U) >> 1); // This sets bit 3 (4) to true if the base is N or n, out of ACGTNacgtn
 }
 
 
