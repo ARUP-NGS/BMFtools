@@ -28,9 +28,9 @@ typedef struct tmpbuffers {
 	char name_buffer[120];
 	char PVBuffer[1000];
 	char FABuffer[1000];
-	char cons_seq_buffer[300];
-	uint32_t cons_quals[300];
-	uint16_t agrees[300];
+	char cons_seq_buffer[SEQBUF_SIZE];
+	uint32_t cons_quals[SEQBUF_SIZE];
+	uint16_t agrees[SEQBUF_SIZE];
 } tmpbuffers_t;
 
 typedef struct tmpvars {
@@ -80,25 +80,24 @@ static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 	const int i5 = index * 5;
 	if(kfp->phred_sums[i5] > kfp->phred_sums[i5 + 1] &&
 		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 2] &&
-		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 3])
+		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 3] &&
+		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 4])
 		return 0;
 
 	else if(kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 2] &&
-			kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 3])
+			kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 3] &&
+			kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 4])
 		return 1;
-	else if(kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 3])
+	else if(kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 3] &&
+			kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 4]))
 		return 2;
-	else
+	else if(kfp->phred_sums[i5 + 3] > kfp->phred_sums[i5 + 4])
 		return 3;
-	return 0; // This never happens
+	return 4; // 'N'
 }
 
-#define ARGMAX_STR "ACGT"
-
-static inline char ARRG_MAX_TO_NUC(int argmaxret)
-{
-	return ARGMAX_STR[argmaxret];
-}
+#define ARGMAX_STR "ACGTN"
+#define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
 
 
 static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, char *buffer)
@@ -120,7 +119,6 @@ static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buf
 
 
 #define dmp_pos(kfp, bufs, argmaxret, i)\
-	argmaxret = ARRG_MAX(kfp, i);\
 	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 5 + argmaxret]))));\
 	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
 	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N'
@@ -129,9 +127,9 @@ static void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *buf
 {
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
 	//buffer[0] = '@'; Set this later?
-	int argmaxret;
 	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
 	for(int i = 0; i < kfp->readlen; ++i) {
+		const int argmaxret = ARRG_MAX(kfp, i);
 		dmp_pos(kfp, bufs, argmaxret, i);
 	}
 		/*
@@ -485,6 +483,21 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 	const uint32_t posdata = nuc_to_posdata(seq->seq.s[i]);
+#if !NDEBUG
+	switch(seq->seq.s[i]) {
+	case 'N':
+		assert(posdata == 4); break;
+	case 'A':
+		assert(posdata == 0); break;
+	case 'C':
+		assert(posdata == 1); break;
+	case 'G':
+		assert(posdata == 2); break;
+	case 'T':
+		assert(posdata == 3); break;
+	}
+	fprintf(stderr, "posdata for base call %c is %u", seq->seq.s[i], posdata)
+#endif
 	++kfp->nuc_counts[i * 5 + posdata];
 	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
 	if(seq->qual.s[i] > kfp->max_phreds[i])

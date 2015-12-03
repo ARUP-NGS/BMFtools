@@ -19,6 +19,10 @@ KSEQ_INIT(gzFile, gzread)
 #define MAX_BARCODE_LENGTH 30
 #endif
 
+#ifndef SEQBUF_SIZE
+#define SEQBUF_SIZE 300
+#endif
+
 static char *rand_string(char *str, size_t size)
 {
 	srand(time(NULL)); // Pick a seed!
