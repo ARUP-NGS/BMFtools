@@ -116,8 +116,7 @@ void conf_destroy(vetplp_conf_t *conf)
 
 void vs_destroy(vetter_settings_t *settings) {
 	conf_destroy(&settings->conf);
-	free(settings);
-	settings = NULL;
+	free(settings), settings = NULL;
 }
 
 void full_iter_loop(vetter_settings_t *settings)
