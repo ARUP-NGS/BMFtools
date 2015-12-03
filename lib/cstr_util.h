@@ -33,9 +33,9 @@ static char *rand_string(char *str, size_t size)
     return str;
 }
 
-static inline void fill_csv_buffer(int readlen, uint32_t *arr, char *buffer, char *prefix_typecode)
+static void fill_csv_buffer(int readlen, uint32_t *arr, char *buffer, char *prefix_typecode)
 {
-	char tmpbuf[20];
+	char tmpbuf[12];
 	strcpy(buffer, prefix_typecode);
 	for(uint32_t i = 0; i < readlen; i++) {
 		sprintf(tmpbuf, ",%i", arr[i]);
@@ -46,7 +46,7 @@ static inline void fill_csv_buffer(int readlen, uint32_t *arr, char *buffer, cha
 
 static inline void append_csv_buffer(int readlen, uint32_t *arr, char *buffer, char *prefix_typecode)
 {
-	char tmpbuf[20];
+	char tmpbuf[12];
 	strcat(buffer, prefix_typecode);
 	for(int i = 0; i < readlen; i++) {
 		sprintf(tmpbuf, ",%" PRIu32 "", arr[i]);

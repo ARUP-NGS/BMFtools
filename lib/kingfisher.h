@@ -109,54 +109,15 @@ static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, cha
 
 static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buffer)
 {
-	char tmpbuf[20];
-	sprintf(buffer, "FA:B:I");
-	for(uint32_t i = 0; i < kfp->readlen; ++i) {
-		sprintf(tmpbuf, ",%"PRIu16"", agrees[i]);
+	char tmpbuf[7];
+	strcpy(buffer, "FA:B:I");
+	for(int i = 0; i < kfp->readlen; ++i) {
+		sprintf(tmpbuf, ",%" PRIu16 "", agrees[i]);
 		strcat(buffer, tmpbuf);
 	}
 	return;
 }
 
-
-/*
-static inline void fill_csv_buffer_fs1(int readlen, int *arr, char *buffer, char *prefix, char typecode)
-{
-	char tmpbuf[20];
-	sprintf(buffer, "%s%c", prefix, typecode);
-	for(int i = 0; i < readlen; i++) {
-		strcat(buffer, ",1");
-	}
-}
-
-
-static inline void fill_fa_buffer_fs1(KingFisher_t *kfp, int *agrees, char *buffer)
-{
-	fill_csv_buffer_fs1(kfp->readlen, agrees, buffer, "FA:B:", 'I'); // Add in the "I" to type the array.
-	return;
-}
-
-
-
-static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *tmp, char *barcode)
-{
-	tmp->cons_seq_buffer[hkp->value->readlen] = '\0'; // Null-terminal cons_seq.
-	for(int i = 0; i < hkp->value->readlen; ++i) {
-		int argmaxret = ARRG_MAX(hkp->value, i);
-		tmp->cons_quals[i] = pvalue_to_phred(igamc_pvalues(hkp->value->length, LOG10_TO_CHI2((hkp->value->phred_sums[i * 4 + argmaxret]))));
-		// Final quality must be 2 or greater and at least one read in the family should support that base call.
-		tmp->cons_seq_buffer[i] = (tmp->cons_quals[i] > 2 && hkp->value->nuc_counts[i * 4 + argmaxret]) ? ARRG_MAX_TO_NUC(argmaxret): 'N';
-		tmp->agrees[i] = hkp->value->nuc_counts[i * 4 + argmaxret];
-	}
-	fill_fa_buffer(hkp->value, tmp->agrees, tmp->FABuffer);
-	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(hkp->value, tmp->cons_quals, tmp->PVBuffer);
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", barcode,
-			tmp->FABuffer, tmp->PVBuffer,
-			hkp->value->pass_fail, hkp->value->n_rc, hkp->value->length,
-			tmp->cons_seq_buffer, hkp->value->max_phreds);
-}
-*/
 
 #define dmp_pos(kfp, bufs, argmaxret, i)\
 	argmaxret = ARRG_MAX(kfp, i);\
@@ -164,7 +125,7 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
 	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N'
 
-static inline void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
+static void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
 {
 	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
 	//buffer[0] = '@'; Set this later?
@@ -242,9 +203,7 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 
 static inline KingFisher_t *init_kfp(size_t readlen)
 {
-	KingFisher_t *ret = (KingFisher_t *)malloc(sizeof(KingFisher_t));
-	ret->length = 0; // Check to see if this is necessary after calloc - I'm pretty sure not.
-	ret->n_rc = 0;
+	KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
 	ret->readlen = readlen;
 	ret->max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
 	ret->nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));

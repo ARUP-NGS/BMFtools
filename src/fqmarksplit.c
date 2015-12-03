@@ -160,7 +160,7 @@ int fqms_main(int argc, char *argv[])
 	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 
 	int c;
-	while ((c = getopt(argc, argv, "w:t:o:i:n:m:s:f:u:p:g:v:r:hdcz")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -180,6 +180,7 @@ int fqms_main(int argc, char *argv[])
 				fprintf(stderr, "About to parse in rescaler.\n");
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
 				fprintf(stderr, "Parsed rescaler.\n"); break;
+			case '?': // Fall-through
 			case 'h': print_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
 		}
