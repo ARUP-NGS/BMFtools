@@ -28,7 +28,6 @@ static inline tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 	ret->blen = blen;
 	ret->readlen = readlen;
 	ret->bs_ptr = bs_ptr;
-	ret->nuc_indices[0] = ret->nuc_indices[1] = 0;
 	ret->buffers = (tmpbuffers_t *)malloc(sizeof(tmpbuffers_t));
 	ret->buffers->name_buffer[0] = '@';
 	ret->buffers->name_buffer[blen] = '\0';

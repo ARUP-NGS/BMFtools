@@ -37,7 +37,6 @@ typedef struct tmpvars {
 	char *bs_ptr;
 	int blen;
 	int readlen;
-	int nuc_indices[2];
 	char key[MAX_BARCODE_LENGTH + 1];
 	int l; // For holding ret value for seq.
 	tmpbuffers_t *buffers;
@@ -61,21 +60,6 @@ extern double igamc(double a, double x);
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
 
 
-static inline KingFisher_t init_kf(int readlen)
-{
-	KingFisher_t fisher = {
-		.nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t)),
-		.phred_sums = (uint32_t *)calloc(readlen * 4, sizeof(uint32_t)),
-		.length = 0,
-		.readlen = readlen,
-		.max_phreds = (char *)calloc(readlen + 1, 1), // Keep track of the maximum phred score observed at position.
-		.n_rc = 0,
-		.pass_fail = '1'
-	};
-	return fisher;
-}
-
-
 static inline void destroy_kf(KingFisher_t *kfp)
 {
 	cond_free(kfp->nuc_counts);
@@ -91,42 +75,29 @@ static inline void clear_kf(KingFisher_t *kfp)
 	memset(kfp, 0, sizeof(KingFisher_t));
 }
 
-
 static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 {
-/*
-	uint32_t max_index = 0, i;
-	for(i = 0;i < 4; ++i) {
-		if(kfp->phred_sums[index * 4 + i] > kfp->phred_sums[index * 4 + max_index]) {
-			max_index = i;
-		}
-	}
-	return max_index;
-*/
-	int i4 = index * 4;
-	if(kfp->phred_sums[i4] > kfp->phred_sums[i4 + 1] &&
-		kfp->phred_sums[i4] > kfp->phred_sums[i4 + 2] &&
-		kfp->phred_sums[i4] > kfp->phred_sums[i4 + 3])
+	const int i5 = index * 5;
+	if(kfp->phred_sums[i5] > kfp->phred_sums[i5 + 1] &&
+		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 2] &&
+		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 3])
 		return 0;
 
-	else if(kfp->phred_sums[i4 + 1] > kfp->phred_sums[i4 + 2] &&
-			kfp->phred_sums[i4 + 1] > kfp->phred_sums[i4 + 3])
+	else if(kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 2] &&
+			kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 3])
 		return 1;
-	else if(kfp->phred_sums[i4 + 2] > kfp->phred_sums[i4 + 3])
+	else if(kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 3])
 		return 2;
 	else
 		return 3;
 	return 0; // This never happens
 }
 
+#define ARGMAX_STR "ACGT"
+
 static inline char ARRG_MAX_TO_NUC(int argmaxret)
 {
-	switch (argmaxret) {
-		case 1: return 'C';
-		case 2: return 'G';
-		case 3: return 'T';
-		default: return 'A';
-	}
+	return ARGMAX_STR[argmaxret];
 }
 
 
@@ -189,7 +160,7 @@ static inline void kh_pw(HashKing_t *hkp, FILE *handle, int blen, tmpbuffers_t *
 
 #define dmp_pos(kfp, bufs, argmaxret, i)\
 	argmaxret = ARRG_MAX(kfp, i);\
-	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 4 + argmaxret]))));\
+	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 5 + argmaxret]))));\
 	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
 	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N'
 
@@ -269,18 +240,6 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 }
 
 
-
-static inline void set_kf(int readlen, KingFisher_t ret)
-{
-	ret.length = 0;
-	ret.readlen = readlen;
-	ret.nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
-	ret.phred_sums = (uint32_t *)calloc(readlen * 4, sizeof(uint32_t));
-	ret.max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
-	return;
-}
-
-
 static inline KingFisher_t *init_kfp(size_t readlen)
 {
 	KingFisher_t *ret = (KingFisher_t *)malloc(sizeof(KingFisher_t));
@@ -289,7 +248,7 @@ static inline KingFisher_t *init_kfp(size_t readlen)
 	ret->readlen = readlen;
 	ret->max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
 	ret->nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
-	ret->phred_sums = (uint32_t *)calloc(readlen * 4, sizeof(uint32_t));
+	ret->phred_sums = (uint32_t *)calloc(readlen * 5, sizeof(uint32_t));
 	ret->pass_fail = '1';
 	return ret;
 }
@@ -564,35 +523,23 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 	}
 }
 
-#if !NDEBUG
-static void print_kf(KingFisher_t *kfp)
-{
-	fprintf(stderr, "Length: %i.\n", kfp->length);
-	fprintf(stderr, "FA: ");
-	for(int i = 0; i < kfp->readlen; ++i) {
-		fprintf(stderr, ",%i\t", (int)kfp->nuc_counts[i]);
-	}
-	fprintf(stderr, "\n");
-	return;
+
+static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
+	const uint32_t posdata = nuc_to_posdata(seq->seq.s[i]);
+	++kfp->nuc_counts[i * 5 + posdata];
+	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
+	if(seq->qual.s[i] > kfp->max_phreds[i])
+		kfp->max_phreds[i] = seq->qual.s[i];
 }
-#endif
 
-#define pb_pos(seq, kfp, nuc_indices, i) \
-	nuc_to_pos((seq->seq.s[i]), nuc_indices);\
-	++kfp->nuc_counts[i * 5 + nuc_indices[1]];\
-	kfp->phred_sums[i * 4 + nuc_indices[0]] += seq->qual.s[i] - 33;\
-	if(seq->qual.s[i] > kfp->max_phreds[i])\
-		kfp->max_phreds[i] = seq->qual.s[i]\
-
-static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int *nuc_indices, int blen)
+static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 {
-	if(!kfp->length) {
+	if(!(kfp->length++)) { // Increment while checking
 		memcpy(kfp->barcode, seq->comment.s + 14, blen);
 		kfp->barcode[blen] = '\0';
 	}
-	++kfp->length; // Increment
-	for(int i = 0; i < kfp->readlen; i++) {
-		pb_pos(seq, kfp, nuc_indices, i);
+	for(int i = 0; i < kfp->readlen; ++i) {
+		pb_pos(kfp, seq, i);
 	}
 	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	return;

@@ -175,14 +175,14 @@ void khash_dmp_core(char *infname, char *outfname)
 	int khr;
 	ki = kh_put(dmp, hash, tmp->key, &khr);
 	kh_val(hash, ki) = init_kfp(tmp->readlen);
-	pushback_kseq(kh_val(hash, ki), seq, tmp->nuc_indices, tmp->blen);
+	pushback_kseq(kh_val(hash, ki), seq, tmp->blen);
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		cp_view2buf(seq->comment.s + 14, tmp->key);
 		if((ki = kh_get(dmp, hash, tmp->key)) == kh_end(hash)) {
 			ki = kh_put(dmp, hash, tmp->key, &khr);
 			kh_val(hash, ki) = init_kfp(tmp->readlen);
 		}
-		pushback_kseq(kh_val(hash, ki), seq, tmp->nuc_indices, tmp->blen);
+		pushback_kseq(kh_val(hash, ki), seq, tmp->blen);
 	}
 	fprintf(stderr, "[khash_dmp_core]: Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n");
 	for(ki = kh_begin(hash); ki != kh_end(hash); ++ki) {
