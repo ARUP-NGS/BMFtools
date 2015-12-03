@@ -11,6 +11,7 @@
 #include "igamc_cephes.h"
 #include <zlib.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #ifndef MAX_BARCODE_LENGTH
 #define MAX_BARCODE_LENGTH 30
@@ -83,13 +84,12 @@ static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 3] &&
 		kfp->phred_sums[i5] > kfp->phred_sums[i5 + 4])
 		return 0;
-
 	else if(kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 2] &&
 			kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 3] &&
 			kfp->phred_sums[i5 + 1] > kfp->phred_sums[i5 + 4])
 		return 1;
 	else if(kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 3] &&
-			kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 4]))
+			kfp->phred_sums[i5 + 2] > kfp->phred_sums[i5 + 4])
 		return 2;
 	else if(kfp->phred_sums[i5 + 3] > kfp->phred_sums[i5 + 4])
 		return 3;
@@ -483,6 +483,8 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 	const uint32_t posdata = nuc_to_posdata(seq->seq.s[i]);
+/*
+ * Used this to verify that nuc_to_posdata is safe.
 #if !NDEBUG
 	switch(seq->seq.s[i]) {
 	case 'N':
@@ -496,8 +498,9 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 	case 'T':
 		assert(posdata == 3); break;
 	}
-	fprintf(stderr, "posdata for base call %c is %u", seq->seq.s[i], posdata)
+	fprintf(stderr, "posdata for base call %c is %u\n", seq->seq.s[i], posdata);
 #endif
+*/
 	++kfp->nuc_counts[i * 5 + posdata];
 	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
 	if(seq->qual.s[i] > kfp->max_phreds[i])
