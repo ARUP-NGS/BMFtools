@@ -19,5 +19,4 @@ static inline int nuc_cmp(char forward, char reverse)
 	return forward - reverse;
 }
 
-
 #endif

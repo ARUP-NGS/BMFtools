@@ -11,12 +11,13 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <zlib.h>
-#include "kingfisher.h"
 #include "array_parser.h"
-#include "nix_resource.h"
-#include "mem_util.h"
 #include "binner.h"
 #include "cstr_util.h"
+#include "kingfisher.h"
+#include "io_util.h"
+#include "mem_util.h"
+#include "nix_resource.h"
 
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
@@ -71,6 +72,7 @@
 #endif
 
 extern void khash_dmp_core(char *infname, char *outfname);
+extern int isfile(char *);
 
 
 typedef struct blens {

@@ -6,12 +6,6 @@
 #include "crms.h"
 #include "khash_dmp_core.h"
 
-/*
- * Random not needed work.
- * 1. Creating the special family size one case.
- * 2. digitslut (sprintf)
- */
-
 
 void print_crms_usage(char *argv[])
 {
@@ -20,7 +14,7 @@ void print_crms_usage(char *argv[])
 						"-l: Number of nucleotides at the beginning of each read to "
 						"use for barcode. Final barcode length is twice this. REQUIRED.\n"
 						"-s: homing sequence. REQUIRED.\n"
-						"-o: Output basename. Defaults to a variation on input filename.\n"
+						"-o: Mark/split output basename. Defaults to a random string.\n"
 						"-t: Homopolymer failure threshold. A molecular barcode with"
 						" a homopolymer of length >= this limit is flagged as QC fail."
 						"Default: 10.\n"
@@ -39,7 +33,6 @@ void print_crms_usage(char *argv[])
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-u: Set notification/update interval for split. Default: 1000000.\n"
 						"-w: Set flag to leave temporary files. Primarily for debugging.\n"
-						"-a: For annealed inline barcodes. Uses inline barcodes but doesn't conditionally reverse.\n"
 						"-h: Print usage.\n", argv[0]);
 }
 
@@ -148,12 +141,14 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 		fclose(splitter->tmp_out_handles_r2[i]);
 	}
 	tm_destroy(tmp);
-	mseq_destroy(rseq1);
-	mseq_destroy(rseq2);
-	kseq_destroy(seq1);
-	kseq_destroy(seq2);
-	gzclose(fp1);
-	gzclose(fp2);
+	mseq_destroy(rseq1), mseq_destroy(rseq2);
+	kseq_destroy(seq1), kseq_destroy(seq2);
+	gzclose(fp1), gzclose(fp2);
+#if WRITE_BARCODE_FQ
+	if(fclose(fp))
+		fprintf(stderr, "[E:%s] Failed to close file for barcode fastq.\n"),
+		exit(EXIT_FAILURE);
+#endif
 	return splitter;
 }
 
@@ -173,6 +168,9 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
                 __func__);
 		exit(EXIT_FAILURE);
 	}
+	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path))
+		fprintf(stderr, "[E:%s] Could not open read paths: at least one is not a file.\n", __func__),
+		exit(EXIT_FAILURE);
 	if(settings->rescaler_path) {
 		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	}
@@ -317,9 +315,8 @@ int crms_main(int argc, char *argv[])
 	};
 	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?a")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?")) > -1) {
 		switch(c) {
-			case 'a': settings.annealed = 1; break;
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
@@ -366,7 +363,7 @@ int crms_main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	else {
-		fprintf(stderr, "[%s] Homing sequence: %s.\n", settings.homing_sequence, __func__);
+		fprintf(stderr, "[%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
 		for(int i = 0; settings.homing_sequence[i]; ++i) {
 			switch(settings.homing_sequence[i]) {
 			case 'A': break;
