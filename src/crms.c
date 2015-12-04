@@ -63,7 +63,8 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 #if WRITE_BARCODE_FQ
 	FILE *fp = fopen("tmp.molbc.fq", "w");
 #endif
-	fprintf(stderr, "Now beginning pp_split_annealed with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
+	fprintf(stderr, "[%s] Opening fastqs %s and %s.\n", __func__, settings->input_r1_path,
+            settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
 		fprintf(stderr, "Hey, it looks like you're trying to use the same path for both r1 and r2. At least try to fool me by making a symbolic link.\n");
 		exit(EXIT_FAILURE);
@@ -82,46 +83,42 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	int count = 0;
 	char pass_fail;
 	settings->blen1_2 = settings->blen / 2;
-	l1 = kseq_read(seq1);
-	l2 = kseq_read(seq2);
-	fprintf(stderr, "Read length for dataset: %"PRIu64".\n", seq1->seq.l);
+	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
+			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
+			FREE_MSSI_SETTINGS_PTR(settings);
+			FREE_SPLITTER_PTR(splitter);
+			exit(EXIT_FAILURE);
+	}
+	fprintf(stderr, "[%s]Read length (inferred): %lu.\n", __func__, seq1->seq.l);
 #if !NDEBUG
 	int arr_size = seq1->seq.l * 4 * 2 * 39;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {
-				fprintf(stderr, "Rescaler's got a negative number in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				fprintf(stderr, "[D:%s] Rescaler's got a negative number"
+                        " in pp_split_inline. WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
 				exit(EXIT_FAILURE);
 			}
 			else if(settings->rescaler[i] == 0) {
-				fprintf(stderr, "Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				fprintf(stderr, "[D:%s] Rescaler's got a zero"
+                        " in pp_split_inline. WTF? %i. Index: %i.\n", __func__,settings->rescaler[i], i);
 				exit(EXIT_FAILURE);
 			}
 		}
 	}
 #endif
-	if(l1 < 0 || l2 < 0) {
-			fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
-			FREE_MSSI_SETTINGS_PTR(settings);
-			FREE_SPLITTER_PTR(splitter);
-			exit(EXIT_FAILURE);
-	}
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
 	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
-#if !NDEBUG
-	fprintf(stderr, "Made my first rseq objects (%p, %p).\n", rseq1, rseq2);
-#endif
 	rseq1->barcode[settings->blen] = '\0';
-	if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold))) {
+	if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 		pass_fail = '0';
-	}
 	memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 #if !NDEBUG
-	fprintf(stderr, "Now settings Ns and #s %i.\n", n_len);
+	fprintf(stderr, "[D:%s] Now setting Ns and #s. Length: %i.\n", __func__, n_len);
 #endif
 	mask_mseq(rseq1, n_len, 'N', '#');
 	mask_mseq(rseq2, n_len, 'N', '#');
@@ -132,7 +129,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	do {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "Number of records processed: %i.\n", count);
+			fprintf(stderr, "[%s]Number of records processed: %i.\n", __func__, count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
@@ -140,13 +137,12 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 		update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 0);
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
-		if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold))) {
+	    if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 			pass_fail = '0';
-		}
 		bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
-	} while (LIKELY(((l1 = kseq_read(seq1)) >= 0)) && LIKELY((l2 = kseq_read(seq2)) >= 0));
+	} while (LIKELY(LIKELY(((l1 = kseq_read(seq1)) >= 0)) && LIKELY((l2 = kseq_read(seq2)) >= 0)));
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]);
 		fclose(splitter->tmp_out_handles_r2[i]);
@@ -170,9 +166,11 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 #if WRITE_BARCODE_FQ
 	FILE *fp = fopen("tmp.molbc.fq", "w");
 #endif
-	fprintf(stderr, "Now beginning pp_split_inline with fastq paths %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
+	fprintf(stderr, "[%s] Opening fastq files %s and %s.\n", __func__, settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
-		fprintf(stderr, "Hey, it looks like you're trying to use the same path for both r1 and r2. At least try to fool me by making a symbolic link.\n");
+		fprintf(stderr, "[E:%s] Hey, it looks like you're trying to use the same path for both r1 and r2. "
+                "At least try to fool me by making a symbolic link.\n",
+                __func__);
 		exit(EXIT_FAILURE);
 	}
 	if(settings->rescaler_path) {
@@ -189,43 +187,39 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	int count = 0;
 	char pass_fail;
 	settings->blen1_2 = settings->blen / 2;
-	l1 = kseq_read(seq1);
-	l2 = kseq_read(seq2);
-	fprintf(stderr, "Read length for dataset: %"PRIu64".\n", seq1->seq.l);
+	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
+			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
+			FREE_MSSI_SETTINGS_PTR(settings);
+			FREE_SPLITTER_PTR(splitter);
+			exit(EXIT_FAILURE);
+	}
+	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
 #if !NDEBUG
 	int arr_size = seq1->seq.l * 4 * 2 * 39;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {
-				fprintf(stderr, "Rescaler's got a negative number in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				fprintf(stderr, "[E:%s] Rescaler's got a negative number in pp_split_inline."
+                        " WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
 				exit(EXIT_FAILURE);
 			}
 			else if(settings->rescaler[i] == 0) {
-				fprintf(stderr, "Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n", settings->rescaler[i], i);
+				fprintf(stderr, "[E:%s] Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n",
+                        __func__, settings->rescaler[i], i);
 				exit(EXIT_FAILURE);
 			}
 		}
 	}
 #endif
-	if(l1 < 0 || l2 < 0) {
-			fprintf(stderr, "Could not open fastqs for reading. Abort!\n");
-			FREE_MSSI_SETTINGS_PTR(settings);
-			FREE_SPLITTER_PTR(splitter);
-			exit(EXIT_FAILURE);
-	}
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int switch_reads = switch_test(seq1, seq2, settings->offset);
 	int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
 	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
-#if !NDEBUG
-	fprintf(stderr, "Made my first rseq objects (%p, %p).\n", rseq1, rseq2);
-#endif
 	rseq1->barcode[settings->blen] = '\0';
-	if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold))) {
+	if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 		pass_fail = '0';
-	}
 	if(switch_reads) {
 		memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -253,7 +247,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	}
 	do {
 		if(UNLIKELY(++count % settings->notification_interval == 0)) {
-			fprintf(stderr, "Number of records processed: %i.\n", count);
+			fprintf(stderr, "[%s]Number of records processed: %i.\n", __func__, count);
 		}
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
@@ -269,9 +263,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 			memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 		}
-		if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold))) {
+		if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 			pass_fail = '0';
-		}
 		bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 		if(switch_reads) {
 			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode);
@@ -281,18 +274,16 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 			mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 		}
-	} while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0));
+	} while (LIKELY(LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)));
+    fprintf(stderr, "[%s] Cleaning up.\n", __func__);
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]);
 		fclose(splitter->tmp_out_handles_r2[i]);
 	}
 	tm_destroy(tmp);
-	mseq_destroy(rseq1);
-	mseq_destroy(rseq2);
-	kseq_destroy(seq1);
-	kseq_destroy(seq2);
-	gzclose(fp1);
-	gzclose(fp2);
+	mseq_destroy(rseq1), mseq_destroy(rseq2);
+	kseq_destroy(seq1), kseq_destroy(seq2);
+	gzclose(fp1), gzclose(fp2);
 	return splitter;
 }
 
@@ -354,29 +345,28 @@ int crms_main(int argc, char *argv[])
 	increase_nofile_limit(settings.threads);
 	omp_set_num_threads(settings.threads);
 
-	if(argc < 5) {
-		print_crms_usage(argv); exit(1);
-	}
+	if(argc < 5)
+		print_crms_usage(argv), exit(EXIT_FAILURE);
 
 	settings.n_handles = ipow(4, settings.n_nucs);
 	if(settings.n_handles * 3 > get_fileno_limit()) {
 		int o_fnl = get_fileno_limit();
 		increase_nofile_limit(kroundup32(settings.n_handles));
-		fprintf(stderr, "Increased nofile limit from %i to %i.\n", o_fnl,
+		fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, o_fnl,
 				kroundup32(settings.n_handles));
 	}
 	if(settings.ffq_prefix && !settings.run_hash_dmp) {
-		fprintf(stderr, "Final fastq prefix option provided but run_hash_dmp not selected."
-				"Either eliminate the -f flag or add the -d flag.\n");
+		fprintf(stderr, "[E:%s] Final fastq prefix option provided but run_hash_dmp not selected."
+				"Either eliminate the -f flag or add the -d flag.\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 
 	if(!settings.homing_sequence) {
-		fprintf(stderr, "Homing sequence not provided. Required.\n");
+		fprintf(stderr, "[E:%s] Homing sequence not provided. Required.\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	else {
-		fprintf(stderr, "Homing sequence: %s.\n", settings.homing_sequence);
+		fprintf(stderr, "[%s] Homing sequence: %s.\n", settings.homing_sequence, __func__);
 		for(int i = 0; settings.homing_sequence[i]; ++i) {
 			switch(settings.homing_sequence[i]) {
 			case 'A': break;
@@ -387,28 +377,29 @@ int crms_main(int argc, char *argv[])
 			case 'g': // Fall-through
 			case 'c': // Fall-through
 			case 't': settings.homing_sequence[i] -= 32; // Converts lower-case to upper-case
-			default: fprintf(stderr, "Homing sequence contains illegal characters. Accepted: ACGT. Parameter: %s.\n", settings.homing_sequence);
+            default: fprintf(stderr, "[E:%s] Homing sequence contains illegal characters. Accepted: ACGT. Parameter: %s.\n",
+                             __func__, settings.homing_sequence);
 			exit(EXIT_FAILURE);
 			}
 		}
 	}
 	if(!settings.blen) {
-		fprintf(stderr, "Barcode length not provided. Required. Abort!\n");
+		fprintf(stderr, "[E:%s] Barcode length not provided. Required. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 
 	if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
-		fprintf(stderr, "max blen (%i) must be less than the minimum blen provided (%i).\n", settings.max_blen,
-				settings.blen / 2);
+		fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
+                __func__, settings.max_blen, settings.blen / 2);
+        exit(EXIT_FAILURE);
 	}
 
-	if(settings.offset) {
+	if(settings.offset)
 		settings.blen -= 2 * settings.offset;
-	}
 
-	fprintf(stderr, "About to get the read paths.\n");
+
 	if(argc - 1 != optind + 1) {
-		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n");
+		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
 		print_crms_usage(argv);
 		return 1;
 	}
@@ -418,14 +409,34 @@ int crms_main(int argc, char *argv[])
 	if(!settings.output_basename) {
 		settings.output_basename = (char *)malloc(21 * sizeof(char));
 		rand_string(settings.output_basename, 20);
-		fprintf(stderr, "Output basename not provided. Defaulting to random: %s.\n", settings.output_basename);
+		fprintf(stderr, "[%s] Output basename not provided. Defaulting to random: %s.\n",
+                __func__, settings.output_basename);
 	}
 	mark_splitter_t *splitter = (settings.annealed) ? pp_split_annealed(&settings): pp_split_inline(&settings);
 	cond_free(settings.rescaler);
 	if(settings.run_hash_dmp) {
-		fprintf(stderr, "Now executing hash dmp.\n");
+		fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
+                __func__);
 		if(!settings.ffq_prefix) {
-			settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
+            int has_period = 0;
+            for(int i = 0; settings.input_r1_path[i]; ++i) {
+                if(settings.input_r1_path[i] == '.') {
+                    has_period = 1;
+                    break;
+                }
+            }
+            if(has_period) {
+			    settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
+                fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
+                        __func__, settings.ffq_prefix);
+            }
+            else {
+                settings.ffq_prefix = (char *)malloc(21 * sizeof(char));
+                rand_string(settings.ffq_prefix, 20);
+                settings.ffq_prefix[20] = '\0';
+                fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
+                        __func__, settings.ffq_prefix);
+            }
 		}
 		// Whatever I end up putting into here.
 		splitterhash_params_t *params = init_splitterhash(&settings, splitter);
@@ -439,12 +450,12 @@ int crms_main(int argc, char *argv[])
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
-				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
-						params->infnames_r1[i], params->outfnames_r1[i]);
+				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "Now removing temporary file %s.\n",
-							params->infnames_r1[i]);
+					fprintf(stderr, "[%s] Removing temporary file %s.\n",
+							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
 					popens[i] = popen(tmpbuf, "w");
 				}
@@ -474,12 +485,13 @@ int crms_main(int argc, char *argv[])
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
-				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
-						params->infnames_r2[i], params->outfnames_r2[i]);
+				fprintf(stderr, "[%s] Now running hash dmp core on input filename "
+                        "%s and output filename %s.\n",
+						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "Now removing temporary file %s.\n",
-							params->infnames_r2[i]);
+					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
+							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
 					popens[i] = popen(tmpbuf, "w");
 				}
@@ -538,7 +550,7 @@ int crms_main(int argc, char *argv[])
 			FILE *c1_popen = popen(cat_buff1, "w");
 			FILE *c2_popen = popen(cat_buff2, "w");
 			if(pclose(c2_popen) || pclose(c1_popen)) {
-				fprintf(stderr, "Background cat command failed. ('%s').\n", cat_buff1);
+				fprintf(stderr, "[%s] Background cat command failed. ('%s').\n", __func__, cat_buff1);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -558,7 +570,7 @@ int crms_main(int argc, char *argv[])
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 				FILE *g2_popen = popen(cat_buff, "w");
 				if(pclose(g2_popen) || pclose(g1_popen)){
-					fprintf(stderr, "Background system call failed.\n");
+					fprintf(stderr, "[E:%s] Background system call failed.\n", __func__);
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -568,7 +580,9 @@ int crms_main(int argc, char *argv[])
 			for(int i = 0; i < params->n; ++i) {
 				char tmpbuf[500];
 				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-				fprintf(stderr, "About to call command '%s'.\n", tmpbuf);
+#if !NDEBUG
+				fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, tmpbuf);
+#endif
 				popen(tmpbuf, "w");
 			}
 		}
@@ -580,33 +594,28 @@ int crms_main(int argc, char *argv[])
 	return 0;
 }
 
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
 {
-	if(!settings_ptr->homing_sequence) {
-		return 1;
-	}
-	else {
-		return memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),
-					   settings_ptr->homing_sequence,
-					   settings_ptr->homing_sequence_length) == 0;
-	}
+    return (settings_ptr->homing_sequence) ?
+        (memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),
+               settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0): 1;
 }
 
-char test_hp_inline(char *barcode, int length, int threshold)
+inline char test_hp_inline(char *barcode, int length, int threshold)
 {
 	int run = 0;
 	char last = '\0';
 	for(int i = 0; i < length; i++){
-		if(barcode[i] == 'N') {
+		if(barcode[i] == 'N')
 			return '0';
-		}
 		if(barcode[i] == last) {
-			run += 1;
-		}
+			if(++run >= threshold)
+                return '0';
+        }
 		else {
 			run = 0;
 			last = barcode[i];
 		}
 	}
-	return (run < threshold) ? '1': '0';
+	return '1';
 }

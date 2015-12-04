@@ -66,9 +66,8 @@
 
 #ifndef CHECK_CALL
 #define CHECK_CALL(buff) \
-	fprintf(stderr, "Now check calling command '%s'.\n", buff); \
-	if(system(buff) < 0)\
-		fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
+	fprintf(stderr, "[D:%s]Now check calling command '%s'.\n", __func__, buff); \
+	if(system(buff) < 0) fprintf(stderr, "[D:%s]System call failed. Command: '%s'.\n", __func__, buff)
 #endif
 
 extern void khash_dmp_core(char *infname, char *outfname);
@@ -229,23 +228,23 @@ static inline char test_hp(char *seq, int threshold)
 static inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
 #if !NDEBUG
-	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
+	fprintf(stderr, "[D:%s]Initializing splitterhash. Output basename: %s.\n", __func__,
+            settings_ptr->output_basename);
 #endif
 	if(!settings_ptr) {
-		fprintf(stderr, "Settings pointer null. Abort!\n");
+		fprintf(stderr, "[E:%s]Settings pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "Output basename not set. Abort!\n");
+		fprintf(stderr, "[E:%s]Output basename not set. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	if(!splitter_ptr) {
-		fprintf(stderr, "Splitter pointer null. Abort!\n");
+		fprintf(stderr, "[E:%s]Splitter pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
 	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	fprintf(stderr, "Alloc'd ret.\n");
 	ret->n = splitter_ptr->n_handles;
 	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
 	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
