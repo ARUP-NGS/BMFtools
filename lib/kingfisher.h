@@ -121,7 +121,8 @@ static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buf
 #define dmp_pos(kfp, bufs, argmaxret, i)\
 	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 5 + argmaxret]))));\
 	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
-	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N'
+	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N';\
+    if(bufs->cons_seq_buffer[i] == 'N' && bufs->cons_quals[i] > 2) bufs->cons_quals[i] = 2
 
 static void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
 {
@@ -482,25 +483,7 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
-	const uint32_t posdata = nuc_to_posdata(seq->seq.s[i]);
-/*
- * Used this to verify that nuc_to_posdata is safe.
-#if !NDEBUG
-	switch(seq->seq.s[i]) {
-	case 'N':
-		assert(posdata == 4); break;
-	case 'A':
-		assert(posdata == 0); break;
-	case 'C':
-		assert(posdata == 1); break;
-	case 'G':
-		assert(posdata == 2); break;
-	case 'T':
-		assert(posdata == 3); break;
-	}
-	fprintf(stderr, "posdata for base call %c is %u\n", seq->seq.s[i], posdata);
-#endif
-*/
+	const uint32_t posdata = nuc2num(seq->seq.s[i]);
 	++kfp->nuc_counts[i * 5 + posdata];
 	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
 	if(seq->qual.s[i] > kfp->max_phreds[i])
