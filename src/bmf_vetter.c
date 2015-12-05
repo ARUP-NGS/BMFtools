@@ -119,6 +119,13 @@ void vs_destroy(vetter_settings_t *settings) {
 	free(settings), settings = NULL;
 }
 
+/* @function
+ * :abstract: Iterates over a full VCF, skips variants outside of a region, and
+ * fast-forwards the bam to the location for each variant, and tests whether or not that
+ * was a correct call based on the supplemental information available in the
+ * BMF tags.
+ * :param: settings [arg/vetter_settings_t *]
+ */
 void full_iter_loop(vetter_settings_t *settings)
 {
 	vetplp_conf_t *conf = &settings->conf;
@@ -134,6 +141,13 @@ void full_iter_loop(vetter_settings_t *settings)
 	bcf_destroy1(rec);
 }
 
+/* @function
+ * :abstract: Creates an iterator over every tabix region in a bed file,
+ * fast-forwards the bam to said location, and tests whether or not that
+ * was a correct call based on the supplemental information available in the
+ * BMF tags.
+ * :param: settings [arg/vetter_settings_t *]
+ */
 void hts_loop(vetter_settings_t *settings)
 {
 	vetplp_conf_t *conf = &settings->conf;
@@ -272,13 +286,13 @@ int bmf_vetter_main(int argc, char *argv[])
 		strcpy(vcf_wmode, "w");
 	}
 	else if(strrchr(outvcf, '.') && strcmp(strrchr(outvcf, '.'), ".bcf") == 0 &&
-			vcf_rmode[0] == '\0')
+			!*vcf_rmode)
 		strcpy(vcf_rmode, "rb");
 	if(!vcf_rmode[0])
 		strcpy(vcf_rmode, "r");
 	if(!bed[0])
 		vetter_error("Bed file required.\n", EXIT_FAILURE);
-	strcpy(vcf_wmode, strrchr(invcf, '.') && strcmp(strrchr(outvcf, '.'), ".bcf") ?
+	strcpy(vcf_wmode, strrchr(outvcf, '.') && strcmp(strrchr(outvcf, '.'), ".bcf") ?
 			"w": "wb");
 	if(optind + 1 >= argc) {
 		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);

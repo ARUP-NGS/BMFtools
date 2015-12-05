@@ -2,7 +2,10 @@
 #define O_IO_UTIL_H
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <zlib.h>
+
+int isfile(char *fname);
 
 inline gzFile open_gzfile(char *infname) {
     if(strcmp(infname, "-") == 0 || strcmp(infname, "stdin") == 0) {

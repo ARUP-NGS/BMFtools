@@ -1,10 +1,14 @@
 #ifndef IGAMC_CEPHES_H
 #define IGAMC_CEPHES_H
 
-#include "mtherr.c"
 #include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "mtherr.c"
+
+#ifndef UNUSED
+#define UNUSED(x) (x) __attribute__((unused))
+#endif
 
 extern double MAXNUM;
 
@@ -455,7 +459,7 @@ static unsigned short LPI[4] = {
 #endif
 
 #ifdef IBMPC
-static unsigned short P[] = {
+static unsigned short UNUSED(P[]) = {
 0x2153,0x3998,0xfcb8,0x3f24,
 0xbfab,0xe686,0x84e3,0x3f53,
 0x14b0,0xe9db,0x57cd,0x3f85,
@@ -464,7 +468,7 @@ static unsigned short P[] = {
 0xe312,0x3993,0xa137,0x3fdf,
 0x0000,0x0000,0x0000,0x3ff0
 };
-static unsigned short Q[] = {
+static unsigned short UNUSED(Q[]) = {
 0xd3af,0x8400,0x487a,0xbef8,
 0x2573,0x2915,0xae8a,0x3f41,
 0xb44a,0xe750,0x40e4,0xbf72,
@@ -475,7 +479,7 @@ static unsigned short Q[] = {
 0x0000,0x0000,0x0000,0x3ff0
 };
 #define MAXGAM 171.624376956302725
-static unsigned short LPI[4] = {
+__attribute__((unused)) static unsigned short LPI[4] = {
 0xa1bd,0x48e7,0x50d0,0x3ff2,
 };
 #define LOGPI *(double *)LPI

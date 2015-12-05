@@ -22,8 +22,8 @@
 KSEQ_INIT(gzFile, gzread)
 #endif
 
-#define HOM_SEQ_OFFSET 5
-
+#define ARGMAX_STR "ACGTN"
+#define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
 
 typedef struct tmpbuffers {
 	char name_buffer[120];
@@ -57,24 +57,9 @@ typedef struct KingFisher {
 
 
 extern double igamc(double a, double x);
-//void p7_mseq_rescale_init(kseq_t *seq, mseq_t *ret, char *rescaler, int n_len, int is_read2);
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
+void destroy_kf(KingFisher_t *kfp);
 
-
-static inline void destroy_kf(KingFisher_t *kfp)
-{
-	cond_free(kfp->nuc_counts);
-	cond_free(kfp->phred_sums);
-	cond_free(kfp->max_phreds);
-	free(kfp);
-	kfp = NULL;
-}
-
-
-static inline void clear_kf(KingFisher_t *kfp)
-{
-	memset(kfp, 0, sizeof(KingFisher_t));
-}
 
 static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 {
@@ -96,14 +81,10 @@ static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 	return 4; // 'N'
 }
 
-#define ARGMAX_STR "ACGTN"
-#define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
-
 
 static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, char *buffer)
 {
 	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:I");
-	return;
 }
 
 static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buffer)
@@ -118,57 +99,7 @@ static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buf
 }
 
 
-#define dmp_pos(kfp, bufs, argmaxret, i)\
-	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 5 + argmaxret]))));\
-	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
-	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N'
-
-static void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
-{
-	//1. Argmax on the phred_sums arrays, using that to fill in the new seq and
-	//buffer[0] = '@'; Set this later?
-	bufs->cons_seq_buffer[kfp->readlen] = '\0'; // Null-terminal cons_seq.
-	for(int i = 0; i < kfp->readlen; ++i) {
-		const int argmaxret = ARRG_MAX(kfp, i);
-		dmp_pos(kfp, bufs, argmaxret, i);
-	}
-		/*
-		 * Should I add this back in?
-		if(bufs->cons_quals[i] > 1073741824) { // Underflow!
-			fprintf(stderr, "Note: phred_sums in underflow: %" PRIu32 ".\n", kfp->phred_sums[i * 4 + argmaxret]);
-			bufs->cons_quals[i] = 3114;
-		}
-		*/
-	fill_fa_buffer(kfp, bufs->agrees, bufs->FABuffer);
-	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
-	fill_pv_buffer(kfp, bufs->cons_quals, bufs->PVBuffer);
-#if PUTC
-	fputc('@', handle);
-	fputs(kfp->barcode,handle);
-	fputc(' ', handle);
-	fputs(bufs->FABuffer, handle);
-	fputc('\t', handle);
-	fputs(bufs->PVBuffer, handle);
-	fputs("\tFP:i:", handle);
-	fputc(kfp->pass_fail, handle);
-	fputs("\tRV:i:", handle);
-	fputc(kfp->n_rc + '0', handle);
-	fputs("\tFM:i:", handle);
-	fputc(kfp->length + '0', handle);
-	fputc('\n', handle);
-	fputs(bufs->cons_seq_buffer, handle);
-	fputs("\n+\n", handle);
-	fputs(kfp->max_phreds, handle);
-	fputc('\n', handle);
-#else
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode,
-			bufs->FABuffer, bufs->PVBuffer,
-			kfp->pass_fail, kfp->n_rc, kfp->length,
-			bufs->cons_seq_buffer, kfp->max_phreds);
-#endif
-	return;
-}
-
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs);
 
 
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
@@ -199,16 +130,7 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 }
 
 
-static inline KingFisher_t *init_kfp(size_t readlen)
-{
-	KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
-	ret->readlen = readlen;
-	ret->max_phreds = (char *)calloc(readlen + 1, sizeof(char)); // Keep track of the maximum phred score observed at position.
-	ret->nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
-	ret->phred_sums = (uint32_t *)calloc(readlen * 5, sizeof(uint32_t));
-	ret->pass_fail = '1';
-	return ret;
-}
+KingFisher_t *init_kfp(size_t readlen);
 
 
 // mseq is a mutable struct holding kseq's information.
@@ -328,7 +250,7 @@ static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int is_r
 		fprintf(stderr, "kseq for initiating p7_mseq is null. Abort!\n");
 		exit(EXIT_FAILURE);
 	}
-	mseq_t *ret = (mseq_t *)malloc(sizeof(mseq_t));
+	mseq_t *ret = (mseq_t *)calloc(1, sizeof(mseq_t));
 	strcpy(ret->name, seq->name.s);
 	strcpy(ret->comment, seq->comment.s);
 	strcpy(ret->seq, seq->seq.s);
@@ -346,7 +268,6 @@ static inline mseq_t *p7_mseq_rescale_init(kseq_t *seq, char *rescaler, int is_r
 		}
 	}
 	ret->l = seq->seq.l;
-	memset(ret->barcode, 0, MAX_BARCODE_LENGTH + 1);
 	return ret;
 }
 
@@ -482,25 +403,7 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
-	const uint32_t posdata = nuc_to_posdata(seq->seq.s[i]);
-/*
- * Used this to verify that nuc_to_posdata is safe.
-#if !NDEBUG
-	switch(seq->seq.s[i]) {
-	case 'N':
-		assert(posdata == 4); break;
-	case 'A':
-		assert(posdata == 0); break;
-	case 'C':
-		assert(posdata == 1); break;
-	case 'G':
-		assert(posdata == 2); break;
-	case 'T':
-		assert(posdata == 3); break;
-	}
-	fprintf(stderr, "posdata for base call %c is %u\n", seq->seq.s[i], posdata);
-#endif
-*/
+	const uint32_t posdata = nuc2num(seq->seq.s[i]);
 	++kfp->nuc_counts[i * 5 + posdata];
 	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
 	if(seq->qual.s[i] > kfp->max_phreds[i])

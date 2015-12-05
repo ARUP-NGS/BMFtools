@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <inttypes.h>
 
+#define get_start(ivl) ((ivl) >> 32)
+#define get_stop(ivl) ((int32_t)(ivl))
+#define to_ivl(start, stop) (start > 0 ? ((start) << 32 | (stop)): stop)
+
 typedef struct region_set {
 	uint64_t *intervals;
 	uint64_t n;

@@ -11,12 +11,14 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <zlib.h>
-#include "kingfisher.h"
 #include "array_parser.h"
-#include "nix_resource.h"
-#include "mem_util.h"
 #include "binner.h"
 #include "cstr_util.h"
+#include "kingfisher.h"
+#include "io_util.h"
+#include "mem_util.h"
+#include "seq_util.h"
+#include "nix_resource.h"
 
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
@@ -66,12 +68,12 @@
 
 #ifndef CHECK_CALL
 #define CHECK_CALL(buff) \
-	fprintf(stderr, "Now check calling command '%s'.\n", buff); \
-	if(system(buff) < 0)\
-		fprintf(stderr, "System call failed. Command: '%s'.\n", buff)
+	fprintf(stderr, "[D:%s]Now check calling command '%s'.\n", __func__, buff); \
+	if(system(buff) < 0) fprintf(stderr, "[D:%s]System call failed. Command: '%s'.\n", __func__, buff)
 #endif
 
 extern void khash_dmp_core(char *infname, char *outfname);
+extern int isfile(char *);
 
 
 typedef struct blens {
@@ -92,7 +94,7 @@ typedef struct crms_settings {
 	int notification_interval; // How many sets of records do you want to process between progress reports?
 	blens_t *blen_data;
 	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-	char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases).
+	char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases).
 	char *rescaler_path; // Path to flat text file for parsing in the rescaler.
 	char *ffq_prefix; // Final fastq prefix.
 	int threads; // Number of threads to use for parallel dmp.
@@ -118,7 +120,7 @@ typedef struct mssi_settings {
 	int threads;
 	int run_hash_dmp;
 	char *ffq_prefix; // Final fastq prefix
-	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases)
 	int blen;
 	int blen1_2;
 	int max_blen;
@@ -214,7 +216,7 @@ static inline char test_hp(char *seq, int threshold)
 			int readlen##_settings = count_lines(settings.rescaler_path);\
 			for(int i = 0; i < 2; ++i) {\
 				for(int j = 0; j < readlen##_settings; ++j) {\
-					for(int k = 0; k < 39; ++k) {\
+					for(int k = 0; k < nqscores; ++k) {\
 						cond_free(settings.rescaler[i][j][k]);\
 					}\
 					cond_free(settings.rescaler[i][j]);\
@@ -229,23 +231,23 @@ static inline char test_hp(char *seq, int threshold)
 static inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
 {
 #if !NDEBUG
-	fprintf(stderr, "Initializing splitterhash. Output basename: %s.\n", settings_ptr->output_basename);
+	fprintf(stderr, "[D:%s]Initializing splitterhash. Output basename: %s.\n", __func__,
+            settings_ptr->output_basename);
 #endif
 	if(!settings_ptr) {
-		fprintf(stderr, "Settings pointer null. Abort!\n");
+		fprintf(stderr, "[E:%s]Settings pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "Output basename not set. Abort!\n");
+		fprintf(stderr, "[E:%s]Output basename not set. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	if(!splitter_ptr) {
-		fprintf(stderr, "Splitter pointer null. Abort!\n");
+		fprintf(stderr, "[E:%s]Splitter pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
 	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	fprintf(stderr, "Alloc'd ret.\n");
 	ret->n = splitter_ptr->n_handles;
 	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
 	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
@@ -289,7 +291,7 @@ static inline char *make_crms_outfname(char *fname)
 		int readlen = count_lines(settings.rescaler_path);\
 		for(int i##settings = 0; i##settings < 2; ++i##settings) {\
 			for(int j##settings = 0; j##settings < readlen; ++j##settings) {\
-				for(int k##settings = 0; k##settings < 39; ++k##settings) {\
+				for(int k##settings = 0; k##settings < nqscores; ++k##settings) {\
 					cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
 				}\
 				cond_free(settings.rescaler[i##settings][j##settings]);\

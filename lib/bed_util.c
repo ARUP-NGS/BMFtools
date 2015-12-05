@@ -18,38 +18,27 @@ khash_t(bed) *parse_bed_hash(char *path, bam_hdr_t *header, uint32_t padding)
 			continue;
 		tok = strtok(line, "\t");
 		tid = (uint32_t)bam_name2id(header, tok);
-#if !NDEBUG
-		fprintf(stderr, "Transcript id for tok %s is %"PRIu32"\n", tok, tid);
-#endif
 		tok = strtok(NULL, "\t");
 		start = strtoull(tok, NULL, 10);
 		tok = strtok(NULL, "\t");
 		stop = strtoull(tok, NULL, 10);
 		k = kh_get(bed, ret, tid);
 		if(k == kh_end(ret)) {
-#if !NDEBUG
-			fprintf(stderr, "New contig in bed hashmap: %"PRIu32".\n", tid);
-#endif
 			k = kh_put(bed, ret, tid, &khr);
 			kh_val(ret, k).intervals = (uint64_t *)calloc(1, sizeof(uint64_t));
-			if(start > padding)
-				kh_val(ret, k).intervals[0] = ((start - padding) << 32) | (stop + padding);
-			else
-				kh_val(ret, k).intervals[0] = stop + padding;
+			kh_val(ret, k).intervals[0] = to_ivl(start - padding, stop + padding);
 			kh_val(ret, k).n = 1;
 		}
 		else {
 			kh_val(ret, k).intervals = (uint64_t *)realloc(kh_val(ret, k).intervals, ++kh_val(ret, k).n * sizeof(uint64_t));
 			if(!kh_val(ret, k).intervals) {
-				fprintf(stderr, "Could not allocate memory. Abort mission!\n");
+				fprintf(stderr, "[E:%s] Could not allocate memory. Abort mission!\n", __func__);
 				exit(EXIT_FAILURE);
 			}
-			if(start > padding)
-				kh_val(ret, k).intervals[kh_val(ret, k).n - 1] = ((start - padding) << 32) | (stop + padding);
-			else
-				kh_val(ret, k).intervals[kh_val(ret, k).n - 1] = stop + padding;
+			kh_val(ret, k).intervals[kh_val(ret, k).n - 1] = to_ivl(start - padding, stop + padding);
 #if !NDEBUG
-			fprintf(stderr, "Number of intervals in bed file for contig %"PRIu32": %"PRIu64"\n", tid, kh_val(ret, k).n);
+			fprintf(stderr, "[D:%s] Number of intervals in bed file "
+					"for contig %u, ('%s'): %lu\n", __func__, tid, header->target_name[tid], kh_val(ret, k).n);
 #endif
 		}
 	}
@@ -93,8 +82,7 @@ void bed_destroy_hash(void *arg)
 
 void sort_bed(khash_t(bed) *bed)
 {
-	khint_t k;
-	for(k = kh_begin(bed); k != kh_end(bed); ++k) {
+	for(khint_t k = kh_begin(bed); k != kh_end(bed); ++k) {
 		if(!kh_exist(bed, k))
 			continue;
 		qsort(kh_val(bed, k).intervals, kh_val(bed, k).n, sizeof(uint64_t), &intcmp);

@@ -10,6 +10,7 @@
 #include "khash.h"
 #include "pair_util.h"
 #include "mem_util.h"
+#include "seq_util.h"
 #include "htslib/faidx.h"
 
 typedef struct readerr {
@@ -32,7 +33,6 @@ typedef struct fullerr {
 	char *refcontig;
 } fullerr_t;
 
-#define nqscores 39uL
 #define maxpv 3114
 
 static inline int pv2ph(double pv)

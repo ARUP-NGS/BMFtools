@@ -50,38 +50,39 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 		fprintf(stderr, "Path to index fq: %s.\n", settings->index_fq_path);
 	}
 	gzFile fp_read1, fp_read2, fp_index;
-	kseq_t *seq1, *seq2, *seq_index;
-	mseq_t *rseq1, *rseq2;
+	kseq_t *seq1 = NULL, *seq2 = NULL, *seq_index = NULL;
 	int l1, l2, l_index;
 	//fprintf(stderr, "[splitmark_rescale_core]: initializing splitter.\n");
 	mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter_ptr = init_splitter(settings);
 	//fprintf(stderr, "[splitmark_rescale_core]: Opening input handles.\n");
-	fp_read1 = gzopen(settings->input_r1_path, "r");
-	fp_read2 = gzopen(settings->input_r2_path, "r");
+	if(!isfile(settings->input_r1_path) ||
+	   !isfile(settings->input_r2_path) ||
+	   !isfile(settings->index_fq_path)) {
+		fprintf(stderr, "[E:%s] At least one input path ('%s', '%s', '%s') is not a file. Abort!\n", __func__,
+				settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
+		exit(EXIT_FAILURE);
+	}
+	// Open fastqs
+	fp_read1 = gzopen(settings->input_r1_path, "r"), fp_read2 = gzopen(settings->input_r2_path, "r");
+	l1 = kseq_read(seq1), l2 = kseq_read(seq2);
+
 	fp_index = gzopen(settings->index_fq_path, "r");
-	seq1 = kseq_init(fp_read1);
-	seq2 = kseq_init(fp_read2);
-	seq_index = kseq_init(fp_index);
-	//fprintf(stderr, "[splitmark_rescale_core]: Reading from Read 1. Path: %s.\n", settings->input_r1_path);
-	l1 = kseq_read(seq1);
-	//fprintf(stderr, "[splitmark_rescale_core]: Reading from Read index. Path: %s.\n", settings->index_fq_path);
+	seq_index = kseq_init(fp_index),
 	l_index = kseq_read(seq_index);
-	//fprintf(stderr, "[splitmark_rescale_core]: Reading from Read 2. Path: %s.\n", settings->input_r2_path);
-	l2 = kseq_read(seq2);
-	//fprintf(stderr, "[splitmark_rescale_core]: Read from Read 2! Path: %s.\n", settings->input_r2_path);
+
 	int bin = 0;
 	int count = 0;
 	char pass_fail = '1';
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
 	if(l1 < 0 || l2 < 0 || l_index < 0) {
-		fprintf(stderr, "Could not read input fastqs. Abort mission!\n");
+		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
-			settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
-	rseq1 = p7_mseq_rescale_init(seq1, settings->rescaler, 0); // rseq1 is initialized
-	rseq2 = p7_mseq_rescale_init(seq2, settings->rescaler, 1); // rseq2 is initialized
+	fprintf(stderr, "[%s] Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
+			__func__, settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
+	mseq_t *rseq1 = p7_mseq_rescale_init(seq1, settings->rescaler, 0); // rseq1 is initialized
+	mseq_t *rseq2 = p7_mseq_rescale_init(seq2, settings->rescaler, 1); // rseq2 is initialized
 	memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 	memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 	memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
@@ -186,13 +187,6 @@ int fqms_main(int argc, char *argv[])
 		}
 	}
 
-	if(!settings.output_basename) {
-		settings.output_basename = malloc(21 * sizeof(char));
-		rand_string(settings.output_basename, 20);
-		fprintf(stderr, "[%s] Temporary fq basename not provided. Random chosen: %s.\n", __func__, settings.output_basename);
-	}
-
-
 	increase_nofile_limit(settings.threads);
 	omp_set_num_threads(settings.threads);
 
@@ -205,7 +199,7 @@ int fqms_main(int argc, char *argv[])
 	}
 
 	if(argc - 1 != optind + 1) {
-		fprintf(stderr, "Both read 1 and read 2 fastqs are required. See usage.\n");
+		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
 		print_usage(argv);
 		return 1;
 	}
@@ -213,13 +207,15 @@ int fqms_main(int argc, char *argv[])
 	settings.input_r2_path =  strdup(argv[optind + 1]);
 
 	if(!settings.index_fq_path) {
-		fprintf(stderr, "Index fastq required. See usage.\n");
+		fprintf(stderr, "[E:%s] Index fastq required. See usage.\n", __func__);
 		print_usage(argv);
 		return 1;
 	}
 	if(!settings.output_basename) {
-		settings.output_basename = make_crms_outfname(settings.input_r1_path);
-		fprintf(stderr, "Output basename not provided. Defaulting to variation on input: %s.\n", settings.output_basename);
+		settings.output_basename = (char *)malloc(21);
+		rand_string(settings.output_basename, 20);
+		fprintf(stderr, "[%s] Mark/split prefix not provided. Defaulting to random string ('%s').\n",
+				__func__, settings.output_basename);
 	}
 
 /*
@@ -228,18 +224,14 @@ int fqms_main(int argc, char *argv[])
 */
 	mark_splitter_t *splitter = splitmark_core_rescale(&settings);
 	if(settings.run_hash_dmp) {
-		fprintf(stderr, "Now executing hash dmp.\n");
+		fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
+		                __func__);
 		if(!settings.ffq_prefix) {
 			settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
 		}
 		// Whatever I end up putting into here.
 		splitterhash_params_t *params = init_splitterhash_mss(&settings, splitter);
-		for(int i = 0; i < params->n; ++i) {
-			fprintf(stderr, "infnames R1 %s, R2 %s. outfnames R1 %s, R2 %s\n",
-					params->infnames_r1[i], params->infnames_r2[i],
-					params->outfnames_r1[i], params->outfnames_r2[i]);
-		}
-		fprintf(stderr, "Now running dmp block in parallel with %i threads.\n", settings.threads);
+		fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 		FILE **popens = (FILE **)malloc(settings.n_handles * sizeof(FILE *));
 #if NOPARALLEL
 #else
@@ -249,12 +241,12 @@ int fqms_main(int argc, char *argv[])
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
-				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
-						params->infnames_r1[i], params->outfnames_r1[i]);
+				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "Now removing temporary file %s.\n",
-							params->infnames_r1[i]);
+					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
+							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
 					popens[i] = popen(tmpbuf, "w");
 				}
@@ -284,12 +276,12 @@ int fqms_main(int argc, char *argv[])
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
-				fprintf(stderr, "Now running hash dmp core on input filename %s and output filename %s.\n",
-						params->infnames_r2[i], params->outfnames_r2[i]);
+				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "Now removing temporary file %s.\n",
-							params->infnames_r2[i]);
+					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
+							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
 					popens[i] = popen(tmpbuf, "w");
 				}
@@ -358,13 +350,12 @@ int fqms_main(int argc, char *argv[])
 					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 				FILE *p2 = popen(cat_buff, "w");
 				if(pclose(p2) || pclose(p1)) {
-					fprintf(stderr, "System call failed. Command : '%s'.\n", cat_buff);
+					fprintf(stderr, "[E:%s] System call failed. Command : '%s'.\n", __func__, cat_buff);
 					exit(EXIT_FAILURE);
 				}
 			}
 		}
 		else {
-			fprintf(stderr, "Now building cat string.\n");
 			sprintf(cat_buff1, "/bin/cat ");
 			sprintf(cat_buff2, "/bin/cat ");
 			for(int i = 0; i < settings.n_handles; ++i) {
@@ -385,17 +376,17 @@ int fqms_main(int argc, char *argv[])
 			FILE *c1_popen = popen(cat_buff1, "w");
 			CHECK_CALL(cat_buff2);
 			if(pclose(c1_popen)) {
-				fprintf(stderr, "First cat command failed. Abort!\n");
+				fprintf(stderr, "[E:%s] First cat command failed. Abort!\n", __func__);
 				exit(EXIT_FAILURE);
 			}
-			fprintf(stderr, "Now cleaning up intermediate files.\n");
+			fprintf(stderr, "[%s] Now cleaning up intermediate files.\n", __func__);
 			#pragma omp parallel for shared(params)
 			for(int i = 0; i < params->n; ++i) {
 				char tmpbuf[500];
 				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
 				popen(tmpbuf, "w");
 			}
-			fprintf(stderr, "Finished cleaning up intermediate files.\n");
+			fprintf(stderr, "[%s] Finished cleaning up intermediate files.\n", __func__);
 			//fprintf(stderr, "Not executing %s today. Eh.\n", cat_buff1);
 		}
 		splitterhash_destroy(params);

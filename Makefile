@@ -11,17 +11,18 @@ LD= -lm -lz -lpthread
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude -Isamtools
 LIB=
 
-OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
+OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
-DB_FLAGS = -fno-inline -Wno-char-subscripts
-PG_FLAGS = -Wno-char-subscripts -pg -DNDEBUG -O2 -fno-inline -DPUTC
+DB_FLAGS = -fno-inline -Wno-unused-function -Wno-strict-aliasing
+PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O2 -fno-inline -DPUTC -Wno-strict-aliasing
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
 
-BMF_SRC = src/bmf_main.c src/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c \
+BMF_SRC = src/bmf_main.c include/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c \
 		  src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c \
-		  libhts.a src/bmfsort.c src/err_calc.c
+		  libhts.a src/bmfsort.c src/err_calc.c lib/io_util.c lib/pair_util.c lib/nix_resource.c \
+		  lib/kingfisher.c
 		  
 
 .PHONY: all clean

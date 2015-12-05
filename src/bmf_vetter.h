@@ -26,7 +26,7 @@ typedef struct {
     int k, x, y, end;
 } cstate_t;
 
-static cstate_t g_cstate_null = { -1, 0, 0, 0 };
+__attribute__((unused)) static cstate_t g_cstate_null = { -1, 0, 0, 0 };
 
 typedef struct __linkbuf_t {
     bam1_t b;
