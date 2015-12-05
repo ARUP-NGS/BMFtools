@@ -9,6 +9,7 @@
 #include "stdint.h"
 #include "math.h"
 #include "charcmp.h"
+#include "compiler_util.h"
 
 #ifndef KSEQ_DEC_GZ
 #define KSEQ_DEC_GZ
@@ -23,7 +24,7 @@ KSEQ_INIT(gzFile, gzread)
 #define SEQBUF_SIZE 300
 #endif
 
-static char *rand_string(char *str, size_t size)
+static inline char *rand_string(char *str, size_t size)
 {
 	srand(time(NULL)); // Pick a seed!
     const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKSTFUOMGZWTF";

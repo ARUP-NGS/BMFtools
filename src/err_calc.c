@@ -130,7 +130,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			exit(EXIT_FAILURE);
 		}
 	}
-	while((r = sam_read1(fp, hdr, b)) != -1) {
+	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
 		if(b->core.flag & 2820 || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
@@ -165,11 +165,13 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			const uint32_t len = bam_cigar_oplen(cigar[i]);
 			switch(bam_cigar_op(cigar[i])) {
 			case BAM_CMATCH:
+			case BAM_CEQUAL:
+			case BAM_CDIFF:
 				for(ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
-					if(qual[ind + rc] > nqscores + 1) { // nqscores + 2 - 1
+					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
 						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
@@ -177,8 +179,6 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s)
 							++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
-			case BAM_CEQUAL:
-			case BAM_CDIFF:
 				rc += len;
 				fc += len;
 				break;
@@ -196,9 +196,9 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	fprintf(stderr, "Cleaning up after gathering my error data.\n");
-	if(ref) free(ref), ref = NULL;
-	bam_destroy1(b), b = NULL;
-	bam_hdr_destroy(hdr), sam_close(fp), hdr = NULL, fp = NULL;
+	if(ref) free(ref);
+	bam_destroy1(b);
+	bam_hdr_destroy(hdr), sam_close(fp);
 	return;
 }
 
@@ -447,13 +447,13 @@ int err_main(int argc, char *argv[])
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
-	if(refcontig[0]) f->refcontig = strdup(refcontig);
+	if(*refcontig) f->refcontig = strdup(refcontig);
 	bam_hdr_destroy(header);
 	header = NULL;
 	err_core(argv[optind + 1], fai, f, &open_fmt);
 	fprintf(stderr, "Core finished.\n");
 	fai_destroy(fai);
-	FILE *ch = fopen("counts.txt", "w"),*eh = fopen("errs.txt", "w");
+	FILE *ch = fopen("counts.txt", "w"), *eh = fopen("errs.txt", "w");
 	write_counts(f, ch, eh);
 	cfclose(ch); cfclose(eh);
 	fill_qvals(f);

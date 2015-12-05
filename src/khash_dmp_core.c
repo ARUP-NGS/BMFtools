@@ -177,7 +177,6 @@ void khash_dmp_core(char *infname, char *outfname)
 	size_t count = 0;
 #endif
 	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
-	tmpbuffers_t *bufs = tmp->buffers;
 	memcpy(tmp->key, bs_ptr, blen);
 	tmp->key[blen] = '\0';
 	// Start hash table
@@ -205,6 +204,10 @@ void khash_dmp_core(char *infname, char *outfname)
 		}
 #endif
 		*/
+#if !NDEBUG
+		if(++count % 1000000 == 0)
+			fprintf(stderr, "[D:%s] Number of records processed: %lu.\n", __func__, count);
+#endif
 		cp_view2buf(seq->comment.s + 14, tmp->key);
 		HASH_FIND_STR(hash, tmp->key, tmp_hk);
 		if(!tmp_hk) {

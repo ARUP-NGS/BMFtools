@@ -50,7 +50,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 		fprintf(stderr, "Path to index fq: %s.\n", settings->index_fq_path);
 	}
 	gzFile fp_read1, fp_read2, fp_index;
-	kseq_t *seq1, *seq2, *seq_index;
+	kseq_t *seq1 = NULL, *seq2 = NULL, *seq_index = NULL;
 	int l1, l2, l_index;
 	//fprintf(stderr, "[splitmark_rescale_core]: initializing splitter.\n");
 	mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));

@@ -5,11 +5,7 @@
 #include <unistd.h>
 #include <zlib.h>
 
-static int isfile(char *fname)
-{
-	return access(fname, F_OK) != -1;
-
-}
+int isfile(char *fname);
 
 inline gzFile open_gzfile(char *infname) {
     if(strcmp(infname, "-") == 0 || strcmp(infname, "stdin") == 0) {

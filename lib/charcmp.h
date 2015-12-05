@@ -1,5 +1,6 @@
 #ifndef CHARCMP_H
 #define CHARCMP_H
+#include "stdint.h"
 
 static const uint32_t nucpos_arr[128] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
 		4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
