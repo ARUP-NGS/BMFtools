@@ -84,7 +84,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	}
 	fprintf(stderr, "[%s]Read length (inferred): %lu.\n", __func__, seq1->seq.l);
 #if !NDEBUG
-	int arr_size = seq1->seq.l * 4 * 2 * 39;
+	int arr_size = seq1->seq.l * 4 * 2 * nqscores;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {
@@ -193,7 +193,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	}
 	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
 #if !NDEBUG
-	int arr_size = seq1->seq.l * 4 * 2 * 39;
+	int arr_size = seq1->seq.l * 4 * 2 * nqscores;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {

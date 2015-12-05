@@ -17,6 +17,7 @@
 #include "kingfisher.h"
 #include "io_util.h"
 #include "mem_util.h"
+#include "seq_util.h"
 #include "nix_resource.h"
 
 #ifndef MAX_HOMING_SEQUENCE
@@ -93,7 +94,7 @@ typedef struct crms_settings {
 	int notification_interval; // How many sets of records do you want to process between progress reports?
 	blens_t *blen_data;
 	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-	char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases).
+	char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases).
 	char *rescaler_path; // Path to flat text file for parsing in the rescaler.
 	char *ffq_prefix; // Final fastq prefix.
 	int threads; // Number of threads to use for parallel dmp.
@@ -119,7 +120,7 @@ typedef struct mssi_settings {
 	int threads;
 	int run_hash_dmp;
 	char *ffq_prefix; // Final fastq prefix
-	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, 39, 4] (length of reads, number of original quality scores, number of bases)
+	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases)
 	int blen;
 	int blen1_2;
 	int max_blen;
@@ -215,7 +216,7 @@ static inline char test_hp(char *seq, int threshold)
 			int readlen##_settings = count_lines(settings.rescaler_path);\
 			for(int i = 0; i < 2; ++i) {\
 				for(int j = 0; j < readlen##_settings; ++j) {\
-					for(int k = 0; k < 39; ++k) {\
+					for(int k = 0; k < nqscores; ++k) {\
 						cond_free(settings.rescaler[i][j][k]);\
 					}\
 					cond_free(settings.rescaler[i][j]);\
@@ -290,7 +291,7 @@ static inline char *make_crms_outfname(char *fname)
 		int readlen = count_lines(settings.rescaler_path);\
 		for(int i##settings = 0; i##settings < 2; ++i##settings) {\
 			for(int j##settings = 0; j##settings < readlen; ++j##settings) {\
-				for(int k##settings = 0; k##settings < 39; ++k##settings) {\
+				for(int k##settings = 0; k##settings < nqscores; ++k##settings) {\
 					cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
 				}\
 				cond_free(settings.rescaler[i##settings][j##settings]);\
