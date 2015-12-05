@@ -27,11 +27,11 @@ bmftools
 ```
 
 ```bash
-bmftools --help
+bmftools <--help/-h>
 ```
 
 ```bash
-bmftools <subcommand> --help
+bmftools <subcommand> <-h>
 ```
 
 ## Dependencies

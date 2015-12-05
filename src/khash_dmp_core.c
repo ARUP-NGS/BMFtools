@@ -148,7 +148,7 @@ void khash_dmp_core(char *infname, char *outfname)
 	else {
 		in_handle = fopen(infname, "r");
 	}
-	if(!outfname) out_handle = stdout;
+	if(!outfname || *outfname == '-') out_handle = stdout;
 	else {
 		out_handle = fopen(outfname, "w");
 	}
