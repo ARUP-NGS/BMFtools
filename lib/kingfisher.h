@@ -61,7 +61,7 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 void destroy_kf(KingFisher_t *kfp);
 
 
-static inline int ARRG_MAX(KingFisher_t *kfp, int index)
+CONST static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 {
 	const int i5 = index * 5;
 	if(kfp->phred_sums[i5] > kfp->phred_sums[i5 + 1] &&
@@ -102,7 +102,7 @@ static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buf
 void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs);
 
 
-static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
+CONST static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
 {
 	int index = readnum;
 	int mult = 2;
@@ -160,7 +160,7 @@ typedef struct tmp_mseq {
  * Warning: returns a NULL upon not finding a second pipe symbol.
  * This is *NOT* a properly null-terminated string.
  */
-static inline char *barcode_mem_view(kseq_t *seq)
+CONST static inline char *barcode_mem_view(kseq_t *seq)
 {
 	int hits = 0;
 	for(int i = 0; i < seq->comment.l; ++i) {

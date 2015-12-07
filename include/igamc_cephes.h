@@ -5,10 +5,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "mtherr.c"
-
-#ifndef UNUSED
-#define UNUSED(x) (x) __attribute__((unused))
-#endif
+#include "compiler_util.h"
+#include "seq_util.h"
 
 extern double MAXNUM;
 
@@ -479,7 +477,7 @@ static unsigned short UNUSED(Q[]) = {
 0x0000,0x0000,0x0000,0x3ff0
 };
 #define MAXGAM 171.624376956302725
-__attribute__((unused)) static unsigned short LPI[4] = {
+static unsigned short UNUSED(LPI[4]) = {
 0xa1bd,0x48e7,0x50d0,0x3ff2,
 };
 #define LOGPI *(double *)LPI
@@ -568,7 +566,7 @@ static unsigned short SQT[4] = {
 #endif
 
 
-static inline double stirf(double x)
+CONST static inline double stirf(double x)
 {
 double y, w, v;
 
@@ -597,23 +595,34 @@ return( y );
 #define AVG_LOG_TO_CHI2(x, y) (x + y) * LOG10E_X5_1_2
 
 
-static inline uint32_t pvalue_to_phred(double pvalue)
+CONST static inline uint32_t pvalue_to_phred(double pvalue)
 {
-	return (uint32_t)(-10 * log10(pvalue) + 0.5); // Add 0.5 to round up
+#if HIPREC
+	int offset = 0;
+	while(pvalue < 1e-300L && pvalue > 0) {
+#if !NDEBUG
+		fprintf(stderr, "pvalue too low. Increasing size (%g).\n", pvalue);
+#endif
+		offset += 3000, pvalue *= 1e300L;
+	}
+	return (uint32_t)(-10 * log10(pvalue) + 0.5) + offset; // Add 0.5 to round up
+#else
+	return pvalue > 0 ? (uint32_t)(-10 * log10(pvalue) + 0.5): MAX_PV; // Add 0.5 to round up
+#endif
 }
 
 // Converts a chi2 sum into a p value.
-static inline double igamc_pvalues(int num_pvalues, double x)
+CONST static inline double igamc_pvalues(int num_pvalues, double x)
 {
 	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
 }
 
-static inline uint32_t agreed_pvalues(double pv1, double pv2)
+CONST static inline uint32_t agreed_pvalues(double pv1, double pv2)
 {
 	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv1 + pv2)));
 }
 
-static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
+CONST static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
 {
 	//return pv_better - pv_worse;
 	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - pv_worse)));

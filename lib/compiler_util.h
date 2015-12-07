@@ -21,4 +21,10 @@
 #	define UNUSED_FUNC(x) x
 #endif
 
+#ifdef __GNUC__
+#define CONST __attribute__((const))
+#else
+#define CONST
+#endif
+
 #endif

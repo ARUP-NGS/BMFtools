@@ -33,11 +33,10 @@ typedef struct fullerr {
 	char *refcontig;
 } fullerr_t;
 
-#define maxpv 3114
 
 static inline int pv2ph(double pv)
 {
-	return (pv == 0.0) ? maxpv: (int)(-10. * log10(pv) + 0.5);
+	return (pv == 0.0) ? MAX_PV: (int)(-10. * log10(pv) + 0.5);
 }
 
 #define arr3d_init(var, l, type) \

@@ -122,7 +122,7 @@ int khash_dmp_main(int argc, char *argv[])
 			default: print_khashdmp_opt_err(argv, optarg);
 		}
 	}
-	if(argc < 4) {
+	if(argc < 2) {
 		fprintf(stderr, "[E:%s] Required arguments missing. See usage.\n", __func__);
 		print_khashdmp_usage(argv);
 		exit(1);
