@@ -65,6 +65,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	}
 	// Open fastqs
 	fp_read1 = gzopen(settings->input_r1_path, "r"), fp_read2 = gzopen(settings->input_r2_path, "r");
+    seq1 = kseq_init(fp_read1), seq2 = kseq_init(fp_read2);
 	l1 = kseq_read(seq1), l2 = kseq_read(seq2);
 
 	fp_index = gzopen(settings->index_fq_path, "r");
