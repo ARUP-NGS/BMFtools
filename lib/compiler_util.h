@@ -16,15 +16,11 @@
 #	ifndef UNUSED_FUNC
 #		define UNUSED_FUNC(x) __attribute__((__unused__)) x
 #	endif
+#	define CONST __attribute__((const))
 #else
+#	define CONST
 #	define UNUSED(x) x
 #	define UNUSED_FUNC(x) x
-#endif
-
-#ifdef __GNUC__
-#define CONST __attribute__((const))
-#else
-#define CONST
 #endif
 
 #endif
