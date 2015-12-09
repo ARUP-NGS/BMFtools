@@ -122,7 +122,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	do {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "[%s]Number of records processed: %i.\n", __func__, count);
+			fprintf(stderr, "[%s] Number of records processed: %i.\n", __func__, count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
@@ -245,7 +245,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	}
 	do {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "[%s]Number of records processed: %i.\n", __func__, count);
+			fprintf(stderr, "[%s] Number of records processed: %i.\n", __func__, count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		switch_reads = switch_test(seq1, seq2, settings->offset);
