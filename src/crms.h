@@ -72,7 +72,7 @@
 	if(system(buff) < 0) fprintf(stderr, "[D:%s]System call failed. Command: '%s'.\n", __func__, buff)
 #endif
 
-extern void khash_dmp_core(char *infname, char *outfname);
+extern void hash_dmp_core(char *infname, char *outfname);
 extern int isfile(char *);
 
 

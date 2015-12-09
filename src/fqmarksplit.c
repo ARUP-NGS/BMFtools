@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "cstr_util.h"
-#include "khash_dmp_core.h"
+#include "hash_dmp_core.h"
 
 void print_usage(char *argv[])
 {
@@ -244,7 +244,7 @@ int fqms_main(int argc, char *argv[])
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
@@ -279,7 +279,7 @@ int fqms_main(int argc, char *argv[])
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);

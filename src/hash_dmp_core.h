@@ -6,12 +6,12 @@
 #include <assert.h>
 
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
-void khash_dmp_core(char *infname, char *outfname);
+void hash_dmp_core(char *infname, char *outfname);
 int khash_dmp_main(int argc, char *argv[]);
 void splitterhash_destroy(splitterhash_params_t *params);
 splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-void stranded_khash_dmp_core(char *infname, char *outfname);
+void stranded_hash_dmp_core(char *infname, char *outfname);
 
 typedef struct HashKing {
 	UT_hash_handle hh;

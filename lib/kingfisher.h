@@ -52,13 +52,13 @@ typedef struct KingFisher {
 	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	char pass_fail;
-	int n_rc;
 } KingFisher_t;
 
 
 extern double igamc(double a, double x);
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
 void destroy_kf(KingFisher_t *kfp);
+void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
 
 
 CONST static inline int ARRG_MAX(KingFisher_t *kfp, int index)
@@ -82,16 +82,16 @@ CONST static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 }
 
 
-static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, char *buffer)
+static inline void fill_pv_buffer(int readlen, uint32_t *phred_values, char *buffer)
 {
-	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:I");
+	fill_csv_buffer(readlen, phred_values, buffer, "PV:B:I");
 }
 
-static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buffer)
+static inline void fill_fa_buffer(int readlen, uint16_t *agrees, char *buffer)
 {
 	char tmpbuf[7];
 	strcpy(buffer, "FA:B:I");
-	for(int i = 0; i < kfp->readlen; ++i) {
+	for(int i = 0; i < readlen; ++i) {
 		sprintf(tmpbuf, ",%" PRIu16 "", agrees[i]);
 		strcat(buffer, tmpbuf);
 	}
@@ -207,6 +207,13 @@ static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 	cond_free(mvar.tmp_barcode);
 	mvar.readlen = 0;
 	mvar.blen = 0;
+}
+
+static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode, char prefix)
+{
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s|RV=%c\n%s\n+\n%s\n",
+			mvar->name, pass_fail, prefix, barcode, mvar->rv, mvar->seq, mvar->qual);
+	return;
 }
 
 static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
@@ -398,7 +405,6 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 	for(int i = 0; i < kfp->readlen; ++i) {
 		pb_pos(kfp, seq, i);
 	}
-	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	return;
 }
 
