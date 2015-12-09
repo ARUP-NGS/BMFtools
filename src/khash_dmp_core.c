@@ -138,35 +138,24 @@ int khash_dmp_main(int argc, char *argv[])
 
 void khash_dmp_core(char *infname, char *outfname)
 {
-	FILE *in_handle;
-	FILE *out_handle;
-	if(!outfname && !infname) {
-		fprintf(stderr, "[E:%s] in_handle and out_handle are both null. Abort mission!\n", __func__);
+	if(!outfname && !infname)
+		fprintf(stderr, "[E:%s] in_handle and out_handle are both null. Abort mission!\n", __func__),
 		exit(EXIT_FAILURE);
-	}
-	if(infname[0] == '-' || !infname) in_handle = stdin;
-	else {
-		in_handle = fopen(infname, "r");
-	}
-	if(!outfname || *outfname == '-') out_handle = stdout;
-	else {
-		out_handle = fopen(outfname, "w");
-	}
-	if(!in_handle) {
-		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
+	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
+	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
+	if(!in_handle)
+		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname),
 		exit(EXIT_FAILURE);
-	}
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 	// Initialized kseq
 	int l = kseq_read(seq);
-	if(l < 0) {
+	if(l < 0)
 		fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
-				__func__, strcmp(infname, "-") == 0 ? "stdin": infname);
+				__func__, strcmp(infname, "-") == 0 ? "stdin": infname),
 		exit(1);
-	}
 	char *bs_ptr = barcode_mem_view(seq);
-	int blen = infer_barcode_length(bs_ptr);
+	const int blen = infer_barcode_length(bs_ptr);
 #if !NDEBUG
 	fprintf(stderr, "[D:%s] Barcode length (inferred): %i.\n", __func__, blen);
 #endif
@@ -208,6 +197,73 @@ void khash_dmp_core(char *infname, char *outfname)
 	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
 	gzclose(fp);
 	fclose(out_handle);
+	kseq_destroy(seq);
+	tmpvars_destroy(tmp);
+}
+
+void stranded_khash_dmp_core(char *infname, char *outfname)
+{
+	if(!outfname && !infname)
+		fprintf(stderr, "[E:%s] in_handle and out_handle are both null. Abort mission!\n", __func__),
+		exit(EXIT_FAILURE);
+	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
+	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
+	if(!in_handle)
+		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname),
+		exit(EXIT_FAILURE);
+	gzFile fp = gzdopen(fileno(in_handle), "r");
+	kseq_t *seq = kseq_init(fp);
+	// Initialized kseq
+	int l = kseq_read(seq);
+	if(l < 0) {
+		fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
+				__func__, strcmp(infname, "-") == 0 ? "stdin": infname);
+		exit(1);
+	}
+	char *bs_ptr = barcode_mem_view(seq);
+	int blen = infer_barcode_length(bs_ptr);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Barcode length (inferred): %i.\n", __func__, blen);
+#endif
+	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
+	memcpy(tmp->key, bs_ptr, blen);
+	tmp->key[blen] = '\0';
+	// Start hash table
+	hk_t *hash_forward = NULL, *hash_reverse = NULL;
+	hk_t *current_rev = (hk_t *)malloc(sizeof(hk_t));
+	hk_t *current_for = (hk_t *)malloc(sizeof(hk_t));
+	hk_t *tmp_hkr = current_entry, *tmp_hkf = current_entry;
+	cp_view2buf(bs_ptr, current_entry->id);
+	current_entry->value = init_kfp(tmp->readlen);
+	HASH_ADD_STR(hash, id, current_entry);
+	pushback_kseq(current_entry->value, seq, tmp->blen);
+
+	uint64_t count = 0;
+	while(LIKELY((l = kseq_read(seq)) >= 0)) {
+		if(UNLIKELY(++count % 1000000 == 0))
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+		cp_view2buf(seq->comment.s + 14, tmp->key);
+		HASH_FIND_STR(hash, tmp->key, tmp_hk);
+		if(!tmp_hk) {
+			tmp_hk = (hk_t *)malloc(sizeof(hk_t));
+			tmp_hk->value = init_kfp(tmp->readlen);
+			cp_view2buf(seq->comment.s + 14, tmp_hk->id);
+			pushback_kseq(tmp_hk->value, seq, tmp->blen);
+			HASH_ADD_STR(hash, id, tmp_hk);
+		}
+		else
+			pushback_kseq(tmp_hk->value, seq, tmp->blen);
+	}
+	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
+	HASH_ITER(hh, hash, current_entry, tmp_hk) {
+		dmp_process_write(current_entry->value, out_handle, tmp->buffers);
+		destroy_kf(current_entry->value);
+		HASH_DEL(hash, current_entry);
+		free(current_entry);
+	}
+	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
+	gzclose(fp);
+	fclose(in_handle), fclose(out_handle);
 	kseq_destroy(seq);
 	tmpvars_destroy(tmp);
 }

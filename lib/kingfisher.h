@@ -165,12 +165,9 @@ CONST static inline char *barcode_mem_view(kseq_t *seq)
 	int hits = 0;
 	for(int i = 0; i < seq->comment.l; ++i) {
 		if(seq->comment.s[i] == '|') {
-			if(!hits) {
-				hits += 1;
-			}
-			else {
+			if(!hits) ++hits;
+			else
 				return (char *)(seq->comment.s + i + 4); // 4 for "|BS="
-			}
 		}
 	}
 	return NULL;
@@ -200,22 +197,6 @@ static inline void tm_destroy(tmp_mseq_t *var) {
 	cond_free(var->tmp_seq);
 	cond_free(var->tmp_qual);
 	cond_free(var);
-}
-
-
-static inline tmp_mseq_t init_tmp_mseq(int readlen, int blen)
-{
-	char *tmp_seq = (char *)malloc(readlen * sizeof(char));
-	char *tmp_qual = (char *)malloc(readlen * sizeof(char));
-	char *tmp_barcode = (char *)malloc(blen * sizeof(char));
-	tmp_mseq_t ret = {
-		.tmp_seq = tmp_seq,
-		.tmp_qual = tmp_qual,
-		.tmp_barcode = tmp_barcode,
-		.readlen = readlen,
-		.blen = blen
-	};
-	return ret;
 }
 
 
