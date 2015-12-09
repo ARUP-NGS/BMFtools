@@ -301,11 +301,9 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 	memcpy(mvar->name, seq->name.s, seq->name.l);
     mvar->name[seq->name.l] = '\0';
 	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-	memset(mvar->seq, 'N', n_len);
-	memset(mvar->qual, '#', n_len);
-	if(!rescaler) {
+	memset(mvar->seq, 'N', n_len), memset(mvar->qual, '#', n_len);
+	if(!rescaler)
 		memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
-	}
 	else {
 		for(uint32_t i = n_len; i < seq->seq.l; i++) {
 			// Leave quality scores alone for bases which are N. Otherwise
@@ -324,7 +322,7 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 
 static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int is_read2)
 {
-#if DBG && NDEBEG
+#if !NDEBEG
 	if(!barcode) {
 		fprintf(stderr, "Barocde is NULL ABORT>asdfasfjafjhaksdfkjasdfas.\n");
 		exit(1);
@@ -370,7 +368,7 @@ static inline void mseq_destroy(mseq_t *mvar)
  * :param: char *barcode - buffer set by function
  * :returns: int - whether or not to switch
  */
-static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
+CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
 {
 	return lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
 }

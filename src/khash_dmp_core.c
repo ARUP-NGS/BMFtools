@@ -198,7 +198,7 @@ void khash_dmp_core(char *infname, char *outfname)
 		else
 			pushback_kseq(tmp_hk->value, seq, tmp->blen);
 	}
-	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file!\n", __func__);
+	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
 		dmp_process_write(current_entry->value, out_handle, tmp->buffers);
 		destroy_kf(current_entry->value);

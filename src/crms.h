@@ -184,7 +184,7 @@ extern void splitterhash_destroy(splitterhash_params_t *params);
 
 
 
-static inline char test_hp(char *seq, int threshold)
+CONST static inline char test_hp(char *seq, int threshold)
 {
 	int run = 0;
 	char last = '\0';
@@ -367,14 +367,13 @@ static inline mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr
 }
 
 
-static inline int infer_barcode_length(char *bs_ptr)
+CONST static inline int infer_barcode_length(char *bs_ptr)
 {
 	int ret = 0;
-	for (;;++ret) {
-		if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|') {
+	for (;;++ret)
+		if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|')
 			return ret;
-		}
-	}
+	return -1; // This never happens.
 }
 
 
@@ -407,9 +406,7 @@ static inline void free_mssi_settings(mssi_settings_t settings)
 #endif
 
 
-// Calls incomplete gamma complement from CEPHES.
-
-static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+CONST static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
 {
 	if(settings_ptr->max_blen < 0) {
 		return (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
@@ -424,7 +421,7 @@ static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *s
 	return -1;
 }
 
-static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr, int default_len, char *pass_fail)
+CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr, int default_len, char *pass_fail)
 {
 	if(settings_ptr->max_blen < 0) {
 		*pass_fail = (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
