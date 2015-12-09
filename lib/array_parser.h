@@ -9,6 +9,7 @@
 #include <string.h>
 #include <zlib.h>
 #include <inttypes.h>
+#include "seq_util.h"
 
 
 // Shamelessly stolen from the source code for 'wc'.

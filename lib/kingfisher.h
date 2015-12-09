@@ -99,7 +99,7 @@ static inline void fill_fa_buffer(int readlen, uint16_t *agrees, char *buffer)
 }
 
 
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs);
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
 
 
 CONST static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
