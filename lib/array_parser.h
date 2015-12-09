@@ -43,8 +43,8 @@ static inline char ****parse_rescaler(char *qual_rescale_fname)
 	for(int i = 0; i < 2; ++i) {
 		ret[i] = (char ***)malloc(readlen * sizeof(char **));
 		for(int j = 0; j < readlen; ++j) {
-			ret[i][j] = (char **)malloc(39 * sizeof(char *));
-			for(int k = 0; k < 39; ++k) {
+			ret[i][j] = (char **)malloc(nqscores * sizeof(char *));
+			for(int k = 0; k < nqscores; ++k) {
 				ret[i][j][k] = (char *)malloc(4 * sizeof(char));
 			}
 		}
@@ -136,7 +136,7 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 	}
 	fclose(fp);
 	fp = NULL;
-	int arr_len = 2 * readlen * 39 * 4;
+	int arr_len = 2 * readlen * nqscores * 4;
 	char *ret = (char *)malloc(arr_len * sizeof(char));
 	memset(ret, -127, arr_len);
 	char *tok = NULL;
@@ -147,7 +147,7 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 		//fprintf(stderr, "Now reading line %i.\n", lnum);
 		for(int readnum = 0; readnum < 2; ++readnum) {
 			//fprintf(stderr, "Now working with read %i.\n", readnum + 1);
-			for(int qnum = 0; qnum < 39; ++qnum) {
+			for(int qnum = 0; qnum < nqscores; ++qnum) {
 				//fprintf(stderr, "Now working with qscore %i.\n", qnum + 2);
 				for(int bnum = 0; bnum < 4; ++bnum) {
 					//fprintf(stderr, "Now working with base %c.\n", num2nuc(bnum));

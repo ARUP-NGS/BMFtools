@@ -9,7 +9,7 @@
 // TODO: rewrite dmp_process_write and stranded_process_write to write the PV/FA strings straight to output
 // rather than writing to a temporary object and writing that later.
 
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev)
 {
 	for(int i = 0; i < kfp->readlen; ++i) {
 		const int argmaxret = ARRG_MAX(kfp, i);
@@ -26,9 +26,8 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs)
 	fputs(bufs->PVBuffer, handle);
 	fputs("\tFP:i:", handle);
 	fputc(kfp->pass_fail, handle);
-	fputs("\tFM:i:", handle);
-	fputc(kfp->length + '0', handle);
-	fputc('\n', handle);
+	fprintf(handle, "\tFM:i:%i", kfp->length);
+	fprintf(handle, "\tRV:i:%i\n", is_rev ? kfp->length: 0);
 	fputs(bufs->cons_seq_buffer, handle);
 	fputs("\n+\n", handle);
 	fputs(kfp->max_phreds, handle);
@@ -86,7 +85,7 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 	fputs(kfpf->max_phreds, handle);
 	fputc('\n', handle);
 #else
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfpf->barcode,
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfpf->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
 			kfpf->pass_fail, kfpr->length, kfpf->length + kfpr->length,
 			bufs->cons_seq_buffer, kfpf->max_phreds);

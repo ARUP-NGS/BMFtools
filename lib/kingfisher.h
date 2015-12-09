@@ -111,13 +111,13 @@ CONST static inline char rescale_qscore(int readnum, int qscore, int cycle, char
 	mult *= readlen;
 	//fprintf(stderr, "index value is now: %i, mult %i. Qscore: %i, Qscore index%i.\n", index, mult, qscore, qscore - 35);
 	index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
-	mult *= 39;
+	mult *= nqscores;
 	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += mult * nuc2num(base);
 	//fprintf(stderr, "Index = %i.\n", index);
 #if DBG
-	if(index >= readlen * 2 * 39 * 4 || index < 0) {
-		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * 39 * 4);
+	if(index >= readlen * 2 * nqscores * 4 || index < 0) {
+		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * nqscores * 4);
 		exit(EXIT_FAILURE);
 	}
 	//fprintf(stderr, "Value at index: %i (%c).\n", rescaler[index], rescaler[index] + 33);
@@ -143,7 +143,6 @@ typedef struct mseq {
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	int l;
 	int blen;
-	char rv;
 } mseq_t;
 
 
@@ -164,7 +163,7 @@ CONST static inline char *barcode_mem_view(kseq_t *seq)
 {
 	int hits = 0;
 	for(int i = 0; i < seq->comment.l; ++i) {
-		if(seq->comment.s[i] == '|') {
+		if(seq->comment.s[i] == '|' || seq->comment.s[i] == '\0') {
 			if(!hits) ++hits;
 			else
 				return (char *)(seq->comment.s + i + 4); // 4 for "|BS="
@@ -211,16 +210,14 @@ static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 
 static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode, char prefix)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s|RV=%c\n%s\n+\n%s\n",
-			mvar->name, pass_fail, prefix, barcode, mvar->rv, mvar->seq, mvar->qual);
-	return;
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
+			mvar->name, pass_fail, prefix, barcode, mvar->seq, mvar->qual);
 }
 
 static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RV=%c\n%s\n+\n%s\n",
-			mvar->name, pass_fail, barcode, mvar->rv, mvar->seq, mvar->qual);
-	return;
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",
+			mvar->name, pass_fail, barcode, mvar->seq, mvar->qual);
 }
 
 /*
@@ -277,7 +274,6 @@ static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t 
 		exit(EXIT_FAILURE);
 	}
 	ret->blen = tmp->blen;
-	ret->rv = '0';
 	return ret;
 }
 
@@ -304,7 +300,6 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 		exit(1);
 	}
 #endif
-	mvar->rv = switch_reads ? '1': '0';
 }
 
 
@@ -319,7 +314,7 @@ static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler,
 		fprintf(stderr, "Barcode: %s.\n", barcode);
 	}
 	if(rescaler) {
-		for(int i = 0; i < seq->seq.l * 39 * 4 * 2; ++i) {
+		for(int i = 0; i < seq->seq.l * nqscores * 4 * 2; ++i) {
 			if(rescaler[i] < 0) {
 				fprintf(stderr, "Rescaler's got a negative number in init_crms_mseq. WTF? %i. Index: %i.\n", rescaler[i], i);
 				exit(EXIT_FAILURE);

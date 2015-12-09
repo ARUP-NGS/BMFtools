@@ -190,7 +190,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	}
 	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		dmp_process_write(current_entry->value, out_handle, tmp->buffers);
+		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
 		HASH_DEL(hash, current_entry);
 		free(current_entry);
@@ -295,7 +295,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
-			dmp_process_write(cfor->value, out_handle, tmp->buffers); // No reverse strand found. \='{
+			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
@@ -308,7 +308,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	}
 	// Handle the barcodes in reverse not in forward
 	HASH_ITER(hh, hrev, crev, tmp_hkr) {
-		dmp_process_write(crev->value, out_handle, tmp->buffers);
+		dmp_process_write(crev->value, out_handle, tmp->buffers, 1);
 		destroy_kf(crev->value);
 		HASH_DEL(hrev, crev);
 		free(crev);

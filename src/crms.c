@@ -448,7 +448,7 @@ int crms_main(int argc, char *argv[])
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
@@ -484,7 +484,7 @@ int crms_main(int argc, char *argv[])
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename "
                         "%s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
