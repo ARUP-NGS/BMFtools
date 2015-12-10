@@ -425,15 +425,13 @@ void bam_rsq_core(pr_settings_t *settings)
 int pr_usage(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  bam_rsq [-srtu] [-f <to_realign.fq>] <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Usage:  bam_rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    pr for SE reads [Not implemented]\n");
     fprintf(stderr, "        -r    Realign reads with no changed bases. Default: False.\n");
     fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
     fprintf(stderr, "        -l    Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
     fprintf(stderr, "        -u    Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
     		        "         Note: This requires pre-processing with mark_unclipped from ppbwa (http://github.com/noseatbelts/ppbwa).\n");
-
-    sam_global_opt_help(stderr, "-....");
     return 1;
 }
 
@@ -468,8 +466,6 @@ int bam_rsq(int argc, char *argv[])
         case 't': settings->mmlim = atoi(optarg); break;
         case 'f': strcpy(fqname, optarg); break;
         case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
-        default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
-            /* else fall-through */
         case 'h': /* fall-through */
         case '?': return pr_usage();
         }
