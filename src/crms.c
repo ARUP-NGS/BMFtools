@@ -310,7 +310,7 @@ int crms_main(int argc, char *argv[])
 		.cleanup = 1,
 		.annealed = 0
 	};
-	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
+	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
 	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?")) > -1) {
 		switch(c) {
@@ -440,7 +440,7 @@ int crms_main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-			#pragma omp for
+			#pragma omp for schedule(dynamic, 1)
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
@@ -475,7 +475,7 @@ int crms_main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-			#pragma omp for
+			#pragma omp for schedule(dynamic, 1)
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
