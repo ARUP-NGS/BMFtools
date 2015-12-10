@@ -54,6 +54,25 @@ void vs_open(vetter_settings_t *settings) {
 	vetplp_conf_t *conf = &settings->conf;
 	conf->vin = vcf_open(settings->in_vcf_path, settings->vcf_rmode);
 	conf->vout = vcf_open(settings->out_vcf_path, settings->vcf_wmode);
+	if(strcmp(strrchr(settings->in_vcf_path, '.') - 4, ".vcf.gz") == 0) { // - 4 to skip left for .vcf
+		conf->tbx = tbx_index_load(settings->in_vcf_path);
+		if(!conf->tbx) {
+			fprintf(stderr, "[E:%s] Failed to load index fail for variant file '%s'.", __func__, settings->in_vcf_path);
+			exit(EXIT_FAILURE);
+		}
+#if !NDEBUG
+		fprintf(stderr, "[D:%s] Loaded tabix index for bgzipped vcf '%s'.", __func__, settings->in_vcf_path);
+#endif
+	}
+	else if(strcmp(strrchr(settings->in_vcf_path, '.'), ".bcf") == 0) {
+		conf->bi = bcf_index_load(settings->in_vcf_path);
+#if !NDEBUG
+		fprintf(stderr, "[D:%s] Loaded index for bcf file '%s'.", __func__, settings->in_vcf_path);
+#endif
+	}
+	else
+		fprintf(stderr, "[W:%s] Not a bcf file or tabixed vcf."
+				"Will iterate through the whole file since there's no available index.\n", __func__);
 
 	// Handle bam reading format
 	conf->bam = sam_open_format(settings->bam_path, "r", &open_fmt);
@@ -86,8 +105,8 @@ void vs_open(vetter_settings_t *settings) {
 			for(int j = 0; j < kh_val(conf->bed, k).n; ++j) {
 				// Contig, start, stop
 				conf->iterators[i++] = sam_itr_queryi(idx, kh_key(conf->bed, k),
-													(int32_t)(kh_val(conf->bed, k).intervals[j] >> 32),
-													(int32_t)kh_val(conf->bed, k).intervals[j]);
+													get_start(kh_val(conf->bed, k).intervals[j]),
+													get_stop(kh_val(conf->bed, k).intervals[j]));
 			}
 		}
 		if(i != settings->conf.n_iterators) {
@@ -111,6 +130,8 @@ void conf_destroy(vetplp_conf_t *conf)
 		vetter_error("Could not close output vcf. ??? Abort!\n", EXIT_FAILURE);
 	bcf_hdr_destroy(conf->vh);
 	fai_destroy(conf->fai);
+	if(conf->tbx) tbx_destroy(conf->tbx), conf->tbx = NULL;
+	if(conf->vi) hts_idx_destroy(conf->vi), conf->vi = NULL;
 	return;
 }
 
@@ -136,7 +157,47 @@ void full_iter_loop(vetter_settings_t *settings)
 		if(conf->bed && !vcf_bed_test(rec, conf->bed))
 			continue;
 		bam_plp_t p = bam_plp_init(&vet_func, (void *)conf);
-		const hts_itr_t *iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
+		hts_itr_t *iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
+		int ret;
+		bam1_t *b = bam_init1();
+		while((ret = sam_itr_next(conf->bam, iter, b) >= 0)) {
+
+		}
+		hts_itr_destroy(iter);
+		bam_destroy1(b);
+	}
+	bcf_destroy1(rec);
+}
+
+
+/* @function
+ * :abstract: Iterates over a full VCF, skips variants outside of a region, and
+ * fast-forwards the bam to the location for each variant, and tests whether or not that
+ * was a correct call based on the supplemental information available in the
+ * BMF tags.
+ * :param: settings [arg/vetter_settings_t *]
+ */
+void tbx_loop(vetter_settings_t *settings)
+{
+	vetplp_conf_t *conf = &settings->conf;
+	bcf1_t *rec = bcf_init1();
+	for(khiter_t k = 0; k != kh_end(conf->bed); ++k) {
+		region_set_t set = kh_val(conf->bed, k);
+		const int32_t key = kh_key(conf->bed, k);
+		for(uint64_t i = 0; i < set.n; ++i) {
+			const uint64_t ivl = set.intervals[i];
+			hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, get_start(ivl), get_stop(ivl) + 1);
+			while(bcf_itr_next(conf->vin, bcf_iter, rec) >= 0) {
+				if(!bcf_is_snp(rec)) {
+					vcf_write(conf->vout, (const bcf_hdr_t *)conf->bh, rec);
+					continue;
+				}
+				bam_plp_t p = bam_plp_init(&vet_func, (void *)conf);
+				int ret;
+				bam1_t *b = bam_init1();
+				bam_destroy1(b);
+			}
+		}
 	}
 	bcf_destroy1(rec);
 }
@@ -166,7 +227,7 @@ void hts_loop(vetter_settings_t *settings)
 		// Each of these iterations goes through an interval on a contig
 		for(uint64_t i = 0; i < cset.n; ++i) {
 			const uint64_t ivl = cset.intervals[i];
-			hts_itr_t *iter = bcf_itr_queryi(conf->vi, key, ivl >> 32, (int32_t)(ivl + 1));
+			hts_itr_t *iter = bcf_itr_queryi(conf->vi, key, get_start(ivl), get_start(ivl) + 1);
 			// This gets all records in the specified bed region
 			while(bcf_itr_next(conf->vin, iter, rec) >= 0) {
 				if((conf->bed && !vcf_bed_test(rec, conf->bed)) || !bcf_is_snp(rec))

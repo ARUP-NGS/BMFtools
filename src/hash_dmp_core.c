@@ -170,23 +170,24 @@ void hash_dmp_core(char *infname, char *outfname)
 	cp_view2buf(bs_ptr, current_entry->id);
 	current_entry->value = init_kfp(tmp->readlen);
 	HASH_ADD_STR(hash, id, current_entry);
-	pushback_kseq(current_entry->value, seq, tmp->blen);
+	pushback_kseq(current_entry->value, seq, blen);
 
 	uint64_t count = 0;
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		if(++count % 1000000 == 0)
-			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+			fprintf(stderr, "[%s] Number of records read from '%s': %lu.\n", __func__,
+					strcmp("-", infname) == 0 ? "stdin": infname,count);
 		cp_view2buf(seq->comment.s + 14, tmp->key);
 		HASH_FIND_STR(hash, tmp->key, tmp_hk);
 		if(!tmp_hk) {
 			tmp_hk = (hk_t *)malloc(sizeof(hk_t));
 			tmp_hk->value = init_kfp(tmp->readlen);
 			cp_view2buf(seq->comment.s + 14, tmp_hk->id);
-			pushback_kseq(tmp_hk->value, seq, tmp->blen);
+			pushback_kseq(tmp_hk->value, seq, blen);
 			HASH_ADD_STR(hash, id, tmp_hk);
 		}
 		else
-			pushback_kseq(tmp_hk->value, seq, tmp->blen);
+			pushback_kseq(tmp_hk->value, seq, blen);
 	}
 	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
@@ -204,9 +205,6 @@ void hash_dmp_core(char *infname, char *outfname)
 
 void stranded_hash_dmp_core(char *infname, char *outfname)
 {
-	if(!outfname && !infname)
-		fprintf(stderr, "[E:%s] in_handle and out_handle are both null. Abort mission!\n", __func__),
-		exit(EXIT_FAILURE);
 	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
 	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
 	if(!in_handle)
@@ -253,7 +251,8 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 #endif
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		if(UNLIKELY(++count % 1000000 == 0))
-			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+			fprintf(stderr, "[%s:%s] Number of records processed: %lu.\n", __func__,
+					*infname == '-' ? "stdin" : infname, count);
 		if(*(seq->comment.s + 14) == 'F') {
 #if !NDEBUG
 			++fcount;
@@ -304,14 +303,14 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers);
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-		free(crev), free(cfor);
+		cond_free(crev); cond_free(cfor);
 	}
 	// Handle the barcodes in reverse not in forward
 	HASH_ITER(hh, hrev, crev, tmp_hkr) {
-		dmp_process_write(crev->value, out_handle, tmp->buffers, 1);
+		dmp_process_write(crev->value, out_handle, tmp->buffers, 1); // Only reverse strand found
 		destroy_kf(crev->value);
 		HASH_DEL(hrev, crev);
-		free(crev);
+		cond_free(crev);
 	}
 	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
 	gzclose(fp);

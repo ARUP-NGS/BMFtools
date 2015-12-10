@@ -13,6 +13,7 @@
 #include "htslib/faidx.h"
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
+#include "htslib/tbx.h"
 #include "bed_util.h"
 
 int vet_func(void *data, bam1_t *b);
@@ -87,13 +88,14 @@ typedef struct vetplp_conf {
 	int n_iterators;
 	samFile *bam;
 	bam_hdr_t *bh;
-	hts_idx_t *bi;
+	hts_idx_t *bi; // Bam index
 	hts_idx_t *vi;
 	khash_t(bed) *bed; // Really khash_t(bed) *
 	faidx_t *fai;
 	vcfFile *vin;
 	vcfFile *vout;
 	bcf_hdr_t *vh;
+	tbx_t *tbx;
 } vetplp_conf_t;
 
 extern void *bed_read(const char *fn);

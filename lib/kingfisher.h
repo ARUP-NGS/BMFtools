@@ -22,6 +22,9 @@
 KSEQ_INIT(gzFile, gzread)
 #endif
 
+
+#define MIN_FRAC_AGREED 0.5
+
 #define ARGMAX_STR "ACGTN"
 #define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
 

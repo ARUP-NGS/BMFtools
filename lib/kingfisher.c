@@ -3,7 +3,7 @@
 #define dmp_pos(kfp, bufs, argmaxret, i)\
 	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[i * 5 + argmaxret]))));\
 	bufs->agrees[i] = kfp->nuc_counts[i * 5 + argmaxret];\
-	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2) ? ARRG_MAX_TO_NUC(argmaxret): 'N';\
+	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) ? ARRG_MAX_TO_NUC(argmaxret): 'N';\
     if(bufs->cons_seq_buffer[i] == 'N' && bufs->cons_quals[i] > 2) bufs->cons_quals[i] = 2
 
 // TODO: rewrite dmp_process_write and stranded_process_write to write the PV/FA strings straight to output
