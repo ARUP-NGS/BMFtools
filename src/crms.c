@@ -446,11 +446,8 @@ int crms_main(int argc, char *argv[])
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Removing temporary file %s.\n",
-							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-					FILE *popen1 = popen(tmpbuf, "w");
-					pclose(popen1);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 #if NOPARALLEL
@@ -473,8 +470,7 @@ int crms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-					FILE *popen1 = popen(tmpbuf, "w");
-					pclose(popen1);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 #if NOPARALLEL

@@ -68,8 +68,8 @@
 
 #ifndef CHECK_CALL
 #define CHECK_CALL(buff) \
-	fprintf(stderr, "[D:%s]Now check calling command '%s'.\n", __func__, buff); \
-	if(system(buff) < 0) fprintf(stderr, "[D:%s]System call failed. Command: '%s'.\n", __func__, buff)
+	fprintf(stderr, "[D:%s] Now check calling command '%s'.\n", __func__, buff); \
+	if(system(buff) < 0) fprintf(stderr, "[D:%s] System call failed. Command: '%s'.\n", __func__, buff)
 #endif
 
 extern void hash_dmp_core(char *infname, char *outfname);
