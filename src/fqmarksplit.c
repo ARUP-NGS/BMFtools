@@ -230,30 +230,23 @@ int fqms_main(int argc, char *argv[])
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
-							__func__, params->infnames_r1[i]);
-					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    CHECK_CALL(tmpbuf);
-				}
 			}
 		}
 		#pragma omp parallel
 		{
-			#pragma omp for schedule(dynamic, 5)
+			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
-							__func__, params->infnames_r2[i]);
-					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
+				    char tmpbuf[500];
+					fprintf(stderr, "[%s] Now removing temporary files '%s', '%s'.\n",
+							__func__, params->infnames_r1[i], params->infnames_r2[i]);
+					sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r2[i]);
                     CHECK_CALL(tmpbuf);
 				}
 			}

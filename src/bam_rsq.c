@@ -216,7 +216,9 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	strcat(comment, "\t");
 	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:B:I");
 	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
-	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
+    const uint8_t *rvdata = bam_aux_get(b, (char *)"RV");
+    if(rvdata)
+	    append_int_tag(comment, (char *)"RV", bam_aux2i(rvdata));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
 	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
 #if !NDEBUG

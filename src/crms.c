@@ -437,34 +437,31 @@ int crms_main(int argc, char *argv[])
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-				if(settings.cleanup) {
-					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    CHECK_CALL(tmpbuf);
-				}
 			}
 		}
-		#pragma omp parallel
-		{
 			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename "
                         "%s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
-							__func__, params->infnames_r2[i]);
-					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-                    CHECK_CALL(tmpbuf);
-				}
 			}
-		}
+
+		if(settings.cleanup) {
+	        #pragma omp parallel for schedule(dynamic, 1)
+	         for(int i = 0; i < settings.n_handles; ++i) {
+				char tmpbuf[500];
+				fprintf(stderr, "[%s] Now removing temporary files '%s', '%s'.\n",
+			            __func__, params->infnames_r1[i], params->infnames_r2[i]);
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r1[i]);
+	            CHECK_CALL(tmpbuf);
+			}
+        }
 		// Remove temporary split files
+        //
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
 		char ffq_r2[200];
@@ -525,16 +522,11 @@ int crms_main(int argc, char *argv[])
 				}
 			}
 		}
-		if(settings.cleanup) {
-			#pragma omp parallel for shared(params)
-			for(int i = 0; i < params->n; ++i) {
-				char tmpbuf[500];
-				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-#if !NDEBUG
-				fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, tmpbuf);
-#endif
-				popen(tmpbuf, "w");
-			}
+		#pragma omp parallel for shared(params)
+		for(int i = 0; i < params->n; ++i) {
+			char tmpbuf[500];
+			sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+			CHECK_CALL(tmpbuf);
 		}
 		splitterhash_destroy(params);
 		free(settings.ffq_prefix);
