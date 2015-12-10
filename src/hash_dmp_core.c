@@ -287,7 +287,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		}
 	}
 #if !NDEBUG
-	fprintf(stderr, "[%s] Number of reverse reads: %lu. Numuber of forward reads: %lu.\n", __func__, rcount, fcount);
+	fprintf(stderr, "[%s] Number of reverse reads: %lu. Number of forward reads: %lu.\n", __func__, rcount, fcount);
 #endif
 	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.

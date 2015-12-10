@@ -33,9 +33,9 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int 
 	fputs(kfp->max_phreds, handle);
 	fputc('\n', handle);
 #else
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode + 1,
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%iRV:i:%i\n%s\n+\n%s\n", kfp->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
-			kfp->pass_fail, kfp->length,
+			kfp->pass_fail, kfp->length, is_rev ? kfp->length: 0,
 			bufs->cons_seq_buffer, kfp->max_phreds);
 #endif
 	return;
