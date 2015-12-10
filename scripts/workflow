@@ -21,8 +21,8 @@ class BMFWorkflow(object):
 
     def split_bam_pr(inbam, outbam):
         tmpfq = outbam.split(".bam")[0] + ".tmp.fq"
-        cstr = "bam_pr -t %i -f %s %s %s" % (self.mismatch_limit, tmpfq,
-                                             inbam, outbam)
+        cstr = "bmftools rsq -t %i -f %s %s %s" % (self.mismatch_limit, tmpfq,
+                                                   inbam, outbam)
         sys.stderr.write("About to call '%s'.\n", cstr)
         subprocess.check_call(cstr, shell=True)
         if(inbam not in ["-", "stdin"]):
@@ -31,16 +31,16 @@ class BMFWorkflow(object):
 
 
     def aln_split_rsq(self):
-        cstr = "bwa mem -CTY 0 -t %i -R %s %s %s %s" % (self.threads,
+        cstr = "bwa mem -CYT 0 -t %i -R %s %s %s %s" % (self.threads,
                                                         self.rg_str, self.ref,
                                                         self.raw_r1,
                                                         self.raw_r2)
         if(self.ucs):
-            cstr += (" | mark_unclipped -l 0 - - | bmfsort -k ucs -@ " +
+            cstr += (" | mark_unclipped -l 0 - - | bmftools sort -k ucs -@ " +
                      "%i -m %s " % (self.sort_threads, self.mem_str) +
                      "{0} -T {1} -sp {1} -".format(self.mem_str, self.prefix))
         else:
-            cstr += (" | bmfsort -k bmf -m %s -@ " % self.mem_str +
+            cstr += (" | bmftools sort -k bmf -m %s -@ " % self.mem_str +
                      "%i -T {1} -sp {1} -".format(self.sort_threads,
                                                   self.prefix))
         sys.stderr.write("Command string: '%s'.\n", cstr)
@@ -87,14 +87,14 @@ class BMFWorkflow(object):
                                                         self.raw_r1,
                                                         self.raw_r2)
         if(self.ucs):
-            cstr += (" | mark_unclipped -l 0 - - | bmfsort -k ucs " +
+            cstr += (" | mark_unclipped -l 0 - - | bmftools sort -k ucs " +
                      " -l 0 -m %s -T %s | " % (self.mem_str, self.prefix) +
-                     "bam_pr -ut %i -f %s - " % (self.mismatch_limit,
+                     "bmftools rsq -ut %i -f %s - " % (self.mismatch_limit,
                                                  self.tmp_fq) + self.tmp_bam)
         else:
-            cstr += (" | bmfsort -k bmf -l 0 -m %s" % (self.mem_str) +
+            cstr += (" | bmftools sort -k bmf -l 0 -m %s" % (self.mem_str) +
                      " -T %s -@ %i " % (self.prefix, self.sort_threads) +
-                     "- | bam_pr -l 0 -t %i -f " % self.mismatch_limit +
+                     "- | bmftools rsq -l 0 -t %i -f " % self.mismatch_limit +
                      "%s - - | samtools sort -T " % self.tmp_fq +
                      "%s.pref -O bam -m %s " % (self.prefix, self.mem_str) +
                      " -o %s -" % self.tmp_bam)
@@ -102,7 +102,7 @@ class BMFWorkflow(object):
         # Align and perform rescue
         subprocess.check_call(cstr, shell=True)
         cstr = "cat %s | paste -d'~' - - - - | sort | tr '~' '\n' | "
-        cstr += "bwa mem -pCTY 0 -t %i -R " % self.threads + self.rg_str
+        cstr += "bwa mem -pCYT 0 -t %i -R " % self.threads + self.rg_str
         cstr += " %s - | samtools sort -O bam -l -0 -T " % self.ref
         cstr += self.prefix + "-m %s - | samtools merge -O " % (self.mem_str)
         cstr += "bam %s %s - " % (self.final_bam, self.tmp_bam)

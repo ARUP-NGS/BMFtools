@@ -4,7 +4,7 @@
  */
 
 #include "crms.h"
-#include "khash_dmp_core.h"
+#include "hash_dmp_core.h"
 
 
 void print_crms_usage(char *argv[])
@@ -122,7 +122,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	do {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "[%s]Number of records processed: %i.\n", __func__, count);
+			fprintf(stderr, "[%s] Number of records processed: %i.\n", __func__, count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		//fprintf(stdout, "Randomly testing to see if the reading is working. %s", seq1->seq.s);
@@ -226,27 +226,24 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	}
-	uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
-#if !NDEBUG
-	fprintf(stderr, "Now settings Ns and #s %i.\n", n_len);
-#endif
 	mask_mseq(rseq1, n_len, 'N', '#');
 	mask_mseq(rseq2, n_len, 'N', '#');
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, switch_reads);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, switch_reads);
 	if(switch_reads) {
-		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode);
-		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode);
+	    const uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
+		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
 	}
 	else {
-		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
-		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+	    const uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
+		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 	}
 	do {
-		if(UNLIKELY(++count % settings->notification_interval == 0)) {
-			fprintf(stderr, "[%s]Number of records processed: %i.\n", __func__, count);
-		}
+		if(UNLIKELY(++count % settings->notification_interval == 0))
+			fprintf(stderr, "[%s] Number of records processed: %i.\n", __func__, count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		switch_reads = switch_test(seq1, seq2, settings->offset);
@@ -261,16 +258,16 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 			memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 		}
-		if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
+		if(pass_fail - '0' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 			pass_fail = '0';
-		bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+	    const uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 		if(switch_reads) {
-			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode);
-			mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode);
+			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
+			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
 		}
 		else {
-			mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
-			mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
+			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 		}
 	} while (LIKELY(LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)));
     fprintf(stderr, "[%s] Cleaning up.\n", __func__);
@@ -313,7 +310,7 @@ int crms_main(int argc, char *argv[])
 		.cleanup = 1,
 		.annealed = 0
 	};
-	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
+	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
 	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?")) > -1) {
 		switch(c) {
@@ -443,13 +440,13 @@ int crms_main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-			#pragma omp for
+			#pragma omp for schedule(dynamic, 1)
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
@@ -478,14 +475,14 @@ int crms_main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-			#pragma omp for
+			#pragma omp for schedule(dynamic, 1)
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename "
                         "%s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);

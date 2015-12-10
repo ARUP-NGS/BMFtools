@@ -88,12 +88,12 @@ enum cmpkey {
 	UNCLIPPED
 };
 
-static inline int same_stack_pos(bam1_t *b, bam1_t *p) {
+CONST static inline int same_stack_pos(bam1_t *b, bam1_t *p) {
 	return (bmfsort_core_key(b) == bmfsort_core_key(p) &&
 			bmfsort_mate_key(b) == bmfsort_mate_key(p));
 }
 
-static inline int same_stack_ucs(bam1_t *b, bam1_t *p) {
+CONST static inline int same_stack_ucs(bam1_t *b, bam1_t *p) {
 #if !NDEBUG
 	if(!p) {
 		fprintf(stderr, "Later bam record not set. Abort!\n");
@@ -123,12 +123,12 @@ typedef struct pr_settings {
 } pr_settings_t;
 
 
-static inline void *array_tag(bam1_t *b, const char *tag) {
+CONST static inline void *array_tag(bam1_t *b, const char *tag) {
 	const uint8_t *data = bam_aux_get(b, tag);
 	return data ? (void *)(data + sizeof(int) + 2): NULL;
 }
 
-static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
+CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
 {
 	const uint8_t *bseq = bam_get_seq(b);
 	const uint8_t *pseq = bam_get_seq(p);

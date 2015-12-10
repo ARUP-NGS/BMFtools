@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "cstr_util.h"
-#include "khash_dmp_core.h"
+#include "hash_dmp_core.h"
 
 void print_usage(char *argv[])
 {
@@ -41,21 +41,18 @@ void print_usage(char *argv[])
 
 static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 {
-	//fprintf(stderr, "[splitmark_rescale_core]\n");
 	if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
-		fprintf(stderr, "Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n", settings->input_r1_path, settings->input_r2_path);
+		fprintf(stderr, "[E:%s]Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n",
+                __func__, settings->input_r1_path, settings->input_r2_path);
 		exit(EXIT_FAILURE);
 	}
-	else {
-		fprintf(stderr, "Path to index fq: %s.\n", settings->index_fq_path);
-	}
+	else
+		fprintf(stderr, "[%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
 	gzFile fp_read1, fp_read2, fp_index;
 	kseq_t *seq1 = NULL, *seq2 = NULL, *seq_index = NULL;
 	int l1, l2, l_index;
-	//fprintf(stderr, "[splitmark_rescale_core]: initializing splitter.\n");
 	mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
 	*splitter_ptr = init_splitter(settings);
-	//fprintf(stderr, "[splitmark_rescale_core]: Opening input handles.\n");
 	if(!isfile(settings->input_r1_path) ||
 	   !isfile(settings->input_r2_path) ||
 	   !isfile(settings->index_fq_path)) {
@@ -65,6 +62,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	}
 	// Open fastqs
 	fp_read1 = gzopen(settings->input_r1_path, "r"), fp_read2 = gzopen(settings->input_r2_path, "r");
+    seq1 = kseq_init(fp_read1), seq2 = kseq_init(fp_read2);
 	l1 = kseq_read(seq1), l2 = kseq_read(seq2);
 
 	fp_index = gzopen(settings->index_fq_path, "r");
@@ -158,7 +156,6 @@ int fqms_main(int argc, char *argv[])
 		.rescaler_path = NULL,
 		.cleanup = 1
 	};
-	omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 
 	int c;
 	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?")) > -1) {
@@ -237,13 +234,13 @@ int fqms_main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-			#pragma omp for
+			#pragma omp for schedule(dynamic, 1)
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-				khash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
@@ -259,7 +256,7 @@ int fqms_main(int argc, char *argv[])
 #else
 		#pragma omp parallel
 		{
-			#pragma omp for
+			#pragma omp for schedule(dynamic, 1)
 #endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				pclose(popens[i]);
@@ -278,7 +275,7 @@ int fqms_main(int argc, char *argv[])
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-				khash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);

@@ -8,9 +8,10 @@
 
 // Leave semicolon out so that it looks like a normal function.
 #if !NDEBUG
-#define cond_free(var) do { if(var) {fprintf(stderr, "About to free variable at %p (%s).\n", var, #var); free(var); var = NULL;}} while(0)
+#   define cond_free(var) do { if(var) {fprintf(stderr, "About to free variable at %p (%s).\n", var, #var); free(var); var = NULL;}} while(0)
+//#   define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
 #else
-#define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
+#   define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
 #endif
 
 #define cond_realloc_t(var, newsize, type_t)\

@@ -7,7 +7,7 @@
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11
-LD= -lm -lz -lpthread 
+LD= -lm -lz
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude -Isamtools
 LIB=
 
@@ -19,7 +19,7 @@ UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
 
-BMF_SRC = src/bmf_main.c include/sam_opts.c src/crms.c include/igamc_cephes.c src/khash_dmp_core.c \
+BMF_SRC = src/bmf_main.c include/sam_opts.c src/crms.c include/igamc_cephes.c src/hash_dmp_core.c \
 		  src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c \
 		  libhts.a src/bmfsort.c src/err_calc.c lib/io_util.c lib/pair_util.c lib/nix_resource.c \
 		  lib/kingfisher.c

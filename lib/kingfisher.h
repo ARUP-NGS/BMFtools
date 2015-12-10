@@ -22,6 +22,9 @@
 KSEQ_INIT(gzFile, gzread)
 #endif
 
+
+#define MIN_FRAC_AGREED 0.5
+
 #define ARGMAX_STR "ACGTN"
 #define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
 
@@ -52,16 +55,16 @@ typedef struct KingFisher {
 	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	char pass_fail;
-	int n_rc;
 } KingFisher_t;
 
 
 extern double igamc(double a, double x);
 static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler);
 void destroy_kf(KingFisher_t *kfp);
+void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs);
 
 
-static inline int ARRG_MAX(KingFisher_t *kfp, int index)
+CONST static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 {
 	const int i5 = index * 5;
 	if(kfp->phred_sums[i5] > kfp->phred_sums[i5 + 1] &&
@@ -82,16 +85,16 @@ static inline int ARRG_MAX(KingFisher_t *kfp, int index)
 }
 
 
-static inline void fill_pv_buffer(KingFisher_t *kfp, uint32_t *phred_values, char *buffer)
+static inline void fill_pv_buffer(int readlen, uint32_t *phred_values, char *buffer)
 {
-	fill_csv_buffer(kfp->readlen, phred_values, buffer, "PV:B:I");
+	fill_csv_buffer(readlen, phred_values, buffer, "PV:B:I");
 }
 
-static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buffer)
+static inline void fill_fa_buffer(int readlen, uint16_t *agrees, char *buffer)
 {
 	char tmpbuf[7];
 	strcpy(buffer, "FA:B:I");
-	for(int i = 0; i < kfp->readlen; ++i) {
+	for(int i = 0; i < readlen; ++i) {
 		sprintf(tmpbuf, ",%" PRIu16 "", agrees[i]);
 		strcat(buffer, tmpbuf);
 	}
@@ -99,10 +102,10 @@ static inline void fill_fa_buffer(KingFisher_t *kfp, uint16_t *agrees, char *buf
 }
 
 
-void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs);
+void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int is_rev);
 
 
-static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
+CONST static inline char rescale_qscore(int readnum, int qscore, int cycle, char base, int readlen, char *rescaler)
 {
 	int index = readnum;
 	int mult = 2;
@@ -111,13 +114,13 @@ static inline char rescale_qscore(int readnum, int qscore, int cycle, char base,
 	mult *= readlen;
 	//fprintf(stderr, "index value is now: %i, mult %i. Qscore: %i, Qscore index%i.\n", index, mult, qscore, qscore - 35);
 	index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
-	mult *= 39;
+	mult *= nqscores;
 	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
 	index += mult * nuc2num(base);
 	//fprintf(stderr, "Index = %i.\n", index);
 #if DBG
-	if(index >= readlen * 2 * 39 * 4 || index < 0) {
-		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * 39 * 4);
+	if(index >= readlen * 2 * nqscores * 4 || index < 0) {
+		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * nqscores * 4);
 		exit(EXIT_FAILURE);
 	}
 	//fprintf(stderr, "Value at index: %i (%c).\n", rescaler[index], rescaler[index] + 33);
@@ -143,7 +146,6 @@ typedef struct mseq {
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	int l;
 	int blen;
-	char rv;
 } mseq_t;
 
 
@@ -160,17 +162,14 @@ typedef struct tmp_mseq {
  * Warning: returns a NULL upon not finding a second pipe symbol.
  * This is *NOT* a properly null-terminated string.
  */
-static inline char *barcode_mem_view(kseq_t *seq)
+CONST static inline char *barcode_mem_view(kseq_t *seq)
 {
 	int hits = 0;
 	for(int i = 0; i < seq->comment.l; ++i) {
-		if(seq->comment.s[i] == '|') {
-			if(!hits) {
-				hits += 1;
-			}
-			else {
+		if(seq->comment.s[i] == '|' || seq->comment.s[i] == '\0') {
+			if(!hits) ++hits;
+			else
 				return (char *)(seq->comment.s + i + 4); // 4 for "|BS="
-			}
 		}
 	}
 	return NULL;
@@ -203,22 +202,6 @@ static inline void tm_destroy(tmp_mseq_t *var) {
 }
 
 
-static inline tmp_mseq_t init_tmp_mseq(int readlen, int blen)
-{
-	char *tmp_seq = (char *)malloc(readlen * sizeof(char));
-	char *tmp_qual = (char *)malloc(readlen * sizeof(char));
-	char *tmp_barcode = (char *)malloc(blen * sizeof(char));
-	tmp_mseq_t ret = {
-		.tmp_seq = tmp_seq,
-		.tmp_qual = tmp_qual,
-		.tmp_barcode = tmp_barcode,
-		.readlen = readlen,
-		.blen = blen
-	};
-	return ret;
-}
-
-
 static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 {
 	cond_free(mvar.tmp_seq);
@@ -228,11 +211,16 @@ static inline void tmp_mseq_destroy(tmp_mseq_t mvar)
 	mvar.blen = 0;
 }
 
+static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode, char prefix)
+{
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
+			mvar->name, pass_fail, prefix, barcode, mvar->seq, mvar->qual);
+}
+
 static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
 {
-	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%s|RV=%c\n%s\n+\n%s\n",
-			mvar->name, pass_fail, barcode, mvar->rv, mvar->seq, mvar->qual);
-	return;
+	fprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
+			mvar->name, pass_fail, barcode, mvar->seq, mvar->qual);
 }
 
 /*
@@ -289,7 +277,6 @@ static inline mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t 
 		exit(EXIT_FAILURE);
 	}
 	ret->blen = tmp->blen;
-	ret->rv = '0';
 	return ret;
 }
 
@@ -301,11 +288,9 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 	memcpy(mvar->name, seq->name.s, seq->name.l);
     mvar->name[seq->name.l] = '\0';
 	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-	memset(mvar->seq, 'N', n_len);
-	memset(mvar->qual, '#', n_len);
-	if(!rescaler) {
+	memset(mvar->seq, 'N', n_len), memset(mvar->qual, '#', n_len);
+	if(!rescaler)
 		memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
-	}
 	else {
 		for(uint32_t i = n_len; i < seq->seq.l; i++) {
 			// Leave quality scores alone for bases which are N. Otherwise
@@ -318,13 +303,12 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 		exit(1);
 	}
 #endif
-	mvar->rv = switch_reads ? '1': '0';
 }
 
 
 static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler, tmp_mseq_t *tmp, int is_read2)
 {
-#if DBG && NDEBEG
+#if !NDEBEG
 	if(!barcode) {
 		fprintf(stderr, "Barocde is NULL ABORT>asdfasfjafjhaksdfkjasdfas.\n");
 		exit(1);
@@ -333,7 +317,7 @@ static inline mseq_t *init_crms_mseq(kseq_t *seq, char *barcode, char *rescaler,
 		fprintf(stderr, "Barcode: %s.\n", barcode);
 	}
 	if(rescaler) {
-		for(int i = 0; i < seq->seq.l * 39 * 4 * 2; ++i) {
+		for(int i = 0; i < seq->seq.l * nqscores * 4 * 2; ++i) {
 			if(rescaler[i] < 0) {
 				fprintf(stderr, "Rescaler's got a negative number in init_crms_mseq. WTF? %i. Index: %i.\n", rescaler[i], i);
 				exit(EXIT_FAILURE);
@@ -370,7 +354,7 @@ static inline void mseq_destroy(mseq_t *mvar)
  * :param: char *barcode - buffer set by function
  * :returns: int - whether or not to switch
  */
-static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
+CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
 {
 	return lex_strlt(seq1->seq.s + offset, seq2->seq.s + offset);
 }
@@ -419,7 +403,6 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 	for(int i = 0; i < kfp->readlen; ++i) {
 		pb_pos(kfp, seq, i);
 	}
-	kfp->n_rc += *(barcode_mem_view(seq) + blen + 4) - '0'; // Convert to int
 	return;
 }
 
