@@ -241,11 +241,7 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    FILE *popen1 = popen(tmpbuf, "w");
-                    if(pclose(popen1)) {
-                        fprintf(stderr, "[E:%s] Failed to close process with command '%s'. Abort!\n",
-                                __func__, tmpbuf);
-                    }
+                    CHECK_POPEN(tmpbuf);
 				}
 			}
 		}
@@ -261,16 +257,11 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-                    FILE *popen1 = popen(tmpbuf, "w");
-                    if(pclose(popen1)) {
-                        fprintf(stderr, "[E:%s] Failed to close process with command '%s'. Abort!\n",
-                                __func__, tmpbuf);
-                    }
+                    CHECK_POPEN(tmpbuf);
 				}
 			}
 		}
 		// Remove temporary split files
-		fprintf(stderr, "Now removing temporary files.\n");
 		char del_buf[500];
 		char cat_buff2[CAT_BUFFER_SIZE];
 		char cat_buff1[CAT_BUFFER_SIZE];

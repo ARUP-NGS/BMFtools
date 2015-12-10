@@ -427,7 +427,6 @@ int crms_main(int argc, char *argv[])
             else {
                 settings.ffq_prefix = (char *)malloc(21 * sizeof(char));
                 rand_string(settings.ffq_prefix, 20);
-                settings.ffq_prefix[20] = '\0';
                 fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
                         __func__, settings.ffq_prefix);
             }
@@ -444,10 +443,8 @@ int crms_main(int argc, char *argv[])
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Removing temporary file %s.\n",
-							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    CHECK_POPEN(tmpbuf);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 		}
@@ -464,7 +461,7 @@ int crms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-                    CHECK_POPEN(tmpbuf);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 		}
