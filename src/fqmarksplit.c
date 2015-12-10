@@ -241,7 +241,7 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    CHECK_POPEN(tmpbuf);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 		}
@@ -257,7 +257,7 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-                    CHECK_POPEN(tmpbuf);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 		}

@@ -415,8 +415,7 @@ int crms_main(int argc, char *argv[])
             int has_period = 0;
             for(int i = 0; settings.input_r1_path[i]; ++i) {
                 if(settings.input_r1_path[i] == '.') {
-                    has_period = 1;
-                    break;
+                    has_period = 1; break;
                 }
             }
             if(has_period) {
