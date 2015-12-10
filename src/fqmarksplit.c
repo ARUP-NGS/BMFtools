@@ -229,13 +229,9 @@ int fqms_main(int argc, char *argv[])
 		// Whatever I end up putting into here.
 		splitterhash_params_t *params = init_splitterhash_mss(&settings, splitter);
 		fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
-		FILE **popens = (FILE **)malloc(settings.n_handles * sizeof(FILE *));
-#if NOPARALLEL
-#else
 		#pragma omp parallel
 		{
 			#pragma omp for schedule(dynamic, 1)
-#endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
@@ -245,32 +241,17 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-					popens[i] = popen(tmpbuf, "w");
+                    FILE *popen1 = popen(tmpbuf, "w");
+                    if(pclose(popen1)) {
+                        fprintf(stderr, "[E:%s] Failed to close process with command '%s'. Abort!\n",
+                                __func__, tmpbuf);
+                    }
 				}
 			}
-#if NOPARALLEL
-#else
 		}
-#endif
-#if NOPARALLEL
-#else
 		#pragma omp parallel
 		{
-			#pragma omp for schedule(dynamic, 1)
-#endif
-			for(int i = 0; i < settings.n_handles; ++i) {
-				pclose(popens[i]);
-			}
-#if NOPARALLEL
-#else
-		}
-#endif
-#if NOPARALLEL
-#else
-		#pragma omp parallel
-		{
-			#pragma omp for
-#endif
+			#pragma omp for schedule(dynamic, 5)
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
@@ -280,41 +261,16 @@ int fqms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-					popens[i] = popen(tmpbuf, "w");
+                    FILE *popen1 = popen(tmpbuf, "w");
+                    if(pclose(popen1)) {
+                        fprintf(stderr, "[E:%s] Failed to close process with command '%s'. Abort!\n",
+                                __func__, tmpbuf);
+                    }
 				}
 			}
-#if NOPARALLEL
-#else
 		}
-#endif
-#if NOPARALLEL
-#else
-		#pragma omp parallel
-		{
-			#pragma omp for
-#endif
-			for(int i = 0; i < settings.n_handles; ++i) {
-				pclose(popens[i]);
-			}
-#if NOPARALLEL
-#else
-		}
-#endif
-		free(popens);
 		// Remove temporary split files
 		fprintf(stderr, "Now removing temporary files.\n");
-		/*
-		#pragma omp parallel for shared(splitter)
-		for(int i = 0; i < splitter->n_handles; ++i) {
-			int tmp_ret;
-			char tmpbuf[500];
-			fprintf(stderr, "Now removing temporary files %s and %s.\n",
-					splitter->fnames_r1[i], splitter->fnames_r2[i]);
-			sprintf(tmpbuf, "rm %s %s", splitter->fnames_r1[i], splitter->fnames_r2[i]);
-			//fprintf(stderr, "Don't feel like executing command '%s' today. Eh.\n", tmpbuf);
-			CHECK_CALL(tmpbuf, tmp_ret);
-		}
-		*/
 		char del_buf[500];
 		char cat_buff2[CAT_BUFFER_SIZE];
 		char cat_buff1[CAT_BUFFER_SIZE];

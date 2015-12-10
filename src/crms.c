@@ -435,13 +435,9 @@ int crms_main(int argc, char *argv[])
 		// Whatever I end up putting into here.
 		splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 		char del_buf[500];
-		FILE **popens = (FILE **)malloc(settings.n_handles * sizeof(FILE *));
-#if NOPARALLEL
-#else
 		#pragma omp parallel
 		{
 			#pragma omp for schedule(dynamic, 1)
-#endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
@@ -451,32 +447,13 @@ int crms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Removing temporary file %s.\n",
 							__func__, params->infnames_r1[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-					popens[i] = popen(tmpbuf, "w");
+                    CHECK_POPEN(tmpbuf);
 				}
 			}
-#if NOPARALLEL
-#else
 		}
-#endif
-#if NOPARALLEL
-#else
-		#pragma omp parallel
-		{
-			#pragma omp for
-#endif
-			for(int i = 0; i < settings.n_handles; ++i) {
-				pclose(popens[i]);
-			}
-#if NOPARALLEL
-#else
-		}
-#endif
-#if NOPARALLEL
-#else
 		#pragma omp parallel
 		{
 			#pragma omp for schedule(dynamic, 1)
-#endif
 			for(int i = 0; i < settings.n_handles; ++i) {
 				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename "
@@ -487,27 +464,10 @@ int crms_main(int argc, char *argv[])
 					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
 							__func__, params->infnames_r2[i]);
 					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-					popens[i] = popen(tmpbuf, "w");
+                    CHECK_POPEN(tmpbuf);
 				}
 			}
-#if NOPARALLEL
-#else
 		}
-#endif
-#if NOPARALLEL
-#else
-		#pragma omp parallel
-		{
-			#pragma omp for
-#endif
-			for(int i = 0; i < settings.n_handles; ++i) {
-				pclose(popens[i]);
-			}
-#if NOPARALLEL
-#else
-		}
-#endif
-		free(popens);
 		// Remove temporary split files
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];

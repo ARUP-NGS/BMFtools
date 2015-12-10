@@ -5,6 +5,15 @@
 #include <unistd.h>
 #include <zlib.h>
 
+#define CHECK_POPEN(cmd) \
+    do {\
+        FILE *tmp_popen_##cmd = popen(cmd, "w");\
+        if(pclose(tmp_popen_##cmd)) {\
+            fprintf(stderr, "[E:%s] Command '%s' failed. Abort!\n", __func__, cmd);\
+            exit(EXIT_FAILURE);\
+        }\
+    } while(0)
+
 int isfile(char *fname);
 
 inline gzFile open_gzfile(char *infname) {
