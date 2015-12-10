@@ -522,11 +522,13 @@ int crms_main(int argc, char *argv[])
 				}
 			}
 		}
-		#pragma omp parallel for shared(params)
-		for(int i = 0; i < params->n; ++i) {
-			char tmpbuf[500];
-			sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-			CHECK_CALL(tmpbuf);
+		if(settings.cleanup) {
+			#pragma omp parallel for shared(params)
+			for(int i = 0; i < params->n; ++i) {
+				char tmpbuf[500];
+				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+				CHECK_CALL(tmpbuf);
+			}
 		}
 		splitterhash_destroy(params);
 		free(settings.ffq_prefix);
