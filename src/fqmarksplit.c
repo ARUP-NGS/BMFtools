@@ -244,9 +244,7 @@ int fqms_main(int argc, char *argv[])
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
 				    char tmpbuf[500];
-					fprintf(stderr, "[%s] Now removing temporary files '%s', '%s'.\n",
-							__func__, params->infnames_r1[i], params->infnames_r2[i]);
-					sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r2[i]);
+					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
                     CHECK_CALL(tmpbuf);
 				}
 			}
