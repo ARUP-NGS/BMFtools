@@ -16,3 +16,4 @@
   3. Diversity/Depth/Error Correction Figure/Table
   4. SNV sensitivity
   5. Quantitation variation for copy number alterations. Compare using this to rmdup/MarkDuplicates for CNA calling.
+    1. Also comment on indel quantitation.

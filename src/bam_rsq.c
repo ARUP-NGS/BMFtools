@@ -197,14 +197,14 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	    seqbuf[i] = bam_seqi(seq, i);
 	if (b->core.flag & BAM_FREVERSE) { // reverse complement
 	    for (i = 0; i < qlen>>1; ++i) {
-	        int8_t t = seq_comp_table[(int)seqbuf[qlen - 1 - i]];
-	        seqbuf[qlen - 1 - i] = seq_comp_table[(int)seqbuf[i]];
+	        int8_t t = seq_comp_table[(int8_t)seqbuf[qlen - 1 - i]];
+	        seqbuf[qlen - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
 	        seqbuf[i] = t;
 	    }
-	    if (qlen&1) seqbuf[i] = seq_comp_table[(int)seqbuf[i]];
+	    if (qlen&1) seqbuf[i] = seq_comp_table[(int_t)seqbuf[i]];
 	}
 	for (i = 0; i < qlen; ++i)
-	    seqbuf[i] = seq_nt16_str[(int)seqbuf[i]];
+	    seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
 	seqbuf[qlen] = '\0';
 #if !NDEBUG
 	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
