@@ -1,12 +1,15 @@
 #include "hash_dmp_core.h"
 
-void print_khashdmp_usage(char *argv[]) {
-	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n", argv[0]);
+void print_hash_dmp_usage(char *argv[]) {
+	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
+            "Flags:\n"
+            "-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
+            , argv[0]);
 }
 
-void print_khashdmp_opt_err(char *argv[], char *optarg) {
+void print_hash_dmp_opt_err(char *argv[], char *optarg) {
 	fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
-	print_khashdmp_usage(argv);
+	print_hash_dmp_usage(argv);
 	exit(1);
 }
 
@@ -111,28 +114,31 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 
 
 
-int khash_dmp_main(int argc, char *argv[])
+int hash_dmp_main(int argc, char *argv[])
 {
 	char *outfname = NULL;
 	char *infname = NULL;
 	int c;
-	while ((c = getopt(argc, argv, "ho:")) > -1) {
+    int stranded_analysis = 1;
+	while ((c = getopt(argc, argv, "o:sh?")) > -1) {
 		switch(c) {
 			case 'o': outfname = strdup(optarg);break;
-			case 'h': print_khashdmp_usage(argv); return 0;
-			default: print_khashdmp_opt_err(argv, optarg);
+            case 's': stranded_analysis = 0; break;
+            case '?': // Fall-through
+			case 'h': print_hash_dmp_usage(argv); return 0;
+			default: print_hash_dmp_opt_err(argv, optarg);
 		}
 	}
 	if(argc < 2) {
 		fprintf(stderr, "[E:%s] Required arguments missing. See usage.\n", __func__);
-		print_khashdmp_usage(argv);
+		print_hash_dmp_usage(argv);
 		exit(1);
 	}
 	infname = strdup(argv[optind]);
-
-	hash_dmp_core(infname, outfname);
-	free(outfname);
-	free(infname);
+    if(stranded_analysis) stranded_hash_dmp_core(infname, outfname);
+    else hash_dmp_core(infname, outfname);
+	if(outfname) free(outfname);
+	if(infname) free(infname);
 	return 0;
 }
 
