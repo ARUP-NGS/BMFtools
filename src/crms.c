@@ -360,7 +360,9 @@ int crms_main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	else {
-		fprintf(stderr, "[%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
+#if !NDEBUG
+		fprintf(stderr, "[D:%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
+#endif
 		for(int i = 0; settings.homing_sequence[i]; ++i) {
 			switch(settings.homing_sequence[i]) {
 			case 'A': break;
@@ -473,7 +475,6 @@ int crms_main(int argc, char *argv[])
 		CHECK_CALL(cat_buff);
 		char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
 		if(settings.panthera) {
-			fprintf(stderr, "Now building cat string.\n");
 			char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
 			for(int i = 0; i < settings.n_handles; ++i) {
 				strcat(cat_buff1, params->outfnames_r1[i]);
