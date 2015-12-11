@@ -201,7 +201,7 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	        seqbuf[qlen - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
 	        seqbuf[i] = t;
 	    }
-	    if (qlen&1) seqbuf[i] = seq_comp_table[(int_t)seqbuf[i]];
+	    if (qlen&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
 	}
 	for (i = 0; i < qlen; ++i)
 	    seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
