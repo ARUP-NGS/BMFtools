@@ -7,7 +7,7 @@
 
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
 void hash_dmp_core(char *infname, char *outfname);
-int khash_dmp_main(int argc, char *argv[]);
+int hash_dmp_main(int argc, char *argv[]);
 void splitterhash_destroy(splitterhash_params_t *params);
 splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);

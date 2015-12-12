@@ -9,7 +9,6 @@
 // Leave semicolon out so that it looks like a normal function.
 #if !NDEBUG
 #   define cond_free(var) do { if(var) {fprintf(stderr, "About to free variable at %p (%s).\n", var, #var); free(var); var = NULL;}} while(0)
-//#   define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
 #else
 #   define cond_free(var) do {if(var) {free(var); var = NULL;}} while(0)
 #endif
@@ -27,7 +26,7 @@
 	do {\
 		var = realloc(var, newsize);\
 		if(!var){\
-			fprintf(stderr, "Could not allocate new memory for size %i. Abort mission!\n");\
+			fprintf(stderr, "Could not allocate new memory for size %lu. Abort mission!\n", (size_t)newsize);\
 			exit(EXIT_FAILURE);\
 		}\
 	} while(0)

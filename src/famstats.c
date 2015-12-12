@@ -41,11 +41,11 @@ void target_usage_exit(FILE *fp, int success)
 
 static inline void target_loop(bam1_t *b, khash_t(bed) *bed, uint64_t *fm_target, uint64_t *total_fm)
 {
-	int FM = bam_aux2i(bam_aux_get(b, "FM"));
+	if(!bam_aux2i(bam_aux_get(b, "FP"))) return;
+	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
 	*total_fm += FM;
-	if(bed_test(b, bed)) {
+	if(bed_test(b, bed))
 		*fm_target += FM;
-	}
 }
 
 
@@ -152,9 +152,10 @@ static inline void tag_test(const uint8_t *data, const char *tag)
 static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
 {
 	const uint8_t *data = bam_aux_get(b, "FM");
-	tag_test(data, "FM");
+	//tag_test(data, "FM");
 	const int FM = bam_aux2i(data);
-	if(b->core.flag & 2944 || b->core.qual < settings->minMQ || FM < settings->minFM) {
+	if(b->core.flag & 2944 || b->core.qual < settings->minMQ || FM < settings->minFM ||
+		!bam_aux2i(bam_aux_get(b, "FP"))) {
 		++s->n_fail;
 		return;
 		// 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
@@ -280,11 +281,11 @@ int fm_main(int argc, char *argv[])
 
 static inline void frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
 {
-	const uint8_t *data = bam_aux_get(b, "FM");
-	tag_test(data, "FM");
-	const int FM = bam_aux2i(data);
-	if(b->core.flag & 2944) // 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
+	if(b->core.flag & 2944 || !bam_aux2i(bam_aux_get(b, "FP"))) // 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
 		return;
+	const uint8_t *data = bam_aux_get(b, "FM");
+	//tag_test(data, "FM");
+	const int FM = bam_aux2i(data);
 	*fm_total += FM;
 	if(FM >= minFM) *fm_above += FM;
 }
@@ -336,6 +337,16 @@ int frac_main(int argc, char *argv[])
 	}
 	uint64_t fm_above = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
+	// Check to see if the required tags are present before starting.
+	if((c = sam_read1(fp, header, b)) < 0) {
+		fprintf(stderr, "[E:%s] Could not read initial record from input file '%s'. Abort!\n", __func__, argv[optind]);
+		exit(EXIT_FAILURE);
+	}
+	check_bam_tag(b, "FP");
+	check_bam_tag(b, "RV");
+	check_bam_tag(b, "FM");
+	check_bam_tag(b, "FA");
+	frac_loop(b, minFM, &fm_above, &total_fm), ++count;
 	while (LIKELY(c = sam_read1(fp, header, b)) >= 0) {
 		frac_loop(b, minFM, &fm_above, &total_fm);
 		if(UNLIKELY(!(++count % notification_interval)))

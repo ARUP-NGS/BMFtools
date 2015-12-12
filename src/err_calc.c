@@ -176,7 +176,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 						exit(EXIT_FAILURE);
 					}
 					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					if(seq_nt16_table[(int)ref[pos + fc + ind]] != s)
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
 							++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
 				rc += len;

@@ -292,7 +292,7 @@ static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_ms
 	if(!rescaler)
 		memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
 	else {
-		for(uint32_t i = n_len; i < seq->seq.l; i++) {
+		for(int i = n_len; i < seq->seq.l; ++i) {
 			// Leave quality scores alone for bases which are N. Otherwise
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
 		}
@@ -400,9 +400,8 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 		memcpy(kfp->barcode, seq->comment.s + 14, blen);
 		kfp->barcode[blen] = '\0';
 	}
-	for(int i = 0; i < kfp->readlen; ++i) {
+	for(int i = 0; i < kfp->readlen; ++i)
 		pb_pos(kfp, seq, i);
-	}
 	return;
 }
 

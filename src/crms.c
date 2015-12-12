@@ -285,6 +285,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 
 int crms_main(int argc, char *argv[])
 {
+    if(argc == 1) print_crms_usage(argv), exit(EXIT_FAILURE);
 	// Build settings struct
 	mssi_settings_t settings = {
 		.hp_threshold = 10,
@@ -360,7 +361,9 @@ int crms_main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	else {
-		fprintf(stderr, "[%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
+#if !NDEBUG
+		fprintf(stderr, "[D:%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
+#endif
 		for(int i = 0; settings.homing_sequence[i]; ++i) {
 			switch(settings.homing_sequence[i]) {
 			case 'A': break;
@@ -415,8 +418,7 @@ int crms_main(int argc, char *argv[])
             int has_period = 0;
             for(int i = 0; settings.input_r1_path[i]; ++i) {
                 if(settings.input_r1_path[i] == '.') {
-                    has_period = 1;
-                    break;
+                    has_period = 1; break;
                 }
             }
             if(has_period) {
@@ -438,34 +440,31 @@ int crms_main(int argc, char *argv[])
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-				if(settings.cleanup) {
-					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    CHECK_CALL(tmpbuf);
-				}
 			}
 		}
-		#pragma omp parallel
-		{
 			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename "
                         "%s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
-							__func__, params->infnames_r2[i]);
-					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-                    CHECK_CALL(tmpbuf);
-				}
 			}
-		}
+
+		if(settings.cleanup) {
+	        #pragma omp parallel for schedule(dynamic, 1)
+	         for(int i = 0; i < settings.n_handles; ++i) {
+				char tmpbuf[500];
+				fprintf(stderr, "[%s] Now removing temporary files '%s', '%s'.\n",
+			            __func__, params->infnames_r1[i], params->infnames_r2[i]);
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r1[i]);
+	            CHECK_CALL(tmpbuf);
+			}
+        }
 		// Remove temporary split files
+        //
 		char cat_buff[CAT_BUFFER_SIZE];
 		char ffq_r1[200];
 		char ffq_r2[200];
@@ -477,7 +476,6 @@ int crms_main(int argc, char *argv[])
 		CHECK_CALL(cat_buff);
 		char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
 		if(settings.panthera) {
-			fprintf(stderr, "Now building cat string.\n");
 			char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
 			for(int i = 0; i < settings.n_handles; ++i) {
 				strcat(cat_buff1, params->outfnames_r1[i]);
@@ -531,10 +529,7 @@ int crms_main(int argc, char *argv[])
 			for(int i = 0; i < params->n; ++i) {
 				char tmpbuf[500];
 				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-#if !NDEBUG
-				fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, tmpbuf);
-#endif
-				popen(tmpbuf, "w");
+				CHECK_CALL(tmpbuf);
 			}
 		}
 		splitterhash_destroy(params);
@@ -555,18 +550,16 @@ inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
 inline char test_hp_inline(char *barcode, int length, int threshold)
 {
 	int run = 0;
-	char last = '\0';
+	char last = 0;
 	for(int i = 0; i < length; i++){
 		if(barcode[i] == 'N')
 			return '0';
 		if(barcode[i] == last) {
 			if(++run >= threshold)
                 return '0';
-        }
-		else {
-			run = 0;
-			last = barcode[i];
 		}
+		else
+			run = 0, last = barcode[i];
 	}
 	return '1';
 }

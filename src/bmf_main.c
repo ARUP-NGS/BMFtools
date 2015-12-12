@@ -8,7 +8,7 @@ extern int bam_sort(int argc, char *argv[]);
 extern int crms_main(int argc, char *argv[]);
 extern int fqms_main(int argc, char *argv[]);
 extern int bam_rsq(int argc, char *argv[]);
-extern int khash_dmp_main(int argc, char *argv[]);
+extern int hash_dmp_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
 extern int bmf_vetter_main(int argc, char *argv[]);
 extern int err_main(int argc, char *argv[]);
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	else if(strcmp(argv[1], "rsq") == 0)
 		return bam_rsq(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "hashdmp") == 0)
-		return khash_dmp_main(argc - 1, argv + 1);
+		return hash_dmp_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "famstats") == 0)
 		return famstats_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "vet") == 0)

@@ -9,10 +9,11 @@
 
 #include "htslib/sam.h"
 //#include "samtools.h"
-#include "ksort.h"
-#include "khash.h"
+#include "htslib/ksort.h"
+#include "htslib/khash.h"
 #include "bed_util.h"
 #include "compiler_util.h"
+#include "seq_util.h"
 
 
 KHASH_MAP_INIT_INT64(fm, uint64_t)

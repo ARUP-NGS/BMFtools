@@ -33,9 +33,9 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int 
 	fputs(kfp->max_phreds, handle);
 	fputc('\n', handle);
 #else
-	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\n%s\n+\n%s\n", kfp->barcode + 1,
+	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\tRV:i:%i\n%s\n+\n%s\n", kfp->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
-			kfp->pass_fail, kfp->length,
+			kfp->pass_fail, kfp->length, is_rev ? kfp->length: 0,
 			bufs->cons_seq_buffer, kfp->max_phreds);
 #endif
 	return;
@@ -70,26 +70,10 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 	fill_fa_buffer(kfpf->readlen, bufs->agrees, bufs->FABuffer);
 	//fprintf(stderr, "FA buffer: %s.\n", FABuffer);
 	fill_pv_buffer(kfpf->readlen, bufs->cons_quals, bufs->PVBuffer);
-#if PUTC
-	fputc('@', handle);
-	fputs(kfpf->barcode, handle);
-	fputc(' ', handle);
-	fputs(bufs->FABuffer, handle);
-	fputc('\t', handle);
-	fputs(bufs->PVBuffer, handle);
-	fputs("\tFP:i:", handle);
-	fputc(kfpf->pass_fail, handle);
-    fprintf(handle, "\tRV:i:%i\tFM:i:%i\n", kfpr->length, kfpf->length + kfpr->length);
-	fputs(bufs->cons_seq_buffer, handle);
-	fputs("\n+\n", handle);
-	fputs(kfpf->max_phreds, handle);
-	fputc('\n', handle);
-#else
 	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tRV:i:%i\tFM:i:%i\n%s\n+\n%s\n", kfpf->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
 			kfpf->pass_fail, kfpr->length, kfpf->length + kfpr->length,
 			bufs->cons_seq_buffer, kfpf->max_phreds);
-#endif
 	return;
 }
 

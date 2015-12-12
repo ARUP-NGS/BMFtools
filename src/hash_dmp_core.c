@@ -1,12 +1,15 @@
 #include "hash_dmp_core.h"
 
-void print_khashdmp_usage(char *argv[]) {
-	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n", argv[0]);
+void print_hash_dmp_usage(char *argv[]) {
+	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
+            "Flags:\n"
+            "-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
+            , argv[0]);
 }
 
-void print_khashdmp_opt_err(char *argv[], char *optarg) {
+void print_hash_dmp_opt_err(char *argv[], char *optarg) {
 	fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
-	print_khashdmp_usage(argv);
+	print_hash_dmp_usage(argv);
 	exit(1);
 }
 
@@ -111,28 +114,31 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 
 
 
-int khash_dmp_main(int argc, char *argv[])
+int hash_dmp_main(int argc, char *argv[])
 {
+    if(argc == 1) print_hash_dmp_usage(argv), exit(EXIT_SUCCESS);
 	char *outfname = NULL;
 	char *infname = NULL;
 	int c;
-	while ((c = getopt(argc, argv, "ho:")) > -1) {
+    int stranded_analysis = 1;
+	while ((c = getopt(argc, argv, "o:sh?")) > -1) {
 		switch(c) {
 			case 'o': outfname = strdup(optarg);break;
-			case 'h': print_khashdmp_usage(argv); return 0;
-			default: print_khashdmp_opt_err(argv, optarg);
+            case 's': stranded_analysis = 0; break;
+            case '?': // Fall-through
+			case 'h': print_hash_dmp_usage(argv); return 0;
+			default: print_hash_dmp_opt_err(argv, optarg);
 		}
 	}
 	if(argc < 2) {
 		fprintf(stderr, "[E:%s] Required arguments missing. See usage.\n", __func__);
-		print_khashdmp_usage(argv);
+		print_hash_dmp_usage(argv);
 		exit(1);
 	}
 	infname = strdup(argv[optind]);
-
-	hash_dmp_core(infname, outfname);
-	free(outfname);
-	free(infname);
+	stranded_analysis ? stranded_hash_dmp_core: hash_dmp_core (infname, outfname);
+	if(outfname) free(outfname);
+	if(infname) free(infname);
 	return 0;
 }
 
@@ -174,7 +180,7 @@ void hash_dmp_core(char *infname, char *outfname)
 
 	uint64_t count = 0;
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
-		if(++count % 1000000 == 0)
+		if(UNLIKELY(++count % 1000000 == 0))
 			fprintf(stderr, "[%s] Number of records read from '%s': %lu.\n", __func__,
 					strcmp("-", infname) == 0 ? "stdin": infname,count);
 		cp_view2buf(seq->comment.s + 14, tmp->key);
@@ -287,7 +293,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		}
 	}
 #if !NDEBUG
-	fprintf(stderr, "[%s] Number of reverse reads: %lu. Numuber of forward reads: %lu.\n", __func__, rcount, fcount);
+	fprintf(stderr, "[D:%s] Number of reverse reads: %lu. Number of forward reads: %lu.\n", __func__, rcount, fcount);
 #endif
 	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
@@ -300,7 +306,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 			free(cfor);
 			continue;
 		}
-		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers);
+		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 		cond_free(crev); cond_free(cfor);

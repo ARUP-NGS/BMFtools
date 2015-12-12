@@ -197,14 +197,14 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	    seqbuf[i] = bam_seqi(seq, i);
 	if (b->core.flag & BAM_FREVERSE) { // reverse complement
 	    for (i = 0; i < qlen>>1; ++i) {
-	        int8_t t = seq_comp_table[(int)seqbuf[qlen - 1 - i]];
-	        seqbuf[qlen - 1 - i] = seq_comp_table[(int)seqbuf[i]];
+	        int8_t t = seq_comp_table[(int8_t)seqbuf[qlen - 1 - i]];
+	        seqbuf[qlen - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
 	        seqbuf[i] = t;
 	    }
-	    if (qlen&1) seqbuf[i] = seq_comp_table[(int)seqbuf[i]];
+	    if (qlen&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
 	}
 	for (i = 0; i < qlen; ++i)
-	    seqbuf[i] = seq_nt16_str[(int)seqbuf[i]];
+	    seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
 	seqbuf[qlen] = '\0';
 #if !NDEBUG
 	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
@@ -216,7 +216,9 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	strcat(comment, "\t");
 	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:B:I");
 	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
-	append_int_tag(comment, (char *)"RV", bam_aux2i(bam_aux_get(b, (char *)"RV")));
+    const uint8_t *rvdata = bam_aux_get(b, (char *)"RV");
+    if(rvdata)
+	    append_int_tag(comment, (char *)"RV", bam_aux2i(rvdata));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
 	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
 #if !NDEBUG
@@ -425,15 +427,13 @@ void bam_rsq_core(pr_settings_t *settings)
 int pr_usage(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  bam_rsq [-srtu] [-f <to_realign.fq>] <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Usage:  bam_rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
     fprintf(stderr, "Option: -s    pr for SE reads [Not implemented]\n");
     fprintf(stderr, "        -r    Realign reads with no changed bases. Default: False.\n");
     fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
     fprintf(stderr, "        -l    Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
     fprintf(stderr, "        -u    Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
     		        "         Note: This requires pre-processing with mark_unclipped from ppbwa (http://github.com/noseatbelts/ppbwa).\n");
-
-    sam_global_opt_help(stderr, "-....");
     return 1;
 }
 
@@ -468,8 +468,6 @@ int bam_rsq(int argc, char *argv[])
         case 't': settings->mmlim = atoi(optarg); break;
         case 'f': strcpy(fqname, optarg); break;
         case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
-        default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
-            /* else fall-through */
         case 'h': /* fall-through */
         case '?': return pr_usage();
         }

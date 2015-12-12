@@ -18,10 +18,7 @@ void print_usage(char *argv[])
 						"-t: Homopolymer failure threshold. A molecular barcode with"
 						" a homopolymer of length >= this limit is flagged as QC fail."
 						"Default: 10.\n"
-						"-o: Output basename. Currently required, as string "
-						"manipulation in C is a bit of work and I'd rather spend my "
-						"time building code than messing around with string "
-						"manipulation that doesn't add to the code base.\n"
+						"-o: Temporary fastq file prefix.\n"
 						"-i: Index fastq path. Required.\n"
 						"-n: Number of nucleotides at the beginning of the barcode to use to split the output.\n"
 						"-z: Flag to optionally pipe to gzip while producing final fastqs. Default: False.\n"
@@ -233,31 +230,22 @@ int fqms_main(int argc, char *argv[])
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
-							__func__, params->infnames_r1[i]);
-					sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
-                    CHECK_POPEN(tmpbuf);
-				}
 			}
 		}
 		#pragma omp parallel
 		{
-			#pragma omp for schedule(dynamic, 5)
+			#pragma omp for schedule(dynamic, 1)
 			for(int i = 0; i < settings.n_handles; ++i) {
-				char tmpbuf[500];
 				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
-					fprintf(stderr, "[%s] Now removing temporary file %s.\n",
-							__func__, params->infnames_r2[i]);
-					sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
-                    CHECK_POPEN(tmpbuf);
+				    char tmpbuf[500];
+					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+                    CHECK_CALL(tmpbuf);
 				}
 			}
 		}
