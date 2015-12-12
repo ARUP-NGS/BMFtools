@@ -15,8 +15,9 @@
 
 ## Installation
 
-Run:
 ```bash
+git clone https://github.com/ARUP-NGS/BMFtools --recursive
+cd BMFtools
 make
 ```
 ## Use
@@ -60,17 +61,12 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 Tag | Content | Format |
 ----|-----|-----|
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
-FR | Minimum value for Fraction of FA for a base in a condensed read. | Float [0-1] | Regex: [0-9\.]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 NC | Number of changed bases in rescued families of reads. | Integer |
-ND | Number of Differences in a family of reads from the consensus read. | Integer from Z+ |
 NF | ND fraction (mean ND per read in family) | Float |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
-RA | Realigned due to a failure to map appropriately, either as too small a fraction aligned or a mapping quality of 0. | String: aligned. Current Regex: [a-z]|
-RP | Read Pair Position Starts (sorted, separated by a comma) | String. Regex: [GLXYMT0-9\.]+:[0-9]+,[GLXYMT0-9\.]+[0-9]+ |
 RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. |
-SC | Contig Set | String. Regex: [GLXYMT0-9\.]+,[GLXYMT0-9]+ |
 
 ## Read Pair Merging Tags
 
@@ -87,39 +83,16 @@ op | Original Position | Integer |
 ot | Original Template Langth | Integer |
 PM | Indices for read positions which have been merged | String. Regex: [0-9,]+ |
 
-## Valid Tags for SV SAM tag
-
-######Note: SNV tags have been lumped in with SV tags for the time being.
-
-Tag | Meaning |
----- | ----- |
-LI | Large Insert - Default cutoff: 1,000,000 min |
-MDC | Reads in pair are mapped to different contigs |
-MSS | Mapped to Same Strand |
-ORB | Only one read in pair mapped to Expected Bed Region |
-ORU | One Read Unmapped |
-ORS | One Read Is Soft-Clipped |
-DRP | Duplex Read Pair |
-DSI | Duplex Supported Insertion |
-DSD | Duplex Supported Deletion |
-NF | No SV relevance found. |
-
-
-## Barcode Determination methods
+## Barcoding methods
 
 ####i5/i7 barcoding, nicknamed 'Shades'
 
 Requires read fastqs and an additional fastq containing barcodes.
 Faster than using a homing sequence-specified barcode (informatically). More issues with barcode rescues and errors occurring in the auxiliary fastq. Less complicated sample prep.
 
-####Homing sequence-specified regions for barcode.
+####Inline (Loeb-like) barcoding
 
-Using a homing sequence as input for consolidating families of PCR duplicates.
-
-#Config file
-
-Each line has a set of keys and values. See conf/config.txt for an example.
-Most options are available for command-line as well. If an option is set in both a config file and on the command-line, the command-line option clobbers the config setting.
+Barcodes are inline in the start of each read. This information is removed, added to a fastq comment, and then used in final hashmap-powered molecular demultiplexing.
 
 1. Changes in BMFTools v0.0.5:
     1. Removal of standard BMFMain in lieu of the config-based one.
@@ -232,17 +205,16 @@ Most options are available for command-line as well. If an option is set in both
     6. A number of optimizations, including some string comparisons as integers.
     8. Removing old/dead code.
 
-13. Changesin BMFTools v0.1.0.2beta
+13. Changes in BMFTools v0.1.0.2beta
     1. Complete restructure of main program, argument parsing, and error handling.
     2. Moved to a global config/started review directory infrastructure.
     3. Faster failure of pileups where all reads failed filters.
     4. String handling/other under-the-hood.
     5. Chapman now controls all global arguments.
 
+14. Changes in BMFtools v0.2.0
+    1. Rewritten in C.
+    2. Positional rescue for barcoded mismatches implemented.
+    3. Error rate calculation utilities.
+    4. Fork on samtools sort for rescue.
 
-## Style guidelines
-
-### Modified PEP8
-Since cython is so different from python, some of the PEP8 rules are (inappropriately) being triggered by this code when pep8 is run on it.
-We have decided to follow a modified PEP8, where all PEP8 complaints are considered valid except for "whitespace around operator" for cdefs as appropriate (such as ndarray[float, ndim=1]) and "module level import" not at top of file.
-The second is because pep8 doesn't realize that cimports are still imports.

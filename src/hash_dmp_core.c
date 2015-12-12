@@ -116,6 +116,7 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 
 int hash_dmp_main(int argc, char *argv[])
 {
+    if(argc == 1) print_hash_dmp_usage(argv), exit(EXIT_SUCCESS);
 	char *outfname = NULL;
 	char *infname = NULL;
 	int c;
@@ -135,8 +136,7 @@ int hash_dmp_main(int argc, char *argv[])
 		exit(1);
 	}
 	infname = strdup(argv[optind]);
-    if(stranded_analysis) stranded_hash_dmp_core(infname, outfname);
-    else hash_dmp_core(infname, outfname);
+	stranded_analysis ? stranded_hash_dmp_core: hash_dmp_core (infname, outfname);
 	if(outfname) free(outfname);
 	if(infname) free(infname);
 	return 0;
@@ -180,7 +180,7 @@ void hash_dmp_core(char *infname, char *outfname)
 
 	uint64_t count = 0;
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
-		if(++count % 1000000 == 0)
+		if(UNLIKELY(++count % 1000000 == 0))
 			fprintf(stderr, "[%s] Number of records read from '%s': %lu.\n", __func__,
 					strcmp("-", infname) == 0 ? "stdin": infname,count);
 		cp_view2buf(seq->comment.s + 14, tmp->key);
@@ -293,7 +293,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		}
 	}
 #if !NDEBUG
-	fprintf(stderr, "[%s] Number of reverse reads: %lu. Number of forward reads: %lu.\n", __func__, rcount, fcount);
+	fprintf(stderr, "[D:%s] Number of reverse reads: %lu. Number of forward reads: %lu.\n", __func__, rcount, fcount);
 #endif
 	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
@@ -306,7 +306,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 			free(cfor);
 			continue;
 		}
-		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers);
+		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
 		destroy_kf(cfor->value), destroy_kf(crev->value);
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 		cond_free(crev); cond_free(cfor);

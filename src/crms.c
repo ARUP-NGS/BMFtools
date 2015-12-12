@@ -285,6 +285,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 
 int crms_main(int argc, char *argv[])
 {
+    if(argc == 1) print_crms_usage(argv), exit(EXIT_FAILURE);
 	// Build settings struct
 	mssi_settings_t settings = {
 		.hp_threshold = 10,
@@ -549,18 +550,16 @@ inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings
 inline char test_hp_inline(char *barcode, int length, int threshold)
 {
 	int run = 0;
-	char last = '\0';
+	char last = 0;
 	for(int i = 0; i < length; i++){
 		if(barcode[i] == 'N')
 			return '0';
 		if(barcode[i] == last) {
 			if(++run >= threshold)
                 return '0';
-        }
-		else {
-			run = 0;
-			last = barcode[i];
 		}
+		else
+			run = 0, last = barcode[i];
 	}
 	return '1';
 }
