@@ -384,12 +384,11 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
-	const int i5 = i * 5;
-	const uint32_t posdata = nuc2num(seq->seq.s[i]);
-	++kfp->nuc_counts[i5 + posdata];
-	kfp->phred_sums[i5 + posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[posdata + i5])
-		kfp->max_phreds[posdata + i5] = seq->qual.s[i];
+	const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
+	++kfp->nuc_counts[posdata];
+	kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
+	if(seq->qual.s[i] > kfp->max_phreds[posdata])
+		kfp->max_phreds[posdata] = seq->qual.s[i];
 }
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
