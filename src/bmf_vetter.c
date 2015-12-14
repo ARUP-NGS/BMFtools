@@ -10,10 +10,6 @@ void vetter_error(char *message, int retcode)
 	exit(retcode);
 }
 
-int vet_func(void *data, bam1_t *b) {
-	return 1;
-}
-
 /*
  * #define VETTER_OPTIONS \
     {"min-family-agreed",         required_argument, NULL, 'a'}, \
@@ -91,33 +87,12 @@ void vs_open(vetter_settings_t *settings) {
 		vetter_error("Could not read Fasta index Abort!\n", EXIT_FAILURE);
 	conf->bed = parse_bed_hash(settings->bed_path, conf->bh, padding);
 	settings->conf.func = &vet_func;
-	settings->conf.n_iterators = get_nregions(conf->bed);
-	if(conf->bed) {
-		hts_idx_t *idx = sam_index_load(conf->bam, conf->bam->fn);
-		if(!idx) {
-			fprintf(stderr, "[%s] Failed to load bam index for file %s. Abort!\n", __func__, conf->bam->fn);
-			exit(EXIT_FAILURE);
-		}
-		int i = 0;
-		for(khiter_t k = kh_begin(conf->bed); k != kh_end(conf->bed); ++k) {
-			if(!kh_exist(conf->bed, k))
-				continue;
-			for(int j = 0; j < kh_val(conf->bed, k).n; ++j) {
-				// Contig, start, stop
-				conf->iterators[i++] = sam_itr_queryi(idx, kh_key(conf->bed, k),
-													get_start(kh_val(conf->bed, k).intervals[j]),
-													get_stop(kh_val(conf->bed, k).intervals[j]));
-			}
-		}
-		if(i != settings->conf.n_iterators) {
-			fprintf(stderr, "The number of bed regions didn't add up. Counted: %i. Expected: %i.", i, settings->conf.n_iterators);
-			exit(EXIT_FAILURE);
-		}
-	}
+	settings->conf.n_regions = get_nregions(conf->bed);
 }
 
 void conf_destroy(vetplp_conf_t *conf)
 {
+	if(conf->contig) free(conf->contig), conf->contig = NULL;
 	bam_hdr_destroy(conf->bh);
 	if(conf->bi)
 		hts_idx_destroy(conf->bi);
@@ -132,6 +107,7 @@ void conf_destroy(vetplp_conf_t *conf)
 	fai_destroy(conf->fai);
 	if(conf->tbx) tbx_destroy(conf->tbx), conf->tbx = NULL;
 	if(conf->vi) hts_idx_destroy(conf->vi), conf->vi = NULL;
+	if(conf->bam_iter) hts_itr_destroy(conf->bam_iter), conf->bam_iter = NULL;
 	return;
 }
 
@@ -186,14 +162,16 @@ void tbx_loop(vetter_settings_t *settings)
 		const int32_t key = kh_key(conf->bed, k);
 		for(uint64_t i = 0; i < set.n; ++i) {
 			const uint64_t ivl = set.intervals[i];
-			hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, get_start(ivl), get_stop(ivl) + 1);
+			const int start = get_start(ivl);
+			const int stop = get_stop(ivl) + 1;
+			conf->bam_iter = sam_itr_queryi(conf->bi, key, start, stop);
+			hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, start, stop);
 			while(bcf_itr_next(conf->vin, bcf_iter, rec) >= 0) {
 				if(!bcf_is_snp(rec)) {
 					vcf_write(conf->vout, (const bcf_hdr_t *)conf->bh, rec);
 					continue;
 				}
-				bam_plp_t p = bam_plp_init(&vet_func, (void *)conf);
-				int ret;
+				// conf->pileup is now the iterator.
 				bam1_t *b = bam_init1();
 				bam_destroy1(b);
 			}
@@ -255,9 +233,9 @@ int vs_reg_core(vetter_settings_t *settings)
 	// Set-up
 	// Pileup iterator
 	vetplp_conf_t *conf = &settings->conf;
-	bam_plp_t iter = bam_plp_init(settings->conf.func, (void *)&settings->conf.params);
+	bam_plp_t iter = bam_plp_maxcnt_init(settings->conf.func, (void *)&settings, max_depth);
 	bam_plp_init_overlaps(iter); // Create overlap hashmap for overlapping pairs
-	bam_plp_set_maxcnt(iter, max_depth);
+	conf->pileup = &iter;
 
 	conf->bi = sam_index_load(conf->bam, conf->bam->fn);
 	if(!conf->bi) {
@@ -267,8 +245,10 @@ int vs_reg_core(vetter_settings_t *settings)
 
 	if(strcmp(strrchr(settings->conf.vin->fn, '.'), ".vcf") == 0)
 		full_iter_loop(settings);
-	else
+	else if(strcmp(strrchr(settings->conf.vin->fn, '.'), ".bcf") == 0)
 		hts_loop(settings);
+	else if(strcmp(strrchr(settings->conf.vin->fn, '.') - 4, ".vcf.gz"))
+		tbx_loop(settings);
 	// Main loop
 	// Clean up
 	bam_plp_destroy(iter);
@@ -282,7 +262,14 @@ int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
 	// Initialize settings struct
 	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
 	// Initialize
-	memcpy(&settings->conf.params, params, sizeof(vparams_t));
+
+	settings->conf.minFA = params->minFA;
+	settings->conf.minFM = params->minFM;
+	settings->conf.minPV = params->minPV;
+	settings->conf.minMQ = params->minMQ;
+	settings->conf.minFR = params->minFR;
+	settings->conf.last_ref_tid = -1; // Make sure it knows it hasn't loaded any yet.
+	settings->conf.flag = params->flag;
 
 	// Copy filenames over and open vcfs.
 	strcpy(settings->in_vcf_path, invcf);
@@ -318,15 +305,20 @@ int bmf_vetter_main(int argc, char *argv[])
 			.minPV = 0u,
 			.minFM = 0u,
 			.minMQ = 0u,
-			.minFR = 0.
+			.minFR = 0.,
+			.flag = (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)
 	};
 	int c;
-	while ((c = getopt_long(argc, argv, "d:a:s:m:p:f:b:v:o:?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "q:r:2:$:d:a:s:m:p:f:b:v:o:?h", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'a': params.minFA = strtoul(optarg, NULL, 0); break;
 		case 's': params.minFM = strtoul(optarg, NULL, 0); break;
 		case 'm': params.minMQ = strtoul(optarg, NULL, 0); break;
 		case 'v': params.minPV = strtoul(optarg, NULL, 0); break;
+		case '2': params.flag &= (~BAM_FSECONDARY); break;
+		case '$': params.flag &= (~BAM_FSUPPLEMENTARY); break;
+		case 'q': params.flag &= (~BAM_FQCFAIL); break;
+		case 'r': params.flag &= (~BAM_FDUP); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'd': max_depth = atoi(optarg); break;
 		case 'f': params.minFR = atof(optarg); break;
@@ -362,4 +354,42 @@ int bmf_vetter_main(int argc, char *argv[])
 	strcpy(inbam, argv[optind + 1]);
 	bmf_vetter_bookends(invcf, inbam, outvcf, bed, bam_rmode, vcf_rmode, vcf_wmode, &params);
 	return 0;
+}
+static int vet_func(void *data, bam1_t *b)
+{
+    vetplp_conf_t *conf = (vetplp_conf_t *)data;
+    int ret, skip = 0, ref_len;
+    do {
+        ret = conf->bam_iter ? sam_itr_next(conf->bam, conf->bam_iter, b) : sam_read1(conf->bam, conf->bh, b);
+        if (ret < 0) break;
+        // The 'B' cigar operation is not part of the specification, considering as obsolete.
+        //  bam_remove_B(b);
+        if (b->core.tid < 0 || (b->core.flag&(BAM_FUNMAP))) { // exclude unmapped and qc fail reads.
+            skip = 1;
+            continue;
+        }
+        if (conf->bed) { // test overlap
+            skip = !bed_test(b, conf->bed);
+            if (skip) continue;
+        }
+
+        if (conf->fai && b->core.tid >= 0) {
+        	if(conf->last_ref_tid != b->core.tid) {
+        		if(conf->contig) free(conf->contig);
+        		conf->contig = fai_fetch(conf->fai, conf->bh->target_name[b->core.tid], &ref_len);
+        	}
+            if (ref_len <= b->core.pos) { // exclude reads outside of the reference sequence
+                fprintf(stderr,"[%s] Skipping because %d is outside of %d [ref:%d]\n",
+                        __func__, b->core.pos, ref_len, b->core.tid);
+                skip = 1;
+                continue;
+            }
+        }
+
+        skip = 0;
+        if (b->core.qual < conf->minMQ) skip = 1;
+        else if((conf->flag & (b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP))) ||
+        		((conf->flag & (SKIP_IMPROPER)) && (b->core.flag&BAM_FPAIRED) && b->core.flag&BAM_FPROPER_PAIR)) skip = 1;
+    } while (skip);
+    return ret;
 }

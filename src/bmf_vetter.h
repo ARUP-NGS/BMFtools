@@ -15,8 +15,10 @@
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
 #include "bed_util.h"
+#include "bam_util.h"
 
-int vet_func(void *data, bam1_t *b);
+static int vet_func(void *data, bam1_t *b);
+extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
 
 // Setup needed for pileup engine
 #ifndef BAM_PLP_DEC
@@ -26,8 +28,6 @@ extern void bam_plp_init_overlaps(bam_plp_t);
 typedef struct {
     int k, x, y, end;
 } cstate_t;
-
-__attribute__((unused)) static cstate_t g_cstate_null = { -1, 0, 0, 0 };
 
 typedef struct __linkbuf_t {
     bam1_t b;
@@ -79,15 +79,16 @@ typedef struct vparams {
 	double minFR; // Minimum  fraction agreed on base
 	uint32_t minMQ; // Minimum mapping quality to include
 	uint32_t minPV; // Minimum PV score to include
+	uint64_t flag;
 } vparams_t;
 
 typedef struct vetplp_conf {
 	bam_plp_auto_f func;
 	vparams_t params;
-	hts_itr_t **iterators;
-	int n_iterators;
+	int n_regions;
 	samFile *bam;
 	bam_hdr_t *bh;
+	hts_itr_t *bam_iter;
 	hts_idx_t *bi; // Bam index
 	hts_idx_t *vi;
 	khash_t(bed) *bed; // Really khash_t(bed) *
@@ -96,7 +97,18 @@ typedef struct vetplp_conf {
 	vcfFile *vout;
 	bcf_hdr_t *vh;
 	tbx_t *tbx;
+	bam_plp_t *pileup;
+	char *contig; // Holds the string for contig
+	int32_t last_ref_tid; // Holds the transcript ID for the contig string.
+	uint32_t minFA; // Minimum Family Members Agreed on base
+	uint32_t minFM; // Minimum family size
+	double minFR; // Minimum  fraction agreed on base
+	uint32_t minMQ; // Minimum mapping quality to include
+	uint32_t minPV; // Minimum PV score to include
+	uint64_t flag;
 } vetplp_conf_t;
+
+#define SKIP_IMPROPER 4096
 
 extern void *bed_read(const char *fn);
 
