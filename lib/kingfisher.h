@@ -25,9 +25,6 @@ KSEQ_INIT(gzFile, gzread)
 
 #define MIN_FRAC_AGREED 0.5
 
-#define ARGMAX_STR "ACGTN"
-#define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
-
 typedef struct tmpbuffers {
 	char name_buffer[120];
 	char PVBuffer[1000];
@@ -52,7 +49,7 @@ typedef struct KingFisher {
 	uint32_t *phred_sums; // Sums of -10log10(p-value)
 	int length; // Number of reads in family
 	int readlen; // Length of reads
-	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
+	char **max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	char pass_fail;
 } KingFisher_t;
@@ -390,8 +387,8 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 	const uint32_t posdata = nuc2num(seq->seq.s[i]);
 	++kfp->nuc_counts[i * 5 + posdata];
 	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[i])
-		kfp->max_phreds[i] = seq->qual.s[i];
+	if(seq->qual.s[i] > kfp->max_phreds[posdata][i])
+		kfp->max_phreds[posdata][i] = seq->qual.s[i];
 }
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
