@@ -49,7 +49,7 @@ typedef struct KingFisher {
 	uint32_t *phred_sums; // Sums of -10log10(p-value)
 	int length; // Number of reads in family
 	int readlen; // Length of reads
-	char **max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
+	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	char pass_fail;
 } KingFisher_t;
@@ -384,11 +384,12 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
+	const int i5 = i * 5;
 	const uint32_t posdata = nuc2num(seq->seq.s[i]);
-	++kfp->nuc_counts[i * 5 + posdata];
-	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[posdata][i])
-		kfp->max_phreds[posdata][i] = seq->qual.s[i];
+	++kfp->nuc_counts[i5 + posdata];
+	kfp->phred_sums[i5 + posdata] += seq->qual.s[i] - 33;
+	if(seq->qual.s[i] > kfp->max_phreds[posdata + i5])
+		kfp->max_phreds[posdata + i5] = seq->qual.s[i];
 }
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)

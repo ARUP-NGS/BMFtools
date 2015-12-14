@@ -31,16 +31,16 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int 
 	fprintf(handle, "\tRV:i:%i\n", is_rev ? kfp->length: 0);
 	fputs(bufs->cons_seq_buffer, handle);
 	fputs("\n+\n", handle);
-	for(i = 0; i < kfp->length; ++i)
-		fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i])][i], handle);
+	for(i = 0; i < kfp->readlen; ++i)
+		fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) * 5 + i], handle);
 	fputc('\n', handle);
 #else
 	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\tRV:i:%i\n%s\n+\n", kfp->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
 			kfp->pass_fail, kfp->length, is_rev ? kfp->length: 0,
 			bufs->cons_seq_buffer);
-	for(i = 0; i < kfp->length; ++i)
-		fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i])][i], handle);
+	for(i = 0; i < kfp->readlen; ++i)
+		fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) * 5 + i], handle);
 	fputc('\n', handle);
 #endif
 	return;
@@ -52,18 +52,19 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 	int i;
 	for(i = 0; i < kfpf->readlen; ++i) {
 		const int argmaxretf = ARRG_MAX(kfpf, i), argmaxretr = ARRG_MAX(kfpr, i);
+		const int i5 = i * 5;
         if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
-            kfpf->phred_sums[i * 5 + argmaxretf] += kfpr->phred_sums[i * 5 + argmaxretf];
-            kfpf->nuc_counts[i * 5 + argmaxretf] += kfpr->nuc_counts[i * 5 + argmaxretf];
+            kfpf->phred_sums[i5 + argmaxretf] += kfpr->phred_sums[i5 + argmaxretf];
+            kfpf->nuc_counts[i5 + argmaxretf] += kfpr->nuc_counts[i5 + argmaxretf];
             dmp_pos(kfpf, bufs, argmaxretf, i);
-            if(kfpr->max_phreds[argmaxretf][i] > kfpf->max_phreds[argmaxretf][i])
-            	kfpf->max_phreds[argmaxretf][i] = kfpr->max_phreds[argmaxretf][i];
+            if(kfpr->max_phreds[argmaxretf + i5] > kfpf->max_phreds[argmaxretf + i5])
+            	kfpf->max_phreds[argmaxretf + i5] = kfpr->max_phreds[argmaxretf + i5];
         }
         else if(argmaxretf == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
-            kfpf->phred_sums[i * 5 + argmaxretr] += kfpr->phred_sums[i * 5 + argmaxretr];
-            kfpf->nuc_counts[i * 5 + argmaxretr] += kfpr->nuc_counts[i * 5 + argmaxretr];
+            kfpf->phred_sums[i5 + argmaxretr] += kfpr->phred_sums[i5 + argmaxretr];
+            kfpf->nuc_counts[i5 + argmaxretr] += kfpr->nuc_counts[i5 + argmaxretr];
             dmp_pos(kfpf, bufs, argmaxretr, i);
-            kfpf->max_phreds[argmaxretr][i] = kfpr->max_phreds[argmaxretr][i];
+            kfpf->max_phreds[argmaxretr + i5] = kfpr->max_phreds[argmaxretr + i5];
         }
         else if(argmaxretr == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
             kfpf->phred_sums[i * 5 + argmaxretf] += kfpr->phred_sums[i * 5 + argmaxretf];
@@ -81,27 +82,8 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 			bufs->FABuffer, bufs->PVBuffer,
 			kfpf->pass_fail, kfpf->length, kfpr->length,
 			bufs->cons_seq_buffer);
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Quality string I'm about to write out for consensus sequence '%s':\t",
-			__func__, bufs->cons_seq_buffer);
-	for(i = 0; i < kfpf->length; ++i)
-		fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i])][i], stderr);
-	fputc('\n', stderr);
-	for(i = 0; i < kfpf->length; ++i) {
-		fprintf(stderr, "At position %i with base call %c, max_phreds for A is %c.\n", i + 1, bufs->cons_seq_buffer[i],
-				kfpf->max_phreds[0][i]);
-		fprintf(stderr, "At position %i with base call %c, max_phreds for C is %c.\n", i + 1, bufs->cons_seq_buffer[i],
-				kfpf->max_phreds[1][i]);
-		fprintf(stderr, "At position %i with base call %c, max_phreds for G is %c.\n", i + 1, bufs->cons_seq_buffer[i],
-				kfpf->max_phreds[2][i]);
-		fprintf(stderr, "At position %i with base call %c, max_phreds for T is %c.\n", i + 1, bufs->cons_seq_buffer[i],
-				kfpf->max_phreds[3][i]);
-		fprintf(stderr, "At position %i with base call %c, max_phreds for N is %c.\n", i + 1, bufs->cons_seq_buffer[i],
-				kfpf->max_phreds[4][i]);
-	}
-#endif
-	for(i = 0; i < kfpf->length; ++i)
-		fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i])][i], handle);
+	for(i = 0; i < kfpf->readlen; ++i)
+		fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], handle);
 	fputc('\n', handle);
 	return;
 }
@@ -110,10 +92,8 @@ KingFisher_t *init_kfp(size_t readlen)
 {
 	KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
 	ret->readlen = readlen;
-	ret->max_phreds = (char **)malloc(5 * sizeof(char *));
-	for(int i = 0; i < 5; ++i) {
-		ret->max_phreds[i] = (char *)calloc(readlen + 1, sizeof(char));
-	}
+	ret->max_phreds = (char *)malloc((readlen * 5) * sizeof(char));
+	memset(ret->max_phreds, '#', readlen * 5);
 	ret->nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
 	ret->phred_sums = (uint32_t *)calloc(readlen * 5, sizeof(uint32_t));
 	ret->pass_fail = '1';
@@ -124,9 +104,6 @@ void destroy_kf(KingFisher_t *kfp)
 {
 	cond_free(kfp->nuc_counts);
 	cond_free(kfp->phred_sums);
-	for(int i = 0; i < 5; ++i) {
-		cond_free(kfp->max_phreds[i]);
-	}
 	cond_free(kfp->max_phreds);
 	free(kfp);
 	kfp = NULL;
