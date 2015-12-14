@@ -25,9 +25,6 @@ KSEQ_INIT(gzFile, gzread)
 
 #define MIN_FRAC_AGREED 0.5
 
-#define ARGMAX_STR "ACGTN"
-#define ARRG_MAX_TO_NUC(argmaxret) ARGMAX_STR[argmaxret]
-
 typedef struct tmpbuffers {
 	char name_buffer[120];
 	char PVBuffer[1000];
@@ -387,11 +384,11 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
-	const uint32_t posdata = nuc2num(seq->seq.s[i]);
-	++kfp->nuc_counts[i * 5 + posdata];
-	kfp->phred_sums[i * 5 + posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[i])
-		kfp->max_phreds[i] = seq->qual.s[i];
+	const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
+	++kfp->nuc_counts[posdata];
+	kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
+	if(seq->qual.s[i] > kfp->max_phreds[posdata])
+		kfp->max_phreds[posdata] = seq->qual.s[i];
 }
 
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
