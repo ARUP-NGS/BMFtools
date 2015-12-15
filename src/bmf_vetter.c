@@ -132,14 +132,13 @@ void full_iter_loop(vetter_settings_t *settings)
 		// Skip over variants outside of our region
 		if(conf->bed && !vcf_bed_test(rec, conf->bed))
 			continue;
-		bam_plp_t p = bam_plp_init(&vet_func, (void *)conf);
-		hts_itr_t *iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
+		conf->bam_iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
 		int ret;
 		bam1_t *b = bam_init1();
-		while((ret = sam_itr_next(conf->bam, iter, b) >= 0)) {
+		while((ret = sam_itr_next(conf->bam, conf->bam_iter, b) >= 0)) {
 
 		}
-		hts_itr_destroy(iter);
+		hts_itr_destroy(conf->bam_iter);
 		bam_destroy1(b);
 	}
 	bcf_destroy1(rec);
@@ -164,12 +163,17 @@ void tbx_loop(vetter_settings_t *settings)
 			const uint64_t ivl = set.intervals[i];
 			const int start = get_start(ivl);
 			const int stop = get_stop(ivl) + 1;
-			conf->bam_iter = sam_itr_queryi(conf->bi, key, start, stop);
+			conf->bam_iter = sam_itr_queryi(conf->bi, key, start >= BAM_FETCH_BUFFER ? start - BAM_FETCH_BUFFER : 0, stop + BAM_FETCH_BUFFER);
 			hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, start, stop);
 			while(bcf_itr_next(conf->vin, bcf_iter, rec) >= 0) {
 				if(!bcf_is_snp(rec)) {
 					vcf_write(conf->vout, (const bcf_hdr_t *)conf->bh, rec);
 					continue;
+				}
+				int n_plp, tid, pos;
+				const bam_pileup1_t *stack;
+				while((stack = bam_plp_auto(*conf->pileup, &tid, &pos, &n_plp)) != NULL) {
+
 				}
 				// conf->pileup is now the iterator.
 				bam1_t *b = bam_init1();
@@ -210,7 +214,7 @@ void hts_loop(vetter_settings_t *settings)
 			while(bcf_itr_next(conf->vin, iter, rec) >= 0) {
 				if((conf->bed && !vcf_bed_test(rec, conf->bed)) || !bcf_is_snp(rec))
 					continue;
-				hts_itr_t *bam_iter = sam_itr_queryi(conf->bi, key, rec->pos, rec->pos + 1);
+				hts_itr_t *bam_iter = sam_itr_queryi(conf->bi, key, rec->pos - BAM_FETCH_BUFFER, rec->pos + BAM_FETCH_BUFFER + 1);
 				while(bam_itr_next(conf->bam, bam_iter, rec) >= 0) {
 					if(rec->pos != b->core.pos) {
 						fprintf(stderr, "Positions don't equal?? rec: %i. bam: %i.\n", rec->pos, b->core.pos);
@@ -389,7 +393,8 @@ static int vet_func(void *data, bam1_t *b)
         skip = 0;
         if (b->core.qual < conf->minMQ) skip = 1;
         else if((conf->flag & (b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP))) ||
-        		((conf->flag & (SKIP_IMPROPER)) && (b->core.flag&BAM_FPAIRED) && b->core.flag&BAM_FPROPER_PAIR)) skip = 1;
+        		((conf->flag & (SKIP_IMPROPER)) && (b->core.flag&BAM_FPAIRED) && b->core.flag&BAM_FPROPER_PAIR) ||
+				(bam_aux2i(bam_aux_get(b, "FM")) < conf->minFM)) skip = 1;
     } while (skip);
     return ret;
 }

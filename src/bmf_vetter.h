@@ -109,6 +109,7 @@ typedef struct vetplp_conf {
 } vetplp_conf_t;
 
 #define SKIP_IMPROPER 4096
+#define BAM_FETCH_BUFFER 150
 
 extern void *bed_read(const char *fn);
 
