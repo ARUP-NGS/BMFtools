@@ -163,7 +163,9 @@ void tbx_loop(vetter_settings_t *settings)
 			const uint64_t ivl = set.intervals[i];
 			const int start = get_start(ivl);
 			const int stop = get_stop(ivl) + 1;
-			conf->bam_iter = sam_itr_queryi(conf->bi, key, start >= BAM_FETCH_BUFFER ? start - BAM_FETCH_BUFFER : 0, stop + BAM_FETCH_BUFFER);
+			conf->bam_iter = sam_itr_queryi(conf->bi, key,
+											(start > BAM_FETCH_BUFFER) ? (start - BAM_FETCH_BUFFER): 0,
+											stop + BAM_FETCH_BUFFER);
 			hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, start, stop);
 			while(bcf_itr_next(conf->vin, bcf_iter, rec) >= 0) {
 				if(!bcf_is_snp(rec)) {
@@ -173,11 +175,8 @@ void tbx_loop(vetter_settings_t *settings)
 				int n_plp, tid, pos;
 				const bam_pileup1_t *stack;
 				while((stack = bam_plp_auto(*conf->pileup, &tid, &pos, &n_plp)) != NULL) {
-
+					// Actual result
 				}
-				// conf->pileup is now the iterator.
-				bam1_t *b = bam_init1();
-				bam_destroy1(b);
 			}
 		}
 	}
