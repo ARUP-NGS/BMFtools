@@ -157,7 +157,7 @@ void tbx_loop(vetter_settings_t *settings)
 	vetplp_conf_t *conf = &settings->conf;
 	bcf1_t *rec = bcf_init1();
 	for(khiter_t k = 0; k != kh_end(conf->bed); ++k) {
-		region_set_t set = kh_val(conf->bed, k);
+		const region_set_t set = kh_val(conf->bed, k);
 		const int32_t key = kh_key(conf->bed, k);
 		for(uint64_t i = 0; i < set.n; ++i) {
 			const uint64_t ivl = set.intervals[i];
@@ -166,8 +166,9 @@ void tbx_loop(vetter_settings_t *settings)
 			conf->bam_iter = sam_itr_queryi(conf->bi, key,
 											(start > BAM_FETCH_BUFFER) ? (start - BAM_FETCH_BUFFER): 0,
 											stop + BAM_FETCH_BUFFER);
-			hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, start, stop);
-			while(bcf_itr_next(conf->vin, bcf_iter, rec) >= 0) {
+			const hts_itr_t *bcf_iter = bcf_itr_queryi(conf->vi, key, start, stop);
+			while(bcf_itr_next(conf->vin, (hts_itr_t *)bcf_iter, rec) >= 0) {
+				bcf_unpack(rec, BCF_UN_ALL);
 				if(!bcf_is_snp(rec)) {
 					vcf_write(conf->vout, (const bcf_hdr_t *)conf->bh, rec);
 					continue;
@@ -207,22 +208,21 @@ void hts_loop(vetter_settings_t *settings)
 		const int32_t key = kh_key(conf->bed, ki);
 		// Each of these iterations goes through an interval on a contig
 		for(uint64_t i = 0; i < cset.n; ++i) {
-			const uint64_t ivl = cset.intervals[i];
-			hts_itr_t *iter = bcf_itr_queryi(conf->vi, key, get_start(ivl), get_start(ivl) + 1);
+			const hts_itr_t *iter = bcf_itr_queryi(conf->vi, key, get_start(cset.intervals[i]), get_start(cset.intervals[i]) + 1);
 			// This gets all records in the specified bed region
-			while(bcf_itr_next(conf->vin, iter, rec) >= 0) {
+			while(bcf_itr_next(conf->vin, (hts_itr_t *)iter, rec) >= 0) {
 				if((conf->bed && !vcf_bed_test(rec, conf->bed)) || !bcf_is_snp(rec))
 					continue;
-				hts_itr_t *bam_iter = sam_itr_queryi(conf->bi, key, rec->pos - BAM_FETCH_BUFFER, rec->pos + BAM_FETCH_BUFFER + 1);
-				while(bam_itr_next(conf->bam, bam_iter, rec) >= 0) {
+				const hts_itr_t *bam_iter = sam_itr_queryi(conf->bi, key, rec->pos - BAM_FETCH_BUFFER, rec->pos + BAM_FETCH_BUFFER + 1);
+				while(bam_itr_next(conf->bam, (hts_itr_t *)bam_iter, rec) >= 0) {
 					if(rec->pos != b->core.pos) {
 						fprintf(stderr, "Positions don't equal?? rec: %i. bam: %i.\n", rec->pos, b->core.pos);
 						exit(EXIT_FAILURE);
 					}
 				}
-				hts_itr_destroy(bam_iter);
+				hts_itr_destroy((hts_itr_t *)bam_iter);
 			}
-			hts_itr_destroy(iter);
+			hts_itr_destroy((hts_itr_t *)iter);
 		}
 
 	}
