@@ -18,13 +18,6 @@
 
 #define STACK_START (1 << 5)
 
-
-
-#ifndef INC_TAG
-#define INC_TAG(p, b, key) *(int *)(bam_aux_get(p, key) + 1) += *(int *)(bam_aux_get(b, key) + 1);
-#endif
-
-
 #define SEQBUF_SIZE 300
 
 #define seq2buf(buf, seq, len) \
@@ -37,23 +30,6 @@
 		buf[i_##seq] = seq_nt16_str[bam_seqi(seq, i_##seq)];\
 	buf[len] = '\0'
 
-/*
-#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = (i % 2) ? \
-		(bam_seqi((bSeq), i) | ((pSeq)[(i)>>1] & 0xf0U)): \
-		((bam_seqi((bSeq), i) << 4) | ((pSeq)[(i)>>1] & 0xfU))
-*/
-#define set_base(pSeq, bSeq, i) (pSeq)[(i)>>1] = ((bam_seqi(bSeq, i) << (((~i) & 1) << 2)) | (((pSeq)[(i)>>1]) & (0xf0U >> (((~i) & 1) << 2))))
-#define n_base(pSeq, i) pSeq[(i)>>1] |= (0xf << ((~(i) & 1) << 2));
-
-#define check_fa(arr, fm, len) \
-		do {\
-		for(int i##arr = 0; i##arr < len; ++i##arr) {\
-			if(arr[i##arr] > fm){\
-				fprintf(stderr, "FAIL. %" PRIu32 " arr value greater than FM %" PRIu32 ".\n", arr[i##arr], fm);\
-				exit(EXIT_FAILURE);\
-			}\
-		}\
-		} while(0)
 
 
 typedef bam1_t *bam1_p;
@@ -120,11 +96,6 @@ typedef struct pr_settings {
 	bam_hdr_t *hdr; // BAM header
 } pr_settings_t;
 
-
-CONST static inline void *array_tag(bam1_t *b, const char *tag) {
-	const uint8_t *data = bam_aux_get(b, tag);
-	return data ? (void *)(data + sizeof(int) + 2): NULL;
-}
 
 CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
 {

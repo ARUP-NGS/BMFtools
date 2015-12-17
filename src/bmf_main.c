@@ -12,6 +12,7 @@ extern int hash_dmp_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
 extern int bmf_vetter_main(int argc, char *argv[]);
 extern int err_main(int argc, char *argv[]);
+extern int mark_unclipped_main(int argc, char *argv[]);
 
 int bmftools_usage(int rc)
 {
@@ -48,5 +49,7 @@ int main(int argc, char *argv[])
 		return bmf_vetter_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "err") == 0)
 		return err_main(argc - 1, argv + 1);
+	else if(strcmp(argv[1], "mark_unclipped") == 0)
+		return mark_unclipped_main(argc - 1, argv + 1);
 	fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
 }

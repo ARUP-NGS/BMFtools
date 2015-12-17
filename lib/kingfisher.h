@@ -4,7 +4,7 @@
 #include "kseq.h"
 #include "stdio.h"
 #include "math.h"
-#include "charcmp.h"
+#include "char_util.h"
 #include "cstr_util.h"
 #include "khash.h"
 #include "mem_util.h"

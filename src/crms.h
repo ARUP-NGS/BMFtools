@@ -17,7 +17,7 @@
 #include "kingfisher.h"
 #include "io_util.h"
 #include "mem_util.h"
-#include "nix_resource.h"
+#include "nix_util.h"
 
 #ifndef MAX_HOMING_SEQUENCE
 #define MAX_HOMING_SEQUENCE 8
