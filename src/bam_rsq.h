@@ -14,9 +14,7 @@
 #include "igamc_cephes.h"
 #include "cstr_util.h"
 #include "sort_util.h"
-#include "pair_util.h"
-#include "compiler_util.h"
-//#include "bmfsort.h"
+#include "bam_util.h"
 
 #define STACK_START (1 << 5)
 

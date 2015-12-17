@@ -6,7 +6,10 @@
 #include <stddef.h>
 #include "mtherr.c"
 #include "compiler_util.h"
-#include "seq_util.h"
+
+#ifndef MAX_PV
+#define MAX_PV 3117
+#endif
 
 extern double MAXNUM;
 

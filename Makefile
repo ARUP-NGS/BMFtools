@@ -21,7 +21,7 @@ IGAMC_INC = include/igamc_cephes.c
 
 BMF_SRC = htslib/sam.c src/bmf_main.c include/sam_opts.c src/crms.c include/igamc_cephes.c src/hash_dmp_core.c \
 		  src/fqmarksplit.c src/bam_rsq.c src/famstats.c src/bmf_vetter.c lib/bed_util.c include/bedidx.c \
-		  libhts.a src/bmfsort.c src/err_calc.c lib/io_util.c lib/pair_util.c lib/nix_resource.c \
+		  libhts.a src/bmfsort.c src/err_calc.c lib/io_util.c lib/nix_resource.c \
 		  lib/kingfisher.c lib/bam_util.c
 		  
 

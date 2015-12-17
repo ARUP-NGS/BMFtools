@@ -8,10 +8,10 @@
 #include <float.h>
 #include <math.h>
 #include "khash.h"
-#include "pair_util.h"
+#include "bam_util.h"
 #include "mem_util.h"
-#include "seq_util.h"
 #include "htslib/faidx.h"
+#include "kingfisher.h"
 
 typedef struct readerr {
 	uint64_t ***obs;

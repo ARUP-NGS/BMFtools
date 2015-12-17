@@ -1292,8 +1292,8 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		while (heap->pos != HEAP_EMPTY) {
 			bam1_t *b = heap->b;
 			if (flag & MERGE_RG) {
-				uint8_t *rg = bam_aux_get(b, "RG");
-				if (rg) bam_aux_del(b, rg);
+				const uint8_t *rg = bam_aux_get(b, "RG");
+				if (rg) bam_aux_del(b, (uint8_t *)rg);
 				bam_aux_append(b, "RG", 'Z', RG_len[heap->i] + 1, (uint8_t*)RG[heap->i]);
 			}
 			sam_write1(outfps[split_index(b)], hout, b);
@@ -1342,16 +1342,15 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		bam_hdr_destroy(hdr[i]);
 		sam_close(fp[i]);
 	}
-	fprintf(stderr, "Clean out handles.\n");
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Clean out handles.\n", __func__);
+#endif
 	if(split) {
-		for(i = 0; i < hout->n_targets + 1; ++i) {
-			sam_close(outfps[i]);
-			outfps[i] = NULL;
-		}
+		for(i = 0; i < hout->n_targets + 1; ++i)
+			sam_close(outfps[i]), outfps[i] = NULL;
 	}
-	else {
-		sam_close(outfps[0]);
-	}
+	else
+		sam_close(*outfps);
 	if(hin) bam_hdr_destroy(hin);
 	bam_hdr_destroy(hout);
 	free_merged_header(merged_hdr);
