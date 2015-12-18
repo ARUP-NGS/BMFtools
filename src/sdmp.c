@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include "cstr_util.h"
-#include "hash_dmp_core.h"
+#include "bmf_hashdmp.h"
 
 void print_usage(char *argv[])
 {

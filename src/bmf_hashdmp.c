@@ -1,4 +1,4 @@
-#include "hash_dmp_core.h"
+#include "bmf_hashdmp.h"
 
 void print_hash_dmp_usage(char *argv[]) {
 	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
@@ -13,91 +13,7 @@ void print_hash_dmp_opt_err(char *argv[], char *optarg) {
 	exit(1);
 }
 
-splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
-{
-	if(!settings_ptr) {
-		fprintf(stderr, "[E:%s] Settings pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!splitter_ptr) {
-		fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	ret->n = splitter_ptr->n_handles;
-	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	for(int i = 0; i < ret->n; ++i) {
-		if(!splitter_ptr->fnames_r1[i]) {
-			fprintf(stderr, "[E:%s] Input r1 filename with index %i null. Abort!\n", __func__, i);
-			exit(EXIT_FAILURE);
-		}
-		if(!splitter_ptr->fnames_r2[i]) {
-			fprintf(stderr, "[E:%s] Input r2 filename with index %i null. Abort!\n", __func__, i);
-			exit(EXIT_FAILURE);
-		}
-		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r2[i] = strdup(tmp_buffer);
-	}
-	return ret;
-}
 
-
-splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
-{
-	if(!settings_ptr) {
-		fprintf(stderr, "[E:%s] Settings pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!splitter_ptr) {
-		fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	ret->n = splitter_ptr->n_handles;
-	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
-		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r2[i] = strdup(tmp_buffer);
-	}
-	return ret;
-}
-
-void splitterhash_destroy(splitterhash_params_t *params)
-{
-	for(int i = 0; i < params->n; ++i) {
-		free(params->outfnames_r1[i]);
-		free(params->outfnames_r2[i]);
-	}
-	free(params->outfnames_r1);
-	free(params->outfnames_r2);
-	free(params);
-	params = NULL;
-	return;
-}
 
 tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 {

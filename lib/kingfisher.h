@@ -47,6 +47,76 @@ typedef struct tmpvars {
 } tmpvars_t;
 
 
+
+typedef struct mssi_settings {
+	int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
+	int n_nucs; // Number of nucleotides to split by.
+	char *output_basename;
+	char *input_r1_path;
+	char *input_r2_path;
+	char *homing_sequence; // Homing sequence...
+	int homing_sequence_length; // Length of homing sequence, should it be used.
+	int n_handles; // Number of handles
+	int notification_interval; // How many sets of records do you want to process between progress reports?
+	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
+	char *rescaler_path; // Path to rescaler for
+	int threads;
+	int run_hash_dmp;
+	char *ffq_prefix; // Final fastq prefix
+	char *rescaler; // Four-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases)
+	int blen;
+	int blen1_2;
+	int max_blen;
+	int gzip_output;
+	int panthera;
+	int gzip_compression;
+	int cleanup; // Set to false to leave temporary files
+	int annealed; // Set to true to avoid reversing sequences TODO: Actually implement this.
+} mssi_settings_t;
+
+typedef struct mss_settings {
+	int cleanup;
+	int hp_threshold;
+	int n_nucs;
+	int n_handles;
+	char *output_basename;
+	int notification_interval;
+	char *index_fq_path;
+	char *input_r1_path;
+	char *input_r2_path;
+	char *ffq_prefix;
+	int run_hash_dmp;
+	int gzip_output;
+	int gzip_compression;
+	int panthera; // One "big cat" or many small cats?
+	int salt; // Number of bases from each of read 1 and read 2 to use to salt
+	int offset; // The number of bases at the start of reads 1 and 2 to skip when salting
+	int threads; // Number of threads to use for parallel dmp
+	char *rescaler_path;
+	char *rescaler;
+} mss_settings_t;
+
+
+typedef struct mark_splitter {
+	FILE **tmp_out_handles_r1;
+	FILE **tmp_out_handles_r2;
+	int n_nucs;
+	int n_handles;
+	char **fnames_r1;
+	char **fnames_r2;
+} mark_splitter_t;
+
+
+typedef struct splitterhash_params {
+	char **infnames_r1;
+	char **infnames_r2;
+	char **outfnames_r1;
+	char **outfnames_r2;
+	int n; // Number of infnames and outfnames
+	int paired; // 1 if paired, 0 if single-end
+} splitterhash_params_t;
+
+
 typedef struct KingFisher {
 	uint16_t *nuc_counts; // Count of nucleotides of this form
 	uint32_t *phred_sums; // Sums of -10log10(p-value)

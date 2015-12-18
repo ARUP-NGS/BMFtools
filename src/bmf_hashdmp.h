@@ -2,15 +2,16 @@
 #define KHASH_DMP_CORE_H
 #include "khash.h"
 #include "uthash.h"
+#include "kingfisher.h"
 #include "crms.h"
 #include <assert.h>
 
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
 void hash_dmp_core(char *infname, char *outfname);
 int hash_dmp_main(int argc, char *argv[]);
-void splitterhash_destroy(splitterhash_params_t *params);
-splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+extern void splitterhash_destroy(splitterhash_params_t *params);
+extern splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+extern splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 void stranded_hash_dmp_core(char *infname, char *outfname);
 
 typedef struct HashKing {
@@ -24,12 +25,12 @@ typedef struct HashKing {
 static inline void cp_view2buf(char *view, char *buf)
 {
 	int blen = 0;
-	while(view[blen] != '\0' && view[blen] != '|') {
-		buf[blen] = view[blen];
-        ++blen;
+	start:
+	switch(view[blen]) {
+		case '\0': // Fall-through
+		case '|': buf[blen] = '\0'; return;
+		default: buf[blen] = view[blen]; ++blen; goto start;
 	}
-	buf[blen] = '\0';
-	return;
 }
 
 
