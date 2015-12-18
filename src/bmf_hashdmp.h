@@ -24,12 +24,12 @@ typedef struct HashKing {
 
 static inline void cp_view2buf(char *view, char *buf)
 {
-	int blen = 0;
-	start:
-	switch(view[blen]) {
-		case '\0': // Fall-through
-		case '|': buf[blen] = '\0'; return;
-		default: buf[blen] = view[blen]; ++blen; goto start;
+	FOREVER {
+		switch(*view) {
+			case '\0': // Fall-through
+			case '|': *buf++ = '\0'; return;
+			default: *buf++ = *view++;
+		}
 	}
 }
 
@@ -50,14 +50,7 @@ static inline void tmpvars_destroy(tmpvars_t *tmp)
  */
 static inline void cp_bs2buf(kseq_t *seq, char *buf)
 {
-	const char *view = barcode_mem_view(seq);
-	int blen = 0;
-	while(view[blen] != '\0' && view[blen] != '|') {
-		++blen;
-	}
-	memcpy(buf, view, blen);
-	buf[blen] = '\0';
-	return;
+	cp_view2buf(barcode_mem_view(seq), buf);
 }
 
 
