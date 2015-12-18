@@ -108,14 +108,14 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		exit(EXIT_FAILURE);
 	}
 
-	uint8_t *bSeq = (uint8_t *)bam_get_seq(b);
-	uint8_t *pSeq = (uint8_t *)bam_get_seq(p);
-	uint8_t *bQual = (uint8_t *)bam_get_qual(b);
-	uint8_t *pQual = (uint8_t *)bam_get_qual(p);
+	uint8_t *const bSeq = (uint8_t *)bam_get_seq(b);
+	uint8_t *const pSeq = (uint8_t *)bam_get_seq(p);
+	uint8_t *const bQual = (uint8_t *)bam_get_qual(b);
+	uint8_t *const pQual = (uint8_t *)bam_get_qual(p);
 	if(!(bSeq && pSeq && bQual && pQual)) {
 		fprintf(stderr, "Qual strings or sequence strings are null. Abort!\n");
 	}
-	int qlen = p->core.l_qseq;
+	const int qlen = p->core.l_qseq;
 	if(p->core.flag & (BAM_FREVERSE)) {
 		for(int i = 0; i < qlen; ++i) {
 			const int qleni1 = qlen - i - 1;

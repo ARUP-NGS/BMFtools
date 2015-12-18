@@ -13,6 +13,7 @@ extern int famstats_main(int argc, char *argv[]);
 extern int bmf_vetter_main(int argc, char *argv[]);
 extern int err_main(int argc, char *argv[]);
 extern int mark_unclipped_main(int argc, char *argv[]);
+extern int cap_qscore_main(int argc, char *argv[]);
 
 int bmftools_usage(int rc)
 {
@@ -25,6 +26,8 @@ int bmftools_usage(int rc)
                     "err:\tCalculate error rates based on cycle, base call, and quality score.\n"
                     "famstats:\tCalculate family size statistics for a bam alignment file.\n"
                     "vet:\tCurate variant calls from another variant caller (.vcf) and a bam alignment.\n"
+                    "mark_unclipped:\tAdd unclipped start position as annotation for both read and mate.\n"
+                    "cap_qscore:\tModifies the quality string as function of family metadata.\n"
 			);
 	exit(rc);
 }
@@ -51,5 +54,7 @@ int main(int argc, char *argv[])
 		return err_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "mark_unclipped") == 0)
 		return mark_unclipped_main(argc - 1, argv + 1);
+	else if(strcmp(argv[1], "cap_qscore") == 0)
+		return cap_qscore_main(argc - 1, argv + 1);
 	fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
 }
