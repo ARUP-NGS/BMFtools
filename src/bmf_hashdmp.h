@@ -3,7 +3,7 @@
 #include "khash.h"
 #include "uthash.h"
 #include "kingfisher.h"
-#include "crms.h"
+#include "bmf_dmp.h"
 #include <assert.h>
 
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)

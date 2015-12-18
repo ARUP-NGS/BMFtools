@@ -19,10 +19,10 @@ UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
 
-BMF_SRC = htslib/sam.c src/bmf_main.c include/sam_opts.c src/crms.c include/igamc_cephes.c src/bmf_hashdmp.c \
-		  src/sdmp.c src/bam_rsq.c src/bmf_famstats.c src/bmf_vetter.c dlib/bed_util.c include/bedidx.c \
+BMF_SRC = htslib/sam.c src/bmf_main.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
+		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c src/bmf_vetter.c dlib/bed_util.c include/bedidx.c \
 		  libhts.a src/bmf_sort.c src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
-		  lib/kingfisher.c dlib/bam_util.c src/mark_unclipped.c src/cap_qscore.c
+		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c
 		  
 
 .PHONY: all clean

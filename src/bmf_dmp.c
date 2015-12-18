@@ -3,7 +3,7 @@
  * For inline Loeb adapters only.
  */
 
-#include "crms.h"
+#include "bmf_dmp.h"
 
 
 void print_crms_usage(char *argv[])

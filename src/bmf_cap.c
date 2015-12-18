@@ -2,8 +2,7 @@
  *  prepares our sophisticated error model for downstream analysis
  *  for BMF-agnostic tools.
 */
-#include "cap_qscore.h"
-#include "bam.h"
+#include "bmf_cap.h"
 
     
 
