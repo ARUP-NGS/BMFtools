@@ -15,7 +15,7 @@ extern int err_main(int argc, char *argv[]);
 extern int mark_unclipped_main(int argc, char *argv[]);
 extern int cap_qscore_main(int argc, char *argv[]);
 
-int bmftools_usage(int rc)
+static int bmftools_usage(int rc)
 {
 	fprintf(stderr, "Usage: bmftools <subcommand>. See subcommand menus for usage.\n");
 	fprintf(stderr, "sort:            Sort for bam rescue.\n"
@@ -57,4 +57,5 @@ int main(int argc, char *argv[])
 	else if(strcmp(argv[1], "cap") == 0)
 		return cap_qscore_main(argc - 1, argv + 1);
 	fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
+	return EXIT_FAILURE;
 }

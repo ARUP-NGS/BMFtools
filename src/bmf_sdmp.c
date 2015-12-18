@@ -1,13 +1,11 @@
 #include <zlib.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <regex.h>
 #include <getopt.h>
 #include <math.h>
 #include <string.h>
 #include <omp.h>
 #include <stdlib.h>
-#include <sys/resource.h>
 #include "cstr_util.h"
 #include "bmf_hashdmp.h"
 

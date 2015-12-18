@@ -4,12 +4,10 @@
 #include <getopt.h>
 #include <math.h>
 #include <omp.h>
-#include <regex.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/resource.h>
 #include <zlib.h>
 #include "array_parser.h"
 #include "binner.h"

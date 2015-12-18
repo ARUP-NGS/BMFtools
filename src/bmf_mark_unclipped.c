@@ -19,17 +19,19 @@ static int unclipped_usage(char *argv[]) {
 	exit(EXIT_FAILURE);
 }
 
+typedef struct option option_t;
+
 
 int mark_unclipped_main(int argc, char *argv[])
 {
 	int c;
 	samFile *in, *out;
 	bam_hdr_t *header;
-	char wmode[3] = {'w', 'b', 0};
+	char wmode[3] = {'w', 'b', '\0'};
     sam_global_args ga;
     memset(&ga, 0, sizeof(ga));
 
-	static const struct option lopts[] = {
+	static option_t lopts[] = {
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
 		{ NULL, 0, NULL, 0 }
 	};

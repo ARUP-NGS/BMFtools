@@ -19,7 +19,6 @@ void err_usage_exit(FILE *fp, int retcode)
 
 void write_final(FILE *fp, fullerr_t *e)
 {
-	fprintf(stderr, "Hey i'm making 4d!\n");
 	for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
 		for(uint32_t qn = 0; qn < nqscores; ++qn) {
 			fprintf(fp, "%i", e->r1->final[0][qn][cycle]);
@@ -36,7 +35,6 @@ void write_final(FILE *fp, fullerr_t *e)
 		}
 		fprintf(fp, "\n");
 	}
-	fprintf(stderr, "Finishing write_final.\n");
 	return;
 }
 
@@ -454,9 +452,6 @@ int err_main(int argc, char *argv[])
 	err_core(argv[optind + 1], fai, f, &open_fmt);
 	fprintf(stderr, "Core finished.\n");
 	fai_destroy(fai);
-	FILE *ch = fopen("counts.txt", "w"), *eh = fopen("errs.txt", "w");
-	write_counts(f, ch, eh);
-	cfclose(ch); cfclose(eh);
 	fill_qvals(f);
 	impute_scores(f);
 	fill_sufficient_obs(f);
