@@ -1,17 +1,18 @@
-#include "err_calc.h"
+#include "bmf_err.h"
 
 #define min_obs 1000uL
 
 void err_usage_exit(FILE *fp, int retcode)
 {
-	fprintf(fp, "Usage: Not written\n"
-			"bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
-			"Opts:\n\t-h/-?\tThis helpful help menu!\n"
-			"\t-r: Name of contig. If set, only reads aligned to this contig are considered\n"
-			"\t-3: Path to write the 3d offset array in tabular format.\n"
-			"\t-f: Path to write the full measured error rates in tabular format.\n"
-			"\t-b: Path to write the cycle/base call error rates in tabular format.\n"
-			"\t-c: Path to write the cycle error rates in tabular format.\n"
+	fprintf(fp,
+			"Usage: bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+			"Flags:\n"
+            "-h/-?\t\tThis helpful help menu!\n"
+			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
+			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
+			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
+			"-b:\t\tPath to write the cycle/base call error rates in tabular format.\n"
+			"-c:\t\tPath to write the cycle error rates in tabular format.\n"
 			);
 	exit(retcode);
 }

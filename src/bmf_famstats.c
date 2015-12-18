@@ -1,4 +1,4 @@
-#include "famstats.h"
+#include "bmf_famstats.h"
 
 int RVWarn = 1;
 #ifndef notification_interval
@@ -6,7 +6,7 @@ int RVWarn = 1;
 #endif
 
 int frac_usage_exit(FILE *fp, int code) {
-	fprintf(fp, "famstats frac <opts> <in.bam>\n"
+	fprintf(fp, "bmftools famstats frac <opts> <in.bam>\n"
 			"Opts:\n-m minFM to accept. REQUIRED.\n"
 			"-h, -?: Return usage.\n");
 	exit(code);
@@ -33,7 +33,7 @@ static void print_hashstats(famstats_t *stats)
 
 void target_usage_exit(FILE *fp, int success)
 {
-	fprintf(fp, "Usage: famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
+	fprintf(fp, "Usage: bmftools famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
 			"-p padding. Number of bases around bed regions to pad. Default: 25.\n"
 			"-h, -?: Return usage.\n");
 	exit(success);
@@ -207,7 +207,7 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 
 static void usage_exit(FILE *fp, int exit_status)
 {
-	fprintf(fp, "Usage: famstat <in.bam>\n");
+	fprintf(fp, "Usage: bmftools famstats\n");
 	fprintf(fp, "Subcommands: \nfm\tFamily Size stats\n"
 			"frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
 			"target\tFraction of raw reads on target.\n");
@@ -216,7 +216,7 @@ static void usage_exit(FILE *fp, int exit_status)
 
 static void fm_usage_exit(FILE *fp, int exit_status)
 {
-	fprintf(fp, "Usage: famstats fm <opts> <in.bam>\n");
+	fprintf(fp, "Usage: bmftools famstats fm <opts> <in.bam>\n");
 	fprintf(fp, "-m Set minimum mapping quality. Default: 0.\n");
 	fprintf(fp, "-f Set minimum family size. Default: 0.\n");
 	exit(exit_status);

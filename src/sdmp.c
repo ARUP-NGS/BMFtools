@@ -192,6 +192,11 @@ int fqms_main(int argc, char *argv[])
 				kroundup32(settings.n_handles));
 	}
 
+    if(argc == 1) {
+        print_usage(argv);
+        return EXIT_SUCCESS;
+    }
+
 	if(argc - 1 != optind + 1) {
 		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
 		print_usage(argv);

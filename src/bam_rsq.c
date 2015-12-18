@@ -427,13 +427,14 @@ void bam_rsq_core(pr_settings_t *settings)
 int pr_usage(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  bam_rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
-    fprintf(stderr, "Option: -s    pr for SE reads [Not implemented]\n");
-    fprintf(stderr, "        -r    Realign reads with no changed bases. Default: False.\n");
-    fprintf(stderr, "        -t    Mismatch limit. Default: 2\n");
-    fprintf(stderr, "        -l    Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
-    fprintf(stderr, "        -u    Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
-    		        "         Note: This requires pre-processing with bmftools mark_unclipped.\n");
+    fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
+    fprintf(stderr, "Flags:\n"
+                    "-s      Rescue for SE reads [Not implemented]\n");
+    fprintf(stderr, "-r      Realign reads with no changed bases. Default: False.\n");
+    fprintf(stderr, "-t      Mismatch limit. Default: 2\n");
+    fprintf(stderr, "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
+    fprintf(stderr, "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
+    		        "Note: This requires pre-processing with bmftools mark_unclipped.\n");
     return 1;
 }
 
