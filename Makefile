@@ -11,10 +11,10 @@ LD= -lm -lz
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude -Isamtools -Idlib
 LIB=
 
-OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
+OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
-PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O2 -fno-inline -Wno-strict-aliasing
+DB_FLAGS = -fno-inline -Wno-unused-function -Wno-strict-aliasing
+PG_FLAGS = -fno-inline -Wno-unused-function -pg -DNDEBUG -O2 -Wno-strict-aliasing
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
