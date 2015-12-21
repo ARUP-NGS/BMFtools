@@ -64,7 +64,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	seq_index = kseq_init(fp_index),
 	l_index = kseq_read(seq_index);
 
-	int bin = 0;
+	uint64_t bin = 0;
 	int count = 0;
 	char pass_fail = '1';
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
@@ -83,7 +83,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1, 0);
 	pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
-	bin = get_binner(rseq1->barcode, settings->n_nucs);
+	bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, rseq1->barcode, pass_fail);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, rseq1->barcode, pass_fail);
 	//fprintf(stderr, "Now beginning to loop through file.\n");
@@ -98,7 +98,7 @@ static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
 		update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0, 0);
 		update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1, 0);
 		pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
-		bin = get_binner(rseq1->barcode, settings->n_nucs);
+		bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, rseq1->barcode, pass_fail);
 		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, rseq1->barcode, pass_fail);
 	}

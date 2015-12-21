@@ -108,10 +108,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 		pass_fail = '0';
 	memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
-	uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Now setting Ns and #s. Length: %i.\n", __func__, n_len);
-#endif
+	uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 	mask_mseq(rseq1, n_len, 'N', '#');
 	mask_mseq(rseq2, n_len, 'N', '#');
 	// Get first barcode.
@@ -131,7 +128,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	    if(pass_fail == '1' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 			pass_fail = '0';
-		bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+		bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	} while (LIKELY(LIKELY(((l1 = kseq_read(seq1)) >= 0)) && LIKELY((l2 = kseq_read(seq2)) >= 0)));
@@ -230,13 +227,12 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, switch_reads);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, switch_reads);
+	uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 	if(switch_reads) {
-	    const uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
 	}
 	else {
-	    const uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 	}
@@ -259,7 +255,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		}
 		if(pass_fail - '0' && (!test_hp_inline(rseq1->barcode, settings->blen, settings->hp_threshold)))
 			pass_fail = '0';
-	    const uint64_t bin = get_binnerul(rseq1->barcode, settings->n_nucs);
+	    bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 		if(switch_reads) {
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');

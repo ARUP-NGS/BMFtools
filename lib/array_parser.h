@@ -24,16 +24,6 @@ static inline int count_lines(char *fname) {
 		exit(EXIT_FAILURE);
 	}
 	char c;
-	/*
-	FOREVER {
-		switch(getc(fp)) {
-		case '\n':
-			++ret;
-		case EOF:
-			break;
-		}
-	}
-	*/
 	while ((c = getc(fp)) != EOF) {
 		if((c) == '\n')
 			++ret;
@@ -145,13 +135,9 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 			arr_len, qual_rescale_fname);
 	int lnum;
 	for(lnum = 0; lnum < readlen; ++lnum) {
-		//fprintf(stderr, "Now reading line %i.\n", lnum);
 		for(int readnum = 0; readnum < 2; ++readnum) {
-			//fprintf(stderr, "Now working with read %i.\n", readnum + 1);
 			for(int qnum = 0; qnum < nqscores; ++qnum) {
-				//fprintf(stderr, "Now working with qscore %i.\n", qnum + 2);
 				for(int bnum = 0; bnum < 4; ++bnum) {
-					//fprintf(stderr, "Now working with base %c.\n", num2nuc(bnum));
 					tok = strtok(tok ? NULL : buffer, "|:,\n");
 					if(!tok)
 						break;
@@ -168,7 +154,7 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 								" that can be held in the fastq format. Capping at 93. Value: %i.\n",
 								__func__, ret[index - 1]);
 						ret[index - 1] = 93;
-					}else if(ret[index - 1] < 2) ret[index - 1] = 2;
+					} else if(ret[index - 1] < 2) ret[index - 1] = 2;
 				}
 			}
 		}
