@@ -4,7 +4,7 @@
 	bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[index]))));\
 	bufs->agrees[i] = kfp->nuc_counts[index];\
 	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) ?\
-		ARRG_MAX_TO_NUC(argmaxret): 'N';\
+		num2nuc(argmaxret): 'N';\
     if(bufs->cons_seq_buffer[i] == 'N') bufs->cons_quals[i] = 2
 
 // TODO: rewrite dmp_process_write and stranded_process_write to write the PV/FA strings straight to output

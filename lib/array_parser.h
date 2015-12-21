@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ARRAY_PARSER_H
+#define ARRAY_PARSER_H
 
 #include <math.h>
 #include <omp.h>
@@ -19,14 +20,23 @@ static inline int count_lines(char *fname) {
 	int ret = 0;
 	FILE *fp = fopen(fname, "r");
 	if(!fp) {
-		fprintf(stderr, "Could not open file %s. Abort mission!\n", fname);
+		fprintf(stderr, "[E:%s] Could not open file %s. Abort mission!\n", __func__, fname);
 		exit(EXIT_FAILURE);
 	}
 	char c;
-	while ((c = getc(fp)) != EOF) {
-		if((c) == '\n') {
+	/*
+	FOREVER {
+		switch(getc(fp)) {
+		case '\n':
 			++ret;
+		case EOF:
+			break;
 		}
+	}
+	*/
+	while ((c = getc(fp)) != EOF) {
+		if((c) == '\n')
+			++ret;
 	}
 	fclose(fp);
 	return ret;
@@ -86,36 +96,29 @@ static inline char ****parse_rescaler(char *qual_rescale_fname)
 
 static void period_to_null(char *instr)
 {
-	int i = 0;
-	while(instr[i]) {
-		if(instr[i] == '.') {
-			instr[i] = '\0';
-		}
-		++i;
+	/*
+	start:
+	switch(*instr++) {
+	case '\0':
+		return;
+	case '.':
+		*(instr - 1) = '\0';
+		return;
 	}
-}
-
-static inline char num2nuc(int num)
-{
-	switch(num) {
-	case 0:
-		return 'A';
-	case 1:
-		return 'C';
-	case 2:
-		return 'G';
-	case 3:
-		return 'T';
-	default: return 'N';
+	goto start;
+	*/
+	while(*instr++) {
+		if(*(instr - 1) == '.')
+			*(instr - 1) = '\0';
 	}
 }
 
 
 static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 {
-	int readlen = count_lines(qual_rescale_fname);
+	const int readlen = count_lines(qual_rescale_fname);
 #if DBG
-	fprintf(stderr, "Number of lines: %i.\n", readlen);
+	fprintf(stderr, "[D:%s] Number of lines: %i.\n", __func__, readlen);
 #endif
 	FILE *fp = fopen(qual_rescale_fname, "rb");
 	if(!fp) {
@@ -123,26 +126,23 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 		exit(EXIT_FAILURE);
 	}
 	fseek(fp, 0, SEEK_END);
-	int length;
-	length = ftell(fp);
-	char *buffer;
+	const int length = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
-	buffer = malloc(length * sizeof(char));
-	if(buffer) {
+	char *buffer = (char *)malloc(length * sizeof(char));
+	if(buffer)
 		  fread(buffer, 1, length, fp);
-	}
 	else {
 		  fprintf(stderr, "MEMORY ERROR.\n");
-	exit(EXIT_FAILURE);
+		  exit(EXIT_FAILURE);
 	}
-	fclose(fp);
-	fp = NULL;
-	int arr_len = 2 * readlen * nqscores * 4;
+	fclose(fp), fp = NULL;
+	const int arr_len = 2 * readlen * nqscores * 4;
 	char *ret = (char *)malloc(arr_len * sizeof(char));
-	memset(ret, -127, arr_len);
+	memset(ret, -127, arr_len); // Set all of these char values to -127, which is definitely unprintable
 	char *tok = NULL;
 	size_t index = 0;
-	fprintf(stderr, "Parsing in array with read len %i from %s...\n", arr_len, qual_rescale_fname);
+	fprintf(stderr, "[D:%s] Parsing in array with read len %i from %s...\n", __func__,
+			arr_len, qual_rescale_fname);
 	int lnum;
 	for(lnum = 0; lnum < readlen; ++lnum) {
 		//fprintf(stderr, "Now reading line %i.\n", lnum);
@@ -153,43 +153,36 @@ static inline char *parse_1d_rescaler(char *qual_rescale_fname)
 				for(int bnum = 0; bnum < 4; ++bnum) {
 					//fprintf(stderr, "Now working with base %c.\n", num2nuc(bnum));
 					tok = strtok(tok ? NULL : buffer, "|:,\n");
-					if(!tok) {
+					if(!tok)
 						break;
-					}
 					period_to_null(tok);
 					ret[index++] = (char)((int)(atof(tok) + 0.5)); // Round up.
-					//fprintf(stderr, "Quality score set: %i.\n", ret[index - 1]);
 					if(ret[index - 1] < 0) {
 						fprintf(stderr,
-								"Negative integer in 1d rescaler %i, %s). Index:"
-								" %"PRIu64". Abort mission!\n", ret[index - 1], tok, index - 1);
+								"[E:%s] Negative integer in 1d rescaler %i, %s). Index:"
+								" %lu. Abort mission!\n", __func__, ret[index - 1], tok, index - 1);
 						exit(EXIT_FAILURE);
-					}
-					if(ret[index - 1] > 93) {
+					} else if(ret[index - 1] > 93) {
 						fprintf(stderr,
-								"WARNING: rescaled quality score above the max"
-								" that can be held in the fastq format. Capping at 93. Value: %i.\n", ret[index - 1]);
+								"[W:%s] rescaled quality score above the max"
+								" that can be held in the fastq format. Capping at 93. Value: %i.\n",
+								__func__, ret[index - 1]);
 						ret[index - 1] = 93;
-					}
-					if(ret[index - 1] == 0) {
-						//fprintf(stderr, "Hey this is crazy. Let's set these to two...\n");
-						ret[index - 1] = 2;
-					}
-					//fprintf(stderr, "New qual str: %s. New qual: %c. Cycle: %i. Read num: %i. Qscore num %i. Basecall %i. .\n", tok, atoi(tok) + 33, lnum + 1, readnum + 1, qnum + 2, bnum + 1);
+					}else if(ret[index - 1] < 2) ret[index - 1] = 2;
 				}
 			}
 		}
 	}
-	fprintf(stderr, "Final index: %" PRIu64 ". Expected: %i.\n", index, arr_len);
 	if(index != arr_len) {
-		fprintf(stderr, "Unexpected index! Abort!\n");
+		fprintf(stderr, "[E:%s] Unexpected index! Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "Final line num: %i. Expected: %i.\n", lnum, readlen);
 	if(lnum != readlen) {
-		fprintf(stderr, "Unexpected index! Abort!\n");
+		fprintf(stderr, "[E:%s] Unexpected index! Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	free(buffer);
 	return ret;
 }
+
+#endif // ARRAY_PARSER_H

@@ -331,7 +331,7 @@ void fill_sufficient_obs(fullerr_t *f)
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 {
-	const char *bstr = "ACGT";
+	const char *const bstr = "ACGT";
 	FILE *dictwrite = fopen("dict.txt", "w");
 	fprintf(dictwrite, "{\n\t");
 	for(uint32_t l = 0; l < f->l; ++l) {
