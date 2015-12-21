@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
-#include "array_parser.h"
 #include "binner.h"
 #include "cstr_util.h"
 #include "kingfisher.h"

@@ -1,16 +1,49 @@
 #ifndef ARRAY_PARSER_H
 #define ARRAY_PARSER_H
-
-#include <math.h>
-#include <omp.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <zlib.h>
-#include <inttypes.h>
-#include "kingfisher.h"
+#include "char_util.h"
+
+#define nqscores 39uL // Number of q scores in sequencing.
+
+/*
+ * @func rescale_qscore
+ * Returns a rescaled qscore using readnumber, qscore, cycle, base call, and an associated rescaling array.
+ * :param: readnum [int] 0 if 1, 1 if read 2
+ * :param: qscore [char] Character in quality string, with 33 offset. (e.g., '#' means 0.)
+ * :param: cycle [int] Cycle number on the sequencer, 0-based.
+ * :param: base [char] base call at position.
+ * @discussion: Note - the rescaled q score in the flat text file has not been offset by 33.
+ * This was done to make it more human-readable, though it does necessitate incrementing the quality score
+ * by 33 each time a qscore is returned. Thoughts?
+ *
+ */
+CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler)
+{
+	int index = readnum;
+	int mult = 2;
+	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
+	index += cycle * mult;
+	mult *= readlen;
+	//fprintf(stderr, "index value is now: %i, mult %i. Qscore: %i, Qscore index%i.\n", index, mult, qscore, qscore - 35);
+	index += (qscore - 35) * mult; // Subtract 35 - 33 to get to phred space, 2 to offset by 2.
+	mult *= nqscores;
+	//fprintf(stderr, "index value is now: %i, mult %i.\n", index, mult);
+	index += mult * nuc2num_acgt(base);
+	//fprintf(stderr, "Index = %i.\n", index);
+#if DBG
+	if(index >= readlen * 2 * nqscores * 4 || index < 0) {
+		fprintf(stderr, "Something's wrong. Index (%i) is too big or negative! Max: %i.\n", index, readlen * 2 * nqscores * 4);
+		exit(EXIT_FAILURE);
+	}
+	//fprintf(stderr, "Value at index: %i (%c).\n", rescaler[index], rescaler[index] + 33);
+	if(rescaler[index] < 0) {
+		fprintf(stderr, "WTF THIS CAN'T BE BELOW 0 (%i).\n", rescaler[index]);
+		exit(EXIT_FAILURE);
+	}
+#endif
+	return rescaler[index] + 33;
+}
 
 
 // Shamelessly stolen from the source code for 'wc'.
