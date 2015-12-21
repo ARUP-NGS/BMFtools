@@ -159,12 +159,6 @@ static inline void fill_fa(int readlen, uint16_t *agrees, char *buffer)
 	}
 }
 
-
-
-
-
-
-
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 	const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
 	++kfp->nuc_counts[posdata];

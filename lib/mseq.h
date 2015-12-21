@@ -52,29 +52,11 @@ CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, cha
  * :returns: [char *] Pointer to the start of the barcode.
  * This is *NOT* a properly null-terminated string.
  */
-CONST inline char *mem_view(char *comment)
-{
-	int hits = 0;
-	for(;;++comment) {
-		if(*comment == '|' || *comment == '\0') {
-			if(hits) return (char *)comment + 4; // 4 for "|BS="
-			else hits = 1;
-		}
-	}
-	return NULL; // This shouldn't ever happen.
-}
-/*
- * @func mem_view
- * Goes until it finds a second delimiter character, then returns a pointer 4 beyond it.
- * This points to the barcode sequence in a fastq comment.
- * :param: seq [kseq_t *] kseq record.
- * :returns: [char *] Pointer to the start of the barcode.
- * This is *NOT* a properly null-terminated string.
- */
-CONST inline char *barcode_mem_view(kseq_t *seq)
-{
-	return mem_view(seq->comment.s);
-}
+
+char *mem_view(char *);
+
+// calls mem_view on the comment field of the kseq_t struct.
+#define barcode_mem_view(seq) mem_view(seq->comment.s)
 
 /*
  * @func switch_test

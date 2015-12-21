@@ -13,7 +13,7 @@ LIB=
 
 OPT_FLAGS = -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
 #O2_FLAGS = -O2 -DNDEBUG -finline-functions
-DB_FLAGS = -fno-inline -Wno-unused-function -Wno-strict-aliasing
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O2 -fno-inline -Wno-strict-aliasing
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 

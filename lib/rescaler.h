@@ -56,13 +56,12 @@ static inline int count_lines(char *fname) {
 		fprintf(stderr, "[E:%s] Could not open file %s. Abort mission!\n", __func__, fname);
 		exit(EXIT_FAILURE);
 	}
-	char c;
-	while ((c = getc(fp)) != EOF) {
-		if((c) == '\n')
-			++ret;
+	start:
+	switch(getc(fp)) {
+		case EOF: fclose(fp); return ret;
+		case '\n': ++ret;
 	}
-	fclose(fp);
-	return ret;
+	goto start;
 }
 
 static inline char ****parse_rescaler(char *qual_rescale_fname)
@@ -130,9 +129,10 @@ static void period_to_null(char *instr)
 	}
 	goto start;
 	*/
-	while(*instr++) {
-		if(*(instr - 1) == '.')
-			*(instr - 1) = '\0';
+	while(*instr) {
+		if(*(instr) == '.')
+			*(instr) = '\0';
+		++instr;
 	}
 }
 

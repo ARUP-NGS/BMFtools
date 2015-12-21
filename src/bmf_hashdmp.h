@@ -1,9 +1,9 @@
 #ifndef KHASH_DMP_CORE_H
 #define KHASH_DMP_CORE_H
-#include "khash.h"
 #include "uthash.h"
 #include "kingfisher.h"
 #include "bmf_dmp.h"
+#include "mseq.h"
 #include <assert.h>
 
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
@@ -14,6 +14,7 @@ extern splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, m
 extern splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 void stranded_hash_dmp_core(char *infname, char *outfname);
 
+//CONST extern inline char *mem_view(char *);
 typedef struct HashKing {
 	UT_hash_handle hh;
 	char id[MAX_BARCODE_LENGTH + 1];
@@ -43,15 +44,12 @@ static inline void tmpvars_destroy(tmpvars_t *tmp)
 }
 
 
-/*
+/* @func
+ * Copies the barcode sequence from a fastq comment field into a buffer
  * :param: seq - [arg/kseq_t *] a filled-in kseq object.
  * :param: buf - a pre-allocated buffer or malloc'd char_ptr with enough space for the barcode and the null terminus.
- * :returns:
  */
-static inline void cp_bs2buf(kseq_t *seq, char *buf)
-{
-	cp_view2buf(barcode_mem_view(seq), buf);
-}
+#define cp_bs2buf(seq, buf) cp_view2buf(barcode_mem_view(seq), buf)
 
 
 

@@ -1,5 +1,17 @@
 #include "mseq.h"
 
+CONST inline char *mem_view(char *comment)
+{
+	int hits = 0;
+	for(;;++comment) {
+		if(*comment == '|' || *comment == '\0') {
+			if(hits) return (char *)comment + 4; // 4 for "|BS="
+			else hits = 1;
+		}
+	}
+	return NULL; // This shouldn't ever happen.
+}
+
 
 /*
  * :param: kseq_t *seq1 - fastq kseq handle
@@ -28,11 +40,10 @@ static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int off
 
 void mseq_destroy(mseq_t *mvar)
 {
-	// Note: do not free barcode, as that is owned by another.
+	// Note: does not free barcode, as that is owned by another.
 	mvar->l = 0;
 	mvar->blen = 0;
-	cond_free(mvar);
-	return;
+	free(mvar);
 }
 
 
