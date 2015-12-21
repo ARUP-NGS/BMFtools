@@ -108,7 +108,7 @@ typedef struct crms_settings {
 //char *trim_ext(char *fname);
 
 
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr);
+int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 
 
@@ -134,7 +134,7 @@ CONST static inline char test_hp(char *seq, int threshold)
 
 
 /*
- * :param: settings [crms_settings_t, mssi_settings_t] Settings struct in which to free the rescaler.
+ * :param: settings [crms_settings_t, marksplit_settings_t] Settings struct in which to free the rescaler.
  * :return: void
  * This function supersedes free_rescaler_array by being type-generic.
  */
@@ -157,8 +157,7 @@ CONST static inline char test_hp(char *seq, int threshold)
 	} while(0)
 
 
-extern splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-extern splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+extern splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 extern void splitterhash_destroy(splitterhash_params_t *params);
 
 /*
@@ -197,7 +196,7 @@ CONST static inline int infer_barcode_length(char *bs_ptr)
 #endif
 
 
-CONST static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+CONST static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr)
 {
 	if(settings_ptr->max_blen < 0) {
 		return (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
@@ -212,7 +211,7 @@ CONST static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_setting
 	return -1;
 }
 
-CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr, int default_len, char *pass_fail)
+CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, char *pass_fail)
 {
 	if(settings_ptr->max_blen < 0) {
 		*pass_fail = (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),

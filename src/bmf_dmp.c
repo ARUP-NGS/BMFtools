@@ -45,7 +45,7 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
  */
-mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
+mark_splitter_t *pp_split_annealed(marksplit_settings_t *settings)
 {
 #if WRITE_BARCODE_FQ
 	FILE *fp = fopen("tmp.molbc.fq", "w");
@@ -60,7 +60,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	}
 	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
-	*splitter = init_splitter_inline(settings);
+	*splitter = init_splitter(settings);
 	gzFile fp1 = gzopen(settings->input_r1_path, "r");
 	gzFile fp2 = gzopen(settings->input_r2_path, "r");
 	kseq_t *seq1 = kseq_init(fp1);
@@ -72,7 +72,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	settings->blen1_2 = settings->blen / 2;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
-			free_mssi_settings_ptr(settings);
+            free_marksplit_settings(*settings);
 			splitter_destroy(splitter);
 			exit(EXIT_FAILURE);
 	}
@@ -147,7 +147,7 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
  */
-mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
+mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 {
 #if WRITE_BARCODE_FQ
 	FILE *fp = fopen("tmp.molbc.fq", "w");
@@ -166,7 +166,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	}
 	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
-	*splitter = init_splitter_inline(settings);
+	*splitter = init_splitter(settings);
 	gzFile fp1 = gzopen(settings->input_r1_path, "r");
 	gzFile fp2 = gzopen(settings->input_r2_path, "r");
 	kseq_t *seq1 = kseq_init(fp1);
@@ -178,7 +178,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	settings->blen1_2 = settings->blen / 2;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
-			free_mssi_settings_ptr(settings);
+            free_marksplit_settings(*settings);
             splitter_destroy(splitter);
 			exit(EXIT_FAILURE);
 	}
@@ -277,12 +277,13 @@ int crms_main(int argc, char *argv[])
 {
     if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
 	// Build settings struct
-	mssi_settings_t settings = {
+	marksplit_settings_t settings = {
 		.hp_threshold = 10,
 		.n_nucs = 2,
 		.output_basename = NULL,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,
+		.index_fq_path = NULL, // This is unused for inline experiments.
 		.homing_sequence = NULL,
 		.n_handles = 0,
 		.notification_interval = 1000000,
@@ -299,7 +300,8 @@ int crms_main(int argc, char *argv[])
 		.panthera = 0,
 		.gzip_compression = 1,
 		.cleanup = 1,
-		.annealed = 0
+		.annealed = 0,
+		.salt = 0 // This is unused for inline experiments
 	};
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
@@ -525,12 +527,12 @@ int crms_main(int argc, char *argv[])
 		splitterhash_destroy(params);
 		free(settings.ffq_prefix);
 	}
-	free_mssi_settings(settings);
+    free_marksplit_settings(settings);
     splitter_destroy(splitter);
 	return 0;
 }
 
-inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, mssi_settings_t *settings_ptr)
+inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr)
 {
     return (settings_ptr->homing_sequence) ?
         (memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),

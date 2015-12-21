@@ -34,7 +34,7 @@ void print_usage(char *argv[])
 						argv[0]);
 }
 
-static mark_splitter_t *splitmark_core_rescale(mss_settings_t *settings)
+static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 {
 	if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
 		fprintf(stderr, "[E:%s]Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n",
@@ -130,7 +130,7 @@ void print_opt_err(char *argv[], char *optarg)
 int fqms_main(int argc, char *argv[])
 {
 	// Build settings struct
-	mss_settings_t settings = {
+	marksplit_settings_t settings = {
 		.hp_threshold = 10,
 		.n_nucs = 2,
 		.index_fq_path = NULL,
@@ -227,7 +227,7 @@ int fqms_main(int argc, char *argv[])
 			settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
 		}
 		// Whatever I end up putting into here.
-		splitterhash_params_t *params = init_splitterhash_mss(&settings, splitter);
+		splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 		fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 		#pragma omp parallel
 		{
