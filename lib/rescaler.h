@@ -6,6 +6,20 @@
 
 #define nqscores 39uL // Number of q scores in sequencing.
 
+
+#define free_rescaler_array(settings) \
+		int _readlen = count_lines(settings.rescaler_path);\
+		for(int i##settings = 0; i##settings < 2; ++i##settings) {\
+			for(int j##settings = 0; j##settings < _readlen; ++j##settings) {\
+				for(int k##settings = 0; k##settings < nqscores; ++k##settings) {\
+					cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
+				}\
+				cond_free(settings.rescaler[i##settings][j##settings]);\
+			}\
+			cond_free(settings.rescaler[i##settings]);\
+		}\
+		cond_free(settings.rescaler)\
+
 /*
  * @func rescale_qscore
  * Returns a rescaled qscore using readnumber, qscore, cycle, base call, and an associated rescaling array.

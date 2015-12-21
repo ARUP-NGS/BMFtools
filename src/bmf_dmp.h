@@ -23,9 +23,6 @@
 #ifndef CAT_BUFFER_SIZE
 #define CAT_BUFFER_SIZE 500000
 #endif
-#ifndef METASYNTACTIC_FNAME_BUFLEN
-#define METASYNTACTIC_FNAME_BUFLEN 100
-#endif
 #ifndef MAX_N_BLENS
 #define MAX_N_BLENS 10
 #endif
@@ -160,49 +157,9 @@ CONST static inline char test_hp(char *seq, int threshold)
 	} while(0)
 
 
-splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-void splitterhash_destroy(splitterhash_params_t *params);
-
-
-static inline splitterhash_params_t *init_vl_splitterhash(crms_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
-{
-#if !NDEBUG
-	fprintf(stderr, "[D:%s]Initializing splitterhash. Output basename: %s.\n", __func__,
-            settings_ptr->output_basename);
-#endif
-	if(!settings_ptr) {
-		fprintf(stderr, "[E:%s]Settings pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "[E:%s]Output basename not set. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!splitter_ptr) {
-		fprintf(stderr, "[E:%s]Splitter pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	ret->n = splitter_ptr->n_handles;
-	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
-		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r2[i] = strdup(tmp_buffer);
-	}
-	return ret;
-}
-
-
-static const char *crms_suffix = ".crms.split";
+extern splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+extern splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+extern void splitterhash_destroy(splitterhash_params_t *params);
 
 /*
  * Returns a null-terminated string with the default outfname.
@@ -221,86 +178,7 @@ static inline char *make_default_outfname(char *fname, const char *suffix)
 
 static inline char *make_crms_outfname(char *fname)
 {
-	return make_default_outfname(fname, crms_suffix);
-}
-
-#define free_rescaler_array(settings) \
-		int readlen = count_lines(settings.rescaler_path);\
-		for(int i##settings = 0; i##settings < 2; ++i##settings) {\
-			for(int j##settings = 0; j##settings < readlen; ++j##settings) {\
-				for(int k##settings = 0; k##settings < nqscores; ++k##settings) {\
-					cond_free(settings.rescaler[i##settings][j##settings][k##settings]);\
-				}\
-				cond_free(settings.rescaler[i##settings][j##settings]);\
-			}\
-			cond_free(settings.rescaler[i##settings]);\
-		}\
-		cond_free(settings.rescaler)\
-
-static inline void FREE_SPLITTER_PTR(mark_splitter_t *var)
-{
-	for(int i = 0; i < var->n_handles; i++) {
-		cond_free(var->fnames_r1[i]); cond_free(var->fnames_r2[i]);
-	}
-	free(var->tmp_out_handles_r1);
-	free(var->tmp_out_handles_r2);
-	free(var), var = NULL;
-	return;
-}
-
-static inline mark_splitter_t init_splitter(mss_settings_t* settings_ptr)
-{
-	mark_splitter_t ret = {
-		.n_handles = ipow(4, settings_ptr->n_nucs),
-		.n_nucs = settings_ptr->n_nucs,
-		.fnames_r1 = NULL,
-		.fnames_r2 = NULL,
-		.tmp_out_handles_r1 = NULL,
-		.tmp_out_handles_r2 = NULL
-	};
-	// Avoid passing more variables.
-	ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-	ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-	ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
-	ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	for (int i = 0; i < ret.n_handles; i++) {
-		sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);
-		ret.fnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
-		ret.fnames_r2[i] = strdup(tmp_buffer);
-		ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
-		ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
-	}
-	return ret;
-}
-
-
-static inline mark_splitter_t init_splitter_inline(mssi_settings_t* settings_ptr)
-{
-	mark_splitter_t ret = {
-		.n_handles = ipow(4, settings_ptr->n_nucs),
-		.n_nucs = settings_ptr->n_nucs,
-		.fnames_r1 = NULL,
-		.fnames_r2 = NULL,
-		.tmp_out_handles_r1 = NULL,
-		.tmp_out_handles_r2 = NULL
-	};
-	// Avoid passing more variables.
-	ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-	ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
-	ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
-	ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	for (int i = 0; i < ret.n_handles; i++) {
-		sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);
-		ret.fnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);
-		ret.fnames_r2[i] = strdup(tmp_buffer);
-		ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
-		ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
-	}
-	return ret;
+	return make_default_outfname(fname, ".crms.split");
 }
 
 
@@ -312,30 +190,6 @@ CONST static inline int infer_barcode_length(char *bs_ptr)
 			return ret;
 	return -1; // This never happens.
 }
-
-
-static inline void free_mssi_settings(mssi_settings_t settings)
-{
-	free(settings.output_basename);
-	free(settings.input_r1_path);
-	free(settings.input_r2_path);
-	if(settings.rescaler_path) free(settings.rescaler_path);
-	return;
-}
-
-#ifndef FREE_MSSI_SETTINGS_PTR
-#define FREE_MSSI_SETTINGS_PTR(settings) cond_free(settings->output_basename);\
-	cond_free(settings->input_r1_path);\
-	cond_free(settings->input_r2_path);\
-	cond_free(settings->rescaler_path)
-#endif
-
-#ifndef FREE_MSSI_SETTINGS
-#define FREE_MSSI_SETTINGS(settings) cond_free(settings.output_basename);\
-	cond_free(settings.input_r1_path);\
-	cond_free(settings.input_r2_path);\
-	cond_free(settings.rescaler_path);
-#endif
 
 
 #ifndef kroundup32

@@ -326,7 +326,7 @@ int fqms_main(int argc, char *argv[])
 		}
 		splitterhash_destroy(params);
 	}
-	FREE_SPLITTER_PTR(splitter);
+	splitter_destroy(splitter);
 	FREE_SETTINGS(settings);
 	return 0;
 }

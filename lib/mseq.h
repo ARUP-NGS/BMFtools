@@ -44,15 +44,6 @@ KSEQ_INIT(gzFile, gzread)
 
 static inline int set_barcode(kseq_t *seq1, kseq_t *seq2, char *barcode, int offset, int blen1_2);
 CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, char base, int readlen, char *rescaler);
-/*
- * @func mem_view
- * Goes until it finds a second delimiter character, then returns a pointer 4 beyond it.
- * This points to the barcode sequence in a fastq comment.
- * :param: comment [char *] comment string
- * :returns: [char *] Pointer to the start of the barcode.
- * This is *NOT* a properly null-terminated string.
- */
-
 char *mem_view(char *);
 
 // calls mem_view on the comment field of the kseq_t struct.
@@ -72,10 +63,33 @@ CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
 
 
 // MSEQ Utilities
+/*
+ * @func mask_mseq_chars
+ * Masks the seq and qual fields with seqchar and qualchar.
+ * Primarily used for masking barcode sequence.
+ * :param: seq [mseq_t *] mseq argument.
+ * :param: n_len [int] Number of characters in qual and seq to mask.
+ * :param: seqchar [char] character with which to mask sequence.
+ * :param: qualchar [char] character with which to mask quality.
+ */
+#define mask_mseq_chars(seqvar, n_len, seqchar, qualchar)\
+	do {\
+		memset(seqvar->seq, seqchar, n_len);\
+		memset(seqvar->qual, qualchar, n_len);\
+	} while(0)
+
+/*
+ * @func mask_mseq
+ * Masks the seq and qual fields with 'N' and '#'.
+ * :param: seq [mseq_t *] mseq argument.
+ * :param: n_len [int] Number of characters in qual and seq to mask.
+ */
+#define mask_mseq(seqvar, n_len) mask_mseq_chars(seqvar, n_len, 'N', '#')
 
 void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2);
+void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads);
 static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode, char prefix)
 {
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
@@ -87,29 +101,6 @@ static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, ch
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
 			mvar->name, pass_fail, barcode, mvar->seq, mvar->qual);
 }
-/*
- * :param: [kseq_t *] seq - kseq handle
- * :param: [mseq_t *] ret - initialized mseq_t pointer.
- * :param: [char *] rescaler - pointer to a 1-dimensional projection of a 4-dimensional array of rescaled phred scores.
- * :param: [tmp_mseq_t *] tmp - pointer to a tmp_mseq_t object
- * for holding information for conditional reverse complementing.
- * :param: [int] n_len - the number of bases to N at the beginning of each read.
- * :param: [int] is_read2 - true if the read is read2.
- * :param: [int] switch_reads - Whether or not to switch reads 1 and 2.
- */
-static inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads)
-{
-	memcpy(mvar->name, seq->name.s, seq->name.l);
-    mvar->name[seq->name.l] = '\0';
-	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-	memset(mvar->seq, 'N', n_len), memset(mvar->qual, '#', n_len);
-	if(rescaler)
-		for(int i = n_len; i < seq->seq.l; ++i)
-			mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
-	else
-		memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
-}
-
 
 // TMP_MSEQ Utilities
 

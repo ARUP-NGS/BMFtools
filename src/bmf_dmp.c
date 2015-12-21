@@ -6,7 +6,7 @@
 #include "bmf_dmp.h"
 
 
-void print_crms_usage(char *argv[])
+void print_crms_usage(char *executable)
 {
 		fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
@@ -32,19 +32,14 @@ void print_crms_usage(char *argv[])
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-u: Set notification/update interval for split. Default: 1000000.\n"
 						"-w: Set flag to leave temporary files. Primarily for debugging.\n"
-						"-h: Print usage.\n", argv[0]);
+						"-h: Print usage.\n", executable);
 }
 
-void print_crms_opt_err(char *argv[], char *optarg)
+void print_crms_opt_err(char *arg, char *optarg, char optopt)
 {
-	print_crms_usage(argv);
-	fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
-	exit(1);
-}
-
-static inline void mask_mseq(mseq_t *rseq, int n_len, char s, char q) {
-	memset(rseq->seq, s, n_len);
-	memset(rseq->qual, q, n_len);
+	print_crms_usage(arg);
+	fprintf(stderr, "[E:%s] Unrecognized option %s for flag %c. Abort!\n", __func__, optarg, optopt);
+	exit(EXIT_FAILURE);
 }
 
 /*
@@ -77,8 +72,8 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 	settings->blen1_2 = settings->blen / 2;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
-			FREE_MSSI_SETTINGS_PTR(settings);
-			FREE_SPLITTER_PTR(splitter);
+			free_mssi_settings_ptr(settings);
+			splitter_destroy(splitter);
 			exit(EXIT_FAILURE);
 	}
 	fprintf(stderr, "[%s]Read length (inferred): %lu.\n", __func__, seq1->seq.l);
@@ -109,8 +104,8 @@ mark_splitter_t *pp_split_annealed(mssi_settings_t *settings)
 		pass_fail = '0';
 	memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	uint64_t bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-	mask_mseq(rseq1, n_len, 'N', '#');
-	mask_mseq(rseq2, n_len, 'N', '#');
+	mask_mseq(rseq1, n_len);
+	mask_mseq(rseq2, n_len);
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 0);
@@ -183,8 +178,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 	settings->blen1_2 = settings->blen / 2;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
-			FREE_MSSI_SETTINGS_PTR(settings);
-			FREE_SPLITTER_PTR(splitter);
+			free_mssi_settings_ptr(settings);
+            splitter_destroy(splitter);
 			exit(EXIT_FAILURE);
 	}
 	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
@@ -222,8 +217,8 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	}
-	mask_mseq(rseq1, n_len, 'N', '#');
-	mask_mseq(rseq2, n_len, 'N', '#');
+	mask_mseq(rseq1, n_len);
+	mask_mseq(rseq2, n_len);
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, switch_reads);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, switch_reads);
@@ -280,7 +275,7 @@ mark_splitter_t *pp_split_inline(mssi_settings_t *settings)
 
 int crms_main(int argc, char *argv[])
 {
-    if(argc == 1) print_crms_usage(argv), exit(EXIT_FAILURE);
+    if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
 	// Build settings struct
 	mssi_settings_t settings = {
 		.hp_threshold = 10,
@@ -315,7 +310,7 @@ int crms_main(int argc, char *argv[])
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
 			case 'g': settings.gzip_compression = atoi(optarg); break;
 			case '?': // Fall-through
-			case 'h': print_crms_usage(argv); return 0;
+			case 'h': print_crms_usage(argv[0]); return 0;
 			case 'l': settings.blen = 2 * atoi(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
@@ -328,7 +323,7 @@ int crms_main(int argc, char *argv[])
 			case 'v': settings.max_blen = atoi(optarg); break;
 			case 'w': settings.cleanup = 0;
 			case 'z': settings.gzip_output = 1; break;
-			default: print_crms_opt_err(argv, optarg);
+			default: print_crms_opt_err(argv[0], optarg, optopt);
 		}
 	}
 
@@ -336,7 +331,7 @@ int crms_main(int argc, char *argv[])
 	omp_set_num_threads(settings.threads);
 
 	if(argc < 5)
-		print_crms_usage(argv), exit(EXIT_FAILURE);
+		print_crms_usage(argv[0]), exit(EXIT_FAILURE);
 
 	settings.n_handles = ipow(4, settings.n_nucs);
 	if(settings.n_handles * 3 > get_fileno_limit()) {
@@ -392,7 +387,7 @@ int crms_main(int argc, char *argv[])
 
 	if(argc - 1 != optind + 1) {
 		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
-		print_crms_usage(argv);
+		print_crms_usage(argv[0]);
 		return 1;
 	}
 	settings.input_r1_path = strdup(argv[optind]);
@@ -531,7 +526,7 @@ int crms_main(int argc, char *argv[])
 		free(settings.ffq_prefix);
 	}
 	free_mssi_settings(settings);
-	FREE_SPLITTER_PTR(splitter);
+    splitter_destroy(splitter);
 	return 0;
 }
 
@@ -559,87 +554,3 @@ inline char test_hp_inline(char *barcode, int length, int threshold)
 	return '1';
 }
 
-splitterhash_params_t *init_splitterhash_mss(mss_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
-{
-	if(!settings_ptr) {
-		fprintf(stderr, "[E:%s] Settings pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!splitter_ptr) {
-		fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	ret->n = splitter_ptr->n_handles;
-	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	for(int i = 0; i < ret->n; ++i) {
-		if(!splitter_ptr->fnames_r1[i]) {
-			fprintf(stderr, "[E:%s] Input r1 filename with index %i null. Abort!\n", __func__, i);
-			exit(EXIT_FAILURE);
-		}
-		if(!splitter_ptr->fnames_r2[i]) {
-			fprintf(stderr, "[E:%s] Input r2 filename with index %i null. Abort!\n", __func__, i);
-			exit(EXIT_FAILURE);
-		}
-		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r2[i] = strdup(tmp_buffer);
-	}
-	return ret;
-}
-
-splitterhash_params_t *init_splitterhash(mssi_settings_t *settings_ptr, mark_splitter_t *splitter_ptr)
-{
-	if(!settings_ptr) {
-		fprintf(stderr, "[E:%s] Settings pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!settings_ptr->output_basename) {
-		fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	if(!splitter_ptr) {
-		fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
-	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
-	ret->n = splitter_ptr->n_handles;
-	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
-		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
-		ret->outfnames_r2[i] = strdup(tmp_buffer);
-	}
-	return ret;
-}
-
-void splitterhash_destroy(splitterhash_params_t *params)
-{
-	for(int i = 0; i < params->n; ++i) {
-		free(params->outfnames_r1[i]);
-		free(params->outfnames_r2[i]);
-	}
-	free(params->outfnames_r1);
-	free(params->outfnames_r2);
-	free(params);
-	params = NULL;
-	return;
-}
