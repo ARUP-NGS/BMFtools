@@ -3,8 +3,8 @@
 CONST inline char *mem_view(char *comment)
 {
 	int hits = 0;
-	for(;;++comment) {
-		switch(*comment) == '|' || *comment == '\0') {
+	for(;;) {
+		switch(*comment++) {
 			case '|':
 			case '\0': if(hits) return (char *)comment + 4; else hits = 1;
 		}
