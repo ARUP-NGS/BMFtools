@@ -38,7 +38,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 {
 	if(strcmp(settings->input_r1_path, settings->input_r2_path) == 0) {
 		fprintf(stderr, "[E:%s]Input read paths are the same {'R1': %s, 'R2': %s}. WTF!\n",
-                __func__, settings->input_r1_path, settings->input_r2_path);
+				__func__, settings->input_r1_path, settings->input_r2_path);
 		exit(EXIT_FAILURE);
 	}
 	else
@@ -57,7 +57,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	}
 	// Open fastqs
 	fp_read1 = gzopen(settings->input_r1_path, "r"), fp_read2 = gzopen(settings->input_r2_path, "r");
-    seq1 = kseq_init(fp_read1), seq2 = kseq_init(fp_read2);
+	seq1 = kseq_init(fp_read1), seq2 = kseq_init(fp_read2);
 	l1 = kseq_read(seq1), l2 = kseq_read(seq2);
 
 	fp_index = gzopen(settings->index_fq_path, "r");
@@ -188,10 +188,10 @@ int fqms_main(int argc, char *argv[])
 				kroundup32(settings.n_handles));
 	}
 
-    if(argc == 1) {
-        print_usage(argv);
-        return EXIT_SUCCESS;
-    }
+	if(argc == 1) {
+		print_usage(argv);
+		return EXIT_SUCCESS;
+	}
 
 	if(argc - 1 != optind + 1) {
 		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
@@ -220,7 +220,7 @@ int fqms_main(int argc, char *argv[])
 	mark_splitter_t *splitter = splitmark_core_rescale(&settings);
 	if(settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
-		                __func__);
+						__func__);
 		if(!settings.ffq_prefix) {
 			settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
 		}
@@ -244,9 +244,9 @@ int fqms_main(int argc, char *argv[])
 						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
 				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
 				if(settings.cleanup) {
-				    char tmpbuf[500];
+					char tmpbuf[500];
 					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-                    CHECK_CALL(tmpbuf);
+					CHECK_CALL(tmpbuf);
 				}
 			}
 		}

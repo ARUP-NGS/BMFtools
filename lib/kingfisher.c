@@ -5,7 +5,7 @@
 	bufs->agrees[i] = kfp->nuc_counts[index];\
 	bufs->cons_seq_buffer[i] = (bufs->cons_quals[i] > 2 && (double)bufs->agrees[i] / kfp->length > MIN_FRAC_AGREED) ?\
 		num2nuc(argmaxret): 'N';\
-    if(bufs->cons_seq_buffer[i] == 'N') bufs->cons_quals[i] = 2
+	if(bufs->cons_seq_buffer[i] == 'N') bufs->cons_quals[i] = 2
 
 // TODO: rewrite dmp_process_write and stranded_process_write to write the PV/FA strings straight to output
 // rather than writing to a temporary object and writing that later.
@@ -54,26 +54,26 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 	int i;
 	for(i = 0; i < kfpf->readlen; ++i) {
 		const int argmaxretf = kfp_argmax(kfpf, i), argmaxretr = kfp_argmax(kfpr, i);
-        if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
-        	const int index = i * 5 + argmaxretf;
-            kfpf->phred_sums[index] += kfpr->phred_sums[index];
-            kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
-            dmp_pos(kfpf, bufs, argmaxretf, i, index);
-            if(kfpr->max_phreds[index] > kfpf->max_phreds[index])
-            	kfpf->max_phreds[index] = kfpr->max_phreds[index];
-        } else if(argmaxretf == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
-        	const int index = i * 5 + argmaxretr;
-            kfpf->phred_sums[index] += kfpr->phred_sums[index];
-            kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
-            dmp_pos(kfpf, bufs, argmaxretr, i, index);
-            kfpf->max_phreds[index] = kfpr->max_phreds[index];
-        } else if(argmaxretr == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
-        	const int index = i * 5 + argmaxretf;
-            kfpf->phred_sums[index] += kfpr->phred_sums[index];
-            kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
-            dmp_pos(kfpf, bufs, argmaxretf, i, index);
-            // Don't update max_phreds, since the max phred is already here.
-        } else bufs->cons_quals[i] = 0, bufs->agrees[i] = 0, bufs->cons_seq_buffer[i] = 'N';
+		if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
+			const int index = i * 5 + argmaxretf;
+			kfpf->phred_sums[index] += kfpr->phred_sums[index];
+			kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
+			dmp_pos(kfpf, bufs, argmaxretf, i, index);
+			if(kfpr->max_phreds[index] > kfpf->max_phreds[index])
+				kfpf->max_phreds[index] = kfpr->max_phreds[index];
+		} else if(argmaxretf == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
+			const int index = i * 5 + argmaxretr;
+			kfpf->phred_sums[index] += kfpr->phred_sums[index];
+			kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
+			dmp_pos(kfpf, bufs, argmaxretr, i, index);
+			kfpf->max_phreds[index] = kfpr->max_phreds[index];
+		} else if(argmaxretr == 4) { // Forward is Nd and reverse is not. Reverse call is probably right.
+			const int index = i * 5 + argmaxretf;
+			kfpf->phred_sums[index] += kfpr->phred_sums[index];
+			kfpf->nuc_counts[index] += kfpr->nuc_counts[index];
+			dmp_pos(kfpf, bufs, argmaxretf, i, index);
+			// Don't update max_phreds, since the max phred is already here.
+		} else bufs->cons_quals[i] = 0, bufs->agrees[i] = 0, bufs->cons_seq_buffer[i] = 'N';
 	}
 	fill_fa(kfpf->readlen, bufs->agrees, bufs->FABuffer);
 	fill_pv(kfpf->readlen, bufs->cons_quals, bufs->PVBuffer);

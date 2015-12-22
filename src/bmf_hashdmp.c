@@ -2,10 +2,10 @@
 
 void print_hash_dmp_usage(char *arg) {
 	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
-            "Flags:\n"
-            "-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
+			"Flags:\n"
+			"-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
 			"If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
-            , arg);
+			, arg);
 }
 
 void print_hash_dmp_opt_err(char *arg, char *optarg, char optopt) {
@@ -25,7 +25,7 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 	ret->buffers = (tmpbuffers_t *)malloc(sizeof(tmpbuffers_t));
 	ret->buffers->name_buffer[0] = '@';
 	ret->buffers->name_buffer[blen] = '\0';
-    ret->buffers->cons_seq_buffer[readlen] = '\0';
+	ret->buffers->cons_seq_buffer[readlen] = '\0';
 	return ret;
 }
 
@@ -33,15 +33,15 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 
 int hash_dmp_main(int argc, char *argv[])
 {
-    if(argc == 1) print_hash_dmp_usage(argv[0]), exit(EXIT_SUCCESS);
+	if(argc == 1) print_hash_dmp_usage(argv[0]), exit(EXIT_SUCCESS);
 	char *outfname = NULL, *infname = NULL;
 	int c;
-    int stranded_analysis = 1;
+	int stranded_analysis = 1;
 	while ((c = getopt(argc, argv, "o:sh?")) >= 0) {
 		switch(c) {
 			case 'o': outfname = strdup(optarg); break;
-            case 's': stranded_analysis = 0; break;
-            case '?': // Fall-through
+			case 's': stranded_analysis = 0; break;
+			case '?': // Fall-through
 			case 'h': print_hash_dmp_usage(argv[0]); return EXIT_SUCCESS;
 			default: print_hash_dmp_opt_err(argv[0], optarg, optopt);
 		}

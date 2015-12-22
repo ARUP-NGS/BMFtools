@@ -48,8 +48,8 @@ extern inline double igamc_pvalues(int num_pvalues, double x);
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
 	if (stack->n == stack->max) {
-	    stack->max = stack->max? stack->max<<1 : 0x10000;
-	    stack->a = (bam1_t**)realloc(stack->a, sizeof(bam1_t*) * stack->max);
+		stack->max = stack->max? stack->max<<1 : 0x10000;
+		stack->a = (bam1_t**)realloc(stack->a, sizeof(bam1_t*) * stack->max);
 	}
 	stack->a[stack->n++] = bam_dup1(b);
 }
@@ -101,10 +101,10 @@ CONST static inline int read_pass_hd(bam1_t *b, bam1_t *p, const int lim)
 {
 	const uint8_t *bseq = bam_get_seq(b);
 	const uint8_t *pseq = bam_get_seq(p);
-    int hd = 0;
+	int hd = 0;
 	for(int i = 0; i < b->core.l_qseq; ++i) {
 		const uint8_t bc = bam_seqi(bseq, i);
-        const uint8_t pc = bam_seqi(pseq, i);
+		const uint8_t pc = bam_seqi(pseq, i);
 		if(bc != pc && bc != HTS_N && pc != HTS_N)
 			if(++hd > lim)
 				return 0;

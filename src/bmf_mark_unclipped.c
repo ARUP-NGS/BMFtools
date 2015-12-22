@@ -28,8 +28,8 @@ int mark_unclipped_main(int argc, char *argv[])
 	samFile *in, *out;
 	bam_hdr_t *header;
 	char wmode[3] = {'w', 'b', '\0'};
-    sam_global_args ga;
-    memset(&ga, 0, sizeof(ga));
+	sam_global_args ga;
+	memset(&ga, 0, sizeof(ga));
 
 	static option_t lopts[] = {
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
@@ -42,7 +42,7 @@ int mark_unclipped_main(int argc, char *argv[])
 		case 'l': level = atoi(optarg); wmode[2] = level + '0'; break;
 		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
 			/* else fall-through */
-        case 'h': // Fall-through
+		case 'h': // Fall-through
 		case '?': return unclipped_usage(argv);
 		}
 	}

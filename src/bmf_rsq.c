@@ -1,9 +1,9 @@
 /*  bam_rsq.c -- duplicate read detection.
 
-    Copyright (C) 2009, 2015 Genome Research Ltd.
-    Portions copyright (C) 2009 Broad Institute.
+	Copyright (C) 2009, 2015 Genome Research Ltd.
+	Portions copyright (C) 2009 Broad Institute.
 
-    Author: Heng Li <lh3@sanger.ac.uk>
+	Author: Heng Li <lh3@sanger.ac.uk>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -194,17 +194,17 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	char seqbuf[SEQBUF_SIZE];
 	uint8_t *seq = bam_get_seq(b);
 	for (i = 0; i < qlen; ++i)
-	    seqbuf[i] = bam_seqi(seq, i);
+		seqbuf[i] = bam_seqi(seq, i);
 	if (b->core.flag & BAM_FREVERSE) { // reverse complement
-	    for (i = 0; i < qlen>>1; ++i) {
-	        int8_t t = seq_comp_table[(int8_t)seqbuf[qlen - 1 - i]];
-	        seqbuf[qlen - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
-	        seqbuf[i] = t;
-	    }
-	    if (qlen&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
+		for (i = 0; i < qlen>>1; ++i) {
+			int8_t t = seq_comp_table[(int8_t)seqbuf[qlen - 1 - i]];
+			seqbuf[qlen - 1 - i] = seq_comp_table[(int8_t)seqbuf[i]];
+			seqbuf[i] = t;
+		}
+		if (qlen&1) seqbuf[i] = seq_comp_table[(int8_t)seqbuf[i]];
 	}
 	for (i = 0; i < qlen; ++i)
-	    seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
+		seqbuf[i] = seq_nt16_str[(int8_t)seqbuf[i]];
 	seqbuf[qlen] = '\0';
 #if !NDEBUG
 	fprintf(stderr, "seqbuf: %s.\n", seqbuf);
@@ -216,9 +216,9 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	strcat(comment, "\t");
 	append_csv_buffer(b->core.l_qseq, fa, comment, (char *)"FA:B:I");
 	append_int_tag(comment, (char *)"FM", bam_aux2i(bam_aux_get(b, (char *)"FM")));
-    const uint8_t *rvdata = bam_aux_get(b, (char *)"RV");
-    if(rvdata)
-	    append_int_tag(comment, (char *)"RV", bam_aux2i(rvdata));
+	const uint8_t *rvdata = bam_aux_get(b, (char *)"RV");
+	if(rvdata)
+		append_int_tag(comment, (char *)"RV", bam_aux2i(rvdata));
 	append_int_tag(comment, (char *)"FP", bam_aux2i(bam_aux_get(b, (char *)"FP")));
 	append_int_tag(comment, (char *)"NC", bam_aux2i(bam_aux_get(b, (char *)"NC")));
 #if !NDEBUG
@@ -229,11 +229,11 @@ void bam2ffq(bam1_t *b, FILE *fp)
 	for(i = 0; i < qlen; ++i)
 		seqbuf[i] = 33 + qual[i];
 	if (b->core.flag & BAM_FREVERSE) { // reverse
-	    for (i = 0; i < qlen>>1; ++i) {
-	        const int8_t t = seqbuf[qlen - 1 - i];
-	        seqbuf[qlen - 1 - i] = seqbuf[i];
-	        seqbuf[i] = t;
-	    }
+		for (i = 0; i < qlen>>1; ++i) {
+			const int8_t t = seqbuf[qlen - 1 - i];
+			seqbuf[qlen - 1 - i] = seqbuf[i];
+			seqbuf[i] = t;
+		}
 	}
 	fprintf(fp, "%s\n", seqbuf);
 	return;
@@ -276,19 +276,19 @@ void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 void bam_rsqse_core(pr_settings_t *settings)
 {
 	/*
-    bam1_t *b;
-    tmp_stack_t stack;
-    resize_stack(&stack, STACK_START);
-    memset(&stack, 0, sizeof(tmp_stack_t) * stack->max);
+	bam1_t *b;
+	tmp_stack_t stack;
+	resize_stack(&stack, STACK_START);
+	memset(&stack, 0, sizeof(tmp_stack_t) * stack->max);
 
-    b = bam_init1();
-    while (sam_read1(settings.in, settings.hdr, b) >= 0) {
-    	if(stack.n) {
+	b = bam_init1();
+	while (sam_read1(settings.in, settings.hdr, b) >= 0) {
+		if(stack.n) {
 
-    	}
-    }
-    bam_destroy1(b);
-    */
+		}
+	}
+	bam_destroy1(b);
+	*/
 }
 
 static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
@@ -341,23 +341,23 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
 		exit(EXIT_FAILURE);
 	}
-    while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
-    	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
-    		sam_write1(settings->out, settings->hdr, b);
-    		continue;
-    	}
-        if(same_stack_pos(b, *stack->a)) {
-        	stack_insert(stack, b);
-        	continue;
-        }
-        else {
-        	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
-        	write_stack(stack, settings);
-        	stack->n = 1;
-        	stack->a[0] = bam_dup1(b);
-        }
-    }
-    bam_destroy1(b);
+	while (LIKELY(sam_read1(settings->in, settings->hdr, b) >= 0)) {
+		if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+			sam_write1(settings->out, settings->hdr, b);
+			continue;
+		}
+		if(same_stack_pos(b, *stack->a)) {
+			stack_insert(stack, b);
+			continue;
+		}
+		else {
+			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+			write_stack(stack, settings);
+			stack->n = 1;
+			stack->a[0] = bam_dup1(b);
+		}
+	}
+	bam_destroy1(b);
 }
 
 static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
@@ -381,23 +381,23 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
 		exit(EXIT_FAILURE);
 	}
-    while (LIKELY(sam_read1(settings->in, settings->hdr, b)) >= 0) {
-    	if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
-    		sam_write1(settings->out, settings->hdr, b);
-    		continue;
-    	}
-        if(same_stack_ucs(b, *stack->a)) {
-        	stack_insert(stack, b);
-        	continue;
-        }
-        else {
-        	flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
-        	write_stack(stack, settings);
-        	stack->n = 1;
-        	stack->a[0] = bam_dup1(b);
-        }
-    }
-    bam_destroy1(b);
+	while (LIKELY(sam_read1(settings->in, settings->hdr, b)) >= 0) {
+		if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
+			sam_write1(settings->out, settings->hdr, b);
+			continue;
+		}
+		if(same_stack_ucs(b, *stack->a)) {
+			stack_insert(stack, b);
+			continue;
+		}
+		else {
+			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
+			write_stack(stack, settings);
+			stack->n = 1;
+			stack->a[0] = bam_dup1(b);
+		}
+	}
+	bam_destroy1(b);
 }
 
 
@@ -409,105 +409,105 @@ static inline void pr_loop(pr_settings_t *settings, tmp_stack_t *stack)
 
 void bam_rsq_core(pr_settings_t *settings)
 {
-    tmp_stack_t stack;
-    memset(&stack, 0, sizeof(tmp_stack_t));
-    resize_stack(&stack, STACK_START);
-    if(!(settings->in && settings->hdr && settings->out)) {
-    	fprintf(stderr, "Failed to read input/output files....\n");
-    	exit(EXIT_FAILURE);
-    }
-    if(!stack.a) {
-    	fprintf(stderr, "Failed to start array of bam1_t structs...\n");
-    	exit(EXIT_FAILURE);
-    }
-    pr_loop(settings, &stack); // Core
-    free(stack.a);
+	tmp_stack_t stack;
+	memset(&stack, 0, sizeof(tmp_stack_t));
+	resize_stack(&stack, STACK_START);
+	if(!(settings->in && settings->hdr && settings->out)) {
+		fprintf(stderr, "Failed to read input/output files....\n");
+		exit(EXIT_FAILURE);
+	}
+	if(!stack.a) {
+		fprintf(stderr, "Failed to start array of bam1_t structs...\n");
+		exit(EXIT_FAILURE);
+	}
+	pr_loop(settings, &stack); // Core
+	free(stack.a);
 }
 
 int pr_usage(void)
 {
-    fprintf(stderr, "\n");
-    fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
-    fprintf(stderr, "Flags:\n"
-                    "-s      Rescue for SE reads [Not implemented]\n");
-    fprintf(stderr, "-r      Realign reads with no changed bases. Default: False.\n");
-    fprintf(stderr, "-t      Mismatch limit. Default: 2\n");
-    fprintf(stderr, "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
-    fprintf(stderr, "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
-    		        "Note: This requires pre-processing with bmftools mark_unclipped.\n");
-    return 1;
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
+	fprintf(stderr, "Flags:\n"
+					"-s      Rescue for SE reads [Not implemented]\n");
+	fprintf(stderr, "-r      Realign reads with no changed bases. Default: False.\n");
+	fprintf(stderr, "-t      Mismatch limit. Default: 2\n");
+	fprintf(stderr, "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
+	fprintf(stderr, "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
+					"Note: This requires pre-processing with bmftools mark_unclipped.\n");
+	return 1;
 }
 
 
 int bam_rsq(int argc, char *argv[])
 {
-    int c;
-    char wmode[4] = {'w', 'b', 0, 0};
-    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
+	int c;
+	char wmode[4] = {'w', 'b', 0, 0};
+	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
 
-    static const struct option lopts[] = {
-        SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
-        { NULL, 0, NULL, 0 }
-    };
+	static const struct option lopts[] = {
+		SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
+		{ NULL, 0, NULL, 0 }
+	};
 
-    pr_settings_t *settings = (pr_settings_t *)malloc(sizeof(pr_settings_t));
-    settings->fqh = NULL;
-    settings->in = NULL;
-    settings->out = NULL;
-    settings->hdr = NULL;
-    settings->mmlim = 2;
-    settings->cmpkey = POSITION;
-    settings->is_se = 0;
-    settings->realign_unchanged = 0;
+	pr_settings_t *settings = (pr_settings_t *)malloc(sizeof(pr_settings_t));
+	settings->fqh = NULL;
+	settings->in = NULL;
+	settings->out = NULL;
+	settings->hdr = NULL;
+	settings->mmlim = 2;
+	settings->cmpkey = POSITION;
+	settings->is_se = 0;
+	settings->realign_unchanged = 0;
 
-    char fqname[200] = "";
+	char fqname[200] = "";
 
-    while ((c = getopt_long(argc, argv, "l:f:t:aur?h", lopts, NULL)) >= 0) {
-        switch (c) {
-        case 'r': settings->realign_unchanged = 1; break;
-        case 'u': settings->cmpkey = UNCLIPPED; break;
-        case 't': settings->mmlim = atoi(optarg); break;
-        case 'f': strcpy(fqname, optarg); break;
-        case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
-        case 'h': /* fall-through */
-        case '?': return pr_usage();
-        }
-    }
-    if (optind + 2 > argc)
-        return pr_usage();
+	while ((c = getopt_long(argc, argv, "l:f:t:aur?h", lopts, NULL)) >= 0) {
+		switch (c) {
+		case 'r': settings->realign_unchanged = 1; break;
+		case 'u': settings->cmpkey = UNCLIPPED; break;
+		case 't': settings->mmlim = atoi(optarg); break;
+		case 'f': strcpy(fqname, optarg); break;
+		case 'l': wmode[2] = atoi(optarg) + '0'; if(wmode[2] > '9') wmode[2] = '9'; break;
+		case 'h': /* fall-through */
+		case '?': return pr_usage();
+		}
+	}
+	if (optind + 2 > argc)
+		return pr_usage();
 
-    if(strcmp(fqname, "") == 0) {
-    	fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
-    	return pr_usage();
-    }
+	if(strcmp(fqname, "") == 0) {
+		fprintf(stderr, "Fastq path for rescued reads required. Abort!\n");
+		return pr_usage();
+	}
 
-    settings->fqh = fopen(fqname, "w");
+	settings->fqh = fopen(fqname, "w");
 
-    if(!settings->fqh) {
-    	fprintf(stderr, "Failed to open output fastq for writing. Abort!\n");
-    	exit(EXIT_FAILURE);
-    }
+	if(!settings->fqh) {
+		fprintf(stderr, "Failed to open output fastq for writing. Abort!\n");
+		exit(EXIT_FAILURE);
+	}
 
 
-    settings->in = sam_open_format(argv[optind], "rb", &ga.in);
-    settings->hdr = sam_hdr_read(settings->in);
-    if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
-        fprintf(stderr, "[bam_rsq] input SAM does not have header. Abort!\n");
-        return 1;
-    }
+	settings->in = sam_open_format(argv[optind], "rb", &ga.in);
+	settings->hdr = sam_hdr_read(settings->in);
+	if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
+		fprintf(stderr, "[bam_rsq] input SAM does not have header. Abort!\n");
+		return 1;
+	}
 
-    settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
-    if (settings->in == 0 || settings->out == 0) {
-        fprintf(stderr, "[bam_rsq] fail to read/write input files\n");
-        return 1;
-    }
-    sam_hdr_write(settings->out, settings->hdr);
+	settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
+	if (settings->in == 0 || settings->out == 0) {
+		fprintf(stderr, "[bam_rsq] fail to read/write input files\n");
+		return 1;
+	}
+	sam_hdr_write(settings->out, settings->hdr);
 
-    if (settings->is_se) bam_rsqse_core(settings);
-    else bam_rsq_core(settings);
-    bam_hdr_destroy(settings->hdr);
-    sam_close(settings->in); sam_close(settings->out);
-    if(settings->fqh)
-    	fclose(settings->fqh);
-    return 0;
+	if (settings->is_se) bam_rsqse_core(settings);
+	else bam_rsq_core(settings);
+	bam_hdr_destroy(settings->hdr);
+	sam_close(settings->in); sam_close(settings->out);
+	if(settings->fqh)
+		fclose(settings->fqh);
+	return 0;
 }

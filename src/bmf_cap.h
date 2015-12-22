@@ -14,7 +14,7 @@ typedef struct cap_settings {
 
 
 static inline int cap_bam_dnd(bam1_t *b, cap_settings *settings) {
-    int i;
+	int i;
 	uint32_t *PV = (uint32_t *)array_tag(b, (char *)"PV");
 	uint32_t *FA = (uint32_t *)array_tag(b, (char *)"FA");
 	const int FM = bam_aux2i(bam_aux_get(b, (char *)"FM"));
@@ -35,7 +35,7 @@ static inline int cap_bam_dnd(bam1_t *b, cap_settings *settings) {
 }
 
 static inline int cap_bam_q(bam1_t *b, cap_settings *settings) {
-    uint32_t *const PV = (uint32_t *)array_tag(b, (char *)"PV");
+	uint32_t *const PV = (uint32_t *)array_tag(b, (char *)"PV");
 	uint32_t *const FA = (uint32_t *)array_tag(b, (char *)"FA");
 	const int FM = bam_aux2i(bam_aux_get(b, (char *)"FM"));
 	if(FM < (int)settings->minFM)

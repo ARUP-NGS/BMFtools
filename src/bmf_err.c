@@ -7,7 +7,7 @@ void err_usage_exit(FILE *fp, int retcode)
 	fprintf(fp,
 			"Usage: bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
-            "-h/-?\t\tThis helpful help menu!\n"
+			"-h/-?\t\tThis helpful help menu!\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
 			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
