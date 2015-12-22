@@ -46,6 +46,8 @@
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 void clean_homing_sequence(char *);
+void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
+void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 
 
 

@@ -42,6 +42,65 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
 	exit(EXIT_FAILURE);
 }
 
+
+void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
+	// Clear output files.
+	char cat_buff[CAT_BUFFER_SIZE];
+	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(cat_buff);
+	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
+	CHECK_CALL(cat_buff);
+	for(int i = 0; i < settings->n_handles; ++i) {
+		// Clear files if present
+		if(settings->gzip_output)
+			sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
+					params->outfnames_r1[i], settings->threads >= 2 ? settings->threads >> 1: 1, settings->gzip_compression, ffq_r1);
+		else
+			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+		FILE *g1_popen = popen(cat_buff, "w");
+		if(settings->gzip_output)
+			sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
+					params->outfnames_r2[i], settings->threads >= 2 ? settings->threads >> 1: 1, settings->gzip_compression, ffq_r2);
+		else
+			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+		FILE *g2_popen = popen(cat_buff, "w");
+		if(pclose(g2_popen) || pclose(g1_popen)){
+			fprintf(stderr, "[E:%s] Background system call failed.\n", __func__);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
+	char cat_buff1[CAT_BUFFER_SIZE];
+	// Clear output files.
+	sprintf(cat_buff1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(cat_buff1);
+	sprintf(cat_buff1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r2);
+	CHECK_CALL(cat_buff1);
+	strcpy(cat_buff1, "/bin/cat ");
+	char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
+	for(int i = 0; i < settings->n_handles; ++i) {
+		strcat(cat_buff1, params->outfnames_r1[i]); strcat(cat_buff1, " ");
+		strcat(cat_buff2, params->outfnames_r2[i]); strcat(cat_buff2, " ");
+	}
+	if(settings->gzip_output) {
+		char tmp_buf[CAT_BUFFER_SIZE];
+		sprintf(tmp_buf, " | pigz - -%i -p %i", settings->gzip_compression, settings->threads >= 2 ? settings->threads >> 1: 1);
+		strcat(cat_buff1, tmp_buf); strcat(cat_buff2, tmp_buf);
+	}
+	strcat(cat_buff1, " > "); strcat(cat_buff1, ffq_r1);
+	strcat(cat_buff2, " > "); strcat(cat_buff2, ffq_r2);
+	if(settings->gzip_output)
+		strcat(cat_buff1, ".gz"), strcat(cat_buff2, ".gz");
+	FILE *c1_popen = popen(cat_buff1, "w");
+	FILE *c2_popen = popen(cat_buff2, "w");
+	if(pclose(c2_popen) || pclose(c1_popen)) {
+		fprintf(stderr, "[%s] Background cat command failed. ('%s' or '%s').\n", __func__, cat_buff1, cat_buff2);
+		exit(EXIT_FAILURE);
+	}
+}
+
 void clean_homing_sequence(char *sequence) {
 	while(*sequence) {
 		switch(*sequence) {
@@ -295,9 +354,11 @@ int crms_main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	// Handle filenames
 	settings.input_r1_path = strdup(argv[optind]);
 	settings.input_r2_path = strdup(argv[optind + 1]);
 	if(!settings.tmp_basename) {
+		// If tmp_basename unset, create a random temporary file prefix.
 		settings.tmp_basename = (char *)malloc(21 * sizeof(char));
 		rand_string(settings.tmp_basename, 20);
 		fprintf(stderr, "[%s] Temporary basename not provided. Defaulting to random: %s.\n",
@@ -337,23 +398,19 @@ int crms_main(int argc, char *argv[])
 	}
 	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
-	char del_buf[500];
-	#pragma omp parallel
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for(int i = 0; i < settings.n_handles; ++i) {
-			fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-					__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-			stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-		}
+	#pragma omp parallel for schedule(dynamic, 1)
+	for(int i = 0; i < settings.n_handles; ++i) {
+		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
+		stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 	}
-		#pragma omp for schedule(dynamic, 1)
-		for(int i = 0; i < settings.n_handles; ++i) {
-			fprintf(stderr, "[%s] Now running hash dmp core on input filename "
-						"%s and output filename %s.\n",
-					__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-			stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-		}
+	#pragma omp for schedule(dynamic, 1)
+	for(int i = 0; i < settings.n_handles; ++i) {
+		fprintf(stderr, "[%s] Now running hash dmp core on input filename "
+					"%s and output filename %s.\n",
+				__func__, params->infnames_r2[i], params->outfnames_r2[i]);
+		stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+	}
 
 	if(settings.cleanup) {
 		#pragma omp parallel for schedule(dynamic, 1)
@@ -364,68 +421,13 @@ int crms_main(int argc, char *argv[])
 			sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r1[i]);
 			CHECK_CALL(tmpbuf);
 		}
-		}
+	}
 	// Remove temporary split files
-		//
-	char cat_buff[CAT_BUFFER_SIZE];
 	char ffq_r1[200];
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-	sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r1);
-	CHECK_CALL(cat_buff);
-	sprintf(cat_buff, settings.gzip_output ? "> %s.gz" : "> %s", ffq_r2);
-	CHECK_CALL(cat_buff);
-	char cat_buff1[CAT_BUFFER_SIZE] = "/bin/cat ";
-	if(settings.panthera) {
-		char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
-		for(int i = 0; i < settings.n_handles; ++i) {
-			strcat(cat_buff1, params->outfnames_r1[i]);
-			strcat(cat_buff1, " ");
-			strcat(cat_buff2, params->outfnames_r2[i]);
-			strcat(cat_buff2, " ");
-		}
-		if(settings.gzip_output) {
-			sprintf(del_buf, " | pigz - -%i -p %i", settings.gzip_compression, settings.threads >= 2 ? settings.threads >> 1: 1);
-			strcat(cat_buff1, del_buf);
-			strcat(cat_buff2, del_buf);
-		}
-		strcat(cat_buff1, " > ");
-		strcat(cat_buff1, ffq_r1);
-		strcat(cat_buff2, " > ");
-		strcat(cat_buff2, ffq_r2);
-		if(settings.gzip_output) {
-			strcat(cat_buff1, ".gz");
-			strcat(cat_buff2, ".gz");
-		}
-		FILE *c1_popen = popen(cat_buff1, "w");
-		FILE *c2_popen = popen(cat_buff2, "w");
-		if(pclose(c2_popen) || pclose(c1_popen)) {
-			fprintf(stderr, "[%s] Background cat command failed. ('%s').\n", __func__, cat_buff1);
-			exit(EXIT_FAILURE);
-		}
-	}
-	else {
-		for(int i = 0; i < settings.n_handles; ++i) {
-			// Clear files if present
-			if(settings.gzip_output)
-				sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-						params->outfnames_r1[i], settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression, ffq_r1);
-			else
-				sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-			FILE *g1_popen = popen(cat_buff, "w");
-			if(settings.gzip_output)
-				sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
-						params->outfnames_r2[i], settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression, ffq_r2);
-			else
-				sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-			FILE *g2_popen = popen(cat_buff, "w");
-			if(pclose(g2_popen) || pclose(g1_popen)){
-				fprintf(stderr, "[E:%s] Background system call failed.\n", __func__);
-				exit(EXIT_FAILURE);
-			}
-		}
-	}
+	settings.panthera ? call_panthera: call_clowder (&settings, params, ffq_r1, ffq_r2);
 	if(settings.cleanup) {
 		#pragma omp parallel for
 		for(int i = 0; i < params->n; ++i) {
