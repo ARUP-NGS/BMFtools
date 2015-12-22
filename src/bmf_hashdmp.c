@@ -1,15 +1,17 @@
 #include "bmf_hashdmp.h"
 
-void print_hash_dmp_usage(char *argv[]) {
+void print_hash_dmp_usage(char *arg) {
 	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
             "Flags:\n"
             "-s\tPerform secondary index consolidation rather than Loeb-like inline consolidation.\n"
-            , argv[0]);
+			"If output file is unset, defaults to stdout. If input filename is not set, defaults to stdin.\n"
+            , arg);
 }
 
-void print_hash_dmp_opt_err(char *argv[], char *optarg) {
-	fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
-	print_hash_dmp_usage(argv);
+void print_hash_dmp_opt_err(char *arg, char *optarg, char optopt) {
+	fprintf(stderr, "[E:%s] Invalid flag '%c' with argument '%s'. See usage.\n",
+			__func__, optopt, optarg);
+	print_hash_dmp_usage(arg);
 	exit(EXIT_FAILURE);
 }
 
@@ -31,26 +33,25 @@ tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
 
 int hash_dmp_main(int argc, char *argv[])
 {
-    if(argc == 1) print_hash_dmp_usage(argv), exit(EXIT_SUCCESS);
-	char *outfname = NULL;
-	char *infname = NULL;
+    if(argc == 1) print_hash_dmp_usage(argv[0]), exit(EXIT_SUCCESS);
+	char *outfname = NULL, *infname = NULL;
 	int c;
     int stranded_analysis = 1;
-	while ((c = getopt(argc, argv, "o:sh?")) > -1) {
+	while ((c = getopt(argc, argv, "o:sh?")) >= 0) {
 		switch(c) {
 			case 'o': outfname = strdup(optarg); break;
             case 's': stranded_analysis = 0; break;
             case '?': // Fall-through
-			case 'h': print_hash_dmp_usage(argv); return 0;
-			default: print_hash_dmp_opt_err(argv, optarg);
+			case 'h': print_hash_dmp_usage(argv[0]); return EXIT_SUCCESS;
+			default: print_hash_dmp_opt_err(argv[0], optarg, optopt);
 		}
 	}
 	if(argc < 2) {
 		fprintf(stderr, "[E:%s] Required arguments missing. See usage.\n", __func__);
-		print_hash_dmp_usage(argv);
+		print_hash_dmp_usage(argv[0]);
 		exit(1);
 	}
-	infname = strdup(argv[optind]);
+	if(argc - 1 == optind) infname = strdup(argv[optind]);
 	stranded_analysis ? stranded_hash_dmp_core: hash_dmp_core (infname, outfname);
 	cond_free(outfname); cond_free(infname);
 	return 0;
@@ -59,9 +60,6 @@ int hash_dmp_main(int argc, char *argv[])
 
 void hash_dmp_core(char *infname, char *outfname)
 {
-	if(!outfname && !infname)
-		fprintf(stderr, "[E:%s] in_handle and out_handle are both null. Abort mission!\n", __func__),
-		exit(EXIT_FAILURE);
 	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
 	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
 	if(!in_handle)
