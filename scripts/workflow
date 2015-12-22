@@ -77,9 +77,9 @@ class BMFWorkflow(object):
                     "%s - %s" % (self.final_bam, " ".join(tmp_bams))) 
             sys.stderr.write("Command string: '%s'.\n", cstr)
             subprocess.check_call(cstr, shell=True)
-            [subprocess.check_call("rm %s" % i for i in
+            [subprocess.check_call("rm %s") % i for i in
                                    list(chain.from_iterable([tmp_bams,
-                                                             tmp_fqs])))]
+                                                             tmp_fqs]))]
 
     def aln_pipe_rsq(self):
         cstr = "bwa mem -CTY 0 -t %i -R %s %s %s %s" % (self.threads,
