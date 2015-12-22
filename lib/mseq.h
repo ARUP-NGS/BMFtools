@@ -90,16 +90,16 @@ void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2);
 void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads);
-static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode, char prefix)
+static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
 {
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",
-			mvar->name, pass_fail, prefix, barcode, mvar->seq, mvar->qual);
+			mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
 }
 
-static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, char pass_fail, char *barcode)
+static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode)
 {
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
-			mvar->name, pass_fail, barcode, mvar->seq, mvar->qual);
+			mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);
 }
 
 // TMP_MSEQ Utilities

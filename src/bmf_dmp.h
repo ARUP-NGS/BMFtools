@@ -34,23 +34,23 @@
 #ifndef KSEQ_2_FQ
 #define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
 		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-	read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
+	read->name.s, pass_fail + '0', index->seq.s, read->seq.s, read->qual.s)
 #endif
-#ifndef SALTED_KSEQ_2_Q
+#ifndef SALTED_KSEQ_2_FQ
 #define SALTED_KSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
 		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
-	read->name.s, pass_fail, barcode, read->seq.s, read->qual.s)
+	read->name.s, pass_fail + '0', barcode, read->seq.s, read->qual.s)
 #endif
 #ifndef SALTED_MSEQ_2_FQ
 #define SALTED_MSEQ_2_FQ(handle, read, barcode, pass_fail) \
 	fprintf(handle, \
 		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
-	read->name, pass_fail, barcode, read->seq, read->qual)
+	read->name, pass_fail + '0', barcode, read->seq, read->qual)
 #endif
 
 
 #ifndef FREE_SETTINGS
-#define FREE_SETTINGS(settings) free(settings.output_basename);\
+#define FREE_SETTINGS(settings) free(settings.tmp_basename);\
 	free(settings.index_fq_path);\
 	free(settings.input_r1_path);\
 	free(settings.input_r2_path)
@@ -86,7 +86,7 @@ typedef struct blens {
 typedef struct crms_settings {
 	int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
 	int n_nucs; // Number of nucleotides to split by.
-	char *output_basename;
+	char *tmp_basename;
 	char *input_r1_path;
 	char *input_r2_path;
 	int n_handles; // Number of handles
@@ -110,26 +110,24 @@ typedef struct crms_settings {
 
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
+void clean_homing_sequence(char *);
 
 
 
-CONST static inline char test_hp(char *seq, int threshold)
+CONST static inline int test_hp(char *barcode, int threshold)
 {
-	int run = 0;
-	char last = '\0';
-	for(int i = 0; seq[i]; ++i){
-		if(seq[i] == 'N') {
-			return '0';
+	int run = 0; char last = '\0';
+	while(*barcode) {
+		if(*barcode == 'N') return 0;
+		if(*barcode == last) {
+			if(++run == threshold)
+				return 0;
+		} else {
+			last = *barcode; run = 0;
 		}
-		if(seq[i] == last) {
-			++run;
-		}
-		else {
-			run = 0;
-			last = seq[i];
-		}
+		barcode++;
 	}
-	return (run < threshold) ? '1': '0';
+	return 1;
 }
 
 
@@ -211,21 +209,21 @@ CONST static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_se
 	return -1;
 }
 
-CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, char *pass_fail)
+CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {
 	if(settings_ptr->max_blen < 0) {
 		*pass_fail = (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
 				   settings_ptr->homing_sequence,
-				   settings_ptr->homing_sequence_length) == 0) ? '1': '0';
+				   settings_ptr->homing_sequence_length) == 0) ? 1: 0;
 		return default_len;
 	}
 	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
 		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
-			*pass_fail = '1';
+			*pass_fail = 1;
 			return i + settings_ptr->homing_sequence_length;
 		}
 	}
-	*pass_fail = '0';
+	*pass_fail = 0;
 	return default_len;
 }
 
@@ -246,7 +244,7 @@ int ipow(int base, int exp);
 
 
 #ifndef FREE_SETTINGS
-#define FREE_SETTINGS(settings) cond_free(settings.output_basename);\
+#define FREE_SETTINGS(settings) cond_free(settings.tmp_basename);\
 	cond_free(settings.index_fq_path);\
 	cond_free(settings.input_r1_path);\
 	cond_free(settings.input_r2_path);\

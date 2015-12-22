@@ -6,7 +6,7 @@
 
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu11
+FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99
 LD= -lm -lz
 INCLUDE= -Isrc -Ihtslib -Ihtslib/htslib -I. -Ilib -Iinclude -Isamtools -Idlib
 LIB=

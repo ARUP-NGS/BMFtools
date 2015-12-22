@@ -65,8 +65,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	l_index = kseq_read(seq_index);
 
 	uint64_t bin = 0;
-	int count = 0;
-	char pass_fail = '1';
+	int pass_fail = 1;
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
 	if(l1 < 0 || l2 < 0 || l_index < 0) {
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
@@ -86,12 +85,11 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, rseq1->barcode, pass_fail);
 	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, rseq1->barcode, pass_fail);
-	//fprintf(stderr, "Now beginning to loop through file.\n");
+	uint64_t count = 0;
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
-		if(!(++count % settings->notification_interval)) {
-			fprintf(stderr, "Number of records processed: %i.\n", count);
-		}
+		if(++count % settings->notification_interval == 0)
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 		memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 		memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
@@ -134,7 +132,7 @@ int fqms_main(int argc, char *argv[])
 		.hp_threshold = 10,
 		.n_nucs = 2,
 		.index_fq_path = NULL,
-		.output_basename = NULL,
+		.tmp_basename = NULL,
 		.input_r1_path = NULL,
 		.input_r2_path = NULL,
 		.n_handles = 0,
@@ -161,7 +159,7 @@ int fqms_main(int argc, char *argv[])
 			case 'i': settings.index_fq_path = strdup(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
-			case 'o': settings.output_basename = strdup(optarg);break;;
+			case 'o': settings.tmp_basename = strdup(optarg);break;;
 			case 'p': settings.threads = atoi(optarg); break;
 			case 's': settings.salt = atoi(optarg); break;
 			case 't': settings.hp_threshold = atoi(optarg); break;
@@ -208,16 +206,16 @@ int fqms_main(int argc, char *argv[])
 		print_usage(argv);
 		return 1;
 	}
-	if(!settings.output_basename) {
-		settings.output_basename = (char *)malloc(21);
-		rand_string(settings.output_basename, 20);
+	if(!settings.tmp_basename) {
+		settings.tmp_basename = (char *)malloc(21);
+		rand_string(settings.tmp_basename, 20);
 		fprintf(stderr, "[%s] Mark/split prefix not provided. Defaulting to random string ('%s').\n",
-				__func__, settings.output_basename);
+				__func__, settings.tmp_basename);
 	}
 
 /*
 	fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
-	fprintf(stderr, "Hey, my basename is %s\n", settings.output_basename);
+	fprintf(stderr, "Hey, my basename is %s\n", settings.tmp_basename);
 */
 	mark_splitter_t *splitter = splitmark_core_rescale(&settings);
 	if(settings.run_hash_dmp) {

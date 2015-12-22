@@ -15,7 +15,7 @@ void splitterhash_destroy(splitterhash_params_t *params)
 
 void free_marksplit_settings(marksplit_settings_t settings)
 {
-	cond_free(settings.output_basename);
+	cond_free(settings.tmp_basename);
 	cond_free(settings.input_r1_path);
 	cond_free(settings.input_r2_path);
 	cond_free(settings.index_fq_path);
@@ -35,7 +35,7 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 		fprintf(stderr, "[E:%s] Settings pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	if(!settings_ptr->output_basename) {
+	if(!settings_ptr->tmp_basename) {
 		fprintf(stderr, "[E:%s] Output basename not set. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
@@ -53,9 +53,9 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
 		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
 		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->output_basename, i);
+		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->tmp_basename, i);
 		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->output_basename, i);
+		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
 		ret->outfnames_r2[i] = strdup(tmp_buffer);
 	}
 	return ret;
@@ -88,9 +88,9 @@ void splitter_destroy(mark_splitter_t *var)
 		ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));\
 		char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];\
 		for (int i = 0; i < ret.n_handles; i++) {\
-			sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->output_basename, i);\
+			sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);\
 			ret.fnames_r1[i] = strdup(tmp_buffer);\
-			sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->output_basename, i);\
+			sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);\
 			ret.fnames_r2[i] = strdup(tmp_buffer);\
 			ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");\
 			ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");\
