@@ -4,9 +4,9 @@ CONST inline char *mem_view(char *comment)
 {
 	int hits = 0;
 	for(;;++comment) {
-		if(*comment == '|' || *comment == '\0') {
-			if(hits) return (char *)comment + 4; // 4 for "|BS="
-			else hits = 1;
+		switch(*comment) == '|' || *comment == '\0') {
+			case '|':
+			case '\0': if(hits) return (char *)comment + 4; else hits = 1;
 		}
 	}
 	return NULL; // This shouldn't ever happen.
