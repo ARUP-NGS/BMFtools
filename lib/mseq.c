@@ -6,7 +6,7 @@ CONST inline char *mem_view(char *comment)
 	for(;;) {
 		switch(*comment++) {
 			case '|':
-			case '\0': if(hits) return (char *)comment + 4; else hits = 1;
+			case '\0': if(hits) return (char *)comment + 3; else hits = 1; // + 3 for |BS= minus 1, since we already incremented for the switch.
 		}
 	}
 	return NULL; // This shouldn't ever happen.
