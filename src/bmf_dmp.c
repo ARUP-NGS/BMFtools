@@ -96,23 +96,6 @@ mark_splitter_t *pp_split_annealed(marksplit_settings_t *settings)
 			exit(EXIT_FAILURE);
 	}
 	fprintf(stderr, "[%s]Read length (inferred): %lu.\n", __func__, seq1->seq.l);
-#if !NDEBUG
-	int arr_size = seq1->seq.l * 4 * 2 * nqscores;
-	if(settings->rescaler) {
-		for(int i = 0; i < arr_size; ++i) {
-			if(settings->rescaler[i] < 0) {
-				fprintf(stderr, "[D:%s] Rescaler's got a negative number"
-						" in pp_split_inline. WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
-			}
-			else if(settings->rescaler[i] == 0) {
-				fprintf(stderr, "[D:%s] Rescaler's got a zero"
-						" in pp_split_inline. WTF? %i. Index: %i.\n", __func__,settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
-			}
-		}
-	}
-#endif
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	const int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;
 	int n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
@@ -146,6 +129,7 @@ mark_splitter_t *pp_split_annealed(marksplit_settings_t *settings)
 		mseq2fq_inline(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 		mseq2fq_inline(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	} while (LIKELY(LIKELY(((l1 = kseq_read(seq1)) >= 0)) && LIKELY((l2 = kseq_read(seq2)) >= 0)));
+	#pragma omp parallel for
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]);
 		fclose(splitter->tmp_out_handles_r2[i]);
@@ -254,27 +238,27 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		if(switch_test(seq1, seq2, settings->offset)) {
-		    update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 1); // switch_reads parameter true
-		    update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 1);
-            // Copy barcode over
+			update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 1); // switch_reads parameter true
+			update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 1);
+			// Copy barcode over
 			memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
-            // Test for homopolymer failure
-		    if(!test_hp(rseq1->barcode, settings->hp_threshold)) pass_fail = 0;
-		    bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-            // Write out
+			// Test for homopolymer failure
+			if(!test_hp(rseq1->barcode, settings->hp_threshold)) pass_fail = 0;
+			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
 		} else {
-		    update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 0); // switch_reads parameter false
-		    update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 0);
-            // Copy barcode over
+			update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0, 0); // switch_reads parameter false
+			update_mseq(rseq2, seq2, settings->rescaler, tmp, n_len, 1, 0);
+			// Copy barcode over
 			memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
-            // Test for homopolymer failure
-		    if(!test_hp(rseq1->barcode, settings->hp_threshold)) pass_fail = 0;
-		    bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-            // Write out
+			// Test for homopolymer failure
+			if(!test_hp(rseq1->barcode, settings->hp_threshold)) pass_fail = 0;
+			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 		}
@@ -408,10 +392,8 @@ int crms_main(int argc, char *argv[])
 	// Run core
 	mark_splitter_t *splitter = (settings.annealed) ? pp_split_annealed(&settings): pp_split_inline(&settings);
 	if(!settings.run_hash_dmp) {
-		free_marksplit_settings(settings);
-		splitter_destroy(splitter);
-		fprintf(stderr, "[%s] Successfully completed bmftools dmp: mark/split.\n", __func__);
-		return EXIT_SUCCESS;
+		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
+		goto cleanup;
 	}
 	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
 				__func__);
@@ -535,6 +517,7 @@ int crms_main(int argc, char *argv[])
 	}
 	splitterhash_destroy(params);
 	free(settings.ffq_prefix);
+	cleanup:
 	free_marksplit_settings(settings);
 	splitter_destroy(splitter);
 	fprintf(stderr, "[%s] Successfully completed bmftools dmp!\n", __func__);
