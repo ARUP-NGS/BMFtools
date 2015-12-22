@@ -230,29 +230,8 @@ int fqms_main(int argc, char *argv[])
 	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
-	#pragma omp parallel
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for(int i = 0; i < settings.n_handles; ++i) {
-			fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-					__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-			hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-		}
-	}
-	#pragma omp parallel
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for(int i = 0; i < settings.n_handles; ++i) {
-			fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-					__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-			hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-			if(settings.cleanup) {
-				char tmpbuf[500];
-				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-				CHECK_CALL(tmpbuf);
-			}
-		}
-	}
+
+	parallel_hashdmp_core(&settings, params, &hash_dmp_core);
 	// Make sure that both files are empty.
 	char ffq_r1[200];
 	char ffq_r2[200];
@@ -260,7 +239,7 @@ int fqms_main(int argc, char *argv[])
 	sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq.gz": "%s.R2.fq", settings.ffq_prefix);
 	settings.panthera ? call_panthera: call_clowder (&settings, params, ffq_r1, ffq_r2);
 	splitterhash_destroy(params);
-	fprintf(stderr, "[%s] Successfully finished bmftools sdmp.\n", __func__);
+	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 
 	cleanup:
 	splitter_destroy(splitter);

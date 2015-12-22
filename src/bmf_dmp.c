@@ -43,6 +43,27 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
 }
 
 
+void parallel_hashdmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func) {
+	#pragma omp parallel for schedule(dynamic, 1)
+	for(int i = 0; i < settings->n_handles; ++i) {
+		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
+		func(params->infnames_r1[i], params->outfnames_r1[i]);
+	}
+	#pragma omp parallel for schedule(dynamic, 1)
+	for(int i = 0; i < settings->n_handles; ++i) {
+		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+				__func__, params->infnames_r2[i], params->outfnames_r2[i]);
+		func(params->infnames_r2[i], params->outfnames_r2[i]);
+		if(settings->cleanup) {
+			char tmpbuf[500];
+			sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+			CHECK_CALL(tmpbuf);
+		}
+	}
+}
+
+
 void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
 	// Clear output files.
 	char cat_buff[CAT_BUFFER_SIZE];
@@ -398,19 +419,8 @@ int crms_main(int argc, char *argv[])
 	}
 	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
-	#pragma omp parallel for schedule(dynamic, 1)
-	for(int i = 0; i < settings.n_handles; ++i) {
-		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-		stranded_hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
-	}
-	#pragma omp for schedule(dynamic, 1)
-	for(int i = 0; i < settings.n_handles; ++i) {
-		fprintf(stderr, "[%s] Now running hash dmp core on input filename "
-					"%s and output filename %s.\n",
-				__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-		stranded_hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-	}
+	// Run core
+	parallel_hashdmp_core(&settings, params, &stranded_hash_dmp_core);
 
 	if(settings.cleanup) {
 		#pragma omp parallel for schedule(dynamic, 1)
