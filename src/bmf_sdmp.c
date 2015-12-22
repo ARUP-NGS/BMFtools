@@ -218,113 +218,118 @@ int fqms_main(int argc, char *argv[])
 	fprintf(stderr, "Hey, my basename is %s\n", settings.tmp_basename);
 */
 	mark_splitter_t *splitter = splitmark_core_rescale(&settings);
-	if(settings.run_hash_dmp) {
-		fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
-						__func__);
-		if(!settings.ffq_prefix) {
-			settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
+	if(!settings.run_hash_dmp) {
+		fprintf(stderr, "[%s] Finished mark/split.\n", __func__);
+		goto cleanup;
+	}
+	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
+					__func__);
+	if(!settings.ffq_prefix) {
+		settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
+	}
+	// Whatever I end up putting into here.
+	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
+	fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
+	#pragma omp parallel
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for(int i = 0; i < settings.n_handles; ++i) {
+			fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+					__func__, params->infnames_r1[i], params->outfnames_r1[i]);
+			hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
 		}
-		// Whatever I end up putting into here.
-		splitterhash_params_t *params = init_splitterhash(&settings, splitter);
-		fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
-		#pragma omp parallel
-		{
-			#pragma omp for schedule(dynamic, 1)
-			for(int i = 0; i < settings.n_handles; ++i) {
-				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-						__func__, params->infnames_r1[i], params->outfnames_r1[i]);
-				hash_dmp_core(params->infnames_r1[i], params->outfnames_r1[i]);
+	}
+	#pragma omp parallel
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for(int i = 0; i < settings.n_handles; ++i) {
+			fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
+					__func__, params->infnames_r2[i], params->outfnames_r2[i]);
+			hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
+			if(settings.cleanup) {
+				char tmpbuf[500];
+				sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+				CHECK_CALL(tmpbuf);
 			}
 		}
-		#pragma omp parallel
-		{
-			#pragma omp for schedule(dynamic, 1)
-			for(int i = 0; i < settings.n_handles; ++i) {
-				fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
-						__func__, params->infnames_r2[i], params->outfnames_r2[i]);
-				hash_dmp_core(params->infnames_r2[i], params->outfnames_r2[i]);
-				if(settings.cleanup) {
-					char tmpbuf[500];
-					sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
-					CHECK_CALL(tmpbuf);
-				}
-			}
-		}
-		// Remove temporary split files
-		char del_buf[500];
-		char cat_buff2[CAT_BUFFER_SIZE];
-		char cat_buff1[CAT_BUFFER_SIZE];
-		// Make sure that both files are empty.
-		char cat_buff[CAT_BUFFER_SIZE];
-		char ffq_r1[200];
-		char ffq_r2[200];
-		sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq.gz": "%s.R1.fq", settings.ffq_prefix);
-		sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq.gz": "%s.R2.fq", settings.ffq_prefix);
-		sprintf(cat_buff, "> %s", ffq_r1);
-		CHECK_CALL(cat_buff);
-		sprintf(cat_buff, "> %s", ffq_r2);
-		CHECK_CALL(cat_buff);
-		if(!settings.panthera) {
-			for(int i = 0; i < settings.n_handles; ++i) {
-				// Clear files if present
-				if(settings.gzip_output)
-					sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r1[i],
-							settings.threads >= 2 ? settings.threads >> 1: 1,
-							settings.gzip_compression, ffq_r1);
-				else
-					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-				FILE *p1 = popen(cat_buff, "w");
+	}
+	// Remove temporary split files
+	char del_buf[500];
+	char cat_buff2[CAT_BUFFER_SIZE];
+	char cat_buff1[CAT_BUFFER_SIZE];
+	// Make sure that both files are empty.
+	char cat_buff[CAT_BUFFER_SIZE];
+	char ffq_r1[200];
+	char ffq_r2[200];
+	sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq.gz": "%s.R1.fq", settings.ffq_prefix);
+	sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq.gz": "%s.R2.fq", settings.ffq_prefix);
+	sprintf(cat_buff, "> %s", ffq_r1);
+	CHECK_CALL(cat_buff);
+	sprintf(cat_buff, "> %s", ffq_r2);
+	CHECK_CALL(cat_buff);
+	if(!settings.panthera) {
+		for(int i = 0; i < settings.n_handles; ++i) {
+			// Clear files if present
+			if(settings.gzip_output)
+				sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r1[i],
+						settings.threads >= 2 ? settings.threads >> 1: 1,
+						settings.gzip_compression, ffq_r1);
+			else
+				sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+			FILE *p1 = popen(cat_buff, "w");
 
-				if(settings.gzip_output)
-					sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r2[i],
-							settings.threads >= 2 ? settings.threads >> 1: 1,
-							settings.gzip_compression, ffq_r2);
-				else
-					sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
-				FILE *p2 = popen(cat_buff, "w");
-				if(pclose(p2) || pclose(p1)) {
-					fprintf(stderr, "[E:%s] System call failed. Command : '%s'.\n", __func__, cat_buff);
-					exit(EXIT_FAILURE);
-				}
-			}
-		}
-		else {
-			sprintf(cat_buff1, "/bin/cat ");
-			sprintf(cat_buff2, "/bin/cat ");
-			for(int i = 0; i < settings.n_handles; ++i) {
-				strcat(cat_buff1, params->outfnames_r1[i]);
-				strcat(cat_buff1, " ");
-				strcat(cat_buff2, params->outfnames_r2[i]);
-				strcat(cat_buff2, " ");
-			}
-			if(settings.gzip_output) {
-				sprintf(del_buf, " | pigz -p %i -%i -", settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression);
-				strcat(cat_buff1, del_buf);
-				strcat(cat_buff2, del_buf);
-			}
-			strcat(cat_buff1, " > ");
-			strcat(cat_buff1, ffq_r1);
-			strcat(cat_buff2, " > ");
-			strcat(cat_buff2, ffq_r2);
-			FILE *c1_popen = popen(cat_buff1, "w");
-			CHECK_CALL(cat_buff2);
-			if(pclose(c1_popen)) {
-				fprintf(stderr, "[E:%s] First cat command failed. Abort!\n", __func__);
+			if(settings.gzip_output)
+				sprintf(cat_buff, "cat %s | pigz -p %i -%i - >> %s", params->outfnames_r2[i],
+						settings.threads >= 2 ? settings.threads >> 1: 1,
+						settings.gzip_compression, ffq_r2);
+			else
+				sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
+			FILE *p2 = popen(cat_buff, "w");
+			if(pclose(p2) || pclose(p1)) {
+				fprintf(stderr, "[E:%s] System call failed. Command : '%s'.\n", __func__, cat_buff);
 				exit(EXIT_FAILURE);
 			}
-			fprintf(stderr, "[%s] Now cleaning up intermediate files.\n", __func__);
-			#pragma omp parallel for shared(params)
-			for(int i = 0; i < params->n; ++i) {
-				char tmpbuf[500];
-				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-				popen(tmpbuf, "w");
-			}
-			fprintf(stderr, "[%s] Finished cleaning up intermediate files.\n", __func__);
-			//fprintf(stderr, "Not executing %s today. Eh.\n", cat_buff1);
 		}
-		splitterhash_destroy(params);
 	}
+	else {
+		sprintf(cat_buff1, "/bin/cat ");
+		sprintf(cat_buff2, "/bin/cat ");
+		for(int i = 0; i < settings.n_handles; ++i) {
+			strcat(cat_buff1, params->outfnames_r1[i]);
+			strcat(cat_buff1, " ");
+			strcat(cat_buff2, params->outfnames_r2[i]);
+			strcat(cat_buff2, " ");
+		}
+		if(settings.gzip_output) {
+			sprintf(del_buf, " | pigz -p %i -%i -", settings.threads >= 2 ? settings.threads >> 1: 1, settings.gzip_compression);
+			strcat(cat_buff1, del_buf);
+			strcat(cat_buff2, del_buf);
+		}
+		strcat(cat_buff1, " > ");
+		strcat(cat_buff1, ffq_r1);
+		strcat(cat_buff2, " > ");
+		strcat(cat_buff2, ffq_r2);
+		FILE *c1_popen = popen(cat_buff1, "w");
+		CHECK_CALL(cat_buff2);
+		if(pclose(c1_popen)) {
+			fprintf(stderr, "[E:%s] First cat command failed. Abort!\n", __func__);
+			exit(EXIT_FAILURE);
+		}
+		fprintf(stderr, "[%s] Now cleaning up intermediate files.\n", __func__);
+		#pragma omp parallel for shared(params)
+		for(int i = 0; i < params->n; ++i) {
+			char tmpbuf[500];
+			sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+			popen(tmpbuf, "w");
+		}
+		fprintf(stderr, "[%s] Finished cleaning up intermediate files.\n", __func__);
+		//fprintf(stderr, "Not executing %s today. Eh.\n", cat_buff1);
+	}
+	splitterhash_destroy(params);
+	fprintf(stderr, "[%s] Successfully finished bmftools sdmp read collapsing.\n", __func__);
+
+	cleanup:
 	splitter_destroy(splitter);
-	FREE_SETTINGS(settings);
-	return 0;
+	free_marksplit_settings(settings);
+	return EXIT_SUCCESS;
 }

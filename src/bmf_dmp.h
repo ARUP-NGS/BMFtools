@@ -99,9 +99,12 @@ static inline char *make_crms_outfname(char *fname)
 CONST static inline int infer_barcode_length(char *bs_ptr)
 {
 	int ret = 0;
-	for (;;++ret)
-		if(bs_ptr[ret] == '\0' || bs_ptr[ret] == '|')
-			return ret;
+	for (;;++ret) {
+		switch(bs_ptr[ret]) {
+		case '|': // Fall-through
+		case '\0': return ret;
+		}
+	}
 	return -1; // This never happens.
 }
 
@@ -151,13 +154,6 @@ CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, markspli
 
 
 int ipow(int base, int exp);
-
-
-#ifndef KSEQ_2_FQ
-#define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-	read->name.s, pass_fail, index->seq.s, read->seq.s, read->qual.s)
-#endif
 
 
 #ifndef FREE_SETTINGS
