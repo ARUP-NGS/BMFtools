@@ -1,9 +1,0 @@
-I want
-each cycle as a line
-rather
-then within each line, read 1 and read 2 separated by a '|'
-All of the qscores [2-40] separated by ','
-and within those, the base calls (0,1,2,3) joined by ':'
-Oh, and I'd like it to be human-readable integers, not offset by 33.
-I'll do the offset and char conversion in the parsing
-array_parser.h is the code.
