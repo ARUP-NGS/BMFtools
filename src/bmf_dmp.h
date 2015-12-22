@@ -19,39 +19,16 @@
 
 typedef void (*hash_dmp_fn)(char *, char *);
 
-#ifndef MAX_HOMING_SEQUENCE
-#define MAX_HOMING_SEQUENCE 8
-#endif
-#ifndef CAT_BUFFER_SIZE
-#define CAT_BUFFER_SIZE 500000
-#endif
-#define MAX_N_BLENS 6
-
-
-#ifndef MAX_BARCODE_LENGTH
-#define MAX_BARCODE_LENGTH 30
-#endif
-
-
-#ifndef FREE_SETTINGS
-#define FREE_SETTINGS(settings) free(settings.tmp_basename);\
-	free(settings.index_fq_path);\
-	free(settings.input_r1_path);\
-	free(settings.input_r2_path)
-#endif
-
-#ifndef METASYNTACTIC_FNAME_BUFLEN
+#define CAT_BUFFER_SIZE 250000
 #define METASYNTACTIC_FNAME_BUFLEN 100
-#endif
 
 
-int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
 void clean_homing_sequence(char *);
 void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 void parallel_hashdmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func);
-
+int ipow(int base, int exp);
 
 
 CONST static inline int test_hp(char *barcode, int threshold)
@@ -103,34 +80,26 @@ static inline char *make_crms_outfname(char *fname)
 
 CONST static inline int infer_barcode_length(char *bs_ptr)
 {
-	int ret = 0;
-	for (;;++ret) {
-		switch(bs_ptr[ret]) {
+	char *const current = bs_ptr;
+	for (;;) {
+		switch(*bs_ptr++) {
 		case '|': // Fall-through
-		case '\0': return ret;
+		case '\0': return bs_ptr - current;
 		}
 	}
 	return -1; // This never happens.
 }
 
 
-#ifndef kroundup32
-#define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
-#endif
-
-
 CONST static inline int nlen_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr)
 {
-	if(settings_ptr->max_blen < 0) {
+	if(settings_ptr->max_blen < 0)
 		return (memcmp(seq1->seq.s + (settings_ptr->blen1_2 + settings_ptr->offset),
-					   settings_ptr->homing_sequence,
-					   settings_ptr->homing_sequence_length) == 0) ? settings_ptr->blen1_2 + settings_ptr->offset + settings_ptr->homing_sequence_length: -1;
-	}
-	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
+					   settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0)
+				? settings_ptr->blen1_2 + settings_ptr->offset + settings_ptr->homing_sequence_length: -1;
+	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i)
+		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0)
 			return i + settings_ptr->homing_sequence_length;
-		}
-	}
 	return -1;
 }
 
@@ -151,22 +120,5 @@ CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, markspli
 	*pass_fail = 0;
 	return default_len;
 }
-
-
-#ifndef METASYNTACTIC_FNAME_BUFLEN
-#define METASYNTACTIC_FNAME_BUFLEN 100
-#endif
-
-
-int ipow(int base, int exp);
-
-
-#ifndef FREE_SETTINGS
-#define FREE_SETTINGS(settings) cond_free(settings.tmp_basename);\
-	cond_free(settings.index_fq_path);\
-	cond_free(settings.input_r1_path);\
-	cond_free(settings.input_r2_path);\
-	cond_free(settings.ffq_prefix)
-#endif
 
 #endif

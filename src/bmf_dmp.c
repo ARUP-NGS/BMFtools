@@ -455,28 +455,3 @@ int crms_main(int argc, char *argv[])
 	return 0;
 }
 
-inline int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr)
-{
-	return (settings_ptr->homing_sequence) ?
-		(memcmp(seq1->seq.s + (settings_ptr->blen / 2 + settings_ptr->offset),
-			   settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0): 1;
-}
-
-
-inline char test_hp_inline(char *barcode, int length, int threshold)
-{
-	int run = 0;
-	char last = 0;
-	for(int i = 0; i < length; i++){
-		if(barcode[i] == 'N')
-			return '0';
-		if(barcode[i] == last) {
-			if(++run >= threshold)
-				return '0';
-		}
-		else
-			run = 0, last = barcode[i];
-	}
-	return '1';
-}
-
