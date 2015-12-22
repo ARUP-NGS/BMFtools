@@ -379,6 +379,37 @@ void write_3d_offsets(FILE *fp, fullerr_t *f)
 	return;
 }
 
+readerr_t *readerr_init(size_t l) {
+	readerr_t *ret = (readerr_t *)calloc(1, sizeof(readerr_t));
+	arr3d_init(ret->obs, l, uint64_t);
+	arr3d_init(ret->err, l, uint64_t);
+	arr3d_init(ret->final, l, int);
+	arr2d_init(ret->qdiffs, l, int);
+	arr2d_init(ret->qpvsum, l, double);
+	arr2d_init(ret->qobs, l, uint64_t);
+	arr2d_init(ret->qerr, l, uint64_t);
+	ret->l = l;
+	return ret;
+}
+
+fullerr_t *fullerr_init(size_t l) {
+	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
+	ret->l = l;
+	ret->r1 = readerr_init(l);
+	ret->r2 = readerr_init(l);
+	return ret;
+}
+
+void fullerr_destroy(fullerr_t *e) {
+	if(e->r1)
+		readerr_destroy(e->r1), e->r1 = NULL;
+	if(e->r2)
+		readerr_destroy(e->r2), e->r2 = NULL;
+	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
+	free(e);
+	return;
+}
+
 int err_main(int argc, char *argv[])
 {
 	htsFormat open_fmt;

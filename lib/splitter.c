@@ -102,3 +102,5 @@ mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 {
 	INIT_SPLITTER(settings_ptr);
 }
+
+#undef INIT_SPLITTER

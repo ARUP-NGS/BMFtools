@@ -312,7 +312,7 @@ int crms_main(int argc, char *argv[])
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
 			case 'g': settings.gzip_compression = atoi(optarg); break;
 			case '?': // Fall-through
-			case 'h': print_crms_usage(argv[0]); return 0;
+			case 'h': print_crms_usage(argv[0]); return EXIT_SUCCESS;
 			case 'l': settings.blen = 2 * atoi(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
