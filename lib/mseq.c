@@ -3,10 +3,10 @@
 CONST inline char *mem_view(char *comment)
 {
 	int hits = 0;
-	for(;;++comment) {
-		if(*comment == '|' || *comment == '\0') {
-			if(hits) return (char *)comment + 4; // 4 for "|BS="
-			else hits = 1;
+	for(;;) {
+		switch(*comment++) {
+			case '|':
+			case '\0': if(hits) return (char *)comment + 3; else hits = 1; // + 3 for |BS= minus 1, since we already incremented for the switch.
 		}
 	}
 	return NULL; // This shouldn't ever happen.
