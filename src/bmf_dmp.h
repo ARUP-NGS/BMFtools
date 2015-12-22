@@ -23,29 +23,11 @@
 #ifndef CAT_BUFFER_SIZE
 #define CAT_BUFFER_SIZE 500000
 #endif
-#ifndef MAX_N_BLENS
-#define MAX_N_BLENS 10
-#endif
+#define MAX_N_BLENS 6
 
 
 #ifndef MAX_BARCODE_LENGTH
 #define MAX_BARCODE_LENGTH 30
-#endif
-#ifndef KSEQ_2_FQ
-#define KSEQ_2_FQ(handle, read, index, pass_fail) fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s\n%s\n+\n%s\n",\
-	read->name.s, pass_fail + '0', index->seq.s, read->seq.s, read->qual.s)
-#endif
-#ifndef SALTED_KSEQ_2_FQ
-#define SALTED_KSEQ_2_FQ(handle, read, barcode, pass_fail) fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
-	read->name.s, pass_fail + '0', barcode, read->seq.s, read->qual.s)
-#endif
-#ifndef SALTED_MSEQ_2_FQ
-#define SALTED_MSEQ_2_FQ(handle, read, barcode, pass_fail) \
-	fprintf(handle, \
-		"@%s ~#!#~|FP=%c|BS=%s|RV=0\n%s\n+\n%s\n",\
-	read->name, pass_fail + '0', barcode, read->seq, read->qual)
 #endif
 
 
@@ -60,21 +42,6 @@
 #define METASYNTACTIC_FNAME_BUFLEN 100
 #endif
 
-#ifndef CHECK_CALL
-#if !NDEBUG
-#define CHECK_CALL(buff) \
-	fprintf(stderr, "[D:%s] Now check calling command '%s'.\n", __func__, buff); \
-	if(system(buff) < 0) fprintf(stderr, "[D:%s] System call failed. Command: '%s'.\n", __func__, buff)
-#else
-#define CHECK_CALL(buff) \
-	if(system(buff) < 0) fprintf(stderr, "[D:%s] System call failed. Command: '%s'.\n", __func__, buff)
-#endif
-#endif
-
-extern void hash_dmp_core(char *infname, char *outfname);
-extern int isfile(char *);
-
-
 typedef struct blens {
 	int max_blen; // Last value in blens
 	int min_blen; // Lowest value in blens
@@ -82,27 +49,6 @@ typedef struct blens {
 	int n; // Number of blens to look for
 	int current_blen;
 } blens_t;
-
-typedef struct crms_settings {
-	int hp_threshold; // The minimum length of a homopolymer run to fail a barcode.
-	int n_nucs; // Number of nucleotides to split by.
-	char *tmp_basename;
-	char *input_r1_path;
-	char *input_r2_path;
-	int n_handles; // Number of handles
-	int notification_interval; // How many sets of records do you want to process between progress reports?
-	blens_t *blen_data;
-	int offset; // Number of bases at the start of the inline barcodes to skip for low quality.
-	char ****rescaler; // Three-dimensional rescaler array. Size: [readlen, nqscores, 4] (length of reads, number of original quality scores, number of bases).
-	char *rescaler_path; // Path to flat text file for parsing in the rescaler.
-	char *ffq_prefix; // Final fastq prefix.
-	int threads; // Number of threads to use for parallel dmp.
-	char *homing_sequence;
-	int homing_sequence_length;
-	int run_hash_dmp;
-} crms_settings_t;
-
-
 
 
 //char *trim_ext(char *fname);

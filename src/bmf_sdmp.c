@@ -83,8 +83,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1, 0);
 	pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 	bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, rseq1->barcode, pass_fail);
-	SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, rseq1->barcode, pass_fail);
+	mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+	mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	uint64_t count = 0;
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
@@ -97,8 +97,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1, 0);
 		pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 		bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r1[bin], rseq1, rseq1->barcode, pass_fail);
-		SALTED_MSEQ_2_FQ(splitter_ptr->tmp_out_handles_r2[bin], rseq2, rseq1->barcode, pass_fail);
+        mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+        mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	}
 	tm_destroy(tmp);
 	mseq_destroy(rseq1);

@@ -96,7 +96,7 @@ static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, int pass_fail, c
 			mvar->name, pass_fail + '0', prefix, barcode, mvar->seq, mvar->qual);
 }
 
-static inline void mseq2fq_inline(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode)
+static inline void mseq2fq(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode)
 {
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=Z%s\n%s\n+\n%s\n",
 			mvar->name, pass_fail + '0', barcode, mvar->seq, mvar->qual);

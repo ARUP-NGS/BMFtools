@@ -111,7 +111,7 @@ inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *t
 	memcpy(mvar->name, seq->name.s, seq->name.l);
 	mvar->name[seq->name.l] = '\0';
 	memcpy(mvar->seq, seq->seq.s, seq->seq.l * sizeof(char));
-	memset(mvar->seq, 'N', n_len), memset(mvar->qual, '#', n_len);
+	mask_mseq(mvar, n_len);
 	if(rescaler)
 		for(int i = n_len; i < seq->seq.l; ++i)
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
