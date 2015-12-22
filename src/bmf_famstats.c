@@ -1,9 +1,6 @@
 #include "bmf_famstats.h"
 
 int RVWarn = 1;
-#ifndef notification_interval
-#define notification_interval 1000000
-#endif
 
 int frac_usage_exit(FILE *fp, int code) {
 	fprintf(fp, "bmftools famstats frac <opts> <in.bam>\n"
@@ -57,8 +54,10 @@ int target_main(int argc, char *argv[])
 	khash_t(bed) *bed = NULL;
 	char *bedpath = NULL;
 	uint32_t padding = (uint32_t)-1;
+	uint64_t notification_interval = 1000000;
 
-	if(argc < 4) {
+	if(argc == 1) target_usage_exit(stderr, EXIT_SUCCESS);
+	else if(argc < 4) {
 		target_usage_exit(stderr, EXIT_FAILURE);
 	}
 
@@ -71,6 +70,9 @@ int target_main(int argc, char *argv[])
 			break;
 		case 'p':
 			padding = strtoul(optarg, NULL, 0);
+			break;
+		case 'n':
+			notification_interval = strtoull(optarg, NULL, 0);
 			break;
 		case '?':
 		case 'h':
@@ -86,10 +88,8 @@ int target_main(int argc, char *argv[])
 		fprintf(stderr, "[famstat_target_main]: Padding not set. Set to 25.\n");
 	}
 
-	if (argc != optind+1) {
-		if (argc == optind) target_usage_exit(stdout, EXIT_SUCCESS);
-		else target_usage_exit(stderr, EXIT_FAILURE);
-	}
+	if (argc != optind+1)
+		(argc == optind) ? target_usage_exit(stdout, EXIT_SUCCESS): target_usage_exit(stderr, EXIT_FAILURE);
 
 	if(!bedpath) {
 		fprintf(stderr, "Bed path required for famstats target. See usage!\n");
@@ -110,10 +110,10 @@ int target_main(int argc, char *argv[])
 	bed = parse_bed_hash(bedpath, header, padding);
 	uint64_t fm_target = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
-	while ((c = sam_read1(fp, header, b)) >= 0) {
+	while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
 		target_loop(b, bed, &fm_target, &total_fm);
-		if(++count % notification_interval == 0)
-			fprintf(stderr, "[famstat_target_core] Number of records processed: %"PRIu64".\n", count);
+		if(UNLIKELY(++count % notification_interval == 0))
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 	}
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
@@ -194,9 +194,9 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	s->rc = kh_init(rc);
 	s->data = NULL;
 	b = bam_init1();
-	while ((ret = sam_read1(fp, h, b)) >= 0) {
+	while (LIKELY((ret = sam_read1(fp, h, b)) >= 0)) {
 		famstat_loop(s, b, settings);
-		if(UNLIKELY(!(++count % notification_interval)))
+		if(UNLIKELY(++count % settings->notification_interval == 0))
 			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 	}
 	bam_destroy1(b);
@@ -242,6 +242,8 @@ int fm_main(int argc, char *argv[])
 		case 'f':
 			settings->minFM = atoi(optarg); break;
 			break;
+		case 'n':
+			settings->notification_interval = strtoull(optarg, NULL, 0);
 		case '?': // Fall-through!
 		case 'h':
 			fm_usage_exit(stderr, EXIT_SUCCESS);
@@ -297,6 +299,7 @@ int frac_main(int argc, char *argv[])
 	bam_hdr_t *header;
 	int c;
 	uint32_t minFM = 0;
+	uint64_t notification_interval = 1000000;
 
 	if(argc < 4) frac_usage_exit(stderr, EXIT_FAILURE);
 	if(strcmp(argv[1], "--help") == 0) frac_usage_exit(stderr, EXIT_SUCCESS);
@@ -306,6 +309,8 @@ int frac_main(int argc, char *argv[])
 		case 'm':
 			minFM = (uint32_t)atoi(optarg); break;
 			break;
+		case 'n':
+			notification_interval = strtoull(optarg, NULL, 0); break;
 		case '?':
 		case 'h':
 			frac_usage_exit(stderr, EXIT_SUCCESS);
@@ -350,7 +355,7 @@ int frac_main(int argc, char *argv[])
 	while (LIKELY(c = sam_read1(fp, header, b)) >= 0) {
 		frac_loop(b, minFM, &fm_above, &total_fm);
 		if(UNLIKELY(!(++count % notification_interval)))
-			fprintf(stderr, "[famstat_frac_core] Number of records processed: %"PRIu64".\n", count);
+			fprintf(stderr, "[famstat_frac_core] Number of records processed: %lu.\n", count);
 	}
 	fprintf(stderr, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
 	bam_destroy1(b);

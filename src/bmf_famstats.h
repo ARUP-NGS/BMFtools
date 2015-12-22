@@ -40,6 +40,7 @@ typedef struct famstats {
 } famstats_t;
 
 typedef struct famstat_settings {
+	uint64_t notification_interval;
 	uint32_t minMQ;
 	uint32_t minFM;
 } famstat_settings_t;
