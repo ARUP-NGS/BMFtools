@@ -42,17 +42,6 @@
 #define METASYNTACTIC_FNAME_BUFLEN 100
 #endif
 
-typedef struct blens {
-	int max_blen; // Last value in blens
-	int min_blen; // Lowest value in blens
-	int blens[MAX_N_BLENS]; // Array holding blens
-	int n; // Number of blens to look for
-	int current_blen;
-} blens_t;
-
-
-//char *trim_ext(char *fname);
-
 
 int test_homing_seq(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr);
 char test_hp_inline(char *barcode, int length, int threshold);
@@ -100,24 +89,6 @@ CONST static inline int test_hp(char *barcode, int threshold)
 		}\
 	} while(0)
 
-
-extern splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
-extern void splitterhash_destroy(splitterhash_params_t *params);
-
-/*
- * Returns a null-terminated string with the default outfname.
- * Warning: Must be freed!
- */
-static inline char *make_default_outfname(char *fname, const char *suffix)
-{
-	char buf[200];
-	char *prefix = trim_ext(fname);
-	strcpy(buf, prefix);
-	strcat(buf, suffix);
-	char *ret = strdup(buf);
-	free(prefix);
-	return ret;
-}
 
 static inline char *make_crms_outfname(char *fname)
 {
