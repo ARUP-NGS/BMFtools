@@ -10,9 +10,8 @@ void print_hash_dmp_usage(char *argv[]) {
 void print_hash_dmp_opt_err(char *argv[], char *optarg) {
 	fprintf(stderr, "Invalid argument %s. See usage.\n", optarg);
 	print_hash_dmp_usage(argv);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
-
 
 
 tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen)
@@ -39,7 +38,7 @@ int hash_dmp_main(int argc, char *argv[])
     int stranded_analysis = 1;
 	while ((c = getopt(argc, argv, "o:sh?")) > -1) {
 		switch(c) {
-			case 'o': outfname = strdup(optarg);break;
+			case 'o': outfname = strdup(optarg); break;
             case 's': stranded_analysis = 0; break;
             case '?': // Fall-through
 			case 'h': print_hash_dmp_usage(argv); return 0;
@@ -53,8 +52,7 @@ int hash_dmp_main(int argc, char *argv[])
 	}
 	infname = strdup(argv[optind]);
 	stranded_analysis ? stranded_hash_dmp_core: hash_dmp_core (infname, outfname);
-	if(outfname) free(outfname);
-	if(infname) free(infname);
+	cond_free(outfname); cond_free(infname);
 	return 0;
 }
 

@@ -12,6 +12,7 @@ int hash_dmp_main(int argc, char *argv[]);
 extern void splitterhash_destroy(splitterhash_params_t *params);
 extern splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
 void stranded_hash_dmp_core(char *infname, char *outfname);
+tmpvars_t *init_tmpvars_p(char *bs_ptr, int blen, int readlen);
 
 //CONST extern inline char *mem_view(char *);
 typedef struct HashKing {
