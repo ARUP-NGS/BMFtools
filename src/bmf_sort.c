@@ -1531,6 +1531,22 @@ static int change_SO(bam_hdr_t *h, const char *so)
 	return 0;
 }
 
+static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
+{
+    int t;
+	switch(cmpkey) {
+		case QNAME:
+			t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
+			return (t < 0 || (t == 0 && (a->core.flag&0xc0) < (b->core.flag&0xc0)));
+		case SAMTOOLS: return bmfsort_core_key(a) < bmfsort_core_key(b);
+		case BMF:
+			return bmfsort_se_key(a) < bmfsort_se_key(b);
+		case UCS:
+			return ucs_se_sort_key(a) < ucs_se_sort_key(b);
+	}
+	return 0; // This should never happen
+}
+
 // Function to compare reads and determine which one is < the other
 static inline int bam1_lt(const bam1_p a, const bam1_p b)
 {
@@ -1544,19 +1560,17 @@ static inline int bam1_lt(const bam1_p a, const bam1_p b)
 		case BMF:
 			key_a = bmfsort_core_key(a);
 			key_b = bmfsort_core_key(b);
-			if(key_a < key_b) return 1;
-			else if(key_b < key_a) return 0;
-			else return bmfsort_mate_key(a) < bmfsort_mate_key(b);
+			return (key_a != key_b) ? (key_a < key_b): (bmfsort_mate_key(a) < bmfsort_mate_key(b));
 		case UCS:
 			key_a = ucs_sort_core_key(a);
 			key_b = ucs_sort_core_key(b);
-			if(key_a < key_b) return 1;
-			else if(key_b < key_a) return 0;
-			else return ucs_sort_mate_key(a) < ucs_sort_mate_key(b);
+			return (key_a != key_b) ? (key_a < key_b): (ucs_sort_mate_key(a) < ucs_sort_mate_key(b));
 	}
 	return 0; // This never happens.
 }
-KSORT_INIT(sort, bam1_p, bam1_lt)
+
+KSORT_INIT(sort, bam1_p, bam1_lt) // Original samtools sort
+KSORT_INIT(se_sort, bam1_p, bam1_se_lt) // Single-end bmf/ucs sort.
 
 typedef struct {
 	size_t buf_len;
@@ -1678,7 +1692,8 @@ static int sort_blocks(int n_files, size_t k, bam1_p *buf, const char *prefix, c
 int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 					  const char *fnout, const char *modeout,
 					  size_t _max_mem, int n_threads,
-					  const htsFormat *in_fmt, const htsFormat *out_fmt, int split)
+					  const htsFormat *in_fmt, const htsFormat *out_fmt, int split,
+					  int is_se)
 {
 	int ret = -1, i, n_files = 0;
 	size_t mem, max_k, k, max_mem;
@@ -1737,7 +1752,8 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 
 	// write the final output
 	if (n_files == 0) { // a single block
-		ks_mergesort(sort, k, buf, 0);
+        if(is_se) ks_mergesort(se_sort, k, buf, 0);
+        else ks_mergesort(sort, k, buf, 0);
 		if(split)
 			write_buffer_split(fnout, modeout, k, buf, n_threads, header, out_fmt);
 		else
@@ -1776,7 +1792,7 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 	return ret;
 }
 
-// Unused here but may be used by legacy samtools-using third-party code
+/* Unused here but may be used by legacy samtools-using third-party code
 int bam_sort_core(int cmpkey, const char *fn, const char *prefix, size_t max_mem)
 {
 	int ret;
@@ -1786,6 +1802,7 @@ int bam_sort_core(int cmpkey, const char *fn, const char *prefix, size_t max_mem
 	free(fnout);
 	return ret;
 }
+*/
 
 
 static int sort_usage(FILE *fp, int status)
@@ -1802,6 +1819,7 @@ static int sort_usage(FILE *fp, int status)
 "-@ INT       Set number of sorting and compression threads [1]\n"
 "-s           Flag to split the bam into a list of file handles.\n"
 "-p           If splitting into a list of handles, this sets the file prefix.\n"
+"-$           Flag to specify single-end. Needed for unclipped start compatibility.\n"
 "\n");
 	return status;
 }
@@ -1809,7 +1827,7 @@ static int sort_usage(FILE *fp, int status)
 int sort_main(int argc, char *argv[])
 {
 	size_t max_mem = 768<<20; // 512MB
-	int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
+	int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1, is_se = 0;
 	int split = 0;
 	int cmpkey = BMF;
 	char modeout[12];
@@ -1825,7 +1843,7 @@ int sort_main(int argc, char *argv[])
 	};
 
 
-	while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:sh", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "k:l:m:o:O:T:@:sh$?", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'k': if(strcmp(optarg, "bmf") == 0) cmpkey = BMF;
 				  else if(strcmp(optarg, "pos") == 0) cmpkey = SAMTOOLS;
@@ -1849,10 +1867,11 @@ int sort_main(int argc, char *argv[])
 		case '@': n_threads = atoi(optarg); break;
 		case 'l': level = atoi(optarg); break;
 		case 's': split = 1; break;
+		case '$': is_se = 1; break;
 
 		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
 				  /* else fall-through */
-		case '?': return sort_usage(stderr, EXIT_FAILURE);
+		case '?':
 		case 'h': return sort_usage(stderr, EXIT_SUCCESS);
 		}
 	}
@@ -1870,7 +1889,7 @@ int sort_main(int argc, char *argv[])
 
 	if (bam_sort_core_ext(cmpkey, (nargs > 0)? argv[optind] : "-",
 						  tmpprefix, fnout, modeout, max_mem, n_threads,
-						  &ga.in, &ga.out, split) < 0)
+						  &ga.in, &ga.out, split, is_se) < 0)
 		ret = EXIT_FAILURE;
 
 	if(fnout_buffer.s) free(fnout_buffer.s);

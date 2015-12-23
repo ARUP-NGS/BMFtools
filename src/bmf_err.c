@@ -203,7 +203,7 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 {
 	uint64_t l;
 	int i, j;
-	for(uint64_t l = 0; l < f->l; ++l) {
+	for(l = 0; l < f->l; ++l) {
 		for(j = 0; j < nqscores; ++j) {
 			for(i = 0; i < 4; ++i) {
 				if(f->r1->obs[i][j][l])
@@ -358,7 +358,6 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 		fprintf(ep, "\n"), fprintf(cp, "\n");
 	}
 	fclose(dictwrite);
-	return;
 }
 
 void write_3d_offsets(FILE *fp, fullerr_t *f)
@@ -401,7 +400,6 @@ void fullerr_destroy(fullerr_t *e) {
 	if(e->r2) readerr_destroy(e->r2), e->r2 = NULL;
 	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
 	free(e);
-	return;
 }
 
 int err_main(int argc, char *argv[])

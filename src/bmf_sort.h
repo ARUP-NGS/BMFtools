@@ -19,13 +19,13 @@
 #include "htslib/ksort.h"
 #include "htslib/kstring.h"
 #include "htslib/sam.h"
-#include "flow_util.h"
-#include "io_util.h"
-#include "mem_util.h"
+#include "dlib/flow_util.h"
+#include "dlib/io_util.h"
+#include "dlib/mem_util.h"
+#include "dlib/sort_util.h"
+#include "dlib/cstr_util.h"
 #include "sam.h"
 #include "sam_opts.h"
-#include "sort_util.h"
-#include "cstr_util.h"
 
 enum sort_order {
 	SAMTOOLS,
@@ -35,9 +35,7 @@ enum sort_order {
 };
 
 
-#ifndef ABORT
-#define ABORT(message) do {fprintf(stderr, message); exit(EXIT_FAILURE);} while(0)
-#endif
+
 
 static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2) {
 	uint32_t i, offset1 = 0, offset2 = 0, ucs1 = b1->core.pos, ucs2 = b2->core.pos;
