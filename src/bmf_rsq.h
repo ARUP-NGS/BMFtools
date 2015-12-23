@@ -41,10 +41,6 @@ typedef struct {
 
 const int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
 
-extern double igamc(double a, double x);
-extern inline uint32_t pvalue_to_phred(double pvalue);
-extern inline double igamc_pvalues(int num_pvalues, double x);
-
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
 	if (stack->n == stack->max) {

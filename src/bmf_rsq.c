@@ -45,10 +45,6 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 	uint8_t *bdata, *pdata;
-	uint32_t *const bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
-	uint32_t *const pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
-	uint32_t *const bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
-	uint32_t *const pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
 	int n_changed;
 /*
 	if(!b || !p) {
@@ -87,26 +83,36 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		bam_aux_del(p, pdata);
 	} else n_changed = (bdata) ? bam_aux2i(bdata): 0;
 
+	uint32_t *const bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
+	uint32_t *const pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
+	uint32_t *const bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
+	uint32_t *const pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+#if !NDEBUG
 	// Check for required PV and FA tags
 	if(!bPV || !pPV) {
-		fprintf(stderr, "Required PV tag not found. Abort mission! Read names: %s, %s.\n", bam_get_qname(b), bam_get_qname(p));
+		fprintf(stderr, "[E:%s] Required PV tag not found. Abort mission! Read names: %s, %s.\n",
+				__func__, bam_get_qname(b), bam_get_qname(p));
 		exit(EXIT_FAILURE);
 	}
 	if(!bFA || !pFA) {
-		fprintf(stderr, "Required FA tag not found. Abort mission!\n");
+		fprintf(stderr, "[E:%s] Required FA tag not found. Abort mission! Read names: %s, %s.\n",
+				__func__, bam_get_qname(b), bam_get_qname(p));
 		exit(EXIT_FAILURE);
 	}
+#endif
 
 	uint8_t *const bSeq = (uint8_t *)bam_get_seq(b);
 	uint8_t *const pSeq = (uint8_t *)bam_get_seq(p);
 	uint8_t *const bQual = (uint8_t *)bam_get_qual(b);
 	uint8_t *const pQual = (uint8_t *)bam_get_qual(p);
+#if !NDEBUG
 	if(!(bSeq && pSeq && bQual && pQual)) {
-		fprintf(stderr, "Qual strings or sequence strings are null. Abort!\n");
+		fprintf(stderr, "[E:%s] Qual strings or sequence strings are null. Abort!\n", __func__);
 	}
+#endif
 	const int qlen = p->core.l_qseq;
-	int qleni1;
 	if(p->core.flag & (BAM_FREVERSE)) {
+		int qleni1;
 		for(int i = 0; i < qlen; ++i) {
 			qleni1 = qlen - i - 1;
 			if(bam_seqi(pSeq, qleni1) == bam_seqi(bSeq, qleni1)) {
@@ -123,9 +129,10 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				++n_changed; // Note: goes from N to a useable nucleotide.
 				continue;
 			} else {
-				pPV[i] = (pPV[i] > bPV[i]) ? disc_pvalues(pPV[i], bPV[i]) : disc_pvalues(bPV[i], pPV[i]);
-				if(bam_seqi(bSeq, qleni1) != HTS_N)
+				if(pPV[i] > bPV[i]) {
 					set_base(pSeq, bSeq, qleni1);
+					pPV[i] = disc_pvalues(pPV[i], bPV[i]);
+				} else pPV[i] = disc_pvalues(bPV[i], pPV[i]);
 				pFA[i] = bFA[i];
 				pQual[qleni1] = bQual[qleni1];
 				++n_changed;
@@ -139,8 +146,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 			}
 			if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = pPV[i];
 		}
-	}
-	else {
+	} else {
 		for(int i = 0; i < qlen; ++i) {
 			if(bam_seqi(pSeq, i) == bam_seqi(bSeq, i)) {
 				pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
