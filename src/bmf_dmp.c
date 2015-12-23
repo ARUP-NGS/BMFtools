@@ -289,7 +289,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 }
 
 
-int crms_main(int argc, char *argv[])
+int dmp_main(int argc, char *argv[])
 {
 	if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
 	// Build settings struct
@@ -408,11 +408,13 @@ int crms_main(int argc, char *argv[])
 				__func__, settings.tmp_basename);
 	}
 
-	// Run core
+	// Misc.
     if(settings.annealed) {
         fprintf(stderr, "[E:%s] annealed chemistry not supported. Abort!\n", __func__);
         exit(EXIT_FAILURE);
     }
+
+	// Run core
 	mark_splitter_t *splitter = pp_split_inline(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] mark/split complete.\n", __func__);

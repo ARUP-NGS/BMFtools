@@ -439,7 +439,7 @@ int pr_usage(void)
 }
 
 
-int bam_rsq(int argc, char *argv[])
+int rsq_main(int argc, char *argv[])
 {
 	int c;
 	char wmode[4] = {'w', 'b', 0, 0};

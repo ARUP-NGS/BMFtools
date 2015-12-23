@@ -9,7 +9,7 @@
 #include "cstr_util.h"
 #include "bmf_hashdmp.h"
 
-void print_usage(char *argv[])
+void sdmp_usage(char *argv[])
 {
 		fprintf(stderr, "Usage: %s <options> -i <Index.seq> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
@@ -120,12 +120,12 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 
 void print_opt_err(char *argv[], char *optarg)
 {
-	print_usage(argv);
+	sdmp_usage(argv);
 	fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
 	exit(1);
 }
 
-int fqms_main(int argc, char *argv[])
+int sdmp_main(int argc, char *argv[])
 {
 	// Build settings struct
 	marksplit_settings_t settings = {
@@ -172,7 +172,7 @@ int fqms_main(int argc, char *argv[])
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
 				fprintf(stderr, "Parsed rescaler.\n"); break;
 			case '?': // Fall-through
-			case 'h': print_usage(argv); return 0;
+			case 'h': sdmp_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
 		}
 	}
@@ -189,13 +189,13 @@ int fqms_main(int argc, char *argv[])
 	}
 
 	if(argc == 1) {
-		print_usage(argv);
+		sdmp_usage(argv);
 		return EXIT_SUCCESS;
 	}
 
 	if(argc - 1 != optind + 1) {
 		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
-		print_usage(argv);
+		sdmp_usage(argv);
 		return 1;
 	}
 	settings.input_r1_path =  strdup(argv[optind]);
@@ -203,7 +203,7 @@ int fqms_main(int argc, char *argv[])
 
 	if(!settings.index_fq_path) {
 		fprintf(stderr, "[E:%s] Index fastq required. See usage.\n", __func__);
-		print_usage(argv);
+		sdmp_usage(argv);
 		return 1;
 	}
 	if(!settings.tmp_basename) {

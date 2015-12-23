@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-extern int bam_sort(int argc, char *argv[]);
-extern int crms_main(int argc, char *argv[]);
-extern int fqms_main(int argc, char *argv[]);
-extern int bam_rsq(int argc, char *argv[]);
+extern int sort_main(int argc, char *argv[]);
+extern int dmp_main(int argc, char *argv[]);
+extern int sdmp_main(int argc, char *argv[]);
+extern int rsq_main(int argc, char *argv[]);
 extern int hash_dmp_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
 extern int bmf_vetter_main(int argc, char *argv[]);
@@ -37,13 +37,13 @@ int main(int argc, char *argv[])
 	if(argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		return bmftools_usage(EXIT_FAILURE);
 	if(strcmp(argv[1], "sort") == 0)
-		return bam_sort(argc - 1, argv + 1);
+		return sort_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "dmp") == 0)
-		return crms_main(argc - 1, argv + 1);
+		return dmp_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "sdmp") == 0)
-		return fqms_main(argc - 1, argv + 1);
+		return sdmp_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "rsq") == 0)
-		return bam_rsq(argc - 1, argv + 1);
+		return rsq_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "hashdmp") == 0)
 		return hash_dmp_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "famstats") == 0)

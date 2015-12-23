@@ -449,7 +449,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
 
 		if (iter == kh_end(sq_tids)) {
 			// Warn about this, but it's not really fatal.
-			fprintf(stderr, "[W::%s] @SQ SN (%.*s) found in text header but not binary header.\n",
+			fprintf(stderr, "[W:%s] @SQ SN (%.*s) found in text header but not binary header.\n",
 					__func__,
 					(int) (matches[1].rm_eo - matches[1].rm_so),
 					text + matches[1].rm_so);
@@ -478,7 +478,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
 				goto memfail;
 			if (kputc('\n', out_text) == EOF) goto memfail;
 		} else {
-			fprintf(stderr, "[E::%s] @SQ SN (%s) found in binary header but not text header.\n",
+			fprintf(stderr, "[E:%s] @SQ SN (%s) found in binary header but not text header.\n",
 					__func__, merged_hdr->target_name[i + old_n_targets]);
 			missing++;
 		}
@@ -686,7 +686,7 @@ static int finish_rg_pg(bool is_rg, klist_t(hdrln) *hdr_lines,
 			idx = kh_get(c2c, pg_map, id);
 			if (idx == kh_end(pg_map)) {
 				// Not found, warn.
-				fprintf(stderr, "[W::%s] Tag %s%s not found in @PG records\n",
+				fprintf(stderr, "[W:%s] Tag %s%s not found in @PG records\n",
 						__func__, search + 1, id);
 			} else {
 				// Remember new id and splice points on original string
@@ -946,10 +946,10 @@ static void bam_translate(bam1_t* b, trans_tbl_t* tbl)
 		} else {
 			char *tmp = strdup(decoded_rg);
 			fprintf(stderr,
-					"[bam_translate] RG tag \"%s\" on read \"%s\" encountered "
+					"[%s] RG tag \"%s\" on read \"%s\" encountered "
 					"with no corresponding entry in header, tag lost. "
 					"Unknown tags are only reported once per input file for "
-					"each tag ID.\n",
+					"each tag ID.\n", __func__,
 					decoded_rg, bam_get_qname(b));
 			bam_aux_del(b, rg);
 			// Prevent future whinges
@@ -976,10 +976,10 @@ static void bam_translate(bam1_t* b, trans_tbl_t* tbl)
 		} else {
 			char *tmp = strdup(decoded_pg);
 			fprintf(stderr,
-					"[bam_translate] PG tag \"%s\" on read \"%s\" encountered "
+					"[%s] PG tag \"%s\" on read \"%s\" encountered "
 					"with no corresponding entry in header, tag lost. "
 					"Unknown tags are only reported once per input file for "
-					"each tag ID.\n",
+					"each tag ID.\n", __func__,
 					decoded_pg, bam_get_qname(b));
 			bam_aux_del(b, pg);
 			// Prevent future whinges
@@ -1081,14 +1081,14 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		samFile* fpheaders = sam_open(headers, "r");
 		if (fpheaders == NULL) {
 			const char *message = strerror(errno);
-			fprintf(stderr, "[bam_merge_core] cannot open '%s': %s\n", headers, message);
+			fprintf(stderr, "[%s] cannot open '%s': %s\n", __func__, headers, message);
 			return -1;
 		}
 		hin = sam_hdr_read(fpheaders);
 		sam_close(fpheaders);
 		if (hin == NULL) {
-			fprintf(stderr, "[bam_merge_core] couldn't read headers for '%s'\n",
-					headers);
+			fprintf(stderr, "[%s] couldn't read headers for '%s'\n",
+					__func__, headers);
 			return -1;
 		}
 	}
@@ -1131,7 +1131,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		fp[i] = sam_open_format(fn[i], "r", in_fmt);
 		if (fp[i] == NULL) {
 			int j;
-			fprintf(stderr, "[bam_merge_core] fail to open file %s\n", fn[i]);
+			fprintf(stderr, "[%s] fail to open file %s\n", __func__, fn[i]);
 			for (j = 0; j < i; ++j) {
 				bam_hdr_destroy(hdr[i]);
 				sam_close(fp[j]);
@@ -1142,8 +1142,8 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		}
 		hin = sam_hdr_read(fp[i]);
 		if (hin == NULL) {
-			fprintf(stderr, "[bam_merge_core] failed to read header for '%s'\n",
-					fn[i]);
+			fprintf(stderr, "[%s] failed to read header for '%s'\n",
+					__func__, fn[i]);
 			for (j = 0; j < i; ++j) {
 				bam_hdr_destroy(hdr[i]);
 				sam_close(fp[j]);
@@ -1164,13 +1164,14 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 		else { bam_hdr_destroy(hin); hdr[i] = NULL; }
 
 		if ((translation_tbl+i)->lost_coord_sort && !by_qname) {
-			fprintf(stderr, "[bam_merge_core] Order of targets in file %s caused coordinate sort to be lost\n", fn[i]);
+			fprintf(stderr, "[%s] Order of targets in file %s caused coordinate sort to be lost\n",
+					__func__, fn[i]);
 		}
 	}
 
 	// Did we get an @HD line?
 	if (!merged_hdr->have_hd) {
-		fprintf(stderr, "[W::%s] No @HD tag found.\n", __func__);
+		fprintf(stderr, "[W:%s] No @HD tag found.\n", __func__);
 		/* FIXME:  Should we add an @HD line here, and if so what should
 		   we put in it? Ideally we want a way of getting htslib to tell
 		   us the SAM version number to assume given no @HD line.  Is
@@ -1269,7 +1270,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 			sprintf(outfname, "%s.%s.bam", out, hout->target_name[i - 1]);
 			outfps[i] = sam_open_format(outfname, mode, out_fmt);
 			if(!outfps[i]) {
-				fprintf(stderr, "Could not open output bam %s. Abort!\n", outfname);
+				fprintf(stderr, "[E:%s] Could not open output bam %s. Abort!\n", __func__, outfname);
 				exit(EXIT_FAILURE);
 			}
 			sam_hdr_write(outfps[i], hout);
@@ -1279,7 +1280,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 	else {
 		outfps[0] = sam_open_format(out, mode, out_fmt);
 		if(!outfps[0]) {
-			fprintf(stderr, "Could not open output bam %s. Abort!\n", out);
+			fprintf(stderr, "[E:%s] Could not open output bam %s. Abort!\n", __func__, out);
 			exit(EXIT_FAILURE);
 		}
 		sam_hdr_write(outfps[0], hout);
@@ -1305,11 +1306,10 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 				heap->pos = HEAP_EMPTY;
 				bam_destroy1(heap->b);
 				heap->b = NULL;
-			} else fprintf(stderr, "[bam_merge_core] '%s' is truncated. Continue anyway.\n", fn[heap->i]);
+			} else fprintf(stderr, "[W:%s] '%s' is truncated. Continue anyway.\n", __func__, fn[heap->i]);
 			ks_heapadjust(heap, 0, n, heap);
 		}
-	}
-	else {
+	} else {
 		while (heap->pos != HEAP_EMPTY) {
 			bam1_t *b = heap->b;
 			if (flag & MERGE_RG) {
@@ -1326,7 +1326,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 				heap->pos = HEAP_EMPTY;
 				bam_destroy1(heap->b);
 				heap->b = NULL;
-			} else fprintf(stderr, "[bam_merge_core] '%s' is truncated. Continue anyway.\n", fn[heap->i]);
+			} else fprintf(stderr, "[W:%s] '%s' is truncated. Continue anyway.\n", __func__, fn[heap->i]);
 			ks_heapadjust(heap, 0, n, heap);
 		}
 	}
@@ -1346,11 +1346,8 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 	fprintf(stderr, "[D:%s] Clean out handles.\n", __func__);
 #endif
 	if(split) {
-		for(i = 0; i < hout->n_targets + 1; ++i)
-			sam_close(outfps[i]), outfps[i] = NULL;
-	}
-	else
-		sam_close(*outfps);
+		for(i = 0; i < hout->n_targets + 1; ++i) sam_close(outfps[i]), outfps[i] = NULL;
+	} else sam_close(*outfps);
 	if(hin) bam_hdr_destroy(hin);
 	bam_hdr_destroy(hout);
 	free_merged_header(merged_hdr);
@@ -1581,7 +1578,7 @@ static void write_buffer_split(const char *split_prefix, const char *mode, size_
 		sprintf(tmpbuf, "%s.split.%s.bam", split_prefix, h->target_name[i - 1]);
 		fps[i] = sam_open_format(tmpbuf, mode, fmt);
 		if(fps[i] == NULL) {
-			fprintf(stderr, "[%s]: Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
+			fprintf(stderr, "[E:%s] Couldn't open file %s. Abort!\n", __FUNCTION__, tmpbuf);
 			exit(EXIT_FAILURE);
 		}
 		sam_hdr_write(fps[i], h);
@@ -1733,7 +1730,7 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 		}
 	}
 	if (ret != -1) {
-		fprintf(stderr, "[bam_sort_core] truncated file. Aborting.\n");
+		fprintf(stderr, "[E:%s] truncated file. Aborting.\n", __func__);
 		ret = -1;
 		goto err;
 	}
@@ -1748,7 +1745,7 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 	} else { // then merge
 		char **fns;
 		n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
-		fprintf(stderr, "[bam_sort_core] merging from %d files...\n", n_files);
+		fprintf(stderr, "[%s] merging from %d files...\n", __func__, n_files);
 		fns = (char**)calloc(n_files, sizeof(char*));
 		for (i = 0; i < n_files; ++i) {
 			fns[i] = (char*)calloc(strlen(prefix) + 20, 1);
@@ -1809,7 +1806,7 @@ static int sort_usage(FILE *fp, int status)
 	return status;
 }
 
-int bam_sort(int argc, char *argv[])
+int sort_main(int argc, char *argv[])
 {
 	size_t max_mem = 768<<20; // 512MB
 	int c, nargs, ret = EXIT_SUCCESS, n_threads = 0, level = -1;
@@ -1835,7 +1832,7 @@ int bam_sort(int argc, char *argv[])
 				  else if(strcmp(optarg, "qname") == 0) cmpkey = QNAME;
 				  else if(strcmp(optarg, "ucs") == 0) cmpkey = UCS;
 				  else {
-					  fprintf(stderr, "Unrecognized sort key option %s.\n", optarg);
+					  fprintf(stderr, "[E:%s] Unrecognized sort key option %s.\n", __func__, optarg);
 					  return sort_usage(stderr, EXIT_FAILURE);
 				  }
 				  break;
