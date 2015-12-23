@@ -85,7 +85,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	hk_t *hash = NULL;
 	hk_t *current_entry = (hk_t *)malloc(sizeof(hk_t));
 	hk_t *tmp_hk = current_entry; // Save the pointer location for later comparison.
-	cp_view2buf(bs_ptr, current_entry->id);
+	cp_view2buf(bs_ptr + 1, current_entry->id);
 	current_entry->value = init_kfp(tmp->readlen);
 	HASH_ADD_STR(hash, id, current_entry);
 	pushback_kseq(current_entry->value, seq, blen);
@@ -95,12 +95,12 @@ void hash_dmp_core(char *infname, char *outfname)
 		if(UNLIKELY(++count % 1000000 == 0))
 			fprintf(stderr, "[%s] Number of records read from '%s': %lu.\n", __func__,
 					strcmp("-", infname) == 0 ? "stdin": infname,count);
-		cp_view2buf(seq->comment.s + 14, tmp->key);
+		cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
 		HASH_FIND_STR(hash, tmp->key, tmp_hk);
 		if(!tmp_hk) {
 			tmp_hk = (hk_t *)malloc(sizeof(hk_t));
 			tmp_hk->value = init_kfp(tmp->readlen);
-			cp_view2buf(seq->comment.s + 14, tmp_hk->id);
+			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hk->id);
 			pushback_kseq(tmp_hk->value, seq, blen);
 			HASH_ADD_STR(hash, id, tmp_hk);
 		}
@@ -171,37 +171,32 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		if(UNLIKELY(++count % 1000000 == 0))
 			fprintf(stderr, "[%s:%s] Number of records processed: %lu.\n", __func__,
 					*infname == '-' ? "stdin" : infname, count);
-		if(*(seq->comment.s + 14) == 'F') {
+		if(seq->comment.s[HASH_DMP_OFFSET] == 'F') {
 #if !NDEBUG
 			++fcount;
 #endif
-			cp_view2buf(seq->comment.s + 15, tmp->key); // 15 to skip the first tags AND the first base ('F'/'R')
+			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
 			HASH_FIND_STR(hfor, tmp->key, tmp_hkf);
 			if(!tmp_hkf) {
 				tmp_hkf = (hk_t *)malloc(sizeof(hk_t));
 				tmp_hkf->value = init_kfp(tmp->readlen);
-				cp_view2buf(seq->comment.s + 15, tmp_hkf->id);
+				cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
 				pushback_kseq(tmp_hkf->value, seq, blen);
 				HASH_ADD_STR(hfor, id, tmp_hkf);
-			}
-			else
-				pushback_kseq(tmp_hkf->value, seq, blen);
-		}
-		else {
+			} else pushback_kseq(tmp_hkf->value, seq, blen);
+		} else {
 #if !NDEBUG
 			++rcount;
 #endif
-			cp_view2buf(seq->comment.s + 15, tmp->key);
+			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
 			HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
 			if(!tmp_hkr) {
 				tmp_hkr = (hk_t *)malloc(sizeof(hk_t));
 				tmp_hkr->value = init_kfp(tmp->readlen);
-				cp_view2buf(seq->comment.s + 15, tmp_hkr->id);
+				cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkr->id);
 				pushback_kseq(tmp_hkr->value, seq, blen);
 				HASH_ADD_STR(hrev, id, tmp_hkr);
-			}
-			else
-				pushback_kseq(tmp_hkr->value, seq, blen);
+			} else pushback_kseq(tmp_hkr->value, seq, blen);
 		}
 	}
 #if !NDEBUG

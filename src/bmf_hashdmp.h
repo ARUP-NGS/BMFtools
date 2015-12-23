@@ -25,7 +25,7 @@ typedef struct HashKing {
 
 static inline void cp_view2buf(char *view, char *buf)
 {
-	FOREVER {
+	for(;;) {
 		switch(*view) {
 			case '\0': // Fall-through
 			case '|': *buf++ = '\0'; return;

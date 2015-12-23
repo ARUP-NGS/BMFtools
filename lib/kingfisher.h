@@ -18,6 +18,7 @@
 
 #define MAX_PV 3117 // Maximum seen with doubles
 #define MIN_FRAC_AGREED 0.5 // Minimum fraction of bases agreed in a family to not "N" the base.
+#define HASH_DMP_OFFSET 14
 
 #ifndef KSEQ_DEC_GZ
 #define KSEQ_DEC_GZ
@@ -99,14 +100,14 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 		kfp->max_phreds[posdata] = seq->qual.s[i];
 }
 
+
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 {
 	if(!kfp->length++) { // Increment while checking
-		memcpy(kfp->barcode, seq->comment.s + 14, blen);
+		memcpy(kfp->barcode, seq->comment.s + HASH_DMP_OFFSET, blen);
 		kfp->barcode[blen] = '\0';
 	}
-	for(int i = 0; i < kfp->readlen; ++i)
-		pb_pos(kfp, seq, i);
+	for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
 	return;
 }
 

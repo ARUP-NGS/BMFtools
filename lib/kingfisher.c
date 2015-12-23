@@ -49,6 +49,7 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int 
 }
 
 // kfp forward, kfp reverse
+// Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
 void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs)
 {
 	int i;
@@ -89,12 +90,13 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 
 KingFisher_t *init_kfp(size_t readlen)
 {
+	const size_t r5 = readlen * 5;
 	KingFisher_t *ret = (KingFisher_t *)calloc(1, sizeof(KingFisher_t));
 	ret->readlen = readlen;
-	ret->max_phreds = (char *)malloc((readlen * 5) * sizeof(char));
-	memset(ret->max_phreds, '#', readlen * 5);
-	ret->nuc_counts = (uint16_t *)calloc(readlen * 5, sizeof(uint16_t));
-	ret->phred_sums = (uint32_t *)calloc(readlen * 5, sizeof(uint32_t));
+	ret->max_phreds = (char *)malloc((r5) * sizeof(char));
+	memset(ret->max_phreds, '#', r5);
+	ret->nuc_counts = (uint16_t *)calloc(r5, sizeof(uint16_t));
+	ret->phred_sums = (uint32_t *)calloc(r5, sizeof(uint32_t));
 	ret->pass_fail = '1';
 	return ret;
 }
