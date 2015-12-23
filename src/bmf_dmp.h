@@ -9,12 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
-#include "binner.h"
-#include "cstr_util.h"
-#include "kingfisher.h"
-#include "io_util.h"
-#include "mem_util.h"
-#include "nix_util.h"
+#include "lib/binner.h"
+#include "lib/kingfisher.h"
+#include "dlib/cstr_util.h"
+#include "dlib/io_util.h"
+#include "dlib/mem_util.h"
+#include "dlib/nix_util.h"
 #include "bmf_hashdmp.h"
 
 typedef void (*hash_dmp_fn)(char *, char *);

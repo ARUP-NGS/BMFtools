@@ -25,26 +25,18 @@ DEALINGS IN THE SOFTWARE.  */
 #include "bmf_rsq.h"
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
-	if(!stack->a) {
-		stack->a = (bam1_t **)malloc(sizeof(bam1_t *) * n);
-		memset(stack->a, 0, sizeof(bam1_t *) * n);
-		stack->max = n;
-		return;
-	}
 	if(n > stack->max) {
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 #if !NDEBUG
 			if(!stack->a) {
-				fprintf(stderr, "Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
+				fprintf(stderr, "[E:%s] Failed to reallocate memory for %i bam1_t * objects. Abort!\n", __func__, stack->max);
 				exit(EXIT_FAILURE);
 			}
 #endif
 	}
 	else if(n < stack->n){
-		for(uint64_t i = stack->n; i > n; --i) {
-			bam_destroy1(stack->a[i]);
-		}
+		for(uint64_t i = stack->n;i > n;) bam_destroy1(stack->a[--i]);
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
 	}
@@ -53,10 +45,11 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 static inline void update_bam1(bam1_t *p, bam1_t *b)
 {
 	uint8_t *bdata, *pdata;
-	uint32_t *bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
-	uint32_t *pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
-	uint32_t *bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
-	uint32_t *pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+	uint32_t *const bPV = (uint32_t *)array_tag(b, "PV"); // Length of this should be b->l_qseq
+	uint32_t *const pPV = (uint32_t *)array_tag(p, "PV"); // Length of this should be b->l_qseq
+	uint32_t *const bFA = (uint32_t *)array_tag(b, "FA"); // Length of this should be b->l_qseq
+	uint32_t *const pFA = (uint32_t *)array_tag(p, "FA"); // Length of this should be b->l_qseq
+	int n_changed;
 /*
 	if(!b || !p) {
 		// If the
@@ -82,21 +75,17 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 #endif
 	pdata = bam_aux_get(p, "RV");
 	if(pdata) {
-		int pRV = bam_aux2i(pdata);
-		pRV += bam_aux2i(bam_aux_get(b, "RV"));
+		const int pRV = bam_aux2i(pdata) + bam_aux2i(bam_aux_get(b, "RV"));
 		bam_aux_del(p, pdata);
 		bam_aux_append(p, "RV", 'i', sizeof(int), (uint8_t *)&pRV);
 	}
 	// Handle NC (Number Changed) tag
 	pdata = bam_aux_get(p, "NC");
 	bdata = bam_aux_get(b, "NC");
-	int n_changed;
 	if(pdata) {
 		n_changed = (bdata) ? bam_aux2i(bdata) + bam_aux2i(pdata): bam_aux2i(pdata);
 		bam_aux_del(p, pdata);
-	}
-	else
-		n_changed = (bdata) ? bam_aux2i(bdata): 0;
+	} else n_changed = (bdata) ? bam_aux2i(bdata): 0;
 
 	// Check for required PV and FA tags
 	if(!bPV || !pPV) {
@@ -116,9 +105,10 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 		fprintf(stderr, "Qual strings or sequence strings are null. Abort!\n");
 	}
 	const int qlen = p->core.l_qseq;
+	int qleni1;
 	if(p->core.flag & (BAM_FREVERSE)) {
 		for(int i = 0; i < qlen; ++i) {
-			const int qleni1 = qlen - i - 1;
+			qleni1 = qlen - i - 1;
 			if(bam_seqi(pSeq, qleni1) == bam_seqi(bSeq, qleni1)) {
 				pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
 				pFA[i] += bFA[i];
@@ -132,8 +122,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pQual[qleni1] = bQual[qleni1];
 				++n_changed; // Note: goes from N to a useable nucleotide.
 				continue;
-			}
-			else {
+			} else {
 				pPV[i] = (pPV[i] > bPV[i]) ? disc_pvalues(pPV[i], bPV[i]) : disc_pvalues(bPV[i], pPV[i]);
 				if(bam_seqi(bSeq, qleni1) != HTS_N)
 					set_base(pSeq, bSeq, qleni1);
@@ -323,19 +312,14 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	}
 }
 
-static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
+static inline void rsq_core_pos(pr_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0) {
-		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
+		fprintf(stderr, "[E:%s] Failed to read first record in bam file. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
-		sam_write1(settings->out, settings->hdr, b);
-		if(sam_read1(settings->in, settings->hdr, b) < 0)
-		fprintf(stderr, "Failed to read first non-secondary/supplementary in bam file. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
+	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) sam_write1(settings->out, settings->hdr, b);
 	stack_insert(stack, b);
 	if(!(settings->in && settings->hdr)) {
 		fprintf(stderr, "Failed to open input bam... WTF?\n");
@@ -349,8 +333,7 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 		if(same_stack_pos(b, *stack->a)) {
 			stack_insert(stack, b);
 			continue;
-		}
-		else {
+		} else {
 			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 			write_stack(stack, settings);
 			stack->n = 1;
@@ -360,25 +343,17 @@ static inline void pr_loop_pos(pr_settings_t *settings, tmp_stack_t *stack)
 	bam_destroy1(b);
 }
 
-static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
+static inline void rsq_core_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 {
-#if !NDEBUG
-	fprintf(stderr, "Now beginning pr_loop_ucs.\n");
-#endif
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0) {
-		fprintf(stderr, "Failed to read first record in bam file. Abort!\n");
+		fprintf(stderr, "[E:%s] Failed to read first record in bam file. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
-		sam_write1(settings->out, settings->hdr, b);
-		if(sam_read1(settings->in, settings->hdr, b) < 0)
-		fprintf(stderr, "Failed to read first non-secondary/supplementary in bam file. Abort!\n");
-		exit(EXIT_FAILURE);
-	}
+	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) sam_write1(settings->out, settings->hdr, b);
 	stack_insert(stack, b);
 	if(!(settings->in && settings->hdr)) {
-		fprintf(stderr, "Failed to open input bam... WTF?\n");
+		fprintf(stderr, "[E:%s] Failed to open input bam.\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	while (LIKELY(sam_read1(settings->in, settings->hdr, b)) >= 0) {
@@ -389,8 +364,7 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 		if(same_stack_ucs(b, *stack->a)) {
 			stack_insert(stack, b);
 			continue;
-		}
-		else {
+		} else {
 			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
 			write_stack(stack, settings);
 			stack->n = 1;
@@ -401,13 +375,13 @@ static inline void pr_loop_ucs(pr_settings_t *settings, tmp_stack_t *stack)
 }
 
 
-static inline void pr_loop(pr_settings_t *settings, tmp_stack_t *stack)
+static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
 {
-	settings->cmpkey ? pr_loop_ucs(settings, stack): pr_loop_pos(settings, stack);
+	settings->cmpkey ? rsq_core_ucs(settings, stack): rsq_core_pos(settings, stack);
 }
 
 
-void bam_rsq_core(pr_settings_t *settings)
+void bam_rsq_bookends(pr_settings_t *settings)
 {
 	tmp_stack_t stack;
 	memset(&stack, 0, sizeof(tmp_stack_t));
@@ -420,7 +394,7 @@ void bam_rsq_core(pr_settings_t *settings)
 		fprintf(stderr, "Failed to start array of bam1_t structs...\n");
 		exit(EXIT_FAILURE);
 	}
-	pr_loop(settings, &stack); // Core
+	rsq_core(settings, &stack); // Core
 	free(stack.a);
 }
 
@@ -504,7 +478,7 @@ int rsq_main(int argc, char *argv[])
 	sam_hdr_write(settings->out, settings->hdr);
 
 	if (settings->is_se) bam_rsqse_core(settings);
-	else bam_rsq_core(settings);
+	else bam_rsq_bookends(settings);
 	bam_hdr_destroy(settings->hdr);
 	sam_close(settings->in); sam_close(settings->out);
 	if(settings->fqh)
