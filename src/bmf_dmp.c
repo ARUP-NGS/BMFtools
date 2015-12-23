@@ -192,7 +192,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	int l1, l2;
 	int count = 0;
 	int pass_fail = 1;
-	settings->blen1_2 = settings->blen / 2;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
 			free_marksplit_settings(*settings);
@@ -394,6 +393,9 @@ int crms_main(int argc, char *argv[])
 				__func__, settings.max_blen, settings.blen / 2);
 		exit(EXIT_FAILURE);
 	}
+	settings.blen1_2 = settings.blen / 2;
+	if(settings.max_blen < 0) settings.max_blen = settings.blen1_2 + 1;
+
 
 	// Handle filenames
 	settings.input_r1_path = strdup(argv[optind]);
