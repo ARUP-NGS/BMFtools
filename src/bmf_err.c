@@ -35,7 +35,6 @@ void write_final(FILE *fp, fullerr_t *e)
 		}
 		fprintf(fp, "\n");
 	}
-	return;
 }
 
 void err_report(FILE *fp, fullerr_t *e)
@@ -67,7 +66,6 @@ void err_report(FILE *fp, fullerr_t *e)
 			",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
 			(double)n2_err / n2_obs, n2_obs, n2_err, n2_ins, n_cases);
 	fprintf(fp, "}");
-	return;
 }
 
 void readerr_destroy(readerr_t *e){
@@ -198,25 +196,25 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	if(ref) free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
-	return;
 }
 
 
 void write_full_rates(FILE *fp, fullerr_t *f)
 {
+	uint64_t l;
+	int i, j;
 	for(uint64_t l = 0; l < f->l; ++l) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				if(f->r1->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
-				else
-					fputs(i ? ":-1337": "-1337", fp);
+				else fputs(i ? ":-1337": "-1337", fp);
 			}
 			if(j != nqscores - 1) fputc(',', fp);
 		}
 		fputc('|', fp);
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				if(f->r2->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
 				else
@@ -226,7 +224,6 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 		}
 		fputc('\n', fp);
 	}
-	return;
 }
 
 
@@ -261,7 +258,6 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 		fprintf(fp, "%0.12f\t", (double)sum1 / counts1);
 		fprintf(fp, "%0.12f\n", (double)sum2 / counts2);
 	}
-	return;
 }
 
 void impute_scores(fullerr_t *f)
@@ -273,25 +269,24 @@ void impute_scores(fullerr_t *f)
 			for(j = 0; j < nqscores; ++j)
 				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2 > 0 ? f->r1->qdiffs[i][l] + j + 2: 0,
 				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2 > 0 ? f->r2->qdiffs[i][l] + j + 2: 0;
-	return;
 }
 
 void fill_qvals(fullerr_t *f)
 {
-	for(int i = 0; i < 4; ++i) {
-		for(uint64_t l = 0; l < f->l; ++l) {
+	int i;
+	uint64_t l;
+	for(i = 0; i < 4; ++i) {
+		for(l = 0; l < f->l; ++l) {
 			for(int j = 1; j < nqscores; ++j) { // Skip qualities of 2
 				f->r1->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
 				f->r2->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
-				f->r1->qobs[i][l] += f->r1->obs[i][j][l];
-				f->r2->qobs[i][l] += f->r2->obs[i][j][l];
-				f->r1->qerr[i][l] += f->r1->err[i][j][l];
-				f->r2->qerr[i][l] += f->r2->err[i][j][l];
+				f->r1->qobs[i][l] += f->r1->obs[i][j][l]; f->r2->qobs[i][l] += f->r2->obs[i][j][l];
+				f->r1->qerr[i][l] += f->r1->err[i][j][l]; f->r2->qerr[i][l] += f->r2->err[i][j][l];
 			}
 		}
 	}
-	for(int i = 0; i < 4; ++i) {
-		for(uint64_t l = 0; l < f->l; ++l) {
+	for(i = 0; i < 4; ++i) {
+		for(l = 0; l < f->l; ++l) {
 			f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
 			f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
 			f->r1->qdiffs[i][l] = pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]);
@@ -302,7 +297,6 @@ void fill_qvals(fullerr_t *f)
 			//fprintf(stderr, "qdiffs %i, %lu after checking for %lu %lu > %lu min_obs is R1:%i R2:%i.\n", i, l, f->r1->qobs[i][l], f->r2->qobs[i][l], min_obs, f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
 		}
 	}
-	return;
 }
 
 void fill_sufficient_obs(fullerr_t *f)
@@ -334,9 +328,11 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 	const char *const bstr = "ACGT";
 	FILE *dictwrite = fopen("dict.txt", "w");
 	fprintf(dictwrite, "{\n\t");
-	for(uint32_t l = 0; l < f->l; ++l) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+	int i, j;
+	uint32_t l;
+	for(l = 0; l < f->l; ++l) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->obs[i][j][l]);
 				fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->obs[i][j][l]);
 				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->err[i][j][l]);
@@ -351,8 +347,8 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 				fprintf(ep, ","), fprintf(cp, ",");
 		}
 		fprintf(ep, "|"), fprintf(cp, "|");
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
 			}
@@ -401,10 +397,8 @@ fullerr_t *fullerr_init(size_t l) {
 }
 
 void fullerr_destroy(fullerr_t *e) {
-	if(e->r1)
-		readerr_destroy(e->r1), e->r1 = NULL;
-	if(e->r2)
-		readerr_destroy(e->r2), e->r2 = NULL;
+	if(e->r1) readerr_destroy(e->r1), e->r1 = NULL;
+	if(e->r2) readerr_destroy(e->r2), e->r2 = NULL;
 	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
 	free(e);
 	return;

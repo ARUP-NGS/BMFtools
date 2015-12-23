@@ -237,7 +237,7 @@ int sdmp_main(int argc, char *argv[])
 	char ffq_r2[200];
 	sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq.gz": "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq.gz": "%s.R2.fq", settings.ffq_prefix);
-	settings.panthera ? call_panthera: call_clowder (&settings, params, ffq_r1, ffq_r2);
+	settings.panthera ? (call_panthera: call_clowder) (&settings, params, ffq_r1, ffq_r2);
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 
