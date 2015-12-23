@@ -231,7 +231,7 @@ int fqms_main(int argc, char *argv[])
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 
-	parallel_hashdmp_core(&settings, params, &hash_dmp_core);
+	parallel_hash_dmp_core(&settings, params, &hash_dmp_core);
 	// Make sure that both files are empty.
 	char ffq_r1[200];
 	char ffq_r2[200];

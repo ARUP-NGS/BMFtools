@@ -43,7 +43,7 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
 }
 
 
-void parallel_hashdmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func) {
+void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func) {
 	#pragma omp parallel for schedule(dynamic, 1)
 	for(int i = 0; i < settings->n_handles; ++i) {
 		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
@@ -65,6 +65,9 @@ void parallel_hashdmp_core(marksplit_settings_t *settings, splitterhash_params_t
 
 
 void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
+#endif
 	// Clear output files.
 	char cat_buff[CAT_BUFFER_SIZE];
 	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
@@ -93,6 +96,9 @@ void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params,
 }
 
 void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
+#endif
 	char cat_buff1[CAT_BUFFER_SIZE];
 	// Clear output files.
 	sprintf(cat_buff1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
@@ -102,6 +108,16 @@ void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params
 	strcpy(cat_buff1, "/bin/cat ");
 	char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
 	for(int i = 0; i < settings->n_handles; ++i) {
+#if !NDEBUG
+		if(!isfile(params->outfnames_r1[i])) {
+			fprintf(stderr, "[E:%s] Error: output filename is not a file. Abort! ('%s').\n", __func__, params->outfnames_r1[i]);
+			exit(EXIT_FAILURE);
+		}
+		if(!isfile(params->outfnames_r2[i])) {
+			fprintf(stderr, "[E:%s] Error: output filename is not a file. Abort! ('%s').\n", __func__, params->outfnames_r2[i]);
+			exit(EXIT_FAILURE);
+		}
+#endif
 		strcat(cat_buff1, params->outfnames_r1[i]); strcat(cat_buff1, " ");
 		strcat(cat_buff2, params->outfnames_r2[i]); strcat(cat_buff2, " ");
 	}
@@ -114,6 +130,10 @@ void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params
 	strcat(cat_buff2, " > "); strcat(cat_buff2, ffq_r2);
 	if(settings->gzip_output)
 		strcat(cat_buff1, ".gz"), strcat(cat_buff2, ".gz");
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff1);
+    fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff2);
+#endif
 	FILE *c1_popen = popen(cat_buff1, "w");
 	FILE *c2_popen = popen(cat_buff2, "w");
 	if(pclose(c2_popen) || pclose(c1_popen)) {
@@ -420,8 +440,9 @@ int crms_main(int argc, char *argv[])
 	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	// Run core
-	parallel_hashdmp_core(&settings, params, &stranded_hash_dmp_core);
+	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
 
+	/*
 	if(settings.cleanup) {
 		#pragma omp parallel for schedule(dynamic, 1)
 		 for(int i = 0; i < settings.n_handles; ++i) {
@@ -432,12 +453,16 @@ int crms_main(int argc, char *argv[])
 			CHECK_CALL(tmpbuf);
 		}
 	}
+	*/
 	// Remove temporary split files
 	char ffq_r1[200];
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-	settings.panthera ? call_panthera: call_clowder (&settings, params, ffq_r1, ffq_r2);
+    if(settings.panthera)
+        call_panthera(&settings, params, ffq_r1, ffq_r2);
+    else
+        call_clowder(&settings, params, ffq_r1, ffq_r2);
 	if(settings.cleanup) {
 		#pragma omp parallel for
 		for(int i = 0; i < params->n; ++i) {
