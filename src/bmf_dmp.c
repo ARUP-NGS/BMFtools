@@ -439,26 +439,15 @@ int crms_main(int argc, char *argv[])
 	}
 	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
-	// Run core
+	// Run core.
 	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
 
-	/*
-	if(settings.cleanup) {
-		#pragma omp parallel for schedule(dynamic, 1)
-		 for(int i = 0; i < settings.n_handles; ++i) {
-			char tmpbuf[500];
-			fprintf(stderr, "[%s] Now removing temporary files '%s', '%s'.\n",
-					__func__, params->infnames_r1[i], params->infnames_r2[i]);
-			sprintf(tmpbuf, "rm %s %s", params->infnames_r2[i], params->infnames_r1[i]);
-			CHECK_CALL(tmpbuf);
-		}
-	}
-	*/
-	// Remove temporary split files
+	// Remove temporary split files.
 	char ffq_r1[200];
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
+    // Cat temporary files together.
     if(settings.panthera)
         call_panthera(&settings, params, ffq_r1, ffq_r2);
     else
