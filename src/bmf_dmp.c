@@ -189,7 +189,7 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 	}
 	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq->seq.l);
 #if !NDEBUG
-	int arr_size = seq1->seq.l * 4 * 2 * nqscores;
+	int arr_size = seq->seq.l * 4 * 2 * nqscores;
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {
@@ -235,12 +235,6 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 	gzclose(fp);
 	return splitter;
 }
-
-
-int dmp_main(int argc, char *argv[])
-{
-	if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
-
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
