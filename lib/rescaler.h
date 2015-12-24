@@ -1,6 +1,6 @@
 #ifndef ARRAY_PARSER_H
 #define ARRAY_PARSER_H
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <string.h>
 #include "dlib/char_util.h"
 

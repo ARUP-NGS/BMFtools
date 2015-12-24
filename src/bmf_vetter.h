@@ -3,10 +3,6 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <omp.h>
-#include <inttypes.h>
 #include <getopt.h>
 #include "htslib/khash.h"
 #include "htslib/vcf.h"

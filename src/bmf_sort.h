@@ -1,30 +1,19 @@
 #ifndef BMF_SORT_H
 #define BMF_SORT_H
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <getopt.h>
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <zlib.h>
-#include "include/bam.h"
 #include "htslib/khash.h"
 #include "htslib/klist.h"
 #include "htslib/ksort.h"
 #include "htslib/kstring.h"
-#include "htslib/sam.h"
+#include "dlib/cstr_util.h"
 #include "dlib/flow_util.h"
 #include "dlib/io_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/sort_util.h"
-#include "dlib/cstr_util.h"
-#include "htslib/sam.h"
+#include "include/bam.h"
 #include "include/sam_opts.h"
 
 enum sort_order {

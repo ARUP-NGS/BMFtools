@@ -1,16 +1,12 @@
 #ifndef BMF_ERR_H
 #define BMF_ERR_H
 
-#include <stdint.h>
-#include <stddef.h>
-#include <inttypes.h>
 #include <assert.h>
 #include <float.h>
-#include <math.h>
 #include "htslib/khash.h"
+#include "htslib/faidx.h"
 #include "dlib/bam_util.h"
 #include "dlib/mem_util.h"
-#include "htslib/faidx.h"
 #include "lib/kingfisher.h"
 
 

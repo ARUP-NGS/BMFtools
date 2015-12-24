@@ -4,10 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <zlib.h>
-#include <unistd.h>
 #include <tgmath.h>
-#include <inttypes.h>
-#include <assert.h>
 #include "htslib/sam.h"
 #include "include/sam_opts.h"
 #include "include/bam.h" // for bam_get_library

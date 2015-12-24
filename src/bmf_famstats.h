@@ -1,10 +1,7 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <limits.h>
+#ifndef BMF_FAMSTATS_H
+#define BMF_FAMSTATS_H
+
 #include <getopt.h>
-#include <inttypes.h>
 
 #include "htslib/sam.h"
 #include "htslib/ksort.h"
@@ -43,3 +40,4 @@ typedef struct famstat_settings {
 	uint32_t minMQ;
 	uint32_t minFM;
 } famstat_settings_t;
+#endif /* BMF_FAMSTATS_H */

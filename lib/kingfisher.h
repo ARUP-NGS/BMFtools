@@ -5,7 +5,6 @@
 #include <math.h>
 #include <zlib.h>
 #include <inttypes.h>
-#include <assert.h>
 #include "htslib/khash.h"
 #include "htslib/kseq.h"
 #include "include/igamc_cephes.h"

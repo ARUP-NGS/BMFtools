@@ -2,7 +2,6 @@
 #define SPLITTER_H
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 #include "dlib/compiler_util.h"
 #include "dlib/mem_util.h"
