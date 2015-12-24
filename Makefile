@@ -33,16 +33,17 @@ bin:
 	mkdir -p bin
 libhts.a:
 	cd htslib && make && cp libhts.a ../
-bmftools:
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(BMF_SRC) -o bmftools
+bmftools_db:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -o bmftools_db
+bmftools_p: bmftools_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(BMF_SRC) -o bmftools_p
-copy:
+bmftools: bmftools_p
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(BMF_SRC) -o bmftools
+copy: bmftools
 	mv bmftools bmftools_p bmftools_db bin/
-	#mv bmftools  bin/
 
 
 clean:
-	rm -f *.a && rm -f *.o && rm bin/* # && cd htslib && make clean && cd ../samtools && make clean
+	rm -f *.a && rm -f *.o && rm bin/* && cd htslib && make clean && cd ../samtools && make clean
 
 

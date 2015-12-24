@@ -3,14 +3,12 @@
 void splitterhash_destroy(splitterhash_params_t *params)
 {
 	for(int i = 0; i < params->n; ++i) {
-		free(params->outfnames_r1[i]);
-		free(params->outfnames_r2[i]);
+		cond_free(params->outfnames_r1[i]);
+		cond_free(params->outfnames_r2[i]);
 	}
-	free(params->outfnames_r1);
-	free(params->outfnames_r2);
-	free(params);
-	params = NULL;
-	return;
+	cond_free(params->outfnames_r1);
+	cond_free(params->outfnames_r2);
+	cond_free(params);
 }
 
 void free_marksplit_settings(marksplit_settings_t settings)
@@ -43,21 +41,31 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 		fprintf(stderr, "[E:%s] Splitter pointer null. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	char tmp_buffer[METASYNTACTIC_FNAME_BUFLEN];
 	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
 	ret->n = splitter_ptr->n_handles;
-	ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
-	ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
-	for(int i = 0; i < splitter_ptr->n_handles; ++i) {
-		ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
-		ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
-		sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->tmp_basename, i);
-		ret->outfnames_r1[i] = strdup(tmp_buffer);
-		sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
-		ret->outfnames_r2[i] = strdup(tmp_buffer);
-	}
+    if(settings_ptr->is_se) {
+		ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+		ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+		for(int i = 0; i < splitter_ptr->n_handles; ++i) {
+			ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
+			sprintf(tmp_buffer, "%s.%i.dmp.fastq", settings_ptr->tmp_basename, i);
+			ret->outfnames_r1[i] = strdup(tmp_buffer);
+		}
+    } else {
+		ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+		ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+		ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
+		ret->infnames_r2 = (char **)malloc(ret->n * sizeof(char *));
+		for(int i = 0; i < splitter_ptr->n_handles; ++i) {
+			ret->infnames_r1[i] = splitter_ptr->fnames_r1[i];
+			ret->infnames_r2[i] = splitter_ptr->fnames_r2[i]; // Does not allocate memory.  This is freed by mark_splitter_t!
+			sprintf(tmp_buffer, "%s.%i.R1.dmp.fastq", settings_ptr->tmp_basename, i);
+			ret->outfnames_r1[i] = strdup(tmp_buffer);
+			sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
+			ret->outfnames_r2[i] = strdup(tmp_buffer);
+		}
+    }
 	return ret;
 }
 

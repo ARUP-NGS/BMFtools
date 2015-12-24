@@ -523,25 +523,24 @@ int dmp_main(int argc, char *argv[])
 	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
 				__func__);
 	if(!settings.ffq_prefix) {
-			int has_period = 0;
-			for(int i = 0; settings.input_r1_path[i]; ++i) {
-				if(settings.input_r1_path[i] == '.') {
-					has_period = 1; break;
-				}
+		int has_period = 0;
+		for(int i = 0; settings.input_r1_path[i]; ++i) {
+			if(settings.input_r1_path[i] == '.') {
+				has_period = 1; break;
 			}
-			if(has_period) {
-			settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
-				fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
-						__func__, settings.ffq_prefix);
-			}
-			else {
-				settings.ffq_prefix = (char *)malloc(21 * sizeof(char));
-				rand_string(settings.ffq_prefix, 20);
-				fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
-						__func__, settings.ffq_prefix);
-			}
+		}
+		if(has_period) {
+		settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
+			fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
+					__func__, settings.ffq_prefix);
+		}
+		else {
+			settings.ffq_prefix = (char *)malloc(21 * sizeof(char));
+			rand_string(settings.ffq_prefix, 20);
+			fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
+					__func__, settings.ffq_prefix);
+		}
 	}
-	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	// Run core.
 	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
