@@ -1,7 +1,7 @@
 /*  unclipped.c -- a postprocessor for bwa to facilitate MEI calls.
 */
 
-#include "bam_util.h"
+#include "dlib/bam_util.h"
 
 void add_unclipped(samFile *in, bam_hdr_t *hdr, samFile *ofp)
 {

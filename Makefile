@@ -8,7 +8,7 @@ CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99
 LD= -lm -lz
-INCLUDE= -Ihtslib -I.
+INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 

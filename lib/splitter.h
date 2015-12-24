@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "compiler_util.h"
-#include "mem_util.h"
-#include "binner.h"
+#include "dlib/compiler_util.h"
+#include "dlib/mem_util.h"
+#include "lib/binner.h"
 
 #ifndef METASYNTACTIC_FNAME_BUFLEN
 #define METASYNTACTIC_FNAME_BUFLEN 100

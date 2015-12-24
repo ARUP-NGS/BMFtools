@@ -2,7 +2,7 @@
 #define ARRAY_PARSER_H
 #include <stdlib.h>
 #include <string.h>
-#include "char_util.h"
+#include "dlib/char_util.h"
 
 #define nqscores 39uL // Number of q scores in sequencing.
 

@@ -2,8 +2,8 @@
 #define BINNER_H
 #include <stdint.h>
 #include <inttypes.h>
-#include "char_util.h"
-#include "compiler_util.h"
+#include "dlib/char_util.h"
+#include "dlib/compiler_util.h"
 
 
 static inline uint64_t ulpow(uint64_t base, uint64_t exp);

@@ -7,12 +7,11 @@
 #include <inttypes.h>
 
 #include "htslib/sam.h"
-//#include "samtools.h"
 #include "htslib/ksort.h"
 #include "htslib/khash.h"
-#include "bam_util.h"
-#include "bed_util.h"
-#include "compiler_util.h"
+#include "dlib/bam_util.h"
+#include "dlib/bed_util.h"
+#include "dlib/compiler_util.h"
 
 
 KHASH_MAP_INIT_INT64(fm, uint64_t)

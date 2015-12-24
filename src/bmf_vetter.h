@@ -14,8 +14,8 @@
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
-#include "bed_util.h"
-#include "bam_util.h"
+#include "dlib/bed_util.h"
+#include "dlib/bam_util.h"
 
 static int vet_func(void *data, bam1_t *b);
 extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);

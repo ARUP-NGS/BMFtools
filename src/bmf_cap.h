@@ -1,6 +1,6 @@
 #ifndef CAP_QSCORE_H
 #define CAP_QSCORE_H
-#include "bam_util.h"
+#include "dlib/bam_util.h"
 
 int cap_qscore_main(int argc, char *argv[]);
 
