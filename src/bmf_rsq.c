@@ -118,17 +118,16 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 			if(bam_seqi(pSeq, qleni1) == bam_seqi(bSeq, qleni1)) {
 				pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
 				pFA[i] += bFA[i];
-				if(bQual[qleni1] > pQual[qleni1])
-					pQual[qleni1] = bQual[qleni1];
-			}
-			else if(bam_seqi(pSeq, qleni1) == HTS_N) {
+				if(bQual[qleni1] > pQual[qleni1]) pQual[qleni1] = bQual[qleni1];
+			} else if(bam_seqi(pSeq, qleni1) == HTS_N) {
 				set_base(pSeq, bSeq, qleni1);
 				pFA[i] = bFA[i];
 				pPV[i] = bPV[i];
 				pQual[qleni1] = bQual[qleni1];
 				++n_changed; // Note: goes from N to a useable nucleotide.
 				continue;
-			} else {
+			} else if(bam_seqi(bSeq, qleni1) == HTS_N) continue;
+			else {
 				if(pPV[i] > bPV[i]) {
 					set_base(pSeq, bSeq, qleni1);
 					pPV[i] = disc_pvalues(pPV[i], bPV[i]);
@@ -144,27 +143,26 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				n_base(pSeq, qleni1);
 				continue;
 			}
-			if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = pPV[i];
+			if((uint32_t)(pQual[qleni1]) > pPV[i]) pQual[qleni1] = (uint8_t)pPV[i];
 		}
 	} else {
 		for(int i = 0; i < qlen; ++i) {
 			if(bam_seqi(pSeq, i) == bam_seqi(bSeq, i)) {
 				pPV[i] = agreed_pvalues(pPV[i], bPV[i]);
 				pFA[i] += bFA[i];
-				if(bQual[i] > pQual[i])
-					pQual[i] = bQual[i];
-			}
-			else if(bam_seqi(pSeq, i) == HTS_N) {
+				if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
+			} else if(bam_seqi(pSeq, i) == HTS_N) {
 				set_base(pSeq, bSeq, i);
 				pFA[i] = bFA[i];
 				pPV[i] = bPV[i];
 				++n_changed; // Note: goes from N to a useable nucleotide.
 				continue;
-			}
+			} else if(bam_seqi(bSeq, i) == HTS_N) continue;
 			else {
-				pPV[i] = (pPV[i] > bPV[i]) ? disc_pvalues(pPV[i], bPV[i]) : disc_pvalues(bPV[i], pPV[i]);
-				if(bam_seqi(bSeq, i) != HTS_N)
+				if(pPV[i] > bPV[i]) {
 					set_base(pSeq, bSeq, i);
+					pPV[i] = disc_pvalues(pPV[i], bPV[i]);
+				} else pPV[i] = disc_pvalues(bPV[i], pPV[i]);
 				pFA[i] = bFA[i];
 				pQual[i] = bQual[i];
 				++n_changed;
@@ -176,7 +174,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				n_base(pSeq, i);
 				continue;
 			}
-			if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = pPV[i];
+			if((uint32_t)(pQual[i]) > pPV[i]) pQual[i] = (uint8_t)pPV[i];
 		}
 	}
 	bam_aux_append(p, "NC", 'i', sizeof(int), (uint8_t *)&n_changed);

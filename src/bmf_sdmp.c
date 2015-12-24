@@ -30,7 +30,8 @@ void sdmp_usage(char *argv[])
 						"In addition, won't work for enormous filenames or too many arguments. Default: False.\n"
 						"-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
 						"-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
-						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n",
+						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
+						"-$: Single-end mode. Ignores read 2.\n",
 						argv[0]);
 }
 
@@ -79,8 +80,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 	memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
 	rseq1->barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
-	update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0, 0);
-	update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1, 0);
+	update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0);
+	update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
 	pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 	bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 	mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
@@ -93,8 +94,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 		memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 		memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
-		update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0, 0);
-		update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1, 0);
+		update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0);
+		update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
 		pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 		bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
         mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
@@ -115,6 +116,66 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		splitter_ptr->tmp_out_handles_r1[count] = NULL;
 		splitter_ptr->tmp_out_handles_r2[count] = NULL;
 	}
+	return splitter_ptr;
+}
+
+static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings)
+{
+	fprintf(stderr, "[%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
+	gzFile fp, fp_index;
+	kseq_t *seq = NULL, *seq_index = NULL;
+	int l, l_index;
+	mark_splitter_t *splitter_ptr = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+	*splitter_ptr = init_splitter(settings);
+	if(!isfile(settings->input_r1_path) ||
+	   !isfile(settings->index_fq_path)) {
+		fprintf(stderr, "[E:%s] At least one input path ('%s', '%s') is not a file. Abort!\n", __func__,
+				settings->input_r1_path, settings->index_fq_path);
+		exit(EXIT_FAILURE);
+	}
+	// Open fastqs
+	fp = gzopen(settings->input_r1_path, "r"), fp_index = gzopen(settings->index_fq_path, "r");
+	seq = kseq_init(fp), seq_index = kseq_init(fp_index);
+	l = kseq_read(seq), l_index = kseq_read(seq_index);
+	seq_index = kseq_init(fp_index),
+	l_index = kseq_read(seq_index);
+
+	uint64_t bin = 0;
+	int pass_fail = 1;
+	tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, seq_index->seq.l + settings->salt);
+	if(l < 0 || l_index < 0) {
+		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
+		exit(EXIT_FAILURE);
+	}
+	fprintf(stderr, "[%s] Splitter now opening files read ('%s') and index ('%s').\n",
+			__func__, settings->input_r1_path, settings->index_fq_path);
+	mseq_t *rseq = mseq_init(seq, settings->rescaler, 0); // rseq is initialized
+	memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+	memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+	rseq->barcode[settings->salt + seq_index->seq.l] = '\0';
+	update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
+	pass_fail = test_hp(rseq->barcode, settings->hp_threshold);
+	bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
+	mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+	uint64_t count = 0;
+	while ((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0) {
+		if(++count % settings->notification_interval == 0)
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+		memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
+		memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
+		update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
+		pass_fail = test_hp(rseq->barcode, settings->hp_threshold);
+		bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
+        mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+	}
+	tm_destroy(tmp);
+	mseq_destroy(rseq);
+	kseq_destroy(seq); kseq_destroy(seq_index);
+	gzclose(fp); gzclose(fp_index);
+	for(count = 0; count < settings->n_handles; ++count)
+		fclose(splitter_ptr->tmp_out_handles_r1[count]);
+	// Set out handles to NULL.
+	memset(splitter_ptr->tmp_out_handles_r1, 0, settings->n_handles * sizeof(FILE *));
 	return splitter_ptr;
 }
 
@@ -151,7 +212,7 @@ int sdmp_main(int argc, char *argv[])
 	};
 
 	int c;
-	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?$")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -171,6 +232,7 @@ int sdmp_main(int argc, char *argv[])
 				fprintf(stderr, "About to parse in rescaler.\n");
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
 				fprintf(stderr, "Parsed rescaler.\n"); break;
+			case '$': settings.is_se = 1; break;
 			case '?': // Fall-through
 			case 'h': sdmp_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
@@ -193,18 +255,28 @@ int sdmp_main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	if(argc - 1 != optind + 1) {
-		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
-		sdmp_usage(argv);
-		return 1;
+	if(settings.is_se) {
+		if(argc != optind + 1) {
+			fprintf(stderr, "[E:%s] Precisely one input fastq required for se mode. See usage.\n", __func__);
+			sdmp_usage(argv);
+			return EXIT_FAILURE;
+		}
+		settings.input_r1_path =  strdup(argv[optind]);
 	}
-	settings.input_r1_path =  strdup(argv[optind]);
-	settings.input_r2_path =  strdup(argv[optind + 1]);
+	else {
+		if(argc != optind + 2) {
+			fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
+			sdmp_usage(argv);
+			return EXIT_FAILURE;
+		}
+		settings.input_r1_path =  strdup(argv[optind]);
+		settings.input_r2_path =  strdup(argv[optind + 1]);
+	}
 
 	if(!settings.index_fq_path) {
 		fprintf(stderr, "[E:%s] Index fastq required. See usage.\n", __func__);
 		sdmp_usage(argv);
-		return 1;
+		return EXIT_FAILURE;
 	}
 	if(!settings.tmp_basename) {
 		settings.tmp_basename = (char *)malloc(21);
@@ -213,11 +285,7 @@ int sdmp_main(int argc, char *argv[])
 				__func__, settings.tmp_basename);
 	}
 
-/*
-	fprintf(stderr, "Hey, can I even read this fastq? %s, %s, %i", seq1->seq.s, seq1->qual.s, l);
-	fprintf(stderr, "Hey, my basename is %s\n", settings.tmp_basename);
-*/
-	mark_splitter_t *splitter = splitmark_core_rescale(&settings);
+	mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale(&settings): splitmark_core_rescale_se(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] Finished mark/split.\n", __func__);
 		goto cleanup;

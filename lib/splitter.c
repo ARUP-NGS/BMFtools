@@ -72,7 +72,29 @@ void splitter_destroy(mark_splitter_t *var)
 	free(var);
 }
 
-#define INIT_SPLITTER(settings_ptr) \
+#define INIT_SPLITTER_SE(settings_ptr) \
+	do {\
+		mark_splitter_t ret = {\
+			.n_handles = ipow(4, settings_ptr->n_nucs),\
+			.n_nucs = settings_ptr->n_nucs,\
+			.fnames_r1 = NULL,\
+			.fnames_r2 = NULL,\
+			.tmp_out_handles_r1 = NULL,\
+			.tmp_out_handles_r2 = NULL\
+		};\
+		ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));\
+		ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));\
+		char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];\
+		for (int i = 0; i < ret.n_handles; i++) {\
+			sprintf(tmp_buffer, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);\
+			ret.fnames_r1[i] = strdup(tmp_buffer);\
+			ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");\
+		}\
+		return ret;\
+	} while(0)
+
+
+#define INIT_SPLITTER_PE(settings_ptr) \
 	do {\
 		mark_splitter_t ret = {\
 			.n_handles = ipow(4, settings_ptr->n_nucs),\
@@ -100,7 +122,11 @@ void splitter_destroy(mark_splitter_t *var)
 
 mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 {
-	INIT_SPLITTER(settings_ptr);
+	if(settings_ptr->is_se) {
+        INIT_SPLITTER_PE(settings_ptr);
+    } else {
+        INIT_SPLITTER_SE(settings_ptr);
+    }
 }
 
 #undef INIT_SPLITTER

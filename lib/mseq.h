@@ -89,7 +89,7 @@ CONST static inline int switch_test(kseq_t *seq1, kseq_t *seq2, int offset)
 void mseq_destroy(mseq_t *mvar);
 mseq_t *mseq_init(kseq_t *seq, char *rescaler, int is_read2);
 mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_read2);
-void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads);
+void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2);
 static inline void mseq2fq_stranded(FILE *handle, mseq_t *mvar, int pass_fail, char *barcode, char prefix)
 {
 	fprintf(handle, "@%s ~#!#~|FP=%c|BS=%c%s\n%s\n+\n%s\n",

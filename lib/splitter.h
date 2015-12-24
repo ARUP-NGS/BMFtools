@@ -38,6 +38,7 @@ typedef struct marksplit_settings {
 	int run_hash_dmp;
 	int salt;
 	int threads;
+    int is_se;
 } marksplit_settings_t;
 
 void free_marksplit_settings_ptr(marksplit_settings_t *settings);

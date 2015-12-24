@@ -104,9 +104,8 @@ mseq_t *mseq_rescale_init(kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int is_r
  * for holding information for conditional reverse complementing.
  * :param: [int] n_len - the number of bases to N at the beginning of each read.
  * :param: [int] is_read2 - true if the read is read2.
- * :param: [int] switch_reads - Whether or not to switch reads 1 and 2.
  */
-inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2, int switch_reads)
+inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *tmp, int n_len, int is_read2)
 {
 	memcpy(mvar->name, seq->name.s, seq->name.l);
 	mvar->name[seq->name.l] = '\0';
@@ -115,8 +114,7 @@ inline void update_mseq(mseq_t *mvar, kseq_t *seq, char *rescaler, tmp_mseq_t *t
 	if(rescaler)
 		for(int i = n_len; i < seq->seq.l; ++i)
 			mvar->qual[i] = (mvar->seq[i] == 'N') ? '#' : rescale_qscore(is_read2, seq->qual.s[i], i, mvar->seq[i], seq->seq.l, rescaler);
-	else
-		memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
+	else memcpy(mvar->qual + n_len, seq->qual.s + n_len, seq->qual.l * sizeof(char) - n_len);
 }
 
 
