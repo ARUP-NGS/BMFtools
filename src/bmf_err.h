@@ -7,11 +7,11 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-#include "khash.h"
-#include "bam_util.h"
-#include "mem_util.h"
+#include "htslib/khash.h"
+#include "dlib/bam_util.h"
+#include "dlib/mem_util.h"
 #include "htslib/faidx.h"
-#include "kingfisher.h"
+#include "lib/kingfisher.h"
 
 
 typedef struct readerr {

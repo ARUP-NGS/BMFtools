@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <zlib.h>
-#include "cstr_util.h"
-#include "compiler_util.h"
-#include "mem_util.h"
-#include "rescaler.h"
+#include "htslib/kseq.h"
+#include "dlib/cstr_util.h"
+#include "dlib/compiler_util.h"
+#include "dlib/mem_util.h"
+#include "lib/rescaler.h"
 
 
 #define MAX_BARCODE_LENGTH 30 // Maximum expected inline barcode
@@ -33,7 +34,6 @@ typedef struct tmp_mseq {
 } tmp_mseq_t;
 
 // KSEQ Utilities
-#include "kseq.h"
 
 #ifndef KSEQ_DEC_GZ
 #define KSEQ_DEC_GZ

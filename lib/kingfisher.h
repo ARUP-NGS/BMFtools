@@ -1,20 +1,20 @@
 #ifndef KINGFISHER_H
 #define KINGFISHER_H
 
-#include "kseq.h"
-#include "stdio.h"
-#include "math.h"
-#include "char_util.h"
-#include "cstr_util.h"
-#include "khash.h"
-#include "mem_util.h"
-#include "igamc_cephes.h"
-#include "mseq.h"
-#include "rescaler.h"
-#include "splitter.h"
+#include <stdio.h>
+#include <math.h>
 #include <zlib.h>
 #include <inttypes.h>
 #include <assert.h>
+#include "htslib/khash.h"
+#include "htslib/kseq.h"
+#include "include/igamc_cephes.h"
+#include "lib/mseq.h"
+#include "lib/rescaler.h"
+#include "lib/splitter.h"
+#include "dlib/char_util.h"
+#include "dlib/cstr_util.h"
+#include "dlib/mem_util.h"
 
 #define MAX_PV 3117 // Maximum seen with doubles
 #define MIN_FRAC_AGREED 0.5 // Minimum fraction of bases agreed in a family to not "N" the base.

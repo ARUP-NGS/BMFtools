@@ -1,10 +1,10 @@
 #ifndef KHASH_DMP_CORE_H
 #define KHASH_DMP_CORE_H
-#include "uthash.h"
-#include "kingfisher.h"
-#include "bmf_dmp.h"
-#include "mseq.h"
 #include <assert.h>
+#include "include/uthash.h"
+#include "lib/kingfisher.h"
+#include "src/bmf_dmp.h"
+#include "lib/mseq.h"
 
 KHASH_MAP_INIT_STR(dmp, KingFisher_t *)
 void hash_dmp_core(char *infname, char *outfname);

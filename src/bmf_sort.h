@@ -13,7 +13,7 @@
 #include <string.h>
 #include <time.h>
 #include <zlib.h>
-#include "bam.h"
+#include "include/bam.h"
 #include "htslib/khash.h"
 #include "htslib/klist.h"
 #include "htslib/ksort.h"
@@ -24,8 +24,8 @@
 #include "dlib/mem_util.h"
 #include "dlib/sort_util.h"
 #include "dlib/cstr_util.h"
-#include "sam.h"
-#include "sam_opts.h"
+#include "htslib/sam.h"
+#include "include/sam_opts.h"
 
 enum sort_order {
 	SAMTOOLS,
