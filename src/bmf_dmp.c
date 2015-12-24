@@ -43,13 +43,20 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
 }
 
 
-void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func) {
+void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func)
+{
 	#pragma omp parallel for schedule(dynamic, 1)
 	for(int i = 0; i < settings->n_handles; ++i) {
 		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
 				__func__, params->infnames_r1[i], params->outfnames_r1[i]);
 		func(params->infnames_r1[i], params->outfnames_r1[i]);
+		if(settings->cleanup) {
+			char tmpbuf[500];
+			sprintf(tmpbuf, "rm %s", params->infnames_r1[i]);
+			CHECK_CALL(tmpbuf);
+		}
 	}
+	if(settings->is_se) return;
 	#pragma omp parallel for schedule(dynamic, 1)
 	for(int i = 0; i < settings->n_handles; ++i) {
 		fprintf(stderr, "[%s] Now running hash dmp core on input filename %s and output filename %s.\n",
@@ -57,14 +64,38 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 		func(params->infnames_r2[i], params->outfnames_r2[i]);
 		if(settings->cleanup) {
 			char tmpbuf[500];
-			sprintf(tmpbuf, "rm %s %s", params->infnames_r1[i], params->infnames_r2[i]);
+			sprintf(tmpbuf, "rm %s", params->infnames_r2[i]);
 			CHECK_CALL(tmpbuf);
 		}
 	}
 }
 
 
-void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
+void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
+{
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
+#endif
+	// Clear output files.
+	char cat_buff[CAT_BUFFER_SIZE];
+	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(cat_buff);
+	for(int i = 0; i < settings->n_handles; ++i) {
+		// Clear files if present
+		if(settings->gzip_output)
+			sprintf(cat_buff, "cat %s | pigz - -p %i -%i >> %s.gz",
+					params->outfnames_r1[i], settings->threads, settings->gzip_compression, ffq_r1);
+		else
+			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
+		if(pclose(popen(cat_buff, "w"))){
+			fprintf(stderr, "[E:%s] System call failed ('%s').\n", __func__, cat_buff);
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
+void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+{
 #if !NDEBUG
     fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
 #endif
@@ -95,7 +126,57 @@ void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params,
 	}
 }
 
-void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2) {
+
+void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
+{
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
+#endif
+	char cat_buff[CAT_BUFFER_SIZE];
+	// Clear output files.
+	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
+	CHECK_CALL(cat_buff);
+	strcpy(cat_buff, "/bin/cat ");
+	for(int i = 0; i < settings->n_handles; ++i) {
+#if !NDEBUG
+		if(!isfile(params->outfnames_r1[i])) {
+			fprintf(stderr, "[E:%s] Error: output filename is not a file. Abort! ('%s').\n", __func__, params->outfnames_r1[i]);
+			exit(EXIT_FAILURE);
+		}
+#endif
+		strcat(cat_buff, params->outfnames_r1[i]); strcat(cat_buff, " ");
+	}
+	if(settings->gzip_output) {
+		char tmp_buf[CAT_BUFFER_SIZE];
+		sprintf(tmp_buf, " | pigz - -%i -p %i", settings->gzip_compression, settings->threads);
+		strcat(cat_buff, tmp_buf);
+	}
+	strcat(cat_buff, " > "); strcat(cat_buff, ffq_r1);
+	if(settings->gzip_output)
+		strcat(cat_buff, ".gz");
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff);
+#endif
+	if(pclose(popen(cat_buff, "w"))) {
+		fprintf(stderr, "[E:%s] Cat command failed. ('%s').\n", __func__, cat_buff);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+{
+	settings->is_se ? call_clowder_se(settings, params, ffq_r1):
+			call_clowder_pe(settings, params, ffq_r1, ffq_r2);
+}
+
+void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+{
+	settings->is_se ? call_panthera_se(settings, params, ffq_r1):
+			call_panthera_pe(settings, params, ffq_r1, ffq_r2);
+}
+
+void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+{
 #if !NDEBUG
     fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
 #endif
@@ -533,8 +614,7 @@ int dmp_main(int argc, char *argv[])
 		settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
 			fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
 					__func__, settings.ffq_prefix);
-		}
-		else {
+		} else {
 			settings.ffq_prefix = (char *)malloc(21 * sizeof(char));
 			rand_string(settings.ffq_prefix, 20);
 			fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
@@ -559,7 +639,10 @@ int dmp_main(int argc, char *argv[])
 		#pragma omp parallel for
 		for(int i = 0; i < params->n; ++i) {
 			char tmpbuf[500];
-			sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+			if(settings.is_se)
+				sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
+			else
+				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
 			CHECK_CALL(tmpbuf);
 		}
 	}
