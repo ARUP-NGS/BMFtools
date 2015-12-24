@@ -321,7 +321,7 @@ int dmp_main(int argc, char *argv[])
 	};
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -329,7 +329,7 @@ int dmp_main(int argc, char *argv[])
 			case 'g': settings.gzip_compression = atoi(optarg); break;
 			case '?': // Fall-through
 			case 'h': print_crms_usage(argv[0]); return EXIT_SUCCESS;
-			case 'l': settings.blen = 2 * atoi(optarg); break;
+			case 'l': settings.blen = atoi(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
 			case 'o': settings.tmp_basename = strdup(optarg); break;
@@ -338,68 +338,94 @@ int dmp_main(int argc, char *argv[])
 			case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
 			case 't': settings.hp_threshold = atoi(optarg); break;
 			case 'u': settings.notification_interval = atoi(optarg); break;
-			case 'v': settings.max_blen = atoi(optarg); break;
+			case 'v': settings.max_blen = atoi(optarg) + 1; break;
 			case 'w': settings.cleanup = 0;
 			case 'z': settings.gzip_output = 1; break;
+			case '$': settings.is_se = 1; break;
 			default: print_crms_opt_err(argv[0], optarg, optopt);
 		}
 	}
 
 	// Check for proper command-line usage.
-	if(argc < 5)
-		print_crms_usage(argv[0]), exit(EXIT_FAILURE);
-	if(argc - 1 != optind + 1) {
-		fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required. See usage.\n", __func__);
-		print_crms_usage(argv[0]);
-		return EXIT_FAILURE;
+	if(settings.is_se) {
+		if(argc < 4) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
+		if(argc != optind + 1) {
+			fprintf(stderr, "[E:%s] Exactly one read fastq required for single-end. See usage.\n", __func__);
+			print_crms_usage(argv[0]);
+			return EXIT_FAILURE;
+		}
+		// Number of file handles
+		settings.n_handles = ipow(4, settings.n_nucs);
+		if(settings.n_handles * 2 > get_fileno_limit()) {
+			increase_nofile_limit(settings.n_handles * 2);
+			fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
+					settings.n_handles * 2);
+		}
+		// Handle filenames
+		settings.input_r1_path = strdup(argv[optind]);
+	} else {
+		if(argc < 5) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
+		if(argc != optind + 2) {
+			fprintf(stderr, "[E:%s] Both read 1 and read 2 fastqs are required for paired-end. See usage.\n", __func__);
+			print_crms_usage(argv[0]);
+			return EXIT_FAILURE;
+		}
+		// Number of file handles
+		settings.n_handles = ipow(4, settings.n_nucs);
+		if(settings.n_handles * 4 > get_fileno_limit()) {
+			increase_nofile_limit(settings.n_handles * 4);
+			fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
+					settings.n_handles * 4);
+		}
+		// Handle filenames
+		settings.input_r1_path = strdup(argv[optind]);
+		settings.input_r2_path = strdup(argv[optind + 1]);
 	}
 	// Required parameters
-	if(!settings.homing_sequence) {
-		fprintf(stderr, "[E:%s] Homing sequence not provided. Required.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
 	if(settings.ffq_prefix && !settings.run_hash_dmp) {
 		fprintf(stderr, "[E:%s] Final fastq prefix option provided but run_hash_dmp not selected."
 				"Either eliminate the -f flag or add the -d flag.\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 
-	// Set up environment!
-	// Number of threads
+	// Handle number of threads
 	omp_set_num_threads(settings.threads);
-	// Number of file handles
-	settings.n_handles = ipow(4, settings.n_nucs);
-	if(settings.n_handles * 4 > get_fileno_limit()) {
-		increase_nofile_limit(settings.n_handles * 4);
-		fprintf(stderr, "[%s] Increased nofile limit from %i to %i.\n", __func__, get_fileno_limit(),
-				settings.n_handles * 4);
-	}
 
 	// Handle homing sequence
+	if(!settings.homing_sequence) {
+		fprintf(stderr, "[E:%s] Homing sequence not provided. Required.\n", __func__);
+		exit(EXIT_FAILURE);
+	}
 #if !NDEBUG
 	fprintf(stderr, "[D:%s] Homing sequence: %s.\n", __func__, settings.homing_sequence);
 #endif
 	clean_homing_sequence(settings.homing_sequence);
+
 	// Handle barcode length
 	if(!settings.blen) {
 		fprintf(stderr, "[E:%s] Barcode length not provided. Required. Abort!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
 	// Handle the offset parameter. If false, blen doesn't change.
-	settings.blen -= 2 * settings.offset;
-	// Handle variable-length barcodes.
-	if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
-		fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
-				__func__, settings.max_blen, settings.blen / 2);
-		exit(EXIT_FAILURE);
+	if(settings.is_se) {
+		settings.blen -= settings.offset;
+		if(settings.max_blen > 0 && settings.max_blen < settings.blen) {
+			fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
+					__func__, settings.max_blen, settings.blen / 2);
+			exit(EXIT_FAILURE);
+		}
+		if(settings.max_blen < 0) settings.max_blen = settings.blen + 1;
+	} else {
+		settings.blen = (settings.blen - settings.offset) * 2;
+		if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
+			fprintf(stderr, "[E:%s] Max blen (%i) must be less than the minimum blen provided (%i).\n",
+					__func__, settings.max_blen, settings.blen / 2);
+			exit(EXIT_FAILURE);
+		}
+		settings.blen1_2 = settings.blen / 2;
+		if(settings.max_blen < 0) settings.max_blen = settings.blen1_2 + 1;
 	}
-	settings.blen1_2 = settings.blen / 2;
-	if(settings.max_blen < 0) settings.max_blen = settings.blen1_2 + 1;
 
-
-	// Handle filenames
-	settings.input_r1_path = strdup(argv[optind]);
-	settings.input_r2_path = strdup(argv[optind + 1]);
 	if(!settings.tmp_basename) {
 		// If tmp_basename unset, create a random temporary file prefix.
 		settings.tmp_basename = (char *)malloc(21 * sizeof(char));
