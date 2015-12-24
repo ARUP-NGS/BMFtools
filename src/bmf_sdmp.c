@@ -292,10 +292,8 @@ int sdmp_main(int argc, char *argv[])
 	}
 	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
 					__func__);
-	if(!settings.ffq_prefix) {
+	if(!settings.ffq_prefix)
 		settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
-	}
-	// Whatever I end up putting into here.
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 
