@@ -90,10 +90,22 @@ CONST static inline int infer_barcode_length(char *bs_ptr)
 	return -1; // This never happens.
 }
 
+CONST static inline int nlen_homing_se(kseq_t *seq, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
+{
+	for(int i = settings_ptr->blen + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
+		if(memcmp(seq->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
+			*pass_fail = 1;
+			return i + settings_ptr->homing_sequence_length;
+		}
+	}
+	*pass_fail = 0;
+	return default_len;
+}
+
 CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, marksplit_settings_t *settings_ptr, int default_len, int *pass_fail)
 {
 	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
-		if(memcmp(seq1->seq.s, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
+		if(memcmp(seq1->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
 			*pass_fail = 1;
 			return i + settings_ptr->homing_sequence_length;
 		}

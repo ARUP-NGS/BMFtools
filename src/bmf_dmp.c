@@ -161,6 +161,86 @@ void clean_homing_sequence(char *sequence) {
 	}
 }
 
+/*
+ * Pre-processes (pp) and splits fastqs with inline barcodes.
+ */
+mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
+{
+	fprintf(stderr, "[%s] Opening fastq file '%s'.\n", __func__, settings->input_r1_path);
+	if(!isfile(settings->input_r1_path)) {
+		fprintf(stderr, "[E:%s] Could not open read paths: at least one is not a file.\n", __func__);
+		exit(EXIT_FAILURE);
+	}
+
+	if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
+
+	mark_splitter_t *splitter = (mark_splitter_t *)malloc(sizeof(mark_splitter_t));
+	*splitter = init_splitter(settings);
+	gzFile fp = gzopen(settings->input_r1_path, "r");
+	kseq_t *seq = kseq_init(fp);
+	int l;
+	size_t count = 0;
+	int pass_fail = 1;
+	if((l = kseq_read(seq)) < 0) {
+		fprintf(stderr, "[E:%s] Could not open fastq for reading. Abort!\n", __func__);
+		free_marksplit_settings(*settings);
+		splitter_destroy(splitter);
+		exit(EXIT_FAILURE);
+	}
+	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq->seq.l);
+#if !NDEBUG
+	int arr_size = seq1->seq.l * 4 * 2 * nqscores;
+	if(settings->rescaler) {
+		for(int i = 0; i < arr_size; ++i) {
+			if(settings->rescaler[i] < 0) {
+				fprintf(stderr, "[E:%s] Rescaler's got a negative number in pp_split_inline."
+						" WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			} else if(settings->rescaler[i] == 0) {
+				fprintf(stderr, "[E:%s] Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n",
+						__func__, settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+#endif
+	tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, settings->blen);
+	const int default_nlen = settings->blen + settings->offset + settings->homing_sequence_length;
+	int n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
+	mseq_t *rseq = mseq_rescale_init(seq, settings->rescaler, tmp, 0);
+	rseq->barcode[settings->blen] = '\0';
+	if(!test_hp(rseq->barcode, settings->hp_threshold))
+		pass_fail = 0;
+	memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
+	// Get first barcode.
+	update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
+	uint64_t bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
+	mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+	while (LIKELY((l = kseq_read(seq)) >= 0)) {
+		if(UNLIKELY(++count % settings->notification_interval == 0))
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+		// Iterate through second fastq file.
+		n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
+		update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
+		memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
+		if(!test_hp(rseq->barcode, settings->hp_threshold)) pass_fail = 0;
+		mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+	}
+	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
+	for(int i = 0; i < splitter->n_handles; ++i)
+		fclose(splitter->tmp_out_handles_r1[i]);
+	tm_destroy(tmp);
+	mseq_destroy(rseq);
+	kseq_destroy(seq);
+	gzclose(fp);
+	return splitter;
+}
+
+
+int dmp_main(int argc, char *argv[])
+{
+	if(argc == 1) print_crms_usage(argv[0]), exit(EXIT_FAILURE);
+
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
@@ -246,7 +326,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 	}
-	do {
+	while (LIKELY(LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0))) {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
 			fprintf(stderr, "[%s] Number of records processed: %i.\n", __func__, count);
 		// Iterate through second fastq file.
@@ -276,7 +356,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 		}
-	} while (LIKELY(LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)));
+	}
 	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]); fclose(splitter->tmp_out_handles_r2[i]);
@@ -441,7 +521,7 @@ int dmp_main(int argc, char *argv[])
     }
 
 	// Run core
-	mark_splitter_t *splitter = pp_split_inline(&settings);
+	mark_splitter_t *splitter = settings.is_se ? pp_split_inline(&settings): pp_split_inline_se(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
 		goto cleanup;
