@@ -1,7 +1,6 @@
 ######################################
 # Makefile written by Daniel Baker   #
-#     d.nephi.baker@gmail.co m       #
-#  Cribbed from Zev Kronenberg       #
+#     d.nephi.baker@gmail.com       #
 ######################################
 
 CC=gcc
@@ -23,6 +22,7 @@ OBJS = htslib/sam.o include/sam_opts.o src/bmf_dmp.o include/igamc_cephes.o src/
 		  src/bmf_sort.o src/bmf_err.o dlib/io_util.o dlib/nix_util.o \
 		  lib/kingfisher.o dlib/bam_util.o src/bmf_mark_unclipped.o src/bmf_cap.o lib/mseq.o lib/splitter.o
 
+# In case you want to make a debug or profile build without changing the .o/.c rules.
 BMF_SRC = htslib/sam.c src/bmf_main.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c src/bmf_vetter.c dlib/bed_util.c include/bedidx.c \
 		  libhts.a src/bmf_sort.c src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
