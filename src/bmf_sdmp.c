@@ -235,8 +235,8 @@ int sdmp_main(int argc, char *argv[])
 	// Make sure that both files are empty.
 	char ffq_r1[200];
 	char ffq_r2[200];
-	sprintf(ffq_r1, settings.gzip_output ? "%s.R1.fq.gz": "%s.R1.fq", settings.ffq_prefix);
-	sprintf(ffq_r2, settings.gzip_output ? "%s.R2.fq.gz": "%s.R2.fq", settings.ffq_prefix);
+	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
+	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
     if(settings.panthera) call_panthera(&settings, params, ffq_r1, ffq_r2);
     else call_clowder(&settings, params, ffq_r1, ffq_r2);
 	splitterhash_destroy(params);

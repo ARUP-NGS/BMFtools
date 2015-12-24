@@ -268,24 +268,6 @@ void write_stack(tmp_stack_t *stack, pr_settings_t *settings)
 }
 
 
-void bam_rsqse_core(pr_settings_t *settings)
-{
-	/*
-	bam1_t *b;
-	tmp_stack_t stack;
-	resize_stack(&stack, STACK_START);
-	memset(&stack, 0, sizeof(tmp_stack_t) * stack->max);
-
-	b = bam_init1();
-	while (sam_read1(settings.in, settings.hdr, b) >= 0) {
-		if(stack.n) {
-
-		}
-	}
-	bam_destroy1(b);
-	*/
-}
-
 static inline int hd_linear(bam1_t *a, bam1_t *b, int mmlim)
 {
 	char *aname = (char *)bam_get_qname(a);
@@ -318,7 +300,7 @@ static inline void flatten_stack_linear(tmp_stack_t *stack, pr_settings_t *setti
 	}
 }
 
-static inline void rsq_core_pos(pr_settings_t *settings, tmp_stack_t *stack)
+static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
 {
 	bam1_t *b = bam_init1();
 	if(sam_read1(settings->in, settings->hdr, b) < 0) {
@@ -336,7 +318,7 @@ static inline void rsq_core_pos(pr_settings_t *settings, tmp_stack_t *stack)
 			sam_write1(settings->out, settings->hdr, b);
 			continue;
 		}
-		if(same_stack_pos(b, *stack->a)) {
+		if(settings->fn(b, *stack->a)) {
 			stack_insert(stack, b);
 			continue;
 		} else {
@@ -348,59 +330,30 @@ static inline void rsq_core_pos(pr_settings_t *settings, tmp_stack_t *stack)
 	}
 	bam_destroy1(b);
 }
-
-static inline void rsq_core_ucs(pr_settings_t *settings, tmp_stack_t *stack)
-{
-	bam1_t *b = bam_init1();
-	if(sam_read1(settings->in, settings->hdr, b) < 0) {
-		fprintf(stderr, "[E:%s] Failed to read first record in bam file. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	while(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) sam_write1(settings->out, settings->hdr, b);
-	stack_insert(stack, b);
-	if(!(settings->in && settings->hdr)) {
-		fprintf(stderr, "[E:%s] Failed to open input bam.\n", __func__);
-		exit(EXIT_FAILURE);
-	}
-	while (LIKELY(sam_read1(settings->in, settings->hdr, b)) >= 0) {
-		if(b->core.flag & (BAM_FSUPPLEMENTARY | BAM_FSECONDARY)) {
-			sam_write1(settings->out, settings->hdr, b);
-			continue;
-		}
-		if(same_stack_ucs(b, *stack->a)) {
-			stack_insert(stack, b);
-			continue;
-		} else {
-			flatten_stack_linear(stack, settings); // Change this later if the chemistry necessitates it.
-			write_stack(stack, settings);
-			stack->n = 1;
-			stack->a[0] = bam_dup1(b);
-		}
-	}
-	bam_destroy1(b);
-}
-
-
-static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
-{
-	settings->cmpkey ? rsq_core_ucs(settings, stack): rsq_core_pos(settings, stack);
-}
-
 
 void bam_rsq_bookends(pr_settings_t *settings)
 {
+    if(settings->is_se) {
+        if(settings->cmpkey)
+            settings->fn = &same_stack_ucs_se;
+        else
+            settings->fn = &same_stack_pos_se;
+    } else {
+        if(settings->cmpkey)
+            settings->fn = &same_stack_ucs;
+        else
+            settings->fn = &same_stack_pos;
+    }
+
+
 	tmp_stack_t stack;
 	memset(&stack, 0, sizeof(tmp_stack_t));
 	resize_stack(&stack, STACK_START);
-	if(!(settings->in && settings->hdr && settings->out)) {
-		fprintf(stderr, "Failed to read input/output files....\n");
-		exit(EXIT_FAILURE);
-	}
 	if(!stack.a) {
-		fprintf(stderr, "Failed to start array of bam1_t structs...\n");
+		fprintf(stderr, "[E:%s] Failed to start array of bam1_t structs...\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	rsq_core(settings, &stack); // Core
+    else rsq_core(settings, &stack); // Core
 	free(stack.a);
 }
 
@@ -483,8 +436,11 @@ int rsq_main(int argc, char *argv[])
 	}
 	sam_hdr_write(settings->out, settings->hdr);
 
-	if (settings->is_se) bam_rsqse_core(settings);
-	else bam_rsq_bookends(settings);
+	if(!(settings->in && settings->hdr && settings->out)) {
+		fprintf(stderr, "[E:%s] Failed to read input/output files....\n", __func__);
+		exit(EXIT_FAILURE);
+	}
+	bam_rsq_bookends(settings);
 	bam_hdr_destroy(settings->hdr);
 	sam_close(settings->in); sam_close(settings->out);
 	if(settings->fqh)

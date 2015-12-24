@@ -58,6 +58,8 @@ enum cmpkey {
 	UNCLIPPED
 };
 
+typedef int (*stack_fn)(bam1_t *b, bam1_t *p);
+
 CONST static inline int same_stack_pos_se(bam1_t *b, bam1_t *p)
 {
 	return bmfsort_se_key(b) == bmfsort_se_key(p);
@@ -100,6 +102,7 @@ typedef struct pr_settings {
 	int realign_unchanged; // Set to true to realign unchanged reads.
 	int is_se; // Is single-end
 	bam_hdr_t *hdr; // BAM header
+    stack_fn fn;
 } pr_settings_t;
 
 
