@@ -1,5 +1,6 @@
 #ifndef BAM_PR_H
 #define BAM_PR_H
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
