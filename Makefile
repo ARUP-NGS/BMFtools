@@ -30,10 +30,15 @@ OBJS = htslib/sam.o include/sam_opts.o src/bmf_dmp.o include/igamc_cephes.o src/
 
 # In case you want to make a debug or profile build without changing the .o/.c rules.
 BMF_SRC = $(OBJS:.o=.c) libhts.a
+P_OBJS = $(OBJS:.o=.po)
+P_SRC = $(P_OBJS:.po=.c)
+D_OBJS = $(OBJS:.o=.do)
+D_SRC = $(P_OBJS:.do=.c)
 
 .PHONY: all clean install
 
-all: libhts.a bmftools
+all: libhts.a bmftools bmftools_db bmftools_p
+
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
 	$(INSTALL) bmftools_p $(bindir)/$(binprefix)bmftools_p
@@ -42,13 +47,19 @@ install: all
 %.o: %.c
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $< -o $@
 
+%.po: %.c
+	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
+
+%.do: %.c
+	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
+
 libhts.a:
 	cd htslib && make && cp libhts.a ../
-bmftools_db: libhts.a
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(BMF_SRC) -o bmftools_db
-bmftools_p: bmftools_db
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(BMF_SRC) -o bmftools_p
-bmftools: $(OBJS) bmftools_p
+bmftools_db: $(D_OBJS) libhts.a
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(D_OBJS) libhts.a -o bmftools_db
+bmftools_p: $(P_OBJS) libhts.a
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
+bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 
 
