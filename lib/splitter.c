@@ -131,6 +131,8 @@ void splitter_destroy(mark_splitter_t *var)
 mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 {
 	if(settings_ptr->is_se) {
+#if !NDEBUG
+        fprintf(stderr, "[D:%s]
         INIT_SPLITTER_PE(settings_ptr);
     } else {
         INIT_SPLITTER_SE(settings_ptr);

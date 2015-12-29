@@ -57,6 +57,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		exit(EXIT_FAILURE);
 	}
 	// Open fastqs
+	fprintf(stderr, "[%s] Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
+			__func__, settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
 	fp_read1 = gzopen(settings->input_r1_path, "r"), fp_read2 = gzopen(settings->input_r2_path, "r");
 	seq1 = kseq_init(fp_read1), seq2 = kseq_init(fp_read2);
 	l1 = kseq_read(seq1), l2 = kseq_read(seq2);
@@ -68,25 +70,32 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	uint64_t bin = 0;
 	int pass_fail = 1;
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] About to check for failed opening.\n", __func__);
+#endif
 	if(l1 < 0 || l2 < 0 || l_index < 0) {
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "[%s] Splitter now opening files R1 ('%s'), R2 ('%s'), index ('%s').\n",
-			__func__, settings->input_r1_path, settings->input_r2_path, settings->index_fq_path);
+	fprintf(stderr, "Initialize mseqs.\n");
 	mseq_t *rseq1 = mseq_init(seq1, settings->rescaler, 0); // rseq1 is initialized
 	mseq_t *rseq2 = mseq_init(seq2, settings->rescaler, 1); // rseq2 is initialized
 	memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 	memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 	memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
 	rseq1->barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
+	fprintf(stderr, "Update mseqs.\n");
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
 	pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 	bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
+	fprintf(stderr, "Write mseqs.\n");
 	mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 	mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	uint64_t count = 0;
+#if !NDEBUG
+    fprintf(stderr, "[D:%s] About to start looping.\n", __func__);
+#endif
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
 		if(++count % settings->notification_interval == 0)
@@ -208,7 +217,8 @@ int sdmp_main(int argc, char *argv[])
 		.gzip_compression = 1,
 		.rescaler = NULL,
 		.rescaler_path = NULL,
-		.cleanup = 1
+		.cleanup = 1,
+        .is_se = 0
 	};
 
 	int c;
@@ -285,7 +295,7 @@ int sdmp_main(int argc, char *argv[])
 				__func__, settings.tmp_basename);
 	}
 
-	mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale(&settings): splitmark_core_rescale_se(&settings);
+	mark_splitter_t *splitter = settings.is_se ? splitmark_core_rescale_se(&settings): splitmark_core_rescale(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] Finished mark/split.\n", __func__);
 		goto cleanup;
