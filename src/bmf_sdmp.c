@@ -31,7 +31,8 @@ void sdmp_usage(char *argv[])
 						"-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
 						"-w: Flag to leave temporary files instead of deleting them, as in default behavior.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
-						"-$: Single-end mode. Ignores read 2.\n",
+						"-$: Single-end mode. Ignores read 2.\n"
+						"-&: Emit final fastqs to stdout in interleaved form. Ignores -f.\n",
 						argv[0]);
 }
 
@@ -222,7 +223,7 @@ int sdmp_main(int argc, char *argv[])
 	};
 
 	int c;
-	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?$")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:i:n:m:s:f:u:p:g:v:r:hdczw?$&")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -239,10 +240,11 @@ int sdmp_main(int argc, char *argv[])
 			case 'g': settings.gzip_compression = atoi(optarg); if(settings.gzip_compression > 9) settings.gzip_compression = 9; break;
 			case 'w': settings.cleanup = 0; break;
 			case 'r':
-				fprintf(stderr, "About to parse in rescaler.\n");
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
-				fprintf(stderr, "Parsed rescaler.\n"); break;
+				/* fprintf(stderr, "Parsed rescaler.\n"); */
+                break;
 			case '$': settings.is_se = 1; break;
+            case '&': settings.to_stdout = 1; break;
 			case '?': // Fall-through
 			case 'h': sdmp_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
@@ -313,8 +315,12 @@ int sdmp_main(int argc, char *argv[])
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-	if(settings.panthera) call_panthera(&settings, params, ffq_r1, ffq_r2);
-	else call_clowder(&settings, params, ffq_r1, ffq_r2);
+    if(settings.to_stdout)
+        call_stdout(&settings, params, ffq_r1, ffq_r2);
+    else if(settings.panthera)
+        call_panthera(&settings, params, ffq_r1, ffq_r2);
+    else
+        call_clowder(&settings, params, ffq_r1, ffq_r2);
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 

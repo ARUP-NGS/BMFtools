@@ -26,6 +26,7 @@ typedef void (*hash_dmp_fn)(char *, char *);
 
 char test_hp_inline(char *barcode, int length, int threshold);
 void clean_homing_sequence(char *);
+void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1);
