@@ -331,17 +331,17 @@ static inline void rsq_core(pr_settings_t *settings, tmp_stack_t *stack)
 
 void bam_rsq_bookends(pr_settings_t *settings)
 {
-    if(settings->is_se) {
-        if(settings->cmpkey)
-            settings->fn = &same_stack_ucs_se;
-        else
-            settings->fn = &same_stack_pos_se;
-    } else {
-        if(settings->cmpkey)
-            settings->fn = &same_stack_ucs;
-        else
-            settings->fn = &same_stack_pos;
-    }
+	if(settings->is_se) {
+		if(settings->cmpkey)
+			settings->fn = &same_stack_ucs_se;
+		else
+			settings->fn = &same_stack_pos_se;
+	} else {
+		if(settings->cmpkey)
+			settings->fn = &same_stack_ucs;
+		else
+			settings->fn = &same_stack_pos;
+	}
 
 
 	tmp_stack_t stack;
@@ -351,7 +351,7 @@ void bam_rsq_bookends(pr_settings_t *settings)
 		fprintf(stderr, "[E:%s] Failed to start array of bam1_t structs...\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-    else rsq_core(settings, &stack); // Core
+	else rsq_core(settings, &stack); // Core
 	free(stack.a);
 }
 
@@ -360,11 +360,11 @@ int pr_usage(void)
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Usage:  bmftools rsq [-srtu] -f <to_realign.fq> <input.srt.bam> <output.bam>\n\n");
 	fprintf(stderr, "Flags:\n"
-					"-s      Rescue for SE reads [Not implemented]\n");
-	fprintf(stderr, "-r      Realign reads with no changed bases. Default: False.\n");
-	fprintf(stderr, "-t      Mismatch limit. Default: 2\n");
-	fprintf(stderr, "-l      Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
-	fprintf(stderr, "-u      Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
+					"-s	  Rescue for SE reads [Not implemented]\n");
+	fprintf(stderr, "-r	  Realign reads with no changed bases. Default: False.\n");
+	fprintf(stderr, "-t	  Mismatch limit. Default: 2\n");
+	fprintf(stderr, "-l	  Set bam compression level. Valid: 0-9. (0 == uncompresed)\n");
+	fprintf(stderr, "-u	  Flag to use unclipped start positions instead of pos/mpos for identifying potential duplicates.\n"
 					"Note: This requires pre-processing with bmftools mark_unclipped.\n");
 	return 1;
 }

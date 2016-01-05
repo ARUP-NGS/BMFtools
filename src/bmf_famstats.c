@@ -231,7 +231,7 @@ int fm_main(int argc, char *argv[])
 	famstat_settings_t *settings = (famstat_settings_t *)calloc(1, sizeof(famstat_settings_t));
 	settings->minMQ = 0;
 	settings->minFM = 0;
-    settings->notification_interval = 1000000uL;
+	settings->notification_interval = 1000000uL;
 
 	while ((c = getopt(argc, argv, "m:f:n:h")) >= 0) {
 		switch (c) {

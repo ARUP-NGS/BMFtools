@@ -1533,7 +1533,7 @@ static int change_SO(bam_hdr_t *h, const char *so)
 
 static inline int bam1_se_lt(const bam1_p a, const bam1_p b)
 {
-    int t;
+	int t;
 	switch(cmpkey) {
 		case QNAME:
 			t = strnum_cmp(bam_get_qname(a), bam_get_qname(b));
@@ -1752,8 +1752,8 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 
 	// write the final output
 	if (n_files == 0) { // a single block
-        if(is_se) ks_mergesort(se_sort, k, buf, 0);
-        else ks_mergesort(sort, k, buf, 0);
+		if(is_se) ks_mergesort(se_sort, k, buf, 0);
+		else ks_mergesort(sort, k, buf, 0);
 		if(split)
 			write_buffer_split(fnout, modeout, k, buf, n_threads, header, out_fmt);
 		else
@@ -1810,16 +1810,16 @@ static int sort_usage(FILE *fp, int status)
 	fprintf(fp,
 "Usage: bmftools sort [options...] [in.bam]\n"
 "Flags:\n"
-"-l INT       Set compression level, from 0 (uncompressed) to 9 (best)\n"
-"-m INT       Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
-"-k           Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.\n"
-"-o FILE      Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
-"-O FORMAT    Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
-"-T PREFIX    Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
-"-@ INT       Set number of sorting and compression threads [1]\n"
-"-s           Flag to split the bam into a list of file handles.\n"
-"-p           If splitting into a list of handles, this sets the file prefix.\n"
-"-$           Flag to specify single-end. Needed for unclipped start compatibility.\n"
+"-l INT	   Set compression level, from 0 (uncompressed) to 9 (best)\n"
+"-m INT	   Set maximum memory per thread; suffix K/M/G recognized [768M]\n"
+"-k		   Sort key - pos for positional (samtools default), qname for query name, bmf for extended positional, ucs for using unclipped mate start/stop positions. Default: bmf comparison.\n"
+"-o FILE	  Write final output to FILE rather than standard output. If splitting, this is used as the prefix.\n"
+"-O FORMAT	Write output as FORMAT ('sam'/'bam'/'cram') Default: bam.\n"
+"-T PREFIX	Write temporary files to PREFIX.nnnn.bam. Default: 'MetasyntacticVariable.')\n"
+"-@ INT	   Set number of sorting and compression threads [1]\n"
+"-s		   Flag to split the bam into a list of file handles.\n"
+"-p		   If splitting into a list of handles, this sets the file prefix.\n"
+"-$		   Flag to specify single-end. Needed for unclipped start compatibility.\n"
 "\n");
 	return status;
 }

@@ -18,14 +18,14 @@ extern int cap_qscore_main(int argc, char *argv[]);
 static int bmftools_usage(int rc)
 {
 	fprintf(stderr, "Usage: bmftools <subcommand>. See subcommand menus for usage.\n");
-	fprintf(stderr, "sort:            Sort for bam rescue.\n"
-					"dmp:             Demultiplex inline barcoded experiments.\n"
-					"sdmp:            Demultiplex secondary-index barcoded experiments.\n"
-					"hashdmp:         Demultiplex inline barcoded experiments that have already been marked.\n"
-					"rsq:             Rescue bmf-sorted or ucs-sorted bam alignments.\n"
-					"err:             Calculate error rates based on cycle, base call, and quality score.\n"
-					"famstats:        Calculate family size statistics for a bam alignment file.\n"
-					"vet:             Curate variant calls from another variant caller (.vcf) and a bam alignment.\n"
+	fprintf(stderr, "sort:			Sort for bam rescue.\n"
+					"dmp:			 Demultiplex inline barcoded experiments.\n"
+					"sdmp:			Demultiplex secondary-index barcoded experiments.\n"
+					"hashdmp:		 Demultiplex inline barcoded experiments that have already been marked.\n"
+					"rsq:			 Rescue bmf-sorted or ucs-sorted bam alignments.\n"
+					"err:			 Calculate error rates based on cycle, base call, and quality score.\n"
+					"famstats:		Calculate family size statistics for a bam alignment file.\n"
+					"vet:			 Curate variant calls from another variant caller (.vcf) and a bam alignment.\n"
 					"mark_unclipped:  Add unclipped start position as annotation for both read and mate.\n"
 					"cap:			 Modifies the quality string as function of family metadata.\n"
 			);

@@ -71,7 +71,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	int pass_fail = 1;
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, seq_index->seq.l + 2 * settings->salt);
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] About to check for failed opening.\n", __func__);
+	fprintf(stderr, "[D:%s] About to check for failed opening.\n", __func__);
 #endif
 	if(l1 < 0 || l2 < 0 || l_index < 0) {
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
@@ -94,7 +94,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	uint64_t count = 0;
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] About to start looping.\n", __func__);
+	fprintf(stderr, "[D:%s] About to start looping.\n", __func__);
 #endif
 	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
 			&& (l_index = kseq_read(seq_index)) >= 0) {
@@ -107,8 +107,8 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
 		pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 		bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-        mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
-        mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
+		mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
+		mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	}
 	tm_destroy(tmp);
 	mseq_destroy(rseq1);
@@ -175,7 +175,7 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 		update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
 		pass_fail = test_hp(rseq->barcode, settings->hp_threshold);
 		bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
-        mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+		mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
 	}
 	tm_destroy(tmp);
 	mseq_destroy(rseq);
@@ -218,7 +218,7 @@ int sdmp_main(int argc, char *argv[])
 		.rescaler = NULL,
 		.rescaler_path = NULL,
 		.cleanup = 1,
-        .is_se = 0
+		.is_se = 0
 	};
 
 	int c;
@@ -313,8 +313,8 @@ int sdmp_main(int argc, char *argv[])
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-    if(settings.panthera) call_panthera(&settings, params, ffq_r1, ffq_r2);
-    else call_clowder(&settings, params, ffq_r1, ffq_r2);
+	if(settings.panthera) call_panthera(&settings, params, ffq_r1, ffq_r2);
+	else call_clowder(&settings, params, ffq_r1, ffq_r2);
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 

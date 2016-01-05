@@ -21,6 +21,7 @@ void print_crms_usage(char *executable)
 						"-m: Mask first n nucleotides in read for barcode. Default: 1.\n"
 						"-p: Number of threads to use if running uthash_dmp.\n"
 						"-d: Use this flag to to run hash_dmp.\n"
+						"-&: Emit interleaved final output to stdout.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
 						"The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
 						"-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
@@ -74,7 +75,7 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
+	fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
 #endif
 	// Clear output files.
 	char cat_buff[CAT_BUFFER_SIZE];
@@ -97,7 +98,7 @@ void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *para
 void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
+	fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
 #endif
 	// Clear output files.
 	char cat_buff[CAT_BUFFER_SIZE];
@@ -130,7 +131,7 @@ void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *para
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
+	fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
 #endif
 	char cat_buff[CAT_BUFFER_SIZE];
 	// Clear output files.
@@ -155,13 +156,41 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	if(settings->gzip_output)
 		strcat(cat_buff, ".gz");
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff);
+	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff);
 #endif
 	if(pclose(popen(cat_buff, "w"))) {
 		fprintf(stderr, "[E:%s] Cat command failed. ('%s').\n", __func__, cat_buff);
 		exit(EXIT_FAILURE);
 	}
 }
+
+void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
+{
+	char fname_buf[500] = "";
+	kstring_t str1, str2;
+	memset(&str1, 0, sizeof(kstring_t)); memset(&str2, 0, sizeof(kstring_t));
+	ks_resize(&str1, 1 << 16), ks_resize(&str1, 1 << 16);
+	sprintf(str1.s, "cat "), sprintf(str2.s, "cat ");
+	for(int i = 0; i < settings->n_handles; ++i) {
+		sprintf(fname_buf, " %s", params->outfnames_r1[i]);
+		if(str1.m < str1.l + strlen(fname_buf) + 1) ks_resize(&str1, str1.m << 1);
+		strcat(str1.s, fname_buf);
+		sprintf(fname_buf, " %s", params->outfnames_r2[i]);
+		if(str2.m < str2.l + strlen(fname_buf) + 1) ks_resize(&str2, str2.m << 1);
+		strcat(str2.s, fname_buf);
+	}
+	const char suffix[] = " | paste -d'~' - - - - ";
+	if(str2.m < str2.l + strlen(suffix) + 1) ks_resize(&str2, str2.m << 1);
+		strcat(str2.s, suffix);
+	if(str1.m < str1.l + strlen(suffix) + 1) ks_resize(&str1, str1.m << 1);
+		strcat(str1.s, suffix);
+	char *final = (char *)malloc(str1.m + str2.m + 50); // Should be plenty of space 
+	sprintf(final, "pr -mts <(%s) <(%s) | tr '~' '\n'", str1.s, str2.s);
+	CHECK_CALL(final);
+	free(str1.s), free(str2.s);
+	free(final);
+}
+
 
 void call_clowder(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
@@ -178,7 +207,7 @@ void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params
 void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
+	fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
 #endif
 	char cat_buff1[CAT_BUFFER_SIZE];
 	// Clear output files.
@@ -212,8 +241,8 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 	if(settings->gzip_output)
 		strcat(cat_buff1, ".gz"), strcat(cat_buff2, ".gz");
 #if !NDEBUG
-    fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff1);
-    fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff2);
+	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff1);
+	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff2);
 #endif
 	FILE *c1_popen = popen(cat_buff1, "w");
 	FILE *c2_popen = popen(cat_buff2, "w");
@@ -476,7 +505,7 @@ int dmp_main(int argc, char *argv[])
 	};
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$&")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -497,6 +526,7 @@ int dmp_main(int argc, char *argv[])
 			case 'w': settings.cleanup = 0;
 			case 'z': settings.gzip_output = 1; break;
 			case '$': settings.is_se = 1; break;
+			case '&': settings.to_stdout = 1; break;
 			default: print_crms_opt_err(argv[0], optarg, optopt);
 		}
 	}
@@ -590,10 +620,10 @@ int dmp_main(int argc, char *argv[])
 	}
 
 	// Misc.
-    if(settings.annealed) {
-        fprintf(stderr, "[E:%s] annealed chemistry not supported. Abort!\n", __func__);
-        exit(EXIT_FAILURE);
-    }
+	if(settings.annealed) {
+		fprintf(stderr, "[E:%s] annealed chemistry not supported. Abort!\n", __func__);
+		exit(EXIT_FAILURE);
+	}
 
 	// Run core
 	mark_splitter_t *splitter = settings.is_se ? pp_split_inline(&settings): pp_split_inline_se(&settings);
@@ -630,11 +660,13 @@ int dmp_main(int argc, char *argv[])
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-    // Cat temporary files together.
-    if(settings.panthera)
-        call_panthera(&settings, params, ffq_r1, ffq_r2);
-    else
-        call_clowder(&settings, params, ffq_r1, ffq_r2);
+	// Cat temporary files together.
+	if(settings.to_stdout)
+		call_stdout(&settings, params, ffq_r1, ffq_r2);
+	else if(settings.panthera)
+		call_panthera(&settings, params, ffq_r1, ffq_r2);
+	else
+		call_clowder(&settings, params, ffq_r1, ffq_r2);
 	if(settings.cleanup) {
 		#pragma omp parallel for
 		for(int i = 0; i < params->n; ++i) {

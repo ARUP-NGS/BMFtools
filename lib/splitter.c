@@ -44,7 +44,7 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 	char tmp_buffer[METASYNTACTIC_FNAME_BUFLEN];
 	splitterhash_params_t *ret = (splitterhash_params_t *)malloc(sizeof(splitterhash_params_t));
 	ret->n = splitter_ptr->n_handles;
-    if(settings_ptr->is_se) {
+	if(settings_ptr->is_se) {
 		ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
 		ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
 		for(int i = 0; i < splitter_ptr->n_handles; ++i) {
@@ -52,7 +52,7 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 			sprintf(tmp_buffer, "%s.%i.dmp.fastq", settings_ptr->tmp_basename, i);
 			ret->outfnames_r1[i] = strdup(tmp_buffer);
 		}
-    } else {
+	} else {
 		ret->outfnames_r1 = (char **)malloc(ret->n * sizeof(char *));
 		ret->outfnames_r2 = (char **)malloc(ret->n * sizeof(char *));
 		ret->infnames_r1 = (char **)malloc(ret->n * sizeof(char *));
@@ -65,7 +65,7 @@ splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mar
 			sprintf(tmp_buffer, "%s.%i.R2.dmp.fastq", settings_ptr->tmp_basename, i);
 			ret->outfnames_r2[i] = strdup(tmp_buffer);
 		}
-    }
+	}
 	return ret;
 }
 
@@ -134,15 +134,15 @@ mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 {
 	if(settings_ptr->is_se) {
 #if !NDEBUG
-        fprintf(stderr, "[D:%s] Initializing single-end splitter.\n", __func__);
+		fprintf(stderr, "[D:%s] Initializing single-end splitter.\n", __func__);
 #endif
-        INIT_SPLITTER_PE(settings_ptr);
-    } else {
+		INIT_SPLITTER_PE(settings_ptr);
+	} else {
 #if !NDEBUG
-        fprintf(stderr, "[D:%s] Initializing paired-end splitter.\n", __func__);
+		fprintf(stderr, "[D:%s] Initializing paired-end splitter.\n", __func__);
 #endif
-        INIT_SPLITTER_SE(settings_ptr);
-    }
+		INIT_SPLITTER_SE(settings_ptr);
+	}
 }
 
 #undef INIT_SPLITTER

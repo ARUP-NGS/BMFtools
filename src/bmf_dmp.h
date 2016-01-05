@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zlib.h>
+#include "htslib/kstring.h"
 #include "lib/binner.h"
 #include "lib/kingfisher.h"
 #include "dlib/cstr_util.h"

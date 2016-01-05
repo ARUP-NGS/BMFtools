@@ -100,7 +100,7 @@ typedef struct pr_settings {
 	int realign_unchanged; // Set to true to realign unchanged reads.
 	int is_se; // Is single-end
 	bam_hdr_t *hdr; // BAM header
-    stack_fn fn;
+	stack_fn fn;
 } pr_settings_t;
 
 
