@@ -7,6 +7,7 @@ int frac_usage_exit(FILE *fp, int code) {
 			"Opts:\n-m minFM to accept. REQUIRED.\n"
 			"-h, -?: Return usage.\n");
 	exit(code);
+	return EXIT_FAILURE; // This never happens
 }
 
 
@@ -281,9 +282,9 @@ int fm_main(int argc, char *argv[])
 
 static inline void frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
 {
-	if(b->core.flag & 2944 || !bam_aux2i(bam_aux_get(b, "FP"))) // 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
+	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) || bam_aux2i(bam_aux_get(b, "FP")) == 0)
 		return;
-	const uint8_t *data = bam_aux_get(b, "FM");
+	const uint8_t *const data = bam_aux_get(b, "FM");
 	//tag_test(data, "FM");
 	const int FM = bam_aux2i(data);
 	*fm_total += FM;
@@ -311,9 +312,9 @@ int frac_main(int argc, char *argv[])
 			notification_interval = strtoull(optarg, NULL, 0); break;
 		case '?':
 		case 'h':
-			frac_usage_exit(stderr, EXIT_SUCCESS);
+			return frac_usage_exit(stderr, EXIT_SUCCESS);
 		default:
-			frac_usage_exit(stderr, EXIT_FAILURE);
+			return frac_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
 
