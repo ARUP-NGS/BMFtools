@@ -10,21 +10,18 @@ int frac_usage_exit(FILE *fp, int code) {
 }
 
 
-static void print_hashstats(famstats_t *stats)
+static void print_hashstats(famstats_t *stats, FILE *fp)
 {
-	fprintf(stdout, "#Family size\tNumber of families\n");
+	fprintf(fp, "#Family size\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
-		if(!kh_exist(stats->fm, stats->ki))
-			continue;
-		fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->fm, stats->ki), kh_val(stats->fm, stats->ki));
+		if(!kh_exist(stats->fm, stats->ki)) continue;
+		fprintf(fp, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->fm, stats->ki), kh_val(stats->fm, stats->ki));
 	}
-	fprintf(stderr, "#RV'd in family\tNumber of families\n");
+	fprintf(fp, "#RV'd in family\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
-		if(!kh_exist(stats->rc, stats->ki))
-			continue;
-		fprintf(stderr, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
+		if(!kh_exist(stats->rc, stats->ki)) continue;
+		fprintf(fp, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
 	}
-	return;
 }
 
 
@@ -126,19 +123,19 @@ int target_main(int argc, char *argv[])
 }
 
 
-static void print_stats(famstats_t *stats)
+static void print_stats(famstats_t *stats, FILE *fp)
 {
-	fprintf(stderr, "#Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(stderr, "#Number failing filters: %"PRIu64".\n", stats->n_fail);
-	fprintf(stderr, "#Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
-	fprintf(stderr, "#Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
-	fprintf(stderr, "#Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
-	fprintf(stderr, "#Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
-	fprintf(stderr, "#RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
-	fprintf(stderr, "#RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
-	fprintf(stderr, "#Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
-	fprintf(stderr, "#Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
-	print_hashstats(stats);
+	fprintf(fp, "#Number passing filters: %"PRIu64".\n", stats->n_pass);
+	fprintf(fp, "#Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(fp, "#Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
+	fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
+	fprintf(fp, "#Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
+	fprintf(fp, "#Summed RV (total reverse-complemented reads), (FM > 1): %"PRIu64".\n", stats->realrc_sum);
+	fprintf(fp, "#RV fraction for all read families: %lf.\n", (double)stats->allrc_sum / (double)stats->allfm_sum);
+	fprintf(fp, "#RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
+	fprintf(fp, "#Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
+	fprintf(fp, "#Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+	print_hashstats(stats, fp);
 }
 
 static inline void tag_test(const uint8_t *data, const char *tag)
@@ -272,7 +269,7 @@ int fm_main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	s = famstat_core(fp, header, settings);
-	print_stats(s);
+	print_stats(s, stdout);
 	kh_destroy(fm, s->fm);
 	kh_destroy(rc, s->rc);
 	free(s);
