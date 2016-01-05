@@ -22,3 +22,7 @@ cat $TMPFQ | paste -d'~' - - - - | sort | tr '~' '\n' | \
     bwa mem -pCYT0 -t${THREADS} $REF - | \
     samtools sort -l 0 -O bam -T tmprsqsort -O bam -@ $SORT_THREADS -m $SORTMEM - | \
     samtools merge -h $TMPBAM $FINALBAM $TMPBAM -
+
+# Clean up
+
+rm $TMPFQ $TMPBAM
