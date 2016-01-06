@@ -7,7 +7,7 @@ int frac_usage_exit(FILE *fp, int code) {
 			"Opts:\n-m minFM to accept. REQUIRED.\n"
 			"-h, -?: Return usage.\n");
 	exit(code);
-	return EXIT_FAILURE; // This never happens
+	return code; // This never happens
 }
 
 
@@ -54,10 +54,7 @@ int target_main(int argc, char *argv[])
 	uint32_t padding = (uint32_t)-1;
 	uint64_t notification_interval = 1000000;
 
-	if(argc == 1) target_usage_exit(stderr, EXIT_SUCCESS);
-	else if(argc < 4) {
-		target_usage_exit(stderr, EXIT_FAILURE);
-	}
+	if(argc < 4) target_usage_exit(stderr, EXIT_SUCCESS);
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) target_usage_exit(stderr, EXIT_SUCCESS);
 
@@ -75,22 +72,20 @@ int target_main(int argc, char *argv[])
 		case '?':
 		case 'h':
 			target_usage_exit(stderr, EXIT_SUCCESS);
-		default:
-			target_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
 
 
 	if(padding == (uint32_t)-1) {
 		padding = 25;
-		fprintf(stderr, "[famstat_target_main]: Padding not set. Set to 25.\n");
+		fprintf(stderr, "[%s]: Padding not set. Set to 25.\n", __func__);
 	}
 
 	if (argc != optind+1)
 		(argc == optind) ? target_usage_exit(stdout, EXIT_SUCCESS): target_usage_exit(stderr, EXIT_FAILURE);
 
 	if(!bedpath) {
-		fprintf(stderr, "Bed path required for famstats target. See usage!\n");
+		fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
 		target_usage_exit(stderr, EXIT_FAILURE);
 	}
 
@@ -101,7 +96,7 @@ int target_main(int argc, char *argv[])
 	}
 
 	header = sam_hdr_read(fp);
-	if (header == NULL) {
+	if (!header) {
 		fprintf(stderr, "[famstat_target_main]: Failed to read header for \"%s\"\n", argv[optind]);
 		exit(EXIT_FAILURE);
 	}
@@ -277,7 +272,7 @@ int fm_main(int argc, char *argv[])
 	free(settings);
 	bam_hdr_destroy(header);
 	sam_close(fp);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 static inline void frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
@@ -319,10 +314,10 @@ int frac_main(int argc, char *argv[])
 	}
 
 	if(!minFM) {
-		fprintf(stderr, "minFM not set. frac_main meaningless without it. Result: 1.0.\n");
+		fprintf(stderr, "[E:%s] minFM not set. frac_main meaningless without it. Result: 1.0.\n", __func__);
 		return EXIT_FAILURE;
 	}
-	fprintf(stderr, "[famstat_frac_main]: Running frac main minFM %i.\n", minFM);
+	fprintf(stderr, "[%s]: Running frac main minFM %i.\n", __func__, minFM);
 
 	if (argc != optind+1) {
 		if (argc == optind) frac_usage_exit(stdout, EXIT_SUCCESS);
@@ -330,13 +325,13 @@ int frac_main(int argc, char *argv[])
 	}
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
-		fprintf(stderr, "[famstat_frac_main]: Cannot open input file \"%s\"", argv[optind]);
+		fprintf(stderr, "[E:%s]: Cannot open input file \"%s\".\n", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		fprintf(stderr, "[famstat_main]: Failed to read header for \"%s\"\n", argv[optind]);
+		fprintf(stderr, "[E:%s]: Failed to read header for \"%s\".\n", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
 	uint64_t fm_above = 0, total_fm = 0, count = 0;
@@ -354,13 +349,13 @@ int frac_main(int argc, char *argv[])
 	while (LIKELY(c = sam_read1(fp, header, b)) >= 0) {
 		frac_loop(b, minFM, &fm_above, &total_fm);
 		if(UNLIKELY(!(++count % notification_interval)))
-			fprintf(stderr, "[famstat_frac_core] Number of records processed: %lu.\n", count);
+			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 	}
-	fprintf(stderr, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
+	fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 int famstats_main(int argc, char *argv[])
@@ -380,7 +375,7 @@ int famstats_main(int argc, char *argv[])
 	if(strcmp(argv[1], "target") == 0) {
 		return target_main(argc - 1, argv + 1);
 	}
-	fprintf(stderr, "Unrecognized subcommand. See usage.\n");
+	fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
 	usage_exit(stderr, 1);
-	return 0; // This never happens
+	return EXIT_FAILURE; // This never happens
 }
