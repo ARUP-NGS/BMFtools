@@ -78,19 +78,16 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "Initialize mseqs.\n");
 	mseq_t *rseq1 = mseq_init(seq1, settings->rescaler, 0); // rseq1 is initialized
 	mseq_t *rseq2 = mseq_init(seq2, settings->rescaler, 1); // rseq2 is initialized
 	memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 	memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 	memcpy(rseq1->barcode + settings->salt + seq_index->seq.l, seq2->seq.s + settings->offset, settings->salt);
 	rseq1->barcode[settings->salt * 2 + seq_index->seq.l] = '\0';
-	fprintf(stderr, "Update mseqs.\n");
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, 0, 0);
 	update_mseq(rseq2, seq2, settings->rescaler, tmp, 0, 1);
 	pass_fail = test_hp(rseq1->barcode, settings->hp_threshold);
 	bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
-	fprintf(stderr, "Write mseqs.\n");
 	mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode);
 	mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	uint64_t count = 0;
@@ -304,8 +301,7 @@ int sdmp_main(int argc, char *argv[])
 	}
 	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
 					__func__);
-	if(!settings.ffq_prefix)
-		settings.ffq_prefix = make_default_outfname(settings.input_r2_path, ".dmp.final");
+	if(!settings.ffq_prefix) make_outfname(&settings);
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	fprintf(stderr, "[%s] Running dmp block in parallel with %i threads.\n", __func__, settings.threads);
 

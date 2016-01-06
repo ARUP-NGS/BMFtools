@@ -44,6 +44,26 @@ void print_crms_opt_err(char *arg, char *optarg, char optopt)
 	exit(EXIT_FAILURE);
 }
 
+void make_outfname(marksplit_settings_t *settings)
+{
+	int has_period = 0;
+	for(int i = 0; settings->input_r1_path[i]; ++i) {
+		if(settings->input_r1_path[i] == '.') {
+			has_period = 1; break;
+		}
+	}
+	if(has_period) {
+	settings->ffq_prefix = make_default_outfname(settings->input_r1_path, ".dmp.final");
+		fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
+				__func__, settings->ffq_prefix);
+	} else {
+		settings->ffq_prefix = (char *)malloc((RANDSTR_SIZE + 1) * sizeof(char));
+		rand_string(settings->ffq_prefix, RANDSTR_SIZE);
+		fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
+				__func__, settings->ffq_prefix);
+	}
+}
+
 
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func)
 {
@@ -636,26 +656,11 @@ int dmp_main(int argc, char *argv[])
 		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
 		goto cleanup;
 	}
-	fprintf(stderr, "[%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Now executing hashmap-powered read collapsing and molecular demultiplexing.\n",
 				__func__);
-	if(!settings.ffq_prefix) {
-		int has_period = 0;
-		for(int i = 0; settings.input_r1_path[i]; ++i) {
-			if(settings.input_r1_path[i] == '.') {
-				has_period = 1; break;
-			}
-		}
-		if(has_period) {
-		settings.ffq_prefix = make_default_outfname(settings.input_r1_path, ".dmp.final");
-			fprintf(stderr, "[%s] No output final prefix set. Defaulting to variation on input ('%s').\n",
-					__func__, settings.ffq_prefix);
-		} else {
-			settings.ffq_prefix = (char *)malloc(21 * sizeof(char));
-			rand_string(settings.ffq_prefix, 20);
-			fprintf(stderr, "[%s] No output final prefix set. Selecting random output name ('%s').\n",
-					__func__, settings.ffq_prefix);
-		}
-	}
+#endif
+	if(!settings.ffq_prefix) make_outfname(&settings);
 	splitterhash_params_t *params = init_splitterhash(&settings, splitter);
 	// Run core.
 	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);

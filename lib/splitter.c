@@ -120,10 +120,8 @@ void splitter_destroy(mark_splitter_t *var)
 		for (int i = 0; i < ret.n_handles; i++) {\
 			sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);\
 			ret.fnames_r1[i] = strdup(tmp_buffer);\
-			fprintf(stderr, "Now filling splitter with tempname %s.tmp.%i.R1.fastq. Pointer: %p.\n", settings_ptr->tmp_basename, i, ret.fnames_r1[i]);\
 			sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);\
 			ret.fnames_r2[i] = strdup(tmp_buffer);\
-			fprintf(stderr, "Now filling splitter with tempname %s.tmp.%i.R2.fastq. Piinter: %p.\n", settings_ptr->tmp_basename, i, ret.fnames_r2[i]);\
 			ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");\
 			ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");\
 		}\

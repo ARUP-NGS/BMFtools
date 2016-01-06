@@ -22,6 +22,7 @@ typedef void (*hash_dmp_fn)(char *, char *);
 
 #define CAT_BUFFER_SIZE 250000
 #define METASYNTACTIC_FNAME_BUFLEN 100
+#define RANDSTR_SIZE 20
 
 
 char test_hp_inline(char *barcode, int length, int threshold);
@@ -34,6 +35,7 @@ void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params
 void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2);
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1);
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func);
+void make_outfname(marksplit_settings_t *settings);
 int ipow(int base, int exp);
 
 
