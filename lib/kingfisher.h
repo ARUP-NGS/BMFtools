@@ -14,6 +14,7 @@
 #include "dlib/char_util.h"
 #include "dlib/cstr_util.h"
 #include "dlib/mem_util.h"
+#include "dlib/compiler_util.h"
 
 #define MAX_PV 3117 // Maximum seen with doubles
 #define MIN_FRAC_AGREED 0.5 // Minimum fraction of bases agreed in a family to not "N" the base.
@@ -55,8 +56,6 @@ typedef struct KingFisher {
 	char pass_fail;
 } KingFisher_t;
 
-KingFisher_t *init_kfp(size_t readlen);
-void destroy_kf(KingFisher_t *kfp);
 static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen);
 static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i);
 
@@ -142,5 +141,6 @@ CONST static inline int kfp_argmax(KingFisher_t *kfp, int index)
 {
 	return arr_max_u32(kfp->phred_sums, index);
 }
+
 
 #endif /*KINGFISHER_H*/
