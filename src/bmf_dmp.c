@@ -10,6 +10,7 @@ void print_crms_usage(char *executable)
 {
 		fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
+						"-$: Flag for single-end mode.\n"
 						"-l: Number of nucleotides at the beginning of each read to "
 						"use for barcode. Final barcode length is twice this. REQUIRED.\n"
 						"-s: homing sequence. REQUIRED.\n"
@@ -516,8 +517,6 @@ int dmp_main(int argc, char *argv[])
 			case 'd': settings.run_hash_dmp = 1; break;
 			case 'f': settings.ffq_prefix = strdup(optarg); break;
 			case 'g': settings.gzip_compression = atoi(optarg); break;
-			case '?': // Fall-through
-			case 'h': print_crms_usage(argv[0]); return EXIT_SUCCESS;
 			case 'l': settings.blen = atoi(optarg); break;
 			case 'm': settings.offset = atoi(optarg); break;
 			case 'n': settings.n_nucs = atoi(optarg); break;
@@ -527,12 +526,13 @@ int dmp_main(int argc, char *argv[])
 			case 's': settings.homing_sequence = strdup(optarg); settings.homing_sequence_length = strlen(settings.homing_sequence); break;
 			case 't': settings.hp_threshold = atoi(optarg); break;
 			case 'u': settings.notification_interval = atoi(optarg); break;
-			case 'v': settings.max_blen = atoi(optarg) + 1; break;
-			case 'w': settings.cleanup = 0;
+			case 'v': settings.max_blen = atoi(optarg); break;
+			case 'w': settings.cleanup = 0; break;
 			case 'z': settings.gzip_output = 1; break;
 			case '$': settings.is_se = 1; break;
 			case '&': settings.to_stdout = 1; break;
-			default: print_crms_opt_err(argv[0], optarg, optopt);
+			case '?': // Fall-through
+			case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
 		}
 	}
 
@@ -604,7 +604,7 @@ int dmp_main(int argc, char *argv[])
 					__func__, settings.max_blen, settings.blen / 2);
 			exit(EXIT_FAILURE);
 		}
-		if(settings.max_blen < 0) settings.max_blen = settings.blen + 1;
+		if(settings.max_blen < 0) settings.max_blen = settings.blen;
 	} else {
 		settings.blen = (settings.blen - settings.offset) * 2;
 		if(settings.max_blen > 0 && settings.max_blen * 2 < settings.blen) {
@@ -613,7 +613,7 @@ int dmp_main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 		settings.blen1_2 = settings.blen / 2;
-		if(settings.max_blen < 0) settings.max_blen = settings.blen1_2 + 1;
+		if(settings.max_blen < 0) settings.max_blen = settings.blen1_2;
 	}
 
 	if(!settings.tmp_basename) {
@@ -661,8 +661,8 @@ int dmp_main(int argc, char *argv[])
 	parallel_hash_dmp_core(&settings, params, &stranded_hash_dmp_core);
 
 	// Remove temporary split files.
-	char ffq_r1[200];
-	char ffq_r2[200];
+	char ffq_r1[500];
+	char ffq_r2[500];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
 	// Cat temporary files together.
@@ -675,7 +675,7 @@ int dmp_main(int argc, char *argv[])
 	if(settings.cleanup) {
 		#pragma omp parallel for
 		for(int i = 0; i < params->n; ++i) {
-			char tmpbuf[500];
+			char tmpbuf[1000];
 			if(settings.is_se)
 				sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
 			else
@@ -689,6 +689,6 @@ int dmp_main(int argc, char *argv[])
 	free_marksplit_settings(settings);
 	splitter_destroy(splitter);
 	fprintf(stderr, "[%s] Successfully completed bmftools dmp!\n", __func__);
-	return 0;
+	return EXIT_SUCCESS;
 }
 

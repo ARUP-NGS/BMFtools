@@ -22,18 +22,16 @@ UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c
 
-OBJS = htslib/sam.o include/sam_opts.o src/bmf_dmp.o include/igamc_cephes.o src/bmf_hashdmp.o \
-		  src/bmf_sdmp.o src/bmf_rsq.o src/bmf_famstats.o src/bmf_vetter.o dlib/bed_util.o include/bedidx.o \
-		  src/bmf_sort.o src/bmf_err.o dlib/io_util.o dlib/nix_util.o \
-		  lib/kingfisher.o dlib/bam_util.o src/bmf_mark_unclipped.o src/bmf_cap.o lib/mseq.o lib/splitter.o \
-		  src/bmf_main.o
+SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
+		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c src/bmf_vetter.c dlib/bed_util.c include/bedidx.c \
+		  src/bmf_sort.c src/bmf_err.c dlib/io_util.c dlib/nix_util.c \
+		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
+		  src/bmf_main.c
 
 # In case you want to make a debug or profile build without changing the .o/.c rules.
-BMF_SRC = $(OBJS:.o=.c) libhts.a
-P_OBJS = $(OBJS:.o=.po)
-P_SRC = $(P_OBJS:.po=.c)
-D_OBJS = $(OBJS:.o=.do)
-D_SRC = $(P_OBJS:.do=.c)
+P_OBJS = $(SOURCES:.c=.po)
+D_OBJS = $(SOURCES:.c=.dbo)
+OBJS = $(SOURCES:.c=.o)
 
 .PHONY: all clean install
 
@@ -50,7 +48,7 @@ install: all
 %.po: %.c
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $< -o $@
 
-%.do: %.c
+%.dbo: %.c
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 libhts.a:
