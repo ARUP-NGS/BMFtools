@@ -62,9 +62,9 @@ Tag | Content | Format |
 :----:|:-----|:-----:|
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
-FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
+FP | Read Passes Filter related to barcoding | Integer [0, 1]|
 NC | Number of changed bases in rescued families of reads. | Integer |
-NF | ND fraction (mean ND per read in family) | Float |
+NF | Mean number of differences between reads and consensus per read in family | Single-precision floating number |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
 RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. | Integer |
 
