@@ -94,9 +94,9 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 #if !NDEBUG
 	fprintf(stderr, "[D:%s] About to start looping.\n", __func__);
 #endif
-	while ((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0)
+	while(LIKELY((l1 = kseq_read(seq1)) >= 0 && (l2 = kseq_read(seq2) >= 0))
 			&& (l_index = kseq_read(seq_index)) >= 0) {
-		if(++count % settings->notification_interval == 0)
+		if(UNLIKELY(++count % settings->notification_interval == 0))
 			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 		memcpy(rseq1->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
@@ -109,14 +109,9 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		mseq2fq(splitter_ptr->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode);
 	}
 	tm_destroy(tmp);
-	mseq_destroy(rseq1);
-	mseq_destroy(rseq2);
-	kseq_destroy(seq1);
-	kseq_destroy(seq2);
-	kseq_destroy(seq_index);
-	gzclose(fp_read1);
-	gzclose(fp_read2);
-	gzclose(fp_index);
+	mseq_destroy(rseq1); mseq_destroy(rseq2);
+	kseq_destroy(seq1); kseq_destroy(seq2); kseq_destroy(seq_index);
+	gzclose(fp_read1); gzclose(fp_read2); gzclose(fp_index);
 	for(count = 0; count < settings->n_handles; ++count) {
 		fclose(splitter_ptr->tmp_out_handles_r1[count]);
 		fclose(splitter_ptr->tmp_out_handles_r2[count]);
@@ -147,8 +142,6 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 	seq_index = kseq_init(fp_index),
 	l_index = kseq_read(seq_index);
 
-	uint64_t bin = 0;
-	int pass_fail = 1;
 	tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, seq_index->seq.l + settings->salt);
 	if(l < 0 || l_index < 0) {
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
@@ -161,19 +154,17 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 	memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 	rseq->barcode[settings->salt + seq_index->seq.l] = '\0';
 	update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
-	pass_fail = test_hp(rseq->barcode, settings->hp_threshold);
-	bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
-	mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+	mseq2fq(splitter_ptr->tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
+			rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
 	uint64_t count = 0;
-	while ((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0) {
-		if(++count % settings->notification_interval == 0)
+	while (LIKELY((l = kseq_read(seq)) >= 0 && (l_index = kseq_read(seq_index)) >= 0)) {
+		if(UNLIKELY(++count % settings->notification_interval == 0))
 			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 		memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 		memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
 		update_mseq(rseq, seq, settings->rescaler, tmp, 0, 0);
-		pass_fail = test_hp(rseq->barcode, settings->hp_threshold);
-		bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
-		mseq2fq(splitter_ptr->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
+		mseq2fq(splitter_ptr->tmp_out_handles_r1[get_binner_type(rseq->barcode, settings->n_nucs, uint64_t)],
+				rseq, test_hp(rseq->barcode, settings->hp_threshold), rseq->barcode);
 	}
 	tm_destroy(tmp);
 	mseq_destroy(rseq);
