@@ -234,9 +234,9 @@ int sdmp_main(int argc, char *argv[])
 			case 'r':
 				settings.rescaler_path = strdup(optarg); settings.rescaler = parse_1d_rescaler(settings.rescaler_path);
 				/* fprintf(stderr, "Parsed rescaler.\n"); */
-                break;
+				break;
 			case '$': settings.is_se = 1; break;
-            case '&': settings.to_stdout = 1; break;
+			case '&': settings.to_stdout = 1; break;
 			case '?': // Fall-through
 			case 'h': sdmp_usage(argv); return 0;
 			default: print_opt_err(argv, optarg);
@@ -306,12 +306,12 @@ int sdmp_main(int argc, char *argv[])
 	char ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
-    if(settings.to_stdout)
-        call_stdout(&settings, params, ffq_r1, ffq_r2);
-    else if(settings.panthera)
-        call_panthera(&settings, params, ffq_r1, ffq_r2);
-    else
-        call_clowder(&settings, params, ffq_r1, ffq_r2);
+	if(settings.to_stdout)
+		call_stdout(&settings, params, ffq_r1, ffq_r2);
+	else if(settings.panthera)
+		call_panthera(&settings, params, ffq_r1, ffq_r2);
+	else
+		call_clowder(&settings, params, ffq_r1, ffq_r2);
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 
