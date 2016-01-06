@@ -171,19 +171,23 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	memset(&str1, 0, sizeof(kstring_t)); memset(&str2, 0, sizeof(kstring_t));
 	ks_resize(&str1, 1 << 16), ks_resize(&str1, 1 << 16);
 	sprintf(str1.s, "cat "), sprintf(str2.s, "cat ");
+	str1.l = str2.l = 5;
 	for(int i = 0; i < settings->n_handles; ++i) {
 		sprintf(fname_buf, " %s", params->outfnames_r1[i]);
-		if(str1.m < str1.l + strlen(fname_buf) + 1) ks_resize(&str1, str1.m << 1);
-		strcat(str1.s, fname_buf);
+		int buflen = strlen(fname_buf);
+		if(str1.m < str1.l + buflen) ks_resize(&str1, str1.m << 1);
+		strcat(str1.s, fname_buf); str1.l += buflen;
 		sprintf(fname_buf, " %s", params->outfnames_r2[i]);
-		if(str2.m < str2.l + strlen(fname_buf) + 1) ks_resize(&str2, str2.m << 1);
-		strcat(str2.s, fname_buf);
+		buflen = strlen(fname_buf);
+		if(str2.m < str2.l + buflen) ks_resize(&str2, str2.m << 1);
+		strcat(str2.s, fname_buf); str2.l += buflen;
 	}
 	const char suffix[] = " | paste -d'~' - - - - ";
-	if(str2.m < str2.l + strlen(suffix) + 1) ks_resize(&str2, str2.m << 1);
-		strcat(str2.s, suffix);
-	if(str1.m < str1.l + strlen(suffix) + 1) ks_resize(&str1, str1.m << 1);
-		strcat(str1.s, suffix);
+	if(str1.m < str1.l + sizeof(suffix)) ks_resize(&str1, str1.m << 1);
+	if(str2.m < str2.l + sizeof(suffix)) ks_resize(&str2, str2.m << 1);
+	strcat(str2.s, suffix); strcat(str1.s, suffix);
+	str1.l += sizeof(suffix); str2.l += sizeof(suffix);
+	
 	char *final = (char *)malloc(str1.m + str2.m + 50); // Should be plenty of space 
 	sprintf(final, "pr -mts <(%s) <(%s) | tr '~' '\n'", str1.s, str2.s);
 	CHECK_CALL(final);
