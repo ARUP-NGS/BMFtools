@@ -59,21 +59,21 @@ These tags are used both in the fastq and the SAM/BAM files.
 The only difference between the SAM/BAM tags and the Fastq tags are that the SAM/BAM tags are tab-delimited (as described in sam specifications), while the fastq tags are separated by a delimiter and separated from their values by "=" instead of ":".
 
 Tag | Content | Format |
-----|-----|-----|
+:----:|:-----|:-----:|
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | For FASTQ: String. Required: "Pass" or "Fail". For BAM: Integer. [0,1] |
 NC | Number of changed bases in rescued families of reads. | Integer |
 NF | ND fraction (mean ND per read in family) | Float |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
-RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. |
+RV | Number of reversed reads in consensus. Only for Loeb-style inline chemistry. | Integer |
 
 ## Read Pair Merging Tags
 
 These are only used for merging read pairs.
 
 Tag | Content | Format |
-----|-----|-----|
+:----:|:-----|:-----:|
 DG | Discordant positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
 DR | Discordant read positions in merged pair, genomic coordinates. | String. Regex: [0-9,]+ |
 MA | Indices for read positions which agreed during merging. | String. Regex: [0-9,]+ |
