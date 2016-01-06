@@ -501,7 +501,8 @@ int dmp_main(int argc, char *argv[])
 		.gzip_compression = 1,
 		.cleanup = 1,
 		.annealed = 0,
-		.salt = 0 // This is unused for inline experiments
+		.salt = 0, // This is unused for inline experiments
+		.is_se = 0
 	};
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
@@ -626,7 +627,7 @@ int dmp_main(int argc, char *argv[])
 	}
 
 	// Run core
-	mark_splitter_t *splitter = settings.is_se ? pp_split_inline(&settings): pp_split_inline_se(&settings);
+	mark_splitter_t *splitter = settings.is_se ? pp_split_inline_se(&settings): pp_split_inline(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
 		goto cleanup;

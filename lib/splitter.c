@@ -136,12 +136,12 @@ mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 #if !NDEBUG
 		fprintf(stderr, "[D:%s] Initializing single-end splitter.\n", __func__);
 #endif
-		INIT_SPLITTER_PE(settings_ptr);
+		INIT_SPLITTER_SE(settings_ptr);
 	} else {
 #if !NDEBUG
 		fprintf(stderr, "[D:%s] Initializing paired-end splitter.\n", __func__);
 #endif
-		INIT_SPLITTER_SE(settings_ptr);
+		INIT_SPLITTER_PE(settings_ptr);
 	}
 }
 

@@ -3,12 +3,13 @@ set -e
 set -x
 R1=$1
 R2=$2
-TMPFQ=${1%.fastq*}.tmp.fq
-TMPBAM=${1%.fastq*}.tmp.bam
-FINALBAM=${1%.fastq*}.rsq.bam
+tmpstr=${1%.fq*}
+TMPFQ=${tmpstr%.fastq*}.tmp.fq
+TMPBAM=${tmpstr%.fastq*}.tmp.bam
+FINALBAM=${tmpstr%.fastq*}.rsq.bam
 REF="/mounts/genome/human_g1k_v37.fasta"
-SORTMEM="6G"
-SORT_THREADS="2"
+SORTMEM="4G"
+SORT_THREADS="4"
 THREADS="10"
 
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
