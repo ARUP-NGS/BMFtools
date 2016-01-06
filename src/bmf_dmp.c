@@ -361,9 +361,10 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 		if(!test_hp(rseq->barcode, settings->hp_threshold)) pass_fail = 0;
 		mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
 	}
-	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
-	for(int i = 0; i < splitter->n_handles; ++i)
-		fclose(splitter->tmp_out_handles_r1[i]);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Cleaning up.\n", __func__);
+#endif
+	for(int i = 0; i < splitter->n_handles; ++i) fclose(splitter->tmp_out_handles_r1[i]);
 	tm_destroy(tmp);
 	mseq_destroy(rseq);
 	kseq_destroy(seq);
@@ -486,7 +487,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 		}
 	}
-	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Cleaning up.\n", __func__);
+#endif
 	for(int i = 0; i < splitter->n_handles; ++i) {
 		fclose(splitter->tmp_out_handles_r1[i]); fclose(splitter->tmp_out_handles_r2[i]);
 	}

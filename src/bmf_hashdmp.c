@@ -70,9 +70,9 @@ void hash_dmp_core(char *infname, char *outfname)
 	// Initialized kseq
 	int l = kseq_read(seq);
 	if(l < 0)
-		fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
+		fprintf(stderr, "[E:%s]: Could not open fastq file (%s). Abort mission!\n",
 				__func__, strcmp(infname, "-") == 0 ? "stdin": infname),
-		exit(1);
+		exit(EXIT_FAILURE);
 	char *bs_ptr = barcode_mem_view(seq);
 	const int blen = infer_barcode_length(bs_ptr);
 #if !NDEBUG
@@ -93,7 +93,7 @@ void hash_dmp_core(char *infname, char *outfname)
 	uint64_t count = 0;
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		if(UNLIKELY(++count % 1000000 == 0))
-			fprintf(stderr, "[%s] Number of records read from '%s': %lu.\n", __func__,
+			fprintf(stderr, "[%s::%s] Number of records read: %lu.\n", __func__,
 					strcmp("-", infname) == 0 ? "stdin": infname,count);
 		cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
 		HASH_FIND_STR(hash, tmp->key, tmp_hk);
@@ -103,18 +103,18 @@ void hash_dmp_core(char *infname, char *outfname)
 			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hk->id);
 			pushback_kseq(tmp_hk->value, seq, blen);
 			HASH_ADD_STR(hash, id, tmp_hk);
-		}
-		else
-			pushback_kseq(tmp_hk->value, seq, blen);
+		} else pushback_kseq(tmp_hk->value, seq, blen);
 	}
-	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
+	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, outfname);
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
 		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
 		HASH_DEL(hash, current_entry);
 		free(current_entry);
 	}
-	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s::%s] Cleaning up.\n", __func__, outfname);
+#endif
 	gzclose(fp);
 	fclose(out_handle);
 	kseq_destroy(seq);
@@ -169,7 +169,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 #endif
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		if(UNLIKELY(++count % 1000000 == 0))
-			fprintf(stderr, "[%s:%s] Number of records processed: %lu.\n", __func__,
+			fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
 					*infname == '-' ? "stdin" : infname, count);
 		if(seq->comment.s[HASH_DMP_OFFSET] == 'F') {
 #if !NDEBUG
@@ -202,7 +202,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 #if !NDEBUG
 	fprintf(stderr, "[D:%s] Number of reverse reads: %lu. Number of forward reads: %lu.\n", __func__, rcount, fcount);
 #endif
-	fprintf(stderr, "[%s] Loaded all fastq records into memory for meta-analysis. Now writing out to file ('%s')!\n", __func__, outfname);
+	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, outfname);
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
@@ -225,7 +225,9 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		HASH_DEL(hrev, crev);
 		cond_free(crev);
 	}
-	fprintf(stderr, "[%s] Cleaning up.\n", __func__);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Cleaning up.\n", __func__);
+#endif
 	gzclose(fp);
 	fclose(in_handle), fclose(out_handle);
 	kseq_destroy(seq);

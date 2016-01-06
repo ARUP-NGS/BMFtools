@@ -123,7 +123,9 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 
 static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings)
 {
-	fprintf(stderr, "[%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Path to index fq: %s.\n", __func__, settings->index_fq_path);
+#endif
 	gzFile fp, fp_index;
 	kseq_t *seq = NULL, *seq_index = NULL;
 	int l, l_index;
@@ -147,8 +149,10 @@ static mark_splitter_t *splitmark_core_rescale_se(marksplit_settings_t *settings
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
-	fprintf(stderr, "[%s] Splitter now opening files read ('%s') and index ('%s').\n",
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Splitter now opening files read ('%s') and index ('%s').\n",
 			__func__, settings->input_r1_path, settings->index_fq_path);
+#endif
 	mseq_t *rseq = mseq_init(seq, settings->rescaler, 0); // rseq is initialized
 	memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
 	memcpy(rseq->barcode + settings->salt, seq_index->seq.s, seq_index->seq.l); // Copy in the barcode
