@@ -198,6 +198,24 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	}
 }
 
+void check_rescaler(marksplit_settings_t *settings, int arr_size)
+{
+	if(settings->rescaler) {
+		for(int i = 0; i < arr_size; ++i) {
+			if(settings->rescaler[i] < 0) {
+				fprintf(stderr, "[E:%s] Rescaler's got a negative number in pp_split_inline."
+						" WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+			else if(settings->rescaler[i] == 0) {
+				fprintf(stderr, "[E:%s] Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n",
+						__func__, settings->rescaler[i], i);
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+}
+
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
 	char fname_buf[500] = "";
@@ -423,21 +441,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	}
 	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
 #if !NDEBUG
-	int arr_size = seq1->seq.l * 4 * 2 * nqscores;
-	if(settings->rescaler) {
-		for(int i = 0; i < arr_size; ++i) {
-			if(settings->rescaler[i] < 0) {
-				fprintf(stderr, "[E:%s] Rescaler's got a negative number in pp_split_inline."
-						" WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
-			}
-			else if(settings->rescaler[i] == 0) {
-				fprintf(stderr, "[E:%s] Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n",
-						__func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
-			}
-		}
-	}
+	check_rescaler(settings, seq1->seq.l * 4 * 2 * nqscores);
 #endif
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int switch_reads = switch_test(seq1, seq2, settings->offset);

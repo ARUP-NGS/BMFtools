@@ -78,6 +78,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 		fprintf(stderr, "[E:%s] Could not read input fastqs. Abort mission!\n", __func__);
 		exit(EXIT_FAILURE);
 	}
+	check_rescaler(settings, nqscores * 2 * 4 * seq1->seq.l);
 	mseq_t *rseq1 = mseq_init(seq1, settings->rescaler, 0); // rseq1 is initialized
 	mseq_t *rseq2 = mseq_init(seq2, settings->rescaler, 1); // rseq2 is initialized
 	memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->salt); // Copy in the appropriate nucleotides.
@@ -115,8 +116,7 @@ static mark_splitter_t *splitmark_core_rescale(marksplit_settings_t *settings)
 	for(count = 0; count < settings->n_handles; ++count) {
 		fclose(splitter_ptr->tmp_out_handles_r1[count]);
 		fclose(splitter_ptr->tmp_out_handles_r2[count]);
-		splitter_ptr->tmp_out_handles_r1[count] = NULL;
-		splitter_ptr->tmp_out_handles_r2[count] = NULL;
+		splitter_ptr->tmp_out_handles_r1[count] = splitter_ptr->tmp_out_handles_r2[count] = NULL;
 	}
 	return splitter_ptr;
 }
@@ -185,7 +185,7 @@ void print_opt_err(char *argv[], char *optarg)
 {
 	sdmp_usage(argv);
 	fprintf(stderr, "Unrecognized option %s. Abort!\n", optarg);
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 int sdmp_main(int argc, char *argv[])
