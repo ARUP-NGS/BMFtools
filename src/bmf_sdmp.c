@@ -311,17 +311,7 @@ int sdmp_main(int argc, char *argv[])
 		call_panthera(&settings, params, ffq_r1, ffq_r2);
 	else
 		call_clowder(&settings, params, ffq_r1, ffq_r2);
-	if(settings.cleanup) {
-		#pragma omp parallel for
-		for(int i = 0; i < params->n; ++i) {
-			char tmpbuf[1000];
-			if(settings.is_se)
-				sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
-			else
-				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-			CHECK_CALL(tmpbuf);
-		}
-	}
+	cleanup_hashdmp(&settings, params);
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 

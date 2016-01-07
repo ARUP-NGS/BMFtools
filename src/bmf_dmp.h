@@ -36,6 +36,7 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1);
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func);
 void make_outfname(marksplit_settings_t *settings);
+void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params);
 int ipow(int base, int exp);
 
 

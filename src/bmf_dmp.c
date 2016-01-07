@@ -64,6 +64,19 @@ void make_outfname(marksplit_settings_t *settings)
 	}
 }
 
+void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params)
+{
+	if(settings->cleanup) {
+		#pragma omp parallel for
+		for(int i = 0; i < params->n; ++i) {
+			char tmpbuf[1000];
+			if(settings->is_se) sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
+			else sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+			CHECK_CALL(tmpbuf);
+		}
+	}
+}
+
 
 void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_t *params, hash_dmp_fn func)
 {
@@ -680,17 +693,7 @@ int dmp_main(int argc, char *argv[])
 		call_panthera(&settings, params, ffq_r1, ffq_r2);
 	else
 		call_clowder(&settings, params, ffq_r1, ffq_r2);
-	if(settings.cleanup) {
-		#pragma omp parallel for
-		for(int i = 0; i < params->n; ++i) {
-			char tmpbuf[1000];
-			if(settings.is_se)
-				sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
-			else
-				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
-			CHECK_CALL(tmpbuf);
-		}
-	}
+	cleanup_hashdmp(&settings, params);
 	splitterhash_destroy(params);
 	free(settings.ffq_prefix);
 	cleanup:
