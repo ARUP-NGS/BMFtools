@@ -16,8 +16,8 @@ bindir = $(prefix)/bin
 binprefix =
 
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
-DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing -fno-inline
-PG_FLAGS = -fno-inline -Wno-unused-function -pg -DNDEBUG -O2 -Wno-strict-aliasing
+DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
+PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O2 -Wno-strict-aliasing
 UR_FLAGS = $(OPT_FLAGS) -DUNROLL
 
 IGAMC_INC = include/igamc_cephes.c

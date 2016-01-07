@@ -42,8 +42,7 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int 
 	fprintf(handle, "\tRV:i:%i\n", is_rev ? kfp->length: 0);
 	fputs(bufs->cons_seq_buffer, handle);
 	fputs("\n+\n", handle);
-	for(i = 0; i < kfp->readlen; ++i)
-		fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + i * 5], handle);
+	for(i = 0; i < kfp->readlen; ++i) fputc(kfp->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + i * 5], handle);
 	fputc('\n', handle);
 #else
 	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%0.6f\n%s\n+\n", kfp->barcode + 1,
