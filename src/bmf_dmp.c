@@ -699,7 +699,6 @@ int dmp_main(int argc, char *argv[])
 		call_clowder(&settings, params, ffq_r1, ffq_r2);
 	cleanup_hashdmp(&settings, params);
 	splitterhash_destroy(params);
-	free(settings.ffq_prefix);
 	cleanup:
 	free_marksplit_settings(settings);
 	splitter_destroy(splitter);

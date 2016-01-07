@@ -5,9 +5,13 @@ void splitterhash_destroy(splitterhash_params_t *params)
 	for(int i = 0; i < params->n; ++i) {
 		cond_free(params->outfnames_r1[i]);
 		cond_free(params->outfnames_r2[i]);
+		cond_free(params->infnames_r1[i]);
+		cond_free(params->infnames_r2[i]);
 	}
 	cond_free(params->outfnames_r1);
 	cond_free(params->outfnames_r2);
+	cond_free(params->infnames_r1);
+	cond_free(params->infnames_r2);
 	cond_free(params);
 }
 
@@ -19,6 +23,8 @@ void free_marksplit_settings(marksplit_settings_t settings)
 	cond_free(settings.index_fq_path);
 	cond_free(settings.rescaler);
 	cond_free(settings.rescaler_path);
+    cond_free(settings.homing_sequence);
+    cond_free(settings.ffq_prefix);
 }
 
 void free_marksplit_settings_ptr(marksplit_settings_t *settings)
