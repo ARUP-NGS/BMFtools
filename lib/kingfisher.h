@@ -49,9 +49,9 @@ typedef struct tmpvars {
 typedef struct KingFisher {
 	uint16_t *nuc_counts; // Count of nucleotides of this form
 	uint32_t *phred_sums; // Sums of -10log10(p-value)
+	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 	int length; // Number of reads in family
 	int readlen; // Length of reads
-	char *max_phreds; // Maximum phred score observed at position. Use this as the final sequence for the quality to maintain compatibility with GATK and other tools.
 	char barcode[MAX_BARCODE_LENGTH + 1];
 	char pass_fail;
 } KingFisher_t;
