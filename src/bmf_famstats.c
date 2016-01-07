@@ -360,21 +360,16 @@ int frac_main(int argc, char *argv[])
 
 int famstats_main(int argc, char *argv[])
 {
-	if(argc < 2) {
-		usage_exit(stderr, 1);
-	}
-	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
-		usage_exit(stderr, 0);
-	}
-	if(strcmp(argv[1], "fm") == 0) {
+	if(argc < 2)
+		usage_exit(stderr, EXIT_FAILURE);
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+		usage_exit(stderr, EXIT_SUCCESS);
+	if(strcmp(argv[1], "fm") == 0)
 		return fm_main(argc - 1, argv + 1);
-	}
-	if(strcmp(argv[1], "frac") == 0) {
+	if(strcmp(argv[1], "frac") == 0)
 		return frac_main(argc - 1, argv + 1);
-	}
-	if(strcmp(argv[1], "target") == 0) {
+	if(strcmp(argv[1], "target") == 0)
 		return target_main(argc - 1, argv + 1);
-	}
 	fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
 	usage_exit(stderr, 1);
 	return EXIT_FAILURE; // This never happens
