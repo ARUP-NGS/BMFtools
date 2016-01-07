@@ -1,6 +1,7 @@
 #ifndef CRMS_H
 #define CRMS_H
 
+#include <assert.h>
 #include <getopt.h>
 #include <math.h>
 #include <omp.h>

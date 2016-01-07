@@ -11,6 +11,7 @@ void print_crms_usage(char *executable)
 		fprintf(stderr, "Usage: %s <options> <Fq.R1.seq> <Fq.R2.seq>"
 						"\nFlags:\n"
 						"-$: Flag for single-end mode.\n"
+						"-=: Emit interleaved final output to stdout.\n"
 						"-l: Number of nucleotides at the beginning of each read to "
 						"use for barcode. Final barcode length is twice this. REQUIRED.\n"
 						"-s: homing sequence. REQUIRED.\n"
@@ -22,7 +23,6 @@ void print_crms_usage(char *executable)
 						"-m: Mask first n nucleotides in read for barcode. Default: 1.\n"
 						"-p: Number of threads to use if running uthash_dmp.\n"
 						"-d: Use this flag to to run hash_dmp.\n"
-						"-&: Emit interleaved final output to stdout.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
 						"The Final Fastq files will be named '<ffq_prefix>.R1.fq' and '<ffq_prefix>.R2.fq'.\n"
 						"-r: Path to flat text file with rescaled quality scores. If not provided, it will not be used.\n"
@@ -218,30 +218,36 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size)
 
 void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-	char fname_buf[500] = "";
-	kstring_t str1, str2;
-	memset(&str1, 0, sizeof(kstring_t)); memset(&str2, 0, sizeof(kstring_t));
-	ks_resize(&str1, 1 << 16), ks_resize(&str1, 1 << 16);
-	sprintf(str1.s, "cat "), sprintf(str2.s, "cat ");
-	str1.l = str2.l = 5;
+	char fname_buf[500];
+	kstring_t str1 = {0, 0, NULL}, str2 = {0, 0, NULL};
+	kputs("cat ", &str1);
+	ks_resize(&str1, 1 << 16);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Building string. Sizes: %lu, %lu. Maxes: %lu, %lu.\n", __func__, str1.l, str2.l, str1.m, str2.m);
+#endif
 	for(int i = 0; i < settings->n_handles; ++i) {
 		sprintf(fname_buf, " %s", params->outfnames_r1[i]);
-		int buflen = strlen(fname_buf);
-		if(str1.m < str1.l + buflen) ks_resize(&str1, str1.m << 1);
-		strcat(str1.s, fname_buf); str1.l += buflen;
-		sprintf(fname_buf, " %s", params->outfnames_r2[i]);
-		buflen = strlen(fname_buf);
-		if(str2.m < str2.l + buflen) ks_resize(&str2, str2.m << 1);
-		strcat(str2.s, fname_buf); str2.l += buflen;
+		while(str1.m < strlen(fname_buf) + str1.l + 1) ks_resize(&str1, str1.m << 1);
+		strcat(str1.s, fname_buf);
+#if !NDEBUG
+		fprintf(stderr, "[D:%s] Command string: '%s'.\n", __func__, str1.s);
+#endif
 	}
+	str2.s = strdup(str1.s);
+	str2.l = str1.l; str2.m = str1.m;
+	for(int i = 0; i < str1.l - 1; ++i)
+		if(memcmp("R1", str2.s + i, 2) == 0) str2.s[i + 1] = '2';
 	const char suffix[] = " | paste -d'~' - - - - ";
-	if(str1.m < str1.l + sizeof(suffix)) ks_resize(&str1, str1.m << 1);
-	if(str2.m < str2.l + sizeof(suffix)) ks_resize(&str2, str2.m << 1);
-	strcat(str2.s, suffix); strcat(str1.s, suffix);
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Length of suffix: %i.\n", __func__, (int)sizeof(suffix));
+#endif
 	str1.l += sizeof(suffix); str2.l += sizeof(suffix);
+	if(str1.m < str1.l) ks_resize(&str1, str1.m << 1);
+	if(str2.m < str2.l) ks_resize(&str2, str2.m << 1);
+	strcat(str2.s, suffix); strcat(str1.s, suffix);
 	
 	char *final = (char *)malloc(str1.m + str2.m + 50); // Should be plenty of space 
-	sprintf(final, "pr -mts <(%s) <(%s) | tr '~' '\n'", str1.s, str2.s);
+	sprintf(final, "pr -mts'~' <(%s) <(%s) | tr '~' '\n'", str1.s, str2.s);
 	CHECK_CALL(final);
 	free(str1.s), free(str2.s);
 	free(final);
@@ -551,7 +557,7 @@ int dmp_main(int argc, char *argv[])
 	};
 	//omp_set_dynamic(0); // Tell omp that I want to set my number of threads 4realz
 	int c;
-	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$&")) > -1) {
+	while ((c = getopt(argc, argv, "t:o:n:s:l:m:r:p:f:v:u:g:i:zwcdh?$=")) > -1) {
 		switch(c) {
 			case 'c': settings.panthera = 1; break;
 			case 'd': settings.run_hash_dmp = 1; break;
@@ -570,7 +576,7 @@ int dmp_main(int argc, char *argv[])
 			case 'w': settings.cleanup = 0; break;
 			case 'z': settings.gzip_output = 1; break;
 			case '$': settings.is_se = 1; break;
-			case '&': settings.to_stdout = 1; break;
+			case '=': settings.to_stdout = 1; break;
 			case '?': // Fall-through
 			case 'h': print_crms_usage(argv[0]), exit(EXIT_SUCCESS);
 		}
