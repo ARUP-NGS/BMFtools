@@ -53,7 +53,7 @@ int cap_qscore_main(int argc, char *argv[])
 	int level;
 	while ((c = getopt_long(argc, argv, "t:f:m:l:c:dh?", lopts, NULL)) >= 0) {
 		switch (c) {
-		case 'l': level = atoi(optarg); wmode[2] = level + '0'; break;
+		case 'l': level = atoi(optarg) % 10; wmode[2] = level + '0'; break;
 		case 'm': settings.minFM = strtoul(optarg, NULL, 10); break;
 		case 'c': settings.minPV = strtoul(optarg, NULL, 10); break;
 		case 'f': settings.minFrac = atof(optarg); break;
