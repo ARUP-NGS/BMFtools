@@ -302,8 +302,7 @@ int sdmp_main(int argc, char *argv[])
 
 	parallel_hash_dmp_core(&settings, params, &hash_dmp_core);
 	// Make sure that both files are empty.
-	char ffq_r1[200];
-	char ffq_r2[200];
+	char ffq_r1[200], ffq_r2[200];
 	sprintf(ffq_r1, "%s.R1.fq", settings.ffq_prefix);
 	sprintf(ffq_r2, "%s.R2.fq", settings.ffq_prefix);
 	if(settings.to_stdout)
@@ -312,6 +311,17 @@ int sdmp_main(int argc, char *argv[])
 		call_panthera(&settings, params, ffq_r1, ffq_r2);
 	else
 		call_clowder(&settings, params, ffq_r1, ffq_r2);
+	if(settings.cleanup) {
+		#pragma omp parallel for
+		for(int i = 0; i < params->n; ++i) {
+			char tmpbuf[1000];
+			if(settings.is_se)
+				sprintf(tmpbuf, "rm %s", params->outfnames_r1[i]);
+			else
+				sprintf(tmpbuf, "rm %s %s", params->outfnames_r1[i], params->outfnames_r2[i]);
+			CHECK_CALL(tmpbuf);
+		}
+	}
 	splitterhash_destroy(params);
 	fprintf(stderr, "[%s] Successfully completed bmftools sdmp.\n", __func__);
 

@@ -94,8 +94,7 @@ static inline void pb_pos(KingFisher_t *kfp, kseq_t *seq, int i) {
 	const uint32_t posdata = nuc2num(seq->seq.s[i]) + i * 5;
 	++kfp->nuc_counts[posdata];
 	kfp->phred_sums[posdata] += seq->qual.s[i] - 33;
-	if(seq->qual.s[i] > kfp->max_phreds[posdata])
-		kfp->max_phreds[posdata] = seq->qual.s[i];
+	if(seq->qual.s[i] > kfp->max_phreds[posdata]) kfp->max_phreds[posdata] = seq->qual.s[i];
 }
 
 
@@ -106,7 +105,6 @@ static inline void pushback_kseq(KingFisher_t *kfp, kseq_t *seq, int blen)
 		kfp->barcode[blen] = '\0';
 	}
 	for(int i = 0; i < kfp->readlen; ++i) pb_pos(kfp, seq, i);
-	return;
 }
 
 
