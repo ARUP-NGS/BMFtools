@@ -233,22 +233,22 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 		fprintf(stderr, "[D:%s] Command string: '%s'.\n", __func__, str1.s);
 #endif
 	}
-	str2.s = strdup(str1.s);
-	str2.l = str1.l; str2.m = str1.m;
-	for(int i = 0; i < str1.l - 1; ++i)
-		if(memcmp("R1", str2.s + i, 2) == 0) str2.s[i + 1] = '2';
 	const char suffix[] = " | paste -d'~' - - - - ";
+	while(str1.m < sizeof(suffix) + str1.l) ks_resize(&str1, str1.m << 1);
+	strcat(str1.s, suffix);
+	str1.l += sizeof(suffix);
+	str2 = str1; // Copy everything, including a pointer that str2 doesn't own.
+	str2.s = strdup(str1.s); // strdup the string.
+	for(int i = 0; i < str1.l - 1; ++i)
+		if(str2.s[i] == 'R' && str2.s[i + 1] == '1') str2.s[i + 1] = '2';
+
+	const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
+	char *final = (char *)malloc(str1.m + str2.m + sizeof(final_template) / sizeof(char)); // Should be plenty of space
+	sprintf(final, final_template, str1.s, str2.s);
 #if !NDEBUG
-	fprintf(stderr, "[D:%s] Length of suffix: %i.\n", __func__, (int)sizeof(suffix));
+	fprintf(stderr, "[D:%s] Command string: '%s'.\n", __func__, final);
 #endif
-	str1.l += sizeof(suffix); str2.l += sizeof(suffix);
-	if(str1.m < str1.l) ks_resize(&str1, str1.m << 1);
-	if(str2.m < str2.l) ks_resize(&str2, str2.m << 1);
-	strcat(str2.s, suffix); strcat(str1.s, suffix);
-	
-	char *final = (char *)malloc(str1.m + str2.m + 50); // Should be plenty of space 
-	sprintf(final, "pr -mts'~' <(%s) <(%s) | tr '~' '\n'", str1.s, str2.s);
-	CHECK_CALL(final);
+	bash_system(final);
 	free(str1.s), free(str2.s);
 	free(final);
 }
