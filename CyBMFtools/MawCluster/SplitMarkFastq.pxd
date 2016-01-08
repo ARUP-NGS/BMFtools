@@ -1,0 +1,2 @@
+from pysam.cfaidx cimport *
+
