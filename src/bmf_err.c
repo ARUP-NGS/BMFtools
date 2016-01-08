@@ -71,44 +71,37 @@ void err_report(FILE *fp, fullerr_t *e)
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
-			if(e->obs[i][j]) free(e->obs[i][j]), e->obs[i][j] = NULL;
-			if(e->err[i][j]) free(e->err[i][j]), e->err[i][j] = NULL;
-			if(e->final[i][j]) free(e->final[i][j]), e->final[i][j] = NULL;
-			//if(e->rates[i][j]) free(e->rates[i][j]);
+			cond_free(e->obs[i][j]);
+			cond_free(e->err[i][j]);
+			cond_free(e->final[i][j]);
 		}
-		if(e->obs[i]) free(e->obs[i]), e->obs[i] = NULL;
-		if(e->err[i]) free(e->err[i]), e->err[i] = NULL;
-		if(e->qobs[i]) free(e->qobs[i]), e->qobs[i] = NULL;
-		if(e->qerr[i]) free(e->qerr[i]), e->qerr[i] = NULL;
-		if(e->final[i]) free(e->final[i]), e->final[i] = NULL;
-		if(e->qpvsum[i]) free(e->qpvsum[i]), e->qpvsum[i] = NULL;
-		if(e->qdiffs[i]) free(e->qdiffs[i]), e->qdiffs[i] = NULL;
-		//if(e->qrates && e->qrates[i]) free(e->qrates[i]);
-		//if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
+		cond_free(e->obs[i]);
+		cond_free(e->err[i]);
+		cond_free(e->qobs[i]);
+		cond_free(e->qerr[i]);
+		cond_free(e->final[i]);
+		cond_free(e->qpvsum[i]);
+		cond_free(e->qdiffs[i]);
 	}
-	//if(e->qrates) free(e->qrates), e->qrates = NULL;
-	//if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
-	//if(e->rates) free(e->rates), e->rates = NULL;
-	if(e->obs) free(e->obs), e->obs = NULL;
-	if(e->err) free(e->err), e->err = NULL;
-	if(e->qobs) free(e->qobs), e->qobs = NULL;
-	if(e->qerr) free(e->qerr), e->qerr = NULL;
-	if(e->final) free(e->final), e->final = NULL;
-	if(e->qpvsum) free(e->qpvsum), e->qpvsum = NULL;
-	if(e->qdiffs) free(e->qdiffs), e->qdiffs = NULL;
-	free(e), e = NULL;
+	cond_free(e->obs);
+	cond_free(e->err);
+	cond_free(e->qerr);
+	cond_free(e->qobs);
+	cond_free(e->final);
+	cond_free(e->qpvsum);
+	cond_free(e->qdiffs);
+	cond_free(e);
 }
 
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
-	if(!f->r1)
-		f->r1 = readerr_init(f->l);
-	if(!f->r2)
-		f->r2 = readerr_init(f->l);//
+	if(!f->r1) f->r1 = readerr_init(f->l);
+	if(!f->r2) f->r2 = readerr_init(f->l);
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (hdr == NULL) {
+	if (!hdr) {
+		fprintf(stderr, "[E:%s] Failed to read input header from bam %s. Abort!\n", __func__, fname);
 		exit(EXIT_FAILURE);
 	}
 	int r, len;
@@ -128,7 +121,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		if(b->core.flag & 2820 || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
@@ -138,46 +131,44 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(++f->nread % 1000000 == 0)
-			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
 		if(b->core.tid != last_tid) {
-			if(ref) free(ref);
+			cond_free(ref);
 			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			fprintf(stderr, "[%s] Finished loading ref sequence for contig '%s'.\n", __func__, hdr->target_name[b->core.tid]);
 			last_tid = b->core.tid;
 		}
 		// rc -> read count
 		// fc -> reference base count
-		int i, ind, rc, fc;
 		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
-		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
 			int s; // seq value, base index
-			const uint32_t len = bam_cigar_oplen(cigar[i]);
-			switch(bam_cigar_op(cigar[i])) {
+			const uint32_t len = bam_cigar_oplen(*cigar);
+			switch(bam_cigar_op(*cigar++)) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
-				for(ind = 0; ind < len; ++ind) {
+				for(int ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+#if !NDEBUG
 					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
+#endif
 					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-							++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
-				rc += len;
-				fc += len;
+				rc += len; fc += len;
 				break;
 			case BAM_CSOFT_CLIP:
 			case BAM_CHARD_CLIP:
@@ -188,12 +179,11 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			case BAM_CDEL:
 				fc += len;
 				break;
-			// Default: break
 			}
 		}
 	}
-	fprintf(stderr, "Cleaning up after gathering my error data.\n");
-	if(ref) free(ref);
+	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
+	cond_free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
 }
