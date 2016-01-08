@@ -141,9 +141,99 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			last_tid = b->core.tid;
 		}
+		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
+		const int32_t pos = b->core.pos;
+		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+			int s; // seq value, base index
+			const uint32_t len = bam_cigar_oplen(*cigar);
+			switch(bam_cigar_op(*cigar++)) {
+			case BAM_CMATCH:
+			case BAM_CEQUAL:
+			case BAM_CDIFF:
+				for(int ind = 0; ind < len; ++ind) {
+					s = bam_seqi(seq, ind + rc);
+					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+#if !NDEBUG
+					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
+						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						exit(EXIT_FAILURE);
+					}
+#endif
+					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+				}
+				rc += len; fc += len;
+				break;
+			case BAM_CSOFT_CLIP:
+			case BAM_CHARD_CLIP:
+			case BAM_CINS:
+				rc += len;
+				break;
+			case BAM_CREF_SKIP:
+			case BAM_CDEL:
+				fc += len;
+				break;
+			}
+		}
+	}
+	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
+	cond_free(ref);
+	bam_destroy1(b);
+	bam_hdr_destroy(hdr), sam_close(fp);
+}
+
+void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
+{
+	if(!f->r1) f->r1 = readerr_init(f->l);
+	samFile *fp = sam_open_format(fname, "r", open_fmt);
+	bam_hdr_t *hdr = sam_hdr_read(fp);
+	if (!hdr) {
+		fprintf(stderr, "[E:%s] Failed to read input header from bam %s. Abort!\n", __func__, fname);
+		exit(EXIT_FAILURE);
+	}
+	int len;
+	int32_t last_tid = -1;
+	bam1_t *b = bam_init1();
+	char *ref = NULL; // Will hold the sequence for a chromosome
+	int tid_to_study = -1;
+	const readerr_t *rerr = f->r1;
+	if(f->refcontig) {
+		for(int i = 0; i < hdr->n_targets; ++i) {
+			if(!strcmp(hdr->target_name[i], f->refcontig)) {
+				tid_to_study = i; break;
+			}
+		}
+		if(tid_to_study < 0) {
+			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+			exit(EXIT_FAILURE);
+		}
+	}
+	int c;
+	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
+		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
+		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
+		const uint32_t *cigar = bam_get_cigar(b);
+#if !NDEBUG
+		ifn_abort(cigar);
+		ifn_abort(seq);
+		ifn_abort(qual);
+#endif
+
+		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+#if !NDEBUG
+		assert(b->core.tid >= 0);
+#endif
+		if(b->core.tid != last_tid) {
+			cond_free(ref);
+			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
+			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
+			last_tid = b->core.tid;
+		}
 		// rc -> read count
 		// fc -> reference base count
-		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
 		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
@@ -165,8 +255,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 						exit(EXIT_FAILURE);
 					}
 #endif
-					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					++rerr->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++rerr->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
 				rc += len; fc += len;
 				break;

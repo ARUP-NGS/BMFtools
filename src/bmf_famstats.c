@@ -91,13 +91,13 @@ int target_main(int argc, char *argv[])
 
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
-		fprintf(stderr, "[famstat_target_main]: Cannot open input file \"%s\"", argv[optind]);
+		fprintf(stderr, "[E:%s]: Cannot open input file \"%s\"", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-		fprintf(stderr, "[famstat_target_main]: Failed to read header for \"%s\"\n", argv[optind]);
+		fprintf(stderr, "[%s]: Failed to read header for \"%s\"\n", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
 	bed = parse_bed_hash(bedpath, header, padding);
@@ -105,17 +105,16 @@ int target_main(int argc, char *argv[])
 	bam1_t *b = bam_init1();
 	while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
 		target_loop(b, bed, &fm_target, &total_fm);
-		if(UNLIKELY(++count % notification_interval == 0))
-			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+		if(UNLIKELY(++count % notification_interval == 0)) fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
 	}
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);
 	bed_destroy_hash(bed);
 	free(bedpath);
-	fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %"PRIu64". Raw reads on target: %"PRIu64".\n",
+	fprintf(stdout, "Fraction of raw reads on target: %f. \nTotal raw reads: %lu. Raw reads on target: %lu.\n",
 			(double)fm_target / total_fm, total_fm, fm_target);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 
@@ -144,35 +143,29 @@ static inline void tag_test(const uint8_t *data, const char *tag)
 
 static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
 {
-	const uint8_t *data = bam_aux_get(b, "FM");
 	//tag_test(data, "FM");
-	const int FM = bam_aux2i(data);
-	if(b->core.flag & 2944 || b->core.qual < settings->minMQ || FM < settings->minFM ||
-		!bam_aux2i(bam_aux_get(b, "FP"))) {
+	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2))) return;
+	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
+	if(b->core.qual < settings->minMQ || FM < settings->minFM || !bam_aux2i(bam_aux_get(b, "FP"))) {
 		++s->n_fail;
 		return;
-		// 2944 is equivalent to BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_QCFAIL | BAM_FISREAD2
 	}
 	++s->n_pass;
-	const uint8_t *rvdata = bam_aux_get(b, "RV");
-	if(!rvdata && RVWarn) {
-		RVWarn = 0;
-		fprintf(stderr, "[%s]: Warning: RV tag not found. Continue.\n", __func__);
-	}
-	int RV = rvdata ? bam_aux2i(data): 0;
+	const int RV = bam_aux2i(bam_aux_get(b, "RV"));
 
-	if(FM > 1)
-		++s->realfm_counts, s->realfm_sum += FM, s->realrc_sum += RV;
+	if(FM > 1) ++s->realfm_counts, s->realfm_sum += FM, s->realrc_sum += RV;
 	++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
+
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] RV value: %i. allrc_sum: %lu. realrc_sum: %lu.\n", __func__, RV, s->allrc_sum, s->realrc_sum);
+#endif
 
 	if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
 		s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
-	else
-		++kh_val(s->fm, s->ki);
+	else ++kh_val(s->fm, s->ki);
 	if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
 		s->ki = kh_put(rc, s->rc, RV, &s->khr), kh_val(s->rc, s->ki) = 1;
-	else
-		++kh_val(s->rc, s->ki);
+	else ++kh_val(s->rc, s->ki);
 }
 
 
@@ -207,12 +200,13 @@ static void usage_exit(FILE *fp, int exit_status)
 	exit(exit_status);
 }
 
-static void fm_usage_exit(FILE *fp, int exit_status)
+static int fm_usage_exit(FILE *fp, int exit_status)
 {
 	fprintf(fp, "Usage: bmftools famstats fm <opts> <in.bam>\n");
 	fprintf(fp, "-m Set minimum mapping quality. Default: 0.\n");
 	fprintf(fp, "-f Set minimum family size. Default: 0.\n");
 	exit(exit_status);
+	return exit_status;
 }
 
 int fm_main(int argc, char *argv[])
@@ -224,8 +218,6 @@ int fm_main(int argc, char *argv[])
 
 
 	famstat_settings_t *settings = (famstat_settings_t *)calloc(1, sizeof(famstat_settings_t));
-	settings->minMQ = 0;
-	settings->minFM = 0;
 	settings->notification_interval = 1000000uL;
 
 	while ((c = getopt(argc, argv, "m:f:n:h")) >= 0) {
@@ -236,13 +228,12 @@ int fm_main(int argc, char *argv[])
 		case 'f':
 			settings->minFM = atoi(optarg); break;
 			break;
-		case 'n':
-			settings->notification_interval = strtoull(optarg, NULL, 0);
+		case 'n': settings->notification_interval = strtoull(optarg, NULL, 0); break;
 		case '?': // Fall-through!
 		case 'h':
-			fm_usage_exit(stderr, EXIT_SUCCESS);
+			return fm_usage_exit(stderr, EXIT_SUCCESS);
 		default:
-			fm_usage_exit(stderr, EXIT_FAILURE);
+			return fm_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
 
@@ -251,17 +242,17 @@ int fm_main(int argc, char *argv[])
 		else fm_usage_exit(stderr, EXIT_FAILURE);
 	}
 
-	fprintf(stderr, "[famstat_main]: Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
+	fprintf(stderr, "[%s]: Running main with minMQ %i and minFM %i.\n", __func__, settings->minMQ, settings->minFM);
 
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
-		fprintf(stderr, "[famstat_main]: Cannot open input file \"%s\"", argv[optind]);
+		fprintf(stderr, "[E:%s]: Cannot open input file \"%s\"", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		fprintf(stderr, "[famstat_main]: Failed to read header for \"%s\"\n", argv[optind]);
+		fprintf(stderr, "[E:%s]: Failed to read header for \"%s\"\n", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
 	s = famstat_core(fp, header, settings);
