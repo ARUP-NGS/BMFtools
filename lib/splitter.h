@@ -41,8 +41,14 @@ typedef struct marksplit_settings {
 	int to_stdout;
 } marksplit_settings_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void free_marksplit_settings_ptr(marksplit_settings_t *settings);
 void free_marksplit_settings(marksplit_settings_t settings);
+#ifdef __cplusplus
+}
+#endif
 
 typedef struct mark_splitter {
 	FILE **tmp_out_handles_r1;
@@ -53,8 +59,14 @@ typedef struct mark_splitter {
 	char **fnames_r2;
 } mark_splitter_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr);
 void splitter_destroy(mark_splitter_t *var);
+#ifdef __cplusplus
+}
+#endif
 
 typedef struct splitterhash_params {
 	char **infnames_r1;
@@ -65,7 +77,13 @@ typedef struct splitterhash_params {
 	int paired; // 1 if paired, 0 if single-end
 } splitterhash_params_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void splitterhash_destroy(splitterhash_params_t *params);
 splitterhash_params_t *init_splitterhash(marksplit_settings_t *settings_ptr, mark_splitter_t *splitter_ptr);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SPLITTER_H */

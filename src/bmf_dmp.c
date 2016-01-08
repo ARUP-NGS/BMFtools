@@ -228,7 +228,7 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	for(int i = 0; i < settings->n_handles; ++i) {
 		sprintf(fname_buf, " %s", params->outfnames_r1[i]);
 		while(str1.m < strlen(fname_buf) + str1.l + 1) ks_resize(&str1, str1.m << 1);
-		strcat(str1.s, fname_buf);
+		strcat(str1.s, fname_buf); str1.l += strlen(fname_buf);
 #if !NDEBUG
 		fprintf(stderr, "[D:%s] Command string: '%s'.\n", __func__, str1.s);
 #endif
@@ -239,8 +239,13 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	str1.l += sizeof(suffix);
 	str2 = str1; // Copy everything, including a pointer that str2 doesn't own.
 	str2.s = strdup(str1.s); // strdup the string.
-	for(int i = 0; i < str1.l - 1; ++i)
-		if(str2.s[i] == 'R' && str2.s[i + 1] == '1') str2.s[i + 1] = '2';
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] str1.l: %lu. strlen1: %lu.\n", __func__, str1.l, strlen(str1.s));
+	fprintf(stderr, "[D:%s] str2.l: %lu. strlen2: %lu.\n", __func__, str2.l, strlen(str2.s));
+#endif
+	for(int i = 0; i < str2.l - 1; ++i)
+		if(str2.s[i] == 'R' && str2.s[i + 1] == '1')
+			str2.s[i + 1] = '2';
 
 	const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
 	char *final = (char *)malloc(str1.m + str2.m + sizeof(final_template) / sizeof(char)); // Should be plenty of space
@@ -324,7 +329,7 @@ void clean_homing_sequence(char *sequence) {
 		case 'a': // Fall-through
 		case 'g': // Fall-through
 		case 'c': // Fall-through
-		case 't': *sequence -= 32; // Converts lower-case to upper-case
+		case 't': *sequence -= UPPER_LOWER_OFFSET; // Converts lower-case to upper-case
 		default: fprintf(stderr, "[E:%s] Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
 						 __func__, *sequence);
 		exit(EXIT_FAILURE);

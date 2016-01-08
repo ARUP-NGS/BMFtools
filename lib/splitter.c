@@ -86,53 +86,52 @@ void splitter_destroy(mark_splitter_t *var)
 	free(var);
 }
 
-#define INIT_SPLITTER_SE(settings_ptr) \
-	do {\
-		mark_splitter_t ret = {\
-			.n_handles = ipow(4, settings_ptr->n_nucs),\
-			.n_nucs = settings_ptr->n_nucs,\
-			.fnames_r1 = NULL,\
-			.fnames_r2 = NULL,\
-			.tmp_out_handles_r1 = NULL,\
-			.tmp_out_handles_r2 = NULL\
-		};\
-		ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));\
-		ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));\
-		char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];\
-		for (int i = 0; i < ret.n_handles; i++) {\
-			sprintf(tmp_buffer, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);\
-			ret.fnames_r1[i] = strdup(tmp_buffer);\
-			ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");\
-		}\
-		return ret;\
-	} while(0)
 
-
-#define INIT_SPLITTER_PE(settings_ptr) \
-	do {\
-		mark_splitter_t ret = {\
-			.n_handles = ipow(4, settings_ptr->n_nucs),\
-			.n_nucs = settings_ptr->n_nucs,\
-			.fnames_r1 = NULL,\
-			.fnames_r2 = NULL,\
-			.tmp_out_handles_r1 = NULL,\
-			.tmp_out_handles_r2 = NULL\
-		};\
-		ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));\
-		ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));\
-		ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));\
-		ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));\
-		char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];\
-		for (int i = 0; i < ret.n_handles; i++) {\
-			sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);\
-			ret.fnames_r1[i] = strdup(tmp_buffer);\
-			sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);\
-			ret.fnames_r2[i] = strdup(tmp_buffer);\
-			ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");\
-			ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");\
-		}\
-		return ret;\
-	} while(0)
+mark_splitter_t init_splitter_pe(marksplit_settings_t* settings_ptr)
+{
+	mark_splitter_t ret = {
+		NULL, // tmp_out_handles_r1
+		NULL, // tmp_out_handles_r2
+		settings_ptr->n_nucs, // n_nucs
+		ipow(4, settings_ptr->n_nucs), // n_handles
+		NULL, // infnames_r1
+		NULL  // infnames_r2
+	};
+	ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
+	ret.tmp_out_handles_r2 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
+	ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
+	ret.fnames_r2 = (char **)malloc(ret.n_handles * sizeof(char *));
+	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	for (int i = 0; i < ret.n_handles; i++) {
+		sprintf(tmp_buffer, "%s.tmp.%i.R1.fastq", settings_ptr->tmp_basename, i);
+		ret.fnames_r1[i] = strdup(tmp_buffer);
+		sprintf(tmp_buffer, "%s.tmp.%i.R2.fastq", settings_ptr->tmp_basename, i);
+		ret.fnames_r2[i] = strdup(tmp_buffer);
+		ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
+		ret.tmp_out_handles_r2[i] = fopen(ret.fnames_r2[i], "w");
+	}
+	return ret;
+}
+mark_splitter_t init_splitter_se(marksplit_settings_t* settings_ptr)
+{
+	mark_splitter_t ret = {
+        NULL, // tmp_out_handles_r1
+        NULL, // tmp_out_handles_r2
+        settings_ptr->n_nucs, // n_nucs
+		ipow(4, settings_ptr->n_nucs), // n_handles
+        NULL, // infnames_r1
+        NULL  // infnames_r2
+	};
+	ret.tmp_out_handles_r1 = (FILE **)malloc(settings_ptr->n_handles * sizeof(FILE *));
+	ret.fnames_r1 = (char **)malloc(ret.n_handles * sizeof(char *));
+	char tmp_buffer [METASYNTACTIC_FNAME_BUFLEN];
+	for (int i = 0; i < ret.n_handles; i++) {
+		sprintf(tmp_buffer, "%s.tmp.%i.fastq", settings_ptr->tmp_basename, i);
+		ret.fnames_r1[i] = strdup(tmp_buffer);
+		ret.tmp_out_handles_r1[i] = fopen(ret.fnames_r1[i], "w");
+	}
+	return ret;
+}
 
 mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 {
@@ -140,12 +139,12 @@ mark_splitter_t init_splitter(marksplit_settings_t* settings_ptr)
 #if !NDEBUG
 		fprintf(stderr, "[D:%s] Initializing single-end splitter.\n", __func__);
 #endif
-		INIT_SPLITTER_SE(settings_ptr);
+		return init_splitter_se(settings_ptr);
 	} else {
 #if !NDEBUG
 		fprintf(stderr, "[D:%s] Initializing paired-end splitter.\n", __func__);
 #endif
-		INIT_SPLITTER_PE(settings_ptr);
+		return init_splitter_pe(settings_ptr);
 	}
 }
 
