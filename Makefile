@@ -18,9 +18,6 @@ binprefix =
 OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
-UR_FLAGS = $(OPT_FLAGS) -DUNROLL
-
-IGAMC_INC = include/igamc_cephes.c
 
 SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c src/bmf_hashdmp.c \
 		  src/bmf_sdmp.c src/bmf_rsq.c src/bmf_famstats.c src/bmf_vetter.c dlib/bed_util.c include/bedidx.c \
@@ -28,7 +25,6 @@ SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c s
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
 		  src/bmf_main.c
 
-# In case you want to make a debug or profile build without changing the .o/.c rules.
 P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)

@@ -180,6 +180,16 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	s->rc = kh_init(rc);
 	s->data = NULL;
 	b = bam_init1();
+	ret = sam_read1(fp, h, b);
+	if(ret < 0) {
+		fprintf(stderr, "[E:%s] Could not read from input bam %s. Abort!\n", __func__, fp->fn);
+		exit(EXIT_FAILURE);
+	}
+	++count;
+	famstat_loop(s, b, settings);
+	check_bam_tag(b, "FP");
+	check_bam_tag(b, "RV");
+	check_bam_tag(b, "FM");
 	while (LIKELY((ret = sam_read1(fp, h, b)) >= 0)) {
 		famstat_loop(s, b, settings);
 		if(UNLIKELY(++count % settings->notification_interval == 0))
@@ -220,7 +230,7 @@ int fm_main(int argc, char *argv[])
 	famstat_settings_t *settings = (famstat_settings_t *)calloc(1, sizeof(famstat_settings_t));
 	settings->notification_interval = 1000000uL;
 
-	while ((c = getopt(argc, argv, "m:f:n:h")) >= 0) {
+	while ((c = getopt(argc, argv, "m:f:n:h?")) >= 0) {
 		switch (c) {
 		case 'm':
 			settings->minMQ = atoi(optarg); break;
@@ -232,8 +242,6 @@ int fm_main(int argc, char *argv[])
 		case '?': // Fall-through!
 		case 'h':
 			return fm_usage_exit(stderr, EXIT_SUCCESS);
-		default:
-			return fm_usage_exit(stderr, EXIT_FAILURE);
 		}
 	}
 
@@ -251,7 +259,7 @@ int fm_main(int argc, char *argv[])
 	}
 
 	header = sam_hdr_read(fp);
-	if (header == NULL) {
+	if (!header) {
 		fprintf(stderr, "[E:%s]: Failed to read header for \"%s\"\n", __func__, argv[optind]);
 		exit(EXIT_FAILURE);
 	}
@@ -268,11 +276,10 @@ int fm_main(int argc, char *argv[])
 
 static inline void frac_loop(bam1_t *b, int minFM, uint64_t *fm_above, uint64_t *fm_total)
 {
-	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) || bam_aux2i(bam_aux_get(b, "FP")) == 0)
+	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
+			bam_aux2i(bam_aux_get(b, "FP")) == 0)
 		return;
-	const uint8_t *const data = bam_aux_get(b, "FM");
-	//tag_test(data, "FM");
-	const int FM = bam_aux2i(data);
+	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
 	*fm_total += FM;
 	if(FM >= minFM) *fm_above += FM;
 }
