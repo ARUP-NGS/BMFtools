@@ -7,7 +7,10 @@
 #include "htslib/faidx.h"
 #include "dlib/bam_util.h"
 #include "dlib/mem_util.h"
+#include "dlib/bed_util.h"
 #include "lib/kingfisher.h"
+
+#define DEFAULT_PADDING 50
 
 
 typedef struct readerr {
@@ -33,9 +36,10 @@ typedef struct fullerr {
 	readerr_t *r2;
 	size_t l;
 	char *refcontig;
+	khash_t(bed) *bed;
 } fullerr_t;
 
-fullerr_t *fullerr_init(size_t l);
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding);
 void fullerr_destroy(fullerr_t *e);
 
 

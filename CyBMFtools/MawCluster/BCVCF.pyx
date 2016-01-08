@@ -554,7 +554,7 @@ def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
     numK = 0
     count = 0
     for rec in inVCF:
-        if operator.ge(len(outLines), recordsPerWrite):
+        if len(outLines) > recordsPerWrite:
             outHandle.write("\n".join(outLines) + "\n")
             outLines = []
         try:
@@ -565,7 +565,7 @@ def IFilterByAF(inVCF, outVCF="default", maxAF=0.1,
             recFreq = np.min([float(i) for i in
                               rec.InfoDict["AF"].split(",")],
                              dtype=np.float64)
-        if(operator.le(recFreq, maxAF)):
+        if recFreq < maxAF:
             outLines.append(rec.__str__())
     if len(outLines) != 0:
         outHandle.write("\n".join(outLines))

@@ -2,7 +2,7 @@
 
 #define min_obs 1000uL
 
-void err_usage_exit(FILE *fp, int retcode)
+int err_usage(FILE *fp, int retcode)
 {
 	fprintf(fp,
 			"Usage: bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
@@ -11,8 +11,9 @@ void err_usage_exit(FILE *fp, int retcode)
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
 			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
-			"-b:\t\tPath to write the cycle/base call error rates in tabular format.\n"
+			"-n:\t\tPath to write the cycle/nucleotide call error rates in tabular format.\n"
 			"-c:\t\tPath to write the cycle error rates in tabular format.\n"
+			"-b:\t\tPath to bed file for restricting analysis.\n"
 			);
 	exit(retcode);
 }
@@ -121,7 +122,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
+			(f->bed && bed_test(b, f->bed) == 0)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
@@ -272,7 +274,9 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 	}
+#if !NDEBUG
 	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
+#endif
 	cond_free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
@@ -467,11 +471,15 @@ readerr_t *readerr_init(size_t l) {
 	return ret;
 }
 
-fullerr_t *fullerr_init(size_t l) {
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding) {
 	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
 	ret->l = l;
 	ret->r1 = readerr_init(l);
 	ret->r2 = readerr_init(l);
+	if(bedpath) {
+		ret->bed = kh_init(bed);
+		ret->bed = parse_bed_hash(bedpath, hdr, padding);
+	}
 	return ret;
 }
 
@@ -479,6 +487,9 @@ void fullerr_destroy(fullerr_t *e) {
 	if(e->r1) readerr_destroy(e->r1), e->r1 = NULL;
 	if(e->r2) readerr_destroy(e->r2), e->r2 = NULL;
 	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
+	if(e->bed) {
+		kh_destroy(bed, e->bed);
+	}
 	free(e);
 }
 
@@ -495,35 +506,40 @@ int err_main(int argc, char *argv[])
 	int c;
 	char outpath[500] = "";
 
-	if(argc < 2) {
-		err_usage_exit(stderr, EXIT_FAILURE);
-	}
+	if(argc < 2) return err_usage(stderr, EXIT_FAILURE);
 
-	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage_exit(stderr, EXIT_SUCCESS);
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage(stderr, EXIT_SUCCESS);
 
-	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *db = NULL, *dc = NULL;
+	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL;
 	char refcontig[200] = "";
-	while ((c = getopt(argc, argv, "r:c:b:f:3:o:h?")) >= 0) {
+	char *bedpath = NULL;
+	int padding = -1;
+	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:h?")) >= 0) {
 		switch (c) {
 		case 'f': df = fopen(optarg, "w"); break;
 		case 'o': strcpy(outpath, optarg); break;
 		case '3': d3 = fopen(optarg, "w"); break;
 		case 'c': dc = fopen(optarg, "w"); break;
-		case 'b': db = fopen(optarg, "w"); break;
+		case 'n': dbc = fopen(optarg, "w"); break;
 		case 'r': strcpy(refcontig, optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
+		case 'p': padding = atoi(optarg); break;
 		case '?':
 		case 'h':
-			err_usage_exit(stderr, EXIT_SUCCESS);
-		default:
-			err_usage_exit(stderr, EXIT_FAILURE);
+			return err_usage(stderr, EXIT_SUCCESS);
 		}
+	}
+
+	if(padding < 0) {
+		fprintf(stderr, "[%s] Padding not set. Setting to default value %i.\n", __func__, DEFAULT_PADDING);
+		padding = DEFAULT_PADDING;
 	}
 
 
 	ofp = (outpath[0]) ? fopen(outpath, "w"): stdout;
 
 	if (argc != optind+2)
-		err_usage_exit(stderr, EXIT_FAILURE);
+		return err_usage(stderr, EXIT_FAILURE);
 
 	faidx_t *fai = fai_load(argv[optind]);
 
@@ -545,7 +561,7 @@ int err_main(int argc, char *argv[])
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
@@ -565,9 +581,9 @@ int err_main(int argc, char *argv[])
 	if(df)
 		fprintf(stderr, "Writin' read/base call/qscore/cycle error rates.\n"),
 		write_full_rates(df, f), fclose(df), df = NULL;
-	if(db)
+	if(dbc)
 		fprintf(stderr, "Writin' read/base call/cycle error rates.\n"),
-		write_base_rates(db, f), fclose(db), db = NULL;
+		write_base_rates(dbc, f), fclose(dbc), dbc = NULL;
 	if(dc)
 		fprintf(stderr, "Writin' cycle error rates.\n"),
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
