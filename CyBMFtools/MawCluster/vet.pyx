@@ -5,70 +5,6 @@ from enum import Enum
 from math import log10
 from scipy.stats import combine_pvalues
 
-def get_plp(af=None, contig=None, pos=None):
-    """
-    af is a pysam.AlignmentFile object.
-    contig is a string.
-    pos (integer) is 0-based, like in a vcf.
-    """
-    if pos is None:
-        raise ValueError("Need a position argument.")
-    if contig is None:
-        raise ValueError("Need a contig argument.")
-    if af is None:
-        raise ValueError("Need an alignmentfile argument.")
-    assert isinstance(pos, int)
-    assert isinstance(contig, str)
-    assert isinstance(af, pysam.AlignmentFile)
-    plp_iterator = af.pileup(contig, pos, pos + 1)
-    plp_col = plp_iterator.next()
-    while plp_col.pos < pos:
-        plp_col = plp_iterator.next()
-    return plp_col
-
-class filters(Enum):
-    minOverlap = 1
-    minCount = 2
-
-
-class vet_set(object):
-    def __init__(self, minFM=0, minPV=0, minFA=0., minMQ=0., minOverlap=0, minCount=0):
-        self.minFM = minFM
-        self.minPV = minPV
-        self.minFA = minFA
-        self.minMQ = minMQ
-        self.minOverlap = minOverlap
-        self.minCount = minCount
-
-    def pass_var(self, plpr):
-        assert isinstance(plpr, pysam.calignedsegment.PileupRead)
-        i = plpr.alignment
-        if(i.is_refskip or i.is_del or i.opt("FM") < self.minFM or
-           i.mapping_quality < self.minMQ):
-            return False
-        if self.minPV or self.minFA:
-            tagpos = (i.query_length - 1 - i.query_position
-                      if(i.is_reverse) else i.query_position)
-            if(i.opt("PV")[tagpos] < self.minPV or i.opt("FA")[tagpos] < self.minFA):
-                return False
-        return True
-
-
-def phred2pval(phred):
-    return 10 ** (phred * -0.1)
-
-
-def combine_phreds(phred1, phred2):
-    return -10 * log10(combine_pvalues([phred2pval(phred1),
-                                        phred2pval(phred2)],
-                                       "fisher")[1])
-
-
-def get_tagpos(pr):
-    return (pr.alignment.query_length - 1 - pr.query_position
-            if(pr.is_reverse) else pr.query_position)
-
-
 class UniqueObs(object):
     def __init__(self, BaseCall, FM, PV, FA, MQ, Overlap, Duplex):
         self.BaseCall = BaseCall
@@ -136,6 +72,70 @@ class UniqueObs(object):
                                False, RV not in [0, FM])
                 
                                       
+
+def get_plp(af=None, contig=None, pos=None):
+    """
+    af is a pysam.AlignmentFile object.
+    contig is a string.
+    pos (integer) is 0-based, like in a vcf.
+    """
+    if pos is None:
+        raise ValueError("Need a position argument.")
+    if contig is None:
+        raise ValueError("Need a contig argument.")
+    if af is None:
+        raise ValueError("Need an alignmentfile argument.")
+    assert isinstance(pos, int)
+    assert isinstance(contig, str)
+    assert isinstance(af, pysam.AlignmentFile)
+    plp_iterator = af.pileup(contig, pos, pos + 1)
+    plp_col = plp_iterator.next()
+    while plp_col.pos < pos:
+        plp_col = plp_iterator.next()
+    return plp_col
+
+class filters(Enum):
+    minOverlap = 1
+    minCount = 2
+
+
+class vet_set(object):
+    def __init__(self, minFM=0, minPV=0, minFA=0., minMQ=0., minOverlap=0, minCount=0,
+                 minDuplex=0):
+        self.minFM = minFM
+        self.minPV = minPV
+        self.minFA = minFA
+        self.minMQ = minMQ
+        self.minOverlap = minOverlap
+        self.minCount = minCount
+        self.minDuplex = minDuplex
+
+    def pass_uniobs(self, obs):
+        assert isinstance(obs, UniqueObs)
+        if (obs.MQ < self.minMQ or
+            obs.PV < self.minPV or
+            obs.FA < self.minFA or
+            obs.FM < self.minFM):
+            return False
+        return True
+
+
+def phred2pval(phred):
+    return 10 ** (phred * -0.1)
+
+
+def combine_phreds(phred1, phred2):
+    return -10 * log10(combine_pvalues([phred2pval(phred1),
+                                        phred2pval(phred2)],
+                                       "fisher")[1])
+
+
+def get_tagpos(pr):
+    return (pr.alignment.query_length - 1 - pr.query_position
+            if(pr.is_reverse) else pr.query_position)
+
+
+
 def freq(iter_obj):
     ret = {}
     for i in iter_obj:
@@ -148,11 +148,40 @@ def freq(iter_obj):
 def get_name_bins(iter_obj):
     ret = {}
     for i in iter_obj:
+        # 3844 is supp/second/qcfail/duplicate/unmapped
+        if i.is_refskip or i.is_del or i.alignment.flag & 3844:
+            continue
         if i.query_name in ret:
             ret[i.query_name].append(i)
         else:
             ret[i.query_name] = [i]
     return ret
+
+
+def get_bc_bins(passing_obs):
+    ret = {}
+    for i in passing_obs:
+        if i.BaseCall in ret:
+            ret[i.BaseCall].append(i)
+        else:
+            ret[i.BaseCall] = [i]
+    return ret
+
+
+class BaseCallSummary(object):
+    def __init__(self, bin_tuple, settings, ref_base):
+        obs = bin_tuple[1]
+        self.is_var = bin_tuple[0] == ref_base
+        self.Count = len(obs)
+        self.Duplex = sum(i.Duplex for i in obs)
+        self.Overlap = sum(i.Overlap for i in obs)
+        self.Pass = (self.Duplex > settings.minDuplex and
+                     self.Overlap > settings.minOverlap and
+                     self.Count > settings.minCount)
+
+def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
+        return [BaseCallSummary(bin_tuple, vet_settings, ref_base)
+                for bin_tuple in bc_bins.iteritems()]
 
 
 def get_plp_summary(plp, refstring, vet_settings):
@@ -163,5 +192,19 @@ def get_plp_summary(plp, refstring, vet_settings):
     ref_base = refstring[plp.pos]
     observations = map(UniqueObs.from_name_bin,
                        get_name_bins(plp.pileups).itervalues())
-    passing = filter(vet_set.pass_var, plp.pileups)
-    
+    passing = filter(vet_set.pass_unibos, observations)
+    bc_bins = get_bc_bins(passing)
+    summary = get_bc_bin_summary(bc_bins, vet_settings, ref_base)
+    return [i for i in summary if i.is_var and i.Pass]
+
+
+class Vetter(object):
+    def __init__(self, bam, fasta, vcf, settings):
+        assert isinstance(bam, pysam.AlignmentFile)
+        assert isinstance(fasta, pysam.FastaFile)
+        self.settings = settings
+        self.bam = bam
+        self.fasta = fasta
+        self.vcf = vcf
+
+        
