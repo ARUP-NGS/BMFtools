@@ -2,24 +2,24 @@
 
 #define min_obs 1000uL
 
-void err_usage_exit(FILE *fp, int retcode)
+int err_usage(FILE *fp, int retcode)
 {
 	fprintf(fp,
 			"Usage: bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
-            "-h/-?\t\tThis helpful help menu!\n"
+			"-h/-?\t\tThis helpful help menu!\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
 			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
-			"-b:\t\tPath to write the cycle/base call error rates in tabular format.\n"
+			"-n:\t\tPath to write the cycle/nucleotide call error rates in tabular format.\n"
 			"-c:\t\tPath to write the cycle error rates in tabular format.\n"
+			"-b:\t\tPath to bed file for restricting analysis.\n"
 			);
 	exit(retcode);
 }
 
 void write_final(FILE *fp, fullerr_t *e)
 {
-	fprintf(stderr, "Hey i'm making 4d!\n");
 	for(uint32_t cycle = 0; cycle < e->l; ++cycle) {
 		for(uint32_t qn = 0; qn < nqscores; ++qn) {
 			fprintf(fp, "%i", e->r1->final[0][qn][cycle]);
@@ -36,8 +36,6 @@ void write_final(FILE *fp, fullerr_t *e)
 		}
 		fprintf(fp, "\n");
 	}
-	fprintf(stderr, "Finishing write_final.\n");
-	return;
 }
 
 void err_report(FILE *fp, fullerr_t *e)
@@ -69,50 +67,42 @@ void err_report(FILE *fp, fullerr_t *e)
 			",\n{\"number_insufficient\": %lu},\n{\"n_cases\": %lu}},",
 			(double)n2_err / n2_obs, n2_obs, n2_err, n2_ins, n_cases);
 	fprintf(fp, "}");
-	return;
 }
 
 void readerr_destroy(readerr_t *e){
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
-			if(e->obs[i][j]) free(e->obs[i][j]), e->obs[i][j] = NULL;
-			if(e->err[i][j]) free(e->err[i][j]), e->err[i][j] = NULL;
-			if(e->final[i][j]) free(e->final[i][j]), e->final[i][j] = NULL;
-			//if(e->rates[i][j]) free(e->rates[i][j]);
+			cond_free(e->obs[i][j]);
+			cond_free(e->err[i][j]);
+			cond_free(e->final[i][j]);
 		}
-		if(e->obs[i]) free(e->obs[i]), e->obs[i] = NULL;
-		if(e->err[i]) free(e->err[i]), e->err[i] = NULL;
-		if(e->qobs[i]) free(e->qobs[i]), e->qobs[i] = NULL;
-		if(e->qerr[i]) free(e->qerr[i]), e->qerr[i] = NULL;
-		if(e->final[i]) free(e->final[i]), e->final[i] = NULL;
-		if(e->qpvsum[i]) free(e->qpvsum[i]), e->qpvsum[i] = NULL;
-		if(e->qdiffs[i]) free(e->qdiffs[i]), e->qdiffs[i] = NULL;
-		//if(e->qrates && e->qrates[i]) free(e->qrates[i]);
-		//if(e->qcounts && e->qcounts[i]) free(e->qcounts[i]);
+		cond_free(e->obs[i]);
+		cond_free(e->err[i]);
+		cond_free(e->qobs[i]);
+		cond_free(e->qerr[i]);
+		cond_free(e->final[i]);
+		cond_free(e->qpvsum[i]);
+		cond_free(e->qdiffs[i]);
 	}
-	//if(e->qrates) free(e->qrates), e->qrates = NULL;
-	//if(e->qcounts) free(e->qcounts), e->qcounts = NULL;
-	//if(e->rates) free(e->rates), e->rates = NULL;
-	if(e->obs) free(e->obs), e->obs = NULL;
-	if(e->err) free(e->err), e->err = NULL;
-	if(e->qobs) free(e->qobs), e->qobs = NULL;
-	if(e->qerr) free(e->qerr), e->qerr = NULL;
-	if(e->final) free(e->final), e->final = NULL;
-	if(e->qpvsum) free(e->qpvsum), e->qpvsum = NULL;
-	if(e->qdiffs) free(e->qdiffs), e->qdiffs = NULL;
-	free(e), e = NULL;
+	cond_free(e->obs);
+	cond_free(e->err);
+	cond_free(e->qerr);
+	cond_free(e->qobs);
+	cond_free(e->final);
+	cond_free(e->qpvsum);
+	cond_free(e->qdiffs);
+	cond_free(e);
 }
 
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
-	if(!f->r1)
-		f->r1 = readerr_init(f->l);
-	if(!f->r2)
-		f->r2 = readerr_init(f->l);//
+	if(!f->r1) f->r1 = readerr_init(f->l);
+	if(!f->r2) f->r2 = readerr_init(f->l);
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
-	if (hdr == NULL) {
+	if (!hdr) {
+		fprintf(stderr, "[E:%s] Failed to read input header from bam %s. Abort!\n", __func__, fname);
 		exit(EXIT_FAILURE);
 	}
 	int r, len;
@@ -132,7 +122,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		if(b->core.flag & 2820 || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
+			(f->bed && bed_test(b, f->bed) == 0)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
@@ -142,46 +133,40 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(++f->nread % 1000000 == 0)
-			fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
 		if(b->core.tid != last_tid) {
-			if(ref) free(ref);
+			cond_free(ref);
 			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
-			fprintf(stderr, "[%s] Finished loading ref sequence for contig '%s'.\n", __func__, hdr->target_name[b->core.tid]);
 			last_tid = b->core.tid;
 		}
-		// rc -> read count
-		// fc -> reference base count
-		int i, ind, rc, fc;
 		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
-		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
-		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
+		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			int s; // seq value, base index
-			const uint32_t len = bam_cigar_oplen(cigar[i]);
-			switch(bam_cigar_op(cigar[i])) {
+			const uint32_t len = bam_cigar_oplen(*cigar);
+			switch(bam_cigar_op(*cigar++)) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
-				for(ind = 0; ind < len; ++ind) {
+				for(int ind = 0; ind < len; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+#if !NDEBUG
 					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-						fprintf(stderr, "Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n", (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 						exit(EXIT_FAILURE);
 					}
+#endif
 					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
-							++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
-				rc += len;
-				fc += len;
+				rc += len; fc += len;
 				break;
 			case BAM_CSOFT_CLIP:
 			case BAM_CHARD_CLIP:
@@ -192,33 +177,128 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			case BAM_CDEL:
 				fc += len;
 				break;
-			// Default: break
 			}
 		}
 	}
-	fprintf(stderr, "Cleaning up after gathering my error data.\n");
-	if(ref) free(ref);
+	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
+	cond_free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
-	return;
+}
+
+void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
+{
+	if(!f->r1) f->r1 = readerr_init(f->l);
+	samFile *fp = sam_open_format(fname, "r", open_fmt);
+	bam_hdr_t *hdr = sam_hdr_read(fp);
+	if (!hdr) {
+		fprintf(stderr, "[E:%s] Failed to read input header from bam %s. Abort!\n", __func__, fname);
+		exit(EXIT_FAILURE);
+	}
+	int len;
+	int32_t last_tid = -1;
+	bam1_t *b = bam_init1();
+	char *ref = NULL; // Will hold the sequence for a chromosome
+	int tid_to_study = -1;
+	const readerr_t *rerr = f->r1;
+	if(f->refcontig) {
+		for(int i = 0; i < hdr->n_targets; ++i) {
+			if(!strcmp(hdr->target_name[i], f->refcontig)) {
+				tid_to_study = i; break;
+			}
+		}
+		if(tid_to_study < 0) {
+			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+			exit(EXIT_FAILURE);
+		}
+	}
+	int c;
+	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
+		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
+		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
+		const uint32_t *cigar = bam_get_cigar(b);
+#if !NDEBUG
+		ifn_abort(cigar);
+		ifn_abort(seq);
+		ifn_abort(qual);
+#endif
+
+		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+#if !NDEBUG
+		assert(b->core.tid >= 0);
+#endif
+		if(b->core.tid != last_tid) {
+			cond_free(ref);
+			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
+			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
+			last_tid = b->core.tid;
+		}
+		// rc -> read count
+		// fc -> reference base count
+		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
+		const int32_t pos = b->core.pos;
+		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
+			int s; // seq value, base index
+			const uint32_t len = bam_cigar_oplen(*cigar);
+			switch(bam_cigar_op(*cigar++)) {
+			case BAM_CMATCH:
+			case BAM_CEQUAL:
+			case BAM_CDIFF:
+				for(int ind = 0; ind < len; ++ind) {
+					s = bam_seqi(seq, ind + rc);
+					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+#if !NDEBUG
+					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
+						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						exit(EXIT_FAILURE);
+					}
+#endif
+					++rerr->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++rerr->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+				}
+				rc += len; fc += len;
+				break;
+			case BAM_CSOFT_CLIP:
+			case BAM_CHARD_CLIP:
+			case BAM_CINS:
+				rc += len;
+				break;
+			case BAM_CREF_SKIP:
+			case BAM_CDEL:
+				fc += len;
+				break;
+			}
+		}
+	}
+#if !NDEBUG
+	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
+#endif
+	cond_free(ref);
+	bam_destroy1(b);
+	bam_hdr_destroy(hdr), sam_close(fp);
 }
 
 
 void write_full_rates(FILE *fp, fullerr_t *f)
 {
-	for(uint64_t l = 0; l < f->l; ++l) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+	uint64_t l;
+	int i, j;
+	for(l = 0; l < f->l; ++l) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				if(f->r1->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r1->err[i][j][l] / f->r1->obs[i][j][l]);
-				else
-					fputs(i ? ":-1337": "-1337", fp);
+				else fputs(i ? ":-1337": "-1337", fp);
 			}
 			if(j != nqscores - 1) fputc(',', fp);
 		}
 		fputc('|', fp);
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				if(f->r2->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
 				else
@@ -228,7 +308,6 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 		}
 		fputc('\n', fp);
 	}
-	return;
 }
 
 
@@ -263,7 +342,6 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 		fprintf(fp, "%0.12f\t", (double)sum1 / counts1);
 		fprintf(fp, "%0.12f\n", (double)sum2 / counts2);
 	}
-	return;
 }
 
 void impute_scores(fullerr_t *f)
@@ -275,25 +353,24 @@ void impute_scores(fullerr_t *f)
 			for(j = 0; j < nqscores; ++j)
 				f->r1->final[i][j][l] = f->r1->qdiffs[i][l] + j + 2 > 0 ? f->r1->qdiffs[i][l] + j + 2: 0,
 				f->r2->final[i][j][l] = f->r2->qdiffs[i][l] + j + 2 > 0 ? f->r2->qdiffs[i][l] + j + 2: 0;
-	return;
 }
 
 void fill_qvals(fullerr_t *f)
 {
-	for(int i = 0; i < 4; ++i) {
-		for(uint64_t l = 0; l < f->l; ++l) {
+	int i;
+	uint64_t l;
+	for(i = 0; i < 4; ++i) {
+		for(l = 0; l < f->l; ++l) {
 			for(int j = 1; j < nqscores; ++j) { // Skip qualities of 2
 				f->r1->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
 				f->r2->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
-				f->r1->qobs[i][l] += f->r1->obs[i][j][l];
-				f->r2->qobs[i][l] += f->r2->obs[i][j][l];
-				f->r1->qerr[i][l] += f->r1->err[i][j][l];
-				f->r2->qerr[i][l] += f->r2->err[i][j][l];
+				f->r1->qobs[i][l] += f->r1->obs[i][j][l]; f->r2->qobs[i][l] += f->r2->obs[i][j][l];
+				f->r1->qerr[i][l] += f->r1->err[i][j][l]; f->r2->qerr[i][l] += f->r2->err[i][j][l];
 			}
 		}
 	}
-	for(int i = 0; i < 4; ++i) {
-		for(uint64_t l = 0; l < f->l; ++l) {
+	for(i = 0; i < 4; ++i) {
+		for(l = 0; l < f->l; ++l) {
 			f->r1->qpvsum[i][l] /= f->r1->qobs[i][l]; // Get average ILMN-reported quality
 			f->r2->qpvsum[i][l] /= f->r2->qobs[i][l]; // Divide by observations of cycle/base call
 			f->r1->qdiffs[i][l] = pv2ph((double)f->r1->qerr[i][l] / f->r1->qobs[i][l]) - pv2ph(f->r1->qpvsum[i][l]);
@@ -304,7 +381,6 @@ void fill_qvals(fullerr_t *f)
 			//fprintf(stderr, "qdiffs %i, %lu after checking for %lu %lu > %lu min_obs is R1:%i R2:%i.\n", i, l, f->r1->qobs[i][l], f->r2->qobs[i][l], min_obs, f->r1->qdiffs[i][l], f->r2->qdiffs[i][l]);
 		}
 	}
-	return;
 }
 
 void fill_sufficient_obs(fullerr_t *f)
@@ -333,12 +409,14 @@ void fill_sufficient_obs(fullerr_t *f)
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 {
-	const char *bstr = "ACGT";
+	const char *const bstr = "ACGT";
 	FILE *dictwrite = fopen("dict.txt", "w");
 	fprintf(dictwrite, "{\n\t");
-	for(uint32_t l = 0; l < f->l; ++l) {
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+	int i, j;
+	uint32_t l;
+	for(l = 0; l < f->l; ++l) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->obs[i][j][l]);
 				fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->obs[i][j][l]);
 				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->err[i][j][l]);
@@ -353,8 +431,8 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 				fprintf(ep, ","), fprintf(cp, ",");
 		}
 		fprintf(ep, "|"), fprintf(cp, "|");
-		for(int j = 0; j < nqscores; ++j) {
-			for(int i = 0; i < 4; ++i) {
+		for(j = 0; j < nqscores; ++j) {
+			for(i = 0; i < 4; ++i) {
 				fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
 			}
@@ -364,7 +442,6 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 		fprintf(ep, "\n"), fprintf(cp, "\n");
 	}
 	fclose(dictwrite);
-	return;
 }
 
 void write_3d_offsets(FILE *fp, fullerr_t *f)
@@ -381,6 +458,41 @@ void write_3d_offsets(FILE *fp, fullerr_t *f)
 	return;
 }
 
+readerr_t *readerr_init(size_t l) {
+	readerr_t *ret = (readerr_t *)calloc(1, sizeof(readerr_t));
+	arr3d_init(ret->obs, l, uint64_t);
+	arr3d_init(ret->err, l, uint64_t);
+	arr3d_init(ret->final, l, int);
+	arr2d_init(ret->qdiffs, l, int);
+	arr2d_init(ret->qpvsum, l, double);
+	arr2d_init(ret->qobs, l, uint64_t);
+	arr2d_init(ret->qerr, l, uint64_t);
+	ret->l = l;
+	return ret;
+}
+
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding) {
+	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
+	ret->l = l;
+	ret->r1 = readerr_init(l);
+	ret->r2 = readerr_init(l);
+	if(bedpath) {
+		ret->bed = kh_init(bed);
+		ret->bed = parse_bed_hash(bedpath, hdr, padding);
+	}
+	return ret;
+}
+
+void fullerr_destroy(fullerr_t *e) {
+	if(e->r1) readerr_destroy(e->r1), e->r1 = NULL;
+	if(e->r2) readerr_destroy(e->r2), e->r2 = NULL;
+	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
+	if(e->bed) {
+		kh_destroy(bed, e->bed);
+	}
+	free(e);
+}
+
 int err_main(int argc, char *argv[])
 {
 	htsFormat open_fmt;
@@ -394,35 +506,40 @@ int err_main(int argc, char *argv[])
 	int c;
 	char outpath[500] = "";
 
-	if(argc < 2) {
-		err_usage_exit(stderr, EXIT_FAILURE);
-	}
+	if(argc < 2) return err_usage(stderr, EXIT_FAILURE);
 
-	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage_exit(stderr, EXIT_SUCCESS);
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage(stderr, EXIT_SUCCESS);
 
-	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *db = NULL, *dc = NULL;
+	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL;
 	char refcontig[200] = "";
-	while ((c = getopt(argc, argv, "r:c:b:f:3:o:h?")) >= 0) {
+	char *bedpath = NULL;
+	int padding = -1;
+	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:h?")) >= 0) {
 		switch (c) {
 		case 'f': df = fopen(optarg, "w"); break;
 		case 'o': strcpy(outpath, optarg); break;
 		case '3': d3 = fopen(optarg, "w"); break;
 		case 'c': dc = fopen(optarg, "w"); break;
-		case 'b': db = fopen(optarg, "w"); break;
+		case 'n': dbc = fopen(optarg, "w"); break;
 		case 'r': strcpy(refcontig, optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
+		case 'p': padding = atoi(optarg); break;
 		case '?':
 		case 'h':
-			err_usage_exit(stderr, EXIT_SUCCESS);
-		default:
-			err_usage_exit(stderr, EXIT_FAILURE);
+			return err_usage(stderr, EXIT_SUCCESS);
 		}
+	}
+
+	if(padding < 0) {
+		fprintf(stderr, "[%s] Padding not set. Setting to default value %i.\n", __func__, DEFAULT_PADDING);
+		padding = DEFAULT_PADDING;
 	}
 
 
 	ofp = (outpath[0]) ? fopen(outpath, "w"): stdout;
 
 	if (argc != optind+2)
-		err_usage_exit(stderr, EXIT_FAILURE);
+		return err_usage(stderr, EXIT_FAILURE);
 
 	faidx_t *fai = fai_load(argv[optind]);
 
@@ -444,7 +561,7 @@ int err_main(int argc, char *argv[])
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
@@ -454,9 +571,6 @@ int err_main(int argc, char *argv[])
 	err_core(argv[optind + 1], fai, f, &open_fmt);
 	fprintf(stderr, "Core finished.\n");
 	fai_destroy(fai);
-	FILE *ch = fopen("counts.txt", "w"), *eh = fopen("errs.txt", "w");
-	write_counts(f, ch, eh);
-	cfclose(ch); cfclose(eh);
 	fill_qvals(f);
 	impute_scores(f);
 	fill_sufficient_obs(f);
@@ -467,9 +581,9 @@ int err_main(int argc, char *argv[])
 	if(df)
 		fprintf(stderr, "Writin' read/base call/qscore/cycle error rates.\n"),
 		write_full_rates(df, f), fclose(df), df = NULL;
-	if(db)
+	if(dbc)
 		fprintf(stderr, "Writin' read/base call/cycle error rates.\n"),
-		write_base_rates(db, f), fclose(db), db = NULL;
+		write_base_rates(dbc, f), fclose(dbc), dbc = NULL;
 	if(dc)
 		fprintf(stderr, "Writin' cycle error rates.\n"),
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;

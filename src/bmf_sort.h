@@ -1,33 +1,20 @@
 #ifndef BMF_SORT_H
 #define BMF_SORT_H
 #include <assert.h>
-#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <getopt.h>
-#include <regex.h>
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <zlib.h>
-#include "bam.h"
 #include "htslib/khash.h"
 #include "htslib/klist.h"
 #include "htslib/ksort.h"
 #include "htslib/kstring.h"
-#include "htslib/sam.h"
-#include "flow_util.h"
-#include "io_util.h"
-#include "mem_util.h"
-#include "sam.h"
-#include "sam_opts.h"
-#include "sort_util.h"
-#include "cstr_util.h"
+#include "dlib/cstr_util.h"
+#include "dlib/flow_util.h"
+#include "dlib/io_util.h"
+#include "dlib/mem_util.h"
+#include "dlib/sort_util.h"
+#include "include/bam.h"
+#include "include/sam_opts.h"
 
 enum sort_order {
 	SAMTOOLS,
@@ -37,9 +24,7 @@ enum sort_order {
 };
 
 
-#ifndef ABORT
-#define ABORT(message) do {fprintf(stderr, message); exit(EXIT_FAILURE);} while(0)
-#endif
+
 
 static inline void add_unclipped_mate_starts(bam1_t *b1, bam1_t *b2) {
 	uint32_t i, offset1 = 0, offset2 = 0, ucs1 = b1->core.pos, ucs2 = b2->core.pos;

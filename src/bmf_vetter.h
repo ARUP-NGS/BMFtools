@@ -3,10 +3,6 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <omp.h>
-#include <inttypes.h>
 #include <getopt.h>
 #include "htslib/khash.h"
 #include "htslib/vcf.h"
@@ -14,8 +10,8 @@
 #include "htslib/sam.h"
 #include "htslib/vcf.h"
 #include "htslib/tbx.h"
-#include "bed_util.h"
-#include "bam_util.h"
+#include "dlib/bed_util.h"
+#include "dlib/bam_util.h"
 
 static int vet_func(void *data, bam1_t *b);
 extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
@@ -26,51 +22,51 @@ extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt
 extern void bam_plp_init_overlaps(bam_plp_t);
 
 typedef struct {
-    int k, x, y, end;
+	int k, x, y, end;
 } cstate_t;
 
 typedef struct __linkbuf_t {
-    bam1_t b;
-    int32_t beg, end;
-    cstate_t s;
-    struct __linkbuf_t *next;
+	bam1_t b;
+	int32_t beg, end;
+	cstate_t s;
+	struct __linkbuf_t *next;
 } lbnode_t;
 
 typedef struct {
-    int cnt, n, max;
-    lbnode_t **buf;
+	int cnt, n, max;
+	lbnode_t **buf;
 } mempool_t;
 
 KHASH_MAP_INIT_STR(olap_hash, lbnode_t *)
 typedef khash_t(olap_hash) olap_hash_t;
 
 struct __bam_plp_t {
-    mempool_t *mp;
-    lbnode_t *head, *tail, *dummy;
-    int32_t tid, pos, max_tid, max_pos;
-    int is_eof, max_plp, error, maxcnt;
-    uint64_t id;
-    bam_pileup1_t *plp;
-    // for the "auto" interface only
-    bam1_t *b;
-    bam_plp_auto_f func;
-    void *data;
-    olap_hash_t *overlaps;
+	mempool_t *mp;
+	lbnode_t *head, *tail, *dummy;
+	int32_t tid, pos, max_tid, max_pos;
+	int is_eof, max_plp, error, maxcnt;
+	uint64_t id;
+	bam_pileup1_t *plp;
+	// for the "auto" interface only
+	bam1_t *b;
+	bam_plp_auto_f func;
+	void *data;
+	olap_hash_t *overlaps;
 };
 
 #endif /* BAM_PLP_DEC */
 
 
 #define VETTER_OPTIONS \
-    {"min-family-agreed",         required_argument, NULL, 'a'}, \
-    {"min-family-size",         required_argument, NULL, 's'}, \
-    {"min-fraction-agreed",         required_argument, NULL, 'f'}, \
-    {"min-mapping-quality",         required_argument, NULL, 'm'}, \
-    {"min-phred-quality",         required_argument, NULL, 'v'}, \
-    {"out-vcf",         required_argument, NULL, 'o'}, \
-    {"bedpath",         required_argument, NULL, 'b'}, \
-    {"ref",         required_argument, NULL, 'r'}, \
-    {"padding",         required_argument, NULL, 'p'}, \
+	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
+	{"min-family-size",		 required_argument, NULL, 's'}, \
+	{"min-fraction-agreed",		 required_argument, NULL, 'f'}, \
+	{"min-mapping-quality",		 required_argument, NULL, 'm'}, \
+	{"min-phred-quality",		 required_argument, NULL, 'v'}, \
+	{"out-vcf",		 required_argument, NULL, 'o'}, \
+	{"bedpath",		 required_argument, NULL, 'b'}, \
+	{"ref",		 required_argument, NULL, 'r'}, \
+	{"padding",		 required_argument, NULL, 'p'}, \
 	{0, 0, 0, 0}
 
 typedef struct vparams {

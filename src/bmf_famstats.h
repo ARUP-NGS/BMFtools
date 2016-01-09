@@ -1,19 +1,14 @@
-#include <unistd.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <limits.h>
+#ifndef BMF_FAMSTATS_H
+#define BMF_FAMSTATS_H
+
 #include <getopt.h>
-#include <inttypes.h>
 
 #include "htslib/sam.h"
-//#include "samtools.h"
 #include "htslib/ksort.h"
 #include "htslib/khash.h"
-#include "bam_util.h"
-#include "bed_util.h"
-#include "compiler_util.h"
+#include "dlib/bam_util.h"
+#include "dlib/bed_util.h"
+#include "dlib/compiler_util.h"
 
 
 KHASH_MAP_INIT_INT64(fm, uint64_t)
@@ -41,6 +36,8 @@ typedef struct famstats {
 } famstats_t;
 
 typedef struct famstat_settings {
+	uint64_t notification_interval;
 	uint32_t minMQ;
 	uint32_t minFM;
 } famstat_settings_t;
+#endif /* BMF_FAMSTATS_H */

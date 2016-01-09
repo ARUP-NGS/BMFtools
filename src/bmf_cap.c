@@ -2,10 +2,9 @@
  *  prepares our sophisticated error model for downstream analysis
  *  for BMF-agnostic tools.
 */
-#include "cap_qscore.h"
-#include "bam.h"
+#include "bmf_cap.h"
 
-    
+
 
 	void cap_qscore_core(samFile *in, bam_hdr_t *hdr, samFile *out, cap_settings *settings)
 	{
@@ -32,19 +31,19 @@
 
 int cap_qscore_main(int argc, char *argv[])
 {
-    cap_settings settings = {
-        .minFM = 0,
-        .minPV = 0,
-        .minFrac = 0.0,
-        .cap = 93,
-        .dnd = 0
-    };
+	cap_settings settings = {
+		.minFM = 0,
+		.minPV = 0,
+		.minFrac = 0.0,
+		.cap = 93,
+		.dnd = 0
+	};
 	int c;
 	samFile *in, *out;
 	bam_hdr_t *header;
 	char wmode[3] = {'w', 'b', 0};
 	sam_global_args ga;
-    memset(&ga, 0, sizeof(ga));
+	memset(&ga, 0, sizeof(ga));
 
 	static const struct option lopts[] = {
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, 0, 0, 0),
@@ -54,7 +53,7 @@ int cap_qscore_main(int argc, char *argv[])
 	int level;
 	while ((c = getopt_long(argc, argv, "t:f:m:l:c:dh?", lopts, NULL)) >= 0) {
 		switch (c) {
-		case 'l': level = atoi(optarg); wmode[2] = level + '0'; break;
+		case 'l': level = atoi(optarg) % 10; wmode[2] = level + '0'; break;
 		case 'm': settings.minFM = strtoul(optarg, NULL, 10); break;
 		case 'c': settings.minPV = strtoul(optarg, NULL, 10); break;
 		case 'f': settings.minFrac = atof(optarg); break;

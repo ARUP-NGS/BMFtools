@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "mtherr.c"
-#include "compiler_util.h"
+#include "dlib/compiler_util.h"
 
 #ifndef MAX_PV
 #define MAX_PV 3117
@@ -620,15 +620,14 @@ CONST static inline double igamc_pvalues(int num_pvalues, double x)
 	return (x < 0) ? 1.0 :  igamc((double)num_pvalues, x / 2.0);
 }
 
-CONST static inline uint32_t agreed_pvalues(double pv1, double pv2)
+CONST static inline uint32_t agreed_pvalues(uint32_t pv1, uint32_t pv2)
 {
 	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv1 + pv2)));
 }
 
-CONST static inline uint32_t disc_pvalues(double pv_better, double pv_worse)
+CONST static inline uint32_t disc_pvalues(uint32_t pv_better, uint32_t pv_worse)
 {
-	//return pv_better - pv_worse;
-	return pvalue_to_phred(igamc(2., LOG10_TO_CHI2(pv_better - pv_worse)));
+    return pv_better - pv_worse;
 }
 
 #endif
