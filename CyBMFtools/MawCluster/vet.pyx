@@ -64,35 +64,77 @@ def combine_phreds(phred1, phred2):
                                        "fisher")[1])
 
 
+def get_tagpos(pr):
+    return (pr.alignment.query_length - 1 - pr.query_position
+            if(pr.is_reverse) else pr.query_position)
+
+
 class UniqueObs(object):
-    def __init__(self, FM, PV, FA, MQ, Overlap):
+    def __init__(self, BaseCall, FM, PV, FA, MQ, Overlap, Duplex):
+        self.BaseCall = BaseCall
         self.FM = FM
         self.FA = FA
         self.PV = PV
         self.MQ = MQ
         self.Overlap = Overlap
+        self.Duplex = Duplex
 
     @classmethod
     def from_name_bin(cls, name_bin):
         if len(name_bin) == 1:
             r = name_bin[0]
-            tagpos = r.alignment.query_length - 1 - r.query_position
-            return cls(r.alignment.opt("FM"),
-                       r.alignment.opt("PV")[tagpos],
-                       r.alignment.opt("FA")[tagpos],
-                       r.alignment.mapping_quality,
-                       False)
+            ra = r.alignment
+            tagpos = get_tagpos(r)
+            FM = ra.opt("FM")
+            RV = ra.opt("RV")
+            return cls(ra.query_sequence[r.query_position],
+                       FM,
+                       ra.opt("PV")[tagpos],
+                       ra.opt("FA")[tagpos],
+                       ra.mapping_quality,
+                       False,
+                       RV not in [0, FM])
         else:
             r1, r2 = name_bin
-            tagpos1 = r1.alignment.query_length - 1 - r1.query_position
-            tagpos2 = r2.alignment.query_length - 1 - r2.query_position
-            return cls(2 * r1.alignment.opt("FM"),
-                       combine_phreds(r1.alignment.opt("PV")[tagpos1],
-                                      r2.Alignment.opt("PV")[tagpos2]),
-                       (r1.alignment.opt("FA")[tagpos1] +
-                        r2.alignment.opt("FA")[tagpos2]),
-                       max(r1.alignment.mapping_quality, r2.alignment.mapping_quality),
-                       True)
+            r1a = r1.alignment
+            r2a = r2.alignment
+            tagpos1 = get_tagpos(r1)
+            tagpos2 = get_tagpos(r2)
+            bc1 = r1a.query_sequence[r1.query_position]
+            bc2 = r2a.query_sequence[r2.query_position]
+            if(bc1 == bc2):
+                FM = 2 * r1a.opt("FM")
+                RV = r1a.opt("RV") + r2a.opt("RV")
+                return cls(bc1,
+                           2 * r1a.opt("FM"),
+                           combine_phreds(r1a.opt("PV")[tagpos1],
+                                          r2.Alignment.opt("PV")[tagpos2]),
+                           (r1a.opt("FA")[tagpos1] +
+                            r2a.opt("FA")[tagpos2]),
+                           max(r1a.mapping_quality, r2a.mapping_quality),
+                           True, RV not in [0, FM])
+            else:
+                pv1 = r1a.opt("PV")[tagpos1]
+                pv2 = r2a.opt("PV")[tagpos2]
+                if(pv1 > pv2):
+                    FM = r1a.opt("FM")
+                    RV = r1a.opt("RV")
+                    return cls(bc1,
+                               FM,
+                               pv1 - pv2,
+                               r1a.opt("FA")[tagpos1],
+                               r1a.mapping_quality,
+                               False, RV not in [0, FM])
+                else:
+                    FM = r2a.opt("FM")
+                    RV = r2a.opt("RV")
+                    return cls(bc2,
+                               FM,
+                               pv2 - pv1,
+                               r2a.opt("FA")[tagpos1],
+                               r2a.mapping_quality,
+                               False, RV not in [0, FM])
+                
                                       
 def freq(iter_obj):
     ret = {}
@@ -101,6 +143,7 @@ def freq(iter_obj):
             ret[i] += 1
         else:
             ret[i] = 1
+
 
 def get_name_bins(iter_obj):
     ret = {}
@@ -118,5 +161,7 @@ def get_plp_summary(plp, refstring, vet_settings):
     assert isinstance(refstring, str)
     assert isinstance(plp, pysam.calignedsegment.PileupColumn)
     ref_base = refstring[plp.pos]
-    name_counts = get_name_bins(plp.pileups)
+    observations = map(UniqueObs.from_name_bin,
+                       get_name_bins(plp.pileups).itervalues())
     passing = filter(vet_set.pass_var, plp.pileups)
+    
