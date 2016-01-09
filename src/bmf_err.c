@@ -141,6 +141,10 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			cond_free(ref);
 			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
+			if(!ref) {
+				fprintf(stderr, "[E:%s] Failed to load ref sequence for contig '%s'. Abort!\n", __func__, hdr->target_name[b->core.tid]);
+				exit(EXIT_FAILURE);
+			}
 			last_tid = b->core.tid;
 		}
 		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;

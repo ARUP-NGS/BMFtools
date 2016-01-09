@@ -36,7 +36,7 @@ typedef struct fullerr {
 	readerr_t *r2;
 	size_t l;
 	char *refcontig;
-	khash_t(bed) *bed;
+	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
 } fullerr_t;
 
 fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding);
