@@ -33,41 +33,43 @@ class UniqueObs(object):
         else:
             r1, r2 = name_bin
             r1a = r1.alignment
+            r1o = r1a.opt
             r2a = r2.alignment
+            r2o = r2a.opt
             tagpos1 = get_tagpos(r1)
             tagpos2 = get_tagpos(r2)
             bc1 = r1a.query_sequence[r1.query_position]
             bc2 = r2a.query_sequence[r2.query_position]
             if(bc1 == bc2):
-                FM = 2 * r1a.opt("FM")
-                RV = r1a.opt("RV") + r2a.opt("RV")
+                FM = 2 * r1o("FM")
+                RV = r1o("RV") + r2o("RV")
                 return cls(bc1,
-                           2 * r1a.opt("FM"),
-                           combine_phreds(r1a.opt("PV")[tagpos1],
-                                          r2.Alignment.opt("PV")[tagpos2]),
-                           (r1a.opt("FA")[tagpos1] +
-                            r2a.opt("FA")[tagpos2]),
+                           2 * r1o("FM"),
+                           combine_phreds(r1o("PV")[tagpos1],
+                                          r2o("PV")[tagpos2]),
+                           (r1o("FA")[tagpos1] +
+                            r2o("FA")[tagpos2]),
                            max(r1a.mapping_quality, r2a.mapping_quality),
                            True, RV not in [0, FM])
             else:
-                pv1 = r1a.opt("PV")[tagpos1]
-                pv2 = r2a.opt("PV")[tagpos2]
+                pv1 = r1o("PV")[tagpos1]
+                pv2 = r2o("PV")[tagpos2]
                 if(pv1 > pv2):
-                    FM = r1a.opt("FM")
-                    RV = r1a.opt("RV")
+                    FM = r1o("FM")
+                    RV = r1o("RV")
                     return cls(bc1,
                                FM,
                                pv1 - pv2,
-                               r1a.opt("FA")[tagpos1],
+                               r1o("FA")[tagpos1],
                                r1a.mapping_quality,
                                False, RV not in [0, FM])
                 else:
-                    FM = r2a.opt("FM")
-                    RV = r2a.opt("RV")
+                    FM = r2o("FM")
+                    RV = r2o("RV")
                     return cls(bc2,
                                FM,
                                pv2 - pv1,
-                               r2a.opt("FA")[tagpos1],
+                               r2o("FA")[tagpos1],
                                r2a.mapping_quality,
                                False, RV not in [0, FM])
                 
@@ -112,12 +114,10 @@ class vet_set(object):
 
     def pass_uniobs(self, obs):
         assert isinstance(obs, UniqueObs)
-        if (obs.MQ < self.minMQ or
-            obs.PV < self.minPV or
-            obs.FA < self.minFA or
-            obs.FM < self.minFM):
-            return False
-        return True
+        return (obs.MQ >= self.minMQ and
+                obs.PV >= self.minPV and
+                obs.FA >= self.minFA and
+                obs.FM >= self.minFM)
 
 
 def phred2pval(phred):
@@ -125,9 +125,9 @@ def phred2pval(phred):
 
 
 def combine_phreds(phred1, phred2):
-    return -10 * log10(combine_pvalues([phred2pval(phred1),
-                                        phred2pval(phred2)],
-                                       "fisher")[1])
+    return int(-10 * log10(combine_pvalues([phred2pval(phred1),
+                                            phred2pval(phred2)],
+                                           "fisher")[1]))
 
 
 def get_tagpos(pr):
