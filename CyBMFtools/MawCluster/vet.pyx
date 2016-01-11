@@ -44,7 +44,7 @@ class UniqueObs(object):
                 return cls(bc1,
                            2 * r1a.opt("FM"),
                            combine_phreds(r1a.opt("PV")[tagpos1],
-                                          r2.Alignment.opt("PV")[tagpos2]),
+                                          r2a.opt("PV")[tagpos2]),
                            (r1a.opt("FA")[tagpos1] +
                             r2a.opt("FA")[tagpos2]),
                            max(r1a.mapping_quality, r2a.mapping_quality),
