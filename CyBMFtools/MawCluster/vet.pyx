@@ -125,9 +125,9 @@ def phred2pval(phred):
 
 
 def combine_phreds(phred1, phred2):
-    return -10 * log10(combine_pvalues([phred2pval(phred1),
-                                        phred2pval(phred2)],
-                                       "fisher")[1])
+    return int(-10 * log10(combine_pvalues([phred2pval(phred1),
+                                            phred2pval(phred2)],
+                                           "fisher")[1]))
 
 
 def get_tagpos(pr):
