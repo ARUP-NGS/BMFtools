@@ -114,12 +114,10 @@ class vet_set(object):
 
     def pass_uniobs(self, obs):
         assert isinstance(obs, UniqueObs)
-        if (obs.MQ < self.minMQ or
-            obs.PV < self.minPV or
-            obs.FA < self.minFA or
-            obs.FM < self.minFM):
-            return False
-        return True
+        return (obs.MQ >= self.minMQ and
+                obs.PV >= self.minPV and
+                obs.FA >= self.minFA and
+                obs.FM >= self.minFM)
 
 
 def phred2pval(phred):
