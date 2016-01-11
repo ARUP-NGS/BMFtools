@@ -185,7 +185,6 @@ def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
 
 
 def get_plp_summary(plp, refstring, vet_settings):
-    flag = 0  # Flag to return which filters need to be applied
     assert isinstance(vet_settings, vet_set)
     assert isinstance(refstring, str)
     assert isinstance(plp, pysam.calignedsegment.PileupColumn)
