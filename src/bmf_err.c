@@ -431,19 +431,21 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 				fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
 			}
-			if(j != nqscores - 1)
-				fprintf(ep, ","), fprintf(cp, ",");
+			if(j != nqscores - 1) {
+				fprintf(ep, ","); fprintf(cp, ",");
+            }
 		}
-		fprintf(ep, "|"), fprintf(cp, "|");
+		fprintf(ep, "|"); fprintf(cp, "|");
 		for(j = 0; j < nqscores; ++j) {
 			for(i = 0; i < 4; ++i) {
 				fprintf(cp, i ? ":%lu": "%lu", f->r2->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r2->err[i][j][l]);
 			}
-			if(j != nqscores - 1)
-				fprintf(ep, ","), fprintf(cp, ",");
+			if(j != nqscores - 1) {
+				fprintf(ep, ","); fprintf(cp, ",");
+            }
 		}
-		fprintf(ep, "\n"), fprintf(cp, "\n");
+		fprintf(ep, "\n"); fprintf(cp, "\n");
 	}
 	fclose(dictwrite);
 }
@@ -579,18 +581,22 @@ int err_main(int argc, char *argv[])
 	impute_scores(f);
 	fill_sufficient_obs(f);
 	write_final(ofp, f);
-	if(d3)
-		fprintf(stderr, "Writin' 3d offsets.\n"),
+	if(d3) {
+		fprintf(stderr, "Writin' 3d offsets.\n");
 		write_3d_offsets(d3, f), fclose(d3), d3 = NULL;
-	if(df)
-		fprintf(stderr, "Writin' read/base call/qscore/cycle error rates.\n"),
+    }
+	if(df) {
+		fprintf(stderr, "Writin' read/base call/qscore/cycle error rates.\n");
 		write_full_rates(df, f), fclose(df), df = NULL;
-	if(dbc)
-		fprintf(stderr, "Writin' read/base call/cycle error rates.\n"),
+    }
+	if(dbc) {
+		fprintf(stderr, "Writin' read/base call/cycle error rates.\n");
 		write_base_rates(dbc, f), fclose(dbc), dbc = NULL;
-	if(dc)
-		fprintf(stderr, "Writin' cycle error rates.\n"),
+    }
+	if(dc) {
+		fprintf(stderr, "Writin' cycle error rates.\n");
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
+    }
 	fullerr_destroy(f);
 	fclose(ofp);
 	return 0;

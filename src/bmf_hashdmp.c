@@ -62,17 +62,19 @@ void hash_dmp_core(char *infname, char *outfname)
 {
 	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
 	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
-	if(!in_handle)
-		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname),
+	if(!in_handle) {
+		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
+    }
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 	// Initialized kseq
 	int l = kseq_read(seq);
-	if(l < 0)
+	if(l < 0) {
 		fprintf(stderr, "[E:%s]: Could not open fastq file (%s). Abort mission!\n",
-				__func__, strcmp(infname, "-") == 0 ? "stdin": infname),
+				__func__, strcmp(infname, "-") == 0 ? "stdin": infname);
 		exit(EXIT_FAILURE);
+    }
 	char *bs_ptr = barcode_mem_view(seq);
 	const int blen = infer_barcode_length(bs_ptr);
 #if !NDEBUG
@@ -125,9 +127,10 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 {
 	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
 	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
-	if(!in_handle)
-		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname),
+	if(!in_handle) {
+		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
+    }
 	gzFile fp = gzdopen(fileno(in_handle), "r");
 	kseq_t *seq = kseq_init(fp);
 	// Initialized kseq

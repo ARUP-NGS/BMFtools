@@ -85,11 +85,12 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 	}
 	fill_fa(kfpf->readlen, bufs->agrees, bufs->FABuffer);
 	fill_pv(kfpf->readlen, bufs->cons_quals, bufs->PVBuffer);
+    const int FM = kfpf->length + kfpr->length;
 	//const int ND = get_num_differ
 	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\n%s\n+\n", kfpf->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
-			kfpf->pass_fail, kfpf->length, kfpr->length,
-			(double) diffs / kfpf->length,
+			kfpf->pass_fail, FM, kfpr->length,
+			(double) diffs / FM,
 			bufs->cons_seq_buffer);
 	for(i = 0; i < kfpf->readlen; ++i)
 		fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], handle);

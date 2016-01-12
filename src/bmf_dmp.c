@@ -429,9 +429,10 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 				__func__);
 		exit(EXIT_FAILURE);
 	}
-	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path))
-		fprintf(stderr, "[E:%s] Could not open read paths: at least one is not a file.\n", __func__),
+	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path)) {
+		fprintf(stderr, "[E:%s] Could not open read paths: at least one is not a file.\n", __func__);
 		exit(EXIT_FAILURE);
+    }
 	if(settings->rescaler_path) {
 		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
 	}
