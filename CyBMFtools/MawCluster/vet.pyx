@@ -4,29 +4,73 @@ import pysam
 from enum import Enum
 from math import log10
 from scipy.stats import combine_pvalues
+from array import array
+
+"""
+Tools for creating a vetter using metadata from molecular barcodes.
+
+TODO:
+  1. Test accessing VCF with pysam.VariantFile
+  2. Add the BMF line to the header
+  3. Come up with BMF annotation(s).
+    1. Pass/Fail
+    2. Pass/Fail settings annotations (minCount, minDuplex, &c.)
+    3. Estimated quantitation
+      1. How about a global expectation for error rate and then ... I don't know.
+  4. 
+"""
+
+class InfoField(object):
+    def __init__(self, id, number, type, description,
+                 version=None, source=None):
+        self.number = str(number)
+        self.type = str(type)
+        assert self.type in ["Integer", "Float", "String", "Flag", "Character"]
+        self.description = str(description)
+        self.id =str(id)
+
+    def __str__(self):
+        source_str = ",Source=\"%s\"" % self.source if self.source else ""
+        source_str += ",Version=\"%s\"" % self.version if self.version else ""
+        return ("##INFO=<ID=%s,Number=%s,"
+                "Type=%s,Description=\"%s\"%s>" % (self.id, self.number,
+                                                   self.type, self.description,
+                                                   source_str))
+BMFInfoField = InfoField("BMF", 'A', "String",
+                         ("Annotations for pass/fail and quantitation"
+                          " estimation using additional molecular "
+                          "barcode metadata."))
+BMFPass = InfoField("BMF_PASS", 4, "Integer",
+                     "Pass/Fail for A/C/G/T variant at position.")
+
+bmf_header_lines = [BMFInfoField, BMFPass]
+
+def get_bmf_info_str():
+    return str(BMFInfoField)
 
 class UniqueObs(object):
-    def __init__(self, BaseCall, FM, PV, FA, MQ, Overlap, Duplex):
-        self.BaseCall = BaseCall
+    def __init__(self, base_call, FM, PV, FA, MQ, overlap, duplex):
+        self.base_call = base_call
         self.FM = FM
         self.FA = FA
         self.PV = PV
         self.MQ = MQ
-        self.Overlap = Overlap
-        self.Duplex = Duplex
+        self.overlap = overlap
+        self.duplex = duplex
 
     @classmethod
     def from_name_bin(cls, name_bin):
         if len(name_bin) == 1:
             r = name_bin[0]
             ra = r.alignment
+            rao = ra.opt
             tagpos = get_tagpos(r)
-            FM = ra.opt("FM")
-            RV = ra.opt("RV")
+            FM = rao("FM")
+            RV = rao("RV")
             return cls(ra.query_sequence[r.query_position],
                        FM,
-                       ra.opt("PV")[tagpos],
-                       ra.opt("FA")[tagpos],
+                       rao("PV")[tagpos],
+                       rao("FA")[tagpos],
                        ra.mapping_quality,
                        False,
                        RV not in [0, FM])
@@ -89,7 +133,7 @@ def get_plp(af=None, contig=None, pos=None):
         raise ValueError("Need an alignmentfile argument.")
     assert isinstance(pos, int)
     assert isinstance(contig, str)
-    assert isinstance(af, pysam.AlignmentFile)
+    assert isinstance(af, pysam.calignmentfile.AlignmentFile)
     plp_iterator = af.pileup(contig, pos, pos + 1)
     plp_col = plp_iterator.next()
     while plp_col.pos < pos:
@@ -103,7 +147,7 @@ class filters(Enum):
 
 class vet_set(object):
     def __init__(self, minFM=0, minPV=0, minFA=0., minMQ=0., minOverlap=0, minCount=0,
-                 minDuplex=0):
+                 minDuplex=0, fasta=None):
         self.minFM = minFM
         self.minPV = minPV
         self.minFA = minFA
@@ -111,6 +155,7 @@ class vet_set(object):
         self.minOverlap = minOverlap
         self.minCount = minCount
         self.minDuplex = minDuplex
+        self.ref = fasta
 
     def pass_uniobs(self, obs):
         assert isinstance(obs, UniqueObs)
@@ -161,49 +206,95 @@ def get_name_bins(iter_obj):
 def get_bc_bins(passing_obs):
     ret = {}
     for i in passing_obs:
-        if i.BaseCall in ret:
-            ret[i.BaseCall].append(i)
+        if i.base_call in ret:
+            ret[i.base_call].append(i)
         else:
-            ret[i.BaseCall] = [i]
+            ret[i.base_call] = [i]
     return ret
 
 
 class BaseCallSummary(object):
+    """
+    BaseCallSummary is a summary of information for a base call
+    at a given genomic position.
+    """
     def __init__(self, bin_tuple, settings, ref_base):
         obs = bin_tuple[1]
-        self.is_var = bin_tuple[0] == ref_base
-        self.Count = len(obs)
-        self.Duplex = sum(i.Duplex for i in obs)
-        self.Overlap = sum(i.Overlap for i in obs)
-        self.Pass = (self.Duplex > settings.minDuplex and
-                     self.Overlap > settings.minOverlap and
-                     self.Count > settings.minCount)
+        self.base_call = bin_tuple[0]
+        self.count = len(obs)
+        dup = 0
+        olap = 0
+        for i in obs:
+            dup += i.duplex
+            olap += i.overlap
+        self.duplex = dup
+        self.overlap = olap
+        self.Pass = (self.duplex > settings.minDuplex and
+                     self.overlap > settings.minOverlap and
+                     self.count > settings.minCount)
+
 
 def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
         return [BaseCallSummary(bin_tuple, vet_settings, ref_base)
                 for bin_tuple in bc_bins.iteritems()]
 
 
-def get_plp_summary(plp, refstring, vet_settings):
+def get_plp_summary(plp, vet_settings):
     assert isinstance(vet_settings, vet_set)
-    assert isinstance(refstring, str)
     assert isinstance(plp, pysam.calignedsegment.PileupColumn)
-    ref_base = refstring[plp.pos]
+    ref_base = vet_settings.ref.fetch(plp.reference_name, plp.pos, plp.pos + 1)
     observations = map(UniqueObs.from_name_bin,
                        get_name_bins(plp.pileups).itervalues())
     passing = filter(vet_set.pass_unibos, observations)
     bc_bins = get_bc_bins(passing)
     summary = get_bc_bin_summary(bc_bins, vet_settings, ref_base)
-    return [i for i in summary if i.is_var and i.Pass]
+    return [i for i in summary if i.Pass]
 
 
 class Vetter(object):
     def __init__(self, bam, fasta, vcf, settings):
-        assert isinstance(bam, pysam.AlignmentFile)
-        assert isinstance(fasta, pysam.FastaFile)
+        assert isinstance(bam, pysam.calignmentfile.AlignmentFile)
+        assert isinstance(fasta, pysam.cfaidx.FastaFile)
         self.settings = settings
         self.bam = bam
         self.fasta = fasta
         self.vcf = vcf
 
-        
+
+def add_info_line(header, info_field):
+    header.info.add(info_field.id, info_field.number,
+                    info_field.type, info_field.description)
+
+def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
+    # cdef pysam.cbcf.VariantFile invf = pysam.cbcf.VariantFile(vf_path)
+    # Open variant file handles
+    settings = vet_set(**kwargs)
+    invf = pysam.cbcf.VariantFile(vf_path)
+    outvf = pysam.cbcf.VariantFile(outvf_path, outmode, header=invf.header)
+    bam = pysam.AlignmentFile(bampath, "rb")
+    fasta = pysam.FastaFile(refpath)
+    from pysam.cbcf import add_info_array
+    # Add header lines
+    [add_info_line(outvf.header, line) for line in bmf_header_lines]
+    # cdef pysam.cbcf.VariantRecord rec
+    ovw = outvf.write
+    pass_arr = array('i', [0, 0, 0, 0])
+    num_passed = 0
+    num_failed = 0
+    for rec in invf:
+        # Goes to pileup at that position
+        plp = get_plp(bam, rec.contig, rec.pos - 1)
+        passing_vars = get_plp_summary(plp, settings)
+        pass_arr[0] = 'A' in passing_vars
+        pass_arr[1] = 'C' in passing_vars
+        pass_arr[2] = 'G' in passing_vars
+        pass_arr[3] = 'T' in passing_vars
+        add_info_array(rec, "BMF_PASS", pass_arr)
+        if(sum(pass_arr) != 0):
+            num_passed += 1
+            ovw(rec)
+        else:
+            num_failed += 1
+    invf.close()
+    outvf.close()
+    return outvf_path

@@ -12,8 +12,6 @@ from Cython.Build import cythonize
 # from setuptools import setup
 from distutils.core import setup
 
-marchFlag = "-march=native"
-
 compilerList = ["-O2", "-pipe", "-march=native", "-mfpmath=sse", "-DSAMTOOLS=1",]
 
 ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
