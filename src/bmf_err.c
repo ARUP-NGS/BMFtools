@@ -164,12 +164,9 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int r, len, khr;
-	int32_t last_tid = -1;
-	bam1_t *b = bam_init1();
+	int r, khr, FM, RV, reflen, tid_to_study = -1;
+	int32_t last_tid = -1, pos;
 	char *ref = NULL; // Will hold the sequence for a chromosome
-	int tid_to_study = -1;
-	khiter_t k;
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
 			if(!strcmp(hdr->target_name[i], f->refcontig)) {
@@ -181,16 +178,21 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	khash_t(obs) *hash;
+	uint32_t len;
+	uint8_t *seq;
+	uint32_t *cigar;
+	khiter_t k;
+	bam1_t *b = bam_init1();
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		const int FM = bam_aux2i(bam_aux_get(b, "FM"));
-		const int RV = bam_aux2i(bam_aux_get(b, "RV"));
+		FM = bam_aux2i(bam_aux_get(b, "FM"));
+		RV = bam_aux2i(bam_aux_get(b, "RV"));
 		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
 			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
-		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
-		const uint32_t *cigar = bam_get_cigar(b);
+		seq = (uint8_t *)bam_get_seq(b);
+		cigar = bam_get_cigar(b);
 #if !NDEBUG
 		ifn_abort(cigar);
 		ifn_abort(seq);
@@ -203,13 +205,13 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
-			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
+			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);
 			if(!ref) {
 				LOG_ERROR("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
 			}
 			last_tid = b->core.tid;
 		}
-		const int32_t pos = b->core.pos;
+		pos = b->core.pos;
 		k = kh_get(obs, hash, FM);
 		if(k == kh_end(hash)) {
 			k = kh_put(obs, hash, FM, &khr);
@@ -217,7 +219,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			int s; // seq value, base index
-			const uint32_t len = bam_cigar_oplen(*cigar);
+			len = bam_cigar_oplen(*cigar);
 			switch(bam_cigar_op(*cigar++)) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
