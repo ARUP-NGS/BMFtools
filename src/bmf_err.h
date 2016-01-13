@@ -49,9 +49,11 @@ typedef struct obserr {
 } obserr_t;
 
 KHASH_MAP_INIT_INT(obs, obserr_t)
+KHASH_SET_INIT_INT(obs_union)
 
 typedef struct fmerr {
-	khash_t(obs) *hash;
+	khash_t(obs) *hash1;
+	khash_t(obs) *hash2;
 	khash_t(bed) *bed;
 	char *refcontig;
 	uint64_t flag;
@@ -59,7 +61,7 @@ typedef struct fmerr {
 	uint64_t nread;
 } fmerr_t;
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, int padding, int flag);
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag);
 void fm_destroy(fmerr_t *fm);
 
 enum err_flags {
@@ -68,6 +70,9 @@ enum err_flags {
 
 fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag);
 void fullerr_destroy(fullerr_t *e);
+
+void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
+void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
 
 
 static inline int pv2ph(double pv)
