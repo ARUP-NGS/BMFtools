@@ -345,6 +345,10 @@ void write_base_rates(FILE *fp, fullerr_t *f)
 
 void write_global_rates(FILE *fp, fullerr_t *f)
 {
+	fprintf(fp, "##Parameters: minFM %i. maxFM %i.", f->minFM, f->maxFM);
+	fputs("Duplex required: ", fp);
+	fputs((f->flag & REQUIRE_DUPLEX) ? "True": "False", fp);
+	fputc('\n', fp);
 	int sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
 	for(uint64_t l = 0; l < f->l; ++l) {
 		for(int i = 0; i < 4; ++i) {
@@ -354,7 +358,7 @@ void write_global_rates(FILE *fp, fullerr_t *f)
 			counts2 += f->r2->qobs[i][l];
 		}
 	}
-	fprintf(fp, "#Global Error Rates\n%0.12f\n%0.12f\n", (double)sum2 / counts2, (double)sum1 / counts1);
+	fprintf(fp, "#Global Error Rates\t%0.12f\t%0.12f\n", (double)sum2 / counts2, (double)sum1 / counts1);
 }
 
 void write_cycle_rates(FILE *fp, fullerr_t *f)
