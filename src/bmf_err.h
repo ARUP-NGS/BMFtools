@@ -8,6 +8,7 @@
 #include "dlib/bam_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/bed_util.h"
+#include "dlib/logging_util.h"
 #include "lib/kingfisher.h"
 
 #define DEFAULT_PADDING 50

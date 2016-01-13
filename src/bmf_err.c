@@ -322,11 +322,15 @@ void write_base_rates(FILE *fp, fullerr_t *f)
 	for(uint64_t l = 0; l < f->l; ++l) {
 		int i;
 		fprintf(fp, "%lu\t", l + 1);
-		for(i = 0; i < 4; ++i)
-			fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qobs[i][l] / f->r1->qerr[i][l]);
+		for(i = 0; i < 4; ++i) {
+#if !NDEBUG
+			LOG_DEBUG("obs: %lu. err: %lu.\n", f->r1->qerr[i][l], f->r1->qobs[i][l]);
+#endif
+			fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
+		}
 		fputc('|', fp);
 		for(i = 0; i < 4; ++i)
-			fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r2->qobs[i][l] / f->r2->qerr[i][l]);
+			fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r2->qerr[i][l] / f->r2->qobs[i][l]);
 		fputc('\n', fp);
 	}
 }
@@ -339,9 +343,9 @@ void write_cycle_rates(FILE *fp, fullerr_t *f)
 		int sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
 		for(int i = 0; i < 4; ++i) {
 			sum1 += f->r1->qerr[i][l];
-			counts1 += f->r1->qerr[i][l];
+			counts1 += f->r1->qobs[i][l];
 			sum2 += f->r2->qerr[i][l];
-			counts2 += f->r2->qerr[i][l];
+			counts2 += f->r2->qobs[i][l];
 		}
 		fprintf(fp, "%0.12f\t", (double)sum1 / counts1);
 		fprintf(fp, "%0.12f\n", (double)sum2 / counts2);
