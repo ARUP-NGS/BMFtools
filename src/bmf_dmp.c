@@ -40,8 +40,7 @@ void print_crms_usage(char *executable)
 void print_crms_opt_err(char *arg, char *optarg, char optopt)
 {
 	print_crms_usage(arg);
-	fprintf(stderr, "[E:%s] Unrecognized option %s for flag %c. Abort!\n", __func__, optarg, optopt);
-	exit(EXIT_FAILURE);
+	LOG_ERROR("Unrecognized option %s for flag %c. Abort!\n", optarg, optopt);
 }
 
 void make_outfname(marksplit_settings_t *settings)
@@ -122,10 +121,7 @@ void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *para
 					params->outfnames_r1[i], settings->threads, settings->gzip_compression, ffq_r1);
 		else
 			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r1[i], ffq_r1);
-		if(pclose(popen(cat_buff, "w"))){
-			fprintf(stderr, "[E:%s] System call failed ('%s').\n", __func__, cat_buff);
-			exit(EXIT_FAILURE);
-		}
+		CHECK_POPEN(cat_buff);
 	}
 }
 
@@ -155,8 +151,7 @@ void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *para
 			sprintf(cat_buff, "cat %s >> %s", params->outfnames_r2[i], ffq_r2);
 		FILE *g2_popen = popen(cat_buff, "w");
 		if(pclose(g2_popen) || pclose(g1_popen)){
-			fprintf(stderr, "[E:%s] Background system call failed.\n", __func__);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Background system call failed.\n");
 		}
 	}
 }
@@ -175,8 +170,7 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	for(int i = 0; i < settings->n_handles; ++i) {
 #if !NDEBUG
 		if(!isfile(params->outfnames_r1[i])) {
-			fprintf(stderr, "[E:%s] Error: output filename is not a file. Abort! ('%s').\n", __func__, params->outfnames_r1[i]);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
 		}
 #endif
 		strcat(cat_buff, params->outfnames_r1[i]); strcat(cat_buff, " ");
@@ -192,10 +186,7 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 #if !NDEBUG
 	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff);
 #endif
-	if(pclose(popen(cat_buff, "w"))) {
-		fprintf(stderr, "[E:%s] Cat command failed. ('%s').\n", __func__, cat_buff);
-		exit(EXIT_FAILURE);
-	}
+	CHECK_POPEN(cat_buff);
 }
 
 void check_rescaler(marksplit_settings_t *settings, int arr_size)
@@ -203,14 +194,12 @@ void check_rescaler(marksplit_settings_t *settings, int arr_size)
 	if(settings->rescaler) {
 		for(int i = 0; i < arr_size; ++i) {
 			if(settings->rescaler[i] < 0) {
-				fprintf(stderr, "[E:%s] Rescaler's got a negative number in pp_split_inline."
-						" WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
+				LOG_ERROR("Rescaler's got a negative number in pp_split_inline."
+						" %i. Index: %i.\n", settings->rescaler[i], i);
 			}
 			else if(settings->rescaler[i] == 0) {
-				fprintf(stderr, "[E:%s] Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n",
-						__func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
+				LOG_ERROR("Rescaler's got a zero in pp_split_inline."
+						" %i. Index: %i.\n", settings->rescaler[i], i);
 			}
 		}
 	}
@@ -285,16 +274,12 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 	strcpy(cat_buff1, "/bin/cat ");
 	char cat_buff2[CAT_BUFFER_SIZE] = "/bin/cat ";
 	for(int i = 0; i < settings->n_handles; ++i) {
-#if !NDEBUG
 		if(!isfile(params->outfnames_r1[i])) {
-			fprintf(stderr, "[E:%s] Error: output filename is not a file. Abort! ('%s').\n", __func__, params->outfnames_r1[i]);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
 		}
 		if(!isfile(params->outfnames_r2[i])) {
-			fprintf(stderr, "[E:%s] Error: output filename is not a file. Abort! ('%s').\n", __func__, params->outfnames_r2[i]);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r2[i]);
 		}
-#endif
 		strcat(cat_buff1, params->outfnames_r1[i]); strcat(cat_buff1, " ");
 		strcat(cat_buff2, params->outfnames_r2[i]); strcat(cat_buff2, " ");
 	}
@@ -307,15 +292,12 @@ void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *par
 	strcat(cat_buff2, " > "); strcat(cat_buff2, ffq_r2);
 	if(settings->gzip_output)
 		strcat(cat_buff1, ".gz"), strcat(cat_buff2, ".gz");
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff1);
-	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff2);
-#endif
+	LOG_DEBUG("About to call command '%s'.\n", cat_buff1);
+	LOG_DEBUG("About to call command '%s'.\n", cat_buff2);
 	FILE *c1_popen = popen(cat_buff1, "w");
 	FILE *c2_popen = popen(cat_buff2, "w");
 	if(pclose(c2_popen) || pclose(c1_popen)) {
-		fprintf(stderr, "[%s] Background cat command failed. ('%s' or '%s').\n", __func__, cat_buff1, cat_buff2);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Background cat command failed. ('%s' or '%s').\n", cat_buff1, cat_buff2);
 	}
 }
 
@@ -329,10 +311,10 @@ void clean_homing_sequence(char *sequence) {
 		case 'a': // Fall-through
 		case 'g': // Fall-through
 		case 'c': // Fall-through
-		case 't': *sequence -= UPPER_LOWER_OFFSET; // Converts lower-case to upper-case
-		default: fprintf(stderr, "[E:%s] Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
-						 __func__, *sequence);
-		exit(EXIT_FAILURE);
+		case 't': *sequence -= UPPER_LOWER_OFFSET; break;// Converts lower-case to upper-case
+		default:
+			LOG_ERROR("Homing sequence contains illegal characters. Accepted: [acgtACGT]. Character: %c.\n",
+					*sequence);
 		}
 		++sequence;
 	}
@@ -345,8 +327,7 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 {
 	fprintf(stderr, "[%s] Opening fastq file '%s'.\n", __func__, settings->input_r1_path);
 	if(!isfile(settings->input_r1_path)) {
-		fprintf(stderr, "[E:%s] Could not open read paths: at least one is not a file.\n", __func__);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
 	}
 
 	if(settings->rescaler_path) settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
@@ -359,28 +340,12 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 	size_t count = 0;
 	int pass_fail = 1;
 	if((l = kseq_read(seq)) < 0) {
-		fprintf(stderr, "[E:%s] Could not open fastq for reading. Abort!\n", __func__);
 		free_marksplit_settings(*settings);
 		splitter_destroy(splitter);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Could not open fastq for reading. Abort!\n");
 	}
-	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq->seq.l);
-#if !NDEBUG
-	int arr_size = seq->seq.l * 4 * 2 * nqscores;
-	if(settings->rescaler) {
-		for(int i = 0; i < arr_size; ++i) {
-			if(settings->rescaler[i] < 0) {
-				fprintf(stderr, "[E:%s] Rescaler's got a negative number in pp_split_inline."
-						" WTF? %i. Index: %i.\n", __func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
-			} else if(settings->rescaler[i] == 0) {
-				fprintf(stderr, "[E:%s] Rescaler's got a zero in pp_split_inline. WTF? %i. Index: %i.\n",
-						__func__, settings->rescaler[i], i);
-				exit(EXIT_FAILURE);
-			}
-		}
-	}
-#endif
+	LOG_DEBUG("Read length (inferred): %lu.\n", seq->seq.l);
+	check_rescaler(settings, seq->seq.l * 4 * 2 * nqscores);
 	tmp_mseq_t *tmp = init_tm_ptr(seq->seq.l, settings->blen);
 	const int default_nlen = settings->blen + settings->offset + settings->homing_sequence_length;
 	int n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
@@ -394,8 +359,9 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 	uint64_t bin = get_binner_type(rseq->barcode, settings->n_nucs, uint64_t);
 	mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
 	while (LIKELY((l = kseq_read(seq)) >= 0)) {
-		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+		if(UNLIKELY(++count % settings->notification_interval == 0)) {
+			LOG_INFO("Number of records processed: %lu.\n", count);
+		}
 		// Iterate through second fastq file.
 		n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
 		update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
@@ -403,9 +369,6 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 		if(!test_hp(rseq->barcode, settings->hp_threshold)) pass_fail = 0;
 		mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Cleaning up.\n", __func__);
-#endif
 	for(int i = 0; i < splitter->n_handles; ++i) fclose(splitter->tmp_out_handles_r1[i]);
 	tm_destroy(tmp);
 	mseq_destroy(rseq);
@@ -422,16 +385,13 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 #if WRITE_BARCODE_FQ
 	FILE *fp = fopen("tmp.molbc.fq", "w");
 #endif
-	fprintf(stderr, "[%s] Opening fastq files %s and %s.\n", __func__, settings->input_r1_path, settings->input_r2_path);
+	LOG_DEBUG("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
-		fprintf(stderr, "[E:%s] Hey, it looks like you're trying to use the same path for both r1 and r2. "
-				"At least try to fool me by making a symbolic link.\n",
-				__func__);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Hey, it looks like you're trying to use the same path for both r1 and r2. "
+				"At least try to fool me by making a symbolic link.\n");
 	}
 	if(!isfile(settings->input_r1_path) || !isfile(settings->input_r2_path)) {
-		fprintf(stderr, "[E:%s] Could not open read paths: at least one is not a file.\n", __func__);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Could not open read paths: at least one is not a file.\n");
     }
 	if(settings->rescaler_path) {
 		settings->rescaler = parse_1d_rescaler(settings->rescaler_path);
@@ -446,15 +406,12 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	int count = 0;
 	int pass_fail = 1;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
-			fprintf(stderr, "[E:%s] Could not open fastqs for reading. Abort!\n", __func__);
 			free_marksplit_settings(*settings);
 			splitter_destroy(splitter);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Could not open fastqs for reading. Abort!\n");
 	}
-	fprintf(stderr, "[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
-#if !NDEBUG
+	LOG_DEBUG("[%s] Read length (inferred): %lu.\n", __func__, seq1->seq.l);
 	check_rescaler(settings, seq1->seq.l * 4 * 2 * nqscores);
-#endif
 	tmp_mseq_t *tmp = init_tm_ptr(seq1->seq.l, settings->blen);
 	int switch_reads = switch_test(seq1, seq2, settings->offset);
 	const int default_nlen = settings->blen1_2 + settings->offset + settings->homing_sequence_length;

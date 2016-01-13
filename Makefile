@@ -61,4 +61,10 @@ clean:
 	rm -f *.a && rm -f *.o && rm -f bmftools* && rm -f src/*.o && rm -f dlib/*.o && \
 		rm -f include/*.o && rm -f lib/*.o && cd htslib && make clean
 
-
+mostly_clean:
+	rm -f *.o && rm -f bmftools* && rm -f src/*.o && rm -f dlib/*.o && \
+		rm -f include/*.o && rm -f lib/*.o && \
+	rm -f *.dbo && rm -f bmftools* && rm -f src/*.dbo && rm -f dlib/*.dbo && \
+		rm -f include/*.dbo && rm -f lib/*.dbo && \
+	rm -f *.po && rm -f bmftools* && rm -f src/*.po && rm -f dlib/*.po && \
+		rm -f include/*.po && rm -f lib/*.po
