@@ -14,7 +14,9 @@ int err_usage(FILE *fp, int retcode)
 			"-n:\t\tPath to write the cycle/nucleotide call error rates in tabular format.\n"
 			"-c:\t\tPath to write the cycle error rates in tabular format.\n"
 			"-b:\t\tPath to bed file for restricting analysis.\n"
-			);
+			"-m:\t\tMinimum family size for inclusion. Default: 0.\n"
+			"-M:\t\tMaximum family size for inclusion. Default: %i.\n",
+			INT_MAX);
 	exit(retcode);
 }
 
@@ -122,8 +124,13 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
+		const int FM = bam_aux2i(bam_aux_get(b, "FM"));
+		const int RV = bam_aux2i(bam_aux_get(b, "RV"));
 		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
-			(f->bed && bed_test(b, f->bed) == 0)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
+			(FM < f->minFM) || (FM > f->maxFM) || // minFM outside of range
+			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) // Requires duplex
+			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
@@ -228,7 +235,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+		if(UNLIKELY(++f->nread % 1000000 == 0)) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
 #if !NDEBUG
 		assert(b->core.tid >= 0);
 #endif
@@ -481,7 +488,7 @@ readerr_t *readerr_init(size_t l) {
 	return ret;
 }
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding) {
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag) {
 	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
 	ret->l = l;
 	ret->r1 = readerr_init(l);
@@ -490,6 +497,9 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding) {
 		ret->bed = kh_init(bed);
 		ret->bed = parse_bed_hash(bedpath, hdr, padding);
 	}
+	ret->minFM = minFM;
+	ret->maxFM = maxFM;
+	ret->flag = flag;
 	return ret;
 }
 
@@ -524,8 +534,14 @@ int err_main(int argc, char *argv[])
 	char refcontig[200] = "";
 	char *bedpath = NULL;
 	int padding = -1;
-	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:h?")) >= 0) {
+	int minFM = 0;
+	int maxFM = INT_MAX;
+	int flag = 0;
+	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:m:M:h?d")) >= 0) {
 		switch (c) {
+		case 'd': flag |= REQUIRE_DUPLEX; break;
+		case 'm': minFM = atoi(optarg); break;
+		case 'M': maxFM = atoi(optarg); break;
 		case 'f': df = fopen(optarg, "w"); break;
 		case 'o': strcpy(outpath, optarg); break;
 		case '3': d3 = fopen(optarg, "w"); break;
@@ -534,9 +550,7 @@ int err_main(int argc, char *argv[])
 		case 'r': strcpy(refcontig, optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
-		case '?':
-		case 'h':
-			return err_usage(stderr, EXIT_SUCCESS);
+		case '?': case 'h': return err_usage(stderr, EXIT_SUCCESS);
 		}
 	}
 
@@ -571,7 +585,7 @@ int err_main(int argc, char *argv[])
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding, minFM, maxFM, flag);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);

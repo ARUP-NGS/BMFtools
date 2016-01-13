@@ -38,9 +38,16 @@ typedef struct fullerr {
 	size_t l;
 	char *refcontig;
 	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
+	int minFM;
+	int maxFM;
+	int flag; // Filter flags. First use will simply be
 } fullerr_t;
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding);
+enum err_flags {
+	REQUIRE_DUPLEX = 1
+};
+
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag);
 void fullerr_destroy(fullerr_t *e);
 
 
