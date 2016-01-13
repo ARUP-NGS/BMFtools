@@ -96,6 +96,100 @@ void readerr_destroy(readerr_t *e){
 	cond_free(e);
 }
 
+void fm_err_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
+{
+	samFile *fp = sam_open_format(fname, "r", open_fmt);
+	bam_hdr_t *hdr = sam_hdr_read(fp);
+	if (!hdr) {
+		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
+	}
+	int r, len, khr;
+	int32_t last_tid = -1;
+	bam1_t *b = bam_init1();
+	char *ref = NULL; // Will hold the sequence for a chromosome
+	int tid_to_study = -1;
+	khiter_t k;
+	if(f->refcontig) {
+		for(int i = 0; i < hdr->n_targets; ++i) {
+			if(!strcmp(hdr->target_name[i], f->refcontig)) {
+				tid_to_study = i; break;
+			}
+		}
+		if(tid_to_study < 0) {
+			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
+		}
+	}
+	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
+		const int FM = bam_aux2i(bam_aux_get(b, "FM"));
+		const int RV = bam_aux2i(bam_aux_get(b, "RV"));
+		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
+			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
+			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
+			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
+			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
+		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
+		const uint32_t *cigar = bam_get_cigar(b);
+#if !NDEBUG
+		ifn_abort(cigar);
+		ifn_abort(seq);
+		ifn_abort(qual);
+#endif
+
+		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+		if(b->core.tid != last_tid) {
+			cond_free(ref);
+			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
+			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
+			if(!ref) {
+				LOG_ERROR("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
+			}
+			last_tid = b->core.tid;
+		}
+		const int32_t pos = b->core.pos;
+		k = kh_get(obs, f->hash, FM);
+		if(k == kh_end(f->hash)) {
+			k = kh_put(obs, f->hash, FM, &khr);
+		}
+		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+			int s; // seq value, base index
+			const uint32_t len = bam_cigar_oplen(*cigar);
+			switch(bam_cigar_op(*cigar++)) {
+			case BAM_CMATCH:
+			case BAM_CEQUAL:
+			case BAM_CDIFF:
+				for(int ind = 0; ind < len; ++ind) {
+					s = bam_seqi(seq, ind + rc);
+					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+#if !NDEBUG
+					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
+						LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+								(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+					}
+#endif
+					++kh_val(f->hash, k).obs;
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++kh_val(f->hash, k).err;
+				}
+				rc += len; fc += len;
+				break;
+			case BAM_CSOFT_CLIP:
+			case BAM_CHARD_CLIP:
+			case BAM_CINS:
+				rc += len;
+				break;
+			case BAM_CREF_SKIP:
+			case BAM_CDEL:
+				fc += len;
+				break;
+			}
+		}
+	}
+	cond_free(ref);
+	bam_destroy1(b);
+	bam_hdr_destroy(hdr), sam_close(fp);
+}
+
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
@@ -104,8 +198,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
 	bam_hdr_t *hdr = sam_hdr_read(fp);
 	if (!hdr) {
-		fprintf(stderr, "[E:%s] Failed to read input header from bam %s. Abort!\n", __func__, fname);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
 	int r, len;
 	int32_t last_tid = -1;
@@ -119,8 +212,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 		if(tid_to_study < 0) {
-			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 		}
 	}
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
@@ -129,7 +221,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM outside of range
-			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) // Requires duplex
+			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
+			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
 			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
@@ -146,11 +239,10 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 #endif
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
-			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
+			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			if(!ref) {
-				fprintf(stderr, "[E:%s] Failed to load ref sequence for contig '%s'. Abort!\n", __func__, hdr->target_name[b->core.tid]);
-				exit(EXIT_FAILURE);
+				LOG_ERROR("[Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);
 			}
 			last_tid = b->core.tid;
 		}
@@ -169,9 +261,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 #if !NDEBUG
 					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-						fprintf(stderr, "[E:%s] Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
-								__func__, (int)qual[ind + rc], qual[ind + rc], nqscores + 1);
-						exit(EXIT_FAILURE);
+						LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+								(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
 					}
 #endif
 					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
@@ -191,7 +282,6 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 	}
-	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
 	cond_free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
@@ -219,8 +309,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 		if(tid_to_study < 0) {
-			fprintf(stderr, "Contig %s not found in bam header. Abort mission!\n", f->refcontig);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 		}
 	}
 	int c;
@@ -285,9 +374,6 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 		}
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Cleaning up after gathering my error data.\n", __func__);
-#endif
 	cond_free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
@@ -525,11 +611,31 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, in
 void fullerr_destroy(fullerr_t *e) {
 	if(e->r1) readerr_destroy(e->r1), e->r1 = NULL;
 	if(e->r2) readerr_destroy(e->r2), e->r2 = NULL;
-	if(e->refcontig) free(e->refcontig), e->refcontig = NULL;
+	cond_free(e->refcontig);
 	if(e->bed) {
 		kh_destroy(bed, e->bed);
 	}
 	free(e);
+}
+
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, int padding, int flag) {
+	fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t *));
+	if(bedpath && *bedpath) {
+		ret->bed = kh_init(bed);
+		ret->bed = parse_bed_hash(bedpath, hdr, padding);
+	}
+	ret->hash = kh_init(obs);
+	ret->flag = flag;
+	return ret;
+}
+
+void fm_destroy(fmerr_t *fm) {
+	if(fm->bed) {
+		kh_destroy(bed, fm->bed);
+	}
+	kh_destroy(obs, fm->hash);
+	cond_free(fm->refcontig);
+	free(fm);
 }
 
 int err_main(int argc, char *argv[])
@@ -575,14 +681,11 @@ int err_main(int argc, char *argv[])
 	}
 
 	if(padding < 0) {
-		fprintf(stderr, "[%s] Padding not set. Setting to default value %i.\n", __func__, DEFAULT_PADDING);
-		padding = DEFAULT_PADDING;
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
-
 	if(!*outpath) {
-		fprintf(stderr, "[E:%s] Required -o parameter unset. Abort!\n", __func__);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Required -o parameter unset. Abort!\n");
 	}
 	ofp = open_ofp(outpath);
 
@@ -593,19 +696,13 @@ int err_main(int argc, char *argv[])
 
 	fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
 	if (fp == NULL) {
-		fprintf(stderr, "[famstat_err_main]: Cannot open input file \"%s\"", argv[optind]);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		fprintf(stderr, "[famstat_err_main]: Failed to read header for \"%s\"\n", argv[optind]);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
 	}
-#if !NDEBUG
-	//for(int i = 0; i < header->n_targets; ++i)
-		//fprintf(stderr, "Target name %i: %s\n", i, header->target_name[i]);
-#endif
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
@@ -623,26 +720,18 @@ int err_main(int argc, char *argv[])
 	impute_scores(f);
 	fill_sufficient_obs(f);
 	write_final(ofp, f);
-	if(d3) {
-		fprintf(stderr, "Writin' 3d offsets.\n");
+	if(d3)
 		write_3d_offsets(d3, f), fclose(d3), d3 = NULL;
-    }
-	if(df) {
-		fprintf(stderr, "Writin' read/base call/qscore/cycle error rates.\n");
+	if(df)
 		write_full_rates(df, f), fclose(df), df = NULL;
-    }
-	if(dbc) {
-		fprintf(stderr, "Writin' read/base call/cycle error rates.\n");
+	if(dbc)
 		write_base_rates(dbc, f), fclose(dbc), dbc = NULL;
-    }
-	if(dc) {
-		fprintf(stderr, "Writin' cycle error rates.\n");
+	if(dc)
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
-    }
 	if(!global_fp) global_fp = stdout;
 	write_global_rates(global_fp, f);
 	fclose(global_fp);
 	fullerr_destroy(f);
 	fclose(ofp);
-	return 0;
+	return EXIT_SUCCESS;
 }

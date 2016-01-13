@@ -3,7 +3,7 @@
 
 #include <assert.h>
 #include <float.h>
-#include "htslib/khash.h"
+//#include "htslib/khash.h"
 #include "htslib/faidx.h"
 #include "dlib/bam_util.h"
 #include "dlib/mem_util.h"
@@ -42,6 +42,25 @@ typedef struct fullerr {
 	int maxFM;
 	int flag; // Filter flags. First use will simply be
 } fullerr_t;
+
+typedef struct obserr {
+	uint64_t obs;
+	uint64_t err;
+} obserr_t;
+
+KHASH_MAP_INIT_INT(obs, obserr_t)
+
+typedef struct fmerr {
+	khash_t(obs) *hash;
+	khash_t(bed) *bed;
+	char *refcontig;
+	uint64_t flag;
+	uint64_t nskipped;
+	uint64_t nread;
+} fmerr_t;
+
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, int padding, int flag);
+void fm_destroy(fmerr_t *fm);
 
 enum err_flags {
 	REQUIRE_DUPLEX = 1
