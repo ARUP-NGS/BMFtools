@@ -13,6 +13,7 @@
 #include "htslib/kstring.h"
 #include "lib/binner.h"
 #include "lib/kingfisher.h"
+#include "dlib/logging_util.h"
 #include "dlib/cstr_util.h"
 #include "dlib/io_util.h"
 #include "dlib/mem_util.h"

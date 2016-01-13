@@ -9,7 +9,6 @@
 #include "htslib/ksort.h"
 #include "htslib/kstring.h"
 #include "dlib/cstr_util.h"
-#include "dlib/flow_util.h"
 #include "dlib/io_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/sort_util.h"
