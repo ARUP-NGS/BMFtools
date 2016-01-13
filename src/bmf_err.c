@@ -260,13 +260,11 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int r, len;
-	int32_t last_tid = -1;
+	int32_t i, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1;
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
-	int tid_to_study = -1;
 	if(f->refcontig) {
-		for(int i = 0; i < hdr->n_targets; ++i) {
+		for(i = 0; i < hdr->n_targets; ++i) {
 			if(!strcmp(hdr->target_name[i], f->refcontig)) {
 				tid_to_study = i; break;
 			}
@@ -275,25 +273,33 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", f->refcontig);
 		}
 	}
-	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		const int FM = bam_aux2i(bam_aux_get(b, "FM"));
-		const int RV = bam_aux2i(bam_aux_get(b, "RV"));
+	uint8_t *fdata, *rdata, *pdata, *seq, *qual;
+	uint32_t *cigar, length;
+	readerr_t *r;
+	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
+		fdata = bam_aux_get(b, "FM");
+		rdata = bam_aux_get(b, "RV");
+		pdata = bam_aux_get(b, "FP");
+		FM = fdata ? bam_aux2i(fdata): 0;
+		RV = rdata ? bam_aux2i(rdata): 0;
 		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM outside of range
 			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
-			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
+			(pdata && bam_aux2i(pdata) == 0) // Fails barcode QC
 			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
-		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
-		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
-		const uint32_t *cigar = bam_get_cigar(b);
+		seq = (uint8_t *)bam_get_seq(b);
+		qual = (uint8_t *)bam_get_qual(b);
+		cigar = bam_get_cigar(b);
 #if !NDEBUG
 		ifn_abort(cigar);
 		ifn_abort(seq);
 		ifn_abort(qual);
 #endif
 
-		if(++f->nread % 1000000 == 0) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
+		if(++f->nread % 1000000 == 0) {
+			LOG_INFO("Records read: %lu.\n", f->nread);
+		}
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
@@ -303,16 +309,16 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			}
 			last_tid = b->core.tid;
 		}
-		const readerr_t *r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
-		const int32_t pos = b->core.pos;
-		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+		r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
+		pos = b->core.pos;
+		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			int s; // seq value, base index
-			const uint32_t len = bam_cigar_oplen(*cigar);
+			length = bam_cigar_oplen(*cigar);
 			switch(bam_cigar_op(*cigar++)) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
-				for(int ind = 0; ind < len; ++ind) {
+				for(int ind = 0; ind < length; ++ind) {
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -325,16 +331,16 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
 				}
-				rc += len; fc += len;
+				rc += length; fc += length;
 				break;
 			case BAM_CSOFT_CLIP:
 			case BAM_CHARD_CLIP:
 			case BAM_CINS:
-				rc += len;
+				rc += length;
 				break;
 			case BAM_CREF_SKIP:
 			case BAM_CDEL:
-				fc += len;
+				fc += length;
 				break;
 			}
 		}
@@ -794,7 +800,7 @@ int err_main_main(int argc, char *argv[])
 	bam_hdr_destroy(header);
 	header = NULL;
 	err_core(argv[optind + 1], fai, f, &open_fmt);
-	fprintf(stderr, "Core finished.\n");
+	LOG_DEBUG("Core finished.\n");
 	fai_destroy(fai);
 	fill_qvals(f);
 	impute_scores(f);

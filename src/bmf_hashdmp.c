@@ -52,7 +52,7 @@ int hash_dmp_main(int argc, char *argv[])
 		exit(1);
 	}
 	if(argc - 1 == optind) infname = strdup(argv[optind]);
-	stranded_analysis ? stranded_hash_dmp_core: hash_dmp_core (infname, outfname);
+	stranded_analysis ? stranded_hash_dmp_core(infname, outfname) :hash_dmp_core (infname, outfname);
 	cond_free(outfname); cond_free(infname);
 	return 0;
 }

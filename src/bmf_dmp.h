@@ -96,7 +96,7 @@ CONST static inline int infer_barcode_length(char *bs_ptr)
 	for (;;) {
 		switch(*bs_ptr++) {
 		case '|': // Fall-through
-		case '\0': return bs_ptr - current;
+		case '\0': return bs_ptr - current - 1;
 		}
 	}
 	return -1; // This never happens.
