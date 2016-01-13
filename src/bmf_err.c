@@ -2,7 +2,7 @@
 
 #define min_obs 1000uL
 
-int err_usage(FILE *fp, int retcode)
+int err_main_usage(FILE *fp, int retcode)
 {
 	fprintf(fp,
 			"Usage: bmftools err -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
@@ -95,6 +95,107 @@ void readerr_destroy(readerr_t *e){
 	cond_free(e->qdiffs);
 	cond_free(e);
 }
+
+int err_main_main(int argc, char *argv[])
+{
+	htsFormat open_fmt;
+	memset(&open_fmt, 0, sizeof(htsFormat));
+	open_fmt.category = sequence_data;
+	open_fmt.format = bam;
+	open_fmt.version.major = 1;
+	open_fmt.version.minor = 3;
+	samFile *fp = NULL;
+	bam_hdr_t *header = NULL;
+	int c;
+	char outpath[500] = "";
+
+	if(argc < 2) return err_main_usage(stderr, EXIT_FAILURE);
+
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(stderr, EXIT_SUCCESS);
+
+
+
+	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL, *global_fp = NULL;
+	char refcontig[200] = "";
+	char *bedpath = NULL;
+	int padding = -1;
+	int minFM = 0;
+	int maxFM = INT_MAX;
+	int flag = 0;
+	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:g:m:M:h?d")) >= 0) {
+		switch (c) {
+		case 'd': flag |= REQUIRE_DUPLEX; break;
+		case 'm': minFM = atoi(optarg); break;
+		case 'M': maxFM = atoi(optarg); break;
+		case 'f': df = fopen(optarg, "w"); break;
+		case 'o': strcpy(outpath, optarg); break;
+		case '3': d3 = fopen(optarg, "w"); break;
+		case 'c': dc = fopen(optarg, "w"); break;
+		case 'n': dbc = fopen(optarg, "w"); break;
+		case 'r': strcpy(refcontig, optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
+		case 'p': padding = atoi(optarg); break;
+		case 'g': global_fp = fopen(optarg, "w"); break;
+		case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
+		}
+	}
+
+	if(padding < 0) {
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+	}
+
+	if(!*outpath) {
+		LOG_ERROR("Required -o parameter unset. Abort!\n");
+	}
+	ofp = open_ofp(outpath);
+
+	if (argc != optind+2)
+		return err_main_usage(stderr, EXIT_FAILURE);
+
+	faidx_t *fai = fai_load(argv[optind]);
+
+	fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
+	if (fp == NULL) {
+		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
+	}
+
+	header = sam_hdr_read(fp);
+	if (header == NULL) {
+		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
+	}
+	// Get read length from the first read
+	bam1_t *b = bam_init1();
+	c = sam_read1(fp, header, b);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding, minFM, maxFM, flag);
+	sam_close(fp);
+	fp = NULL;
+	bam_destroy1(b);
+	if(*refcontig) f->refcontig = strdup(refcontig);
+	bam_hdr_destroy(header);
+	header = NULL;
+	err_core(argv[optind + 1], fai, f, &open_fmt);
+	fprintf(stderr, "Core finished.\n");
+	fai_destroy(fai);
+	fill_qvals(f);
+	impute_scores(f);
+	fill_sufficient_obs(f);
+	write_final(ofp, f);
+	if(d3)
+		write_3d_offsets(d3, f), fclose(d3), d3 = NULL;
+	if(df)
+		write_full_rates(df, f), fclose(df), df = NULL;
+	if(dbc)
+		write_base_rates(dbc, f), fclose(dbc), dbc = NULL;
+	if(dc)
+		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
+	if(!global_fp) global_fp = stdout;
+	write_global_rates(global_fp, f);
+	fclose(global_fp);
+	fullerr_destroy(f);
+	fclose(ofp);
+	return EXIT_SUCCESS;
+}
+
 
 void fm_err_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 {
@@ -638,7 +739,25 @@ void fm_destroy(fmerr_t *fm) {
 	free(fm);
 }
 
-int err_main(int argc, char *argv[])
+
+int err_usage(FILE *fp, int retcode) {
+	fprintf(stderr, "Not written. Subcommands: global, fm.\n");
+	exit(retcode);
+	return retcode; // This never happens
+}
+
+int err_main(int argc, char *argv[]) {
+	if(argc < 2) return err_usage(stderr, EXIT_FAILURE);
+	if(strcmp(argv[1], "main") == 0) {
+		return err_main_main(argc - 1, argv + 1);
+	}
+	if(strcmp(argv[1], "fm") == 0) {
+		return fm_main(argc - 1, argv + 1);
+	}
+	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
+}
+
+int err_main_main(int argc, char *argv[])
 {
 	htsFormat open_fmt;
 	memset(&open_fmt, 0, sizeof(htsFormat));
@@ -651,9 +770,11 @@ int err_main(int argc, char *argv[])
 	int c;
 	char outpath[500] = "";
 
-	if(argc < 2) return err_usage(stderr, EXIT_FAILURE);
+	if(argc < 2) return err_main_usage(stderr, EXIT_FAILURE);
 
-	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage(stderr, EXIT_SUCCESS);
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_main_usage(stderr, EXIT_SUCCESS);
+
+
 
 	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL, *global_fp = NULL;
 	char refcontig[200] = "";
@@ -676,7 +797,7 @@ int err_main(int argc, char *argv[])
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'g': global_fp = fopen(optarg, "w"); break;
-		case '?': case 'h': return err_usage(stderr, EXIT_SUCCESS);
+		case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
 		}
 	}
 
@@ -690,7 +811,7 @@ int err_main(int argc, char *argv[])
 	ofp = open_ofp(outpath);
 
 	if (argc != optind+2)
-		return err_usage(stderr, EXIT_FAILURE);
+		return err_main_usage(stderr, EXIT_FAILURE);
 
 	faidx_t *fai = fai_load(argv[optind]);
 
