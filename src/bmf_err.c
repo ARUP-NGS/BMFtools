@@ -342,6 +342,21 @@ void write_base_rates(FILE *fp, fullerr_t *f)
 	}
 }
 
+
+void write_global_rates(FILE *fp, fullerr_t *f)
+{
+	int sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
+	for(uint64_t l = 0; l < f->l; ++l) {
+		for(int i = 0; i < 4; ++i) {
+			sum1 += f->r1->qerr[i][l];
+			counts1 += f->r1->qobs[i][l];
+			sum2 += f->r2->qerr[i][l];
+			counts2 += f->r2->qobs[i][l];
+		}
+	}
+	fprintf(fp, "#Global Error Rates\n%0.12f\n%0.12f\n", (double)sum2 / counts2, (double)sum1 / counts1);
+}
+
 void write_cycle_rates(FILE *fp, fullerr_t *f)
 {
 	fputs("#Cycle\tRead 1 Error Rate\tRead 2 Error Rate\n", fp);
@@ -530,14 +545,14 @@ int err_main(int argc, char *argv[])
 
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) err_usage(stderr, EXIT_SUCCESS);
 
-	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL;
+	FILE *ofp = NULL, *d3 = NULL, *df = NULL, *dbc = NULL, *dc = NULL, *global_fp = NULL;
 	char refcontig[200] = "";
 	char *bedpath = NULL;
 	int padding = -1;
 	int minFM = 0;
 	int maxFM = INT_MAX;
 	int flag = 0;
-	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:m:M:h?d")) >= 0) {
+	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:g:m:M:h?d")) >= 0) {
 		switch (c) {
 		case 'd': flag |= REQUIRE_DUPLEX; break;
 		case 'm': minFM = atoi(optarg); break;
@@ -550,6 +565,7 @@ int err_main(int argc, char *argv[])
 		case 'r': strcpy(refcontig, optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
+		case 'g': global_fp = fopen(optarg, "w"); break;
 		case '?': case 'h': return err_usage(stderr, EXIT_SUCCESS);
 		}
 	}
@@ -560,7 +576,11 @@ int err_main(int argc, char *argv[])
 	}
 
 
-	ofp = (outpath[0]) ? fopen(outpath, "w"): stdout;
+	if(!*outpath) {
+		fprintf(stderr, "[E:%s] Required -o parameter unset. Abort!\n", __func__);
+		exit(EXIT_FAILURE);
+	}
+	ofp = open_ofp(outpath);
 
 	if (argc != optind+2)
 		return err_usage(stderr, EXIT_FAILURE);
@@ -615,6 +635,9 @@ int err_main(int argc, char *argv[])
 		fprintf(stderr, "Writin' cycle error rates.\n");
 		write_cycle_rates(dc, f), fclose(dc), dc = NULL;
     }
+	if(!global_fp) global_fp = stdout;
+	write_global_rates(global_fp, f);
+	fclose(global_fp);
 	fullerr_destroy(f);
 	fclose(ofp);
 	return 0;
