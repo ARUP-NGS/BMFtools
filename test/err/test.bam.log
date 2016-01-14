@@ -1,0 +1,1314 @@
+[D:open_ofp:39] Writing to standard out because infname is stdout.
+[D:err_core:335] Loading ref sequence for contig with name 1.
+[D:err_core:391] Base at rpos 69, fpos 726400: G. Ref base: G.
+[D:err_core:391] Base at rpos 70, fpos 726401: G. Ref base: G.
+[D:err_core:391] Base at rpos 71, fpos 726402: A. Ref base: A.
+[D:err_core:391] Base at rpos 72, fpos 726403: A. Ref base: A.
+[D:err_core:391] Base at rpos 73, fpos 726404: T. Ref base: T.
+[D:err_core:391] Base at rpos 74, fpos 726405: G. Ref base: G.
+[D:err_core:391] Base at rpos 75, fpos 726406: G. Ref base: G.
+[D:err_core:391] Base at rpos 76, fpos 726407: A. Ref base: A.
+[D:err_core:391] Base at rpos 77, fpos 726408: A. Ref base: A.
+[D:err_core:391] Base at rpos 78, fpos 726409: T. Ref base: T.
+[D:err_core:391] Base at rpos 79, fpos 726410: G. Ref base: G.
+[D:err_core:391] Base at rpos 80, fpos 726411: G. Ref base: G.
+[D:err_core:391] Base at rpos 81, fpos 726412: A. Ref base: A.
+[D:err_core:391] Base at rpos 82, fpos 726413: A. Ref base: A.
+[D:err_core:391] Base at rpos 83, fpos 726414: T. Ref base: T.
+[D:err_core:391] Base at rpos 84, fpos 726415: G. Ref base: A.
+[D:err_core:404] Hey, error found at rpos 84.
+[D:err_core:406] Error total at cycle 54 : 1.
+[D:err_core:391] Base at rpos 85, fpos 726416: G. Ref base: G.
+[D:err_core:391] Base at rpos 86, fpos 726417: A. Ref base: A.
+[D:err_core:391] Base at rpos 87, fpos 726418: A. Ref base: A.
+[D:err_core:391] Base at rpos 88, fpos 726419: T. Ref base: T.
+[D:err_core:391] Base at rpos 89, fpos 726420: G. Ref base: G.
+[D:err_core:391] Base at rpos 90, fpos 726421: G. Ref base: G.
+[D:err_core:391] Base at rpos 95, fpos 726422: A. Ref base: A.
+[D:err_core:391] Base at rpos 96, fpos 726423: C. Ref base: C.
+[D:err_core:391] Base at rpos 97, fpos 726424: C. Ref base: T.
+[D:err_core:404] Hey, error found at rpos 97.
+[D:err_core:406] Error total at cycle 41 : 1.
+[D:err_core:391] Base at rpos 98, fpos 726425: C. Ref base: C.
+[D:err_core:391] Base at rpos 99, fpos 726426: A. Ref base: A.
+[D:err_core:391] Base at rpos 100, fpos 726427: A. Ref base: A.
+[D:err_core:391] Base at rpos 101, fpos 726428: A. Ref base: A.
+[D:err_core:391] Base at rpos 102, fpos 726429: T. Ref base: T.
+[D:err_core:391] Base at rpos 103, fpos 726430: G. Ref base: G.
+[D:err_core:391] Base at rpos 104, fpos 726431: G. Ref base: G.
+[D:err_core:391] Base at rpos 105, fpos 726432: A. Ref base: A.
+[D:err_core:391] Base at rpos 106, fpos 726433: A. Ref base: A.
+[D:err_core:391] Base at rpos 107, fpos 726434: T. Ref base: T.
+[D:err_core:391] Base at rpos 108, fpos 726435: G. Ref base: G.
+[D:err_core:391] Base at rpos 109, fpos 726436: G. Ref base: G.
+[D:err_core:391] Base at rpos 110, fpos 726437: A. Ref base: A.
+[D:err_core:391] Base at rpos 111, fpos 726438: A. Ref base: A.
+[D:err_core:391] Base at rpos 112, fpos 726439: T. Ref base: T.
+[D:err_core:391] Base at rpos 113, fpos 726440: A. Ref base: A.
+[D:err_core:391] Base at rpos 114, fpos 726441: T. Ref base: T.
+[D:err_core:391] Base at rpos 115, fpos 726442: A. Ref base: A.
+[D:err_core:391] Base at rpos 116, fpos 726443: A. Ref base: A.
+[D:err_core:391] Base at rpos 117, fpos 726444: T. Ref base: T.
+[D:err_core:391] Base at rpos 118, fpos 726445: G. Ref base: G.
+[D:err_core:391] Base at rpos 119, fpos 726446: G. Ref base: G.
+[D:err_core:391] Base at rpos 120, fpos 726447: A. Ref base: A.
+[D:err_core:391] Base at rpos 43, fpos 726923: A. Ref base: A.
+[D:err_core:391] Base at rpos 44, fpos 726924: A. Ref base: A.
+[D:err_core:391] Base at rpos 45, fpos 726925: T. Ref base: T.
+[D:err_core:391] Base at rpos 46, fpos 726926: G. Ref base: G.
+[D:err_core:391] Base at rpos 47, fpos 726927: G. Ref base: G.
+[D:err_core:391] Base at rpos 48, fpos 726928: A. Ref base: A.
+[D:err_core:391] Base at rpos 49, fpos 726929: A. Ref base: A.
+[D:err_core:391] Base at rpos 50, fpos 726930: T. Ref base: T.
+[D:err_core:391] Base at rpos 51, fpos 726931: G. Ref base: G.
+[D:err_core:391] Base at rpos 52, fpos 726932: G. Ref base: G.
+[D:err_core:391] Base at rpos 53, fpos 726933: A. Ref base: A.
+[D:err_core:391] Base at rpos 54, fpos 726934: T. Ref base: C.
+[D:err_core:404] Hey, error found at rpos 54.
+[D:err_core:406] Error total at cycle 54 : 1.
+[D:err_core:391] Base at rpos 55, fpos 726935: T. Ref base: T.
+[D:err_core:391] Base at rpos 56, fpos 726936: G. Ref base: T.
+[D:err_core:404] Hey, error found at rpos 56.
+[D:err_core:406] Error total at cycle 56 : 1.
+[D:err_core:391] Base at rpos 57, fpos 726937: G. Ref base: G.
+[D:err_core:391] Base at rpos 58, fpos 726938: A. Ref base: A.
+[D:err_core:391] Base at rpos 59, fpos 726939: A. Ref base: A.
+[D:err_core:391] Base at rpos 60, fpos 726940: T. Ref base: T.
+[D:err_core:391] Base at rpos 61, fpos 726941: G. Ref base: G.
+[D:err_core:391] Base at rpos 62, fpos 726942: G. Ref base: G.
+[D:err_core:391] Base at rpos 63, fpos 726943: A. Ref base: A.
+[D:err_core:391] Base at rpos 64, fpos 726944: A. Ref base: A.
+[D:err_core:391] Base at rpos 65, fpos 726945: T. Ref base: T.
+[D:err_core:391] Base at rpos 66, fpos 726946: G. Ref base: G.
+[D:err_core:391] Base at rpos 67, fpos 726947: G. Ref base: G.
+[D:err_core:391] Base at rpos 68, fpos 726948: A. Ref base: A.
+[D:err_core:391] Base at rpos 69, fpos 726949: G. Ref base: A.
+[D:err_core:404] Hey, error found at rpos 69.
+[D:err_core:406] Error total at cycle 69 : 1.
+[D:err_core:391] Base at rpos 70, fpos 726950: T. Ref base: T.
+[D:err_core:391] Base at rpos 71, fpos 726951: G. Ref base: G.
+[D:err_core:391] Base at rpos 72, fpos 726952: G. Ref base: G.
+[D:err_core:391] Base at rpos 73, fpos 726953: A. Ref base: A.
+[D:err_core:391] Base at rpos 74, fpos 726954: A. Ref base: A.
+[D:err_core:391] Base at rpos 75, fpos 726955: T. Ref base: T.
+[D:err_core:391] Base at rpos 76, fpos 726956: C. Ref base: C.
+[D:err_core:391] Base at rpos 77, fpos 726957: G. Ref base: G.
+[D:err_core:391] Base at rpos 78, fpos 726958: A. Ref base: A.
+[D:err_core:391] Base at rpos 79, fpos 726959: A. Ref base: A.
+[D:err_core:391] Base at rpos 80, fpos 726960: T. Ref base: T.
+[D:err_core:391] Base at rpos 81, fpos 726961: G. Ref base: G.
+[D:err_core:391] Base at rpos 82, fpos 726962: G. Ref base: G.
+[D:err_core:391] Base at rpos 83, fpos 726963: A. Ref base: A.
+[D:err_core:391] Base at rpos 84, fpos 726964: A. Ref base: A.
+[D:err_core:391] Base at rpos 85, fpos 726965: T. Ref base: T.
+[D:err_core:391] Base at rpos 86, fpos 726966: G. Ref base: G.
+[D:err_core:391] Base at rpos 87, fpos 726967: G. Ref base: G.
+[D:err_core:391] Base at rpos 88, fpos 726968: A. Ref base: A.
+[D:err_core:391] Base at rpos 89, fpos 726969: A. Ref base: A.
+[D:err_core:391] Base at rpos 90, fpos 726970: T. Ref base: T.
+[D:err_core:391] Base at rpos 91, fpos 726971: G. Ref base: G.
+[D:err_core:391] Base at rpos 92, fpos 726972: G. Ref base: G.
+[D:err_core:391] Base at rpos 93, fpos 726973: A. Ref base: A.
+[D:err_core:391] Base at rpos 94, fpos 726974: T. Ref base: A.
+[D:err_core:404] Hey, error found at rpos 94.
+[D:err_core:406] Error total at cycle 94 : 1.
+[D:err_core:391] Base at rpos 95, fpos 726975: A. Ref base: T.
+[D:err_core:404] Hey, error found at rpos 95.
+[D:err_core:406] Error total at cycle 95 : 1.
+[D:err_core:391] Base at rpos 96, fpos 726976: G. Ref base: G.
+[D:err_core:391] Base at rpos 97, fpos 726977: G. Ref base: G.
+[D:err_core:391] Base at rpos 98, fpos 726978: A. Ref base: A.
+[D:err_core:391] Base at rpos 99, fpos 726979: A. Ref base: A.
+[D:err_core:391] Base at rpos 100, fpos 726980: T. Ref base: T.
+[D:err_core:391] Base at rpos 101, fpos 726981: G. Ref base: G.
+[D:err_core:391] Base at rpos 102, fpos 726982: G. Ref base: G.
+[D:err_core:391] Base at rpos 103, fpos 726983: A. Ref base: A.
+[D:err_core:391] Base at rpos 104, fpos 726984: A. Ref base: A.
+[D:err_core:391] Base at rpos 105, fpos 726985: T. Ref base: T.
+[D:err_core:391] Base at rpos 115, fpos 726986: G. Ref base: G.
+[D:err_core:391] Base at rpos 116, fpos 726987: G. Ref base: G.
+[D:err_core:391] Base at rpos 117, fpos 726988: A. Ref base: A.
+[D:err_core:391] Base at rpos 118, fpos 726989: A. Ref base: A.
+[D:err_core:391] Base at rpos 119, fpos 726990: T. Ref base: T.
+[D:err_core:391] Base at rpos 120, fpos 726991: G. Ref base: G.
+[D:err_core:391] Base at rpos 121, fpos 726992: G. Ref base: G.
+[D:err_core:391] Base at rpos 122, fpos 726993: A. Ref base: A.
+[D:err_core:391] Base at rpos 123, fpos 726994: A. Ref base: A.
+[D:err_core:391] Base at rpos 124, fpos 726995: T. Ref base: T.
+[D:err_core:391] Base at rpos 125, fpos 726996: G. Ref base: G.
+[D:err_core:391] Base at rpos 126, fpos 726997: G. Ref base: G.
+[D:err_core:391] Base at rpos 127, fpos 726998: A. Ref base: A.
+[D:err_core:391] Base at rpos 128, fpos 726999: A. Ref base: A.
+[D:err_core:391] Base at rpos 129, fpos 727000: T. Ref base: T.
+[D:err_core:391] Base at rpos 130, fpos 727001: G. Ref base: G.
+[D:err_core:391] Base at rpos 131, fpos 727002: G. Ref base: G.
+[D:err_core:391] Base at rpos 132, fpos 727003: A. Ref base: A.
+[D:err_core:391] Base at rpos 133, fpos 727004: A. Ref base: A.
+[D:err_core:391] Base at rpos 134, fpos 727005: T. Ref base: T.
+[D:err_core:391] Base at rpos 135, fpos 727006: G. Ref base: G.
+[D:err_core:391] Base at rpos 136, fpos 727007: G. Ref base: G.
+[D:err_core:391] Base at rpos 137, fpos 727008: A. Ref base: A.
+[D:err_core:391] Base at rpos 13, fpos 726942: G. Ref base: G.
+[D:err_core:391] Base at rpos 14, fpos 726943: A. Ref base: A.
+[D:err_core:391] Base at rpos 15, fpos 726944: A. Ref base: A.
+[D:err_core:391] Base at rpos 16, fpos 726945: T. Ref base: T.
+[D:err_core:391] Base at rpos 17, fpos 726946: G. Ref base: G.
+[D:err_core:391] Base at rpos 18, fpos 726947: G. Ref base: G.
+[D:err_core:391] Base at rpos 19, fpos 726948: A. Ref base: A.
+[D:err_core:391] Base at rpos 20, fpos 726949: A. Ref base: A.
+[D:err_core:391] Base at rpos 21, fpos 726950: T. Ref base: T.
+[D:err_core:391] Base at rpos 22, fpos 726951: G. Ref base: G.
+[D:err_core:391] Base at rpos 23, fpos 726952: G. Ref base: G.
+[D:err_core:391] Base at rpos 24, fpos 726953: A. Ref base: A.
+[D:err_core:391] Base at rpos 25, fpos 726954: A. Ref base: A.
+[D:err_core:391] Base at rpos 26, fpos 726955: T. Ref base: T.
+[D:err_core:391] Base at rpos 27, fpos 726956: C. Ref base: C.
+[D:err_core:391] Base at rpos 28, fpos 726957: G. Ref base: G.
+[D:err_core:391] Base at rpos 29, fpos 726958: A. Ref base: A.
+[D:err_core:391] Base at rpos 30, fpos 726959: A. Ref base: A.
+[D:err_core:391] Base at rpos 31, fpos 726960: T. Ref base: T.
+[D:err_core:391] Base at rpos 32, fpos 726961: G. Ref base: G.
+[D:err_core:391] Base at rpos 33, fpos 726962: G. Ref base: G.
+[D:err_core:391] Base at rpos 44, fpos 726963: A. Ref base: A.
+[D:err_core:391] Base at rpos 45, fpos 726964: A. Ref base: A.
+[D:err_core:391] Base at rpos 46, fpos 726965: T. Ref base: T.
+[D:err_core:391] Base at rpos 47, fpos 726966: G. Ref base: G.
+[D:err_core:391] Base at rpos 48, fpos 726967: G. Ref base: G.
+[D:err_core:391] Base at rpos 49, fpos 726968: A. Ref base: A.
+[D:err_core:391] Base at rpos 50, fpos 726969: A. Ref base: A.
+[D:err_core:391] Base at rpos 51, fpos 726970: T. Ref base: T.
+[D:err_core:391] Base at rpos 52, fpos 726971: G. Ref base: G.
+[D:err_core:391] Base at rpos 53, fpos 726972: G. Ref base: G.
+[D:err_core:391] Base at rpos 54, fpos 726973: A. Ref base: A.
+[D:err_core:391] Base at rpos 55, fpos 726974: A. Ref base: A.
+[D:err_core:391] Base at rpos 56, fpos 726975: T. Ref base: T.
+[D:err_core:391] Base at rpos 57, fpos 726976: G. Ref base: G.
+[D:err_core:391] Base at rpos 58, fpos 726977: G. Ref base: G.
+[D:err_core:391] Base at rpos 59, fpos 726978: A. Ref base: A.
+[D:err_core:391] Base at rpos 60, fpos 726979: A. Ref base: A.
+[D:err_core:391] Base at rpos 61, fpos 726980: G. Ref base: T.
+[D:err_core:404] Hey, error found at rpos 61.
+[D:err_core:406] Error total at cycle 77 : 1.
+[D:err_core:391] Base at rpos 62, fpos 726981: G. Ref base: G.
+[D:err_core:391] Base at rpos 63, fpos 726982: G. Ref base: G.
+[D:err_core:391] Base at rpos 64, fpos 726983: A. Ref base: A.
+[D:err_core:391] Base at rpos 65, fpos 726984: A. Ref base: A.
+[D:err_core:391] Base at rpos 66, fpos 726985: T. Ref base: T.
+[D:err_core:391] Base at rpos 67, fpos 726986: G. Ref base: G.
+[D:err_core:391] Base at rpos 68, fpos 726987: G. Ref base: G.
+[D:err_core:391] Base at rpos 69, fpos 726988: A. Ref base: A.
+[D:err_core:391] Base at rpos 70, fpos 726989: A. Ref base: A.
+[D:err_core:391] Base at rpos 71, fpos 726990: T. Ref base: T.
+[D:err_core:391] Base at rpos 72, fpos 726991: G. Ref base: G.
+[D:err_core:391] Base at rpos 73, fpos 726992: G. Ref base: G.
+[D:err_core:391] Base at rpos 74, fpos 726993: A. Ref base: A.
+[D:err_core:391] Base at rpos 75, fpos 726994: A. Ref base: A.
+[D:err_core:391] Base at rpos 76, fpos 726995: T. Ref base: T.
+[D:err_core:391] Base at rpos 77, fpos 726996: G. Ref base: G.
+[D:err_core:391] Base at rpos 78, fpos 726997: G. Ref base: G.
+[D:err_core:391] Base at rpos 79, fpos 726998: A. Ref base: A.
+[D:err_core:391] Base at rpos 80, fpos 726999: A. Ref base: A.
+[D:err_core:391] Base at rpos 81, fpos 727000: T. Ref base: T.
+[D:err_core:391] Base at rpos 82, fpos 727001: T. Ref base: G.
+[D:err_core:404] Hey, error found at rpos 82.
+[D:err_core:406] Error total at cycle 56 : 1.
+[D:err_core:391] Base at rpos 83, fpos 727002: G. Ref base: G.
+[D:err_core:391] Base at rpos 89, fpos 727003: A. Ref base: A.
+[D:err_core:391] Base at rpos 90, fpos 727004: A. Ref base: A.
+[D:err_core:391] Base at rpos 91, fpos 727005: T. Ref base: T.
+[D:err_core:391] Base at rpos 92, fpos 727006: G. Ref base: G.
+[D:err_core:391] Base at rpos 93, fpos 727007: T. Ref base: G.
+[D:err_core:404] Hey, error found at rpos 93.
+[D:err_core:406] Error total at cycle 45 : 1.
+[D:err_core:391] Base at rpos 94, fpos 727008: A. Ref base: A.
+[D:err_core:391] Base at rpos 95, fpos 727009: A. Ref base: A.
+[D:err_core:391] Base at rpos 96, fpos 727010: T. Ref base: T.
+[D:err_core:391] Base at rpos 97, fpos 727011: G. Ref base: G.
+[D:err_core:391] Base at rpos 98, fpos 727012: G. Ref base: G.
+[D:err_core:391] Base at rpos 99, fpos 727013: A. Ref base: A.
+[D:err_core:391] Base at rpos 100, fpos 727014: C. Ref base: C.
+[D:err_core:391] Base at rpos 101, fpos 727015: T. Ref base: T.
+[D:err_core:391] Base at rpos 102, fpos 727016: T. Ref base: C.
+[D:err_core:404] Hey, error found at rpos 102.
+[D:err_core:406] Error total at cycle 36 : 1.
+[D:err_core:391] Base at rpos 103, fpos 727017: G. Ref base: G.
+[D:err_core:391] Base at rpos 104, fpos 727018: A. Ref base: A.
+[D:err_core:391] Base at rpos 105, fpos 727019: A. Ref base: A.
+[D:err_core:391] Base at rpos 106, fpos 727020: T. Ref base: T.
+[D:err_core:391] Base at rpos 107, fpos 727021: G. Ref base: G.
+[D:err_core:391] Base at rpos 108, fpos 727022: G. Ref base: G.
+[D:err_core:391] Base at rpos 109, fpos 727023: A. Ref base: A.
+[D:err_core:391] Base at rpos 110, fpos 727024: A. Ref base: A.
+[D:err_core:391] Base at rpos 111, fpos 727025: T. Ref base: T.
+[D:err_core:391] Base at rpos 112, fpos 727026: G. Ref base: G.
+[D:err_core:391] Base at rpos 113, fpos 727027: G. Ref base: G.
+[D:err_core:391] Base at rpos 114, fpos 727028: A. Ref base: A.
+[D:err_core:391] Base at rpos 115, fpos 727029: A. Ref base: A.
+[D:err_core:391] Base at rpos 77, fpos 726951: G. Ref base: G.
+[D:err_core:391] Base at rpos 78, fpos 726952: G. Ref base: G.
+[D:err_core:391] Base at rpos 79, fpos 726953: A. Ref base: A.
+[D:err_core:391] Base at rpos 80, fpos 726954: A. Ref base: A.
+[D:err_core:391] Base at rpos 81, fpos 726955: T. Ref base: T.
+[D:err_core:391] Base at rpos 82, fpos 726956: C. Ref base: C.
+[D:err_core:391] Base at rpos 83, fpos 726957: G. Ref base: G.
+[D:err_core:391] Base at rpos 84, fpos 726958: A. Ref base: A.
+[D:err_core:391] Base at rpos 85, fpos 726959: A. Ref base: A.
+[D:err_core:391] Base at rpos 86, fpos 726960: T. Ref base: T.
+[D:err_core:391] Base at rpos 87, fpos 726961: G. Ref base: G.
+[D:err_core:391] Base at rpos 88, fpos 726962: G. Ref base: G.
+[D:err_core:391] Base at rpos 89, fpos 726963: A. Ref base: A.
+[D:err_core:391] Base at rpos 90, fpos 726964: A. Ref base: A.
+[D:err_core:391] Base at rpos 91, fpos 726965: T. Ref base: T.
+[D:err_core:391] Base at rpos 92, fpos 726966: G. Ref base: G.
+[D:err_core:391] Base at rpos 93, fpos 726967: G. Ref base: G.
+[D:err_core:391] Base at rpos 94, fpos 726968: A. Ref base: A.
+[D:err_core:391] Base at rpos 95, fpos 726969: A. Ref base: A.
+[D:err_core:391] Base at rpos 96, fpos 726970: T. Ref base: T.
+[D:err_core:391] Base at rpos 97, fpos 726971: G. Ref base: G.
+[D:err_core:391] Base at rpos 98, fpos 726972: C. Ref base: G.
+[D:err_core:404] Hey, error found at rpos 98.
+[D:err_core:406] Error total at cycle 98 : 1.
+[D:err_core:391] Base at rpos 99, fpos 726973: A. Ref base: A.
+[D:err_core:391] Base at rpos 100, fpos 726974: A. Ref base: A.
+[D:err_core:391] Base at rpos 101, fpos 726975: T. Ref base: T.
+[D:err_core:391] Base at rpos 102, fpos 726976: G. Ref base: G.
+[D:err_core:391] Base at rpos 103, fpos 726977: G. Ref base: G.
+[D:err_core:391] Base at rpos 104, fpos 726978: A. Ref base: A.
+[D:err_core:391] Base at rpos 105, fpos 726979: A. Ref base: A.
+[D:err_core:391] Base at rpos 106, fpos 726980: T. Ref base: T.
+[D:err_core:391] Base at rpos 107, fpos 726981: G. Ref base: G.
+[D:err_core:391] Base at rpos 108, fpos 726982: G. Ref base: G.
+[D:err_core:391] Base at rpos 109, fpos 726983: A. Ref base: A.
+[D:err_core:391] Base at rpos 110, fpos 726984: A. Ref base: A.
+[D:err_core:391] Base at rpos 111, fpos 726985: T. Ref base: T.
+[D:err_core:391] Base at rpos 117, fpos 726986: G. Ref base: G.
+[D:err_core:391] Base at rpos 118, fpos 726987: G. Ref base: G.
+[D:err_core:391] Base at rpos 119, fpos 726988: A. Ref base: A.
+[D:err_core:391] Base at rpos 120, fpos 726989: A. Ref base: A.
+[D:err_core:391] Base at rpos 121, fpos 726990: T. Ref base: T.
+[D:err_core:391] Base at rpos 122, fpos 726991: G. Ref base: G.
+[D:err_core:391] Base at rpos 123, fpos 726992: G. Ref base: G.
+[D:err_core:391] Base at rpos 124, fpos 726993: A. Ref base: A.
+[D:err_core:391] Base at rpos 125, fpos 726994: A. Ref base: A.
+[D:err_core:391] Base at rpos 126, fpos 726995: T. Ref base: T.
+[D:err_core:391] Base at rpos 127, fpos 726996: G. Ref base: G.
+[D:err_core:391] Base at rpos 128, fpos 726997: G. Ref base: G.
+[D:err_core:391] Base at rpos 129, fpos 726998: A. Ref base: A.
+[D:err_core:391] Base at rpos 130, fpos 726999: A. Ref base: A.
+[D:err_core:391] Base at rpos 131, fpos 727000: T. Ref base: T.
+[D:err_core:391] Base at rpos 132, fpos 727001: G. Ref base: G.
+[D:err_core:391] Base at rpos 133, fpos 727002: G. Ref base: G.
+[D:err_core:391] Base at rpos 134, fpos 727003: A. Ref base: A.
+[D:err_core:391] Base at rpos 135, fpos 727004: A. Ref base: A.
+[D:err_core:391] Base at rpos 136, fpos 727005: T. Ref base: T.
+[D:err_core:391] Base at rpos 137, fpos 727006: G. Ref base: G.
+[D:err_core:424] About to free variable at 0x1da4380 (ref).
+[D:err_main_main:906] Core finished.
+[D:readerr_destroy:153] About to free variable at 0x1c87370 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf2460 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1ca20 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c877c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf28b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1cc50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c87c10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf2d00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1ce80 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c88060 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf3150 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1d0b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c884b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf35a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1d2e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c88900 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf39f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1d510 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c88d50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf3e40 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1d740 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c891a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf4290 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1d970 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c895f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf46e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1dba0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c89a40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf4b30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1ddd0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c89e90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf4f80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1e000 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8a2e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf53d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1e230 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8a730 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf5820 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1e460 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8ab80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf5c70 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1e690 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8afd0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf60c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1e8c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8b420 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf6510 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1eaf0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8b870 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf6960 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1ed20 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8bcc0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf6db0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1ef50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8c110 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf7200 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1f180 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8c560 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf7650 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1f3b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8c9b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf7aa0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1f5e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8ce00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf7ef0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1f810 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8d250 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf8340 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1fa40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8d6a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf8790 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1fc70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8daf0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf8be0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d1fea0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8df40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf9030 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d200d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8e390 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf9480 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d20300 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8e7e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf98d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d20530 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8ec30 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cf9d20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d20760 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8f080 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfa170 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d20990 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8f4d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfa5c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d20bc0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8f920 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfaa10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d20df0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c8fd70 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfae60 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d21020 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c901c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfb2b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d21250 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c90610 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfb700 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d21480 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c90a60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfbb50 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d216b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c90eb0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfbfa0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d218e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c91300 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfc3f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d21b10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c91750 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfc840 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d21d40 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1c87230 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1cf2320 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1d33d20 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1d34e60 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d1c8e0 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1d32be0 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1d32320 (e->qdiffs[i]).
+[D:readerr_destroy:153] About to free variable at 0x1c91ce0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfcdd0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d220b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c92130 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfd220 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d222e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c92580 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfd670 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d22510 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c929d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfdac0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d22740 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c92e20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfdf10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d22970 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c93270 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfe360 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d22ba0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c936c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfe7b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d22dd0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1c93b10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cfec00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23000 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd4d10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cff050 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23230 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd5160 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cff4a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23460 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd55b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cff8f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23690 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd5a00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1cffd40 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d238c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd5e50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d00190 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23af0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd62a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d005e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23d20 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd66f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d00a30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d23f50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd6b40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d00e80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d24180 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd6f90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d012d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d243b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd73e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d01720 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d245e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd7830 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d01b70 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d24810 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd7c80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d01fc0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d24a40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd80d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d02410 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d24c70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd8520 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d02860 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d24ea0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd8970 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d02cb0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d250d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd8dc0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d03100 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d25300 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd9210 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d03550 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d25530 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd9660 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d039a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d25760 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd9ab0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d03df0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d25990 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cd9f00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d04240 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d25bc0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cda350 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d04690 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d25df0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cda7a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d04ae0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d26020 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdabf0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d04f30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d26250 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdb040 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d05380 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d26480 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdb490 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d057d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d266b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdb8e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d05c20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d268e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdbd30 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d06070 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d26b10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdc180 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d064c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d26d40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdc5d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d06910 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d26f70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdca20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d06d60 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d271a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdce70 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d071b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d273d0 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1c91ba0 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1cfcc90 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1d34170 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1d352b0 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d21f70 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1d33030 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1d32550 (e->qdiffs[i]).
+[D:readerr_destroy:153] About to free variable at 0x1cdd2c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d07740 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d27740 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdd710 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d07b90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d27970 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cddb60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d07fe0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d27ba0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cddfb0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d08430 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d27dd0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cde400 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d08880 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28000 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cde850 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d08cd0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28230 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdeca0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d09120 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28460 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdf0f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d09570 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28690 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdf540 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d099c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d288c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdf990 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d09e10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28af0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cdfde0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0a260 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28d20 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce0230 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0a6b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d28f50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce0680 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0ab00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d29180 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce0ad0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0af50 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d293b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce0f20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0b3a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d295e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce1370 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0b7f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d29810 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce17c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0bc40 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d29a40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce1c10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0c090 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d29c70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce2060 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0c4e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d29ea0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce24b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0c930 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2a0d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce2900 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0cd80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2a300 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce2d50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0d1d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2a530 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce31a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0d620 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2a760 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce35f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0da70 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2a990 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce3a40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0dec0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2abc0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce3e90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0e310 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2adf0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce42e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0e760 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2b020 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce4730 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0ebb0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2b250 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce4b80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0f000 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2b480 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce4fd0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0f450 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2b6b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce5420 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0f8a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2b8e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce5870 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d0fcf0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2bb10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce5cc0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d10140 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2bd40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce6110 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d10590 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2bf70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce6560 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d109e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2c1a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce69b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d10e30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2c3d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce6e00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d11280 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2c600 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce7250 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d116d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2c830 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce76a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d11b20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2ca60 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1c93f60 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1d07600 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1d345c0 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1d35700 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d27600 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1d33480 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1d32780 (e->qdiffs[i]).
+[D:readerr_destroy:153] About to free variable at 0x1ce7af0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d120b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2cdd0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce7f40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d12500 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2d000 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce8390 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d12950 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2d230 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce87e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d12da0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2d460 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce8c30 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d131f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2d690 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce9080 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d13640 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2d8c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce94d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d13a90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2daf0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce9920 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d13ee0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2dd20 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ce9d70 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d14330 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2df50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cea1c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d14780 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2e180 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cea610 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d14bd0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2e3b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ceaa60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d15020 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2e5e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ceaeb0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d15470 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2e810 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ceb300 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d158c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2ea40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ceb750 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d15d10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2ec70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cebba0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d16160 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2eea0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cebff0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d165b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2f0d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cec440 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d16a00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2f300 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cec890 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d16e50 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2f530 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cecce0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d172a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2f760 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ced130 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d176f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2f990 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ced580 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d17b40 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2fbc0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ced9d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d17f90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d2fdf0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cede20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d183e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d30020 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cee270 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d18830 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d30250 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cee6c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d18c80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d30480 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ceeb10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d190d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d306b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1ceef60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d19520 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d308e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cef3b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d19970 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d30b10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cef800 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d19dc0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d30d40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cefc50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1a210 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d30f70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf00a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1a660 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d311a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf04f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1aab0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d313d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf0940 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1af00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d31600 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf0d90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1b350 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d31830 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf11e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1b7a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d31a60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf1630 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1bbf0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d31c90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf1a80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1c040 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d31ec0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1cf1ed0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d1c490 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d320f0 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1c940a0 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1d11f70 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1d34a10 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1d35b50 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d2cc90 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1d338d0 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1d329b0 (e->qdiffs[i]).
+[D:readerr_destroy:165] About to free variable at 0x1c84270 (e->obs).
+[D:readerr_destroy:166] About to free variable at 0x1c941e0 (e->err).
+[D:readerr_destroy:167] About to free variable at 0x1c942d0 (e->qerr).
+[D:readerr_destroy:168] About to free variable at 0x1c942a0 (e->qobs).
+[D:readerr_destroy:169] About to free variable at 0x1c94210 (e->final).
+[D:readerr_destroy:170] About to free variable at 0x1c94270 (e->qpvsum).
+[D:readerr_destroy:171] About to free variable at 0x1c94240 (e->qdiffs).
+[D:readerr_destroy:172] About to free variable at 0x1c84220 (e).
+[D:readerr_destroy:153] About to free variable at 0x1d36160 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d60750 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8ad40 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d365b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d60ba0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8af70 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d36a00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d60ff0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8b1a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d36e50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d61440 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8b3d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d372a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d61890 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8b600 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d376f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d61ce0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8b830 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d37b40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d62130 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8ba60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d37f90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d62580 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8bc90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d383e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d629d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8bec0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d38830 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d62e20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8c0f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d38c80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d63270 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8c320 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d390d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d636c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8c550 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d39520 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d63b10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8c780 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d39970 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d63f60 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8c9b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d39dc0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d643b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8cbe0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3a210 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d64800 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8ce10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3a660 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d64c50 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8d040 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3aab0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d650a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8d270 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3af00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d654f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8d4a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3b350 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d65940 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8d6d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3b7a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d65d90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8d900 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3bbf0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d661e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8db30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3c040 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d66630 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8dd60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3c490 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d66a80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8df90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3c8e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d66ed0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8e1c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3cd30 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d67320 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8e3f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3d180 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d67770 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8e620 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3d5d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d67bc0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8e850 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3da20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d68010 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8ea80 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3de70 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d68460 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8ecb0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3e2c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d688b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8eee0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3e710 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d68d00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8f110 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3eb60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d69150 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8f340 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3efb0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d695a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8f570 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3f400 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d699f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8f7a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3f850 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d69e40 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8f9d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d3fca0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6a290 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8fc00 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d400f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6a6e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d8fe30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d40540 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6ab30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d90060 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1d36020 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1d60610 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1da20d0 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1da3240 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d8ac00 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1da0f60 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1da0670 (e->qdiffs[i]).
+[D:readerr_destroy:153] About to free variable at 0x1d40ad0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6b0c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d903d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d40f20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6b510 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d90600 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d41370 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6b960 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d90830 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d417c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6bdb0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d90a60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d41c10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6c200 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d90c90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d42060 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6c650 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d90ec0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d424b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6caa0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d910f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d42900 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6cef0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d91320 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d42d50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6d340 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d91550 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d431a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6d790 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d91780 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d435f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6dbe0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d919b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d43a40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6e030 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d91be0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d43e90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6e480 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d91e10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d442e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6e8d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d92040 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d44730 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6ed20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d92270 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d44b80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6f170 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d924a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d44fd0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6f5c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d926d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d45420 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6fa10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d92900 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d45870 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d6fe60 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d92b30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d45cc0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d702b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d92d60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d46110 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d70700 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d92f90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d46560 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d70b50 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d931c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d469b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d70fa0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d933f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d46e00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d713f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d93620 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d47250 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d71840 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d93850 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d476a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d71c90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d93a80 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d47af0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d720e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d93cb0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d47f40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d72530 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d93ee0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d48390 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d72980 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d94110 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d487e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d72dd0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d94340 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d48c30 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d73220 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d94570 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d49080 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d73670 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d947a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d494d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d73ac0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d949d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d49920 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d73f10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d94c00 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d49d70 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d74360 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d94e30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4a1c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d747b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d95060 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4a610 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d74c00 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d95290 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4aa60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d75050 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d954c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4aeb0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d754a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d956f0 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1d40990 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1d6af80 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1da2520 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1da3690 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d90290 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1da13b0 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1da08a0 (e->qdiffs[i]).
+[D:readerr_destroy:153] About to free variable at 0x1d4b440 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d75a30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d95a60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4b890 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d75e80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d95c90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4bce0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d762d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d95ec0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4c130 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d76720 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d960f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4c580 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d76b70 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d96320 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4c9d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d76fc0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d96550 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4ce20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d77410 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d96780 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4d270 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d77860 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d969b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4d6c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d77cb0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d96be0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4db10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d78100 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d96e10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4df60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d78550 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d97040 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4e3b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d789a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d97270 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4e800 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d78df0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d974a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4ec50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d79240 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d976d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4f0a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d79690 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d97900 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4f4f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d79ae0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d97b30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4f940 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d79f30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d97d60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d4fd90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7a380 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d97f90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d501e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7a7d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d981c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d50630 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7ac20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d983f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d50a80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7b070 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d98620 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d50ed0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7b4c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d98850 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d51320 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7b910 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d98a80 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d51770 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7bd60 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d98cb0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d51bc0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7c1b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d98ee0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d52010 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7c600 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d99110 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d52460 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7ca50 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d99340 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d528b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7cea0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d99570 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d52d00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7d2f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d997a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d53150 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7d740 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d999d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d535a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7db90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d99c00 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d539f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7dfe0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d99e30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d53e40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7e430 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9a060 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d54290 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7e880 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9a290 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d546e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7ecd0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9a4c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d54b30 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7f120 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9a6f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d54f80 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7f570 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9a920 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d553d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7f9c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9ab50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d55820 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d7fe10 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9ad80 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1d4b300 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1d758f0 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1da2970 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1da3ae0 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d95920 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1da1800 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1da0ad0 (e->qdiffs[i]).
+[D:readerr_destroy:153] About to free variable at 0x1d55db0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d803a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9b0f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d56200 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d807f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9b320 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d56650 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d80c40 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9b550 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d56aa0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d81090 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9b780 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d56ef0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d814e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9b9b0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d57340 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d81930 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9bbe0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d57790 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d81d80 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9be10 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d57be0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d821d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9c040 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d58030 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d82620 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9c270 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d58480 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d82a70 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9c4a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d588d0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d82ec0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9c6d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d58d20 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d83310 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9c900 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d59170 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d83760 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9cb30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d595c0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d83bb0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9cd60 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d59a10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d84000 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9cf90 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d59e60 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d84450 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9d1c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5a2b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d848a0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9d3f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5a700 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d84cf0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9d620 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5ab50 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d85140 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9d850 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5afa0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d85590 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9da80 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5b3f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d859e0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9dcb0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5b840 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d85e30 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9dee0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5bc90 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d86280 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9e110 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5c0e0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d866d0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9e340 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5c530 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d86b20 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9e570 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5c980 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d86f70 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9e7a0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5cdd0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d873c0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9e9d0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5d220 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d87810 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9ec00 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5d670 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d87c60 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9ee30 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5dac0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d880b0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9f060 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5df10 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d88500 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9f290 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5e360 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d88950 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9f4c0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5e7b0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d88da0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9f6f0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5ec00 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d891f0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9f920 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5f050 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d89640 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9fb50 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5f4a0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d89a90 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9fd80 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5f8f0 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d89ee0 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1d9ffb0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d5fd40 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d8a330 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1da01e0 (e->final[i][j]).
+[D:readerr_destroy:153] About to free variable at 0x1d60190 (e->obs[i][j]).
+[D:readerr_destroy:154] About to free variable at 0x1d8a780 (e->err[i][j]).
+[D:readerr_destroy:155] About to free variable at 0x1da0410 (e->final[i][j]).
+[D:readerr_destroy:157] About to free variable at 0x1d55c70 (e->obs[i]).
+[D:readerr_destroy:158] About to free variable at 0x1d80260 (e->err[i]).
+[D:readerr_destroy:159] About to free variable at 0x1da2dc0 (e->qobs[i]).
+[D:readerr_destroy:160] About to free variable at 0x1da3f30 (e->qerr[i]).
+[D:readerr_destroy:161] About to free variable at 0x1d9afb0 (e->final[i]).
+[D:readerr_destroy:162] About to free variable at 0x1da1c50 (e->qpvsum[i]).
+[D:readerr_destroy:163] About to free variable at 0x1da0d00 (e->qdiffs[i]).
+[D:readerr_destroy:165] About to free variable at 0x1d35ff0 (e->obs).
+[D:readerr_destroy:166] About to free variable at 0x1d605e0 (e->err).
+[D:readerr_destroy:167] About to free variable at 0x1da3210 (e->qerr).
+[D:readerr_destroy:168] About to free variable at 0x1da20a0 (e->qobs).
+[D:readerr_destroy:169] About to free variable at 0x1d8abd0 (e->final).
+[D:readerr_destroy:170] About to free variable at 0x1da0f30 (e->qpvsum).
+[D:readerr_destroy:171] About to free variable at 0x1da0640 (e->qdiffs).
+[D:readerr_destroy:172] About to free variable at 0x1d35fa0 (e).
