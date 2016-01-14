@@ -11,6 +11,8 @@ int err_main_usage(FILE *fp, int retcode)
 			"Usage: bmftools err main -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
 			"-h/-?\t\tThis helpful help menu!\n"
+			"-o\t\tREQUIRED. Path to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-a\t\tSet minimum mapping quality for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
 			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
@@ -31,7 +33,9 @@ int err_fm_usage(FILE *fp, int retcode)
 	fprintf(fp,
 			"Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
+			"-o\t\tREQUIRED. Path to output file. Set to '-' or 'stdout' to emit to stdout.\n"
 			"-h/-?\t\tThis helpful help menu!\n"
+			"-a\t\tSet minimum mapping quality for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-b:\t\tPath to bed file for restricting analysis.\n"
 			"-d:\t\tFlag to only calculate error rates for duplex reads.\n"
@@ -186,11 +190,13 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		RV = bam_aux2i(bam_aux_get(b, "RV"));
-		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
+		if((b->core.flag & 2820) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+                b->core.qual < f->minMQ || // minMQ
+                (f->refcontig && tid_to_study != b->core.tid) || // outside of contig
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
-			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+			) {++f->nskipped; continue;}
 		seq = (uint8_t *)bam_get_seq(b);
 		cigar = bam_get_cigar(b);
 #if !NDEBUG
@@ -282,16 +288,20 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		pdata = bam_aux_get(b, "FP");
 		FM = fdata ? bam_aux2i(fdata): 0;
 		RV = rdata ? bam_aux2i(rdata): 0;
-		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid) ||
+		if((b->core.flag & 2820) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM outside of range
-			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
+			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires duplex
 			(pdata && bam_aux2i(pdata) == 0) // Fails barcode QC
 			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		seq = (uint8_t *)bam_get_seq(b);
 		qual = (uint8_t *)bam_get_qual(b);
 		cigar = bam_get_cigar(b);
 #if !NDEBUG
+		assert(FM >= f->minFM);
+		if((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0)) {
+			LOG_ERROR("WTF! RV: %i. FM: %i.", RV, FM);
+		}
 		ifn_abort(cigar);
 		ifn_abort(seq);
 		ifn_abort(qual);
@@ -498,7 +508,7 @@ void write_global_rates(FILE *fp, fullerr_t *f)
 	fputs("Duplex required: ", fp);
 	fputs((f->flag & REQUIRE_DUPLEX) ? "True": "False", fp);
 	fputc('\n', fp);
-	int sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
+	uint64_t sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
 	for(uint64_t l = 0; l < f->l; ++l) {
 		for(int i = 0; i < 4; ++i) {
 			sum1 += f->r1->qerr[i][l];
@@ -507,7 +517,8 @@ void write_global_rates(FILE *fp, fullerr_t *f)
 			counts2 += f->r2->qobs[i][l];
 		}
 	}
-	fprintf(fp, "#Global Error Rates\t%0.12f\t%0.12f\n", (double)sum2 / counts2, (double)sum1 / counts1);
+	fprintf(fp, "#Global Error Rates\t%0.12f\t%0.12f\n", (double)sum1 / counts1, (double)sum2 / counts2);
+	fprintf(fp, "#Global Sum/Count1 Sum/Count2\t%lu\t%lu\t%lu\t%lu\n", sum1, counts1, sum2, counts2);
 }
 
 void write_cycle_rates(FILE *fp, fullerr_t *f)
@@ -656,7 +667,7 @@ readerr_t *readerr_init(size_t l) {
 	return ret;
 }
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag) {
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag, int minMQ) {
 	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
 	ret->l = l;
 	ret->r1 = readerr_init(l);
@@ -668,6 +679,7 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, in
 	ret->minFM = minFM;
 	ret->maxFM = maxFM;
 	ret->flag = flag;
+    ret->minMQ = minMQ;
 	return ret;
 }
 
@@ -681,7 +693,7 @@ void fullerr_destroy(fullerr_t *e) {
 	free(e);
 }
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag) {
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ) {
 	fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
 	if(bedpath && *bedpath) {
 		ret->bed = kh_init(bed);
@@ -693,6 +705,7 @@ fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, in
 	ret->hash1 = kh_init(obs);
 	ret->hash2 = kh_init(obs);
 	ret->flag = flag;
+    ret->minMQ = minMQ;
 	return ret;
 }
 
@@ -732,7 +745,7 @@ int err_main_main(int argc, char *argv[])
 	open_fmt.version.minor = 3;
 	samFile *fp = NULL;
 	bam_hdr_t *header = NULL;
-	int c;
+	int c, minMQ = 0;
 	char outpath[500] = "";
 
 	if(argc < 2) return err_main_usage(stderr, EXIT_FAILURE);
@@ -748,9 +761,11 @@ int err_main_main(int argc, char *argv[])
 	int minFM = 0;
 	int maxFM = INT_MAX;
 	int flag = 0;
-	while ((c = getopt(argc, argv, "p:b:r:c:n:f:3:o:g:m:M:h?d")) >= 0) {
+	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:h?dD")) >= 0) {
 		switch (c) {
+        case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
+		case 'D': flag |= REFUSE_DUPLEX; break;
 		case 'm': minFM = atoi(optarg); break;
 		case 'M': maxFM = atoi(optarg); break;
 		case 'f': df = fopen(optarg, "w"); break;
@@ -792,7 +807,7 @@ int err_main_main(int argc, char *argv[])
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding, minFM, maxFM, flag);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding, minFM, maxFM, flag, minMQ);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
@@ -842,11 +857,10 @@ int err_fm_main(int argc, char *argv[])
 	FILE *ofp = NULL;
 	char refcontig[200] = "";
 	char *bedpath = NULL;
-	int padding = -1;
-	int flag = 0;
-	int c;
-	while ((c = getopt(argc, argv, "p:b:r:o:h?d")) >= 0) {
+	int flag = 0, padding = -1, minMQ = 0, c;
+	while ((c = getopt(argc, argv, "p:b:r:o:a:h?d")) >= 0) {
 		switch (c) {
+        case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
 		case 'o': strcpy(outpath, optarg); break;
 		case 'r': strcpy(refcontig, optarg); break;
@@ -879,7 +893,7 @@ int err_fm_main(int argc, char *argv[])
 	if (header == NULL) {
 		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
 	}
-	fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag);
+	fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ);
 	// Get read length from the first read
 	bam_hdr_destroy(header); header = NULL;
 	err_fm_core(argv[optind + 1], fai, f, &open_fmt);

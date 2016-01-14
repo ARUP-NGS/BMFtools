@@ -40,6 +40,7 @@ typedef struct fullerr {
 	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
 	int minFM;
 	int maxFM;
+	int minMQ;
 	int flag; // Filter flags. First use will simply be
 } fullerr_t;
 
@@ -59,16 +60,19 @@ typedef struct fmerr {
 	uint64_t flag;
 	uint64_t nskipped;
 	uint64_t nread;
+    int minMQ;
 } fmerr_t;
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag);
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ);
 void fm_destroy(fmerr_t *fm);
 
 enum err_flags {
-	REQUIRE_DUPLEX = 1
+	REQUIRE_DUPLEX = 1,
+	REFUSE_DUPLEX = 2
 };
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag);
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
+        int padding, int minFM, int maxFM, int flag, int minMQ);
 void fullerr_destroy(fullerr_t *e);
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
