@@ -13,6 +13,7 @@ int err_main_usage(FILE *fp, int retcode)
 			"-h/-?\t\tThis helpful help menu!\n"
 			"-o\t\tREQUIRED. Path to output file. Set to '-' or 'stdout' to emit to stdout.\n"
 			"-a\t\tSet minimum mapping quality for inclusion.\n"
+			"-$\t\tSet minimum calculated PV tag value for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-3:\t\tPath to write the 3d offset array in tabular format.\n"
 			"-f:\t\tPath to write the full measured error rates in tabular format.\n"
@@ -265,7 +266,6 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	bam_hdr_destroy(hdr), sam_close(fp);
 }
 
-
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
 	if(!f->r1) f->r1 = readerr_init(f->l);
@@ -275,7 +275,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int32_t i, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1;
+	int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev, ind;
 	bam1_t *b = bam_init1();
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	if(f->refcontig) {
@@ -330,39 +330,81 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 		r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		pos = b->core.pos;
-		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			int s; // seq value, base index
-			length = bam_cigar_oplen(*cigar);
-			switch(bam_cigar_op(*cigar++)) {
-			case BAM_CMATCH:
-			case BAM_CEQUAL:
-			case BAM_CDIFF:
-				for(int ind = 0; ind < length; ++ind) {
-					s = bam_seqi(seq, ind + rc);
-					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
-					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+        is_rev = (b->core.flag & BAM_FREVERSE);
+        if(f->minPV) {
+            uint32_t *pv_array = (uint32_t *)array_tag(b, "PV");
+			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+				length = bam_cigar_oplen(*cigar);
+				switch(bam_cigar_op(*cigar++)) {
+				case BAM_CMATCH:
+				case BAM_CEQUAL:
+				case BAM_CDIFF:
+					for(ind = 0; ind < length; ++ind) {
+                        if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
+                            continue;
+						s = bam_seqi(seq, ind + rc);
+						//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+						if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 #if !NDEBUG
-					if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
-						LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
-								(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
-					}
+						if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
+							LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+									(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						}
 #endif
-					++r->obs[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
-					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++r->err[bamseq2i[s]][qual[ind + rc] - 2][ind + rc];
+						cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
+						++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+						if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+							++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+					}
+					rc += length; fc += length;
+					break;
+				case BAM_CSOFT_CLIP:
+				case BAM_CHARD_CLIP:
+				case BAM_CINS:
+					rc += length;
+					break;
+				case BAM_CREF_SKIP:
+				case BAM_CDEL:
+					fc += length;
+					break;
 				}
-				rc += length; fc += length;
-				break;
-			case BAM_CSOFT_CLIP:
-			case BAM_CHARD_CLIP:
-			case BAM_CINS:
-				rc += length;
-				break;
-			case BAM_CREF_SKIP:
-			case BAM_CDEL:
-				fc += length;
-				break;
 			}
-		}
+        } else {
+			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+				length = bam_cigar_oplen(*cigar);
+				switch(bam_cigar_op(*cigar++)) {
+				case BAM_CMATCH:
+				case BAM_CEQUAL:
+				case BAM_CDIFF:
+					for(ind = 0; ind < length; ++ind) {
+						s = bam_seqi(seq, ind + rc);
+						//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
+						if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
+#if !NDEBUG
+						if(UNLIKELY(qual[ind + rc] > nqscores + 1)) { // nqscores + 2 - 1
+							LOG_ERROR("Quality score is too high. int: %i. char: %c. Max permitted: %lu.\n",
+									(int)qual[ind + rc], qual[ind + rc], nqscores + 1);
+						}
+#endif
+						cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
+						++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+						if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+							++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+					}
+					rc += length; fc += length;
+					break;
+				case BAM_CSOFT_CLIP:
+				case BAM_CHARD_CLIP:
+				case BAM_CINS:
+					rc += length;
+					break;
+				case BAM_CREF_SKIP:
+				case BAM_CDEL:
+					fc += length;
+					break;
+				}
+			}
+        }
 	}
 	cond_free(ref);
 	bam_destroy1(b);
@@ -676,7 +718,8 @@ readerr_t *readerr_init(size_t l) {
 	return ret;
 }
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag, int minMQ) {
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
+        int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV) {
 	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
 	ret->l = l;
 	ret->r1 = readerr_init(l);
@@ -689,6 +732,7 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, in
 	ret->maxFM = maxFM;
 	ret->flag = flag;
 	ret->minMQ = minMQ;
+	ret->minPV = minPV;
 	return ret;
 }
 
@@ -750,7 +794,7 @@ void check_bam_tag_exit(char *bampath, const char *tag)
 	if(!(strcmp(bampath, "-") && strcmp(bampath, "stdin"))) {
 		LOG_WARNING("Could not check for bam tag without exhausting a pipe. "
 				 "Tag '%s' has not been verified.\n", tag);
-        return;
+		return;
 	}
 	if(!bampath_has_tag(bampath, tag)) {
 		LOG_ERROR("Required bam tag '%s' missing from bam file at path '%s'. Abort!\n", tag, bampath);
@@ -784,7 +828,8 @@ int err_main_main(int argc, char *argv[])
 	int minFM = 0;
 	int maxFM = INT_MAX;
 	int flag = 0;
-	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:h?dD")) >= 0) {
+    uint32_t minPV = 0;
+	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?dD")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -800,6 +845,7 @@ int err_main_main(int argc, char *argv[])
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'g': global_fp = fopen(optarg, "w"); break;
+        case '$': minPV = strtoul(optarg, NULL, 0); break;
 		case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
 		}
 	}
@@ -823,11 +869,11 @@ int err_main_main(int argc, char *argv[])
 		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
 
-    check_bam_tag_exit(argv[optind + 1], "FM");
-    check_bam_tag_exit(argv[optind + 1], "RV");
-    check_bam_tag_exit(argv[optind + 1], "PV");
-    check_bam_tag_exit(argv[optind + 1], "FA");
-    check_bam_tag_exit(argv[optind + 1], "FP");
+	check_bam_tag_exit(argv[optind + 1], "FM");
+	check_bam_tag_exit(argv[optind + 1], "RV");
+	check_bam_tag_exit(argv[optind + 1], "PV");
+	check_bam_tag_exit(argv[optind + 1], "FA");
+	check_bam_tag_exit(argv[optind + 1], "FP");
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
@@ -836,7 +882,8 @@ int err_main_main(int argc, char *argv[])
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
-	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header, padding, minFM, maxFM, flag, minMQ);
+	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header,
+                                 padding, minFM, maxFM, flag, minMQ, minPV);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
@@ -917,9 +964,9 @@ int err_fm_main(int argc, char *argv[])
 	if (fp == NULL) {
 		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
-    check_bam_tag_exit(argv[optind + 1], "FM");
-    check_bam_tag_exit(argv[optind + 1], "FP");
-    check_bam_tag_exit(argv[optind + 1], "RV");
+	check_bam_tag_exit(argv[optind + 1], "FM");
+	check_bam_tag_exit(argv[optind + 1], "FP");
+	check_bam_tag_exit(argv[optind + 1], "RV");
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {

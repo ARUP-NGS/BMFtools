@@ -41,6 +41,7 @@ typedef struct fullerr {
 	int minFM;
 	int maxFM;
 	int minMQ;
+	uint32_t minPV;
 	int flag; // Filter flags. First use will simply be
 } fullerr_t;
 
@@ -56,15 +57,16 @@ typedef struct fmerr {
 	khash_t(obs) *hash1;
 	khash_t(obs) *hash2;
 	khash_t(bed) *bed;
-    char *bedpath;
+	char *bedpath;
 	char *refcontig;
 	uint64_t flag;
 	uint64_t nskipped;
 	uint64_t nread;
-    int minMQ;
+	int minMQ;
 } fmerr_t;
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ);
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig,
+				int padding, int flag, int minMQ);
 void fm_destroy(fmerr_t *fm);
 
 enum err_flags {
@@ -73,7 +75,7 @@ enum err_flags {
 };
 
 fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
-        int padding, int minFM, int maxFM, int flag, int minMQ);
+		int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV);
 void fullerr_destroy(fullerr_t *e);
 
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt);
