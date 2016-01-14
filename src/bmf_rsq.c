@@ -120,7 +120,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pFA[i] += bFA[i];
 				if(bQual[qleni1] > pQual[qleni1]) pQual[qleni1] = bQual[qleni1];
 			} else if(bam_seqi(pSeq, qleni1) == HTS_N) {
-				set_base(pSeq, bSeq, qleni1);
+				bam_set_base(pSeq, bSeq, qleni1);
 				pFA[i] = bFA[i];
 				pPV[i] = bPV[i];
 				pQual[qleni1] = bQual[qleni1];
@@ -129,7 +129,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 			} else if(bam_seqi(bSeq, qleni1) == HTS_N) continue;
 			else {
 				if(pPV[i] > bPV[i]) {
-					set_base(pSeq, bSeq, qleni1);
+					bam_set_base(pSeq, bSeq, qleni1);
 					pPV[i] = disc_pvalues(pPV[i], bPV[i]);
 				} else pPV[i] = disc_pvalues(bPV[i], pPV[i]);
 				pFA[i] = bFA[i];
@@ -152,7 +152,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 				pFA[i] += bFA[i];
 				if(bQual[i] > pQual[i]) pQual[i] = bQual[i];
 			} else if(bam_seqi(pSeq, i) == HTS_N) {
-				set_base(pSeq, bSeq, i);
+				bam_set_base(pSeq, bSeq, i);
 				pFA[i] = bFA[i];
 				pPV[i] = bPV[i];
 				++n_changed; // Note: goes from N to a useable nucleotide.
@@ -160,7 +160,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 			} else if(bam_seqi(bSeq, i) == HTS_N) continue;
 			else {
 				if(pPV[i] > bPV[i]) {
-					set_base(pSeq, bSeq, i);
+					bam_set_base(pSeq, bSeq, i);
 					pPV[i] = disc_pvalues(pPV[i], bPV[i]);
 				} else pPV[i] = disc_pvalues(bPV[i], pPV[i]);
 				pFA[i] = bFA[i];
