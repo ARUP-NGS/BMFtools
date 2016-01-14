@@ -88,7 +88,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 			k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
 	}
 
-	// Write header
+	// Write  header
 	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
 			"##minMQ:%i##Duplex Required: %s.\n##Duplex Refused: %s.\n", f->refcontig ? f->refcontig: "N/A",
 			f->bedpath? f->bedpath: "N/A", f->minMQ,
@@ -181,7 +181,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
 	int32_t is_rev, ind, s, i, fc, rc, r, khr, FM, RV, reflen, length, pos, tid_to_study = -1, last_tid = -1;
-	char *ref = NULL; // Will hold the sequence for a chromosome
+	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
 			if(!strcmp(hdr->target_name[i], f->refcontig)) {
@@ -205,13 +205,16 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		RV = bam_aux2i(bam_aux_get(b, "RV"));
 		if((b->core.flag & 2820) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
-				b->core.qual < f->minMQ || // minMQ
-				(f->refcontig && tid_to_study != b->core.tid) || // outside of contig
-			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
-			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
-			((f->flag & REFUSE_DUPLEX) && !(RV == FM || RV == 0)) || // Refuses duplex
-			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
-			) {++f->nskipped; continue;}
+				b->core.qual < f->minMQ || //  minMQ
+				(f->refcontig && tid_to_study != b->core.tid) ||
+			(f->bed && bed_test(b, f->bed) == 0) || // Outside of  region
+			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires  duplex
+			((f->flag & REFUSE_DUPLEX) && !(RV == FM || RV == 0)) || // Refuses  duplex
+			(bam_aux2i(bam_aux_get(b, "FP")) == 0) /* Fails barcode QC */ ) {
+            ++f->nskipped; 
+            LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
+            continue;
+        }
 		seq = (uint8_t *)bam_get_seq(b);
 		cigar = bam_get_cigar(b);
 #if !NDEBUG
@@ -230,7 +233,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		pos = b->core.pos;
 		k = kh_get(obs, hash, FM);
-        is_rev = b->core.flag & BAM_FREVERSE;
+		is_rev = b->core.flag & BAM_FREVERSE;
 		if(k == kh_end(hash)) {
 			k = kh_put(obs, hash, FM, &khr);
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
@@ -282,7 +285,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	}
 	int32_t i, s, c, len, pos, FM, RV, rc, fc, last_tid = -1, tid_to_study = -1, cycle, is_rev, ind;
 	bam1_t *b = bam_init1();
-	char *ref = NULL; // Will hold the sequence for a chromosome
+	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
 		for(i = 0; i < hdr->n_targets; ++i) {
 			if(!strcmp(hdr->target_name[i], f->refcontig)) {
@@ -302,12 +305,15 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		pdata = bam_aux_get(b, "FP");
 		FM = fdata ? bam_aux2i(fdata): 0;
 		RV = rdata ? bam_aux2i(rdata): 0;
-		if((b->core.flag & 2820) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+		if((b->core.flag & 768) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
-			(FM < f->minFM) || (FM > f->maxFM) || // minFM outside of range
-			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires duplex
-			(pdata && bam_aux2i(pdata) == 0) // Fails barcode QC
-			) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
+			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
+			(pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
+                ++f->nskipped;
+                LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
+                continue;
+        } // UNMAPPED, SECONDARY, [removed SUPPLEMENTARY flag for a second],
 		seq = (uint8_t *)bam_get_seq(b);
 		qual = (uint8_t *)bam_get_qual(b);
 		cigar = bam_get_cigar(b);
@@ -382,6 +388,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 				case BAM_CEQUAL:
 				case BAM_CDIFF:
 					for(ind = 0; ind < length; ++ind) {
+						//LOG_DEBUG("Base at rpos %i, fpos %i: %c. Ref base: %c.\n", ind + rc + 1, pos + fc + ind + 1, seq_nt16_str[bam_seqi(seq, ind + rc)], ref[pos + fc + ind]);
 						s = bam_seqi(seq, ind + rc);
 						//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 						if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -393,8 +400,11 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 #endif
 						cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;
 						++r->obs[bamseq2i[s]][qual[ind + rc] - 2][cycle];
-						if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+						if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) {
+							//LOG_DEBUG("Hey, error found at rpos %i.\n", ind + rc + 1);
 							++r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle];
+							//LOG_DEBUG("Error total at cycle %i : %lu.\n", cycle + 1, r->err[bamseq2i[s]][qual[ind + rc] - 2][cycle]);
+						}
 					}
 					rc += length; fc += length;
 					break;
@@ -428,7 +438,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	int len;
 	int32_t last_tid = -1;
 	bam1_t *b = bam_init1();
-	char *ref = NULL; // Will hold the sequence for a chromosome
+	char *ref = NULL; // Will hold the sequence for a contig
 	int tid_to_study = -1;
 	const readerr_t *rerr = f->r1;
 	if(f->refcontig) {
@@ -463,13 +473,13 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			last_tid = b->core.tid;
 		}
-		// rc -> read count
-		// fc -> reference base count
+		// rc -> readcount
+		// fc -> reference base  count
 		//fprintf(stderr, "Pointer to readerr_t r: %p.\n", r);
 		const int32_t pos = b->core.pos;
 		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 			//fprintf(stderr, "Qual %p, seq %p, cigar %p.\n", seq, qual, cigar);
-			int s; // seq value, base index
+			int s; // seq value, base 
 			const uint32_t len = bam_cigar_oplen(*cigar);
 			switch(bam_cigar_op(*cigar++)) {
 			case BAM_CMATCH:
@@ -527,8 +537,7 @@ void write_full_rates(FILE *fp, fullerr_t *f)
 			for(i = 0; i < 4; ++i) {
 				if(f->r2->obs[i][j][l])
 					fprintf(fp, i ? ":%0.12f": "%0.12f", (double)f->r2->err[i][j][l] / f->r2->obs[i][j][l]);
-				else
-					fputs(i ? ":-1337": "-1337", fp);
+				else fputs(i ? ":-1337": "-1337", fp);
 			}
 			if(j != nqscores - 1) fputc(',', fp);
 		}
@@ -579,18 +588,19 @@ void write_global_rates(FILE *fp, fullerr_t *f)
 
 void write_cycle_rates(FILE *fp, fullerr_t *f)
 {
-	fputs("#Cycle\tRead 1 Error Rate\tRead 2 Error Rate\n", fp);
+	fputs("#Cycle\tRead 1 Error Rate\tRead 2 Error Rate\tRead 1 Error Count\t"
+			"Read 1 Obs Count\tRead 2 Error Count\tRead 2 Obs Count\n", fp);
 	for(uint64_t l = 0; l < f->l; ++l) {
 		fprintf(fp, "%lu\t", l + 1);
-		int sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
+		uint64_t sum1 = 0, sum2 = 0, counts1 = 0, counts2 = 0;
 		for(int i = 0; i < 4; ++i) {
 			sum1 += f->r1->qerr[i][l];
 			counts1 += f->r1->qobs[i][l];
 			sum2 += f->r2->qerr[i][l];
 			counts2 += f->r2->qobs[i][l];
 		}
-		fprintf(fp, "%0.12f\t", (double)sum1 / counts1);
-		fprintf(fp, "%0.12f\n", (double)sum2 / counts2);
+		fprintf(fp, "%0.12f\t%0.12f\t%lu\t%lu\t%lu\t%lu\n", (double)sum1 / counts1, (double)sum2 / counts2,
+				sum1, counts1, sum2, counts2);
 	}
 }
 
@@ -635,11 +645,6 @@ void fill_qvals(fullerr_t *f)
 
 void fill_sufficient_obs(fullerr_t *f)
 {
-#if DELETE_ME
-	FILE *before_fs = fopen("before_fill_sufficient.txt", "w");
-	write_3d_offsets(before_fs, f);
-	fclose(before_fs);
-#endif
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
 			for(uint64_t l = 0; l < f->l; ++l) {
@@ -650,11 +655,6 @@ void fill_sufficient_obs(fullerr_t *f)
 			}
 		}
 	}
-#if DELETE_ME
-	FILE *after_fs = fopen("after_fill_sufficient.txt", "w");
-	write_3d_offsets(after_fs, f);
-	fclose(after_fs);
-#endif
 }
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
@@ -672,7 +672,7 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->err[i][j][l]);
 				if(i == 3 && j == nqscores - 1 && l == f->l - 1)
 					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
-				else
+                else
 					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
 				fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
@@ -779,7 +779,7 @@ void fm_destroy(fmerr_t *fm) {
 int err_usage(FILE *fp, int retcode) {
 	fprintf(stderr, "bmftools err\nSubcommands: main, fm.\n");
 	exit(retcode);
-	return retcode; // This never happens
+	return retcode; // This neverhappens
 }
 
 int err_main(int argc, char *argv[]) {
@@ -840,15 +840,15 @@ int err_main_main(int argc, char *argv[])
 		case 'D': flag |= REFUSE_DUPLEX; break;
 		case 'm': minFM = atoi(optarg); break;
 		case 'M': maxFM = atoi(optarg); break;
-		case 'f': df = fopen(optarg, "w"); break;
+		case 'f': df = open_ofp(optarg); break;
 		case 'o': strcpy(outpath, optarg); break;
-		case '3': d3 = fopen(optarg, "w"); break;
-		case 'c': dc = fopen(optarg, "w"); break;
-		case 'n': dbc = fopen(optarg, "w"); break;
+		case '3': d3 = open_ofp(optarg); break;
+		case 'c': dc = open_ofp(optarg); break;
+		case 'n': dbc = open_ofp(optarg); break;
 		case 'r': strcpy(refcontig, optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
-		case 'g': global_fp = fopen(optarg, "w"); break;
+		case 'g': global_fp = open_ofp(optarg); break;
 		case '$': minPV = strtoul(optarg, NULL, 0); break;
 		case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
 		}
@@ -858,7 +858,7 @@ int err_main_main(int argc, char *argv[])
 		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
-	ofp = *outpath ? open_ofp(outpath): stdout;
+	ofp = *outpath ? open_ofp(outpath): NULL;
 
 	if (argc != optind+2)
 		return err_main_usage(stderr, EXIT_FAILURE);
@@ -977,7 +977,7 @@ int err_fm_main(int argc, char *argv[])
 		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
 	}
 	fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ, minPV);
-	// Get read length from the first read
+	// Get read length from the first 
 	bam_hdr_destroy(header); header = NULL;
 	err_fm_core(argv[optind + 1], fai, f, &open_fmt);
 	err_fm_report(ofp, f); fclose(ofp);
