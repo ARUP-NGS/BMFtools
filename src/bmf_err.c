@@ -305,7 +305,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		pdata = bam_aux_get(b, "FP");
 		FM = fdata ? bam_aux2i(fdata): 0;
 		RV = rdata ? bam_aux2i(rdata): 0;
-		if((b->core.flag & 768) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+		if((b->core.flag & 772) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
@@ -313,7 +313,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
                 ++f->nskipped;
                 LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
                 continue;
-        } // UNMAPPED, SECONDARY, [removed SUPPLEMENTARY flag for a second],
+        } // UNMAPPED, SECONDARY, QCFAIL, [removed SUPPLEMENTARY flag for a second],
 		seq = (uint8_t *)bam_get_seq(b);
 		qual = (uint8_t *)bam_get_qual(b);
 		cigar = bam_get_cigar(b);
