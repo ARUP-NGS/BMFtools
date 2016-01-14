@@ -63,10 +63,10 @@ typedef struct fmerr {
 	uint64_t nskipped;
 	uint64_t nread;
 	int minMQ;
+	int minPV;
 } fmerr_t;
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig,
-				int padding, int flag, int minMQ);
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ, uint32_t minPV);
 void fm_destroy(fmerr_t *fm);
 
 enum err_flags {

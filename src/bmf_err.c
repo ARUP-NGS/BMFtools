@@ -1,5 +1,6 @@
 #include "bmf_err.h"
 
+
 #define min_obs 1000uL
 
 int err_main_main(int argc, char *argv[]);
@@ -11,7 +12,7 @@ int err_main_usage(FILE *fp, int retcode)
 			"Usage: bmftools err main -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
 			"-h/-?\t\tThis helpful help menu!\n"
-			"-o\t\tREQUIRED. Path to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
 			"-a\t\tSet minimum mapping quality for inclusion.\n"
 			"-$\t\tSet minimum calculated PV tag value for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
@@ -34,7 +35,8 @@ int err_fm_usage(FILE *fp, int retcode)
 	fprintf(fp,
 			"Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
-			"-o\t\tREQUIRED. Path to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-$\t\tSet minimum calculated PV tag value for inclusion.\n"
 			"-h/-?\t\tThis helpful help menu!\n"
 			"-a\t\tSet minimum mapping quality for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
@@ -93,6 +95,7 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 			f->flag & REQUIRE_DUPLEX ? "True": "False",
 			f->flag & REFUSE_DUPLEX ? "True": "False");
 	fprintf(fp, "##STATS\n##nread:\"%lu\"\n##nskipped:\"%lu\"\n", f->nread, f->nskipped);
+	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\n");
 	for(k = kh_begin(shared_keys); k != kh_end(shared_keys); ++k) {
 		if(!kh_exist(shared_keys, k)) continue;
 		FM = kh_key(shared_keys, k);
@@ -102,13 +105,13 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 		if(k1 == kh_end(f->hash1)) fprintf(fp, "-nan\t");
 		else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
 
-		LOG_DEBUG("R1 err, obs: %lu, %lu.\n", kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
+		LOG_DEBUG("R1 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash1, k1), kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
 
 		k2 = kh_get(obs, f->hash2, FM);
 		if(k2 == kh_end(f->hash2)) fprintf(fp, "-nan\n");
 		else fprintf(fp, "%0.12f\n", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
 
-		LOG_DEBUG("R2 err, obs: %lu, %lu.\n", kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
+		LOG_DEBUG("R2 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash2, k2), kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 	}
 	kh_destroy(obs_union, shared_keys);
 }
@@ -177,8 +180,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int r, khr, FM, RV, reflen, tid_to_study = -1;
-	int32_t last_tid = -1, pos;
+	int32_t is_rev, ind, s, i, fc, rc, r, khr, FM, RV, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a chromosome
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
@@ -191,15 +193,15 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	khash_t(obs) *hash;
-	uint32_t len;
 	uint8_t *seq;
-	uint32_t *cigar;
+	uint32_t *cigar, *pv_array;
 	khiter_t k;
 	bam1_t *b = bam_init1();
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
 		if(++f->nread % 1000000 == 0) {
 			LOG_INFO("Records read: %lu.\n", f->nread);
 		}
+		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		RV = bam_aux2i(bam_aux_get(b, "RV"));
 		if((b->core.flag & 2820) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
@@ -228,34 +230,37 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		pos = b->core.pos;
 		k = kh_get(obs, hash, FM);
+        is_rev = b->core.flag & BAM_FREVERSE;
 		if(k == kh_end(hash)) {
 			k = kh_put(obs, hash, FM, &khr);
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
 		}
-		for(int i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
-			int s; // seq value, base index
-			len = bam_cigar_oplen(*cigar);
+		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
+			length = bam_cigar_oplen(*cigar);
 			switch(bam_cigar_op(*cigar++)) {
 			case BAM_CMATCH:
 			case BAM_CEQUAL:
 			case BAM_CDIFF:
-				for(int ind = 0; ind < len; ++ind) {
+				for(ind = 0; ind < length; ++ind) {
+						if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
+							continue;
 					s = bam_seqi(seq, ind + rc);
 					//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
 					++kh_val(hash, k).obs;
-					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++kh_val(hash, k).err;
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)
+						++kh_val(hash, k).err;
 				}
-				rc += len; fc += len;
+				rc += length; fc += length;
 				break;
 			case BAM_CSOFT_CLIP:
 			case BAM_CHARD_CLIP:
 			case BAM_CINS:
-				rc += len;
+				rc += length;
 				break;
 			case BAM_CREF_SKIP:
 			case BAM_CDEL:
-				fc += len;
+				fc += length;
 				break;
 			}
 		}
@@ -289,7 +294,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 	}
 	uint8_t *fdata, *rdata, *pdata, *seq, *qual;
-	uint32_t *cigar, length;
+	uint32_t *cigar, *pv_array, length;
 	readerr_t *r;
 	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
 		fdata = bam_aux_get(b, "FM");
@@ -330,9 +335,9 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		}
 		r = (b->core.flag & BAM_FREAD1) ? f->r1: f->r2;
 		pos = b->core.pos;
-        is_rev = (b->core.flag & BAM_FREVERSE);
-        if(f->minPV) {
-            uint32_t *pv_array = (uint32_t *)array_tag(b, "PV");
+		is_rev = (b->core.flag & BAM_FREVERSE);
+		if(f->minPV) {
+			pv_array = (uint32_t *)array_tag(b, "PV");
 			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 				length = bam_cigar_oplen(*cigar);
 				switch(bam_cigar_op(*cigar++)) {
@@ -340,8 +345,8 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 				case BAM_CEQUAL:
 				case BAM_CDIFF:
 					for(ind = 0; ind < length; ++ind) {
-                        if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
-                            continue;
+						if(pv_array[is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc] < f->minPV)
+							continue;
 						s = bam_seqi(seq, ind + rc);
 						//fprintf(stderr, "Bi value: %i. s: %i.\n", bi, s);
 						if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;
@@ -369,7 +374,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 					break;
 				}
 			}
-        } else {
+		} else {
 			for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {
 				length = bam_cigar_oplen(*cigar);
 				switch(bam_cigar_op(*cigar++)) {
@@ -404,7 +409,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 					break;
 				}
 			}
-        }
+		}
 	}
 	cond_free(ref);
 	bam_destroy1(b);
@@ -718,8 +723,7 @@ readerr_t *readerr_init(size_t l) {
 	return ret;
 }
 
-fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
-        int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV) {
+fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, int minFM, int maxFM, int flag, int minMQ, uint32_t minPV) {
 	fullerr_t *ret = (fullerr_t *)calloc(1, sizeof(fullerr_t));
 	ret->l = l;
 	ret->r1 = readerr_init(l);
@@ -746,7 +750,7 @@ void fullerr_destroy(fullerr_t *e) {
 	free(e);
 }
 
-fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ) {
+fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ, uint32_t minPV) {
 	fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
 	if(bedpath && *bedpath) {
 		ret->bed = parse_bed_hash(bedpath, hdr, padding);
@@ -828,7 +832,7 @@ int err_main_main(int argc, char *argv[])
 	int minFM = 0;
 	int maxFM = INT_MAX;
 	int flag = 0;
-    uint32_t minPV = 0;
+	uint32_t minPV = 0;
 	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?dD")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
@@ -845,19 +849,16 @@ int err_main_main(int argc, char *argv[])
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
 		case 'g': global_fp = fopen(optarg, "w"); break;
-        case '$': minPV = strtoul(optarg, NULL, 0); break;
+		case '$': minPV = strtoul(optarg, NULL, 0); break;
 		case '?': case 'h': return err_main_usage(stderr, EXIT_SUCCESS);
 		}
 	}
 
-	if(padding < 0) {
+	if(padding < 0 && bedpath && *bedpath) {
 		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
 	}
 
-	if(!*outpath) {
-		LOG_ERROR("Required -o parameter unset. Abort!\n");
-	}
-	ofp = open_ofp(outpath);
+	ofp = *outpath ? open_ofp(outpath): stdout;
 
 	if (argc != optind+2)
 		return err_main_usage(stderr, EXIT_FAILURE);
@@ -883,7 +884,7 @@ int err_main_main(int argc, char *argv[])
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
 	fullerr_t *f = fullerr_init((size_t)b->core.l_qseq, bedpath, header,
-                                 padding, minFM, maxFM, flag, minMQ, minPV);
+								 padding, minFM, maxFM, flag, minMQ, minPV);
 	sam_close(fp);
 	fp = NULL;
 	bam_destroy1(b);
@@ -896,7 +897,8 @@ int err_main_main(int argc, char *argv[])
 	fill_qvals(f);
 	impute_scores(f);
 	fill_sufficient_obs(f);
-	write_final(ofp, f); fclose(ofp);
+	if(ofp)
+		write_final(ofp, f), fclose(ofp);
 	if(d3)
 		write_3d_offsets(d3, f), fclose(d3), d3 = NULL;
 	if(df)
@@ -934,7 +936,8 @@ int err_fm_main(int argc, char *argv[])
 	char refcontig[200] = "";
 	char *bedpath = NULL;
 	int flag = 0, padding = -1, minMQ = 0, c;
-	while ((c = getopt(argc, argv, "p:b:r:o:a:h?d")) >= 0) {
+	uint32_t minPV;
+	while ((c = getopt(argc, argv, "$:p:b:r:o:a:h?d")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -942,6 +945,7 @@ int err_fm_main(int argc, char *argv[])
 		case 'r': strcpy(refcontig, optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
+		case '$': minPV = strtoul(optarg, NULL, 0); break;
 		case '?': case 'h': return err_fm_usage(stderr, EXIT_SUCCESS);
 		}
 	}
@@ -972,7 +976,7 @@ int err_fm_main(int argc, char *argv[])
 	if (header == NULL) {
 		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
 	}
-	fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ);
+	fmerr_t *f = fm_init(bedpath, header, refcontig, padding, flag, minMQ, minPV);
 	// Get read length from the first read
 	bam_hdr_destroy(header); header = NULL;
 	err_fm_core(argv[optind + 1], fai, f, &open_fmt);
