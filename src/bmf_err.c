@@ -68,38 +68,46 @@ void write_final(FILE *fp, fullerr_t *e)
 void err_fm_report(FILE *fp, fmerr_t *f)
 {
 	LOG_DEBUG("Beginning error fm report.\n");
-	int khr;
+	int khr, FM;
 	khiter_t k, k1, k2;
 	// Make a set of all FMs to print out.
 	khash_t(obs_union) *shared_keys = kh_init(obs_union);
 	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1) {
 		if(!kh_exist(f->hash1, k1)) continue;
 		k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1));
-		if(k == kh_end(shared_keys)) {
+		if(k == kh_end(shared_keys))
 			k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
-		}
 	}
 	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2) {
 		if(!kh_exist(f->hash2, k2)) continue;
 		k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2));
-		if(k == kh_end(shared_keys)) {
+		if(k == kh_end(shared_keys))
 			k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
-		}
 	}
+
+	// Write header
+	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
+			"##minMQ:%i##Duplex Required: %s.\n##Duplex Refused: %s.\n", f->refcontig ? f->refcontig: "N/A",
+			f->bedpath? f->bedpath: "N/A", f->minMQ,
+			f->flag & REQUIRE_DUPLEX ? "True": "False",
+			f->flag & REFUSE_DUPLEX ? "True": "False");
+	fprintf(fp, "##STATS\n##nread:\"%lu\"\n##nskipped:\"%lu\"\n", f->nread, f->nskipped);
 	for(k = kh_begin(shared_keys); k != kh_end(shared_keys); ++k) {
 		if(!kh_exist(shared_keys, k)) continue;
-		const int FM = kh_key(shared_keys, k);
+		FM = kh_key(shared_keys, k);
 		fprintf(fp, "%i\t", FM);
+
 		k1 = kh_get(obs, f->hash1, FM);
-		if(k1 == kh_end(f->hash1))
-			fprintf(fp, "-nan\t");
-		else
-			fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
+		if(k1 == kh_end(f->hash1)) fprintf(fp, "-nan\t");
+		else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
+
+		LOG_DEBUG("R1 err, obs: %lu, %lu.\n", kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
+
 		k2 = kh_get(obs, f->hash2, FM);
-		if(k2 == kh_end(f->hash2))
-			fprintf(fp, "-nan\n");
-		else
-			fprintf(fp, "%0.12f\n", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
+		if(k2 == kh_end(f->hash2)) fprintf(fp, "-nan\n");
+		else fprintf(fp, "%0.12f\n", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
+
+		LOG_DEBUG("R2 err, obs: %lu, %lu.\n", kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 	}
 	kh_destroy(obs_union, shared_keys);
 }
@@ -194,10 +202,11 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		RV = bam_aux2i(bam_aux_get(b, "RV"));
 		if((b->core.flag & 2820) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
-                b->core.qual < f->minMQ || // minMQ
-                (f->refcontig && tid_to_study != b->core.tid) || // outside of contig
+				b->core.qual < f->minMQ || // minMQ
+				(f->refcontig && tid_to_study != b->core.tid) || // outside of contig
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires duplex
+			((f->flag & REFUSE_DUPLEX) && !(RV == FM || RV == 0)) || // Refuses duplex
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) // Fails barcode QC
 			) {++f->nskipped; continue;}
 		seq = (uint8_t *)bam_get_seq(b);
@@ -623,7 +632,7 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 			}
 			if(j != nqscores - 1) {
 				fprintf(ep, ","); fprintf(cp, ",");
-            }
+			}
 		}
 		fprintf(ep, "|"); fprintf(cp, "|");
 		for(j = 0; j < nqscores; ++j) {
@@ -633,7 +642,7 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 			}
 			if(j != nqscores - 1) {
 				fprintf(ep, ","); fprintf(cp, ",");
-            }
+			}
 		}
 		fprintf(ep, "\n"); fprintf(cp, "\n");
 	}
@@ -679,7 +688,7 @@ fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr, int padding, in
 	ret->minFM = minFM;
 	ret->maxFM = maxFM;
 	ret->flag = flag;
-    ret->minMQ = minMQ;
+	ret->minMQ = minMQ;
 	return ret;
 }
 
@@ -696,8 +705,8 @@ void fullerr_destroy(fullerr_t *e) {
 fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int flag, int minMQ) {
 	fmerr_t *ret = (fmerr_t *)calloc(1, sizeof(fmerr_t));
 	if(bedpath && *bedpath) {
-		ret->bed = kh_init(bed);
 		ret->bed = parse_bed_hash(bedpath, hdr, padding);
+		ret->bedpath = strdup(bedpath);
 	}
 	if(refcontig && *refcontig) {
 		ret->refcontig = strdup(refcontig);
@@ -705,7 +714,7 @@ fmerr_t *fm_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, in
 	ret->hash1 = kh_init(obs);
 	ret->hash2 = kh_init(obs);
 	ret->flag = flag;
-    ret->minMQ = minMQ;
+	ret->minMQ = minMQ;
 	return ret;
 }
 
@@ -714,6 +723,7 @@ void fm_destroy(fmerr_t *fm) {
 	kh_destroy(obs, fm->hash1);
 	kh_destroy(obs, fm->hash2);
 	cond_free(fm->refcontig);
+	cond_free(fm->bedpath);
 	free(fm);
 }
 
@@ -763,7 +773,7 @@ int err_main_main(int argc, char *argv[])
 	int flag = 0;
 	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:h?dD")) >= 0) {
 		switch (c) {
-        case 'a': minMQ = atoi(optarg); break;
+		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
 		case 'D': flag |= REFUSE_DUPLEX; break;
 		case 'm': minFM = atoi(optarg); break;
@@ -836,6 +846,18 @@ int err_main_main(int argc, char *argv[])
 }
 
 
+void check_bam_tag_exit(char *bampath, const char *tag)
+{
+	if(!(strcmp(bampath, "-") && strcmp(bampath, "stdin"))) {
+		LOG_WARNING("Could not check for bam tag without exhausting a pipe. "
+				 "Tag '%s' has not been verified.\n", tag);
+        return;
+	}
+	if(!bampath_has_tag(bampath, tag)) {
+		LOG_ERROR("Required bam tag '%s' missing from bam file at path '%s'. Abort!\n", tag, bampath);
+	}
+}
+
 int err_fm_main(int argc, char *argv[])
 {
 	htsFormat open_fmt;
@@ -860,7 +882,7 @@ int err_fm_main(int argc, char *argv[])
 	int flag = 0, padding = -1, minMQ = 0, c;
 	while ((c = getopt(argc, argv, "p:b:r:o:a:h?d")) >= 0) {
 		switch (c) {
-        case 'a': minMQ = atoi(optarg); break;
+		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
 		case 'o': strcpy(outpath, optarg); break;
 		case 'r': strcpy(refcontig, optarg); break;
@@ -888,6 +910,9 @@ int err_fm_main(int argc, char *argv[])
 	if (fp == NULL) {
 		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
+    check_bam_tag_exit(argv[optind + 1], "FM");
+    check_bam_tag_exit(argv[optind + 1], "FP");
+    check_bam_tag_exit(argv[optind + 1], "RV");
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {

@@ -56,6 +56,7 @@ typedef struct fmerr {
 	khash_t(obs) *hash1;
 	khash_t(obs) *hash2;
 	khash_t(bed) *bed;
+    char *bedpath;
 	char *refcontig;
 	uint64_t flag;
 	uint64_t nskipped;
