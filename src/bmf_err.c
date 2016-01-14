@@ -188,6 +188,9 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	khiter_t k;
 	bam1_t *b = bam_init1();
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
+		if(++f->nread % 1000000 == 0) {
+			LOG_INFO("Records read: %lu.\n", f->nread);
+		}
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		RV = bam_aux2i(bam_aux_get(b, "RV"));
 		if((b->core.flag & 2820) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
@@ -204,10 +207,6 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		ifn_abort(seq);
 #endif
 		hash = (b->core.flag & BAM_FREAD1) ? f->hash1: f->hash2;
-
-		if(++f->nread % 1000000 == 0) {
-			LOG_INFO("Records read: %lu.\n", f->nread);
-		}
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
 			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
@@ -251,6 +250,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			}
 		}
 	}
+	LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", f->nread, f->nskipped);
 	cond_free(ref);
 	bam_destroy1(b);
 	bam_hdr_destroy(hdr), sam_close(fp);
