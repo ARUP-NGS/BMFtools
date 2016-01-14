@@ -745,6 +745,19 @@ int err_main(int argc, char *argv[]) {
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
 }
 
+void check_bam_tag_exit(char *bampath, const char *tag)
+{
+	if(!(strcmp(bampath, "-") && strcmp(bampath, "stdin"))) {
+		LOG_WARNING("Could not check for bam tag without exhausting a pipe. "
+				 "Tag '%s' has not been verified.\n", tag);
+        return;
+	}
+	if(!bampath_has_tag(bampath, tag)) {
+		LOG_ERROR("Required bam tag '%s' missing from bam file at path '%s'. Abort!\n", tag, bampath);
+	}
+}
+
+
 int err_main_main(int argc, char *argv[])
 {
 	htsFormat open_fmt;
@@ -810,6 +823,12 @@ int err_main_main(int argc, char *argv[])
 		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
 
+    check_bam_tag_exit(argv[optind + 1], "FM");
+    check_bam_tag_exit(argv[optind + 1], "RV");
+    check_bam_tag_exit(argv[optind + 1], "PV");
+    check_bam_tag_exit(argv[optind + 1], "FA");
+    check_bam_tag_exit(argv[optind + 1], "FP");
+
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
 		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
@@ -845,18 +864,6 @@ int err_main_main(int argc, char *argv[])
 	return EXIT_SUCCESS;
 }
 
-
-void check_bam_tag_exit(char *bampath, const char *tag)
-{
-	if(!(strcmp(bampath, "-") && strcmp(bampath, "stdin"))) {
-		LOG_WARNING("Could not check for bam tag without exhausting a pipe. "
-				 "Tag '%s' has not been verified.\n", tag);
-        return;
-	}
-	if(!bampath_has_tag(bampath, tag)) {
-		LOG_ERROR("Required bam tag '%s' missing from bam file at path '%s'. Abort!\n", tag, bampath);
-	}
-}
 
 int err_fm_main(int argc, char *argv[])
 {
