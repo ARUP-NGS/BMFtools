@@ -78,7 +78,7 @@ int target_main(int argc, char *argv[])
 
 	if(padding == (uint32_t)-1) {
 		padding = 25;
-		fprintf(stderr, "[%s]: Padding not set. Set to 25.\n", __func__);
+		LOG_INFO("Padding not set. Set to 25.\n");
 	}
 
 	if (argc != optind+1)
@@ -91,14 +91,12 @@ int target_main(int argc, char *argv[])
 
 	fp = sam_open(argv[optind], "r");
 	if (fp == NULL) {
-		fprintf(stderr, "[E:%s]: Cannot open input file \"%s\"", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-		fprintf(stderr, "[%s]: Failed to read header for \"%s\"\n", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	bed = parse_bed_hash(bedpath, header, padding);
 	uint64_t fm_target = 0, total_fm = 0, count = 0;
@@ -136,7 +134,7 @@ static void print_stats(famstats_t *stats, FILE *fp)
 static inline void tag_test(const uint8_t *data, const char *tag)
 {
 	if(UNLIKELY(!data))
-		fprintf(stderr, "Required bam tag '%s' not found. Abort mission!\n", tag),
+		fprintf(stderr, "[E:%s] Required bam tag '%s' not found. Abort mission!\n", __func__, tag),
 		exit(EXIT_FAILURE);
 }
 
@@ -156,9 +154,7 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	if(FM > 1) ++s->realfm_counts, s->realfm_sum += FM, s->realrc_sum += RV;
 	++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
 
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] RV value: %i. allrc_sum: %lu. realrc_sum: %lu.\n", __func__, RV, s->allrc_sum, s->realrc_sum);
-#endif
+	LOG_DEBUG("RV value: %i. allrc_sum: %lu. realrc_sum: %lu.\n", RV, s->allrc_sum, s->realrc_sum);
 
 	if((s->ki = kh_get(fm, s->fm, FM)) == kh_end(s->fm))
 		s->ki = kh_put(fm, s->fm, FM, &s->khr), kh_val(s->fm, s->ki) = 1;
@@ -182,8 +178,7 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	b = bam_init1();
 	ret = sam_read1(fp, h, b);
 	if(ret < 0) {
-		fprintf(stderr, "[E:%s] Could not read from input bam %s. Abort!\n", __func__, fp->fn);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Could not read from input bam %s. Abort!\n", fp->fn);
 	}
 	++count;
 	famstat_loop(s, b, settings);
@@ -193,11 +188,10 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	while (LIKELY((ret = sam_read1(fp, h, b)) >= 0)) {
 		famstat_loop(s, b, settings);
 		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
+			LOG_INFO("Number of records processed: %lu.\n", count);
 	}
 	bam_destroy1(b);
-	if (ret != -1)
-		fprintf(stderr, "[%s] Truncated file? Continue anyway.\n", __func__);
+	if (ret != -1) LOG_WARNING("Truncated file? Continue anyway.\n");
 	return s;
 }
 
@@ -250,18 +244,16 @@ int fm_main(int argc, char *argv[])
 		else fm_usage_exit(stderr, EXIT_FAILURE);
 	}
 
-	fprintf(stderr, "[%s]: Running main with minMQ %i and minFM %i.\n", __func__, settings->minMQ, settings->minFM);
+	LOG_INFO("Running main with minMQ %i and minFM %i.\n", settings->minMQ, settings->minFM);
 
 	fp = sam_open(argv[optind], "r");
-	if (fp == NULL) {
-		fprintf(stderr, "[E:%s]: Cannot open input file \"%s\"", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+	if (!fp) {
+        LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-		fprintf(stderr, "[E:%s]: Failed to read header for \"%s\"\n", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+        LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	s = famstat_core(fp, header, settings);
 	print_stats(s, stdout);
@@ -312,32 +304,28 @@ int frac_main(int argc, char *argv[])
 	}
 
 	if(!minFM) {
-		fprintf(stderr, "[E:%s] minFM not set. frac_main meaningless without it. Result: 1.0.\n", __func__);
-		return EXIT_FAILURE;
+        LOG_ERROR("minFM not set. frac_main meaningless without it. Result: 1.0.\n");
 	}
-	fprintf(stderr, "[%s]: Running frac main minFM %i.\n", __func__, minFM);
+	LOG_INFO("Running frac main minFM %i.\n", minFM);
 
 	if (argc != optind+1) {
 		if (argc == optind) frac_usage_exit(stdout, EXIT_SUCCESS);
 		else frac_usage_exit(stderr, EXIT_FAILURE);
 	}
 	fp = sam_open(argv[optind], "r");
-	if (fp == NULL) {
-		fprintf(stderr, "[E:%s]: Cannot open input file \"%s\".\n", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+	if (!fp) {
+        LOG_ERROR("Cannot open input file \"%s\".\n", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
-	if (header == NULL) {
-		fprintf(stderr, "[E:%s]: Failed to read header for \"%s\".\n", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+	if (!header) {
+        LOG_ERROR("Failed to read header for \"%s\".\n", argv[optind]);
 	}
 	uint64_t fm_above = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
 	// Check to see if the required tags are present before starting.
 	if((c = sam_read1(fp, header, b)) < 0) {
-		fprintf(stderr, "[E:%s] Could not read initial record from input file '%s'. Abort!\n", __func__, argv[optind]);
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Could not read initial record from input file '%s'. Abort!\n", argv[optind]);
 	}
 	check_bam_tag(b, "FP");
 	check_bam_tag(b, "RV");
@@ -348,7 +336,7 @@ int frac_main(int argc, char *argv[])
 		frac_loop(b, minFM, &fm_above, &total_fm);
 		if(UNLIKELY(!(++count % notification_interval)))
 			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
-	}
+    }
 	fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);

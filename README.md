@@ -60,6 +60,7 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 
 Tag | Content | Format |
 :----:|:-----|:-----:|
+DR | Whether the read was sequenced from both strands. Only valid for Loeb-like inline barcodes. | Integer [0, 1] |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | Integer [0, 1]|

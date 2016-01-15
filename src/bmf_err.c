@@ -110,14 +110,12 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 	khash_t(obs_union) *shared_keys = kh_init(obs_union);
 	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1) {
 		if(!kh_exist(f->hash1, k1)) continue;
-		k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1));
-		if(k == kh_end(shared_keys))
+		if((k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1))) == kh_end(shared_keys))
 			k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
 	}
 	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2) {
 		if(!kh_exist(f->hash2, k2)) continue;
-		k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2));
-		if(k == kh_end(shared_keys))
+		if((k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2))) == kh_end(shared_keys))
 			k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
 	}
 
@@ -162,14 +160,10 @@ void err_report(FILE *fp, fullerr_t *e)
 	for(int i = 0; i < 4; ++i) {
 		for(int j = 0; j < nqscores; ++j) {
 			for(int k = 0; k < e->l; ++k) {
-				n1_obs += e->r1->obs[i][j][k];
-				n2_obs += e->r2->obs[i][j][k];
-				n1_err += e->r1->err[i][j][k];
-				n2_err += e->r2->err[i][j][k];
-				if(e->r1->obs[i][j][k] < min_obs)
-					++n1_ins;
-				if(e->r2->obs[i][j][k] < min_obs)
-					++n2_ins;
+				n1_obs += e->r1->obs[i][j][k]; n1_err += e->r1->err[i][j][k];
+				n2_obs += e->r2->obs[i][j][k]; n2_err += e->r2->err[i][j][k];
+				if(e->r1->obs[i][j][k] < min_obs) ++n1_ins;
+				if(e->r2->obs[i][j][k] < min_obs) ++n2_ins;
 			}
 		}
 	}
@@ -240,7 +234,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		RV = bam_aux2i(bam_aux_get(b, "RV"));
-		if((b->core.flag & 2820) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if((b->core.flag & 772) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 				b->core.qual < f->minMQ || //  minMQ
 				(f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of  region
@@ -383,7 +377,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		pdata = bam_aux_get(b, "FP");
 		FM = fdata ? bam_aux2i(fdata): 0;
 		RV = rdata ? bam_aux2i(rdata): 0;
-		if((b->core.flag & 2820) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+		if((b->core.flag & 772) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
@@ -527,7 +521,7 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 	}
 	int c;
 	while(LIKELY((c = sam_read1(fp, hdr, b)) != -1)) {
-		if((b->core.flag & 2820) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if((b->core.flag & 772) || (f->refcontig && tid_to_study != b->core.tid)) {++f->nskipped; continue;} // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 		const uint8_t *seq = (uint8_t *)bam_get_seq(b);
 		const uint8_t *qual = (uint8_t *)bam_get_qual(b);
 		const uint32_t *cigar = bam_get_cigar(b);
@@ -696,8 +690,8 @@ void fill_qvals(fullerr_t *f)
 	for(i = 0; i < 4; ++i) {
 		for(l = 0; l < f->l; ++l) {
 			for(int j = 1; j < nqscores; ++j) { // Skip qualities of 2
-				f->r1->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
-				f->r2->qpvsum[i][l] +=  pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
+				f->r1->qpvsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * f->r1->obs[i][j][l];
+				f->r2->qpvsum[i][l] += pow(10., (double)(-0.1 * (j + 2))) * f->r2->obs[i][j][l];
 				f->r1->qobs[i][l] += f->r1->obs[i][j][l]; f->r2->qobs[i][l] += f->r2->obs[i][j][l];
 				f->r1->qerr[i][l] += f->r1->err[i][j][l]; f->r2->qerr[i][l] += f->r2->err[i][j][l];
 			}
