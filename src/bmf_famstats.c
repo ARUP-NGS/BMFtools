@@ -128,6 +128,12 @@ static void print_stats(famstats_t *stats, FILE *fp)
 	fprintf(fp, "#RV fraction for real read families: %lf.\n", (double)stats->realrc_sum / (double)stats->realfm_sum);
 	fprintf(fp, "#Mean Family Size (all)\t%lf\n", (double)stats->allfm_sum / (double)stats->allfm_counts);
 	fprintf(fp, "#Mean Family Size (real)\t%lf\n", (double)stats->realfm_sum / (double)stats->realfm_counts);
+	if(stats->dr_counts) {
+		fprintf(fp, "#Duplex fraction of unique observations\t%0.12lf\n", (double)stats->dr_counts / stats->n_pass);
+		fprintf(fp, "#Fraction of raw reads in duplex families\t%0.12lf\n", (double)stats->dr_sum / stats->allfm_sum);
+		fprintf(fp, "#Mean fraction of reverse reads within each duplex family\t%0.12lf\n", stats->dr_rc_frac_sum / stats->dr_rc_sum);
+		fprintf(fp, "#Mean fraction of reverse reads within all duplex families\t%0.12lf\n", (double)stats->dr_rc_sum / stats->dr_sum);
+	}
 	print_hashstats(stats, fp);
 }
 
@@ -162,6 +168,14 @@ static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *se
 	if((s->ki = kh_get(rc, s->rc, RV)) == kh_end(s->rc))
 		s->ki = kh_put(rc, s->rc, RV, &s->khr), kh_val(s->rc, s->ki) = 1;
 	else ++kh_val(s->rc, s->ki);
+
+	uint8_t *dr_data = bam_aux_get(b, "DR");
+	if(dr_data && bam_aux2i(dr_data)) {
+		s->dr_sum += FM;
+		++s->dr_counts;
+		s->dr_rc_sum += RV;
+		s->dr_rc_frac_sum += (double)RV / FM;
+	}
 }
 
 
@@ -248,12 +262,12 @@ int fm_main(int argc, char *argv[])
 
 	fp = sam_open(argv[optind], "r");
 	if (!fp) {
-        LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
+		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-        LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
+		LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	s = famstat_core(fp, header, settings);
 	print_stats(s, stdout);
@@ -304,7 +318,7 @@ int frac_main(int argc, char *argv[])
 	}
 
 	if(!minFM) {
-        LOG_ERROR("minFM not set. frac_main meaningless without it. Result: 1.0.\n");
+		LOG_ERROR("minFM not set. frac_main meaningless without it. Result: 1.0.\n");
 	}
 	LOG_INFO("Running frac main minFM %i.\n", minFM);
 
@@ -314,12 +328,12 @@ int frac_main(int argc, char *argv[])
 	}
 	fp = sam_open(argv[optind], "r");
 	if (!fp) {
-        LOG_ERROR("Cannot open input file \"%s\".\n", argv[optind]);
+		LOG_ERROR("Cannot open input file \"%s\".\n", argv[optind]);
 	}
 
 	header = sam_hdr_read(fp);
 	if (!header) {
-        LOG_ERROR("Failed to read header for \"%s\".\n", argv[optind]);
+		LOG_ERROR("Failed to read header for \"%s\".\n", argv[optind]);
 	}
 	uint64_t fm_above = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
@@ -336,7 +350,7 @@ int frac_main(int argc, char *argv[])
 		frac_loop(b, minFM, &fm_above, &total_fm);
 		if(UNLIKELY(!(++count % notification_interval)))
 			fprintf(stderr, "[%s] Number of records processed: %lu.\n", __func__, count);
-    }
+	}
 	fprintf(stdout, "#Fraction of raw reads with >= minFM %i: %f.\n", minFM, (double)fm_above / total_fm);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);

@@ -28,6 +28,10 @@ typedef struct famstats {
 	uint64_t realfm_sum;
 	uint64_t realfm_counts;
 	uint64_t realrc_sum;
+	uint64_t dr_sum;
+	uint64_t dr_counts;
+	uint64_t dr_rc_sum;
+	double dr_rc_frac_sum;
 	khash_t(fm) *fm;
 	khash_t(rc) *rc;
 	khiter_t ki;
