@@ -26,12 +26,13 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 }
 
 
-void target_usage_exit(FILE *fp, int success)
+int target_usage_exit(FILE *fp, int success)
 {
 	fprintf(fp, "Usage: bmftools famstats target <opts> <in.bam>\nOpts:\n-b Path to bed file.\n"
 			"-p padding. Number of bases around bed regions to pad. Default: 25.\n"
 			"-h, -?: Return usage.\n");
 	exit(success);
+	return success;
 }
 
 static inline void target_loop(bam1_t *b, khash_t(bed) *bed, uint64_t *fm_target, uint64_t *total_fm)
@@ -54,9 +55,9 @@ int target_main(int argc, char *argv[])
 	uint32_t padding = (uint32_t)-1;
 	uint64_t notification_interval = 1000000;
 
-	if(argc < 4) target_usage_exit(stderr, EXIT_SUCCESS);
+	if(argc < 4) return target_usage_exit(stderr, EXIT_SUCCESS);
 
-	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) target_usage_exit(stderr, EXIT_SUCCESS);
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return target_usage_exit(stderr, EXIT_SUCCESS);
 
 	while ((c = getopt(argc, argv, "b:p:n:h?")) >= 0) {
 		switch (c) {
@@ -71,7 +72,7 @@ int target_main(int argc, char *argv[])
 			break;
 		case '?':
 		case 'h':
-			target_usage_exit(stderr, EXIT_SUCCESS);
+			return target_usage_exit(stderr, EXIT_SUCCESS);
 		}
 	}
 
@@ -82,11 +83,11 @@ int target_main(int argc, char *argv[])
 	}
 
 	if (argc != optind+1)
-		(argc == optind) ? target_usage_exit(stdout, EXIT_SUCCESS): target_usage_exit(stderr, EXIT_FAILURE);
+		return (argc == optind) ? target_usage_exit(stdout, EXIT_SUCCESS): target_usage_exit(stderr, EXIT_FAILURE);
 
 	if(!bedpath) {
 		fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
-		target_usage_exit(stderr, EXIT_FAILURE);
+		return target_usage_exit(stderr, EXIT_FAILURE);
 	}
 
 	fp = sam_open(argv[optind], "r");
@@ -148,14 +149,15 @@ static inline void tag_test(const uint8_t *data, const char *tag)
 static inline void famstat_loop(famstats_t *s, bam1_t *b, famstat_settings_t *settings)
 {
 	//tag_test(data, "FM");
-	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2))) return;
+	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
+			b->core.qual < settings->minMQ) return;
 	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
-	if(b->core.qual < settings->minMQ || FM < settings->minFM || !bam_aux2i(bam_aux_get(b, "FP"))) {
+	const int RV = bam_aux2i(bam_aux_get(b, "RV"));
+	if(FM < settings->minFM || !bam_aux2i(bam_aux_get(b, "FP"))) {
 		++s->n_fail;
 		return;
 	}
 	++s->n_pass;
-	const int RV = bam_aux2i(bam_aux_get(b, "RV"));
 
 	if(FM > 1) ++s->realfm_counts, s->realfm_sum += FM, s->realrc_sum += RV;
 	++s->allfm_counts, s->allfm_sum += FM, s->allrc_sum += RV;
@@ -209,13 +211,14 @@ famstats_t *famstat_core(samFile *fp, bam_hdr_t *h, famstat_settings_t *settings
 	return s;
 }
 
-static void usage_exit(FILE *fp, int exit_status)
+static int usage_exit(FILE *fp, int exit_status)
 {
 	fprintf(fp, "Usage: bmftools famstats\n");
 	fprintf(fp, "Subcommands: \nfm\tFamily Size stats\n"
 			"frac\tFraction of raw reads in family sizes >= minFM parameter.\n"
 			"target\tFraction of raw reads on target.\n");
 	exit(exit_status);
+	return exit_status;
 }
 
 static int fm_usage_exit(FILE *fp, int exit_status)
@@ -361,9 +364,9 @@ int frac_main(int argc, char *argv[])
 int famstats_main(int argc, char *argv[])
 {
 	if(argc < 2)
-		usage_exit(stderr, EXIT_FAILURE);
+		return usage_exit(stderr, EXIT_FAILURE);
 	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
-		usage_exit(stderr, EXIT_SUCCESS);
+		return usage_exit(stderr, EXIT_SUCCESS);
 	if(strcmp(argv[1], "fm") == 0)
 		return fm_main(argc - 1, argv + 1);
 	if(strcmp(argv[1], "frac") == 0)
@@ -371,6 +374,6 @@ int famstats_main(int argc, char *argv[])
 	if(strcmp(argv[1], "target") == 0)
 		return target_main(argc - 1, argv + 1);
 	fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
-	usage_exit(stderr, 1);
+	return usage_exit(stderr, EXIT_FAILURE);
 	return EXIT_FAILURE; // This never happens
 }
