@@ -210,7 +210,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int32_t is_rev, ind, s, i, fc, rc, r, khr, FM, RV, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FM, RV, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
@@ -233,18 +233,18 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		}
 		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
-		RV = bam_aux2i(bam_aux_get(b, "RV"));
+		DR = bam_aux2i(bam_aux_get(b, "DR"));
 		if((b->core.flag & 772) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
 				b->core.qual < f->minMQ || //  minMQ
 				(f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of  region
-			((f->flag & REQUIRE_DUPLEX) && (RV == FM || RV == 0)) || // Requires  duplex
-			((f->flag & REFUSE_DUPLEX) && !(RV == FM || RV == 0)) || // Refuses  duplex
+			((f->flag & REQUIRE_DUPLEX) && !DR) || // Requires  duplex
+			((f->flag & REFUSE_DUPLEX) && DR) || // Refuses  duplex
 			(bam_aux2i(bam_aux_get(b, "FP")) == 0) /* Fails barcode QC */ ) {
-            ++f->nskipped; 
-            LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
-            continue;
-        }
+				++f->nskipped;
+				LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
+				continue;
+		}
 		seq = (uint8_t *)bam_get_seq(b);
 		cigar = bam_get_cigar(b);
 #if !NDEBUG
@@ -262,9 +262,8 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 			last_tid = b->core.tid;
 		}
 		pos = b->core.pos;
-		k = kh_get(obs, hash, FM);
 		is_rev = b->core.flag & BAM_FREVERSE;
-		if(k == kh_end(hash)) {
+		if((k = kh_get(obs, hash, FM)) == kh_end(hash)) {
 			k = kh_put(obs, hash, FM, &khr);
 			memset(&kh_val(hash, k), 0, sizeof(obserr_t));
 		}
@@ -382,10 +381,10 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
 			(pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
-                ++f->nskipped;
-                LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
-                continue;
-        } // UNMAPPED, SECONDARY, QCFAIL, [removed SUPPLEMENTARY flag for a second],
+				++f->nskipped;
+				LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));
+				continue;
+		} // UNMAPPED, SECONDARY, QCFAIL, [removed SUPPLEMENTARY flag for a second],
 		seq = (uint8_t *)bam_get_seq(b);
 		qual = (uint8_t *)bam_get_qual(b);
 		cigar = bam_get_cigar(b);
@@ -740,7 +739,7 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->err[i][j][l]);
 				if(i == 3 && j == nqscores - 1 && l == f->l - 1)
 					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
-                else
+				else
 					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
 				fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
@@ -863,8 +862,8 @@ cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padd
 		ret->refcontig = strdup(refcontig);
 	}
 	ret->rlen = rlen;
-    ret->r1 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
-    ret->r2 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
+	ret->r1 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
+	ret->r2 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
 	ret->minMQ = minMQ;
 	return ret;
 }
@@ -1129,6 +1128,7 @@ int err_fm_main(int argc, char *argv[])
 	check_bam_tag_exit(argv[optind + 1], "FM");
 	check_bam_tag_exit(argv[optind + 1], "FP");
 	check_bam_tag_exit(argv[optind + 1], "RV");
+	if(flag & (REQUIRE_DUPLEX | REFUSE_DUPLEX)) check_bam_tag_exit(argv[optind + 1], "DR");
 
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
