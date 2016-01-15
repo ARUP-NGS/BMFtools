@@ -28,6 +28,7 @@ int err_main_usage(FILE *fp, int retcode)
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			, INT_MAX);
 	exit(retcode);
+	return retcode;
 }
 
 int err_fm_usage(FILE *fp, int retcode)
@@ -323,7 +324,8 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 	if(sam_read1(fp, hdr, b) == -1) {
 		LOG_ERROR("Could not read bam record from bam %s. Abort!\n", fname);
 	}
-	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, b->core.l_qseq);
+	const int32_t rlen = b->core.l_qseq;
+	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen);
 	int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(ce->refcontig) {
@@ -339,9 +341,9 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 	uint8_t *seq;
 	uint32_t *cigar;
 	obserr_t *arr;
-	cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr);
+	cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen);
 	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
-		cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr);
+		cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr, rlen);
 	}
 	LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", ce->nread, ce->nskipped);
 	cond_free(ref);

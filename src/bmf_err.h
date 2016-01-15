@@ -123,7 +123,7 @@ static inline int pv2ph(double pv)
 static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 
 
-#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr)\
+#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr, rlen)\
 	do {\
         LOG_DEBUG("Got into cycle loop.\n");\
 		if(++ce->nread % 1000000 == 0) {\
@@ -161,10 +161,9 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 				for(ind = 0; ind < length; ++ind) {\
 					s = bam_seqi(seq, ind + rc);\
 					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;\
-					cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;\
+					cycle = is_rev ? rlen - 1 - ind - rc: ind + rc;\
 					++obsarr[cycle].obs;\
-					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)\
-						++obsarr[cycle].err;\
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s) ++obsarr[cycle].err;\
 				}\
 				rc += length; fc += length;\
 				break;\
