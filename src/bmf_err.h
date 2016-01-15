@@ -50,6 +50,21 @@ typedef struct obserr {
 	uint64_t err;
 } obserr_t;
 
+typedef struct cycle_err {
+	int32_t minMQ;
+	int32_t rlen;
+	obserr_t *r1;
+	obserr_t *r2;
+	uint64_t nskipped;
+	uint64_t nread;
+	char *refcontig;
+	char *bedpath;
+	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
+} cycle_err_t;
+
+cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen);
+void cycle_destroy(cycle_err_t *c);
+
 KHASH_MAP_INIT_INT(obs, obserr_t)
 KHASH_SET_INIT_INT(obs_union)
 
@@ -107,5 +122,63 @@ static inline int pv2ph(double pv)
 
 static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 
+
+#define cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, obsarr)\
+	do {\
+        LOG_DEBUG("Got into cycle loop.\n");\
+		if(++ce->nread % 1000000 == 0) {\
+			LOG_INFO("Records read: %lu.\n", ce->nread);\
+		}\
+		if((b->core.flag & 2820) || \
+			b->core.qual < ce->minMQ || \
+			(ce->refcontig && tid_to_study != b->core.tid) || \
+		(ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {\
+			++ce->nskipped;\
+			LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));\
+			continue;\
+		}\
+		seq = (uint8_t *)bam_get_seq(b);\
+		cigar = bam_get_cigar(b);\
+		if(b->core.tid != last_tid) {\
+			cond_free(ref);\
+			LOG_DEBUG("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);\
+			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &reflen);\
+			if(!ref) {\
+				LOG_ERROR("Failed to load ref sequence for contig '%s'. Abort!\n", hdr->target_name[b->core.tid]);\
+			}\
+			last_tid = b->core.tid;\
+		}\
+		pos = b->core.pos;\
+		is_rev = b->core.flag & BAM_FREVERSE;\
+		obsarr = (b->core.flag & BAM_FREAD1) ? ce->r1: ce->r2;\
+        LOG_DEBUG("obsarr pointer: %p.\n", obsarr);\
+		for(i = 0, rc = 0, fc = 0; i < b->core.n_cigar; ++i) {\
+			length = bam_cigar_oplen(*cigar);\
+			switch(bam_cigar_op(*cigar++)) {\
+			case BAM_CMATCH:\
+			case BAM_CEQUAL:\
+			case BAM_CDIFF:\
+				for(ind = 0; ind < length; ++ind) {\
+					s = bam_seqi(seq, ind + rc);\
+					if(s == HTS_N || ref[pos + fc + ind] == 'N') continue;\
+					cycle = is_rev ? b->core.l_qseq - 1 - ind - rc: ind + rc;\
+					++obsarr[cycle].obs;\
+					if(seq_nt16_table[(int8_t)ref[pos + fc + ind]] != s)\
+						++obsarr[cycle].err;\
+				}\
+				rc += length; fc += length;\
+				break;\
+			case BAM_CSOFT_CLIP:\
+			case BAM_CHARD_CLIP:\
+			case BAM_CINS:\
+				rc += length;\
+				break;\
+			case BAM_CREF_SKIP:\
+			case BAM_CDEL:\
+				fc += length;\
+				break;\
+			}\
+		}\
+	} while(0)
 
 #endif /* BMF_ERR_H */

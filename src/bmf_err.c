@@ -5,6 +5,7 @@
 
 int err_main_main(int argc, char *argv[]);
 int err_fm_main(int argc, char *argv[]);
+int err_cycle_main(int argc, char *argv[]);
 
 int err_main_usage(FILE *fp, int retcode)
 {
@@ -29,15 +30,14 @@ int err_main_usage(FILE *fp, int retcode)
 	exit(retcode);
 }
 
-
 int err_fm_usage(FILE *fp, int retcode)
 {
 	fprintf(fp,
 			"Usage: bmftools err fm -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
 			"Flags:\n"
+			"-h/-?\t\tThis helpful help menu!\n"
 			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
 			"-$\t\tSet minimum calculated PV tag value for inclusion.\n"
-			"-h/-?\t\tThis helpful help menu!\n"
 			"-a\t\tSet minimum mapping quality for inclusion.\n"
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-b:\t\tPath to bed file for restricting analysis.\n"
@@ -45,6 +45,24 @@ int err_fm_usage(FILE *fp, int retcode)
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
 			);
 	exit(retcode);
+	return retcode; // This never happens.
+}
+
+
+int err_cycle_usage(FILE *fp, int retcode)
+{
+	fprintf(fp,
+			"Usage: bmftools err cycle -o <out.tsv> <reference.fasta> <input.csrt.bam>\n"
+			"Flags:\n"
+			"-h/-?\t\tThis helpful help menu!\n"
+			"-o\t\tPath to output file. Set to '-' or 'stdout' to emit to stdout.\n"
+			"-a\t\tSet minimum mapping quality for inclusion.\n"
+			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
+			"-b:\t\tPath to bed file for restricting analysis.\n"
+			"-p:\t\tSet padding for bed region. Default: 50.\n"
+			);
+	exit(retcode);
+	return retcode; // This never happens.
 }
 
 
@@ -68,10 +86,24 @@ void write_final(FILE *fp, fullerr_t *e)
 	}
 }
 
+void err_cycle_report(FILE *fp, cycle_err_t *ce)
+{
+	LOG_DEBUG("Beginning err cycle report.\n");
+	fprintf(fp, "#Cycle number\tRead 1 error\tRead 2 error\tRead 1 error counts"
+			"\tRead 1 observation counts\tRead 2 error counts\tRead 2 observation counts\n");
+	for(int i = 0; i < ce->rlen; ++i) {
+		fprintf(fp, "%i\t%0.12f\t%lu\t%lu\t%0.12f\t%lu\t%lu\n",
+				i + 1,
+				(double)ce->r1[i].err / ce->r1[i].obs,
+				ce->r1[i].err, ce->r1[i].obs,
+				(double)ce->r2[i].err / ce->r2[i].obs, ce->r2[i].err, ce->r2[i].obs);
+	}
+}
+
 void err_fm_report(FILE *fp, fmerr_t *f)
 {
-	LOG_DEBUG("Beginning error fm report.\n");
-	int khr, FM;
+	LOG_DEBUG("Beginning err fm report.\n");
+	int khr;
 	khiter_t k, k1, k2;
 	// Make a set of all FMs to print out.
 	khash_t(obs_union) *shared_keys = kh_init(obs_union);
@@ -90,28 +122,31 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 
 	// Write  header
 	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
-			"##minMQ:%i##Duplex Required: %s.\n##Duplex Refused: %s.\n", f->refcontig ? f->refcontig: "N/A",
+			"##minMQ:%i\n##Duplex Required: %s.\n##Duplex Refused: %s.\n", f->refcontig ? f->refcontig: "N/A",
 			f->bedpath? f->bedpath: "N/A", f->minMQ,
 			f->flag & REQUIRE_DUPLEX ? "True": "False",
 			f->flag & REFUSE_DUPLEX ? "True": "False");
 	fprintf(fp, "##STATS\n##nread:\"%lu\"\n##nskipped:\"%lu\"\n", f->nread, f->nskipped);
-	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\n");
+	fprintf(fp, "#FM\tRead 1 Error\tRead 2 Error\tRead 1 Counts\tRead 1 Errors\tRead 2 Counts\tRead 2 Errors\n");
 	for(k = kh_begin(shared_keys); k != kh_end(shared_keys); ++k) {
 		if(!kh_exist(shared_keys, k)) continue;
-		FM = kh_key(shared_keys, k);
-		fprintf(fp, "%i\t", FM);
+		fprintf(fp, "%i\t", kh_key(shared_keys, k));
 
-		k1 = kh_get(obs, f->hash1, FM);
+		k1 = kh_get(obs, f->hash1, kh_key(shared_keys, k));
 		if(k1 == kh_end(f->hash1)) fprintf(fp, "-nan\t");
 		else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash1, k1).err / kh_val(f->hash1, k1).obs);
 
 		LOG_DEBUG("R1 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash1, k1), kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs);
 
-		k2 = kh_get(obs, f->hash2, FM);
-		if(k2 == kh_end(f->hash2)) fprintf(fp, "-nan\n");
-		else fprintf(fp, "%0.12f\n", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
+		k2 = kh_get(obs, f->hash2, kh_key(shared_keys, k));
+		if(k2 == kh_end(f->hash2)) fprintf(fp, "-nan\t");
+		else fprintf(fp, "%0.12f\t", (double)kh_val(f->hash2, k2).err / kh_val(f->hash2, k2).obs);
 
+		fprintf(fp, "%lu\t%lu\t%lu\t%lu\n",
+				kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs,
+				kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 		LOG_DEBUG("R2 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash2, k2), kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
+
 	}
 	kh_destroy(obs_union, shared_keys);
 }
@@ -274,6 +309,47 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	bam_hdr_destroy(hdr), sam_close(fp);
 }
 
+
+
+cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
+					char *bedpath, char *refcontig, int padding, int minMQ)
+{
+	bam1_t *b = bam_init1();
+	samFile *fp = sam_open_format(fname, "r", open_fmt);
+	bam_hdr_t *hdr = sam_hdr_read(fp);
+	if (!hdr) {
+		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
+	}
+	if(sam_read1(fp, hdr, b) == -1) {
+		LOG_ERROR("Could not read bam record from bam %s. Abort!\n", fname);
+	}
+	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, b->core.l_qseq);
+	int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
+	char *ref = NULL; // Will hold the sequence for a  chromosome
+	if(ce->refcontig) {
+		for(int i = 0; i < hdr->n_targets; ++i) {
+			if(!strcmp(hdr->target_name[i], ce->refcontig)) {
+				tid_to_study = i; break;
+			}
+		}
+		if(tid_to_study < 0) {
+			LOG_ERROR("Contig %s not found in bam header. Abort mission!\n", ce->refcontig);
+		}
+	}
+	uint8_t *seq;
+	uint32_t *cigar;
+	obserr_t *arr;
+	cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr);
+	while(LIKELY((r = sam_read1(fp, hdr, b)) != -1)) {
+		cycle_loop(ce, b, seq, cigar, last_tid, ref, hdr, pos, is_rev, length, i, rc, fc, ind, s, cycle, arr);
+	}
+	LOG_INFO("Total records read: %lu. Total records skipped: %lu.\n", ce->nread, ce->nskipped);
+	cond_free(ref);
+	bam_destroy1(b);
+	bam_hdr_destroy(hdr), sam_close(fp);
+	return ce;
+}
+
 void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
 	if(!f->r1) f->r1 = readerr_init(f->l);
@@ -305,7 +381,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		pdata = bam_aux_get(b, "FP");
 		FM = fdata ? bam_aux2i(fdata): 0;
 		RV = rdata ? bam_aux2i(rdata): 0;
-		if((b->core.flag & 772) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
+		if((b->core.flag & 2820) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
@@ -318,10 +394,6 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		qual = (uint8_t *)bam_get_qual(b);
 		cigar = bam_get_cigar(b);
 #if !NDEBUG
-		assert(FM >= f->minFM);
-		if((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0)) {
-			LOG_ERROR("WTF! RV: %i. FM: %i.", RV, FM);
-		}
 		ifn_abort(cigar);
 		ifn_abort(seq);
 		ifn_abort(qual);
@@ -774,15 +846,52 @@ void fm_destroy(fmerr_t *fm) {
 	cond_free(fm->bedpath);
 	free(fm);
 }
+/*
+typedef struct cycle_err {
+	int32_t flag; //
+	uint32_t rlen;
+	obserr_t *r1;
+	obserr_t *r2;
+	char *refcontig;
+	char *bedpath;
+} cycle_err_t; */
+
+cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen)
+{
+	cycle_err_t *ret = (cycle_err_t *)calloc(1, sizeof(cycle_err_t));
+	if(bedpath && *bedpath) {
+		ret->bed = parse_bed_hash(bedpath, hdr, padding);
+		ret->bedpath = strdup(bedpath);
+	}
+	if(refcontig && *refcontig) {
+		ret->refcontig = strdup(refcontig);
+	}
+	ret->rlen = rlen;
+    ret->r1 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
+    ret->r2 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
+	ret->minMQ = minMQ;
+	return ret;
+}
+
+void cycle_destroy(cycle_err_t *c)
+{
+	if(c->bed) kh_destroy(bed, c->bed), c->bed = NULL;
+	cond_free(c->bedpath);
+	cond_free(c->refcontig);
+	cond_free(c->r1); cond_free(c->r2);
+	free(c);
+}
 
 
-int err_usage(FILE *fp, int retcode) {
-	fprintf(stderr, "bmftools err\nSubcommands: main, fm.\n");
+int err_usage(FILE *fp, int retcode)
+{
+	fprintf(stderr, "bmftools err\nSubcommands: main, fm, cycle.\n");
 	exit(retcode);
 	return retcode; // This neverhappens
 }
 
-int err_main(int argc, char *argv[]) {
+int err_main(int argc, char *argv[])
+{
 	if(argc < 2) return err_usage(stderr, EXIT_FAILURE);
 	if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		return err_usage(stderr, EXIT_SUCCESS);
@@ -790,6 +899,8 @@ int err_main(int argc, char *argv[]) {
 		return err_main_main(argc - 1, argv + 1);
 	if(strcmp(argv[1], "fm") == 0)
 		return err_fm_main(argc - 1, argv + 1);
+	if(strcmp(argv[1], "cycle") == 0)
+		return err_cycle_main(argc - 1, argv + 1);
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
 }
 
@@ -889,8 +1000,7 @@ int err_main_main(int argc, char *argv[])
 	fp = NULL;
 	bam_destroy1(b);
 	if(*refcontig) f->refcontig = strdup(refcontig);
-	bam_hdr_destroy(header);
-	header = NULL;
+	bam_hdr_destroy(header), header = NULL;
 	err_core(argv[optind + 1], fai, f, &open_fmt);
 	LOG_DEBUG("Core finished.\n");
 	fai_destroy(fai);
@@ -910,6 +1020,58 @@ int err_main_main(int argc, char *argv[])
 	if(!global_fp) global_fp = stdout;
 	write_global_rates(global_fp, f); fclose(global_fp);
 	fullerr_destroy(f);
+	return EXIT_SUCCESS;
+}
+
+int err_cycle_main(int argc, char *argv[])
+{
+	htsFormat open_fmt;
+	memset(&open_fmt, 0, sizeof(htsFormat));
+	open_fmt.category = sequence_data;
+	open_fmt.format = bam;
+	open_fmt.version.major = 1;
+	open_fmt.version.minor = 3;
+	char outpath[500] = "";
+
+	if(argc < 2) return err_cycle_usage(stderr, EXIT_FAILURE);
+
+	if(strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) return err_cycle_usage(stderr, EXIT_SUCCESS);
+
+
+
+	FILE *ofp = NULL;
+	char refcontig[200] = "";
+	char *bedpath = NULL;
+	int padding = -1, minMQ = 0, c;
+	while ((c = getopt(argc, argv, "p:b:r:o:a:h?")) >= 0) {
+		switch (c) {
+		case 'a': minMQ = atoi(optarg); break;
+		case 'o': strcpy(outpath, optarg); break;
+		case 'r': strcpy(refcontig, optarg); break;
+		case 'b': bedpath = strdup(optarg); break;
+		case 'p': padding = atoi(optarg); break;
+		case '?': case 'h': return err_cycle_usage(stderr, EXIT_SUCCESS);
+		}
+	}
+
+	if(padding < 0) {
+		LOG_INFO("Padding not set. Setting to default value %i.\n", DEFAULT_PADDING);
+	}
+
+	if(!*outpath) {
+		LOG_ERROR("Required -o parameter unset. Abort!\n");
+	}
+	ofp = open_ofp(outpath);
+
+	if (argc != optind+2)
+		return err_cycle_usage(stderr, EXIT_FAILURE);
+
+	faidx_t *fai = fai_load(argv[optind]);
+
+	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ);
+	err_cycle_report(ofp, ce); fclose(ofp);
+	cycle_destroy(ce);
+	fai_destroy(fai);
 	return EXIT_SUCCESS;
 }
 
