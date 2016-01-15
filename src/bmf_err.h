@@ -59,10 +59,11 @@ typedef struct cycle_err {
 	uint64_t nread;
 	char *refcontig;
 	char *bedpath;
+	int flag;
 	khash_t(bed) *bed; // parsed-in bed file hashmap. See dlib/bed_util.[ch] (http://github.com/NoSeatbelts/dlib).
 } cycle_err_t;
 
-cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen);
+cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag);
 void cycle_destroy(cycle_err_t *c);
 
 KHASH_MAP_INIT_INT(obs, obserr_t)
@@ -130,9 +131,10 @@ static const int bamseq2i[] = {-1, 0, 1, -1, 2, -1, -1, -1, 3};
 		if(++ce->nread % 1000000 == 0) {\
 			LOG_INFO("Records read: %lu.\n", ce->nread);\
 		}\
-		if((b->core.flag & 2820) || \
+		if((b->core.flag & 772) || \
 			b->core.qual < ce->minMQ || \
-			(ce->refcontig && tid_to_study != b->core.tid) || \
+			(ce->refcontig && tid_to_study != b->core.tid) ||\
+			((ce->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) ||\
 		(ce->bed && bed_test(b, ce->bed) == 0) /* Outside of region */) {\
 			++ce->nskipped;\
 			LOG_DEBUG("Skipped record with name %s.\n", bam_get_qname(b));\

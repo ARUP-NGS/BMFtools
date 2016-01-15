@@ -1,7 +1,7 @@
 #include "bmf_err.h"
 
 
-#define min_obs 1000uL
+#define min_obs 10000uL
 
 int err_main_main(int argc, char *argv[]);
 int err_fm_main(int argc, char *argv[]);
@@ -26,6 +26,7 @@ int err_main_usage(FILE *fp, int retcode)
 			"-M:\t\tMaximum family size for inclusion. Default: %i.\n"
 			"-d:\t\tFlag to only calculate error rates for duplex reads.\n"
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
+			"-P:\t\tOnly include proper pairs.\n"
 			, INT_MAX);
 	exit(retcode);
 	return retcode;
@@ -62,6 +63,7 @@ int err_cycle_usage(FILE *fp, int retcode)
 			"-r:\t\tName of contig. If set, only reads aligned to this contig are considered\n"
 			"-b:\t\tPath to bed file for restricting analysis.\n"
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
+			"-P:\t\tOnly include proper pairs.\n"
 			);
 	exit(retcode);
 	return retcode; // This never happens.
@@ -308,7 +310,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 
 
 cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
-					char *bedpath, char *refcontig, int padding, int minMQ)
+							char *bedpath, char *refcontig, int padding, int minMQ, int flag)
 {
 	bam1_t *b = bam_init1();
 	samFile *fp = sam_open_format(fname, "r", open_fmt);
@@ -320,7 +322,7 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 		LOG_ERROR("Could not read bam record from bam %s. Abort!\n", fname);
 	}
 	const int32_t rlen = b->core.l_qseq;
-	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen);
+	cycle_err_t *ce = cycle_init(bedpath, hdr, refcontig, padding, minMQ, rlen, flag);
 	int32_t is_rev, ind, s, i, fc, rc, r, reflen, length, cycle, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(ce->refcontig) {
@@ -381,6 +383,7 @@ void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		if((b->core.flag & 772) || b->core.qual < f->minMQ || (f->refcontig && tid_to_study != b->core.tid) ||
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of region
 			(FM < f->minFM) || (FM > f->maxFM) || // minFM 
+			((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // skip improper pairs
 			((f->flag & REQUIRE_DUPLEX) ? (RV == FM || RV == 0): ((f->flag & REFUSE_DUPLEX) && (RV != FM && RV != 0))) || // Requires 
 			(pdata && bam_aux2i(pdata) == 0) /* Fails barcode QC */) {
 				++f->nskipped;
@@ -850,7 +853,7 @@ typedef struct cycle_err {
 	char *bedpath;
 } cycle_err_t; */
 
-cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen)
+cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag)
 {
 	cycle_err_t *ret = (cycle_err_t *)calloc(1, sizeof(cycle_err_t));
 	if(bedpath && *bedpath) {
@@ -864,6 +867,7 @@ cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padd
 	ret->r1 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
 	ret->r2 = (obserr_t *)calloc(rlen, sizeof(obserr_t));
 	ret->minMQ = minMQ;
+	ret->flag = flag;
 	return ret;
 }
 
@@ -938,11 +942,12 @@ int err_main_main(int argc, char *argv[])
 	int maxFM = INT_MAX;
 	int flag = 0;
 	uint32_t minPV = 0;
-	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?dD")) >= 0) {
+	while ((c = getopt(argc, argv, "a:p:b:r:c:n:f:3:o:g:m:M:$:h?dDp")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
 		case 'D': flag |= REFUSE_DUPLEX; break;
+		case 'P': flag |= REQUIRE_PROPER; break;
 		case 'm': minFM = atoi(optarg); break;
 		case 'M': maxFM = atoi(optarg); break;
 		case 'f': df = open_ofp(optarg); break;
@@ -1036,14 +1041,15 @@ int err_cycle_main(int argc, char *argv[])
 	FILE *ofp = NULL;
 	char refcontig[200] = "";
 	char *bedpath = NULL;
-	int padding = -1, minMQ = 0, c;
-	while ((c = getopt(argc, argv, "p:b:r:o:a:h?")) >= 0) {
+	int padding = -1, minMQ = 0, flag = 0, c;
+	while ((c = getopt(argc, argv, "p:b:r:o:a:h?P")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'o': strcpy(outpath, optarg); break;
 		case 'r': strcpy(refcontig, optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
+		case 'P': flag |= REQUIRE_PROPER; break;
 		case '?': case 'h': return err_cycle_usage(stderr, EXIT_SUCCESS);
 		}
 	}
@@ -1062,7 +1068,7 @@ int err_cycle_main(int argc, char *argv[])
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ);
+	cycle_err_t *ce = err_cycle_core(argv[optind + 1], fai, &open_fmt, bedpath, refcontig, padding, minMQ, flag);
 	err_cycle_report(ofp, ce); fclose(ofp);
 	cycle_destroy(ce);
 	fai_destroy(fai);
