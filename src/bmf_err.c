@@ -44,6 +44,7 @@ int err_fm_usage(FILE *fp, int retcode)
 			"-b:\t\tPath to bed file for restricting analysis.\n"
 			"-d:\t\tFlag to only calculate error rates for duplex reads.\n"
 			"-p:\t\tSet padding for bed region. Default: 50.\n"
+			"-P:\t\tOnly include proper pairs.\n"
 			);
 	exit(retcode);
 	return retcode; // This never happens.
@@ -210,7 +211,7 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 	if (!hdr) {
 		LOG_ERROR("Failed to read input header from bam %s. Abort!\n", fname);
 	}
-	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FM, RV, reflen, length, pos, tid_to_study = -1, last_tid = -1;
+	int32_t is_rev, ind, s, i, fc, rc, r, khr, DR, FM, reflen, length, pos, tid_to_study = -1, last_tid = -1;
 	char *ref = NULL; // Will hold the sequence for a  chromosome
 	if(f->refcontig) {
 		for(int i = 0; i < hdr->n_targets; ++i) {
@@ -234,9 +235,10 @@ void err_fm_core(char *fname, faidx_t *fai, fmerr_t *f, htsFormat *open_fmt)
 		pv_array = (uint32_t *)array_tag(b, "PV");
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		DR = bam_aux2i(bam_aux_get(b, "DR"));
-		if((b->core.flag & 772) || // UNMAPPED, SECONDARY, SUPPLEMENTARY, QCFAIL
+		if((b->core.flag & 772) || // UNMAPPED, SECONDARY, QCFAIL
 				b->core.qual < f->minMQ || //  minMQ
 				(f->refcontig && tid_to_study != b->core.tid) ||
+				((f->flag & REQUIRE_PROPER) && (!(b->core.flag & BAM_FPROPER_PAIR))) || // improper pair
 			(f->bed && bed_test(b, f->bed) == 0) || // Outside of  region
 			((f->flag & REQUIRE_DUPLEX) && !DR) || // Requires  duplex
 			((f->flag & REFUSE_DUPLEX) && DR) || // Refuses  duplex
@@ -530,13 +532,12 @@ void err_core_se(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 		ifn_abort(qual);
 #endif
 
-		if(UNLIKELY(++f->nread % 1000000 == 0)) fprintf(stderr, "[%s] Records read: %lu.\n", __func__, f->nread);
-#if !NDEBUG
-		assert(b->core.tid >= 0);
-#endif
+		if(UNLIKELY(++f->nread % 1000000 == 0)) {
+			LOG_INFO("Records read: %lu.\n", f->nread);
+		}
 		if(b->core.tid != last_tid) {
 			cond_free(ref);
-			fprintf(stderr, "[%s] Loading ref sequence for contig with name %s.\n", __func__, hdr->target_name[b->core.tid]);
+			LOG_INFO("Loading ref sequence for contig with name %s.\n", hdr->target_name[b->core.tid]);
 			ref = fai_fetch(fai, hdr->target_name[b->core.tid], &len);
 			last_tid = b->core.tid;
 		}
@@ -621,9 +622,7 @@ void write_base_rates(FILE *fp, fullerr_t *f)
 		int i;
 		fprintf(fp, "%lu\t", l + 1);
 		for(i = 0; i < 4; ++i) {
-#if !NDEBUG
 			LOG_DEBUG("obs: %lu. err: %lu.\n", f->r1->qerr[i][l], f->r1->qobs[i][l]);
-#endif
 			fprintf(fp, i ? "\t%0.12f": "%0.12f", (double)f->r1->qerr[i][l] / f->r1->qobs[i][l]);
 		}
 		fputc('|', fp);
@@ -1094,7 +1093,7 @@ int err_fm_main(int argc, char *argv[])
 	char *bedpath = NULL;
 	int flag = 0, padding = -1, minMQ = 0, c;
 	uint32_t minPV;
-	while ((c = getopt(argc, argv, "$:p:b:r:o:a:h?d")) >= 0) {
+	while ((c = getopt(argc, argv, "$:p:b:r:o:a:h?dP")) >= 0) {
 		switch (c) {
 		case 'a': minMQ = atoi(optarg); break;
 		case 'd': flag |= REQUIRE_DUPLEX; break;
@@ -1102,6 +1101,7 @@ int err_fm_main(int argc, char *argv[])
 		case 'r': strcpy(refcontig, optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'p': padding = atoi(optarg); break;
+		case 'P': flag |= REQUIRE_PROPER; break;
 		case '$': minPV = strtoul(optarg, NULL, 0); break;
 		case '?': case 'h': return err_fm_usage(stderr, EXIT_SUCCESS);
 		}

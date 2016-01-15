@@ -86,7 +86,8 @@ void fm_destroy(fmerr_t *fm);
 
 enum err_flags {
 	REQUIRE_DUPLEX = 1,
-	REFUSE_DUPLEX = 2
+	REFUSE_DUPLEX = 2,
+	REQUIRE_PROPER = 4
 };
 
 fullerr_t *fullerr_init(size_t l, char *bedpath, bam_hdr_t *hdr,
