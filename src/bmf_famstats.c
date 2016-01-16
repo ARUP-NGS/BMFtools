@@ -10,19 +10,37 @@ int frac_usage_exit(FILE *fp, int code) {
 	return code; // This never happens
 }
 
+typedef struct {
+	uint64_t n; // Number of times observed
+	uint64_t fm; // Number of times observed
+} fm_t;
+
+int fm_cmp(const void *fm1, const void *fm2)
+{
+	return ((fm_t *)fm1)->fm - ((fm_t *)fm2)->fm;
+}
+
 
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
+	fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * stats->fm->n_occupied);
+	int i = 0;
 	fprintf(fp, "#Family size\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
 		if(!kh_exist(stats->fm, stats->ki)) continue;
-		fprintf(fp, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->fm, stats->ki), kh_val(stats->fm, stats->ki));
+		fms[i++] = (fm_t){.fm = kh_key(stats->fm, stats->ki), .n = kh_val(stats->fm, stats->ki)};
 	}
+	qsort(fms, stats->fm->n_occupied, sizeof(fm_t), fm_cmp);
+	for(i = 0; i < stats->fm->n_occupied; ++i) fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+	fms = (fm_t *)realloc(fms, sizeof(fm_t) * stats->rc->n_occupied);
 	fprintf(fp, "#RV'd in family\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
 		if(!kh_exist(stats->rc, stats->ki)) continue;
-		fprintf(fp, "%"PRIu64"\t%"PRIu64"\n", kh_key(stats->rc, stats->ki), kh_val(stats->rc, stats->ki));
+		fms[i++] = (fm_t){.fm = kh_key(stats->rc, stats->ki), .n = kh_val(stats->rc, stats->ki)};
 	}
+	qsort(fms, stats->rc->n_occupied, sizeof(fm_t), fm_cmp);
+	for(i = 0; i < stats->rc->n_occupied; ++i) fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
+	free(fms);
 }
 
 
