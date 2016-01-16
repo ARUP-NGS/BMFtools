@@ -23,7 +23,7 @@ int fm_cmp(const void *fm1, const void *fm2)
 
 static void print_hashstats(famstats_t *stats, FILE *fp)
 {
-	fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * stats->fm->n_occupied);
+	fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * MAX2(stats->fm->n_occupied, stats->rc->n_occupied));
 	int i = 0;
 	fprintf(fp, "#Family size\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->fm); stats->ki != kh_end(stats->fm); ++stats->ki) {
@@ -32,7 +32,6 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 	}
 	qsort(fms, stats->fm->n_occupied, sizeof(fm_t), fm_cmp);
 	for(i = 0; i < stats->fm->n_occupied; ++i) fprintf(fp, "%lu\t%lu\n", fms[i].fm, fms[i].n);
-	fms = (fm_t *)realloc(fms, sizeof(fm_t) * stats->rc->n_occupied);
 	fprintf(fp, "#RV'd in family\tNumber of families\n");
 	for(stats->ki = kh_begin(stats->rc); stats->ki != kh_end(stats->rc); ++stats->ki) {
 		if(!kh_exist(stats->rc, stats->ki)) continue;
