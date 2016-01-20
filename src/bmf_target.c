@@ -17,9 +17,6 @@ int target_usage(FILE *fp, int retcode)
 int target_main(int argc, char *argv[])
 {
 	samFile *fp;
-#if !NDEBUG
-	samFile *ofp = sam_open("on_target.bam", "wb");
-#endif
 	bam_hdr_t *header;
 	int c;
 	khash_t(bed) *bed = NULL;
