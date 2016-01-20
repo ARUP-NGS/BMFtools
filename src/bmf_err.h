@@ -11,8 +11,6 @@
 #include "dlib/logging_util.h"
 #include "lib/kingfisher.h"
 
-#define DEFAULT_PADDING 50
-
 
 typedef struct readerr {
 	uint64_t ***obs;

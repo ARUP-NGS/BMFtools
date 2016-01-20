@@ -35,9 +35,6 @@ static void print_hashstats(famstats_t *stats, FILE *fp)
 {
 	size_t size = MAX2(stats->fm->n_occupied, stats->rc->n_occupied);
 	fm_t *fms = (fm_t *)malloc(sizeof(fm_t) * size);
-	if(get_nbins(stats->fm) != stats->fm->n_occupied) {
-		LOG_ERROR("WHY DON'T THESE ADD UP? %i, %u.\n", get_nbins(stats->fm), stats->fm->n_occupied);
-	}
 	int i;
 	fprintf(fp, "#Family size\tNumber of families\n");
 	LOG_DEBUG("Copy FMs over into fm_t array. Size: %lu. fm size: %u. rc size: %u.\n", size, stats->fm->n_occupied, stats->rc->n_occupied);
