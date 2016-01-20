@@ -6,7 +6,7 @@
 CC=gcc
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 FLAGS= -Wall -fopenmp -DVERSION=\"$(GIT_VERSION)\" -std=gnu99
-LD= -lm -lz
+LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
 INSTALL=/usr/bin/install -c
@@ -60,8 +60,8 @@ bmftools_p: $(P_OBJS) libhts.a
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 
-tests: $(TEST_OBJS) dlib/bed_util.o
-	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) dlib/bed_util.o test/target_test.o libhts.a -o ./target_test && ./target_test
+tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o
+	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.c libhts.a -o ./target_test && ./target_test
 
 
 
@@ -75,4 +75,4 @@ mostly_clean:
 	rm -f *.dbo && rm -f bmftools* && rm -f src/*.dbo && rm -f dlib/*.dbo && \
 		rm -f include/*.dbo && rm -f lib/*.dbo && \
 	rm -f *.po && rm -f bmftools* && rm -f src/*.po && rm -f dlib/*.po && \
-		rm -f include/*.po && rm -f lib/*.po
+		rm -f include/*.po && rm -f lib/*.po && rm -f test/*o
