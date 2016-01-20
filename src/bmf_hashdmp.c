@@ -1,5 +1,9 @@
 #include "bmf_hashdmp.h"
 
+#ifndef ifn_stream
+#define ifn_stream(fname) ((fname) ? (fname): "stream")
+#endif
+
 void print_hash_dmp_usage(char *arg) {
 	fprintf(stderr, "Usage: %s -o <output_filename> <input_filename>.\n"
 			"Flags:\n"
@@ -107,7 +111,7 @@ void hash_dmp_core(char *infname, char *outfname)
 			HASH_ADD_STR(hash, id, tmp_hk);
 		} else pushback_kseq(tmp_hk->value, seq, blen);
 	}
-	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, outfname);
+	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {
 		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
 		destroy_kf(current_entry->value);
@@ -125,8 +129,8 @@ void hash_dmp_core(char *infname, char *outfname)
 
 void stranded_hash_dmp_core(char *infname, char *outfname)
 {
-	FILE *in_handle = (infname[0] == '-' || !infname) ? stdin: fopen(infname, "r");
-	FILE *out_handle = (!outfname || *outfname == '-') ? stdout: fopen(outfname, "w");
+	FILE *in_handle = open_ifp(infname);
+	FILE *out_handle = open_ofp(outfname);
 	if(!in_handle) {
 		fprintf(stderr, "[E:%s] Could not open %s for reading. Abort mission!\n", __func__, infname);
 		exit(EXIT_FAILURE);
@@ -138,13 +142,11 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 	if(l < 0) {
 		fprintf(stderr, "[%s]: Could not open fastq file (%s). Abort mission!\n",
 				__func__, strcmp(infname, "-") == 0 ? "stdin": infname);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	char *bs_ptr = barcode_mem_view(seq);
 	int blen = infer_barcode_length(bs_ptr);
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Barcode length (inferred): %i.\n", __func__, blen);
-#endif
+	LOG_DEBUG("Barcode length (inferred): %i. First barcode: %s.\n", blen, bs_ptr);
 	tmpvars_t *tmp = init_tmpvars_p(bs_ptr, blen, seq->seq.l);
 	memcpy(tmp->key, bs_ptr, blen);
 	tmp->key[blen] = '\0';
@@ -166,18 +168,13 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		pushback_kseq(hrev->value, seq, blen);
 	}
 
-	uint64_t count = 0;
-#if !NDEBUG
-	uint64_t fcount = 0, rcount = 0;
-#endif
+	uint64_t count = 0, fcount = 0;
 	while(LIKELY((l = kseq_read(seq)) >= 0)) {
 		if(UNLIKELY(++count % 1000000 == 0))
 			fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
 					*infname == '-' ? "stdin" : infname, count);
 		if(seq->comment.s[HASH_DMP_OFFSET] == 'F') {
-#if !NDEBUG
 			++fcount;
-#endif
 			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
 			HASH_FIND_STR(hfor, tmp->key, tmp_hkf);
 			if(!tmp_hkf) {
@@ -188,9 +185,6 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 				HASH_ADD_STR(hfor, id, tmp_hkf);
 			} else pushback_kseq(tmp_hkf->value, seq, blen);
 		} else {
-#if !NDEBUG
-			++rcount;
-#endif
 			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
 			HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
 			if(!tmp_hkr) {
@@ -202,10 +196,10 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 			} else pushback_kseq(tmp_hkr->value, seq, blen);
 		}
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Number of reverse reads: %lu. Number of forward reads: %lu.\n", __func__, rcount, fcount);
-#endif
-	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, outfname);
+	uint64_t rcount = count - fcount;
+	LOG_INFO("Number of reverse reads: %lu. Number of forward reads: %lu.\n", rcount, fcount);
+
+	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
@@ -228,9 +222,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		HASH_DEL(hrev, crev);
 		cond_free(crev);
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Cleaning up.\n", __func__);
-#endif
+	LOG_DEBUG("Cleaning up.\n");
 	gzclose(fp);
 	fclose(in_handle), fclose(out_handle);
 	kseq_destroy(seq);

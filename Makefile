@@ -60,8 +60,9 @@ bmftools_p: $(P_OBJS) libhts.a
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 
-tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o
+tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o bmftools bmftools_db bmftools_p
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.c libhts.a -o ./target_test && ./target_test
+	cd test/dmp && python hashdmp_test.py && cd ../..
 
 
 

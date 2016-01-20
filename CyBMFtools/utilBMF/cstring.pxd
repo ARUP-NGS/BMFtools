@@ -2,6 +2,7 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport strcmp, memcpy
 from libc.stdint cimport *
 from cpython.string cimport PyString_AsString
+from libc.stdlib cimport EXIT_FAILURE, qsort
 cimport cython
 from cython cimport view
 from numpy cimport ndarray, npy_intp, int64_t, uint8_t
