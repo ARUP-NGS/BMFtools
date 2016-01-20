@@ -349,7 +349,7 @@ cycle_err_t *err_cycle_core(char *fname, faidx_t *fai, htsFormat *open_fmt,
 	return ce;
 }
 
-void err_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
+void err_main_core(char *fname, faidx_t *fai, fullerr_t *f, htsFormat *open_fmt)
 {
 	if(!f->r1) f->r1 = readerr_init(f->l);
 	if(!f->r2) f->r2 = readerr_init(f->l);
@@ -728,7 +728,6 @@ void fill_sufficient_obs(fullerr_t *f)
 
 void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 {
-	const char *const bstr = "ACGT";
 	FILE *dictwrite = fopen("dict.txt", "w");
 	fprintf(dictwrite, "{\n\t");
 	int i, j;
@@ -736,13 +735,13 @@ void write_counts(fullerr_t *f, FILE *cp, FILE *ep)
 	for(l = 0; l < f->l; ++l) {
 		for(j = 0; j < nqscores; ++j) {
 			for(i = 0; i < 4; ++i) {
-				fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->obs[i][j][l]);
-				fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->obs[i][j][l]);
-				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r1->err[i][j][l]);
+				fprintf(dictwrite, "'r1,%c,%i,%u,obs': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->obs[i][j][l]);
+				fprintf(dictwrite, "'r2,%c,%i,%u,obs': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->obs[i][j][l]);
+				fprintf(dictwrite, "'r1,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r1->err[i][j][l]);
 				if(i == 3 && j == nqscores - 1 && l == f->l - 1)
-					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
+					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu\n}", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
 				else
-					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", bstr[i], j + 2, l + 1, f->r2->err[i][j][l]);
+					fprintf(dictwrite, "'r2,%c,%i,%u,err': %lu,\n\t", NUM2NUC_STR[i], j + 2, l + 1, f->r2->err[i][j][l]);
 				fprintf(cp, i ? ":%lu": "%lu", f->r1->obs[i][j][l]);
 				fprintf(ep, i ? ":%lu": "%lu", f->r1->err[i][j][l]);
 			}
@@ -975,21 +974,16 @@ int err_main_main(int argc, char *argv[])
 
 	faidx_t *fai = fai_load(argv[optind]);
 
-	fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
-	if (fp == NULL) {
+	if ((fp = sam_open_format(argv[optind + 1], "r", &open_fmt)) == NULL) {
 		LOG_ERROR("Cannot open input file \"%s\"", argv[optind]);
 	}
-
-	check_bam_tag_exit(argv[optind + 1], "FM");
-	check_bam_tag_exit(argv[optind + 1], "RV");
-	check_bam_tag_exit(argv[optind + 1], "PV");
-	check_bam_tag_exit(argv[optind + 1], "FA");
-	check_bam_tag_exit(argv[optind + 1], "FP");
-
-	header = sam_hdr_read(fp);
-	if (header == NULL) {
+	if ((header = sam_hdr_read(fp)) == NULL) {
 		LOG_ERROR("Failed to read header for \"%s\"", argv[optind]);
 	}
+
+	if(minPV) check_bam_tag_exit(argv[optind + 1], "PV");
+	if(minFM || maxFM != INT_MAX) check_bam_tag_exit(argv[optind + 1], "FM");
+
 	// Get read length from the first read
 	bam1_t *b = bam_init1();
 	c = sam_read1(fp, header, b);
@@ -1000,7 +994,7 @@ int err_main_main(int argc, char *argv[])
 	bam_destroy1(b);
 	if(*refcontig) f->refcontig = strdup(refcontig);
 	bam_hdr_destroy(header), header = NULL;
-	err_core(argv[optind + 1], fai, f, &open_fmt);
+	err_main_core(argv[optind + 1], fai, f, &open_fmt);
 	LOG_DEBUG("Core finished.\n");
 	fai_destroy(fai);
 	fill_qvals(f);
