@@ -7,7 +7,7 @@ int target_usage(FILE *fp, int retcode)
 	fprintf(fp, "Usage: bmftools target -b <path.to.bed> <in.bam> \n"
 			"Optional arguments:\n"
 			"-m\tSet minimum mapping quality for inclusion.\n"
-			"-p\tSet padding - number of bases around target region to consider as on-target. Default: 25.\n"
+			"-p\tSet padding - number of bases around target region to consider as on-target. Default: 0.\n"
 			"-n\tSet notification interval - number of reads between logging statements. Default: 1000000.\n");
 	exit(retcode);
 	return retcode; // This never happens.
@@ -45,8 +45,8 @@ int target_main(int argc, char *argv[])
 
 
 	if(padding == (uint32_t)-1) {
-		padding = 25;
-		LOG_INFO("Padding not set. Setting to default (%u).\n", DEFAULT_PADDING);
+		padding = DEFAULT_PADDING;
+		LOG_INFO("Padding not set. Setting to default (%u).\n", padding);
 	}
 
 	if (argc != optind+1)

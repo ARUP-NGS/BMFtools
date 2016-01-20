@@ -25,13 +25,17 @@ SOURCES = htslib/sam.c include/sam_opts.c src/bmf_dmp.c include/igamc_cephes.c s
 		  lib/kingfisher.c dlib/bam_util.c src/bmf_mark_unclipped.c src/bmf_cap.c lib/mseq.c lib/splitter.c \
 		  src/bmf_main.c src/bmf_target.c
 
+TEST_SOURCES = test/target_test.c
+
+TEST_OBJS = $(TEST_SOURCES:.c=.o)
+
 P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
 .PHONY: all clean install
 
-all: libhts.a bmftools bmftools_db bmftools_p
+all: libhts.a tests bmftools bmftools_db bmftools_p
 
 install: all
 	$(INSTALL) bmftools $(bindir)/$(binprefix)bmftools
@@ -55,6 +59,10 @@ bmftools_p: $(P_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
+
+tests: $(TEST_OBJS) dlib/bed_util.o
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) dlib/bed_util.o test/target_test.o libhts.a -o ./target_test && ./target_test
+
 
 
 clean:

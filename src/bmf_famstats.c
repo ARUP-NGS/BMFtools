@@ -71,15 +71,6 @@ int famstats_target_usage_exit(FILE *fp, int success)
 	return success;
 }
 
-static inline void target_loop(bam1_t *b, khash_t(bed) *bed, uint64_t *fm_target, uint64_t *total_fm)
-{
-	if(!bam_aux2i(bam_aux_get(b, "FP"))) return;
-	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
-	*total_fm += FM;
-	if(bed_test(b, bed))
-		*fm_target += FM;
-}
-
 
 int famstats_target_main(int argc, char *argv[])
 {
@@ -114,8 +105,8 @@ int famstats_target_main(int argc, char *argv[])
 
 
 	if(padding == (uint32_t)-1) {
-		padding = 25;
-		LOG_INFO("Padding not set. Set to 25.\n");
+		padding = DEFAULT_PADDING;
+		LOG_INFO("Padding not set. Set to default value (%u).\n", DEFAULT_PADDING);
 	}
 
 	if (argc != optind+1)
@@ -138,8 +129,12 @@ int famstats_target_main(int argc, char *argv[])
 	bed = parse_bed_hash(bedpath, header, padding);
 	uint64_t fm_target = 0, total_fm = 0, count = 0;
 	bam1_t *b = bam_init1();
+	int FM;
 	while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
-		target_loop(b, bed, &fm_target, &total_fm);
+		if((b->core.flag & 2820) || bam_aux2i(bam_aux_get(b, "FP")) == 0) continue;
+		FM = bam_aux2i(bam_aux_get(b, "FM"));
+		total_fm += FM;
+		if(bed_test(b, bed)) fm_target += FM;
 		if(UNLIKELY(++count % notification_interval == 0)) {
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		}
