@@ -61,6 +61,16 @@ int hash_dmp_main(int argc, char *argv[])
 	return 0;
 }
 
+void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_handle, tmpvars_t *tmp)
+{
+	HASH_ITER(hh, hash, current_entry, tmp_hk) {
+		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
+		destroy_kf(current_entry->value);
+		HASH_DEL(hash, current_entry);
+		free(current_entry);
+	}
+}
+
 
 void hash_dmp_core(char *infname, char *outfname)
 {
@@ -112,15 +122,7 @@ void hash_dmp_core(char *infname, char *outfname)
 		} else pushback_kseq(tmp_hk->value, seq, blen);
 	}
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(infname));
-	HASH_ITER(hh, hash, current_entry, tmp_hk) {
-		dmp_process_write(current_entry->value, out_handle, tmp->buffers, 0);
-		destroy_kf(current_entry->value);
-		HASH_DEL(hash, current_entry);
-		free(current_entry);
-	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s::%s] Cleaning up.\n", __func__, outfname);
-#endif
+	se_hash_process(hash, current_entry, tmp_hk, out_handle, tmp);
 	gzclose(fp);
 	fclose(out_handle);
 	kseq_destroy(seq);
@@ -215,13 +217,7 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
 		cond_free(crev); cond_free(cfor);
 	}
-	// Handle the barcodes in reverse not in forward
-	HASH_ITER(hh, hrev, crev, tmp_hkr) {
-		dmp_process_write(crev->value, out_handle, tmp->buffers, 1); // Only reverse strand found
-		destroy_kf(crev->value);
-		HASH_DEL(hrev, crev);
-		cond_free(crev);
-	}
+	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp);
 	LOG_DEBUG("Cleaning up.\n");
 	gzclose(fp);
 	fclose(in_handle), fclose(out_handle);
