@@ -473,12 +473,9 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 		}
 	}
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Cleaning up.\n", __func__);
-#endif
-	for(int i = 0; i < splitter->n_handles; ++i) {
-		fclose(splitter->tmp_out_handles_r1[i]); fclose(splitter->tmp_out_handles_r2[i]);
-	}
+	LOG_DEBUG("Cleaning up.\n");
+	for(l1 = 0; l1 < splitter->n_handles; ++l1)
+		fclose(splitter->tmp_out_handles_r1[l1]), fclose(splitter->tmp_out_handles_r2[l1]);
 	tm_destroy(tmp);
 	mseq_destroy(rseq1), mseq_destroy(rseq2);
 	kseq_destroy(seq1), kseq_destroy(seq2);
