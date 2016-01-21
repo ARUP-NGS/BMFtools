@@ -1,5 +1,5 @@
-#ifndef CAP_QSCORE_H
-#define CAP_QSCORE_H
+#ifndef BMF_CAP_H
+#define BMF_CAP_H
 #include "dlib/bam_util.h"
 
 int cap_qscore_main(int argc, char *argv[]);
@@ -52,4 +52,4 @@ static inline int cap_bam_q(bam1_t *b, cap_settings *settings) {
 	return 0;
 }
 
-#endif /* CAP_QSCORE_H */
+#endif /* BMF_CAP_H */

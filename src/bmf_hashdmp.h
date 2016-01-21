@@ -1,5 +1,5 @@
-#ifndef KHASH_DMP_CORE_H
-#define KHASH_DMP_CORE_H
+#ifndef BMF_HASHDMP_H
+#define BMF_HASHDMP_H
 #include <assert.h>
 #include "include/uthash.h"
 #include "lib/kingfisher.h"
@@ -73,4 +73,4 @@ static inline void tmpvars_destroy(tmpvars_t *tmp)
 
 
 
-#endif // KHASH_DMP_CORE_H
+#endif /* BMF_HASHDMP_H */

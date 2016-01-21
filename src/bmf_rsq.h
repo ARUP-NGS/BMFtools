@@ -1,5 +1,5 @@
-#ifndef BAM_PR_H
-#define BAM_PR_H
+#ifndef BMF_RSQ_H
+#define BMF_RSQ_H
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -124,4 +124,4 @@ void write_stack(tmp_stack_t *stack, pr_settings_t *settings);
 
 
 
-#endif /* BAM_PR_H */
+#endif /* BMF_RSQ_H */

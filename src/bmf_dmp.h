@@ -1,5 +1,5 @@
-#ifndef CRMS_H
-#define CRMS_H
+#ifndef BMF_DMP_H
+#define BMF_DMP_H
 
 #include <assert.h>
 #include <getopt.h>
@@ -117,7 +117,7 @@ CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, markspli
 	for(int i = settings_ptr->blen1_2 + settings_ptr->offset; i <= settings_ptr->max_blen; ++i) {
 		if(memcmp(seq1->seq.s + i, settings_ptr->homing_sequence, settings_ptr->homing_sequence_length) == 0) {
 #if !NDEBUG
-			fprintf(stderr, "Homing sequence (%s) found at 0-based index %i (%s).\n", settings_ptr->homing_sequence, i, seq1->seq.s + i);
+			//fprintf(stderr, "Homing sequence (%s) found at 0-based index %i (%s).\n", settings_ptr->homing_sequence, i, seq1->seq.s + i);
 #endif
 			*pass_fail = 1;
 			return i + settings_ptr->homing_sequence_length;
@@ -127,4 +127,4 @@ CONST static inline int nlen_homing_default(kseq_t *seq1, kseq_t *seq2, markspli
 	return default_len;
 }
 
-#endif
+#endif /* BMF_DMP_H */
