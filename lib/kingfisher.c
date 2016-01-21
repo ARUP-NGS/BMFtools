@@ -5,7 +5,7 @@
 		bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[index]))));\
 		bufs->agrees[i] = kfp->nuc_counts[index];\
 		diffcount -= bufs->agrees[i];\
-		if(bufs->cons_quals[i] != 'N') diffcount -= kfp->nuc_counts[i * 5 + 4];\
+		if(argmaxret != 4) diffcount -= kfp->nuc_counts[i * 5 + 4];\
 		if(bufs->cons_quals[i] <= 2) {\
 			bufs->cons_quals[i] = 2;\
 			bufs->cons_seq_buffer[i] = 'N';\
