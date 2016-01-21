@@ -27,20 +27,17 @@ def main():
         subprocess.check_call(shlex.split(cstr))
         fqh  = pysam.FastqFile("hashdmp_test.out")
         r1 = fqh.next()
-        tags1 = get_tags(r1)
-        assert tags1["FM"] == 7
-        assert round(tags1["NF"], 2) == 0.14
-        assert tags1["RV"] == 2
-        assert tags1["DR"]
+        tags = get_tags(r1)
+        assert tags["FM"] == 7
+        assert round(tags["NF"], 2) == 0.14
+        assert tags["RV"] == 2
+        assert tags["DR"]
         assert len(r1.name) == 16
         r1 = fqh.next()
-        tags1 = get_tags(r1)
-        assert tags1["FM"] == 1
-        try:
-            assert tags1["FP"] == 0
-        except AssertionError:
-            print(str(r1))
-            raise AssertionError
+        tags = get_tags(r1)
+        assert tags["FM"] == 1
+        assert tags["FP"] == 0
+        assert tags["DR"] == 0
 
 
 
