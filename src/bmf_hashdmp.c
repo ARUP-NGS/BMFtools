@@ -80,6 +80,35 @@ void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t
 	}
 }
 
+void duplex_hash_fill(kseq_t *seq, hk_t *hfor, hk_t *tmp_hkf, hk_t *hrev, hk_t *tmp_hkr, char *infname, uint64_t *count, uint64_t *fcount, tmpvars_t *tmp, int blen) {
+	if(UNLIKELY(++*count % 1000000 == 0))
+		fprintf(stderr, "[%s::%s] Number of records processed: %lu.\n", __func__,
+				*infname == '-' ? "stdin" : infname, *count);
+	if(seq->comment.s[HASH_DMP_OFFSET] == 'F') {
+		++*fcount;
+		cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
+		HASH_FIND_STR(hfor, tmp->key, tmp_hkf);
+		if(!tmp_hkf) {
+			tmp_hkf = (hk_t *)malloc(sizeof(hk_t));
+			tmp_hkf->value = init_kfp(tmp->readlen);
+			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkf->id);
+			pushback_kseq(tmp_hkf->value, seq, blen);
+			HASH_ADD_STR(hfor, id, tmp_hkf);
+		} else pushback_kseq(tmp_hkf->value, seq, blen);
+	} else {
+		cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp->key);
+		HASH_FIND_STR(hrev, tmp->key, tmp_hkr);
+		if(!tmp_hkr) {
+			tmp_hkr = (hk_t *)malloc(sizeof(hk_t));
+			tmp_hkr->value = init_kfp(tmp->readlen);
+			cp_view2buf(seq->comment.s + HASH_DMP_OFFSET + 1, tmp_hkr->id);
+			pushback_kseq(tmp_hkr->value, seq, blen);
+			HASH_ADD_STR(hrev, id, tmp_hkr);
+		} else pushback_kseq(tmp_hkr->value, seq, blen);
+	}
+}
+
+
 void se_hash_process(hk_t *hash, hk_t *current_entry, hk_t *tmp_hk, FILE *out_handle, tmpvars_t *tmp)
 {
 	HASH_ITER(hh, hash, current_entry, tmp_hk) {

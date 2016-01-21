@@ -322,7 +322,6 @@ void clean_homing_sequence(char *sequence) {
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
- */
 mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 {
 	fprintf(stderr, "[%s] Opening fastq file '%s'.\n", __func__, settings->input_r1_path);
@@ -351,8 +350,7 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 	int n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
 	mseq_t *rseq = mseq_rescale_init(seq, settings->rescaler, tmp, 0);
 	rseq->barcode[settings->blen] = '\0';
-	if(!test_hp(rseq->barcode, settings->hp_threshold))
-		pass_fail = 0;
+	pass_fail &= test_hp(rseq->barcode, settings->hp_threshold); // Fail if test_hp is 0.
 	memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
 	// Get first barcode.
 	update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
@@ -366,7 +364,7 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 		n_len = nlen_homing_se(seq, settings, default_nlen, &pass_fail);
 		update_mseq(rseq, seq, settings->rescaler, tmp, n_len, 0);
 		memcpy(rseq->barcode, seq->seq.s + settings->offset, settings->blen);
-		if(!test_hp(rseq->barcode, settings->hp_threshold)) pass_fail = 0;
+		pass_fail &= test_hp(rseq->barcode, settings->hp_threshold);
 		mseq2fq(splitter->tmp_out_handles_r1[bin], rseq, pass_fail, rseq->barcode);
 	}
 	for(int i = 0; i < splitter->n_handles; ++i) fclose(splitter->tmp_out_handles_r1[i]);
@@ -376,6 +374,7 @@ mark_splitter_t *pp_split_inline_se(marksplit_settings_t *settings)
 	gzclose(fp);
 	return splitter;
 }
+ */
 
 /*
  * Pre-processes (pp) and splits fastqs with inline barcodes.
@@ -419,8 +418,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	rseq1 = mseq_rescale_init(seq1, settings->rescaler, tmp, 0);
 	rseq2 = mseq_rescale_init(seq2, settings->rescaler, tmp, 1);
 	rseq1->barcode[settings->blen] = '\0';
-	if(!test_hp(rseq1->barcode, settings->hp_threshold))
-		pass_fail = 0;
 	if(switch_reads) {
 		memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
@@ -429,6 +426,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 		memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 	}
+    pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 	mask_mseq(rseq1, n_len); mask_mseq(rseq2, n_len);
 	// Get first barcode.
 	update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
@@ -454,9 +452,18 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			memcpy(rseq1->barcode, seq2->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq1->seq.s + settings->offset, settings->blen1_2);
 			// Test for homopolymer failure
-			if(!test_hp(rseq1->barcode, settings->hp_threshold)) pass_fail = 0;
+			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 			// Write out
+#if !NDEBUG
+			if(pass_fail) {
+				for(int t = 0; t < settings->blen; ++t) {
+					if(rseq1->barcode[t] == 'N') {
+						LOG_ERROR("WTF THIS SHOULD HAVE BEEN FAILED THERE'S AN N. (%s).\n", rseq1->barcode);
+					}
+				}
+			}
+#endif
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq2, pass_fail, rseq1->barcode, 'R');
 			mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq1, pass_fail, rseq1->barcode, 'R');
 		} else {
@@ -637,7 +644,8 @@ int dmp_main(int argc, char *argv[])
 	}
 
 	// Run core
-	mark_splitter_t *splitter = settings.is_se ? pp_split_inline_se(&settings): pp_split_inline(&settings);
+	mark_splitter_t *splitter = pp_split_inline(&settings);
+	//mark_splitter_t *splitter = settings.is_se ? pp_split_inline_se(&settings): pp_split_inline(&settings);
 	if(!settings.run_hash_dmp) {
 		fprintf(stderr, "[%s] mark/split complete.\n", __func__);
 		goto cleanup;

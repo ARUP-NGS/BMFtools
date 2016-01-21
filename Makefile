@@ -63,6 +63,7 @@ bmftools: $(OBJS) libhts.a
 tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o bmftools bmftools_db bmftools_p
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.c libhts.a -o ./target_test && ./target_test
 	cd test/dmp && python hashdmp_test.py && cd ../..
+	cd test/marksplit && python marksplit_test.py && cd ../..
 
 
 
