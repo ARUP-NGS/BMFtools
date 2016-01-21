@@ -403,7 +403,6 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	kseq_t *seq1 = kseq_init(fp1);
 	kseq_t *seq2 = kseq_init(fp2);
 	int l1, l2;
-	int count = 0;
 	int pass_fail = 1;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {
 			free_marksplit_settings(*settings);
@@ -442,9 +441,10 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 	}
+	uint64_t count = 0;
 	while (LIKELY(LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0))) {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
-			fprintf(stderr, "[%s] Number of records processed: %i.\n", __func__, count);
+			LOG_INFO("Number of records processed: %lu.\n", count);
 		// Iterate through second fastq file.
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		if(switch_test(seq1, seq2, settings->offset)) {
