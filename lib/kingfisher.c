@@ -5,6 +5,7 @@
 		bufs->cons_quals[i] = pvalue_to_phred(igamc_pvalues(kfp->length, LOG10_TO_CHI2((kfp->phred_sums[index]))));\
 		bufs->agrees[i] = kfp->nuc_counts[index];\
 		diffcount -= bufs->agrees[i];\
+		if(bufs->cons_quals[i] != 'N') diffcount -= kfp->nuc_counts[i * 5 + 4];\
 		if(bufs->cons_quals[i] <= 2) {\
 			bufs->cons_quals[i] = 2;\
 			bufs->cons_seq_buffer[i] = 'N';\
@@ -60,7 +61,9 @@ void dmp_process_write(KingFisher_t *kfp, FILE *handle, tmpbuffers_t *bufs, int 
 // Note: You print kfpf->barcode + 1 because that skips the F/R/Z char.
 void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle, tmpbuffers_t *bufs)
 {
-	int i, diffs=kfpf->length * kfpf->readlen;
+	const int FM = kfpf->length + kfpr->length;
+	int i, diffs = FM * kfpf->readlen;
+
 	for(i = 0; i < kfpf->readlen; ++i) {
 		const int argmaxretf = kfp_argmax(kfpf, i), argmaxretr = kfp_argmax(kfpr, i);
 		if(argmaxretf == argmaxretr) { // Both strands supported the same base call.
@@ -85,15 +88,13 @@ void stranded_process_write(KingFisher_t *kfpf, KingFisher_t *kfpr, FILE *handle
 	}
 	fill_fa(kfpf->readlen, bufs->agrees, bufs->FABuffer);
 	fill_pv(kfpf->readlen, bufs->cons_quals, bufs->PVBuffer);
-    const int FM = kfpf->length + kfpr->length;
 	//const int ND = get_num_differ
 	fprintf(handle, "@%s %s\t%s\tFP:i:%c\tFM:i:%i\tRV:i:%i\tNF:f:%f\tDR:i:%i\n%s\n+\n", kfpf->barcode + 1,
 			bufs->FABuffer, bufs->PVBuffer,
 			kfpf->pass_fail, FM, kfpr->length,
 			(double) diffs / FM, kfpf->length && kfpr->length,
 			bufs->cons_seq_buffer);
-	for(i = 0; i < kfpf->readlen; ++i)
-		fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], handle);
+	for(i = 0; i < kfpf->readlen; ++i) fputc(kfpf->max_phreds[nuc2num(bufs->cons_seq_buffer[i]) + 5 * i], handle);
 	fputc('\n', handle);
 	return;
 }

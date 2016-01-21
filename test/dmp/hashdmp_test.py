@@ -28,9 +28,10 @@ def main():
         fqh  = pysam.FastqFile("hashdmp_test.out")
         r1 = fqh.next()
         tags1 = get_tags(r1)
-        assert tags1["FM"] == 6
-        assert round(tags1["NF"], 2) == 0.17
-        assert tags1["RV"] == 0
+        assert tags1["FM"] == 7
+        assert round(tags1["NF"], 2) == 0.14
+        assert tags1["RV"] == 2
+        assert tags1["DR"]
         assert len(r1.name) == 16
         r1 = fqh.next()
         tags1 = get_tags(r1)
