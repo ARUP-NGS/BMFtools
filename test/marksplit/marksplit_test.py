@@ -25,11 +25,9 @@ def check_bc(read):
     assert bc[0] in "ZFR"
     if "N" in bc:
         assert fp == 0
-    
 
-
-def main():
-    for ex in ["bmftools_db", "bmftools"]:
+def marksplit_main():
+    for ex in ["bmftools_db", "bmftools", "bmftools_p"]:
         cstr = ("%s dmp -n0 -sTGACT -t12 -o marksplit_test_tmp -l 10 "
                 "-v 11 marksplit_test.R1.fq marksplit_test.R2.fq" % ex)
         print "Command string: %s" % cstr
@@ -37,6 +35,9 @@ def main():
         for read in pysam.FastqFile("marksplit_test_tmp.tmp.0.R1.fastq"):
             check_bc(read)
     return 0
+
+def main():
+    marksplit_main()
 
 if __name__ == "__main__":
     sys.exit(main())
