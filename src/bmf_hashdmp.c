@@ -66,17 +66,17 @@ void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t
 {
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
-		if(!crev) {
+		if(crev) {
+			stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+			destroy_kf(cfor->value), destroy_kf(crev->value);
+			HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
+			free(crev); free(cfor);
+		} else {
 			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
-			continue;
 		}
-		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
-		destroy_kf(cfor->value), destroy_kf(crev->value);
-		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-		cond_free(crev); cond_free(cfor);
 	}
 }
 
@@ -251,20 +251,6 @@ void stranded_hash_dmp_core(char *infname, char *outfname)
 
 	fprintf(stderr, "[%s::%s] Loaded all records into memory. Writing out to file!\n", __func__, ifn_stream(outfname));
 	// Write out all unmatched in forward and handle all barcodes handled from both strands.
-	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
-		HASH_FIND_STR(hrev, cfor->id, crev);
-		if(!crev) {
-			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
-			destroy_kf(cfor->value);
-			HASH_DEL(hfor, cfor);
-			free(cfor);
-			continue;
-		}
-		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
-		destroy_kf(cfor->value), destroy_kf(crev->value);
-		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-		cond_free(crev); cond_free(cfor);
-	}
 	duplex_hash_process(hfor, cfor, tmp_hkf, crev, hrev, out_handle, tmp);
 	se_hash_process(hrev, crev, tmp_hkr, out_handle, tmp);
 	LOG_DEBUG("Cleaning up.\n");
