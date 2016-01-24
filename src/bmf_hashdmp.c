@@ -67,16 +67,16 @@ void duplex_hash_process(hk_t *hfor, hk_t *cfor, hk_t *tmp_hkf, hk_t *crev, hk_t
 	HASH_ITER(hh, hfor, cfor, tmp_hkf) {
 		HASH_FIND_STR(hrev, cfor->id, crev);
 		if(!crev) {
+			stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
+			destroy_kf(cfor->value), destroy_kf(crev->value);
+			HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
+			free(crev); free(cfor);
+		} else {
 			dmp_process_write(cfor->value, out_handle, tmp->buffers, 0); // No reverse strand found. \='{
 			destroy_kf(cfor->value);
 			HASH_DEL(hfor, cfor);
 			free(cfor);
-			continue;
 		}
-		stranded_process_write(cfor->value, crev->value, out_handle, tmp->buffers); // Found from both strands!
-		destroy_kf(cfor->value), destroy_kf(crev->value);
-		HASH_DEL(hrev, crev); HASH_DEL(hfor, cfor);
-		free(crev); free(cfor);
 	}
 }
 
