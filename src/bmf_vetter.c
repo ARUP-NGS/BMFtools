@@ -41,12 +41,7 @@ void vetter_usage(int retcode)
 }
 
 void vs_open(vetter_settings_t *settings) {
-	htsFormat open_fmt;
-	memset(&open_fmt, 0, sizeof(htsFormat));
-	open_fmt.category = sequence_data;
-	open_fmt.format = bam;
-	open_fmt.version.major = 1;
-	open_fmt.version.minor = 3;
+	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	vetplp_conf_t *conf = &settings->conf;
 	conf->vin = vcf_open(settings->in_vcf_path, settings->vcf_rmode);
 	conf->vout = vcf_open(settings->out_vcf_path, settings->vcf_wmode);

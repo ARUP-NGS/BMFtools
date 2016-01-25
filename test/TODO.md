@@ -11,6 +11,8 @@
 	3. Sort
 	4. Cap
 	5. Vet (Once finished)
+2. Wishlists
+  1. Take multiple fastqs for input.
 	
 
 1. TODONE:
