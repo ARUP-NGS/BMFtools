@@ -12,7 +12,7 @@ from Cython.Build import cythonize
 # from setuptools import setup
 from distutils.core import setup
 
-compilerList = ["-O2", "-pipe", "-march=native", "-mfpmath=sse", "-DSAMTOOLS=1",]
+compilerList = ["-O2", "-pipe", "-march=native", "-mfpmath=sse", "-DSAMTOOLS=1", "-std=c99"]
 
 ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
 
