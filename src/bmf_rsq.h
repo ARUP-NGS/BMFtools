@@ -37,8 +37,6 @@ typedef struct {
 	bam1_t **a;
 } tmp_stack_t;
 
-const int8_t seq_comp_table[16] = { 0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15 };
-
 static inline void stack_insert(tmp_stack_t *stack, bam1_t *b)
 {
 	if (stack->n == stack->max) {
