@@ -1,6 +1,7 @@
 #ifndef BMF_CAP_H
 #define BMF_CAP_H
 #include "dlib/bam_util.h"
+#include "include/sam_opts.h"
 
 int cap_qscore_main(int argc, char *argv[]);
 

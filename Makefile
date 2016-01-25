@@ -59,10 +59,14 @@ bmftools_p: $(P_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
 bmftools: $(OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
+test/ucs/ucs_test:
+	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.c libhts.a -o test/ucs/ucs_test
 
-tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o bmftools bmftools_db bmftools_p
+
+tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o bmftools bmftools_db bmftools_p test/ucs/ucs_test
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.c libhts.a -o ./target_test && ./target_test
 	cd test && bash all_tests.sh
+	cd test/ucs && ./ucs_test && cd ../..
 
 
 
