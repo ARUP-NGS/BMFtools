@@ -22,6 +22,10 @@ for x in ext:
     x.define_macros += pysam.get_defines()
     x.include_dirs += ['../include', 'lib', '../']
     x.extra_compile_args += compilerList
+    '''
+    if x.name ["MawCluster.Math":
+    x.sources += ["../include/igamc_cephes.c"]
+    '''
 
 install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.8']
