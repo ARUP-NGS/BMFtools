@@ -326,7 +326,7 @@ static unsigned short Q2[32] = {
 /* Polynomial evaluator:
  *  P[0] x^n  +  P[1] x^(n-1)  +  ...  +  P[n]
  */
-inline double polevl(double x, void *p, int n)
+static inline double polevl(double x, void *p, int n)
 {
 register double y;
 register double *P = (double *)p;
@@ -345,7 +345,7 @@ return(y);
 /* Polynomial evaluator:
  *  x^n  +  P[0] x^(n-1)  +  P[1] x^(n-2)  +  ...  +  P[n]
  */
-inline double p1evl(double x, void *p, int n)
+static inline double p1evl(double x, void *p, int n)
 {
 register double y;
 register double *P = (double *)p;

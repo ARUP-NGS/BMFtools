@@ -145,7 +145,7 @@ class filters(Enum):
     minCount = 2
 
 
-class vet_set(object):
+class VetSettings(object):
     def __init__(self, minFM=0, minPV=0, minFA=0., minMQ=0., minOverlap=0, minCount=0,
                  minDuplex=0, fasta=None):
         self.minFM = minFM
@@ -240,12 +240,12 @@ def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
 
 
 def get_plp_summary(plp, vet_settings):
-    assert isinstance(vet_settings, vet_set)
+    assert isinstance(vet_settings, VetSettings)
     assert isinstance(plp, pysam.calignedsegment.PileupColumn)
     ref_base = vet_settings.ref.fetch(plp.reference_name, plp.pos, plp.pos + 1)
     observations = map(UniqueObs.from_name_bin,
                        get_name_bins(plp.pileups).itervalues())
-    passing = filter(vet_set.pass_unibos, observations)
+    passing = filter(VetSettings.pass_unibos, observations)
     bc_bins = get_bc_bins(passing)
     summary = get_bc_bin_summary(bc_bins, vet_settings, ref_base)
     return [i for i in summary if i.Pass]
@@ -268,7 +268,7 @@ def add_info_line(header, info_field):
 def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
     # cdef pysam.cbcf.VariantFile invf = pysam.cbcf.VariantFile(vf_path)
     # Open variant file handles
-    settings = vet_set(**kwargs)
+    settings = VetSettings(**kwargs)
     invf = pysam.cbcf.VariantFile(vf_path)
     outvf = pysam.cbcf.VariantFile(outvf_path, outmode, header=invf.header)
     bam = pysam.AlignmentFile(bampath, "rb")

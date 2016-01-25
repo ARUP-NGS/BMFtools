@@ -2,6 +2,7 @@
 */
 
 #include "dlib/bam_util.h"
+#include "include/sam_opts.h"
 
 void add_unclipped(samFile *in, bam_hdr_t *hdr, samFile *ofp)
 {

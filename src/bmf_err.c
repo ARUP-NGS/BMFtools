@@ -916,12 +916,7 @@ void check_bam_tag_exit(char *bampath, const char *tag)
 
 int err_main_main(int argc, char *argv[])
 {
-	htsFormat open_fmt;
-	memset(&open_fmt, 0, sizeof(htsFormat));
-	open_fmt.category = sequence_data;
-	open_fmt.format = bam;
-	open_fmt.version.major = 1;
-	open_fmt.version.minor = 3;
+	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	samFile *fp = NULL;
 	bam_hdr_t *header = NULL;
 	int c, minMQ = 0;
@@ -1018,12 +1013,7 @@ int err_main_main(int argc, char *argv[])
 
 int err_cycle_main(int argc, char *argv[])
 {
-	htsFormat open_fmt;
-	memset(&open_fmt, 0, sizeof(htsFormat));
-	open_fmt.category = sequence_data;
-	open_fmt.format = bam;
-	open_fmt.version.major = 1;
-	open_fmt.version.minor = 3;
+	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	char outpath[500] = "";
 
 	if(argc < 2) return err_cycle_usage(stderr, EXIT_FAILURE);

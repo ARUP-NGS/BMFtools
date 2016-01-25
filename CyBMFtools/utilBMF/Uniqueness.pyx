@@ -66,9 +66,9 @@ cdef class RefKmer(object):
     """
     Contains useful information regarding representative kmers selected
     from reference sequence.
-    :param cystr seq
-    :param cystr contig=None
-    :param int pos=-1
+    :param: cystr seq
+    :param: cystr contig=None
+    :param: int pos=-1
     """
 
     def __init__(self, cystr seq, cystr contig=None,
@@ -159,11 +159,8 @@ cdef class KmerFetcher(object):
         Returns a hashmap which maps all strings within hamming distance
         of mismatches limit.
         """
-        cdef list bedline
-        cdef list bedlines = ParseBed(bedpath)
-        for bedline in bedlines:
-            self.FillMap(bedline)
-        return self.BuildMapper(maplimit=self.mismatches)
+        self.IBedToMap()
+        return self.FullMap
     # Should we consider changing the number of mapping mismatches permitted
     # so as to be more stringent than with our mappability analysis?
 
