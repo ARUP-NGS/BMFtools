@@ -113,13 +113,18 @@ int depth_main(int argc, char *argv[])
 			return 2;
 		}
 	}
+	if(!bedpath) {
+		LOG_ERROR("Bed path required. Abort!\n");
+	}
 	counts = calloc(n, sizeof(uint64_t));
-	col_names = calloc(n, sizeof(char *));
+	int n_cols = count_lines(bedpath);
+	col_names = calloc(n_cols, sizeof(char *));
 
 	fp = gzopen(argv[optind], "rb");
 	ks = ks_init(fp);
 	n_plp = calloc(n, sizeof(int));
 	plp = calloc(n, sizeof(bam_pileup1_t*));
+	int line_num = 0;
 	while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
 		char *p, *q;
 		int tid, beg, end, pos;
@@ -171,13 +176,13 @@ bed_error:
 	gzclose(fp);
 
 	for (i = 0; i < n; ++i) {
-		cond_free(col_names[i]);
 		cond_free(aux[i]);
 		if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
 		hts_idx_destroy(idx[i]);
 		bam_hdr_destroy(aux[i]->header);
 		sam_close(aux[i]->fp);
 	}
+	for(i = 0; i < n_cols; ++i) free(col_names[i]);
 	free(counts);
 	free(col_names);
 	free(aux); free(idx);
