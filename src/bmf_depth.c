@@ -52,10 +52,10 @@ void depth_usage(int retcode)
 	exit(retcode);
 }
 
-int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
+static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
 	int ret = 0;
-	for(; n_plp; --n_plp) ret += get_fm((*stack++).b);
+	for(int i = 0; i < n_plp; ++i) ret += get_fm(stack[i].b);
 	return ret;
 }
 
@@ -193,7 +193,14 @@ int depth_main(int argc, char *argv[])
 				++arr_ind; // Increment for positions in range.
 			}
 		}
-
+		/*
+		 * At this point, the arrays have counts for depth
+		 * for each position in the region.
+		 * A. Mean.
+		 * B. Stdev.
+		 * C. Get quartiles.
+		 * Do for both raw and dmp.
+		 */
 
 		kputc('\t', &str);
 		kputs(col_names[i], &str);
@@ -214,11 +221,13 @@ bed_error:
 	gzclose(fp);
 
 	for (i = 0; i < n; ++i) {
-		cond_free(aux[i]);
 		if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
 		hts_idx_destroy(idx[i]);
 		bam_hdr_destroy(aux[i]->header);
 		sam_close(aux[i]->fp);
+		cond_free(aux[i]->dmp_counts);
+		cond_free(aux[i]->raw_counts);
+		cond_free(aux[i]);
 	}
 	for(i = 0; i < n_cols; ++i) free(col_names[i]);
 	free(counts);
