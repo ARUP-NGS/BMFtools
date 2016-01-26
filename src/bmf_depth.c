@@ -39,18 +39,24 @@ typedef struct {
 	uint64_t *raw_counts;
 	uint64_t *dmp_counts;
 	int minMQ;
-	int cpos; // Index in raw/dmp counts.
-	int cstart; // Start position of current interval
-	int cend; // Start position of current interval
+	int minFM;
 } aux_t;
 
 void depth_usage(int retcode)
 {
 	fprintf(stderr, "Usage: bmftools depth [options] -b <in.bed> <in1.bam> [...]\n\n");
 	fprintf(stderr, "  -Q INT		Only count bases of at least INT quality [0]\n");
+	fprintf(stderr, "  -f INT		Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n");
 	fprintf(stderr, "  -m INT		Max depth. Default: %i.\n", DEFAULT_MAX_DEPTH);
 	sam_global_opt_help(stderr, "-.--.");
 	exit(retcode);
+}
+
+int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
+{
+	int ret = 0;
+	for(; n_plp; --n_plp) ret += get_fm((*stack++).b);
+	return ret;
 }
 
 static int read_bam(void *data, bam1_t *b)
@@ -61,16 +67,12 @@ static int read_bam(void *data, bam1_t *b)
 	{
 		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
 		if ( ret<0 ) break;
-		if ( b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP) ) continue;
-		if ( (int)b->core.qual < aux->minMQ ) continue;
+		uint8_t *data = bam_aux_get(b, "FM");
+		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+			(int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM))
+				continue;
 		break;
 	}
-	if(aux->cpos >= aux->cstart && aux->cpos < aux->cend) {
-		uint8_t *fmdata = bam_aux_get(b, "FM");
-		++aux->dmp_counts[aux->cpos];
-		aux->raw_counts[aux->cpos] += fmdata ? bam_aux2i(fmdata): 1;
-	}
-	++aux->cpos;
 	return(ret);
 }
 
@@ -85,7 +87,7 @@ int depth_main(int argc, char *argv[])
 	int *n_plp, dret, i, n, c, minMQ = 0;
 	uint64_t *counts;
 	const bam_pileup1_t **plp;
-	int usage = 0, max_depth = DEFAULT_MAX_DEPTH;
+	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0;
 	char *bedpath = NULL;
 
 	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
@@ -94,11 +96,12 @@ int depth_main(int argc, char *argv[])
 		{ NULL, 0, NULL, 0 }
 	};
 
-	while ((c = getopt_long(argc, argv, "Q:b:m:?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "Q:b:m:f:?h", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'Q': minMQ = atoi(optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'm': max_depth = atoi(optarg); break;
+		case 'f': minFM = atoi(optarg); break;
 		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
 				  /* else fall-through */
 		case 'h': /* fall-through */
@@ -115,6 +118,7 @@ int depth_main(int argc, char *argv[])
 	for (i = 0; i < n; ++i) {
 		aux[i] = calloc(1, sizeof(aux_t));
 		aux[i]->minMQ = minMQ;
+		aux[i]->minFM = minFM;
 		aux[i]->fp = sam_open_format(argv[i + optind], "r", &ga.in);
 		if (aux[i]->fp)
 			idx[i] = sam_index_load(aux[i]->fp, argv[i + optind]);
@@ -160,12 +164,9 @@ int depth_main(int argc, char *argv[])
 			*p = 0; end = atoi(q); *p = c;
 		} else goto bed_error;
 		region_len = end - beg;
-		for(int i = 0; i < n; ++i) {
-			aux[i]->cstart = beg;
-			aux[i]->cend = end;
+		for(i = 0; i < n; ++i)
 			crealloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len),
 			crealloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
-		}
 		if(*p == '\t') {
 			q = ++p;
 			while(*q != '\t' && *q != '\n') ++q;
@@ -181,10 +182,15 @@ int depth_main(int argc, char *argv[])
 		mplp = bam_mplp_init(n, read_bam, (void**)aux);
 		bam_mplp_set_maxcnt(mplp, max_depth);
 		memset(counts, 0, sizeof(uint64_t) * n);
-		for(i = 0; i < n; ++i) aux[i]->cpos = 0;
+		int arr_ind = 0;
 		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= beg && pos < end) {
-				for (i = 0; i < n; ++i) counts += n_plp[i];
+				for (i = 0; i < n; ++i) {
+					counts += n_plp[i];
+					aux[i]->dmp_counts[arr_ind] = n_plp[i];
+					aux[i]->raw_counts[arr_ind] = plp_fm_sum(mplp->plp[i], n_plp[i]);
+				}
+				++arr_ind; // Increment for positions in range.
 			}
 		}
 
