@@ -166,6 +166,7 @@ int depth_main(int argc, char *argv[])
 		}
 		puts(str.s);
 		bam_mplp_destroy(mplp);
+		++line_num;
 		continue;
 
 bed_error:
