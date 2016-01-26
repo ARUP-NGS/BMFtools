@@ -24,8 +24,6 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 #include "bmf_rsq.h"
 
-extern const int8_t seq_comp_table[16];
-
 void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
 		stack->max = n;
