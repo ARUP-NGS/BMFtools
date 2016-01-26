@@ -15,6 +15,16 @@
 
 #include "htslib/kseq.h"
 
+struct __bam_mplp_t {
+    int n;
+    uint64_t min, *pos;
+    bam_plp_t *iter;
+    int *n_plp;
+    const bam_pileup1_t **plp;
+};
+
+#define DEFAULT_MAX_DEPTH (1 << 18)
+
 int depth_main(int argc, char *argv[]);
 
 #endif /* BMF_DEPTH_H */
