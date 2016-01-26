@@ -55,9 +55,9 @@ libhts.a:
 	cd htslib && make && cp libhts.a ../
 bmftools_db: $(D_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(D_OBJS) libhts.a -o bmftools_db
-bmftools_p: $(P_OBJS) libhts.a
+bmftools_p: $(P_OBJS) libhts.a bmftools
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(PG_FLAGS) $(P_OBJS) libhts.a -o bmftools_p
-bmftools: $(OBJS) libhts.a
+bmftools: $(OBJS) libhts.a bmftools_db
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(OPT_FLAGS) $(OBJS) libhts.a -o bmftools
 test/ucs/ucs_test:
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) test/ucs/ucs_test.c libhts.a -o test/ucs/ucs_test
