@@ -8,9 +8,9 @@ import pysam
 import uuid
 import logging
 from subprocess import check_output, check_call, Popen, PIPE
-from utilBMF.HTSUtils import (GetUniqueItemsL, GetUniqueItemsD,
-                              printlog as pl, ParseBed,
+from utilBMF.HTSUtils import (printlog as pl, ParseBed,
                               hamming_cousins, RevCmp)
+from utilBMF import HTSUtils
 from utilBMF.ErrorHandling import (ThisIsMadness, ConsideredHarmful,
                                    ThisIsHKMadness)
 from cytoolz import frequencies as cyfreq
@@ -148,8 +148,10 @@ cdef class KmerFetcher(object):
         I is for in-place.
         """
         cdef list bedline
-        cdef list bedlines = ParseBed(bedpath)
+        cdef list bedlines = HTSUtils.ParseBed(bedpath)
         for bedline in bedlines:
+            bedline[1] -= self.padding
+            bedline[2] += self.padding
             self.FillMap(bedline)
         self.FullMap = self.BuildMapper(maplimit=self.mismatches)
 
@@ -175,7 +177,7 @@ cdef class KmerFetcher(object):
     cpdef cystr getFastqString(self, list bedline):
         return FastqStrFromKmerList(GetKmersToCheck(self.ref, k=self.k,
                                                     bedline=bedline,
-                                                    padding=self.padding))
+                                                    padding=0))
 
     cpdef cystr getOutputString(self, list bedline, cystr aligner="mem"):
         if(aligner == "mem"):
@@ -204,24 +206,31 @@ cdef class KmerFetcher(object):
         list of kmer objects into a list of continuous intervals of kmer start
         positions.
         """
-        cdef list intervalList
+        cdef list intervalList, bedRegionKmerList
+        cdef cython.str key, contig
+        cdef RefKmer kmObj
         # Convert list of Kmers to list of continuous starting positions (kmers
         # all the same length)
         intervalList = []
         keyList = self.HashMap.keys()
-        for key in keyList:
+        for key in self.HashMap.iterkeys():
             bedRegionKmerList = self.HashMap[key]
-            if len(set([kMerObj.contig for kMerObj in
+            if len(set([kmObj.contig for kmObj in
                    bedRegionKmerList])) != 1:
                 raise ThisIsHKMadness("Contigs do not match in this bed "
                                       "region, aborting.")
             else:
                 contig = bedRegionKmerList[0].contig
-            posList = [kMerObj.pos for kMerObj in bedRegionKmerList]
-            for k, g in groupby(enumerate(posList), lambda x: x[0]-x[1]):
+            # Finds continuous passing positions
+            for k, g in groupby(enumerate([kmObj.pos for kmObj in
+                                           bedRegionKmerList]), lambda x: x[0]-x[1]):
                 group = list(g)
                 intervalList.append((contig, group[0][1], group[-1][1]))
         return sorted(intervalList)
+
+    def WriteIvlsToBed(self, outpath):
+        open(outpath, "w").write("\n".join(["\t".join(map(str, ivl)) for
+                                            ivl in self.GetIntervalsFromMap()]))
 
     cpdef ConvertIntervalsToBed(self, list intervalList, cystr inFile,
                                 cystr outFile, bint startsOnly=False):
@@ -316,10 +325,10 @@ cdef class KmerFetcher(object):
                                    kmer, region in mappingTups])
 
 
+'''
 @cython.returns(dict)
 def GetRepresentativeKmerDict(*args, **kwargs):
     return cyfreq(GetRepKmersBwt(*args, **kwargs))
-
 
 cpdef list GetRepKmersBwt(cystr ref, int k=30,
                           list bedline=[],
@@ -330,13 +339,11 @@ cpdef list GetRepKmersBwt(cystr ref, int k=30,
     fqStr = FastqStrFromKmerList(GetKmersToCheck(ref, k=k, bedline=bedline,
                                                  padding=padding))
     if(useBowtie):
-        output = BowtieFqToStr(fqStr, ref=ref, seed=seedlen,
-                               mismatches=mismatches)
-        return GetUniqMQsBowtie(output, minMQ=minMQ)
+        raise NotImplementedError("Something's weird with bowtie output.")
     else:
         output = BwaFqToStr(fqStr, ref=ref, seed=seedlen)
     return GetUniqMQsBowtie(output, minMQ=minMQ)
-
+'''
 
 cpdef cystr BowtieFqToStr(cystr fqStr, cystr ref=None,
                           int seed=-1, int mismatches=-1):
@@ -468,12 +475,3 @@ def GetMQPassReadsBwt1(cystr bwtStr):
                            f in bwtStr.split("\n") if
                            f != "" and f[0] != "@"]
             if i[4] == "255"]
-
-
-@cython.returns(list)
-def GetUniqMQsBowtie(cystr bwtStr, int minMQ=1):
-    """
-    Takes a string output from bowtie and gets the names of the reads
-    with MQ >= minMQ. Defaults to 1 (for a unique alignment)
-    """
-    return GetUniqueItemsL(GetMQPassRefKmersBwt1(bwtStr))
