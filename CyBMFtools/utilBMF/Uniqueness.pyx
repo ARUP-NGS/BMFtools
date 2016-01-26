@@ -216,11 +216,15 @@ cdef class KmerFetcher(object):
         for key in self.HashMap.iterkeys():
             bedRegionKmerList = self.HashMap[key]
             if len(set([kmObj.contig for kmObj in
-                   bedRegionKmerList])) != 1:
+                   bedRegionKmerList])) not in [0, 1]:
                 raise ThisIsHKMadness("Contigs do not match in this bed "
                                       "region, aborting.")
             else:
-                contig = bedRegionKmerList[0].contig
+                try:
+                    contig = bedRegionKmerList[0].contig
+                except IndexError:
+                    # No passing kmers. Ignore!
+                    continue
             # Finds continuous passing positions
             for k, g in groupby(enumerate([kmObj.pos for kmObj in
                                            bedRegionKmerList]), lambda x: x[0]-x[1]):
@@ -228,9 +232,28 @@ cdef class KmerFetcher(object):
                 intervalList.append((contig, group[0][1], group[-1][1]))
         return sorted(intervalList)
 
+    def GetCoverableIntervals(self):
+        tmpbed = [[j[0], j[1], j[2] + self.k] for
+                  j in self.GetIntervalsFromMap()]
+        if(len(tmpbed) <= 1):
+            return tmpbed
+        for i in xrange(len(tmpbed) - 2, -1, -1):
+            if tmpbed[i][0] != tmpbed[i + 1][0]:
+                continue
+            if tmpbed[i][2] >= tmpbed[i + 1][1]:
+                tmpbed[i][2] = tmpbed[i + 1][2]
+                del tmpbed[i + 1]
+        return tmpbed
+
     def WriteIvlsToBed(self, outpath):
         open(outpath, "w").write("\n".join(["\t".join(map(str, ivl)) for
                                             ivl in self.GetIntervalsFromMap()]))
+
+    def WriteCoverableIntervalBedFiles(self, bedpath):
+        for kmer in xrange(20, 122, 2):
+            self.k = kmer
+            self.IBedToMap(bedpath)
+            self.WriteIvlsToBed("%s.Unique%i-mers.bed" % (bedpath, kmer))
 
     cpdef ConvertIntervalsToBed(self, list intervalList, cystr inFile,
                                 cystr outFile, bint startsOnly=False):
