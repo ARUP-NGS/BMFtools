@@ -568,7 +568,7 @@ def ParseBed(cystr bedfile):
     integers.
     """
     bed = [line.strip().split(
-    )[0:3] for line in open(
+    )[:3] for line in open(
         bedfile, "r").readlines() if line[0] != "#"]
     for line in bed:
         line[1] = int(line[1])

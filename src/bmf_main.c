@@ -15,6 +15,7 @@ extern int err_main(int argc, char *argv[]);
 extern int mark_unclipped_main(int argc, char *argv[]);
 extern int cap_qscore_main(int argc, char *argv[]);
 extern int target_main(int argc, char *argv[]);
+extern int depth_main(int argc, char *argv[]);
 
 static int bmftools_usage(int rc)
 {
@@ -30,6 +31,7 @@ static int bmftools_usage(int rc)
 					"mark_unclipped:  Add unclipped start position as annotation for both read and mate.\n"
 					"cap:			 Modifies the quality string as function of family metadata.\n"
 					"target:			 Calculates on-target rate.\n"
+					"depth:			 Calculates depth of coverage over a set of bed intervals.\n"
 			);
 	exit(rc);
 }
@@ -64,6 +66,8 @@ int main(int argc, char *argv[])
 		return cap_qscore_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "target") == 0)
 		return target_main(argc - 1, argv + 1);
+	else if(strcmp(argv[1], "depth") == 0)
+		return depth_main(argc - 1, argv + 1);
 	fprintf(stderr, "Unrecognized command %s. Abort!\n", argv[1]);
 	return EXIT_FAILURE;
 }

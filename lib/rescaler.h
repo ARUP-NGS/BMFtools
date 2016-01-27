@@ -3,6 +3,7 @@
 //#include <stdlib.h>
 #include <string.h>
 #include "dlib/char_util.h"
+#include "dlib/io_util.h"
 
 #define nqscores 39uL // Number of q scores in sequencing.
 
@@ -62,21 +63,6 @@ CONST static inline char rescale_qscore(int readnum, char qscore, int cycle, cha
 
 // Shamelessly stolen from the source code for 'wc'.
 typedef unsigned long count_t; /* counter type */
-
-static inline int count_lines(char *fname) {
-	int ret = 0;
-	FILE *fp = fopen(fname, "r");
-	if(!fp) {
-		fprintf(stderr, "[E:%s] Could not open file %s. Abort mission!\n", __func__, fname);
-		exit(EXIT_FAILURE);
-	}
-	start:
-	switch(getc(fp)) {
-		case EOF: fclose(fp); return ret;
-		case '\n': ++ret;
-	}
-	goto start;
-}
 
 static inline char ****parse_rescaler(char *qual_rescale_fname)
 {
