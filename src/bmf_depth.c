@@ -48,8 +48,40 @@ void depth_usage(int retcode)
 	fprintf(stderr, "  -Q INT		Only count bases of at least INT quality [0]\n");
 	fprintf(stderr, "  -f INT		Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n");
 	fprintf(stderr, "  -m INT		Max depth. Default: %i.\n", DEFAULT_MAX_DEPTH);
+	fprintf(stderr, "  -n INT		Set N for quantile reporting. Default: 4 (quartiles)\n");
 	sam_global_opt_help(stderr, "-.--.");
 	exit(retcode);
+}
+
+void write_quantiles(kstring_t *k, uint64_t *sorted_array, size_t region_len, int n_quantiles)
+{
+	for(int i = 1; i < n_quantiles; ++i) {
+		kputl((long)sorted_array[region_len * i / n_quantiles + 1], k);
+		if(i != n_quantiles - 1) kputc(',', k);
+	}
+}
+
+int u64cmp(const void *a, const void *b)
+{
+	return *((const uint64_t *)a) - *((const uint64_t *)b);
+}
+
+double u64_stdev(uint64_t *arr, size_t l, double mean)
+{
+	double ret = *arr, tmp;
+	for(unsigned i = 1; i < l; ++i) {
+		tmp = arr[i] - mean;
+		ret += tmp * tmp;
+	}
+	return sqrt(ret / (l - 1));
+}
+
+double u64_mean(uint64_t *arr, size_t l)
+{
+    uint64_t ret = *arr;
+	for(unsigned i = 1; i < l; ++i)
+		ret += arr[i];
+	return (double)ret / l;
 }
 
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
@@ -87,7 +119,7 @@ int depth_main(int argc, char *argv[])
 	int *n_plp, dret, i, n, c, minMQ = 0;
 	uint64_t *counts;
 	const bam_pileup1_t **plp;
-	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0;
+	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4;
 	char *bedpath = NULL;
 
 	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
@@ -96,12 +128,13 @@ int depth_main(int argc, char *argv[])
 		{ NULL, 0, NULL, 0 }
 	};
 
-	while ((c = getopt_long(argc, argv, "Q:b:m:f:?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:?h", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'Q': minMQ = atoi(optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'm': max_depth = atoi(optarg); break;
 		case 'f': minFM = atoi(optarg); break;
+		case 'n': n_quantiles = atoi(optarg); break;
 		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
 				  /* else fall-through */
 		case 'h': /* fall-through */
@@ -146,9 +179,24 @@ int depth_main(int argc, char *argv[])
 	n_plp = calloc(n, sizeof(int));
 	plp = calloc(n, sizeof(bam_pileup1_t*));
 	int line_num = 0;
+	double *raw_region_means = (double *)calloc(n, sizeof(double));
+	double *dmp_region_means = (double *)calloc(n, sizeof(double));
+	// Write header
+	fprintf(stdout, "##NQuintiles=%i\n", n_quantiles);
+	fprintf(stdout, "##minMQ=%i\n", minMQ);
+	fprintf(stdout, "##minFM=%i\n", minFM);
+	fprintf(stdout, "##BMFtools version=v.%s.\n", VERSION);
+	fprintf(stdout, "#Contig\tStart\tStop\tRegion Name");
+	for(i = 0; i < n; ++i) {
+		// All results from that bam file are listed in that column.
+		putc('\t', stdout);
+		fputs(argv[i + optind], stdout);
+	}
+	putc('\n', stdout);
 	while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
 		char *p, *q;
 		int tid, beg, end, pos, region_len;
+		double raw_mean, dmp_mean, raw_stdev, dmp_stdev;
 		bam_mplp_t mplp;
 
 		for (p = q = str.s; *p && *p != '\t'; ++p);
@@ -196,18 +244,34 @@ int depth_main(int argc, char *argv[])
 		/*
 		 * At this point, the arrays have counts for depth
 		 * for each position in the region.
-		 * A. Mean.
-		 * B. Stdev.
 		 * C. Get quartiles.
 		 * Do for both raw and dmp.
 		 */
-
 		kputc('\t', &str);
 		kputs(col_names[i], &str);
-		for (i = 0; i < n; ++i) {
+		uint64_t *raw_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
+		uint64_t *dmp_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
+		for(i = 0; i < n; ++i) {
+			memcpy(raw_sort_array, aux[i]->raw_counts, region_len * sizeof(uint64_t));
+			qsort(raw_sort_array, region_len, sizeof(uint64_t), &u64cmp);
+			memcpy(dmp_sort_array, aux[i]->dmp_counts, region_len * sizeof(uint64_t));
+			qsort(dmp_sort_array, region_len, sizeof(uint64_t), &u64cmp);
+			raw_mean = u64_mean(aux[i]->raw_counts, region_len);
+			raw_stdev = u64_stdev(aux[i]->raw_counts, region_len, raw_mean);
+			dmp_mean = u64_mean(aux[i]->dmp_counts, region_len);
+			dmp_stdev = u64_stdev(aux[i]->dmp_counts, region_len, dmp_mean);
 			kputc('\t', &str);
 			kputl(counts[i], &str);
+			ksprintf(&str, ":%0.12f:%0.12f:", dmp_mean, dmp_stdev);
+			write_quantiles(&str, dmp_sort_array, region_len, n_quantiles);
+			kputc('|', &str);
+			kputl((long)(raw_mean * region_len + 0.5), &str); // Total counts
+			kputc(':', &str);
+			ksprintf(&str, ":%0.12f:%0.12f:", raw_mean, raw_stdev);
+			write_quantiles(&str, raw_sort_array, region_len, n_quantiles);
+			kputc('\t', &str);
 		}
+		free(raw_sort_array); free(dmp_sort_array);
 		puts(str.s);
 		bam_mplp_destroy(mplp);
 		++line_num;
@@ -219,6 +283,8 @@ bed_error:
 	free(n_plp); free(plp);
 	ks_destroy(ks);
 	gzclose(fp);
+	free(raw_region_means);
+	free(dmp_region_means);
 
 	for (i = 0; i < n; ++i) {
 		if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
