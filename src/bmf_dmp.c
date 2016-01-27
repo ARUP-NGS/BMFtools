@@ -107,9 +107,6 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 
 void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
-#endif
 	// Clear output files.
 	char cat_buff[CAT_BUFFER_SIZE];
 	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
@@ -127,9 +124,6 @@ void call_clowder_se(marksplit_settings_t *settings, splitterhash_params_t *para
 
 void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Catting temporary files into final output with multiple cats.\n", __func__);
-#endif
 	// Clear output files.
 	char cat_buff[CAT_BUFFER_SIZE];
 	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
@@ -159,20 +153,15 @@ void call_clowder_pe(marksplit_settings_t *settings, splitterhash_params_t *para
 
 void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1)
 {
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
-#endif
 	char cat_buff[CAT_BUFFER_SIZE];
 	// Clear output files.
 	sprintf(cat_buff, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
 	CHECK_CALL(cat_buff);
 	strcpy(cat_buff, "/bin/cat ");
 	for(int i = 0; i < settings->n_handles; ++i) {
-#if !NDEBUG
 		if(!isfile(params->outfnames_r1[i])) {
 			LOG_ERROR("Output filename is not a file. Abort! ('%s').\n", params->outfnames_r1[i]);
 		}
-#endif
 		strcat(cat_buff, params->outfnames_r1[i]); strcat(cat_buff, " ");
 	}
 	if(settings->gzip_output) {
@@ -183,9 +172,6 @@ void call_panthera_se(marksplit_settings_t *settings, splitterhash_params_t *par
 	strcat(cat_buff, " > "); strcat(cat_buff, ffq_r1);
 	if(settings->gzip_output)
 		strcat(cat_buff, ".gz");
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] About to call command '%s'.\n", __func__, cat_buff);
-#endif
 	CHECK_POPEN(cat_buff);
 }
 
@@ -211,16 +197,10 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	kstring_t str1 = {0, 0, NULL}, str2 = {0, 0, NULL};
 	kputs("cat ", &str1);
 	ks_resize(&str1, 1 << 16);
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Building string. Sizes: %lu, %lu. Maxes: %lu, %lu.\n", __func__, str1.l, str2.l, str1.m, str2.m);
-#endif
 	for(int i = 0; i < settings->n_handles; ++i) {
 		sprintf(fname_buf, " %s", params->outfnames_r1[i]);
 		while(str1.m < strlen(fname_buf) + str1.l + 1) ks_resize(&str1, str1.m << 1);
 		strcat(str1.s, fname_buf); str1.l += strlen(fname_buf);
-#if !NDEBUG
-		fprintf(stderr, "[D:%s] Command string: '%s'.\n", __func__, str1.s);
-#endif
 	}
 	const char suffix[] = " | paste -d'~' - - - - ";
 	while(str1.m < sizeof(suffix) + str1.l) ks_resize(&str1, str1.m << 1);
@@ -228,10 +208,6 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	str1.l += sizeof(suffix);
 	str2 = str1; // Copy everything, including a pointer that str2 doesn't own.
 	str2.s = strdup(str1.s); // strdup the string.
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] str1.l: %lu. strlen1: %lu.\n", __func__, str1.l, strlen(str1.s));
-	fprintf(stderr, "[D:%s] str2.l: %lu. strlen2: %lu.\n", __func__, str2.l, strlen(str2.s));
-#endif
 	for(int i = 0; i < str2.l - 1; ++i)
 		if(str2.s[i] == 'R' && str2.s[i + 1] == '1')
 			str2.s[i + 1] = '2';
@@ -239,9 +215,6 @@ void call_stdout(marksplit_settings_t *settings, splitterhash_params_t *params, 
 	const char final_template[] = "pr -mts'~' <(%s) <(%s) | tr '~' '\\n'";
 	char *final = (char *)malloc(str1.m + str2.m + sizeof(final_template) / sizeof(char)); // Should be plenty of space
 	sprintf(final, final_template, str1.s, str2.s);
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Command string: '%s'.\n", __func__, final);
-#endif
 	bash_system(final);
 	free(str1.s), free(str2.s);
 	free(final);
@@ -262,9 +235,6 @@ void call_panthera(marksplit_settings_t *settings, splitterhash_params_t *params
 
 void call_panthera_pe(marksplit_settings_t *settings, splitterhash_params_t *params, char *ffq_r1, char *ffq_r2)
 {
-#if !NDEBUG
-	fprintf(stderr, "[D:%s] Catting temporary files into final output with one big.\n", __func__);
-#endif
 	char cat_buff1[CAT_BUFFER_SIZE];
 	// Clear output files.
 	sprintf(cat_buff1, settings->gzip_output ? "> %s.gz" : "> %s", ffq_r1);
@@ -384,7 +354,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 #if WRITE_BARCODE_FQ
 	FILE *fp = fopen("tmp.molbc.fq", "w");
 #endif
-	LOG_DEBUG("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
+	LOG_INFO("Opening fastq files %s and %s.\n", settings->input_r1_path, settings->input_r2_path);
 	if(!(strcmp(settings->input_r1_path, settings->input_r2_path))) {
 		LOG_ERROR("Hey, it looks like you're trying to use the same path for both r1 and r2. "
 				"At least try to fool me by making a symbolic link.\n");
@@ -440,10 +410,10 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 		mseq2fq_stranded(splitter->tmp_out_handles_r2[bin], rseq2, pass_fail, rseq1->barcode, 'F');
 	}
 	uint64_t count = 0;
-	while (LIKELY(LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0))) {
+	while (LIKELY((l1 = kseq_read(seq1)) >= 0) && LIKELY((l2 = kseq_read(seq2)) >= 0)) {
 		if(UNLIKELY(++count % settings->notification_interval == 0))
 			LOG_INFO("Number of records processed: %lu.\n", count);
-		// Iterate through second fastq file.
+		// Sets pass_fail
 		n_len = nlen_homing_default(seq1, seq2, settings, default_nlen, &pass_fail);
 		if(switch_test(seq1, seq2, settings->offset)) {
 			update_mseq(rseq1, seq1, settings->rescaler, tmp, n_len, 0);
@@ -473,7 +443,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 			memcpy(rseq1->barcode, seq1->seq.s + settings->offset, settings->blen1_2);
 			memcpy(rseq1->barcode + settings->blen1_2, seq2->seq.s + settings->offset, settings->blen1_2);
 			// Test for homopolymer failure
-			if(!test_hp(rseq1->barcode, settings->hp_threshold)) pass_fail = 0;
+			pass_fail &= test_hp(rseq1->barcode, settings->hp_threshold);
 			bin = get_binner_type(rseq1->barcode, settings->n_nucs, uint64_t);
 			// Write out
 			mseq2fq_stranded(splitter->tmp_out_handles_r1[bin], rseq1, pass_fail, rseq1->barcode, 'F');
