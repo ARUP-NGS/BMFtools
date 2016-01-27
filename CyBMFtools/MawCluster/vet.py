@@ -268,8 +268,7 @@ def add_info_line(header, info_field):
 def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
     # cdef pysam.cbcf.VariantFile invf = pysam.cbcf.VariantFile(vf_path)
     # Open variant file handles
-    fasta = pysam.FastaFile(refpath)
-    settings = VetSettings(ref=fasta, **kwargs)
+    settings = VetSettings(fasta=pysam.FastaFile(refpath), **kwargs)
     invf = pysam.cbcf.VariantFile(vf_path)
     outvf = pysam.cbcf.VariantFile(outvf_path, outmode, header=invf.header)
     bam = pysam.AlignmentFile(bampath, "rb")
