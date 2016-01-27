@@ -10,6 +10,7 @@ LD= -lm -lz -lpthread
 INCLUDE= -Ihtslib -Iinclude -I.
 LIB=
 INSTALL=/usr/bin/install -c
+THREADS=12
 
 prefix = /usr/local
 bindir = $(prefix)/bin
@@ -52,7 +53,7 @@ install: all
 	$(CC) -c $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $< -o $@
 
 libhts.a:
-	cd htslib && make && cp libhts.a ../
+	cd htslib && make -j $(THREADS) && cp libhts.a ../
 bmftools_db: $(D_OBJS) libhts.a
 	$(CC) $(FLAGS) $(INCLUDE) $(LIB) $(LD) $(DB_FLAGS) $(D_OBJS) libhts.a -o bmftools_db
 bmftools_p: $(P_OBJS) libhts.a

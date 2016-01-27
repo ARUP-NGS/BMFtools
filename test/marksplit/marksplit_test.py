@@ -28,7 +28,7 @@ def check_bc(read):
 
 def marksplit_main():
     for ex in ["bmftools_db", "bmftools", "bmftools_p"]:
-        cstr = ("%s dmp -n0 -sTGACT -t12 -o marksplit_test_tmp -l 10 "
+        cstr = ("../../%s dmp -n0 -sTGACT -t12 -o marksplit_test_tmp -l 10 "
                 "-v 11 marksplit_test.R1.fq marksplit_test.R2.fq" % ex)
         print "Command string: %s" % cstr
         subprocess.check_call(shlex.split(cstr))
