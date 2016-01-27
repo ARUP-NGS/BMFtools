@@ -68,8 +68,8 @@ int u64cmp(const void *a, const void *b)
 
 double u64_stdev(uint64_t *arr, size_t l, double mean)
 {
-	double ret = *arr, tmp;
-	for(unsigned i = 1; i < l; ++i) {
+	double ret = 0.0, tmp;
+	for(unsigned i = 0; i < l; ++i) {
 		tmp = arr[i] - mean;
 		ret += tmp * tmp;
 	}
@@ -78,16 +78,16 @@ double u64_stdev(uint64_t *arr, size_t l, double mean)
 
 double u64_mean(uint64_t *arr, size_t l)
 {
-    uint64_t ret = *arr;
-	for(unsigned i = 1; i < l; ++i)
+	uint64_t ret = 0;
+	for(unsigned i = 0; i < l; ++i)
 		ret += arr[i];
 	return (double)ret / l;
 }
 
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
-	int ret = get_fm(stack[0].b);
-	for(int i = 1; i < n_plp; ++i) ret += get_fm(stack[i].b);
+	int ret = 0;
+	for(int i = 0; i < n_plp; ++i) ret += get_fm(stack[i].b);
 	return ret;
 }
 
@@ -127,6 +127,11 @@ int depth_main(int argc, char *argv[])
 		SAM_OPT_GLOBAL_OPTIONS('-', 0, '-', '-', 0),
 		{ NULL, 0, NULL, 0 }
 	};
+
+	if((argc >= 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)))
+		depth_usage(EXIT_SUCCESS);
+
+	if(argc < 4) depth_usage(EXIT_FAILURE);
 
 	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:?h", lopts, NULL)) >= 0) {
 		switch (c) {
