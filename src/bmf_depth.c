@@ -235,7 +235,7 @@ int depth_main(int argc, char *argv[])
 			*p = 0; end = atoi(q); *p = c;
 		} else goto bed_error;
 		region_len = end - beg;
-		LOG_DEBUG("Region length: %i.\n", end - bed);
+		LOG_DEBUG("Start: %i. Stop: %i. Region length: %i.\n", beg, end, end - beg);
 		for(i = 0; i < n; ++i) {
 			if(aux[i]->dmp_counts)
 				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
