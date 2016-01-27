@@ -449,8 +449,7 @@ static int trans_tbl_add_sq(merged_header_t* merged_hdr, bam_hdr_t *translate,
 
 		if (iter == kh_end(sq_tids)) {
 			// Warn about this, but it's not really fatal.
-			fprintf(stderr, "[W:%s] @SQ SN (%.*s) found in text header but not binary header.\n",
-					__func__,
+			LOG_WARNING("@SQ SN (%.*s) found in text header but not binary header.\n",
 					(int) (matches[1].rm_eo - matches[1].rm_so),
 					text + matches[1].rm_so);
 			text += matches[0].rm_eo;
@@ -686,8 +685,8 @@ static int finish_rg_pg(bool is_rg, klist_t(hdrln) *hdr_lines,
 			idx = kh_get(c2c, pg_map, id);
 			if (idx == kh_end(pg_map)) {
 				// Not found, warn.
-				fprintf(stderr, "[W:%s] Tag %s%s not found in @PG records\n",
-						__func__, search + 1, id);
+				LOG_WARNING("Tag %s%s not found in @PG records\n",
+						search + 1, id);
 			} else {
 				// Remember new id and splice points on original string
 				new_id = kh_value(pg_map, idx);
@@ -1270,8 +1269,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 			sprintf(outfname, "%s.%s.bam", out, hout->target_name[i - 1]);
 			outfps[i] = sam_open_format(outfname, mode, out_fmt);
 			if(!outfps[i]) {
-				fprintf(stderr, "[E:%s] Could not open output bam %s. Abort!\n", __func__, outfname);
-				exit(EXIT_FAILURE);
+				LOG_ERROR("Could not open output bam %s. Abort!\n", outfname);
 			}
 			sam_hdr_write(outfps[i], hout);
 			hts_set_threads(outfps[i], n_threads);
@@ -1280,7 +1278,7 @@ int bam_merge_core2(int by_qname, const char *out, const char *mode,
 	else {
 		outfps[0] = sam_open_format(out, mode, out_fmt);
 		if(!outfps[0]) {
-			fprintf(stderr, "[E:%s] Could not open output bam %s. Abort!\n", __func__, out);
+			LOG_ERROR("Could not open output bam %s. Abort!\n", outfname);
 			exit(EXIT_FAILURE);
 		}
 		sam_hdr_write(outfps[0], hout);
@@ -1708,12 +1706,12 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 	buf = NULL;
 	fp = sam_open_format(fn, "r", in_fmt);
 	if (fp == NULL) {
-		fprintf(stderr, "[bam_sort_core] fail to open file %s\n", fn);
+		fprintf(stderr, "[%s] fail to open file %s\n", __func__, fn);
 		return -1;
 	}
 	header = sam_hdr_read(fp);
 	if (header == NULL) {
-		fprintf(stderr, "[bam_sort_core] failed to read header for '%s'\n", fn);
+		fprintf(stderr, "[%s] failed to read header for '%s'\n", __func__, fn);
 		goto err;
 	}
 	if (cmpkey) change_SO(header, "queryname");
@@ -1760,8 +1758,9 @@ int bam_sort_core_ext(int cmpkey, const char *fn, const char *prefix,
 			write_buffer(fnout, modeout, k, buf, header, n_threads, out_fmt);
 	} else { // then merge
 		char **fns;
+		LOG_DEBUG("n_files before sort_blocks: %d.\n", n_files);
 		n_files = sort_blocks(n_files, k, buf, prefix, header, n_threads);
-		fprintf(stderr, "[%s] merging from %d files...\n", __func__, n_files);
+		LOG_INFO("merging from %d files...\n", n_files);
 		fns = (char**)calloc(n_files, sizeof(char*));
 		for (i = 0; i < n_files; ++i) {
 			fns[i] = (char*)calloc(strlen(prefix) + 20, 1);

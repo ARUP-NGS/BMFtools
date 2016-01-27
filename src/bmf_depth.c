@@ -86,8 +86,12 @@ double u64_mean(uint64_t *arr, size_t l)
 
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
-	int ret = 0;
-	for(int i = 0; i < n_plp; ++i) ret += get_fm(stack[i].b);
+	int i, ret;
+	// Check for FM tag.
+	uint8_t *data = n_plp ? bam_aux_get((*stack).b, "FM"): NULL;
+	if(!data) return n_plp;
+	for(i = 1, ret = bam_aux2i(data); i < n_plp; ++i)
+		ret += bam_aux2i(bam_aux_get(stack[i].b, "FM"));
 	return ret;
 }
 
