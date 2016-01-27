@@ -130,7 +130,7 @@ int depth_main(int argc, char *argv[])
 	int *n_plp, dret, i, n, c, minMQ = 0;
 	uint64_t *counts;
 	const bam_pileup1_t **plp;
-	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4;
+	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING;
 	char *bedpath = NULL;
 
 	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
@@ -144,13 +144,14 @@ int depth_main(int argc, char *argv[])
 
 	if(argc < 4) depth_usage(EXIT_FAILURE);
 
-	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:p:?h", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'Q': minMQ = atoi(optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
 		case 'm': max_depth = atoi(optarg); break;
 		case 'f': minFM = atoi(optarg); break;
 		case 'n': n_quantiles = atoi(optarg); break;
+		case 'p': padding = atoi(optarg); break;
 		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
 				  /* else fall-through */
 		case 'h': /* fall-through */
@@ -232,6 +233,9 @@ int depth_main(int argc, char *argv[])
 			int c = *p;
 			*p = 0; end = atoi(q); *p = c;
 		} else goto bed_error;
+		// Add padding
+		beg -= padding, end += padding;
+		if(beg < 0) beg = 0;
 		region_len = end - beg;
 		for(i = 0; i < n; ++i) {
 			if(aux[i]->dmp_counts)
