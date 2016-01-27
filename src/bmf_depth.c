@@ -40,6 +40,7 @@ typedef struct {
 	uint64_t *dmp_counts;
 	int minMQ;
 	int minFM;
+	int requireFP;
 } aux_t;
 
 void depth_usage(int retcode)
@@ -49,6 +50,8 @@ void depth_usage(int retcode)
 	fprintf(stderr, "  -f INT		Only count bases of at least INT Famly size (unmarked reads have FM 1) [0]\n");
 	fprintf(stderr, "  -m INT		Max depth. Default: %i.\n", DEFAULT_MAX_DEPTH);
 	fprintf(stderr, "  -n INT		Set N for quantile reporting. Default: 4 (quartiles)\n");
+	fprintf(stderr, "  -p INT		Number of bases around region to pad in coverage calculations.\n");
+	fprintf(stderr, "  -s FLAG		Skip reads with an FP tag whose value is 0. (Fail)\n");
 	sam_global_opt_help(stderr, "-.--.");
 	exit(retcode);
 }
@@ -110,9 +113,10 @@ static int read_bam(void *data, bam1_t *b)
 	{
 		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
 		if ( ret<0 ) break;
-		uint8_t *data = bam_aux_get(b, "FM");
+		uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
 		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-			(int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM))
+			(int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
+			(aux->requireFP && fpdata && bam_aux2i(fpdata) == 0))
 				continue;
 		break;
 	}
@@ -131,6 +135,7 @@ int depth_main(int argc, char *argv[])
 	uint64_t *counts;
 	const bam_pileup1_t **plp;
 	int usage = 0, max_depth = DEFAULT_MAX_DEPTH, minFM = 0, n_quantiles = 4, padding = DEFAULT_PADDING;
+	int requireFP = 0;
 	char *bedpath = NULL;
 
 	sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
@@ -144,7 +149,7 @@ int depth_main(int argc, char *argv[])
 
 	if(argc < 4) depth_usage(EXIT_FAILURE);
 
-	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:p:?h", lopts, NULL)) >= 0) {
+	while ((c = getopt_long(argc, argv, "Q:b:m:f:n:p:?hs", lopts, NULL)) >= 0) {
 		switch (c) {
 		case 'Q': minMQ = atoi(optarg); break;
 		case 'b': bedpath = strdup(optarg); break;
@@ -152,6 +157,7 @@ int depth_main(int argc, char *argv[])
 		case 'f': minFM = atoi(optarg); break;
 		case 'n': n_quantiles = atoi(optarg); break;
 		case 'p': padding = atoi(optarg); break;
+		case 's': requireFP = 1; break;
 		default:  if (parse_sam_global_opt(c, optarg, lopts, &ga) == 0) break;
 				  /* else fall-through */
 		case 'h': /* fall-through */
@@ -170,6 +176,7 @@ int depth_main(int argc, char *argv[])
 		aux[i] = calloc(1, sizeof(aux_t));
 		aux[i]->minMQ = minMQ;
 		aux[i]->minFM = minFM;
+		aux[i]->requireFP = requireFP;
 		aux[i]->fp = sam_open_format(argv[i + optind], "r", &ga.in);
 		if (aux[i]->fp)
 			idx[i] = sam_index_load(aux[i]->fp, argv[i + optind]);
