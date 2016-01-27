@@ -188,18 +188,14 @@ int depth_main(int argc, char *argv[])
 		LOG_ERROR("Bed path required. Abort!\n");
 	}
 	counts = calloc(n, sizeof(uint64_t));
-	LOG_DEBUG("Can I count lines?\n");
 	int n_cols = count_lines(bedpath);
-	LOG_DEBUG("YAAAAASSSS\n");
 	col_names = calloc(n_cols, sizeof(char *));
 
 	fp = gzopen(bedpath, "rb");
 	if(!fp) {
 		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
 	}
-	LOG_DEBUG("Can I start stream?\n");
 	ks = ks_init(fp);
-	LOG_DEBUG("YAAAAASSSS\n");
 	n_plp = calloc(n, sizeof(int));
 	plp = calloc(n, sizeof(bam_pileup1_t*));
 	int line_num = 0;
@@ -235,7 +231,6 @@ int depth_main(int argc, char *argv[])
 			*p = 0; end = atoi(q); *p = c;
 		} else goto bed_error;
 		region_len = end - beg;
-		LOG_DEBUG("Start: %i. Stop: %i. Region length: %i.\n", beg, end, end - beg);
 		for(i = 0; i < n; ++i) {
 			if(aux[i]->dmp_counts)
 				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
@@ -262,12 +257,10 @@ int depth_main(int argc, char *argv[])
 		int arr_ind = 0;
 		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= beg && pos < end) {
-				LOG_DEBUG("HEY I'M IN. arr_ind: %i.\n", arr_ind);
 				for (i = 0; i < n; ++i) {
-					counts += n_plp[i];
+					counts[i] += n_plp[i];
 					aux[i]->dmp_counts[arr_ind] = n_plp[i];
 					aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
-					LOG_DEBUG("YAAAAASSSSSSS sample number %i. n_plp[i]: %i. FM sum: %lu.\n", i + 1, n_plp[i], aux[i]->raw_counts[arr_ind]);
 				}
 				++arr_ind; // Increment for positions in range.
 			}
