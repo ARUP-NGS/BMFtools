@@ -150,7 +150,8 @@ int depth_main(int argc, char *argv[])
 	if (usage || optind > argc) // Require at least one bam
 		depth_usage(EXIT_FAILURE);
 	memset(&str, 0, sizeof(kstring_t));
-	n = argc - optind - 1;
+	n = argc - optind;
+	fprintf(stderr, "n: %i. argc: %i. optind: %i.\n", n, argc, optind);
 	aux = calloc(n, sizeof(aux_t*));
 	idx = calloc(n, sizeof(hts_idx_t*));
 	for (i = 0; i < n; ++i) {
@@ -176,17 +177,25 @@ int depth_main(int argc, char *argv[])
 		LOG_ERROR("Bed path required. Abort!\n");
 	}
 	counts = calloc(n, sizeof(uint64_t));
+	LOG_DEBUG("Can I count lines?\n");
 	int n_cols = count_lines(bedpath);
+	LOG_DEBUG("YAAAAASSSS\n");
 	col_names = calloc(n_cols, sizeof(char *));
 
-	fp = gzopen(argv[optind], "rb");
+	fp = gzopen(bedpath, "rb");
+	if(!fp) {
+		LOG_ERROR("Could not open bedfile %s. Abort!\n", bedpath);
+	}
+	LOG_DEBUG("Can I start stream?\n");
 	ks = ks_init(fp);
+	LOG_DEBUG("YAAAAASSSS\n");
 	n_plp = calloc(n, sizeof(int));
 	plp = calloc(n, sizeof(bam_pileup1_t*));
 	int line_num = 0;
 	double *raw_region_means = (double *)calloc(n, sizeof(double));
 	double *dmp_region_means = (double *)calloc(n, sizeof(double));
 	// Write header
+	// stderr ONLY for this development phase.
 	fprintf(stdout, "##NQuintiles=%i\n", n_quantiles);
 	fprintf(stdout, "##minMQ=%i\n", minMQ);
 	fprintf(stdout, "##minFM=%i\n", minFM);
@@ -217,16 +226,25 @@ int depth_main(int argc, char *argv[])
 			*p = 0; end = atoi(q); *p = c;
 		} else goto bed_error;
 		region_len = end - beg;
-		for(i = 0; i < n; ++i)
-			crealloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len),
-			crealloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
+		for(i = 0; i < n; ++i) {
+			if(aux[i]->dmp_counts) {
+				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
+			} else {
+				aux[i]->dmp_counts = calloc(region_len, sizeof(uint64_t));
+			}
+			if(aux[i]->raw_counts) {
+				aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
+			} else {
+				aux[i]->raw_counts = calloc(region_len, sizeof(uint64_t));
+			}
+		}
 		if(*p == '\t') {
 			q = ++p;
 			while(*q != '\t' && *q != '\n') ++q;
 			int c = *q; *q = '\0';
-			restrdup(col_names[i], p);
+			col_names[i] = restrdup(col_names[i], p);
 			*q = c;
-		} else restrdup(col_names[i], NO_ID_STR);
+		} else col_names[i] = restrdup(col_names[i], NO_ID_STR);
 
 		for (i = 0; i < n; ++i) {
 			if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);
@@ -238,14 +256,19 @@ int depth_main(int argc, char *argv[])
 		int arr_ind = 0;
 		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= beg && pos < end) {
+				LOG_DEBUG("HEY I'M IN. arr_ind: %i.", arr_ind);
 				for (i = 0; i < n; ++i) {
 					counts += n_plp[i];
+					LOG_DEBUG("%p pointer", aux[i]->dmp_counts);
 					aux[i]->dmp_counts[arr_ind] = n_plp[i];
+					LOG_DEBUG("YAAAAASSSSSSS sample number %i\n", i + 1);
 					aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
+					LOG_DEBUG("YAAAAASSSSSSS sample number %i\n", i + 1);
 				}
 				++arr_ind; // Increment for positions in range.
 			}
 		}
+		LOG_DEBUG("YAAAAASSSSSSS plp_auto_done\n");
 		/*
 		 * At this point, the arrays have counts for depth
 		 * for each position in the region.
@@ -254,6 +277,7 @@ int depth_main(int argc, char *argv[])
 		 */
 		kputc('\t', &str);
 		kputs(col_names[i], &str);
+		LOG_DEBUG("YAAAAASSSSSSS ut col names yay %p %s\n", col_names[i], col_names[i]);
 		uint64_t *raw_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
 		uint64_t *dmp_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
 		for(i = 0; i < n; ++i) {
@@ -305,6 +329,7 @@ bed_error:
 	free(col_names);
 	free(aux); free(idx);
 	free(str.s);
+	free(bedpath);
 	sam_global_args_free(&ga);
 	return(EXIT_SUCCESS);
 }
