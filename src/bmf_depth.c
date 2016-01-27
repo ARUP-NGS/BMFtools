@@ -86,8 +86,8 @@ double u64_mean(uint64_t *arr, size_t l)
 
 static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
-	int ret = 0;
-	for(int i = 0; i < n_plp; ++i) ret += get_fm(stack[i].b);
+	int ret = get_fm(stack[0].b);
+	for(int i = 1; i < n_plp; ++i) ret += get_fm(stack[i].b);
 	return ret;
 }
 
@@ -236,7 +236,7 @@ int depth_main(int argc, char *argv[])
 				for (i = 0; i < n; ++i) {
 					counts += n_plp[i];
 					aux[i]->dmp_counts[arr_ind] = n_plp[i];
-					aux[i]->raw_counts[arr_ind] = plp_fm_sum(mplp->plp[i], n_plp[i]);
+					aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
 				}
 				++arr_ind; // Increment for positions in range.
 			}

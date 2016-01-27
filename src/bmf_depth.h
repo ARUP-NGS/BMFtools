@@ -15,14 +15,6 @@
 
 #include "htslib/kseq.h"
 
-struct __bam_mplp_t {
-    int n;
-    uint64_t min, *pos;
-    bam_plp_t *iter;
-    int *n_plp;
-    const bam_pileup1_t **plp;
-};
-
 static inline int get_fm(bam1_t *b)
 {
 	uint8_t *data = bam_aux_get(b, "FM");
