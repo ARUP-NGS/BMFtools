@@ -14,7 +14,7 @@ from distutils.core import setup
 
 compilerList = ["-O2", "-pipe", "-march=native", "-mfpmath=sse", "-DSAMTOOLS=1", "-std=c99"]
 
-ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
+ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', 'MawCluster/vet.py'])))
 
 # If more complex optimizations fail, fall back to -O2
 for x in ext:

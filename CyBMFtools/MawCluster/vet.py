@@ -117,28 +117,6 @@ class UniqueObs(object):
                                r2a.mapping_quality,
                                False, RV not in [0, FM])
                 
-                                      
-
-def get_plp(af=None, contig=None, pos=None):
-    """
-    af is a pysam.AlignmentFile object.
-    contig is a string.
-    pos (integer) is 0-based, like in a vcf.
-    """
-    if pos is None:
-        raise ValueError("Need a position argument.")
-    if contig is None:
-        raise ValueError("Need a contig argument.")
-    if af is None:
-        raise ValueError("Need an alignmentfile argument.")
-    assert isinstance(pos, int)
-    assert isinstance(contig, str)
-    assert isinstance(af, pysam.calignmentfile.AlignmentFile)
-    plp_iterator = af.pileup(contig, pos, pos + 1)
-    plp_col = plp_iterator.next()
-    while plp_col.pos < pos:
-        plp_col = plp_iterator.next()
-    return plp_col
 
 class filters(Enum):
     minOverlap = 1
@@ -282,8 +260,11 @@ def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
     num_failed = 0
     for rec in invf:
         # Goes to pileup at that position
-        plp = get_plp(bam, rec.contig, rec.pos - 1)
-        passing_vars = get_plp_summary(plp, settings)
+        plp_iterator = bam.pileup(rec.contig, rec.pos - 1)
+        plp_col = plp_iterator.next()
+        while plp_col.pos < rec.pos:
+            plp_col = plp_iterator.next()
+        passing_vars = get_plp_summary(plp_col, settings)
         pass_arr[0] = 'A' in passing_vars
         pass_arr[1] = 'C' in passing_vars
         pass_arr[2] = 'G' in passing_vars
