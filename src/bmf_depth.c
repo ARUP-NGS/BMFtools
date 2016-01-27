@@ -210,6 +210,8 @@ int depth_main(int argc, char *argv[])
 		// All results from that bam file are listed in that column.
 		putc('\t', stdout);
 		fputs(argv[i + optind], stdout);
+		fprintf(stdout, "|DmpReads:DmpMeanCov:DmpStdev:DmpCoefVar:%i-tiles", n_quantiles);
+		fprintf(stdout, "|RawReads:RawMeanCov:RawStdev:RawCoefVar:%i-tiles", n_quantiles);
 	}
 	putc('\n', stdout);
 	while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
@@ -265,6 +267,7 @@ int depth_main(int argc, char *argv[])
 				++arr_ind; // Increment for positions in range.
 			}
 		}
+		/*
 		for(i = 0; i < n; ++i) {
 			fprintf(stderr, "Sample: %s. raw depths: ", argv[i + optind]);
 			for(int k = 0; k < region_len; ++k)
@@ -274,6 +277,7 @@ int depth_main(int argc, char *argv[])
 				fprintf(stderr, ",%lu", aux[i]->dmp_counts[k]);
 			fputc('\n', stderr);
 		}
+		*/
 		/*
 		 * At this point, the arrays have counts for depth
 		 * for each position in the region.
@@ -295,12 +299,12 @@ int depth_main(int argc, char *argv[])
 			dmp_stdev = u64_stdev(aux[i]->dmp_counts, region_len, dmp_mean);
 			kputc('\t', &str);
 			kputl(counts[i], &str);
-			ksprintf(&str, ":%0.12f:%0.12f:", dmp_mean, dmp_stdev);
+			ksprintf(&str, ":%0.12f:%0.12f:%0.12f:", dmp_mean, dmp_stdev, dmp_stdev / dmp_mean);
 			write_quantiles(&str, dmp_sort_array, region_len, n_quantiles);
 			kputc('|', &str);
 			kputl((long)(raw_mean * region_len + 0.5), &str); // Total counts
 			kputc(':', &str);
-			ksprintf(&str, ":%0.12f:%0.12f:", raw_mean, raw_stdev);
+			ksprintf(&str, ":%0.12f:%0.12f:%0.12f:", raw_mean, raw_stdev, raw_stdev / raw_mean);
 			write_quantiles(&str, raw_sort_array, region_len, n_quantiles);
 			kputc('\t', &str);
 		}

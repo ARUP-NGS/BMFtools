@@ -198,7 +198,7 @@ cdef class CoarseSNVWrangler:
     cpdef ndarray[int32_t, ndim=2] get_allele_counts(self):
         return self.c_get_allele_counts(self.insert_size_dict)
 
-    cpdef void fast_forward(self):
+    cpdef fast_forward(self):
         """Move forward until we arrive at the correct position"""
         cdef IteratorColumnRegion_t iterator
         cdef PileupColumn_t column
