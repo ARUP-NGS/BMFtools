@@ -88,11 +88,18 @@ static inline int plp_fm_sum(const bam_pileup1_t *stack, int n_plp)
 {
 	int i, ret;
 	// Check for FM tag.
-	uint8_t *data = n_plp ? bam_aux_get((*stack).b, "FM"): NULL;
+	uint8_t *data = n_plp ? bam_aux_get(stack[0].b, "FM"): NULL;
 	if(!data) return n_plp;
 	for(i = 1, ret = bam_aux2i(data); i < n_plp; ++i)
 		ret += bam_aux2i(bam_aux_get(stack[i].b, "FM"));
+		//LOG_DEBUG("FM: %i. Current sum: %i.\n", bam_aux2i(bam_aux_get(stack[i].b, "FM")), ret);
 	return ret;
+	/*
+	int ret = 0;
+	for(int i = 0; i < n_plp; ++i)
+		ret += bam_aux2i(bam_aux_get(stack[i].b, "FM"));
+	return ret;
+	*/
 }
 
 static int read_bam(void *data, bam1_t *b)
@@ -109,7 +116,7 @@ static int read_bam(void *data, bam1_t *b)
 				continue;
 		break;
 	}
-	return(ret);
+	return ret;
 }
 
 int depth_main(int argc, char *argv[])
@@ -196,8 +203,6 @@ int depth_main(int argc, char *argv[])
 	n_plp = calloc(n, sizeof(int));
 	plp = calloc(n, sizeof(bam_pileup1_t*));
 	int line_num = 0;
-	double *raw_region_means = (double *)calloc(n, sizeof(double));
-	double *dmp_region_means = (double *)calloc(n, sizeof(double));
 	// Write header
 	// stderr ONLY for this development phase.
 	fprintf(stdout, "##NQuintiles=%i\n", n_quantiles);
@@ -230,17 +235,14 @@ int depth_main(int argc, char *argv[])
 			*p = 0; end = atoi(q); *p = c;
 		} else goto bed_error;
 		region_len = end - beg;
+		LOG_DEBUG("Region length: %i.\n", end - bed);
 		for(i = 0; i < n; ++i) {
-			if(aux[i]->dmp_counts) {
+			if(aux[i]->dmp_counts)
 				aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
-			} else {
-				aux[i]->dmp_counts = calloc(region_len, sizeof(uint64_t));
-			}
-			if(aux[i]->raw_counts) {
+			else aux[i]->dmp_counts = calloc(region_len, sizeof(uint64_t));
+			if(aux[i]->raw_counts)
 				aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
-			} else {
-				aux[i]->raw_counts = calloc(region_len, sizeof(uint64_t));
-			}
+			else aux[i]->raw_counts = calloc(region_len, sizeof(uint64_t));
 		}
 		if(*p == '\t') {
 			q = ++p;
@@ -260,19 +262,25 @@ int depth_main(int argc, char *argv[])
 		int arr_ind = 0;
 		while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
 			if (pos >= beg && pos < end) {
-				LOG_DEBUG("HEY I'M IN. arr_ind: %i.", arr_ind);
+				LOG_DEBUG("HEY I'M IN. arr_ind: %i.\n", arr_ind);
 				for (i = 0; i < n; ++i) {
 					counts += n_plp[i];
-					LOG_DEBUG("%p pointer", aux[i]->dmp_counts);
 					aux[i]->dmp_counts[arr_ind] = n_plp[i];
-					LOG_DEBUG("YAAAAASSSSSSS sample number %i\n", i + 1);
 					aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
-					LOG_DEBUG("YAAAAASSSSSSS sample number %i\n", i + 1);
+					LOG_DEBUG("YAAAAASSSSSSS sample number %i. n_plp[i]: %i. FM sum: %lu.\n", i + 1, n_plp[i], aux[i]->raw_counts[arr_ind]);
 				}
 				++arr_ind; // Increment for positions in range.
 			}
 		}
-		LOG_DEBUG("YAAAAASSSSSSS plp_auto_done\n");
+		for(i = 0; i < n; ++i) {
+			fprintf(stderr, "Sample: %s. raw depths: ", argv[i + optind]);
+			for(int k = 0; k < region_len; ++k)
+				fprintf(stderr, ",%lu", aux[i]->raw_counts[k]);
+			fprintf(stderr, "\tdmp depths: ");
+			for(int k = 0; k < region_len; ++k)
+				fprintf(stderr, ",%lu", aux[i]->dmp_counts[k]);
+			fputc('\n', stderr);
+		}
 		/*
 		 * At this point, the arrays have counts for depth
 		 * for each position in the region.
@@ -281,7 +289,6 @@ int depth_main(int argc, char *argv[])
 		 */
 		kputc('\t', &str);
 		kputs(col_names[i], &str);
-		LOG_DEBUG("YAAAAASSSSSSS ut col names yay %p %s\n", col_names[i], col_names[i]);
 		uint64_t *raw_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
 		uint64_t *dmp_sort_array = (uint64_t *)malloc(sizeof(uint64_t) * region_len);
 		for(i = 0; i < n; ++i) {
@@ -316,8 +323,6 @@ bed_error:
 	free(n_plp); free(plp);
 	ks_destroy(ks);
 	gzclose(fp);
-	free(raw_region_means);
-	free(dmp_region_means);
 
 	for (i = 0; i < n; ++i) {
 		if (aux[i]->iter) hts_itr_destroy(aux[i]->iter);

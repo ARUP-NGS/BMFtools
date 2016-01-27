@@ -15,7 +15,7 @@ prefix = /usr/local
 bindir = $(prefix)/bin
 binprefix =
 
-OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing 
+OPT_FLAGS = -finline-functions -O3 -DNDEBUG -flto -fivopts -Wno-unused-function -Wno-unused-variable -Wno-strict-aliasing
 DB_FLAGS = -Wno-unused-function -Wno-strict-aliasing
 PG_FLAGS = -Wno-unused-function -pg -DNDEBUG -O3 -Wno-strict-aliasing
 
@@ -65,8 +65,12 @@ test/ucs/ucs_test:
 
 tests: $(TEST_OBJS) dlib/bed_util.o src/bmf_target.o bmftools bmftools_db bmftools_p test/ucs/ucs_test
 	$(CC) $(FLAGS) $(DB_FLAGS) $(INCLUDE) $(LIB) $(LD) dlib/bed_util.o src/bmf_target.o test/target_test.c libhts.a -o ./target_test && ./target_test
-	cd test && bash all_tests.sh
 	cd test/ucs && ./ucs_test && cd ../..
+	cd test/dmp && python hashdmp_test.py && cd ../..
+	cd test/marksplit && python marksplit_test.py && cd ../..
+
+python:
+	cd CyBMFtools && python setup.py build_ext && python setup.py install && cd ..
 
 
 
