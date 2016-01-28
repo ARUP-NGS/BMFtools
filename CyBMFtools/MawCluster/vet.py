@@ -5,6 +5,11 @@ from enum import Enum
 from math import log10
 from scipy.stats import combine_pvalues
 from array import array
+from sys import float_info
+from math import log10 as mlog10
+
+MIN_FLOAT = float_info.min
+MAX_PHRED = -10 * mlog10(MIN_FLOAT)
 
 """
 Tools for creating a vetter using metadata from molecular barcodes.
@@ -144,13 +149,19 @@ class VetSettings(object):
 
 
 def phred2pval(phred):
-    return 10 ** (phred * -0.1)
+    ret = 10. ** (phred * -0.1)
+    return ret
 
 
 def combine_phreds(phred1, phred2):
-    return int(-10 * log10(combine_pvalues([phred2pval(phred1),
-                                            phred2pval(phred2)],
-                                           "fisher")[1]))
+    new_pvalue = combine_pvalues([phred2pval(phred1),
+                                  phred2pval(phred2)],
+                                  "fisher")[1]
+    if new_pvalue < MIN_FLOAT:
+        return MAX_PHRED
+    else:
+        return -10 * mlog10(new_pvalue)
+
 
 
 def get_tagpos(pr):
@@ -199,18 +210,28 @@ class BaseCallSummary(object):
     """
     def __init__(self, bin_tuple, settings, ref_base):
         obs = bin_tuple[1]
+        print("obs: %s" % obs)
         self.base_call = bin_tuple[0]
+        print("base_call: %s" % self.base_call)
         self.count = len(obs)
+        print("count: %s" % self.count)
         dup = 0
-        olap = 0
+        overlap = 0
         for i in obs:
             dup += i.duplex
-            olap += i.overlap
+            overlap += i.overlap
         self.duplex = dup
-        self.overlap = olap
-        self.Pass = (self.duplex > settings.minDuplex and
-                     self.overlap > settings.minOverlap and
-                     self.count > settings.minCount)
+        self.overlap = overlap
+        print("duplex: %s" % self.duplex)
+        print("minDuplex: %s" % settings.minDuplex)
+        print("minOverlap: %s" % settings.minOverlap)
+        print("overlap: %s" % self.overlap)
+        print("minCount: %s" % settings.minCount)
+        print("minDuplex: %s" % settings.minDuplex)
+        self.Pass = (self.duplex >= settings.minDuplex and
+                     self.overlap >= settings.minOverlap and
+                     self.count >= settings.minCount)
+        print("Pass? %s" % self.Pass)
 
 
 def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
@@ -224,8 +245,11 @@ def get_plp_summary(plp, vet_settings):
     ref_base = vet_settings.ref.fetch(plp.reference_name, plp.pos, plp.pos + 1)
     observations = map(UniqueObs.from_name_bin,
                        get_name_bins(plp.pileups).itervalues())
+    print("N observations: %i." % len(observations))
     passing = [obs for obs in observations if vet_settings.pass_uniobs(obs)]
+    print("N passing: %i." % len(passing))
     bc_bins = get_bc_bins(passing)
+    print("N bins: %i." % len(bc_bins))
     summary = get_bc_bin_summary(bc_bins, vet_settings, ref_base)
     return [i for i in summary if i.Pass]
 
@@ -244,7 +268,7 @@ def add_info_line(header, info_field):
     header.info.add(info_field.id, info_field.number,
                     info_field.type, info_field.description)
 
-def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
+def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="w", **kwargs):
     # cdef pysam.cbcf.VariantFile invf = pysam.cbcf.VariantFile(vf_path)
     # Open variant file handles
     settings = VetSettings(fasta=pysam.FastaFile(refpath), **kwargs)
@@ -259,6 +283,7 @@ def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
     pass_arr = array('i', [0, 0, 0, 0])
     num_passed = 0
     num_failed = 0
+    passing_nucs = set()
     for rec in invf:
         # Goes to pileup at that position
         plp_iterator = bam.pileup(rec.contig, rec.pos - 1)
@@ -266,15 +291,19 @@ def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="wb", **kwargs):
         while plp_col.pos < rec.pos:
             plp_col = plp_iterator.next()
         passing_vars = get_plp_summary(plp_col, settings)
-        pass_arr[0] = 'A' in passing_vars
-        pass_arr[1] = 'C' in passing_vars
-        pass_arr[2] = 'G' in passing_vars
-        pass_arr[3] = 'T' in passing_vars
+        passing_nucs = set([i.base_call for i in passing_vars])
+        pass_arr[0] = 'A' in passing_nucs
+        pass_arr[1] = 'C' in passing_nucs
+        pass_arr[2] = 'G' in passing_nucs
+        pass_arr[3] = 'T' in passing_nucs
+        print ("Passing variants: '%s'" % "".join([i for i in passing_nucs]))
         add_info_array(rec, "BMF_PASS", pass_arr)
         if(sum(pass_arr) != 0):
+            "passed"
             num_passed += 1
             ovw(rec)
         else:
+            print "Failed"
             num_failed += 1
     invf.close()
     outvf.close()
