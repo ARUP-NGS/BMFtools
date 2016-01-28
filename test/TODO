@@ -27,6 +27,9 @@
         1. FA
         2. FM
         3. PV
+		4. FP
+		  1. Ambiguous
+		  2. Homopolymer
         5. NF
         6. RV
     2. QC Failing Reads
