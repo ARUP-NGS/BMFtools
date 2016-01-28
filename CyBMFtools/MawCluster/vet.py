@@ -210,11 +210,8 @@ class BaseCallSummary(object):
     """
     def __init__(self, bin_tuple, settings, ref_base):
         obs = bin_tuple[1]
-        print("obs: %s" % obs)
         self.base_call = bin_tuple[0]
-        print("base_call: %s" % self.base_call)
         self.count = len(obs)
-        print("count: %s" % self.count)
         dup = 0
         overlap = 0
         for i in obs:
@@ -222,16 +219,9 @@ class BaseCallSummary(object):
             overlap += i.overlap
         self.duplex = dup
         self.overlap = overlap
-        print("duplex: %s" % self.duplex)
-        print("minDuplex: %s" % settings.minDuplex)
-        print("minOverlap: %s" % settings.minOverlap)
-        print("overlap: %s" % self.overlap)
-        print("minCount: %s" % settings.minCount)
-        print("minDuplex: %s" % settings.minDuplex)
         self.Pass = (self.duplex >= settings.minDuplex and
                      self.overlap >= settings.minOverlap and
                      self.count >= settings.minCount)
-        print("Pass? %s" % self.Pass)
 
 
 def get_bc_bin_summary(bc_bins, vet_settings, ref_base):
@@ -296,7 +286,7 @@ def vet_vcf(vf_path, outvf_path, bampath, refpath, outmode="w", **kwargs):
         pass_arr[1] = 'C' in passing_nucs
         pass_arr[2] = 'G' in passing_nucs
         pass_arr[3] = 'T' in passing_nucs
-        print ("Passing variants: '%s'" % "".join([i for i in passing_nucs]))
+        print ("Passing variants: '%s'" % ", ".join([i for i in passing_nucs]))
         add_info_array(rec, "BMF_PASS", pass_arr)
         if(sum(pass_arr) != 0):
             "passed"
