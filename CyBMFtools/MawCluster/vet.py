@@ -155,7 +155,7 @@ def combine_phreds(phred1, phred2):
 
 def get_tagpos(pr):
     return (pr.alignment.query_length - 1 - pr.query_position
-            if(pr.is_reverse) else pr.query_position)
+            if(pr.alignment.is_reverse) else pr.query_position)
 
 
 
@@ -174,10 +174,11 @@ def get_name_bins(iter_obj):
         # 3844 is supp/second/qcfail/duplicate/unmapped
         if i.is_refskip or i.is_del or i.alignment.flag & 3844:
             continue
-        if i.query_name in ret:
-            ret[i.query_name].append(i)
+        qname = i.alignment.query_name
+        if qname in ret:
+            ret[qname].append(i)
         else:
-            ret[i.query_name] = [i]
+            ret[qname] = [i]
     return ret
 
 
@@ -223,7 +224,7 @@ def get_plp_summary(plp, vet_settings):
     ref_base = vet_settings.ref.fetch(plp.reference_name, plp.pos, plp.pos + 1)
     observations = map(UniqueObs.from_name_bin,
                        get_name_bins(plp.pileups).itervalues())
-    passing = filter(VetSettings.pass_unibos, observations)
+    passing = [obs for obs in observations if vet_settings.pass_uniobs(obs)]
     bc_bins = get_bc_bins(passing)
     summary = get_bc_bin_summary(bc_bins, vet_settings, ref_base)
     return [i for i in summary if i.Pass]
