@@ -48,7 +48,7 @@ rule consolidate_by_barcode:
     params:
         homing = config["params"]["homing_seq"]
     shell:
-        "bmftools dmp -l 11 -v 12 -s {homing} -p {threads} -d -f "
+        "bmftools dmp -l 11 -v 12 -s {params.homing} -p {threads} -d -f "
         "FastqBMF/{wildcards.unit} -z {input} 2> {log}"
 
 
@@ -140,7 +140,9 @@ rule gatk_realign_info:
         temp("rescued_reads/{reference}/{prefix}_rescued.realign.intervals")
     log:
         "logs/_07_indel_realign/{prefix}.realign_info.log"
-    threads: 8
+    threads: config["params"]["threads"]["other"]
+    params:
+        gatk = config["params"]["gatk"]
     shell:
         "{params.gatk} -T RealignerTargetCreator -R {input.ref} "
         "-nt {threads} "
@@ -161,7 +163,7 @@ rule gatk_realign_bam:
     log:
         "mapping/log/{reference}/{prefix}.realign.log"
     shell:
-        "{params.gatk} -T IndelRealigner -R {input.ref} {params.custom} "
+        "{params.gatk} -T IndelRealigner -R {input.ref} "
         "--disable_bam_indexing "
         "-I {input.bam} -targetIntervals {input.intervals} "
         "-o {output} >& {log}"
