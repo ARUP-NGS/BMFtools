@@ -34,7 +34,7 @@ P_OBJS = $(SOURCES:.c=.po)
 D_OBJS = $(SOURCES:.c=.dbo)
 OBJS = $(SOURCES:.c=.o)
 
-.PHONY: all clean install
+.PHONY: all clean install tests python mostlyclean
 
 all: libhts.a tests bmftools bmftools_db bmftools_p
 
@@ -79,6 +79,6 @@ clean:
 	rm -f *.a && rm -f *.o && rm -f bmftools* && rm -f src/*.o && rm -f dlib/*.o && \
 		rm -f include/*.o && rm -f lib/*.o && cd htslib && make clean
 
-mostly_clean:
+mostlyclean:
 	rm -f *.*o && rm -f bmftools* && rm -f src/*.*o && rm -f dlib/*.*o && \
 		rm -f include/*.*o && rm -f lib/*.*o && rm -f test/*o
