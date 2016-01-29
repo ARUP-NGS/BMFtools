@@ -210,7 +210,7 @@ int depth_main(int argc, char *argv[])
 	fprintf(stdout, "##NQuintiles=%i\n", n_quantiles);
 	fprintf(stdout, "##minMQ=%i\n", minMQ);
 	fprintf(stdout, "##minFM=%i\n", minFM);
-	fprintf(stdout, "##BMFtools version=v.%s.\n", VERSION);
+	fprintf(stdout, "##BMFtools version=%s.\n", VERSION);
 	fprintf(stdout, "#Contig\tStart\tStop\tRegion Name");
 	for(i = 0; i < n; ++i) {
 		// All results from that bam file are listed in that column.

@@ -10,6 +10,25 @@ void vetter_error(char *message, int retcode)
 	exit(retcode);
 }
 
+
+static int read_bam(void *data, bam1_t *b)
+{
+	aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
+	int ret;
+	for(;;)
+	{
+		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
+		if ( ret<0 ) break;
+		uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
+		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
+			(int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
+			(fpdata && bam_aux2i(fpdata) == 0))
+				continue;
+		break;
+	}
+	return ret;
+}
+
 /*
  * #define VETTER_OPTIONS \
 	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
@@ -226,6 +245,63 @@ void hts_loop(vetter_settings_t *settings)
 	bam_destroy1(b);
 	bcf_destroy1(rec);
 	//hts_idx_destroy(conf->vi);
+}
+
+void vet_core(khash_t(bed) *bed, vparams_t *params, int n_bams, aux_t *aux) {
+	khiter_t ki;
+	int i, n_plp;
+	const bam_pileup1_t *plp = calloc(1, sizeof(bam_pileup1_t*));
+	hts_idx_t *idx = calloc(1, sizeof(hts_idx_t*));
+	idx = sam_index_load(aux->fp, aux->fp->fn);
+	if(!idx) {
+
+	}
+	for(ki = kh_begin(bed); ki != kh_end(bed); ++ki) {
+		if(!kh_exist(bed, ki)) continue;
+		for(unsigned j = 0; j < kh_val(bed, ki).n; ++j) {
+
+			int tid, start, stop, pos, region_len;
+			double raw_mean, dmp_mean, raw_stdev, dmp_stdev;
+			bam_mplp_t mplp;
+
+			tid = kh_key(bed, ki);
+
+			start = get_start(kh_val(bed, ki).intervals[j]);
+			stop = get_stop(kh_val(bed, ki).intervals[j]);
+
+			// Add padding
+			start -= params->padding, stop += params->padding;
+			if(start < 0) start = 0;
+			region_len = stop - start;
+			/*
+			for(i = 0; i < n_bams; ++i) {
+				if(aux[i]->dmp_counts)
+					aux[i]->dmp_counts = (uint64_t *)realloc(aux[i]->dmp_counts, sizeof(uint64_t) * region_len);
+				else aux[i]->dmp_counts = calloc(region_len, sizeof(uint64_t));
+				if(aux[i]->raw_counts)
+					aux[i]->raw_counts = (uint64_t *)realloc(aux[i]->raw_counts, sizeof(uint64_t) * region_len);
+				else aux[i]->raw_counts = calloc(region_len, sizeof(uint64_t));
+			}
+			*/
+			if (aux->iter) hts_itr_destroy(aux->iter);
+			aux->iter = sam_itr_queryi(idx, tid, start, stop);
+			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
+			bam_plp_set_maxcnt(pileup, max_depth);
+			//memset(counts, 0, sizeof(uint64_t) * n_bams);
+			int arr_ind = 0;
+			while ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != NULL) {
+				if (pos >= start && pos < stop) {
+					for (i = 0; i < n_bams; ++i) {
+						//counts[i] += n_plp[i];
+						//aux[i]->dmp_counts[arr_ind] = n_plp[i];
+						//aux[i]->raw_counts[arr_ind] = plp_fm_sum(plp[i], n_plp[i]);
+					}
+					++arr_ind; // Increment for positions in range.
+				}
+			}
+		}
+	}
+	hts_idx_destroy(idx);
 }
 
 int vs_reg_core(vetter_settings_t *settings)

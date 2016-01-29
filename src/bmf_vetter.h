@@ -75,8 +75,21 @@ typedef struct vparams {
 	double minFR; // Minimum  fraction agreed on base
 	uint32_t minMQ; // Minimum mapping quality to include
 	uint32_t minPV; // Minimum PV score to include
+	uint32_t padding; // Number of bases outside bed region to consider
 	uint64_t flag;
 } vparams_t;
+
+typedef struct {
+	htsFile *fp;
+	bam_hdr_t *header;
+	hts_itr_t *iter;
+	double minFR;
+	int minMQ;
+	int minFM;
+	int minFA;
+	int padding;
+	uint32_t skip_flag; // Skip reads with any bits set to true
+} aux_t;
 
 typedef struct vetplp_conf {
 	samFile *bam;

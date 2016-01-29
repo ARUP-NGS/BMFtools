@@ -20,7 +20,7 @@ void print_crms_usage(char *executable)
 						" a homopolymer of length >= this limit is flagged as QC fail."
 						"Default: 10.\n"
 						"-n: Number of nucleotides at the beginning of the barcode to use to split the output. Default: 4.\n"
-						"-m: Mask first n nucleotides in read for barcode. Default: 1.\n"
+						"-m: Mask first n nucleotides in read for barcode. Default: 0.\n"
 						"-p: Number of threads to use if running uthash_dmp.\n"
 						"-d: Use this flag to to run hash_dmp.\n"
 						"-f: If running hash_dmp, this sets the Final Fastq Prefix. \n"
@@ -464,7 +464,7 @@ int dmp_main(int argc, char *argv[])
 		.notification_interval = 1000000,
 		.blen = 0,
 		.homing_sequence_length = 0,
-		.offset = 1,
+		.offset = 0,
 		.rescaler = NULL,
 		.rescaler_path = NULL,
 		.run_hash_dmp = 0,

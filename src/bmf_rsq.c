@@ -28,14 +28,10 @@ void resize_stack(tmp_stack_t *stack, size_t n) {
 	if(n > stack->max) {
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
-#if !NDEBUG
-			if(!stack->a) {
-				fprintf(stderr, "[E:%s] Failed to reallocate memory for %i bam1_t * objects. Abort!\n", __func__, stack->max);
-				exit(EXIT_FAILURE);
-			}
-#endif
-	}
-	else if(n < stack->n){
+		if(!stack->a) {
+			LOG_ERROR("Failed to reallocate memory for %i bam1_t * objects. Abort!\n", stack->max);
+		}
+	} else if(n < stack->n){
 		for(uint64_t i = stack->n;i > n;) bam_destroy1(stack->a[--i]);
 		stack->max = n;
 		stack->a = (bam1_t **)realloc(stack->a, sizeof(bam1_t *) * n);
