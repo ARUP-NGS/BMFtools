@@ -110,7 +110,7 @@ int famstats_target_main(int argc, char *argv[])
 	}
 
 	if (argc != optind+1)
-		return (argc == optind) ? famstats_target_usage_exit(stdout, EXIT_SUCCESS): famstats_target_usage_exit(stderr, EXIT_FAILURE);
+		return famstats_target_usage_exit(stderr, EXIT_FAILURE);
 
 	if(!bedpath) {
 		fprintf(stderr, "[E:%s] Bed path required for famstats target. See usage.\n", __func__);
@@ -158,8 +158,11 @@ int famstats_target_main(int argc, char *argv[])
 
 static void print_stats(famstats_t *stats, FILE *fp)
 {
-	fprintf(fp, "#Number passing filters: %"PRIu64".\n", stats->n_pass);
-	fprintf(fp, "#Number failing filters: %"PRIu64".\n", stats->n_fail);
+	fprintf(fp, "#Number passing filters: %lu.\n", stats->n_pass);
+	fprintf(fp, "#Number failing filters: %lu.\n", stats->n_fp_fail + stats->n_fm_fail + stats->n_flag_fail);
+	fprintf(fp, "#Number failing FP filters: %lu.\n", stats->n_fp_fail);
+	fprintf(fp, "#Number failing FM filters: %lu.\n", stats->n_fm_fail);
+	fprintf(fp, "#Number failing flag filters: %lu.\n", stats->n_flag_fail);
 	fprintf(fp, "#Summed FM (total founding reads): %"PRIu64".\n", stats->allfm_sum);
 	fprintf(fp, "#Summed FM (total founding reads), (FM > 1): %"PRIu64".\n", stats->realfm_sum);
 	fprintf(fp, "#Summed RV (total reverse-complemented reads): %"PRIu64".\n", stats->allrc_sum);
@@ -183,12 +186,17 @@ static inline void famstats_fm_loop(famstats_t *s, bam1_t *b, famstat_settings_t
 {
 	//tag_test(data, "FM");
 	if((b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FREAD2)) ||
-			b->core.qual < settings->minMQ) return;
+			b->core.qual < settings->minMQ) {
+
+		++s->n_flag_fail; return;
+	}
 	const int FM = bam_aux2i(bam_aux_get(b, "FM"));
 	const int RV = bam_aux2i(bam_aux_get(b, "RV"));
-	if(FM < settings->minFM || !bam_aux2i(bam_aux_get(b, "FP"))) {
-		++s->n_fail;
-		return;
+	if(FM < settings->minFM) {
+		++s->n_fm_fail; return;
+	}
+	if(!bam_aux2i(bam_aux_get(b, "FP"))) {
+		++s->n_fp_fail; return;
 	}
 	++s->n_pass;
 
