@@ -1,0 +1,206 @@
+import os
+
+def get_fasta_basename(filename):
+    """Return basename of fasta/fastq file"""
+    filename = os.path.basename(filename)
+    possible_ext = [".fastq", ".fq.gz", ".fastq.gz", ".fasta", ".fa", ".fa.gz",
+        ".fasta.gz", ".bam", ".sam"]
+    for e in possible_ext:
+        if filename.endswith(e):
+            return filename[:-len(e)]
+    return filename
+
+configfile: "tumor_normal_config.yaml"
+
+UNIT_TO_SAMPLE = {
+    unit: sample for sample, units in config["samples"].items()
+    for unit in units}
+
+from snakemake.exceptions import MissingInputException
+
+fastqs = [item for sublist in list(config["units"].values()) for item in sublist]
+FastQCs = ["FastQC/"+get_fasta_basename(fq)+"_fastqc.html" for fq in fastqs]
+tumorBam = "final_bams/Human_b37/" + config["samples"]["tumor"][0] + "_rescued.realigned.bam.bai"
+normalBam = "final_bams/Human_b37/" + config["samples"]["normal"][0] + "_rescued.realigned.bam.bai"
+
+
+rule all:
+        input:
+            FastQCs, tumorBam, normalBam
+
+rule clean:
+    shell:
+        "rm -rf mapping && rm -rf logs && rm -rf FastQC && rm -rf FastqBMF"
+        " && rm -rf rescued_reads "
+
+
+###Consilidates reads by barcode using BMFtools#####
+rule consolidate_by_barcode:
+    input:
+        lambda wildcards: config["units"][wildcards.unit]
+    output:
+        "FastqBMF/{unit}.R1.fq.gz",
+        "FastqBMF/{unit}.R2.fq.gz"
+    log:
+        "logs/_01_Read_Collapse/{unit}_dmp.log"
+    threads:
+        config["params"]["threads"]["bwa"]
+    params:
+        homing = config["params"]["homing_seq"]
+    shell:
+        "bmftools dmp -l 11 -v 12 -s {homing} -p {threads} -d -f "
+        "FastqBMF/{wildcards.unit} -z {input} 2> {log}"
+
+
+###Maps consolidated reads to reference, and marks the unclipped start###
+###position for rescued                                               ###
+rule bwa_mem_map:
+    input:
+        lambda wildcards: config["references"][wildcards.reference],
+        "FastqBMF/{unit}.R1.fq.gz",
+        "FastqBMF/{unit}.R2.fq.gz"
+    output:
+        "mapping/{reference}/{unit}.bam"
+    params:
+        sample=lambda wildcards: UNIT_TO_SAMPLE[wildcards.unit],
+        custom=config["params"]["bs_bwa"]
+    log:
+        "logs/_02_Map_Mark_Sort/{unit}.log"
+    threads: 8
+    shell:
+        "bwa mem {params.custom} "
+        "-R '@RG\tID:{wildcards.unit}\t"
+        "SM:{params.sample}\tPL:{config[platform]}' "
+        "-t {threads} {input}  2> {log} | bmftools mark_unclipped -l 0 - - 2> "
+        " {log}  | samtools sort -O bam -T temp 2> {log} > {output} "
+
+
+###Recovers reads with degenerate barcodes, splits them out into a new ###
+###Fastq for realignment                                               ###
+rule bam_rescue:
+    input:
+        "mapping/{reference}/{unit}.bam"
+    output:
+        bam = "mapping/{reference}/{unit}.rescueRemoved.bam",
+        fastq = "mapping/{reference}/{unit}.rescued.fastq"
+    params:
+        max_mem = config["params"]["max_mem"]
+    log:
+        "logs/_03_rescue_split/{unit}.log"
+    threads: config["params"]["threads"]["bwa"]
+    shell:
+        "bmftools sort -l 0 -m {params.max_mem} -@ {threads} -k ucs -T temp "
+        " {input} 2> {log}| bmftools rsq -uf {output.fastq} -l 0 - - 2> {log}|"
+        " samtools sort -O bam -T templastsort -@ {threads} -m {params.max_mem}"
+        " -o {output.bam} - 2> {log}"
+
+
+###Re-aligns reads with errored barcodes and combines them with the rest ###
+rule align_merge_rescue:
+    input:
+        bam = "mapping/{reference}/{unit}.rescueRemoved.bam",
+        fastq = "mapping/{reference}/{unit}.rescued.fastq",
+        ref = config["references"]["Human_b37"]
+    output:
+        "rescued_reads/{reference}/{unit}_rescued.bam"
+    log:
+        "logs/_04_rescue_merge/{unit}.log"
+    params:
+        sample=lambda wildcards: UNIT_TO_SAMPLE[wildcards.unit],
+        max_mem = config["params"]["max_mem"]
+    threads: config["params"]["threads"]["bwa"]
+    shell:
+        "cat {input.fastq} | paste -d\'~\' - - - - | sort | tr \'~\' \'\\n\' |"
+        " bwa mem -pCYT0 -t {threads} -R '@RG\tID:{wildcards.unit}\t"
+        "SM:{params.sample}\tPL:{config[platform]}' {input.ref} - 2> {log} | "
+        "samtools sort -l 0 -O bam "
+        "-T temprsqsort -O bam -@ {threads} -m {params.max_mem} - 2> {log} | "
+        "samtools merge -cp -h {input.bam} {output} {input.bam} - 2> {log}"
+
+
+###Indexes rescued bams for indel relignment###
+rule index_bams:
+    input:
+        "rescued_reads/{reference}/{unit}_rescued.bam"
+    output:
+        "rescued_reads/{reference}/{unit}_rescued.bam.bai"
+    log:
+        "logs/_06_index_bams/{unit}.log"
+    shell:
+        "samtools index {input} 2> {log}"
+
+
+###GATK's indel relignment prep###
+rule gatk_realign_info:
+    input:
+        "rescued_reads/{reference}/{prefix}_rescued.bam.bai",
+        ref=config["references"]["Human_b37"],
+        bam="rescued_reads/{reference}/{prefix}_rescued.bam"
+    output:
+        temp("rescued_reads/{reference}/{prefix}_rescued.realign.intervals")
+    log:
+        "logs/_07_indel_realign/{prefix}.realign_info.log"
+    threads: 8
+    shell:
+        "{params.gatk} -T RealignerTargetCreator -R {input.ref} "
+        "-nt {threads} "
+        "-I {input.bam} -known {config[references][dbSNP]} "
+        "-o {output} >& {log}"
+
+
+###realigns using targets created by previous rule###
+rule gatk_realign_bam:
+    input:
+        ref=config["references"]["Human_b37"],
+        bam="rescued_reads/{reference}/{prefix}_rescued.bam",
+        intervals="rescued_reads/{reference}/{prefix}_rescued.realign.intervals"
+    output:
+        "final_bams/{reference}/{prefix}_rescued.realigned.bam"
+    params:
+        gatk = config["params"]["gatk"]
+    log:
+        "mapping/log/{reference}/{prefix}.realign.log"
+    shell:
+        "{params.gatk} -T IndelRealigner -R {input.ref} {params.custom} "
+        "--disable_bam_indexing "
+        "-I {input.bam} -targetIntervals {input.intervals} "
+        "-o {output} >& {log}"
+
+
+###Re-indexes final bams, now ready for variant calling###
+rule re_index_bams:
+    input:
+        "final_bams/{reference}/{unit}_rescued.realigned.bam"
+    output:
+        "final_bams/{reference}/{unit}_rescued.realigned.bam.bai"
+    log:
+        "logs/_07_reindex_bams/{unit}.log"
+    shell:
+        "samtools index {input} 2> {log}"
+
+
+###Runs FastQC on all FASTQs in the FASTQ directory###
+rule fastqc:
+    input:
+        "FASTQ/{sample}.fastq.gz"
+    output:
+        "FastQC/{sample}_fastqc.html",
+        "FastQC/{sample}_fastqc.zip"
+    log:
+        "logs/__QC/{sample}_fastqc.log"
+    run:
+        if not os.path.exists("FastQC"):
+            os.makedirs("FastQC")
+        shell("~/bin/FastQC/fastqc {input} --outdir FastQC 2> {log}")
+
+
+###run bmftools famstats on final bams###
+rule famstats:
+    input:
+        "final_bams/{reference}/{unit}_rescued.bam"
+    output:
+        "famstats/{unit}_rescued_famstats.txt"
+    log:
+        "logs/_08_Run_Statistics/{unit}_famstats.log"
+    shell:
+        "bmftools famstats fm {input} > {output} 2> {log}"
