@@ -80,9 +80,11 @@ typedef struct vparams {
 } vparams_t;
 
 typedef struct {
-	htsFile *fp;
-	bam_hdr_t *header;
+	samFile *fp;
 	hts_itr_t *iter;
+	bam_hdr_t *header;
+	vcfFile *vcf_fp;
+	bcf_hdr_t *vcf_header;
 	double minFR;
 	int minMQ;
 	int minFM;
@@ -94,7 +96,7 @@ typedef struct {
 typedef struct vetplp_conf {
 	samFile *bam;
 	bam_hdr_t *bh;
-	khash_t(bed) *bed; // Really khash_t(bed) *
+	khash_t(bed) *bed;
 	vcfFile *vin;
 	vcfFile *vout;
 	bcf_hdr_t *vh;
