@@ -367,8 +367,7 @@ mark_splitter_t *pp_split_inline(marksplit_settings_t *settings)
 	*splitter = init_splitter(settings);
 	gzFile fp1 = gzopen(settings->input_r1_path, "r");
 	gzFile fp2 = gzopen(settings->input_r2_path, "r");
-	kseq_t *seq1 = kseq_init(fp1);
-	kseq_t *seq2 = kseq_init(fp2);
+	kseq_t *seq1 = kseq_init(fp1), *seq2 = kseq_init(fp2);
 	int l1, l2;
 	int pass_fail = 1;
 	if((l1 = kseq_read(seq1)) < 0 || (l2 = kseq_read(seq2)) < 0) {

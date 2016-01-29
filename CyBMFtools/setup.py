@@ -14,7 +14,7 @@ from distutils.core import setup
 
 compilerList = ["-O2", "-pipe", "-march=native", "-mfpmath=sse", "-DSAMTOOLS=1", "-std=c99"]
 
-ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx'])))
+ext = list(chain.from_iterable(map(cythonize, ['*/*.pyx', 'analyscripts/ProbeUtils.py'])))
 
 # If more complex optimizations fail, fall back to -O2
 for x in ext:
@@ -24,6 +24,8 @@ for x in ext:
     x.extra_compile_args += compilerList
     #if x.name ["MawCluster.Math":
     x.sources += ["../include/igamc_cephes.c"]
+ext = [x for x in ext if x.name != "analyscripts.ProbeUtils"]
+subprocess.check_call(["rm", "-r", "analyscripts/ProbeUtils.c"])
 
 install_requires = ['pysam>=0.8.3', 'cytoolz', 'matplotlib', 'cython>=0.22',
                     'cutadapt>=1.8']
