@@ -60,10 +60,12 @@ The only difference between the SAM/BAM tags and the Fastq tags are that the SAM
 
 Tag | Content | Format |
 :----:|:-----|:-----:|
+AF | Aligned Fraction aligned (fraction of bases mapped to reference bases, not counting IDSHNP operations. | Float |
 DR | Whether the read was sequenced from both strands. Only valid for Loeb-like inline barcodes. | Integer [0, 1] |
 FA | Number of reads in Family which Agreed with final sequence at each base | Comma-separated list of integers. Regex: [0-9,]+ |
 FM | Size of family (number of reads sharing barcode.), e.g., "Family Members" | Integer |
 FP | Read Passes Filter related to barcoding | Integer [0, 1]|
+MF | Mate fraction aligned (fraction of bases mapped to reference bases, not counting IDSHNP operations. | Float |
 NC | Number of changed bases in rescued families of reads. | Integer |
 NF | Mean number of differences between reads and consensus per read in family | Single-precision floating number |
 PV | Phred Values for a read which has saturated the phred scoring system | uint32_t array|
