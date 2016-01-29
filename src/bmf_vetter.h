@@ -79,29 +79,13 @@ typedef struct vparams {
 } vparams_t;
 
 typedef struct vetplp_conf {
-	bam_plp_auto_f func;
-	vparams_t params;
-	int n_regions;
 	samFile *bam;
 	bam_hdr_t *bh;
-	hts_itr_t *bam_iter;
-	hts_idx_t *bi; // Bam index
-	hts_idx_t *vi;
 	khash_t(bed) *bed; // Really khash_t(bed) *
-	faidx_t *fai;
 	vcfFile *vin;
 	vcfFile *vout;
 	bcf_hdr_t *vh;
-	tbx_t *tbx;
-	bam_plp_t *pileup;
-	char *contig; // Holds the string for contig
-	int32_t last_ref_tid; // Holds the transcript ID for the contig string.
-	uint32_t minFA; // Minimum Family Members Agreed on base
-	uint32_t minFM; // Minimum family size
-	double minFR; // Minimum  fraction agreed on base
-	uint32_t minMQ; // Minimum mapping quality to include
-	uint32_t minPV; // Minimum PV score to include
-	uint64_t flag;
+	vparams_t params;
 } vetplp_conf_t;
 
 #define SKIP_IMPROPER 4096
@@ -112,11 +96,11 @@ extern void *bed_read(const char *fn);
 
 typedef struct vetter_settings {
 
-	char bam_path[200]; // Path to input bam
-	char out_vcf_path[200]; // Path to output vcf path
-	char in_vcf_path[200]; // Path to input vcf
-	char bed_path[200]; // Path to bedfile
-	char ref_path[200];
+	char *bam_path; // Path to input bam
+	char *outvcf; // Path to output vcf path
+	char *invcf; // Path to input vcf
+	char *bed; // Path to bedfile
+	char *ref_path;
 	char vcf_wmode[4];
 	vetplp_conf_t conf;
 } vetter_settings_t;

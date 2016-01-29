@@ -50,19 +50,20 @@ enum vcf_access_mode{
 void vs_open(vetter_settings_t *settings) {
 	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	vetplp_conf_t *conf = &settings->conf;
-	conf->vin = vcf_open(settings->in_vcf_path, "r");
-	conf->vout = vcf_open(settings->out_vcf_path, settings->vcf_wmode);
-	if(is_bgzipped_vcf(settings->in_vcf_path)) {
+	conf->vin = vcf_open(settings->invcf, "r");
+	conf->vout = vcf_open(settings->outvcf, settings->vcf_wmode);
+	/*
+	if(is_bgzipped_vcf(settings->invcf)) {
 		//
-		conf->tbx = tbx_index_load(settings->in_vcf_path);
+		conf->tbx = tbx_index_load(settings->invcf);
 		if(!conf->tbx) {
-			LOG_ERROR("Failed to load index fail for variant file '%s'.", settings->in_vcf_path);
+			LOG_ERROR("Failed to load index fail for variant file '%s'.", settings->invcf);
 		}
-		LOG_DEBUG("Loaded tabix index for variant file '%s'.", settings->in_vcf_path);
+		LOG_DEBUG("Loaded tabix index for variant file '%s'.", settings->invcf);
 	}
-	else if(file_has_ext(settings->in_vcf_path, "bcf")) {
-		conf->bi = bcf_index_load(settings->in_vcf_path);
-		LOG_DEBUG("Loaded index for bcf file '%s'.", settings->in_vcf_path);
+	else if(file_has_ext(settings->invcf, "bcf")) {
+		conf->bi = bcf_index_load(settings->invcf);
+		LOG_DEBUG("Loaded index for bcf file '%s'.", settings->invcf);
 	} else {
 		LOG_WARNING("Not a bcf file or tabixed vcf. "
 				"Will iterate through the whole file since there's no available index.\n");
@@ -74,6 +75,7 @@ void vs_open(vetter_settings_t *settings) {
 		fprintf(stderr, "Failed to open input file. Abort mission!");
 		exit(EXIT_FAILURE);
 	}
+	*/
 
 	fprintf(stderr, "Reading header from %s and putting it into a header.\n", settings->conf.bam->fn);
 	if((settings->conf.bh = sam_hdr_read(settings->conf.bam)) == NULL)
@@ -81,19 +83,13 @@ void vs_open(vetter_settings_t *settings) {
 	fprintf(stderr, "Num targets: %.i\n", settings->conf.bh->n_targets);
 	conf->vh = bcf_hdr_read(conf->vin);
 	bcf_hdr_write(conf->vout, conf->vh);
-	if((conf->fai = fai_load(settings->ref_path)) == NULL)
-		vetter_error("Could not read Fasta index Abort!\n", EXIT_FAILURE);
-	conf->bed = parse_bed_hash(settings->bed_path, conf->bh, padding);
-	settings->conf.func = &vet_func;
-	settings->conf.n_regions = get_nregions(conf->bed);
+	conf->bed = parse_bed_hash(settings->bed, conf->bh, padding);
 }
 
 void conf_destroy(vetplp_conf_t *conf)
 {
-	if(conf->contig) free(conf->contig), conf->contig = NULL;
+	//if(conf->contig) free(conf->contig), conf->contig = NULL;
 	bam_hdr_destroy(conf->bh);
-	if(conf->bi)
-		hts_idx_destroy(conf->bi);
 	if(hts_close(conf->bam))
 		vetter_error("Could not close input bam. ??? Abort!\n", EXIT_FAILURE);
 	bed_destroy_hash(conf->bed);
@@ -102,10 +98,6 @@ void conf_destroy(vetplp_conf_t *conf)
 	if(hts_close(conf->vout))
 		vetter_error("Could not close output vcf. ??? Abort!\n", EXIT_FAILURE);
 	bcf_hdr_destroy(conf->vh);
-	fai_destroy(conf->fai);
-	if(conf->tbx) tbx_destroy(conf->tbx), conf->tbx = NULL;
-	if(conf->vi) hts_idx_destroy(conf->vi), conf->vi = NULL;
-	if(conf->bam_iter) hts_itr_destroy(conf->bam_iter), conf->bam_iter = NULL;
 	return;
 }
 
@@ -130,13 +122,13 @@ void full_iter_loop(vetter_settings_t *settings)
 		// Skip over variants outside of our region
 		if(conf->bed && !vcf_bed_test(rec, conf->bed))
 			continue;
-		conf->bam_iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
+		//conf->bam_iter = sam_itr_queryi(conf->bi, rec->rid, rec->pos, rec->pos + 1);
 		int ret;
 		bam1_t *b = bam_init1();
-		while((ret = sam_itr_next(conf->bam, conf->bam_iter, b) >= 0)) {
+		//while((ret = sam_itr_next(conf->bam, conf->bam_iter, b) >= 0)) {
 
-		}
-		hts_itr_destroy(conf->bam_iter);
+		//}
+		//hts_itr_destroy(conf->bam_iter);
 		bam_destroy1(b);
 	}
 	bcf_destroy1(rec);
@@ -161,6 +153,7 @@ void tbx_loop(vetter_settings_t *settings)
 			const uint64_t ivl = set.intervals[i];
 			const int start = get_start(ivl);
 			const int stop = get_stop(ivl) + 1;
+			/*
 			conf->bam_iter = sam_itr_queryi(conf->bi, key,
 											(start > BAM_FETCH_BUFFER) ? (start - BAM_FETCH_BUFFER): 0,
 											stop + BAM_FETCH_BUFFER);
@@ -178,6 +171,7 @@ void tbx_loop(vetter_settings_t *settings)
 					// Actual result
 				}
 			}
+			*/
 		}
 	}
 	bcf_destroy1(rec);
@@ -193,10 +187,12 @@ void tbx_loop(vetter_settings_t *settings)
 void hts_loop(vetter_settings_t *settings)
 {
 	vetplp_conf_t *conf = &settings->conf;
+	/*
 	if((conf->vi = bcf_index_load(conf->vin->fn)) == NULL) {
 		fprintf(stderr, "Failed to open bcf index. WTF?\n");
 		exit(EXIT_FAILURE);
 	}
+	*/
 	bcf1_t *rec = bcf_init1();
 	bam1_t *b = bam_init1();
 	// Each of these iterations sets up a scan for a contig
@@ -206,6 +202,7 @@ void hts_loop(vetter_settings_t *settings)
 		const region_set_t cset = kh_val(conf->bed, ki); // Contig set
 		const int32_t key = kh_key(conf->bed, ki);
 		// Each of these iterations goes through an interval on a contig
+		/*
 		for(uint64_t i = 0; i < cset.n; ++i) {
 			hts_itr_t *const iter = bcf_itr_queryi(conf->vi, key, get_start(cset.intervals[i]), get_start(cset.intervals[i]) + 1);
 			// This gets all records in the specified bed region
@@ -223,21 +220,23 @@ void hts_loop(vetter_settings_t *settings)
 			}
 			hts_itr_destroy(iter);
 		}
+		*/
 
 	}
 	bam_destroy1(b);
 	bcf_destroy1(rec);
-	hts_idx_destroy(conf->vi);
+	//hts_idx_destroy(conf->vi);
 }
 
 int vs_reg_core(vetter_settings_t *settings)
 {
+	/*
 	// Set-up
 	// Pileup iterator
 	vetplp_conf_t *conf = &settings->conf;
 	bam_plp_t iter = bam_plp_maxcnt_init(settings->conf.func, (void *)&settings, max_depth);
 	bam_plp_init_overlaps(iter); // Create overlap hashmap for overlapping pairs
-	conf->pileup = &iter;
+	//conf->pileup = &iter;
 
 	conf->bi = sam_index_load(conf->bam, conf->bam->fn);
 	if(!conf->bi) {
@@ -254,6 +253,7 @@ int vs_reg_core(vetter_settings_t *settings)
 	// Main loop
 	// Clean up
 	bam_plp_destroy(iter);
+	*/
 	return EXIT_SUCCESS;
 }
 
@@ -265,19 +265,20 @@ int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
 	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
 	// Initialize
 
-	settings->conf.minFA = params->minFA;
-	settings->conf.minFM = params->minFM;
-	settings->conf.minPV = params->minPV;
-	settings->conf.minMQ = params->minMQ;
-	settings->conf.minFR = params->minFR;
-	settings->conf.last_ref_tid = -1; // Make sure it knows it hasn't loaded any yet.
-	settings->conf.flag = params->flag;
+	settings->conf.params.minFA = params->minFA;
+	settings->conf.params.minFM = params->minFM;
+	settings->conf.params.minPV = params->minPV;
+	settings->conf.params.minMQ = params->minMQ;
+	settings->conf.params.minFR = params->minFR;
+	settings->conf.params.flag = params->flag;
 
 	// Copy filenames over and open vcfs.
-	strcpy(settings->in_vcf_path, invcf);
+	settings->bam_path = strdup(inbam);
+	settings->invcf = strdup(invcf);
+	settings->outvcf = strdup(outvcf);
+	settings->bed = strdup(bed);
 	strcpy(settings->bam_path, inbam);
-	strcpy(settings->out_vcf_path, outvcf);
-	strcpy(settings->bed_path, bed);
+	strcpy(settings->bed, bed);
 	strcpy(settings->vcf_wmode, vcf_wmode);
 
 	// Open handles
@@ -318,8 +319,8 @@ int bmf_vetter_main(int argc, char *argv[])
 		case 'p': padding = atoi(optarg); break;
 		case 'd': max_depth = atoi(optarg); break;
 		case 'f': params.minFR = atof(optarg); break;
-		case 'b': strcpy(bed, optarg); break;
-		case 'o': strcpy(outvcf, optarg); break;
+		case 'b': bed = strdup(optarg); break;
+		case 'o': outvcf = strdup(optarg); break;
 		case 'h': case '?': vetter_usage(EXIT_SUCCESS);
 		}
 	}
@@ -347,6 +348,7 @@ int bmf_vetter_main(int argc, char *argv[])
 	cond_free(inbam);
 	return ret;
 }
+/*
 static int vet_func(void *data, bam1_t *b)
 {
 	vetplp_conf_t *conf = (vetplp_conf_t *)data;
@@ -386,3 +388,4 @@ static int vet_func(void *data, bam1_t *b)
 	} while (skip);
 	return ret;
 }
+*/

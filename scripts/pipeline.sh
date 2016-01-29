@@ -1,17 +1,29 @@
 #!/bin/bash
 set -e
 set -x
-R1=$1
-R2=$2
-tmpstr=${1%.fq*}
-TMPFQ=${tmpstr%.fastq*}.tmp.fq
-TMPBAM=${tmpstr%.fastq*}.tmp.bam
-FINALBAM=${tmpstr%.fastq*}.rsq.bam
 REF="/mounts/genome/human_g1k_v37.fasta"
 SORTMEM="4G"
 SORT_THREADS1="1"
 SORT_THREADS2="4"
 THREADS="10"
+BLEN=10
+MAX_BLEN=11
+r1=$1
+r2=$2
+HOMING="TGACT"
+PREFIX_LEN="3"
+TMP_PREF="tmpfileswtf"
+tmpstr=${1%.fq*}
+FINAL_FQ_PREFIX=FINAL_${tmpstr%.fastq*}
+
+time bmftools dmp -zcdp${THREADS} -l${BLEN} -v${MAX_BLEN} -s${HOMING} -n${PREFIX_LEN} \
+	-o${TMP_PREF} $r1 $r2 -f${FINAL_FQ_PREFIX}
+R1=${FINAL_FQ_PREFIX}.R1.fq.gz
+R2=${FINAL_FQ_PREFIX}.R2.fq.gz
+tmpstr=${R1%.fq*}
+TMPFQ=${tmpstr%.fastq*}.tmp.fq
+TMPBAM=${tmpstr%.fastq*}.tmp.bam
+FINALBAM=${tmpstr%.fastq*}.rsq.bam
 
 bwa mem -CYT0 -t${THREADS} $REF $R1 $R2 | \
     bmftools mark_unclipped -l 0 - - | \

@@ -416,5 +416,4 @@ int famstats_main(int argc, char *argv[])
 		return famstats_target_main(argc - 1, argv + 1);
 	fprintf(stderr, "[E:%s] Unrecognized subcommand '%s'. See usage.\n", __func__, argv[1]);
 	return famstats_usage_exit(stderr, EXIT_FAILURE);
-	return EXIT_FAILURE; // This never happens
 }
