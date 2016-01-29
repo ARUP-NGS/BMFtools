@@ -41,6 +41,8 @@ def segregate(bam, reclist):
     return singletons, list(pair_hash.itervalues())
 
 def get_olap(read, start, stop):
+    if read.is_unmapped:
+        return 0
     return sum(pos >= start and pos < stop for pos in read.get_reference_positions())
 
 def pair_spans(pair, start, stop):
@@ -67,16 +69,19 @@ def process(bampath, contig, start, stop, padding=DEFAULT_PADDING, insert_max=DE
     with open(histpath, "w") as handle:
         handle.write("#Max probe overlap\tNumber of pairs\n")
         handle.write("\n".join("%i\t%i" % (olap, count) for olap, count in max_olap_hist.iteritems()))
-    pairs = [i for i in pairs if not max_olap(i, start, stop)]
+    pairs = [pair for pair in pairs if not pair_spans(pair, start, stop) and pair.r1.is_proper_pair]
+    for pair in pairs:
+        assert not pair_spans(pair, start, stop)
+        assert not max_olap(pair, start, stop)
     total_outside = len(singletons) + 2 * len(pairs)
     if not outpath:
-        outpath = bampath + ".outof.%s.%i.%i.bam"
-    with pysam.AlignmentFile(outpath, "wb") as outbam:
+        outpath = bampath + ".outof.%s.%i.%i.bam" % (contig, start, stop)
+    with pysam.AlignmentFile(outpath, "wb", template=bam) as outbam:
         [outbam.write(single) for single in singletons]
         [(outbam.write(pair.r1), outbam.write(pair.r2)) for pair in pairs]
     print("Total in region: %i" % total)
     print("Total not pulled by probes in region: %i" % total_outside)
-    print("Fraction in region unexpected: %f" % (float(total) / total_outside))
+    print("Fraction in region unexpected: %f" % (float(total_outside) / total))
     print("Writing unexpected reads to %s" % outpath)
 
 def main():
