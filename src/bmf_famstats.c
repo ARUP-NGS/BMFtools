@@ -127,11 +127,16 @@ int famstats_target_main(int argc, char *argv[])
 		LOG_ERROR("Failed to read header for \"%s\"\n", argv[optind]);
 	}
 	bed = parse_bed_hash(bedpath, header, padding);
-	uint64_t fm_target = 0, total_fm = 0, count = 0;
+	uint64_t fm_target = 0, total_fm = 0, count = 0, n_flag_skipped = 0, n_fp_skipped = 0;
 	bam1_t *b = bam_init1();
+	uint8_t *fpdata = NULL;
 	int FM;
 	while (LIKELY((c = sam_read1(fp, header, b)) >= 0)) {
-		if((b->core.flag & 2820) || bam_aux2i(bam_aux_get(b, "FP")) == 0) continue;
+		if((b->core.flag & 2816)) {
+			++n_flag_skipped; continue;
+		} else if((fpdata = bam_aux_get(b, "FP")) != NULL && !bam_aux2i(fpdata)) {
+			++n_fp_skipped; continue;
+		}
 		FM = bam_aux2i(bam_aux_get(b, "FM"));
 		total_fm += FM;
 		if(bed_test(b, bed)) fm_target += FM;
@@ -139,6 +144,7 @@ int famstats_target_main(int argc, char *argv[])
 			LOG_INFO("Number of records processed: %lu.\n", count);
 		}
 	}
+	LOG_INFO("#Number of records read: %lu. Number skipped (flag): %lu. Number skipped (FP): %lu.\n", count, n_flag_skipped, n_fp_skipped);
 	bam_destroy1(b);
 	bam_hdr_destroy(header);
 	sam_close(fp);

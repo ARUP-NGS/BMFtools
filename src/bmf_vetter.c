@@ -23,7 +23,8 @@ void vetter_error(char *message, int retcode)
 	{"ref",		 required_argument, NULL, 'r'}, \
 	{0, 0, 0, 0}
  */
-
+int file_has_ext(char *fn, const char *ext);
+int is_bgzipped_vcf(char *fn);
 void vetter_usage(int retcode)
 {
 	char buf[2000];
@@ -40,30 +41,32 @@ void vetter_usage(int retcode)
 	vetter_error(buf, retcode);
 }
 
+enum vcf_access_mode{
+	VCF_UN,
+	VCF_BGZIP,
+	BCF
+};
+
 void vs_open(vetter_settings_t *settings) {
 	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	vetplp_conf_t *conf = &settings->conf;
-	conf->vin = vcf_open(settings->in_vcf_path, settings->vcf_rmode);
+	conf->vin = vcf_open(settings->in_vcf_path, "r");
 	conf->vout = vcf_open(settings->out_vcf_path, settings->vcf_wmode);
-	if(strcmp(strrchr(settings->in_vcf_path, '.') - 4, ".vcf.gz") == 0) { // - 4 to skip left for .vcf
+	if(is_bgzipped_vcf(settings->in_vcf_path)) {
+		//
 		conf->tbx = tbx_index_load(settings->in_vcf_path);
 		if(!conf->tbx) {
-			fprintf(stderr, "[E:%s] Failed to load index fail for variant file '%s'.", __func__, settings->in_vcf_path);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Failed to load index fail for variant file '%s'.", settings->in_vcf_path);
 		}
-#if !NDEBUG
-		fprintf(stderr, "[D:%s] Loaded tabix index for bgzipped vcf '%s'.", __func__, settings->in_vcf_path);
-#endif
+		LOG_DEBUG("Loaded tabix index for variant file '%s'.", settings->in_vcf_path);
 	}
-	else if(strcmp(strrchr(settings->in_vcf_path, '.'), ".bcf") == 0) {
+	else if(file_has_ext(settings->in_vcf_path, "bcf")) {
 		conf->bi = bcf_index_load(settings->in_vcf_path);
-#if !NDEBUG
-		fprintf(stderr, "[D:%s] Loaded index for bcf file '%s'.", __func__, settings->in_vcf_path);
-#endif
+		LOG_DEBUG("Loaded index for bcf file '%s'.", settings->in_vcf_path);
+	} else {
+		LOG_WARNING("Not a bcf file or tabixed vcf. "
+				"Will iterate through the whole file since there's no available index.\n");
 	}
-	else
-		fprintf(stderr, "[W:%s] Not a bcf file or tabixed vcf."
-				"Will iterate through the whole file since there's no available index.\n", __func__);
 
 	// Handle bam reading format
 	conf->bam = sam_open_format(settings->bam_path, "r", &open_fmt);
@@ -108,7 +111,7 @@ void conf_destroy(vetplp_conf_t *conf)
 
 void vs_destroy(vetter_settings_t *settings) {
 	conf_destroy(&settings->conf);
-	free(settings), settings = NULL;
+	free(settings);
 }
 
 /* @function
@@ -251,13 +254,13 @@ int vs_reg_core(vetter_settings_t *settings)
 	// Main loop
 	// Clean up
 	bam_plp_destroy(iter);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
-						const char *bam_rmode, const char *vcf_rmode,
 						const char *vcf_wmode, vparams_t *params)
 {
+	int ret;
 	// Initialize settings struct
 	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
 	// Initialize
@@ -276,29 +279,23 @@ int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
 	strcpy(settings->out_vcf_path, outvcf);
 	strcpy(settings->bed_path, bed);
 	strcpy(settings->vcf_wmode, vcf_wmode);
-	strcpy(settings->vcf_rmode, vcf_rmode);
-	strcpy(settings->bam_rmode, bam_rmode);
 
 	// Open handles
 	vs_open(settings);
 
-	vs_reg_core(settings);
+	// Run analysis
+	ret = vs_reg_core(settings);
+
 	// Clean up
 	vs_destroy(settings);
-	free(settings);
-	return 0;
+	return ret;
 }
 
 int bmf_vetter_main(int argc, char *argv[])
 {
 	const struct option lopts[] = {VETTER_OPTIONS};
-	char bam_rmode[3] = "rb";
-	char vcf_rmode[4] = "";
 	char vcf_wmode[4] = "w";
-	char invcf[200] = "";
-	char outvcf[200] = "-";
-	char inbam[200] = "";
-	char bed[200] = "";
+	char *invcf = NULL, *outvcf = NULL, *bed = NULL, *inbam = NULL;
 	vparams_t params = {
 			.minFA = 0u,
 			.minPV = 0u,
@@ -323,36 +320,32 @@ int bmf_vetter_main(int argc, char *argv[])
 		case 'f': params.minFR = atof(optarg); break;
 		case 'b': strcpy(bed, optarg); break;
 		case 'o': strcpy(outvcf, optarg); break;
-		case 'h': /* fall-through */
-		case '?': vetter_usage(EXIT_SUCCESS);
-		default: vetter_error("Unrecognized option. Abort!\n", EXIT_FAILURE);
+		case 'h': case '?': vetter_usage(EXIT_SUCCESS);
 		}
 	}
 
-	if(argc < 3) {
-		fprintf(stderr, "Insufficient arguments. Abort!\n");
-		vetter_usage(EXIT_FAILURE);
-	}
+	if(optind + 1 >= argc)
+		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
 	if(outvcf[0] == '-') {
 		fprintf(stderr, "[%s] Emitting to stdout as vcf.\n", __func__);
 		strcpy(vcf_wmode, "w");
 	}
-	else if(strrchr(outvcf, '.') && strcmp(strrchr(outvcf, '.'), ".bcf") == 0 &&
-			!*vcf_rmode)
-		strcpy(vcf_rmode, "rb");
-	if(!vcf_rmode[0])
-		strcpy(vcf_rmode, "r");
-	if(!bed[0])
+	if(!bed || !*bed)
 		vetter_error("Bed file required.\n", EXIT_FAILURE);
-	strcpy(vcf_wmode, strrchr(outvcf, '.') && strcmp(strrchr(outvcf, '.'), ".bcf") ?
-			"w": "wb");
-	if(optind + 1 >= argc) {
-		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
+	if(file_has_ext(outvcf, "bcf"))
+		strcpy(vcf_wmode, "wb");
+	invcf = strdup(argv[optind]);
+	inbam = strdup(argv[optind + 1]);
+	int ret = bmf_vetter_bookends(invcf, inbam, outvcf, bed, vcf_wmode, &params);
+	if(ret) {
+		fprintf(stderr, "[E:%s:%d] bmf_vetter_bookends returned non-zero exit status '%i'. Abort!\n",
+				__func__, __LINE__, ret);
 	}
-	strcpy(invcf, argv[optind]);
-	strcpy(inbam, argv[optind + 1]);
-	bmf_vetter_bookends(invcf, inbam, outvcf, bed, bam_rmode, vcf_rmode, vcf_wmode, &params);
-	return 0;
+	cond_free(invcf);
+	cond_free(outvcf);
+	cond_free(bed);
+	cond_free(inbam);
+	return ret;
 }
 static int vet_func(void *data, bam1_t *b)
 {

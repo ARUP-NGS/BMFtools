@@ -117,8 +117,6 @@ typedef struct vetter_settings {
 	char in_vcf_path[200]; // Path to input vcf
 	char bed_path[200]; // Path to bedfile
 	char ref_path[200];
-	char bam_rmode[4];
-	char vcf_rmode[4];
 	char vcf_wmode[4];
 	vetplp_conf_t conf;
 } vetter_settings_t;
