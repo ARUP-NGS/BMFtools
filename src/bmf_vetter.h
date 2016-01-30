@@ -12,6 +12,9 @@
 #include "htslib/tbx.h"
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"
+#include "dlib/misc_util.h"
+
+KHASH_MAP_INIT_STR(names, bam1_t *)
 
 static int vet_func(void *data, bam1_t *b);
 extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);
@@ -56,7 +59,7 @@ struct __bam_plp_t {
 
 #endif /* BAM_PLP_DEC */
 
-
+// Need to expand for new optios, but I'll wait until I'm finished first.
 #define VETTER_OPTIONS \
 	{"min-family-agreed",		 required_argument, NULL, 'a'}, \
 	{"min-family-size",		 required_argument, NULL, 's'}, \
@@ -69,27 +72,29 @@ struct __bam_plp_t {
 	{"padding",		 required_argument, NULL, 'p'}, \
 	{0, 0, 0, 0}
 
-typedef struct vparams {
-	uint32_t minFA; // Minimum Family Members Agreed on base
-	uint32_t minFM; // Minimum family size
-	double minFR; // Minimum  fraction agreed on base
-	uint32_t minMQ; // Minimum mapping quality to include
-	uint32_t minPV; // Minimum PV score to include
-	uint32_t padding; // Number of bases outside bed region to consider
-	uint64_t flag;
-} vparams_t;
+const char *bmf_header_lines[] =  {
+		"##FORMAT=<ID=BMF_VET,Number=A,Type=Integer,Description=\"1 if the variant passes vetting, 0 otherwise.\">"
+};
 
 typedef struct {
 	samFile *fp;
 	hts_itr_t *iter;
 	bam_hdr_t *header;
 	vcfFile *vcf_fp;
+	vcfFile *vcf_ofp;
 	bcf_hdr_t *vcf_header;
-	double minFR;
-	int minMQ;
+	khash_t(bed) *bed;
+	float minFR; // Minimum fraction of family members agreed on base
+	float minAF; // Minimum aligned fraction
+	int max_depth;
 	int minFM;
 	int minFA;
-	int padding;
+	int minPV;
+	int minMQ;
+	int minCount;
+	int minDuplex;
+	int minOverlap;
+	int skip_improper;
 	uint32_t skip_flag; // Skip reads with any bits set to true
 } aux_t;
 
@@ -100,7 +105,6 @@ typedef struct vetplp_conf {
 	vcfFile *vin;
 	vcfFile *vout;
 	bcf_hdr_t *vh;
-	vparams_t params;
 } vetplp_conf_t;
 
 #define SKIP_IMPROPER 4096

@@ -1,7 +1,6 @@
 #include "bmf_vetter.h"
 
 int max_depth = 20000;
-int padding = 50;
 
 
 void vetter_error(char *message, int retcode)
@@ -19,10 +18,15 @@ static int read_bam(void *data, bam1_t *b)
 	{
 		ret = aux->iter? sam_itr_next(aux->fp, aux->iter, b) : sam_read1(aux->fp, aux->header, b);
 		if ( ret<0 ) break;
-		uint8_t *data = bam_aux_get(b, "FM"), *fpdata = bam_aux_get(b, "FP");
+		// Skip unmapped, secondary, qcfail, duplicates.
+		// Skip improper if option set
+		// Skip MQ < minMQ
+		// Skip FM < minFM
+		// Skip AF < minAF
 		if ((b->core.flag & (BAM_FUNMAP | BAM_FSECONDARY | BAM_FQCFAIL | BAM_FDUP)) ||
-			(int)b->core.qual < aux->minMQ || (data && bam_aux2i(data) < aux->minFM) ||
-			(fpdata && bam_aux2i(fpdata) == 0))
+			(aux->skip_improper && ((b->core.flag & BAM_FPROPER_PAIR) == 0)) || // Skip improper if set.
+			(int)b->core.qual < aux->minMQ || (bam_aux2i(bam_aux_get(b, "FM")) < aux->minFM) ||
+			(bam_aux2i(bam_aux_get(b, "FP")) == 0) || (aux->minAF && bam_aux2f(bam_aux_get(b, "AF")) < aux->minAF))
 				continue;
 		break;
 	}
@@ -102,7 +106,6 @@ void vs_open(vetter_settings_t *settings) {
 	fprintf(stderr, "Num targets: %.i\n", settings->conf.bh->n_targets);
 	conf->vh = bcf_hdr_read(conf->vin);
 	bcf_hdr_write(conf->vout, conf->vh);
-	conf->bed = parse_bed_hash(settings->bed, conf->bh, padding);
 }
 
 void conf_destroy(vetplp_conf_t *conf)
@@ -247,28 +250,93 @@ void hts_loop(vetter_settings_t *settings)
 	bcf_destroy1(rec);
 	//hts_idx_destroy(conf->vi);
 }
+/*
+ * typedef struct {
+	samFile *fp;
+	hts_itr_t *iter;
+	bam_hdr_t *header;
+	vcfFile *vcf_fp;
+	vcfFile *vcf_ofp;
+	bcf_hdr_t *vcf_header;
+	float minFR; // Minimum fraction of family members agreed on base
+	float minAF; // Minimum aligned fraction
+	int minFM;
+	int minFA;
+	int minPV;
+	int minMQ;
+	int padding;
+	int minDuplex;
+	int minOverlap;
+	int skip_improper;
+	uint32_t skip_flag; // Skip reads with any bits set to true
+} aux_t;
+ */
+/*
+ * allele here is an unsigned char from seq_nt16_table, meaning that we have converted the variant
+ * allele from a character into a bam_seqi format (4 bits per base)
+ */
+int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, aux_t *aux, int n_plp) {
+	int duplex = 0, overlap = 0, count = 0, i, khr;
+	uint32_t *FA, *PV;
+	// Build overlap hash
+	khash_t(names) *hash = kh_init(names);
+	khiter_t k;
+	char *qname;
+	bam1_t *b;
+	uint8_t *seq;
+	for(i = 0; i < n_plp; ++i) {
+		b = plp[i].b;
+		FA = (uint32_t *)array_tag(b, "FA");
+		PV = (uint32_t *)array_tag(b, "PV");
+		// Skip any reads failed for FA < minFA or FR < minFR
+		if(FA[plp[i].qpos] < aux->minFA || (float)FA[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR)
+			continue;
+		if(PV[plp[i].qpos] < aux->minPV)
+			continue;
+		qname = bam_get_qname(b);
+		if((k = kh_get(names, hash, qname)) == kh_end(hash)) {
+			kh_put(names, hash, k, &khr);
+			kh_val(hash, k) = 1;
+		} else ++kh_val(hash, k);
+	}
+	// TODO: Actually tweak overlapping base qualities
+	for(i = 0; i < n_plp; ++i) {
+		seq = bam_get_seq(plp[i].b);
+		if(bam_seqi(seq, plp[i].qpos) == allele) { // Match!
+			++count;
+			if(bam_aux2i(bam_aux_get(plp[i].b, "DR"))) ++duplex;
+		}
+	}
 
-void vet_core(khash_t(bed) *bed, aux_t *aux, vparams_t *params) {
+	return 0;
+}
+
+/*
+ * TODO: Add lines to the header
+ *
+ */
+
+int vet_core(aux_t *aux) {
 	khiter_t ki;
 	int i, n_plp;
 	const bam_pileup1_t *plp = calloc(1, sizeof(bam_pileup1_t*));
 	hts_idx_t *idx = sam_index_load(aux->fp, aux->fp->fn);
 	tbx_t *vcf_idx = tbx_index_load(aux->vcf_fp->fn);
 	bcf1_t *vrec = bcf_init();
+	// Unpack all shared data -- up through INFO, but not including FORMAT
+	vrec->max_unpack = BCF_UN_FMT;
 	hts_itr_t *vcf_iter;
-	for(ki = kh_begin(bed); ki != kh_end(bed); ++ki) {
-		if(!kh_exist(bed, ki)) continue;
-		for(unsigned j = 0; j < kh_val(bed, ki).n; ++j) {
+	int32_t *pass_values = (int32_t *)malloc(sizeof(int32_t) * 5);
+	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
+		if(!kh_exist(aux->bed, ki)) continue;
+		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 
 			int tid, start, stop, pos, region_len;
 
 			// Handle coordinates
-			tid = kh_key(bed, ki);
-			start = get_start(kh_val(bed, ki).intervals[j]);
-			stop = get_stop(kh_val(bed, ki).intervals[j]);
-			// Add padding
-			start -= params->padding, stop += params->padding;
-			if(start < 0) start = 0;
+			tid = kh_key(aux->bed, ki);
+			start = get_start(kh_val(aux->bed, ki).intervals[j]);
+			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
 			region_len = stop - start;
 
 			vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
@@ -276,20 +344,31 @@ void vet_core(khash_t(bed) *bed, aux_t *aux, vparams_t *params) {
 			aux->iter = sam_itr_queryi(idx, tid, start, stop);
 			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 			bam_plp_set_maxcnt(pileup, max_depth);
-			while(vcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
-				while (pos < vrec->pos && (plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != NULL) {
+			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
+				if(!bcf_is_snp(vrec)) continue; // Only handle simple SNVs
+				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
+				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
 					// Zoom ahead until you're at the correct position
-					// Nothing
+					// Do nothing
 				}
-				assert(pos == vrec->pos);
-				// Make a list of variants to check.
+				if(pos != vrec->pos) {
+					LOG_INFO("Position %i (1-based) not found in pileups in bam. Super weird...\n", vrec->pos);
+					return -1;
+				}
+				// Check each variant
+
+				for(unsigned i = 0; i < vrec->n_allele; ++i)
+					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[*(vrec->d.allele[i])], aux, n_plp);
+				bcf_update_format(aux->vcf_header, vrec, "BMF", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
+				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 			}
 			tbx_itr_destroy(vcf_iter);
 			bam_plp_destroy(pileup);
 		}
 	}
+	free(pass_values);
 	hts_idx_destroy(idx);
 	bcf_destroy(vrec);
 }
@@ -323,38 +402,9 @@ int vs_reg_core(vetter_settings_t *settings)
 	return EXIT_SUCCESS;
 }
 
-int bmf_vetter_bookends(char *invcf, char *inbam, char *outvcf, char *bed,
-						const char *vcf_wmode, vparams_t *params)
+int bmf_vetter_bookends(aux_t *aux)
 {
-	int ret;
-	// Initialize settings struct
-	vetter_settings_t *settings = (vetter_settings_t *)calloc(1, sizeof(vetter_settings_t));
-	// Initialize
-
-	settings->conf.params.minFA = params->minFA;
-	settings->conf.params.minFM = params->minFM;
-	settings->conf.params.minPV = params->minPV;
-	settings->conf.params.minMQ = params->minMQ;
-	settings->conf.params.minFR = params->minFR;
-	settings->conf.params.flag = params->flag;
-
-	// Copy filenames over and open vcfs.
-	settings->bam_path = strdup(inbam);
-	settings->invcf = strdup(invcf);
-	settings->outvcf = strdup(outvcf);
-	settings->bed = strdup(bed);
-	strcpy(settings->bam_path, inbam);
-	strcpy(settings->bed, bed);
-	strcpy(settings->vcf_wmode, vcf_wmode);
-
-	// Open handles
-	vs_open(settings);
-
-	// Run analysis
-	ret = vs_reg_core(settings);
-
-	// Clean up
-	vs_destroy(settings);
+	int ret = 0;
 	return ret;
 }
 
@@ -362,55 +412,104 @@ int bmf_vetter_main(int argc, char *argv[])
 {
 	const struct option lopts[] = {VETTER_OPTIONS};
 	char vcf_wmode[4] = "w";
-	char *invcf = NULL, *outvcf = NULL, *bed = NULL, *inbam = NULL;
-	vparams_t params = {
-			.minFA = 0u,
-			.minPV = 0u,
-			.minFM = 0u,
-			.minMQ = 0u,
-			.minFR = 0.,
-			.flag = (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP)
-	};
+	char *outvcf = NULL, *bed = NULL;
 	int c;
-	while ((c = getopt_long(argc, argv, "q:r:2:$:d:a:s:m:p:f:b:v:o:?h", lopts, NULL)) >= 0) {
+	int padding = 0;
+	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
+	/* 	float minFR; // Minimum fraction of family members agreed on base
+	float minAF; // Minimum aligned fraction
+	int minFM;
+	int minFA;
+	int minPV;
+	int minMQ;
+	int padding;
+	int minDuplex;
+	int minOverlap;
+	uint32_t skip_flag; // Skip reads with any bits set to true*/
+	aux_t aux = {0};
+	aux.max_depth = (1 << 18); // Default max depth
+
+	//while ((c = getopt_long(argc, argv, "q:r:2:$:d:a:s:m:p:f:b:v:o:O:c:P?h", lopts, NULL)) >= 0) {
+	while ((c = getopt(argc, argv, "q:r:2:$:d:a:s:m:p:f:b:v:o:O:c:P?h")) >= 0) {
 		switch (c) {
-		case 'a': params.minFA = strtoul(optarg, NULL, 0); break;
-		case 's': params.minFM = strtoul(optarg, NULL, 0); break;
-		case 'm': params.minMQ = strtoul(optarg, NULL, 0); break;
-		case 'v': params.minPV = strtoul(optarg, NULL, 0); break;
-		case '2': params.flag &= (~BAM_FSECONDARY); break;
-		case '$': params.flag &= (~BAM_FSUPPLEMENTARY); break;
-		case 'q': params.flag &= (~BAM_FQCFAIL); break;
-		case 'r': params.flag &= (~BAM_FDUP); break;
+		case 'a': aux.minFA = atoi(optarg); break;
+		case 'c': aux.minCount = atoi(optarg); break;
+		case 's': aux.minFM = atoi(optarg); break;
+		case 'm': aux.minMQ = atoi(optarg); break;
+		case 'v': aux.minPV = atoi(optarg); break;
+		case '2': aux.skip_flag &= (~BAM_FSECONDARY); break;
+		case '$': aux.skip_flag &= (~BAM_FSUPPLEMENTARY); break;
+		case 'q': aux.skip_flag &= (~BAM_FQCFAIL); break;
+		case 'r': aux.skip_flag &= (~BAM_FDUP); break;
+		case 'P': aux.skip_improper = 1; break;
 		case 'p': padding = atoi(optarg); break;
-		case 'd': max_depth = atoi(optarg); break;
-		case 'f': params.minFR = atof(optarg); break;
+		case 'd': aux.max_depth = atoi(optarg); break;
+		case 'f': aux.minFR = (float)atof(optarg); break;
 		case 'b': bed = strdup(optarg); break;
 		case 'o': outvcf = strdup(optarg); break;
+		case 'O': aux.minOverlap = atoi(optarg); break;
 		case 'h': case '?': vetter_usage(EXIT_SUCCESS);
 		}
 	}
 
+	// Check for required tags.
+	if(aux.minAF && !bampath_has_tag(argv[optind + 1], "AF")) {
+		check_bam_tag_exit(argv[optind + 1], "AF");
+	}
+	check_bam_tag_exit(argv[optind + 1], "FA");
+	check_bam_tag_exit(argv[optind + 1], "FM");
+	check_bam_tag_exit(argv[optind + 1], "FP");
+	check_bam_tag_exit(argv[optind + 1], "PV");
+	check_bam_tag_exit(argv[optind + 1], "RV");
+
+
+
 	if(optind + 1 >= argc)
 		vetter_error("Insufficient arguments. Input bam required!\n", EXIT_FAILURE);
 	if(outvcf[0] == '-') {
-		fprintf(stderr, "[%s] Emitting to stdout as vcf.\n", __func__);
+		LOG_INFO("Emitting to stdout as vcf.\n");
 		strcpy(vcf_wmode, "w");
 	}
 	if(!bed || !*bed)
 		vetter_error("Bed file required.\n", EXIT_FAILURE);
 	if(file_has_ext(outvcf, "bcf"))
 		strcpy(vcf_wmode, "wb");
-	invcf = strdup(argv[optind]);
-	inbam = strdup(argv[optind + 1]);
-	int ret = bmf_vetter_bookends(invcf, inbam, outvcf, bed, vcf_wmode, &params);
+
+	// Open bam
+	aux.fp = sam_open_format(argv[optind + 1], "r", &open_fmt);
+	if(!aux.fp) {LOG_ERROR("Could not open input bam %s. Abort!\n", argv[optind + 1]);}
+	aux.header = sam_header_read(aux.fp);
+
+	// Open input vcf
+	if(!aux.header || aux.header->n_targets == 0) {LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);}
+	aux.vcf_fp = vcf_open(argv[optind], "r");
+	if(!aux.vcf_fp) {LOG_ERROR("Could not open input [bv]cf %s. Abort!\n", argv[optind]);}
+	aux.vcf_header = vcf_hdr_read(aux.vcf_fp);
+	if(!aux.vcf_header) {LOG_ERROR("Could not read header from input [bv]cf %s. Abort!\n", argv[optind]);}
+	// Open bed file
+	aux.bed = parse_bed_hash(bed, aux.header, padding);
+
+	// Add lines to header
+	size_t n_header_lines = COUNT_OF(bmf_header_lines);
+	for(int i = 0; i < n_header_lines; ++i) bcf_hdr_append(aux.vcf_header, bmf_header_lines[i]);
+	bcf_hdr_printf(aux.vcf_header, "##bed_filename=\"%s\"", bed);
+	{ // New block so tmpstr is cleared
+		kstring_t tmpstr = {0};
+		ksprintf(&tmpstr, "##cmdline=");
+		for(int i = 0; i < argc; ++i) kputs(argv[i], &tmpstr), kputc(' ', &tmpstr);
+		bcf_hdr_append(aux.vcf_header, tmpstr.s);
+		free(tmpstr.s);
+	}
+	bcf_hdr_printf(aux.vcf_header, "##bmftools_version=\"%s\"", VERSION);
+	bcf_hdr_write(aux.vcf_ofp, aux.vcf_header);
+
+	// Open out vcf
+	int ret = vet_core(&aux);
 	if(ret)
-		fprintf(stderr, "[E:%s:%d] bmf_vetter_bookends returned non-zero exit status '%i'. Abort!\n",
+		fprintf(stderr, "[E:%s:%d] vet_core returned non-zero exit status '%i'. Abort!\n",
 				__func__, __LINE__, ret);
-	cond_free(invcf);
 	cond_free(outvcf);
 	cond_free(bed);
-	cond_free(inbam);
 	return ret;
 }
 /*

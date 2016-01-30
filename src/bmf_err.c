@@ -901,18 +901,6 @@ int err_main(int argc, char *argv[])
 	LOG_ERROR("Unrecognized subcommand '%s'. Abort!\n", argv[1]);
 }
 
-void check_bam_tag_exit(char *bampath, const char *tag)
-{
-	if(!(strcmp(bampath, "-") && strcmp(bampath, "stdin"))) {
-		LOG_WARNING("Could not check for bam tag without exhausting a pipe. "
-				 "Tag '%s' has not been verified.\n", tag);
-		return;
-	}
-	if(!bampath_has_tag(bampath, tag)) {
-		LOG_ERROR("Required bam tag '%s' missing from bam file at path '%s'. Abort!\n", tag, bampath);
-	}
-}
-
 
 int err_main_main(int argc, char *argv[])
 {

@@ -63,6 +63,7 @@ typedef struct cycle_err {
 
 cycle_err_t *cycle_init(char *bedpath, bam_hdr_t *hdr, char *refcontig, int padding, int minMQ, int rlen, int flag);
 void cycle_destroy(cycle_err_t *c);
+extern void check_bam_tag_exit(char *bampath, const char *tag);
 
 KHASH_MAP_INIT_INT(obs, obserr_t)
 KHASH_SET_INIT_INT(obs_union)
