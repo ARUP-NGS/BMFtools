@@ -10,7 +10,7 @@ extern int sdmp_main(int argc, char *argv[]);
 extern int rsq_main(int argc, char *argv[]);
 extern int hash_dmp_main(int argc, char *argv[]);
 extern int famstats_main(int argc, char *argv[]);
-extern int bmf_vetter_main(int argc, char *argv[]);
+extern int vetter_main(int argc, char *argv[]);
 extern int err_main(int argc, char *argv[]);
 extern int mark_unclipped_main(int argc, char *argv[]);
 extern int cap_qscore_main(int argc, char *argv[]);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	else if(strcmp(argv[1], "famstats") == 0)
 		return famstats_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "vet") == 0)
-		return bmf_vetter_main(argc - 1, argv + 1);
+		return vetter_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "err") == 0)
 		return err_main(argc - 1, argv + 1);
 	else if(strcmp(argv[1], "mark_unclipped") == 0)

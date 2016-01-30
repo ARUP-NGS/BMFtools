@@ -402,13 +402,7 @@ int vs_reg_core(vetter_settings_t *settings)
 	return EXIT_SUCCESS;
 }
 
-int bmf_vetter_bookends(aux_t *aux)
-{
-	int ret = 0;
-	return ret;
-}
-
-int bmf_vetter_main(int argc, char *argv[])
+int vetter_main(int argc, char *argv[])
 {
 	const struct option lopts[] = {VETTER_OPTIONS};
 	char vcf_wmode[4] = "w";
@@ -453,9 +447,8 @@ int bmf_vetter_main(int argc, char *argv[])
 	}
 
 	// Check for required tags.
-	if(aux.minAF && !bampath_has_tag(argv[optind + 1], "AF")) {
+	if(aux.minAF)
 		check_bam_tag_exit(argv[optind + 1], "AF");
-	}
 	check_bam_tag_exit(argv[optind + 1], "FA");
 	check_bam_tag_exit(argv[optind + 1], "FM");
 	check_bam_tag_exit(argv[optind + 1], "FP");

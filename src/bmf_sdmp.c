@@ -190,6 +190,9 @@ void print_opt_err(char *argv[], char *optarg)
 
 int sdmp_main(int argc, char *argv[])
 {
+	if(argc < 3 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
+		sdmp_usage(argv); return EXIT_FAILURE;
+	}
 	// Build settings struct
 	marksplit_settings_t settings = {
 		.hp_threshold = 10,
@@ -238,7 +241,7 @@ int sdmp_main(int argc, char *argv[])
 			case '$': settings.is_se = 1; break;
 			case '&': settings.to_stdout = 1; break;
 			case '?': // Fall-through
-			case 'h': sdmp_usage(argv); return 0;
+			case 'h': sdmp_usage(argv); return EXIT_SUCCESS;
 			default: print_opt_err(argv, optarg);
 		}
 	}

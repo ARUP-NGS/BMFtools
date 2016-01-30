@@ -1,27 +1,4 @@
-/*  bam_rsq.c -- duplicate read detection.
-
-	Copyright (C) 2009, 2015 Genome Research Ltd.
-	Portions copyright (C) 2009 Broad Institute.
-
-	Author: Heng Li <lh3@sanger.ac.uk>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.  */
+/*  bam_rsq.c */
 #include "bmf_rsq.h"
 
 void resize_stack(tmp_stack_t *stack, size_t n) {
@@ -419,25 +396,22 @@ int rsq_main(int argc, char *argv[])
 	settings->in = sam_open_format(argv[optind], "rb", &ga.in);
 	settings->hdr = sam_hdr_read(settings->in);
 	if (settings->hdr == NULL || settings->hdr->n_targets == 0) {
-		fprintf(stderr, "[bam_rsq] input SAM does not have header. Abort!\n");
-		return 1;
+		LOG_ERROR("input SAM does not have header. Abort!\n");
 	}
 
 	settings->out = sam_open_format(argv[optind+1], wmode, &ga.out);
 	if (settings->in == 0 || settings->out == 0) {
-		fprintf(stderr, "[bam_rsq] fail to read/write input files\n");
-		return 1;
+		LOG_ERROR("fail to read/write input files\n");
 	}
 	sam_hdr_write(settings->out, settings->hdr);
 
 	if(!(settings->in && settings->hdr && settings->out)) {
-		fprintf(stderr, "[E:%s] Failed to read input/output files....\n", __func__);
-		exit(EXIT_FAILURE);
+		LOG_EERROR("Failed to read input/output files....\n");
 	}
 	bam_rsq_bookends(settings);
 	bam_hdr_destroy(settings->hdr);
 	sam_close(settings->in); sam_close(settings->out);
 	if(settings->fqh)
 		fclose(settings->fqh);
-	return 0;
+	return EXIT_SUCCESS;
 }
