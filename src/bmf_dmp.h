@@ -11,14 +11,17 @@
 #include <string.h>
 #include <zlib.h>
 #include "htslib/kstring.h"
-#include "lib/binner.h"
-#include "lib/kingfisher.h"
-#include "dlib/logging_util.h"
 #include "dlib/cstr_util.h"
 #include "dlib/io_util.h"
+#include "dlib/logging_util.h"
+#include "dlib/math_util.h"
 #include "dlib/mem_util.h"
 #include "dlib/nix_util.h"
+#include "lib/binner.h"
+#include "lib/kingfisher.h"
 #include "bmf_hashdmp.h"
+
+extern int64_t ipow(int32_t, int32_t);
 
 typedef void (*hash_dmp_fn)(char *, char *);
 
@@ -40,7 +43,6 @@ void parallel_hash_dmp_core(marksplit_settings_t *settings, splitterhash_params_
 void make_outfname(marksplit_settings_t *settings);
 void cleanup_hashdmp(marksplit_settings_t *settings, splitterhash_params_t *params);
 void check_rescaler(marksplit_settings_t *settings, int arr_size);
-int ipow(int base, int exp);
 
 
 CONST static inline int test_hp(char *barcode, int threshold)
