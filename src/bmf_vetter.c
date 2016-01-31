@@ -214,6 +214,8 @@ int vet_core(aux_t *aux) {
 			bam_plp_destroy(pileup);
 		}
 	}
+	if(bcf_idx) hts_idx_destroy(bcf_idx);
+	if(vcf_idx) tbx_destroy(vcf_idx);
 	free(pass_values);
 	hts_idx_destroy(idx);
 	bcf_destroy(vrec);
@@ -272,8 +274,6 @@ int vetter_main(int argc, char *argv[])
 		LOG_INFO("Emitting to stdout as vcf.\n");
 		strcpy(vcf_wmode, "w");
 	}
-	if(!bed || !*bed)
-		vetter_error("Bed file required.\n", EXIT_FAILURE);
 	if(file_has_ext(outvcf, "bcf"))
 		strcpy(vcf_wmode, "wb");
 
@@ -284,12 +284,16 @@ int vetter_main(int argc, char *argv[])
 
 	// Open input vcf
 	if(!aux.header || aux.header->n_targets == 0) {LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);}
+	// if no bed provided, do whole genome.
+	if(!bed || !*bed) {
+		LOG_WARNING("No bed file provided. Defaulting to whole genome analysis.\n");
+		aux.bed = build_ref_hash(aux.header);
+	} else aux.bed = parse_bed_hash(bed, aux.header, padding);
 	aux.vcf_fp = vcf_open(argv[optind], "r");
 	if(!aux.vcf_fp) {LOG_ERROR("Could not open input [bv]cf %s. Abort!\n", argv[optind]);}
 	aux.vcf_header = vcf_hdr_read(aux.vcf_fp);
 	if(!aux.vcf_header) {LOG_ERROR("Could not read header from input [bv]cf %s. Abort!\n", argv[optind]);}
 	// Open bed file
-	aux.bed = parse_bed_hash(bed, aux.header, padding);
 
 	// Add lines to header
 	size_t n_header_lines = COUNT_OF(bmf_header_lines);
