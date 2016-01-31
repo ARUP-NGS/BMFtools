@@ -50,7 +50,7 @@ int file_has_ext(char *fn, const char *ext);
 void vetter_usage(int retcode)
 {
 	char buf[2000];
-	sprintf(buf, "Usage:\nbmftools vet <-r/--ref> <ref_path> -o <out.vcf [stdout]> <in.vcf> <in.srt.indexed.bam>\n"
+	sprintf(buf, "Usage:\nbmftools vet -o <out.vcf [stdout]> <in.vcf.gz/in.bcf> <in.srt.indexed.bam>\n"
 			 "Optional arguments:\n"
 			 "-b, --bedpath\tPath to bed file to only validate variants in said region\n"
 			 "-s, --min-family-size\tMinimum number of reads in a family to include a that collapsed observation\n"
@@ -62,7 +62,7 @@ void vetter_usage(int retcode)
 			 "-p, --padding\tNumber of bases outside of bed region to pad.\n"
 			 "-a, --min-family-agreed\tMinimum number of reads in a family agreed on a base call\n"
 			 "-m, --min-mapping-quality\tMinimum mapping quality for reads for inclusion\n"
-			 "Note: fasta reference must be faidx'd.\n");
+			 );
 	vetter_error(buf, retcode);
 }
 
@@ -230,6 +230,7 @@ int vetter_main(int argc, char *argv[])
 	htsFormat open_fmt = (htsFormat){sequence_data, bam, {1, 3}, gzip, 0, NULL};
 	aux_t aux = {0};
 	aux.max_depth = (1 << 18); // Default max depth
+	if(argc < 5) vetter_usage(EXIT_FAILURE);
 
 	while ((c = getopt_long(argc, argv, "D:q:r:2:S:d:a:s:m:p:f:b:v:o:O:c:P?h", lopts, NULL)) >= 0) {
 		switch (c) {
@@ -319,44 +320,3 @@ int vetter_main(int argc, char *argv[])
 	cond_free(bed);
 	return ret;
 }
-/*
-static int vet_func(void *data, bam1_t *b)
-{
-	vetplp_conf_t *conf = (vetplp_conf_t *)data;
-	int ret, skip = 0, ref_len;
-	do {
-		ret = conf->bam_iter ? sam_itr_next(conf->bam, conf->bam_iter, b) : sam_read1(conf->bam, conf->bh, b);
-		if (ret < 0) break;
-		// The 'B' cigar operation is not part of the specification, considering as obsolete.
-		//  bam_remove_B(b);
-		if (b->core.tid < 0 || (b->core.flag&(BAM_FUNMAP))) { // exclude unmapped and qc fail reads.
-			skip = 1;
-			continue;
-		}
-		if (conf->bed) { // test overlap
-			skip = !bed_test(b, conf->bed);
-			if (skip) continue;
-		}
-
-		if (conf->fai && b->core.tid >= 0) {
-			if(conf->last_ref_tid != b->core.tid) {
-				if(conf->contig) free(conf->contig);
-				conf->contig = fai_fetch(conf->fai, conf->bh->target_name[b->core.tid], &ref_len);
-			}
-			if (ref_len <= b->core.pos) { // exclude reads outside of the reference sequence
-				fprintf(stderr,"[%s] Skipping because %d is outside of %d [ref:%d]\n",
-						__func__, b->core.pos, ref_len, b->core.tid);
-				skip = 1;
-				continue;
-			}
-		}
-
-		skip = 0;
-		if (b->core.qual < conf->minMQ) skip = 1;
-		else if((conf->flag & (b->core.flag & (BAM_FSECONDARY | BAM_FSUPPLEMENTARY | BAM_FQCFAIL | BAM_FDUP))) ||
-				((conf->flag & (SKIP_IMPROPER)) && (b->core.flag&BAM_FPAIRED) && b->core.flag&BAM_FPROPER_PAIR) ||
-				(bam_aux2i(bam_aux_get(b, "FM")) < conf->minFM)) skip = 1;
-	} while (skip);
-	return ret;
-}
-*/
