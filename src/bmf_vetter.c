@@ -1,6 +1,6 @@
 #include "bmf_vetter.h"
 
-int max_depth = 20000;
+int max_depth = (1 << 18); // 262144
 
 
 void vetter_error(char *message, int retcode)

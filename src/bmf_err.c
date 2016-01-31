@@ -111,16 +111,14 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 	khiter_t k, k1, k2;
 	// Make a set of all FMs to print out.
 	khash_t(obs_union) *shared_keys = kh_init(obs_union);
-	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1) {
-		if(!kh_exist(f->hash1, k1)) continue;
-		if((k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1))) == kh_end(shared_keys))
-			k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
-	}
-	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2) {
-		if(!kh_exist(f->hash2, k2)) continue;
-		if((k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2))) == kh_end(shared_keys))
-			k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
-	}
+	for(k1 = kh_begin(f->hash1); k1 != kh_end(f->hash1); ++k1)
+		if(kh_exist(f->hash1, k1))
+			if((k = kh_get(obs_union, shared_keys, kh_key(f->hash1, k1))) == kh_end(shared_keys))
+				k = kh_put(obs_union, shared_keys, kh_key(f->hash1, k1), &khr);
+	for(k2 = kh_begin(f->hash2); k2 != kh_end(f->hash2); ++k2)
+		if(kh_exist(f->hash2, k2))
+			if((k = kh_get(obs_union, shared_keys, kh_key(f->hash2, k2))) == kh_end(shared_keys))
+				k = kh_put(obs_union, shared_keys, kh_key(f->hash2, k2), &khr);
 
 	// Write  header
 	fprintf(fp, "##PARAMETERS\n##refcontig:\"%s\"\n##bed:\"%s\"\n"
@@ -148,7 +146,6 @@ void err_fm_report(FILE *fp, fmerr_t *f)
 				kh_val(f->hash1, k1).err, kh_val(f->hash1, k1).obs,
 				kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
 		LOG_DEBUG("R2 FM %i err, obs: %lu, %lu.\n", kh_key(f->hash2, k2), kh_val(f->hash2, k2).err, kh_val(f->hash2, k2).obs);
-
 	}
 	kh_destroy(obs_union, shared_keys);
 }
