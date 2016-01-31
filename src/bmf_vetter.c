@@ -288,6 +288,7 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 	int s, s2;
 	char c;
 	for(i = 0; i < n_plp; ++i) {
+		if(plp[i].is_del || plp[i].is_refskip || plp[i].b->core.flag & BAM_FQCFAIL) continue;
 		b = plp[i].b;
 		// Skip any reads failed for FA < minFA or FR < minFR
 		qname = bam_get_qname(b);
@@ -295,14 +296,15 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 			kh_put(names, hash, qname, &khr);
 			kh_val(hash, k) = &plp[i];
 		} else {
-			plp[i].b->core.flag |= BAM_FQCFAIL;
+			plp[i].b->core.flag &= ~(BAM_FREAD1 | BAM_FREAD2);
+			kh_val(hash, k)->b->core.flag |= (BAM_FREAD1 | BAM_FREAD2);
 			PV1 = array_tag(kh_val(hash, k)->b, "PV");
-			PV2 = array_tag(plp[i].b, "PV");
 			FA1 = array_tag(kh_val(hash, k)->b, "FA");
-			FA2 = array_tag(plp[i].b, "FA");
 			seq = bam_get_seq(kh_val(hash, k)->b);
-			seq2 = bam_get_seq(plp[i].b);
 			s = bam_seqi(seq2, kh_val(hash, k)->qpos);
+			PV2 = array_tag(plp[i].b, "PV");
+			FA2 = array_tag(plp[i].b, "FA");
+			seq2 = bam_get_seq(plp[i].b);
 			s2 = bam_seqi(seq, plp[i].qpos);
 			if(s == s2) {
 				PV1[kh_val(hash, k)->qpos] = agreed_pvalues(PV1[kh_val(hash, k)->qpos], PV2[plp[i].qpos]);
@@ -312,27 +314,26 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
 				PV1[kh_val(hash, k)->qpos] = PV2[plp[i].qpos];
 				FA1[kh_val(hash, k)->qpos] = FA2[plp[i].qpos];
 			} else if(s2 != HTS_N) {
+				// Disagreed, both aren't N: N the base, set agrees and p values to 0!
 				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
 				PV1[kh_val(hash, k)->qpos] = 0u;
 				FA1[kh_val(hash, k)->qpos] = 0u;
 			}
 		}
 	}
-	// TODO: Actually tweak overlapping base qualities
 	for(i = 0; i < n_plp; ++i) {
-		if(plp[i].is_del || plp[i].is_refskip || (plp[i].b->core.flag & BAM_FQCFAIL)) continue;
+		if(plp[i].is_del || plp[i].is_refskip || (plp[i].b->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == 0) continue;
 		b = plp[i].b;
 		FA1 = (uint32_t *)array_tag(b, "FA");
 		PV1 = (uint32_t *)array_tag(b, "PV");
-		if(FA1[plp[i].qpos] < aux->minFA || (float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR)
-			continue;
-		if(PV1[plp[i].qpos] < aux->minPV)
+		if(FA1[plp[i].qpos] < aux->minFA || (float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR ||
+			PV1[plp[i].qpos] < aux->minPV)
 			continue;
 		seq = bam_get_seq(b);
 		if(bam_seqi(seq, plp[i].qpos) == allele) { // Match!
 			++count;
 			if(bam_aux2i(bam_aux_get(b, "DR"))) ++duplex;
-			if((k = kh_get(names, hash, bam_get_qname(plp[i].b))) != kh_end(hash))
+			if((b->core.flag & (BAM_FREAD1 | BAM_FREAD2)) == (BAM_FREAD1 | BAM_FREAD2))
 				++overlap;
 		}
 	}

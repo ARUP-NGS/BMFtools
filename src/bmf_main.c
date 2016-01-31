@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "dlib/logging_util.h"
 
 extern int sort_main(int argc, char *argv[]);
 extern int dmp_main(int argc, char *argv[]);
@@ -20,6 +21,7 @@ extern int depth_main(int argc, char *argv[]);
 static int bmftools_usage(int rc)
 {
 	fprintf(stderr, "Usage: bmftools <subcommand>. See subcommand menus for usage.\n");
+	fprintf(stderr, "-v/--version:			Print BMFtools version and exit.");
 	fprintf(stderr, "sort:			Sort for bam rescue.\n"
 					"dmp:			 Demultiplex inline barcoded experiments.\n"
 					"sdmp:			Demultiplex secondary-index barcoded experiments.\n"
@@ -41,7 +43,7 @@ int main(int argc, char *argv[])
 	if(argc == 1 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0)
 		return bmftools_usage(EXIT_FAILURE);
 	if(strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
-        fprintf(stderr, "[%s] BMFtools version: '%s'.\n", __func__, VERSION);
+        LOG_INFO("BMFtools version: '%s'.\n", VERSION);
         exit(EXIT_SUCCESS);
     }
 	if(strcmp(argv[1], "sort") == 0)
