@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <getopt.h>
+#include "include/igamc_cephes.h"
 #include "htslib/khash.h"
 #include "htslib/vcf.h"
 #include "htslib/faidx.h"
@@ -14,7 +15,7 @@
 #include "dlib/bam_util.h"
 #include "dlib/misc_util.h"
 
-KHASH_MAP_INIT_STR(names, bam1_t *)
+KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 
 static int vet_func(void *data, bam1_t *b);
 extern bam_plp_t bam_plp_maxcnt_init(bam_plp_auto_f func, void *data, int maxcnt);

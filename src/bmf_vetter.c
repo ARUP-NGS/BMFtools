@@ -275,44 +275,73 @@ void hts_loop(vetter_settings_t *settings)
  * allele here is an unsigned char from seq_nt16_table, meaning that we have converted the variant
  * allele from a character into a bam_seqi format (4 bits per base)
  */
-int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, aux_t *aux, int n_plp) {
+int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, aux_t *aux, int n_plp,
+				int pos) {
 	int duplex = 0, overlap = 0, count = 0, i, khr;
-	uint32_t *FA, *PV;
+	uint32_t *FA1, *PV1, *FA2, *PV2;
 	// Build overlap hash
 	khash_t(names) *hash = kh_init(names);
 	khiter_t k;
 	char *qname;
 	bam1_t *b;
-	uint8_t *seq;
+	uint8_t *seq, *seq2;
+	int s, s2;
+	char c;
 	for(i = 0; i < n_plp; ++i) {
 		b = plp[i].b;
-		FA = (uint32_t *)array_tag(b, "FA");
-		PV = (uint32_t *)array_tag(b, "PV");
 		// Skip any reads failed for FA < minFA or FR < minFR
-		if(FA[plp[i].qpos] < aux->minFA || (float)FA[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR)
-			continue;
-		if(PV[plp[i].qpos] < aux->minPV)
-			continue;
 		qname = bam_get_qname(b);
 		if((k = kh_get(names, hash, qname)) == kh_end(hash)) {
-			kh_put(names, hash, k, &khr);
-			kh_val(hash, k) = 1;
-		} else ++kh_val(hash, k);
+			kh_put(names, hash, qname, &khr);
+			kh_val(hash, k) = &plp[i];
+		} else {
+			plp[i].b->core.flag |= BAM_FQCFAIL;
+			PV1 = array_tag(kh_val(hash, k)->b, "PV");
+			PV2 = array_tag(plp[i].b, "PV");
+			FA1 = array_tag(kh_val(hash, k)->b, "FA");
+			FA2 = array_tag(plp[i].b, "FA");
+			seq = bam_get_seq(kh_val(hash, k)->b);
+			seq2 = bam_get_seq(plp[i].b);
+			s = bam_seqi(seq2, kh_val(hash, k)->qpos);
+			s2 = bam_seqi(seq, plp[i].qpos);
+			if(s == s2) {
+				PV1[kh_val(hash, k)->qpos] = agreed_pvalues(PV1[kh_val(hash, k)->qpos], PV2[plp[i].qpos]);
+				FA1[kh_val(hash, k)->qpos] = FA1[kh_val(hash, k)->qpos] + FA2[plp[i].qpos];
+			} else if(s == HTS_N) {
+				set_base(seq, seq_nt16_str[bam_seqi(seq2, plp[i].qpos)], kh_val(hash, k)->qpos);
+				PV1[kh_val(hash, k)->qpos] = PV2[plp[i].qpos];
+				FA1[kh_val(hash, k)->qpos] = FA2[plp[i].qpos];
+			} else if(s2 != HTS_N) {
+				n_base(seq, kh_val(hash, k)->qpos); // if s2 == HTS_N, do nothing.
+				PV1[kh_val(hash, k)->qpos] = 0u;
+				FA1[kh_val(hash, k)->qpos] = 0u;
+			}
+		}
 	}
 	// TODO: Actually tweak overlapping base qualities
 	for(i = 0; i < n_plp; ++i) {
-		seq = bam_get_seq(plp[i].b);
+		if(plp[i].is_del || plp[i].is_refskip || (plp[i].b->core.flag & BAM_FQCFAIL)) continue;
+		b = plp[i].b;
+		FA1 = (uint32_t *)array_tag(b, "FA");
+		PV1 = (uint32_t *)array_tag(b, "PV");
+		if(FA1[plp[i].qpos] < aux->minFA || (float)FA1[plp[i].qpos] / bam_aux2i(bam_aux_get(b, "FM")) < aux->minFR)
+			continue;
+		if(PV1[plp[i].qpos] < aux->minPV)
+			continue;
+		seq = bam_get_seq(b);
 		if(bam_seqi(seq, plp[i].qpos) == allele) { // Match!
 			++count;
-			if(bam_aux2i(bam_aux_get(plp[i].b, "DR"))) ++duplex;
+			if(bam_aux2i(bam_aux_get(b, "DR"))) ++duplex;
+			if((k = kh_get(names, hash, bam_get_qname(plp[i].b))) != kh_end(hash))
+				++overlap;
 		}
 	}
-
-	return 0;
+	return count >= aux->minCount && duplex >= aux->minDuplex && overlap >= aux->minOverlap;
 }
 
 /*
- * TODO: Add lines to the header
+ * TODO: Add new tags
+ *     1. Number of duplex reads supporting each variant allele
  *
  */
 
@@ -331,13 +360,12 @@ int vet_core(aux_t *aux) {
 		if(!kh_exist(aux->bed, ki)) continue;
 		for(unsigned j = 0; j < kh_val(aux->bed, ki).n; ++j) {
 
-			int tid, start, stop, pos, region_len;
+			int tid, start, stop, pos;
 
 			// Handle coordinates
 			tid = kh_key(aux->bed, ki);
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
-			region_len = stop - start;
 
 			vcf_iter = tbx_itr_queryi(vcf_idx, tid, start, stop);
 			if (aux->iter) hts_itr_destroy(aux->iter);
@@ -345,11 +373,13 @@ int vet_core(aux_t *aux) {
 			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 			bam_plp_set_maxcnt(pileup, max_depth);
 			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
+				while(vrec->pos < start && bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
+					/* Zoom ahead until you're at the correct position */
+				}
 				if(!bcf_is_snp(vrec)) continue; // Only handle simple SNVs
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
-					// Zoom ahead until you're at the correct position
-					// Do nothing
+					/* Zoom ahead until you're at the correct position */
 				}
 				if(pos != vrec->pos) {
 					LOG_INFO("Position %i (1-based) not found in pileups in bam. Super weird...\n", vrec->pos);
@@ -358,7 +388,7 @@ int vet_core(aux_t *aux) {
 				// Check each variant
 
 				for(unsigned i = 0; i < vrec->n_allele; ++i)
-					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[*(vrec->d.allele[i])], aux, n_plp);
+					pass_values[i] = bmf_pass_var(vrec, plp, seq_nt16_table[(uint8_t)*(vrec->d.allele[i])], aux, n_plp, pos);
 				bcf_update_format(aux->vcf_header, vrec, "BMF", (void *)pass_values, vrec->n_allele, BCF_HT_INT);
 
 				// Pass or fail them individually.
@@ -371,6 +401,7 @@ int vet_core(aux_t *aux) {
 	free(pass_values);
 	hts_idx_destroy(idx);
 	bcf_destroy(vrec);
+	return EXIT_SUCCESS;
 }
 
 int vs_reg_core(vetter_settings_t *settings)

@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <math.h>
 #include "mtherr.c"
 #include "dlib/compiler_util.h"
 

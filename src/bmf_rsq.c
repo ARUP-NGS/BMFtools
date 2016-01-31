@@ -63,14 +63,12 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 #if !NDEBUG
 	// Check for required PV and FA tags
 	if(!bPV || !pPV) {
-		fprintf(stderr, "[E:%s] Required PV tag not found. Abort mission! Read names: %s, %s.\n",
-				__func__, bam_get_qname(b), bam_get_qname(p));
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Required PV tag not found. Abort mission! Read names: %s, %s.\n",
+				bam_get_qname(b), bam_get_qname(p));
 	}
 	if(!bFA || !pFA) {
-		fprintf(stderr, "[E:%s] Required FA tag not found. Abort mission! Read names: %s, %s.\n",
-				__func__, bam_get_qname(b), bam_get_qname(p));
-		exit(EXIT_FAILURE);
+		LOG_ERROR("Required FA tag not found. Abort mission! Read names: %s, %s.\n",
+				bam_get_qname(b), bam_get_qname(p));
 	}
 #endif
 
@@ -80,7 +78,7 @@ static inline void update_bam1(bam1_t *p, bam1_t *b)
 	uint8_t *const pQual = (uint8_t *)bam_get_qual(p);
 #if !NDEBUG
 	if(!(bSeq && pSeq && bQual && pQual)) {
-		fprintf(stderr, "[E:%s] Qual strings or sequence strings are null. Abort!\n", __func__);
+		LOG_ERROR("Qual strings or sequence strings are null. Abort!\n");
 	}
 #endif
 	const int qlen = p->core.l_qseq;
@@ -406,7 +404,7 @@ int rsq_main(int argc, char *argv[])
 	sam_hdr_write(settings->out, settings->hdr);
 
 	if(!(settings->in && settings->hdr && settings->out)) {
-		LOG_EERROR("Failed to read input/output files....\n");
+		LOG_ERROR("Failed to read input/output files....\n");
 	}
 	bam_rsq_bookends(settings);
 	bam_hdr_destroy(settings->hdr);
