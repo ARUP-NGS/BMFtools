@@ -14,6 +14,7 @@
 #include "dlib/bed_util.h"
 #include "dlib/bam_util.h"
 #include "dlib/misc_util.h"
+#include "dlib/vcf_util.h"
 
 KHASH_MAP_INIT_STR(names, const bam_pileup1_t *)
 

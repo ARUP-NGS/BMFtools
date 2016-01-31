@@ -157,6 +157,26 @@ int bmf_pass_var(bcf1_t *vrec, const bam_pileup1_t *plp, unsigned char allele, a
  *     3. Number of unique observations (subtracting overlapping reads) for each allele.
  */
 
+int read_bcf(aux_t *aux, hts_itr_t *vcf_iter, bcf1_t *vrec, int start)
+{
+	int ret;
+	if(vcf_iter) {
+		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
+		while(vrec->pos < start && (ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec)) >= 0)
+		{
+			/* Zoom ahead until you're at the correct position */
+		}
+	}
+	else {
+		ret = bcf_itr_next(aux->vcf_fp, vcf_iter, vrec);
+		while(vrec->pos < start && (ret = bcf_read(aux->vcf_fp, aux->vcf_header, vrec)) >= 0)
+		{
+			/* Zoom ahead until you're at the correct position */
+		}
+	}
+	return ret;
+}
+
 int vet_core(aux_t *aux) {
 	khiter_t ki;
 	int n_plp;
@@ -170,7 +190,7 @@ int vet_core(aux_t *aux) {
 	bcf1_t *vrec = bcf_init();
 	// Unpack all shared data -- up through INFO, but not including FORMAT
 	vrec->max_unpack = BCF_UN_FMT;
-	hts_itr_t *vcf_iter;
+	hts_itr_t *vcf_iter = NULL;
 	int32_t *pass_values = (int32_t *)malloc(sizeof(int32_t) * 5);
 	for(ki = kh_begin(aux->bed); ki != kh_end(aux->bed); ++ki) {
 		if(!kh_exist(aux->bed, ki)) continue;
@@ -183,15 +203,12 @@ int vet_core(aux_t *aux) {
 			start = get_start(kh_val(aux->bed, ki).intervals[j]);
 			stop = get_stop(kh_val(aux->bed, ki).intervals[j]);
 
-			vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_itr_queryi(bcf_idx, tid, start, stop);
+			vcf_iter = vcf_idx ? tbx_itr_queryi(vcf_idx, tid, start, stop): bcf_idx ? bcf_itr_queryi(bcf_idx, tid, start, stop): NULL;
 			if (aux->iter) hts_itr_destroy(aux->iter);
 			aux->iter = sam_itr_queryi(idx, tid, start, stop);
 			bam_plp_t pileup = bam_plp_init(read_bam, (void *)aux);
 			bam_plp_set_maxcnt(pileup, max_depth);
-			while(bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
-				while(vrec->pos < start && bcf_itr_next(aux->vcf_fp, vcf_iter, vrec) >= 0) {
-					/* Zoom ahead until you're at the correct position */
-				}
+			while(read_bcf(aux, vcf_iter, vrec, start) >= 0) {
 				if(!bcf_is_snp(vrec)) continue; // Only handle simple SNVs
 				bcf_unpack(vrec, BCF_UN_STR); // Unpack the allele fields
 				while (pos < vrec->pos && ((plp = bam_plp_auto(pileup, &tid, &pos, &n_plp)) != 0)) {
@@ -210,7 +227,7 @@ int vet_core(aux_t *aux) {
 				// Pass or fail them individually.
 				bcf_write(aux->vcf_ofp, aux->vcf_header, vrec);
 			}
-			tbx_itr_destroy(vcf_iter);
+			if(vcf_iter) tbx_itr_destroy(vcf_iter);
 			bam_plp_destroy(pileup);
 		}
 	}
@@ -284,16 +301,13 @@ int vetter_main(int argc, char *argv[])
 
 	// Open input vcf
 	if(!aux.header || aux.header->n_targets == 0) {LOG_ERROR("Could not read header from bam %s. Abort!\n", argv[optind + 1]);}
+	// Open bed file
 	// if no bed provided, do whole genome.
 	if(!bed || !*bed) {
 		LOG_WARNING("No bed file provided. Defaulting to whole genome analysis.\n");
 		aux.bed = build_ref_hash(aux.header);
 	} else aux.bed = parse_bed_hash(bed, aux.header, padding);
-	aux.vcf_fp = vcf_open(argv[optind], "r");
-	if(!aux.vcf_fp) {LOG_ERROR("Could not open input [bv]cf %s. Abort!\n", argv[optind]);}
-	aux.vcf_header = vcf_hdr_read(aux.vcf_fp);
-	if(!aux.vcf_header) {LOG_ERROR("Could not read header from input [bv]cf %s. Abort!\n", argv[optind]);}
-	// Open bed file
+	check_vcf_open(argv[optind], aux.vcf_fp, aux.vcf_header);
 
 	// Add lines to header
 	size_t n_header_lines = COUNT_OF(bmf_header_lines);

@@ -23,20 +23,5 @@
 	}
 
 DECLARE_BINNER(uint64_t)
-/*
-static inline uint64_t ulpow(uint64_t base, uint64_t exp);
-static inline uint64_t ulpow(uint64_t base, uint64_t exp)
-{
-	uint64_t result = 1;
-	while (exp)
-	{
-		if (exp & 1)
-			result *= base;
-		exp >>= 1;
-		base *= base;
-	}
-	return result;
-}
-*/
 
 #endif /* BINNER_H */
